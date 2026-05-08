@@ -3424,7 +3424,7 @@
             for (const [key, race] of Object.entries(RACES)) {
                 const card = document.createElement('div');
                 card.className = 'race-card';
-                card.onclick = () => selectRace(key);
+                card.onclick = (e) => selectRace(key, e);
                 
                 const bonuses = Object.entries(race.bonus)
                     .map(([stat, value]) => `${STAT_NAMES[stat]}+${value}`)
@@ -3442,7 +3442,7 @@
             }
         }
 
-        function selectRace(raceKey) {
+        function selectRace(raceKey, event) {
             creationState.selectedRace = raceKey;
             creationState.step = 2;
             updateStepIndicator();
@@ -3464,7 +3464,7 @@
             for (const [key, cls] of Object.entries(CLASSES)) {
                 const card = document.createElement('div');
                 card.className = 'class-card';
-                card.onclick = () => selectClass(key);
+                card.onclick = (e) => selectClass(key, e);
                 
                 card.innerHTML = `
                     <div class="class-icon">${cls.icon}</div>
@@ -3478,7 +3478,7 @@
             }
         }
 
-        function selectClass(classKey) {
+        function selectClass(classKey, event) {
             creationState.selectedClass = classKey;
             creationState.step = 3;
             updateStepIndicator();
