@@ -4340,7 +4340,8 @@
         event.currentTarget.classList.add('selected');
 
         setTimeout(() => {
-          document.getElementById('step-race').classList.remove('active');
+          document.getElementById('step-race').classList.remove('active', 'hidden');
+          document.getElementById('step-class').classList.remove('hidden');
           document.getElementById('step-class').classList.add('active');
           renderClassSelection();
         }, 300);
@@ -4382,7 +4383,8 @@
         event.currentTarget.classList.add('selected');
 
         setTimeout(() => {
-          document.getElementById('step-class').classList.remove('active');
+          document.getElementById('step-class').classList.remove('active', 'hidden');
+          document.getElementById('step-name').classList.remove('hidden');
           document.getElementById('step-name').classList.add('active');
           updatePreview();
         }, 300);
@@ -4442,7 +4444,8 @@
       function goBackToClass() {
         creationState.step = 2;
         updateStepIndicator();
-        document.getElementById('step-name').classList.remove('active');
+        document.getElementById('step-name').classList.remove('active', 'hidden');
+        document.getElementById('step-class').classList.remove('hidden');
         document.getElementById('step-class').classList.add('active');
       }
 
