@@ -4286,13 +4286,6 @@
         }
       }
 
-      function showCharacterCreation() {
-        document
-          .getElementById('character-creation')
-          .classList.remove('hidden');
-        document.getElementById('character-display').classList.remove('active');
-      }
-
       function showCharacterDisplay() {
         document.getElementById('character-creation').classList.add('hidden');
         document.getElementById('character-display').classList.add('active');
@@ -4325,6 +4318,49 @@
             .join(', ');
 
           card.innerHTML = `
+                    <div class="race-icon">${race.icon}</div>
+                    <div class="race-info">
+                        <div class="race-name">${race.name}</div>
+                        <div class="race-bonus">${bonuses}</div>
+                        <div class="card-description">${race.description}</div>
+                    </div>
+                `;
+          container.appendChild(card);
+        }
+      }
+
+      function selectRace(raceKey, event) {
+        creationState.selectedRace = raceKey;
+        creationState.step = 2;
+        updateStepIndicator();
+
+        document
+          .querySelectorAll('.race-card')
+          .forEach((card) => card.classList.remove('selected'));
+        event.currentTarget.classList.add('selected');
+
+        setTimeout(() => {
+          document.getElementById('step-race').classList.remove('active');
+          document.getElementById('step-class').classList.add('active');
+          renderClassSelection();
+        }, 300);
+      }
+
+      function renderClassSelection() {
+        const container = document.getElementById('class-selection');
+        container.innerHTML = '';
+
+        for (const [key, cls] of Object.entries(CLASSES)) {
+          const card = document.createElement('div');
+          card.className = 'class-card';
+          card.onclick = (e) => selectClass(key, e);
+
+          const bonuses = Object.entries(cls.bonus || {})
+            .map(([stat, value]) => `${STAT_NAMES[stat]}+${value}`)
+            .join(', ');
+
+          card.innerHTML = `
+                    <div class="class-icon">${cls.icon}</div>
                     <div class="class-info">
                         <div class="class-name">${cls.name}</div>
                         <div class="class-bonus">生命骰: d${cls.hitDie} | 主属性: ${STAT_NAMES[cls.primaryStat]}</div>
@@ -4522,8 +4558,9 @@
       }
 
       function showCharacterCreation() {
-        showGameInterface();
-        switchSection('character');
+        if (document.getElementById('start-screen').classList.contains('active')) {
+          showGameInterface();
+        }
         resetCreationState();
         renderRaceSelection();
       }
