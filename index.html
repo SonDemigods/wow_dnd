@@ -4363,7 +4363,7 @@
                     <div class="class-icon">${cls.icon}</div>
                     <div class="class-info">
                         <div class="class-name">${cls.name}</div>
-                        <div class="class-bonus">生命骰: d${cls.hitDie} | 主属性: ${STAT_NAMES[cls.primaryStat]}</div>
+                        <div class="class-bonus">${bonuses || `生命骰: d${cls.hitDie} | 主属性: ${STAT_NAMES[cls.primaryStat]}`}</div>
                         <div class="card-description">${cls.description}</div>
                     </div>
                 `;
