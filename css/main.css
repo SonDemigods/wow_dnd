@@ -1,0 +1,64 @@
+/* 主样式文件 - 导入所有CSS模块 */
+@import url('variables.css');
+@import url('base.css');
+@import url('layout.css');
+@import url('panel.css');
+@import url('buttons.css');
+@import url('worldmap.css');
+@import url('zones.css');
+@import url('ui.css');
+
+/* 响应式设计 - 地图 */
+@media (max-width: 1200px) {
+  .map-node .node-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 1rem;
+  }
+  
+  .map-node .node-name {
+    font-size: 0.75rem;
+  }
+  
+  .map-legend {
+    gap: 10px;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .map-node .node-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 0.9rem;
+  }
+  
+  .map-node .node-name {
+    display: none;
+  }
+  
+  .map-node .node-level {
+    display: none;
+  }
+  
+  .map-node .node-current {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .map-node .node-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 0.75rem;
+    border-width: 1px;
+  }
+  
+  .map-legend {
+    bottom: 5px;
+    right: 5px;
+    padding: 5px 8px;
+    gap: 6px;
+    font-size: 0.75rem;
+  }
+}

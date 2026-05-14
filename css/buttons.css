@@ -1,0 +1,189 @@
+/* 按钮样式 */
+.btn {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 10px 20px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, var(--gold-dark) 0%, #5a4a2a 100%);
+  color: var(--bg-darkest);
+  border-color: var(--gold-primary);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(180deg, var(--gold-primary) 0%, var(--gold-dark) 100%);
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-2px);
+}
+
+.btn-danger {
+  background: linear-gradient(180deg, var(--blood-red) 0%, #5a1a2a 100%);
+  color: var(--text-primary);
+  border-color: var(--blood-glow);
+}
+
+.btn-danger:hover {
+  box-shadow: 0 0 20px rgba(196, 77, 109, 0.4);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-dark);
+}
+
+.btn-ghost:hover {
+  background: var(--bg-panel-hover);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+
+/* 法术展示卡片 */
+.ability-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.ability-display:hover {
+  background: var(--bg-panel-hover);
+  border-color: var(--arcane-purple);
+}
+
+.ability-display-icon {
+  font-size: 1.6rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(107, 63, 160, 0.15);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ability-display-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  width: 100%;
+}
+
+.ability-display-name {
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ability-display-info {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.ability-effect-badge {
+  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.ability-effect-badge.damage {
+  background: rgba(139, 41, 66, 0.2);
+  color: var(--blood-glow);
+}
+
+.ability-effect-badge.heal {
+  background: rgba(92, 184, 92, 0.2);
+  color: var(--xp-green-light);
+}
+
+.ability-effect-badge.shield {
+  background: rgba(201, 162, 39, 0.2);
+  color: var(--gold-light);
+}
+
+.ability-cost-badge {
+  font-size: 0.75rem;
+  color: var(--mana-blue-light);
+  padding: 3px 6px;
+  background: rgba(66, 139, 202, 0.15);
+  border-radius: 4px;
+}
+
+/* Tab标签样式 */
+.main-tabs {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.main-tab {
+  padding: 10px 24px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.main-tab:hover {
+  border-color: var(--border-light);
+  color: var(--text-secondary);
+}
+
+.main-tab.active {
+  background: var(--bg-panel-hover);
+  border-color: var(--gold-muted);
+  color: var(--gold-primary);
+}
+
+.main-tab-content {
+  display: none;
+}
+
+.main-tab-content.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
