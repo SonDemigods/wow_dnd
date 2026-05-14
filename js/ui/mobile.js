@@ -236,19 +236,8 @@ function switchMobileInventoryTab(tabName) {
 }
 
 function updateMobileQuests() {
-  const container = document.getElementById('mobile-quests-list');
-  if (!container) return;
-  
-  if (typeof renderQuestList === 'function') {
-    const html = renderQuestList('mobile');
-    container.innerHTML = html;
-  } else {
-    container.innerHTML = `
-      <div style="text-align: center; padding: 30px; color: var(--text-muted);">
-        <p style="font-size: 2rem; margin-bottom: 10px;">📜</p>
-        <p>暂无任务</p>
-      </div>
-    `;
+  if (typeof updateSidebarQuests === 'function') {
+    updateSidebarQuests();
   }
 }
 
@@ -377,6 +366,14 @@ function initMobileUI() {
     selectLocationKey = function(locationKey) {
       originalSelectLocationKey(locationKey);
       updateMobileExploration();
+    };
+  }
+  
+  if (typeof updateSidebarQuests === 'function') {
+    const originalUpdateSidebarQuests = updateSidebarQuests;
+    updateSidebarQuests = function() {
+      originalUpdateSidebarQuests();
+      updateMobileQuests();
     };
   }
   

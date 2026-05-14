@@ -548,8 +548,15 @@ function combatEndCombat(result) {
       resultDiv.innerHTML = `💀 战败...<br><small>你被 ${ENEMIES[combatState.enemy].name} 击败了</small>`;
       combatAddLog('💀 你被击败了...', 'damage');
 
+      const lostExp = player.exp;
+      player.exp = 0;
       player.hp = Math.floor(player.maxHp * 0.5);
-      combatAddLog('你休息后恢复了部分生命值', 'heal');
+      player.mana = Math.floor(player.maxMana * 0.5);
+      
+      if (lostExp > 0) {
+        combatAddLog(`💔 损失了 ${lostExp} 点经验值！`, 'damage');
+      }
+      combatAddLog('你休息后恢复了部分生命值和法力值', 'heal');
       
       const cellIndex = combatState.currentCellIndex;
       if (cellIndex !== undefined && cellIndex !== null) {
