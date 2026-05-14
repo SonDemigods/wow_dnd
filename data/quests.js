@@ -371,5 +371,663 @@ const QUESTS = {
       { type: 'kill', enemyKey: 'undead', target: 5 }
     ],
     reward: { xp: 480, gold: 240 }
+  },
+
+  // 卡利姆多 - 黑海岸
+  darkshore_murlocs: {
+    key: 'darkshore_murlocs',
+    locationKey: 'darkshore',
+    name: '鱼人侵扰',
+    description: '鱼人正在黑海岸的海滩上作乱！',
+    objectives: [
+      { type: 'kill', enemyKey: 'murloc', target: 6 }
+    ],
+    reward: { xp: 70, gold: 35 }
+  },
+  darkshore_bears: {
+    key: 'darkshore_bears',
+    locationKey: 'darkshore',
+    name: '狂野之熊',
+    description: '凶猛的熊威胁着黑海岸的旅者安全！',
+    objectives: [
+      { type: 'kill', enemyKey: 'bear', target: 4 }
+    ],
+    reward: { xp: 80, gold: 40 }
+  },
+  darkshore_gnolls: {
+    key: 'darkshore_gnolls',
+    locationKey: 'darkshore',
+    name: '豺狼人袭击',
+    description: '豺狼人正在袭击沿海的营地！',
+    objectives: [
+      { type: 'kill', enemyKey: 'gnoll', target: 5 }
+    ],
+    reward: { xp: 75, gold: 38 }
+  },
+
+  // 卡利姆多 - 秘血岛
+  bloodmyst_elementals: {
+    key: 'bloodmyst_elementals',
+    locationKey: 'bloodmyst',
+    name: '元素暴动',
+    description: '元素生物在秘血岛肆虐！',
+    objectives: [
+      { type: 'kill', enemyKey: 'elemental', target: 5 }
+    ],
+    reward: { xp: 90, gold: 45 }
+  },
+  bloodmyst_demons: {
+    key: 'bloodmyst_demons',
+    locationKey: 'bloodmyst',
+    name: '恶魔踪迹',
+    description: '发现恶魔的踪迹，必须消灭他们！',
+    objectives: [
+      { type: 'kill', enemyKey: 'demon', target: 2 }
+    ],
+    reward: { xp: 100, gold: 50 }
+  },
+
+  // 卡利姆多 - 冬泉谷
+  winterspring_elementals: {
+    key: 'winterspring_elementals',
+    locationKey: 'winterspring',
+    name: '寒冰元素',
+    description: '冰霜元素正在冬泉谷狂暴！',
+    objectives: [
+      { type: 'kill', enemyKey: 'elemental', target: 5 }
+    ],
+    reward: { xp: 200, gold: 100 }
+  },
+  winterspring_demons: {
+    key: 'winterspring_demons',
+    locationKey: 'winterspring',
+    name: '恶魔威胁',
+    description: '恶魔潜入了冬泉谷，必须驱逐他们！',
+    objectives: [
+      { type: 'kill', enemyKey: 'demon', target: 3 }
+    ],
+    reward: { xp: 220, gold: 110 }
+  },
+  winterspring_dragons: {
+    key: 'winterspring_dragons',
+    locationKey: 'winterspring',
+    name: '蓝龙幼崽',
+    description: '蓝龙幼崽需要被击败以证明你的勇气！',
+    objectives: [
+      { type: 'kill', enemyKey: 'dragon_whelp', target: 2 }
+    ],
+    reward: { xp: 230, gold: 115 }
+  },
+
+  // 卡利姆多 - 海加尔山
+  hyjal_demons: {
+    key: 'hyjal_demons',
+    locationKey: 'hyjal',
+    name: '燃烧军团残党',
+    description: '燃烧军团的余孽仍在海加尔山活动！',
+    objectives: [
+      { type: 'kill', enemyKey: 'demon', target: 4 }
+    ],
+    reward: { xp: 280, gold: 140 }
+  },
+  hyjal_dragons: {
+    key: 'hyjal_dragons',
+    locationKey: 'hyjal',
+    name: '守护巨龙',
+    description: '与守护巨龙的幼崽战斗以获取认可！',
+    objectives: [
+      { type: 'kill', enemyKey: 'dragon_whelp', target: 3 }
+    ],
+    reward: { xp: 300, gold: 150 }
+  },
+
+  // 卡利姆多 - 费伍德森林
+  felwood_demons: {
+    key: 'felwood_demons',
+    locationKey: 'felwood',
+    name: '恶魔腐化',
+    description: '清除费伍德森林中的恶魔！',
+    objectives: [
+      { type: 'kill', enemyKey: 'demon', target: 4 }
+    ],
+    reward: { xp: 180, gold: 90 }
+  },
+  felwood_trolls: {
+    key: 'felwood_trolls',
+    locationKey: 'felwood',
+    name: '森林巨魔',
+    description: '巨魔在费伍德森林作乱！',
+    objectives: [
+      { type: 'kill', enemyKey: 'troll', target: 3 }
+    ],
+    reward: { xp: 170, gold: 85 }
+  },
+
+  // 卡利姆多 - 凄凉之地
+  desolace_centaurs: {
+    key: 'desolace_centaurs',
+    locationKey: 'desolace',
+    name: '半人马冲突',
+    description: '半人马部落正在互相争斗，需要调停！',
+    objectives: [
+      { type: 'kill', enemyKey: 'centaur', target: 5 }
+    ],
+    reward: { xp: 190, gold: 95 }
+  },
+  desolace_skeletons: {
+    key: 'desolace_skeletons',
+    locationKey: 'desolace',
+    name: '亡灵遗迹',
+    description: '古老的遗迹中出现了亡灵！',
+    objectives: [
+      { type: 'kill', enemyKey: 'skeleton', target: 6 }
+    ],
+    reward: { xp: 180, gold: 90 }
+  },
+
+  // 卡利姆多 - 杜隆塔尔
+  durotar_boars: {
+    key: 'durotar_boars',
+    locationKey: 'durotar',
+    name: '野猪威胁',
+    description: '野猪正在破坏杜隆塔尔的农田！',
+    objectives: [
+      { type: 'kill', enemyKey: 'boar', target: 6 }
+    ],
+    reward: { xp: 60, gold: 30 }
+  },
+  durotar_quilboars: {
+    key: 'durotar_quilboars',
+    locationKey: 'durotar',
+    name: '野猪人入侵',
+    description: '野猪人正在入侵杜隆塔尔！',
+    objectives: [
+      { type: 'kill', enemyKey: 'quilboar', target: 4 }
+    ],
+    reward: { xp: 70, gold: 35 }
+  },
+
+  // 卡利姆多 - 莫高雷
+  mulgore_wolves: {
+    key: 'mulgore_wolves',
+    locationKey: 'mulgore',
+    name: '狼群威胁',
+    description: '灰狼正在莫高雷游荡！',
+    objectives: [
+      { type: 'kill', enemyKey: 'wolf', target: 5 }
+    ],
+    reward: { xp: 55, gold: 28 }
+  },
+  mulgore_bears: {
+    key: 'mulgore_bears',
+    locationKey: 'mulgore',
+    name: '熊之领地',
+    description: '棕熊占据了莫高雷的部分地区！',
+    objectives: [
+      { type: 'kill', enemyKey: 'bear', target: 4 }
+    ],
+    reward: { xp: 65, gold: 32 }
+  },
+
+  // 卡利姆多 - 贫瘠之地
+  barrens_quilboars: {
+    key: 'barrens_quilboars',
+    locationKey: 'barrens',
+    name: '野猪人营地',
+    description: '摧毁野猪人的营地！',
+    objectives: [
+      { type: 'kill', enemyKey: 'quilboar', target: 5 }
+    ],
+    reward: { xp: 90, gold: 45 }
+  },
+  barrens_centaurs: {
+    key: 'barrens_centaurs',
+    locationKey: 'barrens',
+    name: '半人马掠夺',
+    description: '半人马正在掠夺贫瘠之地的商队！',
+    objectives: [
+      { type: 'kill', enemyKey: 'centaur', target: 4 }
+    ],
+    reward: { xp: 100, gold: 50 }
+  },
+
+  // 卡利姆多 - 千针石林
+  thousand_needles_centaurs: {
+    key: 'thousand_needles_centaurs',
+    locationKey: 'thousand_needles',
+    name: '千针石林的半人马',
+    description: '半人马控制了千针石林的高地！',
+    objectives: [
+      { type: 'kill', enemyKey: 'centaur', target: 5 }
+    ],
+    reward: { xp: 160, gold: 80 }
+  },
+  thousand_needles_harpies: {
+    key: 'thousand_needles_harpies',
+    locationKey: 'thousand_needles',
+    name: '鹰身人巢穴',
+    description: '鹰身人在千针石林筑巢！',
+    objectives: [
+      { type: 'kill', enemyKey: 'harpy', target: 4 }
+    ],
+    reward: { xp: 150, gold: 75 }
+  },
+
+  // 卡利姆多 - 希利苏斯
+  silithus_silithids: {
+    key: 'silithus_silithids',
+    locationKey: 'silithus',
+    name: '异种虫入侵',
+    description: '异种虫正在希利苏斯肆虐！',
+    objectives: [
+      { type: 'kill', enemyKey: 'silithid', target: 4 }
+    ],
+    reward: { xp: 260, gold: 130 }
+  },
+  silithus_demons: {
+    key: 'silithus_demons',
+    locationKey: 'silithus',
+    name: '其拉的秘密',
+    description: '发现了恶魔与异种虫勾结的证据！',
+    objectives: [
+      { type: 'kill', enemyKey: 'demon', target: 3 }
+    ],
+    reward: { xp: 280, gold: 140 }
+  },
+
+  // 东部王国 - 西瘟疫之地
+  western_plaguelands_undead: {
+    key: 'western_plaguelands_undead',
+    locationKey: 'western_plaguelands',
+    name: '通灵学院的亡灵',
+    description: '通灵学院的亡灵正在向外扩散！',
+    objectives: [
+      { type: 'kill', enemyKey: 'undead', target: 6 }
+    ],
+    reward: { xp: 220, gold: 110 }
+  },
+  western_plaguelands_ghouls: {
+    key: 'western_plaguelands_ghouls',
+    locationKey: 'western_plaguelands',
+    name: '食尸鬼潮',
+    description: '大量食尸鬼涌出墓地！',
+    objectives: [
+      { type: 'kill', enemyKey: 'ghoul', target: 5 }
+    ],
+    reward: { xp: 210, gold: 105 }
+  },
+
+  // 东部王国 - 洛克莫丹
+  loch_modan_kobolds: {
+    key: 'loch_modan_kobolds',
+    locationKey: 'loch_modan',
+    name: '狗头人矿洞',
+    description: '狗头人占据了洛克莫丹的矿洞！',
+    objectives: [
+      { type: 'kill', enemyKey: 'kobold', target: 6 }
+    ],
+    reward: { xp: 80, gold: 40 }
+  },
+  loch_modan_spiders: {
+    key: 'loch_modan_spiders',
+    locationKey: 'loch_modan',
+    name: '洞穴蜘蛛',
+    description: '巨型蜘蛛在洞穴中结网！',
+    objectives: [
+      { type: 'kill', enemyKey: 'spider', target: 4 }
+    ],
+    reward: { xp: 90, gold: 45 }
+  },
+
+  // 东部王国 - 湿地
+  wetlands_murlocs: {
+    key: 'wetlands_murlocs',
+    locationKey: 'wetlands',
+    name: '沼泽鱼人',
+    description: '鱼人在湿地的沼泽中泛滥！',
+    objectives: [
+      { type: 'kill', enemyKey: 'murloc', target: 6 }
+    ],
+    reward: { xp: 110, gold: 55 }
+  },
+  wetlands_trolls: {
+    key: 'wetlands_trolls',
+    locationKey: 'wetlands',
+    name: '沼泽巨魔',
+    description: '巨魔潜伏在湿地深处！',
+    objectives: [
+      { type: 'kill', enemyKey: 'troll', target: 3 }
+    ],
+    reward: { xp: 130, gold: 65 }
+  },
+
+  // 东部王国 - 阿拉希高地
+  arathi_orcs: {
+    key: 'arathi_orcs',
+    locationKey: 'arathi',
+    name: '阿拉希兽人',
+    description: '兽人在阿拉希高地活动！',
+    objectives: [
+      { type: 'kill', enemyKey: 'orc', target: 5 }
+    ],
+    reward: { xp: 170, gold: 85 }
+  },
+  arathi_trolls: {
+    key: 'arathi_trolls',
+    locationKey: 'arathi',
+    name: '巨魔遗迹',
+    description: '古老的巨魔遗迹中仍有巨魔出没！',
+    objectives: [
+      { type: 'kill', enemyKey: 'troll', target: 4 }
+    ],
+    reward: { xp: 180, gold: 90 }
+  },
+
+  // 东部王国 - 希尔斯布莱德丘陵
+  hillsbrad_orcs: {
+    key: 'hillsbrad_orcs',
+    locationKey: 'hillsbrad',
+    name: '兽人侦察兵',
+    description: '兽人侦察兵正在刺探情报！',
+    objectives: [
+      { type: 'kill', enemyKey: 'orc', target: 4 }
+    ],
+    reward: { xp: 120, gold: 60 }
+  },
+  hillsbrad_bandits: {
+    key: 'hillsbrad_bandits',
+    locationKey: 'hillsbrad',
+    name: '丘陵强盗',
+    description: '强盗在希尔斯布莱德丘陵横行！',
+    objectives: [
+      { type: 'kill', enemyKey: 'bandit', target: 5 }
+    ],
+    reward: { xp: 130, gold: 65 }
+  },
+
+  // 东部王国 - 逆风小径
+  deadwind_demons: {
+    key: 'deadwind_demons',
+    locationKey: 'deadwind',
+    name: '卡拉赞的恶魔',
+    description: '卡拉赞周围出现了恶魔！',
+    objectives: [
+      { type: 'kill', enemyKey: 'demon', target: 4 }
+    ],
+    reward: { xp: 250, gold: 125 }
+  },
+  deadwind_undead: {
+    key: 'deadwind_undead',
+    locationKey: 'deadwind',
+    name: '徘徊的亡灵',
+    description: '亡灵在逆风小径徘徊！',
+    objectives: [
+      { type: 'kill', enemyKey: 'undead', target: 5 }
+    ],
+    reward: { xp: 240, gold: 120 }
+  },
+
+  // 东部王国 - 燃烧平原
+  burning_steppes_orcs: {
+    key: 'burning_steppes_orcs',
+    locationKey: 'burning_steppes',
+    name: '黑石兽人',
+    description: '黑石兽人在燃烧平原活动！',
+    objectives: [
+      { type: 'kill', enemyKey: 'orc', target: 5 }
+    ],
+    reward: { xp: 260, gold: 130 }
+  },
+  burning_steppes_dragons: {
+    key: 'burning_steppes_dragons',
+    locationKey: 'burning_steppes',
+    name: '红龙幼崽',
+    description: '红龙幼崽在燃烧平原出没！',
+    objectives: [
+      { type: 'kill', enemyKey: 'dragon_whelp', target: 3 }
+    ],
+    reward: { xp: 280, gold: 140 }
+  },
+
+  // 东部王国 - 灼热峡谷
+  searing_gorge_elementals: {
+    key: 'searing_gorge_elementals',
+    locationKey: 'searing_gorge',
+    name: '火焰元素',
+    description: '火焰元素从熔岩中涌出！',
+    objectives: [
+      { type: 'kill', enemyKey: 'elemental', target: 5 }
+    ],
+    reward: { xp: 220, gold: 110 }
+  },
+  searing_gorge_spiders: {
+    key: 'searing_gorge_spiders',
+    locationKey: 'searing_gorge',
+    name: '熔岩蜘蛛',
+    description: '蜘蛛在灼热峡谷的岩石间筑巢！',
+    objectives: [
+      { type: 'kill', enemyKey: 'spider', target: 4 }
+    ],
+    reward: { xp: 210, gold: 105 }
+  },
+
+  // 东部王国 - 荒芜之地
+  badlands_elementals: {
+    key: 'badlands_elementals',
+    locationKey: 'badlands',
+    name: '土元素',
+    description: '土元素在荒芜之地苏醒！',
+    objectives: [
+      { type: 'kill', enemyKey: 'elemental', target: 5 }
+    ],
+    reward: { xp: 200, gold: 100 }
+  },
+  badlands_ogres: {
+    key: 'badlands_ogres',
+    locationKey: 'badlands',
+    name: '食人魔营地',
+    description: '食人魔在荒芜之地建立了营地！',
+    objectives: [
+      { type: 'kill', enemyKey: 'ogre', target: 3 }
+    ],
+    reward: { xp: 210, gold: 105 }
+  },
+
+  // 东部王国 - 悲伤沼泽
+  swamp_of_sorrows_murlocs: {
+    key: 'swamp_of_sorrows_murlocs',
+    locationKey: 'swamp_of_sorrows',
+    name: '沼泽鱼人',
+    description: '鱼人在悲伤沼泽中繁衍！',
+    objectives: [
+      { type: 'kill', enemyKey: 'murloc', target: 6 }
+    ],
+    reward: { xp: 140, gold: 70 }
+  },
+  swamp_of_sorrows_trolls: {
+    key: 'swamp_of_sorrows_trolls',
+    locationKey: 'swamp_of_sorrows',
+    name: '神庙巨魔',
+    description: '巨魔守卫着古老的神庙！',
+    objectives: [
+      { type: 'kill', enemyKey: 'troll', target: 4 }
+    ],
+    reward: { xp: 160, gold: 80 }
+  },
+
+  // 东部王国 - 诅咒之地
+  blasted_lands_demons: {
+    key: 'blasted_lands_demons',
+    locationKey: 'blasted_lands',
+    name: '黑暗之门的恶魔',
+    description: '恶魔从黑暗之门涌出！',
+    objectives: [
+      { type: 'kill', enemyKey: 'demon', target: 4 }
+    ],
+    reward: { xp: 300, gold: 150 }
+  },
+  blasted_lands_dragons: {
+    key: 'blasted_lands_dragons',
+    locationKey: 'blasted_lands',
+    name: '黑龙幼崽',
+    description: '黑龙幼崽在诅咒之地游荡！',
+    objectives: [
+      { type: 'kill', enemyKey: 'dragon_whelp', target: 3 }
+    ],
+    reward: { xp: 320, gold: 160 }
+  },
+
+  // 东部王国 - 辛特兰
+  hinterlands_trolls: {
+    key: 'hinterlands_trolls',
+    locationKey: 'hinterlands',
+    name: '辛萨罗巨魔',
+    description: '巨魔在辛特兰的高山上建立了城市！',
+    objectives: [
+      { type: 'kill', enemyKey: 'troll', target: 5 }
+    ],
+    reward: { xp: 200, gold: 100 }
+  },
+  hinterlands_wolves: {
+    key: 'hinterlands_wolves',
+    locationKey: 'hinterlands',
+    name: '巨狼威胁',
+    description: '巨狼在辛特兰的森林中游荡！',
+    objectives: [
+      { type: 'kill', enemyKey: 'wolf', target: 6 }
+    ],
+    reward: { xp: 190, gold: 95 }
+  },
+
+  // 诺森德 - 祖达克
+  zuldrak_vrykul: {
+    key: 'zuldrak_vrykul',
+    locationKey: 'zuldrak',
+    name: '维库人战士',
+    description: '维库人在祖达克巡逻！',
+    objectives: [
+      { type: 'kill', enemyKey: 'vrykul', target: 5 }
+    ],
+    reward: { xp: 260, gold: 130 }
+  },
+  zuldrak_undead: {
+    key: 'zuldrak_undead',
+    locationKey: 'zuldrak',
+    name: '亡灵天灾',
+    description: '亡灵正在入侵祖达克！',
+    objectives: [
+      { type: 'kill', enemyKey: 'undead', target: 6 }
+    ],
+    reward: { xp: 270, gold: 135 }
+  },
+
+  // 诺森德 - 嚎风峡湾
+  howling_fjord_vrykul: {
+    key: 'howling_fjord_vrykul',
+    locationKey: 'howling_fjord',
+    name: '乌特加德维库人',
+    description: '维库人从乌特加德要塞出击！',
+    objectives: [
+      { type: 'kill', enemyKey: 'vrykul', target: 5 }
+    ],
+    reward: { xp: 230, gold: 115 }
+  },
+  howling_fjord_trolls: {
+    key: 'howling_fjord_trolls',
+    locationKey: 'howling_fjord',
+    name: '冰巨魔',
+    description: '冰巨魔在峡湾中活动！',
+    objectives: [
+      { type: 'kill', enemyKey: 'troll', target: 4 }
+    ],
+    reward: { xp: 240, gold: 120 }
+  },
+
+  // 诺森德 - 龙骨荒野
+  dragonblight_dragons: {
+    key: 'dragonblight_dragons',
+    locationKey: 'dragonblight',
+    name: '龙眠神殿',
+    description: '与龙眠神殿的幼龙交流（战斗）！',
+    objectives: [
+      { type: 'kill', enemyKey: 'dragon_whelp', target: 3 }
+    ],
+    reward: { xp: 300, gold: 150 }
+  },
+  dragonblight_undead: {
+    key: 'dragonblight_undead',
+    locationKey: 'dragonblight',
+    name: '天灾入侵',
+    description: '亡灵天灾正在亵渎巨龙的安息之地！',
+    objectives: [
+      { type: 'kill', enemyKey: 'undead', target: 6 }
+    ],
+    reward: { xp: 290, gold: 145 }
+  },
+
+  // 诺森德 - 灰熊丘陵
+  grizzly_hills_bears: {
+    key: 'grizzly_hills_bears',
+    locationKey: 'grizzly_hills',
+    name: '灰熊之王',
+    description: '灰熊在丘陵中称霸！',
+    objectives: [
+      { type: 'kill', enemyKey: 'bear', target: 5 }
+    ],
+    reward: { xp: 240, gold: 120 }
+  },
+  grizzly_hills_orcs: {
+    key: 'grizzly_hills_orcs',
+    locationKey: 'grizzly_hills',
+    name: '兽人斥候',
+    description: '兽人在灰熊丘陵活动！',
+    objectives: [
+      { type: 'kill', enemyKey: 'orc', target: 4 }
+    ],
+    reward: { xp: 250, gold: 125 }
+  },
+
+  // 诺森德 - 索拉查盆地
+  sholazar_tigers: {
+    key: 'sholazar_tigers',
+    locationKey: 'sholazar',
+    name: '丛林猛虎',
+    description: '猛虎在索拉查盆地的丛林中捕猎！',
+    objectives: [
+      { type: 'kill', enemyKey: 'tiger', target: 4 }
+    ],
+    reward: { xp: 260, gold: 130 }
+  },
+  sholazar_spiders: {
+    key: 'sholazar_spiders',
+    locationKey: 'sholazar',
+    name: '巨型蜘蛛',
+    description: '巨型蜘蛛在丛林中结网！',
+    objectives: [
+      { type: 'kill', enemyKey: 'spider', target: 5 }
+    ],
+    reward: { xp: 250, gold: 125 }
+  },
+
+  // 诺森德 - 晶歌森林
+  crystal_song_elementals: {
+    key: 'crystal_song_elementals',
+    locationKey: 'crystal_song',
+    name: '水晶元素',
+    description: '水晶元素在晶歌森林中苏醒！',
+    objectives: [
+      { type: 'kill', enemyKey: 'elemental', target: 5 }
+    ],
+    reward: { xp: 300, gold: 150 }
+  },
+  crystal_song_dragons: {
+    key: 'crystal_song_dragons',
+    locationKey: 'crystal_song',
+    name: '蓝龙军团',
+    description: '蓝龙在晶歌森林上空巡逻！',
+    objectives: [
+      { type: 'kill', enemyKey: 'dragon_whelp', target: 3 }
+    ],
+    reward: { xp: 320, gold: 160 }
   }
 };
