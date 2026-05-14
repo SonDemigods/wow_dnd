@@ -7,6 +7,7 @@
 @import url('worldmap.css');
 @import url('zones.css');
 @import url('ui.css');
+@import url('mobile.css');
 
 /* 响应式设计 - 地图 */
 @media (max-width: 1200px) {

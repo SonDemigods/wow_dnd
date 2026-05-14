@@ -93,7 +93,7 @@
       <div class="header-left">
         <div class="game-logo">
           <span class="game-logo-icon">⚔️</span>
-          <span class="game-logo-text">艾泽拉斯冒险</span>
+          <span class="game-logo-text">艾泽拉斯</span>
         </div>
       </div>
       <div class="header-right">
@@ -335,6 +335,254 @@
         </div>
       </div>
     </aside>
+
+    <nav class="mobile-nav" id="mobile-nav">
+      <button class="mobile-nav-item active" data-nav="character" onclick="showMobilePanel('character')">
+        <span class="mobile-nav-icon">👤</span>
+        <span class="mobile-nav-label">角色</span>
+      </button>
+      <button class="mobile-nav-item" data-nav="world" onclick="showMobilePanel('world')">
+        <span class="mobile-nav-icon">🌍</span>
+        <span class="mobile-nav-label">世界</span>
+      </button>
+      <button class="mobile-nav-item" data-nav="explore" onclick="showMobilePanel('explore')">
+        <span class="mobile-nav-icon">🗺️</span>
+        <span class="mobile-nav-label">探索</span>
+      </button>
+      <button class="mobile-nav-item" data-nav="inventory" onclick="showMobilePanel('inventory')">
+        <span class="mobile-nav-icon">🎒</span>
+        <span class="mobile-nav-label">背包</span>
+      </button>
+      <button class="mobile-nav-item" data-nav="quests" onclick="showMobilePanel('quests')">
+        <span class="mobile-nav-icon">📜</span>
+        <span class="mobile-nav-label">任务</span>
+      </button>
+    </nav>
+
+    <div class="mobile-panel-overlay" id="mobile-panel-overlay" onclick="closeMobilePanel()"></div>
+    
+    <div class="mobile-panel" id="mobile-character-panel">
+      <div class="mobile-panel-handle"></div>
+      <div class="mobile-panel-header">
+        <div class="mobile-panel-title">
+          <span>👤</span>
+          <span>角色信息</span>
+        </div>
+        <button class="mobile-panel-close" onclick="closeMobilePanel()">✕</button>
+      </div>
+      <div class="mobile-panel-content">
+        <div class="mobile-character-identity">
+          <div class="mobile-character-avatar" id="mobile-avatar">🧙</div>
+          <div class="mobile-character-info">
+            <div class="mobile-character-name" id="mobile-name">冒险者</div>
+            <div class="mobile-character-class" id="mobile-class">等级 1</div>
+          </div>
+        </div>
+        
+        <div class="stat-bar-container" style="margin-bottom: 10px;">
+          <div class="stat-bar-label">
+            <span>❤️ 生命</span>
+            <span id="mobile-hp-text" style="color: #ffffff; font-weight: 600;">100/100</span>
+          </div>
+          <div class="stat-bar hp">
+            <div class="stat-bar-fill" id="mobile-hp-bar" style="width: 100%"></div>
+          </div>
+        </div>
+        
+        <div class="stat-bar-container" style="margin-bottom: 10px;">
+          <div class="stat-bar-label">
+            <span>💧 法力</span>
+            <span id="mobile-mana-text" style="color: #ffffff; font-weight: 600;">50/50</span>
+          </div>
+          <div class="stat-bar mana">
+            <div class="stat-bar-fill" id="mobile-mana-bar" style="width: 100%"></div>
+          </div>
+        </div>
+        
+        <div class="stat-bar-container" style="margin-bottom: 12px;">
+          <div class="stat-bar-label">
+            <span>⭐ 经验</span>
+            <span id="mobile-exp-text" style="color: #7bed9f; font-weight: 600;">0/100</span>
+          </div>
+          <div class="stat-bar exp">
+            <div class="stat-bar-fill" id="mobile-exp-bar" style="width: 0%"></div>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 8px;">
+          <div style="font-size: 0.7rem; color: #c0c0c0; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;">基础属性</div>
+          <div class="mobile-stats-grid">
+            <div class="mobile-stat-box">
+              <div class="mobile-stat-label" style="color: #e74c3c;">力量</div>
+              <div class="mobile-stat-value" id="mobile-str">10</div>
+            </div>
+            <div class="mobile-stat-box">
+              <div class="mobile-stat-label" style="color: #2ecc71;">敏捷</div>
+              <div class="mobile-stat-value" id="mobile-dex">10</div>
+            </div>
+            <div class="mobile-stat-box">
+              <div class="mobile-stat-label" style="color: #f39c12;">体质</div>
+              <div class="mobile-stat-value" id="mobile-con">10</div>
+            </div>
+            <div class="mobile-stat-box">
+              <div class="mobile-stat-label" style="color: #3498db;">智力</div>
+              <div class="mobile-stat-value" id="mobile-int">10</div>
+            </div>
+            <div class="mobile-stat-box">
+              <div class="mobile-stat-label" style="color: #9b59b6;">感知</div>
+              <div class="mobile-stat-value" id="mobile-wis">10</div>
+            </div>
+            <div class="mobile-stat-box">
+              <div class="mobile-stat-label" style="color: #e91e63;">魅力</div>
+              <div class="mobile-stat-value" id="mobile-cha">10</div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-top: 8px;">
+          <div style="font-size: 0.7rem; color: #c0c0c0; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;">战斗属性</div>
+          <div class="mobile-combat-grid">
+            <div class="mobile-combat-item">
+              <span class="mobile-combat-icon">⚔️</span>
+              <div class="mobile-combat-info">
+                <div class="mobile-combat-label" style="color: #e74c3c;">物理攻击</div>
+                <div class="mobile-combat-value" id="mobile-phys-atk">10</div>
+              </div>
+            </div>
+            <div class="mobile-combat-item">
+              <span class="mobile-combat-icon">🛡️</span>
+              <div class="mobile-combat-info">
+                <div class="mobile-combat-label" style="color: #f1c40f;">物理防御</div>
+                <div class="mobile-combat-value" id="mobile-phys-def">10</div>
+              </div>
+            </div>
+            <div class="mobile-combat-item">
+              <span class="mobile-combat-icon">✨</span>
+              <div class="mobile-combat-info">
+                <div class="mobile-combat-label" style="color: #9b59b6;">魔法攻击</div>
+                <div class="mobile-combat-value" id="mobile-magic-atk">10</div>
+              </div>
+            </div>
+            <div class="mobile-combat-item">
+              <span class="mobile-combat-icon">🔮</span>
+              <div class="mobile-combat-info">
+                <div class="mobile-combat-label" style="color: #3498db;">魔法防御</div>
+                <div class="mobile-combat-value" id="mobile-magic-def">10</div>
+              </div>
+            </div>
+            <div class="mobile-combat-item">
+              <span class="mobile-combat-icon">💥</span>
+              <div class="mobile-combat-info">
+                <div class="mobile-combat-label" style="color: #ff9800;">暴击</div>
+                <div class="mobile-combat-value" id="mobile-crit">5%</div>
+              </div>
+            </div>
+            <div class="mobile-combat-item">
+              <span class="mobile-combat-icon">👻</span>
+              <div class="mobile-combat-info">
+                <div class="mobile-combat-label" style="color: #4caf50;">闪避</div>
+                <div class="mobile-combat-value" id="mobile-dodge">5%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mobile-panel" id="mobile-world-panel">
+      <div class="mobile-panel-handle"></div>
+      <div class="mobile-panel-header">
+        <div class="mobile-panel-title">
+          <span>🌍</span>
+          <span>选择地点</span>
+        </div>
+        <button class="mobile-panel-close" onclick="closeMobilePanel()">✕</button>
+      </div>
+      <div class="mobile-panel-content">
+        <div id="mobile-location-list" class="location-grid"></div>
+      </div>
+    </div>
+
+    <div class="mobile-panel" id="mobile-inventory-panel">
+      <div class="mobile-panel-handle"></div>
+      <div class="mobile-panel-header">
+        <div class="mobile-panel-title">
+          <span>🎒</span>
+          <span>背包</span>
+        </div>
+        <button class="mobile-panel-close" onclick="closeMobilePanel()">✕</button>
+      </div>
+      <div class="mobile-panel-content">
+        <div class="panel-gold-bar" style="margin-bottom: 12px;">
+          <span class="gold-icon">💰</span>
+          <span class="gold-amount" id="mobile-gold">0</span>
+        </div>
+        <div class="panel-tabs" style="margin-bottom: 10px;">
+          <button class="panel-tab active" onclick="switchMobileInventoryTab('backpack')">🎒 背包</button>
+          <button class="panel-tab" onclick="switchMobileInventoryTab('spells')">✨ 法术</button>
+        </div>
+        <div id="mobile-inventory-content">
+          <div id="mobile-backpack-list"></div>
+          <div id="mobile-spells-list" style="display: none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mobile-panel" id="mobile-quests-panel">
+      <div class="mobile-panel-handle"></div>
+      <div class="mobile-panel-header">
+        <div class="mobile-panel-title">
+          <span>📜</span>
+          <span>任务</span>
+        </div>
+        <button class="mobile-panel-close" onclick="closeMobilePanel()">✕</button>
+      </div>
+      <div class="mobile-panel-content">
+        <div id="mobile-quests-list">
+          <div style="text-align: center; padding: 30px; color: var(--text-muted);">
+            <p style="font-size: 2rem; margin-bottom: 10px;">📜</p>
+            <p>暂无任务</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mobile-panel" id="mobile-explore-panel">
+      <div class="mobile-panel-handle"></div>
+      <div class="mobile-panel-header">
+        <div class="mobile-panel-title">
+          <span>🗺️</span>
+          <span>探索区域</span>
+        </div>
+        <button class="mobile-panel-close" onclick="closeMobilePanel()">✕</button>
+      </div>
+      <div class="mobile-panel-content" id="mobile-explore-content">
+        <div id="mobile-zone-container">
+          <div class="zone-header" style="margin-bottom: 12px;">
+            <div class="zone-title">
+              <span id="mobile-zone-icon">🏰</span>
+              <span id="mobile-zone-name">探索区域</span>
+            </div>
+            <div class="zone-stats">
+              <div class="zone-stat">
+                <span>👣</span>
+                <span>步数: <span id="mobile-exploration-steps">0</span></span>
+              </div>
+              <div class="zone-stat">
+                <span>📍</span>
+                <span>已探索: <span id="mobile-exploration-revealed">0</span></span>
+              </div>
+            </div>
+          </div>
+          <div id="mobile-exploration-grid" class="exploration-grid"></div>
+        </div>
+        <div id="mobile-zone-empty" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+          <p style="font-size: 2.5rem; margin-bottom: 16px;">🗺️</p>
+          <p style="font-size: 1rem; margin-bottom: 12px;">请先在世界地图选择一个地点</p>
+          <button class="btn btn-primary" onclick="closeMobilePanel(); showMobilePanel('world');">前往世界地图</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="notification" class="notification"></div>
@@ -363,6 +611,7 @@
   <script src="./js/ui/layout.js"></script>
   <script src="./js/ui/world.js"></script>
   <script src="./js/ui/ui.js"></script>
+  <script src="./js/ui/mobile.js"></script>
   
   <!-- 其他模块 -->
   <script src="./js/particles.js"></script>
