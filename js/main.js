@@ -12,7 +12,6 @@ function initGame() {
   if (saved && GameState.character.race && GameState.character.class) {
     showGameInterface();
     initQuests();
-    // 渲染已保存的冒险日志
     if (typeof renderAdventureLog === 'function') {
       renderAdventureLog();
     }

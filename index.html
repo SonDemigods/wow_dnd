@@ -341,17 +341,13 @@
         <span class="mobile-nav-icon">👤</span>
         <span class="mobile-nav-label">角色</span>
       </button>
-      <button class="mobile-nav-item" data-nav="world" onclick="showMobilePanel('world')">
-        <span class="mobile-nav-icon">🌍</span>
-        <span class="mobile-nav-label">世界</span>
-      </button>
-      <button class="mobile-nav-item" data-nav="explore" onclick="showMobilePanel('explore')">
-        <span class="mobile-nav-icon">🗺️</span>
-        <span class="mobile-nav-label">探索</span>
-      </button>
       <button class="mobile-nav-item" data-nav="inventory" onclick="showMobilePanel('inventory')">
         <span class="mobile-nav-icon">🎒</span>
         <span class="mobile-nav-label">背包</span>
+      </button>
+      <button class="mobile-nav-item" data-nav="log" onclick="showMobilePanel('log')">
+        <span class="mobile-nav-icon">📖</span>
+        <span class="mobile-nav-label">日志</span>
       </button>
       <button class="mobile-nav-item" data-nav="quests" onclick="showMobilePanel('quests')">
         <span class="mobile-nav-icon">📜</span>
@@ -544,6 +540,20 @@
             <p>暂无任务</p>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="mobile-panel" id="mobile-log-panel">
+      <div class="mobile-panel-handle"></div>
+      <div class="mobile-panel-header">
+        <div class="mobile-panel-title">
+          <span>📖</span>
+          <span>冒险日志</span>
+        </div>
+        <button class="mobile-panel-close" onclick="closeMobilePanel()">✕</button>
+      </div>
+      <div class="mobile-panel-content">
+        <div id="mobile-log-list"></div>
       </div>
     </div>
 

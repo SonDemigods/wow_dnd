@@ -32,6 +32,9 @@ function showMobilePanel(panelName) {
     case 'inventory':
       updateMobileInventory();
       break;
+    case 'log':
+      updateMobileLog();
+      break;
     case 'quests':
       updateMobileQuests();
       break;
@@ -148,13 +151,8 @@ function updateMobileBackpackList() {
   const container = document.getElementById('mobile-backpack-list');
   if (!container) return;
   
-  if (typeof renderInventoryGrid === 'function') {
-    const html = renderInventoryGrid('mobile-backpack-list', 'mobile');
-    container.innerHTML = html;
-  } else {
-    const inventory = GameState.character.inventory || [];
-    container.innerHTML = renderMobileInventorySlots(inventory);
-  }
+  const inventory = GameState.inventory || [];
+  container.innerHTML = renderMobileInventorySlots(inventory);
 }
 
 function updateMobileSpellsList() {
@@ -201,14 +199,14 @@ function updateMobileSpellsList() {
 }
 
 function renderMobileInventorySlots(inventory) {
-  const maxSlots = 16;
+  const maxSlots = 8;
   let html = '';
   
   for (let i = 0; i < maxSlots; i++) {
     const item = inventory[i];
     if (item) {
       html += `
-        <div class="inventory-slot filled" onclick="showItemPopup(${i})" style="display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+        <div class="inventory-slot filled" onclick="showItemPopup(${i}, event)" style="display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
           ${item.icon || '📦'}
           ${item.quantity > 1 ? `<span class="inventory-slot-quantity">${item.quantity}</span>` : ''}
         </div>
@@ -254,6 +252,31 @@ function updateMobileQuests() {
   }
 }
 
+function updateMobileLog() {
+  const container = document.getElementById('mobile-log-list');
+  if (!container) return;
+  
+  if (GameState.adventureLog.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 30px; color: var(--text-muted);">
+        <p style="font-size: 2rem; margin-bottom: 10px;">📖</p>
+        <p>开始你的冒险吧！</p>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = GameState.adventureLog.map(log => `
+    <div class="log-entry ${log.type}" style="padding: 8px 0; border-bottom: 1px solid var(--border-dark);">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+        <span style="font-size: 0.7rem; color: var(--text-muted);">${log.timestamp}</span>
+        <span style="font-size: 0.75rem; color: var(--gold-muted);">${log.type}</span>
+      </div>
+      <div style="font-size: 0.85rem; color: var(--text-secondary);">${log.message}</div>
+    </div>
+  `).reverse().join('');
+}
+
 function updateMobileExploration() {
   const location = LOCATIONS[GameState.location];
   const hasLocation = !!location;
@@ -285,6 +308,9 @@ function syncMobileUI() {
         break;
       case 'inventory':
         updateMobileInventory();
+        break;
+      case 'log':
+        updateMobileLog();
         break;
       case 'quests':
         updateMobileQuests();
@@ -327,6 +353,14 @@ function initMobileUI() {
       originalUpdateGoldDisplay();
       const mobileGold = document.getElementById('mobile-gold');
       if (mobileGold) mobileGold.textContent = GameState.character.gold;
+    };
+  }
+  
+  if (typeof renderSidebarInventory === 'function') {
+    const originalRenderSidebarInventory = renderSidebarInventory;
+    renderSidebarInventory = function() {
+      originalRenderSidebarInventory();
+      updateMobileBackpackList();
     };
   }
   

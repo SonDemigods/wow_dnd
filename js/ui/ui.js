@@ -322,6 +322,9 @@ function selectLocationKey(locationKey) {
 function showStartScreen() {
   const startScreen = document.getElementById('start-screen');
   if (startScreen) startScreen.classList.remove('hidden');
+  
+  const mobileNav = document.getElementById('mobile-nav');
+  if (mobileNav) mobileNav.style.display = 'none';
 }
 
 function hideStartScreen() {
@@ -335,6 +338,9 @@ function showCharacterCreation() {
   
   const createScreen = document.getElementById('character-create-screen');
   if (createScreen) createScreen.classList.remove('hidden');
+  
+  const mobileNav = document.getElementById('mobile-nav');
+  if (mobileNav) mobileNav.style.display = 'none';
   
   createState.currentStep = 1;
   createState.selectedFaction = null;
@@ -578,6 +584,13 @@ function showGameInterface() {
   hideStartScreen();
   const createScreen = document.getElementById('character-create-screen');
   if (createScreen) createScreen.classList.add('hidden');
+  
+  const mobileNav = document.getElementById('mobile-nav');
+  if (mobileNav) {
+    const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    mobileNav.style.display = isMobile ? 'flex' : 'none';
+  }
+  
   updateAllUI();
   switchMainTab('world');
 }

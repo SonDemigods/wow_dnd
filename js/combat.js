@@ -50,6 +50,9 @@ function showCombatOverlay(enemyKey) {
   const existingOverlay = document.getElementById('combat-overlay');
   if (existingOverlay) return;
 
+  const mobileNav = document.getElementById('mobile-nav');
+  if (mobileNav) mobileNav.style.display = 'none';
+
   const bgOverlay = document.createElement('div');
   bgOverlay.id = 'combat-overlay-bg';
   bgOverlay.className = 'combat-overlay-bg';
@@ -581,6 +584,12 @@ function combatAfterCombatReturn() {
   if (particles) particles.remove();
   
   combatState.currentCellIndex = null;
+
+  const mobileNav = document.getElementById('mobile-nav');
+  if (mobileNav) {
+    const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    mobileNav.style.display = isMobile ? 'flex' : 'none';
+  }
 }
 
 function combatAddLog(message, type = 'system') {
