@@ -71,3 +71,41 @@ export type {
   ExplorationState,
   IExplorationService
 } from './exploration/types'
+
+// 任务模块
+export { useQuestStore, questService } from './quests'
+export type {
+  QuestStatus,
+  QuestObjectiveProgress,
+  QuestProgress,
+  QuestState,
+  QuestAcceptedEvent,
+  QuestCompletedEvent,
+  QuestProgressUpdatedEvent,
+  IQuestService
+} from './quests/types'
+
+// 装备模块
+export { useEquipmentStore, equipmentService } from './equipment'
+export type {
+  EquipmentSlot,
+  EquipmentType,
+  EquipmentItem,
+  EquippedItem,
+  EquipmentState,
+  EquipmentEquippedEvent,
+  EquipmentUnequippedEvent,
+  EquipmentChangedEvent,
+  IEquipmentService
+} from './equipment/types'
+
+// NPC模块
+export { useNPCStore, npcService } from './npc'
+export type {
+  NPCType,
+  NPCData,
+  NPCInteractionState,
+  NPCDialogueEvent,
+  NPCTradeEvent,
+  INPCService
+} from './npc/types'

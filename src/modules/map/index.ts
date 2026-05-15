@@ -21,6 +21,11 @@ import type {
 } from './types'
 
 /**
+ * 本地存储键名
+ */
+const MAP_STORAGE_KEY = 'wow_map'
+
+/**
  * 默认地图视图配置
  */
 const DEFAULT_MAP_VIEW: MapView = {
@@ -47,6 +52,45 @@ export const useMapStore = defineStore('map', () => {
     recentLocations: [],
     customMarkers: []
   })
+
+  /**
+   * 从本地存储加载地图数据
+   */
+  function loadFromStorage() {
+    try {
+      const data = localStorage.getItem(MAP_STORAGE_KEY)
+      if (data) {
+        const saved = JSON.parse(data)
+        state.value = {
+          view: saved.view || { ...DEFAULT_MAP_VIEW },
+          history: saved.history || [],
+          favoriteLocations: saved.favoriteLocations || [],
+          recentLocations: saved.recentLocations || [],
+          customMarkers: saved.customMarkers || []
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load map:', e)
+    }
+  }
+
+  /**
+   * 保存地图数据到本地存储
+   */
+  function saveToStorage() {
+    try {
+      localStorage.setItem(MAP_STORAGE_KEY, JSON.stringify(state.value))
+    } catch (e) {
+      console.error('Failed to save map:', e)
+    }
+  }
+
+  /**
+   * 清除地图本地存储
+   */
+  function clearStorage() {
+    localStorage.removeItem(MAP_STORAGE_KEY)
+  }
 
   // 计算属性
   const currentMode = computed(() => state.value.view.mode)
@@ -153,6 +197,9 @@ export const useMapStore = defineStore('map', () => {
     // 添加到历史记录
     addToHistory(location)
 
+    // 保存数据
+    saveToStorage()
+
     // 发送事件
     eventBus.emit('map:locationChanged', {
       locationId,
@@ -168,6 +215,7 @@ export const useMapStore = defineStore('map', () => {
   const addFavorite = (locationId: string): void => {
     if (!state.value.favoriteLocations.includes(locationId)) {
       state.value.favoriteLocations.push(locationId)
+      saveToStorage()
       eventBus.emit('map:favoritesChanged', {
         favorites: [...state.value.favoriteLocations]
       })
@@ -181,6 +229,7 @@ export const useMapStore = defineStore('map', () => {
     const index = state.value.favoriteLocations.indexOf(locationId)
     if (index > -1) {
       state.value.favoriteLocations.splice(index, 1)
+      saveToStorage()
       eventBus.emit('map:favoritesChanged', {
         favorites: [...state.value.favoriteLocations]
       })
@@ -192,6 +241,7 @@ export const useMapStore = defineStore('map', () => {
    */
   const addCustomMarker = (marker: MapMarker): void => {
     state.value.customMarkers.push(marker)
+    saveToStorage()
     eventBus.emit('map:markersUpdated', {
       markers: [...state.value.customMarkers]
     })
@@ -204,6 +254,7 @@ export const useMapStore = defineStore('map', () => {
     state.value.customMarkers = state.value.customMarkers.filter(
       marker => marker.id !== markerId
     )
+    saveToStorage()
     eventBus.emit('map:markersUpdated', {
       markers: [...state.value.customMarkers]
     })
@@ -245,7 +296,25 @@ export const useMapStore = defineStore('map', () => {
    */
   const clearHistory = (): void => {
     state.value.history = []
+    saveToStorage()
   }
+
+  /**
+   * 重置地图状态
+   */
+  const reset = (): void => {
+    state.value = {
+      view: { ...DEFAULT_MAP_VIEW },
+      history: [],
+      favoriteLocations: [],
+      recentLocations: [],
+      customMarkers: []
+    }
+    clearStorage()
+  }
+
+  // 初始化时加载数据
+  loadFromStorage()
 
   // ==================== 私有方法 ====================
 
@@ -338,5 +407,6 @@ export const mapService: IMapService = {
   zoomTo: (level) => useMapStore().zoomTo(level),
   panTo: (x, y) => useMapStore().panTo(x, y),
   resetView: () => useMapStore().resetView(),
-  clearHistory: () => useMapStore().clearHistory()
+  clearHistory: () => useMapStore().clearHistory(),
+  reset: () => useMapStore().reset()
 }

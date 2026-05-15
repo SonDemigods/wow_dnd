@@ -140,7 +140,25 @@ export const GameEvents = {
   // 任务相关事件
   QUEST_ACCEPTED: 'quest:accepted',
   QUEST_COMPLETED: 'quest:completed',
-  QUEST_PROGRESS: 'quest:progress',
+  QUEST_PROGRESS_UPDATED: 'quest:progressUpdated',
+
+  // 装备相关事件
+  EQUIPMENT_EQUIPPED: 'equipment:equipped',
+  EQUIPMENT_UNEQUIPPED: 'equipment:unequipped',
+  EQUIPMENT_CHANGED: 'equipment:changed',
+
+  // NPC相关事件
+  NPC_DIALOGUE: 'npc:dialogue',
+  NPC_QUEST_ACCEPTED: 'npc:questAccepted',
+  NPC_QUEST_TURNED_IN: 'npc:questTurnedIn',
+
+  // 地图相关事件
+  MAP_LOCATION_CHANGE: 'map:locationChange',
+  MAP_EXPLORED: 'map:explored',
+
+  // 探索相关事件
+  EXPLORATION_PROGRESS: 'exploration:progress',
+  EXPLORATION_COMPLETE: 'exploration:complete',
 
   // UI相关事件
   NOTIFICATION: 'ui:notification',

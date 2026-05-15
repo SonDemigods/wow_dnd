@@ -14,13 +14,30 @@ import type {
   CharacterHpChangeEvent,
   CharacterMpChangeEvent,
   CharacterLevelUpEvent,
+  CharacterInfo,
   ICharacterService
 } from './types';
+
+/**
+ * 本地存储键名
+ */
+const CHARACTER_STORAGE_KEY = 'wow_character';
+const CHARACTER_INFO_STORAGE_KEY = 'wow_character_info';
 
 /**
  * 角色状态管理Store
  */
 export const useCharacterStore = defineStore('character', () => {
+  /** 角色名称 */
+  const name = ref('冒险者');
+  /** 角色阵营 */
+  const faction = ref<'alliance' | 'horde' | null>(null);
+  /** 角色种族 */
+  const race = ref<string | null>(null);
+  /** 角色职业 */
+  const charClass = ref<string | null>(null);
+  /** 角色金币 */
+  const gold = ref(50);
   /** 角色当前等级 */
   const level = ref(1);
   /** 角色当前经验值 */
@@ -44,6 +61,150 @@ export const useCharacterStore = defineStore('character', () => {
   const maxMp = ref(50);
   /** 临时属性加成（来自装备、BUFF等） */
   const bonusStats = ref<Partial<Stats>>({});
+
+  /**
+   * 从本地存储加载角色数据
+   */
+  function loadFromStorage() {
+    try {
+      const data = localStorage.getItem(CHARACTER_STORAGE_KEY);
+      if (data) {
+        const saved = JSON.parse(data);
+        level.value = saved.level ?? 1;
+        exp.value = saved.exp ?? 0;
+        gold.value = saved.gold ?? 50;
+        baseStats.value = saved.baseStats ?? { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+        currentHp.value = saved.currentHp ?? 100;
+        maxHp.value = saved.maxHp ?? 100;
+        currentMp.value = saved.currentMp ?? 50;
+        maxMp.value = saved.maxMp ?? 50;
+        bonusStats.value = saved.bonusStats ?? {};
+      }
+    } catch (e) {
+      console.error('Failed to load character:', e);
+    }
+
+    try {
+      const infoData = localStorage.getItem(CHARACTER_INFO_STORAGE_KEY);
+      if (infoData) {
+        const saved = JSON.parse(infoData);
+        name.value = saved.name ?? '冒险者';
+        faction.value = saved.faction ?? null;
+        race.value = saved.race ?? null;
+        charClass.value = saved.charClass ?? null;
+      }
+    } catch (e) {
+      console.error('Failed to load character info:', e);
+    }
+  }
+
+  /**
+   * 保存角色数据到本地存储
+   */
+  function saveToStorage() {
+    try {
+      const data = {
+        level: level.value,
+        exp: exp.value,
+        gold: gold.value,
+        baseStats: baseStats.value,
+        currentHp: currentHp.value,
+        maxHp: maxHp.value,
+        currentMp: currentMp.value,
+        maxMp: maxMp.value,
+        bonusStats: bonusStats.value,
+      };
+      localStorage.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.error('Failed to save character:', e);
+    }
+
+    try {
+      const infoData = {
+        name: name.value,
+        faction: faction.value,
+        race: race.value,
+        charClass: charClass.value,
+      };
+      localStorage.setItem(CHARACTER_INFO_STORAGE_KEY, JSON.stringify(infoData));
+    } catch (e) {
+      console.error('Failed to save character info:', e);
+    }
+  }
+
+  /**
+   * 清除角色本地存储
+   */
+  function clearStorage() {
+    localStorage.removeItem(CHARACTER_STORAGE_KEY);
+    localStorage.removeItem(CHARACTER_INFO_STORAGE_KEY);
+  }
+
+  /**
+   * 获取角色信息
+   */
+  const getCharacterInfo = (): CharacterInfo => {
+    return {
+      name: name.value,
+      race: race.value as CharacterInfo['race'],
+      class: charClass.value as CharacterInfo['class'],
+      faction: faction.value,
+    };
+  };
+
+  /**
+   * 设置角色名称
+   */
+  const setName = (newName: string) => {
+    name.value = newName;
+    saveToStorage();
+  };
+
+  /**
+   * 设置角色阵营
+   */
+  const setFaction = (newFaction: 'alliance' | 'horde') => {
+    faction.value = newFaction;
+    race.value = null;
+    charClass.value = null;
+    saveToStorage();
+  };
+
+  /**
+   * 设置角色种族
+   */
+  const setRace = (newRace: string) => {
+    race.value = newRace;
+    saveToStorage();
+  };
+
+  /**
+   * 设置角色职业
+   */
+  const setClass = (newClass: string) => {
+    charClass.value = newClass;
+    saveToStorage();
+  };
+
+  /**
+   * 添加金币
+   */
+  const addGold = (amount: number) => {
+    gold.value += amount;
+    saveToStorage();
+  };
+
+  /**
+   * 花费金币
+   */
+  const spendGold = (amount: number): boolean => {
+    if (gold.value >= amount) {
+      gold.value -= amount;
+      saveToStorage();
+      return true;
+    }
+    return false;
+  };
 
   /**
    * 计算综合属性（基础+加成）
@@ -104,6 +265,7 @@ export const useCharacterStore = defineStore('character', () => {
     if (amount <= 0) return;
     exp.value += amount;
     checkLevelUp();
+    saveToStorage();
   };
 
   /**
@@ -119,6 +281,7 @@ export const useCharacterStore = defineStore('character', () => {
       maxHp: maxHp.value,
     };
     eventBus.emit(GameEvents.CHARACTER_HP_CHANGE, event);
+    saveToStorage();
   };
 
   /**
@@ -134,6 +297,7 @@ export const useCharacterStore = defineStore('character', () => {
       maxMp: maxMp.value,
     };
     eventBus.emit(GameEvents.CHARACTER_MP_CHANGE, event);
+    saveToStorage();
   };
 
   /**
@@ -149,6 +313,7 @@ export const useCharacterStore = defineStore('character', () => {
       maxHp: maxHp.value,
     };
     eventBus.emit(GameEvents.CHARACTER_HP_CHANGE, event);
+    saveToStorage();
   };
 
   /**
@@ -164,6 +329,7 @@ export const useCharacterStore = defineStore('character', () => {
       maxMp: maxMp.value,
     };
     eventBus.emit(GameEvents.CHARACTER_MP_CHANGE, event);
+    saveToStorage();
   };
 
   /**
@@ -180,6 +346,7 @@ export const useCharacterStore = defineStore('character', () => {
 
     const event: CharacterStatsChangeEvent = { oldStats, newStats: stats.value };
     eventBus.emit(GameEvents.CHARACTER_STATS_CHANGE, event);
+    saveToStorage();
   };
 
   /**
@@ -199,12 +366,18 @@ export const useCharacterStore = defineStore('character', () => {
 
     const event: CharacterStatsChangeEvent = { oldStats, newStats: stats.value };
     eventBus.emit(GameEvents.CHARACTER_STATS_CHANGE, event);
+    saveToStorage();
   };
 
   /**
    * 重置角色状态（用于开始新游戏）
    */
   const reset = () => {
+    name.value = '冒险者';
+    faction.value = null;
+    race.value = null;
+    charClass.value = null;
+    gold.value = 50;
     level.value = 1;
     exp.value = 0;
     baseStats.value = {
@@ -220,10 +393,19 @@ export const useCharacterStore = defineStore('character', () => {
     currentHp.value = maxHp.value;
     currentMp.value = maxMp.value;
     bonusStats.value = {};
+    clearStorage();
   };
+
+  // 初始化时加载数据
+  loadFromStorage();
 
   return {
     // 状态
+    name,
+    faction,
+    race,
+    charClass,
+    gold,
     level,
     exp,
     currentHp,
@@ -234,6 +416,13 @@ export const useCharacterStore = defineStore('character', () => {
     attributes,
     expToNextLevel,
     // 方法
+    getCharacterInfo,
+    setName,
+    setFaction,
+    setRace,
+    setClass,
+    addGold,
+    spendGold,
     addExp,
     addHp,
     addMp,
@@ -262,4 +451,16 @@ export const characterService: ICharacterService = {
   applyBonus: (bonus: Partial<Stats>) => useCharacterStore().applyBonus(bonus),
   removeBonus: (bonus: Partial<Stats>) => useCharacterStore().removeBonus(bonus),
   reset: () => useCharacterStore().reset(),
+  getName: () => useCharacterStore().name,
+  getFaction: () => useCharacterStore().faction,
+  getRace: () => useCharacterStore().race,
+  getClass: () => useCharacterStore().charClass,
+  getGold: () => useCharacterStore().gold,
+  getCharacterInfo: () => useCharacterStore().getCharacterInfo(),
+  setName: (name: string) => useCharacterStore().setName(name),
+  setFaction: (faction: 'alliance' | 'horde') => useCharacterStore().setFaction(faction),
+  setRace: (race: string) => useCharacterStore().setRace(race),
+  setClass: (charClass: string) => useCharacterStore().setClass(charClass),
+  addGold: (amount: number) => useCharacterStore().addGold(amount),
+  spendGold: (amount: number) => useCharacterStore().spendGold(amount),
 };

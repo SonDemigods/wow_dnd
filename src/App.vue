@@ -25,18 +25,22 @@ import Notification from './components/Notification.vue'
 const gameStore = useGameStore()
 
 /**
- * 组件挂载时检查是否有保存的游戏进度
- * 如果有有效存档且已创建角色，直接进入游戏
- */
-onMounted(() => {
-  const hasSavedGame = localStorage.getItem('wowGameState')
-  if (hasSavedGame) {
-    gameStore.loadGame()
-    if (gameStore.character.race && gameStore.character.class) {
-      gameStore.setGameState('playing')
+   * 组件挂载时检查是否有保存的游戏进度
+   * 如果有有效存档且已创建角色，直接进入游戏
+   */
+  onMounted(() => {
+    const hasSavedGame = localStorage.getItem('wow_character_info')
+    if (hasSavedGame) {
+      try {
+        const info = JSON.parse(hasSavedGame)
+        if (info.race && info.charClass) {
+          gameStore.setGameState('playing')
+        }
+      } catch (e) {
+        console.error('Failed to parse saved character info:', e)
+      }
     }
-  }
-})
+  })
 </script>
 
 <style scoped lang="less">

@@ -341,26 +341,61 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useGameStore } from '@/stores/game'
+import { useCharacterStore } from '@/modules/character'
+import { useInventoryStore } from '@/modules/inventory'
+import { useCombatStore } from '@/modules/combat'
+import { useAdventureLogStore } from '@/modules/adventureLog'
+import { questService } from '@/modules/quests'
 import { WORLD_LOCATIONS, ENEMIES, QUESTS, RACES, CLASSES, ITEM_TYPES } from '@/data'
 import { STAT_NAMES } from '@/data/constants'
 import type { LootItemData } from '@/types'
 
 const gameStore = useGameStore()
+const characterStore = useCharacterStore()
+const inventoryStore = useInventoryStore()
+const combatStore = useCombatStore()
 
-const character = computed(() => gameStore.character)
-const inventory = computed(() => gameStore.inventory)
-const attributes = computed(() => gameStore.attributes)
-const classAbilities = computed(() => gameStore.classAbilities)
-const currentLocation = computed(() => gameStore.currentLocation)
-const currentLocationData = computed(() => gameStore.currentLocationData)
-const adventureLog = computed(() => gameStore.adventureLog)
-const combatActive = computed(() => gameStore.combatActive)
-const currentEnemy = computed(() => gameStore.currentEnemy)
-const enemyHp = computed(() => gameStore.enemyHp)
-const enemyMaxHp = computed(() => gameStore.enemyMaxHp)
-const playerTurn = computed(() => gameStore.playerTurn)
-const combatEnded = computed(() => gameStore.combatEnded)
-const combatLog = computed(() => gameStore.combatLog)
+const character = computed(() => ({
+  name: characterStore.name,
+  race: characterStore.race,
+  class: characterStore.charClass,
+  level: characterStore.level,
+  exp: characterStore.exp,
+  expToNextLevel: characterStore.expToNextLevel,
+  hp: characterStore.currentHp,
+  maxHp: characterStore.maxHp,
+  mana: characterStore.currentMp,
+  maxMana: characterStore.maxMp,
+  stats: characterStore.stats,
+  gold: characterStore.gold
+}))
+
+const inventory = computed(() => inventoryStore.items)
+const attributes = computed(() => characterStore.attributes)
+const classAbilities = computed(() => [
+  { name: '猛击', icon: '⚔️', manaCost: 10, type: 'attack' as const, damage: [1, 8], healing: undefined },
+  { name: '治疗', icon: '💚', manaCost: 15, type: 'heal' as const, healing: [20, 30], damage: undefined }
+])
+const currentLocation = ref('stormwind')
+const currentLocationData = computed(() => WORLD_LOCATIONS[currentLocation.value])
+const adventureLog = computed(() => useAdventureLogStore().logs)
+const combatActive = computed(() => combatStore.isInCombat)
+const currentEnemy = computed(() => combatStore.currentEnemy)
+const enemyHp = computed(() => {
+  if (combatStore.currentEnemy) {
+    return combatStore.currentEnemy.currentHp || 0
+  }
+  return 0
+})
+const enemyMaxHp = computed(() => {
+  if (combatStore.currentEnemy) {
+    return combatStore.currentEnemy.hp || 0
+  }
+  return 0
+})
+const playerTurn = computed(() => combatStore.turn === 'player')
+const combatEnded = computed(() => combatStore.state === 'ended')
+const combatLog = computed(() => combatStore.combatLog)
 
 const activeTab = ref('world')
 const showItemPopup = ref(false)
@@ -424,9 +459,9 @@ const getAttributeDisplay = (attr: string, value: number) => {
 }
 
 const getQuestProgress = (questKey: string, enemyKey: string) => {
-  const questData = gameStore.quests[questKey]
-  if (questData?.progress?.[enemyKey]) {
-    return questData.progress[enemyKey]
+  const questState = questService.getQuestState(questKey)
+  if (questState?.progress?.[enemyKey]) {
+    return questState.progress[enemyKey].current
   }
   return 0
 }
@@ -438,7 +473,7 @@ const selectLocation = (key: string) => {
     gameStore.showNotification(`等级不足！需要等级 ${location.levelRange[0]} 才能探索此区域。`)
     return
   }
-  gameStore.setLocation(key)
+  currentLocation.value = key
   gameStore.addToAdventureLog(`来到了 ${location.displayName}`, 'info')
 }
 
@@ -447,23 +482,44 @@ const startCombat = (enemyKey: string) => {
   if (!enemy) return
   
   combatResult.value = null
-  gameStore.startCombat(enemyKey)
+  combatStore.startCombat(enemy)
 }
 
 const playerAttack = () => {
-  gameStore.playerAttack()
+  combatStore.playerAttack()
 }
 
 const useAbilityInCombat = (index: number) => {
-  gameStore.useAbility(index)
+  const ability = classAbilities.value[index]
+  if (!ability) return
+  
+  if (character.value.mana < ability.manaCost) {
+    gameStore.showNotification('法力不足！')
+    return
+  }
+  
+  characterStore.addMp(-ability.manaCost)
+  
+  if (ability.type === 'heal' && ability.healing) {
+    const healAmount = Math.floor(Math.random() * (ability.healing[1] - ability.healing[0] + 1)) + ability.healing[0]
+    characterStore.addHp(healAmount)
+    combatStore.addLog(`${ability.icon} ${ability.name} 恢复了 ${healAmount} 点生命值！`, 'heal')
+  } else if (ability.type === 'attack' && ability.damage) {
+    const damage = Math.floor(Math.random() * (ability.damage[1] - ability.damage[0] + 1)) + ability.damage[0]
+    // 攻击逻辑需要在战斗模块中处理
+    combatStore.addLog(`${ability.icon} ${ability.name} 造成了 ${damage} 点伤害！`, 'magic')
+  }
+  
+  combatStore.turn = 'enemy'
+  setTimeout(() => combatStore.enemyAttack(), 800)
 }
 
 const tryFlee = () => {
-  gameStore.tryFlee()
+  combatStore.flee()
 }
 
 const endCombatManual = () => {
-  gameStore.endCombat('fled')
+  combatStore.endCombat('fled')
 }
 
 const rest = () => {
@@ -473,8 +529,8 @@ const rest = () => {
   }
   
   const attrs = attributes.value
-  gameStore.character.hp = attrs.maxHp
-  gameStore.character.mana = attrs.maxMana
+  characterStore.setHp(attrs.maxHp)
+  characterStore.setMp(attrs.maxMana)
   gameStore.showNotification('休息完成，生命值和法力值已恢复！')
   gameStore.saveGame()
 }
@@ -493,14 +549,14 @@ const closeItemPopup = () => {
 
 const useSelectedItem = () => {
   if (selectedItemIndex.value !== null) {
-    gameStore.useItem(selectedItemIndex.value)
+    inventoryStore.useItem(selectedItemIndex.value)
     closeItemPopup()
   }
 }
 
 const discardSelectedItem = () => {
   if (selectedItemIndex.value !== null) {
-    gameStore.discardItem(selectedItemIndex.value)
+    inventoryStore.removeItem(selectedItemIndex.value)
     closeItemPopup()
   }
 }
@@ -519,10 +575,10 @@ const useAbilityOutsideCombat = (index: number) => {
       return
     }
     
-    gameStore.character.mana -= ability.manaCost
+    characterStore.addMp(-ability.manaCost)
     const healAmount = Math.floor(Math.random() * ((ability.healing?.[1] || 0) - (ability.healing?.[0] || 0) + 1)) + (ability.healing?.[0] || 0)
     const actualHeal = Math.min(healAmount + attributes.value.healBonus, character.value.maxHp - character.value.hp)
-    gameStore.character.hp += actualHeal
+    characterStore.addHp(actualHeal)
     
     gameStore.showNotification(`${ability.icon} 使用 ${ability.name}，恢复了 ${actualHeal} 点生命值！`)
     gameStore.addToAdventureLog(`使用了 ${ability.name}`, 'info')
@@ -533,9 +589,7 @@ const useAbilityOutsideCombat = (index: number) => {
 }
 
 onMounted(() => {
-  if (!gameStore.character.race || !gameStore.character.class) {
-    gameStore.continueGame()
-  }
+  gameStore.continueGame()
 })
 </script>
 

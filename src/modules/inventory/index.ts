@@ -19,6 +19,11 @@ import type {
 } from './types';
 
 /**
+ * 本地存储键名
+ */
+const INVENTORY_STORAGE_KEY = 'wow_inventory';
+
+/**
  * 背包状态管理Store
  */
 export const useInventoryStore = defineStore('inventory', () => {
@@ -26,6 +31,44 @@ export const useInventoryStore = defineStore('inventory', () => {
   const inventorySize = ref(8);
   /** 背包物品数组 */
   const items = ref<(Item | null)[]>(new Array(inventorySize.value).fill(null));
+
+  /**
+   * 从本地存储加载背包数据
+   */
+  function loadFromStorage() {
+    try {
+      const data = localStorage.getItem(INVENTORY_STORAGE_KEY);
+      if (data) {
+        const saved = JSON.parse(data);
+        inventorySize.value = saved.inventorySize ?? 8;
+        items.value = saved.items ?? new Array(inventorySize.value).fill(null);
+      }
+    } catch (e) {
+      console.error('Failed to load inventory:', e);
+    }
+  }
+
+  /**
+   * 保存背包数据到本地存储
+   */
+  function saveToStorage() {
+    try {
+      const data = {
+        inventorySize: inventorySize.value,
+        items: items.value,
+      };
+      localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.error('Failed to save inventory:', e);
+    }
+  }
+
+  /**
+   * 清除背包本地存储
+   */
+  function clearStorage() {
+    localStorage.removeItem(INVENTORY_STORAGE_KEY);
+  }
 
   /**
    * 更新背包大小
@@ -83,6 +126,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     };
     eventBus.emit(GameEvents.INVENTORY_ITEM_ADDED, event);
     emitInventoryUpdated();
+    saveToStorage();
     return true;
   };
 
@@ -102,6 +146,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     };
     eventBus.emit(GameEvents.INVENTORY_ITEM_REMOVED, event);
     emitInventoryUpdated();
+    saveToStorage();
     return removed;
   };
 
@@ -145,6 +190,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     if (slot < 0 || slot >= items.value.length) return;
     items.value[slot] = null;
     emitInventoryUpdated();
+    saveToStorage();
   };
 
   /**
@@ -191,7 +237,11 @@ export const useInventoryStore = defineStore('inventory', () => {
     inventorySize.value = config.inventorySize;
     items.value = new Array(inventorySize.value).fill(null);
     emitInventoryUpdated();
+    clearStorage();
   };
+
+  // 初始化时加载数据
+  loadFromStorage();
 
   return {
     // 状态

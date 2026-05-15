@@ -160,6 +160,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useGameStore } from '@/stores/game'
+import { characterService } from '@/modules/character'
 import { FACTIONS, RACES, CLASSES } from '@/data'
 import { STAT_NAMES } from '@/data/constants'
 
@@ -272,22 +273,26 @@ const createCharacter = () => {
   if (!selectedFaction.value || !selectedRace.value || !selectedClass.value) return
   if (!characterName.value.trim()) return
 
-  gameStore.setCharacterName(characterName.value.trim())
-  gameStore.selectFaction(selectedFaction.value)
-  gameStore.selectRace(selectedRace.value)
-  gameStore.selectClass(selectedClass.value)
+  characterService.setName(characterName.value.trim())
+  characterService.setFaction(selectedFaction.value)
+  characterService.setRace(selectedRace.value)
+  characterService.setClass(selectedClass.value)
   gameStore.finishCharacterCreation()
 }
 
 onMounted(() => {
-  if (gameStore.character.faction) {
-    selectedFaction.value = gameStore.character.faction as 'alliance' | 'horde'
+  const faction = characterService.getFaction()
+  const race = characterService.getRace()
+  const charClass = characterService.getClass()
+  
+  if (faction) {
+    selectedFaction.value = faction
   }
-  if (gameStore.character.race) {
-    selectedRace.value = gameStore.character.race
+  if (race) {
+    selectedRace.value = race
   }
-  if (gameStore.character.class) {
-    selectedClass.value = gameStore.character.class
+  if (charClass) {
+    selectedClass.value = charClass
   }
 })
 </script>

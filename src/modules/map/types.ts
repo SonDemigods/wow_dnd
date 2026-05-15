@@ -104,4 +104,5 @@ export interface IMapService {
   panTo(x: number, y: number): void
   resetView(): void
   clearHistory(): void
+  reset(): void
 }

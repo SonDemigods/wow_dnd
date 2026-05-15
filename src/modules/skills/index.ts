@@ -18,6 +18,11 @@ import type {
 } from './types';
 
 /**
+ * 本地存储键名
+ */
+const SKILLS_STORAGE_KEY = 'wow_skills';
+
+/**
  * 技能状态管理Store
  */
 export const useSkillsStore = defineStore('skills', () => {
@@ -27,6 +32,51 @@ export const useSkillsStore = defineStore('skills', () => {
   const cooldowns = ref<Map<string, number>>(new Map());
   /** 冷却更新定时器 */
   let cooldownTimer: ReturnType<typeof setInterval> | null = null;
+  /** 当前职业 */
+  const currentClass = ref<string>('');
+
+  /**
+   * 从本地存储加载技能数据
+   */
+  function loadFromStorage() {
+    try {
+      const data = localStorage.getItem(SKILLS_STORAGE_KEY);
+      if (data) {
+        const saved = JSON.parse(data);
+        skills.value = saved.skills ?? [];
+        currentClass.value = saved.currentClass ?? '';
+        // 冷却时间需要转换回Map
+        if (saved.cooldowns) {
+          cooldowns.value = new Map(Object.entries(saved.cooldowns));
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load skills:', e);
+    }
+  }
+
+  /**
+   * 保存技能数据到本地存储
+   */
+  function saveToStorage() {
+    try {
+      const data = {
+        skills: skills.value,
+        cooldowns: Object.fromEntries(cooldowns.value),
+        currentClass: currentClass.value,
+      };
+      localStorage.setItem(SKILLS_STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.error('Failed to save skills:', e);
+    }
+  }
+
+  /**
+   * 清除技能本地存储
+   */
+  function clearStorage() {
+    localStorage.removeItem(SKILLS_STORAGE_KEY);
+  }
 
   /**
    * 获取指定技能
@@ -90,6 +140,7 @@ export const useSkillsStore = defineStore('skills', () => {
         remaining: skill.cooldown,
       };
       eventBus.emit(GameEvents.SKILL_COOLDOWN, cdEvent);
+      saveToStorage();
     }
 
     // 触发技能效果
@@ -129,6 +180,7 @@ export const useSkillsStore = defineStore('skills', () => {
       return; // 已学习该技能
     }
     skills.value.push({ ...skill });
+    saveToStorage();
   };
 
   /**
@@ -137,6 +189,7 @@ export const useSkillsStore = defineStore('skills', () => {
   const forgetSkill = (skillId: string) => {
     skills.value = skills.value.filter(s => s.id !== skillId);
     cooldowns.value.delete(skillId);
+    saveToStorage();
   };
 
   /**
@@ -169,6 +222,7 @@ export const useSkillsStore = defineStore('skills', () => {
   const initClassSkills = (className: string) => {
     const abilities = CLASS_ABILITIES[className];
     if (abilities) {
+      currentClass.value = className;
       skills.value = abilities.map((ability, index) => ({
         id: `${className}_skill_${index}`,
         name: ability,
@@ -180,6 +234,7 @@ export const useSkillsStore = defineStore('skills', () => {
         damage: index === 0 ? 20 : undefined,
         heal: index === 1 ? 30 : undefined,
       }));
+      saveToStorage();
     }
   };
 
@@ -207,7 +262,12 @@ export const useSkillsStore = defineStore('skills', () => {
   const reset = () => {
     skills.value = [];
     cooldowns.value.clear();
+    currentClass.value = '';
+    clearStorage();
   };
+
+  // 初始化时加载数据
+  loadFromStorage();
 
   return {
     // 状态
