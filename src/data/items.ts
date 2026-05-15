@@ -1,5 +1,15 @@
+/**
+ * @fileoverview 物品数据模块
+ * @description 包含所有可获取物品的类型定义和掉落物品详情
+ * @module data/items
+ */
+
 import type { ItemTypeData, LootItemData } from '../types'
 
+/**
+ * 物品类型定义
+ * @type {Record<string, ItemTypeData>}
+ */
 export const ITEM_TYPES: Record<string, ItemTypeData> = {
   gold: { name: '货币', stackable: true, maxStack: 999999 },
   potion: { name: '药水', stackable: true, maxStack: 20, usable: true },
@@ -9,6 +19,10 @@ export const ITEM_TYPES: Record<string, ItemTypeData> = {
   quest: { name: '任务物品', stackable: true, maxStack: 1 }
 }
 
+/**
+ * 所有可掉落物品数据
+ * @type {LootItemData[]}
+ */
 export const LOOT_ITEMS: LootItemData[] = [
   {
     name: '小型生命药水',

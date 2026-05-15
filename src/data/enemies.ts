@@ -1,5 +1,15 @@
+/**
+ * @fileoverview 敌人数据模块
+ * @description 包含所有可遭遇敌人的属性和掉落信息
+ * @module data/enemies
+ */
+
 import type { EnemyData } from '../types'
 
+/**
+ * 所有敌人的完整数据集
+ * @type {Record<string, EnemyData>}
+ */
 export const ENEMIES: Record<string, EnemyData> = {
   goblin: {
     name: '豺狼人',

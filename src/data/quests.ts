@@ -1,5 +1,15 @@
+/**
+ * @fileoverview 游戏任务数据模块
+ * @description 包含所有可接任务的详细信息，包括任务目标和奖励
+ * @module data/quests
+ */
+
 import type { QuestData } from '../types'
 
+/**
+ * 所有任务的完整数据集
+ * @type {Record<string, QuestData>}
+ */
 export const QUESTS: Record<string, QuestData> = {
   teldrassil_defense: {
     key: 'teldrassil_defense',

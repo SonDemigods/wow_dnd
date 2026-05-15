@@ -1,5 +1,15 @@
+/**
+ * @fileoverview 魔兽世界职业数据模块
+ * @description 包含所有可选职业的基础信息和技能详情
+ * @module data/classes
+ */
+
 import type { ClassData, Ability } from '../types'
 
+/**
+ * 所有可用职业的完整数据集
+ * @type {Record<string, ClassData>}
+ */
 export const CLASSES: Record<string, ClassData> = {
   warrior: {
     name: '战士',
@@ -123,6 +133,10 @@ export const CLASSES: Record<string, ClassData> = {
   }
 }
 
+/**
+ * 各职业详细技能数据
+ * @type {Record<string, Ability[]>}
+ */
 export const CLASS_ABILITIES: Record<string, Ability[]> = {
   warrior: [
     { name: '重击', icon: '⚔️', damage: [20, 35], manaCost: 10, type: 'damage' },
@@ -198,4 +212,8 @@ export const CLASS_ABILITIES: Record<string, Ability[]> = {
   ]
 }
 
+/**
+ * 默认技能数据（法师技能）
+ * @type {Ability[]}
+ */
 export const ABILITIES = CLASS_ABILITIES.mage

@@ -1,3 +1,9 @@
+/**
+ * @fileoverview 游戏状态管理
+ * @description 魔兽世界风格RPG游戏的核心Pinia Store，管理角色、背包、战斗、任务等游戏状态
+ * @module stores/game
+ */
+
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Character, Stats, InventoryItem, LogEntry, QuestData, Ability, LootItemData } from '@/types'
@@ -5,12 +11,20 @@ import { FACTIONS, RACES, CLASSES, CLASS_ABILITIES, ITEM_TYPES, LOOT_ITEMS, ENEM
 import { calculateAllAttributes, getExpForLevel, MAX_LEVEL } from '@/data/constants'
 import { rollDice, rollD20 } from '@/utils'
 
+/**
+ * 游戏状态管理Store
+ */
 export const useGameStore = defineStore('game', () => {
-  // Game State
+  // ==================== 游戏状态 ====================
+  
+  /** 游戏主状态 */
   const gameState = ref<'start' | 'creation' | 'playing'>('start')
+  /** 通知消息 */
   const notification = ref<string | null>(null)
   
-  // Character
+  // ==================== 角色状态 ====================
+  
+  /** 玩家角色数据 */
   const character = ref<Character>({
     name: '冒险者',
     faction: null,
@@ -34,35 +48,59 @@ export const useGameStore = defineStore('game', () => {
     gold: 50
   })
   
-  // Inventory
+  // ==================== 背包状态 ====================
+  
+  /** 背包物品列表 */
   const inventory = ref<(LootItemData & { quantity: number })[]>([])
   
-  // Quests
+  // ==================== 任务状态 ====================
+  
+  /** 任务进度状态 */
   const quests = ref<{ [key: string]: { active: boolean; progress: { [enemyKey: string]: number } } }>({})
+  /** 当前追踪的任务 */
   const currentQuest = ref<string | null>(null)
   
-  // Location
-  const currentLocation = ref('stormwind')
+  // ==================== 地点状态 ====================
+  
+  /** 当前所在地点 */
+  const currentLocation = ref('')
+  /** 地图探索状态 */
   const mapStates = ref<{ [key: string]: any }>({})
   
-  // Adventure Log
+  // ==================== 冒险日志 ====================
+  
+  /** 冒险日志条目 */
   const adventureLog = ref<LogEntry[]>([])
   
-  // Combat State
+  // ==================== 战斗状态 ====================
+  
+  /** 战斗是否进行中 */
   const combatActive = ref(false)
+  /** 当前战斗的敌人 */
   const currentEnemy = ref<string | null>(null)
+  /** 敌人当前生命值 */
   const enemyHp = ref(0)
+  /** 敌人最大生命值 */
   const enemyMaxHp = ref(0)
+  /** 是否为玩家回合 */
   const playerTurn = ref(true)
+  /** 战斗是否已结束 */
   const combatEnded = ref(false)
+  /** 护盾是否激活 */
   const shieldActive = ref(false)
+  /** 护盾数值 */
   const shieldAmount = ref(0)
+  /** 战斗日志 */
   const combatLog = ref<{ message: string; type: string }[]>([])
+  /** 当前战斗所在的地图格子索引 */
   const currentCellIndex = ref<number | null>(null)
   
-  // Computed
+  // ==================== 计算属性 ====================
+  
+  /** 角色衍生属性（基于核心属性计算） */
   const attributes = computed(() => calculateAllAttributes(character.value.stats))
   
+  /** 职业技能列表 */
   const classAbilities = computed((): Ability[] => {
     if (character.value.class && CLASS_ABILITIES[character.value.class]) {
       return CLASS_ABILITIES[character.value.class]
@@ -70,8 +108,10 @@ export const useGameStore = defineStore('game', () => {
     return CLASS_ABILITIES.mage
   })
   
+  /** 当前地点数据 */
   const currentLocationData = computed(() => WORLD_LOCATIONS[currentLocation.value])
   
+  /** 当前任务数据 */
   const currentQuestData = computed(() => {
     if (currentQuest.value) {
       return QUESTS[currentQuest.value]
@@ -79,11 +119,20 @@ export const useGameStore = defineStore('game', () => {
     return null
   })
   
-  // Actions
+  // ==================== 通用动作 ====================
+  
+  /**
+   * 设置游戏主状态
+   * @param state - 新的游戏状态
+   */
   function setGameState(state: 'start' | 'creation' | 'playing') {
     gameState.value = state
   }
   
+  /**
+   * 显示通知消息（3秒后自动消失）
+   * @param message - 要显示的消息
+   */
   function showNotification(message: string) {
     notification.value = message
     setTimeout(() => {
@@ -91,24 +140,37 @@ export const useGameStore = defineStore('game', () => {
     }, 3000)
   }
   
-  // Character Actions
+  // ==================== 角色动作 ====================
+  
+  /**
+   * 设置角色名称
+   * @param name - 角色名称
+   */
   function setCharacterName(name: string) {
     character.value.name = name
   }
   
+  /**
+   * 选择阵营
+   * @param faction - 阵营（联盟或部落）
+   */
   function selectFaction(faction: 'alliance' | 'horde') {
     character.value.faction = faction
     character.value.race = null
     character.value.class = null
   }
   
+  /**
+   * 选择种族并应用种族属性加成
+   * @param race - 种族名称
+   */
   function selectRace(race: string) {
     const raceData = RACES[race]
     if (!raceData) return
     
     character.value.race = race
     
-    // Apply race bonuses
+    // 应用种族属性加成
     const baseStats: Stats = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }
     if (raceData.bonus) {
       Object.entries(raceData.bonus).forEach(([stat, value]) => {
@@ -121,6 +183,10 @@ export const useGameStore = defineStore('game', () => {
     updateDerivedAttributes()
   }
   
+  /**
+   * 选择职业
+   * @param className - 职业名称
+   */
   function selectClass(className: string) {
     const classData = CLASSES[className]
     if (!classData) return
@@ -129,6 +195,9 @@ export const useGameStore = defineStore('game', () => {
     updateDerivedAttributes()
   }
   
+  /**
+   * 更新角色的衍生属性（生命、法力值等）
+   */
   function updateDerivedAttributes() {
     const attrs = attributes.value
     character.value.maxHp = attrs.maxHp
@@ -137,13 +206,16 @@ export const useGameStore = defineStore('game', () => {
     character.value.mana = Math.min(character.value.mana, character.value.maxMana)
   }
   
+  /**
+   * 检查是否升级，并处理升级逻辑
+   */
   function checkLevelUp() {
     while (character.value.exp >= getExpForLevel(character.value.level + 1) && character.value.level < MAX_LEVEL) {
       character.value.exp -= getExpForLevel(character.value.level)
       character.value.level++
       character.value.expToNextLevel = getExpForLevel(character.value.level + 1)
       
-      // Stat increases
+      // 属性增长
       character.value.stats.str += 1
       character.value.stats.dex += 1
       character.value.stats.int += 1
@@ -161,20 +233,28 @@ export const useGameStore = defineStore('game', () => {
     }
   }
   
-  // Inventory Actions
+  // ==================== 背包动作 ====================
+  
+  /**
+   * 添加物品到背包
+   * @param item - 物品数据
+   * @param quantity - 数量（默认为1）
+   * @returns 是否成功添加
+   */
   function addItemToInventory(item: LootItemData, quantity: number = 1): boolean {
     if (!item) return false
     
     const itemType = ITEM_TYPES[item.type]
     if (!itemType) return false
     
+    // 金币直接加，不占用背包
     if (item.type === 'gold') {
       character.value.gold += quantity
       saveGame()
       return true
     }
     
-    // Try to stack
+    // 尝试堆叠
     if (itemType.stackable && itemType.maxStack) {
       const existing = inventory.value.find(
         (i) => i.name === item.name && i.type === item.type && (i.quantity || 1) < itemType.maxStack
@@ -189,6 +269,7 @@ export const useGameStore = defineStore('game', () => {
       }
     }
     
+    // 检查背包是否已满（最多8个格子）
     if (inventory.value.length >= 8) {
       return false
     }
@@ -199,6 +280,10 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
   
+  /**
+   * 使用背包物品
+   * @param index - 物品在背包中的索引
+   */
   function useItem(index: number) {
     const item = inventory.value[index]
     if (!item) return
@@ -211,18 +296,21 @@ export const useGameStore = defineStore('game', () => {
     
     let message = ''
     
+    // 治疗效果
     if (item.healing) {
       const healAmount = Math.min(item.healing, character.value.maxHp - character.value.hp)
       character.value.hp += healAmount
       message = `${item.icon} 使用${item.name}，恢复了 ${healAmount} 点生命值！`
     }
     
+    // 法力恢复
     if (item.manaRestore) {
       const manaAmount = Math.min(item.manaRestore, character.value.maxMana - character.value.mana)
       character.value.mana += manaAmount
       message = `${item.icon} 使用${item.name}，恢复了 ${manaAmount} 点法力值！`
     }
     
+    // 属性加成
     if (item.statBonus) {
       const bonusTexts: string[] = []
       for (const [stat, value] of Object.entries(item.statBonus)) {
@@ -237,6 +325,7 @@ export const useGameStore = defineStore('game', () => {
       message = `${item.icon} 使用${item.name}，${bonusTexts.join(', ')}！`
     }
     
+    // 战斗中使用的伤害效果
     if (item.effect === 'damage' && item.damage && combatActive.value) {
       const damage = rollDice(item.damage[0], item.damage[1])
       enemyHp.value -= damage
@@ -248,13 +337,14 @@ export const useGameStore = defineStore('game', () => {
       }
     }
     
+    // 战斗中使用的护盾效果
     if (item.effect === 'shield' && item.shield && combatActive.value) {
       shieldActive.value = true
       shieldAmount.value = item.shield
       message = `${item.icon} 使用${item.name}，获得 ${item.shield} 点护盾！`
     }
     
-    // Consume item
+    // 消耗物品
     if (item.quantity && item.quantity > 1) {
       item.quantity--
     } else {
@@ -265,6 +355,10 @@ export const useGameStore = defineStore('game', () => {
     saveGame()
   }
   
+  /**
+   * 丢弃物品
+   * @param index - 物品在背包中的索引
+   */
   function discardItem(index: number) {
     const item = inventory.value[index]
     if (!item) return
@@ -280,7 +374,13 @@ export const useGameStore = defineStore('game', () => {
     saveGame()
   }
   
-  // Combat Actions
+  // ==================== 战斗动作 ====================
+  
+  /**
+   * 开始战斗
+   * @param enemyKey - 敌人标识
+   * @param cellIndex - 地图格子索引（可选）
+   */
   function startCombat(enemyKey: string, cellIndex?: number) {
     const enemyData = ENEMIES[enemyKey]
     if (!enemyData) return
@@ -300,14 +400,25 @@ export const useGameStore = defineStore('game', () => {
     addCombatLog(`它有 ${enemyData.hp} 点生命值，准备战斗！`, 'system')
   }
   
+  /**
+   * 添加战斗日志
+   * @param message - 日志消息
+   * @param type - 消息类型（默认为'system'）
+   */
   function addCombatLog(message: string, type: string = 'system') {
     combatLog.value.push({ message, type })
   }
   
+  /**
+   * 清空战斗日志
+   */
   function clearCombatLog() {
     combatLog.value = []
   }
   
+  /**
+   * 玩家普通攻击
+   */
   function playerAttack() {
     if (!combatActive.value || !playerTurn.value || combatEnded.value) return
     
@@ -351,6 +462,10 @@ export const useGameStore = defineStore('game', () => {
     }, 800)
   }
   
+  /**
+   * 使用职业技能
+   * @param index - 技能在技能列表中的索引
+   */
   function useAbility(index: number) {
     if (!combatActive.value || !playerTurn.value || combatEnded.value) return
     
@@ -404,6 +519,9 @@ export const useGameStore = defineStore('game', () => {
     }, 800)
   }
   
+  /**
+   * 敌人回合
+   */
   function enemyTurn() {
     if (!combatActive.value || combatEnded.value) return
     
@@ -418,12 +536,14 @@ export const useGameStore = defineStore('game', () => {
     const playerAC = 10 + attrs.physicalDefense
     addCombatLog(`${enemyData.icon} ${enemyData.name} 发起攻击...`, 'system')
     
+    // 闪避判定
     const dodgeChance = attrs.dodgeChance / 100
     if (Math.random() < dodgeChance) {
       addCombatLog(`👻 你灵巧地闪避了攻击！`, 'system')
     } else if (totalAttack >= playerAC) {
       let damage = rollDice(enemyData.damage[0], enemyData.damage[1])
       
+      // 护盾减伤
       if (shieldActive.value) {
         if (damage <= shieldAmount.value) {
           shieldActive.value = false
@@ -454,6 +574,9 @@ export const useGameStore = defineStore('game', () => {
     playerTurn.value = true
   }
   
+  /**
+   * 尝试逃跑
+   */
   function tryFlee() {
     if (!combatActive.value || !playerTurn.value || combatEnded.value) return
     
@@ -474,6 +597,10 @@ export const useGameStore = defineStore('game', () => {
     }
   }
   
+  /**
+   * 结束战斗
+   * @param result - 战斗结果（胜利、失败、逃跑）
+   */
   function endCombat(result: 'victory' | 'defeat' | 'fled') {
     combatEnded.value = true
     combatActive.value = false
@@ -488,6 +615,7 @@ export const useGameStore = defineStore('game', () => {
       addCombatLog(`获得 ${enemyData.xp} 点经验值`, 'system')
       addCombatLog(`💰 获得 ${enemyData.gold} 金币`, 'system')
       
+      // 30%概率掉落战利品
       if (Math.random() < 0.3) {
         const loot = { ...LOOT_ITEMS[Math.floor(Math.random() * LOOT_ITEMS.length)] }
         if (addItemToInventory(loot)) {
@@ -498,15 +626,12 @@ export const useGameStore = defineStore('game', () => {
       updateQuestProgress(currentEnemy.value)
       checkLevelUp()
       
-      if (currentCellIndex.value !== null) {
-        // Mark cell completed - will be handled in UI
-      }
-      
       addToAdventureLog(`击败了 ${enemyData.name}`, 'combat')
       
     } else if (result === 'defeat' && enemyData) {
       addCombatLog('💀 你被击败了...', 'damage')
       
+      // 惩罚：清空经验，恢复半血半蓝
       const lostExp = character.value.exp
       character.value.exp = 0
       character.value.hp = Math.floor(character.value.maxHp * 0.5)
@@ -526,7 +651,12 @@ export const useGameStore = defineStore('game', () => {
     saveGame()
   }
   
-  // Quest Actions
+  // ==================== 任务动作 ====================
+  
+  /**
+   * 更新任务进度
+   * @param enemyKey - 被击杀的敌人标识
+   */
   function updateQuestProgress(enemyKey: string) {
     const locationData = currentLocationData.value
     if (!locationData) return
@@ -546,7 +676,7 @@ export const useGameStore = defineStore('game', () => {
             questState.progress[obj.enemyKey]++
             
             if (questState.progress[obj.enemyKey] >= obj.target) {
-              // Quest objective completed
+              // 任务目标完成
               showNotification(`任务目标完成：${obj.target}x ${ENEMIES[obj.enemyKey].name}`)
             }
           }
@@ -557,6 +687,10 @@ export const useGameStore = defineStore('game', () => {
     saveGame()
   }
   
+  /**
+   * 接受任务
+   * @param questKey - 任务标识
+   */
   function acceptQuest(questKey: string) {
     if (!quests.value[questKey]) {
       quests.value[questKey] = { active: true, progress: {} }
@@ -566,13 +700,24 @@ export const useGameStore = defineStore('game', () => {
     }
   }
   
-  // Location Actions
+  // ==================== 地点动作 ====================
+  
+  /**
+   * 设置当前地点
+   * @param locationKey - 地点标识
+   */
   function setLocation(locationKey: string) {
     currentLocation.value = locationKey
     saveGame()
   }
   
-  // Adventure Log
+  // ==================== 冒险日志 ====================
+  
+  /**
+   * 添加日志条目
+   * @param message - 日志消息
+   * @param type - 日志类型（默认为'info'）
+   */
   function addToAdventureLog(message: string, type: LogEntry['type'] = 'info') {
     adventureLog.value.push({
       id: Date.now().toString(),
@@ -583,6 +728,11 @@ export const useGameStore = defineStore('game', () => {
     })
   }
   
+  /**
+   * 获取日志图标
+   * @param type - 日志类型
+   * @returns 图标emoji
+   */
   function getLogIcon(type: LogEntry['type']): string {
     const icons: { [key: string]: string } = {
       info: '📜',
@@ -594,7 +744,11 @@ export const useGameStore = defineStore('game', () => {
     return icons[type] || '📜'
   }
   
-  // Save/Load
+  // ==================== 存档/读档 ====================
+  
+  /**
+   * 保存游戏到localStorage
+   */
   function saveGame() {
     const saveData = {
       character: character.value,
@@ -608,6 +762,10 @@ export const useGameStore = defineStore('game', () => {
     localStorage.setItem('wowGameState', JSON.stringify(saveData))
   }
   
+  /**
+   * 从localStorage加载游戏
+   * @returns 是否成功加载
+   */
   function loadGame(): boolean {
     const saved = localStorage.getItem('wowGameState')
     if (saved) {
@@ -628,6 +786,9 @@ export const useGameStore = defineStore('game', () => {
     return false
   }
   
+  /**
+   * 重置游戏（清空存档）
+   */
   function resetGame() {
     character.value = {
       name: '冒险者',
@@ -661,11 +822,18 @@ export const useGameStore = defineStore('game', () => {
     gameState.value = 'start'
   }
   
+  /**
+   * 开始新游戏
+   */
   function startNewGame() {
     resetGame()
     gameState.value = 'creation'
   }
   
+  /**
+   * 继续游戏
+   * @returns 是否成功继续
+   */
   function continueGame() {
     if (loadGame() && character.value.race && character.value.class) {
       gameState.value = 'playing'
@@ -674,6 +842,9 @@ export const useGameStore = defineStore('game', () => {
     return false
   }
   
+  /**
+   * 完成角色创建，进入游戏
+   */
   function finishCharacterCreation() {
     if (!character.value.race || !character.value.class) return
     gameState.value = 'playing'
@@ -682,7 +853,7 @@ export const useGameStore = defineStore('game', () => {
   }
   
   return {
-    // State
+    // 状态
     gameState,
     notification,
     character,
@@ -703,13 +874,13 @@ export const useGameStore = defineStore('game', () => {
     combatLog,
     currentCellIndex,
     
-    // Computed
+    // 计算属性
     attributes,
     classAbilities,
     currentLocationData,
     currentQuestData,
     
-    // Actions
+    // 动作
     setGameState,
     showNotification,
     setCharacterName,

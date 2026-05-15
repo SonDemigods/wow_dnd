@@ -44,11 +44,22 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 游戏开始界面组件
+ * @description 显示游戏Logo、介绍信息和主要操作按钮（开始新游戏/继续游戏）
+ * @module components/StartScreen
+ */
+
 import { computed } from 'vue'
 import { useGameStore } from '@/stores/game'
 
+/** 游戏状态管理Store实例 */
 const gameStore = useGameStore()
 
+/**
+ * 检查是否有有效的游戏存档
+ * @returns 有存档且角色已创建返回true
+ */
 const hasSavedGame = computed(() => {
   try {
     const saved = localStorage.getItem('wowGameState')
@@ -60,10 +71,18 @@ const hasSavedGame = computed(() => {
   }
 })
 
+/**
+ * 处理开始新游戏按钮点击
+ * 重置游戏状态并进入角色创建流程
+ */
 const handleNewGame = () => {
   gameStore.startNewGame()
 }
 
+/**
+ * 处理继续游戏按钮点击
+ * 加载存档并进入游戏界面
+ */
 const handleContinue = () => {
   gameStore.continueGame()
 }
@@ -85,6 +104,37 @@ const handleContinue = () => {
   text-align: center;
   max-width: 800px;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+@media (max-width: 768px) {
+  .start-screen {
+    display: block;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 20px;
+  }
+  
+  .start-content {
+    padding: 20px 0;
+    min-height: auto;
+    display: block;
+  }
+
+  .logo-section {
+    margin-bottom: 40px;
+  }
+
+  .logo-icon {
+    font-size: 4rem;
+  }
+
+  .logo-title {
+    font-size: 2rem;
+  }
 }
 
 .logo-section {

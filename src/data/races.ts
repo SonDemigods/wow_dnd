@@ -1,5 +1,16 @@
+/**
+ * @fileoverview 种族和阵营数据定义文件
+ * @description 包含游戏中所有可选择的阵营和种族信息，包括属性加成、图标和描述
+ * @module data/races
+ */
+
+// 导入类型定义
 import type { FactionData, RaceData } from '../types'
 
+/**
+ * 阵营数据定义
+ * 包含联盟和部落两大阵营的基本信息
+ */
 export const FACTIONS: Record<string, FactionData> = {
   alliance: {
     name: '联盟',
@@ -15,6 +26,10 @@ export const FACTIONS: Record<string, FactionData> = {
   }
 }
 
+/**
+ * 种族数据定义
+ * 包含所有可选择的种族，每个种族有自己的阵营归属、属性加成和描述
+ */
 export const RACES: Record<string, RaceData> = {
   human: {
     name: '人类',

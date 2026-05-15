@@ -1,5 +1,15 @@
+/**
+ * @fileoverview 地图和位置数据模块
+ * @description 包含大陆信息和世界各地位置的详细数据
+ * @module data/locations
+ */
+
 import type { ContinentData, LocationData } from '../types'
 
+/**
+ * 大陆数据
+ * @type {Record<string, ContinentData>}
+ */
 export const CONTINENTS: Record<string, ContinentData> = {
   kalimdor: {
     name: '卡利姆多',
@@ -24,6 +34,10 @@ export const CONTINENTS: Record<string, ContinentData> = {
   }
 }
 
+/**
+ * 世界地图位置数据
+ * @type {Record<string, LocationData>}
+ */
 export const WORLD_LOCATIONS: Record<string, LocationData> = {
   teldrassil: {
     name: 'teldrassil',
@@ -625,4 +639,8 @@ export const WORLD_LOCATIONS: Record<string, LocationData> = {
   }
 }
 
+/**
+ * 位置数据的别名
+ * @type {Record<string, LocationData>}
+ */
 export const LOCATIONS = WORLD_LOCATIONS
