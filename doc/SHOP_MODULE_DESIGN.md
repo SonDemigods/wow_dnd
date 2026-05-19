@@ -152,10 +152,10 @@ export interface ShopTransaction {
 
 | 事件名称 | 触发时机 | 事件数据 |
 |----------|----------|----------|
-| `shop:purchased` | 购买商品成功时 | `ShopItemPurchasedEvent` |
-| `shop:sold` | 出售商品成功时 | `ShopItemSoldEvent` |
-| `shop:refreshed` | 商店刷新完成时 | `ShopRefreshedEvent` |
-| `NOTIFICATION` | 交易状态变化时 | 提示消息 |
+| `SHOP_PURCHASED` | 购买商品成功时 | `ShopItemPurchasedEvent` |
+| `SHOP_SOLD` | 出售商品成功时 | `ShopItemSoldEvent` |
+| `SHOP_REFRESHED` | 商店刷新完成时 | `ShopRefreshedEvent` |
+| `SHOP_NOTIFICATION` | 交易状态变化时 | 提示消息 |
 
 ---
 

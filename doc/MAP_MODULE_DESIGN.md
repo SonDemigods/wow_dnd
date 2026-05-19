@@ -124,10 +124,10 @@ export interface MapState {
 
 | 事件名称                       | 触发时机      | 事件数据                       |
 | -------------------------- | --------- | -------------------------- |
-| `map:locationEntered`      | 进入探索区域时    | `{ locationId, location }` |
-| `map:markersUpdated`       | 标记列表变化时    | `{ markers }`              |
-| `map:modeChanged`          | 地图模式变化时    | `{ mode }`                 |
-| `map:unlockedLocationsChanged` | 解锁地点变化时 | `{ locations }`            |
+| `MAP_LOCATION_ENTERED`      | 进入探索区域时    | `{ locationId, location }` |
+| `MAP_MARKERS_UPDATED`       | 标记列表变化时    | `{ markers }`              |
+| `MAP_MODE_CHANGED`          | 地图模式变化时    | `{ mode }`                 |
+| `MAP_UNLOCKED_LOCATIONS_CHANGED` | 解锁地点变化时 | `{ locations }`            |
 
 ***
 
@@ -138,7 +138,7 @@ export interface MapState {
 1. 调用 `enterLocation(locationId)` 方法
 2. 检查地点是否存在
 3. 获取玩家等级，检查是否满足等级要求
-4. 如果满足，触发 `map:locationEntered` 事件
+4. 如果满足，触发 `MAP_LOCATION_ENTERED` 事件
 5. 跳转到探索界面
 
 ### 地点解锁检查流程
@@ -147,7 +147,7 @@ export interface MapState {
 2. 获取所有地点列表
 3. 筛选出 requiredLevel <= playerLevel 的地点
 4. 返回已解锁的地点列表
-5. 触发 `map:unlockedLocationsChanged` 事件
+5. 触发 `MAP_UNLOCKED_LOCATIONS_CHANGED` 事件
 
 ***
 

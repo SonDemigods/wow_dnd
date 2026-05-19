@@ -22,7 +22,7 @@
 | 职责 | 描述 |
 |------|------|
 | 格子管理 | 10*10探索格子的状态管理 |
-| 探索内容重置 | 切换区域时重置探索内容 |
+| 探索内容重置 | 切换区域时重置探索内容和冒险日志 |
 | 营地功能 | 角色状态恢复 |
 | 商店交互 | 探索区域内的商店交易 |
 | 任务NPC交互 | 任务交接 |
@@ -48,6 +48,7 @@
 | 需求编号 | 需求描述 | 来源 |
 |----------|----------|------|
 | FR-EXP-001 | 每次切换探索区域重置已探索内容 | 探索机制 |
+| FR-EXP-001-1 | 每次切换探索区域重置冒险日志 | 探索机制 |
 | FR-EXP-002 | 探索界面由10*10格子组成 | 界面设计 |
 | FR-EXP-003 | 格子默认状态为未探索 | 初始状态 |
 | FR-EXP-004 | 默认显示营地、商店、任务NPC三个固定格子 | 核心功能 |
@@ -133,15 +134,16 @@ export interface ExplorationState {
 
 | 事件名称 | 触发时机 | 事件数据 |
 |----------|----------|----------|
-| `exploration:areaEntered` | 进入探索区域时 | `{ areaId }` |
-| `exploration:gridRevealed` | 格子翻开时 | `{ x, y, eventType, eventData }` |
-| `exploration:campUsed` | 营地使用时 | - |
-| `exploration:shopItemBought` | 购买商店物品时 | `{ itemId, count, price }` |
-| `exploration:shopItemSold` | 出售物品给商店时 | `{ itemId, count, price }` |
-| `exploration:npcInteracted` | 与任务NPC交互时 | `{ availableQuests, completableQuests }` |
-| `exploration:monsterDefeated` | 怪物被击败时 | `{ monsterId, rewards }` |
-| `exploration:itemFound` | 发现物品时 | `{ itemId, count }` |
-| `exploration:trapTriggered` | 触发陷阱时 | `{ trapId, damage }` |
+| `EXPLORATION_AREA_ENTERED` | 进入探索区域时 | `{ areaId }` |
+| `EXPLORATION_GRID_REVEALED` | 格子翻开时 | `{ x, y, eventType, eventData }` |
+| `EXPLORATION_CAMP_USED` | 营地使用时 | - |
+| `EXPLORATION_SHOP_ITEM_BOUGHT` | 购买商店物品时 | `{ itemId, count, price }` |
+| `EXPLORATION_SHOP_ITEM_SOLD` | 出售物品给商店时 | `{ itemId, count, price }` |
+| `EXPLORATION_NPC_INTERACTED` | 与任务NPC交互时 | `{ availableQuests, completableQuests }` |
+| `EXPLORATION_MONSTER_DEFEATED` | 怪物被击败时 | `{ monsterId, rewards }` |
+| `EXPLORATION_ITEM_FOUND` | 发现物品时 | `{ itemId, count }` |
+| `EXPLORATION_TRAP_TRIGGERED` | 触发陷阱时 | `{ trapId, damage }` |
+| `EXPLORATION_PLAYER_DIED` | 玩家死亡时 | - |
 
 ***
 
@@ -151,10 +153,11 @@ export interface ExplorationState {
 
 1. 调用 `enterArea(areaId)` 方法
 2. 重置探索状态，所有格子设为未探索
-3. 初始化营地、商店、任务NPC三个固定格子
-4. 随机生成其余格子的事件
-5. 保存探索状态
-6. 触发 `exploration:areaEntered` 事件
+3. 重置冒险日志
+4. 初始化营地、商店、任务NPC三个固定格子
+5. 随机生成其余格子的事件
+6. 保存探索状态
+7. 触发 `EXPLORATION_AREA_ENTERED` 事件
 
 ### 翻开格子流程
 
@@ -163,7 +166,7 @@ export interface ExplorationState {
 3. 如果未翻开，设置为已揭示状态
 4. 根据事件类型触发对应事件
 5. 除怪物类型事件后，格子设为已使用状态
-6. 触发 `exploration:gridRevealed` 事件
+6. 触发 `EXPLORATION_GRID_REVEALED` 事件
 
 ### 使用营地流程
 
@@ -171,7 +174,7 @@ export interface ExplorationState {
 2. 检查营地是否已使用
 3. 如果未使用，恢复角色状态
 4. 标记营地为已使用
-5. 触发 `exploration:campUsed` 事件
+5. 触发 `EXPLORATION_CAMP_USED` 事件
 
 ### 商店交易流程
 

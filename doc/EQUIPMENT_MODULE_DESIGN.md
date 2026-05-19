@@ -115,9 +115,9 @@ export interface EquipmentState {
 
 | 事件名称 | 触发时机 | 事件数据 |
 |----------|----------|----------|
-| `equipment:equipped` | 装备穿戴成功时 | `{ slot, item }` |
-| `equipment:unequipped` | 装备卸下时 | `{ slot, item }` |
-| `equipment:statsUpdated` | 属性更新时 | `{ stats }` |
+| `EQUIPMENT_EQUIPPED` | 装备穿戴成功时 | `{ slot, item }` |
+| `EQUIPMENT_UNEQUIPPED` | 装备卸下时 | `{ slot, item }` |
+| `EQUIPMENT_STATS_UPDATED` | 属性更新时 | `{ stats }` |
 
 ---
 

@@ -313,4 +313,248 @@ request.onupgradeneeded = (event) => {
 
 ---
 
+## 数据备份与导入模块
+
+### 9.1 功能概述
+
+数据备份与导入模块允许用户在更换设备或重新安装应用时进行存档迁移。该模块提供完整的备份导出、数据导入和存档迁移功能，确保用户数据的安全性和可移植性。
+
+### 9.2 数据备份功能
+
+#### 9.2.1 实现机制
+
+**备份触发方式：**
+- 手动触发：用户主动点击备份按钮
+- 自动触发：游戏存档变更后定期自动备份（每日一次）
+- 关键节点触发：角色升级、任务完成等重要事件后
+
+**备份流程：**
+```
+用户触发备份 → 遍历所有 Store → 收集数据 → 序列化 → 加密 → 生成备份文件 → 触发下载
+```
+
+#### 9.2.2 文件格式规范
+
+**文件格式：** `.json` 格式，UTF-8 编码
+
+**文件命名规则：**
+```
+wow_dnd_backup_{yyyyMMdd}_{HHmmss}.json
+示例：wow_dnd_backup_20260519_143022.json
+```
+
+**文件结构：**
+```typescript
+interface BackupFile {
+  version: string;           // 备份格式版本
+  timestamp: number;         // 备份时间戳
+  checksum: string;          // 数据校验和
+  gameVersion: string;       // 游戏版本号
+  data: {
+    character: CharacterData;
+    inventory: InventoryData;
+    quests: QuestData[];
+    equipment: EquipmentData;
+    map: MapData;
+    skills: SkillsData;
+    exploration: ExplorationData;
+    npc: NPCData;
+    combat: CombatData;
+    adventureLog: AdventureLogData;
+    shop: ShopData;
+    gameState: GameStateData;
+  };
+}
+```
+
+#### 9.2.3 存储位置设计
+
+**本地存储：**
+- 浏览器下载目录（用户手动备份）
+- 浏览器 IndexedDB（自动备份，保留最近5份）
+
+**备份保留策略：**
+| 备份类型 | 保留数量 | 说明 |
+|----------|----------|------|
+| 自动备份 | 最近5份 | 超过自动删除最旧的 |
+| 手动备份 | 无限制 | 用户自行管理 |
+
+### 9.3 数据导入功能
+
+#### 9.3.1 兼容性要求
+
+**版本兼容策略：**
+- 向后兼容：新版本可以导入旧版本备份
+- 版本转换：自动处理数据结构差异
+- 版本提示：导入不兼容版本时给出明确提示
+
+**兼容版本范围：**
+- 当前版本：完全兼容
+- 前1个大版本：自动迁移
+- 更早版本：提示用户更新游戏
+
+#### 9.3.2 校验机制
+
+**校验流程：**
+1. **文件格式校验**：验证 JSON 格式是否正确
+2. **版本兼容性校验**：检查备份文件版本
+3. **数据完整性校验**：验证 checksum 是否匹配
+4. **结构完整性校验**：验证必需字段是否存在
+5. **数据类型校验**：验证数据类型是否正确
+
+**校验失败处理：**
+| 校验类型 | 失败处理 | 用户提示 |
+|----------|----------|----------|
+| 文件格式错误 | 拒绝导入 | "备份文件格式错误" |
+| 版本不兼容 | 拒绝导入 | "备份文件版本过旧，请更新游戏" |
+| 数据损坏 | 拒绝导入 | "备份文件已损坏" |
+| 结构不完整 | 尝试部分导入 | "部分数据缺失，是否继续导入" |
+
+#### 9.3.3 异常处理流程
+
+```
+选择文件 → 文件格式校验 → 版本校验 → checksum校验 → 数据结构校验 → 数据导入 → 同步到IndexedDB → 完成提示
+              ↓                ↓              ↓               ↓
+           [格式错误]      [版本不兼容]    [数据损坏]      [结构不完整]
+              ↓                ↓              ↓               ↓
+           提示错误         提示错误         提示错误      提示确认继续
+```
+
+### 9.4 存档迁移操作步骤
+
+#### 9.4.1 导出存档（旧设备）
+
+1. 打开游戏设置界面
+2. 点击"导出存档"按钮
+3. 确认导出操作
+4. 浏览器自动下载备份文件
+5. 通过邮件、云盘等方式传输到新设备
+
+#### 9.4.2 导入存档（新设备）
+
+1. 打开游戏设置界面
+2. 点击"导入存档"按钮
+3. 选择备份文件
+4. 系统自动校验文件
+5. 确认覆盖现有存档（如有）
+6. 等待导入完成
+7. 重新加载游戏
+
+#### 9.4.3 迁移注意事项
+
+| 注意事项 | 说明 |
+|----------|------|
+| 数据覆盖 | 导入会覆盖当前所有游戏数据 |
+| 网络要求 | 无需网络，纯本地操作 |
+| 文件大小 | 备份文件通常 < 100KB |
+| 兼容性 | 确保新旧设备游戏版本一致 |
+
+### 9.5 安全保障措施
+
+#### 9.5.1 数据加密
+
+**加密方式：** AES-256-GCM
+
+**加密内容：**
+- 用户角色名称
+- 角色属性数据
+- 游戏进度数据
+
+**加密密钥：**
+- 使用用户设备唯一标识生成
+- 不存储在服务器端
+- 用户自行负责备份文件安全
+
+#### 9.5.2 数据校验
+
+**校验和算法：** SHA-256
+
+**校验时机：**
+- 导出时生成校验和
+- 导入时验证校验和
+- 确保数据完整性
+
+#### 9.5.3 权限控制
+
+**访问限制：**
+- 仅游戏内部可访问备份文件
+- 不向第三方分享数据
+- 用户完全控制数据
+
+**隐私保护：**
+- 不收集用户个人信息
+- 不上传备份文件到服务器
+- 所有操作均在本地完成
+
+### 9.6 API 接口设计
+
+#### 9.6.1 备份服务接口
+
+```typescript
+export interface IBackupService {
+  // 创建备份
+  createBackup(): Promise<BackupFile>;
+  
+  // 导出备份文件（触发下载）
+  exportBackup(): Promise<void>;
+  
+  // 获取自动备份列表
+  getAutoBackups(): Promise<BackupFile[]>;
+  
+  // 删除指定备份
+  deleteBackup(timestamp: number): Promise<void>;
+  
+  // 清空所有自动备份
+  clearAutoBackups(): Promise<void>;
+}
+```
+
+#### 9.6.2 导入服务接口
+
+```typescript
+export interface IImportService {
+  // 校验备份文件
+  validateBackup(file: File): Promise<ValidationResult>;
+  
+  // 导入备份文件
+  importBackup(file: File): Promise<ImportResult>;
+  
+  // 检查版本兼容性
+  checkVersionCompatibility(backupVersion: string): CompatibilityResult;
+}
+```
+
+#### 9.6.3 类型定义
+
+```typescript
+interface ValidationResult {
+  success: boolean;
+  error?: string;
+  version?: string;
+  timestamp?: number;
+  gameVersion?: string;
+}
+
+interface ImportResult {
+  success: boolean;
+  error?: string;
+  importedStores: string[];
+  skippedStores: string[];
+}
+
+interface CompatibilityResult {
+  compatible: boolean;
+  message: string;
+  requiresMigration: boolean;
+}
+```
+
+### 9.7 版本历史
+
+| 版本 | 日期 | 修改内容 | 作者 |
+|------|------|----------|------|
+| v1.0 | 2026-05-19 | 初始版本，支持基础备份导入功能 | System |
+
+---
+
 **文档结束**

@@ -23,6 +23,11 @@
 |------|------|
 | 物品管理 | 添加、移除、查找物品 |
 | 物品使用 | 消耗品使用、效果触发 |
+| 物品丢弃 | 支持单次和批量丢弃，含确认提示 |
+| 物品排序 | 支持多维度排序（类型、品质、等级、时间） |
+| 背包整理 | 一键整理，优化空间利用率 |
+| 物品搜索 | 支持关键词快速查找 |
+| 物品筛选 | 支持多条件组合筛选 |
 | 容量管理 | 背包大小控制,空槽位管理 |
 | 数据持久化 | 背包数据的本地存储与加载 |
 
@@ -48,6 +53,11 @@
 | FR-INV-005 | 支持背包容量管理 | 背包系统 |
 | FR-INV-006 | 支持物品叠加 | 物品管理 |
 | FR-INV-007 | 数据持久化存储 | 存档系统 |
+| FR-INV-008 | 支持物品丢弃（单次/批量），含确认提示 | 物品管理 |
+| FR-INV-009 | 支持物品排序（按类型、品质、等级、获取时间） | 物品管理 |
+| FR-INV-010 | 支持背包一键整理功能 | 物品管理 |
+| FR-INV-011 | 支持物品搜索（按名称关键词） | 查询功能 |
+| FR-INV-012 | 支持物品筛选（按类型、品质、可堆叠、绑定） | 查询功能 |
 
 ### 非功能需求
 
@@ -55,6 +65,8 @@
 |----------|----------|--------|
 | NFR-INV-001 | 操作失败时回滚数据 | 高 |
 | NFR-INV-002 | 单次操作响应时间 < 10ms | 高 |
+| NFR-INV-003 | 支持移动端适配 | 高 |
+| NFR-INV-004 | 排序/筛选操作流畅性 < 50ms | 中 |
 
 ---
 
@@ -72,6 +84,22 @@ export interface IInventoryService {
   getEmptySlots(): number;
   isFull(): boolean;
   reset(): void;
+  
+  // 物品丢弃
+  dropItem(index: number, count?: number): boolean;
+  dropItems(indices: number[]): boolean;
+  
+  // 物品排序
+  sortItems(sortBy: SortField, order: SortOrder): void;
+  
+  // 背包整理
+  organizeInventory(): void;
+  
+  // 物品搜索
+  searchItems(keyword: string): InventoryItem[];
+  
+  // 物品筛选
+  filterItems(filters: ItemFilters): InventoryItem[];
 }
 ```
 
@@ -88,6 +116,9 @@ export interface InventoryItem {
   value: number;
   stackable: boolean;
   count: number;
+  level?: number;
+  bindOnPickup: boolean;
+  acquiredAt: number;
   effect?: ItemEffect;
 }
 
@@ -95,9 +126,22 @@ export type ItemType = 'weapon' | 'armor' | 'consumable' | 'quest' | 'misc';
 export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
 export interface ItemEffect {
-  type: 'heal' | 'buff' | 'debuff';
+  type: 'heal';
   value: number;
-  duration?: number;
+}
+
+// 排序相关类型
+export type SortField = 'type' | 'rarity' | 'level' | 'acquiredAt' | 'name';
+export type SortOrder = 'asc' | 'desc';
+
+// 筛选相关类型
+export interface ItemFilters {
+  types?: ItemType[];
+  rarities?: ItemRarity[];
+  stackable?: boolean;
+  bindOnPickup?: boolean;
+  minLevel?: number;
+  maxLevel?: number;
 }
 ```
 
@@ -109,6 +153,9 @@ export interface ItemEffect {
 | `INVENTORY_ITEM_REMOVED` | 物品移除时 | `{ item, index }` |
 | `INVENTORY_ITEM_USED` | 物品使用时 | `{ item, index }` |
 | `INVENTORY_UPDATED` | 背包更新时 | - |
+| `INVENTORY_ITEM_DROPPED` | 物品丢弃时 | `{ item, index, count }` |
+| `INVENTORY_SEARCH_RESULT` | 搜索完成时 | `{ results: InventoryItem[], keyword: string }` |
+| `INVENTORY_FILTER_RESULT` | 筛选完成时 | `{ results: InventoryItem[], filters: ItemFilters }` |
 
 ---
 
@@ -133,6 +180,68 @@ export interface ItemEffect {
 5. 减少物品数量
 6. 如果数量为0,清空该槽位
 7. 触发 `INVENTORY_ITEM_USED` 事件
+
+### 物品丢弃流程
+
+**单次丢弃：**
+1. 获取指定槽位的物品
+2. 检查物品是否存在
+3. 检查物品是否绑定（绑定物品不可丢弃）
+4. 弹出确认提示框
+5. 用户确认后，减少物品数量或清空槽位
+6. 触发 `INVENTORY_ITEM_REMOVED` 事件
+7. 同步数据到本地存储
+
+**批量丢弃：**
+1. 获取选中的物品索引列表
+2. 过滤掉绑定物品
+3. 弹出确认提示框（显示将丢弃的物品数量）
+4. 用户确认后，依次移除选中的物品
+5. 触发 `INVENTORY_UPDATED` 事件
+6. 同步数据到本地存储
+
+### 物品排序流程
+
+1. 接收排序字段和排序顺序参数
+2. 创建排序比较函数
+3. 根据排序字段进行比较：
+   - type: 按物品类型排序（武器 > 护甲 > 消耗品 > 任务物品 > 杂物）
+   - rarity: 按品质排序（传说 > 史诗 > 稀有 > 优秀 > 普通）
+   - level: 按物品等级排序
+   - acquiredAt: 按获取时间排序
+   - name: 按名称字母顺序排序
+4. 执行排序
+5. 触发 `INVENTORY_UPDATED` 事件
+
+### 背包整理流程
+
+1. 将所有物品按类型分组
+2. 每组内按品质排序
+3. 合并空槽位到背包末尾
+4. 可堆叠物品合并到同一槽位
+5. 触发 `INVENTORY_UPDATED` 事件
+6. 同步数据到本地存储
+
+### 物品搜索流程
+
+1. 接收搜索关键词
+2. 遍历背包物品
+3. 模糊匹配物品名称（不区分大小写）
+4. 返回匹配的物品列表
+5. 触发 `INVENTORY_SEARCH_RESULT` 事件
+
+### 物品筛选流程
+
+1. 接收筛选条件对象
+2. 遍历背包物品
+3. 按条件过滤：
+   - types: 匹配物品类型
+   - rarities: 匹配物品品质
+   - stackable: 是否可堆叠
+   - bindOnPickup: 是否绑定
+   - minLevel/maxLevel: 等级范围
+4. 返回符合条件的物品列表
+5. 触发 `INVENTORY_FILTER_RESULT` 事件
 
 ---
 
@@ -241,6 +350,7 @@ src/modules/inventory/
 |------|------|----------|------|
 | v1.0 | 2026-05-15 | 初始版本,包含基础背包功能 | System |
 | v2.0 | 2026-05-19 | 迁移到 Pinia + IndexedDB 架构，实现自动同步持久化 | System |
+| v2.1 | 2026-05-19 | 添加物品丢弃、排序、整理、搜索、筛选功能 | System |
 
 ---
 

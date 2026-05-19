@@ -5,7 +5,7 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 战斗模块设计文档 |
-| 版本 | v2.0 |
+| 版本 | v2.1 |
 | 生成日期 | 2026年5月19日 |
 | 所属模块 | `modules/combat` |
 
@@ -28,13 +28,14 @@
 | 战斗AI | 控制敌人的攻击行为 |
 | 战利品分配 | 战斗胜利后分配经验和物品 |
 | 战斗日志 | 记录战斗过程，只保留最近一次战斗 |
+| 技能效果集成 | 处理主动和被动技能效果 |
 
 ### 模块边界
 
 **战斗模块**与以下模块交互:
 - 角色模块：获取玩家战斗属性，修改生命值和经验值
 - 背包模块：使用消耗品，接收战利品
-- 技能模块：技能伤害计算
+- 技能模块：技能伤害计算和效果触发
 - 探索模块：触发玩家死亡事件
 
 ---
@@ -57,6 +58,7 @@
 | FR-COMBAT-010 | 战利品掉落 | 战斗奖励 |
 | FR-COMBAT-011 | 经验获取 | 成长系统 |
 | FR-COMBAT-012 | 战斗日志(最近一次) | 用户体验 |
+| FR-COMBAT-013 | 战斗日志详细数据结构 | 战斗记录 |
 
 ### 非功能需求
 
@@ -65,6 +67,7 @@
 | NFR-COMBAT-001 | 战斗响应时间 < 100ms | 高 |
 | NFR-COMBAT-002 | 伤害计算精度 | 高 |
 | NFR-COMBAT-003 | 战斗日志内存限制 | 中 |
+| NFR-COMBAT-004 | 技能效果处理性能优化 | 中 |
 
 ---
 
@@ -83,6 +86,7 @@ export interface ICombatService {
   endCombat(result: CombatResult): void;
   isInCombat(): boolean;
   getCombatLog(): CombatLogEntry[];
+  castSkill(skillId: string, targetType: 'self' | 'enemy'): SkillCastResult;
 }
 ```
 
@@ -96,12 +100,13 @@ export type CombatState = 'idle' | 'preparing' | 'fighting' | 'ended';
 export type CombatResult = 'victory' | 'defeat' | 'fled';
 
 /** 战斗行动类型 */
-export type CombatActionType = 'attack' | 'item' | 'flee';
+export type CombatActionType = 'attack' | 'item' | 'flee' | 'skill';
 
 /** 战斗行动 */
 export interface CombatAction {
   type: CombatActionType;
   itemId?: string;
+  skillId?: string;
   target?: 'player' | 'enemy';
 }
 
@@ -145,6 +150,130 @@ export interface CombatEndEvent {
   expGained: number;
   loot?: any[];
 }
+
+/** 战斗日志数据结构 */
+export interface CombatLog {
+  combatId: string;
+  battleLogId: string;
+  timestamp: number;
+  turn: number;
+  actorType: 'player' | 'enemy' | 'system';
+  actorId: string;
+  actorName: string;
+  eventType: CombatEventType;
+  targetType?: 'player' | 'enemy';
+  targetId?: string;
+  targetName?: string;
+  skillId?: string;
+  skillName?: string;
+  damage?: number;
+  heal?: number;
+  isCrit: boolean;
+  isDodge: boolean;
+  isBlocked: boolean;
+  statusEffects?: StatusEffect[];
+  message: string;
+}
+
+/** 战斗事件类型 */
+export type CombatEventType = 
+  | 'attack' | 'skill_cast' | 'heal' | 'buff_add' | 'debuff_add'
+  | 'buff_remove' | 'debuff_remove' | 'status_change' | 'damage'
+  | 'dodge' | 'crit' | 'block' | 'flee' | 'victory' | 'defeat'
+  | 'combat_start' | 'combat_end';
+
+/** 状态效果类型 */
+export interface StatusEffect {
+  effectId: string;
+  effectName: string;
+  effectType: 'buff' | 'debuff';
+  duration: number;
+  stackCount: number;
+  modifierType: 'percent' | 'fixed';
+  modifiers: Partial<CombatModifiers>;
+}
+
+/** 战斗修正属性 */
+export interface CombatModifiers {
+  physicalAttack: number;
+  magicAttack: number;
+  physicalDefense: number;
+  magicDefense: number;
+  critChance: number;
+  dodgeChance: number;
+  damageTaken: number;
+  damageDealt: number;
+  healingReceived: number;
+  healingDone: number;
+}
+
+/** 技能战斗效果 */
+export interface SkillCombatEffect {
+  skillId: string;
+  skillName: string;
+  effectType: SkillEffectType;
+  targetType: 'self' | 'enemy' | 'all' | 'random';
+  damage?: {
+    base: number;
+    minMultiplier: number;
+    maxMultiplier: number;
+    type: 'physical' | 'magic' | 'true';
+  };
+  heal?: {
+    base: number;
+    multiplier: number;
+  };
+  statusEffects?: StatusEffectData[];
+  cooldown: number;
+  manaCost: number;
+}
+
+/** 技能效果类型 */
+export type SkillEffectType = 
+  | 'damage' | 'heal' | 'buff' | 'debuff' | 'shield'
+  | 'dot' | 'hot' | 'cc' | 'passive';
+
+/** 状态效果数据 */
+export interface StatusEffectData {
+  effectId: string;
+  name: string;
+  type: 'buff' | 'debuff';
+  duration: number;
+  maxStacks: number;
+  modifiers: Partial<CombatModifiers>;
+  description: string;
+}
+
+/** 技能触发条件 */
+export interface SkillTriggerCondition {
+  type: TriggerType;
+  conditions: TriggerCondition[];
+}
+
+/** 触发类型 */
+export type TriggerType = 
+  | 'on_attack' | 'on_hit' | 'on_damage' | 'on_heal' | 'on_death'
+  | 'on_level_up' | 'on_combat_start' | 'on_combat_end' | 'passive';
+
+/** 触发条件 */
+export interface TriggerCondition {
+  stat?: string;
+  operator?: '>' | '<' | '>=' | '<=' | '==' | '!=';
+  value?: number;
+  chance?: number;
+  cooldown?: number;
+}
+
+/** 技能释放结果 */
+export interface SkillCastResult {
+  success: boolean;
+  skillId: string;
+  skillName: string;
+  damage?: number;
+  heal?: number;
+  statusEffects?: StatusEffect[];
+  message: string;
+}
 ```
 
 ### 事件定义
@@ -157,6 +286,50 @@ export interface CombatEndEvent {
 | `COMBAT_ENEMY_ACTION` | 敌人行动时 | `{ action, result }` |
 | `COMBAT_DAMAGE` | 造成伤害时 | `{ target, amount, isCrit, isDodge }` |
 | `COMBAT_HEAL` | 治疗时 | `{ target, amount }` |
+| `COMBAT_SKILL_CAST` | 技能释放时 | `{ skillId, skillName, actor, target, damage, heal }` |
+
+---
+
+## 战斗日志数据结构设计
+
+### 数据结构总览
+
+**CombatLog 字段说明：**
+
+| 字段名 | 数据类型 | 必填 | 约束条件 | 说明 |
+|--------|----------|------|----------|------|
+| combatId | string | 是 | UUID格式 | 战斗唯一标识 |
+| battleLogId | string | 是 | UUID格式 | 日志条目唯一标识 |
+| timestamp | number | 是 | 毫秒级时间戳 | 日志记录时间 |
+| turn | number | 是 | ≥1的整数 | 当前战斗回合数 |
+| actorType | string | 是 | player/enemy/system | 行动者类型 |
+| actorId | string | 是 | 非空字符串 | 行动者唯一ID |
+| actorName | string | 是 | 最大50字符 | 行动者显示名称 |
+| eventType | string | 是 | 枚举值 | 战斗事件类型 |
+| targetType | string | 否 | player/enemy | 目标类型 |
+| targetId | string | 否 | 非空字符串 | 目标ID |
+| targetName | string | 否 | 最大50字符 | 目标显示名称 |
+| skillId | string | 否 | 非空字符串 | 技能ID |
+| skillName | string | 否 | 最大50字符 | 技能名称 |
+| damage | number | 否 | ≥0的整数 | 伤害数值 |
+| heal | number | 否 | ≥0的整数 | 治疗数值 |
+| isCrit | boolean | 是 | true/false | 是否暴击 |
+| isDodge | boolean | 是 | true/false | 是否闪避 |
+| isBlocked | boolean | 是 | true/false | 是否格挡 |
+| statusEffects | array | 否 | StatusEffect数组 | 附加的状态效果 |
+| message | string | 是 | 最大500字符 | 日志描述消息 |
+
+### 战斗日志存储结构
+
+```typescript
+export interface CombatLogStorage {
+  id: string;
+  combatHistory: CombatLog[];
+  maxHistoryCount: number;
+  createdAt: number;
+  updatedAt: number;
+}
+```
 
 ---
 
@@ -175,7 +348,7 @@ export interface CombatEndEvent {
 ### 玩家回合流程
 
 1. 检查是否为玩家回合
-2. 等待玩家选择一个动作（攻击、使用消耗品、逃跑）
+2. 等待玩家选择一个动作（攻击、使用消耗品、逃跑、技能）
 3. 执行玩家选择的动作
 4. 记录行动到战斗日志
 5. 触发 `COMBAT_PLAYER_ACTION` 事件
@@ -226,8 +399,6 @@ export interface CombatEndEvent {
 
 ### IndexedDB 存储结构
 
-战斗模块使用内存存储进行主要战斗逻辑，同时支持战斗历史记录的持久化。
-
 | 数据库 Store | Key | 数据结构 | 说明 |
 |--------------|-----|----------|------|
 | combat | 'combat' | CombatData | 战斗历史数据 |
@@ -274,7 +445,7 @@ export interface CombatEndEvent {
 | 基础伤害 | 进攻属性 + random(0-10) | 进攻属性决定伤害下限 |
 | 暴击 | if(random < critChance) damage x 1.5 | 暴击时伤害提高50% |
 | 闪避 | if(random < dodgeChance) damage = 0 | 闪避时完全躲避 |
-| 防御减免 | damage - min(damage x 30%, defense) | 防御减免30%伤害，上限为防御值 |
+| 防御减免 | damage - min(damage x 30%, defense) | 防御减免30%伤害 |
 | 最终伤害 | max(1, 基础伤害 - 防御减免) | 最少造成1点伤害 |
 
 ### 同步机制
@@ -302,7 +473,7 @@ export interface CombatEndEvent {
 |------|----------|------|
 | 角色模块 | 调用 | 获取 `getAttributes()`, 修改 `addHp()`, `addExp()` |
 | 背包模块 | 调用 | 调用 `useItem()` 使用消耗品，`addItem()` 添加战利品 |
-| 探索模块 | 调用 | 触发 `exploration:playerDied` 事件处理死亡 |
+| 探索模块 | 调用 | 触发 `EXPLORATION_PLAYER_DIED` 事件处理死亡 |
 | 技能模块 | 事件订阅 | 技能效果影响战斗 |
 
 ### 事件发布
@@ -313,7 +484,7 @@ export interface CombatEndEvent {
 | `COMBAT_END` | UI组件 | 显示战斗结果 |
 | `COMBAT_DAMAGE` | UI组件 | 显示伤害数字 |
 | `COMBAT_HEAL` | UI组件 | 显示治疗数字 |
-| `exploration:playerDied` | 角色模块 | 处理死亡惩罚 |
+| `EXPLORATION_PLAYER_DIED` | 角色模块 | 处理死亡惩罚 |
 
 ---
 
@@ -331,6 +502,8 @@ export interface CombatEndEvent {
 | 消耗品不存在 | 背包中没有该物品 | 返回错误消息 |
 | 存储读取失败 | IndexedDB 解析错误 | 使用默认值初始化 |
 | 存储写入失败 | IndexedDB 写入异常 | 进入重试队列，指数退避重试 3 次 |
+| 技能不存在 | 技能ID无效 | 返回错误消息 |
+| 魔法值不足 | MP < 技能消耗 | 返回错误消息 |
 
 ---
 
@@ -345,6 +518,7 @@ export interface CombatEndEvent {
 | 防抖同步 | 500ms 延迟合并写入 | 减少 IO 操作 |
 | 批量写入 | SyncEngine 批量处理 | 提升性能 |
 | 异步加载 | Store 初始化时异步从 IndexedDB 读取 | 不阻塞主线程 |
+| 技能效果缓存 | LRU缓存策略 | 减少重复计算 |
 
 ### 数据安全
 
@@ -365,6 +539,8 @@ export interface CombatEndEvent {
 src/modules/combat/
   - index.ts          # 核心实现（Store + Service）
   - types.ts          # 类型定义
+  - skillEffects.ts   # 技能效果处理
+  - combatLog.ts      # 战斗日志管理
 ```
 
 ### 文件职责说明
@@ -373,6 +549,8 @@ src/modules/combat/
 |------|------|
 | `index.ts` | Pinia Store 实现、服务接口实现、战斗逻辑 |
 | `types.ts` | TypeScript 类型定义、接口定义 |
+| `skillEffects.ts` | 技能效果计算、触发机制、状态效果管理 |
+| `combatLog.ts` | 战斗日志记录、存储、查询 |
 
 ---
 
@@ -381,8 +559,9 @@ src/modules/combat/
 | 版本 | 日期 | 修改内容 | 作者 |
 |------|------|----------|------|
 | v1.0 | 2026-05-15 | 初始版本，包含基础战斗功能 | System |
-| v1.1 | 2026-05-18 | 重构为回合制系统，添加玩家单动作限制，伤害计算考虑攻防属性，战斗日志只保留最近一次 | System |
-| v2.0 | 2026-05-19 | 迁移到 Pinia + IndexedDB 架构，实现自动同步持久化 | System |
+| v1.1 | 2026-05-18 | 重构为回合制系统，添加玩家单动作限制 | System |
+| v2.0 | 2026-05-19 | 迁移到 Pinia + IndexedDB 架构 | System |
+| v2.1 | 2026-05-19 | 添加战斗日志数据结构和技能效果集成方案 | System |
 
 ---
 

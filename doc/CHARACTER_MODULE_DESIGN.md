@@ -22,6 +22,7 @@
 | 职责 | 描述 |
 |------|------|
 | 角色创建 | 管理角色名称、阵营、种族、职业的选择与存储 |
+| 多角色管理 | 支持创建、选择、删除多个独立角色 |
 | 核心属性管理 | 维护六大核心属性（力量、敏捷、体质、智力、感知、魅力），仅允许修改核心属性 |
 | 次级属性计算 | 根据核心属性自动计算次级属性（物理攻击、物理防御、魔法攻击、魔法防御、暴击、闪避） |
 | 成长系统 | 处理等级提升、经验积累、属性增长 |
@@ -61,6 +62,15 @@
 | FR-CHAR-012 | 数据加载恢复 | 读档系统 |
 | FR-CHAR-013 | 玩家死亡后损失本级所有经验值 | 死亡惩罚 |
 | FR-CHAR-014 | 玩家死亡后复活，生命法力恢复至最大值的一半 | 复活机制 |
+| FR-CHAR-015 | 等级上限为20级，达到上限后经验值不再累加 | 成长系统 |
+| FR-CHAR-016 | 种族选择后应用对应的属性调整值 | 角色创建 |
+| FR-CHAR-017 | 职业选择后应用对应的属性调整值 | 角色创建 |
+| FR-CHAR-018 | 属性加成按优先级顺序计算，优先级从高到低：基础属性 < 种族调整 < 职业调整 < 装备加成 | 属性系统 |
+| FR-CHAR-019 | 支持创建多个独立角色，每个角色拥有唯一ID | 多角色系统 |
+| FR-CHAR-020 | 支持从角色列表中选择角色进入游戏 | 多角色系统 |
+| FR-CHAR-021 | 支持删除已创建的角色（需二次确认） | 多角色系统 |
+| FR-CHAR-022 | 每个角色数据完全独立，包括属性、进度、物品、任务等 | 多角色系统 |
+| FR-CHAR-023 | 支持退出当前角色返回角色选择界面 | 多角色系统 |
 
 ### 非功能需求
 
@@ -79,6 +89,14 @@
 
 ```typescript
 export interface ICharacterService {
+  // === 多角色管理 ===
+  createCharacter(name: string, faction: 'alliance' | 'horde', race: string, charClass: string): string;
+  selectCharacter(characterId: string): boolean;
+  deleteCharacter(characterId: string): boolean;
+  getAllCharacters(): CharacterListItem[];
+  getCurrentCharacterId(): string | null;
+  logout(): void;
+  
   // === 状态查询 ===
   getStats(): Stats;
   getAttributes(): Attributes;
@@ -133,17 +151,17 @@ export interface CoreStats {
 
 /** 次级属性 - 根据核心属性自动计算，不可直接修改 */
 export interface DerivedAttributes {
-  maxHp: number;           // 最大生命值 = 100 + con * 10
-  maxMana: number;         // 最大魔法值 = 50 + int * 5 + wis * 3
-  physicalAttack: number;  // 物理攻击力 = str * 2 + dex * 0.5
-  physicalDefense: number; // 物理防御力 = con * 1.5 + dex * 0.3
-  magicAttack: number;     // 魔法攻击力 = int * 2 + wis * 0.5
-  magicDefense: number;    // 魔法防御力 = wis * 1.5 + int * 0.5
-  critChance: number;      // 暴击率 (%) = dex * 0.5
-  dodgeChance: number;     // 闪避率 (%) = dex * 0.3
-  hpBonus: number;         // 每级HP加成 = con * 2
-  mpBonus: number;         // 每级MP加成 = int + wis
-  healBonus: number;       // 治疗加成 = wis * 0.1
+  maxHp: number;              // 最大生命值 = 100 + con * 10
+  maxMana: number;            // 最大魔法值 = 50 + int * 5 + wis * 3 + cha * 2
+  physicalAttack: number;     // 物理攻击力 = str * 2 + dex * 0.5
+  physicalDefense: number;    // 物理防御力 = con * 1.5 + dex * 0.3
+  magicAttack: number;        // 魔法攻击力 = int * 2 + wis * 0.5 + cha * 0.3
+  magicDefense: number;       // 魔法防御力 = wis * 1.5 + int * 0.5 + cha * 0.3
+  critChance: number;         // 暴击率 (%) = dex * 0.5
+  dodgeChance: number;        // 闪避率 (%) = dex * 0.3
+  hpBonus: number;            // 每级HP加成 = con * 2
+  mpBonus: number;            // 每级MP加成 = int + wis + cha
+  healBonus: number;          // 治疗加成 = wis * 0.1 + cha * 0.05
 }
 
 /** 角色信息 */
@@ -153,6 +171,31 @@ export interface CharacterInfo {
   class: string | null;
   faction: 'alliance' | 'horde' | null;
 }
+
+/** 种族属性调整值 */
+export interface RaceBonus {
+  race: string;
+  faction: 'alliance' | 'horde';
+  stats: Partial<CoreStats>;
+}
+
+/** 职业属性调整值 */
+export interface ClassBonus {
+  className: string;
+  stats: Partial<CoreStats>;
+}
+
+/** 角色列表项 - 用于角色选择界面 */
+export interface CharacterListItem {
+  id: string;
+  name: string;
+  race: string;
+  charClass: string;
+  faction: 'alliance' | 'horde';
+  level: number;
+  createdTime: number;
+  lastPlayedTime: number;
+}
 ```
 
 ### 次级属性计算公式
@@ -160,16 +203,91 @@ export interface CharacterInfo {
 | 次级属性 | 计算公式 | 依赖核心属性 |
 |----------|----------|--------------|
 | 最大生命值 | maxHp = 100 + con × 10 | 体质 |
-| 最大魔法值 | maxMana = 50 + int × 5 + wis × 3 | 智力、感知 |
+| 最大魔法值 | maxMana = 50 + int × 5 + wis × 3 + cha × 2 | 智力、感知、魅力 |
 | 物理攻击力 | physicalAttack = str × 2 + dex × 0.5 | 力量、敏捷 |
 | 物理防御力 | physicalDefense = con × 1.5 + dex × 0.3 | 体质、敏捷 |
-| 魔法攻击力 | magicAttack = int × 2 + wis × 0.5 | 智力、感知 |
-| 魔法防御力 | magicDefense = wis × 1.5 + int × 0.5 | 感知、智力 |
+| 魔法攻击力 | magicAttack = int × 2 + wis × 0.5 + cha × 0.3 | 智力、感知、魅力 |
+| 魔法防御力 | magicDefense = wis × 1.5 + int × 0.5 + cha × 0.3 | 感知、智力、魅力 |
 | 暴击率 (%) | critChance = dex × 0.5 | 敏捷 |
 | 闪避率 (%) | dodgeChance = dex × 0.3 | 敏捷 |
 | 每级HP加成 | hpBonus = con × 2 | 体质 |
-| 每级MP加成 | mpBonus = int + wis | 智力、感知 |
-| 治疗加成 | healBonus = wis × 0.1 | 感知 |
+| 每级MP加成 | mpBonus = int + wis + cha | 智力、感知、魅力 |
+| 治疗加成 | healBonus = wis × 0.1 + cha × 0.05 | 感知、魅力 |
+
+### 种族属性调整值
+
+联盟阵营种族：
+
+| 种族 | 力量 | 敏捷 | 体质 | 智力 | 感知 | 魅力 | 说明 |
+|------|------|------|------|------|------|------|------|
+| 人类 | +1 | +0 | +0 | +0 | +0 | +1 | 适应性强，擅长外交 |
+| 矮人 | +0 | +0 | +2 | +0 | +1 | +0 | 坚韧的工匠种族 |
+| 侏儒 | +0 | +1 | +0 | +2 | +0 | +0 | 天才发明家 |
+| 暗夜精灵 | +0 | +2 | +0 | +0 | +1 | +0 | 敏捷且与自然有深厚联系 |
+| 德莱尼 | +0 | +0 | +0 | +0 | +2 | +1 | 拥有圣光的力量 |
+| 狼人 | +1 | +2 | +0 | +0 | +0 | +0 | 被诅咒的吉尔尼斯人 |
+
+中立种族：
+
+| 种族 | 力量 | 敏捷 | 体质 | 智力 | 感知 | 魅力 | 说明 |
+|------|------|------|------|------|------|------|------|
+| 熊猫人 | +0 | +1 | +1 | +0 | +1 | +0 | 传承古老武学之道 |
+
+部落阵营种族：
+
+| 种族 | 力量 | 敏捷 | 体质 | 智力 | 感知 | 魅力 | 说明 |
+|------|------|------|------|------|------|------|------|
+| 兽人 | +2 | +0 | +1 | +0 | +0 | +0 | 超凡的力量和韧性 |
+| 被遗忘者 | +0 | +1 | +0 | +2 | +0 | +0 | 亡灵，渴望自由和复仇 |
+| 牛头人 | +0 | +0 | +2 | +0 | +1 | +0 | 与大地母亲和谐 |
+| 巨魔 | +1 | +2 | +0 | +0 | +0 | +0 | 强大的再生能力 |
+| 血精灵 | +0 | +0 | +0 | +2 | +0 | +1 | 精通奥术能量 |
+| 地精 | +0 | +1 | +0 | +0 | +0 | +2 | 精明的商人种族 |
+
+### 职业属性调整值
+
+| 职业 | 力量 | 敏捷 | 体质 | 智力 | 感知 | 魅力 | 主属性 | 说明 |
+|------|------|------|------|------|------|------|--------|------|
+| 战士 | +2 | +0 | +1 | -1 | -1 | +0 | str | 精通武器和护甲的近战战士 |
+| 法师 | -1 | +0 | -1 | +3 | +0 | -1 | int | 操控奥术、冰霜和火焰的施法者 |
+| 圣骑士 | +1 | -1 | +1 | -1 | +0 | +2 | cha | 神圣的战士，使用圣光之力 |
+| 猎人 | +0 | +2 | +1 | -1 | +1 | -1 | dex | 远程武器和野兽控制专家 |
+| 潜行者 | -1 | +3 | -1 | -1 | +0 | +0 | dex | 擅长偷袭和暗杀的敏捷杀手 |
+| 术士 | -1 | +0 | -1 | +2 | -1 | +2 | int | 使用暗影魔法的危险施法者 |
+| 德鲁伊 | -1 | +1 | +0 | +1 | +2 | -1 | wis | 自然的守护者，可变身多种形态 |
+| 牧师 | -1 | -1 | -1 | +1 | +3 | -1 | wis | 圣光的仆从，擅长治疗和驱散 |
+| 萨满 | +0 | -1 | +1 | +1 | +2 | -1 | wis | 与元素之灵沟通的通灵者 |
+| 死亡骑士 | +2 | -1 | +1 | -1 | -1 | +1 | str | 由死亡中苏醒的黑暗骑士 |
+| 武僧 | -1 | +2 | +1 | +0 | +1 | -1 | dex | 掌握古老武学之道的修行者 |
+| 恶魔猎手 | +0 | +3 | -1 | +1 | -1 | +0 | dex | 对抗燃烧军团的暗影猎人 |
+
+### 属性加成优先级
+
+属性加成按以下优先级顺序计算（从低到高）：
+
+| 优先级 | 加成类型 | 说明 | 是否可叠加 |
+|--------|----------|------|------------|
+| 1 | 基础属性 | 角色初始属性（每项10） | 否 |
+| 2 | 种族调整 | 选择种族后获得的属性加成 | 否（唯一） |
+| 3 | 职业调整 | 选择职业后获得的属性加成 | 否（唯一） |
+| 4 | 装备加成 | 穿戴装备获得的属性加成 | 是（多件叠加） |
+
+**属性计算公式：**
+
+```
+最终属性 = 基础属性(10) + 种族调整 + 职业调整 + Σ装备加成
+```
+
+**优先级示例：**
+
+一个人类法师角色的智力属性计算：
+```
+基础智力 = 10
+种族调整（人类）= +0
+职业调整（法师）= +3
+装备加成（智力项链+2，智力戒指+1）= +3
+最终智力 = 10 + 0 + 3 + 3 = 16
+```
 
 ### 事件定义
 
@@ -181,6 +299,10 @@ export interface CharacterInfo {
 | `CHARACTER_MP_CHANGE` | 魔法值变化时 | `{ oldMp: number, newMp: number, maxMp: number }` |
 | `CHARACTER_DEATH` | 角色死亡时 | `{ cause: string }` |
 | `CHARACTER_RESURRECTED` | 角色复活时 | `{ newHp: number, newMp: number }` |
+| `CHARACTER_CREATED` | 角色创建成功时 | `{ characterId: string, name: string }` |
+| `CHARACTER_SELECTED` | 角色选择成功时 | `{ characterId: string }` |
+| `CHARACTER_DELETED` | 角色删除成功时 | `{ characterId: string }` |
+| `CHARACTER_LOGOUT` | 角色退出时 | - |
 
 ---
 
@@ -300,7 +422,7 @@ baseStats: {
 | 技能模块 | 事件订阅 | 技能使用时消耗MP，通过事件通知 |
 | 任务模块 | 调用 | 任务完成时调用 `addGold`、`addExp` |
 | 商店模块 | 调用 | 购买时调用 `spendGold`，出售时调用 `addGold` |
-| 探索模块 | 事件订阅 | 订阅 `exploration:playerDied` 事件，调用 `handleDeath()` |
+| 探索模块 | 事件订阅 | 订阅 `EXPLORATION_PLAYER_DIED` 事件，调用 `handleDeath()` |
 
 ### 事件订阅清单
 
@@ -411,6 +533,8 @@ src/modules/character/
 |------|------|----------|------|
 | v1.0 | 2026-05-15 | 初始版本，包含基础功能 | System |
 | v1.1 | 2026-05-18 | 添加死亡处理功能：损失本级经验值，复活后生命法力恢复至50% | System |
+| v2.0 | 2026-05-19 | 添加种族和职业属性调整值，添加属性加成优先级设计 | System |
+| v2.1 | 2026-05-19 | 添加多角色创建与管理系统，支持多角色独立数据存储 | System |
 
 ---
 

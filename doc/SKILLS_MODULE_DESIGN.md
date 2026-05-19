@@ -49,7 +49,7 @@
 | FR-SKILL-004 | 支持技能栏配置（非战斗时可调）   | 核心功能 |
 | FR-SKILL-005 | 支持职业技能初始化         | 职业系统 |
 | FR-SKILL-006 | 数据持久化存储           | 存档系统 |
-| FR-SKILL-007 | 支持技能类型区分（物理伤害、魔法伤害、防御、治疗等） | 技能系统 |
+| FR-SKILL-007 | 支持技能类型区分（物理伤害、魔法伤害、治疗） | 技能系统 |
 | FR-SKILL-008 | 非战斗期间不能使用技能 | 战斗限制 |
 
 ### 非功能需求
@@ -95,14 +95,12 @@ export interface ISkillsService {
 ### 数据类型定义
 
 ```typescript
-export type SkillType = 'physical_damage' | 'magic_damage' | 'physical_defense' | 'magic_defense' | 'heal' | 'buff' | 'debuff';
+export type SkillType = 'physical_damage' | 'magic_damage' | 'heal';
 
 export interface SkillEffect {
   type: SkillType;
   value: number;
   coefficient?: number;
-  duration?: number;
-  stat?: string;
 }
 
 export interface Skill {
