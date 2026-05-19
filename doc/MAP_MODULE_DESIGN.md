@@ -157,15 +157,27 @@ export interface MapState {
 
 | 数据库 Store | Key | 数据结构 | 说明 |
 |--------------|-----|----------|------|
-| map | 'map' | MapData | 地图完整数据 |
+| gameState | 'gameState' | MapConfigData | 地图配置（全局共享） |
+| characterData | `characterId` | MapViewData | 地图视图状态（按角色隔离） |
 
-### MapData 存储内容
+### MapConfigData 存储内容（全局共享）
 
 | 字段   | 类型     | 默认值 | 说明       |
 | ---- | ------ | --- | -------- |
-| `id` | string | 'map' | 唯一标识 |
+| `id` | string | 'gameState' | 唯一标识 |
+| `updatedAt` | number | Date.now() | 最后更新时间 |
+
+### MapViewData 存储内容（按角色隔离）
+
+| 字段   | 类型     | 默认值 | 说明       |
+| ---- | ------ | --- | -------- |
+| `characterId` | string | - | 角色唯一标识 |
 | `view` | MapView | 见下方 | 当前视图状态   |
 | `updatedAt` | number | Date.now() | 最后更新时间 |
+
+### 多角色支持说明
+
+地图配置数据为全局共享数据，不随角色变化。地图视图状态（缩放、平移等）通过 `characterId` 字段实现角色隔离，每个角色拥有独立的视图设置。切换角色时，系统自动加载对应角色的视图状态。删除角色时，级联删除该角色的视图数据。
 
 ### MapView 默认值
 

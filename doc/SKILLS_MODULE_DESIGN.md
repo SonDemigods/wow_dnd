@@ -180,17 +180,21 @@ export interface SkillBar {
 
 | 数据库 Store | Key | 数据结构 | 说明 |
 |--------------|-----|----------|------|
-| skills | 'skills' | SkillsData | 技能完整数据 |
+| skills | `characterId` | SkillsData | 技能完整数据（按角色隔离） |
 
 ### SkillsData 存储内容
 
 | 字段             | 类型       | 默认值                                  | 说明             |
 | -------------- | -------- | ------------------------------------ | -------------- |
-| `id`           | string   | 'skills'                              | 唯一标识         |
+| `characterId`  | string   | -                                    | 角色唯一标识       |
 | `skills`       | Skill\[] | \[]                                  | 职业技能列表（包含解锁状态） |
 | `skillBar`     | SkillBar | { slots: \[null, null, null, null] } | 技能栏配置（4个槽位）    |
 | `currentClass` | string   | null                                 | 当前职业           |
 | `updatedAt`    | number   | Date.now()                           | 最后更新时间      |
+
+### 多角色支持说明
+
+技能数据通过 `characterId` 字段实现角色隔离，每个角色拥有独立的技能解锁状态和技能栏配置。切换角色时，系统自动加载对应角色的技能数据，并根据角色职业重新初始化技能列表。删除角色时，级联删除该角色的技能数据。
 
 ### 技能栏槽位说明
 

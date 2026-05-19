@@ -52,103 +52,101 @@
 
 | 事件名称 | 触发时机 | 事件数据 |
 |----------|----------|----------|
-| `CHARACTER_LEVEL_UP` | 角色升级时 | `{ oldLevel: number, newLevel: number }` |
-| `CHARACTER_CORE_STATS_CHANGE` | 核心属性发生变化时 | `{ oldStats: CoreStats, newStats: CoreStats }` |
-| `CHARACTER_HP_CHANGE` | 生命值变化时 | `{ oldHp: number, newHp: number, maxHp: number }` |
-| `CHARACTER_MP_CHANGE` | 魔法值变化时 | `{ oldMp: number, newMp: number, maxMp: number }` |
-| `CHARACTER_DEATH` | 角色死亡时 | `{ cause: string }` |
-| `CHARACTER_RESURRECTED` | 角色复活时 | `{ newHp: number, newMp: number }` |
+| `CHARACTER_LEVEL_UP` | 角色升级时 | `{ characterId: string, oldLevel: number, newLevel: number }` |
+| `CHARACTER_CORE_STATS_CHANGE` | 核心属性发生变化时 | `{ characterId: string, oldStats: CoreStats, newStats: CoreStats }` |
+| `CHARACTER_HP_CHANGE` | 生命值变化时 | `{ characterId: string, oldHp: number, newHp: number, maxHp: number }` |
+| `CHARACTER_MP_CHANGE` | 魔法值变化时 | `{ characterId: string, oldMp: number, newMp: number, maxMp: number }` |
+| `CHARACTER_DEATH` | 角色死亡时 | `{ characterId: string, cause: string }` |
+| `CHARACTER_RESURRECTED` | 角色复活时 | `{ characterId: string, newHp: number, newMp: number }` |
+| `CHARACTER_CREATED` | 角色创建成功时 | `{ characterId: string, name: string }` |
+| `CHARACTER_SELECTED` | 角色选择成功时 | `{ characterId: string }` |
+| `CHARACTER_DELETED` | 角色删除成功时 | `{ characterId: string }` |
+| `CHARACTER_LOGOUT` | 角色退出时 | `{ characterId: string }` |
 
 ### 战斗模块事件
 
 | 事件名称 | 触发时机 | 事件数据 |
 |----------|----------|----------|
-| `COMBAT_START` | 战斗开始时 | `{ enemy: Enemy }` |
-| `COMBAT_END` | 战斗结束时 | `{ result, enemy, expGained }` |
-| `COMBAT_PLAYER_ACTION` | 玩家行动时 | `{ action, result }` |
-| `COMBAT_ENEMY_ACTION` | 敌人行动时 | `{ action, result }` |
-| `COMBAT_DAMAGE` | 造成伤害时 | `{ target, amount, isCrit, isDodge }` |
-| `COMBAT_HEAL` | 治疗时 | `{ target, amount }` |
-| `COMBAT_SKILL_CAST` | 技能释放时 | `{ skillId, skillName, actor, target, damage, heal }` |
+| `COMBAT_START` | 战斗开始时 | `{ characterId: string, enemy: Enemy }` |
+| `COMBAT_END` | 战斗结束时 | `{ characterId: string, result, enemy, expGained }` |
+| `COMBAT_PLAYER_ACTION` | 玩家行动时 | `{ characterId: string, action, result }` |
+| `COMBAT_ENEMY_ACTION` | 敌人行动时 | `{ characterId: string, action, result }` |
+| `COMBAT_DAMAGE` | 造成伤害时 | `{ characterId: string, target, amount, isCrit, isDodge }` |
+| `COMBAT_HEAL` | 治疗时 | `{ characterId: string, target, amount }` |
+| `COMBAT_SKILL_CAST` | 技能释放时 | `{ characterId: string, skillId, skillName, actor, target, damage, heal }` |
 
 ### 装备模块事件
 
 | 事件名称 | 触发时机 | 事件数据 |
 |----------|----------|----------|
-| `EQUIPMENT_EQUIPPED` | 装备穿戴成功时 | `{ slot, item }` |
-| `EQUIPMENT_UNEQUIPPED` | 装备卸下时 | `{ slot, item }` |
-| `EQUIPMENT_STATS_UPDATED` | 属性更新时 | `{ stats }` |
+| `EQUIPMENT_EQUIPPED` | 装备穿戴成功时 | `{ characterId: string, slot, item }` |
+| `EQUIPMENT_UNEQUIPPED` | 装备卸下时 | `{ characterId: string, slot, item }` |
+| `EQUIPMENT_STATS_UPDATED` | 属性更新时 | `{ characterId: string, stats }` |
 
 ### 背包模块事件
 
 | 事件名称 | 触发时机 | 事件数据 |
 |----------|----------|----------|
-| `INVENTORY_ITEM_ADDED` | 物品添加时 | `{ item }` |
-| `INVENTORY_ITEM_REMOVED` | 物品移除时 | `{ item, index }` |
-| `INVENTORY_ITEM_USED` | 物品使用时 | `{ item, index }` |
-| `INVENTORY_UPDATED` | 背包更新时 | - |
-| `INVENTORY_ITEM_DROPPED` | 物品丢弃时 | `{ item, index, count }` |
-| `INVENTORY_SEARCH_RESULT` | 搜索完成时 | `{ results: InventoryItem[], keyword: string }` |
-| `INVENTORY_FILTER_RESULT` | 筛选完成时 | `{ results: InventoryItem[], filters: ItemFilters }` |
+| `INVENTORY_ITEM_ADDED` | 物品添加时 | `{ characterId: string, item }` |
+| `INVENTORY_ITEM_REMOVED` | 物品移除时 | `{ characterId: string, item, index }` |
+| `INVENTORY_ITEM_USED` | 物品使用时 | `{ characterId: string, item, index }` |
+| `INVENTORY_UPDATED` | 背包更新时 | `{ characterId: string }` |
+| `INVENTORY_ITEM_DROPPED` | 物品丢弃时 | `{ characterId: string, item, index, count }` |
+| `INVENTORY_SEARCH_RESULT` | 搜索完成时 | `{ characterId: string, results: InventoryItem[], keyword: string }` |
+| `INVENTORY_FILTER_RESULT` | 筛选完成时 | `{ characterId: string, results: InventoryItem[], filters: ItemFilters }` |
 
 ### 任务模块事件
 
 | 事件名称 | 触发时机 | 事件数据 |
 |----------|----------|----------|
-| `QUEST_ACCEPTED` | 接受任务时 | `{ questKey, questName }` |
-| `QUEST_PROGRESS_UPDATED` | 任务进度更新时 | `{ questKey, objectiveKey, current, target }` |
-| `QUEST_COMPLETED` | 任务完成并交付时 | `{ questKey, questName, xpReward, goldReward }` |
-| `QUEST_ABANDONED` | 放弃任务时 | `{ questKey, questName }` |
+| `QUEST_ACCEPTED` | 接受任务时 | `{ characterId: string, questKey, questName }` |
+| `QUEST_PROGRESS_UPDATED` | 任务进度更新时 | `{ characterId: string, questKey, objectiveKey, current, target }` |
+| `QUEST_COMPLETED` | 任务完成并交付时 | `{ characterId: string, questKey, questName, xpReward, goldReward }` |
+| `QUEST_ABANDONED` | 放弃任务时 | `{ characterId: string, questKey, questName }` |
+| `QUEST_ACCEPTED_FROM_BOARD` | 从任务看板接受任务时 | `{ characterId: string, questKey, questName, boardId }` |
+| `QUEST_TURNED_IN_TO_BOARD` | 向任务看板交付任务时 | `{ characterId: string, questKey, questName, boardId, xpReward, goldReward }` |
 
 ### 商店模块事件
 
 | 事件名称 | 触发时机 | 事件数据 |
 |----------|----------|----------|
-| `SHOP_PURCHASED` | 购买商品成功时 | `ShopItemPurchasedEvent` |
-| `SHOP_SOLD` | 出售商品成功时 | `ShopItemSoldEvent` |
-| `SHOP_REFRESHED` | 商店刷新完成时 | `ShopRefreshedEvent` |
-| `SHOP_NOTIFICATION` | 交易状态变化时 | 提示消息 |
+| `SHOP_PURCHASED` | 购买商品成功时 | `{ characterId: string, ...ShopItemPurchasedEvent }` |
+| `SHOP_SOLD` | 出售商品成功时 | `{ characterId: string, ...ShopItemSoldEvent }` |
+| `SHOP_REFRESHED` | 商店刷新完成时 | `{ characterId: string, ...ShopRefreshedEvent }` |
+| `SHOP_NOTIFICATION` | 交易状态变化时 | `{ characterId: string, message: string }` |
 
 ### 技能模块事件
 
 | 事件名称 | 触发时机 | 事件数据 |
 |----------|----------|----------|
-| `SKILL_CAST` | 技能使用时 | `{ skill, success }` |
-| `SKILL_EQUIPPED` | 技能装备到技能栏时 | `{ skillId, slotIndex }` |
-| `SKILL_UNLOCKED` | 技能解锁时 | `{ skill }` |
-| `SKILL_BAR_CHANGED` | 技能栏变化时 | `{ slots }` |
+| `SKILL_CAST` | 技能使用时 | `{ characterId: string, skill, success }` |
+| `SKILL_EQUIPPED` | 技能装备到技能栏时 | `{ characterId: string, skillId, slotIndex }` |
+| `SKILL_UNLOCKED` | 技能解锁时 | `{ characterId: string, skill }` |
+| `SKILL_BAR_CHANGED` | 技能栏变化时 | `{ characterId: string, slots }` |
 
 ### 探索模块事件
 
 | 事件名称 | 触发时机 | 事件数据 |
 |----------|----------|----------|
-| `EXPLORATION_AREA_ENTERED` | 进入探索区域时 | `{ areaId }` |
-| `EXPLORATION_GRID_REVEALED` | 格子翻开时 | `{ x, y, eventType, eventData }` |
-| `EXPLORATION_CAMP_USED` | 营地使用时 | - |
-| `EXPLORATION_SHOP_ITEM_BOUGHT` | 购买商店物品时 | `{ itemId, count, price }` |
-| `EXPLORATION_SHOP_ITEM_SOLD` | 出售物品给商店时 | `{ itemId, count, price }` |
-| `EXPLORATION_NPC_INTERACTED` | 与任务NPC交互时 | `{ availableQuests, completableQuests }` |
-| `EXPLORATION_MONSTER_DEFEATED` | 怪物被击败时 | `{ monsterId, rewards }` |
-| `EXPLORATION_ITEM_FOUND` | 发现物品时 | `{ itemId, count }` |
-| `EXPLORATION_TRAP_TRIGGERED` | 触发陷阱时 | `{ trapId, damage }` |
-| `EXPLORATION_PLAYER_DIED` | 玩家死亡时 | - |
+| `EXPLORATION_AREA_ENTERED` | 进入探索区域时 | `{ characterId: string, areaId }` |
+| `EXPLORATION_GRID_REVEALED` | 格子翻开时 | `{ characterId: string, x, y, eventType, eventData }` |
+| `EXPLORATION_CAMP_USED` | 营地使用时 | `{ characterId: string }` |
+| `EXPLORATION_SHOP_ITEM_BOUGHT` | 购买商店物品时 | `{ characterId: string, itemId, count, price }` |
+| `EXPLORATION_SHOP_ITEM_SOLD` | 出售物品给商店时 | `{ characterId: string, itemId, count, price }` |
+| `EXPLORATION_NPC_INTERACTED` | 与任务NPC交互时 | `{ characterId: string, availableQuests, completableQuests }` |
+| `EXPLORATION_MONSTER_DEFEATED` | 怪物被击败时 | `{ characterId: string, monsterId, rewards }` |
+| `EXPLORATION_ITEM_FOUND` | 发现物品时 | `{ characterId: string, itemId, count }` |
+| `EXPLORATION_TRAP_TRIGGERED` | 触发陷阱时 | `{ characterId: string, trapId, damage }` |
+| `EXPLORATION_PLAYER_DIED` | 玩家死亡时 | `{ characterId: string }` |
 
 ### 地图模块事件
 
 | 事件名称 | 触发时机 | 事件数据 |
 |----------|----------|----------|
-| `MAP_LOCATION_ENTERED` | 进入探索区域时 | `{ locationId, location }` |
-| `MAP_MARKERS_UPDATED` | 标记列表变化时 | `{ markers }` |
-| `MAP_MODE_CHANGED` | 地图模式变化时 | `{ mode }` |
-| `MAP_UNLOCKED_LOCATIONS_CHANGED` | 解锁地点变化时 | `{ locations }` |
-
-### NPC模块事件
-
-| 事件名称 | 触发时机 | 事件数据 |
-|----------|----------|----------|
-| `NPC_DIALOGUE` | NPC对话时 | `{ npcId, npcName, message }` |
-| `NPC_QUEST_ACCEPTED` | 从NPC接受任务时 | `{ questKey, npcId }` |
-| `NPC_QUEST_TURNED_IN` | 向NPC交付任务时 | `{ questKey, npcId }` |
+| `MAP_LOCATION_ENTERED` | 进入探索区域时 | `{ characterId: string, locationId, location }` |
+| `MAP_MARKERS_UPDATED` | 标记列表变化时 | `{ characterId: string, markers }` |
+| `MAP_MODE_CHANGED` | 地图模式变化时 | `{ characterId: string, mode }` |
+| `MAP_UNLOCKED_LOCATIONS_CHANGED` | 解锁地点变化时 | `{ characterId: string, locations }` |
 
 ---
 
@@ -187,8 +185,8 @@
 | 探索模块 | `EXPLORATION_MONSTER_DEFEATED` | 任务模块 | 更新击杀任务进度 |
 | 探索模块 | `EXPLORATION_ITEM_FOUND` | 背包模块 | 添加物品到背包 |
 | 地图模块 | `MAP_LOCATION_ENTERED` | 探索模块 | 进入探索区域 |
-| NPC模块 | `NPC_QUEST_ACCEPTED` | 任务模块 | 接受任务 |
-| NPC模块 | `NPC_QUEST_TURNED_IN` | 任务模块 | 交付任务 |
+| 任务模块 | `QUEST_ACCEPTED_FROM_BOARD` | UI组件 | 显示接受任务提示 |
+| 任务模块 | `QUEST_TURNED_IN_TO_BOARD` | UI组件 | 显示任务完成提示 |
 
 ---
 
@@ -198,15 +196,23 @@
 export interface IEventBus {
   on(event: string, listener: EventListener): void;
   off(event: string, listener: EventListener): void;
-  emit(event: string, ...args: any[]): void;
+  emit(event: string, data: GameEventData): void;
   once(event: string, listener: EventListener): void;
 }
 
-export type EventListener = (...args: any[]) => void;
+export type EventListener = (data: GameEventData) => void;
 
 export interface EventBusConfig {
   maxListeners?: number;
   enableLogging?: boolean;
+}
+
+/** 统一事件数据格式 - 所有事件必须包含角色上下文 */
+export interface GameEventData<T = any> {
+  characterId: string | null;
+  type: string;
+  payload: T;
+  timestamp: number;
 }
 ```
 

@@ -401,15 +401,19 @@ export interface CombatLogStorage {
 
 | 数据库 Store | Key | 数据结构 | 说明 |
 |--------------|-----|----------|------|
-| combat | 'combat' | CombatData | 战斗历史数据 |
+| combat | `characterId` | CombatData | 战斗历史数据（按角色隔离） |
 
 ### CombatData 存储内容
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `id` | string | 'combat' | 唯一标识 |
+| `characterId` | string | - | 角色唯一标识 |
 | `combatHistory` | CombatLogEntry[] | [] | 战斗历史记录（最近10次） |
 | `updatedAt` | number | Date.now() | 最后更新时间 |
+
+### 多角色支持说明
+
+战斗数据通过 `characterId` 字段实现角色隔离，每个角色拥有独立的战斗历史记录。切换角色时，系统自动加载对应角色的战斗数据。删除角色时，级联删除该角色的战斗数据。
 
 ### 战斗状态
 

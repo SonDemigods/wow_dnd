@@ -15,7 +15,7 @@
 
 ### 模块定位
 
-商店模块是游戏经济系统的核心组件,负责管理商品的随机刷新、购买和出售功能。该模块模仿《魔兽世界》的商店机制,为玩家提供与NPC商人交互的完整交易体验。
+商店模块是游戏经济系统的核心组件,负责管理商品的随机刷新、购买和出售功能。探索中的【商店】买卖货品，为玩家提供完整的交易体验。
 
 ### 核心职责
 
@@ -33,7 +33,7 @@
 **商店模块**与以下模块交互:
 - 角色模块:金币管理
 - 背包模块:物品管理
-- NPC模块:商店入口
+- 探索模块:商店入口（探索中的【商店】买卖货品）
 
 ---
 
@@ -206,17 +206,29 @@ export interface ShopTransaction {
 
 | 数据库 Store | Key | 数据结构 | 说明 |
 |--------------|-----|----------|------|
-| shop | 'shop' | ShopData | 商店完整数据 |
+| gameState | 'gameState' | ShopConfigData | 商店配置（全局共享） |
+| characterData | `characterId` | ShopTransactionData | 交易历史（按角色隔离） |
 
-### ShopData 存储内容
+### ShopConfigData 存储内容（全局共享）
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `id` | string | 'shop' | 唯一标识 |
+| `id` | string | 'gameState' | 唯一标识 |
 | `shopItems` | Record<string, ShopItem[]> | {} | 各商店的商品列表 |
 | `lastRefresh` | Record<string, number> | {} | 各商店最后刷新时间戳 |
+| `updatedAt` | number | Date.now() | 最后更新时间 |
+
+### ShopTransactionData 存储内容（按角色隔离）
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `characterId` | string | - | 角色唯一标识 |
 | `purchaseHistory` | ShopTransaction[] | [] | 交易历史记录(最多50条) |
 | `updatedAt` | number | Date.now() | 最后更新时间 |
+
+### 多角色支持说明
+
+商店配置数据（商品列表、刷新时间等）为全局共享数据，不随角色变化。交易历史数据通过 `characterId` 字段实现角色隔离，每个角色拥有独立的交易记录。切换角色时，系统自动加载对应角色的交易历史。删除角色时，级联删除该角色的交易历史。
 
 ### 同步机制
 
@@ -242,7 +254,7 @@ export interface ShopTransaction {
 |------|----------|------|
 | 角色模块 | 调用 | 购买时调用 `spendGold`,出售时调用 `addGold` |
 | 背包模块 | 调用 | 购买时调用 `addItem`,出售时调用 `removeItem` |
-| NPC模块 | 事件订阅 | 通过NPC打开商店 |
+| 探索模块 | 调用 | 探索中的【商店】买卖货品 |
 | 事件总线 | 发布/订阅 | 发布交易事件,供UI组件监听 |
 
 ---

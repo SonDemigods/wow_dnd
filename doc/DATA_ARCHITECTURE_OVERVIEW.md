@@ -93,19 +93,17 @@
 ```typescript
 DB_CONFIG = {
   name: 'wow_dnd_game',
-  version: 1,
+  version: 2,
   stores: {
-    character: { keyPath: 'id' },
-    inventory: { keyPath: 'id' },
-    quests: { keyPath: 'questKey' },
-    equipment: { keyPath: 'id' },
-    map: { keyPath: 'id' },
-    skills: { keyPath: 'id' },
-    exploration: { keyPath: 'id' },
-    npc: { keyPath: 'id' },
-    combat: { keyPath: 'id' },
-    adventureLog: { keyPath: 'id' },
-    shop: { keyPath: 'id' },
+    characters: { keyPath: 'id' },
+    characterData: { keyPath: 'characterId' },
+    inventory: { keyPath: 'characterId' },
+    quests: { keyPath: 'characterId' },
+    equipment: { keyPath: 'characterId' },
+    skills: { keyPath: 'characterId' },
+    exploration: { keyPath: 'characterId' },
+    combat: { keyPath: 'characterId' },
+    adventureLog: { keyPath: 'characterId' },
     gameState: { keyPath: 'id' }
   }
 }
@@ -115,18 +113,34 @@ DB_CONFIG = {
 
 | Store | 数据库 Store | Key | 说明 |
 |-------|--------------|-----|------|
-| useCharacterStore | character | 'character' | 角色属性和状态 |
-| useInventoryStore | inventory | 'inventory' | 背包物品 |
-| useQuestStore | quests | 'quests' | 任务进度 |
-| useEquipmentStore | equipment | 'equipment' | 装备数据 |
-| useMapStore | map | 'map' | 地图数据 |
-| useSkillsStore | skills | 'skills' | 技能数据 |
-| useExplorationStore | exploration | 'exploration' | 探索数据 |
-| useNPCStore | npc | 'npc' | NPC 数据 |
-| useCombatStore | combat | 'combat' | 战斗数据 |
-| useAdventureLogStore | adventureLog | 'adventureLog' | 冒险日志 |
-| useShopStore | shop | 'shop' | 商店数据 |
-| useGameStore | gameState | 'gameState' | 游戏状态 |
+| useCharacterStore | characters | `characterId` | 角色列表（多角色管理） |
+| useCharacterStore | characterData | `characterId` | 角色属性和状态 |
+| useInventoryStore | inventory | `characterId` | 背包物品（按角色隔离） |
+| useQuestStore | quests | `characterId` | 任务进度（按角色隔离） |
+| useEquipmentStore | equipment | `characterId` | 装备数据（按角色隔离） |
+| useSkillsStore | skills | `characterId` | 技能数据（按角色隔离） |
+| useExplorationStore | exploration | `characterId` | 探索数据（按角色隔离） |
+| useCombatStore | combat | `characterId` | 战斗数据（按角色隔离） |
+| useAdventureLogStore | adventureLog | `characterId` | 冒险日志（按角色隔离） |
+| useGameStore | gameState | 'gameState' | 全局游戏状态 |
+
+### 3.3 多角色数据隔离机制
+
+**核心原则：** 除全局游戏状态外，所有角色相关数据均以 `characterId` 作为唯一标识，实现角色间数据完全隔离。
+
+**存储模式说明：**
+
+| 存储类型 | Key 策略 | 说明 |
+|----------|----------|------|
+| 角色列表 | `id` | 存储所有角色的基础信息（ID、名称、种族、职业、等级等） |
+| 角色数据 | `characterId` | 存储当前选中角色的详细属性和状态 |
+| 角色关联数据 | `characterId` | 背包、任务、装备、技能等角色专属数据 |
+| 全局状态 | 固定 `id` | 游戏设置、全局配置等跨角色共享数据 |
+
+**数据加载流程：**
+1. 选择角色时，通过 `characterId` 加载该角色的所有关联数据
+2. 切换角色时，卸载当前角色数据，加载新角色数据
+3. 删除角色时，级联删除该角色的所有关联数据
 
 ---
 
@@ -298,18 +312,18 @@ request.onupgradeneeded = (event) => {
 
 | 旧 localStorage 键 | 新 IndexedDB Store | 新 Key |
 |-------------------|---------------------|--------|
-| wow_character | character | character |
-| wow_character_info | character | character |
-| wow_inventory | inventory | inventory |
-| wow_quests_* | quests | quests |
-| wow_equipment | equipment | equipment |
-| wow_map | map | map |
-| wow_skills | skills | skills |
-| wow_exploration | exploration | exploration |
-| wow_npc | npc | npc |
-| wow_combat | combat | combat |
-| wow_adventureLog | adventureLog | adventureLog |
-| wow_shop | shop | shop |
+| wow_character | characters | `characterId` |
+| wow_character_info | characterData | `characterId` |
+| wow_inventory | inventory | `characterId` |
+| wow_quests_* | quests | `characterId` |
+| wow_equipment | equipment | `characterId` |
+| wow_map | gameState | 'gameState' |
+| wow_skills | skills | `characterId` |
+| wow_exploration | exploration | `characterId` |
+| wow_npc | gameState | 'gameState' |
+| wow_combat | combat | `characterId` |
+| wow_adventureLog | adventureLog | `characterId` |
+| wow_shop | gameState | 'gameState' |
 
 ---
 

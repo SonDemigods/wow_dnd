@@ -361,13 +361,14 @@ export interface CharacterListItem {
 
 | 数据库 Store | Key | 数据结构 | 说明 |
 |--------------|-----|----------|------|
-| character | 'character' | CharacterData | 角色完整数据 |
+| characters | `id` | CharacterListItem[] | 角色列表（所有角色的基础信息） |
+| characterData | `characterId` | CharacterData | 角色详细数据（按角色隔离） |
 
 ### CharacterData 存储内容
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `id` | string | 'character' | 唯一标识 |
+| `characterId` | string | - | 角色唯一标识 |
 | `name` | string | '冒险者' | 角色名称 |
 | `faction` | 'alliance' \| 'horde' \| null | null | 阵营 |
 | `race` | string \| null | null | 种族 |
@@ -382,6 +383,21 @@ export interface CharacterListItem {
 | `maxMp` | number | 50 | 最大魔法值 |
 | `bonusStats` | Partial<Stats> | {} | 属性加成 |
 | `updatedAt` | number | Date.now() | 最后更新时间 |
+
+### 多角色支持说明
+
+角色数据通过以下机制实现多角色隔离：
+
+1. **角色列表存储**：所有角色的基础信息（ID、名称、种族、职业、等级等）存储在 `characters` Store 中，支持快速列出所有角色。
+
+2. **角色详细数据存储**：每个角色的详细属性和状态数据存储在 `characterData` Store 中，以 `characterId` 作为唯一标识。
+
+3. **数据加载流程**：
+   - 选择角色时，通过 `characterId` 加载该角色的所有关联数据（背包、任务、装备、技能等）
+   - 切换角色时，卸载当前角色数据，加载新角色数据
+   - 删除角色时，级联删除该角色的所有关联数据
+
+4. **角色数据隔离**：每个角色拥有独立的属性、背包、任务进度、装备配置、技能状态、探索进度等数据，完全隔离。
 
 **基础属性默认值：**
 
@@ -535,6 +551,7 @@ src/modules/character/
 | v1.1 | 2026-05-18 | 添加死亡处理功能：损失本级经验值，复活后生命法力恢复至50% | System |
 | v2.0 | 2026-05-19 | 添加种族和职业属性调整值，添加属性加成优先级设计 | System |
 | v2.1 | 2026-05-19 | 添加多角色创建与管理系统，支持多角色独立数据存储 | System |
+| v2.2 | 2026-05-19 | 重构存储架构，实现完整的多角色数据隔离机制 | System |
 
 ---
 

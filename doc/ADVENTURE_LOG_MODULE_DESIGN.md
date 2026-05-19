@@ -111,15 +111,19 @@ export interface LogEntry {
 
 | 数据库 Store | Key | 数据结构 | 说明 |
 |--------------|-----|----------|------|
-| adventureLog | 'adventureLog' | AdventureLogData | 冒险日志完整数据 |
+| adventureLog | `characterId` | AdventureLogData | 冒险日志完整数据（按角色隔离） |
 
 ### AdventureLogData 存储内容
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `id` | string | 'adventureLog' | 唯一标识 |
+| `characterId` | string | - | 角色唯一标识 |
 | `logs` | LogEntry[] | [] | 日志条目列表 |
 | `updatedAt` | number | Date.now() | 最后更新时间 |
+
+### 多角色支持说明
+
+冒险日志数据通过 `characterId` 字段实现角色隔离，每个角色拥有独立的日志记录。切换角色时，系统自动加载对应角色的冒险日志。删除角色时，级联删除该角色的日志数据。
 
 ### 日志条目结构
 

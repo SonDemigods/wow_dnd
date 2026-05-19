@@ -23,6 +23,7 @@
 |------|------|
 | 物品管理 | 添加、移除、查找物品 |
 | 物品使用 | 消耗品使用、效果触发 |
+| 物品堆叠管理 | 支持可堆叠物品叠加，最大堆叠数量固定为10 |
 | 物品丢弃 | 支持单次和批量丢弃，含确认提示 |
 | 物品排序 | 支持多维度排序（类型、品质、等级、时间） |
 | 背包整理 | 一键整理，优化空间利用率 |
@@ -52,6 +53,9 @@
 | FR-INV-004 | 支持物品查找 | 查询功能 |
 | FR-INV-005 | 支持背包容量管理 | 背包系统 |
 | FR-INV-006 | 支持物品叠加 | 物品管理 |
+| FR-INV-006-1 | 可堆叠物品判断：检查物品的 `stackable` 属性是否为 `true` | 堆叠系统 |
+| FR-INV-006-2 | 最大堆叠数量固定为10，超过则放入新槽位 | 堆叠系统 |
+| FR-INV-006-3 | 不可堆叠物品始终独占一个槽位 | 堆叠系统 |
 | FR-INV-007 | 数据持久化存储 | 存档系统 |
 | FR-INV-008 | 支持物品丢弃（单次/批量），含确认提示 | 物品管理 |
 | FR-INV-009 | 支持物品排序（按类型、品质、等级、获取时间） | 物品管理 |
@@ -75,6 +79,9 @@
 ### 服务接口 IInventoryService
 
 ```typescript
+/** 物品最大堆叠数量 */
+export const MAX_STACK_SIZE = 10;
+
 export interface IInventoryService {
   getInventory(): InventoryItem[];
   getItem(index: number): InventoryItem | null;
@@ -84,6 +91,10 @@ export interface IInventoryService {
   getEmptySlots(): number;
   isFull(): boolean;
   reset(): void;
+  
+  // 物品堆叠判断
+  canStack(item: InventoryItem): boolean;
+  getStackableCount(item: InventoryItem): number;
   
   // 物品丢弃
   dropItem(index: number, count?: number): boolean;
@@ -143,6 +154,30 @@ export interface ItemFilters {
   minLevel?: number;
   maxLevel?: number;
 }
+
+/**
+ * 物品堆叠机制说明
+ * 
+ * 1. 堆叠判断：
+ *    - 检查物品的 `stackable` 属性
+ *    - `stackable === true`：可堆叠
+ *    - `stackable === false`：不可堆叠
+ * 
+ * 2. 堆叠限制：
+ *    - 最大堆叠数量固定为 10
+ *    - 不可堆叠物品始终独占一个槽位
+ * 
+ * 3. 堆叠逻辑：
+ *    - 添加物品时，先查找可堆叠的相同物品槽位
+ *    - 如果槽位未满，叠加到该槽位
+ *    - 如果槽位已满，放入新的空槽位
+ *    - 如果没有空槽位，返回添加失败
+ * 
+ * 4. 示例：
+ *    - 假设背包中有 5 个生命药水（stackable=true, count=8）
+ *    - 添加 3 个生命药水：8 + 3 = 11 > 10，所以 8 + 2 = 10（满），剩余 1 个放入新槽位
+ *    - 最终：1个槽位有10个药水，1个槽位有1个药水
+ */
 ```
 
 ### 事件定义
@@ -164,12 +199,16 @@ export interface ItemFilters {
 ### 物品添加流程
 
 1. 检查背包是否已满
-2. 如果物品可叠加,查找相同物品的槽位
-3. 如果找到,增加数量
-4. 如果未找到,查找空槽位
-5. 如果有空槽位,添加到空槽位
-6. 如果无空槽位,返回失败
-7. 触发 `INVENTORY_ITEM_ADDED` 事件
+2. 如果物品可叠加（`stackable === true`）：
+   - 查找背包中相同物品ID且未达到最大堆叠数量（10）的槽位
+   - 计算该槽位可叠加数量：`MAX_STACK_SIZE - currentCount`
+   - 如果待添加数量 <= 可叠加数量，增加该槽位数量，返回成功
+   - 如果待添加数量 > 可叠加数量，先叠加到该槽位满，剩余数量继续查找下一个可叠加槽位
+   - 如果所有可叠加槽位都已满，查找空槽位
+3. 如果物品不可叠加（`stackable === false`），查找空槽位
+4. 如果有空槽位，将物品添加到空槽位
+5. 如果无空槽位且还有剩余物品，返回失败
+6. 触发 `INVENTORY_ITEM_ADDED` 事件
 
 ### 物品使用流程
 
@@ -218,9 +257,14 @@ export interface ItemFilters {
 1. 将所有物品按类型分组
 2. 每组内按品质排序
 3. 合并空槽位到背包末尾
-4. 可堆叠物品合并到同一槽位
-5. 触发 `INVENTORY_UPDATED` 事件
-6. 同步数据到本地存储
+4. 可堆叠物品合并到同一槽位：
+   - 遍历可堆叠物品
+   - 将相同物品ID的物品合并到同一槽位
+   - 每个槽位最大堆叠数量为10
+   - 超出10的物品放入新的槽位
+5. 不可堆叠物品独占一个槽位
+6. 触发 `INVENTORY_UPDATED` 事件
+7. 同步数据到本地存储
 
 ### 物品搜索流程
 
@@ -251,16 +295,20 @@ export interface ItemFilters {
 
 | 数据库 Store | Key | 数据结构 | 说明 |
 |--------------|-----|----------|------|
-| inventory | 'inventory' | InventoryData | 背包完整数据 |
+| inventory | `characterId` | InventoryData | 背包完整数据（按角色隔离） |
 
 ### InventoryData 存储内容
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `id` | string | 'inventory' | 唯一标识 |
+| `characterId` | string | - | 角色唯一标识 |
 | `inventorySize` | number | 8 | 背包容量 |
 | `items` | (Item \| null)[] | [] | 物品列表 |
 | `updatedAt` | number | Date.now() | 最后更新时间 |
+
+### 多角色支持说明
+
+背包数据通过 `characterId` 字段实现角色隔离，每个角色拥有独立的背包物品。切换角色时，系统自动加载对应角色的背包数据。删除角色时，级联删除该角色的背包数据。
 
 ### 同步机制
 
@@ -295,9 +343,10 @@ export interface ItemFilters {
 
 | 异常类型 | 触发条件 | 处理策略 |
 |----------|----------|----------|
-| 背包已满 | 添加物品时背包已满 | 返回 false |
+| 背包已满 | 添加物品时背包已满且无法堆叠 | 返回 false |
 | 物品不存在 | 使用不存在的物品 | 返回 false |
 | 物品不可使用 | 使用不可消耗的物品 | 返回 false |
+| 堆叠超出限制 | 尝试将物品堆叠超过10个 | 自动拆分到新槽位 |
 | 存储读取失败 | IndexedDB 解析错误 | 使用默认值初始化 |
 | 存储写入失败 | IndexedDB 写入异常 | 进入重试队列，指数退避重试 3 次 |
 
@@ -351,6 +400,7 @@ src/modules/inventory/
 | v1.0 | 2026-05-15 | 初始版本,包含基础背包功能 | System |
 | v2.0 | 2026-05-19 | 迁移到 Pinia + IndexedDB 架构，实现自动同步持久化 | System |
 | v2.1 | 2026-05-19 | 添加物品丢弃、排序、整理、搜索、筛选功能 | System |
+| v2.2 | 2026-05-19 | 添加物品堆叠机制：最大堆叠数量固定为10，支持堆叠判断和计算 | System |
 
 ---
 
