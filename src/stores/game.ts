@@ -15,6 +15,7 @@ import { skillsService } from '@/modules/skills'
 import { mapService } from '@/modules/map'
 import { explorationService } from '@/modules/exploration'
 import { adventureLogService } from '@/modules/adventureLog'
+import { shopService } from '@/modules/shop'
 
 /**
  * 游戏状态管理Store
@@ -86,6 +87,7 @@ export const useGameStore = defineStore('game', () => {
     mapService.reset()
     explorationService.reset()
     adventureLogService.reset()
+    shopService.reset()
     
     // 重置游戏状态
     gameState.value = 'start'

@@ -22,6 +22,9 @@ export { CONTINENTS, WORLD_LOCATIONS, WORLD_LOCATIONS as LOCATIONS } from './loc
 // 导出任务数据
 export { QUESTS } from './quests'
 
+// 导出商店数据
+export { SHOPS, ITEM_BASE_PRICES, RARITY_PRICE_MULTIPLIER, RARITY_SELL_DISCOUNT, ITEM_POOLS, SHOP_TYPE_ITEM_POOL } from './shops'
+
 // 导出常量和计算函数
 export { 
   MAX_LEVEL, 

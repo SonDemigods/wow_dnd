@@ -139,6 +139,21 @@
               <h3>{{ currentLocationData.displayName }}</h3>
               <p class="location-description">{{ currentLocationData.description }}</p>
               
+              <div v-if="currentLocationShops.length > 0" class="location-shops">
+                <h4>🏪 此区域的商店：</h4>
+                <div class="shop-list">
+                  <div 
+                    v-for="shop in currentLocationShops" 
+                    :key="shop.id"
+                    class="shop-item"
+                    @click="openShop(shop.id)"
+                  >
+                    <span class="shop-icon">{{ shop.icon }}</span>
+                    <span class="shop-name">{{ shop.name }}</span>
+                  </div>
+                </div>
+              </div>
+              
               <div class="location-enemies">
                 <h4>👹 此区域的敌人：</h4>
                 <div class="enemy-list">
@@ -335,6 +350,8 @@
         </div>
       </div>
     </div>
+
+    <ShopDialog />
   </div>
 </template>
 
@@ -345,15 +362,18 @@ import { useCharacterStore } from '@/modules/character'
 import { useInventoryStore } from '@/modules/inventory'
 import { useCombatStore } from '@/modules/combat'
 import { useAdventureLogStore } from '@/modules/adventureLog'
+import { useShopStore } from '@/modules/shop'
 import { questService } from '@/modules/quests'
-import { WORLD_LOCATIONS, ENEMIES, QUESTS, RACES, CLASSES, ITEM_TYPES } from '@/data'
+import { WORLD_LOCATIONS, ENEMIES, QUESTS, RACES, CLASSES, ITEM_TYPES, SHOPS } from '@/data'
 import { STAT_NAMES } from '@/data/constants'
 import type { LootItemData } from '@/types'
+import ShopDialog from '@/components/ShopDialog.vue'
 
 const gameStore = useGameStore()
 const characterStore = useCharacterStore()
 const inventoryStore = useInventoryStore()
 const combatStore = useCombatStore()
+const shopStore = useShopStore()
 
 const character = computed(() => ({
   name: characterStore.name,
@@ -426,6 +446,19 @@ const characterRace = computed(() => {
 const characterClass = computed(() => {
   return character.value.class ? CLASSES[character.value.class]?.name : ''
 })
+
+const currentLocationShops = computed(() => {
+  return Object.values(SHOPS).filter(shop => shop.locationId === currentLocation.value)
+})
+
+const openShop = (shopId: string) => {
+  const shopConfig = SHOPS[shopId]
+  if (!shopConfig) return
+  const opened = shopStore.openShop(shopId, shopConfig.npcId)
+  if (opened) {
+    gameStore.addToAdventureLog(`打开了 ${shopConfig.name}`, 'info')
+  }
+}
 
 const getLocationClass = (key: string) => {
   const location = WORLD_LOCATIONS[key]
@@ -663,6 +696,46 @@ onMounted(() => {
   display: flex;
   flex: 1;
   overflow: hidden;
+}
+
+.location-shops {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
+.shop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shop-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(139, 105, 20, 0.15);
+  border: 2px solid #8b6914;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.shop-item:hover {
+  background: rgba(139, 105, 20, 0.3);
+  border-color: #ffd700;
+  transform: translateX(4px);
+}
+
+.shop-item .shop-icon {
+  font-size: 2rem;
+}
+
+.shop-item .shop-name {
+  font-weight: bold;
+  color: #ffd700;
 }
 
 .sidebar-left {
