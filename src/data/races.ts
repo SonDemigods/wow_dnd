@@ -53,7 +53,7 @@ export const RACES: Record<string, RaceData> = {
     description: '天才的发明家，掌控着最前沿的机械和魔法技术'
   },
   nightelf: {
-    name: '夜精灵',
+    name: '暗夜精灵',
     icon: '🧝',
     faction: 'alliance',
     bonus: { dex: 2, wis: 1 },
