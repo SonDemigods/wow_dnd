@@ -15,7 +15,7 @@
 
 ### 模块定位
 
-探索模块负责管理玩家在探索区域中的探索过程，包括格子翻开、事件触发、营地恢复、商店交易、任务NPC交互等功能。该模块为玩家提供游戏的探索体验。
+探索模块负责管理玩家在探索区域中的探索过程，包括格子翻开、事件触发、营地恢复、商店交易、任务看板交互等功能。该模块为玩家提供游戏的探索体验。
 
 ### 核心职责
 
@@ -25,8 +25,7 @@
 | 格子生成 | 使用随机算法生成格子事件分布 |
 | 探索内容重置 | 切换区域时重置探索内容和冒险日志 |
 | 营地功能 | 角色状态恢复 |
-| 商店交互 | 探索区域内的商店交易 |
-| 任务NPC交互 | 任务交接 |
+| 事件触发 | 通过事件总线触发商店、任务等模块交互 |
 | 格子事件触发 | 怪物战斗、物品获取、陷阱触发等 |
 | 数据持久化 | 实现探索数据的本地存储与加载 |
 
@@ -34,11 +33,11 @@
 
 **探索模块**与以下模块交互:
 - 地图模块: 从地图模块进入探索区域
-- 角色模块: 角色状态管理
-- 战斗模块: 怪物战斗
-- 商店模块: 探索区域内的商店
-- 任务模块: 任务交接
-- 背包模块: 物品获取
+- 角色模块: 角色状态管理（事件）
+- 战斗模块: 怪物战斗（事件）
+- 商店模块: 探索区域内的商店（事件）
+- 任务模块: 任务交接（事件）
+- 背包模块: 物品获取（事件）
 
 ***
 
@@ -52,10 +51,10 @@
 | FR-EXP-001-1 | 每次切换探索区域重置冒险日志 | 探索机制 |
 | FR-EXP-002 | 探索界面由10*10格子组成 | 界面设计 |
 | FR-EXP-003 | 格子默认状态为未探索 | 初始状态 |
-| FR-EXP-004 | 默认显示营地、商店、任务NPC、BOSS四个固定格子 | 核心功能 |
+| FR-EXP-004 | 默认显示营地、商店、任务看板、BOSS四个固定格子 | 核心功能 |
 | FR-EXP-005 | 点击营地并确认后，角色回满状态，使用后营地失效 | 营地功能 |
 | FR-EXP-006 | 商店支持交易，可多次交易 | 商店功能 |
-| FR-EXP-007 | 任务NPC支持任务交接 | 任务功能 |
+| FR-EXP-007 | 任务看板支持任务交接 | 任务功能 |
 | FR-EXP-008 | 每个格子翻开后触发事件（怪物、物品、陷阱等） | 事件系统 |
 | FR-EXP-009 | 翻开后的格子触发事件后失效（怪物存活可再次挑战 | 格子状态 |
 | FR-EXP-010 | 数据持久化存储 | 存档系统 |
@@ -84,13 +83,9 @@ export interface IExplorationService {
   getGrid(x: number, y: number): GridCell | null;
   revealGrid(x: number, y: number): boolean;
   useCamp(): boolean;
-  getShopItems(): ShopItem[];
-  buyFromShop(itemId: string, count: number): boolean;
-  sellToShop(itemId: string, count: number): boolean;
-  getBoardQuests(boardId: string): QuestDetails[];
-  acceptQuestFromBoard(boardId: string, questKey: string): boolean;
-  turnInQuestToBoard(boardId: string, questKey: string): boolean;
-  startBattle(monsterId: string): boolean;
+  triggerShopInteraction(shopId: string): void;
+  triggerBoardInteraction(boardId: string): void;
+  triggerBattle(monsterId: string): void;
   getCurrentAreaId(): string | null;
   reset(): void;
 }
@@ -108,26 +103,13 @@ export interface GridCell {
   y: number;
   status: GridStatus;
   eventType?: GridEventType;
-  eventData?: any;
-}
-
-export interface ShopItem {
-  id: string;
-  name: string;
-  icon: string;
-  price: number;
-  count: number;
-}
-
-export interface NpcQuest {
-  questId: string;
-  questName: string;
-  questType: 'available' | 'in_progress' | 'completed';
-}
-
-export interface NpcInteractionResult {
-  availableQuests: NpcQuest[];
-  completableQuests: NpcQuest[];
+  eventData?: {
+    shopId?: string;
+    boardId?: string;
+    monsterId?: string;
+    itemId?: string;
+    trapId?: string;
+  };
 }
 
 export interface ExplorationState {
@@ -160,16 +142,16 @@ export interface AreaConfig {
 
 | 事件名称 | 触发时机 | 事件数据 |
 |----------|----------|----------|
-| `EXPLORATION_AREA_ENTERED` | 进入探索区域时 | `{ areaId }` |
-| `EXPLORATION_GRID_REVEALED` | 格子翻开时 | `{ x, y, eventType, eventData }` |
-| `EXPLORATION_CAMP_USED` | 营地使用时 | - |
-| `EXPLORATION_SHOP_ITEM_BOUGHT` | 购买商店物品时 | `{ itemId, count, price }` |
-| `EXPLORATION_SHOP_ITEM_SOLD` | 出售物品给商店时 | `{ itemId, count, price }` |
-| `EXPLORATION_NPC_INTERACTED` | 与任务NPC交互时 | `{ availableQuests, completableQuests }` |
-| `EXPLORATION_MONSTER_DEFEATED` | 怪物被击败时 | `{ monsterId, rewards }` |
-| `EXPLORATION_ITEM_FOUND` | 发现物品时 | `{ itemId, count }` |
-| `EXPLORATION_TRAP_TRIGGERED` | 触发陷阱时 | `{ trapId, damage }` |
-| `EXPLORATION_PLAYER_DIED` | 玩家死亡时 | - |
+| `EXPLORATION_AREA_ENTERED` | 进入探索区域时 | `{ characterId, areaId }` |
+| `EXPLORATION_GRID_REVEALED` | 格子翻开时 | `{ characterId, x, y, eventType, eventData }` |
+| `EXPLORATION_CAMP_USED` | 营地使用时 | `{ characterId }` |
+| `EXPLORATION_SHOP_TRIGGERED` | 触发商店交互时 | `{ characterId, shopId }` |
+| `EXPLORATION_BOARD_TRIGGERED` | 触发任务看板交互时 | `{ characterId, boardId }` |
+| `EXPLORATION_BATTLE_TRIGGERED` | 触发战斗时 | `{ characterId, monsterId }` |
+| `EXPLORATION_MONSTER_DEFEATED` | 怪物被击败时 | `{ characterId, monsterId, rewards }` |
+| `EXPLORATION_ITEM_FOUND` | 发现物品时 | `{ characterId, itemId, count }` |
+| `EXPLORATION_TRAP_TRIGGERED` | 触发陷阱时 | `{ characterId, trapId, damage }` |
+| `EXPLORATION_PLAYER_DIED` | 玩家死亡时 | `{ characterId }` |
 
 ***
 
@@ -180,7 +162,7 @@ export interface AreaConfig {
 1. 调用 `enterArea(areaId)` 方法
 2. 重置探索状态，所有格子设为未探索
 3. 重置冒险日志
-4. 初始化营地、商店、任务NPC三个固定格子
+4. 初始化营地、商店、任务看板三个固定格子
 5. 随机生成其余格子的事件
 6. 保存探索状态
 7. 触发 `EXPLORATION_AREA_ENTERED` 事件
@@ -202,12 +184,26 @@ export interface AreaConfig {
 4. 标记营地为已使用
 5. 触发 `EXPLORATION_CAMP_USED` 事件
 
-### 商店交易流程
+### 商店交互触发流程
 
-1. 购买时检查金币是否充足，背包是否有空间
-2. 出售时检查物品是否存在
-3. 更新物品和金币
-4. 触发相应事件
+1. 调用 `triggerShopInteraction(shopId)` 方法
+2. 检查商店是否存在
+3. 触发 `EXPLORATION_SHOP_TRIGGERED` 事件
+4. 由商店模块监听事件并处理后续交易逻辑
+
+### 任务看板交互触发流程
+
+1. 调用 `triggerBoardInteraction(boardId)` 方法
+2. 检查任务看板是否存在
+3. 触发 `EXPLORATION_BOARD_TRIGGERED` 事件
+4. 由任务模块监听事件并处理任务交接逻辑
+
+### 战斗触发流程
+
+1. 调用 `triggerBattle(monsterId)` 方法
+2. 检查怪物是否存在
+3. 触发 `EXPLORATION_BATTLE_TRIGGERED` 事件
+4. 由战斗模块监听事件并处理战斗逻辑
 
 ### 格子生成算法流程
 
@@ -218,7 +214,7 @@ export interface AreaConfig {
 2. **固定格子放置**
    - 放置营地：随机选择一个边缘格子（第0行、第9行、第0列、第9列）
    - 放置商店：随机选择一个角落格子（确保与营地不同角落）
-   - 放置任务NPC：随机选择与营地、商店不相邻的格子
+   - 放置任务看板：随机选择与营地、商店不相邻的格子
    - 放置BOSS：随机选择地图中心区域的格子（3-6行，3-6列），确保与其他固定格子保持安全距离
 
 3. **随机事件生成**
@@ -425,7 +421,7 @@ function calculateTrapDamage(areaLevel: number): number {
 | 连续相同事件 | 最多连续3个相同事件类型 | 避免单调体验 |
 | 营地保护 | 营地周围3x3范围内不放置陷阱 | 保证安全区域 |
 | 商店保护 | 商店周围2x2范围内不放置怪物 | 保证交易安全 |
-| NPC保护 | NPC周围2x2范围内不放置陷阱 | 保证任务交接安全 |
+| 任务看板保护 | 任务看板周围2x2范围内不放置陷阱 | 保证任务交接安全 |
 | BOSS保护 | BOSS周围2x2范围内不放置其他怪物和陷阱 | 保证BOSS战斗空间 |
 | BOSS位置 | BOSS必须放置在地图中心区域（3-6行，3-6列） | 确保BOSS处于核心位置 |
 | 固定格子间距 | 固定格子之间保持至少2格距离 | 避免拥挤 |
@@ -467,7 +463,7 @@ function calculateTrapDamage(areaLevel: number): number {
 ┌─────────────────────────────────────────────────────────────┐
 │                    应用约束条件                             │
 │  ├─ 检查连续相同事件数量                                    │
-│  ├─ 检查保护区域约束（营地、商店、NPC、BOSS）                │
+│  ├─ 检查保护区域约束（营地、商店、任务看板、BOSS）                │
 │  ├─ 检查BOSS位置约束（中心区域）                            │
 │  ├─ 检查事件分布均匀性                                      │
 │  └─ 必要时重新生成                                          │
@@ -525,12 +521,12 @@ function calculateTrapDamage(areaLevel: number): number {
 | 模块 | 交互方式 | 说明 |
 |------|----------|------|
 | 地图模块 | 调用 | 从地图进入探索区域 |
-| 角色模块 | 调用 | 恢复角色状态 |
-| 战斗模块 | 调用 | 怪物战斗 |
-| 商店模块 | 调用 | 探索区域商店 |
-| 任务模块 | 调用 | 任务交接 |
-| 背包模块 | 调用 | 物品获取和交易 |
-| 事件总线 | 发布/订阅 | 发布探索事件 |
+| 角色模块 | 事件 | 通过事件恢复角色状态 |
+| 战斗模块 | 事件 | 通过事件触发战斗 |
+| 商店模块 | 事件 | 通过事件触发商店交互 |
+| 任务模块 | 事件 | 通过事件触发任务看板交互 |
+| 背包模块 | 事件 | 通过事件添加物品 |
+| 事件总线 | 发布/订阅 | 发布探索事件，订阅其他模块事件 |
 
 ***
 
@@ -595,11 +591,12 @@ src/modules/exploration/
 | 版本 | 日期 | 修改内容 | 作者 |
 |------|------|----------|------|
 | v1.0 | 2026-05-15 | 初始版本,包含基础探索功能 | System |
-| v1.1 | 2026-05-18 | 重新设计探索模块，支持10*10格子、营地、商店、任务NPC、格子事件 | System |
+| v1.1 | 2026-05-18 | 重新设计探索模块，支持10*10格子、营地、商店、任务看板、格子事件 | System |
 | v1.3 | 2026-05-18 | 移除死亡处理逻辑，只发送 `exploration:playerDied` 事件，由角色模块处理 | System |
 | v2.0 | 2026-05-19 | 迁移到 Pinia + IndexedDB 架构，实现自动同步持久化 | System |
 | v2.1 | 2026-05-19 | 添加探索格子生成算法设计：加权随机选择、怪物等级匹配、物品稀有度分配、陷阱伤害计算 | System |
-| v2.2 | 2026-05-19 | 更新格子生成算法：添加BOSS固定格子，确保每个探索区域包含营地、商店、NPC、BOSS各一个 | System |
+| v2.2 | 2026-05-19 | 更新格子生成算法：添加BOSS固定格子，确保每个探索区域包含营地、商店、任务看板、BOSS各一个 | System |
+| v2.3 | 2026-05-19 | 重构模块交互方式：商店和任务模块调用改为事件驱动方式，通过事件总线触发交互 | System |
 
 ***
 

@@ -72,7 +72,7 @@
 ```typescript
 export interface IShopService {
   // === 商店操作 ===
-  openShop(shopId: string, npcId: string): boolean;
+  openShop(shopId: string): boolean;
   closeShop(): void;
   refreshShop(shopId: string): boolean;
   
@@ -127,7 +127,6 @@ export interface ShopConfig {
   type: ShopType;
   icon: string;
   locationId: string;
-  npcId: string;
   refreshInterval: number;
   minItems: number;
   maxItems: number;

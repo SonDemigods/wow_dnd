@@ -320,7 +320,7 @@ request.onupgradeneeded = (event) => {
 | wow_map | gameState | 'gameState' |
 | wow_skills | skills | `characterId` |
 | wow_exploration | exploration | `characterId` |
-| wow_npc | gameState | 'gameState' |
+| wow_board | gameState | 'gameState' |
 | wow_combat | combat | `characterId` |
 | wow_adventureLog | adventureLog | `characterId` |
 | wow_shop | gameState | 'gameState' |
@@ -372,7 +372,7 @@ interface BackupFile {
     map: MapData;
     skills: SkillsData;
     exploration: ExplorationData;
-    npc: NPCData;
+    board: BoardData;
     combat: CombatData;
     adventureLog: AdventureLogData;
     shop: ShopData;
