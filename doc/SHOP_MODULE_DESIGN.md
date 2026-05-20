@@ -5,8 +5,8 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 商店模块设计文档 |
-| 版本 | v2.0 |
-| 生成日期 | 2026年5月19日 |
+| 版本 | v2.1 |
+| 生成日期 | 2026年5月20日 |
 | 所属模块 | `modules/shop` |
 
 ---
@@ -205,14 +205,14 @@ export interface ShopTransaction {
 
 | 数据库 Store | Key | 数据结构 | 说明 |
 |--------------|-----|----------|------|
-| gameState | 'gameState' | ShopConfigData | 商店配置（全局共享） |
+| shop | 'shop' | ShopConfigData | 商店配置（全局共享） |
 | characterData | `characterId` | ShopTransactionData | 交易历史（按角色隔离） |
 
 ### ShopConfigData 存储内容（全局共享）
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `id` | string | 'gameState' | 唯一标识 |
+| `id` | string | 'shop' | 唯一标识 |
 | `shopItems` | Record<string, ShopItem[]> | {} | 各商店的商品列表 |
 | `lastRefresh` | Record<string, number> | {} | 各商店最后刷新时间戳 |
 | `updatedAt` | number | Date.now() | 最后更新时间 |
@@ -327,6 +327,7 @@ src/modules/shop/
 | v1.1 | 2026-05-15 | 移除加密处理相关需求 | System |
 | v1.2 | 2026-05-15 | 调整业务逻辑:商品每次访问随机刷新,价格固定来源于物品数据 | System |
 | v2.0 | 2026-05-19 | 迁移到 Pinia + IndexedDB 架构，实现自动同步持久化 | System |
+| v2.1 | 2026-05-20 | 拆分商店配置到独立存储（shop），数据库版本升级至3 | System |
 
 ---
 

@@ -5,8 +5,8 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 数据持久化架构设计文档 |
-| 版本 | v1.0 |
-| 生成日期 | 2026年5月19日 |
+| 版本 | v1.1 |
+| 生成日期 | 2026年5月20日 |
 
 ---
 
@@ -93,7 +93,7 @@
 ```typescript
 DB_CONFIG = {
   name: 'wow_dnd_game',
-  version: 2,
+  version: 3,
   stores: {
     characters: { keyPath: 'id' },
     characterData: { keyPath: 'characterId' },
@@ -104,7 +104,9 @@ DB_CONFIG = {
     exploration: { keyPath: 'characterId' },
     combat: { keyPath: 'characterId' },
     adventureLog: { keyPath: 'characterId' },
-    gameState: { keyPath: 'id' }
+    gameState: { keyPath: 'id' },
+    map: { keyPath: 'id' },
+    shop: { keyPath: 'id' }
   }
 }
 ```
@@ -123,6 +125,8 @@ DB_CONFIG = {
 | useCombatStore | combat | `characterId` | 战斗数据（按角色隔离） |
 | useAdventureLogStore | adventureLog | `characterId` | 冒险日志（按角色隔离） |
 | useGameStore | gameState | 'gameState' | 全局游戏状态 |
+| useMapStore | map | 'map' | 地图配置（全局共享） |
+| useShopStore | shop | 'shop' | 商店配置（全局共享） |
 
 ### 3.3 多角色数据隔离机制
 
@@ -265,6 +269,11 @@ request.onupgradeneeded = (event) => {
     // 迁移到版本 2
     migrateV1toV2(db);
   }
+  
+  if (oldVersion < 3) {
+    // 迁移到版本 3：拆分地图和商店配置到独立存储
+    migrateV2toV3(db);
+  }
 };
 ```
 
@@ -317,13 +326,13 @@ request.onupgradeneeded = (event) => {
 | wow_inventory | inventory | `characterId` |
 | wow_quests_* | quests | `characterId` |
 | wow_equipment | equipment | `characterId` |
-| wow_map | gameState | 'gameState' |
 | wow_skills | skills | `characterId` |
 | wow_exploration | exploration | `characterId` |
 | wow_board | gameState | 'gameState' |
 | wow_combat | combat | `characterId` |
 | wow_adventureLog | adventureLog | `characterId` |
-| wow_shop | gameState | 'gameState' |
+| wow_map | map | 'map' |
+| wow_shop | shop | 'shop' |
 
 ---
 
@@ -369,13 +378,13 @@ interface BackupFile {
     inventory: InventoryData;
     quests: QuestData[];
     equipment: EquipmentData;
-    map: MapData;
     skills: SkillsData;
     exploration: ExplorationData;
     board: BoardData;
     combat: CombatData;
     adventureLog: AdventureLogData;
-    shop: ShopData;
+    map: MapConfigData;
+    shop: ShopConfigData;
     gameState: GameStateData;
   };
 }
@@ -568,6 +577,7 @@ interface CompatibilityResult {
 | 版本 | 日期 | 修改内容 | 作者 |
 |------|------|----------|------|
 | v1.0 | 2026-05-19 | 初始版本，支持基础备份导入功能 | System |
+| v1.1 | 2026-05-20 | 拆分地图和商店配置到独立存储（map、shop），数据库版本升级至3 | System |
 
 ---
 

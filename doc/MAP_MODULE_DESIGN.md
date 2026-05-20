@@ -5,8 +5,8 @@
 | 项目   | 内容            |
 | ---- | ------------- |
 | 标题   | 地图模块设计文档      |
-| 版本   | v2.0          |
-| 生成日期 | 2026年5月19日    |
+| 版本   | v2.1          |
+| 生成日期 | 2026年5月20日    |
 | 所属模块 | `modules/map` |
 
 ***
@@ -157,14 +157,14 @@ export interface MapState {
 
 | 数据库 Store | Key | 数据结构 | 说明 |
 |--------------|-----|----------|------|
-| gameState | 'gameState' | MapConfigData | 地图配置（全局共享） |
+| map | 'map' | MapConfigData | 地图配置（全局共享） |
 | characterData | `characterId` | MapViewData | 地图视图状态（按角色隔离） |
 
 ### MapConfigData 存储内容（全局共享）
 
 | 字段   | 类型     | 默认值 | 说明       |
 | ---- | ------ | --- | -------- |
-| `id` | string | 'gameState' | 唯一标识 |
+| `id` | string | 'map' | 唯一标识 |
 | `updatedAt` | number | Date.now() | 最后更新时间 |
 
 ### MapViewData 存储内容（按角色隔离）
@@ -282,6 +282,7 @@ src/modules/map/
 | v1.0 | 2026-05-15 | 初始版本,包含基础地图功能                   | System |
 | v1.1 | 2026-05-18 | 精简功能:移除导航、收藏、自定义标记；添加等级解锁和探索入口 | System |
 | v2.0 | 2026-05-19 | 迁移到 Pinia + IndexedDB 架构，实现自动同步持久化 | System |
+| v2.1 | 2026-05-20 | 拆分地图配置到独立存储（map），数据库版本升级至3 | System |
 
 ***
 
