@@ -5,8 +5,8 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 战斗模块设计文档 |
-| 版本 | v2.1 |
-| 生成日期 | 2026年5月19日 |
+| 版本 | v2.2 |
+| 生成日期 | 2026年5月20日 |
 | 所属模块 | `modules/combat` |
 
 ---
@@ -28,7 +28,6 @@
 | 战斗AI | 控制敌人的攻击行为 |
 | 战利品分配 | 战斗胜利后分配经验和物品 |
 | 战斗日志 | 记录战斗过程，只保留最近一次战斗 |
-| 技能效果集成 | 处理主动和被动技能效果 |
 
 ### 模块边界
 
@@ -171,48 +170,21 @@ export interface CombatLog {
   isCrit: boolean;
   isDodge: boolean;
   isBlocked: boolean;
-  statusEffects?: StatusEffect[];
   message: string;
 }
 
 /** 战斗事件类型 */
 export type CombatEventType = 
-  | 'attack' | 'skill_cast' | 'heal' | 'buff_add' | 'debuff_add'
-  | 'buff_remove' | 'debuff_remove' | 'status_change' | 'damage'
+  | 'attack' | 'skill_cast' | 'heal' | 'damage'
   | 'dodge' | 'crit' | 'block' | 'flee' | 'victory' | 'defeat'
   | 'combat_start' | 'combat_end';
-
-/** 状态效果类型 */
-export interface StatusEffect {
-  effectId: string;
-  effectName: string;
-  effectType: 'buff' | 'debuff';
-  duration: number;
-  stackCount: number;
-  modifierType: 'percent' | 'fixed';
-  modifiers: Partial<CombatModifiers>;
-}
-
-/** 战斗修正属性 */
-export interface CombatModifiers {
-  physicalAttack: number;
-  magicAttack: number;
-  physicalDefense: number;
-  magicDefense: number;
-  critChance: number;
-  dodgeChance: number;
-  damageTaken: number;
-  damageDealt: number;
-  healingReceived: number;
-  healingDone: number;
-}
 
 /** 技能战斗效果 */
 export interface SkillCombatEffect {
   skillId: string;
   skillName: string;
   effectType: SkillEffectType;
-  targetType: 'self' | 'enemy' | 'all' | 'random';
+  targetType: 'self' | 'enemy';
   damage?: {
     base: number;
     minMultiplier: number;
@@ -223,46 +195,13 @@ export interface SkillCombatEffect {
     base: number;
     multiplier: number;
   };
-  statusEffects?: StatusEffectData[];
   cooldown: number;
   manaCost: number;
 }
 
 /** 技能效果类型 */
 export type SkillEffectType = 
-  | 'damage' | 'heal' | 'buff' | 'debuff' | 'shield'
-  | 'dot' | 'hot' | 'cc' | 'passive';
-
-/** 状态效果数据 */
-export interface StatusEffectData {
-  effectId: string;
-  name: string;
-  type: 'buff' | 'debuff';
-  duration: number;
-  maxStacks: number;
-  modifiers: Partial<CombatModifiers>;
-  description: string;
-}
-
-/** 技能触发条件 */
-export interface SkillTriggerCondition {
-  type: TriggerType;
-  conditions: TriggerCondition[];
-}
-
-/** 触发类型 */
-export type TriggerType = 
-  | 'on_attack' | 'on_hit' | 'on_damage' | 'on_heal' | 'on_death'
-  | 'on_level_up' | 'on_combat_start' | 'on_combat_end' | 'passive';
-
-/** 触发条件 */
-export interface TriggerCondition {
-  stat?: string;
-  operator?: '>' | '<' | '>=' | '<=' | '==' | '!=';
-  value?: number;
-  chance?: number;
-  cooldown?: number;
-}
+  | 'damage' | 'heal';
 
 /** 技能释放结果 */
 export interface SkillCastResult {
@@ -271,7 +210,6 @@ export interface SkillCastResult {
   skillName: string;
   damage?: number;
   heal?: number;
-  statusEffects?: StatusEffect[];
   message: string;
 }
 ```
@@ -316,7 +254,6 @@ export interface SkillCastResult {
 | isCrit | boolean | 是 | true/false | 是否暴击 |
 | isDodge | boolean | 是 | true/false | 是否闪避 |
 | isBlocked | boolean | 是 | true/false | 是否格挡 |
-| statusEffects | array | 否 | StatusEffect数组 | 附加的状态效果 |
 | message | string | 是 | 最大500字符 | 日志描述消息 |
 
 ### 战斗日志存储结构
@@ -543,7 +480,6 @@ export interface CombatLogStorage {
 src/modules/combat/
   - index.ts          # 核心实现（Store + Service）
   - types.ts          # 类型定义
-  - skillEffects.ts   # 技能效果处理
   - combatLog.ts      # 战斗日志管理
 ```
 
@@ -553,7 +489,6 @@ src/modules/combat/
 |------|------|
 | `index.ts` | Pinia Store 实现、服务接口实现、战斗逻辑 |
 | `types.ts` | TypeScript 类型定义、接口定义 |
-| `skillEffects.ts` | 技能效果计算、触发机制、状态效果管理 |
 | `combatLog.ts` | 战斗日志记录、存储、查询 |
 
 ---
@@ -565,7 +500,8 @@ src/modules/combat/
 | v1.0 | 2026-05-15 | 初始版本，包含基础战斗功能 | System |
 | v1.1 | 2026-05-18 | 重构为回合制系统，添加玩家单动作限制 | System |
 | v2.0 | 2026-05-19 | 迁移到 Pinia + IndexedDB 架构 | System |
-| v2.1 | 2026-05-19 | 添加战斗日志数据结构和技能效果集成方案 | System |
+| v2.1 | 2026-05-19 | 添加战斗日志数据结构 | System |
+| v2.2 | 2026-05-20 | 移除buff、debuff及被动技能相关内容，简化技能效果类型 | System |
 
 ---
 
