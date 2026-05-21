@@ -6,11 +6,20 @@
 
 import type { EnemyData } from '../types'
 
+export interface EnemyDataWithCombat extends EnemyData {
+  physicalAttack?: number
+  physicalDefense?: number
+  magicAttack?: number
+  magicDefense?: number
+  critChance?: number
+  dodgeChance?: number
+}
+
 /**
  * 所有敌人的完整数据集
- * @type {Record<string, EnemyData>}
+ * @type {Record<string, EnemyDataWithCombat>}
  */
-export const ENEMIES: Record<string, EnemyData> = {
+export const ENEMIES: Record<string, EnemyDataWithCombat> = {
   goblin: {
     name: '豺狼人',
     icon: '👺',
@@ -18,7 +27,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [4, 8],
     xp: 15,
     gold: 5,
-    dangerLevel: '普通'
+    dangerLevel: '普通',
+    physicalAttack: 8,
+    physicalDefense: 3,
+    magicAttack: 2,
+    magicDefense: 2,
+    critChance: 5,
+    dodgeChance: 3
   },
   kobold: {
     name: '狗头人',
@@ -27,7 +42,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [3, 6],
     xp: 12,
     gold: 3,
-    dangerLevel: '普通'
+    dangerLevel: '普通',
+    physicalAttack: 6,
+    physicalDefense: 2,
+    magicAttack: 3,
+    magicDefense: 3,
+    critChance: 4,
+    dodgeChance: 5
   },
   murloc: {
     name: '鱼人',
@@ -36,7 +57,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [4, 7],
     xp: 14,
     gold: 4,
-    dangerLevel: '普通'
+    dangerLevel: '普通',
+    physicalAttack: 7,
+    physicalDefense: 2,
+    magicAttack: 2,
+    magicDefense: 2,
+    critChance: 3,
+    dodgeChance: 4
   },
   skeleton: {
     name: '骷髅',
@@ -45,7 +72,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [5, 10],
     xp: 20,
     gold: 8,
-    dangerLevel: '普通'
+    dangerLevel: '普通',
+    physicalAttack: 10,
+    physicalDefense: 4,
+    magicAttack: 4,
+    magicDefense: 4,
+    critChance: 6,
+    dodgeChance: 2
   },
   orc: {
     name: '兽人战士',
@@ -54,7 +87,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [8, 15],
     xp: 35,
     gold: 15,
-    dangerLevel: '困难'
+    dangerLevel: '困难',
+    physicalAttack: 18,
+    physicalDefense: 8,
+    magicAttack: 5,
+    magicDefense: 4,
+    critChance: 8,
+    dodgeChance: 4
   },
   spider: {
     name: '剧毒蜘蛛',
@@ -63,7 +102,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [6, 12],
     xp: 25,
     gold: 10,
-    dangerLevel: '普通'
+    dangerLevel: '普通',
+    physicalAttack: 12,
+    physicalDefense: 4,
+    magicAttack: 6,
+    magicDefense: 3,
+    critChance: 12,
+    dodgeChance: 8
   },
   bandit: {
     name: '迪菲亚强盗',
@@ -72,7 +117,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [7, 14],
     xp: 30,
     gold: 20,
-    dangerLevel: '困难'
+    dangerLevel: '困难',
+    physicalAttack: 16,
+    physicalDefense: 6,
+    magicAttack: 4,
+    magicDefense: 4,
+    critChance: 10,
+    dodgeChance: 8
   },
   troll: {
     name: '丛林巨魔',
@@ -81,7 +132,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [12, 20],
     xp: 60,
     gold: 30,
-    dangerLevel: '危险'
+    dangerLevel: '危险',
+    physicalAttack: 25,
+    physicalDefense: 12,
+    magicAttack: 8,
+    magicDefense: 8,
+    critChance: 8,
+    dodgeChance: 5
   },
   dragon_whelp: {
     name: '幼龙',
@@ -90,7 +147,14 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [15, 30],
     xp: 100,
     gold: 50,
-    dangerLevel: '极危险'
+    dangerLevel: '极危险',
+    isBoss: true,
+    physicalAttack: 35,
+    physicalDefense: 18,
+    magicAttack: 25,
+    magicDefense: 15,
+    critChance: 12,
+    dodgeChance: 6
   },
   demon: {
     name: '恶魔卫士',
@@ -99,7 +163,14 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [20, 35],
     xp: 150,
     gold: 75,
-    dangerLevel: '致命'
+    dangerLevel: '致命',
+    isBoss: true,
+    physicalAttack: 45,
+    physicalDefense: 22,
+    magicAttack: 35,
+    magicDefense: 20,
+    critChance: 15,
+    dodgeChance: 8
   },
   wolf: {
     name: '灰狼',
@@ -108,7 +179,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [5, 9],
     xp: 18,
     gold: 6,
-    dangerLevel: '普通'
+    dangerLevel: '普通',
+    physicalAttack: 10,
+    physicalDefense: 3,
+    magicAttack: 2,
+    magicDefense: 2,
+    critChance: 8,
+    dodgeChance: 10
   },
   ghoul: {
     name: '食尸鬼',
@@ -117,7 +194,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [6, 11],
     xp: 22,
     gold: 9,
-    dangerLevel: '普通'
+    dangerLevel: '普通',
+    physicalAttack: 12,
+    physicalDefense: 5,
+    magicAttack: 3,
+    magicDefense: 3,
+    critChance: 6,
+    dodgeChance: 4
   },
   frostwyrm: {
     name: '冰霜巨龙',
@@ -126,7 +209,14 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [16, 32],
     xp: 110,
     gold: 55,
-    dangerLevel: '极危险'
+    dangerLevel: '极危险',
+    isBoss: true,
+    physicalAttack: 40,
+    physicalDefense: 20,
+    magicAttack: 32,
+    magicDefense: 18,
+    critChance: 14,
+    dodgeChance: 5
   },
   iron_dwarf: {
     name: '铁矮人',
@@ -135,7 +225,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [10, 18],
     xp: 55,
     gold: 28,
-    dangerLevel: '危险'
+    dangerLevel: '危险',
+    physicalAttack: 22,
+    physicalDefense: 15,
+    magicAttack: 6,
+    magicDefense: 8,
+    critChance: 7,
+    dodgeChance: 3
   },
   elemental: {
     name: '元素生物',
@@ -144,7 +240,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [9, 16],
     xp: 50,
     gold: 25,
-    dangerLevel: '危险'
+    dangerLevel: '危险',
+    physicalAttack: 18,
+    physicalDefense: 8,
+    magicAttack: 25,
+    magicDefense: 15,
+    critChance: 10,
+    dodgeChance: 5
   },
   nerubian: {
     name: '蛛魔',
@@ -153,7 +255,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [11, 19],
     xp: 58,
     gold: 29,
-    dangerLevel: '危险'
+    dangerLevel: '危险',
+    physicalAttack: 22,
+    physicalDefense: 10,
+    magicAttack: 12,
+    magicDefense: 8,
+    critChance: 12,
+    dodgeChance: 8
   },
   vrykul: {
     name: '维库人',
@@ -162,7 +270,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [11, 18],
     xp: 56,
     gold: 27,
-    dangerLevel: '危险'
+    dangerLevel: '危险',
+    physicalAttack: 24,
+    physicalDefense: 14,
+    magicAttack: 8,
+    magicDefense: 10,
+    critChance: 9,
+    dodgeChance: 4
   },
   undead: {
     name: '亡灵',
@@ -171,7 +285,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [7, 13],
     xp: 28,
     gold: 12,
-    dangerLevel: '普通'
+    dangerLevel: '普通',
+    physicalAttack: 14,
+    physicalDefense: 5,
+    magicAttack: 6,
+    magicDefense: 5,
+    critChance: 5,
+    dodgeChance: 3
   },
   bear: {
     name: '棕熊',
@@ -180,7 +300,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [8, 14],
     xp: 32,
     gold: 12,
-    dangerLevel: '困难'
+    dangerLevel: '困难',
+    physicalAttack: 18,
+    physicalDefense: 10,
+    magicAttack: 2,
+    magicDefense: 3,
+    critChance: 7,
+    dodgeChance: 4
   },
   boar: {
     name: '野猪',
@@ -189,7 +315,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [6, 12],
     xp: 26,
     gold: 8,
-    dangerLevel: '普通'
+    dangerLevel: '普通',
+    physicalAttack: 12,
+    physicalDefense: 6,
+    magicAttack: 2,
+    magicDefense: 2,
+    critChance: 5,
+    dodgeChance: 3
   },
   centaur: {
     name: '半人马',
@@ -198,7 +330,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [9, 16],
     xp: 45,
     gold: 20,
-    dangerLevel: '困难'
+    dangerLevel: '困难',
+    physicalAttack: 20,
+    physicalDefense: 10,
+    magicAttack: 6,
+    magicDefense: 6,
+    critChance: 8,
+    dodgeChance: 6
   },
   harpy: {
     name: '鹰身人',
@@ -207,7 +345,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [7, 13],
     xp: 33,
     gold: 16,
-    dangerLevel: '困难'
+    dangerLevel: '困难',
+    physicalAttack: 14,
+    physicalDefense: 5,
+    magicAttack: 12,
+    magicDefense: 8,
+    critChance: 10,
+    dodgeChance: 12
   },
   naga: {
     name: '纳迦',
@@ -216,7 +360,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [11, 19],
     xp: 65,
     gold: 35,
-    dangerLevel: '危险'
+    dangerLevel: '危险',
+    physicalAttack: 22,
+    physicalDefense: 10,
+    magicAttack: 20,
+    magicDefense: 14,
+    critChance: 10,
+    dodgeChance: 8
   },
   ogre: {
     name: '食人魔',
@@ -225,7 +375,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [13, 22],
     xp: 70,
     gold: 40,
-    dangerLevel: '危险'
+    dangerLevel: '危险',
+    physicalAttack: 28,
+    physicalDefense: 16,
+    magicAttack: 6,
+    magicDefense: 6,
+    critChance: 7,
+    dodgeChance: 3
   },
   quilboar: {
     name: '野猪人',
@@ -234,7 +390,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [8, 15],
     xp: 38,
     gold: 18,
-    dangerLevel: '困难'
+    dangerLevel: '困难',
+    physicalAttack: 16,
+    physicalDefense: 8,
+    magicAttack: 4,
+    magicDefense: 4,
+    critChance: 8,
+    dodgeChance: 5
   },
   scorpid: {
     name: '蝎子',
@@ -243,7 +405,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [7, 12],
     xp: 27,
     gold: 11,
-    dangerLevel: '普通'
+    dangerLevel: '普通',
+    physicalAttack: 13,
+    physicalDefense: 5,
+    magicAttack: 4,
+    magicDefense: 3,
+    critChance: 10,
+    dodgeChance: 6
   },
   silithid: {
     name: '异种虫',
@@ -252,7 +420,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [14, 24],
     xp: 75,
     gold: 45,
-    dangerLevel: '危险'
+    dangerLevel: '危险',
+    physicalAttack: 30,
+    physicalDefense: 14,
+    magicAttack: 10,
+    magicDefense: 8,
+    critChance: 15,
+    dodgeChance: 10
   },
   gnoll: {
     name: '豺狼人',
@@ -261,7 +435,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [6, 11],
     xp: 24,
     gold: 10,
-    dangerLevel: '普通'
+    dangerLevel: '普通',
+    physicalAttack: 11,
+    physicalDefense: 4,
+    magicAttack: 3,
+    magicDefense: 3,
+    critChance: 6,
+    dodgeChance: 5
   },
   undead_knight: {
     name: '死亡骑士',
@@ -270,7 +450,14 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [14, 26],
     xp: 90,
     gold: 50,
-    dangerLevel: '极危险'
+    dangerLevel: '极危险',
+    isBoss: true,
+    physicalAttack: 32,
+    physicalDefense: 18,
+    magicAttack: 20,
+    magicDefense: 15,
+    critChance: 12,
+    dodgeChance: 6
   },
   lich: {
     name: '巫妖',
@@ -279,7 +466,14 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [18, 32],
     xp: 120,
     gold: 65,
-    dangerLevel: '极危险'
+    dangerLevel: '极危险',
+    isBoss: true,
+    physicalAttack: 20,
+    physicalDefense: 10,
+    magicAttack: 45,
+    magicDefense: 28,
+    critChance: 15,
+    dodgeChance: 8
   },
   frost_giant: {
     name: '冰霜巨人',
@@ -288,7 +482,14 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [20, 38],
     xp: 160,
     gold: 80,
-    dangerLevel: '致命'
+    dangerLevel: '致命',
+    isBoss: true,
+    physicalAttack: 50,
+    physicalDefense: 28,
+    magicAttack: 30,
+    magicDefense: 20,
+    critChance: 12,
+    dodgeChance: 4
   },
   tiger: {
     name: '猛虎',
@@ -297,7 +498,13 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [12, 22],
     xp: 55,
     gold: 25,
-    dangerLevel: '危险'
+    dangerLevel: '危险',
+    physicalAttack: 26,
+    physicalDefense: 10,
+    magicAttack: 4,
+    magicDefense: 4,
+    critChance: 15,
+    dodgeChance: 12
   },
   dwarf: {
     name: '黑铁矮人',
@@ -306,6 +513,12 @@ export const ENEMIES: Record<string, EnemyData> = {
     damage: [10, 18],
     xp: 48,
     gold: 22,
-    dangerLevel: '困难'
+    dangerLevel: '困难',
+    physicalAttack: 20,
+    physicalDefense: 12,
+    magicAttack: 6,
+    magicDefense: 8,
+    critChance: 7,
+    dodgeChance: 4
   }
 }
