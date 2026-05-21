@@ -41,7 +41,6 @@ export interface SkillEffect {
  * @property {SkillType} type - 技能类型
  * @property {SkillEffect} effect - 技能效果
  * @property {number} unlockLevel - 解锁等级
- * @property {boolean} isUnlocked - 是否已解锁
  */
 export interface Skill {
   id: string
@@ -52,7 +51,6 @@ export interface Skill {
   type: SkillType
   effect: SkillEffect
   unlockLevel: number
-  isUnlocked: boolean
 }
 
 /**
@@ -63,7 +61,6 @@ export interface Skill {
  * @property {SkillType} type - 技能类型
  * @property {number} [damage] - 造成的伤害
  * @property {number} [heal] - 治疗量
- * @property {number} [defense] - 防御加成
  * @property {string} message - 结果消息
  */
 export interface SkillUseResult {
@@ -72,7 +69,6 @@ export interface SkillUseResult {
   type: SkillType
   damage?: number
   heal?: number
-  defense?: number
   message: string
 }
 

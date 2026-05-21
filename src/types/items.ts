@@ -7,90 +7,6 @@ import type { Stats } from './character'
 import type { SkillType } from './skills'
 
 /**
- * 物品基础类型接口
- * @property {string} id - 物品ID
- * @property {string} name - 物品名称
- * @property {ItemType} type - 物品类型
- * @property {ItemRarity} rarity - 物品稀有度
- * @property {string} icon - 物品图标
- * @property {string} description - 物品描述
- * @property {Partial<Stats>} [stats] - 属性加成
- * @property {number} value - 物品价值
- * @property {boolean} stackable - 是否可堆叠
- * @property {number} [hpRestore] - 生命值恢复量
- * @property {number} [mpRestore] - 法力值恢复量
- * @property {boolean} [consumable] - 是否为消耗品
- * @property {string} [template] - 物品模板ID
- */
-export interface Item {
-  id: string
-  name: string
-  type: ItemType
-  rarity: ItemRarity
-  icon: string
-  description: string
-  bonus: Partial<Stats>
-  value: number
-  stackable: boolean
-  hpRestore?: number
-  mpRestore?: number
-  consumable?: boolean
-  template?: string
-}
-
-/**
- * 背包物品接口
- * @property {string} itemId - 物品ID
- * @property {number} count - 物品数量
- */
-export interface InventoryItem {
-  itemId: string
-  count: number
-}
-
-/**
- * 物品类型数据接口
- * @property {string} name - 类型名称
- * @property {boolean} stackable - 是否可堆叠
- * @property {number} maxStack - 最大堆叠数量
- * @property {boolean} [usable] - 是否可使用
- */
-export interface ItemTypeData {
-  name: string
-  stackable: boolean
-  maxStack: number
-  usable?: boolean
-}
-
-/**
- * 掉落物品数据接口
- * @property {string} name - 物品名称
- * @property {string} icon - 物品图标
- * @property {ItemType} type - 物品类型
- * @property {number} [healing] - 治疗量
- * @property {number} [manaRestore] - 法力恢复量
- * @property {Partial<Stats>} bonus - 属性加成
- * @property {ItemEffect} [effect] - 效果类型
- * @property {[number, number]} [damage] - 伤害范围
- * @property {ItemRarity} rarity - 稀有度
- * @property {string} description - 描述
- * @property {string} template - 模板ID
- */
-export interface LootItemData {
-  name: string
-  icon: string
-  type: ItemType
-  healing?: number
-  manaRestore?: number
-  bonus: Partial<Stats>
-  effect?: ItemEffect
-  damage?: [number, number]
-  rarity: ItemRarity
-  description: string
-  template: string
-}
-
-/**
  * 物品类型枚举
  * - gold: 货币
  * - potion: 药水
@@ -103,6 +19,21 @@ export interface LootItemData {
  * - misc: 杂项
  */
 export type ItemType = 'gold' | 'potion' | 'scroll' | 'food' | 'material' | 'quest' | 'weapon' | 'armor' | 'misc'
+
+/**
+ * 物品类型数据接口
+ * @property {string} name - 类型名称
+ * @property {boolean} stackable - 是否可堆叠
+ * @property {number} maxStack - 最大堆叠数量
+ * @property {boolean} [usable] - 是否可使用
+ */
+export interface ItemTypeData {
+  id: ItemType
+  name: string
+  stackable: boolean
+  maxStack: number
+  usable?: boolean
+}
 
 /**
  * 物品稀有度枚举
@@ -119,6 +50,7 @@ export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
  * - physical_damage: 物理伤害
  * - magic_damage: 法术伤害
  * - heal: 治疗
+ * - stat: 属性加成
  */
 export type ItemEffectType = SkillType | 'stat'
 
@@ -130,6 +62,48 @@ export type ItemEffectType = SkillType | 'stat'
 export interface ItemEffect {
   type: ItemEffectType
   value: number | Partial<Stats>
+}
+
+/**
+ * 物品基础类型接口
+ * @property {string} id - 物品ID
+ * @property {string} name - 物品名称
+ * @property {ItemType} type - 物品类型
+ * @property {ItemRarity} rarity - 物品稀有度
+ * @property {string} icon - 物品图标
+ * @property {string} description - 物品描述
+ * @property {Partial<Stats>} [bonus] - 属性加成
+ * @property {number} value - 物品价值
+ * @property {boolean} stackable - 是否可堆叠
+ * @property {number} [hpRestore] - 生命值恢复量
+ * @property {number} [mpRestore] - 法力值恢复量
+ * @property {boolean} [consumable] - 是否为消耗品
+ * @property {string} [template] - 物品模板ID
+ */
+export interface Item {
+  id: string
+  name: string
+  type: ItemType
+  rarity: ItemRarity
+  icon: string
+  description: string
+  bonus?: Partial<Stats>
+  value: number
+  stackable: boolean
+  hpRestore?: number
+  mpRestore?: number
+  consumable?: boolean
+  template?: string
+}
+
+/**
+ * 背包物品接口
+ * @property {string} itemId - 物品ID
+ * @property {number} count - 物品数量
+ */
+export interface InventoryItem {
+  itemId: string
+  count: number
 }
 
 /**

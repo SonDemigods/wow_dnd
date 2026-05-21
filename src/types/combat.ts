@@ -4,6 +4,7 @@
  */
 
 import type { Enemy } from './enemies';
+import type { InventoryItem } from './items';
 import type { SkillType } from './skills';
 
 /**
@@ -101,7 +102,7 @@ export interface CombatEndEvent {
   result: CombatResult;
   enemy: Enemy;
   expGained: number;
-  loot?: any[];
+  loot?: InventoryItem[];
 }
 
 /**

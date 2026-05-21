@@ -9,7 +9,143 @@
  * - horde: 部落
  * - neutral: 中立
  */
-export type FactionType = 'alliance' | 'horde' | 'neutral'
+export type FactionType = 'alliance' | 'horde' | 'neutral';
+
+/**
+ * 阵营数据接口
+ * @property {string} name - 阵营名称
+ * @property {string} icon - 阵营图标
+ * @property {string} color - 阵营主色调
+ * @property {string} description - 阵营描述
+ */
+export interface FactionData {
+  id: FactionType;
+  name: string;
+  icon: string;
+  color: string;
+  description: string;
+}
+
+/**
+ * 种族类型枚举
+ * - human: 人类
+ * - dwarf: 矮人
+ * - gnome: 侏儒
+ * - nightelf: 暗夜精灵
+ * - draenei: 德莱尼
+ * - worgen: 狼人
+ * - pandaren: 熊猫人
+ * - orc: 兽人
+ * - undead: 被遗忘者
+ * - tauren: 牛头人
+ * - troll: 巨魔
+ * - bloodelves: 血精灵
+ * - goblin: 地精
+ */
+export type RaceType =
+  | 'human'
+  | 'dwarf'
+  | 'gnome'
+  | 'nightelf'
+  | 'draenei'
+  | 'worgen'
+  | 'pandaren'
+  | 'orc'
+  | 'undead'
+  | 'tauren'
+  | 'troll'
+  | 'bloodelves'
+  | 'goblin';
+
+/**
+ * 种族数据接口
+ * @property {string} name - 种族名称
+ * @property {string} icon - 种族图标
+ * @property {string} factionId - 所属阵营ID
+ * @property {Partial<Stats>} bonus - 属性加成
+ * @property {string} description - 种族描述
+ */
+export interface RaceData {
+  id: RaceType;
+  name: string;
+  icon: string;
+  factionId: string;
+  bonus?: Partial<Stats>;
+  description: string;
+}
+
+/**
+ * 种族属性调整值接口
+ * @property {string} raceId - 种族ID
+ * @property {string} factionId - 阵营ID
+ * @property {Partial<Stats>} stats - 属性调整值
+ */
+export interface RaceBonus {
+  raceId: string;
+  factionId: string;
+  bonus: Partial<Stats>;
+}
+
+/**
+ * 职业类型枚举
+ * - warrior: 战士
+ * - mage: 法师
+ * - paladin: 圣骑士
+ * - hunter: 猎人
+ * - rogue: 潜行者
+ * - warlock: 术士
+ * - druid:  德鲁伊
+ * - priest: 牧师
+ * - shaman: 萨满
+ * - deathknight: 死亡骑士
+ * - monk: 武僧
+ * - demonhunter: 恶魔猎手
+ */
+export type ClassType =
+  | 'warrior'
+  | 'mage'
+  | 'paladin'
+  | 'hunter'
+  | 'rogue'
+  | 'warlock'
+  | 'druid'
+  | 'priest'
+  | 'shaman'
+  | 'deathknight'
+  | 'monk'
+  | 'demonhunter';
+
+/**
+ * 职业数据接口
+ * @property {ClassType} id - 职业ID
+ * @property {string} name - 职业名称
+ * @property {string} icon - 职业图标
+ * @property {keyof Stats} primaryStat - 主属性
+ * @property {string[]} factionsIds - 可选阵营ID
+ * @property {string} description - 职业描述
+ * @property {string} color - 职业主色调
+ * @property {Partial<Stats>} [bonus] - 职业属性调整值
+ */
+export interface ClassData {
+  id: ClassType;
+  name: string;
+  icon: string;
+  primaryStat: keyof Stats;
+  factionsIds: string[];
+  description: string;
+  color: string;
+  bonus?: Partial<Stats>;
+}
+
+/**
+ * 职业属性调整值接口
+ * @property {string} classId - 职业ID
+ * @property {Partial<Stats>} bonus - 属性调整值
+ */
+export interface ClassBonus {
+  classId: string;
+  bonus: Partial<Stats>;
+}
 
 /**
  * 六大核心属性接口（D&D风格）
@@ -21,12 +157,12 @@ export type FactionType = 'alliance' | 'horde' | 'neutral'
  * @property {number} cha - 魅力：影响对话选项和交易折扣
  */
 export interface Stats {
-  str: number
-  dex: number
-  con: number
-  int: number
-  wis: number
-  cha: number
+  str: number;
+  dex: number;
+  con: number;
+  int: number;
+  wis: number;
+  cha: number;
 }
 
 /**
@@ -50,31 +186,31 @@ export interface Stats {
  * @property {number} [initiative] - 先手值
  */
 export interface Attributes {
-  maxHp: number
-  maxMana: number
-  physicalAttack: number
-  physicalDefense: number
-  magicAttack: number
-  magicDefense: number
-  critChance: number
-  dodgeChance: number
-  hpBonus: number
-  mpBonus: number
-  healBonus: number
-  attackBonus?: number
-  critBonus?: number
-  dodgeBonus?: number
-  armor?: number
-  initiative?: number
+  maxHp: number;
+  maxMana: number;
+  physicalAttack: number;
+  physicalDefense: number;
+  magicAttack: number;
+  magicDefense: number;
+  critChance: number;
+  dodgeChance: number;
+  hpBonus: number;
+  mpBonus: number;
+  healBonus: number;
+  attackBonus?: number;
+  critBonus?: number;
+  dodgeBonus?: number;
+  armor?: number;
+  initiative?: number;
 }
 
 /**
  * 玩家角色数据接口
  * 存储角色的基本信息和当前状态
  * @property {string} name - 角色名称
- * @property {FactionType} faction - 所属阵营
- * @property {string | null} race - 种族
- * @property {string | null} class - 职业
+ * @property {string} factionId - 所属阵营ID
+ * @property {string} raceId - 种族ID
+ * @property {string} classId - 职业ID
  * @property {number} level - 等级
  * @property {number} exp - 当前经验值
  * @property {number} expToNextLevel - 升级所需经验值
@@ -86,69 +222,19 @@ export interface Attributes {
  * @property {number} gold - 金币数量
  */
 export interface Character {
-  name: string
-  faction: FactionType
-  race: string | null
-  class: string | null
-  level: number
-  exp: number
-  expToNextLevel: number
-  hp: number
-  maxHp: number
-  mana: number
-  maxMana: number
-  stats: Stats
-  gold: number
-}
-
-/**
- * 阵营数据接口
- * @property {string} name - 阵营名称
- * @property {string} icon - 阵营图标
- * @property {string} color - 阵营主色调
- * @property {string} description - 阵营描述
- */
-export interface FactionData {
-  name: string
-  icon: string
-  color: string
-  description: string
-}
-
-/**
- * 种族数据接口
- * @property {string} name - 种族名称
- * @property {string} icon - 种族图标
- * @property {FactionType} faction - 所属阵营
- * @property {Partial<Stats>} bonus - 属性加成
- * @property {string} description - 种族描述
- */
-export interface RaceData {
-  name: string
-  icon: string
-  faction: FactionType
-  bonus?: Partial<Stats>
-  description: string
-}
-
-/**
- * 职业数据接口
- * @property {string} name - 职业名称
- * @property {string} icon - 职业图标
- * @property {keyof Stats} primaryStat - 主属性
- * @property {FactionType[]} factions - 可选阵营
- * @property {string} description - 职业描述
- * @property {string} color - 职业主色调
- * @property {Partial<Stats>} [bonus] - 职业属性调整值
- */
-export interface ClassData {
-  name: string
-  icon: string
-  primaryStat: keyof Stats
-  factions: FactionType[]
-  description: string
-  color: string
-  bonus?: Partial<Stats>
+  name: string;
+  factionId: string;
+  raceId: string;
+  classId: string;
+  level: number;
+  exp: number;
+  expToNextLevel: number;
+  hp: number;
+  maxHp: number;
+  mana: number;
+  maxMana: number;
+  stats: Stats;
+  gold: number;
 }
 
 /**
@@ -156,44 +242,22 @@ export interface ClassData {
  * 用于角色选择界面显示
  * @property {string} id - 角色ID
  * @property {string} name - 角色名称
- * @property {string} race - 种族
- * @property {string} charClass - 职业
- * @property {FactionType} faction - 阵营
+ * @property {string} raceId - 种族ID
+ * @property {string} classId - 职业ID
+ * @property {string} factionId - 阵营ID
  * @property {number} level - 等级
  * @property {number} createdTime - 创建时间戳
  * @property {number} lastPlayedTime - 最后游玩时间戳
  */
 export interface CharacterListItem {
-  id: string
-  name: string
-  race: string
-  charClass: string
-  faction: FactionType
-  level: number
-  createdTime: number
-  lastPlayedTime: number
-}
-
-/**
- * 种族属性调整值接口
- * @property {string} race - 种族名称
- * @property {FactionType} faction - 阵营
- * @property {Partial<Stats>} stats - 属性调整值
- */
-export interface RaceBonus {
-  race: string
-  faction: FactionType
-  bonus: Partial<Stats>
-}
-
-/**
- * 职业属性调整值接口
- * @property {string} className - 职业名称
- * @property {Partial<Stats>} bonus - 属性调整值
- */
-export interface ClassBonus {
-  className: string
-  bonus: Partial<Stats>
+  id: string;
+  name: string;
+  raceId: string;
+  classId: string;
+  factionId: string;
+  level: number;
+  createdTime: number;
+  lastPlayedTime: number;
 }
 
 /**
@@ -204,193 +268,198 @@ export interface ICharacterService {
   /**
    * 创建新角色
    * @param {string} name - 角色名称
-   * @param {FactionType} faction - 阵营
+   * @param {string} factionId - 阵营ID
    * @param {string} race - 种族
    * @param {string} charClass - 职业
    * @returns {string} 角色ID
    */
-  createCharacter(name: string, faction: FactionType, race: string, charClass: string): string
+  createCharacter(
+    name: string,
+    factionId: string,
+    race: string,
+    charClass: string
+  ): string;
 
   /**
    * 选择角色
    * @param {string} characterId - 角色ID
    * @returns {boolean} 是否成功选择
    */
-  selectCharacter(characterId: string): boolean
+  selectCharacter(characterId: string): boolean;
 
   /**
    * 删除角色
    * @param {string} characterId - 角色ID
    * @returns {boolean} 是否成功删除
    */
-  deleteCharacter(characterId: string): boolean
+  deleteCharacter(characterId: string): boolean;
 
   /**
    * 获取所有角色列表
    * @returns {CharacterListItem[]} 角色列表
    */
-  getAllCharacters(): CharacterListItem[]
+  getAllCharacters(): CharacterListItem[];
 
   /**
    * 获取当前选中的角色ID
    * @returns {string | null} 当前角色ID
    */
-  getCurrentCharacterId(): string | null
+  getCurrentCharacterId(): string | null;
 
   /** 登出当前角色 */
-  logout(): void
+  logout(): void;
 
   /**
    * 获取核心属性
    * @returns {Stats} 核心属性
    */
-  getStats(): Stats
+  getStats(): Stats;
 
   /**
    * 获取衍生属性
    * @returns {Attributes} 衍生属性
    */
-  getAttributes(): Attributes
+  getAttributes(): Attributes;
 
   /**
    * 获取等级
    * @returns {number} 当前等级
    */
-  getLevel(): number
+  getLevel(): number;
 
   /**
    * 获取当前经验值
    * @returns {number} 当前经验值
    */
-  getExp(): number
+  getExp(): number;
 
   /**
    * 获取升级所需经验值
    * @returns {number} 升级所需经验值
    */
-  getExpToNextLevel(): number
+  getExpToNextLevel(): number;
 
   /**
    * 获取角色名称
    * @returns {string} 角色名称
    */
-  getName(): string
+  getName(): string;
 
   /**
    * 获取阵营
-   * @returns {FactionType} 阵营
+   * @returns {string} 阵营ID
    */
-  getFaction(): FactionType
+  getFactionId(): string;
 
   /**
    * 获取种族
-   * @returns {string | null} 种族
+   * @returns {string} 种族ID
    */
-  getRace(): string | null
+  getRace(): string;
 
   /**
    * 获取职业
-   * @returns {string | null} 职业
+   * @returns {string} 职业ID
    */
-  getClass(): string | null
+  getClass(): string;
 
   /**
    * 获取金币数量
    * @returns {number} 金币数量
    */
-  getGold(): number
+  getGold(): number;
 
   /**
    * 获取角色信息
    * @returns {Character} 角色信息
    */
-  getCharacterInfo(): Character
+  getCharacterInfo(): Character;
 
   /**
    * 添加经验值
    * @param {number} amount - 经验值数量
    */
-  addExp(amount: number): void
+  addExp(amount: number): void;
 
   /**
    * 添加生命值
    * @param {number} amount - 生命值数量
    */
-  addHp(amount: number): void
+  addHp(amount: number): void;
 
   /**
    * 添加法力值
    * @param {number} amount - 法力值数量
    */
-  addMp(amount: number): void
+  addMp(amount: number): void;
 
   /**
    * 设置生命值
    * @param {number} value - 生命值数值
    */
-  setHp(value: number): void
+  setHp(value: number): void;
 
   /**
    * 设置法力值
    * @param {number} value - 法力值数值
    */
-  setMp(value: number): void
+  setMp(value: number): void;
 
   /**
    * 应用属性加成
    * @param {Partial<Stats>} bonus - 属性加成
    */
-  applyBonus(bonus: Partial<Stats>): void
+  applyBonus(bonus: Partial<Stats>): void;
 
   /**
    * 移除属性加成
    * @param {Partial<Stats>} bonus - 属性加成
    */
-  removeBonus(bonus: Partial<Stats>): void
+  removeBonus(bonus: Partial<Stats>): void;
 
   /**
    * 添加金币
    * @param {number} amount - 金币数量
    */
-  addGold(amount: number): void
+  addGold(amount: number): void;
 
   /**
    * 花费金币
    * @param {number} amount - 金币数量
    * @returns {boolean} 是否成功花费
    */
-  spendGold(amount: number): boolean
+  spendGold(amount: number): boolean;
 
   /**
    * 设置角色名称
    * @param {string} name - 角色名称
    */
-  setName(name: string): void
+  setName(name: string): void;
 
   /**
    * 设置阵营
-   * @param {FactionType} faction - 阵营
+   * @param {string} factionId - 阵营ID
    */
-  setFaction(faction: FactionType): void
+  setFactionId(factionId: string): void;
 
   /**
    * 设置种族
-   * @param {string} race - 种族
+   * @param {string} race - 种族ID
    */
-  setRace(race: string): void
+  setRace(race: string): void;
 
   /**
    * 设置职业
-   * @param {string} charClass - 职业
+   * @param {string} classId - 职业ID
    */
-  setClass(charClass: string): void
+  setClass(classId: string): void;
 
   /** 重置角色数据 */
-  reset(): void
+  reset(): void;
 
   /** 处理角色死亡 */
-  handleDeath(): void
+  handleDeath(): void;
 
   /** 复活角色 */
-  resurrect(): void
+  resurrect(): void;
 }

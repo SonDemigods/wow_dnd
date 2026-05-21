@@ -3,6 +3,8 @@
  * @description 包含任务状态、任务目标、任务实例等相关类型定义
  */
 
+import { InventoryItem } from "./items";
+
 /**
  * 任务状态枚举
  * - NOT_AVAILABLE: 任务不可用（未达到等级要求或前置条件未满足）
@@ -48,20 +50,6 @@ export interface QuestObjective {
 }
 
 /**
- * 物品奖励接口
- * @property {string} itemId - 物品ID，对应物品数据中的唯一标识
- * @property {string} itemName - 物品名称，用于显示
- * @property {number} quantity - 奖励数量
- * @property {number} [chance] - 掉落几率（0-1之间），默认为1（必掉）
- */
-export interface ItemReward {
-  itemId: string;
-  itemName: string;
-  quantity: number;
-  chance?: number;
-}
-
-/**
  * 任务定义接口
  * 定义任务的静态数据，所有玩家共享
  * @property {string} id - 任务ID，唯一标识
@@ -72,7 +60,7 @@ export interface ItemReward {
  * @property {number} levelRequirement - 等级要求，玩家必须达到此等级才能接取
  * @property {number} xpReward - 经验奖励，完成任务后获得的经验值
  * @property {number} goldReward - 金币奖励，完成任务后获得的金币数量
- * @property {ItemReward[]} [itemRewards] - 物品奖励列表，完成任务后可能获得的物品
+ * @property {InventoryItem[]} [itemRewards] - 物品奖励列表，完成任务后可能获得的物品
  * @property {string} boardId - 任务板ID，任务发布的地点
  */
 export interface QuestDefinition {
@@ -84,7 +72,7 @@ export interface QuestDefinition {
   levelRequirement: number;
   xpReward: number;
   goldReward: number;
-  itemRewards?: ItemReward[];
+  itemRewards?: InventoryItem[];
   boardId: string;
 }
 

@@ -20,6 +20,32 @@ export interface ContinentData {
 }
 
 /**
+ * 地图视图接口
+ * @property {number} zoomLevel - 缩放级别
+ * @property {number} panX - X平移量
+ * @property {number} panY - Y平移量
+ * @property {string} [currentContinentId] - 当前大陆ID
+ * @property {boolean} showMarkers - 是否显示标记
+ * @property {string} [activeMarkerId] - 当前激活的标记ID
+ */
+export interface MapView {
+  zoomLevel: number
+  panX: number
+  panY: number
+  currentContinentId?: string
+  showMarkers: boolean
+  activeMarkerId?: string
+}
+
+/**
+ * 地图状态接口
+ * @property {MapView} view - 地图视图
+ */
+export interface MapState {
+  view: MapView
+}
+
+/**
  * 地点数据接口
  * @property {string} name - 地点名称
  * @property {string} displayName - 显示名称
@@ -71,32 +97,6 @@ export interface LocationMarker {
   requiredLevel: number
   difficulty?: 'normal' | 'heroic' | 'mythic'
   parentMarkerId?: string
-}
-
-/**
- * 地图视图接口
- * @property {number} zoomLevel - 缩放级别
- * @property {number} panX - X平移量
- * @property {number} panY - Y平移量
- * @property {string} [currentContinentId] - 当前大陆ID
- * @property {boolean} showMarkers - 是否显示标记
- * @property {string} [activeMarkerId] - 当前激活的标记ID
- */
-export interface MapView {
-  zoomLevel: number
-  panX: number
-  panY: number
-  currentContinentId?: string
-  showMarkers: boolean
-  activeMarkerId?: string
-}
-
-/**
- * 地图状态接口
- * @property {MapView} view - 地图视图
- */
-export interface MapState {
-  view: MapView
 }
 
 /**
