@@ -6,20 +6,11 @@
 
 import type { EnemyData } from '../types'
 
-export interface EnemyDataWithCombat extends EnemyData {
-  physicalAttack?: number
-  physicalDefense?: number
-  magicAttack?: number
-  magicDefense?: number
-  critChance?: number
-  dodgeChance?: number
-}
-
 /**
  * 所有敌人的完整数据集
- * @type {Record<string, EnemyDataWithCombat>}
+ * @type {Record<string, EnemyData>}
  */
-export const ENEMIES: Record<string, EnemyDataWithCombat> = {
+export const ENEMIES: Record<string, EnemyData> = {
   goblin: {
     name: '豺狼人',
     icon: '👺',
