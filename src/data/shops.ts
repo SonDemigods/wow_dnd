@@ -4,11 +4,8 @@
  * @module data/shops
  */
 
-import type { ShopConfig, ShopItemRarity } from '../modules/shop/types';
+import type { ShopConfig, ShopItemRarity } from '../types';
 
-/**
- * 稀有度价格系数
- */
 export const RARITY_PRICE_MULTIPLIER: Record<ShopItemRarity, number> = {
   common: 1,
   uncommon: 2.5,
@@ -17,9 +14,6 @@ export const RARITY_PRICE_MULTIPLIER: Record<ShopItemRarity, number> = {
   legendary: 50
 };
 
-/**
- * 稀有度出售价格折扣系数
- */
 export const RARITY_SELL_DISCOUNT: Record<ShopItemRarity, number> = {
   common: 0.5,
   uncommon: 0.4,
@@ -28,9 +22,6 @@ export const RARITY_SELL_DISCOUNT: Record<ShopItemRarity, number> = {
   legendary: 0.25
 };
 
-/**
- * 商品基础价格表
- */
 export const ITEM_BASE_PRICES: Record<string, number> = {
   smallHealthPotion: 10,
   mediumHealthPotion: 25,
@@ -57,9 +48,6 @@ export const ITEM_BASE_PRICES: Record<string, number> = {
   runeStone: 25
 };
 
-/**
- * 商品池定义 - 按商店类型分类
- */
 export const ITEM_POOLS: Record<string, string[]> = {
   potions: [
     'smallHealthPotion', 'mediumHealthPotion', 'largeHealthPotion',
@@ -78,9 +66,6 @@ export const ITEM_POOLS: Record<string, string[]> = {
   special: ['ancientKey', 'dragonScale', 'largeHealthPotion', 'largeManaPotion']
 };
 
-/**
- * 所有商店配置
- */
 export const SHOPS: Record<string, ShopConfig> = {
   stormwindGeneralGoods: {
     id: 'stormwindGeneralGoods',
@@ -89,7 +74,7 @@ export const SHOPS: Record<string, ShopConfig> = {
     icon: '🏪',
     locationId: 'stormwind',
     npcId: 'stormwind_quest_giver',
-    refreshInterval: 300000, // 5分钟
+    refreshInterval: 300000,
     minItems: 6,
     maxItems: 10,
     priceVariation: {
@@ -108,7 +93,7 @@ export const SHOPS: Record<string, ShopConfig> = {
     icon: '⚗️',
     locationId: 'stormwind',
     npcId: 'stormwind_quest_giver',
-    refreshInterval: 600000, // 10分钟
+    refreshInterval: 600000,
     minItems: 5,
     maxItems: 8,
     priceVariation: {
@@ -127,7 +112,7 @@ export const SHOPS: Record<string, ShopConfig> = {
     icon: '📜',
     locationId: 'stormwind',
     npcId: 'stormwind_quest_giver',
-    refreshInterval: 900000, // 15分钟
+    refreshInterval: 900000,
     minItems: 3,
     maxItems: 6,
     priceVariation: {
@@ -146,7 +131,7 @@ export const SHOPS: Record<string, ShopConfig> = {
     icon: '🏪',
     locationId: 'orgrimmar',
     npcId: 'orgrimmar_quest_giver',
-    refreshInterval: 300000, // 5分钟
+    refreshInterval: 300000,
     minItems: 6,
     maxItems: 10,
     priceVariation: {
@@ -165,7 +150,7 @@ export const SHOPS: Record<string, ShopConfig> = {
     icon: '🍶',
     locationId: 'orgrimmar',
     npcId: 'orgrimmar_quest_giver',
-    refreshInterval: 600000, // 10分钟
+    refreshInterval: 600000,
     minItems: 5,
     maxItems: 8,
     priceVariation: {
@@ -184,7 +169,7 @@ export const SHOPS: Record<string, ShopConfig> = {
     icon: '🎭',
     locationId: 'stormwind',
     npcId: 'stormwind_quest_giver',
-    refreshInterval: 1800000, // 30分钟
+    refreshInterval: 1800000,
     minItems: 3,
     maxItems: 5,
     priceVariation: {
@@ -198,9 +183,6 @@ export const SHOPS: Record<string, ShopConfig> = {
   }
 };
 
-/**
- * 商店类型对应的物品池映射
- */
 export const SHOP_TYPE_ITEM_POOL: Record<string, string> = {
   general: 'general',
   potions: 'potions',
