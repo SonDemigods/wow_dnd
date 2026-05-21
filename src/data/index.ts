@@ -13,6 +13,9 @@ export { CLASSES, CLASS_ABILITIES } from './classes'
 // 导出物品类型和战利品数据
 export { ITEM_TYPES, LOOT_ITEMS } from './items'
 
+// 导出装备数据
+export { EQUIPMENT_ITEMS, RARITY_CONFIG } from './equipment'
+
 // 导出敌人数据
 export { ENEMIES } from './enemies'
 
@@ -29,9 +32,18 @@ export { SHOPS, ITEM_BASE_PRICES, RARITY_PRICE_MULTIPLIER, RARITY_SELL_DISCOUNT,
 export { 
   MAX_LEVEL, 
   STAT_NAMES, 
-  ATTRIBUTE_BONUSES, 
   LEVEL_EXP_REQUIREMENTS,
-  calculateAttribute,
   calculateAllAttributes,
+  calculateMaxHp,
+  calculateMaxMana,
+  calculatePhysicalAttack,
+  calculatePhysicalDefense,
+  calculateMagicAttack,
+  calculateMagicDefense,
+  calculateCritChance,
+  calculateDodgeChance,
+  calculateHpBonus,
+  calculateMpBonus,
+  calculateHealBonus,
   getExpForLevel
 } from './constants'

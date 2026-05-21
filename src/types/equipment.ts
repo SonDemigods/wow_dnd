@@ -27,17 +27,6 @@ export interface RarityConfig {
 }
 
 /**
- * 稀有度配置常量
- */
-export const RARITY_CONFIG: Record<EquipmentRarity, RarityConfig> = {
-  common: { name: '普通', color: '#ffffff', multiplier: 1.0 },
-  uncommon: { name: '优秀', color: '#1eff00', multiplier: 1.2 },
-  rare: { name: '稀有', color: '#0070dd', multiplier: 1.5 },
-  epic: { name: '史诗', color: '#a335ee', multiplier: 2.0 },
-  legendary: { name: '传说', color: '#ff8000', multiplier: 3.0 }
-}
-
-/**
  * 装备槽位枚举
  */
 export type EquipmentSlot = 'weapon1' | 'weapon2' | 'armor1' | 'armor2' | 'armor3' | 'armor4'
@@ -50,8 +39,8 @@ export type EquipmentType = 'weapon' | 'armor'
 /**
  * 装备物品接口
  * @property {EquipmentType} type - 装备类型
- * @property {EquipmentSlot} slot - 装备槽位
- * @property {Partial<Stats>} stats - 属性
+ * @property {EquipmentSlot[]} slots - 装备槽位（武器可适配weapon1和weapon2，防具可适配armor1、armor2、armor3、armor4）
+ * @property {Partial<Stats>} [bonus] - 属性加成
  * @property {EquipmentRarity} rarity - 稀有度
  * @property {number} [levelRequirement] - 等级要求
  */
@@ -59,7 +48,7 @@ export interface EquipmentItem extends Item {
   /** 装备类型 */
   type: EquipmentType
   /** 装备槽位 */
-  slot: EquipmentSlot
+  slots: EquipmentSlot[]
   /** 属性加成 */
   bonus?: Partial<Stats>
   /** 稀有度 */
@@ -117,7 +106,7 @@ export interface IEquipmentService {
 
   /**
    * 获取指定槽位的装备
-   * @param {EquipmentSlot} slot - 槽位
+   * @param {EquipmentSlot} slots - 槽位
    * @returns {EquippedItem | null} 装备
    */
   getEquippedItem(slot: EquipmentSlot): EquippedItem | null
