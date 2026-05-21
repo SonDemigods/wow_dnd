@@ -12,15 +12,10 @@
  * @property {string} color - 主色调
  */
 export interface ContinentData {
-  /** 大陆名称 */
   name: string
-  /** 大陆图标 */
   icon: string
-  /** 大陆描述 */
   description: string
-  /** 大陆位置 */
   position: string
-  /** 主色调 */
   color: string
 }
 
@@ -39,27 +34,16 @@ export interface ContinentData {
  * @property {number} mapY - 地图Y坐标
  */
 export interface LocationData {
-  /** 地点名称 */
   name: string
-  /** 显示名称 */
   displayName: string
-  /** 地点图标 */
   icon: string
-  /** 地点描述 */
   description: string
-  /** 所属大陆 */
   continent: string
-  /** 所属区域 */
   region: string
-  /** 敌人列表 */
   enemies: string[]
-  /** 等级范围 */
   levelRange: [number, number]
-  /** 主色调 */
   color: string
-  /** 地图X坐标 */
   mapX: number
-  /** 地图Y坐标 */
   mapY: number
 }
 
@@ -74,19 +58,12 @@ export interface LocationData {
  * @property {number} mapSize - 地图尺寸
  */
 export interface Location {
-  /** 地点ID */
   id: string
-  /** 地点名称 */
   name: string
-  /** 地点描述 */
   description: string
-  /** 地点图标 */
   icon: string
-  /** 敌人列表 */
   enemies: string[]
-  /** 任务列表 */
   quests: string[]
-  /** 地图尺寸 */
   mapSize: number
 }
 
@@ -103,23 +80,14 @@ export interface Location {
  * @property {string} [parentMarkerId] - 父标记ID
  */
 export interface LocationMarker {
-  /** 标记ID */
   id: string
-  /** X坐标 */
   x: number
-  /** Y坐标 */
   y: number
-  /** 图标 */
   icon: string
-  /** 名称 */
   name: string
-  /** 关联地点ID */
   locationId: string
-  /** 等级要求 */
   requiredLevel: number
-  /** 难度 */
   difficulty?: 'normal' | 'heroic' | 'mythic'
-  /** 父标记ID */
   parentMarkerId?: string
 }
 
@@ -133,17 +101,11 @@ export interface LocationMarker {
  * @property {string} [activeMarkerId] - 当前激活的标记ID
  */
 export interface MapView {
-  /** 缩放级别 */
   zoomLevel: number
-  /** X平移量 */
   panX: number
-  /** Y平移量 */
   panY: number
-  /** 当前大陆ID */
   currentContinentId?: string
-  /** 是否显示标记 */
   showMarkers: boolean
-  /** 当前激活的标记ID */
   activeMarkerId?: string
 }
 
@@ -152,7 +114,6 @@ export interface MapView {
  * @property {MapView} view - 地图视图
  */
 export interface MapState {
-  /** 地图视图 */
   view: MapView
 }
 

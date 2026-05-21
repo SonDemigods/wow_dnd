@@ -7,16 +7,27 @@ import type { Enemy } from './enemies'
 
 /**
  * 战斗状态枚举
+ * - idle: 空闲状态
+ * - preparing: 准备战斗
+ * - fighting: 战斗中
+ * - ended: 战斗结束
  */
 export type CombatState = 'idle' | 'preparing' | 'fighting' | 'ended'
 
 /**
  * 战斗结果枚举
+ * - victory: 胜利
+ * - defeat: 失败
+ * - fled: 逃跑
  */
 export type CombatResult = 'victory' | 'defeat' | 'fled'
 
 /**
  * 战斗动作类型枚举
+ * - attack: 普通攻击
+ * - item: 使用物品
+ * - flee: 逃跑
+ * - skill: 使用技能
  */
 export type CombatActionType = 'attack' | 'item' | 'flee' | 'skill'
 
@@ -28,13 +39,9 @@ export type CombatActionType = 'attack' | 'item' | 'flee' | 'skill'
  * @property {'player' | 'enemy'} [target] - 目标
  */
 export interface CombatAction {
-  /** 动作类型 */
   type: CombatActionType
-  /** 物品ID */
   itemId?: string
-  /** 技能ID */
   skillId?: string
-  /** 目标 */
   target?: 'player' | 'enemy'
 }
 
@@ -49,19 +56,12 @@ export interface CombatAction {
  * @property {string} message - 结果消息
  */
 export interface CombatActionResult {
-  /** 是否成功 */
   success: boolean
-  /** 动作类型 */
   type: CombatActionType
-  /** 伤害值 */
   damage?: number
-  /** 治疗值 */
   heal?: number
-  /** 是否暴击 */
   isCrit?: boolean
-  /** 是否闪避 */
   isDodge?: boolean
-  /** 结果消息 */
   message: string
 }
 
@@ -74,15 +74,10 @@ export interface CombatActionResult {
  * @property {number} timestamp - 时间戳
  */
 export interface CombatLogEntry {
-  /** 回合数 */
   turn: number
-  /** 行动者 */
   actor: 'player' | 'enemy'
-  /** 动作类型 */
   action: CombatActionType
-  /** 动作结果 */
   result: CombatActionResult
-  /** 时间戳 */
   timestamp: number
 }
 
@@ -94,13 +89,9 @@ export interface CombatLogEntry {
  * @property {boolean} isDodge - 是否闪避
  */
 export interface CombatDamageEvent {
-  /** 目标 */
   target: 'player' | 'enemy'
-  /** 伤害量 */
   amount: number
-  /** 是否暴击 */
   isCrit: boolean
-  /** 是否闪避 */
   isDodge: boolean
 }
 
@@ -109,7 +100,6 @@ export interface CombatDamageEvent {
  * @property {Enemy} enemy - 敌人
  */
 export interface CombatStartEvent {
-  /** 敌人 */
   enemy: Enemy
 }
 
@@ -121,18 +111,26 @@ export interface CombatStartEvent {
  * @property {any[]} [loot] - 掉落物品
  */
 export interface CombatEndEvent {
-  /** 战斗结果 */
   result: CombatResult
-  /** 敌人 */
   enemy: Enemy
-  /** 获得经验 */
   expGained: number
-  /** 掉落物品 */
   loot?: any[]
 }
 
 /**
  * 战斗事件类型枚举
+ * - attack: 普通攻击
+ * - skill_cast: 技能施法
+ * - heal: 治疗
+ * - damage: 伤害
+ * - dodge: 闪避
+ * - crit: 暴击
+ * - block: 防御
+ * - flee: 逃跑
+ * - victory: 胜利
+ * - defeat: 失败
+ * - combat_start: 战斗开始
+ * - combat_end: 战斗结束
  */
 export type CombatEventType = 
   | 'attack' | 'skill_cast' | 'heal' | 'damage'
@@ -161,46 +159,30 @@ export type CombatEventType =
  * @property {string} message - 消息
  */
 export interface CombatLog {
-  /** 战斗ID */
   combatId: string
-  /** 日志ID */
   battleLogId: string
-  /** 时间戳 */
   timestamp: number
-  /** 回合数 */
   turn: number
-  /** 行动者类型 */
   actorType: 'player' | 'enemy' | 'system'
-  /** 行动者ID */
   actorId: string
-  /** 行动者名称 */
   actorName: string
-  /** 事件类型 */
   eventType: CombatEventType
-  /** 目标类型 */
   targetType?: 'player' | 'enemy'
-  /** 目标ID */
   targetId?: string
-  /** 目标名称 */
   targetName?: string
-  /** 技能ID */
   skillId?: string
-  /** 技能名称 */
   skillName?: string
-  /** 伤害值 */
   damage?: number
-  /** 治疗值 */
   heal?: number
-  /** 是否暴击 */
   isCrit: boolean
-  /** 是否闪避 */
   isDodge: boolean
-  /** 消息 */
   message: string
 }
 
 /**
  * 技能效果类型枚举
+ * - damage: 伤害
+ * - heal: 治疗
  */
 export type SkillEffectType = 'damage' | 'heal'
 
@@ -215,27 +197,20 @@ export type SkillEffectType = 'damage' | 'heal'
  * @property {number} manaCost - 法力消耗
  */
 export interface SkillCombatEffect {
-  /** 技能ID */
   skillId: string
-  /** 技能名称 */
   skillName: string
-  /** 效果类型 */
   effectType: SkillEffectType
-  /** 目标类型 */
   targetType: 'self' | 'enemy'
-  /** 伤害配置 */
   damage?: {
     base: number
     minMultiplier: number
     maxMultiplier: number
     type: 'physical' | 'magic' | 'true'
   }
-  /** 治疗配置 */
   heal?: {
     base: number
     multiplier: number
   }
-  /** 法力消耗 */
   manaCost: number
 }
 
@@ -249,17 +224,11 @@ export interface SkillCombatEffect {
  * @property {string} message - 结果消息
  */
 export interface SkillCastResult {
-  /** 是否成功 */
   success: boolean
-  /** 技能ID */
   skillId: string
-  /** 技能名称 */
   skillName: string
-  /** 伤害值 */
   damage?: number
-  /** 治疗值 */
   heal?: number
-  /** 结果消息 */
   message: string
 }
 
@@ -272,15 +241,10 @@ export interface SkillCastResult {
  * @property {number} updatedAt - 更新时间戳
  */
 export interface CombatLogStorage {
-  /** 存储ID */
   id: string
-  /** 战斗历史 */
   combatHistory: CombatLog[]
-  /** 最大历史记录数 */
   maxHistoryCount: number
-  /** 创建时间戳 */
   createdAt: number
-  /** 更新时间戳 */
   updatedAt: number
 }
 

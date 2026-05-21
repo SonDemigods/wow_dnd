@@ -21,17 +21,11 @@ export type FactionType = 'alliance' | 'horde' | 'neutral'
  * @property {number} cha - 魅力：影响对话选项和交易折扣
  */
 export interface Stats {
-  /** 力量 - 影响物理攻击伤害 */
   str: number
-  /** 敏捷 - 影响闪避率和暴击率 */
   dex: number
-  /** 体质 - 影响生命值上限和韧性 */
   con: number
-  /** 智力 - 影响魔法攻击伤害和法力值 */
   int: number
-  /** 感知 - 影响治疗效果和察觉能力 */
   wis: number
-  /** 魅力 - 影响对话选项和交易折扣 */
   cha: number
 }
 
@@ -56,37 +50,21 @@ export interface Stats {
  * @property {number} [initiative] - 先手值
  */
 export interface Attributes {
-  /** 最大生命值 */
   maxHp: number
-  /** 最大法力值 */
   maxMana: number
-  /** 物理攻击力 */
   physicalAttack: number
-  /** 物理防御力 */
   physicalDefense: number
-  /** 魔法攻击力 */
   magicAttack: number
-  /** 魔法防御力 */
   magicDefense: number
-  /** 暴击率（百分比） */
   critChance: number
-  /** 闪避率（百分比） */
   dodgeChance: number
-  /** 生命值加成 */
   hpBonus: number
-  /** 法力值加成 */
   mpBonus: number
-  /** 治疗加成 */
   healBonus: number
-  /** 攻击加成 */
   attackBonus?: number
-  /** 暴击加成 */
   critBonus?: number
-  /** 闪避加成 */
   dodgeBonus?: number
-  /** 护甲值 */
   armor?: number
-  /** 先手值 */
   initiative?: number
 }
 
@@ -108,31 +86,18 @@ export interface Attributes {
  * @property {number} gold - 金币数量
  */
 export interface Character {
-  /** 角色名称 */
   name: string
-  /** 所属阵营 */
   faction: FactionType
-  /** 种族 */
   race: string | null
-  /** 职业 */
   class: string | null
-  /** 等级 */
   level: number
-  /** 当前经验值 */
   exp: number
-  /** 升级所需经验值 */
   expToNextLevel: number
-  /** 当前生命值 */
   hp: number
-  /** 最大生命值 */
   maxHp: number
-  /** 当前法力值 */
   mana: number
-  /** 最大法力值 */
   maxMana: number
-  /** 核心属性 */
   stats: Stats
-  /** 金币数量 */
   gold: number
 }
 
@@ -144,13 +109,9 @@ export interface Character {
  * @property {string} description - 阵营描述
  */
 export interface FactionData {
-  /** 阵营名称 */
   name: string
-  /** 阵营图标 */
   icon: string
-  /** 阵营主色调 */
   color: string
-  /** 阵营描述 */
   description: string
 }
 
@@ -163,15 +124,10 @@ export interface FactionData {
  * @property {string} description - 种族描述
  */
 export interface RaceData {
-  /** 种族名称 */
   name: string
-  /** 种族图标 */
   icon: string
-  /** 所属阵营 */
   faction: FactionType
-  /** 属性加成 */
   bonus?: Partial<Stats>
-  /** 种族描述 */
   description: string
 }
 
@@ -186,19 +142,12 @@ export interface RaceData {
  * @property {Partial<Stats>} [bonus] - 职业属性调整值
  */
 export interface ClassData {
-  /** 职业名称 */
   name: string
-  /** 职业图标 */
   icon: string
-  /** 主属性 */
   primaryStat: keyof Stats
-  /** 可选阵营 */
   factions: FactionType[]
-  /** 职业描述 */
   description: string
-  /** 职业主色调 */
   color: string
-  /** 职业属性调整值 */
   bonus?: Partial<Stats>
 }
 
@@ -215,21 +164,13 @@ export interface ClassData {
  * @property {number} lastPlayedTime - 最后游玩时间戳
  */
 export interface CharacterListItem {
-  /** 角色ID */
   id: string
-  /** 角色名称 */
   name: string
-  /** 种族 */
   race: string
-  /** 职业 */
   charClass: string
-  /** 阵营 */
   faction: FactionType
-  /** 等级 */
   level: number
-  /** 创建时间戳 */
   createdTime: number
-  /** 最后游玩时间戳 */
   lastPlayedTime: number
 }
 
@@ -242,13 +183,9 @@ export interface CharacterListItem {
  * @property {FactionType} faction - 阵营
  */
 export interface CharacterInfo {
-  /** 角色名称 */
   name: string
-  /** 种族 */
   race: string | null
-  /** 职业 */
   class: string | null
-  /** 阵营 */
   faction: FactionType
 }
 
@@ -259,11 +196,8 @@ export interface CharacterInfo {
  * @property {Partial<Stats>} stats - 属性调整值
  */
 export interface RaceBonus {
-  /** 种族名称 */
   race: string
-  /** 阵营 */
   faction: FactionType
-  /** 属性调整值 */
   bonus: Partial<Stats>
 }
 
@@ -273,9 +207,7 @@ export interface RaceBonus {
  * @property {Partial<Stats>} bonus - 属性调整值
  */
 export interface ClassBonus {
-  /** 职业名称 */
   className: string
-  /** 属性调整值 */
   bonus: Partial<Stats>
 }
 

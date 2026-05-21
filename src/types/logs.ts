@@ -5,6 +5,11 @@
 
 /**
  * 日志类型枚举
+ * - INFO: 普通信息
+ * - COMBAT: 战斗日志
+ * - QUEST: 任务日志
+ * - ITEM: 物品日志
+ * - LEVEL: 升级日志
  */
 export enum LogType {
   INFO = 'info',
@@ -23,15 +28,10 @@ export enum LogType {
  * @property {string} [icon] - 日志图标
  */
 export interface LogEntry {
-  /** 日志ID */
   id: string
-  /** 时间戳 */
   timestamp: number
-  /** 日志类型 */
   type: LogType
-  /** 日志消息 */
   message: string
-  /** 日志图标 */
   icon?: string
 }
 
@@ -59,9 +59,7 @@ export interface ILogService {
    */
   getLogsByType(type: LogType): LogEntry[]
 
-  /**
-   * 清空日志
-   */
+  /** 清空日志 */
   clearLogs(): void
 
   /**

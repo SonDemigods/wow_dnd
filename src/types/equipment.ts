@@ -3,13 +3,18 @@
  * @description 包含装备稀有度、装备槽位、装备服务等相关类型定义
  */
 
-import type { Item } from './items'
+import type { Item, ItemRarity } from './items'
 import type { Stats } from './character'
 
 /**
  * 装备稀有度枚举
+ * - common: 普通
+ * - uncommon: 优秀
+ * - rare: 稀有
+ * - epic: 史诗
+ * - legendary: 传说
  */
-export type EquipmentRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
+export type EquipmentRarity = ItemRarity
 
 /**
  * 稀有度配置接口
@@ -18,21 +23,26 @@ export type EquipmentRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legenda
  * @property {number} multiplier - 属性倍率
  */
 export interface RarityConfig {
-  /** 稀有度名称 */
   name: string
-  /** 颜色 */
   color: string
-  /** 属性倍率 */
   multiplier: number
 }
 
 /**
  * 装备槽位枚举
+ * - weapon1: 主手武器槽
+ * - weapon2: 副手武器槽
+ * - armor1: 护甲槽1
+ * - armor2: 护甲槽2
+ * - armor3: 护甲槽3
+ * - armor4: 护甲槽4
  */
 export type EquipmentSlot = 'weapon1' | 'weapon2' | 'armor1' | 'armor2' | 'armor3' | 'armor4'
 
 /**
  * 装备类型枚举
+ * - weapon: 武器
+ * - armor: 护甲
  */
 export type EquipmentType = 'weapon' | 'armor'
 
@@ -45,15 +55,10 @@ export type EquipmentType = 'weapon' | 'armor'
  * @property {number} [levelRequirement] - 等级要求
  */
 export interface EquipmentItem extends Item {
-  /** 装备类型 */
   type: EquipmentType
-  /** 装备槽位 */
   slots: EquipmentSlot[]
-  /** 属性加成 */
   bonus?: Partial<Stats>
-  /** 稀有度 */
   rarity: EquipmentRarity
-  /** 等级要求 */
   levelRequirement?: number
 }
 
@@ -63,9 +68,7 @@ export interface EquipmentItem extends Item {
  * @property {number} equippedAt - 装备时间戳
  */
 export interface EquippedItem {
-  /** 装备物品 */
   item: EquipmentItem
-  /** 装备时间戳 */
   equippedAt: number
 }
 
@@ -74,7 +77,6 @@ export interface EquippedItem {
  * @property {Record<EquipmentSlot, EquippedItem | null>} equipment - 装备记录
  */
 export interface EquipmentState {
-  /** 装备记录 */
   equipment: Record<EquipmentSlot, EquippedItem | null>
 }
 

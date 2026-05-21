@@ -5,134 +5,126 @@
 
 /**
  * 任务状态枚举
- * 定义任务在玩家生命周期中的不同状态
+ * - NOT_AVAILABLE: 任务不可用（未达到等级要求或前置条件未满足）
+ * - AVAILABLE: 任务可用（可以接取）
+ * - IN_PROGRESS: 任务进行中（已接取但未完成）
+ * - COMPLETED: 任务已完成（目标达成，等待提交）
+ * - TURNED_IN: 任务已提交（已领取奖励）
+ * - ABANDONED: 任务已放弃（玩家主动放弃）
  */
 export enum QuestStatus {
-  /** 任务不可用（未达到等级要求或前置条件未满足） */
   NOT_AVAILABLE = 'not_available',
-  /** 任务可用（可以接取） */
   AVAILABLE = 'available',
-  /** 任务进行中（已接取但未完成） */
   IN_PROGRESS = 'in_progress',
-  /** 任务已完成（目标达成，等待提交） */
   COMPLETED = 'completed',
-  /** 任务已提交（已领取奖励） */
   TURNED_IN = 'turned_in',
-  /** 任务已放弃（玩家主动放弃） */
   ABANDONED = 'abandoned',
 }
 
 /**
  * 任务类型枚举
- * 定义任务的主要目标类型
+ * - KILL: 击杀任务（需要杀死指定数量的敌人）
+ * - COLLECT: 收集任务（需要收集指定数量的物品）
  */
 export enum QuestType {
-  /** 击杀任务（需要杀死指定数量的敌人） */
   KILL = 'kill',
-  /** 收集任务（需要收集指定数量的物品） */
   COLLECT = 'collect',
-  /** 交互任务（需要与指定NPC或物体交互） */
-  INTERACT = 'interact',
-  /** 护送任务（需要保护目标到达指定位置） */
-  ESCORT = 'escort',
 }
 
 /**
  * 任务目标接口
- * 定义单个任务目标的详细信息
+ * @property {string} key - 目标键，用于唯一标识此目标
+ * @property {QuestType} type - 目标类型，决定任务的完成方式
+ * @property {string} description - 目标描述，显示给玩家的文本
+ * @property {number} target - 目标数量，需要完成的次数
+ * @property {string} [itemId] - 物品ID（收集任务专用）
+ * @property {string} [enemyId] - 敌人ID（击杀任务专用）
+ * @property {string} [locationId] - 地点ID（交互任务专用）
  */
 export interface QuestObjective {
-  /** 目标键，用于唯一标识此目标 */
   key: string
-  /** 目标类型，决定任务的完成方式 */
   type: QuestType
-  /** 目标描述，显示给玩家的文本 */
   description: string
-  /** 目标数量，需要完成的次数 */
   target: number
-  /** 物品ID（收集任务专用），需要收集的物品 */
   itemId?: string
-  /** 敌人ID（击杀任务专用），需要击杀的敌人 */
   enemyId?: string
-  /** 地点ID（交互任务专用），需要交互的地点 */
   locationId?: string
 }
 
 /**
  * 物品奖励接口
- * 定义任务完成后可能获得的物品奖励
+ * @property {string} itemId - 物品ID，对应物品数据中的唯一标识
+ * @property {string} itemName - 物品名称，用于显示
+ * @property {number} quantity - 奖励数量
+ * @property {number} [chance] - 掉落几率（0-1之间），默认为1（必掉）
  */
 export interface ItemReward {
-  /** 物品ID，对应物品数据中的唯一标识 */
   itemId: string
-  /** 物品名称，用于显示 */
   itemName: string
-  /** 奖励数量 */
   quantity: number
-  /** 掉落几率（0-1之间），默认为1（必掉） */
   chance?: number
 }
 
 /**
  * 任务定义接口
  * 定义任务的静态数据，所有玩家共享
+ * @property {string} id - 任务ID，唯一标识
+ * @property {string} title - 任务标题，显示给玩家的任务名称
+ * @property {string} description - 任务描述，详细说明任务背景和要求
+ * @property {QuestType} type - 任务类型，决定任务的主要玩法
+ * @property {QuestObjective[]} objectives - 任务目标列表，可能有多个目标需要完成
+ * @property {number} levelRequirement - 等级要求，玩家必须达到此等级才能接取
+ * @property {number} xpReward - 经验奖励，完成任务后获得的经验值
+ * @property {number} goldReward - 金币奖励，完成任务后获得的金币数量
+ * @property {ItemReward[]} [itemRewards] - 物品奖励列表，完成任务后可能获得的物品
+ * @property {string} boardId - 任务板ID，任务发布的地点
  */
 export interface QuestDefinition {
-  /** 任务ID，唯一标识 */
   id: string
-  /** 任务标题，显示给玩家的任务名称 */
   title: string
-  /** 任务描述，详细说明任务背景和要求 */
   description: string
-  /** 任务类型，决定任务的主要玩法 */
   type: QuestType
-  /** 任务目标列表，可能有多个目标需要完成 */
   objectives: QuestObjective[]
-  /** 等级要求，玩家必须达到此等级才能接取 */
   levelRequirement: number
-  /** 经验奖励，完成任务后获得的经验值 */
   xpReward: number
-  /** 金币奖励，完成任务后获得的金币数量 */
   goldReward: number
-  /** 物品奖励列表，完成任务后可能获得的物品 */
   itemRewards?: ItemReward[]
-  /** 任务板ID，任务发布的地点 */
   boardId: string
 }
 
 /**
  * 任务目标进度接口
  * 记录玩家在单个任务目标上的进度
+ * @property {string} objectiveKey - 目标键，关联到任务定义中的目标
+ * @property {number} current - 当前进度，已完成的数量
+ * @property {number} target - 目标数量，需要完成的总数量
  */
 export interface QuestObjectiveProgress {
-  /** 目标键，关联到任务定义中的目标 */
   objectiveKey: string
-  /** 当前进度，已完成的数量 */
   current: number
-  /** 目标数量，需要完成的总数量 */
   target: number
 }
 
 /**
  * 任务实例接口
  * 记录玩家已接取的任务状态和进度（每个玩家独立）
+ * @property {string} questId - 任务ID，关联到任务定义
+ * @property {QuestStatus} status - 任务状态，当前所处的阶段
+ * @property {QuestObjectiveProgress[]} progress - 任务目标进度列表，记录每个目标的完成情况
+ * @property {number} acceptedAt - 接受时间戳，玩家接取任务的时间
+ * @property {number} [completedAt] - 完成时间戳，玩家完成任务的时间（可选）
  */
 export interface QuestInstance {
-  /** 任务ID，关联到任务定义 */
   questId: string
-  /** 任务状态，当前所处的阶段 */
   status: QuestStatus
-  /** 任务目标进度列表，记录每个目标的完成情况 */
   progress: QuestObjectiveProgress[]
-  /** 接受时间戳，玩家接取任务的时间 */
   acceptedAt: number
-  /** 完成时间戳，玩家完成任务的时间（可选） */
   completedAt?: number
 }
 
 /**
  * 任务服务接口
- * 定义任务系统的核心功能方法
+ * 提供任务管理的核心功能
  */
 export interface IQuestService {
   /**

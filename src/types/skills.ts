@@ -18,18 +18,15 @@ export type SkillType = 'physical_damage' | 'magic_damage' | 'heal'
 export type SkillSlotIndex = 0 | 1 | 2 | 3
 
 /**
- * 技能效果计算参数接口
+ * 技能效果接口
  * 描述技能效果的详细参数
  * @property {SkillType} type - 技能类型
  * @property {number} value - 基础效果值
  * @property {number} [coefficient] - 系数（用于计算实际效果）
  */
 export interface SkillEffect {
-  /** 技能类型 */
   type: SkillType
-  /** 基础效果值 */
   value: number
-  /** 系数（用于计算实际效果） */
   coefficient?: number
 }
 
@@ -47,23 +44,14 @@ export interface SkillEffect {
  * @property {boolean} isUnlocked - 是否已解锁
  */
 export interface Skill {
-  /** 技能ID */
   id: string
-  /** 技能名称 */
   name: string
-  /** 技能图标 */
   icon: string
-  /** 技能描述 */
   description: string
-  /** 法力消耗 */
   mpCost: number
-  /** 技能类型 */
   type: SkillType
-  /** 技能效果 */
   effect: SkillEffect
-  /** 解锁等级 */
   unlockLevel: number
-  /** 是否已解锁 */
   isUnlocked: boolean
 }
 
@@ -79,29 +67,21 @@ export interface Skill {
  * @property {string} message - 结果消息
  */
 export interface SkillUseResult {
-  /** 是否成功 */
   success: boolean
-  /** 技能ID */
   skillId: string
-  /** 技能类型 */
   type: SkillType
-  /** 造成的伤害 */
   damage?: number
-  /** 治疗量 */
   heal?: number
-  /** 防御加成 */
   defense?: number
-  /** 结果消息 */
   message: string
 }
 
 /**
  * 技能栏配置接口
  * 管理玩家当前装备的4个技能
- * @property {[string | null, string | null, string | null, string | null]} slots - 技能槽位
+ * @property {[string | null, string | null, string | null, string | null]} slots - 技能槽位（4个），存储技能ID或null
  */
 export interface SkillBar {
-  /** 技能槽位（4个），存储技能ID或null */
   slots: [string | null, string | null, string | null, string | null]
 }
 
@@ -114,15 +94,10 @@ export interface SkillBar {
  * @property {number} updatedAt - 更新时间戳
  */
 export interface SkillsData {
-  /** 角色ID */
   characterId: string
-  /** 技能列表 */
   skills: Skill[]
-  /** 技能栏配置 */
   skillBar: SkillBar
-  /** 当前职业 */
   currentClass: string | null
-  /** 更新时间戳 */
   updatedAt: number
 }
 
@@ -132,9 +107,7 @@ export interface SkillsData {
  * @property {boolean} success - 是否成功
  */
 export interface SkillCastEventData {
-  /** 技能数据 */
   skill: Skill
-  /** 是否成功 */
   success: boolean
 }
 
@@ -144,9 +117,7 @@ export interface SkillCastEventData {
  * @property {SkillSlotIndex} slotIndex - 槽位索引
  */
 export interface SkillEquippedEventData {
-  /** 技能ID */
   skillId: string
-  /** 槽位索引 */
   slotIndex: SkillSlotIndex
 }
 
@@ -155,7 +126,6 @@ export interface SkillEquippedEventData {
  * @property {Skill} skill - 技能数据
  */
 export interface SkillUnlockedEventData {
-  /** 技能数据 */
   skill: Skill
 }
 
@@ -164,7 +134,6 @@ export interface SkillUnlockedEventData {
  * @property {SkillBar['slots']} slots - 新的槽位配置
  */
 export interface SkillBarChangedEventData {
-  /** 新的槽位配置 */
   slots: SkillBar['slots']
 }
 
@@ -271,13 +240,9 @@ export interface ISkillsService {
  * @property {number} [maxUnlockLevel] - 最大解锁等级
  */
 export interface SkillQuery {
-  /** 技能类型 */
   type?: SkillType
-  /** 是否已解锁 */
   isUnlocked?: boolean
-  /** 最小解锁等级 */
   minUnlockLevel?: number
-  /** 最大解锁等级 */
   maxUnlockLevel?: number
 }
 
@@ -290,13 +255,9 @@ export interface SkillQuery {
  * @property {number} [requiredMp] - 所需法力值
  */
 export interface SkillValidationResult {
-  /** 是否可以使用 */
   canUse: boolean
-  /** 失败原因 */
   failureReason?: 'not_in_combat' | 'not_equipped' | 'insufficient_mp' | 'not_unlocked'
-  /** 当前法力值 */
   currentMp?: number
-  /** 所需法力值 */
   requiredMp?: number
 }
 
@@ -311,16 +272,10 @@ export interface SkillValidationResult {
  * @property {SkillType} type - 技能类型
  */
 export interface Ability {
-  /** 技能名称 */
   name: string
-  /** 技能图标 */
   icon: string
-  /** 伤害范围 */
   damage?: [number, number]
-  /** 治疗范围 */
   healing?: [number, number]
-  /** 法力消耗 */
   manaCost: number
-  /** 技能类型 */
   type: SkillType
 }

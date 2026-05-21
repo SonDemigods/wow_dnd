@@ -24,33 +24,19 @@ import type { InventoryItem } from './items'
  * @property {number} [dodgeChance] - 闪避率
  */
 export interface EnemyData {
-  /** 敌人名称 */
   name: string
-  /** 敌人图标 */
   icon: string
-  /** 生命值 */
   hp: number
-  /** 伤害范围 */
   damage: [number, number]
-  /** 经验值奖励 */
   xp: number
-  /** 金币奖励 */
   gold: number
-  /** 危险等级 */
   dangerLevel: string
-  /** 是否为BOSS */
   isBoss?: boolean
-  /** 物理攻击力 */
   physicalAttack?: number
-  /** 物理防御力 */
   physicalDefense?: number
-  /** 魔法攻击力 */
   magicAttack?: number
-  /** 魔法防御力 */
   magicDefense?: number
-  /** 暴击率 */
   critChance?: number
-  /** 闪避率 */
   dodgeChance?: number
 }
 
@@ -74,34 +60,19 @@ export interface EnemyData {
  * @property {number} [dodgeChance] - 闪避率
  */
 export interface Enemy {
-  /** 敌人实例ID */
   id: string
-  /** 敌人名称 */
   name: string
-  /** 敌人类型 */
   type: string
-  /** 敌人等级 */
   level: number
-  /** 当前生命值 */
   hp: number
-  /** 最大生命值 */
   maxHp: number
-  /** 攻击力 */
   attack: number
-  /** 防御力 */
   defense: number
-  /** 经验奖励 */
   expReward: number
-  /** 金币奖励 */
   goldReward: number
-  /** 敌人图标 */
   icon: string
-  /** 掉落物品 */
   loot: InventoryItem[]
-  /** 攻击加成 */
   attackBonus?: number
-  /** 暴击率 */
   critChance?: number
-  /** 闪避率 */
   dodgeChance?: number
 }

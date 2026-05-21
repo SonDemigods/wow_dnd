@@ -12,13 +12,11 @@ export type ShopItemRarity = ItemRarity
 
 /**
  * 价格变化范围接口
- * @property {number} min - 最小价格倍数
- * @property {number} max - 最大价格倍数
+ * @property {number} min - 最小价格倍数（相对于基础价格）
+ * @property {number} max - 最大价格倍数（相对于基础价格）
  */
 export interface PriceVariation {
-  /** 最小价格倍数（相对于基础价格） */
   min: number
-  /** 最大价格倍数（相对于基础价格） */
   max: number
 }
 
@@ -28,48 +26,35 @@ export interface PriceVariation {
  * @property {number} max - 最大库存数量
  */
 export interface StockVariation {
-  /** 最小库存数量 */
   min: number
-  /** 最大库存数量 */
   max: number
 }
 
 /**
  * 商店配置接口
- * @property {string} id - 商店ID
- * @property {string} name - 商店名称
- * @property {string} type - 商店类型（决定商品池）
- * @property {string} icon - 商店图标
- * @property {string} locationId - 所在地点ID
- * @property {string} npcId - NPC ID
- * @property {number} refreshInterval - 商品刷新间隔（毫秒）
- * @property {number} minItems - 最小商品数量
- * @property {number} maxItems - 最大商品数量
- * @property {PriceVariation} priceVariation - 价格变化范围
- * @property {StockVariation} stockVariation - 库存变化范围
+ * @property {string} id - 商店唯一标识
+ * @property {string} name - 商店名称，显示给玩家
+ * @property {string} type - 商店类型，决定可用的商品池
+ * @property {string} icon - 商店图标，用于UI显示
+ * @property {string} locationId - 商店所在地点ID
+ * @property {string} npcId - 经营商店的NPC ID
+ * @property {number} refreshInterval - 商品自动刷新间隔（毫秒）
+ * @property {number} minItems - 货架上最小商品数量
+ * @property {number} maxItems - 货架上最大商品数量
+ * @property {PriceVariation} priceVariation - 价格变化范围（相对于基础价格的倍数）
+ * @property {StockVariation} stockVariation - 库存数量变化范围
  */
 export interface ShopConfig {
-  /** 商店唯一标识 */
   id: string
-  /** 商店名称，显示给玩家 */
   name: string
-  /** 商店类型，决定可用的商品池 */
   type: string
-  /** 商店图标，用于UI显示 */
   icon: string
-  /** 商店所在地点ID */
   locationId: string
-  /** 经营商店的NPC ID */
   npcId: string
-  /** 商品自动刷新间隔（毫秒） */
   refreshInterval: number
-  /** 货架上最小商品数量 */
   minItems: number
-  /** 货架上最大商品数量 */
   maxItems: number
-  /** 价格变化范围（相对于基础价格的倍数） */
   priceVariation: PriceVariation
-  /** 库存数量变化范围 */
   stockVariation: StockVariation
 }
 
@@ -81,28 +66,21 @@ export interface ShopConfig {
  * @property {number} maxStock - 最大库存
  */
 export interface ShopItem {
-  /** 物品ID */
   itemId: string
-  /** 当前售价 */
   price: number
-  /** 当前库存 */
   stock: number
-  /** 最大库存 */
   maxStock: number
 }
 
 /**
  * 商店库存接口
  * @property {string} shopId - 商店ID
- * @property {ShopItem[]} items - 商品列表
+ * @property {ShopItem[]} items - 当前货架上的商品
  * @property {number} lastRefresh - 上次刷新时间戳
  */
 export interface ShopInventory {
-  /** 商店ID */
   shopId: string
-  /** 当前货架上的商品 */
   items: ShopItem[]
-  /** 上次刷新时间戳 */
   lastRefresh: number
 }
 
@@ -135,7 +113,7 @@ export interface IShopService {
    * 购买物品
    * @param {string} shopId - 商店ID
    * @param {string} itemId - 物品ID
-   * @param {number} quantity - 购买数量
+   * @param {number} [quantity] - 购买数量，默认为1
    * @returns {boolean} 是否购买成功
    */
   buyItem(shopId: string, itemId: string, quantity?: number): boolean
@@ -143,7 +121,7 @@ export interface IShopService {
   /**
    * 出售物品
    * @param {string} itemId - 物品ID
-   * @param {number} quantity - 出售数量
+   * @param {number} [quantity] - 出售数量，默认为1
    * @returns {boolean} 是否出售成功
    */
   sellItem(itemId: string, quantity?: number): boolean
@@ -152,7 +130,7 @@ export interface IShopService {
    * 计算物品售价
    * @param {string} itemId - 物品ID
    * @param {ShopItemRarity} rarity - 物品稀有度
-   * @param {number} [priceMultiplier] - 价格倍数
+   * @param {number} [priceMultiplier] - 价格倍数，默认为1
    * @returns {number} 售价
    */
   calculateBuyPrice(itemId: string, rarity: ShopItemRarity, priceMultiplier?: number): number

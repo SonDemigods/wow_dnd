@@ -22,31 +22,18 @@ import type { Stats } from './character'
  * @property {string} [template] - 物品模板ID
  */
 export interface Item {
-  /** 物品ID */
   id: string
-  /** 物品名称 */
   name: string
-  /** 物品类型 */
   type: string
-  /** 物品稀有度 */
   rarity: string
-  /** 物品图标 */
   icon: string
-  /** 物品描述 */
   description: string
-  /** 属性加成 */
   bonus?: Partial<Stats>
-  /** 物品价值 */
   value: number
-  /** 是否可堆叠 */
   stackable: boolean
-  /** 生命值恢复量 */
   hpRestore?: number
-  /** 法力值恢复量 */
   mpRestore?: number
-  /** 是否为消耗品 */
   consumable?: boolean
-  /** 物品模板ID */
   template?: string
 }
 
@@ -56,7 +43,6 @@ export interface Item {
  * @property {number} count - 物品数量
  */
 export interface InventoryItem extends Item {
-  /** 物品数量 */
   count: number
 }
 
@@ -68,13 +54,9 @@ export interface InventoryItem extends Item {
  * @property {boolean} [usable] - 是否可使用
  */
 export interface ItemTypeData {
-  /** 类型名称 */
   name: string
-  /** 是否可堆叠 */
   stackable: boolean
-  /** 最大堆叠数量 */
   maxStack: number
-  /** 是否可使用 */
   usable?: boolean
 }
 
@@ -93,37 +75,36 @@ export interface ItemTypeData {
  * @property {string} template - 模板ID
  */
 export interface LootItemData {
-  /** 物品名称 */
   name: string
-  /** 物品图标 */
   icon: string
-  /** 物品类型 */
   type: string
-  /** 治疗量 */
   healing?: number
-  /** 法力恢复量 */
   manaRestore?: number
-  /** 属性加成 */
   statBonus?: Partial<Stats>
-  /** 效果类型 */
   effect?: 'damage' | 'heal'
-  /** 伤害范围 */
   damage?: [number, number]
-  /** 稀有度 */
   rarity: string
-  /** 描述 */
   description: string
-  /** 模板ID */
   template: string
 }
 
 /**
  * 物品类型枚举
+ * - weapon: 武器
+ * - armor: 护甲
+ * - consumable: 消耗品
+ * - quest: 任务物品
+ * - misc: 杂项
  */
 export type ItemType = 'weapon' | 'armor' | 'consumable' | 'quest' | 'misc'
 
 /**
  * 物品稀有度枚举
+ * - common: 普通
+ * - uncommon: 优秀
+ * - rare: 稀有
+ * - epic: 史诗
+ * - legendary: 传说
  */
 export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
 
@@ -133,19 +114,24 @@ export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
  * @property {number} value - 效果值
  */
 export interface ItemEffect {
-  /** 效果类型 */
   type: 'heal'
-  /** 效果值 */
   value: number
 }
 
 /**
  * 排序字段类型
+ * - type: 类型
+ * - rarity: 稀有度
+ * - level: 等级
+ * - acquiredAt: 获取时间
+ * - name: 名称
  */
 export type SortField = 'type' | 'rarity' | 'level' | 'acquiredAt' | 'name'
 
 /**
  * 排序顺序类型
+ * - asc: 升序
+ * - desc: 降序
  */
 export type SortOrder = 'asc' | 'desc'
 
@@ -156,11 +142,8 @@ export type SortOrder = 'asc' | 'desc'
  * @property {boolean} [stackable] - 是否可堆叠
  */
 export interface ItemFilters {
-  /** 物品类型列表 */
   types?: ItemType[]
-  /** 稀有度列表 */
   rarities?: ItemRarity[]
-  /** 是否可堆叠 */
   stackable?: boolean
 }
 

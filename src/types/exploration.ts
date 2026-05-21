@@ -5,11 +5,26 @@
 
 /**
  * 网格状态枚举
+ * - unexplored: 未探索
+ * - revealed: 已揭示
+ * - used: 已使用
+ * - camp: 营地
+ * - shop: 商店
+ * - board: 任务板
+ * - boss: BOSS
  */
 export type GridStatus = 'unexplored' | 'revealed' | 'used' | 'camp' | 'shop' | 'board' | 'boss'
 
 /**
  * 网格事件类型枚举
+ * - monster: 怪物
+ * - item: 物品
+ * - trap: 陷阱
+ * - empty: 空
+ * - camp: 营地
+ * - shop: 商店
+ * - board: 任务板
+ * - boss: BOSS
  */
 export type GridEventType = 'monster' | 'item' | 'trap' | 'empty' | 'camp' | 'shop' | 'board' | 'boss'
 
@@ -22,25 +37,15 @@ export type GridEventType = 'monster' | 'item' | 'trap' | 'empty' | 'camp' | 'sh
  * @property {{shopId?: string, boardId?: string, monsterId?: string, itemId?: string, trapId?: string}} [eventData] - 事件数据
  */
 export interface GridCell {
-  /** X坐标 */
   x: number
-  /** Y坐标 */
   y: number
-  /** 网格状态 */
   status: GridStatus
-  /** 事件类型 */
   eventType?: GridEventType
-  /** 事件数据 */
   eventData?: {
-    /** 商店ID */
     shopId?: string
-    /** 任务板ID */
     boardId?: string
-    /** 怪物ID */
     monsterId?: string
-    /** 物品ID */
     itemId?: string
-    /** 陷阱ID */
     trapId?: string
   }
 }
@@ -52,11 +57,8 @@ export interface GridCell {
  * @property {boolean} campUsed - 是否使用过营地
  */
 export interface ExplorationState {
-  /** 当前区域ID */
   currentAreaId: string | null
-  /** 网格数据 */
   grid: GridCell[][]
-  /** 是否使用过营地 */
   campUsed: boolean
 }
 
@@ -68,13 +70,9 @@ export interface ExplorationState {
  * @property {number} empty - 空概率
  */
 export interface GridEventProbability {
-  /** 怪物概率 */
   monster: number
-  /** 物品概率 */
   item: number
-  /** 陷阱概率 */
   trap: number
-  /** 空概率 */
   empty: number
 }
 
@@ -89,19 +87,12 @@ export interface GridEventProbability {
  * @property {string[]} itemPool - 物品池
  */
 export interface AreaConfig {
-  /** 区域ID */
   areaId: string
-  /** 区域名称 */
   name: string
-  /** 区域等级 */
   level: number
-  /** 事件概率 */
   eventProbability: GridEventProbability
-  /** 怪物池 */
   monsterPool: string[]
-  /** BOSS池 */
   bossPool: string[]
-  /** 物品池 */
   itemPool: string[]
 }
 
