@@ -3,7 +3,7 @@
  * @description 包含战斗状态、战斗动作、战斗日志、战斗服务等相关类型定义
  */
 
-import type { Enemy } from './enemies';
+import type { EnemyInstance } from './enemies';
 import type { InventoryItem } from './items';
 import type { SkillType } from './skills';
 
@@ -85,22 +85,22 @@ export interface CombatDamageEvent {
 
 /**
  * 战斗开始事件接口
- * @property {Enemy} enemy - 敌人
+ * @property {EnemyInstance} enemy - 敌人
  */
 export interface CombatStartEvent {
-  enemy: Enemy;
+  enemy: EnemyInstance;
 }
 
 /**
  * 战斗结束事件接口
  * @property {CombatResult} result - 战斗结果
- * @property {Enemy} enemy - 敌人
+ * @property {EnemyInstance} enemy - 敌人
  * @property {number} expGained - 获得经验
- * @property {any[]} [loot] - 掉落物品
+ * @property {InventoryItem[]} [loot] - 掉落物品
  */
 export interface CombatEndEvent {
   result: CombatResult;
-  enemy: Enemy;
+  enemy: EnemyInstance;
   expGained: number;
   loot?: InventoryItem[];
 }
@@ -241,7 +241,7 @@ export interface ICombatService {
    * 获取敌人
    * @returns {Enemy | null} 敌人
    */
-  getEnemy(): Enemy | null;
+  getEnemy(): EnemyInstance | null;
 
   /**
    * 获取当前回合
@@ -253,7 +253,7 @@ export interface ICombatService {
    * 开始战斗
    * @param {Enemy} enemy - 敌人
    */
-  startCombat(enemy: Enemy): void;
+  startCombat(enemy: EnemyInstance): void;
 
   /**
    * 玩家行动

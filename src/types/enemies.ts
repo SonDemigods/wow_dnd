@@ -10,7 +10,7 @@ import type { InventoryItem } from './items';
  * 存储敌人的基础属性和战斗相关配置
  * @property {string} name - 敌人名称
  * @property {string} icon - 敌人图标
- * @property {number} hp - 生命值
+ * @property {number} maxHp - 最大生命值
  * @property {[number, number]} damage - 伤害范围
  * @property {number} xp - 经验值奖励
  * @property {number} gold - 金币奖励
@@ -26,7 +26,7 @@ import type { InventoryItem } from './items';
 export interface EnemyData {
   name: string;
   icon: string;
-  hp: number;
+  maxHp: number;
   damage: [number, number];
   xp: number;
   gold: number;
@@ -44,35 +44,13 @@ export interface EnemyData {
  * 敌人实例接口（运行时使用）
  * 存储战斗中的敌人状态
  * @property {string} id - 敌人实例ID
- * @property {string} name - 敌人名称
- * @property {string} type - 敌人类型
  * @property {number} level - 敌人等级
  * @property {number} hp - 当前生命值
- * @property {number} maxHp - 最大生命值
- * @property {number} attack - 攻击力
- * @property {number} defense - 防御力
- * @property {number} expReward - 经验奖励
- * @property {number} goldReward - 金币奖励
- * @property {string} icon - 敌人图标
  * @property {InventoryItem[]} loot - 掉落物品
- * @property {number} [attackBonus] - 攻击加成
- * @property {number} [critChance] - 暴击率
- * @property {number} [dodgeChance] - 闪避率
  */
-export interface Enemy {
+export interface EnemyInstance extends EnemyData {
   id: string;
-  name: string;
-  type: string;
   level: number;
   hp: number;
-  maxHp: number;
-  attack: number;
-  defense: number;
-  expReward: number;
-  goldReward: number;
-  icon: string;
   loot: InventoryItem[];
-  attackBonus?: number;
-  critChance?: number;
-  dodgeChance?: number;
 }

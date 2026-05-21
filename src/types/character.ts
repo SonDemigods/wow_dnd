@@ -131,7 +131,7 @@ export interface ClassData {
   name: string;
   icon: string;
   primaryStat: keyof Stats;
-  factionsIds: string[];
+  factionsIds: FactionType[];
   description: string;
   color: string;
   bonus?: Partial<Stats>;
@@ -139,11 +139,11 @@ export interface ClassData {
 
 /**
  * 职业属性调整值接口
- * @property {string} classId - 职业ID
+ * @property {ClassType} classId - 职业ID
  * @property {Partial<Stats>} bonus - 属性调整值
  */
 export interface ClassBonus {
-  classId: string;
+  classId: ClassType;
   bonus: Partial<Stats>;
 }
 
@@ -268,16 +268,16 @@ export interface ICharacterService {
   /**
    * 创建新角色
    * @param {string} name - 角色名称
-   * @param {string} factionId - 阵营ID
-   * @param {string} race - 种族
-   * @param {string} charClass - 职业
+   * @param {FactionType} factionId - 阵营ID
+   * @param {RaceType} raceId - 种族ID
+   * @param {ClassType} classId - 职业ID
    * @returns {string} 角色ID
    */
   createCharacter(
     name: string,
-    factionId: string,
-    race: string,
-    charClass: string
+    factionId: FactionType,
+    raceId: RaceType,
+    classId: ClassType
   ): string;
 
   /**
