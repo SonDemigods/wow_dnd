@@ -40,14 +40,16 @@ export interface Attributes {
   magicAttack: number
   /** 魔法防御力 */
   magicDefense: number
-  /** 治疗加成百分比 */
-  healBonus: number
   /** 暴击几率(%) */
   critChance: number
   /** 闪避几率(%) */
   dodgeChance: number
-  /** 先攻值 - 决定战斗出手顺序 */
-  initiative: number
+  /** 每级HP加成 */
+  hpBonus: number
+  /** 每级MP加成 */
+  mpBonus: number
+  /** 治疗加成 */
+  healBonus: number
 }
 
 /**
@@ -84,10 +86,9 @@ export interface Character {
 }
 
 /**
- * 背包物品
- * 表示玩家背包中的单个物品
+ * 物品基础类型
  */
-export interface InventoryItem {
+export interface Item {
   /** 物品唯一ID */
   id: string
   /** 物品名称 */
@@ -106,6 +107,13 @@ export interface InventoryItem {
   value: number
   /** 是否可堆叠 */
   stackable: boolean
+}
+
+/**
+ * 背包物品
+ * 表示玩家背包中的单个物品
+ */
+export interface InventoryItem extends Item {
   /** 当前堆叠数量 */
   count: number
 }
@@ -296,12 +304,24 @@ export interface ClassData {
   primaryStat: keyof Stats
   /** 可选阵营列表 */
   factions: FactionType[]
-  /** 职业技能列表 */
-  abilities: string[]
   /** 职业描述 */
   description: string
   /** 职业主题色 */
   color: string
+}
+
+/**
+ * 技能类型
+ */
+export type SkillType = 'physical_damage' | 'magic_damage' | 'heal'
+
+/**
+ * 技能效果
+ */
+export interface SkillEffect {
+  type: SkillType
+  value: number
+  coefficient?: number
 }
 
 /**
@@ -316,12 +336,45 @@ export interface Ability {
   damage?: [number, number]
   /** 治疗范围(最小,最大) - 治疗型技能 */
   healing?: [number, number]
-  /** 护盾值 - 防护型技能 */
-  shield?: number
   /** 法力消耗 */
   manaCost: number
   /** 技能类型 */
-  type: 'damage' | 'heal' | 'shield'
+  type: SkillType
+}
+
+/**
+ * 技能数据（带解锁状态）
+ */
+export interface Skill {
+  id: string
+  name: string
+  icon: string
+  description: string
+  mpCost: number
+  type: SkillType
+  effect: SkillEffect
+  unlockLevel: number
+  isUnlocked: boolean
+}
+
+/**
+ * 技能使用结果
+ */
+export interface SkillUseResult {
+  success: boolean
+  skillId: string
+  type: SkillType
+  damage?: number
+  heal?: number
+  defense?: number
+  message: string
+}
+
+/**
+ * 技能栏
+ */
+export interface SkillBar {
+  slots: (string | null)[]
 }
 
 /**
@@ -355,7 +408,7 @@ export interface LootItemData {
   /** 永久属性加成 */
   statBonus?: Partial<Stats>
   /** 使用效果类型 */
-  effect?: 'damage' | 'heal' | 'shield'
+  effect?: 'damage' | 'heal'
   /** 伤害范围(卷轴类物品) */
   damage?: [number, number]
   /** 稀有度 */
@@ -384,6 +437,8 @@ export interface EnemyData {
   gold: number
   /** 危险等级 */
   dangerLevel: string
+  /** 是否为BOSS */
+  isBoss?: boolean
 }
 
 /**
