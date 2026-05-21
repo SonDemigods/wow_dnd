@@ -60,8 +60,8 @@ export interface EquipmentItem extends Item {
   type: EquipmentType
   /** 装备槽位 */
   slot: EquipmentSlot
-  /** 属性 */
-  stats: Partial<Stats>
+  /** 属性加成 */
+  bonus?: Partial<Stats>
   /** 稀有度 */
   rarity: EquipmentRarity
   /** 等级要求 */
@@ -172,9 +172,9 @@ export interface IEquipmentService {
 
   /**
    * 计算稀有度加成
-   * @param {Partial<Stats>} baseStats - 基础属性
+   * @param {Partial<Stats>} baseBonus - 基础属性
    * @param {EquipmentRarity} rarity - 稀有度
    * @returns {Partial<Stats>} 加成后的属性
    */
-  calculateRarityBonus(baseStats: Partial<Stats>, rarity: EquipmentRarity): Partial<Stats>
+  calculateRarityBonus(baseBonus: Partial<Stats>, rarity: EquipmentRarity): Partial<Stats>
 }

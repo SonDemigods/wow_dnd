@@ -170,7 +170,7 @@ export interface RaceData {
   /** 所属阵营 */
   faction: FactionType
   /** 属性加成 */
-  bonus: Partial<Stats>
+  bonus?: Partial<Stats>
   /** 种族描述 */
   description: string
 }
@@ -183,6 +183,7 @@ export interface RaceData {
  * @property {FactionType[]} factions - 可选阵营
  * @property {string} description - 职业描述
  * @property {string} color - 职业主色调
+ * @property {Partial<Stats>} [bonus] - 职业属性调整值
  */
 export interface ClassData {
   /** 职业名称 */
@@ -197,6 +198,8 @@ export interface ClassData {
   description: string
   /** 职业主色调 */
   color: string
+  /** 职业属性调整值 */
+  bonus?: Partial<Stats>
 }
 
 /**
@@ -261,19 +264,19 @@ export interface RaceBonus {
   /** 阵营 */
   faction: FactionType
   /** 属性调整值 */
-  stats: Partial<Stats>
+  bonus: Partial<Stats>
 }
 
 /**
  * 职业属性调整值接口
  * @property {string} className - 职业名称
- * @property {Partial<Stats>} stats - 属性调整值
+ * @property {Partial<Stats>} bonus - 属性调整值
  */
 export interface ClassBonus {
   /** 职业名称 */
   className: string
   /** 属性调整值 */
-  stats: Partial<Stats>
+  bonus: Partial<Stats>
 }
 
 /**

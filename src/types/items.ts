@@ -35,7 +35,7 @@ export interface Item {
   /** 物品描述 */
   description: string
   /** 属性加成 */
-  stats?: Partial<Stats>
+  bonus?: Partial<Stats>
   /** 物品价值 */
   value: number
   /** 是否可堆叠 */
