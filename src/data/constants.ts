@@ -23,37 +23,127 @@ export const STAT_NAMES = {
   cha: '魅力'
 } as const
 
-/**
- * 衍生属性计算配置
- * 定义了各衍生属性如何基于主属性计算
- * @type {Record<string, { stat: string; mult: number; base: number }>}
- */
-export const ATTRIBUTE_BONUSES = {
-  physicalAttack: { stat: 'str', mult: 2, base: 5 },
-  physicalDefense: { stat: 'con', mult: 1.5, base: 3 },
-  magicAttack: { stat: 'int', mult: 2, base: 5 },
-  magicDefense: { stat: 'wis', mult: 1.5, base: 3 },
-  critChance: { stat: 'dex', mult: 0.5, base: 5 },
-  dodgeChance: { stat: 'dex', mult: 0.4, base: 3 },
-  maxHp: { stat: 'con', mult: 10, base: 20 },
-  maxMana: { stat: 'int', mult: 8, base: 15 },
-  healBonus: { stat: 'wis', mult: 1, base: 0 },
-  initiative: { stat: 'dex', mult: 1, base: 0 }
-} as const
-
 import type { Stats } from '../types'
 
 /**
- * 计算单个衍生属性值
+ * 计算最大生命值
  * @param {Stats} stats - 角色主属性对象
- * @param {keyof typeof ATTRIBUTE_BONUSES} attrKey - 要计算的衍生属性键名
- * @returns {number} 计算后的属性值
+ * @returns {number} 最大生命值
  */
-export function calculateAttribute(stats: Stats, attrKey: keyof typeof ATTRIBUTE_BONUSES): number {
-  const bonus = ATTRIBUTE_BONUSES[attrKey]
-  if (!bonus) return 0
-  const statValue = stats[bonus.stat as keyof Stats] || 10
-  return Math.floor(bonus.base + (statValue - 10) / 2 * bonus.mult)
+export function calculateMaxHp(stats: Stats): number {
+  const con = stats.con || 10
+  return 100 + con * 10
+}
+
+/**
+ * 计算最大魔法值
+ * @param {Stats} stats - 角色主属性对象
+ * @returns {number} 最大魔法值
+ */
+export function calculateMaxMana(stats: Stats): number {
+  const int = stats.int || 10
+  const wis = stats.wis || 10
+  const cha = stats.cha || 10
+  return 50 + int * 5 + wis * 3 + cha * 2
+}
+
+/**
+ * 计算物理攻击力
+ * @param {Stats} stats - 角色主属性对象
+ * @returns {number} 物理攻击力
+ */
+export function calculatePhysicalAttack(stats: Stats): number {
+  const str = stats.str || 10
+  const dex = stats.dex || 10
+  return Math.floor(str * 2 + dex * 0.5)
+}
+
+/**
+ * 计算物理防御力
+ * @param {Stats} stats - 角色主属性对象
+ * @returns {number} 物理防御力
+ */
+export function calculatePhysicalDefense(stats: Stats): number {
+  const con = stats.con || 10
+  const dex = stats.dex || 10
+  return Math.floor(con * 1.5 + dex * 0.3)
+}
+
+/**
+ * 计算魔法攻击力
+ * @param {Stats} stats - 角色主属性对象
+ * @returns {number} 魔法攻击力
+ */
+export function calculateMagicAttack(stats: Stats): number {
+  const int = stats.int || 10
+  const wis = stats.wis || 10
+  const cha = stats.cha || 10
+  return Math.floor(int * 2 + wis * 0.5 + cha * 0.3)
+}
+
+/**
+ * 计算魔法防御力
+ * @param {Stats} stats - 角色主属性对象
+ * @returns {number} 魔法防御力
+ */
+export function calculateMagicDefense(stats: Stats): number {
+  const wis = stats.wis || 10
+  const int = stats.int || 10
+  const cha = stats.cha || 10
+  return Math.floor(wis * 1.5 + int * 0.5 + cha * 0.3)
+}
+
+/**
+ * 计算暴击率 (%)
+ * @param {Stats} stats - 角色主属性对象
+ * @returns {number} 暴击率百分比
+ */
+export function calculateCritChance(stats: Stats): number {
+  const dex = stats.dex || 10
+  return Math.min(50, Math.floor(dex * 0.5))
+}
+
+/**
+ * 计算闪避率 (%)
+ * @param {Stats} stats - 角色主属性对象
+ * @returns {number} 闪避率百分比
+ */
+export function calculateDodgeChance(stats: Stats): number {
+  const dex = stats.dex || 10
+  return Math.min(30, Math.floor(dex * 0.3))
+}
+
+/**
+ * 计算每级HP加成
+ * @param {Stats} stats - 角色主属性对象
+ * @returns {number} 每级HP加成
+ */
+export function calculateHpBonus(stats: Stats): number {
+  const con = stats.con || 10
+  return con * 2
+}
+
+/**
+ * 计算每级MP加成
+ * @param {Stats} stats - 角色主属性对象
+ * @returns {number} 每级MP加成
+ */
+export function calculateMpBonus(stats: Stats): number {
+  const int = stats.int || 10
+  const wis = stats.wis || 10
+  const cha = stats.cha || 10
+  return int + wis + cha
+}
+
+/**
+ * 计算治疗加成
+ * @param {Stats} stats - 角色主属性对象
+ * @returns {number} 治疗加成
+ */
+export function calculateHealBonus(stats: Stats): number {
+  const wis = stats.wis || 10
+  const cha = stats.cha || 10
+  return Math.floor(wis * 0.1 + cha * 0.05)
 }
 
 /**
@@ -69,20 +159,22 @@ export function calculateAttribute(stats: Stats, attrKey: keyof typeof ATTRIBUTE
  * @returns {number} .maxHp - 最大生命值
  * @returns {number} .maxMana - 最大法力值
  * @returns {number} .healBonus - 治疗加成
- * @returns {number} .initiative - 先攻值
+ * @returns {number} .hpBonus - 每级HP加成
+ * @returns {number} .mpBonus - 每级MP加成
  */
 export function calculateAllAttributes(stats: Stats) {
   return {
-    physicalAttack: calculateAttribute(stats, 'physicalAttack'),
-    physicalDefense: calculateAttribute(stats, 'physicalDefense'),
-    magicAttack: calculateAttribute(stats, 'magicAttack'),
-    magicDefense: calculateAttribute(stats, 'magicDefense'),
-    critChance: Math.min(50, calculateAttribute(stats, 'critChance')),
-    dodgeChance: Math.min(30, calculateAttribute(stats, 'dodgeChance')),
-    maxHp: calculateAttribute(stats, 'maxHp'),
-    maxMana: calculateAttribute(stats, 'maxMana'),
-    healBonus: calculateAttribute(stats, 'healBonus'),
-    initiative: calculateAttribute(stats, 'initiative')
+    physicalAttack: calculatePhysicalAttack(stats),
+    physicalDefense: calculatePhysicalDefense(stats),
+    magicAttack: calculateMagicAttack(stats),
+    magicDefense: calculateMagicDefense(stats),
+    critChance: calculateCritChance(stats),
+    dodgeChance: calculateDodgeChance(stats),
+    maxHp: calculateMaxHp(stats),
+    maxMana: calculateMaxMana(stats),
+    healBonus: calculateHealBonus(stats),
+    hpBonus: calculateHpBonus(stats),
+    mpBonus: calculateMpBonus(stats)
   }
 }
 
