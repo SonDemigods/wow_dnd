@@ -260,22 +260,3 @@ export interface SkillValidationResult {
   currentMp?: number
   requiredMp?: number
 }
-
-/**
- * 技能/能力数据接口（保留原类型向后兼容）
- * 旧版本技能数据定义
- * @property {string} name - 技能名称
- * @property {string} icon - 技能图标
- * @property {[number, number]} [damage] - 伤害范围
- * @property {[number, number]} [healing] - 治疗范围
- * @property {number} manaCost - 法力消耗
- * @property {SkillType} type - 技能类型
- */
-export interface Ability {
-  name: string
-  icon: string
-  damage?: [number, number]
-  healing?: [number, number]
-  manaCost: number
-  type: SkillType
-}

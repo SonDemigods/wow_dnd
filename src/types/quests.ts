@@ -12,24 +12,20 @@
  * - TURNED_IN: 任务已提交（已领取奖励）
  * - ABANDONED: 任务已放弃（玩家主动放弃）
  */
-export enum QuestStatus {
-  NOT_AVAILABLE = 'not_available',
-  AVAILABLE = 'available',
-  IN_PROGRESS = 'in_progress',
-  COMPLETED = 'completed',
-  TURNED_IN = 'turned_in',
-  ABANDONED = 'abandoned',
-}
+export type QuestStatus =
+  | 'not_available'
+  | 'available'
+  | 'in_progress'
+  | 'completed'
+  | 'turned_in'
+  | 'abandoned';
 
 /**
  * 任务类型枚举
  * - KILL: 击杀任务（需要杀死指定数量的敌人）
  * - COLLECT: 收集任务（需要收集指定数量的物品）
  */
-export enum QuestType {
-  KILL = 'kill',
-  COLLECT = 'collect',
-}
+export type QuestType = 'kill' | 'collect';
 
 /**
  * 任务目标接口
@@ -42,13 +38,13 @@ export enum QuestType {
  * @property {string} [locationId] - 地点ID（交互任务专用）
  */
 export interface QuestObjective {
-  key: string
-  type: QuestType
-  description: string
-  target: number
-  itemId?: string
-  enemyId?: string
-  locationId?: string
+  key: string;
+  type: QuestType;
+  description: string;
+  target: number;
+  itemId?: string;
+  enemyId?: string;
+  locationId?: string;
 }
 
 /**
@@ -59,10 +55,10 @@ export interface QuestObjective {
  * @property {number} [chance] - 掉落几率（0-1之间），默认为1（必掉）
  */
 export interface ItemReward {
-  itemId: string
-  itemName: string
-  quantity: number
-  chance?: number
+  itemId: string;
+  itemName: string;
+  quantity: number;
+  chance?: number;
 }
 
 /**
@@ -80,16 +76,16 @@ export interface ItemReward {
  * @property {string} boardId - 任务板ID，任务发布的地点
  */
 export interface QuestDefinition {
-  id: string
-  title: string
-  description: string
-  type: QuestType
-  objectives: QuestObjective[]
-  levelRequirement: number
-  xpReward: number
-  goldReward: number
-  itemRewards?: ItemReward[]
-  boardId: string
+  id: string;
+  title: string;
+  description: string;
+  type: QuestType;
+  objectives: QuestObjective[];
+  levelRequirement: number;
+  xpReward: number;
+  goldReward: number;
+  itemRewards?: ItemReward[];
+  boardId: string;
 }
 
 /**
@@ -100,9 +96,9 @@ export interface QuestDefinition {
  * @property {number} target - 目标数量，需要完成的总数量
  */
 export interface QuestObjectiveProgress {
-  objectiveKey: string
-  current: number
-  target: number
+  objectiveKey: string;
+  current: number;
+  target: number;
 }
 
 /**
@@ -115,11 +111,11 @@ export interface QuestObjectiveProgress {
  * @property {number} [completedAt] - 完成时间戳，玩家完成任务的时间（可选）
  */
 export interface QuestInstance {
-  questId: string
-  status: QuestStatus
-  progress: QuestObjectiveProgress[]
-  acceptedAt: number
-  completedAt?: number
+  questId: string;
+  status: QuestStatus;
+  progress: QuestObjectiveProgress[];
+  acceptedAt: number;
+  completedAt?: number;
 }
 
 /**
@@ -132,7 +128,7 @@ export interface IQuestService {
    * @param {string} questId - 任务ID
    * @returns {boolean} 是否成功接受
    */
-  acceptQuest(questId: string): boolean
+  acceptQuest(questId: string): boolean;
 
   /**
    * 更新任务进度
@@ -140,88 +136,92 @@ export interface IQuestService {
    * @param {string} objectiveKey - 目标键
    * @param {number} [amount] - 增加数量，默认为1
    */
-  updateQuestProgress(questId: string, objectiveKey: string, amount?: number): void
+  updateQuestProgress(
+    questId: string,
+    objectiveKey: string,
+    amount?: number
+  ): void;
 
   /**
    * 提交任务（领取奖励）
    * @param {string} questId - 任务ID
    * @returns {boolean} 是否成功提交
    */
-  turnInQuest(questId: string): boolean
+  turnInQuest(questId: string): boolean;
 
   /**
    * 放弃任务
    * @param {string} questId - 任务ID
    * @returns {boolean} 是否成功放弃
    */
-  abandonQuest(questId: string): boolean
+  abandonQuest(questId: string): boolean;
 
   /**
    * 检查任务是否可用（可接取）
    * @param {string} questId - 任务ID
    * @returns {boolean} 是否可用
    */
-  isQuestAvailable(questId: string): boolean
+  isQuestAvailable(questId: string): boolean;
 
   /**
    * 检查任务是否进行中
    * @param {string} questId - 任务ID
    * @returns {boolean} 是否进行中
    */
-  isQuestInProgress(questId: string): boolean
+  isQuestInProgress(questId: string): boolean;
 
   /**
    * 检查任务是否完成（可提交）
    * @param {string} questId - 任务ID
    * @returns {boolean} 是否完成
    */
-  isQuestCompleted(questId: string): boolean
+  isQuestCompleted(questId: string): boolean;
 
   /**
    * 获取任务实例（玩家接取的任务状态）
    * @param {string} questId - 任务ID
    * @returns {QuestInstance | null} 任务实例，如果不存在返回null
    */
-  getQuestInstance(questId: string): QuestInstance | null
+  getQuestInstance(questId: string): QuestInstance | null;
 
   /**
    * 获取任务定义（任务的静态数据）
    * @param {string} questId - 任务ID
    * @returns {QuestDefinition | null} 任务定义，如果不存在返回null
    */
-  getQuestDefinition(questId: string): QuestDefinition | null
+  getQuestDefinition(questId: string): QuestDefinition | null;
 
   /**
    * 获取所有可用任务列表
    * @returns {string[]} 任务ID列表
    */
-  getAvailableQuests(): string[]
+  getAvailableQuests(): string[];
 
   /**
    * 获取所有进行中的任务列表
    * @returns {string[]} 任务ID列表
    */
-  getInProgressQuests(): string[]
+  getInProgressQuests(): string[];
 
   /**
    * 获取所有已完成的任务列表
    * @returns {string[]} 任务ID列表
    */
-  getCompletedQuests(): string[]
+  getCompletedQuests(): string[];
 
   /**
    * 获取指定任务板上的任务
    * @param {string} boardId - 任务板ID
    * @returns {QuestDefinition[]} 任务定义列表
    */
-  getQuestsFromBoard(boardId: string): QuestDefinition[]
+  getQuestsFromBoard(boardId: string): QuestDefinition[];
 
   /**
    * 获取指定任务板上可提交的任务
    * @param {string} boardId - 任务板ID
    * @returns {QuestDefinition[]} 任务定义列表
    */
-  getQuestsToTurnIn(boardId: string): QuestDefinition[]
+  getQuestsToTurnIn(boardId: string): QuestDefinition[];
 
   /**
    * 从任务板接受任务
@@ -229,7 +229,7 @@ export interface IQuestService {
    * @param {string} questId - 任务ID
    * @returns {boolean} 是否成功接受
    */
-  acceptQuestFromBoard(boardId: string, questId: string): boolean
+  acceptQuestFromBoard(boardId: string, questId: string): boolean;
 
   /**
    * 在任务板提交任务
@@ -237,8 +237,8 @@ export interface IQuestService {
    * @param {string} questId - 任务ID
    * @returns {boolean} 是否成功提交
    */
-  turnInQuestToBoard(boardId: string, questId: string): boolean
+  turnInQuestToBoard(boardId: string, questId: string): boolean;
 
   /** 重置所有任务数据（用于测试或新游戏） */
-  reset(): void
+  reset(): void;
 }

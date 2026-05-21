@@ -7,16 +7,6 @@ import type { Item, ItemRarity } from './items'
 import type { Stats } from './character'
 
 /**
- * 装备稀有度枚举
- * - common: 普通
- * - uncommon: 优秀
- * - rare: 稀有
- * - epic: 史诗
- * - legendary: 传说
- */
-export type EquipmentRarity = ItemRarity
-
-/**
  * 稀有度配置接口
  * @property {string} name - 稀有度名称
  * @property {string} color - 颜色
@@ -51,14 +41,14 @@ export type EquipmentType = 'weapon' | 'armor'
  * @property {EquipmentType} type - 装备类型
  * @property {EquipmentSlot[]} slots - 装备槽位（武器可适配weapon1和weapon2，防具可适配armor1、armor2、armor3、armor4）
  * @property {Partial<Stats>} [bonus] - 属性加成
- * @property {EquipmentRarity} rarity - 稀有度
+ * @property {ItemRarity} rarity - 稀有度
  * @property {number} [levelRequirement] - 等级要求
  */
 export interface EquipmentItem extends Item {
   type: EquipmentType
   slots: EquipmentSlot[]
   bonus?: Partial<Stats>
-  rarity: EquipmentRarity
+  rarity: ItemRarity
   levelRequirement?: number
 }
 
@@ -142,30 +132,30 @@ export interface IEquipmentService {
 
   /**
    * 获取稀有度配置
-   * @param {EquipmentRarity} rarity - 稀有度
+   * @param {ItemRarity} rarity - 稀有度
    * @returns {RarityConfig} 稀有度配置
    */
-  getRarityConfig(rarity: EquipmentRarity): RarityConfig
+  getRarityConfig(rarity: ItemRarity): RarityConfig
 
   /**
    * 获取稀有度颜色
-   * @param {EquipmentRarity} rarity - 稀有度
+   * @param {ItemRarity} rarity - 稀有度
    * @returns {string} 颜色
    */
-  getRarityColor(rarity: EquipmentRarity): string
+  getRarityColor(rarity: ItemRarity): string
 
   /**
    * 获取稀有度倍率
-   * @param {EquipmentRarity} rarity - 稀有度
+   * @param {ItemRarity} rarity - 稀有度
    * @returns {number} 倍率
    */
-  getRarityMultiplier(rarity: EquipmentRarity): number
+  getRarityMultiplier(rarity: ItemRarity): number
 
   /**
    * 计算稀有度加成
    * @param {Partial<Stats>} baseBonus - 基础属性
-   * @param {EquipmentRarity} rarity - 稀有度
+   * @param {ItemRarity} rarity - 稀有度
    * @returns {Partial<Stats>} 加成后的属性
    */
-  calculateRarityBonus(baseBonus: Partial<Stats>, rarity: EquipmentRarity): Partial<Stats>
+  calculateRarityBonus(baseBonus: Partial<Stats>, rarity: ItemRarity): Partial<Stats>
 }

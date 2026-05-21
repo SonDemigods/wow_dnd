@@ -11,13 +11,7 @@
  * - ITEM: 物品日志
  * - LEVEL: 升级日志
  */
-export enum LogType {
-  INFO = 'info',
-  COMBAT = 'combat',
-  QUEST = 'quest',
-  ITEM = 'item',
-  LEVEL = 'level',
-}
+export type LogType = 'info' | 'combat' | 'quest' | 'item' | 'level';
 
 /**
  * 游戏日志条目接口
@@ -28,11 +22,11 @@ export enum LogType {
  * @property {string} [icon] - 日志图标
  */
 export interface LogEntry {
-  id: string
-  timestamp: number
-  type: LogType
-  message: string
-  icon?: string
+  id: string;
+  timestamp: number;
+  type: LogType;
+  message: string;
+  icon?: string;
 }
 
 /**
@@ -44,33 +38,33 @@ export interface ILogService {
    * 添加日志条目
    * @param {LogEntry} entry - 日志条目
    */
-  addLog(entry: LogEntry): void
+  addLog(entry: LogEntry): void;
 
   /**
    * 获取日志列表
    * @returns {LogEntry[]} 日志列表
    */
-  getLogs(): LogEntry[]
+  getLogs(): LogEntry[];
 
   /**
    * 根据类型筛选日志
    * @param {LogType} type - 日志类型
    * @returns {LogEntry[]} 筛选后的日志列表
    */
-  getLogsByType(type: LogType): LogEntry[]
+  getLogsByType(type: LogType): LogEntry[];
 
   /** 清空日志 */
-  clearLogs(): void
+  clearLogs(): void;
 
   /**
    * 获取日志数量
    * @returns {number} 日志数量
    */
-  getLogCount(): number
+  getLogCount(): number;
 
   /**
    * 生成日志ID
    * @returns {string} 日志ID
    */
-  generateLogId(): string
+  generateLogId(): string;
 }

@@ -6,11 +6,6 @@
 import type { ItemRarity } from './items'
 
 /**
- * 商店物品稀有度类型
- */
-export type ShopItemRarity = ItemRarity
-
-/**
  * 价格变化范围接口
  * @property {number} min - 最小价格倍数（相对于基础价格）
  * @property {number} max - 最大价格倍数（相对于基础价格）
@@ -129,19 +124,19 @@ export interface IShopService {
   /**
    * 计算物品售价
    * @param {string} itemId - 物品ID
-   * @param {ShopItemRarity} rarity - 物品稀有度
+   * @param {ItemRarity} rarity - 物品稀有度
    * @param {number} [priceMultiplier] - 价格倍数，默认为1
    * @returns {number} 售价
    */
-  calculateBuyPrice(itemId: string, rarity: ShopItemRarity, priceMultiplier?: number): number
+  calculateBuyPrice(itemId: string, rarity: ItemRarity, priceMultiplier?: number): number
 
   /**
    * 计算物品回收价
    * @param {string} itemId - 物品ID
-   * @param {ShopItemRarity} rarity - 物品稀有度
+   * @param {ItemRarity} rarity - 物品稀有度
    * @returns {number} 回收价
    */
-  calculateSellPrice(itemId: string, rarity: ShopItemRarity): number
+  calculateSellPrice(itemId: string, rarity: ItemRarity): number
 
   /**
    * 获取所有商店列表

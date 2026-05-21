@@ -4,13 +4,14 @@
  */
 
 import type { Stats } from './character'
+import type { SkillType } from './skills'
 
 /**
  * 物品基础类型接口
  * @property {string} id - 物品ID
  * @property {string} name - 物品名称
- * @property {string} type - 物品类型
- * @property {string} rarity - 物品稀有度
+ * @property {ItemType} type - 物品类型
+ * @property {ItemRarity} rarity - 物品稀有度
  * @property {string} icon - 物品图标
  * @property {string} description - 物品描述
  * @property {Partial<Stats>} [stats] - 属性加成
@@ -24,11 +25,11 @@ import type { Stats } from './character'
 export interface Item {
   id: string
   name: string
-  type: string
-  rarity: string
+  type: ItemType
+  rarity: ItemRarity
   icon: string
   description: string
-  bonus?: Partial<Stats>
+  bonus: Partial<Stats>
   value: number
   stackable: boolean
   hpRestore?: number
@@ -39,10 +40,11 @@ export interface Item {
 
 /**
  * 背包物品接口
- * 继承自Item，添加数量字段
+ * @property {string} itemId - 物品ID
  * @property {number} count - 物品数量
  */
-export interface InventoryItem extends Item {
+export interface InventoryItem {
+  itemId: string
   count: number
 }
 
@@ -64,39 +66,43 @@ export interface ItemTypeData {
  * 掉落物品数据接口
  * @property {string} name - 物品名称
  * @property {string} icon - 物品图标
- * @property {string} type - 物品类型
+ * @property {ItemType} type - 物品类型
  * @property {number} [healing] - 治疗量
  * @property {number} [manaRestore] - 法力恢复量
- * @property {Partial<Stats>} [statBonus] - 属性加成
- * @property {'damage' | 'heal'} [effect] - 效果类型
+ * @property {Partial<Stats>} bonus - 属性加成
+ * @property {ItemEffect} [effect] - 效果类型
  * @property {[number, number]} [damage] - 伤害范围
- * @property {string} rarity - 稀有度
+ * @property {ItemRarity} rarity - 稀有度
  * @property {string} description - 描述
  * @property {string} template - 模板ID
  */
 export interface LootItemData {
   name: string
   icon: string
-  type: string
+  type: ItemType
   healing?: number
   manaRestore?: number
-  statBonus?: Partial<Stats>
-  effect?: 'damage' | 'heal'
+  bonus: Partial<Stats>
+  effect?: ItemEffect
   damage?: [number, number]
-  rarity: string
+  rarity: ItemRarity
   description: string
   template: string
 }
 
 /**
  * 物品类型枚举
+ * - gold: 货币
+ * - potion: 药水
+ * - scroll: 卷轴
+ * - food: 食物
+ * - material: 材料
+ * - quest: 任务物品
  * - weapon: 武器
  * - armor: 护甲
- * - consumable: 消耗品
- * - quest: 任务物品
  * - misc: 杂项
  */
-export type ItemType = 'weapon' | 'armor' | 'consumable' | 'quest' | 'misc'
+export type ItemType = 'gold' | 'potion' | 'scroll' | 'food' | 'material' | 'quest' | 'weapon' | 'armor' | 'misc'
 
 /**
  * 物品稀有度枚举
@@ -109,13 +115,21 @@ export type ItemType = 'weapon' | 'armor' | 'consumable' | 'quest' | 'misc'
 export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
 
 /**
+ * 技能效果类型枚举
+ * - physical_damage: 物理伤害
+ * - magic_damage: 法术伤害
+ * - heal: 治疗
+ */
+export type ItemEffectType = SkillType | 'stat'
+
+/**
  * 物品效果接口
  * @property {'heal'} type - 效果类型
  * @property {number} value - 效果值
  */
 export interface ItemEffect {
-  type: 'heal'
-  value: number
+  type: ItemEffectType
+  value: number | Partial<Stats>
 }
 
 /**

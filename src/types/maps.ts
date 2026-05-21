@@ -28,6 +28,7 @@ export interface ContinentData {
  * @property {string} continent - 所属大陆
  * @property {string} region - 所属区域
  * @property {string[]} enemies - 敌人列表
+ * @property {string[]} quests - 任务列表
  * @property {[number, number]} levelRange - 等级范围
  * @property {string} color - 主色调
  * @property {number} mapX - 地图X坐标
@@ -40,31 +41,12 @@ export interface LocationData {
   description: string
   continent: string
   region: string
-  enemies: string[]
+  enemies?: string[]
+  quests?: string[]
   levelRange: [number, number]
   color: string
   mapX: number
   mapY: number
-}
-
-/**
- * 地点接口（运行时使用）
- * @property {string} id - 地点ID
- * @property {string} name - 地点名称
- * @property {string} description - 地点描述
- * @property {string} icon - 地点图标
- * @property {string[]} enemies - 敌人列表
- * @property {string[]} quests - 任务列表
- * @property {number} mapSize - 地图尺寸
- */
-export interface Location {
-  id: string
-  name: string
-  description: string
-  icon: string
-  enemies: string[]
-  quests: string[]
-  mapSize: number
 }
 
 /**

@@ -175,21 +175,6 @@ export interface CharacterListItem {
 }
 
 /**
- * 角色信息接口
- * 用于展示角色基本信息
- * @property {string} name - 角色名称
- * @property {string | null} race - 种族
- * @property {string | null} class - 职业
- * @property {FactionType} faction - 阵营
- */
-export interface CharacterInfo {
-  name: string
-  race: string | null
-  class: string | null
-  faction: FactionType
-}
-
-/**
  * 种族属性调整值接口
  * @property {string} race - 种族名称
  * @property {FactionType} faction - 阵营
@@ -317,9 +302,9 @@ export interface ICharacterService {
 
   /**
    * 获取角色信息
-   * @returns {CharacterInfo} 角色信息
+   * @returns {Character} 角色信息
    */
-  getCharacterInfo(): CharacterInfo
+  getCharacterInfo(): Character
 
   /**
    * 添加经验值
