@@ -3,8 +3,8 @@
  * @description 包含装备稀有度、装备槽位、装备服务等相关类型定义
  */
 
-import type { Item, ItemRarity } from './items';
-import type { Stats } from './character';
+import type { Item, ItemRarity } from './items.type';
+import type { Stats } from './character.type';
 
 /**
  * 稀有度配置接口

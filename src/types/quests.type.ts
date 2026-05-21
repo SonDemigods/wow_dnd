@@ -3,7 +3,7 @@
  * @description 包含任务状态、任务目标、任务实例等相关类型定义
  */
 
-import type { InventoryItem } from './items';
+import type { InventoryItem } from './items.type';
 
 /**
  * 任务状态枚举

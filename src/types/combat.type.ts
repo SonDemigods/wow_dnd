@@ -3,9 +3,9 @@
  * @description 包含战斗状态、战斗动作、战斗日志、战斗服务等相关类型定义
  */
 
-import type { EnemyInstance } from './enemies';
-import type { InventoryItem } from './items';
-import type { SkillType } from './skills';
+import type { EnemyInstance } from './enemies.type';
+import type { InventoryItem } from './items.type';
+import type { SkillType } from './skills.type';
 
 /**
  * 战斗状态枚举

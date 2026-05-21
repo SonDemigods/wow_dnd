@@ -3,7 +3,7 @@
  * @description 包含敌人基础数据、敌人实例等相关类型定义
  */
 
-import type { InventoryItem } from './items';
+import type { InventoryItem } from './items.type';
 
 /**
  * 敌人数据接口

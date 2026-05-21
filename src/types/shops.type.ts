@@ -3,7 +3,7 @@
  * @description 包含商店配置、商品池、价格系统等相关类型定义
  */
 
-import type { ItemRarity } from './items';
+import type { ItemRarity } from './items.type';
 
 /**
  * 价格变化范围接口
