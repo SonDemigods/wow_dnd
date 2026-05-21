@@ -5,7 +5,7 @@
  */
 
 // 导入类型定义
-import type { FactionData, RaceData } from '../types'
+import type { FactionData, RaceData } from '../types';
 
 /**
  * 阵营数据定义
@@ -24,7 +24,7 @@ export const FACTIONS: Record<string, FactionData> = {
     color: '#ff4400',
     description: '兽人、牛头人、巨魔、血精灵和被遗忘者建立的松散联盟'
   }
-}
+};
 
 /**
  * 种族数据定义
@@ -122,4 +122,4 @@ export const RACES: Record<string, RaceData> = {
     bonus: { dex: 1, cha: 2 },
     description: '精明的商人种族，掌控着艾泽拉斯的商业命脉'
   }
-}
+};

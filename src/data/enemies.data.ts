@@ -4,7 +4,7 @@
  * @module data/enemies
  */
 
-import type { EnemyData } from '../types'
+import type { EnemyData } from '../types';
 
 /**
  * 所有敌人的完整数据集
@@ -512,4 +512,4 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 7,
     dodgeChance: 4
   }
-}
+};

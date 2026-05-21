@@ -4,8 +4,8 @@
  * @module data/quests
  */
 
-import type { QuestDefinition } from '../types'
-import { QuestType } from '../types'
+import type { QuestDefinition } from '../types';
+import type { QuestType } from '../types';
 
 export const QUESTS: Record<string, QuestDefinition> = {
   teldrassil_defense: {
@@ -14,7 +14,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '暗影森林深处有蜘蛛巢穴正在向外扩张，需要清剿它们！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_spider', type: QuestType.KILL, description: '杀死5只蜘蛛', target: 5, enemyId: 'spider' }
+      {
+        key: 'kill_spider',
+        type: QuestType.KILL,
+        description: '杀死5只蜘蛛',
+        target: 5,
+        enemyId: 'spider'
+      }
     ],
     levelRequirement: 1,
     xpReward: 80,
@@ -27,7 +33,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '豺狼人在森林边缘袭击过路的旅行者，快去教训他们！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_goblin', type: QuestType.KILL, description: '杀死4只豺狼人', target: 4, enemyId: 'goblin' }
+      {
+        key: 'kill_goblin',
+        type: QuestType.KILL,
+        description: '杀死4只豺狼人',
+        target: 4,
+        enemyId: 'goblin'
+      }
     ],
     levelRequirement: 1,
     xpReward: 100,
@@ -40,7 +52,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '大量蜘蛛从洞穴中涌出，威胁着秘蓝岛的安全！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_spider', type: QuestType.KILL, description: '杀死6只蜘蛛', target: 6, enemyId: 'spider' }
+      {
+        key: 'kill_spider',
+        type: QuestType.KILL,
+        description: '杀死6只蜘蛛',
+        target: 6,
+        enemyId: 'spider'
+      }
     ],
     levelRequirement: 1,
     xpReward: 60,
@@ -53,7 +71,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '豺狼人在秘蓝岛建立了临时据点，必须将其驱散！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_goblin', type: QuestType.KILL, description: '杀死3只豺狼人', target: 3, enemyId: 'goblin' }
+      {
+        key: 'kill_goblin',
+        type: QuestType.KILL,
+        description: '杀死3只豺狼人',
+        target: 3,
+        enemyId: 'goblin'
+      }
     ],
     levelRequirement: 1,
     xpReward: 50,
@@ -66,7 +90,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '战歌氏族的兽人正在灰谷疯狂砍伐森林，前去阻止他们！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_orc', type: QuestType.KILL, description: '杀死5只兽人', target: 5, enemyId: 'orc' }
+      {
+        key: 'kill_orc',
+        type: QuestType.KILL,
+        description: '杀死5只兽人',
+        target: 5,
+        enemyId: 'orc'
+      }
     ],
     levelRequirement: 5,
     xpReward: 120,
@@ -79,7 +109,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '森林深处的巨型毒蛛对居民造成了巨大威胁！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_spider', type: QuestType.KILL, description: '杀死4只毒蛛', target: 4, enemyId: 'spider' }
+      {
+        key: 'kill_spider',
+        type: QuestType.KILL,
+        description: '杀死4只毒蛛',
+        target: 4,
+        enemyId: 'spider'
+      }
     ],
     levelRequirement: 5,
     xpReward: 100,
@@ -92,7 +128,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '艾尔文森林的豺狼人越来越猖獗，威胁着农场的安全！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_goblin', type: QuestType.KILL, description: '杀死4只豺狼人', target: 4, enemyId: 'goblin' }
+      {
+        key: 'kill_goblin',
+        type: QuestType.KILL,
+        description: '杀死4只豺狼人',
+        target: 4,
+        enemyId: 'goblin'
+      }
     ],
     levelRequirement: 1,
     xpReward: 60,
@@ -105,7 +147,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '一群盗匪在森林边缘活动，快去为民除害！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_bandit', type: QuestType.KILL, description: '杀死3名盗匪', target: 3, enemyId: 'bandit' }
+      {
+        key: 'kill_bandit',
+        type: QuestType.KILL,
+        description: '杀死3名盗匪',
+        target: 3,
+        enemyId: 'bandit'
+      }
     ],
     levelRequirement: 1,
     xpReward: 50,
@@ -118,7 +166,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '迪菲亚兄弟会在西部荒野横行霸道，必须将其绳之以法！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_bandit', type: QuestType.KILL, description: '杀死5名强盗', target: 5, enemyId: 'bandit' }
+      {
+        key: 'kill_bandit',
+        type: QuestType.KILL,
+        description: '杀死5名强盗',
+        target: 5,
+        enemyId: 'bandit'
+      }
     ],
     levelRequirement: 3,
     xpReward: 80,
@@ -131,7 +185,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '月溪镇附近的农场出现了亡灵，快去调查！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_skeleton', type: QuestType.KILL, description: '杀死3只骷髅', target: 3, enemyId: 'skeleton' }
+      {
+        key: 'kill_skeleton',
+        type: QuestType.KILL,
+        description: '杀死3只骷髅',
+        target: 3,
+        enemyId: 'skeleton'
+      }
     ],
     levelRequirement: 3,
     xpReward: 70,
@@ -144,7 +204,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '黑石部落的兽人正在赤脊山集结，准备入侵！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_orc', type: QuestType.KILL, description: '杀死4只兽人', target: 4, enemyId: 'orc' }
+      {
+        key: 'kill_orc',
+        type: QuestType.KILL,
+        description: '杀死4只兽人',
+        target: 4,
+        enemyId: 'orc'
+      }
     ],
     levelRequirement: 5,
     xpReward: 100,
@@ -157,7 +223,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '赤脊峡谷中的巨型蜘蛛开始攻击过往的旅人！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_spider', type: QuestType.KILL, description: '杀死3只蜘蛛', target: 3, enemyId: 'spider' }
+      {
+        key: 'kill_spider',
+        type: QuestType.KILL,
+        description: '杀死3只蜘蛛',
+        target: 3,
+        enemyId: 'spider'
+      }
     ],
     levelRequirement: 5,
     xpReward: 90,
@@ -170,7 +242,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '夜色镇的墓地正在遭受亡灵的侵扰，需要有人去处理！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_skeleton', type: QuestType.KILL, description: '杀死6只骷髅', target: 6, enemyId: 'skeleton' }
+      {
+        key: 'kill_skeleton',
+        type: QuestType.KILL,
+        description: '杀死6只骷髅',
+        target: 6,
+        enemyId: 'skeleton'
+      }
     ],
     levelRequirement: 8,
     xpReward: 120,
@@ -183,7 +261,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '暮色森林中的蜘蛛比其他地方的更加危险！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_spider', type: QuestType.KILL, description: '杀死4只毒蛛', target: 4, enemyId: 'spider' }
+      {
+        key: 'kill_spider',
+        type: QuestType.KILL,
+        description: '杀死4只毒蛛',
+        target: 4,
+        enemyId: 'spider'
+      }
     ],
     levelRequirement: 8,
     xpReward: 110,
@@ -196,7 +280,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '银松森林中游荡着大量亡灵，需要被清理！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_skeleton', type: QuestType.KILL, description: '杀死5只骷髅', target: 5, enemyId: 'skeleton' }
+      {
+        key: 'kill_skeleton',
+        type: QuestType.KILL,
+        description: '杀死5只骷髅',
+        target: 5,
+        enemyId: 'skeleton'
+      }
     ],
     levelRequirement: 8,
     xpReward: 130,
@@ -209,7 +299,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '森林中的狼群变得异常凶猛，威胁着过往旅人！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_wolf', type: QuestType.KILL, description: '杀死4只狼', target: 4, enemyId: 'wolf' }
+      {
+        key: 'kill_wolf',
+        type: QuestType.KILL,
+        description: '杀死4只狼',
+        target: 4,
+        enemyId: 'wolf'
+      }
     ],
     levelRequirement: 8,
     xpReward: 120,
@@ -222,7 +318,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '提瑞斯法林地的亡灵需要被净化！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_skeleton', type: QuestType.KILL, description: '杀死4只骷髅', target: 4, enemyId: 'skeleton' }
+      {
+        key: 'kill_skeleton',
+        type: QuestType.KILL,
+        description: '杀死4只骷髅',
+        target: 4,
+        enemyId: 'skeleton'
+      }
     ],
     levelRequirement: 1,
     xpReward: 50,
@@ -235,7 +337,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '大量食尸鬼在坟墓间游荡，快去消灭它们！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_ghoul', type: QuestType.KILL, description: '杀死3只食尸鬼', target: 3, enemyId: 'ghoul' }
+      {
+        key: 'kill_ghoul',
+        type: QuestType.KILL,
+        description: '杀死3只食尸鬼',
+        target: 3,
+        enemyId: 'ghoul'
+      }
     ],
     levelRequirement: 1,
     xpReward: 60,
@@ -248,7 +356,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '瘟疫之地的亡灵必须被彻底消灭！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_skeleton', type: QuestType.KILL, description: '杀死5只骷髅', target: 5, enemyId: 'skeleton' }
+      {
+        key: 'kill_skeleton',
+        type: QuestType.KILL,
+        description: '杀死5只骷髅',
+        target: 5,
+        enemyId: 'skeleton'
+      }
     ],
     levelRequirement: 15,
     xpReward: 250,
@@ -261,7 +375,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '恶魔在瘟疫之地横行，必须将其驱逐！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_demon', type: QuestType.KILL, description: '杀死3只恶魔', target: 3, enemyId: 'demon' }
+      {
+        key: 'kill_demon',
+        type: QuestType.KILL,
+        description: '杀死3只恶魔',
+        target: 3,
+        enemyId: 'demon'
+      }
     ],
     levelRequirement: 15,
     xpReward: 280,
@@ -274,7 +394,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '血顶巨魔部落正在荆棘谷进行疯狂的劫掠！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_troll', type: QuestType.KILL, description: '杀死4只巨魔', target: 4, enemyId: 'troll' }
+      {
+        key: 'kill_troll',
+        type: QuestType.KILL,
+        description: '杀死4只巨魔',
+        target: 4,
+        enemyId: 'troll'
+      }
     ],
     levelRequirement: 10,
     xpReward: 150,
@@ -287,7 +413,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '风险投资公司的兽人在丛林中掠夺资源！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_orc', type: QuestType.KILL, description: '杀死3只兽人', target: 3, enemyId: 'orc' }
+      {
+        key: 'kill_orc',
+        type: QuestType.KILL,
+        description: '杀死3只兽人',
+        target: 3,
+        enemyId: 'orc'
+      }
     ],
     levelRequirement: 10,
     xpReward: 160,
@@ -300,7 +432,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '石爪山脉中的兽人据点需要被拔除！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_orc', type: QuestType.KILL, description: '杀死5只兽人', target: 5, enemyId: 'orc' }
+      {
+        key: 'kill_orc',
+        type: QuestType.KILL,
+        description: '杀死5只兽人',
+        target: 5,
+        enemyId: 'orc'
+      }
     ],
     levelRequirement: 8,
     xpReward: 140,
@@ -313,7 +451,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '石爪山脉的洞穴中充满了危险的蜘蛛！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_spider', type: QuestType.KILL, description: '杀死4只蜘蛛', target: 4, enemyId: 'spider' }
+      {
+        key: 'kill_spider',
+        type: QuestType.KILL,
+        description: '杀死4只蜘蛛',
+        target: 4,
+        enemyId: 'spider'
+      }
     ],
     levelRequirement: 8,
     xpReward: 130,
@@ -326,7 +470,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '沙怒巨魔在沙漠中袭击商队，必须被阻止！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_troll', type: QuestType.KILL, description: '杀死4只巨魔', target: 4, enemyId: 'troll' }
+      {
+        key: 'kill_troll',
+        type: QuestType.KILL,
+        description: '杀死4只巨魔',
+        target: 4,
+        enemyId: 'troll'
+      }
     ],
     levelRequirement: 12,
     xpReward: 180,
@@ -339,7 +489,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '古老的巨魔墓穴中出现了亡灵！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_skeleton', type: QuestType.KILL, description: '杀死5只骷髅', target: 5, enemyId: 'skeleton' }
+      {
+        key: 'kill_skeleton',
+        type: QuestType.KILL,
+        description: '杀死5只骷髅',
+        target: 5,
+        enemyId: 'skeleton'
+      }
     ],
     levelRequirement: 12,
     xpReward: 170,
@@ -352,7 +508,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '菲拉斯的森林深处有暗矛巨魔的活动！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_troll', type: QuestType.KILL, description: '杀死5只巨魔', target: 5, enemyId: 'troll' }
+      {
+        key: 'kill_troll',
+        type: QuestType.KILL,
+        description: '杀死5只巨魔',
+        target: 5,
+        enemyId: 'troll'
+      }
     ],
     levelRequirement: 14,
     xpReward: 200,
@@ -365,7 +527,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '幼龙在菲拉斯出没，这是勇士的试炼！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_dragon', type: QuestType.KILL, description: '杀死2只幼龙', target: 2, enemyId: 'dragon_whelp' }
+      {
+        key: 'kill_dragon',
+        type: QuestType.KILL,
+        description: '杀死2只幼龙',
+        target: 2,
+        enemyId: 'dragon_whelp'
+      }
     ],
     levelRequirement: 14,
     xpReward: 250,
@@ -378,7 +546,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '冰雪巨魔在苔原上游荡，威胁着远征军的安全！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_troll', type: QuestType.KILL, description: '杀死5只巨魔', target: 5, enemyId: 'troll' }
+      {
+        key: 'kill_troll',
+        type: QuestType.KILL,
+        description: '杀死5只巨魔',
+        target: 5,
+        enemyId: 'troll'
+      }
     ],
     levelRequirement: 18,
     xpReward: 300,
@@ -391,7 +565,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '蛛魔从地下涌出，必须将其击退！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_nerubian', type: QuestType.KILL, description: '杀死4只蛛魔', target: 4, enemyId: 'nerubian' }
+      {
+        key: 'kill_nerubian',
+        type: QuestType.KILL,
+        description: '杀死4只蛛魔',
+        target: 4,
+        enemyId: 'nerubian'
+      }
     ],
     levelRequirement: 18,
     xpReward: 320,
@@ -404,7 +584,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '铁矮人正在风暴峭壁进行秘密活动！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_dwarf', type: QuestType.KILL, description: '杀死5只铁矮人', target: 5, enemyId: 'iron_dwarf' }
+      {
+        key: 'kill_dwarf',
+        type: QuestType.KILL,
+        description: '杀死5只铁矮人',
+        target: 5,
+        enemyId: 'iron_dwarf'
+      }
     ],
     levelRequirement: 20,
     xpReward: 350,
@@ -417,7 +603,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '风暴元素变得异常狂暴！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_elemental', type: QuestType.KILL, description: '杀死4只元素', target: 4, enemyId: 'elemental' }
+      {
+        key: 'kill_elemental',
+        type: QuestType.KILL,
+        description: '杀死4只元素',
+        target: 4,
+        enemyId: 'elemental'
+      }
     ],
     levelRequirement: 20,
     xpReward: 340,
@@ -430,7 +622,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '大量恶魔在冰冠冰川聚集，必须阻止他们的阴谋！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_demon', type: QuestType.KILL, description: '杀死6只恶魔', target: 6, enemyId: 'demon' }
+      {
+        key: 'kill_demon',
+        type: QuestType.KILL,
+        description: '杀死6只恶魔',
+        target: 6,
+        enemyId: 'demon'
+      }
     ],
     levelRequirement: 20,
     xpReward: 500,
@@ -443,7 +641,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '给予亡灵天灾最后的一击！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_undead', type: QuestType.KILL, description: '杀死5只亡灵', target: 5, enemyId: 'undead' }
+      {
+        key: 'kill_undead',
+        type: QuestType.KILL,
+        description: '杀死5只亡灵',
+        target: 5,
+        enemyId: 'undead'
+      }
     ],
     levelRequirement: 20,
     xpReward: 480,
@@ -456,7 +660,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '鱼人正在黑海岸的海滩上作乱！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_murloc', type: QuestType.KILL, description: '杀死6只鱼人', target: 6, enemyId: 'murloc' }
+      {
+        key: 'kill_murloc',
+        type: QuestType.KILL,
+        description: '杀死6只鱼人',
+        target: 6,
+        enemyId: 'murloc'
+      }
     ],
     levelRequirement: 2,
     xpReward: 70,
@@ -469,7 +679,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '凶猛的熊威胁着黑海岸的旅者安全！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_bear', type: QuestType.KILL, description: '杀死4只熊', target: 4, enemyId: 'bear' }
+      {
+        key: 'kill_bear',
+        type: QuestType.KILL,
+        description: '杀死4只熊',
+        target: 4,
+        enemyId: 'bear'
+      }
     ],
     levelRequirement: 2,
     xpReward: 80,
@@ -482,7 +698,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '豺狼人正在袭击沿海的营地！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_gnoll', type: QuestType.KILL, description: '杀死5只豺狼人', target: 5, enemyId: 'gnoll' }
+      {
+        key: 'kill_gnoll',
+        type: QuestType.KILL,
+        description: '杀死5只豺狼人',
+        target: 5,
+        enemyId: 'gnoll'
+      }
     ],
     levelRequirement: 2,
     xpReward: 75,
@@ -495,7 +717,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '元素生物在秘血岛肆虐！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_elemental', type: QuestType.KILL, description: '杀死5只元素', target: 5, enemyId: 'elemental' }
+      {
+        key: 'kill_elemental',
+        type: QuestType.KILL,
+        description: '杀死5只元素',
+        target: 5,
+        enemyId: 'elemental'
+      }
     ],
     levelRequirement: 3,
     xpReward: 90,
@@ -508,7 +736,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '发现恶魔的踪迹，必须消灭他们！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_demon', type: QuestType.KILL, description: '杀死2只恶魔', target: 2, enemyId: 'demon' }
+      {
+        key: 'kill_demon',
+        type: QuestType.KILL,
+        description: '杀死2只恶魔',
+        target: 2,
+        enemyId: 'demon'
+      }
     ],
     levelRequirement: 3,
     xpReward: 100,
@@ -521,7 +755,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '冰霜元素正在冬泉谷狂暴！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_elemental', type: QuestType.KILL, description: '杀死5只元素', target: 5, enemyId: 'elemental' }
+      {
+        key: 'kill_elemental',
+        type: QuestType.KILL,
+        description: '杀死5只元素',
+        target: 5,
+        enemyId: 'elemental'
+      }
     ],
     levelRequirement: 14,
     xpReward: 200,
@@ -534,7 +774,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '恶魔潜入了冬泉谷，必须驱逐他们！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_demon', type: QuestType.KILL, description: '杀死3只恶魔', target: 3, enemyId: 'demon' }
+      {
+        key: 'kill_demon',
+        type: QuestType.KILL,
+        description: '杀死3只恶魔',
+        target: 3,
+        enemyId: 'demon'
+      }
     ],
     levelRequirement: 14,
     xpReward: 220,
@@ -547,7 +793,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '蓝龙幼崽需要被击败以证明你的勇气！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_dragon', type: QuestType.KILL, description: '杀死2只幼龙', target: 2, enemyId: 'dragon_whelp' }
+      {
+        key: 'kill_dragon',
+        type: QuestType.KILL,
+        description: '杀死2只幼龙',
+        target: 2,
+        enemyId: 'dragon_whelp'
+      }
     ],
     levelRequirement: 14,
     xpReward: 230,
@@ -560,7 +812,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '燃烧军团的余孽仍在海加尔山活动！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_demon', type: QuestType.KILL, description: '杀死4只恶魔', target: 4, enemyId: 'demon' }
+      {
+        key: 'kill_demon',
+        type: QuestType.KILL,
+        description: '杀死4只恶魔',
+        target: 4,
+        enemyId: 'demon'
+      }
     ],
     levelRequirement: 16,
     xpReward: 280,
@@ -573,7 +831,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '与守护巨龙的幼崽战斗以获得认可！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_dragon', type: QuestType.KILL, description: '杀死3只幼龙', target: 3, enemyId: 'dragon_whelp' }
+      {
+        key: 'kill_dragon',
+        type: QuestType.KILL,
+        description: '杀死3只幼龙',
+        target: 3,
+        enemyId: 'dragon_whelp'
+      }
     ],
     levelRequirement: 16,
     xpReward: 300,
@@ -586,7 +850,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '清除费伍德森林中的恶魔！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_demon', type: QuestType.KILL, description: '杀死4只恶魔', target: 4, enemyId: 'demon' }
+      {
+        key: 'kill_demon',
+        type: QuestType.KILL,
+        description: '杀死4只恶魔',
+        target: 4,
+        enemyId: 'demon'
+      }
     ],
     levelRequirement: 12,
     xpReward: 180,
@@ -599,7 +869,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '巨魔在费伍德森林作乱！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_troll', type: QuestType.KILL, description: '杀死3只巨魔', target: 3, enemyId: 'troll' }
+      {
+        key: 'kill_troll',
+        type: QuestType.KILL,
+        description: '杀死3只巨魔',
+        target: 3,
+        enemyId: 'troll'
+      }
     ],
     levelRequirement: 12,
     xpReward: 170,
@@ -612,7 +888,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '半人马部落正在互相争斗，需要调停！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_centaur', type: QuestType.KILL, description: '杀死5只半人马', target: 5, enemyId: 'centaur' }
+      {
+        key: 'kill_centaur',
+        type: QuestType.KILL,
+        description: '杀死5只半人马',
+        target: 5,
+        enemyId: 'centaur'
+      }
     ],
     levelRequirement: 10,
     xpReward: 190,
@@ -625,7 +907,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '古老的遗迹中出现了亡灵！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_skeleton', type: QuestType.KILL, description: '杀死6只骷髅', target: 6, enemyId: 'skeleton' }
+      {
+        key: 'kill_skeleton',
+        type: QuestType.KILL,
+        description: '杀死6只骷髅',
+        target: 6,
+        enemyId: 'skeleton'
+      }
     ],
     levelRequirement: 10,
     xpReward: 180,
@@ -638,7 +926,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '野猪正在破坏杜隆塔尔的农田！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_boar', type: QuestType.KILL, description: '杀死6只野猪', target: 6, enemyId: 'boar' }
+      {
+        key: 'kill_boar',
+        type: QuestType.KILL,
+        description: '杀死6只野猪',
+        target: 6,
+        enemyId: 'boar'
+      }
     ],
     levelRequirement: 1,
     xpReward: 60,
@@ -651,7 +945,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '野猪人正在入侵杜隆塔尔！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_quilboar', type: QuestType.KILL, description: '杀死4只野猪人', target: 4, enemyId: 'quilboar' }
+      {
+        key: 'kill_quilboar',
+        type: QuestType.KILL,
+        description: '杀死4只野猪人',
+        target: 4,
+        enemyId: 'quilboar'
+      }
     ],
     levelRequirement: 1,
     xpReward: 70,
@@ -664,7 +964,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '灰狼正在莫高雷游荡！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_wolf', type: QuestType.KILL, description: '杀死5只狼', target: 5, enemyId: 'wolf' }
+      {
+        key: 'kill_wolf',
+        type: QuestType.KILL,
+        description: '杀死5只狼',
+        target: 5,
+        enemyId: 'wolf'
+      }
     ],
     levelRequirement: 1,
     xpReward: 55,
@@ -677,7 +983,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '棕熊占据了莫高雷的部分地区！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_bear', type: QuestType.KILL, description: '杀死4只熊', target: 4, enemyId: 'bear' }
+      {
+        key: 'kill_bear',
+        type: QuestType.KILL,
+        description: '杀死4只熊',
+        target: 4,
+        enemyId: 'bear'
+      }
     ],
     levelRequirement: 1,
     xpReward: 65,
@@ -690,7 +1002,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '摧毁野猪人的营地！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_quilboar', type: QuestType.KILL, description: '杀死5只野猪人', target: 5, enemyId: 'quilboar' }
+      {
+        key: 'kill_quilboar',
+        type: QuestType.KILL,
+        description: '杀死5只野猪人',
+        target: 5,
+        enemyId: 'quilboar'
+      }
     ],
     levelRequirement: 5,
     xpReward: 90,
@@ -703,7 +1021,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '半人马正在掠夺贫瘠之地的商队！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_centaur', type: QuestType.KILL, description: '杀死4只半人马', target: 4, enemyId: 'centaur' }
+      {
+        key: 'kill_centaur',
+        type: QuestType.KILL,
+        description: '杀死4只半人马',
+        target: 4,
+        enemyId: 'centaur'
+      }
     ],
     levelRequirement: 5,
     xpReward: 100,
@@ -716,7 +1040,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '半人马控制了千针石林的高地！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_centaur', type: QuestType.KILL, description: '杀死5只半人马', target: 5, enemyId: 'centaur' }
+      {
+        key: 'kill_centaur',
+        type: QuestType.KILL,
+        description: '杀死5只半人马',
+        target: 5,
+        enemyId: 'centaur'
+      }
     ],
     levelRequirement: 10,
     xpReward: 160,
@@ -729,7 +1059,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '鹰身人在千针石林筑巢！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_harpy', type: QuestType.KILL, description: '杀死4只鹰身人', target: 4, enemyId: 'harpy' }
+      {
+        key: 'kill_harpy',
+        type: QuestType.KILL,
+        description: '杀死4只鹰身人',
+        target: 4,
+        enemyId: 'harpy'
+      }
     ],
     levelRequirement: 10,
     xpReward: 150,
@@ -742,7 +1078,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '异种虫正在希利苏斯肆虐！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_silithid', type: QuestType.KILL, description: '杀死4只异种虫', target: 4, enemyId: 'silithid' }
+      {
+        key: 'kill_silithid',
+        type: QuestType.KILL,
+        description: '杀死4只异种虫',
+        target: 4,
+        enemyId: 'silithid'
+      }
     ],
     levelRequirement: 18,
     xpReward: 260,
@@ -755,7 +1097,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '发现了恶魔与异种虫勾结的证据！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_demon', type: QuestType.KILL, description: '杀死3只恶魔', target: 3, enemyId: 'demon' }
+      {
+        key: 'kill_demon',
+        type: QuestType.KILL,
+        description: '杀死3只恶魔',
+        target: 3,
+        enemyId: 'demon'
+      }
     ],
     levelRequirement: 18,
     xpReward: 280,
@@ -768,7 +1116,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '通灵学院的亡灵正在向外扩散！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_undead', type: QuestType.KILL, description: '杀死6只亡灵', target: 6, enemyId: 'undead' }
+      {
+        key: 'kill_undead',
+        type: QuestType.KILL,
+        description: '杀死6只亡灵',
+        target: 6,
+        enemyId: 'undead'
+      }
     ],
     levelRequirement: 12,
     xpReward: 220,
@@ -781,7 +1135,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '大量食尸鬼涌出墓地！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_ghoul', type: QuestType.KILL, description: '杀死5只食尸鬼', target: 5, enemyId: 'ghoul' }
+      {
+        key: 'kill_ghoul',
+        type: QuestType.KILL,
+        description: '杀死5只食尸鬼',
+        target: 5,
+        enemyId: 'ghoul'
+      }
     ],
     levelRequirement: 12,
     xpReward: 210,
@@ -794,7 +1154,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '狗头人占据了洛克莫丹的矿洞！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_kobold', type: QuestType.KILL, description: '杀死6只狗头人', target: 6, enemyId: 'kobold' }
+      {
+        key: 'kill_kobold',
+        type: QuestType.KILL,
+        description: '杀死6只狗头人',
+        target: 6,
+        enemyId: 'kobold'
+      }
     ],
     levelRequirement: 3,
     xpReward: 80,
@@ -807,7 +1173,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '巨型蜘蛛在洞穴中结网！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_spider', type: QuestType.KILL, description: '杀死4只蜘蛛', target: 4, enemyId: 'spider' }
+      {
+        key: 'kill_spider',
+        type: QuestType.KILL,
+        description: '杀死4只蜘蛛',
+        target: 4,
+        enemyId: 'spider'
+      }
     ],
     levelRequirement: 3,
     xpReward: 90,
@@ -820,7 +1192,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '鱼人在湿地的沼泽中泛滥！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_murloc', type: QuestType.KILL, description: '杀死6只鱼人', target: 6, enemyId: 'murloc' }
+      {
+        key: 'kill_murloc',
+        type: QuestType.KILL,
+        description: '杀死6只鱼人',
+        target: 6,
+        enemyId: 'murloc'
+      }
     ],
     levelRequirement: 6,
     xpReward: 110,
@@ -833,7 +1211,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '巨魔潜伏在湿地深处！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_troll', type: QuestType.KILL, description: '杀死3只巨魔', target: 3, enemyId: 'troll' }
+      {
+        key: 'kill_troll',
+        type: QuestType.KILL,
+        description: '杀死3只巨魔',
+        target: 3,
+        enemyId: 'troll'
+      }
     ],
     levelRequirement: 6,
     xpReward: 130,
@@ -846,7 +1230,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '兽人在阿拉希高地活动！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_orc', type: QuestType.KILL, description: '杀死5只兽人', target: 5, enemyId: 'orc' }
+      {
+        key: 'kill_orc',
+        type: QuestType.KILL,
+        description: '杀死5只兽人',
+        target: 5,
+        enemyId: 'orc'
+      }
     ],
     levelRequirement: 10,
     xpReward: 170,
@@ -859,7 +1249,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '古老的巨魔遗迹中仍有巨魔出没！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_troll', type: QuestType.KILL, description: '杀死4只巨魔', target: 4, enemyId: 'troll' }
+      {
+        key: 'kill_troll',
+        type: QuestType.KILL,
+        description: '杀死4只巨魔',
+        target: 4,
+        enemyId: 'troll'
+      }
     ],
     levelRequirement: 10,
     xpReward: 180,
@@ -872,7 +1268,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '兽人斥候正在刺探情报！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_orc', type: QuestType.KILL, description: '杀死4只兽人', target: 4, enemyId: 'orc' }
+      {
+        key: 'kill_orc',
+        type: QuestType.KILL,
+        description: '杀死4只兽人',
+        target: 4,
+        enemyId: 'orc'
+      }
     ],
     levelRequirement: 6,
     xpReward: 120,
@@ -885,7 +1287,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '强盗在希尔斯布莱德丘陵横行！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_bandit', type: QuestType.KILL, description: '杀死5名强盗', target: 5, enemyId: 'bandit' }
+      {
+        key: 'kill_bandit',
+        type: QuestType.KILL,
+        description: '杀死5名强盗',
+        target: 5,
+        enemyId: 'bandit'
+      }
     ],
     levelRequirement: 6,
     xpReward: 130,
@@ -898,7 +1306,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '卡拉赞周围出现了恶魔！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_demon', type: QuestType.KILL, description: '杀死4只恶魔', target: 4, enemyId: 'demon' }
+      {
+        key: 'kill_demon',
+        type: QuestType.KILL,
+        description: '杀死4只恶魔',
+        target: 4,
+        enemyId: 'demon'
+      }
     ],
     levelRequirement: 16,
     xpReward: 250,
@@ -911,7 +1325,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '亡灵在逆风小径徘徊！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_undead', type: QuestType.KILL, description: '杀死5只亡灵', target: 5, enemyId: 'undead' }
+      {
+        key: 'kill_undead',
+        type: QuestType.KILL,
+        description: '杀死5只亡灵',
+        target: 5,
+        enemyId: 'undead'
+      }
     ],
     levelRequirement: 16,
     xpReward: 240,
@@ -924,7 +1344,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '黑石兽人在燃烧平原活动！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_orc', type: QuestType.KILL, description: '杀死5只兽人', target: 5, enemyId: 'orc' }
+      {
+        key: 'kill_orc',
+        type: QuestType.KILL,
+        description: '杀死5只兽人',
+        target: 5,
+        enemyId: 'orc'
+      }
     ],
     levelRequirement: 15,
     xpReward: 260,
@@ -937,7 +1363,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '红龙幼崽在燃烧平原出没！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_dragon', type: QuestType.KILL, description: '杀死3只幼龙', target: 3, enemyId: 'dragon_whelp' }
+      {
+        key: 'kill_dragon',
+        type: QuestType.KILL,
+        description: '杀死3只幼龙',
+        target: 3,
+        enemyId: 'dragon_whelp'
+      }
     ],
     levelRequirement: 15,
     xpReward: 280,
@@ -950,7 +1382,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '火焰元素从熔岩中涌出！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_elemental', type: QuestType.KILL, description: '杀死5只元素', target: 5, enemyId: 'elemental' }
+      {
+        key: 'kill_elemental',
+        type: QuestType.KILL,
+        description: '杀死5只元素',
+        target: 5,
+        enemyId: 'elemental'
+      }
     ],
     levelRequirement: 12,
     xpReward: 220,
@@ -963,7 +1401,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '蜘蛛在灼热峡谷的岩石间筑巢！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_spider', type: QuestType.KILL, description: '杀死4只蜘蛛', target: 4, enemyId: 'spider' }
+      {
+        key: 'kill_spider',
+        type: QuestType.KILL,
+        description: '杀死4只蜘蛛',
+        target: 4,
+        enemyId: 'spider'
+      }
     ],
     levelRequirement: 12,
     xpReward: 210,
@@ -976,7 +1420,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '土元素在荒芜之地苏醒！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_elemental', type: QuestType.KILL, description: '杀死5只元素', target: 5, enemyId: 'elemental' }
+      {
+        key: 'kill_elemental',
+        type: QuestType.KILL,
+        description: '杀死5只元素',
+        target: 5,
+        enemyId: 'elemental'
+      }
     ],
     levelRequirement: 10,
     xpReward: 200,
@@ -989,7 +1439,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '食人魔在荒芜之地建立了营地！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_ogre', type: QuestType.KILL, description: '杀死3只食人魔', target: 3, enemyId: 'ogre' }
+      {
+        key: 'kill_ogre',
+        type: QuestType.KILL,
+        description: '杀死3只食人魔',
+        target: 3,
+        enemyId: 'ogre'
+      }
     ],
     levelRequirement: 10,
     xpReward: 210,
@@ -1002,7 +1458,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '鱼人在悲伤沼泽中繁衍！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_murloc', type: QuestType.KILL, description: '杀死6只鱼人', target: 6, enemyId: 'murloc' }
+      {
+        key: 'kill_murloc',
+        type: QuestType.KILL,
+        description: '杀死6只鱼人',
+        target: 6,
+        enemyId: 'murloc'
+      }
     ],
     levelRequirement: 8,
     xpReward: 140,
@@ -1015,7 +1477,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '巨魔守卫着古老的神庙！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_troll', type: QuestType.KILL, description: '杀死4只巨魔', target: 4, enemyId: 'troll' }
+      {
+        key: 'kill_troll',
+        type: QuestType.KILL,
+        description: '杀死4只巨魔',
+        target: 4,
+        enemyId: 'troll'
+      }
     ],
     levelRequirement: 8,
     xpReward: 160,
@@ -1028,7 +1496,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '恶魔从黑暗之门涌出！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_demon', type: QuestType.KILL, description: '杀死4只恶魔', target: 4, enemyId: 'demon' }
+      {
+        key: 'kill_demon',
+        type: QuestType.KILL,
+        description: '杀死4只恶魔',
+        target: 4,
+        enemyId: 'demon'
+      }
     ],
     levelRequirement: 18,
     xpReward: 300,
@@ -1041,7 +1515,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '黑龙幼崽在诅咒之地游荡！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_dragon', type: QuestType.KILL, description: '杀死3只幼龙', target: 3, enemyId: 'dragon_whelp' }
+      {
+        key: 'kill_dragon',
+        type: QuestType.KILL,
+        description: '杀死3只幼龙',
+        target: 3,
+        enemyId: 'dragon_whelp'
+      }
     ],
     levelRequirement: 18,
     xpReward: 320,
@@ -1054,7 +1534,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '巨魔在辛特兰的高山上建立了城市！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_troll', type: QuestType.KILL, description: '杀死5只巨魔', target: 5, enemyId: 'troll' }
+      {
+        key: 'kill_troll',
+        type: QuestType.KILL,
+        description: '杀死5只巨魔',
+        target: 5,
+        enemyId: 'troll'
+      }
     ],
     levelRequirement: 12,
     xpReward: 200,
@@ -1067,7 +1553,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '巨狼在辛特兰的森林中游荡！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_wolf', type: QuestType.KILL, description: '杀死6只狼', target: 6, enemyId: 'wolf' }
+      {
+        key: 'kill_wolf',
+        type: QuestType.KILL,
+        description: '杀死6只狼',
+        target: 6,
+        enemyId: 'wolf'
+      }
     ],
     levelRequirement: 12,
     xpReward: 190,
@@ -1080,7 +1572,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '维库人在祖达克巡逻！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_vrykul', type: QuestType.KILL, description: '杀死5名维库人', target: 5, enemyId: 'vrykul' }
+      {
+        key: 'kill_vrykul',
+        type: QuestType.KILL,
+        description: '杀死5名维库人',
+        target: 5,
+        enemyId: 'vrykul'
+      }
     ],
     levelRequirement: 18,
     xpReward: 260,
@@ -1093,7 +1591,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '亡灵正在入侵祖达克！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_undead', type: QuestType.KILL, description: '杀死6只亡灵', target: 6, enemyId: 'undead' }
+      {
+        key: 'kill_undead',
+        type: QuestType.KILL,
+        description: '杀死6只亡灵',
+        target: 6,
+        enemyId: 'undead'
+      }
     ],
     levelRequirement: 18,
     xpReward: 270,
@@ -1106,7 +1610,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '维库人从乌特加德要塞出击！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_vrykul', type: QuestType.KILL, description: '杀死5名维库人', target: 5, enemyId: 'vrykul' }
+      {
+        key: 'kill_vrykul',
+        type: QuestType.KILL,
+        description: '杀死5名维库人',
+        target: 5,
+        enemyId: 'vrykul'
+      }
     ],
     levelRequirement: 16,
     xpReward: 230,
@@ -1119,7 +1629,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '冰巨魔在峡湾中活动！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_troll', type: QuestType.KILL, description: '杀死4只巨魔', target: 4, enemyId: 'troll' }
+      {
+        key: 'kill_troll',
+        type: QuestType.KILL,
+        description: '杀死4只巨魔',
+        target: 4,
+        enemyId: 'troll'
+      }
     ],
     levelRequirement: 16,
     xpReward: 240,
@@ -1132,7 +1648,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '与龙眠神殿的幼崽交流（战斗）！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_dragon', type: QuestType.KILL, description: '杀死3只幼龙', target: 3, enemyId: 'dragon_whelp' }
+      {
+        key: 'kill_dragon',
+        type: QuestType.KILL,
+        description: '杀死3只幼龙',
+        target: 3,
+        enemyId: 'dragon_whelp'
+      }
     ],
     levelRequirement: 18,
     xpReward: 300,
@@ -1145,7 +1667,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '亡灵天灾正在亵渎巨龙的安息之地！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_undead', type: QuestType.KILL, description: '杀死6只亡灵', target: 6, enemyId: 'undead' }
+      {
+        key: 'kill_undead',
+        type: QuestType.KILL,
+        description: '杀死6只亡灵',
+        target: 6,
+        enemyId: 'undead'
+      }
     ],
     levelRequirement: 18,
     xpReward: 290,
@@ -1158,7 +1686,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '灰熊在丘陵中称霸！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_bear', type: QuestType.KILL, description: '杀死5只熊', target: 5, enemyId: 'bear' }
+      {
+        key: 'kill_bear',
+        type: QuestType.KILL,
+        description: '杀死5只熊',
+        target: 5,
+        enemyId: 'bear'
+      }
     ],
     levelRequirement: 16,
     xpReward: 240,
@@ -1171,7 +1705,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '兽人在灰熊丘陵活动！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_orc', type: QuestType.KILL, description: '杀死4只兽人', target: 4, enemyId: 'orc' }
+      {
+        key: 'kill_orc',
+        type: QuestType.KILL,
+        description: '杀死4只兽人',
+        target: 4,
+        enemyId: 'orc'
+      }
     ],
     levelRequirement: 16,
     xpReward: 250,
@@ -1184,7 +1724,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '猛虎在索拉查盆地的丛林中捕猎！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_tiger', type: QuestType.KILL, description: '杀死4只猛虎', target: 4, enemyId: 'tiger' }
+      {
+        key: 'kill_tiger',
+        type: QuestType.KILL,
+        description: '杀死4只猛虎',
+        target: 4,
+        enemyId: 'tiger'
+      }
     ],
     levelRequirement: 18,
     xpReward: 260,
@@ -1197,7 +1743,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '巨型蜘蛛在丛林中结网！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_spider', type: QuestType.KILL, description: '杀死5只蜘蛛', target: 5, enemyId: 'spider' }
+      {
+        key: 'kill_spider',
+        type: QuestType.KILL,
+        description: '杀死5只蜘蛛',
+        target: 5,
+        enemyId: 'spider'
+      }
     ],
     levelRequirement: 18,
     xpReward: 250,
@@ -1210,7 +1762,13 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '水晶元素在晶歌森林中苏醒！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_elemental', type: QuestType.KILL, description: '杀死5只元素', target: 5, enemyId: 'elemental' }
+      {
+        key: 'kill_elemental',
+        type: QuestType.KILL,
+        description: '杀死5只元素',
+        target: 5,
+        enemyId: 'elemental'
+      }
     ],
     levelRequirement: 20,
     xpReward: 300,
@@ -1223,11 +1781,17 @@ export const QUESTS: Record<string, QuestDefinition> = {
     description: '蓝龙在晶歌森林上空巡逻！',
     type: QuestType.KILL,
     objectives: [
-      { key: 'kill_dragon', type: QuestType.KILL, description: '杀死3只幼龙', target: 3, enemyId: 'dragon_whelp' }
+      {
+        key: 'kill_dragon',
+        type: QuestType.KILL,
+        description: '杀死3只幼龙',
+        target: 3,
+        enemyId: 'dragon_whelp'
+      }
     ],
     levelRequirement: 20,
     xpReward: 320,
     goldReward: 160,
     boardId: 'crystal_song'
   }
-}
+};

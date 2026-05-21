@@ -4,7 +4,7 @@
  * @module data/equipment
  */
 
-import type { EquipmentItem, EquipmentRarity, RarityConfig } from '../types'
+import type { EquipmentItem, EquipmentRarity, RarityConfig } from '../types';
 
 export const RARITY_CONFIG: Record<EquipmentRarity, RarityConfig> = {
   common: { name: '普通', color: '#ffffff', multiplier: 1.0 },
@@ -12,7 +12,7 @@ export const RARITY_CONFIG: Record<EquipmentRarity, RarityConfig> = {
   rare: { name: '稀有', color: '#0070dd', multiplier: 1.5 },
   epic: { name: '史诗', color: '#a335ee', multiplier: 2.0 },
   legendary: { name: '传说', color: '#ff8000', multiplier: 3.0 }
-}
+};
 
 export const EQUIPMENT_ITEMS: EquipmentItem[] = [
   {
@@ -575,4 +575,4 @@ export const EQUIPMENT_ITEMS: EquipmentItem[] = [
     template: 'worldShield',
     levelRequirement: 20
   }
-]
+];

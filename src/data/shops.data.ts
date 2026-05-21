@@ -4,9 +4,9 @@
  * @module data/shops
  */
 
-import type { ShopConfig, ShopItemRarity } from '../types';
+import type { ShopConfig, ItemRarity } from '../types';
 
-export const RARITY_PRICE_MULTIPLIER: Record<ShopItemRarity, number> = {
+export const RARITY_PRICE_MULTIPLIER: Record<ItemRarity, number> = {
   common: 1,
   uncommon: 2.5,
   rare: 5,
@@ -14,7 +14,7 @@ export const RARITY_PRICE_MULTIPLIER: Record<ShopItemRarity, number> = {
   legendary: 50
 };
 
-export const RARITY_SELL_DISCOUNT: Record<ShopItemRarity, number> = {
+export const RARITY_SELL_DISCOUNT: Record<ItemRarity, number> = {
   common: 0.5,
   uncommon: 0.4,
   rare: 0.35,
@@ -50,18 +50,31 @@ export const ITEM_BASE_PRICES: Record<string, number> = {
 
 export const ITEM_POOLS: Record<string, string[]> = {
   potions: [
-    'smallHealthPotion', 'mediumHealthPotion', 'largeHealthPotion',
-    'smallManaPotion', 'mediumManaPotion', 'largeManaPotion',
-    'strengthPotion', 'agilityPotion', 'constitutionPotion',
-    'intelligencePotion', 'wisdomPotion', 'charismaPotion',
+    'smallHealthPotion',
+    'mediumHealthPotion',
+    'largeHealthPotion',
+    'smallManaPotion',
+    'mediumManaPotion',
+    'largeManaPotion',
+    'strengthPotion',
+    'agilityPotion',
+    'constitutionPotion',
+    'intelligencePotion',
+    'wisdomPotion',
+    'charismaPotion',
     'healingCrystal'
   ],
   scrolls: ['scrollFireball', 'scrollHeal', 'scrollShield'],
   food: ['bread', 'roastedMeat', 'magicBread'],
   materials: ['magicDust', 'runeStone'],
   general: [
-    'smallHealthPotion', 'mediumHealthPotion', 'smallManaPotion',
-    'mediumManaPotion', 'bread', 'magicDust', 'runeStone'
+    'smallHealthPotion',
+    'mediumHealthPotion',
+    'smallManaPotion',
+    'mediumManaPotion',
+    'bread',
+    'magicDust',
+    'runeStone'
   ],
   special: ['ancientKey', 'dragonScale', 'largeHealthPotion', 'largeManaPotion']
 };

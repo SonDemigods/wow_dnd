@@ -4,7 +4,7 @@
  * @module data/map
  */
 
-import type { LocationData, ContinentData } from '../types/maps'
+import type { LocationData, ContinentData } from '../types/maps.type';
 
 /**
  * 大陆数据
@@ -32,7 +32,7 @@ export const CONTINENTS: Record<string, ContinentData> = {
     position: 'north',
     color: '#3d4a5a'
   }
-}
+};
 
 /**
  * 世界地图位置数据
@@ -637,4 +637,4 @@ export const LOCATIONS: Record<string, LocationData> = {
     mapX: 52,
     mapY: 17
   }
-}
+};

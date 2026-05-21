@@ -8,7 +8,7 @@
  * 玩家可达到的最大等级
  * @type {number}
  */
-export const MAX_LEVEL = 20
+export const MAX_LEVEL = 20;
 
 /**
  * 主属性名称映射表
@@ -21,9 +21,9 @@ export const STAT_NAMES = {
   int: '智力',
   wis: '感知',
   cha: '魅力'
-} as const
+} as const;
 
-import type { Stats } from '../types'
+import type { Stats } from '../types';
 
 /**
  * 计算最大生命值
@@ -31,8 +31,8 @@ import type { Stats } from '../types'
  * @returns {number} 最大生命值
  */
 export function calculateMaxHp(stats: Stats): number {
-  const con = stats.con || 10
-  return 100 + con * 10
+  const con = stats.con || 10;
+  return 100 + con * 10;
 }
 
 /**
@@ -41,10 +41,10 @@ export function calculateMaxHp(stats: Stats): number {
  * @returns {number} 最大魔法值
  */
 export function calculateMaxMana(stats: Stats): number {
-  const int = stats.int || 10
-  const wis = stats.wis || 10
-  const cha = stats.cha || 10
-  return 50 + int * 5 + wis * 3 + cha * 2
+  const int = stats.int || 10;
+  const wis = stats.wis || 10;
+  const cha = stats.cha || 10;
+  return 50 + int * 5 + wis * 3 + cha * 2;
 }
 
 /**
@@ -53,9 +53,9 @@ export function calculateMaxMana(stats: Stats): number {
  * @returns {number} 物理攻击力
  */
 export function calculatePhysicalAttack(stats: Stats): number {
-  const str = stats.str || 10
-  const dex = stats.dex || 10
-  return Math.floor(str * 2 + dex * 0.5)
+  const str = stats.str || 10;
+  const dex = stats.dex || 10;
+  return Math.floor(str * 2 + dex * 0.5);
 }
 
 /**
@@ -64,9 +64,9 @@ export function calculatePhysicalAttack(stats: Stats): number {
  * @returns {number} 物理防御力
  */
 export function calculatePhysicalDefense(stats: Stats): number {
-  const con = stats.con || 10
-  const dex = stats.dex || 10
-  return Math.floor(con * 1.5 + dex * 0.3)
+  const con = stats.con || 10;
+  const dex = stats.dex || 10;
+  return Math.floor(con * 1.5 + dex * 0.3);
 }
 
 /**
@@ -75,10 +75,10 @@ export function calculatePhysicalDefense(stats: Stats): number {
  * @returns {number} 魔法攻击力
  */
 export function calculateMagicAttack(stats: Stats): number {
-  const int = stats.int || 10
-  const wis = stats.wis || 10
-  const cha = stats.cha || 10
-  return Math.floor(int * 2 + wis * 0.5 + cha * 0.3)
+  const int = stats.int || 10;
+  const wis = stats.wis || 10;
+  const cha = stats.cha || 10;
+  return Math.floor(int * 2 + wis * 0.5 + cha * 0.3);
 }
 
 /**
@@ -87,10 +87,10 @@ export function calculateMagicAttack(stats: Stats): number {
  * @returns {number} 魔法防御力
  */
 export function calculateMagicDefense(stats: Stats): number {
-  const wis = stats.wis || 10
-  const int = stats.int || 10
-  const cha = stats.cha || 10
-  return Math.floor(wis * 1.5 + int * 0.5 + cha * 0.3)
+  const wis = stats.wis || 10;
+  const int = stats.int || 10;
+  const cha = stats.cha || 10;
+  return Math.floor(wis * 1.5 + int * 0.5 + cha * 0.3);
 }
 
 /**
@@ -99,8 +99,8 @@ export function calculateMagicDefense(stats: Stats): number {
  * @returns {number} 暴击率百分比
  */
 export function calculateCritChance(stats: Stats): number {
-  const dex = stats.dex || 10
-  return Math.min(50, Math.floor(dex * 0.5))
+  const dex = stats.dex || 10;
+  return Math.min(50, Math.floor(dex * 0.5));
 }
 
 /**
@@ -109,8 +109,8 @@ export function calculateCritChance(stats: Stats): number {
  * @returns {number} 闪避率百分比
  */
 export function calculateDodgeChance(stats: Stats): number {
-  const dex = stats.dex || 10
-  return Math.min(30, Math.floor(dex * 0.3))
+  const dex = stats.dex || 10;
+  return Math.min(30, Math.floor(dex * 0.3));
 }
 
 /**
@@ -119,8 +119,8 @@ export function calculateDodgeChance(stats: Stats): number {
  * @returns {number} 每级HP加成
  */
 export function calculateHpBonus(stats: Stats): number {
-  const con = stats.con || 10
-  return con * 2
+  const con = stats.con || 10;
+  return con * 2;
 }
 
 /**
@@ -129,10 +129,10 @@ export function calculateHpBonus(stats: Stats): number {
  * @returns {number} 每级MP加成
  */
 export function calculateMpBonus(stats: Stats): number {
-  const int = stats.int || 10
-  const wis = stats.wis || 10
-  const cha = stats.cha || 10
-  return int + wis + cha
+  const int = stats.int || 10;
+  const wis = stats.wis || 10;
+  const cha = stats.cha || 10;
+  return int + wis + cha;
 }
 
 /**
@@ -141,9 +141,9 @@ export function calculateMpBonus(stats: Stats): number {
  * @returns {number} 治疗加成
  */
 export function calculateHealBonus(stats: Stats): number {
-  const wis = stats.wis || 10
-  const cha = stats.cha || 10
-  return Math.floor(wis * 0.1 + cha * 0.05)
+  const wis = stats.wis || 10;
+  const cha = stats.cha || 10;
+  return Math.floor(wis * 0.1 + cha * 0.05);
 }
 
 /**
@@ -175,7 +175,7 @@ export function calculateAllAttributes(stats: Stats) {
     healBonus: calculateHealBonus(stats),
     hpBonus: calculateHpBonus(stats),
     mpBonus: calculateMpBonus(stats)
-  }
+  };
 }
 
 /**
@@ -203,7 +203,7 @@ export const LEVEL_EXP_REQUIREMENTS: Record<number, number> = {
   18: 8500,
   19: 9450,
   20: 10450
-}
+};
 
 /**
  * 获取指定等级所需的经验值
@@ -211,7 +211,7 @@ export const LEVEL_EXP_REQUIREMENTS: Record<number, number> = {
  * @returns {number} 升级到该等级所需的经验值
  */
 export function getExpForLevel(level: number): number {
-  if (level <= 1) return 0
-  if (level > MAX_LEVEL) return LEVEL_EXP_REQUIREMENTS[MAX_LEVEL]
-  return LEVEL_EXP_REQUIREMENTS[level] || 0
+  if (level <= 1) return 0;
+  if (level > MAX_LEVEL) return LEVEL_EXP_REQUIREMENTS[MAX_LEVEL];
+  return LEVEL_EXP_REQUIREMENTS[level] || 0;
 }

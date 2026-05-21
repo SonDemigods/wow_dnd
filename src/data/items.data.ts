@@ -4,7 +4,7 @@
  * @module data/items
  */
 
-import type { ItemTypeData, LootItemData } from '../types'
+import type { ItemTypeData, LootItemData } from '../types';
 
 /**
  * 物品类型定义
@@ -18,8 +18,9 @@ export const ITEM_TYPES: Record<string, ItemTypeData> = {
   material: { name: '材料', stackable: true, maxStack: 99 },
   quest: { name: '任务物品', stackable: true, maxStack: 1 },
   weapon: { name: '武器', stackable: false, maxStack: 1 },
-  armor: { name: '防具', stackable: false, maxStack: 1 }
-}
+  armor: { name: '护甲', stackable: false, maxStack: 1 },
+  misc: { name: '杂项', stackable: true, maxStack: 1 }
+};
 
 /**
  * 所有可掉落非装备物品数据
@@ -196,5 +197,5 @@ export const LOOT_ITEMS: LootItemData[] = [
     rarity: 'common',
     description: '奥术能量凝结的闪光粉尘',
     template: 'magicDust'
-  },
-]
+  }
+];

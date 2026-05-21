@@ -5,33 +5,40 @@
  */
 
 // 导出阵营和种族数据
-export { FACTIONS, RACES } from './races'
+export { FACTIONS, RACES } from './races.data';
 
 // 导出职业和职业技能数据
-export { CLASSES, CLASS_ABILITIES } from './classes'
+export { CLASSES, CLASS_ABILITIES } from './classes.data';
 
 // 导出物品类型和战利品数据
-export { ITEM_TYPES, LOOT_ITEMS } from './items'
+export { ITEM_TYPES, LOOT_ITEMS } from './items.data';
 
 // 导出装备数据
-export { EQUIPMENT_ITEMS, RARITY_CONFIG } from './equipment'
+export { EQUIPMENT_ITEMS, RARITY_CONFIG } from './equipment.data';
 
 // 导出敌人数据
-export { ENEMIES } from './enemies'
+export { ENEMIES } from './enemies.data';
 
 // 导出大陆和世界地点数据（使用别名 LOCATIONS 保持兼容性）
-export { CONTINENTS, LOCATIONS } from './map'
+export { CONTINENTS, LOCATIONS } from './map.data';
 
 // 导出任务数据
-export { QUESTS } from './quests'
+export { QUESTS } from './quests.data';
 
 // 导出商店数据
-export { SHOPS, ITEM_BASE_PRICES, RARITY_PRICE_MULTIPLIER, RARITY_SELL_DISCOUNT, ITEM_POOLS, SHOP_TYPE_ITEM_POOL } from './shops'
+export {
+  SHOPS,
+  ITEM_BASE_PRICES,
+  RARITY_PRICE_MULTIPLIER,
+  RARITY_SELL_DISCOUNT,
+  ITEM_POOLS,
+  SHOP_TYPE_ITEM_POOL
+} from './shops.data';
 
 // 导出常量和计算函数
-export { 
-  MAX_LEVEL, 
-  STAT_NAMES, 
+export {
+  MAX_LEVEL,
+  STAT_NAMES,
   LEVEL_EXP_REQUIREMENTS,
   calculateAllAttributes,
   calculateMaxHp,
@@ -46,4 +53,4 @@ export {
   calculateMpBonus,
   calculateHealBonus,
   getExpForLevel
-} from './constants'
+} from './constants';
