@@ -4,6 +4,27 @@
  */
 
 /**
+ * 大陆数据接口
+ * @property {string} name - 大陆名称
+ * @property {string} icon - 大陆图标
+ * @property {string} description - 大陆描述
+ * @property {string} position - 大陆位置
+ * @property {string} color - 主色调
+ */
+export interface ContinentData {
+  /** 大陆名称 */
+  name: string
+  /** 大陆图标 */
+  icon: string
+  /** 大陆描述 */
+  description: string
+  /** 大陆位置 */
+  position: string
+  /** 主色调 */
+  color: string
+}
+
+/**
  * 地点数据接口
  * @property {string} name - 地点名称
  * @property {string} displayName - 显示名称

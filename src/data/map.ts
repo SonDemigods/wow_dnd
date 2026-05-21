@@ -1,10 +1,10 @@
 /**
  * @fileoverview 地图和位置数据模块
  * @description 包含大陆信息和世界各地位置的详细数据
- * @module data/locations
+ * @module data/map
  */
 
-import type { ContinentData, LocationData } from '../types'
+import type { LocationData, ContinentData } from '../types/maps'
 
 /**
  * 大陆数据
@@ -38,7 +38,7 @@ export const CONTINENTS: Record<string, ContinentData> = {
  * 世界地图位置数据
  * @type {Record<string, LocationData>}
  */
-export const WORLD_LOCATIONS: Record<string, LocationData> = {
+export const LOCATIONS: Record<string, LocationData> = {
   teldrassil: {
     name: 'teldrassil',
     displayName: '泰达希尔',
@@ -638,9 +638,3 @@ export const WORLD_LOCATIONS: Record<string, LocationData> = {
     mapY: 17
   }
 }
-
-/**
- * 位置数据的别名
- * @type {Record<string, LocationData>}
- */
-export const LOCATIONS = WORLD_LOCATIONS

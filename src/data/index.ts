@@ -20,7 +20,7 @@ export { EQUIPMENT_ITEMS, RARITY_CONFIG } from './equipment'
 export { ENEMIES } from './enemies'
 
 // 导出大陆和世界地点数据（使用别名 LOCATIONS 保持兼容性）
-export { CONTINENTS, WORLD_LOCATIONS, WORLD_LOCATIONS as LOCATIONS } from './locations'
+export { CONTINENTS, LOCATIONS } from './map'
 
 // 导出任务数据
 export { QUESTS } from './quests'
