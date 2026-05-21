@@ -69,7 +69,7 @@ export interface RaceData {
   id: RaceType;
   name: string;
   icon: string;
-  factionId: string;
+  factionId: FactionType;
   bonus?: Partial<Stats>;
   description: string;
 }
@@ -81,8 +81,8 @@ export interface RaceData {
  * @property {Partial<Stats>} stats - 属性调整值
  */
 export interface RaceBonus {
-  raceId: string;
-  factionId: string;
+  raceId: RaceType;
+  factionId: FactionType;
   bonus: Partial<Stats>;
 }
 
@@ -223,9 +223,9 @@ export interface Attributes {
  */
 export interface Character {
   name: string;
-  factionId: string;
-  raceId: string;
-  classId: string;
+  factionId: FactionType;
+  raceId: RaceType;
+  classId: ClassType;
   level: number;
   exp: number;
   expToNextLevel: number;
@@ -252,9 +252,9 @@ export interface Character {
 export interface CharacterListItem {
   id: string;
   name: string;
-  raceId: string;
-  classId: string;
-  factionId: string;
+  raceId: RaceType;
+  classId: ClassType;
+  factionId: FactionType;
   level: number;
   createdTime: number;
   lastPlayedTime: number;
@@ -347,21 +347,21 @@ export interface ICharacterService {
 
   /**
    * 获取阵营
-   * @returns {string} 阵营ID
+   * @returns {FactionType} 阵营ID
    */
-  getFactionId(): string;
+  getFaction(): FactionType;
 
   /**
    * 获取种族
-   * @returns {string} 种族ID
+   * @returns {RaceType} 种族ID
    */
-  getRace(): string;
+  getRace(): RaceType;
 
   /**
    * 获取职业
-   * @returns {string} 职业ID
+   * @returns {ClassType} 职业ID
    */
-  getClass(): string;
+  getClass(): ClassType;
 
   /**
    * 获取金币数量
@@ -438,21 +438,21 @@ export interface ICharacterService {
 
   /**
    * 设置阵营
-   * @param {string} factionId - 阵营ID
+   * @param {FactionType} factionId - 阵营ID
    */
-  setFactionId(factionId: string): void;
+  setFactionId(factionId: FactionType): void;
 
   /**
    * 设置种族
-   * @param {string} race - 种族ID
+   * @param {RaceType} race - 种族ID
    */
-  setRace(race: string): void;
+  setRace(race: RaceType): void;
 
   /**
    * 设置职业
-   * @param {string} classId - 职业ID
+   * @param {ClassType} classId - 职业ID
    */
-  setClass(classId: string): void;
+  setClass(classId: ClassType): void;
 
   /** 重置角色数据 */
   reset(): void;

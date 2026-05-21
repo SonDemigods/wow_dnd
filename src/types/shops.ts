@@ -3,7 +3,7 @@
  * @description 包含商店配置、商品池、价格系统等相关类型定义
  */
 
-import type { ItemRarity } from './items'
+import type { ItemRarity } from './items';
 
 /**
  * 价格变化范围接口
@@ -11,8 +11,8 @@ import type { ItemRarity } from './items'
  * @property {number} max - 最大价格倍数（相对于基础价格）
  */
 export interface PriceVariation {
-  min: number
-  max: number
+  min: number;
+  max: number;
 }
 
 /**
@@ -21,8 +21,8 @@ export interface PriceVariation {
  * @property {number} max - 最大库存数量
  */
 export interface StockVariation {
-  min: number
-  max: number
+  min: number;
+  max: number;
 }
 
 /**
@@ -40,17 +40,17 @@ export interface StockVariation {
  * @property {StockVariation} stockVariation - 库存数量变化范围
  */
 export interface ShopConfig {
-  id: string
-  name: string
-  type: string
-  icon: string
-  locationId: string
-  npcId: string
-  refreshInterval: number
-  minItems: number
-  maxItems: number
-  priceVariation: PriceVariation
-  stockVariation: StockVariation
+  id: string;
+  name: string;
+  type: string;
+  icon: string;
+  locationId: string;
+  npcId: string;
+  refreshInterval: number;
+  minItems: number;
+  maxItems: number;
+  priceVariation: PriceVariation;
+  stockVariation: StockVariation;
 }
 
 /**
@@ -61,10 +61,10 @@ export interface ShopConfig {
  * @property {number} maxStock - 最大库存
  */
 export interface ShopItem {
-  itemId: string
-  price: number
-  stock: number
-  maxStock: number
+  itemId: string;
+  price: number;
+  stock: number;
+  maxStock: number;
 }
 
 /**
@@ -74,9 +74,9 @@ export interface ShopItem {
  * @property {number} lastRefresh - 上次刷新时间戳
  */
 export interface ShopInventory {
-  shopId: string
-  items: ShopItem[]
-  lastRefresh: number
+  shopId: string;
+  items: ShopItem[];
+  lastRefresh: number;
 }
 
 /**
@@ -89,20 +89,20 @@ export interface IShopService {
    * @param {string} shopId - 商店ID
    * @returns {ShopConfig | null} 商店配置
    */
-  getShopConfig(shopId: string): ShopConfig | null
+  getShopConfig(shopId: string): ShopConfig | null;
 
   /**
    * 获取商店库存
    * @param {string} shopId - 商店ID
    * @returns {ShopInventory | null} 商店库存
    */
-  getShopInventory(shopId: string): ShopInventory | null
+  getShopInventory(shopId: string): ShopInventory | null;
 
   /**
    * 刷新商店库存
    * @param {string} shopId - 商店ID
    */
-  refreshShopInventory(shopId: string): void
+  refreshShopInventory(shopId: string): void;
 
   /**
    * 购买物品
@@ -111,7 +111,7 @@ export interface IShopService {
    * @param {number} [quantity] - 购买数量，默认为1
    * @returns {boolean} 是否购买成功
    */
-  buyItem(shopId: string, itemId: string, quantity?: number): boolean
+  buyItem(shopId: string, itemId: string, quantity?: number): boolean;
 
   /**
    * 出售物品
@@ -119,7 +119,7 @@ export interface IShopService {
    * @param {number} [quantity] - 出售数量，默认为1
    * @returns {boolean} 是否出售成功
    */
-  sellItem(itemId: string, quantity?: number): boolean
+  sellItem(itemId: string, quantity?: number): boolean;
 
   /**
    * 计算物品售价
@@ -128,7 +128,11 @@ export interface IShopService {
    * @param {number} [priceMultiplier] - 价格倍数，默认为1
    * @returns {number} 售价
    */
-  calculateBuyPrice(itemId: string, rarity: ItemRarity, priceMultiplier?: number): number
+  calculateBuyPrice(
+    itemId: string,
+    rarity: ItemRarity,
+    priceMultiplier?: number
+  ): number;
 
   /**
    * 计算物品回收价
@@ -136,28 +140,28 @@ export interface IShopService {
    * @param {ItemRarity} rarity - 物品稀有度
    * @returns {number} 回收价
    */
-  calculateSellPrice(itemId: string, rarity: ItemRarity): number
+  calculateSellPrice(itemId: string, rarity: ItemRarity): number;
 
   /**
    * 获取所有商店列表
    * @returns {ShopConfig[]} 商店配置列表
    */
-  getAllShops(): ShopConfig[]
+  getAllShops(): ShopConfig[];
 
   /**
    * 获取指定地点的商店列表
    * @param {string} locationId - 地点ID
    * @returns {ShopConfig[]} 商店配置列表
    */
-  getShopsByLocation(locationId: string): ShopConfig[]
+  getShopsByLocation(locationId: string): ShopConfig[];
 
   /**
    * 检查商店是否需要刷新
    * @param {string} shopId - 商店ID
    * @returns {boolean} 是否需要刷新
    */
-  needsRefresh(shopId: string): boolean
+  needsRefresh(shopId: string): boolean;
 
   /** 重置所有商店数据 */
-  reset(): void
+  reset(): void;
 }

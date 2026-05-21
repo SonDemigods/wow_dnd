@@ -3,8 +3,8 @@
  * @description 包含装备稀有度、装备槽位、装备服务等相关类型定义
  */
 
-import type { Item, ItemRarity } from './items'
-import type { Stats } from './character'
+import type { Item, ItemRarity } from './items';
+import type { Stats } from './character';
 
 /**
  * 稀有度配置接口
@@ -13,9 +13,9 @@ import type { Stats } from './character'
  * @property {number} multiplier - 属性倍率
  */
 export interface RarityConfig {
-  name: string
-  color: string
-  multiplier: number
+  name: string;
+  color: string;
+  multiplier: number;
 }
 
 /**
@@ -27,14 +27,20 @@ export interface RarityConfig {
  * - armor3: 护甲槽3
  * - armor4: 护甲槽4
  */
-export type EquipmentSlot = 'weapon1' | 'weapon2' | 'armor1' | 'armor2' | 'armor3' | 'armor4'
+export type EquipmentSlot =
+  | 'weapon1'
+  | 'weapon2'
+  | 'armor1'
+  | 'armor2'
+  | 'armor3'
+  | 'armor4';
 
 /**
  * 装备类型枚举
  * - weapon: 武器
  * - armor: 护甲
  */
-export type EquipmentType = 'weapon' | 'armor'
+export type EquipmentType = 'weapon' | 'armor';
 
 /**
  * 装备物品接口
@@ -45,11 +51,11 @@ export type EquipmentType = 'weapon' | 'armor'
  * @property {number} [levelRequirement] - 等级要求
  */
 export interface EquipmentItem extends Item {
-  type: EquipmentType
-  slots: EquipmentSlot[]
-  bonus?: Partial<Stats>
-  rarity: ItemRarity
-  levelRequirement?: number
+  type: EquipmentType;
+  slots: EquipmentSlot[];
+  bonus?: Partial<Stats>;
+  rarity: ItemRarity;
+  levelRequirement?: number;
 }
 
 /**
@@ -58,8 +64,8 @@ export interface EquipmentItem extends Item {
  * @property {number} equippedAt - 装备时间戳
  */
 export interface EquippedItem {
-  item: EquipmentItem
-  equippedAt: number
+  item: EquipmentItem;
+  equippedAt: number;
 }
 
 /**
@@ -67,7 +73,7 @@ export interface EquippedItem {
  * @property {Record<EquipmentSlot, EquippedItem | null>} equipment - 装备记录
  */
 export interface EquipmentState {
-  equipment: Record<EquipmentSlot, EquippedItem | null>
+  equipment: Record<EquipmentSlot, EquippedItem | null>;
 }
 
 /**
@@ -81,33 +87,33 @@ export interface IEquipmentService {
    * @param {EquipmentItem} item - 装备物品
    * @returns {boolean} 是否成功装备
    */
-  equipItem(slot: EquipmentSlot, item: EquipmentItem): boolean
+  equipItem(slot: EquipmentSlot, item: EquipmentItem): boolean;
 
   /**
    * 卸下装备
    * @param {EquipmentSlot} slot - 槽位
    * @returns {EquippedItem | null} 卸下的装备
    */
-  unequipItem(slot: EquipmentSlot): EquippedItem | null
+  unequipItem(slot: EquipmentSlot): EquippedItem | null;
 
   /**
    * 获取所有装备
    * @returns {Record<EquipmentSlot, EquippedItem | null>} 装备记录
    */
-  getEquipment(): Record<EquipmentSlot, EquippedItem | null>
+  getEquipment(): Record<EquipmentSlot, EquippedItem | null>;
 
   /**
    * 获取指定槽位的装备
    * @param {EquipmentSlot} slots - 槽位
    * @returns {EquippedItem | null} 装备
    */
-  getEquippedItem(slot: EquipmentSlot): EquippedItem | null
+  getEquippedItem(slot: EquipmentSlot): EquippedItem | null;
 
   /**
    * 获取总属性
    * @returns {Stats} 属性
    */
-  getTotalStats(): Stats
+  getTotalStats(): Stats;
 
   /**
    * 检查是否可以装备
@@ -115,41 +121,41 @@ export interface IEquipmentService {
    * @param {EquipmentSlot} [slot] - 槽位
    * @returns {boolean} 是否可以装备
    */
-  canEquip(item: EquipmentItem, slot?: EquipmentSlot): boolean
+  canEquip(item: EquipmentItem, slot?: EquipmentSlot): boolean;
 
   /**
    * 获取槽位类型
    * @param {EquipmentSlot} slot - 槽位
    * @returns {'weapon' | 'armor'} 槽位类型
    */
-  getSlotType(slot: EquipmentSlot): 'weapon' | 'armor'
+  getSlotType(slot: EquipmentSlot): 'weapon' | 'armor';
 
   /** 同步属性到角色 */
-  syncStatsToCharacter(): void
+  syncStatsToCharacter(): void;
 
   /** 重置装备数据 */
-  reset(): void
+  reset(): void;
 
   /**
    * 获取稀有度配置
    * @param {ItemRarity} rarity - 稀有度
    * @returns {RarityConfig} 稀有度配置
    */
-  getRarityConfig(rarity: ItemRarity): RarityConfig
+  getRarityConfig(rarity: ItemRarity): RarityConfig;
 
   /**
    * 获取稀有度颜色
    * @param {ItemRarity} rarity - 稀有度
    * @returns {string} 颜色
    */
-  getRarityColor(rarity: ItemRarity): string
+  getRarityColor(rarity: ItemRarity): string;
 
   /**
    * 获取稀有度倍率
    * @param {ItemRarity} rarity - 稀有度
    * @returns {number} 倍率
    */
-  getRarityMultiplier(rarity: ItemRarity): number
+  getRarityMultiplier(rarity: ItemRarity): number;
 
   /**
    * 计算稀有度加成
@@ -157,5 +163,8 @@ export interface IEquipmentService {
    * @param {ItemRarity} rarity - 稀有度
    * @returns {Partial<Stats>} 加成后的属性
    */
-  calculateRarityBonus(baseBonus: Partial<Stats>, rarity: ItemRarity): Partial<Stats>
+  calculateRarityBonus(
+    baseBonus: Partial<Stats>,
+    rarity: ItemRarity
+  ): Partial<Stats>;
 }

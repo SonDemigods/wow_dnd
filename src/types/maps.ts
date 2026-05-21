@@ -12,11 +12,11 @@
  * @property {string} color - 主色调
  */
 export interface ContinentData {
-  name: string
-  icon: string
-  description: string
-  position: string
-  color: string
+  name: string;
+  icon: string;
+  description: string;
+  position: string;
+  color: string;
 }
 
 /**
@@ -29,12 +29,12 @@ export interface ContinentData {
  * @property {string} [activeMarkerId] - 当前激活的标记ID
  */
 export interface MapView {
-  zoomLevel: number
-  panX: number
-  panY: number
-  currentContinentId?: string
-  showMarkers: boolean
-  activeMarkerId?: string
+  zoomLevel: number;
+  panX: number;
+  panY: number;
+  currentContinentId?: string;
+  showMarkers: boolean;
+  activeMarkerId?: string;
 }
 
 /**
@@ -42,7 +42,7 @@ export interface MapView {
  * @property {MapView} view - 地图视图
  */
 export interface MapState {
-  view: MapView
+  view: MapView;
 }
 
 /**
@@ -61,18 +61,18 @@ export interface MapState {
  * @property {number} mapY - 地图Y坐标
  */
 export interface LocationData {
-  name: string
-  displayName: string
-  icon: string
-  description: string
-  continent: string
-  region: string
-  enemies?: string[]
-  quests?: string[]
-  levelRange: [number, number]
-  color: string
-  mapX: number
-  mapY: number
+  name: string;
+  displayName: string;
+  icon: string;
+  description: string;
+  continent: string;
+  region: string;
+  enemies?: string[];
+  quests?: string[];
+  levelRange: [number, number];
+  color: string;
+  mapX: number;
+  mapY: number;
 }
 
 /**
@@ -88,15 +88,15 @@ export interface LocationData {
  * @property {string} [parentMarkerId] - 父标记ID
  */
 export interface LocationMarker {
-  id: string
-  x: number
-  y: number
-  icon: string
-  name: string
-  locationId: string
-  requiredLevel: number
-  difficulty?: 'normal' | 'heroic' | 'mythic'
-  parentMarkerId?: string
+  id: string;
+  x: number;
+  y: number;
+  icon: string;
+  name: string;
+  locationId: string;
+  requiredLevel: number;
+  difficulty?: 'normal' | 'heroic' | 'mythic';
+  parentMarkerId?: string;
 }
 
 /**
@@ -108,35 +108,35 @@ export interface IMapService {
    * 获取地图状态
    * @returns {MapState} 地图状态
    */
-  getState(): MapState
+  getState(): MapState;
 
   /**
    * 获取地点数据
    * @param {string} locationId - 地点ID
    * @returns {LocationData | null} 地点数据
    */
-  getLocationData(locationId: string): LocationData | null
+  getLocationData(locationId: string): LocationData | null;
 
   /**
    * 获取大陆下的地点
    * @param {string} continentId - 大陆ID
    * @returns {LocationData[]} 地点列表
    */
-  getLocationsByContinent(continentId: string): LocationData[]
+  getLocationsByContinent(continentId: string): LocationData[];
 
   /**
    * 获取地点标记
    * @param {string} continentId - 大陆ID
    * @returns {LocationMarker[]} 标记列表
    */
-  getLocationMarkers(continentId: string): LocationMarker[]
+  getLocationMarkers(continentId: string): LocationMarker[];
 
   /**
    * 获取已解锁的地点
    * @param {number} playerLevel - 玩家等级
    * @returns {string[]} 地点ID列表
    */
-  getUnlockedLocations(playerLevel: number): string[]
+  getUnlockedLocations(playerLevel: number): string[];
 
   /**
    * 检查地点是否解锁
@@ -144,31 +144,31 @@ export interface IMapService {
    * @param {number} playerLevel - 玩家等级
    * @returns {boolean} 是否解锁
    */
-  isLocationUnlocked(locationId: string, playerLevel: number): boolean
+  isLocationUnlocked(locationId: string, playerLevel: number): boolean;
 
   /**
    * 进入地点
    * @param {string} locationId - 地点ID
    * @returns {boolean} 是否成功进入
    */
-  enterLocation(locationId: string): boolean
+  enterLocation(locationId: string): boolean;
 
   /**
    * 缩放到指定级别
    * @param {number} level - 缩放级别
    */
-  zoomTo(level: number): void
+  zoomTo(level: number): void;
 
   /**
    * 平移到指定位置
    * @param {number} x - X坐标
    * @param {number} y - Y坐标
    */
-  panTo(x: number, y: number): void
+  panTo(x: number, y: number): void;
 
   /** 重置视图 */
-  resetView(): void
+  resetView(): void;
 
   /** 重置地图数据 */
-  reset(): void
+  reset(): void;
 }

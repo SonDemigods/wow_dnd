@@ -9,13 +9,13 @@
  * - magic_damage: 魔法伤害技能
  * - heal: 治疗技能
  */
-export type SkillType = 'physical_damage' | 'magic_damage' | 'heal'
+export type SkillType = 'physical_damage' | 'magic_damage' | 'heal';
 
 /**
  * 技能槽位索引类型
  * 技能栏中4个槽位的索引范围（0-3）
  */
-export type SkillSlotIndex = 0 | 1 | 2 | 3
+export type SkillSlotIndex = 0 | 1 | 2 | 3;
 
 /**
  * 技能效果接口
@@ -25,9 +25,9 @@ export type SkillSlotIndex = 0 | 1 | 2 | 3
  * @property {number} [coefficient] - 系数（用于计算实际效果）
  */
 export interface SkillEffect {
-  type: SkillType
-  value: number
-  coefficient?: number
+  type: SkillType;
+  value: number;
+  coefficient?: number;
 }
 
 /**
@@ -43,14 +43,14 @@ export interface SkillEffect {
  * @property {number} unlockLevel - 解锁等级
  */
 export interface Skill {
-  id: string
-  name: string
-  icon: string
-  description: string
-  mpCost: number
-  type: SkillType
-  effect: SkillEffect
-  unlockLevel: number
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  mpCost: number;
+  type: SkillType;
+  effect: SkillEffect;
+  unlockLevel: number;
 }
 
 /**
@@ -64,12 +64,12 @@ export interface Skill {
  * @property {string} message - 结果消息
  */
 export interface SkillUseResult {
-  success: boolean
-  skillId: string
-  type: SkillType
-  damage?: number
-  heal?: number
-  message: string
+  success: boolean;
+  skillId: string;
+  type: SkillType;
+  damage?: number;
+  heal?: number;
+  message: string;
 }
 
 /**
@@ -78,7 +78,7 @@ export interface SkillUseResult {
  * @property {[string | null, string | null, string | null, string | null]} slots - 技能槽位（4个），存储技能ID或null
  */
 export interface SkillBar {
-  slots: [string | null, string | null, string | null, string | null]
+  slots: [string | null, string | null, string | null, string | null];
 }
 
 /**
@@ -90,11 +90,11 @@ export interface SkillBar {
  * @property {number} updatedAt - 更新时间戳
  */
 export interface SkillsData {
-  characterId: string
-  skills: Skill[]
-  skillBar: SkillBar
-  currentClass: string | null
-  updatedAt: number
+  characterId: string;
+  skills: Skill[];
+  skillBar: SkillBar;
+  currentClass: string | null;
+  updatedAt: number;
 }
 
 /**
@@ -103,8 +103,8 @@ export interface SkillsData {
  * @property {boolean} success - 是否成功
  */
 export interface SkillCastEventData {
-  skill: Skill
-  success: boolean
+  skill: Skill;
+  success: boolean;
 }
 
 /**
@@ -113,8 +113,8 @@ export interface SkillCastEventData {
  * @property {SkillSlotIndex} slotIndex - 槽位索引
  */
 export interface SkillEquippedEventData {
-  skillId: string
-  slotIndex: SkillSlotIndex
+  skillId: string;
+  slotIndex: SkillSlotIndex;
 }
 
 /**
@@ -122,7 +122,7 @@ export interface SkillEquippedEventData {
  * @property {Skill} skill - 技能数据
  */
 export interface SkillUnlockedEventData {
-  skill: Skill
+  skill: Skill;
 }
 
 /**
@@ -130,7 +130,7 @@ export interface SkillUnlockedEventData {
  * @property {SkillBar['slots']} slots - 新的槽位配置
  */
 export interface SkillBarChangedEventData {
-  slots: SkillBar['slots']
+  slots: SkillBar['slots'];
 }
 
 /**
@@ -142,46 +142,46 @@ export interface ISkillsService {
    * 获取所有技能
    * @returns {Skill[]} 技能列表
    */
-  getSkills(): Skill[]
+  getSkills(): Skill[];
 
   /**
    * 根据ID获取技能
    * @param {string} id - 技能ID
    * @returns {Skill | null} 技能数据
    */
-  getSkill(id: string): Skill | null
+  getSkill(id: string): Skill | null;
 
   /**
    * 获取已装备的技能
    * @returns {Skill[]} 已装备技能列表
    */
-  getEquippedSkills(): Skill[]
+  getEquippedSkills(): Skill[];
 
   /**
    * 获取已解锁的技能
    * @returns {Skill[]} 已解锁技能列表
    */
-  getUnlockedSkills(): Skill[]
+  getUnlockedSkills(): Skill[];
 
   /**
    * 获取未解锁的技能
    * @returns {Skill[]} 未解锁技能列表
    */
-  getLockedSkills(): Skill[]
+  getLockedSkills(): Skill[];
 
   /**
    * 检查技能是否可以使用
    * @param {string} skillId - 技能ID
    * @returns {boolean} 是否可以使用
    */
-  canUseSkill(skillId: string): boolean
+  canUseSkill(skillId: string): boolean;
 
   /**
    * 使用技能
    * @param {string} skillId - 技能ID
    * @returns {SkillUseResult} 使用结果
    */
-  useSkill(skillId: string): SkillUseResult
+  useSkill(skillId: string): SkillUseResult;
 
   /**
    * 装备技能到指定槽位
@@ -189,14 +189,14 @@ export interface ISkillsService {
    * @param {SkillSlotIndex} slotIndex - 槽位索引
    * @returns {boolean} 是否成功装备
    */
-  equipSkill(skillId: string, slotIndex: SkillSlotIndex): boolean
+  equipSkill(skillId: string, slotIndex: SkillSlotIndex): boolean;
 
   /**
    * 卸下指定槽位的技能
    * @param {SkillSlotIndex} slotIndex - 槽位索引
    * @returns {boolean} 是否成功卸下
    */
-  unequipSkill(slotIndex: SkillSlotIndex): boolean
+  unequipSkill(slotIndex: SkillSlotIndex): boolean;
 
   /**
    * 交换两个槽位的技能
@@ -204,27 +204,27 @@ export interface ISkillsService {
    * @param {SkillSlotIndex} slotIndex2 - 第二个槽位
    * @returns {boolean} 是否成功交换
    */
-  swapSkills(slotIndex1: SkillSlotIndex, slotIndex2: SkillSlotIndex): boolean
+  swapSkills(slotIndex1: SkillSlotIndex, slotIndex2: SkillSlotIndex): boolean;
 
   /**
    * 根据类型获取技能
    * @param {SkillType} type - 技能类型
    * @returns {Skill[]} 技能列表
    */
-  getSkillsByType(type: SkillType): Skill[]
+  getSkillsByType(type: SkillType): Skill[];
 
   /**
    * 计算技能效果
    * @param {string} skillId - 技能ID
    * @returns {SkillEffect} 技能效果
    */
-  calculateSkillEffect(skillId: string): SkillEffect
+  calculateSkillEffect(skillId: string): SkillEffect;
 
   /** 检查等级解锁 */
-  checkLevelUnlocks(): void
+  checkLevelUnlocks(): void;
 
   /** 重置技能数据 */
-  reset(): void
+  reset(): void;
 }
 
 /**
@@ -236,10 +236,10 @@ export interface ISkillsService {
  * @property {number} [maxUnlockLevel] - 最大解锁等级
  */
 export interface SkillQuery {
-  type?: SkillType
-  isUnlocked?: boolean
-  minUnlockLevel?: number
-  maxUnlockLevel?: number
+  type?: SkillType;
+  isUnlocked?: boolean;
+  minUnlockLevel?: number;
+  maxUnlockLevel?: number;
 }
 
 /**
@@ -251,8 +251,12 @@ export interface SkillQuery {
  * @property {number} [requiredMp] - 所需法力值
  */
 export interface SkillValidationResult {
-  canUse: boolean
-  failureReason?: 'not_in_combat' | 'not_equipped' | 'insufficient_mp' | 'not_unlocked'
-  currentMp?: number
-  requiredMp?: number
+  canUse: boolean;
+  failureReason?:
+    | 'not_in_combat'
+    | 'not_equipped'
+    | 'insufficient_mp'
+    | 'not_unlocked';
+  currentMp?: number;
+  requiredMp?: number;
 }

@@ -3,7 +3,7 @@
  * @description 包含敌人基础数据、敌人实例等相关类型定义
  */
 
-import type { InventoryItem } from './items'
+import type { InventoryItem } from './items';
 
 /**
  * 敌人数据接口
@@ -24,20 +24,20 @@ import type { InventoryItem } from './items'
  * @property {number} [dodgeChance] - 闪避率
  */
 export interface EnemyData {
-  name: string
-  icon: string
-  hp: number
-  damage: [number, number]
-  xp: number
-  gold: number
-  dangerLevel: string
-  isBoss?: boolean
-  physicalAttack?: number
-  physicalDefense?: number
-  magicAttack?: number
-  magicDefense?: number
-  critChance?: number
-  dodgeChance?: number
+  name: string;
+  icon: string;
+  hp: number;
+  damage: [number, number];
+  xp: number;
+  gold: number;
+  dangerLevel: string;
+  isBoss?: boolean;
+  physicalAttack?: number;
+  physicalDefense?: number;
+  magicAttack?: number;
+  magicDefense?: number;
+  critChance?: number;
+  dodgeChance?: number;
 }
 
 /**
@@ -60,19 +60,19 @@ export interface EnemyData {
  * @property {number} [dodgeChance] - 闪避率
  */
 export interface Enemy {
-  id: string
-  name: string
-  type: string
-  level: number
-  hp: number
-  maxHp: number
-  attack: number
-  defense: number
-  expReward: number
-  goldReward: number
-  icon: string
-  loot: InventoryItem[]
-  attackBonus?: number
-  critChance?: number
-  dodgeChance?: number
+  id: string;
+  name: string;
+  type: string;
+  level: number;
+  hp: number;
+  maxHp: number;
+  attack: number;
+  defense: number;
+  expReward: number;
+  goldReward: number;
+  icon: string;
+  loot: InventoryItem[];
+  attackBonus?: number;
+  critChance?: number;
+  dodgeChance?: number;
 }
