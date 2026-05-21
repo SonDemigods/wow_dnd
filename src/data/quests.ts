@@ -4,951 +4,1230 @@
  * @module data/quests
  */
 
-import type { QuestData } from '../types'
+import type { QuestDefinition } from '../types'
+import { QuestType } from '../types'
 
-/**
- * 所有任务的完整数据集
- * @type {Record<string, QuestData>}
- */
-export const QUESTS: Record<string, QuestData> = {
+export const QUESTS: Record<string, QuestDefinition> = {
   teldrassil_defense: {
-    key: 'teldrassil_defense',
-    locationKey: 'teldrassil',
-    name: '泰达希尔的守卫',
+    id: 'teldrassil_defense',
+    title: '泰达希尔的守卫',
     description: '暗影森林深处有蜘蛛巢穴正在向外扩张，需要清剿它们！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'spider', target: 5 }
+      { key: 'kill_spider', type: QuestType.KILL, description: '杀死5只蜘蛛', target: 5, enemyId: 'spider' }
     ],
-    reward: { xp: 80, gold: 40 }
+    levelRequirement: 1,
+    xpReward: 80,
+    goldReward: 40,
+    boardId: 'teldrassil'
   },
   teldrassil_goblins: {
-    key: 'teldrassil_goblins',
-    locationKey: 'teldrassil',
-    name: '森林强盗',
+    id: 'teldrassil_goblins',
+    title: '森林强盗',
     description: '豺狼人在森林边缘袭击过路的旅行者，快去教训他们！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'goblin', target: 4 }
+      { key: 'kill_goblin', type: QuestType.KILL, description: '杀死4只豺狼人', target: 4, enemyId: 'goblin' }
     ],
-    reward: { xp: 100, gold: 50 }
+    levelRequirement: 1,
+    xpReward: 100,
+    goldReward: 50,
+    boardId: 'teldrassil'
   },
   azuremyst_spiders: {
-    key: 'azuremyst_spiders',
-    locationKey: 'azuremyst',
-    name: '蜘蛛入侵',
+    id: 'azuremyst_spiders',
+    title: '蜘蛛入侵',
     description: '大量蜘蛛从洞穴中涌出，威胁着秘蓝岛的安全！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'spider', target: 6 }
+      { key: 'kill_spider', type: QuestType.KILL, description: '杀死6只蜘蛛', target: 6, enemyId: 'spider' }
     ],
-    reward: { xp: 60, gold: 30 }
+    levelRequirement: 1,
+    xpReward: 60,
+    goldReward: 30,
+    boardId: 'azuremyst'
   },
   azuremyst_goblins: {
-    key: 'azuremyst_goblins',
-    locationKey: 'azuremyst',
-    name: '强盗窝点',
+    id: 'azuremyst_goblins',
+    title: '强盗窝点',
     description: '豺狼人在秘蓝岛建立了临时据点，必须将其驱散！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'goblin', target: 3 }
+      { key: 'kill_goblin', type: QuestType.KILL, description: '杀死3只豺狼人', target: 3, enemyId: 'goblin' }
     ],
-    reward: { xp: 50, gold: 25 }
+    levelRequirement: 1,
+    xpReward: 50,
+    goldReward: 25,
+    boardId: 'azuremyst'
   },
   ashenvale_orcs: {
-    key: 'ashenvale_orcs',
-    locationKey: 'ashenvale',
-    name: '兽人入侵',
+    id: 'ashenvale_orcs',
+    title: '兽人入侵',
     description: '战歌氏族的兽人正在灰谷疯狂砍伐森林，前去阻止他们！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'orc', target: 5 }
+      { key: 'kill_orc', type: QuestType.KILL, description: '杀死5只兽人', target: 5, enemyId: 'orc' }
     ],
-    reward: { xp: 120, gold: 60 }
+    levelRequirement: 5,
+    xpReward: 120,
+    goldReward: 60,
+    boardId: 'ashenvale'
   },
   ashenvale_spiders: {
-    key: 'ashenvale_spiders',
-    locationKey: 'ashenvale',
-    name: '毒蛛清剿',
+    id: 'ashenvale_spiders',
+    title: '毒蛛清剿',
     description: '森林深处的巨型毒蛛对居民造成了巨大威胁！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'spider', target: 4 }
+      { key: 'kill_spider', type: QuestType.KILL, description: '杀死4只毒蛛', target: 4, enemyId: 'spider' }
     ],
-    reward: { xp: 100, gold: 50 }
+    levelRequirement: 5,
+    xpReward: 100,
+    goldReward: 50,
+    boardId: 'ashenvale'
   },
   elwynn_goblins: {
-    key: 'elwynn_goblins',
-    locationKey: 'elwynn',
-    name: '豺狼之灾',
+    id: 'elwynn_goblins',
+    title: '豺狼之灾',
     description: '艾尔文森林的豺狼人越来越猖獗，威胁着农场的安全！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'goblin', target: 4 }
+      { key: 'kill_goblin', type: QuestType.KILL, description: '杀死4只豺狼人', target: 4, enemyId: 'goblin' }
     ],
-    reward: { xp: 60, gold: 30 }
+    levelRequirement: 1,
+    xpReward: 60,
+    goldReward: 30,
+    boardId: 'elwynn'
   },
   elwynn_bandits: {
-    key: 'elwynn_bandits',
-    locationKey: 'elwynn',
-    name: '打击盗匪',
+    id: 'elwynn_bandits',
+    title: '打击盗匪',
     description: '一群盗匪在森林边缘活动，快去为民除害！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'bandit', target: 3 }
+      { key: 'kill_bandit', type: QuestType.KILL, description: '杀死3名盗匪', target: 3, enemyId: 'bandit' }
     ],
-    reward: { xp: 50, gold: 25 }
+    levelRequirement: 1,
+    xpReward: 50,
+    goldReward: 25,
+    boardId: 'elwynn'
   },
   westfall_bandits: {
-    key: 'westfall_bandits',
-    locationKey: 'westfall',
-    name: '西部荒野的强盗',
+    id: 'westfall_bandits',
+    title: '西部荒野的强盗',
     description: '迪菲亚兄弟会在西部荒野横行霸道，必须将其绳之以法！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'bandit', target: 5 }
+      { key: 'kill_bandit', type: QuestType.KILL, description: '杀死5名强盗', target: 5, enemyId: 'bandit' }
     ],
-    reward: { xp: 80, gold: 40 }
+    levelRequirement: 3,
+    xpReward: 80,
+    goldReward: 40,
+    boardId: 'westfall'
   },
   westfall_skeletons: {
-    key: 'westfall_skeletons',
-    locationKey: 'westfall',
-    name: '闹鬼的农场',
+    id: 'westfall_skeletons',
+    title: '闹鬼的农场',
     description: '月溪镇附近的农场出现了亡灵，快去调查！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'skeleton', target: 3 }
+      { key: 'kill_skeleton', type: QuestType.KILL, description: '杀死3只骷髅', target: 3, enemyId: 'skeleton' }
     ],
-    reward: { xp: 70, gold: 35 }
+    levelRequirement: 3,
+    xpReward: 70,
+    goldReward: 35,
+    boardId: 'westfall'
   },
   redridge_orcs: {
-    key: 'redridge_orcs',
-    locationKey: 'redridge',
-    name: '黑石兽人的威胁',
+    id: 'redridge_orcs',
+    title: '黑石兽人的威胁',
     description: '黑石部落的兽人正在赤脊山集结，准备入侵！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'orc', target: 4 }
+      { key: 'kill_orc', type: QuestType.KILL, description: '杀死4只兽人', target: 4, enemyId: 'orc' }
     ],
-    reward: { xp: 100, gold: 50 }
+    levelRequirement: 5,
+    xpReward: 100,
+    goldReward: 50,
+    boardId: 'redridge'
   },
   redridge_spiders: {
-    key: 'redridge_spiders',
-    locationKey: 'redridge',
-    name: '峡谷蜘蛛',
+    id: 'redridge_spiders',
+    title: '峡谷蜘蛛',
     description: '赤脊峡谷中的巨型蜘蛛开始攻击过往的旅人！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'spider', target: 3 }
+      { key: 'kill_spider', type: QuestType.KILL, description: '杀死3只蜘蛛', target: 3, enemyId: 'spider' }
     ],
-    reward: { xp: 90, gold: 45 }
+    levelRequirement: 5,
+    xpReward: 90,
+    goldReward: 45,
+    boardId: 'redridge'
   },
   duskwood_skeletons: {
-    key: 'duskwood_skeletons',
-    locationKey: 'duskwood',
-    name: '墓地的亡灵',
+    id: 'duskwood_skeletons',
+    title: '墓地的亡灵',
     description: '夜色镇的墓地正在遭受亡灵的侵扰，需要有人去处理！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'skeleton', target: 6 }
+      { key: 'kill_skeleton', type: QuestType.KILL, description: '杀死6只骷髅', target: 6, enemyId: 'skeleton' }
     ],
-    reward: { xp: 120, gold: 60 }
+    levelRequirement: 8,
+    xpReward: 120,
+    goldReward: 60,
+    boardId: 'duskwood'
   },
   duskwood_spiders: {
-    key: 'duskwood_spiders',
-    locationKey: 'duskwood',
-    name: '森林毒蛛',
+    id: 'duskwood_spiders',
+    title: '森林毒蛛',
     description: '暮色森林中的蜘蛛比其他地方的更加危险！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'spider', target: 4 }
+      { key: 'kill_spider', type: QuestType.KILL, description: '杀死4只毒蛛', target: 4, enemyId: 'spider' }
     ],
-    reward: { xp: 110, gold: 55 }
+    levelRequirement: 8,
+    xpReward: 110,
+    goldReward: 55,
+    boardId: 'duskwood'
   },
   silverpine_skeletons: {
-    key: 'silverpine_skeletons',
-    locationKey: 'silverpine',
-    name: '被遗忘者的威胁',
+    id: 'silverpine_skeletons',
+    title: '被遗忘者的威胁',
     description: '银松森林中游荡着大量亡灵，需要被清理！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'skeleton', target: 5 }
+      { key: 'kill_skeleton', type: QuestType.KILL, description: '杀死5只骷髅', target: 5, enemyId: 'skeleton' }
     ],
-    reward: { xp: 130, gold: 65 }
+    levelRequirement: 8,
+    xpReward: 130,
+    goldReward: 65,
+    boardId: 'silverpine'
   },
   silverpine_wolves: {
-    key: 'silverpine_wolves',
-    locationKey: 'silverpine',
-    name: '疯狼之灾',
+    id: 'silverpine_wolves',
+    title: '疯狼之灾',
     description: '森林中的狼群变得异常凶猛，威胁着过往旅人！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'wolf', target: 4 }
+      { key: 'kill_wolf', type: QuestType.KILL, description: '杀死4只狼', target: 4, enemyId: 'wolf' }
     ],
-    reward: { xp: 120, gold: 60 }
+    levelRequirement: 8,
+    xpReward: 120,
+    goldReward: 60,
+    boardId: 'silverpine'
   },
   tirisfal_skeletons: {
-    key: 'tirisfal_skeletons',
-    locationKey: 'tirisfal',
-    name: '亡灵的起源',
+    id: 'tirisfal_skeletons',
+    title: '亡灵的起源',
     description: '提瑞斯法林地的亡灵需要被净化！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'skeleton', target: 4 }
+      { key: 'kill_skeleton', type: QuestType.KILL, description: '杀死4只骷髅', target: 4, enemyId: 'skeleton' }
     ],
-    reward: { xp: 50, gold: 25 }
+    levelRequirement: 1,
+    xpReward: 50,
+    goldReward: 25,
+    boardId: 'tirisfal'
   },
   tirisfal_ghouls: {
-    key: 'tirisfal_ghouls',
-    locationKey: 'tirisfal',
-    name: '食尸鬼之患',
+    id: 'tirisfal_ghouls',
+    title: '食尸鬼之患',
     description: '大量食尸鬼在坟墓间游荡，快去消灭它们！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'ghoul', target: 3 }
+      { key: 'kill_ghoul', type: QuestType.KILL, description: '杀死3只食尸鬼', target: 3, enemyId: 'ghoul' }
     ],
-    reward: { xp: 60, gold: 30 }
+    levelRequirement: 1,
+    xpReward: 60,
+    goldReward: 30,
+    boardId: 'tirisfal'
   },
   plaguelands_skeletons: {
-    key: 'plaguelands_skeletons',
-    locationKey: 'plaguelands',
-    name: '天灾军团',
+    id: 'plaguelands_skeletons',
+    title: '天灾军团',
     description: '瘟疫之地的亡灵必须被彻底消灭！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'skeleton', target: 5 }
+      { key: 'kill_skeleton', type: QuestType.KILL, description: '杀死5只骷髅', target: 5, enemyId: 'skeleton' }
     ],
-    reward: { xp: 250, gold: 120 }
+    levelRequirement: 15,
+    xpReward: 250,
+    goldReward: 120,
+    boardId: 'plaguelands'
   },
   plaguelands_demons: {
-    key: 'plaguelands_demons',
-    locationKey: 'plaguelands',
-    name: '燃烧军团的先锋',
+    id: 'plaguelands_demons',
+    title: '燃烧军团的先锋',
     description: '恶魔在瘟疫之地横行，必须将其驱逐！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'demon', target: 3 }
+      { key: 'kill_demon', type: QuestType.KILL, description: '杀死3只恶魔', target: 3, enemyId: 'demon' }
     ],
-    reward: { xp: 280, gold: 140 }
+    levelRequirement: 15,
+    xpReward: 280,
+    goldReward: 140,
+    boardId: 'plaguelands'
   },
   stranglethorn_trolls: {
-    key: 'stranglethorn_trolls',
-    locationKey: 'stranglethorn',
-    name: '血顶巨魔',
+    id: 'stranglethorn_trolls',
+    title: '血顶巨魔',
     description: '血顶巨魔部落正在荆棘谷进行疯狂的劫掠！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'troll', target: 4 }
+      { key: 'kill_troll', type: QuestType.KILL, description: '杀死4只巨魔', target: 4, enemyId: 'troll' }
     ],
-    reward: { xp: 150, gold: 75 }
+    levelRequirement: 10,
+    xpReward: 150,
+    goldReward: 75,
+    boardId: 'stranglethorn'
   },
   stranglethorn_orcs: {
-    key: 'stranglethorn_orcs',
-    locationKey: 'stranglethorn',
-    name: '风险投资公司',
+    id: 'stranglethorn_orcs',
+    title: '风险投资公司',
     description: '风险投资公司的兽人在丛林中掠夺资源！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'orc', target: 3 }
+      { key: 'kill_orc', type: QuestType.KILL, description: '杀死3只兽人', target: 3, enemyId: 'orc' }
     ],
-    reward: { xp: 160, gold: 80 }
+    levelRequirement: 10,
+    xpReward: 160,
+    goldReward: 80,
+    boardId: 'stranglethorn'
   },
   stonetalon_orcs: {
-    key: 'stonetalon_orcs',
-    locationKey: 'stonetalon',
-    name: '石爪要塞',
+    id: 'stonetalon_orcs',
+    title: '石爪要塞',
     description: '石爪山脉中的兽人据点需要被拔除！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'orc', target: 5 }
+      { key: 'kill_orc', type: QuestType.KILL, description: '杀死5只兽人', target: 5, enemyId: 'orc' }
     ],
-    reward: { xp: 140, gold: 70 }
+    levelRequirement: 8,
+    xpReward: 140,
+    goldReward: 70,
+    boardId: 'stonetalon'
   },
   stonetalon_spiders: {
-    key: 'stonetalon_spiders',
-    locationKey: 'stonetalon',
-    name: '洞穴毒蛛',
+    id: 'stonetalon_spiders',
+    title: '洞穴毒蛛',
     description: '石爪山脉的洞穴中充满了危险的蜘蛛！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'spider', target: 4 }
+      { key: 'kill_spider', type: QuestType.KILL, description: '杀死4只蜘蛛', target: 4, enemyId: 'spider' }
     ],
-    reward: { xp: 130, gold: 65 }
+    levelRequirement: 8,
+    xpReward: 130,
+    goldReward: 65,
+    boardId: 'stonetalon'
   },
   deserts_trolls: {
-    key: 'deserts_trolls',
-    locationKey: 'deserts',
-    name: '沙怒巨魔',
+    id: 'deserts_trolls',
+    title: '沙怒巨魔',
     description: '沙怒巨魔在沙漠中袭击商队，必须被阻止！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'troll', target: 4 }
+      { key: 'kill_troll', type: QuestType.KILL, description: '杀死4只巨魔', target: 4, enemyId: 'troll' }
     ],
-    reward: { xp: 180, gold: 90 }
+    levelRequirement: 12,
+    xpReward: 180,
+    goldReward: 90,
+    boardId: 'deserts'
   },
   deserts_skeletons: {
-    key: 'deserts_skeletons',
-    locationKey: 'deserts',
-    name: '祖尔法拉克的亡灵',
+    id: 'deserts_skeletons',
+    title: '祖尔法拉克的亡灵',
     description: '古老的巨魔墓穴中出现了亡灵！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'skeleton', target: 5 }
+      { key: 'kill_skeleton', type: QuestType.KILL, description: '杀死5只骷髅', target: 5, enemyId: 'skeleton' }
     ],
-    reward: { xp: 170, gold: 85 }
+    levelRequirement: 12,
+    xpReward: 170,
+    goldReward: 85,
+    boardId: 'deserts'
   },
   feralas_trolls: {
-    key: 'feralas_trolls',
-    locationKey: 'feralas',
-    name: '暗矛巨魔',
+    id: 'feralas_trolls',
+    title: '暗矛巨魔',
     description: '菲拉斯的森林深处有暗矛巨魔的活动！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'troll', target: 5 }
+      { key: 'kill_troll', type: QuestType.KILL, description: '杀死5只巨魔', target: 5, enemyId: 'troll' }
     ],
-    reward: { xp: 200, gold: 100 }
+    levelRequirement: 14,
+    xpReward: 200,
+    goldReward: 100,
+    boardId: 'feralas'
   },
   feralas_dragons: {
-    key: 'feralas_dragons',
-    locationKey: 'feralas',
-    name: '龙的领地',
+    id: 'feralas_dragons',
+    title: '龙的领地',
     description: '幼龙在菲拉斯出没，这是勇士的试炼！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'dragon_whelp', target: 2 }
+      { key: 'kill_dragon', type: QuestType.KILL, description: '杀死2只幼龙', target: 2, enemyId: 'dragon_whelp' }
     ],
-    reward: { xp: 250, gold: 125 }
+    levelRequirement: 14,
+    xpReward: 250,
+    goldReward: 125,
+    boardId: 'feralas'
   },
   borean_tundra_trolls: {
-    key: 'borean_tundra_trolls',
-    locationKey: 'borean_tundra',
-    name: '冰雪巨魔',
+    id: 'borean_tundra_trolls',
+    title: '冰雪巨魔',
     description: '冰雪巨魔在苔原上游荡，威胁着远征军的安全！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'troll', target: 5 }
+      { key: 'kill_troll', type: QuestType.KILL, description: '杀死5只巨魔', target: 5, enemyId: 'troll' }
     ],
-    reward: { xp: 300, gold: 150 }
+    levelRequirement: 18,
+    xpReward: 300,
+    goldReward: 150,
+    boardId: 'borean_tundra'
   },
   borean_tundra_nerubians: {
-    key: 'borean_tundra_nerubians',
-    locationKey: 'borean_tundra',
-    name: '蛛魔入侵',
+    id: 'borean_tundra_nerubians',
+    title: '蛛魔入侵',
     description: '蛛魔从地下涌出，必须将其击退！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'nerubian', target: 4 }
+      { key: 'kill_nerubian', type: QuestType.KILL, description: '杀死4只蛛魔', target: 4, enemyId: 'nerubian' }
     ],
-    reward: { xp: 320, gold: 160 }
+    levelRequirement: 18,
+    xpReward: 320,
+    goldReward: 160,
+    boardId: 'borean_tundra'
   },
   storm_peaks_dwarves: {
-    key: 'storm_peaks_dwarves',
-    locationKey: 'storm_peaks',
-    name: '铁矮人的威胁',
+    id: 'storm_peaks_dwarves',
+    title: '铁矮人的威胁',
     description: '铁矮人正在风暴峭壁进行秘密活动！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'iron_dwarf', target: 5 }
+      { key: 'kill_dwarf', type: QuestType.KILL, description: '杀死5只铁矮人', target: 5, enemyId: 'iron_dwarf' }
     ],
-    reward: { xp: 350, gold: 175 }
+    levelRequirement: 20,
+    xpReward: 350,
+    goldReward: 175,
+    boardId: 'storm_peaks'
   },
   storm_peaks_elementals: {
-    key: 'storm_peaks_elementals',
-    locationKey: 'storm_peaks',
-    name: '元素暴动',
+    id: 'storm_peaks_elementals',
+    title: '元素暴动',
     description: '风暴元素变得异常狂暴！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'elemental', target: 4 }
+      { key: 'kill_elemental', type: QuestType.KILL, description: '杀死4只元素', target: 4, enemyId: 'elemental' }
     ],
-    reward: { xp: 340, gold: 170 }
+    levelRequirement: 20,
+    xpReward: 340,
+    goldReward: 170,
+    boardId: 'storm_peaks'
   },
   icecrown_demons: {
-    key: 'icecrown_demons',
-    locationKey: 'icecrown',
-    name: '巫妖王的仆从',
+    id: 'icecrown_demons',
+    title: '巫妖王的仆从',
     description: '大量恶魔在冰冠冰川聚集，必须阻止他们的阴谋！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'demon', target: 6 }
+      { key: 'kill_demon', type: QuestType.KILL, description: '杀死6只恶魔', target: 6, enemyId: 'demon' }
     ],
-    reward: { xp: 500, gold: 250 }
+    levelRequirement: 20,
+    xpReward: 500,
+    goldReward: 250,
+    boardId: 'icecrown'
   },
   icecrown_undead: {
-    key: 'icecrown_undead',
-    locationKey: 'icecrown',
-    name: '天灾军团的末日',
+    id: 'icecrown_undead',
+    title: '天灾军团的末日',
     description: '给予亡灵天灾最后的一击！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'undead', target: 5 }
+      { key: 'kill_undead', type: QuestType.KILL, description: '杀死5只亡灵', target: 5, enemyId: 'undead' }
     ],
-    reward: { xp: 480, gold: 240 }
+    levelRequirement: 20,
+    xpReward: 480,
+    goldReward: 240,
+    boardId: 'icecrown'
   },
   darkshore_murlocs: {
-    key: 'darkshore_murlocs',
-    locationKey: 'darkshore',
-    name: '鱼人侵扰',
+    id: 'darkshore_murlocs',
+    title: '鱼人侵扰',
     description: '鱼人正在黑海岸的海滩上作乱！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'murloc', target: 6 }
+      { key: 'kill_murloc', type: QuestType.KILL, description: '杀死6只鱼人', target: 6, enemyId: 'murloc' }
     ],
-    reward: { xp: 70, gold: 35 }
+    levelRequirement: 2,
+    xpReward: 70,
+    goldReward: 35,
+    boardId: 'darkshore'
   },
   darkshore_bears: {
-    key: 'darkshore_bears',
-    locationKey: 'darkshore',
-    name: '狂野之熊',
+    id: 'darkshore_bears',
+    title: '狂野之熊',
     description: '凶猛的熊威胁着黑海岸的旅者安全！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'bear', target: 4 }
+      { key: 'kill_bear', type: QuestType.KILL, description: '杀死4只熊', target: 4, enemyId: 'bear' }
     ],
-    reward: { xp: 80, gold: 40 }
+    levelRequirement: 2,
+    xpReward: 80,
+    goldReward: 40,
+    boardId: 'darkshore'
   },
   darkshore_gnolls: {
-    key: 'darkshore_gnolls',
-    locationKey: 'darkshore',
-    name: '豺狼人袭击',
+    id: 'darkshore_gnolls',
+    title: '豺狼人袭击',
     description: '豺狼人正在袭击沿海的营地！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'gnoll', target: 5 }
+      { key: 'kill_gnoll', type: QuestType.KILL, description: '杀死5只豺狼人', target: 5, enemyId: 'gnoll' }
     ],
-    reward: { xp: 75, gold: 38 }
+    levelRequirement: 2,
+    xpReward: 75,
+    goldReward: 38,
+    boardId: 'darkshore'
   },
   bloodmyst_elementals: {
-    key: 'bloodmyst_elementals',
-    locationKey: 'bloodmyst',
-    name: '元素暴动',
+    id: 'bloodmyst_elementals',
+    title: '元素暴动',
     description: '元素生物在秘血岛肆虐！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'elemental', target: 5 }
+      { key: 'kill_elemental', type: QuestType.KILL, description: '杀死5只元素', target: 5, enemyId: 'elemental' }
     ],
-    reward: { xp: 90, gold: 45 }
+    levelRequirement: 3,
+    xpReward: 90,
+    goldReward: 45,
+    boardId: 'bloodmyst'
   },
   bloodmyst_demons: {
-    key: 'bloodmyst_demons',
-    locationKey: 'bloodmyst',
-    name: '恶魔踪迹',
+    id: 'bloodmyst_demons',
+    title: '恶魔踪迹',
     description: '发现恶魔的踪迹，必须消灭他们！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'demon', target: 2 }
+      { key: 'kill_demon', type: QuestType.KILL, description: '杀死2只恶魔', target: 2, enemyId: 'demon' }
     ],
-    reward: { xp: 100, gold: 50 }
+    levelRequirement: 3,
+    xpReward: 100,
+    goldReward: 50,
+    boardId: 'bloodmyst'
   },
   winterspring_elementals: {
-    key: 'winterspring_elementals',
-    locationKey: 'winterspring',
-    name: '寒冰元素',
+    id: 'winterspring_elementals',
+    title: '寒冰元素',
     description: '冰霜元素正在冬泉谷狂暴！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'elemental', target: 5 }
+      { key: 'kill_elemental', type: QuestType.KILL, description: '杀死5只元素', target: 5, enemyId: 'elemental' }
     ],
-    reward: { xp: 200, gold: 100 }
+    levelRequirement: 14,
+    xpReward: 200,
+    goldReward: 100,
+    boardId: 'winterspring'
   },
   winterspring_demons: {
-    key: 'winterspring_demons',
-    locationKey: 'winterspring',
-    name: '恶魔威胁',
+    id: 'winterspring_demons',
+    title: '恶魔威胁',
     description: '恶魔潜入了冬泉谷，必须驱逐他们！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'demon', target: 3 }
+      { key: 'kill_demon', type: QuestType.KILL, description: '杀死3只恶魔', target: 3, enemyId: 'demon' }
     ],
-    reward: { xp: 220, gold: 110 }
+    levelRequirement: 14,
+    xpReward: 220,
+    goldReward: 110,
+    boardId: 'winterspring'
   },
   winterspring_dragons: {
-    key: 'winterspring_dragons',
-    locationKey: 'winterspring',
-    name: '蓝龙幼崽',
+    id: 'winterspring_dragons',
+    title: '蓝龙幼崽',
     description: '蓝龙幼崽需要被击败以证明你的勇气！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'dragon_whelp', target: 2 }
+      { key: 'kill_dragon', type: QuestType.KILL, description: '杀死2只幼龙', target: 2, enemyId: 'dragon_whelp' }
     ],
-    reward: { xp: 230, gold: 115 }
+    levelRequirement: 14,
+    xpReward: 230,
+    goldReward: 115,
+    boardId: 'winterspring'
   },
   hyjal_demons: {
-    key: 'hyjal_demons',
-    locationKey: 'hyjal',
-    name: '燃烧军团残党',
+    id: 'hyjal_demons',
+    title: '燃烧军团残党',
     description: '燃烧军团的余孽仍在海加尔山活动！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'demon', target: 4 }
+      { key: 'kill_demon', type: QuestType.KILL, description: '杀死4只恶魔', target: 4, enemyId: 'demon' }
     ],
-    reward: { xp: 280, gold: 140 }
+    levelRequirement: 16,
+    xpReward: 280,
+    goldReward: 140,
+    boardId: 'hyjal'
   },
   hyjal_dragons: {
-    key: 'hyjal_dragons',
-    locationKey: 'hyjal',
-    name: '守护巨龙',
+    id: 'hyjal_dragons',
+    title: '守护巨龙',
     description: '与守护巨龙的幼崽战斗以获得认可！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'dragon_whelp', target: 3 }
+      { key: 'kill_dragon', type: QuestType.KILL, description: '杀死3只幼龙', target: 3, enemyId: 'dragon_whelp' }
     ],
-    reward: { xp: 300, gold: 150 }
+    levelRequirement: 16,
+    xpReward: 300,
+    goldReward: 150,
+    boardId: 'hyjal'
   },
   felwood_demons: {
-    key: 'felwood_demons',
-    locationKey: 'felwood',
-    name: '恶魔腐化',
+    id: 'felwood_demons',
+    title: '恶魔腐化',
     description: '清除费伍德森林中的恶魔！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'demon', target: 4 }
+      { key: 'kill_demon', type: QuestType.KILL, description: '杀死4只恶魔', target: 4, enemyId: 'demon' }
     ],
-    reward: { xp: 180, gold: 90 }
+    levelRequirement: 12,
+    xpReward: 180,
+    goldReward: 90,
+    boardId: 'felwood'
   },
   felwood_trolls: {
-    key: 'felwood_trolls',
-    locationKey: 'felwood',
-    name: '森林巨魔',
+    id: 'felwood_trolls',
+    title: '森林巨魔',
     description: '巨魔在费伍德森林作乱！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'troll', target: 3 }
+      { key: 'kill_troll', type: QuestType.KILL, description: '杀死3只巨魔', target: 3, enemyId: 'troll' }
     ],
-    reward: { xp: 170, gold: 85 }
+    levelRequirement: 12,
+    xpReward: 170,
+    goldReward: 85,
+    boardId: 'felwood'
   },
   desolace_centaurs: {
-    key: 'desolace_centaurs',
-    locationKey: 'desolace',
-    name: '半人马冲突',
+    id: 'desolace_centaurs',
+    title: '半人马冲突',
     description: '半人马部落正在互相争斗，需要调停！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'centaur', target: 5 }
+      { key: 'kill_centaur', type: QuestType.KILL, description: '杀死5只半人马', target: 5, enemyId: 'centaur' }
     ],
-    reward: { xp: 190, gold: 95 }
+    levelRequirement: 10,
+    xpReward: 190,
+    goldReward: 95,
+    boardId: 'desolace'
   },
   desolace_skeletons: {
-    key: 'desolace_skeletons',
-    locationKey: 'desolace',
-    name: '亡灵遗迹',
+    id: 'desolace_skeletons',
+    title: '亡灵遗迹',
     description: '古老的遗迹中出现了亡灵！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'skeleton', target: 6 }
+      { key: 'kill_skeleton', type: QuestType.KILL, description: '杀死6只骷髅', target: 6, enemyId: 'skeleton' }
     ],
-    reward: { xp: 180, gold: 90 }
+    levelRequirement: 10,
+    xpReward: 180,
+    goldReward: 90,
+    boardId: 'desolace'
   },
   durotar_boars: {
-    key: 'durotar_boars',
-    locationKey: 'durotar',
-    name: '野猪威胁',
+    id: 'durotar_boars',
+    title: '野猪威胁',
     description: '野猪正在破坏杜隆塔尔的农田！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'boar', target: 6 }
+      { key: 'kill_boar', type: QuestType.KILL, description: '杀死6只野猪', target: 6, enemyId: 'boar' }
     ],
-    reward: { xp: 60, gold: 30 }
+    levelRequirement: 1,
+    xpReward: 60,
+    goldReward: 30,
+    boardId: 'durotar'
   },
   durotar_quilboars: {
-    key: 'durotar_quilboars',
-    locationKey: 'durotar',
-    name: '野猪人入侵',
+    id: 'durotar_quilboars',
+    title: '野猪人入侵',
     description: '野猪人正在入侵杜隆塔尔！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'quilboar', target: 4 }
+      { key: 'kill_quilboar', type: QuestType.KILL, description: '杀死4只野猪人', target: 4, enemyId: 'quilboar' }
     ],
-    reward: { xp: 70, gold: 35 }
+    levelRequirement: 1,
+    xpReward: 70,
+    goldReward: 35,
+    boardId: 'durotar'
   },
   mulgore_wolves: {
-    key: 'mulgore_wolves',
-    locationKey: 'mulgore',
-    name: '狼群威胁',
+    id: 'mulgore_wolves',
+    title: '狼群威胁',
     description: '灰狼正在莫高雷游荡！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'wolf', target: 5 }
+      { key: 'kill_wolf', type: QuestType.KILL, description: '杀死5只狼', target: 5, enemyId: 'wolf' }
     ],
-    reward: { xp: 55, gold: 28 }
+    levelRequirement: 1,
+    xpReward: 55,
+    goldReward: 28,
+    boardId: 'mulgore'
   },
   mulgore_bears: {
-    key: 'mulgore_bears',
-    locationKey: 'mulgore',
-    name: '熊之领地',
+    id: 'mulgore_bears',
+    title: '熊之领地',
     description: '棕熊占据了莫高雷的部分地区！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'bear', target: 4 }
+      { key: 'kill_bear', type: QuestType.KILL, description: '杀死4只熊', target: 4, enemyId: 'bear' }
     ],
-    reward: { xp: 65, gold: 32 }
+    levelRequirement: 1,
+    xpReward: 65,
+    goldReward: 32,
+    boardId: 'mulgore'
   },
   barrens_quilboars: {
-    key: 'barrens_quilboars',
-    locationKey: 'barrens',
-    name: '野猪人营地',
+    id: 'barrens_quilboars',
+    title: '野猪人营地',
     description: '摧毁野猪人的营地！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'quilboar', target: 5 }
+      { key: 'kill_quilboar', type: QuestType.KILL, description: '杀死5只野猪人', target: 5, enemyId: 'quilboar' }
     ],
-    reward: { xp: 90, gold: 45 }
+    levelRequirement: 5,
+    xpReward: 90,
+    goldReward: 45,
+    boardId: 'barrens'
   },
   barrens_centaurs: {
-    key: 'barrens_centaurs',
-    locationKey: 'barrens',
-    name: '半人马掠夺',
+    id: 'barrens_centaurs',
+    title: '半人马掠夺',
     description: '半人马正在掠夺贫瘠之地的商队！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'centaur', target: 4 }
+      { key: 'kill_centaur', type: QuestType.KILL, description: '杀死4只半人马', target: 4, enemyId: 'centaur' }
     ],
-    reward: { xp: 100, gold: 50 }
+    levelRequirement: 5,
+    xpReward: 100,
+    goldReward: 50,
+    boardId: 'barrens'
   },
   thousand_needles_centaurs: {
-    key: 'thousand_needles_centaurs',
-    locationKey: 'thousand_needles',
-    name: '千针石林的半人马',
+    id: 'thousand_needles_centaurs',
+    title: '千针石林的半人马',
     description: '半人马控制了千针石林的高地！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'centaur', target: 5 }
+      { key: 'kill_centaur', type: QuestType.KILL, description: '杀死5只半人马', target: 5, enemyId: 'centaur' }
     ],
-    reward: { xp: 160, gold: 80 }
+    levelRequirement: 10,
+    xpReward: 160,
+    goldReward: 80,
+    boardId: 'thousand_needles'
   },
   thousand_needles_harpies: {
-    key: 'thousand_needles_harpies',
-    locationKey: 'thousand_needles',
-    name: '鹰身人巢穴',
+    id: 'thousand_needles_harpies',
+    title: '鹰身人巢穴',
     description: '鹰身人在千针石林筑巢！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'harpy', target: 4 }
+      { key: 'kill_harpy', type: QuestType.KILL, description: '杀死4只鹰身人', target: 4, enemyId: 'harpy' }
     ],
-    reward: { xp: 150, gold: 75 }
+    levelRequirement: 10,
+    xpReward: 150,
+    goldReward: 75,
+    boardId: 'thousand_needles'
   },
   silithus_silithids: {
-    key: 'silithus_silithids',
-    locationKey: 'silithus',
-    name: '异种虫入侵',
+    id: 'silithus_silithids',
+    title: '异种虫入侵',
     description: '异种虫正在希利苏斯肆虐！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'silithid', target: 4 }
+      { key: 'kill_silithid', type: QuestType.KILL, description: '杀死4只异种虫', target: 4, enemyId: 'silithid' }
     ],
-    reward: { xp: 260, gold: 130 }
+    levelRequirement: 18,
+    xpReward: 260,
+    goldReward: 130,
+    boardId: 'silithus'
   },
   silithus_demons: {
-    key: 'silithus_demons',
-    locationKey: 'silithus',
-    name: '其拉的秘密',
+    id: 'silithus_demons',
+    title: '其拉的秘密',
     description: '发现了恶魔与异种虫勾结的证据！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'demon', target: 3 }
+      { key: 'kill_demon', type: QuestType.KILL, description: '杀死3只恶魔', target: 3, enemyId: 'demon' }
     ],
-    reward: { xp: 280, gold: 140 }
+    levelRequirement: 18,
+    xpReward: 280,
+    goldReward: 140,
+    boardId: 'silithus'
   },
   western_plaguelands_undead: {
-    key: 'western_plaguelands_undead',
-    locationKey: 'western_plaguelands',
-    name: '通灵学院的亡灵',
+    id: 'western_plaguelands_undead',
+    title: '通灵学院的亡灵',
     description: '通灵学院的亡灵正在向外扩散！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'undead', target: 6 }
+      { key: 'kill_undead', type: QuestType.KILL, description: '杀死6只亡灵', target: 6, enemyId: 'undead' }
     ],
-    reward: { xp: 220, gold: 110 }
+    levelRequirement: 12,
+    xpReward: 220,
+    goldReward: 110,
+    boardId: 'western_plaguelands'
   },
   western_plaguelands_ghouls: {
-    key: 'western_plaguelands_ghouls',
-    locationKey: 'western_plaguelands',
-    name: '食尸鬼潮',
+    id: 'western_plaguelands_ghouls',
+    title: '食尸鬼潮',
     description: '大量食尸鬼涌出墓地！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'ghoul', target: 5 }
+      { key: 'kill_ghoul', type: QuestType.KILL, description: '杀死5只食尸鬼', target: 5, enemyId: 'ghoul' }
     ],
-    reward: { xp: 210, gold: 105 }
+    levelRequirement: 12,
+    xpReward: 210,
+    goldReward: 105,
+    boardId: 'western_plaguelands'
   },
   loch_modan_kobolds: {
-    key: 'loch_modan_kobolds',
-    locationKey: 'loch_modan',
-    name: '狗头人矿洞',
+    id: 'loch_modan_kobolds',
+    title: '狗头人矿洞',
     description: '狗头人占据了洛克莫丹的矿洞！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'kobold', target: 6 }
+      { key: 'kill_kobold', type: QuestType.KILL, description: '杀死6只狗头人', target: 6, enemyId: 'kobold' }
     ],
-    reward: { xp: 80, gold: 40 }
+    levelRequirement: 3,
+    xpReward: 80,
+    goldReward: 40,
+    boardId: 'loch_modan'
   },
   loch_modan_spiders: {
-    key: 'loch_modan_spiders',
-    locationKey: 'loch_modan',
-    name: '洞穴蜘蛛',
+    id: 'loch_modan_spiders',
+    title: '洞穴蜘蛛',
     description: '巨型蜘蛛在洞穴中结网！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'spider', target: 4 }
+      { key: 'kill_spider', type: QuestType.KILL, description: '杀死4只蜘蛛', target: 4, enemyId: 'spider' }
     ],
-    reward: { xp: 90, gold: 45 }
+    levelRequirement: 3,
+    xpReward: 90,
+    goldReward: 45,
+    boardId: 'loch_modan'
   },
   wetlands_murlocs: {
-    key: 'wetlands_murlocs',
-    locationKey: 'wetlands',
-    name: '沼泽鱼人',
+    id: 'wetlands_murlocs',
+    title: '沼泽鱼人',
     description: '鱼人在湿地的沼泽中泛滥！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'murloc', target: 6 }
+      { key: 'kill_murloc', type: QuestType.KILL, description: '杀死6只鱼人', target: 6, enemyId: 'murloc' }
     ],
-    reward: { xp: 110, gold: 55 }
+    levelRequirement: 6,
+    xpReward: 110,
+    goldReward: 55,
+    boardId: 'wetlands'
   },
   wetlands_trolls: {
-    key: 'wetlands_trolls',
-    locationKey: 'wetlands',
-    name: '沼泽巨魔',
+    id: 'wetlands_trolls',
+    title: '沼泽巨魔',
     description: '巨魔潜伏在湿地深处！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'troll', target: 3 }
+      { key: 'kill_troll', type: QuestType.KILL, description: '杀死3只巨魔', target: 3, enemyId: 'troll' }
     ],
-    reward: { xp: 130, gold: 65 }
+    levelRequirement: 6,
+    xpReward: 130,
+    goldReward: 65,
+    boardId: 'wetlands'
   },
   arathi_orcs: {
-    key: 'arathi_orcs',
-    locationKey: 'arathi',
-    name: '阿拉希兽人',
+    id: 'arathi_orcs',
+    title: '阿拉希兽人',
     description: '兽人在阿拉希高地活动！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'orc', target: 5 }
+      { key: 'kill_orc', type: QuestType.KILL, description: '杀死5只兽人', target: 5, enemyId: 'orc' }
     ],
-    reward: { xp: 170, gold: 85 }
+    levelRequirement: 10,
+    xpReward: 170,
+    goldReward: 85,
+    boardId: 'arathi'
   },
   arathi_trolls: {
-    key: 'arathi_trolls',
-    locationKey: 'arathi',
-    name: '巨魔遗迹',
+    id: 'arathi_trolls',
+    title: '巨魔遗迹',
     description: '古老的巨魔遗迹中仍有巨魔出没！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'troll', target: 4 }
+      { key: 'kill_troll', type: QuestType.KILL, description: '杀死4只巨魔', target: 4, enemyId: 'troll' }
     ],
-    reward: { xp: 180, gold: 90 }
+    levelRequirement: 10,
+    xpReward: 180,
+    goldReward: 90,
+    boardId: 'arathi'
   },
   hillsbrad_orcs: {
-    key: 'hillsbrad_orcs',
-    locationKey: 'hillsbrad',
-    name: '兽人斥候',
+    id: 'hillsbrad_orcs',
+    title: '兽人斥候',
     description: '兽人斥候正在刺探情报！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'orc', target: 4 }
+      { key: 'kill_orc', type: QuestType.KILL, description: '杀死4只兽人', target: 4, enemyId: 'orc' }
     ],
-    reward: { xp: 120, gold: 60 }
+    levelRequirement: 6,
+    xpReward: 120,
+    goldReward: 60,
+    boardId: 'hillsbrad'
   },
   hillsbrad_bandits: {
-    key: 'hillsbrad_bandits',
-    locationKey: 'hillsbrad',
-    name: '丘陵强盗',
+    id: 'hillsbrad_bandits',
+    title: '丘陵强盗',
     description: '强盗在希尔斯布莱德丘陵横行！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'bandit', target: 5 }
+      { key: 'kill_bandit', type: QuestType.KILL, description: '杀死5名强盗', target: 5, enemyId: 'bandit' }
     ],
-    reward: { xp: 130, gold: 65 }
+    levelRequirement: 6,
+    xpReward: 130,
+    goldReward: 65,
+    boardId: 'hillsbrad'
   },
   deadwind_demons: {
-    key: 'deadwind_demons',
-    locationKey: 'deadwind',
-    name: '卡拉赞的恶魔',
+    id: 'deadwind_demons',
+    title: '卡拉赞的恶魔',
     description: '卡拉赞周围出现了恶魔！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'demon', target: 4 }
+      { key: 'kill_demon', type: QuestType.KILL, description: '杀死4只恶魔', target: 4, enemyId: 'demon' }
     ],
-    reward: { xp: 250, gold: 125 }
+    levelRequirement: 16,
+    xpReward: 250,
+    goldReward: 125,
+    boardId: 'deadwind'
   },
   deadwind_undead: {
-    key: 'deadwind_undead',
-    locationKey: 'deadwind',
-    name: '徘徊的亡灵',
+    id: 'deadwind_undead',
+    title: '徘徊的亡灵',
     description: '亡灵在逆风小径徘徊！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'undead', target: 5 }
+      { key: 'kill_undead', type: QuestType.KILL, description: '杀死5只亡灵', target: 5, enemyId: 'undead' }
     ],
-    reward: { xp: 240, gold: 120 }
+    levelRequirement: 16,
+    xpReward: 240,
+    goldReward: 120,
+    boardId: 'deadwind'
   },
   burning_steppes_orcs: {
-    key: 'burning_steppes_orcs',
-    locationKey: 'burning_steppes',
-    name: '黑石兽人',
+    id: 'burning_steppes_orcs',
+    title: '黑石兽人',
     description: '黑石兽人在燃烧平原活动！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'orc', target: 5 }
+      { key: 'kill_orc', type: QuestType.KILL, description: '杀死5只兽人', target: 5, enemyId: 'orc' }
     ],
-    reward: { xp: 260, gold: 130 }
+    levelRequirement: 15,
+    xpReward: 260,
+    goldReward: 130,
+    boardId: 'burning_steppes'
   },
   burning_steppes_dragons: {
-    key: 'burning_steppes_dragons',
-    locationKey: 'burning_steppes',
-    name: '红龙幼崽',
+    id: 'burning_steppes_dragons',
+    title: '红龙幼崽',
     description: '红龙幼崽在燃烧平原出没！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'dragon_whelp', target: 3 }
+      { key: 'kill_dragon', type: QuestType.KILL, description: '杀死3只幼龙', target: 3, enemyId: 'dragon_whelp' }
     ],
-    reward: { xp: 280, gold: 140 }
+    levelRequirement: 15,
+    xpReward: 280,
+    goldReward: 140,
+    boardId: 'burning_steppes'
   },
   searing_gorge_elementals: {
-    key: 'searing_gorge_elementals',
-    locationKey: 'searing_gorge',
-    name: '火焰元素',
+    id: 'searing_gorge_elementals',
+    title: '火焰元素',
     description: '火焰元素从熔岩中涌出！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'elemental', target: 5 }
+      { key: 'kill_elemental', type: QuestType.KILL, description: '杀死5只元素', target: 5, enemyId: 'elemental' }
     ],
-    reward: { xp: 220, gold: 110 }
+    levelRequirement: 12,
+    xpReward: 220,
+    goldReward: 110,
+    boardId: 'searing_gorge'
   },
   searing_gorge_spiders: {
-    key: 'searing_gorge_spiders',
-    locationKey: 'searing_gorge',
-    name: '熔岩蜘蛛',
+    id: 'searing_gorge_spiders',
+    title: '熔岩蜘蛛',
     description: '蜘蛛在灼热峡谷的岩石间筑巢！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'spider', target: 4 }
+      { key: 'kill_spider', type: QuestType.KILL, description: '杀死4只蜘蛛', target: 4, enemyId: 'spider' }
     ],
-    reward: { xp: 210, gold: 105 }
+    levelRequirement: 12,
+    xpReward: 210,
+    goldReward: 105,
+    boardId: 'searing_gorge'
   },
   badlands_elementals: {
-    key: 'badlands_elementals',
-    locationKey: 'badlands',
-    name: '土元素',
+    id: 'badlands_elementals',
+    title: '土元素',
     description: '土元素在荒芜之地苏醒！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'elemental', target: 5 }
+      { key: 'kill_elemental', type: QuestType.KILL, description: '杀死5只元素', target: 5, enemyId: 'elemental' }
     ],
-    reward: { xp: 200, gold: 100 }
+    levelRequirement: 10,
+    xpReward: 200,
+    goldReward: 100,
+    boardId: 'badlands'
   },
   badlands_ogres: {
-    key: 'badlands_ogres',
-    locationKey: 'badlands',
-    name: '食人魔营地',
+    id: 'badlands_ogres',
+    title: '食人魔营地',
     description: '食人魔在荒芜之地建立了营地！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'ogre', target: 3 }
+      { key: 'kill_ogre', type: QuestType.KILL, description: '杀死3只食人魔', target: 3, enemyId: 'ogre' }
     ],
-    reward: { xp: 210, gold: 105 }
+    levelRequirement: 10,
+    xpReward: 210,
+    goldReward: 105,
+    boardId: 'badlands'
   },
   swamp_of_sorrows_murlocs: {
-    key: 'swamp_of_sorrows_murlocs',
-    locationKey: 'swamp_of_sorrows',
-    name: '沼泽鱼人',
+    id: 'swamp_of_sorrows_murlocs',
+    title: '沼泽鱼人',
     description: '鱼人在悲伤沼泽中繁衍！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'murloc', target: 6 }
+      { key: 'kill_murloc', type: QuestType.KILL, description: '杀死6只鱼人', target: 6, enemyId: 'murloc' }
     ],
-    reward: { xp: 140, gold: 70 }
+    levelRequirement: 8,
+    xpReward: 140,
+    goldReward: 70,
+    boardId: 'swamp_of_sorrows'
   },
   swamp_of_sorrows_trolls: {
-    key: 'swamp_of_sorrows_trolls',
-    locationKey: 'swamp_of_sorrows',
-    name: '神庙巨魔',
+    id: 'swamp_of_sorrows_trolls',
+    title: '神庙巨魔',
     description: '巨魔守卫着古老的神庙！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'troll', target: 4 }
+      { key: 'kill_troll', type: QuestType.KILL, description: '杀死4只巨魔', target: 4, enemyId: 'troll' }
     ],
-    reward: { xp: 160, gold: 80 }
+    levelRequirement: 8,
+    xpReward: 160,
+    goldReward: 80,
+    boardId: 'swamp_of_sorrows'
   },
   blasted_lands_demons: {
-    key: 'blasted_lands_demons',
-    locationKey: 'blasted_lands',
-    name: '黑暗之门的恶魔',
+    id: 'blasted_lands_demons',
+    title: '黑暗之门的恶魔',
     description: '恶魔从黑暗之门涌出！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'demon', target: 4 }
+      { key: 'kill_demon', type: QuestType.KILL, description: '杀死4只恶魔', target: 4, enemyId: 'demon' }
     ],
-    reward: { xp: 300, gold: 150 }
+    levelRequirement: 18,
+    xpReward: 300,
+    goldReward: 150,
+    boardId: 'blasted_lands'
   },
   blasted_lands_dragons: {
-    key: 'blasted_lands_dragons',
-    locationKey: 'blasted_lands',
-    name: '黑龙幼崽',
+    id: 'blasted_lands_dragons',
+    title: '黑龙幼崽',
     description: '黑龙幼崽在诅咒之地游荡！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'dragon_whelp', target: 3 }
+      { key: 'kill_dragon', type: QuestType.KILL, description: '杀死3只幼龙', target: 3, enemyId: 'dragon_whelp' }
     ],
-    reward: { xp: 320, gold: 160 }
+    levelRequirement: 18,
+    xpReward: 320,
+    goldReward: 160,
+    boardId: 'blasted_lands'
   },
   hinterlands_trolls: {
-    key: 'hinterlands_trolls',
-    locationKey: 'hinterlands',
-    name: '辛萨罗巨魔',
+    id: 'hinterlands_trolls',
+    title: '辛萨罗巨魔',
     description: '巨魔在辛特兰的高山上建立了城市！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'troll', target: 5 }
+      { key: 'kill_troll', type: QuestType.KILL, description: '杀死5只巨魔', target: 5, enemyId: 'troll' }
     ],
-    reward: { xp: 200, gold: 100 }
+    levelRequirement: 12,
+    xpReward: 200,
+    goldReward: 100,
+    boardId: 'hinterlands'
   },
   hinterlands_wolves: {
-    key: 'hinterlands_wolves',
-    locationKey: 'hinterlands',
-    name: '巨狼威胁',
+    id: 'hinterlands_wolves',
+    title: '巨狼威胁',
     description: '巨狼在辛特兰的森林中游荡！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'wolf', target: 6 }
+      { key: 'kill_wolf', type: QuestType.KILL, description: '杀死6只狼', target: 6, enemyId: 'wolf' }
     ],
-    reward: { xp: 190, gold: 95 }
+    levelRequirement: 12,
+    xpReward: 190,
+    goldReward: 95,
+    boardId: 'hinterlands'
   },
   zuldrak_vrykul: {
-    key: 'zuldrak_vrykul',
-    locationKey: 'zuldrak',
-    name: '维库人战士',
+    id: 'zuldrak_vrykul',
+    title: '维库人战士',
     description: '维库人在祖达克巡逻！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'vrykul', target: 5 }
+      { key: 'kill_vrykul', type: QuestType.KILL, description: '杀死5名维库人', target: 5, enemyId: 'vrykul' }
     ],
-    reward: { xp: 260, gold: 130 }
+    levelRequirement: 18,
+    xpReward: 260,
+    goldReward: 130,
+    boardId: 'zuldrak'
   },
   zuldrak_undead: {
-    key: 'zuldrak_undead',
-    locationKey: 'zuldrak',
-    name: '亡灵天灾',
+    id: 'zuldrak_undead',
+    title: '亡灵天灾',
     description: '亡灵正在入侵祖达克！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'undead', target: 6 }
+      { key: 'kill_undead', type: QuestType.KILL, description: '杀死6只亡灵', target: 6, enemyId: 'undead' }
     ],
-    reward: { xp: 270, gold: 135 }
+    levelRequirement: 18,
+    xpReward: 270,
+    goldReward: 135,
+    boardId: 'zuldrak'
   },
   howling_fjord_vrykul: {
-    key: 'howling_fjord_vrykul',
-    locationKey: 'howling_fjord',
-    name: '乌特加德维库人',
+    id: 'howling_fjord_vrykul',
+    title: '乌特加德维库人',
     description: '维库人从乌特加德要塞出击！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'vrykul', target: 5 }
+      { key: 'kill_vrykul', type: QuestType.KILL, description: '杀死5名维库人', target: 5, enemyId: 'vrykul' }
     ],
-    reward: { xp: 230, gold: 115 }
+    levelRequirement: 16,
+    xpReward: 230,
+    goldReward: 115,
+    boardId: 'howling_fjord'
   },
   howling_fjord_trolls: {
-    key: 'howling_fjord_trolls',
-    locationKey: 'howling_fjord',
-    name: '冰巨魔',
+    id: 'howling_fjord_trolls',
+    title: '冰巨魔',
     description: '冰巨魔在峡湾中活动！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'troll', target: 4 }
+      { key: 'kill_troll', type: QuestType.KILL, description: '杀死4只巨魔', target: 4, enemyId: 'troll' }
     ],
-    reward: { xp: 240, gold: 120 }
+    levelRequirement: 16,
+    xpReward: 240,
+    goldReward: 120,
+    boardId: 'howling_fjord'
   },
   dragonblight_dragons: {
-    key: 'dragonblight_dragons',
-    locationKey: 'dragonblight',
-    name: '龙眠神殿',
+    id: 'dragonblight_dragons',
+    title: '龙眠神殿',
     description: '与龙眠神殿的幼崽交流（战斗）！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'dragon_whelp', target: 3 }
+      { key: 'kill_dragon', type: QuestType.KILL, description: '杀死3只幼龙', target: 3, enemyId: 'dragon_whelp' }
     ],
-    reward: { xp: 300, gold: 150 }
+    levelRequirement: 18,
+    xpReward: 300,
+    goldReward: 150,
+    boardId: 'dragonblight'
   },
   dragonblight_undead: {
-    key: 'dragonblight_undead',
-    locationKey: 'dragonblight',
-    name: '天灾入侵',
+    id: 'dragonblight_undead',
+    title: '天灾入侵',
     description: '亡灵天灾正在亵渎巨龙的安息之地！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'undead', target: 6 }
+      { key: 'kill_undead', type: QuestType.KILL, description: '杀死6只亡灵', target: 6, enemyId: 'undead' }
     ],
-    reward: { xp: 290, gold: 145 }
+    levelRequirement: 18,
+    xpReward: 290,
+    goldReward: 145,
+    boardId: 'dragonblight'
   },
   grizzly_hills_bears: {
-    key: 'grizzly_hills_bears',
-    locationKey: 'grizzly_hills',
-    name: '灰熊之王',
+    id: 'grizzly_hills_bears',
+    title: '灰熊之王',
     description: '灰熊在丘陵中称霸！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'bear', target: 5 }
+      { key: 'kill_bear', type: QuestType.KILL, description: '杀死5只熊', target: 5, enemyId: 'bear' }
     ],
-    reward: { xp: 240, gold: 120 }
+    levelRequirement: 16,
+    xpReward: 240,
+    goldReward: 120,
+    boardId: 'grizzly_hills'
   },
   grizzly_hills_orcs: {
-    key: 'grizzly_hills_orcs',
-    locationKey: 'grizzly_hills',
-    name: '兽人斥候',
+    id: 'grizzly_hills_orcs',
+    title: '兽人斥候',
     description: '兽人在灰熊丘陵活动！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'orc', target: 4 }
+      { key: 'kill_orc', type: QuestType.KILL, description: '杀死4只兽人', target: 4, enemyId: 'orc' }
     ],
-    reward: { xp: 250, gold: 125 }
+    levelRequirement: 16,
+    xpReward: 250,
+    goldReward: 125,
+    boardId: 'grizzly_hills'
   },
   sholazar_tigers: {
-    key: 'sholazar_tigers',
-    locationKey: 'sholazar',
-    name: '丛林猛虎',
+    id: 'sholazar_tigers',
+    title: '丛林猛虎',
     description: '猛虎在索拉查盆地的丛林中捕猎！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'tiger', target: 4 }
+      { key: 'kill_tiger', type: QuestType.KILL, description: '杀死4只猛虎', target: 4, enemyId: 'tiger' }
     ],
-    reward: { xp: 260, gold: 130 }
+    levelRequirement: 18,
+    xpReward: 260,
+    goldReward: 130,
+    boardId: 'sholazar'
   },
   sholazar_spiders: {
-    key: 'sholazar_spiders',
-    locationKey: 'sholazar',
-    name: '巨型蜘蛛',
+    id: 'sholazar_spiders',
+    title: '巨型蜘蛛',
     description: '巨型蜘蛛在丛林中结网！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'spider', target: 5 }
+      { key: 'kill_spider', type: QuestType.KILL, description: '杀死5只蜘蛛', target: 5, enemyId: 'spider' }
     ],
-    reward: { xp: 250, gold: 125 }
+    levelRequirement: 18,
+    xpReward: 250,
+    goldReward: 125,
+    boardId: 'sholazar'
   },
   crystal_song_elementals: {
-    key: 'crystal_song_elementals',
-    locationKey: 'crystal_song',
-    name: '水晶元素',
+    id: 'crystal_song_elementals',
+    title: '水晶元素',
     description: '水晶元素在晶歌森林中苏醒！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'elemental', target: 5 }
+      { key: 'kill_elemental', type: QuestType.KILL, description: '杀死5只元素', target: 5, enemyId: 'elemental' }
     ],
-    reward: { xp: 300, gold: 150 }
+    levelRequirement: 20,
+    xpReward: 300,
+    goldReward: 150,
+    boardId: 'crystal_song'
   },
   crystal_song_dragons: {
-    key: 'crystal_song_dragons',
-    locationKey: 'crystal_song',
-    name: '蓝龙军团',
+    id: 'crystal_song_dragons',
+    title: '蓝龙军团',
     description: '蓝龙在晶歌森林上空巡逻！',
+    type: QuestType.KILL,
     objectives: [
-      { type: 'kill', enemyKey: 'dragon_whelp', target: 3 }
+      { key: 'kill_dragon', type: QuestType.KILL, description: '杀死3只幼龙', target: 3, enemyId: 'dragon_whelp' }
     ],
-    reward: { xp: 320, gold: 160 }
+    levelRequirement: 20,
+    xpReward: 320,
+    goldReward: 160,
+    boardId: 'crystal_song'
   }
 }
