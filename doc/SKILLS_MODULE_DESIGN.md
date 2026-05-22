@@ -78,9 +78,9 @@ export interface ISkillsService {
   // === 技能操作 ===
   canUseSkill(skillId: string): boolean;
   useSkill(skillId: string): SkillUseResult;
-  equipSkill(skillId: string, slotIndex: number): boolean;
-  unequipSkill(slotIndex: number): boolean;
-  swapSkills(slotIndex1: number, slotIndex2: number): boolean;
+  equipSkill(skillId: string, slotIndex: SkillSlotIndex): boolean;
+  unequipSkill(slotIndex: SkillSlotIndex): boolean;
+  swapSkills(slotIndex1: SkillSlotIndex, slotIndex2: SkillSlotIndex): boolean;
   
   // === 技能类型查询 ===
   getSkillsByType(type: SkillType): Skill[];

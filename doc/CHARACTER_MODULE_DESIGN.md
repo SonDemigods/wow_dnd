@@ -170,6 +170,25 @@ export interface Attributes {
   initiative?: number;        // 先手值
 }
 
+/** 阵营数据 */
+export interface FactionData {
+  id: FactionType;
+  name: string;
+  icon: string;
+  color: string;
+  description: string;
+}
+
+/** 种族数据 */
+export interface RaceData {
+  id: RaceType;
+  name: string;
+  icon: string;
+  factionId: FactionType;
+  bonus?: Partial<Stats>;
+  description: string;
+}
+
 /** 角色信息 */
 export interface Character {
   name: string;

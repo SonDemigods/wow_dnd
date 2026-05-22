@@ -92,6 +92,38 @@ export interface ICombatService {
 ### 数据类型定义
 
 ```typescript
+/** 背包物品 */
+export interface InventoryItem {
+  itemId: string;
+  count: number;
+}
+
+/** 敌人数据 */
+export interface EnemyData {
+  name: string;
+  icon: string;
+  maxHp: number;
+  damage: [number, number];
+  xp: number;
+  gold: number;
+  dangerLevel: string;
+  isBoss?: boolean;
+  physicalAttack?: number;
+  physicalDefense?: number;
+  magicAttack?: number;
+  magicDefense?: number;
+  critChance?: number;
+  dodgeChance?: number;
+}
+
+/** 敌人实例 */
+export interface EnemyInstance extends EnemyData {
+  id: string;
+  level: number;
+  hp: number;
+  loot: InventoryItem[];
+}
+
 /** 战斗状态 */
 export type CombatState = 'idle' | 'preparing' | 'fighting' | 'ended';
 
@@ -120,17 +152,9 @@ export interface CombatActionResult {
   message: string;
 }
 
-/** 战斗日志条目 */
-export interface CombatLogEntry {
-  turn: number;
-  actor: 'player' | 'enemy';
-  action: CombatActionType;
-  result: CombatActionResult;
-  timestamp: number;
-}
-
 /** 战斗伤害事件 */
 export interface CombatDamageEvent {
+  action: CombatActionType;
   target: 'player' | 'enemy';
   amount: number;
   isCrit: boolean;
@@ -139,15 +163,15 @@ export interface CombatDamageEvent {
 
 /** 战斗开始事件 */
 export interface CombatStartEvent {
-  enemy: Enemy;
+  enemy: EnemyInstance;
 }
 
 /** 战斗结束事件 */
 export interface CombatEndEvent {
   result: CombatResult;
-  enemy: Enemy;
+  enemy: EnemyInstance;
   expGained: number;
-  loot?: any[];
+  loot?: InventoryItem[];
 }
 
 /** 战斗日志数据结构 */
