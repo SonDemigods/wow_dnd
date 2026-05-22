@@ -49,13 +49,26 @@ export type RaceType =
   | 'nightelf'
   | 'draenei'
   | 'worgen'
+  | 'voidelf'
+  | 'lightforgeddraenei'
+  | 'darkirondwarf'
+  | 'kul_tiran'
+  | 'mechagnome'
   | 'pandaren'
   | 'orc'
   | 'undead'
   | 'tauren'
   | 'troll'
   | 'bloodelves'
-  | 'goblin';
+  | 'goblin'
+  | 'nightborne'
+  | 'highmountaintauren'
+  | 'magharorc'
+  | 'zandalari'
+  | 'vulpera'
+  | 'dracthyr'
+  | 'earthen'
+  | 'harenei';
 
 /**
  * 种族数据接口
@@ -113,7 +126,8 @@ export type ClassType =
   | 'shaman'
   | 'deathknight'
   | 'monk'
-  | 'demonhunter';
+  | 'demonhunter'
+  | 'evoker';
 
 /**
  * 职业数据接口
@@ -121,7 +135,8 @@ export type ClassType =
  * @property {string} name - 职业名称
  * @property {string} icon - 职业图标
  * @property {keyof Stats} primaryStat - 主属性
- * @property {string[]} factionsIds - 可选阵营ID
+ * @property {FactionType[]} factionsIds - 可选阵营ID列表
+ * @property {RaceType[]} raceIds - 可选种族ID列表
  * @property {string} description - 职业描述
  * @property {string} color - 职业主色调
  * @property {Partial<Stats>} [bonus] - 职业属性调整值
@@ -132,6 +147,7 @@ export interface ClassData {
   icon: string;
   primaryStat: keyof Stats;
   factionsIds: FactionType[];
+  raceIds: RaceType[];
   description: string;
   color: string;
   bonus?: Partial<Stats>;

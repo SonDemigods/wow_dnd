@@ -8,112 +8,147 @@ import type { ClassData, Skill } from '../types';
 
 export const CLASSES: Record<string, ClassData> = {
   warrior: {
+    id: 'warrior',
     name: '战士',
     icon: '⚔️',
     primaryStat: 'str',
-    factions: ['alliance', 'horde', 'neutral'],
+    factionsIds: ['alliance', 'horde', 'neutral'],
+    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
     description: '精通所有武器和护甲，是战场上的中坚力量',
     color: '#C79C6E',
     bonus: { str: 2, con: 1, int: -1, wis: -1 }
   },
-  mage: {
-    name: '法师',
-    icon: '🧙',
-    primaryStat: 'int',
-    factions: ['alliance', 'horde', 'neutral'],
-    description: '操控奥术、冰霜和火焰魔法的施法者',
-    color: '#69CCF0',
-    bonus: { int: 3, str: -1, con: -1, cha: -1 }
-  },
   paladin: {
+    id: 'paladin',
     name: '圣骑士',
     icon: '🔨',
     primaryStat: 'cha',
-    factions: ['alliance', 'horde'],
+    factionsIds: ['alliance', 'horde', 'neutral'],
+    raceIds: ['human', 'dwarf', 'draenei', 'lightforgeddraenei', 'darkirondwarf', 'tauren', 'bloodelves', 'zandalari', 'earthen'],
     description: '神圣的战士，使用圣光之力治疗和保护',
     color: '#F58CBA',
     bonus: { str: 1, con: 1, dex: -1, int: -1, cha: 2 }
   },
   hunter: {
+    id: 'hunter',
     name: '猎人',
     icon: '🏹',
     primaryStat: 'dex',
-    factions: ['alliance', 'horde', 'neutral'],
+    factionsIds: ['alliance', 'horde', 'neutral'],
+    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
     description: '远程武器和野兽控制专家',
     color: '#ABD473',
     bonus: { dex: 2, con: 1, int: -1, wis: 1, cha: -1 }
   },
   rogue: {
+    id: 'rogue',
     name: '潜行者',
     icon: '🗡️',
     primaryStat: 'dex',
-    factions: ['alliance', 'horde', 'neutral'],
+    factionsIds: ['alliance', 'horde', 'neutral'],
+    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
     description: '擅长偷袭和暗杀的敏捷杀手',
     color: '#FFF569',
     bonus: { dex: 3, str: -1, con: -1, int: -1 }
   },
-  warlock: {
-    name: '术士',
-    icon: '💜',
-    primaryStat: 'int',
-    factions: ['alliance', 'horde', 'neutral'],
-    description: '使用暗影魔法的危险施法者',
-    color: '#9482C9',
-    bonus: { int: 2, str: -1, con: -1, wis: -1, cha: 2 }
-  },
-  druid: {
-    name: '德鲁伊',
-    icon: '🌿',
-    primaryStat: 'wis',
-    factions: ['alliance', 'horde', 'neutral'],
-    description: '自然的守护者，可变身为多种形态',
-    color: '#FF7D0A',
-    bonus: { dex: 1, int: 1, wis: 2, str: -1, cha: -1 }
-  },
   priest: {
+    id: 'priest',
     name: '牧师',
     icon: '✝️',
     primaryStat: 'wis',
-    factions: ['alliance', 'horde', 'neutral'],
+    factionsIds: ['alliance', 'horde', 'neutral'],
+    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
     description: '圣光的仆从，擅长治疗和驱散',
     color: '#FFFFFF',
     bonus: { int: 1, wis: 3, str: -1, dex: -1, con: -1, cha: -1 }
   },
   shaman: {
-    name: '萨满',
+    id: 'shaman',
+    name: '萨满祭司',
     icon: '⚡',
     primaryStat: 'wis',
-    factions: ['alliance', 'horde', 'neutral'],
+    factionsIds: ['alliance', 'horde', 'neutral'],
+    raceIds: ['dwarf', 'draenei', 'darkirondwarf', 'kul_tiran', 'orc', 'tauren', 'troll', 'goblin', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'earthen', 'harenei'],
     description: '与元素之灵沟通的通灵者',
     color: '#0070DE',
     bonus: { con: 1, int: 1, wis: 2, dex: -1, cha: -1 }
   },
-  deathknight: {
-    name: '死亡骑士',
-    icon: '💀',
-    primaryStat: 'str',
-    factions: ['alliance', 'horde'],
-    description: '由死亡中苏醒的骑士，掌控着冰霜与暗影之力',
-    color: '#C41F3B',
-    bonus: { str: 2, con: 1, dex: -1, int: -1, wis: -1, cha: 1 }
+  mage: {
+    id: 'mage',
+    name: '法师',
+    icon: '🧙',
+    primaryStat: 'int',
+    factionsIds: ['alliance', 'horde', 'neutral'],
+    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
+    description: '操控奥术、冰霜和火焰魔法的施法者',
+    color: '#69CCF0',
+    bonus: { int: 3, str: -1, con: -1, cha: -1 }
+  },
+  warlock: {
+    id: 'warlock',
+    name: '术士',
+    icon: '💜',
+    primaryStat: 'int',
+    factionsIds: ['alliance', 'horde', 'neutral'],
+    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
+    description: '使用暗影魔法的危险施法者',
+    color: '#9482C9',
+    bonus: { int: 2, str: -1, con: -1, wis: -1, cha: 2 }
   },
   monk: {
+    id: 'monk',
     name: '武僧',
     icon: '🥋',
     primaryStat: 'dex',
-    factions: ['alliance', 'horde', 'neutral'],
+    factionsIds: ['alliance', 'horde', 'neutral'],
+    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'earthen', 'harenei'],
     description: '掌握着古老武学之道的修行者',
     color: '#00FF96',
     bonus: { dex: 2, con: 1, wis: 1, str: -1, cha: -1 }
   },
+  druid: {
+    id: 'druid',
+    name: '德鲁伊',
+    icon: '🌿',
+    primaryStat: 'wis',
+    factionsIds: ['alliance', 'horde', 'neutral'],
+    raceIds: ['nightelf', 'worgen', 'kul_tiran', 'tauren', 'troll', 'highmountaintauren', 'zandalari', 'harenei'],
+    description: '自然的守护者，可变身为多种形态',
+    color: '#FF7D0A',
+    bonus: { dex: 1, int: 1, wis: 2, str: -1, cha: -1 }
+  },
+  deathknight: {
+    id: 'deathknight',
+    name: '死亡骑士',
+    icon: '💀',
+    primaryStat: 'str',
+    factionsIds: ['alliance', 'horde'],
+    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren'],
+    description: '由死亡中苏醒的骑士，掌控着冰霜与暗影之力',
+    color: '#C41F3B',
+    bonus: { str: 2, con: 1, dex: -1, int: -1, wis: -1, cha: 1 }
+  },
   demonhunter: {
+    id: 'demonhunter',
     name: '恶魔猎手',
     icon: '👿',
     primaryStat: 'dex',
-    factions: ['alliance', 'horde'],
+    factionsIds: ['alliance', 'horde'],
+    raceIds: ['nightelf', 'bloodelves'],
     description: '为对抗燃烧军团而生的暗影猎人',
     color: '#A330C9',
     bonus: { dex: 3, int: 1, con: -1, wis: -1 }
+  },
+  evoker: {
+    id: 'evoker',
+    name: '唤魔师',
+    icon: '🐉',
+    primaryStat: 'int',
+    factionsIds: ['neutral'],
+    raceIds: ['dracthyr'],
+    description: '驾驭虚空之力的龙裔法师',
+    color: '#33937F',
+    bonus: { int: 3, con: -1 }
   }
 };
 
@@ -127,8 +162,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 8,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'warrior_thunder_clap',
@@ -138,8 +172,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 18 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'warrior_shield_bash',
@@ -149,8 +182,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 8,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 15 },
-      unlockLevel: 2,
-      isUnlocked: true
+      unlockLevel: 2
     },
     {
       id: 'warrior_execute',
@@ -160,8 +192,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 32 },
-      unlockLevel: 3,
-      isUnlocked: true
+      unlockLevel: 3
     },
     {
       id: 'warrior_sweeping_strike',
@@ -171,8 +202,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 9,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 17 },
-      unlockLevel: 4,
-      isUnlocked: true
+      unlockLevel: 4
     },
     {
       id: 'warrior_whirlwind',
@@ -182,8 +212,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 15,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 26 },
-      unlockLevel: 5,
-      isUnlocked: true
+      unlockLevel: 5
     },
     {
       id: 'warrior_mighty_blow',
@@ -193,8 +222,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 29 },
-      unlockLevel: 6,
-      isUnlocked: true
+      unlockLevel: 6
     },
     {
       id: 'warrior_charge',
@@ -204,8 +232,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 20 },
-      unlockLevel: 7,
-      isUnlocked: true
+      unlockLevel: 7
     },
     {
       id: 'warrior_overpower',
@@ -215,8 +242,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 8,
-      isUnlocked: true
+      unlockLevel: 8
     },
     {
       id: 'warrior_blade_storm',
@@ -226,8 +252,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 25,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 45 },
-      unlockLevel: 10,
-      isUnlocked: true
+      unlockLevel: 10
     }
   ],
   mage: [
@@ -239,8 +264,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 25 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'mage_frost_nova',
@@ -250,8 +274,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'mage_arcane_missiles',
@@ -261,8 +284,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 6,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 13 },
-      unlockLevel: 2,
-      isUnlocked: true
+      unlockLevel: 2
     },
     {
       id: 'mage_frost_bolt',
@@ -272,8 +294,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 3,
-      isUnlocked: true
+      unlockLevel: 3
     },
     {
       id: 'mage_fire_storm',
@@ -283,8 +304,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 18,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 31 },
-      unlockLevel: 4,
-      isUnlocked: true
+      unlockLevel: 4
     },
     {
       id: 'mage_cone_of_cold',
@@ -294,8 +314,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 5,
-      isUnlocked: true
+      unlockLevel: 5
     },
     {
       id: 'mage_arcane_blast',
@@ -305,8 +324,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 8,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
-      unlockLevel: 6,
-      isUnlocked: true
+      unlockLevel: 6
     },
     {
       id: 'mage_mirror_image',
@@ -316,8 +334,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 15,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 10 },
-      unlockLevel: 7,
-      isUnlocked: true
+      unlockLevel: 7
     },
     {
       id: 'mage_blizzard',
@@ -327,8 +344,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 22,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 37 },
-      unlockLevel: 8,
-      isUnlocked: true
+      unlockLevel: 8
     },
     {
       id: 'mage_pyroblast',
@@ -338,8 +354,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 30,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 55 },
-      unlockLevel: 10,
-      isUnlocked: true
+      unlockLevel: 10
     }
   ],
   paladin: [
@@ -351,8 +366,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'heal',
       effect: { type: 'heal', value: 31 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'paladin_divine_judgment',
@@ -362,8 +376,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 21 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'paladin_avengers_shield',
@@ -373,8 +386,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 18 },
-      unlockLevel: 2,
-      isUnlocked: true
+      unlockLevel: 2
     },
     {
       id: 'paladin_flash_of_light',
@@ -384,8 +396,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 8,
       type: 'heal',
       effect: { type: 'heal', value: 18 },
-      unlockLevel: 3,
-      isUnlocked: true
+      unlockLevel: 3
     },
     {
       id: 'paladin_consecration',
@@ -395,8 +406,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 15 },
-      unlockLevel: 4,
-      isUnlocked: true
+      unlockLevel: 4
     },
     {
       id: 'paladin_divine_strike',
@@ -406,8 +416,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 5,
-      isUnlocked: true
+      unlockLevel: 5
     },
     {
       id: 'paladin_divine_shock',
@@ -417,8 +426,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 6,
-      isUnlocked: true
+      unlockLevel: 6
     },
     {
       id: 'paladin_greater_heal',
@@ -428,8 +436,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 20,
       type: 'heal',
       effect: { type: 'heal', value: 42 },
-      unlockLevel: 7,
-      isUnlocked: true
+      unlockLevel: 7
     },
     {
       id: 'paladin_judgment',
@@ -439,8 +446,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 16,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 29 },
-      unlockLevel: 8,
-      isUnlocked: true
+      unlockLevel: 8
     },
     {
       id: 'paladin_divine_storm',
@@ -450,8 +456,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 28,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 43 },
-      unlockLevel: 10,
-      isUnlocked: true
+      unlockLevel: 10
     }
   ],
   hunter: [
@@ -463,8 +468,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 8,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 20 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'hunter_arcane_shot',
@@ -474,8 +478,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 18 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'hunter_multi_shot',
@@ -485,8 +488,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 2,
-      isUnlocked: true
+      unlockLevel: 2
     },
     {
       id: 'hunter_serpent_sting',
@@ -496,8 +498,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 8,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 15 },
-      unlockLevel: 3,
-      isUnlocked: true
+      unlockLevel: 3
     },
     {
       id: 'hunter_volley',
@@ -507,8 +508,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 19 },
-      unlockLevel: 4,
-      isUnlocked: true
+      unlockLevel: 4
     },
     {
       id: 'hunter_trap',
@@ -518,8 +518,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 19 },
-      unlockLevel: 5,
-      isUnlocked: true
+      unlockLevel: 5
     },
     {
       id: 'hunter_concussive_shot',
@@ -529,8 +528,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 6,
-      isUnlocked: true
+      unlockLevel: 6
     },
     {
       id: 'hunter_aimed_shot',
@@ -540,8 +538,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 16,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 31 },
-      unlockLevel: 7,
-      isUnlocked: true
+      unlockLevel: 7
     },
     {
       id: 'hunter_chimera_shot',
@@ -551,8 +548,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 18,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 28 },
-      unlockLevel: 8,
-      isUnlocked: true
+      unlockLevel: 8
     },
     {
       id: 'hunter_kill_command',
@@ -562,8 +558,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 25,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 48 },
-      unlockLevel: 10,
-      isUnlocked: true
+      unlockLevel: 10
     }
   ],
   rogue: [
@@ -575,8 +570,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 8,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 20 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'rogue_backstab',
@@ -586,8 +580,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 30 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'rogue_gouge',
@@ -597,8 +590,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 17 },
-      unlockLevel: 2,
-      isUnlocked: true
+      unlockLevel: 2
     },
     {
       id: 'rogue_mutilate',
@@ -608,8 +600,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 28 },
-      unlockLevel: 3,
-      isUnlocked: true
+      unlockLevel: 3
     },
     {
       id: 'rogue_poisoned_strike',
@@ -619,8 +610,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 20 },
-      unlockLevel: 4,
-      isUnlocked: true
+      unlockLevel: 4
     },
     {
       id: 'rogue_slice',
@@ -630,8 +620,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 5,
-      isUnlocked: true
+      unlockLevel: 5
     },
     {
       id: 'rogue_eviscerate',
@@ -641,8 +630,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 26 },
-      unlockLevel: 6,
-      isUnlocked: true
+      unlockLevel: 6
     },
     {
       id: 'rogue_rupture',
@@ -652,8 +640,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 22 },
-      unlockLevel: 7,
-      isUnlocked: true
+      unlockLevel: 7
     },
     {
       id: 'rogue_vital_strike',
@@ -663,8 +650,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 28 },
-      unlockLevel: 8,
-      isUnlocked: true
+      unlockLevel: 8
     },
     {
       id: 'rogue_ambush',
@@ -674,8 +660,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 22,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 50 },
-      unlockLevel: 10,
-      isUnlocked: true
+      unlockLevel: 10
     }
   ],
   warlock: [
@@ -687,8 +672,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'warlock_corruption',
@@ -698,8 +682,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 8,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 17 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'warlock_agony',
@@ -709,8 +692,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 15 },
-      unlockLevel: 2,
-      isUnlocked: true
+      unlockLevel: 2
     },
     {
       id: 'warlock_immolate',
@@ -720,8 +702,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
-      unlockLevel: 3,
-      isUnlocked: true
+      unlockLevel: 3
     },
     {
       id: 'warlock_shadow_burn',
@@ -731,8 +712,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 26 },
-      unlockLevel: 4,
-      isUnlocked: true
+      unlockLevel: 4
     },
     {
       id: 'warlock_seed_of_corruption',
@@ -742,8 +722,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 18,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 28 },
-      unlockLevel: 5,
-      isUnlocked: true
+      unlockLevel: 5
     },
     {
       id: 'warlock_life_drain',
@@ -753,8 +732,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'heal',
       effect: { type: 'heal', value: 15 },
-      unlockLevel: 6,
-      isUnlocked: true
+      unlockLevel: 6
     },
     {
       id: 'warlock_soul_fire',
@@ -764,8 +742,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 20,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 35 },
-      unlockLevel: 7,
-      isUnlocked: true
+      unlockLevel: 7
     },
     {
       id: 'warlock_demon_bolt',
@@ -775,8 +752,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 16,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 26 },
-      unlockLevel: 8,
-      isUnlocked: true
+      unlockLevel: 8
     },
     {
       id: 'warlock_chaos_bolt',
@@ -786,8 +762,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 30,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 55 },
-      unlockLevel: 10,
-      isUnlocked: true
+      unlockLevel: 10
     }
   ],
   druid: [
@@ -799,8 +774,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 22 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'druid_wrath',
@@ -810,8 +784,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 8,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 17 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'druid_moonfire',
@@ -821,8 +794,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
-      unlockLevel: 2,
-      isUnlocked: true
+      unlockLevel: 2
     },
     {
       id: 'druid_rejuvenation',
@@ -832,8 +804,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'heal',
       effect: { type: 'heal', value: 26 },
-      unlockLevel: 3,
-      isUnlocked: true
+      unlockLevel: 3
     },
     {
       id: 'druid_regrowth',
@@ -843,8 +814,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'heal',
       effect: { type: 'heal', value: 15 },
-      unlockLevel: 4,
-      isUnlocked: true
+      unlockLevel: 4
     },
     {
       id: 'druid_thorns',
@@ -854,8 +824,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 8,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 12 },
-      unlockLevel: 5,
-      isUnlocked: true
+      unlockLevel: 5
     },
     {
       id: 'druid_feral_charge',
@@ -865,8 +834,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 6,
-      isUnlocked: true
+      unlockLevel: 6
     },
     {
       id: 'druid_berserking_regeneration',
@@ -876,8 +844,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 16,
       type: 'heal',
       effect: { type: 'heal', value: 31 },
-      unlockLevel: 7,
-      isUnlocked: true
+      unlockLevel: 7
     },
     {
       id: 'druid_shred',
@@ -887,8 +854,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 26 },
-      unlockLevel: 8,
-      isUnlocked: true
+      unlockLevel: 8
     },
     {
       id: 'druid_stars_fall',
@@ -898,8 +864,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 28,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 52 },
-      unlockLevel: 10,
-      isUnlocked: true
+      unlockLevel: 10
     }
   ],
   priest: [
@@ -911,8 +876,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'heal',
       effect: { type: 'heal', value: 28 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'priest_fast_heal',
@@ -922,8 +886,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'heal',
       effect: { type: 'heal', value: 22 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'priest_smite',
@@ -933,8 +896,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
-      unlockLevel: 2,
-      isUnlocked: true
+      unlockLevel: 2
     },
     {
       id: 'priest_holy_fire',
@@ -944,8 +906,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 3,
-      isUnlocked: true
+      unlockLevel: 3
     },
     {
       id: 'priest_lightwell',
@@ -955,8 +916,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'heal',
       effect: { type: 'heal', value: 18 },
-      unlockLevel: 4,
-      isUnlocked: true
+      unlockLevel: 4
     },
     {
       id: 'priest_renew',
@@ -966,8 +926,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 8,
       type: 'heal',
       effect: { type: 'heal', value: 13 },
-      unlockLevel: 5,
-      isUnlocked: true
+      unlockLevel: 5
     },
     {
       id: 'priest_mind_flay',
@@ -977,8 +936,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 18 },
-      unlockLevel: 6,
-      isUnlocked: true
+      unlockLevel: 6
     },
     {
       id: 'priest_prayer_of_healing',
@@ -988,8 +946,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 18,
       type: 'heal',
       effect: { type: 'heal', value: 35 },
-      unlockLevel: 7,
-      isUnlocked: true
+      unlockLevel: 7
     },
     {
       id: 'priest_holy_nova',
@@ -999,8 +956,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 16,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 8,
-      isUnlocked: true
+      unlockLevel: 8
     },
     {
       id: 'priest_divine_hymn',
@@ -1010,8 +966,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 32,
       type: 'heal',
       effect: { type: 'heal', value: 55 },
-      unlockLevel: 10,
-      isUnlocked: true
+      unlockLevel: 10
     }
   ],
   shaman: [
@@ -1023,8 +978,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'shaman_lava_burst',
@@ -1034,8 +988,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 28 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'shaman_healing_wave',
@@ -1045,8 +998,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'heal',
       effect: { type: 'heal', value: 30 },
-      unlockLevel: 2,
-      isUnlocked: true
+      unlockLevel: 2
     },
     {
       id: 'shaman_chain_heal',
@@ -1056,8 +1008,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 16,
       type: 'heal',
       effect: { type: 'heal', value: 25 },
-      unlockLevel: 3,
-      isUnlocked: true
+      unlockLevel: 3
     },
     {
       id: 'shaman_flame_shock',
@@ -1067,8 +1018,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
-      unlockLevel: 4,
-      isUnlocked: true
+      unlockLevel: 4
     },
     {
       id: 'shaman_frost_shock',
@@ -1078,8 +1028,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 18 },
-      unlockLevel: 5,
-      isUnlocked: true
+      unlockLevel: 5
     },
     {
       id: 'shaman_chain_lightning',
@@ -1089,8 +1038,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 16,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 25 },
-      unlockLevel: 6,
-      isUnlocked: true
+      unlockLevel: 6
     },
     {
       id: 'shaman_windfury',
@@ -1100,8 +1048,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 26 },
-      unlockLevel: 7,
-      isUnlocked: true
+      unlockLevel: 7
     },
     {
       id: 'shaman_elemental_strike',
@@ -1111,8 +1058,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 16,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 28 },
-      unlockLevel: 8,
-      isUnlocked: true
+      unlockLevel: 8
     },
     {
       id: 'shaman_earthquake',
@@ -1122,8 +1068,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 28,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 50 },
-      unlockLevel: 10,
-      isUnlocked: true
+      unlockLevel: 10
     }
   ],
   deathknight: [
@@ -1135,8 +1080,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'dk_shadow_strike',
@@ -1146,8 +1090,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'dk_death_grip',
@@ -1157,8 +1100,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 18 },
-      unlockLevel: 2,
-      isUnlocked: true
+      unlockLevel: 2
     },
     {
       id: 'dk_heart_strike',
@@ -1168,8 +1110,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 26 },
-      unlockLevel: 3,
-      isUnlocked: true
+      unlockLevel: 3
     },
     {
       id: 'dk_death_strike',
@@ -1179,8 +1120,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 4,
-      isUnlocked: true
+      unlockLevel: 4
     },
     {
       id: 'dk_frost_strike',
@@ -1190,8 +1130,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 26 },
-      unlockLevel: 5,
-      isUnlocked: true
+      unlockLevel: 5
     },
     {
       id: 'dk_death_and_decay',
@@ -1201,8 +1140,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 18,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 28 },
-      unlockLevel: 6,
-      isUnlocked: true
+      unlockLevel: 6
     },
     {
       id: 'dk_rune_blade_waltz',
@@ -1212,8 +1150,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 20,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 30 },
-      unlockLevel: 7,
-      isUnlocked: true
+      unlockLevel: 7
     },
     {
       id: 'dk_scourge_strike',
@@ -1223,8 +1160,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 18,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 33 },
-      unlockLevel: 8,
-      isUnlocked: true
+      unlockLevel: 8
     },
     {
       id: 'dk_sindragosas_breath',
@@ -1234,8 +1170,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 30,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 55 },
-      unlockLevel: 10,
-      isUnlocked: true
+      unlockLevel: 10
     }
   ],
   monk: [
@@ -1247,8 +1182,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 8,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 20 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'monk_tiger_palm',
@@ -1258,8 +1192,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'monk_rise_of_the_sun',
@@ -1269,8 +1202,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 28 },
-      unlockLevel: 2,
-      isUnlocked: true
+      unlockLevel: 2
     },
     {
       id: 'monk_crane_kick',
@@ -1280,8 +1212,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 25 },
-      unlockLevel: 3,
-      isUnlocked: true
+      unlockLevel: 3
     },
     {
       id: 'monk_tranquility_orb',
@@ -1291,8 +1222,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'heal',
       effect: { type: 'heal', value: 18 },
-      unlockLevel: 4,
-      isUnlocked: true
+      unlockLevel: 4
     },
     {
       id: 'monk_fists_of_fury',
@@ -1302,8 +1232,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 5,
-      isUnlocked: true
+      unlockLevel: 5
     },
     {
       id: 'monk_sweep',
@@ -1313,8 +1242,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 8,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 18 },
-      unlockLevel: 6,
-      isUnlocked: true
+      unlockLevel: 6
     },
     {
       id: 'monk_transference',
@@ -1324,8 +1252,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'heal',
       effect: { type: 'heal', value: 28 },
-      unlockLevel: 7,
-      isUnlocked: true
+      unlockLevel: 7
     },
     {
       id: 'monk_iron_mountain',
@@ -1335,8 +1262,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 16,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 28 },
-      unlockLevel: 8,
-      isUnlocked: true
+      unlockLevel: 8
     },
     {
       id: 'monk_thunder_fist',
@@ -1346,8 +1272,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 26,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 52 },
-      unlockLevel: 10,
-      isUnlocked: true
+      unlockLevel: 10
     }
   ],
   demonhunter: [
@@ -1359,8 +1284,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'dh_blade_dance',
@@ -1370,8 +1294,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 8,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 20 },
-      unlockLevel: 1,
-      isUnlocked: true
+      unlockLevel: 1
     },
     {
       id: 'dh_fel_rush',
@@ -1381,8 +1304,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 14,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 26 },
-      unlockLevel: 2,
-      isUnlocked: true
+      unlockLevel: 2
     },
     {
       id: 'dh_fel_strike',
@@ -1392,8 +1314,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 3,
-      isUnlocked: true
+      unlockLevel: 3
     },
     {
       id: 'dh_throw_glaive',
@@ -1403,8 +1324,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 22 },
-      unlockLevel: 4,
-      isUnlocked: true
+      unlockLevel: 4
     },
     {
       id: 'dh_eye_beam',
@@ -1414,8 +1334,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 18,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 35 },
-      unlockLevel: 5,
-      isUnlocked: true
+      unlockLevel: 5
     },
     {
       id: 'dh_metamorphosis',
@@ -1425,8 +1344,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 16,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 30 },
-      unlockLevel: 6,
-      isUnlocked: true
+      unlockLevel: 6
     },
     {
       id: 'dh_immolation_aura',
@@ -1436,8 +1354,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 12,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 17 },
-      unlockLevel: 7,
-      isUnlocked: true
+      unlockLevel: 7
     },
     {
       id: 'dh_chaos_nova',
@@ -1447,8 +1364,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 16,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 27 },
-      unlockLevel: 8,
-      isUnlocked: true
+      unlockLevel: 8
     },
     {
       id: 'dh_cataclysm',
@@ -1458,8 +1374,109 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       mpCost: 32,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 59 },
-      unlockLevel: 10,
-      isUnlocked: true
+      unlockLevel: 10
+    }
+  ],
+  evoker: [
+    {
+      id: 'evoker_dragon_breath',
+      name: '龙息',
+      icon: '🐉',
+      description: '释放龙息攻击',
+      mpCost: 10,
+      type: 'magic_damage',
+      effect: { type: 'magic_damage', value: 22 },
+      unlockLevel: 1
+    },
+    {
+      id: 'evoker_emerald_blossom',
+      name: '翡翠 Blossom',
+      icon: '💚',
+      description: '治疗技能',
+      mpCost: 12,
+      type: 'heal',
+      effect: { type: 'heal', value: 26 },
+      unlockLevel: 1
+    },
+    {
+      id: 'evoker_disintegrate',
+      name: '瓦解',
+      icon: '✨',
+      description: '瓦解敌人',
+      mpCost: 14,
+      type: 'magic_damage',
+      effect: { type: 'magic_damage', value: 28 },
+      unlockLevel: 2
+    },
+    {
+      id: 'evoker_essence_burst',
+      name: '精华爆发',
+      icon: '💫',
+      description: '精华能量爆发',
+      mpCost: 10,
+      type: 'magic_damage',
+      effect: { type: 'magic_damage', value: 20 },
+      unlockLevel: 3
+    },
+    {
+      id: 'evoker_shifting_embers',
+      name: '涌动余烬',
+      icon: '🔥',
+      description: '火焰攻击',
+      mpCost: 12,
+      type: 'magic_damage',
+      effect: { type: 'magic_damage', value: 24 },
+      unlockLevel: 4
+    },
+    {
+      id: 'evoker_sleep_walk',
+      name: '梦游',
+      icon: '😴',
+      description: '控制技能',
+      mpCost: 16,
+      type: 'magic_damage',
+      effect: { type: 'magic_damage', value: 22 },
+      unlockLevel: 5
+    },
+    {
+      id: 'evoker_azure_strike',
+      name: '碧蓝打击',
+      icon: '💎',
+      description: '冰霜攻击',
+      mpCost: 14,
+      type: 'magic_damage',
+      effect: { type: 'magic_damage', value: 26 },
+      unlockLevel: 6
+    },
+    {
+      id: 'evoker_ Emerald_Winds',
+      name: '翡翠之风',
+      icon: '🌪️',
+      description: '范围治疗',
+      mpCost: 18,
+      type: 'heal',
+      effect: { type: 'heal', value: 32 },
+      unlockLevel: 7
+    },
+    {
+      id: 'evoker_spiritbloom',
+      name: '灵魂绽放',
+      icon: '🌸',
+      description: '强力治疗',
+      mpCost: 20,
+      type: 'heal',
+      effect: { type: 'heal', value: 38 },
+      unlockLevel: 8
+    },
+    {
+      id: 'evoker_emerald_destruction',
+      name: '翡翠毁灭',
+      icon: '💥',
+      description: '终极技能，龙裔毁灭之力',
+      mpCost: 32,
+      type: 'magic_damage',
+      effect: { type: 'magic_damage', value: 58 },
+      unlockLevel: 10
     }
   ]
 };
