@@ -14,7 +14,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   goblin: {
     name: '豺狼人',
     icon: '👺',
-    hp: 25,
+    maxHp: 25,
     damage: [4, 8],
     xp: 15,
     gold: 5,
@@ -29,7 +29,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   kobold: {
     name: '狗头人',
     icon: '🐀',
-    hp: 20,
+    maxHp: 20,
     damage: [3, 6],
     xp: 12,
     gold: 3,
@@ -44,7 +44,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   murloc: {
     name: '鱼人',
     icon: '🐟',
-    hp: 22,
+    maxHp: 22,
     damage: [4, 7],
     xp: 14,
     gold: 4,
@@ -59,7 +59,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   skeleton: {
     name: '骷髅',
     icon: '💀',
-    hp: 30,
+    maxHp: 30,
     damage: [5, 10],
     xp: 20,
     gold: 8,
@@ -74,7 +74,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   orc: {
     name: '兽人战士',
     icon: '👹',
-    hp: 45,
+    maxHp: 45,
     damage: [8, 15],
     xp: 35,
     gold: 15,
@@ -89,7 +89,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   spider: {
     name: '剧毒蜘蛛',
     icon: '🕷️',
-    hp: 35,
+    maxHp: 35,
     damage: [6, 12],
     xp: 25,
     gold: 10,
@@ -104,7 +104,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   bandit: {
     name: '迪菲亚强盗',
     icon: '🗡️',
-    hp: 40,
+    maxHp: 40,
     damage: [7, 14],
     xp: 30,
     gold: 20,
@@ -119,7 +119,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   troll: {
     name: '丛林巨魔',
     icon: '🧌',
-    hp: 80,
+    maxHp: 80,
     damage: [12, 20],
     xp: 60,
     gold: 30,
@@ -134,7 +134,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   dragon_whelp: {
     name: '幼龙',
     icon: '🐉',
-    hp: 120,
+    maxHp: 120,
     damage: [15, 30],
     xp: 100,
     gold: 50,
@@ -150,7 +150,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   demon: {
     name: '恶魔卫士',
     icon: '👿',
-    hp: 150,
+    maxHp: 150,
     damage: [20, 35],
     xp: 150,
     gold: 75,
@@ -166,7 +166,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   wolf: {
     name: '灰狼',
     icon: '🐺',
-    hp: 28,
+    maxHp: 28,
     damage: [5, 9],
     xp: 18,
     gold: 6,
@@ -181,7 +181,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   ghoul: {
     name: '食尸鬼',
     icon: '🧟',
-    hp: 32,
+    maxHp: 32,
     damage: [6, 11],
     xp: 22,
     gold: 9,
@@ -196,7 +196,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   frostwyrm: {
     name: '冰霜巨龙',
     icon: '🐲',
-    hp: 130,
+    maxHp: 130,
     damage: [16, 32],
     xp: 110,
     gold: 55,
@@ -212,7 +212,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   iron_dwarf: {
     name: '铁矮人',
     icon: '⚒️',
-    hp: 70,
+    maxHp: 70,
     damage: [10, 18],
     xp: 55,
     gold: 28,
@@ -227,7 +227,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   elemental: {
     name: '元素生物',
     icon: '🔮',
-    hp: 65,
+    maxHp: 65,
     damage: [9, 16],
     xp: 50,
     gold: 25,
@@ -242,7 +242,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   nerubian: {
     name: '蛛魔',
     icon: '🕸️',
-    hp: 75,
+    maxHp: 75,
     damage: [11, 19],
     xp: 58,
     gold: 29,
@@ -257,7 +257,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   vrykul: {
     name: '维库人',
     icon: '⚔️',
-    hp: 78,
+    maxHp: 78,
     damage: [11, 18],
     xp: 56,
     gold: 27,
@@ -272,7 +272,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   undead: {
     name: '亡灵',
     icon: '💀',
-    hp: 35,
+    maxHp: 35,
     damage: [7, 13],
     xp: 28,
     gold: 12,
@@ -287,7 +287,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   bear: {
     name: '棕熊',
     icon: '🐻',
-    hp: 50,
+    maxHp: 50,
     damage: [8, 14],
     xp: 32,
     gold: 12,
@@ -302,7 +302,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   boar: {
     name: '野猪',
     icon: '🐗',
-    hp: 38,
+    maxHp: 38,
     damage: [6, 12],
     xp: 26,
     gold: 8,
@@ -317,7 +317,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   centaur: {
     name: '半人马',
     icon: '🏇',
-    hp: 60,
+    maxHp: 60,
     damage: [9, 16],
     xp: 45,
     gold: 20,
@@ -332,7 +332,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   harpy: {
     name: '鹰身人',
     icon: '🦅',
-    hp: 42,
+    maxHp: 42,
     damage: [7, 13],
     xp: 33,
     gold: 16,
@@ -347,7 +347,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   naga: {
     name: '纳迦',
     icon: '🐍',
-    hp: 85,
+    maxHp: 85,
     damage: [11, 19],
     xp: 65,
     gold: 35,
@@ -362,7 +362,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   ogre: {
     name: '食人魔',
     icon: '👹',
-    hp: 90,
+    maxHp: 90,
     damage: [13, 22],
     xp: 70,
     gold: 40,
@@ -377,7 +377,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   quilboar: {
     name: '野猪人',
     icon: '🐗',
-    hp: 48,
+    maxHp: 48,
     damage: [8, 15],
     xp: 38,
     gold: 18,
@@ -392,7 +392,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   scorpid: {
     name: '蝎子',
     icon: '🦂',
-    hp: 36,
+    maxHp: 36,
     damage: [7, 12],
     xp: 27,
     gold: 11,
@@ -407,7 +407,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   silithid: {
     name: '异种虫',
     icon: '🦗',
-    hp: 95,
+    maxHp: 95,
     damage: [14, 24],
     xp: 75,
     gold: 45,
@@ -422,7 +422,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   gnoll: {
     name: '豺狼人',
     icon: '🐺',
-    hp: 33,
+    maxHp: 33,
     damage: [6, 11],
     xp: 24,
     gold: 10,
@@ -437,7 +437,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   undead_knight: {
     name: '死亡骑士',
     icon: '⚔️',
-    hp: 110,
+    maxHp: 110,
     damage: [14, 26],
     xp: 90,
     gold: 50,
@@ -453,7 +453,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   lich: {
     name: '巫妖',
     icon: '💀',
-    hp: 140,
+    maxHp: 140,
     damage: [18, 32],
     xp: 120,
     gold: 65,
@@ -469,7 +469,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   frost_giant: {
     name: '冰霜巨人',
     icon: '🧊',
-    hp: 160,
+    maxHp: 160,
     damage: [20, 38],
     xp: 160,
     gold: 80,
@@ -485,7 +485,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   tiger: {
     name: '猛虎',
     icon: '🐅',
-    hp: 75,
+    maxHp: 75,
     damage: [12, 22],
     xp: 55,
     gold: 25,
@@ -500,7 +500,7 @@ export const ENEMIES: Record<string, EnemyData> = {
   dwarf: {
     name: '黑铁矮人',
     icon: '⚒️',
-    hp: 65,
+    maxHp: 65,
     damage: [10, 18],
     xp: 48,
     gold: 22,

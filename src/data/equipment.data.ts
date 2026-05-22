@@ -4,9 +4,9 @@
  * @module data/equipment
  */
 
-import type { EquipmentItem, EquipmentRarity, RarityConfig } from '../types';
+import type { EquipmentItem, ItemRarity, RarityConfig } from '../types';
 
-export const RARITY_CONFIG: Record<EquipmentRarity, RarityConfig> = {
+export const RARITY_CONFIG: Record<ItemRarity, RarityConfig> = {
   common: { name: '普通', color: '#ffffff', multiplier: 1.0 },
   uncommon: { name: '优秀', color: '#1eff00', multiplier: 1.2 },
   rare: { name: '稀有', color: '#0070dd', multiplier: 1.5 },
