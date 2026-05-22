@@ -97,6 +97,8 @@ export interface ISkillsService {
 ```typescript
 export type SkillType = 'physical_damage' | 'magic_damage' | 'heal';
 
+export type SkillSlotIndex = 0 | 1 | 2 | 3;
+
 export interface SkillEffect {
   type: SkillType;
   value: number;
@@ -112,7 +114,6 @@ export interface Skill {
   type: SkillType;
   effect: SkillEffect;
   unlockLevel: number;
-  isUnlocked: boolean;
 }
 
 export interface SkillUseResult {
@@ -121,12 +122,37 @@ export interface SkillUseResult {
   type: SkillType;
   damage?: number;
   heal?: number;
-  defense?: number;
   message: string;
 }
 
 export interface SkillBar {
-  slots: (string | null)[];  // 4个技能槽位，存储技能ID或null
+  slots: [string | null, string | null, string | null, string | null];
+}
+
+export interface SkillsData {
+  characterId: string;
+  skills: Skill[];
+  skillBar: SkillBar;
+  currentClass: string | null;
+  updatedAt: number;
+}
+
+export interface SkillQuery {
+  type?: SkillType;
+  isUnlocked?: boolean;
+  minUnlockLevel?: number;
+  maxUnlockLevel?: number;
+}
+
+export interface SkillValidationResult {
+  canUse: boolean;
+  failureReason?:
+    | 'not_in_combat'
+    | 'not_equipped'
+    | 'insufficient_mp'
+    | 'not_unlocked';
+  currentMp?: number;
+  requiredMp?: number;
 }
 ```
 

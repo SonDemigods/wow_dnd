@@ -67,15 +67,12 @@
 ```typescript
 export interface IMapService {
   getState(): MapState;
-  getContinentData(continentId: string): ContinentData | null;
   getLocationData(locationId: string): LocationData | null;
-  getAllContinents(): ContinentData[];
   getLocationsByContinent(continentId: string): LocationData[];
   getLocationMarkers(continentId: string): LocationMarker[];
   getUnlockedLocations(playerLevel: number): string[];
   isLocationUnlocked(locationId: string, playerLevel: number): boolean;
   enterLocation(locationId: string): boolean;
-  setMapMode(mode: MapMode): void;
   zoomTo(level: number): void;
   panTo(x: number, y: number): void;
   resetView(): void;
@@ -86,27 +83,15 @@ export interface IMapService {
 ### 数据类型定义
 
 ```typescript
-export type MapMode = 'world';
-
-export type LocationMarkerType = 
-  | 'dungeon' | 'raid' | 'city' | 'town' 
-  | 'village' | 'poi' | 'special';
-
-export interface LocationMarker {
-  id: string;
-  type: LocationMarkerType;
-  x: number;
-  y: number;
-  icon: string;
+export interface ContinentData {
   name: string;
-  locationId: string;
-  requiredLevel: number;
-  difficulty?: 'normal' | 'heroic' | 'mythic';
-  parentMarkerId?: string;
+  icon: string;
+  description: string;
+  position: string;
+  color: string;
 }
 
 export interface MapView {
-  mode: MapMode;
   zoomLevel: number;
   panX: number;
   panY: number;
@@ -117,6 +102,33 @@ export interface MapView {
 
 export interface MapState {
   view: MapView;
+}
+
+export interface LocationData {
+  name: string;
+  displayName: string;
+  icon: string;
+  description: string;
+  continent: string;
+  region: string;
+  enemies?: string[];
+  quests?: string[];
+  levelRange: [number, number];
+  color: string;
+  mapX: number;
+  mapY: number;
+}
+
+export interface LocationMarker {
+  id: string;
+  x: number;
+  y: number;
+  icon: string;
+  name: string;
+  locationId: string;
+  requiredLevel: number;
+  difficulty?: 'normal' | 'heroic' | 'mythic';
+  parentMarkerId?: string;
 }
 ```
 

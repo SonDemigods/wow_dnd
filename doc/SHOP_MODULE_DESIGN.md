@@ -71,26 +71,85 @@
 
 ```typescript
 export interface IShopService {
-  // === 商店操作 ===
-  openShop(shopId: string): boolean;
-  closeShop(): void;
-  refreshShop(shopId: string): boolean;
-  
-  // === 交易操作 ===
-  purchaseItem(request: PurchaseRequest): boolean;
-  sellItem(request: SellRequest): boolean;
-  
-  // === 查询操作 ===
-  getShopItems(shopId: string): ShopItem[];
-  getAvailableShops(locationId: string): ShopConfig[];
-  getPurchaseHistory(shopId: string): ShopTransaction[];
-  isShopOpen(): boolean;
-  getCurrentShopId(): string | null;
+  /**
+   * 获取商店配置
+   * @param {string} shopId - 商店ID
+   * @returns {ShopConfig | null} 商店配置
+   */
   getShopConfig(shopId: string): ShopConfig | null;
-  canAfford(price: number, quantity: number): boolean;
-  canSell(itemId: string): boolean;
-  
-  // === 系统操作 ===
+
+  /**
+   * 获取商店库存
+   * @param {string} shopId - 商店ID
+   * @returns {ShopInventory | null} 商店库存
+   */
+  getShopInventory(shopId: string): ShopInventory | null;
+
+  /**
+   * 刷新商店库存
+   * @param {string} shopId - 商店ID
+   */
+  refreshShopInventory(shopId: string): void;
+
+  /**
+   * 购买物品
+   * @param {string} shopId - 商店ID
+   * @param {string} itemId - 物品ID
+   * @param {number} [quantity] - 购买数量，默认为1
+   * @returns {boolean} 是否购买成功
+   */
+  buyItem(shopId: string, itemId: string, quantity?: number): boolean;
+
+  /**
+   * 出售物品
+   * @param {string} itemId - 物品ID
+   * @param {number} [quantity] - 出售数量，默认为1
+   * @returns {boolean} 是否出售成功
+   */
+  sellItem(itemId: string, quantity?: number): boolean;
+
+  /**
+   * 计算物品售价
+   * @param {string} itemId - 物品ID
+   * @param {ItemRarity} rarity - 物品稀有度
+   * @param {number} [priceMultiplier] - 价格倍数，默认为1
+   * @returns {number} 售价
+   */
+  calculateBuyPrice(
+    itemId: string,
+    rarity: ItemRarity,
+    priceMultiplier?: number
+  ): number;
+
+  /**
+   * 计算物品回收价
+   * @param {string} itemId - 物品ID
+   * @param {ItemRarity} rarity - 物品稀有度
+   * @returns {number} 回收价
+   */
+  calculateSellPrice(itemId: string, rarity: ItemRarity): number;
+
+  /**
+   * 获取所有商店列表
+   * @returns {ShopConfig[]} 商店配置列表
+   */
+  getAllShops(): ShopConfig[];
+
+  /**
+   * 获取指定地点的商店列表
+   * @param {string} locationId - 地点ID
+   * @returns {ShopConfig[]} 商店配置列表
+   */
+  getShopsByLocation(locationId: string): ShopConfig[];
+
+  /**
+   * 检查商店是否需要刷新
+   * @param {string} shopId - 商店ID
+   * @returns {boolean} 是否需要刷新
+   */
+  needsRefresh(shopId: string): boolean;
+
+  /** 重置所有商店数据 */
   reset(): void;
 }
 ```
@@ -98,52 +157,48 @@ export interface IShopService {
 ### 数据类型定义
 
 ```typescript
-export type ShopItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-export type ShopType = 'general' | 'weapons' | 'armor' | 'potions' | 'scrolls' | 'materials' | 'faction';
-export type ShopItemStatus = 'available' | 'limited' | 'out_of_stock';
+export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
-export interface ShopItem {
-  id: string;
-  itemTemplate: string;
-  name: string;
-  icon: string;
-  type: string;
-  rarity: ShopItemRarity;
-  description: string;
-  basePrice: number;
-  currentPrice: number;
-  stock: number;
-  maxStock: number;
-  status: ShopItemStatus;
-  canSell: boolean;
-  sellPrice: number;
-  levelRequirement?: number;
-  factionRequirement?: string;
+/** 价格变化范围 */
+export interface PriceVariation {
+  min: number;
+  max: number;
 }
 
+/** 库存变化范围 */
+export interface StockVariation {
+  min: number;
+  max: number;
+}
+
+/** 商店配置 */
 export interface ShopConfig {
   id: string;
   name: string;
-  type: ShopType;
+  type: string;
   icon: string;
   locationId: string;
+  npcId: string;
   refreshInterval: number;
   minItems: number;
   maxItems: number;
-  priceVariation: { min: number; max: number };
-  stockVariation: { min: number; max: number };
+  priceVariation: PriceVariation;
+  stockVariation: StockVariation;
 }
 
-export interface ShopTransaction {
-  id: string;
-  type: 'buy' | 'sell';
+/** 商店商品 */
+export interface ShopItem {
   itemId: string;
-  itemName: string;
-  quantity: number;
   price: number;
-  total: number;
-  timestamp: number;
+  stock: number;
+  maxStock: number;
+}
+
+/** 商店库存 */
+export interface ShopInventory {
   shopId: string;
+  items: ShopItem[];
+  lastRefresh: number;
 }
 ```
 

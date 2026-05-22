@@ -118,27 +118,37 @@ export interface IInventoryService {
 
 ```typescript
 export interface InventoryItem {
-  id: string;
-  name: string;
-  icon: string;
-  type: ItemType;
-  rarity: ItemRarity;
-  description?: string;
-  value: number;
-  stackable: boolean;
+  itemId: string;
   count: number;
-  level?: number;
-  bindOnPickup: boolean;
-  acquiredAt: number;
-  effect?: ItemEffect;
 }
 
-export type ItemType = 'weapon' | 'armor' | 'consumable' | 'quest' | 'misc';
+export type ItemType = 
+  | 'gold' | 'potion' | 'scroll' | 'food' | 'material' 
+  | 'quest' | 'weapon' | 'armor' | 'misc';
+
 export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
+export type ItemEffectType = SkillType | 'stat';
+
 export interface ItemEffect {
-  type: 'heal';
+  type: ItemEffectType;
+  value: number | Partial<Stats>;
+}
+
+export interface Item {
+  id: string;
+  name: string;
+  type: ItemType;
+  rarity: ItemRarity;
+  icon: string;
+  description: string;
+  bonus?: Partial<Stats>;
   value: number;
+  stackable: boolean;
+  hpRestore?: number;
+  mpRestore?: number;
+  consumable?: boolean;
+  template?: string;
 }
 
 // 排序相关类型
@@ -150,9 +160,19 @@ export interface ItemFilters {
   types?: ItemType[];
   rarities?: ItemRarity[];
   stackable?: boolean;
-  bindOnPickup?: boolean;
-  minLevel?: number;
-  maxLevel?: number;
+}
+
+/** 技能类型 */
+export type SkillType = 'physical_damage' | 'magic_damage' | 'heal';
+
+/** 六大核心属性 */
+export interface Stats {
+  str: number;
+  dex: number;
+  con: number;
+  int: number;
+  wis: number;
+  cha: number;
 }
 
 /**

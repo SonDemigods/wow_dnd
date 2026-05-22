@@ -91,18 +91,18 @@ export interface IEquipmentService {
   reset(): void;
   
   // 稀有度相关
-  getRarityConfig(rarity: EquipmentRarity): RarityConfig;
-  getRarityColor(rarity: EquipmentRarity): string;
-  getRarityMultiplier(rarity: EquipmentRarity): number;
-  calculateRarityBonus(baseStats: Partial<Stats>, rarity: EquipmentRarity): Partial<Stats>;
+  getRarityConfig(rarity: ItemRarity): RarityConfig;
+  getRarityColor(rarity: ItemRarity): string;
+  getRarityMultiplier(rarity: ItemRarity): number;
+  calculateRarityBonus(baseBonus: Partial<Stats>, rarity: ItemRarity): Partial<Stats>;
 }
 ```
 
 ### 数据类型定义
 
 ```typescript
-/** 装备稀有度类型 */
-export type EquipmentRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+/** 物品稀有度类型 */
+export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
 /** 稀有度配置 */
 export interface RarityConfig {
@@ -112,7 +112,7 @@ export interface RarityConfig {
 }
 
 /** 稀有度配置表 */
-export const RARITY_CONFIG: Record<EquipmentRarity, RarityConfig> = {
+export const RARITY_CONFIG: Record<ItemRarity, RarityConfig> = {
   common: { name: '普通', color: '#ffffff', multiplier: 1.0 },
   uncommon: { name: '优秀', color: '#1eff00', multiplier: 1.2 },
   rare: { name: '稀有', color: '#0070dd', multiplier: 1.5 },
@@ -126,9 +126,9 @@ export type EquipmentType = 'weapon' | 'armor';
 
 export interface EquipmentItem extends Item {
   type: EquipmentType;
-  slot: EquipmentSlot;
-  stats: Partial<Stats>;
-  rarity: EquipmentRarity;
+  slots: EquipmentSlot[];
+  bonus?: Partial<Stats>;
+  rarity: ItemRarity;
   levelRequirement?: number;
 }
 

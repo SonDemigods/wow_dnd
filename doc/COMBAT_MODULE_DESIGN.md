@@ -77,14 +77,14 @@
 ```typescript
 export interface ICombatService {
   getState(): CombatState;
-  getEnemy(): Enemy | null;
+  getEnemy(): EnemyInstance | null;
   getTurn(): 'player' | 'enemy';
-  startCombat(enemy: Enemy): void;
+  startCombat(enemy: EnemyInstance): void;
   playerAction(action: CombatAction): CombatActionResult;
   enemyTurn(): void;
   endCombat(result: CombatResult): void;
   isInCombat(): boolean;
-  getCombatLog(): CombatLogEntry[];
+  getCombatLog(): CombatLog[];
   castSkill(skillId: string, targetType: 'self' | 'enemy'): SkillCastResult;
 }
 ```
@@ -169,21 +169,21 @@ export interface CombatLog {
   heal?: number;
   isCrit: boolean;
   isDodge: boolean;
-  isBlocked: boolean;
   message: string;
 }
 
 /** 战斗事件类型 */
 export type CombatEventType = 
-  | 'attack' | 'skill_cast' | 'heal' | 'damage'
-  | 'dodge' | 'crit' | 'block' | 'flee' | 'victory' | 'defeat'
-  | 'combat_start' | 'combat_end';
+  | 'combat_start' | 'combat_end' | 'combat_turn_start' | 'combat_turn_end'
+  | 'combat_player_action' | 'combat_enemy_action' | 'combat_damage' | 'combat_heal'
+  | 'combat_skill_cast' | 'combat_item' | 'combat_flee' | 'combat_miss'
+  | 'combat_critical' | 'combat_death';
 
 /** 技能战斗效果 */
 export interface SkillCombatEffect {
   skillId: string;
   skillName: string;
-  effectType: SkillEffectType;
+  effectType: SkillType;
   targetType: 'self' | 'enemy';
   damage?: {
     base: number;
@@ -195,13 +195,11 @@ export interface SkillCombatEffect {
     base: number;
     multiplier: number;
   };
-  cooldown: number;
   manaCost: number;
 }
 
-/** 技能效果类型 */
-export type SkillEffectType = 
-  | 'damage' | 'heal';
+/** 技能类型 */
+export type SkillType = 'physical_damage' | 'magic_damage' | 'heal';
 
 /** 技能释放结果 */
 export interface SkillCastResult {

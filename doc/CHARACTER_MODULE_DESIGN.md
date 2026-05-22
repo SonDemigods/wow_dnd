@@ -91,7 +91,7 @@
 ```typescript
 export interface ICharacterService {
   // === 多角色管理 ===
-  createCharacter(name: string, faction: 'alliance' | 'horde', race: string, charClass: string): string;
+  createCharacter(name: string, factionId: FactionType, raceId: RaceType, classId: ClassType): string;
   selectCharacter(characterId: string): boolean;
   deleteCharacter(characterId: string): boolean;
   getAllCharacters(): CharacterListItem[];
@@ -105,11 +105,11 @@ export interface ICharacterService {
   getExp(): number;
   getExpToNextLevel(): number;
   getName(): string;
-  getFaction(): 'alliance' | 'horde' | null;
-  getRace(): string | null;
-  getClass(): string | null;
+  getFaction(): FactionType;
+  getRace(): RaceType;
+  getClass(): ClassType;
   getGold(): number;
-  getCharacterInfo(): CharacterInfo;
+  getCharacterInfo(): Character;
   
   // === 数据修改 ===
   addExp(amount: number): void;
@@ -124,9 +124,9 @@ export interface ICharacterService {
   
   // === 角色信息设置 ===
   setName(name: string): void;
-  setFaction(faction: 'alliance' | 'horde'): void;
-  setRace(race: string): void;
-  setClass(charClass: string): void;
+  setFactionId(factionId: FactionType): void;
+  setRace(race: RaceType): void;
+  setClass(classId: ClassType): void;
   
   // === 系统操作 ===
   reset(): void;
@@ -141,7 +141,7 @@ export interface ICharacterService {
 
 ```typescript
 /** 六大核心属性 - 仅这些属性可直接修改 */
-export interface CoreStats {
+export interface Stats {
   str: number;  // 力量 - 影响物理攻击
   dex: number;  // 敏捷 - 影响闪避和暴击
   con: number;  // 体质 - 影响生命值上限
@@ -151,7 +151,7 @@ export interface CoreStats {
 }
 
 /** 次级属性 - 根据核心属性自动计算，不可直接修改 */
-export interface DerivedAttributes {
+export interface Attributes {
   maxHp: number;              // 最大生命值 = 100 + con * 10
   maxMana: number;            // 最大魔法值 = 50 + int * 5 + wis * 3 + cha * 2
   physicalAttack: number;     // 物理攻击力 = str * 2 + dex * 0.5
@@ -163,36 +163,66 @@ export interface DerivedAttributes {
   hpBonus: number;            // 每级HP加成 = con * 2
   mpBonus: number;            // 每级MP加成 = int + wis + cha
   healBonus: number;          // 治疗加成 = wis * 0.1 + cha * 0.05
+  attackBonus?: number;       // 攻击加成
+  critBonus?: number;         // 暴击加成
+  dodgeBonus?: number;        // 闪避加成
+  armor?: number;             // 护甲值
+  initiative?: number;        // 先手值
 }
 
 /** 角色信息 */
-export interface CharacterInfo {
+export interface Character {
   name: string;
-  race: string | null;
-  class: string | null;
-  faction: 'alliance' | 'horde' | null;
+  factionId: FactionType;
+  raceId: RaceType;
+  classId: ClassType;
+  level: number;
+  exp: number;
+  expToNextLevel: number;
+  hp: number;
+  maxHp: number;
+  mana: number;
+  maxMana: number;
+  stats: Stats;
+  gold: number;
 }
+
+/** 阵营类型枚举 */
+export type FactionType = 'alliance' | 'horde' | 'neutral';
+
+/** 种族类型枚举 */
+export type RaceType = 
+  | 'human' | 'dwarf' | 'gnome' | 'nightelf' | 'draenei' | 'worgen'
+  | 'voidelf' | 'lightforgeddraenei' | 'darkirondwarf' | 'kul_tiran' | 'mechagnome'
+  | 'pandaren' | 'orc' | 'undead' | 'tauren' | 'troll' | 'bloodelves' | 'goblin'
+  | 'nightborne' | 'highmountaintauren' | 'magharorc' | 'zandalari' | 'vulpera'
+  | 'dracthyr' | 'earthen' | 'harenei';
+
+/** 职业类型枚举 */
+export type ClassType = 
+  | 'warrior' | 'mage' | 'paladin' | 'hunter' | 'rogue' | 'warlock'
+  | 'druid' | 'priest' | 'shaman' | 'deathknight' | 'monk' | 'demonhunter' | 'evoker';
 
 /** 种族属性调整值 */
 export interface RaceBonus {
-  race: string;
-  faction: 'alliance' | 'horde';
-  stats: Partial<CoreStats>;
+  raceId: RaceType;
+  factionId: FactionType;
+  bonus: Partial<Stats>;
 }
 
 /** 职业属性调整值 */
 export interface ClassBonus {
-  className: string;
-  stats: Partial<CoreStats>;
+  classId: ClassType;
+  bonus: Partial<Stats>;
 }
 
 /** 角色列表项 - 用于角色选择界面 */
 export interface CharacterListItem {
   id: string;
   name: string;
-  race: string;
-  charClass: string;
-  faction: 'alliance' | 'horde';
+  raceId: RaceType;
+  classId: ClassType;
+  factionId: FactionType;
   level: number;
   createdTime: number;
   lastPlayedTime: number;

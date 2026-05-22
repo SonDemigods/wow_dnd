@@ -60,14 +60,16 @@
 
 ## 接口定义
 
-### 服务接口 IAdventureLogService
+### 服务接口 ILogService
 
 ```typescript
-export interface IAdventureLogService {
+export interface ILogService {
+  addLog(entry: LogEntry): void;
   getLogs(): LogEntry[];
-  addLog(message: string, type?: LogType): void;
+  getLogsByType(type: LogType): LogEntry[];
   clearLogs(): void;
-  reset(): void;
+  getLogCount(): number;
+  generateLogId(): string;
 }
 ```
 
@@ -81,7 +83,7 @@ export interface LogEntry {
   timestamp: number;
   type: LogType;
   message: string;
-  icon: string;
+  icon?: string;
 }
 ```
 

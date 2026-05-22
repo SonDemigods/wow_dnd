@@ -74,24 +74,24 @@
 
 ```typescript
 export interface IQuestService {
-  acceptQuest(questKey: string): boolean;
-  updateQuestProgress(questKey: string, objectiveKey: string, amount?: number): void;
-  turnInQuest(questKey: string): boolean;
-  abandonQuest(questKey: string): boolean;
-  isQuestAvailable(questKey: string): boolean;
-  isQuestInProgress(questKey: string): boolean;
-  isQuestCompleted(questKey: string): boolean;
-  getQuestState(questKey: string): QuestState | null;
-  getQuestDetails(questKey: string): QuestDetails | null;
+  acceptQuest(questId: string): boolean;
+  updateQuestProgress(questId: string, objectiveKey: string, amount?: number): void;
+  turnInQuest(questId: string): boolean;
+  abandonQuest(questId: string): boolean;
+  isQuestAvailable(questId: string): boolean;
+  isQuestInProgress(questId: string): boolean;
+  isQuestCompleted(questId: string): boolean;
+  getQuestInstance(questId: string): QuestInstance | null;
+  getQuestDefinition(questId: string): QuestDefinition | null;
   getAvailableQuests(): string[];
   getInProgressQuests(): string[];
   getCompletedQuests(): string[];
   
   // 任务看板相关方法
-  getQuestsFromBoard(boardId: string): QuestDetails[];
-  getQuestsToTurnIn(boardId: string): QuestDetails[];
-  acceptQuestFromBoard(boardId: string, questKey: string): boolean;
-  turnInQuestToBoard(boardId: string, questKey: string): boolean;
+  getQuestsFromBoard(boardId: string): QuestDefinition[];
+  getQuestsToTurnIn(boardId: string): QuestDefinition[];
+  acceptQuestFromBoard(boardId: string, questId: string): boolean;
+  turnInQuestToBoard(boardId: string, questId: string): boolean;
   
   reset(): void;
 }
@@ -100,21 +100,15 @@ export interface IQuestService {
 ### 数据类型定义
 
 ```typescript
-export enum QuestStatus {
-  NOT_AVAILABLE = 'not_available',
-  AVAILABLE = 'available',
-  IN_PROGRESS = 'in_progress',
-  COMPLETED = 'completed',
-  TURNED_IN = 'turned_in',
-  ABANDONED = 'abandoned',
-}
+export type QuestStatus =
+  | 'not_available'
+  | 'available'
+  | 'in_progress'
+  | 'completed'
+  | 'turned_in'
+  | 'abandoned';
 
-export enum QuestType {
-  KILL = 'kill',
-  COLLECT = 'collect',
-  INTERACT = 'interact',
-  ESCORT = 'escort',
-}
+export type QuestType = 'kill' | 'collect';
 
 export interface QuestObjective {
   key: string;
@@ -127,24 +121,13 @@ export interface QuestObjective {
 }
 
 export interface QuestObjectiveProgress {
+  objectiveKey: string;
   current: number;
   target: number;
 }
 
-export interface QuestProgress {
-  [objectiveKey: string]: QuestObjectiveProgress;
-}
-
-export interface QuestState {
-  questKey: string;
-  status: QuestStatus;
-  progress: QuestProgress;
-  acceptedAt: number;
-  completedAt?: number;
-}
-
-export interface QuestDetails {
-  questKey: string;
+export interface QuestDefinition {
+  id: string;
   title: string;
   description: string;
   type: QuestType;
@@ -152,15 +135,21 @@ export interface QuestDetails {
   levelRequirement: number;
   xpReward: number;
   goldReward: number;
-  itemRewards?: ItemReward[];
-  boardId: string;         // 任务看板ID
+  itemRewards?: InventoryItem[];
+  boardId: string;
 }
 
-export interface ItemReward {
+export interface QuestInstance {
+  questId: string;
+  status: QuestStatus;
+  progress: QuestObjectiveProgress[];
+  acceptedAt: number;
+  completedAt?: number;
+}
+
+export interface InventoryItem {
   itemId: string;
-  itemName: string;
-  quantity: number;
-  chance?: number;
+  count: number;
 }
 ```
 
