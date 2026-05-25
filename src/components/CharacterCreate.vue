@@ -562,7 +562,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 10px;
+  font-size: 12px;
   color: #4CAF50;
 }
 
@@ -610,7 +610,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .class-bonus span {
@@ -791,7 +791,7 @@ onMounted(async () => {
 }
 
 .attr-box .attr-label {
-  font-size: 10px;
+  font-size: 12px;
   color: #a0a0a0;
   margin-bottom: 2px;
 }
@@ -953,7 +953,7 @@ onMounted(async () => {
   }
 
   .faction-desc {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .race-grid {
