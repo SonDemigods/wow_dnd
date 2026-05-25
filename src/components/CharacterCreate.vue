@@ -437,7 +437,7 @@ onMounted(async () => {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-bottom: 8px;
+  padding: 8px 0;
 }
 
 .step-grid {
