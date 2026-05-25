@@ -1,14 +1,18 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
-import { dbManager } from './services/database'
+import { db } from '@/modules/data/core'
+import { dataInitializer } from '@/modules/data/service'
 
 async function initApp() {
   try {
-    await dbManager.init()
+    await db.open()
     console.log('Database initialized successfully')
+
+    await dataInitializer.initializeData()
+    console.log('Game data initialized')
   } catch (error) {
-    console.error('Failed to initialize database:', error)
+    console.error('Failed to initialize:', error)
   }
 
   const app = createApp(App)

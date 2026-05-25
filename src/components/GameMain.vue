@@ -47,7 +47,7 @@
 
 <script setup lang="ts">
 import { ref, computed, markRaw } from 'vue';
-import { characterService } from '@/modules/character.module';
+import { useCharacterStore } from '@/modules/character';
 import MapView from './MapView.vue';
 import ExplorationView from './ExplorationView.vue';
 import CombatView from './CombatView.vue';
@@ -55,6 +55,8 @@ import ShopView from './ShopView.vue';
 import QuestView from './QuestView.vue';
 import InventoryView from './InventoryView.vue';
 import SkillsView from './SkillsView.vue';
+
+const characterStore = useCharacterStore();
 
 const currentTab = ref('map');
 const showNotification = ref(false);
@@ -71,15 +73,15 @@ const tabs = [
   { id: 'skills', name: '技能', icon: '✨' }
 ];
 
-const character = computed(() => characterService.getCharacterInfo());
-const attributes = computed(() => characterService.getAttributes());
+const character = computed(() => characterStore.getCharacterInfo());
+const attributes = computed(() => characterStore.attributes);
 const currentHp = computed(() => character.value.currentHp || attributes.value.maxHp);
 const maxHp = computed(() => attributes.value.maxHp);
 const currentMp = computed(() => character.value.currentMp || attributes.value.maxMana);
 const maxMp = computed(() => attributes.value.maxMana);
 const hpPercent = computed(() => Math.round((currentHp.value / maxHp.value) * 100));
 const mpPercent = computed(() => Math.round((currentMp.value / maxMp.value) * 100));
-const gold = computed(() => characterService.getGold());
+const gold = computed(() => characterStore.gold);
 
 const currentComponent = computed(() => {
   const components: Record<string, any> = {
