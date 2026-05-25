@@ -99,8 +99,9 @@ function handleExit() {
   border: 2px solid #4a4a4a;
   max-width: 600px;
   width: 90%;
+  height: 90vh;
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: hidden;
   position: relative;
 }
 

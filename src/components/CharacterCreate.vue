@@ -1,57 +1,113 @@
 <template>
   <div class="character-create">
+    <!-- 顶部固定区域 -->
     <div class="create-header">
       <h2>创建新角色 - 步骤 {{ currentStep }}/4</h2>
+      <div class="step-title">{{ currentStepTitle }}</div>
     </div>
 
-    <!-- 步骤 1: 选择阵营 -->
-    <div v-if="currentStep === 1" class="step-content">
-      <div class="step-title">请选择阵营</div>
-      <div class="faction-grid">
-        <button 
-          v-for="faction in factionList.filter(f => f.id !== 'neutral')" 
-          :key="faction.id"
-          :class="['faction-card', 'main-faction', { active: selectedFaction === faction.id }]"
-          :style="{ '--faction-color': faction.color }"
-          @click="selectFaction(faction.id)"
-        >
-          <div class="faction-icon">{{ faction.icon }}</div>
-          <div class="faction-name">{{ faction.name }}</div>
-          <div class="faction-desc">{{ getFactionRaceNames(faction.id) }}</div>
-        </button>
+    <!-- 中间滚动区域 -->
+    <div class="scrollable-content">
+      <!-- 步骤 1: 选择阵营 -->
+      <div v-if="currentStep === 1" class="step-grid">
+        <div class="faction-grid">
+          <button 
+            v-for="faction in factionList.filter(f => f.id !== 'neutral')" 
+            :key="faction.id"
+            :class="['faction-card', 'main-faction', { active: selectedFaction === faction.id }]"
+            :style="{ '--faction-color': faction.color }"
+            @click="selectFaction(faction.id)"
+          >
+            <div class="faction-icon">{{ faction.icon }}</div>
+            <div class="faction-name">{{ faction.name }}</div>
+            <div class="faction-desc">{{ getFactionRaceNames(faction.id) }}</div>
+          </button>
+        </div>
+        <div class="neutral-faction-row">
+          <button 
+            v-if="neutralFaction"
+            :class="['faction-card', 'neutral-faction', { active: selectedFaction === 'neutral' }]"
+            :style="{ '--faction-color': '#4CAF50' }"
+            @click="selectFaction('neutral')"
+          >
+            <div class="faction-icon">{{ neutralFaction.icon }}</div>
+            <div class="faction-name">{{ neutralFaction.name }}</div>
+            <div class="faction-desc">{{ getFactionRaceNames('neutral') }}</div>
+          </button>
+        </div>
       </div>
-      <div class="neutral-faction-row">
-        <button 
-          v-if="neutralFaction"
-          :class="['faction-card', 'neutral-faction', { active: selectedFaction === 'neutral' }]"
-          :style="{ '--faction-color': neutralFaction.color }"
-          @click="selectFaction('neutral')"
-        >
-          <div class="faction-icon">{{ neutralFaction.icon }}</div>
-          <div class="faction-name">{{ neutralFaction.name }}</div>
-          <div class="faction-desc">{{ getFactionRaceNames('neutral') }}</div>
-        </button>
-      </div>
-    </div>
 
-    <!-- 步骤 2: 选择种族 -->
-    <div v-if="currentStep === 2" class="step-content">
-      <div class="step-title">请选择种族 ({{ getFactionName(selectedFaction || '') }})</div>
-      <div :class="['race-grid', selectedFaction]">
-        <button 
-          v-for="race in availableRaces" 
-          :key="race.id"
-          :class="['race-card', { active: selectedRace === race.id }]"
-          @click="selectRace(race.id)"
-        >
-          <div class="race-icon">{{ race.icon }}</div>
-          <div class="race-name">{{ race.name }}</div>
-          <div class="race-bonus" v-if="race.bonus">
-            <span v-for="(value, stat) in race.bonus" :key="stat">+{{ value }} {{ getStatName(stat) }}</span>
+      <!-- 步骤 2: 选择种族 -->
+      <div v-if="currentStep === 2" class="step-grid">
+        <div :class="['race-grid', selectedFaction]">
+          <button 
+            v-for="race in availableRaces" 
+            :key="race.id"
+            :class="['race-card', { active: selectedRace === race.id }]"
+            @click="selectRace(race.id)"
+          >
+            <div class="race-icon">{{ race.icon }}</div>
+            <div class="race-name">{{ race.name }}</div>
+            <div class="race-bonus" v-if="race.bonus">
+              <span v-for="(value, stat) in race.bonus" :key="stat">+{{ value }} {{ getStatName(stat) }}</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 步骤 3: 选择职业 -->
+      <div v-if="currentStep === 3" class="step-grid">
+        <div class="class-grid">
+          <button 
+            v-for="cls in classList" 
+            :key="cls.id"
+            :class="['class-card', { active: selectedClass === cls.id }]"
+            :style="{ '--class-color': cls.color }"
+            @click="selectClass(cls.id)"
+          >
+            <div class="class-icon">{{ cls.icon }}</div>
+            <div class="class-name">{{ cls.name }}</div>
+            <div class="class-bonus" v-if="cls.bonus">
+              <span 
+                v-for="(value, stat) in cls.bonus" 
+                :key="stat"
+                :class="{ negative: value && value < 0 }"
+              >
+                {{ value && value > 0 ? '+' : '' }}{{ value || 0 }} {{ getStatName(stat) }}
+              </span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 步骤 4: 输入角色名 -->
+      <div v-if="currentStep === 4" class="step-grid">
+        <div class="character-preview">
+          <div class="preview-row">
+            <div class="preview-avatar">{{ getRaceIcon(selectedRace || '') }}</div>
+            <div class="name-input-wrapper">
+              <input 
+                v-model="name" 
+                type="text" 
+                placeholder="输入角色名"
+                maxlength="20"
+                class="name-input"
+              />
+            </div>
           </div>
-        </button>
+          <div class="preview-details">
+            <span>{{ getRaceName(selectedRace || '') }}</span>
+            <span>{{ getClassName(selectedClass || '') }}</span>
+            <span>{{ getFactionName(selectedFaction || '') }}</span>
+          </div>
+        </div>
       </div>
-      <div class="attribute-preview">
+    </div>
+
+    <!-- 底部固定区域 -->
+    <div class="fixed-footer">
+      <!-- 属性预览 -->
+      <div v-if="currentStep <= 3" class="attribute-preview">
         <div class="preview-title">属性预览</div>
         <div class="attr-list">
           <div v-for="(value, stat) in currentAttributes" :key="stat" class="attr-item">
@@ -59,67 +115,9 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 步骤 3: 选择职业 -->
-    <div v-if="currentStep === 3" class="step-content">
-      <div class="step-title">请选择职业</div>
-      <div class="class-grid">
-        <button 
-          v-for="cls in classList" 
-          :key="cls.id"
-          :class="['class-card', { active: selectedClass === cls.id }]"
-          :style="{ '--class-color': cls.color }"
-          @click="selectClass(cls.id)"
-        >
-          <div class="class-icon">{{ cls.icon }}</div>
-          <div class="class-name">{{ cls.name }}</div>
-          <div class="class-bonus" v-if="cls.bonus">
-            <span 
-              v-for="(value, stat) in cls.bonus" 
-              :key="stat"
-              :class="{ negative: value && value < 0 }"
-            >
-              {{ value && value > 0 ? '+' : '' }}{{ value || 0 }} {{ getStatName(stat) }}
-            </span>
-          </div>
-        </button>
-      </div>
-      <div class="attribute-preview">
-        <div class="preview-title">属性预览</div>
-        <div class="attr-list">
-          <div v-for="(value, stat) in currentAttributes" :key="stat" class="attr-item">
-            {{ getStatName(stat) }}: {{ value }}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 步骤 4: 输入角色名 -->
-    <div v-if="currentStep === 4" class="step-content">
-      <div class="step-title">请输入角色名</div>
-      
-      <div class="character-preview">
-        <div class="preview-row">
-          <div class="preview-avatar">{{ getRaceIcon(selectedRace || '') }}</div>
-          <div class="name-input-wrapper">
-            <input 
-              v-model="name" 
-              type="text" 
-              placeholder="输入角色名"
-              maxlength="20"
-              class="name-input"
-            />
-          </div>
-        </div>
-        <div class="preview-details">
-          <span>{{ getRaceName(selectedRace || '') }}</span>
-          <span>{{ getClassName(selectedClass || '') }}</span>
-          <span>{{ getFactionName(selectedFaction || '') }}</span>
-        </div>
-      </div>
-
-      <div class="final-attributes">
+      <!-- 最终属性（步骤4） -->
+      <div v-if="currentStep === 4" class="final-attributes">
         <div class="final-title">最终属性</div>
         <div class="attr-grid">
           <div v-for="(value, stat) in currentAttributes" :key="stat" class="attr-box">
@@ -130,66 +128,66 @@
         <div class="secondary-attrs">
           <div class="sec-attr">
             <span>物理攻击:</span>
-            <strong>{{ calculatedAttributes.physicalAttack }}</strong>
+            <strong>{{ derivedAttributes.physicalAttack }}</strong>
           </div>
           <div class="sec-attr">
             <span>物理防御:</span>
-            <strong>{{ calculatedAttributes.physicalDefense }}</strong>
+            <strong>{{ derivedAttributes.physicalDefense }}</strong>
           </div>
           <div class="sec-attr">
             <span>魔法攻击:</span>
-            <strong>{{ calculatedAttributes.magicalAttack }}</strong>
+            <strong>{{ derivedAttributes.magicAttack }}</strong>
           </div>
           <div class="sec-attr">
             <span>魔法防御:</span>
-            <strong>{{ calculatedAttributes.magicalDefense }}</strong>
+            <strong>{{ derivedAttributes.magicDefense }}</strong>
           </div>
           <div class="sec-attr">
             <span>暴击率:</span>
-            <strong>{{ calculatedAttributes.critRate }}%</strong>
+            <strong>{{ derivedAttributes.critChance }}%</strong>
           </div>
           <div class="sec-attr">
             <span>闪避率:</span>
-            <strong>{{ calculatedAttributes.dodgeRate }}%</strong>
+            <strong>{{ derivedAttributes.dodgeChance }}%</strong>
           </div>
           <div class="sec-attr">
             <span>最大HP:</span>
-            <strong>{{ calculatedAttributes.maxHp }}</strong>
+            <strong>{{ derivedAttributes.maxHp }}</strong>
           </div>
           <div class="sec-attr">
             <span>最大MP:</span>
-            <strong>{{ calculatedAttributes.maxMp }}</strong>
+            <strong>{{ derivedAttributes.maxMana }}</strong>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 导航按钮 -->
-    <div class="navigation-buttons">
-      <button 
-        v-if="currentStep > 1"
-        class="nav-btn prev"
-        @click="prevStep"
-      >
-        上一步
-      </button>
-      <div class="spacer"></div>
-      <button 
-        v-if="currentStep < 4"
-        class="nav-btn next"
-        :disabled="!canProceed"
-        @click="nextStep"
-      >
-        下一步
-      </button>
-      <button 
-        v-if="currentStep === 4"
-        class="nav-btn create"
-        :disabled="!canCreate"
-        @click="createCharacter"
-      >
-        创建角色
-      </button>
+      <!-- 导航按钮 -->
+      <div class="navigation-buttons">
+        <button 
+          v-if="currentStep > 1"
+          class="nav-btn prev"
+          @click="prevStep"
+        >
+          上一步
+        </button>
+        <div class="spacer"></div>
+        <button 
+          v-if="currentStep < 4"
+          class="nav-btn next"
+          :disabled="!canProceed"
+          @click="nextStep"
+        >
+          下一步
+        </button>
+        <button 
+          v-if="currentStep === 4"
+          class="nav-btn create"
+          :disabled="!canCreate"
+          @click="createCharacter"
+        >
+          创建角色
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -199,6 +197,17 @@ import { ref, computed, onMounted } from 'vue';
 import { characterService } from '@/modules/character';
 import { gameDataService } from '@/modules/gameData';
 import type { FactionData, RaceData, ClassData } from '@/modules/character/types';
+import {
+  STAT_NAMES,
+  calculatePhysicalAttack,
+  calculatePhysicalDefense,
+  calculateMagicAttack,
+  calculateMagicDefense,
+  calculateCritChance,
+  calculateDodgeChance,
+  calculateMaxHp,
+  calculateMaxMana
+} from '@/utils/calculations';
 
 const emit = defineEmits<{
   (e: 'created'): void;
@@ -214,14 +223,15 @@ const factionList = ref<FactionData[]>([]);
 const raceList = ref<RaceData[]>([]);
 const classList = ref<ClassData[]>([]);
 
-const statNames: Record<string, string> = {
-  str: '力量',
-  dex: '敏捷',
-  con: '体质',
-  int: '智力',
-  wis: '感知',
-  cha: '魅力'
-};
+const currentStepTitle = computed(() => {
+  switch (currentStep.value) {
+    case 1: return '请选择阵营';
+    case 2: return `请选择种族 (${getFactionName(selectedFaction.value || '')})`;
+    case 3: return '请选择职业';
+    case 4: return '请输入角色名';
+    default: return '';
+  }
+});
 
 const neutralFaction = computed(() => {
   return factionList.value.find(f => f.id === 'neutral');
@@ -260,17 +270,16 @@ const currentAttributes = computed(() => {
   return base;
 });
 
-const calculatedAttributes = computed(() => {
-  const attrs = currentAttributes.value;
+const derivedAttributes = computed(() => {
   return {
-    physicalAttack: attrs.str * 2 + 10,
-    physicalDefense: Math.floor(attrs.con * 1.5 + 5),
-    magicalAttack: attrs.int * 2 + 10,
-    magicalDefense: Math.floor(attrs.wis * 1.5 + 5),
-    critRate: Math.floor(attrs.dex * 0.5 + 5),
-    dodgeRate: Math.floor(attrs.dex * 0.3 + 3),
-    maxHp: attrs.con * 20 + 100,
-    maxMp: attrs.int * 10 + 50
+    physicalAttack: calculatePhysicalAttack(currentAttributes.value),
+    physicalDefense: calculatePhysicalDefense(currentAttributes.value),
+    magicAttack: calculateMagicAttack(currentAttributes.value),
+    magicDefense: calculateMagicDefense(currentAttributes.value),
+    critChance: calculateCritChance(currentAttributes.value),
+    dodgeChance: calculateDodgeChance(currentAttributes.value),
+    maxHp: calculateMaxHp(currentAttributes.value),
+    maxMana: calculateMaxMana(currentAttributes.value)
   };
 });
 
@@ -327,11 +336,11 @@ function getRaceIcon(id: string) {
 }
 
 function getClassName(id: string) {
-  return classList.value.find(c => c.id === id)?.name || '';
+  return classList.value.find(c => c.id === selectedClass.value)?.name || '';
 }
 
 function getStatName(stat: string) {
-  return statNames[stat] || stat;
+  return STAT_NAMES[stat] || stat;
 }
 
 function nextStep() {
@@ -366,31 +375,46 @@ onMounted(async () => {
 
 <style scoped>
 .character-create {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   padding: 16px;
-  max-width: 800px;
-  margin: 0 auto;
+  overflow: hidden;
 }
 
+/* 顶部固定区域 */
 .create-header {
+  flex: 0 0 auto;
   text-align: center;
-  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #4a4a4a;
+  margin-bottom: 16px;
 }
 
 .create-header h2 {
   font-size: 22px;
   color: #ffd700;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-.step-content {
-  margin-bottom: 24px;
+  margin: 0 0 10px 0;
 }
 
 .step-title {
   font-size: 18px;
   color: #f0f0f0;
-  text-align: center;
-  margin-bottom: 20px;
+  margin: 0;
+}
+
+/* 中间滚动区域 */
+.scrollable-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 8px;
+}
+
+.step-grid {
+  width: 100%;
 }
 
 /* 阵营选择 */
@@ -409,7 +433,7 @@ onMounted(async () => {
 .faction-card {
   padding: 20px 12px;
   background: rgba(13, 17, 23, 0.95);
-  border: 2px solid #4a4a4a;
+  border: 2px solid #666666;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s;
@@ -426,15 +450,15 @@ onMounted(async () => {
 }
 
 .faction-card:hover {
-  border-color: var(--faction-color);
+  border-color: #888888;
   background: rgba(255, 255, 255, 0.05);
-  transform: translateY(-4px);
+  transform: translateY(-2px);
 }
 
 .faction-card.active {
   border-color: var(--faction-color);
   background: rgba(255, 215, 0, 0.1);
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+  box-shadow: 0 0 15px var(--faction-color);
 }
 
 .faction-icon {
@@ -455,44 +479,17 @@ onMounted(async () => {
   line-height: 1.4;
 }
 
-/* 种族选择 - 根据阵营显示不同边框颜色 */
-.race-grid.alliance .race-card {
-  border-color: #0078ff;
-}
-
-.race-grid.alliance .race-card.active {
-  border-color: #0078ff;
-  background: rgba(0, 120, 255, 0.2);
-}
-
-.race-grid.horde .race-card {
-  border-color: #ff4400;
-}
-
-.race-grid.horde .race-card.active {
-  border-color: #ff4400;
-  background: rgba(255, 68, 0, 0.2);
-}
-
-.race-grid.neutral .race-card {
-  border-color: #9d9d9d;
-}
-
-.race-grid.neutral .race-card.active {
-  border-color: #9d9d9d;
-  background: rgba(157, 157, 157, 0.2);
-}
-
+/* 种族选择 */
 .race-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 10px;
-  margin-bottom: 20px;
 }
 
 .race-card {
   padding: 14px 8px;
   background: rgba(13, 17, 23, 0.95);
+  border: 2px solid #666666;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
@@ -501,6 +498,25 @@ onMounted(async () => {
 
 .race-card:hover {
   transform: translateY(-2px);
+  border-color: #888888;
+}
+
+.race-grid.alliance .race-card.active {
+  border-color: #0078ff;
+  background: rgba(255, 215, 0, 0.1);
+  box-shadow: 0 0 15px #0078ff;
+}
+
+.race-grid.horde .race-card.active {
+  border-color: #ff4400;
+  background: rgba(255, 215, 0, 0.1);
+  box-shadow: 0 0 15px #ff4400;
+}
+
+.race-grid.neutral .race-card.active {
+  border-color: #4CAF50;
+  background: rgba(255, 215, 0, 0.1);
+  box-shadow: 0 0 15px #4CAF50;
 }
 
 .race-icon {
@@ -528,13 +544,12 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 10px;
-  margin-bottom: 20px;
 }
 
 .class-card {
   padding: 14px 8px;
   background: rgba(13, 17, 23, 0.95);
-  border: 2px solid var(--class-color);
+  border: 2px solid #666666;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
@@ -543,12 +558,13 @@ onMounted(async () => {
 
 .class-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+  border-color: #888888;
 }
 
 .class-card.active {
+  border-color: var(--class-color);
   background: rgba(255, 215, 0, 0.1);
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+  box-shadow: 0 0 15px var(--class-color);
 }
 
 .class-icon {
@@ -578,41 +594,11 @@ onMounted(async () => {
   color: #ff4444;
 }
 
-/* 属性预览 */
-.attribute-preview {
-  background: rgba(13, 17, 23, 0.95);
-  border-radius: 8px;
-  padding: 14px;
-  border: 1px solid #4a4a4a;
-}
-
-.preview-title {
-  font-size: 13px;
-  color: #8b8b8b;
-  margin-bottom: 10px;
-}
-
-.attr-list {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-}
-
-.attr-item {
-  padding: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
-  color: #f0f0f0;
-  font-size: 12px;
-  text-align: center;
-}
-
-/* 角色预览 - 步骤4布局 */
+/* 角色预览（步骤4） */
 .character-preview {
   background: rgba(13, 17, 23, 0.95);
   border-radius: 12px;
   padding: 20px;
-  margin-bottom: 20px;
   border: 2px solid #4a4a4a;
 }
 
@@ -669,12 +655,51 @@ onMounted(async () => {
   font-size: 12px;
 }
 
+/* 底部固定区域 */
+.fixed-footer {
+  flex: 0 0 auto;
+  padding-top: 16px;
+  border-top: 1px solid #4a4a4a;
+  background: inherit;
+}
+
+/* 属性预览 */
+.attribute-preview {
+  background: rgba(13, 17, 23, 0.95);
+  border-radius: 8px;
+  padding: 14px;
+  border: 1px solid #4a4a4a;
+  margin-bottom: 16px;
+}
+
+.preview-title {
+  font-size: 13px;
+  color: #8b8b8b;
+  margin-bottom: 10px;
+}
+
+.attr-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.attr-item {
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  color: #f0f0f0;
+  font-size: 12px;
+  text-align: center;
+}
+
 /* 最终属性 */
 .final-attributes {
   background: rgba(13, 17, 23, 0.95);
   border-radius: 12px;
   padding: 16px;
   border: 2px solid #4a4a4a;
+  margin-bottom: 16px;
 }
 
 .final-title {
@@ -740,7 +765,6 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding-top: 16px;
 }
 
 .spacer {
@@ -798,6 +822,7 @@ onMounted(async () => {
 @media (max-width: 480px) {
   .character-create {
     padding: 12px;
+    max-height: calc(100vh - 40px);
   }
 
   .create-header h2 {
