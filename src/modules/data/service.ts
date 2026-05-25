@@ -1,3 +1,12 @@
+/**
+ * 数据服务模块
+ * 
+ * 提供游戏数据的初始化、备份、导入等高级服务功能。
+ * 包括：
+ * - DataInitializer: 游戏数据初始化服务
+ * - BackupService: 数据备份服务
+ * - ImportService: 数据导入服务
+ */
 import { db } from './core';
 import { BACKUP_CONFIG } from '@/config/database';
 import type { BackupFile, BackupData, ValidationResult, ImportResult, CompatibilityResult } from './types';
@@ -23,6 +32,29 @@ import {
   MAX_LEVEL
 } from '@/data';
 
+/**
+ * 计算数据的校验和（简单哈希算法）
+ * 
+ * 用于验证备份文件的完整性
+ * @param data - 要计算校验和的数据
+ * @returns 校验和字符串
+ */
+function calculateChecksum(data: unknown): string {
+  const str = JSON.stringify(data);
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(16);
+}
+
+/**
+ * 初始化数据接口
+ * 
+ * 定义游戏初始化数据的结构
+ */
 export interface InitData {
   map: {
     continents: typeof CONTINENTS;
@@ -46,14 +78,33 @@ export interface InitData {
   shopTypeItemPool: typeof SHOP_TYPE_ITEM_POOL;
 }
 
+/**
+ * 数据初始化服务类
+ * 
+ * 负责在游戏首次启动时初始化基础游戏数据，包括：
+ * - 阵营、种族、职业数据
+ * - 物品、装备、敌人数据
+ * - 地图、商店、任务数据
+ * - 配置信息
+ */
 export class DataInitializer {
+  /** 初始化标志键名 */
   private initFlagKey = 'data_initialized';
 
+  /**
+   * 检查数据是否已初始化
+   * @returns true 表示已初始化，false 表示未初始化
+   */
   async isDataInitialized(): Promise<boolean> {
     const result = await db.gameState.get(this.initFlagKey);
     return result !== undefined;
   }
 
+  /**
+   * 初始化游戏数据
+   * 
+   * 如果数据已初始化则跳过，否则执行完整的初始化流程
+   */
   async initializeData(): Promise<void> {
     const isInitialized = await this.isDataInitialized();
     if (isInitialized) {
@@ -97,6 +148,9 @@ export class DataInitializer {
     }
   }
 
+  /**
+   * 初始化游戏常量
+   */
   private async initConstants(): Promise<void> {
     await db.gameState.put({
       id: 'game_constants',
@@ -104,6 +158,9 @@ export class DataInitializer {
     });
   }
 
+  /**
+   * 初始化地图数据
+   */
   private async initMapData(): Promise<void> {
     await db.map.put({
       id: 'continents',
@@ -116,6 +173,9 @@ export class DataInitializer {
     });
   }
 
+  /**
+   * 初始化商店数据
+   */
   private async initShopData(): Promise<void> {
     for (const [_shopId, shopConfig] of Object.entries(SHOPS)) {
       await db.shop.put(shopConfig as Record<string, unknown>);
@@ -131,6 +191,9 @@ export class DataInitializer {
     });
   }
 
+  /**
+   * 初始化任务数据
+   */
   private async initQuestData(): Promise<void> {
     await db.gameState.put({
       id: 'quest_templates',
@@ -138,48 +201,72 @@ export class DataInitializer {
     });
   }
 
+  /**
+   * 初始化阵营数据
+   */
   private async initFactions(): Promise<void> {
     for (const [_id, faction] of Object.entries(FACTIONS)) {
       await db.factions.add(faction);
     }
   }
 
+  /**
+   * 初始化种族数据
+   */
   private async initRaces(): Promise<void> {
     for (const [_id, race] of Object.entries(RACES)) {
       await db.races.add(race);
     }
   }
 
+  /**
+   * 初始化职业数据
+   */
   private async initClasses(): Promise<void> {
     for (const [_id, cls] of Object.entries(CLASSES)) {
       await db.classes.add(cls);
     }
   }
 
+  /**
+   * 初始化物品类型数据
+   */
   private async initItemTypes(): Promise<void> {
     for (const [_id, itemType] of Object.entries(ITEM_TYPES)) {
       await db.itemTypes.add(itemType);
     }
   }
 
+  /**
+   * 初始化物品数据
+   */
   private async initItems(): Promise<void> {
     for (const item of LOOT_ITEMS) {
       await db.items.add(item);
     }
   }
 
+  /**
+   * 初始化装备数据
+   */
   private async initEquipment(): Promise<void> {
     for (const equipment of EQUIPMENT_ITEMS) {
       await db.equipmentItems.add(equipment);
     }
   }
 
+  /**
+   * 初始化敌人数据
+   */
   private async initEnemies(): Promise<void> {
     for (const [id, enemy] of Object.entries(ENEMIES)) {
       await db.enemies.add({ id, ...enemy });
     }
   }
 
+  /**
+   * 初始化稀有度配置
+   */
   private async initRarityConfig(): Promise<void> {
     await db.rarityConfigs.put({
       id: 'rarity_config',
@@ -187,18 +274,29 @@ export class DataInitializer {
     });
   }
 
+  /**
+   * 初始化职业技能数据
+   */
   private async initClassAbilities(): Promise<void> {
     for (const [classId, abilities] of Object.entries(CLASS_ABILITIES)) {
       await db.classAbilities.add({ classId, abilities });
     }
   }
 
+  /**
+   * 重置数据初始化标志
+   * 
+   * 调用此方法后，下次启动时会重新初始化数据
+   */
   async resetData(): Promise<void> {
     await db.gameState.delete(this.initFlagKey);
     console.log('Data initialization flag cleared.');
   }
 }
 
+/**
+ * 备份服务接口
+ */
 export interface IBackupService {
   createBackup(): Promise<BackupFile>;
   exportBackup(): Promise<void>;
@@ -207,21 +305,41 @@ export interface IBackupService {
   clearAutoBackups(): Promise<void>;
 }
 
+/**
+ * 导入服务接口
+ */
 export interface IImportService {
   validateBackup(file: File): Promise<ValidationResult>;
   importBackup(file: File): Promise<ImportResult>;
   checkVersionCompatibility(backupVersion: string): CompatibilityResult;
 }
 
+/**
+ * 备份服务类
+ * 
+ * 提供游戏数据的备份功能，包括：
+ * - 创建备份
+ * - 导出备份文件
+ * - 自动备份管理
+ */
 export class BackupService implements IBackupService {
+  /** 自动备份存储键名 */
   private readonly AUTO_BACKUP_KEY = BACKUP_CONFIG.autoBackupKey;
+  /** 最大自动备份数量 */
   private readonly MAX_AUTO_BACKUPS = BACKUP_CONFIG.maxAutoBackups;
+  /** 备份版本号 */
   private readonly BACKUP_VERSION = BACKUP_CONFIG.backupVersion;
 
+  /**
+   * 创建备份
+   * 
+   * 收集所有游戏数据并生成备份对象
+   * @returns BackupFile - 备份文件对象
+   */
   async createBackup(): Promise<BackupFile> {
     const timestamp = Date.now();
     const data = await this.collectAllData();
-    const checksum = this.calculateChecksum(data);
+    const checksum = calculateChecksum(data);
 
     return {
       version: this.BACKUP_VERSION,
@@ -232,6 +350,11 @@ export class BackupService implements IBackupService {
     };
   }
 
+  /**
+   * 导出备份文件
+   * 
+   * 将备份数据导出为 JSON 文件供用户下载
+   */
   async exportBackup(): Promise<void> {
     const backup = await this.createBackup();
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
@@ -246,6 +369,10 @@ export class BackupService implements IBackupService {
     URL.revokeObjectURL(url);
   }
 
+  /**
+   * 获取所有自动备份
+   * @returns BackupFile[] - 自动备份列表
+   */
   async getAutoBackups(): Promise<BackupFile[]> {
     try {
       const stored = localStorage.getItem(this.AUTO_BACKUP_KEY);
@@ -258,16 +385,28 @@ export class BackupService implements IBackupService {
     return [];
   }
 
+  /**
+   * 删除指定备份
+   * @param timestamp - 备份时间戳
+   */
   async deleteBackup(timestamp: number): Promise<void> {
     const backups = await this.getAutoBackups();
     const filtered = backups.filter(b => b.timestamp !== timestamp);
     localStorage.setItem(this.AUTO_BACKUP_KEY, JSON.stringify(filtered));
   }
 
+  /**
+   * 清除所有自动备份
+   */
   async clearAutoBackups(): Promise<void> {
     localStorage.removeItem(this.AUTO_BACKUP_KEY);
   }
 
+  /**
+   * 创建自动备份
+   * 
+   * 将最新备份添加到自动备份列表，超过最大数量时移除最旧的备份
+   */
   async createAutoBackup(): Promise<void> {
     const backup = await this.createBackup();
     const backups = await this.getAutoBackups();
@@ -280,6 +419,12 @@ export class BackupService implements IBackupService {
     localStorage.setItem(this.AUTO_BACKUP_KEY, JSON.stringify(backups));
   }
 
+  /**
+   * 收集所有游戏数据
+   * 
+   * 从数据库中读取所有需要备份的数据表
+   * @returns BackupData - 备份数据对象
+   */
   private async collectAllData(): Promise<BackupData> {
     const characters = await db.characters.toArray() as unknown[];
     const characterDataRecords = await db.characterData.toArray() as unknown[];
@@ -349,22 +494,27 @@ export class BackupService implements IBackupService {
       gameState: gameStateRecord as BackupData['gameState']
     };
   }
-
-  private calculateChecksum(data: unknown): string {
-    const str = JSON.stringify(data);
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16);
-  }
 }
 
+/**
+ * 导入服务类
+ * 
+ * 提供游戏数据的导入功能，包括：
+ * - 验证备份文件
+ * - 导入备份数据
+ * - 版本兼容性检查
+ */
 export class ImportService implements IImportService {
+  /** 支持的备份版本列表 */
   private readonly SUPPORTED_VERSIONS = BACKUP_CONFIG.supportedVersions;
 
+  /**
+   * 验证备份文件
+   * 
+   * 检查备份文件的格式、完整性和版本兼容性
+   * @param file - 备份文件
+   * @returns ValidationResult - 验证结果
+   */
   async validateBackup(file: File): Promise<ValidationResult> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -379,7 +529,7 @@ export class ImportService implements IImportService {
             return;
           }
           
-          const checksum = this.calculateChecksum(backup.data);
+          const checksum = calculateChecksum(backup.data);
           if (checksum !== backup.checksum) {
             resolve({ success: false, error: '备份文件已损坏' });
             return;
@@ -410,6 +560,13 @@ export class ImportService implements IImportService {
     });
   }
 
+  /**
+   * 导入备份文件
+   * 
+   * 验证备份文件后，将数据导入数据库
+   * @param file - 备份文件
+   * @returns ImportResult - 导入结果
+   */
   async importBackup(file: File): Promise<ImportResult> {
     const validation = await this.validateBackup(file);
     if (!validation.success) {
@@ -434,6 +591,12 @@ export class ImportService implements IImportService {
     });
   }
 
+  /**
+   * 检查版本兼容性
+   * 
+   * @param backupVersion - 备份版本号
+   * @returns CompatibilityResult - 兼容性检查结果
+   */
   checkVersionCompatibility(backupVersion: string): CompatibilityResult {
     if (this.SUPPORTED_VERSIONS.includes(backupVersion)) {
       return {
@@ -449,6 +612,13 @@ export class ImportService implements IImportService {
     };
   }
 
+  /**
+   * 导入数据到数据库
+   * 
+   * 将备份数据写入数据库的各个表
+   * @param data - 备份数据
+   * @returns ImportResult - 导入结果
+   */
   private async importData(data: BackupData): Promise<ImportResult> {
     const importedStores: string[] = [];
     const skippedStores: string[] = [];
@@ -556,23 +726,30 @@ export class ImportService implements IImportService {
       return { success: false, error: (error as Error).message, importedStores, skippedStores };
     }
   }
-
-  private calculateChecksum(data: unknown): string {
-    const str = JSON.stringify(data);
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16);
-  }
 }
 
+/**
+ * 数据初始化服务实例
+ */
 export const dataInitializer = new DataInitializer();
+
+/**
+ * 备份服务实例
+ */
 export const backupService = new BackupService();
+
+/**
+ * 导入服务实例
+ */
 export const importService = new ImportService();
 
+/**
+ * 获取游戏数据
+ * 
+ * 从 gameState 表中获取指定键的数据
+ * @param key - 数据键名
+ * @returns T | null - 数据对象或 null
+ */
 export async function getGameData<T>(key: string): Promise<T | null> {
   const result = await db.gameState.get(key);
   if (result) return result as unknown as T;
