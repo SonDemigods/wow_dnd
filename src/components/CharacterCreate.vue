@@ -111,7 +111,9 @@
         <div class="preview-title">属性预览</div>
         <div class="attr-list">
           <div v-for="(value, stat) in currentAttributes" :key="stat" class="attr-item">
-            {{ getStatName(stat) }}: {{ value }}
+            <span class="attr-icon">{{ getStatIcon(stat) }}</span>
+            <span class="attr-name">{{ getStatName(stat) }}</span>
+            <span class="attr-value">{{ value }}</span>
           </div>
         </div>
       </div>
@@ -121,42 +123,55 @@
         <div class="final-title">最终属性</div>
         <div class="attr-grid">
           <div v-for="(value, stat) in currentAttributes" :key="stat" class="attr-box">
+            <div class="attr-icon">{{ getStatIcon(stat) }}</div>
             <div class="attr-label">{{ getStatName(stat) }}</div>
             <div class="attr-value">{{ value }}</div>
           </div>
         </div>
-        <div class="secondary-attrs">
-          <div class="sec-attr">
-            <span>物理攻击:</span>
-            <strong>{{ derivedAttributes.physicalAttack }}</strong>
-          </div>
-          <div class="sec-attr">
-            <span>物理防御:</span>
-            <strong>{{ derivedAttributes.physicalDefense }}</strong>
-          </div>
-          <div class="sec-attr">
-            <span>魔法攻击:</span>
-            <strong>{{ derivedAttributes.magicAttack }}</strong>
-          </div>
-          <div class="sec-attr">
-            <span>魔法防御:</span>
-            <strong>{{ derivedAttributes.magicDefense }}</strong>
-          </div>
-          <div class="sec-attr">
-            <span>暴击率:</span>
-            <strong>{{ derivedAttributes.critChance }}%</strong>
-          </div>
-          <div class="sec-attr">
-            <span>闪避率:</span>
-            <strong>{{ derivedAttributes.dodgeChance }}%</strong>
-          </div>
-          <div class="sec-attr">
-            <span>最大HP:</span>
-            <strong>{{ derivedAttributes.maxHp }}</strong>
-          </div>
-          <div class="sec-attr">
-            <span>最大MP:</span>
-            <strong>{{ derivedAttributes.maxMana }}</strong>
+        <div class="divider"></div>
+        <div class="secondary-section">
+          <div class="secondary-title">次级属性</div>
+          <div class="secondary-attrs">
+            <div class="sec-attr">
+              <span class="sec-icon">⚔️</span>
+              <span>物理攻击</span>
+              <strong>{{ derivedAttributes.physicalAttack }}</strong>
+            </div>
+            <div class="sec-attr">
+              <span class="sec-icon">🛡️</span>
+              <span>物理防御</span>
+              <strong>{{ derivedAttributes.physicalDefense }}</strong>
+            </div>
+            <div class="sec-attr">
+              <span class="sec-icon">🌀</span>
+              <span>魔法攻击</span>
+              <strong>{{ derivedAttributes.magicAttack }}</strong>
+            </div>
+            <div class="sec-attr">
+              <span class="sec-icon">🔮</span>
+              <span>魔法防御</span>
+              <strong>{{ derivedAttributes.magicDefense }}</strong>
+            </div>
+            <div class="sec-attr">
+              <span class="sec-icon">💥</span>
+              <span>暴击率</span>
+              <strong>{{ derivedAttributes.critChance }}%</strong>
+            </div>
+            <div class="sec-attr">
+              <span class="sec-icon">💨</span>
+              <span>闪避率</span>
+              <strong>{{ derivedAttributes.dodgeChance }}%</strong>
+            </div>
+            <div class="sec-attr">
+              <span class="sec-icon">❤️</span>
+              <span>最大HP</span>
+              <strong>{{ derivedAttributes.maxHp }}</strong>
+            </div>
+            <div class="sec-attr">
+              <span class="sec-icon">💧</span>
+              <span>最大MP</span>
+              <strong>{{ derivedAttributes.maxMana }}</strong>
+            </div>
           </div>
         </div>
       </div>
@@ -341,6 +356,18 @@ function getClassName(id: string) {
 
 function getStatName(stat: string) {
   return STAT_NAMES[stat] || stat;
+}
+
+function getStatIcon(stat: string): string {
+  const icons: Record<string, string> = {
+    str: '💪',
+    dex: '⚡',
+    con: '❤️',
+    int: '🧠',
+    wis: '👁️',
+    cha: '✨'
+  };
+  return icons[stat] || '📊';
 }
 
 function nextStep() {
@@ -665,99 +692,174 @@ onMounted(async () => {
 
 /* 属性预览 */
 .attribute-preview {
-  background: rgba(13, 17, 23, 0.95);
+  background: linear-gradient(135deg, rgba(13, 17, 23, 0.98) 0%, rgba(20, 25, 35, 0.98) 100%);
   border-radius: 8px;
-  padding: 14px;
-  border: 1px solid #4a4a4a;
-  margin-bottom: 16px;
+  padding: 8px;
+  border: 1px solid rgba(255, 215, 0.15);
+  margin-bottom: 8px;
 }
 
 .preview-title {
-  font-size: 13px;
-  color: #8b8b8b;
-  margin-bottom: 10px;
+  font-size: 12px;
+  color: #ffd700;
+  margin-bottom: 6px;
+  font-weight: bold;
+  text-align: center;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .attr-list {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: 4px;
 }
 
 .attr-item {
-  padding: 6px;
-  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 4px;
-  color: #f0f0f0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.attr-item .attr-icon {
+  font-size: 16px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 4px;
+  color: #ffd700;
+}
+
+.attr-item .attr-name {
+  flex: 1;
+  color: #b0b0b0;
   font-size: 12px;
-  text-align: center;
+}
+
+.attr-item .attr-value {
+  font-size: 14px;
+  font-weight: bold;
+  color: #f0f0f0;
+  min-width: 28px;
+  text-align: right;
 }
 
 /* 最终属性 */
 .final-attributes {
-  background: rgba(13, 17, 23, 0.95);
-  border-radius: 12px;
-  padding: 16px;
-  border: 2px solid #4a4a4a;
-  margin-bottom: 16px;
+  background: linear-gradient(135deg, rgba(13, 17, 23, 0.98) 0%, rgba(20, 25, 35, 0.98) 100%);
+  border-radius: 8px;
+  padding: 8px;
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  margin-bottom: 8px;
 }
 
 .final-title {
-  font-size: 15px;
+  font-size: 12px;
   color: #ffd700;
-  margin-bottom: 14px;
+  margin-bottom: 6px;
+  font-weight: bold;
+  text-align: center;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .attr-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
 }
 
 .attr-box {
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  padding: 4px 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
   text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.attr-label {
-  font-size: 11px;
-  color: #8b8b8b;
-  margin-bottom: 4px;
+.attr-box .attr-icon {
+  font-size: 14px;
+  margin-bottom: 2px;
 }
 
-.attr-value {
-  font-size: 20px;
+.attr-box .attr-label {
+  font-size: 10px;
+  color: #a0a0a0;
+  margin-bottom: 2px;
+}
+
+.attr-box .attr-value {
+  font-size: 14px;
   color: #f0f0f0;
   font-weight: bold;
+}
+
+.divider {
+  height: 1px;
+  background: rgba(255, 215, 0, 0.2);
+  margin: 4px 0;
+}
+
+.secondary-section {
+  padding-top: 4px;
+}
+
+.secondary-title {
+  font-size: 12px;
+  color: #ffd700;
+  margin-bottom: 6px;
+  font-weight: bold;
+  text-align: center;
 }
 
 .secondary-attrs {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  padding-top: 14px;
-  border-top: 1px solid #4a4a4a;
+  gap: 4px;
 }
 
 .sec-attr {
   display: flex;
-  justify-content: space-between;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.05);
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sec-attr .sec-icon {
+  font-size: 12px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 4px;
+  color: #ffd700;
 }
 
 .sec-attr span {
-  color: #8b8b8b;
+  flex: 1;
+  color: #b0b0b0;
   font-size: 12px;
 }
 
 .sec-attr strong {
   color: #f0f0f0;
   font-size: 13px;
+  font-weight: bold;
+  min-width: 40px;
+  text-align: right;
 }
 
 /* 导航按钮 */
