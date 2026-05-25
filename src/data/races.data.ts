@@ -5,7 +5,7 @@
  */
 
 // 导入类型定义
-import type { FactionData, RaceData } from '../types';
+import type { FactionData, RaceData } from '@/modules/character/types';
 
 /**
  * 阵营数据定义
@@ -143,5 +143,109 @@ export const RACES: Record<string, RaceData> = {
     factionId: 'horde',
     bonus: { dex: 1, cha: 2 },
     description: '精明的商人种族，掌控着艾泽拉斯的商业命脉'
+  },
+  voidelf: {
+    id: 'voidelf',
+    name: '虚空精灵',
+    icon: '🌑',
+    factionId: 'alliance',
+    bonus: { dex: 1, int: 2 },
+    description: '精通奥术的精灵后裔，掌握着虚空之力'
+  },
+  lightforgeddraenei: {
+    id: 'lightforgeddraenei',
+    name: '光铸德莱尼',
+    icon: '✨',
+    factionId: 'alliance',
+    bonus: { con: 1, wis: 2 },
+    description: '圣光灌注的德莱尼，圣光的坚定守护者'
+  },
+  darkirondwarf: {
+    id: 'darkirondwarf',
+    name: '黑铁矮人',
+    icon: '🔥',
+    factionId: 'alliance',
+    bonus: { str: 1, con: 2, int: 1 },
+    description: '精通火焰与锻造的黑铁矮人'
+  },
+  kul_tiran: {
+    id: 'kul_tiran',
+    name: '库尔提拉斯人',
+    icon: '⚓',
+    factionId: 'alliance',
+    bonus: { con: 2, wis: 1 },
+    description: '海上强国的后裔，勇敢的航海者'
+  },
+  mechagnome: {
+    id: 'mechagnome',
+    name: '机械侏儒',
+    icon: '⚙️',
+    factionId: 'alliance',
+    bonus: { dex: 1, int: 2 },
+    description: '机械改造的侏儒，精通机械与科技'
+  },
+  nightborne: {
+    id: 'nightborne',
+    name: '夜之子',
+    icon: '🌙',
+    factionId: 'horde',
+    bonus: { int: 2, cha: 1 },
+    description: '暗夜井的守护者，精通奥术魔法'
+  },
+  highmountaintauren: {
+    id: 'highmountaintauren',
+    name: '至高岭牛头人',
+    icon: '🏔️',
+    factionId: 'horde',
+    bonus: { con: 2, wis: 1 },
+    description: '高山的守护者，与大地母亲的守护者'
+  },
+  magharorc: {
+    id: 'magharorc',
+    name: '玛格汉兽人',
+    icon: '👹',
+    factionId: 'horde',
+    bonus: { str: 2, con: 1 },
+    description: '纯净血脉的兽人，来自德拉诺的战士'
+  },
+  zandalari: {
+    id: 'zandalari',
+    name: '赞达拉巨魔',
+    icon: '🦎',
+    factionId: 'horde',
+    bonus: { str: 1, con: 2, wis: 1 },
+    description: '强大的帝国守护者，赞达拉的骄傲'
+  },
+  vulpera: {
+    id: 'vulpera',
+    name: '狐人',
+    icon: '🦊',
+    factionId: 'horde',
+    bonus: { dex: 2, wis: 1 },
+    description: '敏捷的沙漠行者，精明的商人和探险家'
+  },
+  dracthyr: {
+    id: 'dracthyr',
+    name: '龙希尔',
+    icon: '🐉',
+    factionId: 'neutral',
+    bonus: { dex: 1, int: 2 },
+    description: '龙类血脉的守护者，掌握着巨龙的力量'
+  },
+  earthen: {
+    id: 'earthen',
+    name: '土灵',
+    icon: '🪨',
+    factionId: 'neutral',
+    bonus: { con: 2, wis: 1 },
+    description: '大地的化身，与大地融为一体'
+  },
+  harenei: {
+    id: 'harenei',
+    name: '哈籁尼尔',
+    icon: '🌿',
+    factionId: 'neutral',
+    bonus: { dex: 1, int: 1, wis: 1 },
+    description: '自然的使者，与自然和谐共生'
   }
 };

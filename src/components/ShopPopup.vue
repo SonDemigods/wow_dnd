@@ -94,10 +94,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { shopService } from '@/modules/shop.module';
-import { characterService } from '@/modules/character.module';
-import { inventoryService } from '@/modules/inventory.module';
-import type { ShopItem, ItemCategory, ItemQuality } from '@/modules/shop.module';
+import { shopService } from '@/modules/shop';
+import { characterService } from '@/modules/character';
+import { inventoryService } from '@/modules/inventory';
+import type { ShopItem, ItemCategory, ItemQuality } from '@/modules/shop';
 
 const currentTab = ref<'buy' | 'sell'>('buy');
 const selectedCategory = ref<ItemCategory | 'all'>('all');

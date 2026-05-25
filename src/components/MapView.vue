@@ -28,7 +28,7 @@
       <p class="zone-desc">{{ selectedZone.description }}</p>
       <div class="zone-info">
         <div class="info-item">
-          <span class="info-label">状态:</span>
+          <span class="info-label">状�?</span>
           <span :class="['info-value', selectedZone.status]">{{ getStatusText(selectedZone.status) }}</span>
         </div>
         <div class="info-item">
@@ -65,8 +65,7 @@
           class="action-btn completed"
           disabled
         >
-          已完成
-        </button>
+          已完�?        </button>
       </div>
     </div>
   </div>
@@ -74,9 +73,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { mapService } from '@/modules/map.module';
-import { characterService } from '@/modules/character.module';
-import type { MapZone, ZoneStatus } from '@/modules/map.module';
+import { mapService } from '@/modules/map';
+import { characterService } from '@/modules/character';
+import type { MapZone, ZoneStatus } from '@/modules/map';
 
 const zones = ref<MapZone[]>([]);
 const selectedZone = ref<MapZone | null>(null);
@@ -125,7 +124,7 @@ function unlockZone() {
     loadZones();
     alert(`成功解锁 ${selectedZone.value.name}！`);
   } else {
-    alert('解锁失败！');
+    alert('解锁失败');
   }
 }
 

@@ -9,20 +9,17 @@
         :class="['tab-btn', { active: currentTab === 'available' }]"
         @click="currentTab = 'available'"
       >
-        可接取任务
-      </button>
+        可接取任务      </button>
       <button 
         :class="['tab-btn', { active: currentTab === 'active' }]"
         @click="currentTab = 'active'"
       >
-        进行中任务
-      </button>
+        进行中任务      </button>
       <button 
         :class="['tab-btn', { active: currentTab === 'completed' }]"
         @click="currentTab = 'completed'"
       >
-        已完成任务
-      </button>
+        已完成任务      </button>
     </div>
 
     <div v-if="currentTab === 'available'" class="quest-list">
@@ -73,7 +70,7 @@
               :key="obj.id"
               :class="['objective', { completed: obj.completed }]"
             >
-              <span class="objective-checkbox">{{ obj.completed ? '✓' : '◯' }}</span>
+              <span class="objective-checkbox">{{ obj.completed ? '☑️' : '⬜' }}</span>
               <span class="objective-text">{{ obj.description }}</span>
               <span class="objective-progress">{{ obj.current }}/{{ obj.required }}</span>
             </div>
@@ -104,7 +101,7 @@
         :key="quest.id"
         class="quest-card completed"
       >
-        <div class="quest-icon">✅</div>
+        <div class="quest-icon">🏆</div>
         <div class="quest-content">
           <h3>{{ quest.title }}</h3>
           <p class="quest-desc">{{ quest.description }}</p>
@@ -135,9 +132,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { questService } from '@/modules/quest.module';
-import { characterService } from '@/modules/character.module';
-import type { Quest, QuestStatus } from '@/modules/quest.module';
+import { questService } from '@/modules/quest';
+import { characterService } from '@/modules/character';
+import type { Quest, QuestStatus } from '@/modules/quest';
 
 const currentTab = ref<'available' | 'active' | 'completed'>('available');
 
@@ -155,7 +152,7 @@ const questIcons: Record<string, string> = {
 
 const statusTexts: Record<QuestStatus, string> = {
   available: '可接取',
-  not_available: '不可用',
+  not_available: '不可接',
   in_progress: '进行中',
   completed: '可交付',
   turned_in: '已领取',

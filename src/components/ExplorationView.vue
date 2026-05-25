@@ -81,8 +81,8 @@
 
     <div v-if="explorationComplete" class="complete-modal">
       <div class="complete-content">
-        <h3>🎉 探索完成！</h3>
-        <p>恭喜你完成了本次探索！</p>
+        <h3>🎉 探索完成</h3>
+        <p>恭喜你完成了本次探索</p>
         <button class="restart-btn" @click="startExploration">再次探索</button>
       </div>
     </div>
@@ -91,8 +91,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { explorationService } from '@/modules/exploration.module';
-import type { ExplorationCell, ExplorationEvent } from '@/modules/exploration.module';
+import { explorationService } from '@/modules/exploration';
+import type { ExplorationCell, ExplorationEvent } from '@/modules/exploration';
 
 const grid = ref<ExplorationCell[][]>([]);
 const playerPos = ref({ x: 0, y: 0 });
@@ -112,7 +112,7 @@ const cellIcons: Record<string, string> = {
   shop: '🏪',
   rest: '🏕️',
   boss: '👑',
-  event: '❓',
+  event: '✨',
   start: '🚩',
   exit: '🚪'
 };
@@ -176,7 +176,7 @@ function move(direction: 'up' | 'down' | 'left' | 'right') {
   }
   
   if (result.rewards) {
-    alert(`获得奖励：${result.rewards.gold} 金币，${result.rewards.exp} 经验值`);
+    alert(`获得奖励�?{result.rewards.gold} 金币�?{result.rewards.exp} 经验值`);
   }
 }
 

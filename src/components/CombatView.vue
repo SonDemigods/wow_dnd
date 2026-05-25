@@ -8,7 +8,7 @@
 
     <div v-else class="combat-arena">
       <div class="combat-header">
-        <h2>战斗！</h2>
+        <h2>战斗</h2>
         <div class="turn-indicator" :class="turn">
           {{ turn === 'player' ? '你的回合' : '敌人回合' }}
         </div>
@@ -78,8 +78,7 @@
             :disabled="turn !== 'player'"
             @click="attack"
           >
-            ⚔️ 普通攻击
-          </button>
+            ⚔️ 普通攻�?          </button>
           <button 
             class="action-btn item"
             :disabled="turn !== 'player' || !hasConsumables"
@@ -135,11 +134,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { combatService } from '@/modules/combat.module';
-import { characterService } from '@/modules/character.module';
-import { inventoryService } from '@/modules/inventory.module';
-import { skillsService } from '@/modules/skills.module';
-import type { CombatLog } from '@/modules/combat.module';
+import { combatService } from '@/modules/combat';
+import { characterService } from '@/modules/character';
+import { inventoryService } from '@/modules/inventory';
+import { skillsService } from '@/modules/skills';
+import type { CombatLog } from '@/modules/combat';
 
 const isInCombat = ref(false);
 const turn = ref<'player' | 'enemy'>('player');
@@ -174,7 +173,7 @@ const availableSkills = computed(() => {
 });
 
 const raceIcons: Record<string, string> = {
-  human: '👨', dwarf: '🧔', gnome: '👦', nightelf: '🌙', draenei: '✨',
+  human: '👨', dwarf: '🧔', gnome: '👦', nightelf: '🌙', draenei: '👼',
   orc: '👹', undead: '💀', tauren: '🐂', troll: '👺', bloodelves: '🧝'
 };
 
@@ -191,7 +190,7 @@ const skillIcons: Record<string, string> = {
 };
 
 function getSkillIcon(type: string) {
-  return skillIcons[type] || '✨';
+  return skillIcons[type] || '⭐';
 }
 
 function loadCombatState() {
@@ -211,7 +210,7 @@ function attack() {
 
 function useItem() {
   if (consumables.value.length === 0) {
-    alert('没有可用的消耗品！');
+    alert('没有可用的消耗品');
     return;
   }
   showItemModal.value = true;

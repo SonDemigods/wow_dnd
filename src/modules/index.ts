@@ -8,3 +8,4 @@ export * from './quest';
 export * from './skills';
 export * from './exploration';
 export * from './map';
+export * from './gameData';

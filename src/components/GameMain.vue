@@ -1,7 +1,7 @@
 <template>
   <div class="game-main">
     <div class="game-header">
-      <div class="player-info">
+      <div class="player-info" @click="showCharacterInfo = true">
         <div class="player-icon">{{ getRaceIcon(character.race || 'human') }}</div>
         <div class="player-details">
           <div class="player-name">{{ character.name }}</div>
@@ -20,7 +20,12 @@
           <div class="resource-text">{{ currentMp }} / {{ maxMp }}</div>
         </div>
       </div>
-      <div class="player-gold">💰 {{ gold }}</div>
+      <div class="header-actions">
+        <button class="action-btn" @click="showAdventureLog = true" title="冒险日志">
+          📜
+        </button>
+        <div class="player-gold">💰 {{ gold }}</div>
+      </div>
     </div>
 
     <div class="game-nav">
@@ -42,35 +47,52 @@
     <div v-if="showNotification" class="notification" :class="notificationType">
       {{ notificationMessage }}
     </div>
+
+    <CharacterInfoPopup 
+      :visible="showCharacterInfo" 
+      @close="showCharacterInfo = false" 
+    />
+    
+    <AdventureLogPopup 
+      :visible="showAdventureLog" 
+      :current-area="currentArea"
+      @close="showAdventureLog = false" 
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, markRaw } from 'vue';
 import { useCharacterStore } from '@/modules/character';
+import { useMapStore } from '@/modules/map';
 import MapView from './MapView.vue';
 import ExplorationView from './ExplorationView.vue';
 import CombatView from './CombatView.vue';
-import ShopView from './ShopView.vue';
-import QuestView from './QuestView.vue';
-import InventoryView from './InventoryView.vue';
-import SkillsView from './SkillsView.vue';
+import ShopPopup from './ShopPopup.vue';
+import QuestPopup from './QuestPopup.vue';
+import InventoryPopup from './InventoryPopup.vue';
+import SkillsPopup from './SkillsPopup.vue';
+import CharacterInfoPopup from './CharacterInfoPopup.vue';
+import AdventureLogPopup from './AdventureLogPopup.vue';
 
 const characterStore = useCharacterStore();
+const mapStore = useMapStore();
 
 const currentTab = ref('map');
 const showNotification = ref(false);
 const notificationMessage = ref('');
 const notificationType = ref('info');
+const showCharacterInfo = ref(false);
+const showAdventureLog = ref(false);
 
 const tabs = [
-  { id: 'map', name: '地图', icon: '🗺️' },
-  { id: 'explore', name: '探索', icon: '🏕️' },
+  { id: 'map', name: '地图', icon: '🗺' },
+  { id: 'explore', name: '探索', icon: '🏕' },
   { id: 'combat', name: '战斗', icon: '⚔️' },
   { id: 'shop', name: '商店', icon: '🏪' },
   { id: 'quest', name: '任务', icon: '📋' },
   { id: 'inventory', name: '背包', icon: '🎒' },
-  { id: 'skills', name: '技能', icon: '✨' }
+  { id: 'skills', name: '技能', icon: '📜' }
 ];
 
 const character = computed(() => characterStore.getCharacterInfo());
@@ -82,22 +104,23 @@ const maxMp = computed(() => attributes.value.maxMana);
 const hpPercent = computed(() => Math.round((currentHp.value / maxHp.value) * 100));
 const mpPercent = computed(() => Math.round((currentMp.value / maxMp.value) * 100));
 const gold = computed(() => characterStore.gold);
+const currentArea = computed(() => mapStore.getCurrentArea()?.name || '未知区域');
 
 const currentComponent = computed(() => {
   const components: Record<string, any> = {
     map: markRaw(MapView),
     explore: markRaw(ExplorationView),
     combat: markRaw(CombatView),
-    shop: markRaw(ShopView),
-    quest: markRaw(QuestView),
-    inventory: markRaw(InventoryView),
-    skills: markRaw(SkillsView)
+    shop: markRaw(ShopPopup),
+    quest: markRaw(QuestPopup),
+    inventory: markRaw(InventoryPopup),
+    skills: markRaw(SkillsPopup)
   };
   return components[currentTab.value];
 });
 
 const races: Record<string, string> = {
-  human: '👨', dwarf: '🧔', gnome: '👦', nightelf: '🌙', draenei: '✨',
+  human: '👨', dwarf: '🧔', gnome: '👦', nightelf: '🌙', draenei: '📜',
   orc: '👹', undead: '💀', tauren: '🐂', troll: '👺', bloodelves: '🧝'
 };
 
@@ -136,6 +159,14 @@ defineExpose({ showNotif });
   display: flex;
   align-items: center;
   gap: 12px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.player-info:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .player-icon {
@@ -203,6 +234,26 @@ defineExpose({ showNotif });
 .resource-fill {
   height: 100%;
   transition: width 0.3s;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.action-btn {
+  font-size: 28px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .player-gold {

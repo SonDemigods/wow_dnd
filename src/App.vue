@@ -13,7 +13,7 @@
 
     <div v-else-if="gameState === 'game'" class="game-screen">
       <GameMain ref="gameMainRef" />
-      <button class="exit-btn" @click="handleExit">🗺️ 返回角色选择</button>
+      <button class="exit-btn" @click="handleExit">🗺 返回角色选择</button>
     </div>
 
     <div v-if="showCreateModal" class="modal-overlay">

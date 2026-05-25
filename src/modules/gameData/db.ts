@@ -1,0 +1,251 @@
+/**
+ * 基础数据管理模块数据库层
+ * 
+ * 封装阵营、种族、职业数据的数据库操作
+ */
+
+import { db as gameDb, dbService } from '../data/core';
+import type { FactionData, RaceData, ClassData } from '../character/types';
+import type { FactionCreateUpdateData, RaceCreateUpdateData, ClassCreateUpdateData } from './types';
+
+/**
+ * 基础数据数据库服务类
+ */
+export class GameDataDbService {
+  /**
+   * 生成唯一ID
+   */
+  private generateId(): string {
+    return `game_data_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  // ==================== 阵营操作 ====================
+
+  /**
+   * 获取所有阵营
+   */
+  async getAllFactions(): Promise<FactionData[]> {
+    return dbService.withRetry(async () => {
+      const result = await gameDb.factions.toArray();
+      return result as FactionData[];
+    });
+  }
+
+  /**
+   * 根据ID获取阵营
+   */
+  async getFactionById(id: string): Promise<FactionData | null> {
+    return dbService.withRetry(async () => {
+      const result = await gameDb.factions.get(id);
+      return result as FactionData | null;
+    });
+  }
+
+  /**
+   * 创建阵营
+   */
+  async createFaction(data: FactionCreateUpdateData): Promise<string> {
+    const id = this.generateId();
+    await dbService.withRetry(async () => {
+      await gameDb.factions.add({
+        id,
+        ...data
+      });
+    });
+    return id;
+  }
+
+  /**
+   * 更新阵营
+   */
+  async updateFaction(id: string, data: FactionCreateUpdateData): Promise<void> {
+    await dbService.withRetry(async () => {
+      const existing = await gameDb.factions.get(id);
+      if (!existing) {
+        throw new Error('阵营不存在');
+      }
+      await gameDb.factions.put({
+        id,
+        ...data
+      });
+    });
+  }
+
+  /**
+   * 删除阵营
+   */
+  async deleteFaction(id: string): Promise<void> {
+    await dbService.withRetry(async () => {
+      const existing = await gameDb.factions.get(id);
+      if (!existing) {
+        throw new Error('阵营不存在');
+      }
+      await gameDb.factions.delete(id);
+    });
+  }
+
+  // ==================== 种族操作 ====================
+
+  /**
+   * 获取所有种族
+   */
+  async getAllRaces(): Promise<RaceData[]> {
+    return dbService.withRetry(async () => {
+      const result = await gameDb.races.toArray();
+      return result as RaceData[];
+    });
+  }
+
+  /**
+   * 根据ID获取种族
+   */
+  async getRaceById(id: string): Promise<RaceData | null> {
+    return dbService.withRetry(async () => {
+      const result = await gameDb.races.get(id);
+      return result as RaceData | null;
+    });
+  }
+
+  /**
+   * 根据阵营获取种族
+   */
+  async getRacesByFaction(factionId: string): Promise<RaceData[]> {
+    return dbService.withRetry(async () => {
+      const result = await gameDb.races.toArray();
+      return (result as RaceData[]).filter(race => race.factionId === factionId);
+    });
+  }
+
+  /**
+   * 创建种族
+   */
+  async createRace(data: RaceCreateUpdateData): Promise<string> {
+    const id = this.generateId();
+    await dbService.withRetry(async () => {
+      await gameDb.races.add({
+        id,
+        ...data
+      });
+    });
+    return id;
+  }
+
+  /**
+   * 更新种族
+   */
+  async updateRace(id: string, data: RaceCreateUpdateData): Promise<void> {
+    await dbService.withRetry(async () => {
+      const existing = await gameDb.races.get(id);
+      if (!existing) {
+        throw new Error('种族不存在');
+      }
+      await gameDb.races.put({
+        id,
+        ...data
+      });
+    });
+  }
+
+  /**
+   * 删除种族
+   */
+  async deleteRace(id: string): Promise<void> {
+    await dbService.withRetry(async () => {
+      const existing = await gameDb.races.get(id);
+      if (!existing) {
+        throw new Error('种族不存在');
+      }
+      await gameDb.races.delete(id);
+    });
+  }
+
+  // ==================== 职业操作 ====================
+
+  /**
+   * 获取所有职业
+   */
+  async getAllClasses(): Promise<ClassData[]> {
+    return dbService.withRetry(async () => {
+      const result = await gameDb.classes.toArray();
+      return result as ClassData[];
+    });
+  }
+
+  /**
+   * 根据ID获取职业
+   */
+  async getClassById(id: string): Promise<ClassData | null> {
+    return dbService.withRetry(async () => {
+      const result = await gameDb.classes.get(id);
+      return result as ClassData | null;
+    });
+  }
+
+  /**
+   * 根据种族获取职业
+   */
+  async getClassesByRace(raceId: string): Promise<ClassData[]> {
+    return dbService.withRetry(async () => {
+      const result = await gameDb.classes.toArray();
+      return (result as ClassData[]).filter(cls => cls.raceIds.includes(raceId));
+    });
+  }
+
+  /**
+   * 根据阵营获取职业
+   */
+  async getClassesByFaction(factionId: string): Promise<ClassData[]> {
+    return dbService.withRetry(async () => {
+      const result = await gameDb.classes.toArray();
+      return (result as ClassData[]).filter(cls => cls.factionsIds.includes(factionId));
+    });
+  }
+
+  /**
+   * 创建职业
+   */
+  async createClass(data: ClassCreateUpdateData): Promise<string> {
+    const id = this.generateId();
+    await dbService.withRetry(async () => {
+      await gameDb.classes.add({
+        id,
+        ...data
+      });
+    });
+    return id;
+  }
+
+  /**
+   * 更新职业
+   */
+  async updateClass(id: string, data: ClassCreateUpdateData): Promise<void> {
+    await dbService.withRetry(async () => {
+      const existing = await gameDb.classes.get(id);
+      if (!existing) {
+        throw new Error('职业不存在');
+      }
+      await gameDb.classes.put({
+        id,
+        ...data
+      });
+    });
+  }
+
+  /**
+   * 删除职业
+   */
+  async deleteClass(id: string): Promise<void> {
+    await dbService.withRetry(async () => {
+      const existing = await gameDb.classes.get(id);
+      if (!existing) {
+        throw new Error('职业不存在');
+      }
+      await gameDb.classes.delete(id);
+    });
+  }
+}
+
+/**
+ * 基础数据数据库服务实例
+ */
+export const gameDataDbService = new GameDataDbService();

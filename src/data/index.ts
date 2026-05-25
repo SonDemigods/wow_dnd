@@ -35,9 +35,11 @@ export {
   SHOP_TYPE_ITEM_POOL
 } from './shops.data';
 
+// 导出配置常量
+export { MAX_LEVEL } from '@/config/character';
+
 // 导出常量和计算函数
 export {
-  MAX_LEVEL,
   STAT_NAMES,
   LEVEL_EXP_REQUIREMENTS,
   calculateAllAttributes,
@@ -53,4 +55,4 @@ export {
   calculateMpBonus,
   calculateHealBonus,
   getExpForLevel
-} from './constants';
+} from '@/utils/calculations';

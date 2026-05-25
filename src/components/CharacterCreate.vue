@@ -1,90 +1,190 @@
 <template>
   <div class="character-create">
     <div class="create-header">
-      <h2>创建角色</h2>
+      <h2>创建新角色 - 步骤 {{ currentStep }}/4</h2>
     </div>
-    
-    <div class="create-form">
-      <div class="form-group">
-        <label>角色名称</label>
-        <input 
-          v-model="name" 
-          type="text" 
-          placeholder="请输入角色名称"
-          maxlength="20"
-        />
-      </div>
 
-      <div class="form-group">
-        <label>选择阵营</label>
-        <div class="faction-selector">
-          <button 
-            v-for="faction in factions" 
-            :key="faction.id"
-            :class="['faction-btn', { active: selectedFaction === faction.id }]"
-            @click="selectedFaction = faction.id"
-          >
-            <div class="faction-icon">{{ faction.icon }}</div>
-            <div class="faction-name">{{ faction.name }}</div>
-          </button>
-        </div>
+    <!-- 步骤 1: 选择阵营 -->
+    <div v-if="currentStep === 1" class="step-content">
+      <div class="step-title">请选择阵营</div>
+      <div class="faction-grid">
+        <button 
+          v-for="faction in factionList.filter(f => f.id !== 'neutral')" 
+          :key="faction.id"
+          :class="['faction-card', 'main-faction', { active: selectedFaction === faction.id }]"
+          :style="{ '--faction-color': faction.color }"
+          @click="selectFaction(faction.id)"
+        >
+          <div class="faction-icon">{{ faction.icon }}</div>
+          <div class="faction-name">{{ faction.name }}</div>
+          <div class="faction-desc">{{ getFactionRaceNames(faction.id) }}</div>
+        </button>
       </div>
-
-      <div class="form-group">
-        <label>选择种族</label>
-        <div class="race-grid">
-          <button 
-            v-for="race in availableRaces" 
-            :key="race.id"
-            :class="['race-btn', { active: selectedRace === race.id }]"
-            @click="selectedRace = race.id"
-          >
-            <div class="race-icon">{{ race.icon }}</div>
-            <div class="race-name">{{ race.name }}</div>
-          </button>
-        </div>
+      <div class="neutral-faction-row">
+        <button 
+          v-if="neutralFaction"
+          :class="['faction-card', 'neutral-faction', { active: selectedFaction === 'neutral' }]"
+          :style="{ '--faction-color': neutralFaction.color }"
+          @click="selectFaction('neutral')"
+        >
+          <div class="faction-icon">{{ neutralFaction.icon }}</div>
+          <div class="faction-name">{{ neutralFaction.name }}</div>
+          <div class="faction-desc">{{ getFactionRaceNames('neutral') }}</div>
+        </button>
       </div>
+    </div>
 
-      <div class="form-group">
-        <label>选择职业</label>
-        <div class="class-grid">
-          <button 
-            v-for="cls in availableClasses" 
-            :key="cls.id"
-            :class="['class-btn', { active: selectedClass === cls.id }]"
-            @click="selectedClass = cls.id"
-          >
-            <div class="class-icon">{{ cls.icon }}</div>
-            <div class="class-name">{{ cls.name }}</div>
-          </button>
-        </div>
+    <!-- 步骤 2: 选择种族 -->
+    <div v-if="currentStep === 2" class="step-content">
+      <div class="step-title">请选择种族 ({{ getFactionName(selectedFaction || '') }})</div>
+      <div :class="['race-grid', selectedFaction]">
+        <button 
+          v-for="race in availableRaces" 
+          :key="race.id"
+          :class="['race-card', { active: selectedRace === race.id }]"
+          @click="selectRace(race.id)"
+        >
+          <div class="race-icon">{{ race.icon }}</div>
+          <div class="race-name">{{ race.name }}</div>
+          <div class="race-bonus" v-if="race.bonus">
+            <span v-for="(value, stat) in race.bonus" :key="stat">+{{ value }} {{ getStatName(stat) }}</span>
+          </div>
+        </button>
       </div>
-
-      <div class="preview-section">
-        <h3>角色预览</h3>
-        <div class="preview-card">
-          <div class="preview-icon">👤</div>
-          <div class="preview-info">
-            <div class="preview-name">{{ name || '未命名' }}</div>
-            <div class="preview-details">
-              <span>{{ getFactionName(selectedFaction) }}</span>
-              <span>{{ getRaceName(selectedRace) }}</span>
-              <span>{{ getClassName(selectedClass) }}</span>
-            </div>
+      <div class="attribute-preview">
+        <div class="preview-title">属性预览</div>
+        <div class="attr-list">
+          <div v-for="(value, stat) in currentAttributes" :key="stat" class="attr-item">
+            {{ getStatName(stat) }}: {{ value }}
           </div>
         </div>
-        <div class="attribute-preview">
-          <div class="attr-item">力量: {{ previewAttributes.str }}</div>
-          <div class="attr-item">敏捷: {{ previewAttributes.dex }}</div>
-          <div class="attr-item">智力: {{ previewAttributes.int }}</div>
-          <div class="attr-item">耐力: {{ previewAttributes.con }}</div>
-          <div class="attr-item">精神: {{ previewAttributes.wis }}</div>
-          <div class="attr-item">魅力: {{ previewAttributes.cha }}</div>
+      </div>
+    </div>
+
+    <!-- 步骤 3: 选择职业 -->
+    <div v-if="currentStep === 3" class="step-content">
+      <div class="step-title">请选择职业</div>
+      <div class="class-grid">
+        <button 
+          v-for="cls in classList" 
+          :key="cls.id"
+          :class="['class-card', { active: selectedClass === cls.id }]"
+          :style="{ '--class-color': cls.color }"
+          @click="selectClass(cls.id)"
+        >
+          <div class="class-icon">{{ cls.icon }}</div>
+          <div class="class-name">{{ cls.name }}</div>
+          <div class="class-bonus" v-if="cls.bonus">
+            <span 
+              v-for="(value, stat) in cls.bonus" 
+              :key="stat"
+              :class="{ negative: value && value < 0 }"
+            >
+              {{ value && value > 0 ? '+' : '' }}{{ value || 0 }} {{ getStatName(stat) }}
+            </span>
+          </div>
+        </button>
+      </div>
+      <div class="attribute-preview">
+        <div class="preview-title">属性预览</div>
+        <div class="attr-list">
+          <div v-for="(value, stat) in currentAttributes" :key="stat" class="attr-item">
+            {{ getStatName(stat) }}: {{ value }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 步骤 4: 输入角色名 -->
+    <div v-if="currentStep === 4" class="step-content">
+      <div class="step-title">请输入角色名</div>
+      
+      <div class="character-preview">
+        <div class="preview-row">
+          <div class="preview-avatar">{{ getRaceIcon(selectedRace || '') }}</div>
+          <div class="name-input-wrapper">
+            <input 
+              v-model="name" 
+              type="text" 
+              placeholder="输入角色名"
+              maxlength="20"
+              class="name-input"
+            />
+          </div>
+        </div>
+        <div class="preview-details">
+          <span>{{ getRaceName(selectedRace || '') }}</span>
+          <span>{{ getClassName(selectedClass || '') }}</span>
+          <span>{{ getFactionName(selectedFaction || '') }}</span>
         </div>
       </div>
 
+      <div class="final-attributes">
+        <div class="final-title">最终属性</div>
+        <div class="attr-grid">
+          <div v-for="(value, stat) in currentAttributes" :key="stat" class="attr-box">
+            <div class="attr-label">{{ getStatName(stat) }}</div>
+            <div class="attr-value">{{ value }}</div>
+          </div>
+        </div>
+        <div class="secondary-attrs">
+          <div class="sec-attr">
+            <span>物理攻击:</span>
+            <strong>{{ calculatedAttributes.physicalAttack }}</strong>
+          </div>
+          <div class="sec-attr">
+            <span>物理防御:</span>
+            <strong>{{ calculatedAttributes.physicalDefense }}</strong>
+          </div>
+          <div class="sec-attr">
+            <span>魔法攻击:</span>
+            <strong>{{ calculatedAttributes.magicalAttack }}</strong>
+          </div>
+          <div class="sec-attr">
+            <span>魔法防御:</span>
+            <strong>{{ calculatedAttributes.magicalDefense }}</strong>
+          </div>
+          <div class="sec-attr">
+            <span>暴击率:</span>
+            <strong>{{ calculatedAttributes.critRate }}%</strong>
+          </div>
+          <div class="sec-attr">
+            <span>闪避率:</span>
+            <strong>{{ calculatedAttributes.dodgeRate }}%</strong>
+          </div>
+          <div class="sec-attr">
+            <span>最大HP:</span>
+            <strong>{{ calculatedAttributes.maxHp }}</strong>
+          </div>
+          <div class="sec-attr">
+            <span>最大MP:</span>
+            <strong>{{ calculatedAttributes.maxMp }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 导航按钮 -->
+    <div class="navigation-buttons">
       <button 
-        class="create-btn"
+        v-if="currentStep > 1"
+        class="nav-btn prev"
+        @click="prevStep"
+      >
+        上一步
+      </button>
+      <div class="spacer"></div>
+      <button 
+        v-if="currentStep < 4"
+        class="nav-btn next"
+        :disabled="!canProceed"
+        @click="nextStep"
+      >
+        下一步
+      </button>
+      <button 
+        v-if="currentStep === 4"
+        class="nav-btn create"
         :disabled="!canCreate"
         @click="createCharacter"
       >
@@ -95,330 +195,710 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { characterService } from '@/modules/character.module';
-
-const name = ref('');
-const selectedFaction = ref('alliance');
-const selectedRace = ref('human');
-const selectedClass = ref('warrior');
+import { ref, computed, onMounted } from 'vue';
+import { characterService } from '@/modules/character';
+import { gameDataService } from '@/modules/gameData';
+import type { FactionData, RaceData, ClassData } from '@/modules/character/types';
 
 const emit = defineEmits<{
   (e: 'created'): void;
 }>();
 
-const factions = [
-  { id: 'alliance', name: '联盟', icon: '⚖️' },
-  { id: 'horde', name: '部落', icon: '⚔️' }
-];
+const currentStep = ref(1);
+const name = ref('');
+const selectedFaction = ref<string | null>(null);
+const selectedRace = ref<string | null>(null);
+const selectedClass = ref<string | null>(null);
 
-const races: Record<string, { id: string; name: string; icon: string; faction: string }[]> = {
-  alliance: [
-    { id: 'human', name: '人类', icon: '👨', faction: 'alliance' },
-    { id: 'dwarf', name: '矮人', icon: '🧔', faction: 'alliance' },
-    { id: 'gnome', name: '侏儒', icon: '👦', faction: 'alliance' },
-    { id: 'nightelf', name: '暗夜精灵', icon: '🌙', faction: 'alliance' },
-    { id: 'draenei', name: '德莱尼', icon: '✨', faction: 'alliance' }
-  ],
-  horde: [
-    { id: 'orc', name: '兽人', icon: '👹', faction: 'horde' },
-    { id: 'undead', name: '亡灵', icon: '💀', faction: 'horde' },
-    { id: 'tauren', name: '牛头人', icon: '🐂', faction: 'horde' },
-    { id: 'troll', name: '巨魔', icon: '👺', faction: 'horde' },
-    { id: 'bloodelves', name: '血精灵', icon: '🧝', faction: 'horde' }
-  ]
+const factionList = ref<FactionData[]>([]);
+const raceList = ref<RaceData[]>([]);
+const classList = ref<ClassData[]>([]);
+
+const statNames: Record<string, string> = {
+  str: '力量',
+  dex: '敏捷',
+  con: '体质',
+  int: '智力',
+  wis: '感知',
+  cha: '魅力'
 };
 
-const classes = [
-  { id: 'warrior', name: '战士', icon: '⚔️' },
-  { id: 'mage', name: '法师', icon: '🔮' },
-  { id: 'priest', name: '牧师', icon: '📿' },
-  { id: 'rogue', name: '盗贼', icon: '🗡️' },
-  { id: 'hunter', name: '猎人', icon: '🏹' },
-  { id: 'shaman', name: '萨满', icon: '⚡' },
-  { id: 'paladin', name: '圣骑士', icon: '🛡️' },
-  { id: 'warlock', name: '术士', icon: '☠️' },
-  { id: 'druid', name: '德鲁伊', icon: '🌿' }
-];
+const neutralFaction = computed(() => {
+  return factionList.value.find(f => f.id === 'neutral');
+});
 
-const availableRaces = computed(() => races[selectedFaction.value]);
-const availableClasses = computed(() => classes);
+const availableRaces = computed(() => {
+  if (!selectedFaction.value) return [];
+  return raceList.value.filter(r => r.factionId === selectedFaction.value);
+});
+
+const currentAttributes = computed(() => {
+  const base = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+  
+  if (selectedRace.value) {
+    const raceData = raceList.value.find(r => r.id === selectedRace.value);
+    if (raceData?.bonus) {
+      for (const [stat, value] of Object.entries(raceData.bonus)) {
+        if (stat in base) {
+          base[stat as keyof typeof base] += value;
+        }
+      }
+    }
+  }
+  
+  if (selectedClass.value) {
+    const classData = classList.value.find(c => c.id === selectedClass.value);
+    if (classData?.bonus) {
+      for (const [stat, value] of Object.entries(classData.bonus)) {
+        if (stat in base) {
+          base[stat as keyof typeof base] += value;
+        }
+      }
+    }
+  }
+  
+  return base;
+});
+
+const calculatedAttributes = computed(() => {
+  const attrs = currentAttributes.value;
+  return {
+    physicalAttack: attrs.str * 2 + 10,
+    physicalDefense: Math.floor(attrs.con * 1.5 + 5),
+    magicalAttack: attrs.int * 2 + 10,
+    magicalDefense: Math.floor(attrs.wis * 1.5 + 5),
+    critRate: Math.floor(attrs.dex * 0.5 + 5),
+    dodgeRate: Math.floor(attrs.dex * 0.3 + 3),
+    maxHp: attrs.con * 20 + 100,
+    maxMp: attrs.int * 10 + 50
+  };
+});
+
+const canProceed = computed(() => {
+  switch (currentStep.value) {
+    case 1: return selectedFaction.value !== null;
+    case 2: return selectedRace.value !== null;
+    case 3: return selectedClass.value !== null;
+    default: return true;
+  }
+});
 
 const canCreate = computed(() => {
-  return name.value.trim() && selectedRace.value && selectedClass.value;
+  return name.value.trim().length > 0 && 
+         selectedFaction.value && 
+         selectedRace.value && 
+         selectedClass.value;
 });
 
-const previewAttributes = computed(() => {
-  const baseAttrs = { str: 10, dex: 10, int: 10, con: 10, wis: 10, cha: 10 };
-  
-  const raceBonuses: Record<string, Record<string, number>> = {
-    human: { str: 1, cha: 1 },
-    dwarf: { con: 2, wis: 1 },
-    gnome: { int: 2, dex: 1 },
-    nightelf: { dex: 2, wis: 1 },
-    draenei: { int: 1, wis: 2 },
-    orc: { str: 2, con: 1 },
-    undead: { int: 2, cha: 1 },
-    tauren: { str: 1, con: 2 },
-    troll: { str: 1, dex: 2 },
-    bloodelves: { int: 2, cha: 1 }
-  };
+async function loadData() {
+  factionList.value = await gameDataService.getAllFactions();
+  raceList.value = await gameDataService.getAllRaces();
+  classList.value = await gameDataService.getAllClasses();
+}
 
-  const classBonuses: Record<string, Record<string, number>> = {
-    warrior: { str: 2, con: 1, int: -1 },
-    mage: { int: 3, con: -1, str: -1, cha: -1 },
-    priest: { wis: 3, str: -1, con: -1 },
-    rogue: { dex: 3, con: -1, str: -1 },
-    hunter: { dex: 2, con: 1, int: -1 },
-    shaman: { str: 1, int: 1, wis: 1, con: -1 },
-    paladin: { str: 1, con: 1, wis: 1, int: -1 },
-    warlock: { int: 2, cha: 1, con: -1 },
-    druid: { wis: 2, dex: 1, str: -1 }
-  };
+function selectFaction(id: string) {
+  selectedFaction.value = id;
+  selectedRace.value = null;
+}
 
-  const result = { ...baseAttrs };
-  const raceBonus = raceBonuses[selectedRace.value] || {};
-  const classBonus = classBonuses[selectedClass.value] || {};
+function selectRace(id: string) {
+  selectedRace.value = id;
+}
 
-  for (const key of Object.keys(result)) {
-    result[key as keyof typeof result] += (raceBonus[key] || 0) + (classBonus[key] || 0);
-  }
-
-  return result;
-});
+function selectClass(id: string) {
+  selectedClass.value = id;
+}
 
 function getFactionName(id: string) {
-  return factions.find(f => f.id === id)?.name || '';
+  return factionList.value.find(f => f.id === id)?.name || '';
+}
+
+function getFactionRaceNames(factionId: string) {
+  const factionRaces = raceList.value.filter(r => r.factionId === factionId);
+  return factionRaces.map(r => r.name).join(' · ');
 }
 
 function getRaceName(id: string) {
-  return races.alliance.find(r => r.id === id)?.name || races.horde.find(r => r.id === id)?.name || '';
+  return raceList.value.find(r => r.id === id)?.name || '';
+}
+
+function getRaceIcon(id: string) {
+  return raceList.value.find(r => r.id === id)?.icon || '👤';
 }
 
 function getClassName(id: string) {
-  return classes.find(c => c.id === id)?.name || '';
+  return classList.value.find(c => c.id === id)?.name || '';
+}
+
+function getStatName(stat: string) {
+  return statNames[stat] || stat;
+}
+
+function nextStep() {
+  if (currentStep.value < 4) {
+    currentStep.value++;
+  }
+}
+
+function prevStep() {
+  if (currentStep.value > 1) {
+    currentStep.value--;
+  }
 }
 
 function createCharacter() {
   if (!canCreate.value) return;
-
+  
   characterService.createCharacter(
     name.value,
     selectedFaction.value as any,
     selectedRace.value as any,
     selectedClass.value as any
   );
-
+  
   emit('created');
 }
+
+onMounted(async () => {
+  await loadData();
+});
 </script>
 
 <style scoped>
 .character-create {
-  max-width: 600px;
+  padding: 16px;
+  max-width: 800px;
   margin: 0 auto;
-  padding: 20px;
 }
 
 .create-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 24px;
 }
 
 .create-header h2 {
-  font-size: 28px;
+  font-size: 22px;
   color: #ffd700;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-.create-form {
-  background: rgba(0, 0, 0, 0.7);
-  border-radius: 12px;
-  padding: 24px;
-  border: 2px solid #4a4a4a;
-}
-
-.form-group {
+.step-content {
   margin-bottom: 24px;
 }
 
-.form-group label {
-  display: block;
+.step-title {
+  font-size: 18px;
+  color: #f0f0f0;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* 阵营选择 */
+.faction-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
   margin-bottom: 12px;
-  color: #fff;
-  font-weight: bold;
 }
 
-.form-group input {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid #4a4a4a;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  font-size: 16px;
-  box-sizing: border-box;
-}
-
-.form-group input::placeholder {
-  color: #888;
-}
-
-.faction-selector {
+.neutral-faction-row {
   display: flex;
-  gap: 16px;
+  justify-content: center;
 }
 
-.faction-btn {
-  flex: 1;
-  padding: 16px;
+.faction-card {
+  padding: 20px 12px;
+  background: rgba(13, 17, 23, 0.95);
   border: 2px solid #4a4a4a;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s;
+  text-align: center;
 }
 
-.faction-btn:hover {
-  border-color: #666;
-  background: rgba(255, 255, 255, 0.1);
+.faction-card.main-faction {
+  min-height: 160px;
 }
 
-.faction-btn.active {
-  border-color: #ffd700;
-  background: rgba(255, 215, 0, 0.2);
+.faction-card.neutral-faction {
+  width: 100%;
+  max-width: 360px;
+}
+
+.faction-card:hover {
+  border-color: var(--faction-color);
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-4px);
+}
+
+.faction-card.active {
+  border-color: var(--faction-color);
+  background: rgba(255, 215, 0, 0.1);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
 }
 
 .faction-icon {
-  font-size: 32px;
-  margin-bottom: 8px;
+  font-size: 40px;
+  margin-bottom: 10px;
 }
 
 .faction-name {
-  color: #fff;
-  font-size: 14px;
+  font-size: 18px;
+  color: #f0f0f0;
+  font-weight: bold;
+  margin-bottom: 6px;
 }
 
-.race-grid, .class-grid {
+.faction-desc {
+  font-size: 12px;
+  color: #8b8b8b;
+  line-height: 1.4;
+}
+
+/* 种族选择 - 根据阵营显示不同边框颜色 */
+.race-grid.alliance .race-card {
+  border-color: #0078ff;
+}
+
+.race-grid.alliance .race-card.active {
+  border-color: #0078ff;
+  background: rgba(0, 120, 255, 0.2);
+}
+
+.race-grid.horde .race-card {
+  border-color: #ff4400;
+}
+
+.race-grid.horde .race-card.active {
+  border-color: #ff4400;
+  background: rgba(255, 68, 0, 0.2);
+}
+
+.race-grid.neutral .race-card {
+  border-color: #9d9d9d;
+}
+
+.race-grid.neutral .race-card.active {
+  border-color: #9d9d9d;
+  background: rgba(157, 157, 157, 0.2);
+}
+
+.race-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
-.race-btn, .class-btn {
-  padding: 12px 8px;
-  border: 2px solid #4a4a4a;
+.race-card {
+  padding: 14px 8px;
+  background: rgba(13, 17, 23, 0.95);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
   cursor: pointer;
   transition: all 0.3s;
+  text-align: center;
 }
 
-.race-btn:hover, .class-btn:hover {
-  border-color: #666;
-  background: rgba(255, 255, 255, 0.1);
+.race-card:hover {
+  transform: translateY(-2px);
 }
 
-.race-btn.active, .class-btn.active {
-  border-color: #ffd700;
-  background: rgba(255, 215, 0, 0.2);
+.race-icon {
+  font-size: 32px;
+  margin-bottom: 6px;
 }
 
-.race-icon, .class-icon {
-  font-size: 24px;
+.race-name {
+  font-size: 13px;
+  color: #f0f0f0;
+  font-weight: bold;
   margin-bottom: 4px;
 }
 
-.race-name, .class-name {
-  color: #fff;
+.race-bonus {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+  color: #4CAF50;
+}
+
+/* 职业选择 */
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.class-card {
+  padding: 14px 8px;
+  background: rgba(13, 17, 23, 0.95);
+  border: 2px solid var(--class-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+}
+
+.class-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+}
+
+.class-card.active {
+  background: rgba(255, 215, 0, 0.1);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+}
+
+.class-icon {
+  font-size: 32px;
+  margin-bottom: 6px;
+}
+
+.class-name {
+  font-size: 13px;
+  color: #f0f0f0;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.class-bonus {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+}
+
+.class-bonus span {
+  color: #4CAF50;
+}
+
+.class-bonus span.negative {
+  color: #ff4444;
+}
+
+/* 属性预览 */
+.attribute-preview {
+  background: rgba(13, 17, 23, 0.95);
+  border-radius: 8px;
+  padding: 14px;
+  border: 1px solid #4a4a4a;
+}
+
+.preview-title {
+  font-size: 13px;
+  color: #8b8b8b;
+  margin-bottom: 10px;
+}
+
+.attr-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.attr-item {
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  color: #f0f0f0;
   font-size: 12px;
+  text-align: center;
 }
 
-.preview-section {
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid #4a4a4a;
+/* 角色预览 - 步骤4布局 */
+.character-preview {
+  background: rgba(13, 17, 23, 0.95);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 2px solid #4a4a4a;
 }
 
-.preview-section h3 {
-  color: #ffd700;
-  margin-bottom: 16px;
-}
-
-.preview-card {
+.preview-row {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  margin-bottom: 16px;
+  gap: 12px;
 }
 
-.preview-icon {
-  font-size: 48px;
+.preview-avatar {
+  font-size: 40px;
+  flex-shrink: 0;
 }
 
-.preview-info {
+.name-input-wrapper {
   flex: 1;
+  min-width: 0;
 }
 
-.preview-name {
-  font-size: 20px;
-  color: #fff;
+.name-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid #4a4a4a;
+  border-radius: 8px;
+  color: #f0f0f0;
+  font-size: 16px;
   font-weight: bold;
-  margin-bottom: 8px;
+  outline: none;
+  transition: border-color 0.3s;
+  box-sizing: border-box;
+}
+
+.name-input:focus {
+  border-color: #ffd700;
+}
+
+.name-input::placeholder {
+  color: #666;
 }
 
 .preview-details {
   display: flex;
-  gap: 12px;
-  color: #aaa;
-  font-size: 14px;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
 }
 
 .preview-details span {
-  padding: 4px 8px;
+  padding: 5px 10px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
+  color: #8b8b8b;
+  font-size: 12px;
 }
 
-.attribute-preview {
+/* 最终属性 */
+.final-attributes {
+  background: rgba(13, 17, 23, 0.95);
+  border-radius: 12px;
+  padding: 16px;
+  border: 2px solid #4a4a4a;
+}
+
+.final-title {
+  font-size: 15px;
+  color: #ffd700;
+  margin-bottom: 14px;
+}
+
+.attr-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
-.attr-item {
-  padding: 8px;
+.attr-box {
+  padding: 12px;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
-  color: #ccc;
-  font-size: 14px;
+  border-radius: 8px;
   text-align: center;
 }
 
-.create-btn {
-  width: 100%;
-  padding: 16px;
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
+.attr-label {
+  font-size: 11px;
+  color: #8b8b8b;
+  margin-bottom: 4px;
+}
+
+.attr-value {
+  font-size: 20px;
+  color: #f0f0f0;
+  font-weight: bold;
+}
+
+.secondary-attrs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid #4a4a4a;
+}
+
+.sec-attr {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.sec-attr span {
+  color: #8b8b8b;
+  font-size: 12px;
+}
+
+.sec-attr strong {
+  color: #f0f0f0;
+  font-size: 13px;
+}
+
+/* 导航按钮 */
+.navigation-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.nav-btn {
+  padding: 12px 24px;
   border: none;
   border-radius: 8px;
-  color: #000;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.3s;
+  flex-shrink: 0;
 }
 
-.create-btn:hover:not(:disabled) {
+.nav-btn.prev {
+  background: #4a4a4a;
+  color: #f0f0f0;
+}
+
+.nav-btn.next {
+  background: linear-gradient(135deg, #0078ff, #0056cc);
+  color: #fff;
+}
+
+.nav-btn.create {
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #000;
+}
+
+.nav-btn:hover:not(:disabled) {
   transform: translateY(-2px);
+}
+
+.nav-btn.prev:hover:not(:disabled) {
+  background: #666;
+}
+
+.nav-btn.next:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(0, 120, 255, 0.3);
+}
+
+.nav-btn.create:hover:not(:disabled) {
   box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
 }
 
-.create-btn:disabled {
-  background: #666;
+.nav-btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
-  color: #999;
+}
+
+/* 移动端适配 */
+@media (max-width: 480px) {
+  .character-create {
+    padding: 12px;
+  }
+
+  .create-header h2 {
+    font-size: 18px;
+  }
+
+  .step-title {
+    font-size: 16px;
+  }
+
+  .faction-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .faction-card.main-faction {
+    min-height: auto;
+  }
+
+  .faction-icon {
+    font-size: 36px;
+  }
+
+  .faction-name {
+    font-size: 16px;
+  }
+
+  .faction-desc {
+    font-size: 11px;
+  }
+
+  .race-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .race-card {
+    padding: 12px 6px;
+  }
+
+  .race-icon {
+    font-size: 28px;
+  }
+
+  .race-name {
+    font-size: 12px;
+  }
+
+  .class-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .class-card {
+    padding: 12px 6px;
+  }
+
+  .class-icon {
+    font-size: 28px;
+  }
+
+  .class-name {
+    font-size: 12px;
+  }
+
+  .attr-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .attr-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .attr-box {
+    padding: 10px 6px;
+  }
+
+  .attr-value {
+    font-size: 16px;
+  }
+
+  .secondary-attrs {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .preview-row {
+    gap: 10px;
+  }
+
+  .preview-avatar {
+    font-size: 36px;
+  }
+
+  .name-input {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .nav-btn {
+    padding: 10px 18px;
+    font-size: 14px;
+  }
 }
 </style>

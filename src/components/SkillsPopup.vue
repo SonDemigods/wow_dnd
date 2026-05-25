@@ -42,7 +42,7 @@
             <p class="skill-desc">{{ skill.description }}</p>
             <div class="skill-meta">
               <span class="skill-type">{{ getSkillTypeName(skill.type) }}</span>
-              <span class="skill-cost">消耗: {{ skill.mpCost }} MP</span>
+              <span class="skill-cost">消耗 {{ skill.mpCost }} MP</span>
             </div>
             <div class="skill-effect">
               <span>效果: {{ getEffectText(skill.effect) }}</span>
@@ -68,7 +68,7 @@
               class="add-btn"
               @click.stop="addToBar(skill.id)"
             >
-              ➕ 添加到技能栏
+              添加到技能栏
             </button>
           </div>
         </div>
@@ -87,7 +87,7 @@
           <span class="stat-value">{{ getSkillTypeName(selectedSkill.type) }}</span>
         </div>
         <div class="stat-item">
-          <span class="stat-label">魔法消耗:</span>
+          <span class="stat-label">魔法消耗</span>
           <span class="stat-value">{{ selectedSkill.mpCost }} MP</span>
         </div>
         <div class="stat-item">
@@ -105,8 +105,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { skillsService } from '@/modules/skills.module';
-import type { Skill, SkillType } from '@/modules/skills.module';
+import { skillsService } from '@/modules/skills';
+import type { Skill, SkillType } from '@/modules/skills';
 
 const selectedSkill = ref<Skill | null>(null);
 
@@ -134,7 +134,7 @@ const skillTypeNames: Record<SkillType, string> = {
 };
 
 function getSkillIcon(type: SkillType) {
-  return skillIcons[type] || '✨';
+  return skillIcons[type] || '📜';
 }
 
 function getSkillTypeName(type: SkillType) {
@@ -145,7 +145,7 @@ function getEffectText(effect: any) {
   if (!effect) return '';
   if (effect.type === 'damage') return `造成 ${effect.value} 点伤害`;
   if (effect.type === 'heal') return `恢复 ${effect.value} 点生命值`;
-  if (effect.type === 'buff') return `增益效果 ${effect.value}，持续 ${effect.duration} 回合`;
+  if (effect.type === 'buff') return `增益效果 ${effect.value}，持续${effect.duration} 回合`;
   return JSON.stringify(effect);
 }
 
@@ -181,7 +181,7 @@ function addToBar(skillId: string) {
     skillsService.setSkillBar(emptySlot, skillId);
     alert('已添加到技能栏');
   } else {
-    alert('技能栏已满！');
+    alert('技能栏已满');
   }
 }
 

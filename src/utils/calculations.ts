@@ -1,14 +1,11 @@
 /**
- * @fileoverview 游戏常量和计算函数模块
+ * @fileoverview 计算函数模块
  * @description 包含游戏核心常量、属性计算和升级经验需求
- * @module data/constants
+ * @module utils/calculations
  */
 
-/**
- * 玩家可达到的最大等级
- * @type {number}
- */
-export const MAX_LEVEL = 20;
+import type { Stats } from '@/modules/character/types';
+import { MAX_LEVEL } from '@/config/character';
 
 /**
  * 主属性名称映射表
@@ -22,8 +19,6 @@ export const STAT_NAMES = {
   wis: '感知',
   cha: '魅力'
 } as const;
-
-import type { Stats } from '../types';
 
 /**
  * 计算最大生命值

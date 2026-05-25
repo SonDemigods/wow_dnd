@@ -81,9 +81,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { inventoryService } from '@/modules/inventory.module';
-import { characterService } from '@/modules/character.module';
-import type { InventoryItem, ItemCategory, ItemQuality } from '@/modules/inventory.module';
+import { inventoryService } from '@/modules/inventory';
+import type { InventoryItem, ItemCategory, ItemQuality } from '@/modules/inventory';
 
 const selectedCategory = ref<ItemCategory | 'all'>('all');
 const selectedItem = ref<InventoryItem | null>(null);
@@ -190,14 +189,14 @@ function equipItem(itemId: string) {
     const slot = equipment.find(e => e.itemId === itemId)?.slot;
     if (slot) {
       inventoryService.unequipItem(slot);
-      alert(`已卸下 ${item.name}`);
+      alert(`已卸下${item.name}`);
     }
   } else {
     const index = inventoryItems.value.findIndex(i => i.itemId === itemId);
     if (index !== -1) {
       const result = inventoryService.equipItem(index);
       if (result.success) {
-        alert(`已装备 ${item.name}`);
+        alert(`已装备${item.name}`);
       } else {
         alert(result.message);
       }
@@ -213,7 +212,7 @@ function dropItem(itemId: string) {
   if (!item) return;
   
   inventoryService.removeItemByItemId(itemId, 1);
-  alert(`已丢弃 ${item.name}`);
+  alert(`已丢弃${item.name}`);
   loadInventory();
 }
 
