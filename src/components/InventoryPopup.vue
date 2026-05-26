@@ -235,7 +235,8 @@ function organizeInventory() {
   loadInventory();
 }
 
-function loadInventory() {
+async function loadInventory() {
+  await inventoryService.initialize();
   inventoryItems.value = inventoryService.getInventory();
 }
 
@@ -245,6 +246,54 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.popup-content {
+  background: rgba(13, 17, 23, 0.98);
+  border-radius: 12px;
+  border: 2px solid #4a4a4a;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 .inventory-view {
   max-width: 800px;
   margin: 0 auto;

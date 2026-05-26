@@ -22,6 +22,14 @@
         <CharacterCreate @created="handleCharacterCreated" />
       </div>
     </div>
+
+    <ConfirmPopup 
+      :visible="showExitConfirm"
+      title="退出游戏"
+      message="确定要退出游戏吗？"
+      @confirm="confirmExit"
+      @cancel="cancelExit"
+    />
   </div>
 </template>
 
@@ -30,15 +38,21 @@ import { ref } from 'vue';
 import CharacterSelect from './components/CharacterSelect.vue';
 import CharacterCreate from './components/CharacterCreate.vue';
 import GameMain from './components/GameMain.vue';
+import ConfirmPopup from './components/ConfirmPopup.vue';
+import { useCharacterStore } from './modules/character';
 
 type GameState = 'character-select' | 'game';
 
 const gameState = ref<GameState>('character-select');
 const showCreateModal = ref(false);
+const showExitConfirm = ref(false);
 const characterSelectRef = ref<InstanceType<typeof CharacterSelect>>();
 
-function handleCharacterSelect(characterId: string) {
+const characterStore = useCharacterStore();
+
+async function handleCharacterSelect(characterId: string) {
   console.log('Selected character:', characterId);
+  await characterStore.selectCharacter(characterId);
   gameState.value = 'game';
 }
 
@@ -50,9 +64,16 @@ function handleCharacterCreated() {
 }
 
 function handleExit() {
-  if (confirm('确定要退出游戏吗？')) {
-    gameState.value = 'character-select';
-  }
+  showExitConfirm.value = true;
+}
+
+function confirmExit() {
+  showExitConfirm.value = false;
+  gameState.value = 'character-select';
+}
+
+function cancelExit() {
+  showExitConfirm.value = false;
 }
 </script>
 

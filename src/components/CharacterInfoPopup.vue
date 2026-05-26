@@ -149,13 +149,24 @@ const emit = defineEmits<{
 const characterStore = useCharacterStore();
 
 const character = computed(() => characterStore.character);
-const coreAttributes = computed(() => characterStore.attributes);
+const coreAttributes = computed(() => characterStore.attributes || {});
 
-const currentHp = computed(() => character.value.currentHp || coreAttributes.value.maxHp);
-const maxHp = computed(() => coreAttributes.value.maxHp);
-const currentMp = computed(() => character.value.currentMp || coreAttributes.value.maxMp);
-const maxMp = computed(() => coreAttributes.value.maxMp);
-const currentExp = computed(() => character.value.exp || 0);
+const attrs = computed(() => {
+  const defaultAttrs = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10, maxHp: 100, maxMp: 50 };
+  return { ...defaultAttrs, ...coreAttributes.value };
+});
+
+const currentHp = computed(() => {
+  if (!character.value) return attrs.value.maxHp;
+  return character.value.hp !== undefined ? character.value.hp : attrs.value.maxHp;
+});
+const maxHp = computed(() => attrs.value.maxHp);
+const currentMp = computed(() => {
+  if (!character.value) return attrs.value.maxMp;
+  return character.value.mana !== undefined ? character.value.mana : attrs.value.maxMp;
+});
+const maxMp = computed(() => attrs.value.maxMp);
+const currentExp = computed(() => character.value?.exp || 0);
 const maxExp = computed(() => 1000);
 
 const hpPercent = computed(() => Math.round((currentHp.value / maxHp.value) * 100));
@@ -163,20 +174,30 @@ const mpPercent = computed(() => Math.round((currentMp.value / maxMp.value) * 10
 const expPercent = computed(() => Math.min(100, Math.round((currentExp.value / maxExp.value) * 100)));
 
 const secondaryAttributes = computed(() => {
-  const attrs = coreAttributes.value;
+  const attr = attrs.value;
   return {
-    physicalAttack: attrs.str * 2 + 10,
-    physicalDefense: attrs.con * 1.5 + 5,
-    magicalAttack: attrs.int * 2 + 10,
-    magicalDefense: attrs.wis * 1.5 + 5,
-    critRate: Math.floor(attrs.dex * 0.5 + 5),
-    dodgeRate: Math.floor(attrs.dex * 0.3 + 3),
-    maxHp: attrs.maxHp,
-    maxMp: attrs.maxMp
+    physicalAttack: attr.str * 2 + 10,
+    physicalDefense: attr.con * 1.5 + 5,
+    magicalAttack: attr.int * 2 + 10,
+    magicalDefense: attr.wis * 1.5 + 5,
+    critRate: Math.floor(attr.dex * 0.5 + 5),
+    dodgeRate: Math.floor(attr.dex * 0.3 + 3),
+    maxHp: attr.maxHp,
+    maxMp: attr.maxMp
   };
 });
 
-const equipmentSlots = computed(() => equipmentService.getEquipmentSlots());
+const equipmentSlots = computed(() => {
+  const equipment = equipmentService.getEquipment();
+  return [
+    { key: 'weapon1', name: '主手武器', equipment: equipment.weapon1 },
+    { key: 'weapon2', name: '副手武器', equipment: equipment.weapon2 },
+    { key: 'armor1', name: '头部', equipment: equipment.armor1 },
+    { key: 'armor2', name: '胸部', equipment: equipment.armor2 },
+    { key: 'armor3', name: '腿部', equipment: equipment.armor3 },
+    { key: 'armor4', name: '饰品', equipment: equipment.armor4 }
+  ];
+});
 const selectedSlot = ref<any>(null);
 
 const factions = {
