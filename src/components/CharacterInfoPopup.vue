@@ -1,23 +1,23 @@
 <template>
-  <div class="popup-overlay" @click.self="$emit('close')">
+  <div v-if="visible" class="popup-overlay" @click.self="$emit('close')">
     <div class="popup-content">
       <div class="popup-header">
         <h2>角色信息</h2>
         <button class="close-btn" @click="$emit('close')">×</button>
       </div>
       
-      <div class="popup-body">
+      <div class="popup-body" v-if="character">
         <!-- 角色基本信息 -->
         <div class="character-basic">
-          <div class="char-avatar">{{ getRaceIcon(character.race) }}</div>
+          <div class="char-avatar">{{ getRaceIcon(character.raceId) }}</div>
           <div class="char-info">
             <div class="char-name">{{ character.name }}</div>
             <div class="char-details">
-              <span class="faction-tag" :style="{ '--faction-color': getFactionColor(character.faction) }">
-                {{ getFactionName(character.faction) }}
+              <span class="faction-tag" :style="{ '--faction-color': getFactionColor(character.factionId) }">
+                {{ getFactionName(character.factionId) }}
               </span>
-              <span>{{ getRaceName(character.race) }}</span>
-              <span>{{ getClassName(character.class) }}</span>
+              <span>{{ getRaceName(character.raceId) }}</span>
+              <span>{{ getClassName(character.classId) }}</span>
             </div>
             <div class="char-level">等级 {{ character.level }}</div>
           </div>
@@ -138,13 +138,17 @@ import { ref, computed } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { equipmentService } from '@/modules/equipment';
 
+defineProps<{
+  visible: boolean;
+}>();
+
 const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
 const characterStore = useCharacterStore();
 
-const character = computed(() => characterStore.getCharacterInfo());
+const character = computed(() => characterStore.character);
 const coreAttributes = computed(() => characterStore.attributes);
 
 const currentHp = computed(() => character.value.currentHp || coreAttributes.value.maxHp);

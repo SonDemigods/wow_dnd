@@ -2,7 +2,7 @@
   <div id="app" class="app-container">
     <div v-if="gameState === 'character-select'" class="character-select-screen">
       <div class="screen-header">
-        <h1>⚔️ 魔兽世界：地下城 ⚔️</h1>
+        <h1>魔兽世界：地下城</h1>
         <p class="subtitle">World of Warcraft: Dungeons & Dragons</p>
       </div>
       <CharacterSelect 
@@ -13,8 +13,7 @@
     </div>
 
     <div v-else-if="gameState === 'game'" class="game-screen">
-      <GameMain ref="gameMainRef" />
-      <button class="exit-btn" @click="handleExit">🗺 返回角色选择</button>
+      <GameMain ref="gameMainRef" @exit="handleExit" />
     </div>
 
     <div v-if="showCreateModal" class="modal-overlay">
@@ -129,6 +128,51 @@ function handleExit() {
 
 .modal-close:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.popup-content {
+  background: rgba(13, 17, 23, 0.98);
+  border-radius: 12px;
+  border: 2px solid #4a4a4a;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
 }
 
 .game-screen {

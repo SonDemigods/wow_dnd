@@ -3,6 +3,7 @@
     <div class="adventure-log-popup">
       <div class="popup-header">
         <h3>冒险日志</h3>
+        <button class="close-btn" @click="close">×</button>
       </div>
       
       <div class="popup-content">

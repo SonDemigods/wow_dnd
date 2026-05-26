@@ -1,8 +1,11 @@
 <template>
-  <div class="quest-view">
-    <div class="quest-header">
-      <h2>任务看板</h2>
-    </div>
+  <div v-if="visible" class="popup-overlay">
+    <div class="popup-content">
+      <div class="quest-view">
+        <div class="quest-header">
+          <h2>任务看板</h2>
+          <button class="close-btn" @click="$emit('close')">×</button>
+        </div>
 
     <div class="quest-tabs">
       <button 
@@ -127,6 +130,8 @@
       <div class="empty-icon">🏆</div>
       <p>暂无已完成的任务</p>
     </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -135,6 +140,14 @@ import { ref, computed, onMounted } from 'vue';
 import { questService } from '@/modules/quest';
 import { characterService } from '@/modules/character';
 import type { Quest, QuestStatus } from '@/modules/quest';
+
+defineProps<{
+  visible: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: 'close'): void;
+}>();
 
 const currentTab = ref<'available' | 'active' | 'completed'>('available');
 
@@ -168,39 +181,45 @@ function getStatusText(status: QuestStatus) {
 }
 
 function acceptQuest(questId: string) {
-  const result = questService.acceptQuest(questId);
-  if (result.success) {
-    alert(result.message);
+  const success = questService.acceptQuest(questId);
+  if (success) {
+    const quest = questService.getQuestDefinition(questId);
+    alert(`已接受任务: ${quest?.title || questId}`);
     loadQuests();
   } else {
-    alert(result.message);
+    alert('无法接受此任务');
   }
 }
 
 function claimReward(questId: string) {
-  const result = questService.claimReward(questId);
-  if (result.success) {
-    alert(result.message);
+  const success = questService.turnInQuest(questId);
+  if (success) {
+    const quest = questService.getQuestDefinition(questId);
+    alert(`已领取奖励: ${quest?.title || questId}`);
     loadQuests();
   } else {
-    alert(result.message);
+    alert('无法领取奖励');
   }
 }
 
 function abandonQuest(questId: string) {
   if (!confirm('确定放弃此任务吗？')) return;
-  const quest = questService.getQuestById(questId);
-  if (quest) {
-    quest.status = 'available';
+  const success = questService.abandonQuest(questId);
+  if (success) {
     loadQuests();
     alert('已放弃任务');
   }
 }
 
 function loadQuests() {
-  availableQuests.value = questService.getAvailableQuests();
-  activeQuests.value = questService.getActiveQuests();
-  completedQuests.value = questService.getQuests().filter(q => q.status === 'turned_in');
+  const availableIds = questService.getAvailableQuests();
+  availableQuests.value = availableIds.map(id => questService.getQuestDefinition(id)).filter(Boolean);
+  
+  const activeIds = questService.getInProgressQuests();
+  activeQuests.value = activeIds.map(id => questService.getQuestDefinition(id)).filter(Boolean);
+  
+  const completedIds = questService.getCompletedQuests();
+  completedQuests.value = completedIds.map(id => questService.getQuestDefinition(id)).filter(Boolean);
 }
 
 onMounted(() => {

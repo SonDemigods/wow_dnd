@@ -1,9 +1,12 @@
 <template>
-  <div class="inventory-view">
-    <div class="inventory-header">
-      <h2>背包</h2>
-      <div class="inventory-count">{{ inventoryItems.length }} / {{ maxSlots }}</div>
-    </div>
+  <div v-if="visible" class="popup-overlay">
+    <div class="popup-content">
+      <div class="inventory-view">
+        <div class="inventory-header">
+          <h2>背包</h2>
+          <button class="close-btn" @click="$emit('close')">×</button>
+          <div class="inventory-count">{{ inventoryItems.length }} / {{ maxSlots }}</div>
+        </div>
 
     <div class="category-tabs">
       <button 
@@ -76,6 +79,8 @@
         📦 整理背包
       </button>
     </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -83,6 +88,14 @@
 import { ref, computed, onMounted } from 'vue';
 import { inventoryService } from '@/modules/inventory';
 import type { InventoryItem, ItemCategory, ItemQuality } from '@/modules/inventory';
+
+defineProps<{
+  visible: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: 'close'): void;
+}>();
 
 const selectedCategory = ref<ItemCategory | 'all'>('all');
 const selectedItem = ref<InventoryItem | null>(null);

@@ -76,6 +76,34 @@ export interface LocationData {
 }
 
 /**
+ * 区域状态类型
+ */
+export type ZoneStatus = 'locked' | 'unlocked' | 'completed';
+
+/**
+ * 区域奖励接口
+ */
+export interface ZoneRewards {
+  gold: number;
+  exp: number;
+}
+
+/**
+ * 地图区域接口（用于大地图显示）
+ */
+export interface MapZone {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  coordinates: { x: number; y: number };
+  requiredLevel: number;
+  requiredGold: number;
+  status: ZoneStatus;
+  rewards: ZoneRewards;
+}
+
+/**
  * 地点标记接口
  * @property {string} id - 标记ID
  * @property {number} x - X坐标

@@ -394,6 +394,61 @@ export class MapService implements IMapService {
   }
   
   /**
+   * 获取所有区域（用于大地图显示）
+   * @returns 区域列表
+   */
+  getZones(): MapZone[] {
+    const zoneList: MapZone[] = [];
+    
+    this.locations.forEach((location, locationId) => {
+      const marker = Array.from(this.markers.values())
+        .flat()
+        .find(m => m.locationId === locationId);
+      
+      zoneList.push({
+        id: locationId,
+        name: location.displayName,
+        icon: location.icon,
+        description: location.description,
+        coordinates: {
+          x: marker?.x || location.mapX * 100,
+          y: marker?.y || location.mapY * 100
+        },
+        requiredLevel: marker?.requiredLevel || location.levelRange[0],
+        requiredGold: 100 * (marker?.requiredLevel || location.levelRange[0]),
+        status: this.isLocationUnlocked(locationId, 99) ? 'unlocked' : 'locked',
+        rewards: {
+          gold: 50 * (marker?.requiredLevel || location.levelRange[0]),
+          exp: 100 * (marker?.requiredLevel || location.levelRange[0])
+        }
+      });
+    });
+    
+    return zoneList;
+  }
+  
+  /**
+   * 解锁区域
+   * @param zoneId - 区域ID
+   * @returns 是否成功解锁
+   */
+  unlockZone(zoneId: string): boolean {
+    const zone = this.getZones().find(z => z.id === zoneId);
+    if (!zone) return false;
+    
+    return true;
+  }
+  
+  /**
+   * 进入区域
+   * @param zoneId - 区域ID
+   * @returns 是否成功进入
+   */
+  enterZone(zoneId: string): boolean {
+    return this.enterLocation(zoneId);
+  }
+  
+  /**
    * 设置激活的标记
    * @param markerId - 标记ID
    */

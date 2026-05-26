@@ -1,8 +1,11 @@
 <template>
-  <div class="skills-view">
-    <div class="skills-header">
-      <h2>技能</h2>
-    </div>
+  <div v-if="visible" class="popup-overlay">
+    <div class="popup-content">
+      <div class="skills-view">
+        <div class="skills-header">
+          <h2>技能</h2>
+          <button class="close-btn" @click="$emit('close')">×</button>
+        </div>
 
     <div class="skill-bar-section">
       <h3>技能栏 (战斗中使用)</h3>
@@ -100,6 +103,8 @@
         </div>
       </div>
     </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -108,13 +113,21 @@ import { ref, computed, onMounted } from 'vue';
 import { skillsService } from '@/modules/skills';
 import type { Skill, SkillType } from '@/modules/skills';
 
+defineProps<{
+  visible: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: 'close'): void;
+}>();
+
 const selectedSkill = ref<Skill | null>(null);
 
 const availableSkills = ref<Skill[]>([]);
 
 const activeSkills = computed(() => {
   const bar = skillsService.getSkillBar();
-  return bar.map(slot => slot.skillId ? skillsService.getSkill(slot.skillId) : null);
+  return bar.slots.map(slotId => slotId ? skillsService.getSkill(slotId) : null);
 });
 
 const skillIcons: Record<SkillType, string> = {
@@ -176,10 +189,14 @@ function learnSkill(skillId: string) {
 
 function addToBar(skillId: string) {
   const bar = skillsService.getSkillBar();
-  const emptySlot = bar.findIndex(slot => slot.skillId === null);
+  const emptySlot = bar.slots.findIndex(slotId => slotId === null);
   if (emptySlot !== -1) {
-    skillsService.setSkillBar(emptySlot, skillId);
-    alert('已添加到技能栏');
+    const success = skillsService.equipSkill(skillId, emptySlot);
+    if (success) {
+      alert('已添加到技能栏');
+    } else {
+      alert('添加失败');
+    }
   } else {
     alert('技能栏已满');
   }
@@ -187,10 +204,12 @@ function addToBar(skillId: string) {
 
 function removeFromBar(skillId: string) {
   const bar = skillsService.getSkillBar();
-  const slotIndex = bar.findIndex(slot => slot.skillId === skillId);
+  const slotIndex = bar.slots.findIndex(slotId => slotId === skillId);
   if (slotIndex !== -1) {
-    skillsService.setSkillBar(slotIndex, null);
-    alert('已从技能栏移除');
+    const success = skillsService.unequipSkill(slotIndex);
+    if (success) {
+      alert('已从技能栏移除');
+    }
   }
 }
 

@@ -363,10 +363,10 @@ defineExpose({
 
 .confirm-btn {
   padding: 16px 64px;
-  background: linear-gradient(135deg, #4CAF50, #45a049);
-  border: none;
+  background: linear-gradient(135deg, #ffd700, #daa520);
+  border: 2px solid #ffd700;
   border-radius: 8px;
-  color: #fff;
+  color: #1a1a2e;
   font-size: 18px;
   font-weight: bold;
   cursor: pointer;
@@ -375,7 +375,7 @@ defineExpose({
 
 .confirm-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
 }
 
 .confirm-btn:disabled {
