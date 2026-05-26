@@ -6,6 +6,7 @@
         <p class="subtitle">World of Warcraft: Dungeons & Dragons</p>
       </div>
       <CharacterSelect 
+        ref="characterSelectRef"
         @select="handleCharacterSelect" 
         @create="showCreateModal = true"
       />
@@ -35,6 +36,7 @@ type GameState = 'character-select' | 'game';
 
 const gameState = ref<GameState>('character-select');
 const showCreateModal = ref(false);
+const characterSelectRef = ref<InstanceType<typeof CharacterSelect>>();
 
 function handleCharacterSelect(characterId: string) {
   console.log('Selected character:', characterId);
@@ -43,6 +45,9 @@ function handleCharacterSelect(characterId: string) {
 
 function handleCharacterCreated() {
   showCreateModal.value = false;
+  if (characterSelectRef.value?.loadCharacters) {
+    characterSelectRef.value.loadCharacters();
+  }
 }
 
 function handleExit() {

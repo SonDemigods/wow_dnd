@@ -10,18 +10,17 @@
       <div 
         v-for="char in characters" 
         :key="char.id"
-        :class="['character-card', { selected: selectedId === char.id }]"
-        :style="{ '--faction-color': getFactionColor(char.factionId) }"
+        class="character-card"
+        :class="{ selected: selectedId === char.id }"
+        :style="{ '--class-color': getClassColor(char.classId), '--faction-color': getFactionColor(char.factionId), '--profession-color': getClassColor(char.classId) }"
         @click="selectCharacter(char.id)"
       >
         <div class="char-icon">{{ getRaceIcon(char.raceId) }}</div>
         <div class="char-info">
           <div class="char-name">{{ char.name }}</div>
           <div class="char-details">
-            <span>{{ getRaceName(char.raceId) }}</span>
-            <span>/</span>
-            <span>{{ getClassName(char.classId) }}</span>
-            <span>/</span>
+            <span class="race-tag">{{ getRaceName(char.raceId) }}</span>
+            <span class="class-tag">{{ getClassName(char.classId) }}</span>
             <span class="faction-tag">{{ getFactionName(char.factionId) }}</span>
           </div>
           <div class="char-level">Lv.{{ char.level }}</div>
@@ -63,7 +62,7 @@ const selectedId = ref<string | null>(null);
 const factions: Record<string, { name: string; icon: string; color: string }> = {
   alliance: { name: '联盟', icon: '⚖️', color: '#0078ff' },
   horde: { name: '部落', icon: '⚔️', color: '#ff4400' },
-  neutral: { name: '中立', icon: '🐼', color: '#9d9d9d' }
+  neutral: { name: '中立', icon: '🐼', color: '#4CAF50' }
 };
 
 const races: Record<string, { id: string; name: string; icon: string }> = {
@@ -115,6 +114,10 @@ function getClassName(id: string) {
   return classes[id]?.name || '';
 }
 
+function getClassColor(id: string) {
+  return classes[id]?.color || '#9d9d9d';
+}
+
 async function loadCharacters() {
   characters.value = await characterService.getAllCharacters();
   if (characters.value.length > 0 && !selectedId.value) {
@@ -142,6 +145,10 @@ function confirmSelect() {
 
 onMounted(async () => {
   await loadCharacters();
+});
+
+defineExpose({
+  loadCharacters
 });
 </script>
 
@@ -197,63 +204,72 @@ onMounted(async () => {
 
 .character-card {
   width: 100%;
-  height: 80px;
-  padding: 12px 16px;
+  height: 120px;
+  padding: 12px;
   background: rgba(13, 17, 23, 0.95);
-  border: 2px solid #4a4a4a;
+  border: 2px solid #666666;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 16px;
+  justify-content: center;
+  gap: 6px;
 }
 
 .character-card:hover {
-  border-color: #666;
+  border-color: #888888;
   transform: translateY(-2px);
 }
 
 .character-card.selected {
-  border-color: var(--faction-color);
+  border-color: var(--class-color);
   background: rgba(255, 215, 0, 0.1);
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+  box-shadow: 0 0 20px var(--class-color);
 }
 
 .char-icon {
   font-size: 40px;
-  margin-bottom: 8px;
 }
 
 .char-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+  text-align: center;
 }
 
 .char-name {
-  font-size: 16px;
+  font-size: 14px;
   color: #f0f0f0;
   font-weight: bold;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .char-details {
   display: flex;
   gap: 6px;
   color: #8b8b8b;
-  font-size: 13px;
+  font-size: 12px;
+  justify-content: center;
 }
 
 .char-details span {
   padding: 2px 6px;
-  background: rgba(255, 255, 255, 0.05);
   border-radius: 4px;
+  color: #fff;
+}
+
+.race-tag {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.class-tag {
+  background: var(--profession-color);
 }
 
 .faction-tag {
-  color: var(--faction-color);
+  background: var(--faction-color);
+  font-weight: bold;
 }
 
 .char-level {
