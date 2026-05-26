@@ -1,12 +1,18 @@
 <template>
   <div class="character-select">
-    <div v-if="characters.length === 0" class="empty-state">
-      <div class="empty-icon">👤</div>
-      <p>暂无角色</p>
-      <button class="create-btn" @click="$emit('create')">创建角色</button>
+    <div v-if="showConfirmModal" class="confirm-modal-overlay" @click="cancelDelete">
+      <div class="confirm-modal" @click.stop>
+        <div class="confirm-icon">⚠️</div>
+        <h3>确认删除</h3>
+        <p>确定要删除这个角色吗？此操作无法撤销。</p>
+        <div class="confirm-buttons">
+          <button class="confirm-btn-cancel" @click="cancelDelete">取消</button>
+          <button class="confirm-btn-delete" @click="confirmDelete">删除</button>
+        </div>
+      </div>
     </div>
 
-    <div v-else class="character-list">
+    <div class="character-list">
       <div 
         v-for="char in characters" 
         :key="char.id"
@@ -17,13 +23,15 @@
       >
         <div class="char-icon">{{ getRaceIcon(char.raceId) }}</div>
         <div class="char-info">
-          <div class="char-name">{{ char.name }}</div>
+          <div class="char-header">
+            <span class="char-name">{{ char.name }}</span>
+            <span class="char-level">Lv.{{ char.level }}</span>
+          </div>
           <div class="char-details">
             <span class="race-tag">{{ getRaceName(char.raceId) }}</span>
             <span class="class-tag">{{ getClassName(char.classId) }}</span>
             <span class="faction-tag">{{ getFactionName(char.factionId) }}</span>
           </div>
-          <div class="char-level">Lv.{{ char.level }}</div>
         </div>
         <div class="char-delete" @click.stop="deleteCharacter(char.id)">🗑️</div>
       </div>
@@ -49,7 +57,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { characterService } from '@/modules/character';
+import { gameDataService } from '@/modules/gameData';
 import type { CharacterListItem } from '@/modules/character';
+import type { RaceData, ClassData, FactionData } from '@/modules/character/types';
 
 const emit = defineEmits<{
   (e: 'select', id: string): void;
@@ -58,64 +68,41 @@ const emit = defineEmits<{
 
 const characters = ref<CharacterListItem[]>([]);
 const selectedId = ref<string | null>(null);
+const showConfirmModal = ref(false);
+const deletingCharacterId = ref<string | null>(null);
 
-const factions: Record<string, { name: string; icon: string; color: string }> = {
-  alliance: { name: '联盟', icon: '⚖️', color: '#0078ff' },
-  horde: { name: '部落', icon: '⚔️', color: '#ff4400' },
-  neutral: { name: '中立', icon: '🐼', color: '#4CAF50' }
-};
-
-const races: Record<string, { id: string; name: string; icon: string }> = {
-  human: { id: 'human', name: '人类', icon: '👨' },
-  dwarf: { id: 'dwarf', name: '矮人', icon: '🧔' },
-  gnome: { id: 'gnome', name: '侏儒', icon: '👦' },
-  nightelf: { id: 'nightelf', name: '暗夜精灵', icon: '🌙' },
-  draenei: { id: 'draenei', name: '德莱尼', icon: '🧙' },
-  orc: { id: 'orc', name: '兽人', icon: '👹' },
-  undead: { id: 'undead', name: '亡灵', icon: '💀' },
-  tauren: { id: 'tauren', name: '牛头人', icon: '🐂' },
-  troll: { id: 'troll', name: '巨魔', icon: '👺' },
-  bloodelves: { id: 'bloodelves', name: '血精灵', icon: '🧝' },
-  pandaren: { id: 'pandaren', name: '熊猫人', icon: '🐼' }
-};
-
-const classes: Record<string, { id: string; name: string; color: string }> = {
-  warrior: { id: 'warrior', name: '战士', color: '#C79C6E' },
-  mage: { id: 'mage', name: '法师', color: '#69CCF0' },
-  paladin: { id: 'paladin', name: '圣骑士', color: '#F58CBA' },
-  hunter: { id: 'hunter', name: '猎人', color: '#ABD473' },
-  rogue: { id: 'rogue', name: '潜行者', color: '#FFF569' },
-  warlock: { id: 'warlock', name: '术士', color: '#9482C9' },
-  druid: { id: 'druid', name: '德鲁伊', color: '#FF7D0A' },
-  priest: { id: 'priest', name: '牧师', color: '#FFFFFF' },
-  shaman: { id: 'shaman', name: '萨满', color: '#0070DE' },
-  deathknight: { id: 'deathknight', name: '死亡骑士', color: '#C41F3B' },
-  monk: { id: 'monk', name: '武僧', color: '#00FF96' },
-  demonhunter: { id: 'demonhunter', name: '恶魔猎手', color: '#A330C9' }
-};
+const factions = ref<FactionData[]>([]);
+const races = ref<RaceData[]>([]);
+const classes = ref<ClassData[]>([]);
 
 function getFactionName(id: string) {
-  return factions[id]?.name || '';
+  return factions.value.find(f => f.id === id)?.name || '';
 }
 
 function getFactionColor(id: string) {
-  return factions[id]?.color || '#9d9d9d';
+  return factions.value.find(f => f.id === id)?.color || '#9d9d9d';
 }
 
 function getRaceName(id: string) {
-  return races[id]?.name || '';
+  return races.value.find(r => r.id === id)?.name || '';
 }
 
 function getRaceIcon(id: string) {
-  return races[id]?.icon || '👤';
+  return races.value.find(r => r.id === id)?.icon || '👤';
 }
 
 function getClassName(id: string) {
-  return classes[id]?.name || '';
+  return classes.value.find(c => c.id === id)?.name || '';
 }
 
 function getClassColor(id: string) {
-  return classes[id]?.color || '#9d9d9d';
+  return classes.value.find(c => c.id === id)?.color || '#9d9d9d';
+}
+
+async function loadData() {
+  factions.value = await gameDataService.getAllFactions();
+  races.value = await gameDataService.getAllRaces();
+  classes.value = await gameDataService.getAllClasses();
 }
 
 async function loadCharacters() {
@@ -130,10 +117,25 @@ function selectCharacter(id: string) {
 }
 
 function deleteCharacter(id: string) {
-  if (confirm('确定删除该角色吗？')) {
-    characterService.deleteCharacter(id);
-    loadCharacters();
+  deletingCharacterId.value = id;
+  showConfirmModal.value = true;
+}
+
+function cancelDelete() {
+  showConfirmModal.value = false;
+  deletingCharacterId.value = null;
+}
+
+async function confirmDelete() {
+  if (deletingCharacterId.value) {
+    await characterService.deleteCharacter(deletingCharacterId.value);
+    await loadCharacters();
+    if (selectedId.value === deletingCharacterId.value) {
+      selectedId.value = characters.value.length > 0 ? characters.value[0].id : null;
+    }
   }
+  showConfirmModal.value = false;
+  deletingCharacterId.value = null;
 }
 
 function confirmSelect() {
@@ -144,11 +146,17 @@ function confirmSelect() {
 }
 
 onMounted(async () => {
+  await loadData();
   await loadCharacters();
 });
 
+async function refreshData() {
+  await loadData();
+  await loadCharacters();
+}
+
 defineExpose({
-  loadCharacters
+  refreshData
 });
 </script>
 
@@ -157,42 +165,6 @@ defineExpose({
   max-width: 800px;
   margin: 0 auto;
   padding: 24px;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 60px 24px;
-  background: rgba(13, 17, 23, 0.95);
-  border-radius: 12px;
-  border: 2px solid #4a4a4a;
-}
-
-.empty-icon {
-  font-size: 72px;
-  margin-bottom: 20px;
-}
-
-.empty-state p {
-  color: #8b8b8b;
-  font-size: 16px;
-  margin-bottom: 24px;
-}
-
-.empty-state .create-btn {
-  padding: 16px 48px;
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
-  border: none;
-  border-radius: 8px;
-  color: #000;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.empty-state .create-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
 }
 
 .character-list {
@@ -204,8 +176,8 @@ defineExpose({
 
 .character-card {
   width: 100%;
-  height: 120px;
-  padding: 12px;
+  height: 130px;
+  padding: 16px 12px;
   background: rgba(13, 17, 23, 0.95);
   border: 2px solid #666666;
   border-radius: 8px;
@@ -216,7 +188,7 @@ defineExpose({
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .character-card:hover {
@@ -238,25 +210,47 @@ defineExpose({
   text-align: center;
 }
 
+.char-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
 .char-name {
   font-size: 14px;
   color: #f0f0f0;
   font-weight: bold;
-  margin-bottom: 2px;
+}
+
+.char-level {
+  padding: 1px 6px;
+  background: rgba(255, 215, 0, 0.2);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 4px;
+  font-size: 11px;
+  color: #ffd700;
+  font-weight: bold;
 }
 
 .char-details {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   color: #8b8b8b;
   font-size: 12px;
   justify-content: center;
+  white-space: nowrap;
 }
 
 .char-details span {
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 1px 4px;
+  border-radius: 3px;
   color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 6em;
 }
 
 .race-tag {
@@ -280,21 +274,33 @@ defineExpose({
 
 .char-delete {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  font-size: 16px;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 68, 0, 0.2);
+  border: 1px solid rgba(255, 68, 0, 0.3);
+  border-radius: 50%;
   cursor: pointer;
-  opacity: 0.5;
-  transition: opacity 0.3s;
+  opacity: 0.6;
+  transition: all 0.3s;
+  font-size: 12px;
 }
 
 .char-delete:hover {
   opacity: 1;
+  background: rgba(255, 68, 0, 0.4);
+  border-color: #ff4400;
+  transform: scale(1.1);
 }
 
 .add-character {
-  width: 150px;
-  height: 120px;
+  width: 100%;
+  min-width: 130px;
+  height: 130px;
   padding: 16px;
   background: rgba(255, 255, 255, 0.03);
   border: 2px dashed #4a4a4a;
@@ -315,7 +321,7 @@ defineExpose({
 }
 
 .add-icon {
-  font-size: 36px;
+  font-size: 32px;
   color: #ffd700;
 }
 
@@ -350,5 +356,97 @@ defineExpose({
   background: #4a4a4a;
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+/* 确认弹窗 */
+.confirm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.confirm-modal {
+  background: rgba(20, 25, 35, 0.98);
+  border: 2px solid #ff4400;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 360px;
+  width: 90%;
+  text-align: center;
+  animation: scaleIn 0.2s ease;
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.confirm-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.confirm-modal h3 {
+  color: #ff4400;
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.confirm-modal p {
+  color: #b0b0b0;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.confirm-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.confirm-btn-cancel {
+  padding: 10px 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid #666;
+  border-radius: 6px;
+  color: #f0f0f0;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.confirm-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #888;
+}
+
+.confirm-btn-delete {
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #ff4400, #cc3300);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.confirm-btn-delete:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 68, 0, 0.4);
 }
 </style>

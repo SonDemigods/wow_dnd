@@ -30,7 +30,7 @@ export const FACTIONS: Record<string, FactionData> = {
     id: 'neutral',
     name: '中立',
     icon: '⚖️',
-    color: '#808080',
+    color: '#4CAF50',
     description: '不隶属于任何阵营的中立势力'
   }
 };

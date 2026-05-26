@@ -45,8 +45,8 @@ function handleCharacterSelect(characterId: string) {
 
 function handleCharacterCreated() {
   showCreateModal.value = false;
-  if (characterSelectRef.value?.loadCharacters) {
-    characterSelectRef.value.loadCharacters();
+  if (characterSelectRef.value?.refreshData) {
+    characterSelectRef.value.refreshData();
   }
 }
 
