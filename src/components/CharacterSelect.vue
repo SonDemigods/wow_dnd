@@ -169,15 +169,22 @@ defineExpose({
 
 .character-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
 
+@media (max-width: 480px) {
+  .character-list {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+}
+
 .character-card {
   width: 100%;
-  height: 130px;
-  padding: 16px 12px;
+  height: 140px;
+  padding: 14px 10px;
   background: rgba(13, 17, 23, 0.95);
   border: 2px solid #666666;
   border-radius: 8px;
@@ -188,7 +195,9 @@ defineExpose({
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .character-card:hover {
@@ -236,24 +245,39 @@ defineExpose({
 
 .char-details {
   display: flex;
-  gap: 4px;
-  font-size: 12px;
+  gap: 3px;
+  font-size: 11px;
   justify-content: center;
   white-space: nowrap;
+  width: 100%;
+  overflow: hidden;
 }
 
 .char-details .tag {
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: #ffffff;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 6em;
+  min-width: 40px;
+  max-width: 75px;
+}
+
+@media (max-width: 480px) {
+  .char-details {
+    gap: 2px;
+  }
+  
+  .char-details .tag {
+    padding: 1px 4px;
+    font-size: 10px;
+    max-width: 60px;
+  }
 }
 
 .char-details .race-tag {
@@ -302,7 +326,7 @@ defineExpose({
 .add-character {
   width: 100%;
   min-width: 130px;
-  height: 130px;
+  height: 140px;
   padding: 16px;
   background: rgba(255, 255, 255, 0.03);
   border: 2px dashed #4a4a4a;

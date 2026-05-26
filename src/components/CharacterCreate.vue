@@ -700,6 +700,8 @@ onMounted(async () => {
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: #ffffff;
+  min-width: 40px;
+  max-width: 80px;
 }
 
 .preview-details .race-tag {
