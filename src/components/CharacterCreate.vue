@@ -59,7 +59,7 @@
       <div v-if="currentStep === 3" class="step-grid">
         <div class="class-grid">
           <button 
-            v-for="cls in classList" 
+            v-for="cls in availableClasses" 
             :key="cls.id"
             :class="['class-card', { active: selectedClass === cls.id }]"
             :style="{ '--class-color': cls.color }"
@@ -96,9 +96,9 @@
             </div>
           </div>
           <div class="preview-details">
-            <span>{{ getRaceName(selectedRace || '') }}</span>
-            <span>{{ getClassName(selectedClass || '') }}</span>
-            <span>{{ getFactionName(selectedFaction || '') }}</span>
+            <span class="tag race-tag">{{ getRaceName(selectedRace || '') }}</span>
+            <span class="tag class-tag" :style="{ '--profession-color': getClassColor(selectedClass || '') }">{{ getClassName(selectedClass || '') }}</span>
+            <span class="tag faction-tag" :style="{ '--faction-color': getFactionColor(selectedFaction || '') }">{{ getFactionName(selectedFaction || '') }}</span>
           </div>
         </div>
       </div>
@@ -257,6 +257,11 @@ const availableRaces = computed(() => {
   return raceList.value.filter(r => r.factionId === selectedFaction.value);
 });
 
+const availableClasses = computed(() => {
+  if (!selectedRace.value) return [];
+  return classList.value.filter(c => c.raceIds.includes(selectedRace.value as any));
+});
+
 const currentAttributes = computed(() => {
   const base = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
   
@@ -351,7 +356,18 @@ function getRaceIcon(id: string) {
 }
 
 function getClassName(id: string) {
-  return classList.value.find(c => c.id === selectedClass.value)?.name || '';
+  return classList.value.find(c => c.id === id)?.name || '';
+}
+
+function getFactionColor(id: string) {
+  if (id === 'alliance') return '#0078ff';
+  if (id === 'horde') return '#ff4400';
+  if (id === 'neutral') return '#4CAF50';
+  return '#9d9d9d';
+}
+
+function getClassColor(id: string) {
+  return classList.value.find(c => c.id === id)?.color || '#9d9d9d';
 }
 
 function getStatName(stat: string) {
@@ -669,17 +685,33 @@ onMounted(async () => {
 
 .preview-details {
   display: flex;
-  gap: 10px;
-  margin-top: 12px;
-  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 10px;
+  flex-wrap: nowrap;
+  justify-content: center;
 }
 
-.preview-details span {
-  padding: 5px 10px;
-  background: rgba(255, 255, 255, 0.1);
+.preview-details .tag {
+  padding: 3px 8px;
   border-radius: 4px;
-  color: #8b8b8b;
   font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+.preview-details .race-tag {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.preview-details .class-tag {
+  background: var(--profession-color);
+}
+
+.preview-details .faction-tag {
+  background: var(--faction-color);
 }
 
 /* 底部固定区域 */

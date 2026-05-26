@@ -28,9 +28,9 @@
             <span class="char-level">Lv.{{ char.level }}</span>
           </div>
           <div class="char-details">
-            <span class="race-tag">{{ getRaceName(char.raceId) }}</span>
-            <span class="class-tag">{{ getClassName(char.classId) }}</span>
-            <span class="faction-tag">{{ getFactionName(char.factionId) }}</span>
+            <span class="tag race-tag">{{ getRaceName(char.raceId) }}</span>
+            <span class="tag class-tag">{{ getClassName(char.classId) }}</span>
+            <span class="tag faction-tag">{{ getFactionName(char.factionId) }}</span>
           </div>
         </div>
         <div class="char-delete" @click.stop="deleteCharacter(char.id)">🗑️</div>
@@ -237,33 +237,35 @@ defineExpose({
 .char-details {
   display: flex;
   gap: 4px;
-  color: #8b8b8b;
   font-size: 12px;
   justify-content: center;
   white-space: nowrap;
 }
 
-.char-details span {
-  padding: 1px 4px;
-  border-radius: 3px;
-  color: #fff;
+.char-details .tag {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 6em;
 }
 
-.race-tag {
+.char-details .race-tag {
   background: rgba(255, 255, 255, 0.2);
 }
 
-.class-tag {
+.char-details .class-tag {
   background: var(--profession-color);
 }
 
-.faction-tag {
+.char-details .faction-tag {
   background: var(--faction-color);
-  font-weight: bold;
 }
 
 .char-level {
