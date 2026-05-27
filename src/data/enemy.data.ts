@@ -1,7 +1,7 @@
 /**
  * @fileoverview 敌人数据模块
  * @description 包含所有可遭遇敌人的属性和掉落信息
- * @module data/enemies
+ * @module data/enemy
  */
 
 import type { EnemyData } from '../modules/enemy/types';

@@ -96,9 +96,9 @@
             </div>
           </div>
           <div class="preview-details">
-            <span class="tag race-tag">{{ getRaceName(selectedRace || '') }}</span>
-            <span class="tag class-tag" :style="{ '--profession-color': getClassColor(selectedClass || '') }">{{ getClassName(selectedClass || '') }}</span>
-            <span class="tag faction-tag" :style="{ '--faction-color': getFactionColor(selectedFaction || '') }">{{ getFactionName(selectedFaction || '') }}</span>
+            <Tag type="faction" :text="getFactionName(selectedFaction || '')" :color="getFactionColor(selectedFaction || '')" />
+            <Tag type="race" :text="getRaceName(selectedRace || '')" />
+            <Tag type="class" :text="getClassName(selectedClass || '')" :color="getClassColor(selectedClass || '')" />
           </div>
         </div>
       </div>
@@ -211,6 +211,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { characterService } from '@/modules/character';
 import { gameDataService } from '@/modules/gameData';
+import Tag from './Tag.vue';
 import type { FactionData, RaceData, ClassData } from '@/modules/character/types';
 import {
   STAT_NAMES,
@@ -689,31 +690,6 @@ onMounted(async () => {
   margin-top: 10px;
   flex-wrap: nowrap;
   justify-content: center;
-}
-
-.preview-details .tag {
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #ffffff;
-  min-width: 40px;
-  max-width: 80px;
-}
-
-.preview-details .race-tag {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.preview-details .class-tag {
-  background: var(--profession-color);
-}
-
-.preview-details .faction-tag {
-  background: var(--faction-color);
 }
 
 /* 底部固定区域 */

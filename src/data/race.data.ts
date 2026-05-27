@@ -1,7 +1,7 @@
 /**
  * @fileoverview 种族和阵营数据定义文件
  * @description 包含游戏中所有可选择的阵营和种族信息，包括属性加成、图标和描述
- * @module data/races
+ * @module data/race
  */
 
 // 导入类型定义

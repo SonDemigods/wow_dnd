@@ -105,8 +105,6 @@ export class CharacterService implements ICharacterService {
       gold: 50
     };
     
-    this.currentCharacterId = characterId;
-    
     // 创建角色列表项
     const listItem: CharacterListItem = {
       id: characterId,
@@ -119,10 +117,9 @@ export class CharacterService implements ICharacterService {
       lastPlayedTime: Date.now()
     };
     
-    // 保存到数据库
+    // 保存到数据库（不设置为当前角色，等待用户点击进入游戏按钮）
     characterDbService.saveCharacterListItem(listItem);
     characterDbService.saveCharacterData(characterDbService.toStorageFormat(characterId, this.character, this.bonusStats));
-    characterDbService.saveGameState(characterId);
     
     // 触发事件
     eventBus.emit(GameEvents.CHARACTER_CREATED, { characterId, name });
@@ -351,7 +348,7 @@ export class CharacterService implements ICharacterService {
    * 添加经验值
    * @param amount - 经验值数量
    */
-  addExp(amount: number): void {
+  async addExp(amount: number): Promise<void> {
     if (!this.character || amount <= 0) return;
     
     let newExp = this.character.exp + amount;
@@ -377,7 +374,7 @@ export class CharacterService implements ICharacterService {
     this.character.exp = newExp;
     this.character.level = newLevel;
     
-    this.save();
+    await this.save();
   }
 
   /**
@@ -418,7 +415,7 @@ export class CharacterService implements ICharacterService {
    * 添加生命值
    * @param amount - 生命值数量
    */
-  addHp(amount: number): void {
+  async addHp(amount: number): Promise<void> {
     if (!this.character) return;
     
     const oldHp = this.character.hp;
@@ -430,14 +427,14 @@ export class CharacterService implements ICharacterService {
       maxHp: this.character.maxHp
     });
     
-    this.save();
+    await this.save();
   }
 
   /**
    * 添加法力值
    * @param amount - 法力值数量
    */
-  addMp(amount: number): void {
+  async addMp(amount: number): Promise<void> {
     if (!this.character) return;
     
     const oldMp = this.character.mana;
@@ -449,14 +446,14 @@ export class CharacterService implements ICharacterService {
       maxMp: this.character.maxMana
     });
     
-    this.save();
+    await this.save();
   }
 
   /**
    * 设置生命值
    * @param value - 生命值数值
    */
-  setHp(value: number): void {
+  async setHp(value: number): Promise<void> {
     if (!this.character) return;
     
     const oldHp = this.character.hp;
@@ -468,14 +465,14 @@ export class CharacterService implements ICharacterService {
       maxHp: this.character.maxHp
     });
     
-    this.save();
+    await this.save();
   }
 
   /**
    * 设置法力值
    * @param value - 法力值数值
    */
-  setMp(value: number): void {
+  async setMp(value: number): Promise<void> {
     if (!this.character) return;
     
     const oldMp = this.character.mana;
@@ -487,14 +484,14 @@ export class CharacterService implements ICharacterService {
       maxMp: this.character.maxMana
     });
     
-    this.save();
+    await this.save();
   }
 
   /**
    * 应用属性加成
    * @param bonus - 属性加成
    */
-  applyBonus(bonus: Partial<Stats>): void {
+  async applyBonus(bonus: Partial<Stats>): Promise<void> {
     const oldStats = { ...this.getStats() };
     
     Object.keys(bonus).forEach(key => {
@@ -517,14 +514,14 @@ export class CharacterService implements ICharacterService {
       newStats: this.getStats()
     });
     
-    this.save();
+    await this.save();
   }
 
   /**
    * 移除属性加成
    * @param bonus - 属性加成
    */
-  removeBonus(bonus: Partial<Stats>): void {
+  async removeBonus(bonus: Partial<Stats>): Promise<void> {
     const oldStats = { ...this.getStats() };
     
     Object.keys(bonus).forEach(key => {
@@ -544,18 +541,18 @@ export class CharacterService implements ICharacterService {
       newStats: this.getStats()
     });
     
-    this.save();
+    await this.save();
   }
 
   /**
    * 添加金币
    * @param amount - 金币数量
    */
-  addGold(amount: number): void {
+  async addGold(amount: number): Promise<void> {
     if (!this.character || amount <= 0) return;
     
     this.character.gold += amount;
-    this.save();
+    await this.save();
   }
 
   /**
@@ -563,13 +560,13 @@ export class CharacterService implements ICharacterService {
    * @param amount - 金币数量
    * @returns 是否成功花费
    */
-  spendGold(amount: number): boolean {
+  async spendGold(amount: number): Promise<boolean> {
     if (!this.character || amount <= 0 || this.character.gold < amount) {
       return false;
     }
     
     this.character.gold -= amount;
-    this.save();
+    await this.save();
     return true;
   }
 
@@ -577,38 +574,37 @@ export class CharacterService implements ICharacterService {
    * 设置角色名称
    * @param name - 角色名称
    */
-  setName(name: string): void {
+  async setName(name: string): Promise<void> {
     if (!this.character) return;
     
     this.character.name = name;
     
     // 更新角色列表项
-    characterDbService.getAllCharacterListItems().then(items => {
-      const item = items.find(i => i.id === this.currentCharacterId);
-      if (item) {
-        item.name = name;
-        characterDbService.saveCharacterListItem(item);
-      }
-    });
+    const items = await characterDbService.getAllCharacterListItems();
+    const item = items.find(i => i.id === this.currentCharacterId);
+    if (item) {
+      item.name = name;
+      await characterDbService.saveCharacterListItem(item);
+    }
     
-    this.save();
+    await this.save();
   }
 
   /**
    * 设置阵营
    * @param factionId - 阵营ID
    */
-  setFactionId(factionId: FactionType): void {
+  async setFactionId(factionId: FactionType): Promise<void> {
     if (!this.character) return;
     this.character.factionId = factionId;
-    this.save();
+    await this.save();
   }
 
   /**
    * 设置种族
    * @param race - 种族ID
    */
-  setRace(race: RaceType): void {
+  async setRace(race: RaceType): Promise<void> {
     if (!this.character) return;
     this.character.raceId = race;
     
@@ -619,14 +615,14 @@ export class CharacterService implements ICharacterService {
     // 重新计算属性
     this.recalculateStats();
     
-    this.save();
+    await this.save();
   }
 
   /**
    * 设置职业
    * @param classId - 职业ID
    */
-  setClass(classId: ClassType): void {
+  async setClass(classId: ClassType): Promise<void> {
     if (!this.character) return;
     this.character.classId = classId;
     
@@ -637,7 +633,7 @@ export class CharacterService implements ICharacterService {
     // 重新计算属性
     this.recalculateStats();
     
-    this.save();
+    await this.save();
   }
 
   /**
@@ -665,7 +661,7 @@ export class CharacterService implements ICharacterService {
   }
 
   /** 重置角色数据 */
-  reset(): void {
+  async reset(): Promise<void> {
     if (!this.character) return;
     
     // 恢复到初始状态
@@ -683,11 +679,11 @@ export class CharacterService implements ICharacterService {
     
     this.recalculateStats();
     
-    this.save();
+    await this.save();
   }
 
   /** 处理角色死亡 */
-  handleDeath(): void {
+  async handleDeath(): Promise<void> {
     if (!this.character) return;
     
     // 损失本级所有经验值
@@ -697,11 +693,11 @@ export class CharacterService implements ICharacterService {
     eventBus.emit(GameEvents.CHARACTER_DEATH, { cause: 'death' });
     
     // 自动复活
-    this.resurrect();
+    await this.resurrect();
   }
 
   /** 复活角色 */
-  resurrect(): void {
+  async resurrect(): Promise<void> {
     if (!this.character) return;
     
     // 恢复50%生命值和魔法值
@@ -714,18 +710,29 @@ export class CharacterService implements ICharacterService {
       newMp: this.character.mana
     });
     
-    this.save();
+    await this.save();
   }
 
   /**
    * 保存角色数据到数据库
    */
-  private save(): void {
+  private async save(): Promise<void> {
     if (!this.currentCharacterId || !this.character) return;
     
-    characterDbService.saveCharacterData(
+    // 保存角色详细数据
+    await characterDbService.saveCharacterData(
       characterDbService.toStorageFormat(this.currentCharacterId, this.character, this.bonusStats)
     );
+    
+    // 同步更新角色列表项
+    const listItem = await characterDbService.getCharacterListItem(this.currentCharacterId);
+    if (listItem) {
+      // 更新列表项中的等级和名称
+      listItem.level = this.character.level;
+      listItem.name = this.character.name;
+      listItem.lastPlayedTime = Date.now();
+      await characterDbService.saveCharacterListItem(listItem);
+    }
   }
 
   /**

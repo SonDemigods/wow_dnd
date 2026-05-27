@@ -7,85 +7,136 @@
       </div>
 
       <div class="popup-body" v-if="character">
-        <!-- 角色基本信息 -->
-        <div class="character-basic">
-          <div class="char-avatar">{{ getRaceIcon(character.raceId) }}</div>
-          <div class="char-info">
-            <div class="char-name">{{ character.name }}</div>
-            <div class="char-details">
-              <span class="faction-tag" :style="{ '--faction-color': getFactionColor(character.factionId) }">
-                {{ getFactionName(character.factionId) }}
-              </span>
-              <span>{{ getRaceName(character.raceId) }}</span>
-              <span>{{ getClassName(character.classId) }}</span>
+        <!-- 角色信息和资源条 -->
+        <div class="character-overview">
+          <!-- 上面：角色基本信息 -->
+          <div class="character-basic">
+            <div class="char-row">
+              <div class="char-avatar">{{ getRaceIcon(character.raceId) }}</div>
+              <div class="char-main-info">
+                <div class="char-name">{{ character.name }}</div>
+                <div class="char-level">Lv.{{ character.level }}</div>
+              </div>
             </div>
-            <div class="char-level">等级 {{ character.level }}</div>
+            <div class="char-details">
+              <Tag type="faction" :text="getFactionName(character.factionId)" :color="getFactionColor(character.factionId)" />
+              <Tag type="race" :text="getRaceName(character.raceId)" />
+              <Tag type="class" :text="getClassName(character.classId)" :color="getClassColor(character.classId)" />
+            </div>
           </div>
-        </div>
 
-        <!-- 资源条 -->
-        <div class="resource-bars">
-          <div class="resource-bar hp-bar">
-            <div class="resource-fill" :style="{ width: hpPercent + '%' }"></div>
-            <div class="resource-text">HP {{ currentHp }} / {{ maxHp }}</div>
-          </div>
-          <div class="resource-bar mp-bar">
-            <div class="resource-fill" :style="{ width: mpPercent + '%' }"></div>
-            <div class="resource-text">MP {{ currentMp }} / {{ maxMp }}</div>
-          </div>
-          <div class="resource-bar exp-bar">
-            <div class="resource-fill" :style="{ width: expPercent + '%' }"></div>
-            <div class="resource-text">EXP {{ currentExp }} / {{ maxExp }}</div>
+          <!-- 下面：资源条 -->
+          <div class="resource-bars">
+            <div class="resource-item">
+              <span class="resource-icon">❤️</span>
+              <div class="resource-content">
+                <div class="resource-header">
+                  <span class="resource-name">HP</span>
+                  <span class="resource-value">{{ currentHp }}/{{ maxHp }}</span>
+                </div>
+                <div class="resource-bar">
+                  <div class="resource-fill hp-fill" :style="{ width: hpPercent + '%' }"></div>
+                </div>
+              </div>
+            </div>
+            <div class="resource-item">
+              <span class="resource-icon">💧</span>
+              <div class="resource-content">
+                <div class="resource-header">
+                  <span class="resource-name">MP</span>
+                  <span class="resource-value">{{ currentMp }}/{{ maxMp }}</span>
+                </div>
+                <div class="resource-bar">
+                  <div class="resource-fill mp-fill" :style="{ width: mpPercent + '%' }"></div>
+                </div>
+              </div>
+            </div>
+            <div class="resource-item">
+              <span class="resource-icon">⭐</span>
+              <div class="resource-content">
+                <div class="resource-header">
+                  <span class="resource-name">EXP</span>
+                  <span class="resource-value">{{ currentExp }}/{{ maxExp }}</span>
+                </div>
+                <div class="resource-bar">
+                  <div class="resource-fill exp-fill" :style="{ width: expPercent + '%' }"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- 核心属性 -->
         <div class="attributes-section">
           <h3>核心属性</h3>
-          <div class="attributes-grid">
-            <div class="attr-item" v-for="(value, key) in coreAttributes" :key="key">
-              <div class="attr-icon">{{ getAttrIcon(key) }}</div>
-              <div class="attr-name">{{ getAttrName(key) }}</div>
-              <div class="attr-value">{{ value }}</div>
+          <div class="core-attributes">
+            <div class="core-attr-item" v-for="(value, key) in stats" :key="key">
+              <span class="core-attr-icon">{{ getAttrIcon(key) }}</span>
+              <div class="core-attr-content">
+                <span class="core-attr-name">{{ getAttrName(key) }}</span>
+                <span class="core-attr-value">{{ value }}</span>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- 次级属性 -->
-        <div class="attributes-section">
+        <div class="secondary-section">
           <h3>次级属性</h3>
-          <div class="secondary-attributes">
-            <div class="sec-attr-item">
-              <span>物理攻击</span>
-              <strong>{{ secondaryAttributes.physicalAttack }}</strong>
+          <div class="secondary-grid">
+            <div class="secondary-item attack">
+              <div class="secondary-icon">⚔️</div>
+              <div class="secondary-info">
+                <div class="secondary-label">物理攻击</div>
+                <div class="secondary-value">{{ attributes.physicalAttack }}</div>
+              </div>
             </div>
-            <div class="sec-attr-item">
-              <span>物理防御</span>
-              <strong>{{ secondaryAttributes.physicalDefense }}</strong>
+            <div class="secondary-item defense">
+              <div class="secondary-icon">🛡️</div>
+              <div class="secondary-info">
+                <div class="secondary-label">物理防御</div>
+                <div class="secondary-value">{{ attributes.physicalDefense }}</div>
+              </div>
             </div>
-            <div class="sec-attr-item">
-              <span>魔法攻击</span>
-              <strong>{{ secondaryAttributes.magicalAttack }}</strong>
+            <div class="secondary-item magic-attack">
+              <div class="secondary-icon">🌀</div>
+              <div class="secondary-info">
+                <div class="secondary-label">魔法攻击</div>
+                <div class="secondary-value">{{ attributes.magicAttack }}</div>
+              </div>
             </div>
-            <div class="sec-attr-item">
-              <span>魔法防御</span>
-              <strong>{{ secondaryAttributes.magicalDefense }}</strong>
+            <div class="secondary-item magic-defense">
+              <div class="secondary-icon">🔮</div>
+              <div class="secondary-info">
+                <div class="secondary-label">魔法防御</div>
+                <div class="secondary-value">{{ attributes.magicDefense }}</div>
+              </div>
             </div>
-            <div class="sec-attr-item">
-              <span>暴击率</span>
-              <strong>{{ secondaryAttributes.critRate }}%</strong>
+            <div class="secondary-item crit">
+              <div class="secondary-icon">💥</div>
+              <div class="secondary-info">
+                <div class="secondary-label">暴击率</div>
+                <div class="secondary-value">{{ attributes.critChance }}%</div>
+              </div>
             </div>
-            <div class="sec-attr-item">
-              <span>闪避率</span>
-              <strong>{{ secondaryAttributes.dodgeRate }}%</strong>
+            <div class="secondary-item dodge">
+              <div class="secondary-icon">💨</div>
+              <div class="secondary-info">
+                <div class="secondary-label">闪避率</div>
+                <div class="secondary-value">{{ attributes.dodgeChance }}%</div>
+              </div>
             </div>
-            <div class="sec-attr-item">
-              <span>最大HP</span>
-              <strong>{{ secondaryAttributes.maxHp }}</strong>
+          </div>
+          <div class="resource-stats">
+            <div class="resource-item">
+              <span class="resource-icon">❤️</span>
+              <span class="resource-label">最大HP</span>
+              <span class="resource-value">{{ attributes.maxHp }}</span>
             </div>
-            <div class="sec-attr-item">
-              <span>最大MP</span>
-              <strong>{{ secondaryAttributes.maxMp }}</strong>
+            <div class="resource-item">
+              <span class="resource-icon">💧</span>
+              <span class="resource-label">最大MP</span>
+              <span class="resource-value">{{ attributes.maxMana }}</span>
             </div>
           </div>
         </div>
@@ -93,16 +144,44 @@
         <!-- 装备 -->
         <div class="equipment-section">
           <h3>装备</h3>
-          <div class="equipment-grid">
-            <div 
-              v-for="slot in equipmentSlots" 
-              :key="slot.key"
-              class="equip-slot"
-              :class="{ equipped: slot.equipment }"
-              @click="selectEquipment(slot)"
-            >
-              <div class="slot-icon" v-if="slot.equipment">{{ getEquipIcon(slot.equipment.type) }}</div>
-              <div class="slot-empty" v-else>{{ slot.name }}</div>
+          
+          <!-- 武器 -->
+          <div class="equipment-group">
+            <div class="equipment-group-header">
+              <span class="group-icon">🗡️</span>
+              <span class="group-name">武器</span>
+            </div>
+            <div class="equipment-slots">
+              <div 
+                v-for="slot in weaponSlots" 
+                :key="slot.key"
+                class="equip-slot"
+                :class="{ equipped: slot.equipment }"
+                @click="selectEquipment(slot)"
+              >
+                <div class="slot-icon" v-if="slot.equipment">{{ getEquipIcon(slot.equipment.type) }}</div>
+                <div class="slot-empty" v-else>{{ slot.name }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 防具 -->
+          <div class="equipment-group">
+            <div class="equipment-group-header">
+              <span class="group-icon">🛡️</span>
+              <span class="group-name">防具</span>
+            </div>
+            <div class="equipment-slots">
+              <div 
+                v-for="slot in armorSlots" 
+                :key="slot.key"
+                class="equip-slot"
+                :class="{ equipped: slot.equipment }"
+                @click="selectEquipment(slot)"
+              >
+                <div class="slot-icon" v-if="slot.equipment">{{ getEquipIcon(slot.equipment.type) }}</div>
+                <div class="slot-empty" v-else>{{ slot.name }}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -137,9 +216,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { equipmentService } from '@/modules/equipment';
+import { gameDataService } from '@/modules/gameData';
+import type { FactionData, RaceData, ClassData, Stats, Attributes } from '@/modules/character/types';
+import Tag from './Tag.vue';
 
 defineProps<{
   visible: boolean;
@@ -152,91 +234,42 @@ const emit = defineEmits<{
 const characterStore = useCharacterStore();
 
 const character = computed(() => characterStore.character);
-const coreAttributes = computed(() => characterStore.attributes || {});
+const stats = computed<Stats>(() => characterStore.stats);
+const attributes = computed<Attributes>(() => characterStore.attributes);
 
-const attrs = computed(() => {
-  const defaultAttrs = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10, maxHp: 100, maxMp: 50 };
-  return { ...defaultAttrs, ...coreAttributes.value };
-});
+const factions = ref<FactionData[]>([]);
+const races = ref<RaceData[]>([]);
+const classes = ref<ClassData[]>([]);
 
-const currentHp = computed(() => {
-  if (!character.value) return attrs.value.maxHp;
-  return character.value.hp !== undefined ? character.value.hp : attrs.value.maxHp;
-});
-const maxHp = computed(() => attrs.value.maxHp);
-const currentMp = computed(() => {
-  if (!character.value) return attrs.value.maxMp;
-  return character.value.mana !== undefined ? character.value.mana : attrs.value.maxMp;
-});
-const maxMp = computed(() => attrs.value.maxMp);
-const currentExp = computed(() => character.value?.exp || 0);
-const maxExp = computed(() => 1000);
+const currentHp = computed(() => characterStore.hp);
+const maxHp = computed(() => characterStore.maxHp);
+const currentMp = computed(() => characterStore.mana);
+const maxMp = computed(() => characterStore.maxMana);
+const currentExp = computed(() => characterStore.exp);
+const maxExp = computed(() => characterStore.expToNextLevel);
 
-const hpPercent = computed(() => Math.round((currentHp.value / maxHp.value) * 100));
-const mpPercent = computed(() => Math.round((currentMp.value / maxMp.value) * 100));
-const expPercent = computed(() => Math.min(100, Math.round((currentExp.value / maxExp.value) * 100)));
+const hpPercent = computed(() => characterStore.hpPercentage);
+const mpPercent = computed(() => characterStore.manaPercentage);
+const expPercent = computed(() => characterStore.expPercentage);
 
-const secondaryAttributes = computed(() => {
-  const attr = attrs.value;
-  return {
-    physicalAttack: attr.str * 2 + 10,
-    physicalDefense: attr.con * 1.5 + 5,
-    magicalAttack: attr.int * 2 + 10,
-    magicalDefense: attr.wis * 1.5 + 5,
-    critRate: Math.floor(attr.dex * 0.5 + 5),
-    dodgeRate: Math.floor(attr.dex * 0.3 + 3),
-    maxHp: attr.maxHp,
-    maxMp: attr.maxMp
-  };
-});
-
-const equipmentSlots = computed(() => {
+const weaponSlots = computed(() => {
   const equipment = equipmentService.getEquipment();
   return [
-    { key: 'weapon1', name: '主手武器', equipment: equipment.weapon1 },
-    { key: 'weapon2', name: '副手武器', equipment: equipment.weapon2 },
-    { key: 'armor1', name: '头部', equipment: equipment.armor1 },
-    { key: 'armor2', name: '胸部', equipment: equipment.armor2 },
-    { key: 'armor3', name: '腿部', equipment: equipment.armor3 },
-    { key: 'armor4', name: '饰品', equipment: equipment.armor4 }
+    { key: 'weapon1', name: '武器1', equipment: equipment.weapon1 },
+    { key: 'weapon2', name: '武器2', equipment: equipment.weapon2 }
+  ];
+});
+
+const armorSlots = computed(() => {
+  const equipment = equipmentService.getEquipment();
+  return [
+    { key: 'armor1', name: '防具1', equipment: equipment.armor1 },
+    { key: 'armor2', name: '防具2', equipment: equipment.armor2 },
+    { key: 'armor3', name: '防具3', equipment: equipment.armor3 },
+    { key: 'armor4', name: '防具4', equipment: equipment.armor4 }
   ];
 });
 const selectedSlot = ref<any>(null);
-
-const factions = {
-  alliance: { name: '联盟', color: '#0078ff' },
-  horde: { name: '部落', color: '#ff4400' },
-  neutral: { name: '中立', color: '#9d9d9d' }
-};
-
-const races: Record<string, { name: string; icon: string }> = {
-  human: { name: '人类', icon: '👨' },
-  dwarf: { name: '矮人', icon: '🧔' },
-  gnome: { name: '侏儒', icon: '👦' },
-  nightelf: { name: '暗夜精灵', icon: '🌙' },
-  draenei: { name: '德莱尼', icon: '⭐' },
-  orc: { name: '兽人', icon: '👹' },
-  undead: { name: '亡灵', icon: '💀' },
-  tauren: { name: '牛头', icon: '🐂' },
-  troll: { name: '巨魔', icon: '👺' },
-  bloodelves: { name: '血精灵', icon: '🧝' },
-  pandaren: { name: '熊猫人', icon: '🐼' }
-};
-
-const classes: Record<string, string> = {
-  warrior: '战士',
-  mage: '法师',
-  paladin: '圣骑士',
-  hunter: '猎人',
-  rogue: '潜行者',
-  warlock: '术士',
-  druid: '德鲁伊',
-  priest: '牧师',
-  shaman: '萨满',
-  deathknight: '死亡骑士',
-  monk: '武僧',
-  demonhunter: '恶魔猎手'
-};
 
 const attrIcons: Record<string, string> = {
   str: '⚔️',
@@ -275,24 +308,34 @@ const qualityNames: Record<string, string> = {
   legendary: '传说'
 };
 
-function getRaceIcon(race: string) {
-  return races[race]?.icon || '👤';
+async function loadData() {
+  factions.value = await gameDataService.getAllFactions();
+  races.value = await gameDataService.getAllRaces();
+  classes.value = await gameDataService.getAllClasses();
 }
 
-function getRaceName(race: string) {
-  return races[race]?.name || '';
+function getRaceIcon(raceId: string) {
+  return races.value.find(r => r.id === raceId)?.icon || '👤';
 }
 
-function getFactionName(faction: string) {
-  return (factions as any)[faction]?.name || '';
+function getRaceName(raceId: string) {
+  return races.value.find(r => r.id === raceId)?.name || '';
 }
 
-function getFactionColor(faction: string) {
-  return (factions as any)[faction]?.color || '#9d9d9d';
+function getFactionName(factionId: string) {
+  return factions.value.find(f => f.id === factionId)?.name || '';
 }
 
-function getClassName(cls: string) {
-  return classes[cls] || '';
+function getFactionColor(factionId: string) {
+  return factions.value.find(f => f.id === factionId)?.color || '#9d9d9d';
+}
+
+function getClassName(classId: string) {
+  return classes.value.find(c => c.id === classId)?.name || '';
+}
+
+function getClassColor(classId: string) {
+  return classes.value.find(c => c.id === classId)?.color || '#9d9d9d';
 }
 
 function getAttrIcon(key: string) {
@@ -307,9 +350,12 @@ function getStatName(stat: string) {
   const statMap: Record<string, string> = {
     physicalAttack: '物理攻击',
     physicalDefense: '物理防御',
+    magicAttack: '魔法攻击',
     magicalAttack: '魔法攻击',
     magicalDefense: '魔法防御',
+    magicDefense: '魔法防御',
     maxHp: '最大HP',
+    maxMana: '最大MP',
     maxMp: '最大MP'
   };
   return statMap[stat] || stat;
@@ -331,170 +377,325 @@ function unequipItem(slotKey: string) {
   equipmentService.unequipItem(slotKey);
   selectedSlot.value = null;
 }
+
+onMounted(async () => {
+  await loadData();
+});
 </script>
 
 <style scoped>
-/* 角色基本信息 */
-.character-basic {
+/* 角色信息和资源条概览 */
+.character-overview {
   display: flex;
-  gap: 16px;
-  padding: 16px;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
   margin-bottom: 16px;
 }
 
-.char-avatar {
-  font-size: 56px;
+/* 角色基本信息 */
+.character-basic {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.char-info {
-  flex: 1;
+.char-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.char-avatar {
+  font-size: 40px;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 215, 0, 0.15);
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.char-main-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .char-name {
-  font-size: 20px;
+  font-size: 22px;
   color: #f0f0f0;
   font-weight: bold;
-  margin-bottom: 6px;
-}
-
-.char-details {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 6px;
-  flex-wrap: wrap;
-}
-
-.char-details span {
-  padding: 3px 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
-  color: #8b8b8b;
-  font-size: 12px;
-}
-
-.faction-tag {
-  color: var(--faction-color);
+  line-height: 1.2;
 }
 
 .char-level {
   font-size: 14px;
   color: #ffd700;
   font-weight: bold;
+  background: rgba(255, 215, 0, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.char-details {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 /* 资源条 */
 .resource-bars {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 6px;
+}
+
+.resource-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.resource-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.resource-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resource-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.resource-name {
+  font-size: 11px;
+  color: #8b8b8b;
+  font-weight: bold;
+}
+
+.resource-value {
+  font-size: 11px;
+  color: #f0f0f0;
+  font-weight: bold;
 }
 
 .resource-bar {
-  position: relative;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
   overflow: hidden;
+  position: relative;
 }
 
 .resource-fill {
   height: 100%;
-  transition: width 0.3s;
-  border-radius: 12px;
+  transition: width 0.3s ease;
+  border-radius: 4px;
+  position: relative;
 }
 
-.hp-bar .resource-fill {
-  background: linear-gradient(90deg, #ff4444, #ff0000);
-}
-
-.mp-bar .resource-fill {
-  background: linear-gradient(90deg, #4444ff, #0000ff);
-}
-
-.exp-bar .resource-fill {
-  background: linear-gradient(90deg, #ffd700, #ff8c00);
-}
-
-.resource-text {
+.resource-fill::after {
+  content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: #f0f0f0;
-  font-size: 12px;
-  font-weight: bold;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: shimmer 2s infinite;
 }
 
-/* 属性区域 */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.hp-fill {
+  background: linear-gradient(90deg, #ff6b6b, #ee5a5a, #d63031);
+  box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+}
+
+.mp-fill {
+  background: linear-gradient(90deg, #74b9ff, #0984e3, #0652dd);
+  box-shadow: 0 0 10px rgba(116, 185, 255, 0.5);
+}
+
+.exp-fill {
+  background: linear-gradient(90deg, #fdcb6e, #f39c12, #e67e22);
+  box-shadow: 0 0 10px rgba(253, 203, 110, 0.5);
+}
+
+/* 核心属性 */
 .attributes-section {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .attributes-section h3 {
   font-size: 14px;
   color: #ffd700;
   margin-bottom: 10px;
-}
-
-.attributes-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.attr-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
-}
-
-.attr-icon {
-  font-size: 24px;
-  margin-bottom: 6px;
-}
-
-.attr-name {
-  font-size: 12px;
-  color: #8b8b8b;
-  margin-bottom: 3px;
-}
-
-.attr-value {
-  font-size: 16px;
-  color: #f0f0f0;
   font-weight: bold;
 }
 
-/* 次级属性 */
-.secondary-attributes {
+.core-attributes {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 
-.sec-attr-item {
+.core-attr-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.core-attr-icon {
+  font-size: 20px;
+}
+
+.core-attr-content {
+  flex: 1;
   display: flex;
   justify-content: space-between;
-  padding: 8px 12px;
+  align-items: center;
+}
+
+.core-attr-name {
+  font-size: 13px;
+  color: #ffd700;
+  font-weight: 500;
+}
+
+.core-attr-value {
+  font-size: 16px;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+/* 次级属性 */
+.secondary-section {
+  margin-bottom: 16px;
+}
+
+.secondary-section h3 {
+  font-size: 14px;
+  color: #ffd700;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.secondary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.secondary-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+}
+
+.secondary-item.attack {
+  border-left-color: #ff6b6b;
+}
+
+.secondary-item.defense {
+  border-left-color: #4ecdc4;
+}
+
+.secondary-item.magic-attack {
+  border-left-color: #a29bfe;
+}
+
+.secondary-item.magic-defense {
+  border-left-color: #fd79a8;
+}
+
+.secondary-item.crit {
+  border-left-color: #fdcb6e;
+}
+
+.secondary-item.dodge {
+  border-left-color: #74b9ff;
+}
+
+.secondary-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.secondary-info {
+  flex: 1;
+}
+
+.secondary-label {
+  font-size: 12px;
+  color: #8b8b8b;
+  margin-bottom: 2px;
+}
+
+.secondary-value {
+  font-size: 14px;
+  color: #f0f0f0;
+  font-weight: bold;
+}
+
+.resource-stats {
+  display: flex;
+  gap: 8px;
+}
+
+.resource-stats .resource-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 6px;
 }
 
-.sec-attr-item span {
-  color: #8b8b8b;
+.resource-stats .resource-icon {
   font-size: 12px;
 }
 
-.sec-attr-item strong {
+.resource-stats .resource-label {
+  font-size: 11px;
+  color: #8b8b8b;
+  flex: 1;
+}
+
+.resource-stats .resource-value {
+  font-size: 12px;
   color: #f0f0f0;
-  font-size: 13px;
+  font-weight: bold;
 }
 
 /* 装备区域 */
@@ -506,15 +707,41 @@ function unequipItem(slotKey: string) {
   font-size: 14px;
   color: #ffd700;
   margin-bottom: 10px;
+  font-weight: bold;
 }
 
-.equipment-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+.equipment-group {
+  margin-bottom: 14px;
+}
+
+.equipment-group:last-child {
+  margin-bottom: 0;
+}
+
+.equipment-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.group-icon {
+  font-size: 16px;
+}
+
+.group-name {
+  font-size: 13px;
+  color: #f0f0f0;
+  font-weight: bold;
+}
+
+.equipment-slots {
+  display: flex;
   gap: 8px;
 }
 
 .equip-slot {
+  flex: 1;
   aspect-ratio: 1;
   background: rgba(255, 255, 255, 0.05);
   border: 2px solid #4a4a4a;
@@ -536,7 +763,7 @@ function unequipItem(slotKey: string) {
 }
 
 .slot-icon {
-  font-size: 28px;
+  font-size: 24px;
 }
 
 .slot-empty {

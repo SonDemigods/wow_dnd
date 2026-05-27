@@ -1,7 +1,7 @@
 /**
  * @fileoverview 物品数据模块
  * @description 包含所有可获取物品的类型定义和掉落物品详情
- * @module data/items
+ * @module data/item
  */
 
 import type { Item, ItemTypeData } from '../modules/inventory/types';

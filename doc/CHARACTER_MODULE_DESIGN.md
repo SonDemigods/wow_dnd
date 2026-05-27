@@ -52,7 +52,7 @@
 | FR-CHAR-001 | 支持角色名称设置                                       | 角色创建流程  |
 | FR-CHAR-002 | 支持阵营选择（联盟/部落）                                  | 角色创建流程  |
 | FR-CHAR-003 | 支持种族选择（根据阵营）                                   | 角色创建流程  |
-| FR-CHAR-004 | 支持职业选择                                         | 角色创建流程  |
+| FR-CHAR-004 | 支持职业选择（根据种族）                                   | 角色创建流程  |
 | FR-CHAR-005 | 经验值累加与升级检测                                     | 战斗/任务奖励 |
 | FR-CHAR-006 | 等级提升时自动增加属性                                    | 成长系统    |
 | FR-CHAR-007 | 生命值增减与边界控制                                     | 战斗/药水   |
@@ -160,14 +160,6 @@ export interface Attributes {
   magicDefense: number;       // 魔法防御力 = wis * 1.5 + int * 0.5 + cha * 0.3
   critChance: number;         // 暴击率 (%) = dex * 0.5
   dodgeChance: number;        // 闪避率 (%) = dex * 0.3
-  hpBonus: number;            // 每级HP加成 = con * 2
-  mpBonus: number;            // 每级MP加成 = int + wis + cha
-  healBonus: number;          // 治疗加成 = wis * 0.1 + cha * 0.05
-  attackBonus?: number;       // 攻击加成
-  critBonus?: number;         // 暴击加成
-  dodgeBonus?: number;        // 闪避加成
-  armor?: number;             // 护甲值
-  initiative?: number;        // 先手值
 }
 
 /** 阵营数据 */
@@ -260,9 +252,6 @@ export interface CharacterListItem {
 | 魔法防御力   | magicDefense = wis × 1.5 + int × 0.5 + cha × 0.3 | 感知、智力、魅力 |
 | 暴击率 (%) | critChance = dex × 0.5                           | 敏捷       |
 | 闪避率 (%) | dodgeChance = dex × 0.3                          | 敏捷       |
-| 每级HP加成  | hpBonus = con × 2                                | 体质       |
-| 每级MP加成  | mpBonus = int + wis + cha                        | 智力、感知、魅力 |
-| 治疗加成    | healBonus = wis × 0.1 + cha × 0.05               | 感知、魅力    |
 
 ### 种族属性调整值
 

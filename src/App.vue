@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import CharacterSelect from './components/CharacterSelect.vue';
 import CharacterCreate from './components/CharacterCreate.vue';
 import GameMain from './components/GameMain.vue';
@@ -49,6 +49,17 @@ const showExitConfirm = ref(false);
 const characterSelectRef = ref<InstanceType<typeof CharacterSelect>>();
 
 const characterStore = useCharacterStore();
+
+onMounted(async () => {
+  // 初始化角色服务，从数据库加载数据
+  await characterStore.initialize();
+  // 检查是否有当前角色
+  const currentCharacterId = characterStore.getCurrentCharacterId();
+  if (currentCharacterId) {
+    // 如果有当前角色ID，直接进入游戏
+    gameState.value = 'game';
+  }
+});
 
 async function handleCharacterSelect(characterId: string) {
   console.log('Selected character:', characterId);
@@ -67,8 +78,9 @@ function handleExit() {
   showExitConfirm.value = true;
 }
 
-function confirmExit() {
+async function confirmExit() {
   showExitConfirm.value = false;
+  await characterStore.logout();
   gameState.value = 'character-select';
 }
 

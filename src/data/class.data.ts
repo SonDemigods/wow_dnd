@@ -1,7 +1,7 @@
 /**
  * @fileoverview 魔兽世界职业数据模块
  * @description 包含所有可选职业的基础信息和技能详情
- * @module data/classes
+ * @module data/class
  */
 
 import type { ClassData,  } from '../modules/character/types';

@@ -1,7 +1,7 @@
 /**
  * @fileoverview 游戏任务数据模块
  * @description 包含所有可接任务的详细信息，包括任务目标和奖励
- * @module data/quests
+ * @module data/quest
  */
 
 import type { QuestDefinition } from '../modules/quest/types';

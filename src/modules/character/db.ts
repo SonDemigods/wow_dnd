@@ -17,6 +17,7 @@ export interface CharacterDataStorage {
   classId: string;
   level: number;
   exp: number;
+  expToNextLevel: number;
   gold: number;
   baseStats: Stats;
   currentHp: number;
@@ -177,6 +178,7 @@ export class CharacterDbService {
       classId: character.classId,
       level: character.level,
       exp: character.exp,
+      expToNextLevel: character.expToNextLevel,
       gold: character.gold,
       baseStats: character.stats,
       currentHp: character.hp,
@@ -201,7 +203,7 @@ export class CharacterDbService {
       classId: storage.classId,
       level: storage.level,
       exp: storage.exp,
-      expToNextLevel: 0,
+      expToNextLevel: storage.expToNextLevel,
       hp: storage.currentHp,
       maxHp: storage.maxHp,
       mana: storage.currentMp,

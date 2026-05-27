@@ -9,6 +9,19 @@ import type { Character, CharacterListItem, Stats, Attributes, FactionType, Race
 import { characterService } from './service';
 import { eventBus, GameEvents } from '../bus/core';
 import { gameDataService } from '../gameData/service';
+import {
+  calculateMaxHp,
+  calculateMaxMana,
+  calculatePhysicalAttack,
+  calculatePhysicalDefense,
+  calculateMagicAttack,
+  calculateMagicDefense,
+  calculateCritChance,
+  calculateDodgeChance,
+  calculateHpBonus,
+  calculateMpBonus,
+  calculateHealBonus
+} from '@/utils/calculations';
 
 /**
  * 角色状态存储
@@ -18,7 +31,6 @@ export const useCharacterStore = defineStore('character', () => {
   const currentCharacterId = ref<string | null>(null);
   const character = ref<Character | null>(null);
   const characterList = ref<CharacterListItem[]>([]);
-  const bonusStats = ref<Partial<Stats>>({});
   
   // 缓存的基础数据（从数据库加载）
   const factionsData = ref<Record<string, FactionData>>({});
@@ -29,18 +41,23 @@ export const useCharacterStore = defineStore('character', () => {
   const isLoggedIn = computed(() => currentCharacterId.value !== null);
   
   const stats = computed<Stats>(() => {
-    if (!character.value) {
-      return { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
-    }
-    
-    const base = character.value.stats;
+    return characterService.getStats();
+  });
+
+  const attributes = computed<Attributes>(() => {
+    const s = stats.value;
     return {
-      str: base.str + (bonusStats.value.str || 0),
-      dex: base.dex + (bonusStats.value.dex || 0),
-      con: base.con + (bonusStats.value.con || 0),
-      int: base.int + (bonusStats.value.int || 0),
-      wis: base.wis + (bonusStats.value.wis || 0),
-      cha: base.cha + (bonusStats.value.cha || 0)
+      maxHp: character.value?.maxHp || calculateMaxHp(s),
+      maxMana: character.value?.maxMana || calculateMaxMana(s),
+      physicalAttack: calculatePhysicalAttack(s),
+      physicalDefense: calculatePhysicalDefense(s),
+      magicAttack: calculateMagicAttack(s),
+      magicDefense: calculateMagicDefense(s),
+      critChance: calculateCritChance(s),
+      dodgeChance: calculateDodgeChance(s),
+      hpBonus: calculateHpBonus(s),
+      mpBonus: calculateMpBonus(s),
+      healBonus: calculateHealBonus(s)
     };
   });
 
@@ -101,6 +118,7 @@ export const useCharacterStore = defineStore('character', () => {
 
   function createCharacter(name: string, factionId: FactionType, raceId: RaceType, classId: ClassType): string {
     const id = characterService.createCharacter(name, factionId, raceId, classId);
+    character.value = characterService.getCharacterInfo();
     loadCharacterList();
     return id;
   }
@@ -110,7 +128,6 @@ export const useCharacterStore = defineStore('character', () => {
     if (success) {
       currentCharacterId.value = characterId;
       character.value = characterService.getCharacterInfo();
-      bonusStats.value = {};
     }
     return success;
   }
@@ -131,7 +148,6 @@ export const useCharacterStore = defineStore('character', () => {
     await characterService.logout();
     currentCharacterId.value = null;
     character.value = null;
-    bonusStats.value = {};
   }
 
   function addExp(amount: number): void {
@@ -161,19 +177,11 @@ export const useCharacterStore = defineStore('character', () => {
 
   function applyBonus(bonus: Partial<Stats>): void {
     characterService.applyBonus(bonus);
-    Object.keys(bonus).forEach(key => {
-      const statKey = key as keyof Stats;
-      bonusStats.value[statKey] = (bonusStats.value[statKey] || 0) + (bonus[statKey] || 0);
-    });
     character.value = characterService.getCharacterInfo();
   }
 
   function removeBonus(bonus: Partial<Stats>): void {
     characterService.removeBonus(bonus);
-    Object.keys(bonus).forEach(key => {
-      const statKey = key as keyof Stats;
-      bonusStats.value[statKey] = Math.max(0, (bonusStats.value[statKey] || 0) - (bonus[statKey] || 0));
-    });
     character.value = characterService.getCharacterInfo();
   }
 
@@ -196,6 +204,10 @@ export const useCharacterStore = defineStore('character', () => {
     loadCharacterList();
   }
 
+  function getCurrentCharacterId(): string | null {
+    return characterService.getCurrentCharacterId();
+  }
+
   async function initialize(): Promise<void> {
     // 从数据库加载阵营、种族、职业数据到缓存
     factionsData.value = await gameDataService.getFactions();
@@ -213,6 +225,7 @@ export const useCharacterStore = defineStore('character', () => {
   // 事件监听
   function setupEventListeners(): void {
     eventBus.on(GameEvents.CHARACTER_CREATED, () => {
+      character.value = characterService.getCharacterInfo();
       loadCharacterList();
     });
 
@@ -260,11 +273,11 @@ export const useCharacterStore = defineStore('character', () => {
     currentCharacterId,
     character,
     characterList,
-    bonusStats,
     
     // 计算属性
     isLoggedIn,
     stats,
+    attributes,
     level,
     exp,
     expToNextLevel,
@@ -292,6 +305,7 @@ export const useCharacterStore = defineStore('character', () => {
     selectCharacter,
     deleteCharacter,
     logout,
+    getCurrentCharacterId,
     addExp,
     addHp,
     addMp,

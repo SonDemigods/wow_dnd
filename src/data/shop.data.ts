@@ -1,7 +1,7 @@
 /**
  * @fileoverview 商店数据模块
  * @description 包含所有商店的配置和商品池定义
- * @module data/shops
+ * @module data/shop
  */
 
 import type { ItemRarity } from '../modules/inventory/types';

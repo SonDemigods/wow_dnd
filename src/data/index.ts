@@ -5,25 +5,25 @@
  */
 
 // 导出阵营和种族数据
-export { FACTIONS, RACES } from './races.data';
+export { FACTIONS, RACES } from './race.data';
 
 // 导出职业和职业技能数据
-export { CLASSES, CLASS_ABILITIES } from './classes.data';
+export { CLASSES, CLASS_ABILITIES } from './class.data';
 
 // 导出物品类型和战利品数据
-export { ITEM_TYPES, LOOT_ITEMS } from './items.data';
+export { ITEM_TYPES, LOOT_ITEMS } from './item.data';
 
 // 导出装备数据
 export { EQUIPMENT_ITEMS, RARITY_CONFIG } from './equipment.data';
 
 // 导出敌人数据
-export { ENEMIES } from './enemies.data';
+export { ENEMIES } from './enemy.data';
 
 // 导出大陆和世界地点数据（使用别名 LOCATIONS 保持兼容性）
 export { CONTINENTS, LOCATIONS } from './map.data';
 
 // 导出任务数据
-export { QUESTS } from './quests.data';
+export { QUESTS } from './quest.data';
 
 // 导出商店数据
 export {
@@ -33,7 +33,7 @@ export {
   RARITY_SELL_DISCOUNT,
   ITEM_POOLS,
   SHOP_TYPE_ITEM_POOL
-} from './shops.data';
+} from './shop.data';
 
 // 导出配置常量
 export { MAX_LEVEL } from '@/config/character';

@@ -18,7 +18,7 @@
         :key="char.id"
         class="character-card"
         :class="{ selected: selectedId === char.id }"
-        :style="{ '--class-color': getClassColor(char.classId), '--faction-color': getFactionColor(char.factionId), '--profession-color': getClassColor(char.classId) }"
+        :style="{ '--class-color': getClassColor(char.classId), '--faction-color': getFactionColor(char.factionId) }"
         @click="selectCharacter(char.id)"
       >
         <div class="char-icon">{{ getRaceIcon(char.raceId) }}</div>
@@ -28,9 +28,9 @@
             <span class="char-level">Lv.{{ char.level }}</span>
           </div>
           <div class="char-details">
-            <span class="tag race-tag">{{ getRaceName(char.raceId) }}</span>
-            <span class="tag class-tag">{{ getClassName(char.classId) }}</span>
-            <span class="tag faction-tag">{{ getFactionName(char.factionId) }}</span>
+            <Tag type="faction" :text="getFactionName(char.factionId)" :color="getFactionColor(char.factionId)" />
+            <Tag type="race" :text="getRaceName(char.raceId)" />
+            <Tag type="class" :text="getClassName(char.classId)" :color="getClassColor(char.classId)" />
           </div>
         </div>
         <div class="char-delete" @click.stop="deleteCharacter(char.id)">🗑️</div>
@@ -57,6 +57,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { characterService } from '@/modules/character';
+import Tag from './Tag.vue';
 import { gameDataService } from '@/modules/gameData';
 import type { CharacterListItem } from '@/modules/character';
 import type { RaceData, ClassData, FactionData } from '@/modules/character/types';
@@ -138,9 +139,9 @@ async function confirmDelete() {
   deletingCharacterId.value = null;
 }
 
-function confirmSelect() {
+async function confirmSelect() {
   if (selectedId.value) {
-    characterService.selectCharacter(selectedId.value);
+    await characterService.selectCharacter(selectedId.value);
     emit('select', selectedId.value);
   }
 }
@@ -253,43 +254,14 @@ defineExpose({
   overflow: hidden;
 }
 
-.char-details .tag {
-  padding: 2px 6px;
-  border-radius: 3px;
+.char-details {
+  display: flex;
+  gap: 4px;
   font-size: 11px;
-  font-weight: 600;
+  justify-content: center;
   white-space: nowrap;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #ffffff;
+  width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 40px;
-  max-width: 75px;
-}
-
-@media (max-width: 480px) {
-  .char-details {
-    gap: 2px;
-  }
-  
-  .char-details .tag {
-    padding: 1px 4px;
-    font-size: 10px;
-    max-width: 60px;
-  }
-}
-
-.char-details .race-tag {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.char-details .class-tag {
-  background: var(--profession-color);
-}
-
-.char-details .faction-tag {
-  background: var(--faction-color);
 }
 
 .char-level {
