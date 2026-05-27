@@ -1,16 +1,16 @@
-<template>
-  <div class="popup-overlay" v-if="visible" @click.self="close">
-    <div class="adventure-log-popup">
+﻿<template>
+  <div v-if="visible" class="popup-overlay" @click.self="$emit('close')">
+    <div class="popup-content">
       <div class="popup-header">
-        <h3>冒险日志</h3>
-        <button class="close-btn" @click="close">×</button>
+        <h2>冒险日志</h2>
+        <button class="close-btn" @click="$emit('close')">×</button>
       </div>
-      
-      <div class="popup-content">
+
+      <div class="popup-body">
         <div class="log-header" v-if="currentArea">
           {{ currentArea }} - 冒险记录
         </div>
-        
+
         <div class="log-container" ref="logContainer">
           <div 
             v-for="(log, index) in logs" 
@@ -22,16 +22,18 @@
             <span class="log-icon">{{ log.icon || getDefaultIcon(log.type) }}</span>
             <span class="log-message">{{ log.message }}</span>
           </div>
-          
+
           <div v-if="logs.length === 0" class="empty-logs">
             暂无冒险记录
           </div>
         </div>
       </div>
-      
+
       <div class="popup-footer">
-        <button class="btn btn-secondary" @click="clearLogs">清空日志</button>
-        <button class="btn btn-primary" @click="close">关闭</button>
+        <div class="footer-actions">
+          <button class="action-btn clear" @click="clearLogs">清空日志</button>
+        </div>
+        <button class="close-button" @click="$emit('close')">关闭</button>
       </div>
     </div>
   </div>
@@ -70,10 +72,6 @@ const getDefaultIcon = (type: string): string => {
   return iconMap[type] || '📜';
 };
 
-const close = () => {
-  emit('close');
-};
-
 const clearLogs = () => {
   if (confirm('确定要清空所有冒险日志吗？')) {
     logStore.clearLogs();
@@ -91,79 +89,14 @@ const scrollToBottom = () => {
 onMounted(() => {
   scrollToBottom();
 });
-
 </script>
 
 <style scoped>
-.popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.adventure-log-popup {
-  background: #1a1a2e;
-  border: 2px solid #4a4a6a;
-  border-radius: 8px;
-  width: 600px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateY(-20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.popup-header {
-  padding: 16px 20px;
-  border-bottom: 2px solid #4a4a6a;
-  background: linear-gradient(135deg, #2a2a4e 0%, #1a1a2e 100%);
-}
-
-.popup-header h3 {
-  margin: 0;
-  color: #e0e0ff;
-  font-size: 20px;
-  font-weight: bold;
-  text-align: center;
-}
-
-.popup-content {
-  flex: 1;
-  padding: 16px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
 .log-header {
   color: #a0a0c0;
-  font-size: 14px;
-  margin-bottom: 12px;
-  padding: 8px 12px;
+  font-size: 13px;
+  margin-bottom: 10px;
+  padding: 6px 10px;
   background: #252540;
   border-radius: 4px;
 }
@@ -173,12 +106,12 @@ onMounted(() => {
   overflow-y: auto;
   background: #0f0f1a;
   border: 1px solid #3a3a5a;
-  border-radius: 4px;
-  padding: 12px;
+  border-radius: 6px;
+  padding: 10px;
 }
 
 .log-container::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 .log-container::-webkit-scrollbar-track {
@@ -187,28 +120,28 @@ onMounted(() => {
 
 .log-container::-webkit-scrollbar-thumb {
   background: #4a4a6a;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .log-entry {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  margin-bottom: 4px;
+  gap: 6px;
+  padding: 5px 8px;
+  margin-bottom: 3px;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
 .log-number {
   color: #6a6a8a;
   font-family: monospace;
-  min-width: 32px;
+  min-width: 28px;
 }
 
 .log-icon {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .log-message {
@@ -239,55 +172,36 @@ onMounted(() => {
 .empty-logs {
   color: #6a6a8a;
   text-align: center;
-  padding: 40px;
-  font-size: 14px;
+  padding: 32px;
+  font-size: 13px;
 }
 
-.popup-footer {
-  padding: 12px 20px;
-  border-top: 2px solid #4a4a6a;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  background: #252540;
+.footer-actions {
+  margin-bottom: 14px;
 }
 
-.btn {
-  padding: 8px 20px;
+.action-btn {
+  padding: 8px 16px;
   border: none;
   border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: bold;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s;
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, #4a6fa5 0%, #3a5f95 100%);
-  color: white;
+.action-btn.clear {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  color: #fff;
 }
 
-.btn-primary:hover {
-  background: linear-gradient(135deg, #5a7fb5 0%, #4a6fa5 100%);
-}
-
-.btn-secondary {
-  background: linear-gradient(135deg, #6a5a5a 0%, #5a4a4a 100%);
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: linear-gradient(135deg, #7a6a6a 0%, #6a5a5a 100%);
+.action-btn:hover {
+  transform: translateY(-2px);
 }
 
 @media (max-width: 640px) {
-  .adventure-log-popup {
-    width: 95%;
-    max-height: 90vh;
-  }
-  
   .log-entry {
-    font-size: 13px;
+    font-size: 12px;
   }
   
   .log-number {

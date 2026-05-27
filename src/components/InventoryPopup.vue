@@ -1,84 +1,81 @@
 <template>
-  <div v-if="visible" class="popup-overlay">
+  <div v-if="visible" class="popup-overlay" @click.self="$emit('close')">
     <div class="popup-content">
-      <div class="inventory-view">
-        <div class="inventory-header">
-          <h2>背包</h2>
-          <button class="close-btn" @click="$emit('close')">×</button>
-          <div class="inventory-count">{{ inventoryItems.length }} / {{ maxSlots }}</div>
+      <div class="popup-header">
+        <h2>背包</h2>
+        <div class="inventory-count">{{ inventoryItems.length }} / {{ maxSlots }}</div>
+        <button class="close-btn" @click="$emit('close')">×</button>
+      </div>
+
+      <div class="popup-body">
+        <div class="category-tabs">
+          <button 
+            v-for="cat in categories" 
+            :key="cat.id"
+            :class="['tab-btn', { active: selectedCategory === cat.id }]"
+            @click="selectedCategory = cat.id"
+          >
+            {{ cat.name }}
+          </button>
         </div>
 
-    <div class="category-tabs">
-      <button 
-        v-for="cat in categories" 
-        :key="cat.id"
-        :class="['tab-btn', { active: selectedCategory === cat.id }]"
-        @click="selectedCategory = cat.id"
-      >
-        {{ cat.name }}
-      </button>
-    </div>
+        <div class="inventory-grid">
+          <div 
+            v-for="(item, index) in filteredItems" 
+            :key="item.id || index"
+            :class="['item-slot', item.quality]"
+            @click="selectItem(item)"
+          >
+            <span class="item-icon">{{ getItemIcon(item.icon) }}</span>
+            <span v-if="item.count > 1" class="item-count">{{ item.count }}</span>
+          </div>
+          <div 
+            v-for="i in emptySlots" 
+            :key="'empty-' + i"
+            class="item-slot empty"
+          >
+          </div>
+        </div>
+      </div>
 
-    <div class="inventory-grid">
-      <div 
-        v-for="(item, index) in filteredItems" 
-        :key="item.id || index"
-        :class="['item-slot', item.quality]"
-        @click="selectItem(item)"
-      >
-        <span class="item-icon">{{ getItemIcon(item.icon) }}</span>
-        <span v-if="item.count > 1" class="item-count">{{ item.count }}</span>
-      </div>
-      <div 
-        v-for="i in emptySlots" 
-        :key="'empty-' + i"
-        class="item-slot empty"
-      >
-      </div>
-    </div>
-
-    <div v-if="selectedItem" class="item-detail">
-      <div class="detail-header">
-        <h3 :class="selectedItem.quality">{{ selectedItem.name }}</h3>
-        <span class="quality-badge">{{ getQualityName(selectedItem.quality) }}</span>
-      </div>
-      <p>{{ selectedItem.description }}</p>
-      <div class="detail-info">
-        <span>类型: {{ getCategoryName(selectedItem.category) }}</span>
-        <span>数量: {{ selectedItem.count }}</span>
-      </div>
-      <div v-if="selectedItem.effect" class="effect-info">
-        <span>效果: {{ getEffectText(selectedItem.effect) }}</span>
-      </div>
-      <div class="detail-actions">
-        <button 
-          v-if="selectedItem.category === 'consumable'"
-          class="action-btn use"
-          @click="useItem(selectedItem.itemId)"
-        >
-          💊 使用
-        </button>
-        <button 
-          v-if="selectedItem.category === 'weapon' || selectedItem.category === 'armor' || selectedItem.category === 'accessory'"
-          class="action-btn equip"
-          @click="equipItem(selectedItem.itemId)"
-        >
-          🛡️ {{ selectedItem.equipped ? '卸下' : '装备' }}
-        </button>
-        <button 
-          class="action-btn drop"
-          @click="dropItem(selectedItem.itemId)"
-        >
-          🗑️ 丢弃
-        </button>
-      </div>
-    </div>
-
-    <div class="bottom-actions">
-      <button class="organize-btn" @click="organizeInventory">
-        📦 整理背包
-      </button>
-    </div>
+      <div class="popup-footer">
+        <div v-if="selectedItem" class="item-detail">
+          <div class="detail-header">
+            <h3 :class="selectedItem.quality">{{ selectedItem.name }}</h3>
+            <span class="quality-badge">{{ getQualityName(selectedItem.quality) }}</span>
+          </div>
+          <p>{{ selectedItem.description }}</p>
+          <div class="detail-info">
+            <span>类型: {{ getCategoryName(selectedItem.category) }}</span>
+            <span>数量: {{ selectedItem.count }}</span>
+          </div>
+          <div v-if="selectedItem.effect" class="effect-info">
+            <span>效果: {{ getEffectText(selectedItem.effect) }}</span>
+          </div>
+          <div class="detail-actions">
+            <button 
+              v-if="selectedItem.category === 'consumable'"
+              class="action-btn use"
+              @click="useItem(selectedItem.itemId)"
+            >
+              💊 使用
+            </button>
+            <button 
+              v-if="selectedItem.category === 'weapon' || selectedItem.category === 'armor' || selectedItem.category === 'accessory'"
+              class="action-btn equip"
+              @click="equipItem(selectedItem.itemId)"
+            >
+              🛡️ {{ selectedItem.equipped ? '卸下' : '装备' }}
+            </button>
+            <button 
+              class="action-btn drop"
+              @click="dropItem(selectedItem.itemId)"
+            >
+              🗑️ 丢弃
+            </button>
+          </div>
+        </div>
+        <button class="close-button" @click="$emit('close')">关闭</button>
       </div>
     </div>
   </div>
@@ -87,6 +84,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { inventoryService } from '@/modules/inventory';
+import { characterService } from '@/modules/character';
 import type { InventoryItem, ItemCategory, ItemQuality } from '@/modules/inventory';
 
 defineProps<{
@@ -229,12 +227,6 @@ function dropItem(itemId: string) {
   loadInventory();
 }
 
-function organizeInventory() {
-  inventoryService.organizeInventory();
-  alert('背包已整理！');
-  loadInventory();
-}
-
 async function loadInventory() {
   await inventoryService.initialize();
   inventoryItems.value = inventoryService.getInventory();
@@ -246,92 +238,28 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  box-sizing: border-box;
-}
-
-.popup-content {
-  background: rgba(13, 17, 23, 0.98);
-  border-radius: 12px;
-  border: 2px solid #4a4a4a;
-  max-width: 600px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  position: relative;
-}
-
-.close-btn {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 32px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  border-radius: 50%;
-  color: #fff;
-  font-size: 24px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-}
-
-.close-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.inventory-view {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.inventory-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.inventory-header h2 {
-  font-size: 24px;
-  color: #ffd700;
-}
-
 .inventory-count {
-  padding: 8px 16px;
+  padding: 4px 10px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   color: #888;
+  font-size: 12px;
 }
 
 .category-tabs {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 6px;
+  margin-bottom: 14px;
   flex-wrap: wrap;
 }
 
 .tab-btn {
-  padding: 8px 16px;
+  padding: 6px 14px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid #4a4a4a;
   border-radius: 4px;
   color: #888;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -349,12 +277,11 @@ onMounted(() => {
 .inventory-grid {
   display: grid;
   grid-template-columns: repeat(10, 1fr);
-  gap: 8px;
+  gap: 6px;
   background: rgba(0, 0, 0, 0.5);
-  padding: 16px;
-  border-radius: 8px;
+  padding: 14px;
+  border-radius: 6px;
   border: 2px solid #4a4a4a;
-  margin-bottom: 16px;
 }
 
 .item-slot {
@@ -379,23 +306,11 @@ onMounted(() => {
   opacity: 0.3;
 }
 
-.item-slot.common {
-  border-color: #ffffff;
-}
-
-.item-slot.uncommon {
-  border-color: #1eff00;
-}
-
-.item-slot.rare {
-  border-color: #0070dd;
-}
-
-.item-slot.epic {
-  border-color: #a335ee;
-}
-
-.item-slot.legendary {
+.item-slot.common { border-color: #ffffff; }
+.item-slot.uncommon { border-color: #1eff00; }
+.item-slot.rare { border-color: #0070dd; }
+.item-slot.epic { border-color: #a335ee; }
+.item-slot.legendary { 
   border-color: #ff8000;
   animation: legendary-glow 2s infinite;
 }
@@ -411,14 +326,14 @@ onMounted(() => {
 }
 
 .item-icon {
-  font-size: 28px;
+  font-size: 24px;
 }
 
 .item-count {
   position: absolute;
   bottom: 2px;
-  right: 4px;
-  font-size: 12px;
+  right: 3px;
+  font-size: 11px;
   color: #fff;
   font-weight: bold;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
@@ -426,9 +341,9 @@ onMounted(() => {
 
 .item-detail {
   background: rgba(0, 0, 0, 0.7);
-  border-radius: 8px;
-  padding: 16px;
-  border: 2px solid #4a4a4a;
+  border-radius: 6px;
+  padding: 14px;
+  border: 1px solid #4a4a4a;
   margin-bottom: 16px;
 }
 
@@ -440,9 +355,10 @@ onMounted(() => {
 }
 
 .item-detail h3 {
-  font-size: 18px;
+  font-size: 16px;
   color: #fff;
   font-weight: bold;
+  margin: 0;
 }
 
 .item-detail h3.common { color: #ffffff; }
@@ -452,7 +368,7 @@ onMounted(() => {
 .item-detail h3.legendary { color: #ff8000; }
 
 .quality-badge {
-  padding: 4px 8px;
+  padding: 3px 8px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   color: #888;
@@ -461,13 +377,14 @@ onMounted(() => {
 
 .item-detail p {
   color: #aaa;
-  margin-bottom: 12px;
+  font-size: 13px;
+  margin: 8px 0;
 }
 
 .detail-info {
   display: flex;
-  gap: 16px;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .detail-info span {
@@ -475,25 +392,25 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   color: #888;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .effect-info span {
   color: #4CAF50;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .detail-actions {
   display: flex;
-  gap: 12px;
-  margin-top: 16px;
+  gap: 10px;
+  margin-top: 14px;
 }
 
 .action-btn {
-  padding: 8px 16px;
+  padding: 8px 14px;
   border: none;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.3s;
@@ -516,26 +433,5 @@ onMounted(() => {
 
 .action-btn:hover {
   transform: translateY(-2px);
-}
-
-.bottom-actions {
-  display: flex;
-  justify-content: center;
-}
-
-.organize-btn {
-  padding: 12px 24px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid #4a4a4a;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.organize-btn:hover {
-  border-color: #0099ff;
-  background: rgba(0, 153, 255, 0.2);
 }
 </style>

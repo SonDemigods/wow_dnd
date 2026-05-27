@@ -137,7 +137,7 @@ import { ref, computed, onMounted } from 'vue';
 import { combatService } from '@/modules/combat';
 import { characterService } from '@/modules/character';
 import { inventoryService } from '@/modules/inventory';
-import { skillsService } from '@/modules/skills';
+import { skillsService } from '@/modules/skill';
 import type { CombatLog } from '@/modules/combat';
 
 const isInCombat = ref(false);

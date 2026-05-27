@@ -1,92 +1,93 @@
 <template>
-  <div class="shop-view">
-    <div class="shop-header">
-      <h2>商店</h2>
-      <div class="gold-display">💰 {{ gold }}</div>
-    </div>
+  <div v-if="visible" class="popup-overlay" @click.self="$emit('close')">
+    <div class="popup-content">
+      <div class="popup-header">
+        <h2>商店</h2>
+        <div class="gold-display">💰 {{ gold }}</div>
+        <button class="close-btn" @click="$emit('close')">×</button>
+      </div>
 
-    <div class="shop-tabs">
-      <button 
-        :class="['tab-btn', { active: currentTab === 'buy' }]"
-        @click="currentTab = 'buy'"
-      >
-        购买
-      </button>
-      <button 
-        :class="['tab-btn', { active: currentTab === 'sell' }]"
-        @click="currentTab = 'sell'"
-      >
-        出售
-      </button>
-    </div>
-
-    <div class="category-filter">
-      <button 
-        v-for="cat in categories" 
-        :key="cat.id"
-        :class="['cat-btn', { active: selectedCategory === cat.id }]"
-        @click="selectedCategory = cat.id"
-      >
-        {{ cat.name }}
-      </button>
-    </div>
-
-    <div v-if="currentTab === 'buy'" class="shop-items">
-      <div 
-        v-for="item in filteredShopItems" 
-        :key="item.id"
-        :class="['item-card', item.quality]"
-        @click="selectItem(item)"
-      >
-        <div class="item-icon">{{ getItemIcon(item.icon) }}</div>
-        <div class="item-info">
-          <div class="item-name">{{ item.name }}</div>
-          <div class="item-desc">{{ item.description }}</div>
-          <div class="item-price">💰 {{ item.price }}</div>
+      <div class="popup-body">
+        <div class="shop-tabs">
+          <button 
+            :class="['tab-btn', { active: currentTab === 'buy' }]"
+            @click="currentTab = 'buy'"
+          >
+            购买
+          </button>
+          <button 
+            :class="['tab-btn', { active: currentTab === 'sell' }]"
+            @click="currentTab = 'sell'"
+          >
+            出售
+          </button>
         </div>
-        <button 
-          class="buy-btn"
-          :disabled="!canAfford(item) || item.quantity <= 0"
-          @click.stop="buyItem(item.itemId)"
-        >
-          购买
-        </button>
-      </div>
-    </div>
 
-    <div v-else class="shop-items">
-      <div 
-        v-for="item in filteredInventoryItems" 
-        :key="item.id"
-        class="item-card"
-        @click="selectItem(item)"
-      >
-        <div class="item-icon">{{ getItemIcon(item.icon) }}</div>
-        <div class="item-info">
-          <div class="item-name">{{ item.name }}</div>
-          <div class="item-desc">{{ item.description }}</div>
-          <div class="item-count">数量: {{ item.count }}</div>
-          <div class="item-price">💰 {{ getSellPrice(item.itemId) }}</div>
+        <div class="category-filter">
+          <button 
+            v-for="cat in categories" 
+            :key="cat.id"
+            :class="['cat-btn', { active: selectedCategory === cat.id }]"
+            @click="selectedCategory = cat.id"
+          >
+            {{ cat.name }}
+          </button>
         </div>
-        <button 
-          class="sell-btn"
-          :disabled="item.count <= 0"
-          @click.stop="sellItem(item.itemId)"
-        >
-          出售
-        </button>
-      </div>
-    </div>
 
-    <div v-if="selectedItem" class="item-detail">
-      <h3>{{ selectedItem.name }}</h3>
-      <p>{{ selectedItem.description }}</p>
-      <div class="detail-info">
-        <span>类型: {{ getCategoryName(selectedItem.category) }}</span>
-        <span>稀有度: {{ getQualityName(selectedItem.quality) }}</span>
+        <div class="shop-items">
+          <div 
+            v-if="currentTab === 'buy'"
+            v-for="item in filteredShopItems" 
+            :key="item.id"
+            :class="['item-card', item.quality]"
+            @click="selectItem(item)"
+          >
+            <div class="item-icon">{{ getItemIcon(item.icon) }}</div>
+            <div class="item-info">
+              <div class="item-name">{{ item.name }}</div>
+              <div class="item-desc">{{ item.description }}</div>
+              <div class="item-price">💰 {{ item.price }}</div>
+            </div>
+            <button 
+              class="buy-btn"
+              :disabled="!canAfford(item) || item.quantity <= 0"
+              @click.stop="buyItem(item.itemId)"
+            >
+              购买
+            </button>
+          </div>
+
+          <div v-else v-for="item in filteredInventoryItems" :key="item.id" class="item-card" @click="selectItem(item)">
+            <div class="item-icon">{{ getItemIcon(item.icon) }}</div>
+            <div class="item-info">
+              <div class="item-name">{{ item.name }}</div>
+              <div class="item-desc">{{ item.description }}</div>
+              <div class="item-count">数量: {{ item.count }}</div>
+              <div class="item-price">💰 {{ getSellPrice(item.itemId) }}</div>
+            </div>
+            <button class="sell-btn" :disabled="item.count <= 0" @click.stop="sellItem(item.itemId)">
+              出售
+            </button>
+          </div>
+        </div>
       </div>
-      <div v-if="selectedItem.effect" class="effect-info">
-        <span>效果: {{ getEffectText(selectedItem.effect) }}</span>
+
+      <div class="popup-footer">
+        <div v-if="selectedItem" class="item-detail">
+          <div class="detail-header">
+            <h3>{{ selectedItem.name }}</h3>
+            <span class="quality-badge">{{ getQualityName(selectedItem.quality) }}</span>
+          </div>
+          <p>{{ selectedItem.description }}</p>
+          <div class="detail-info">
+            <span>类型: {{ getCategoryName(selectedItem.category) }}</span>
+            <span>稀有度: {{ getQualityName(selectedItem.quality) }}</span>
+          </div>
+          <div v-if="selectedItem.effect" class="effect-info">
+            <span>效果: {{ getEffectText(selectedItem.effect) }}</span>
+          </div>
+        </div>
+        <button class="close-button" @click="$emit('close')">关闭</button>
       </div>
     </div>
   </div>
@@ -98,6 +99,14 @@ import { shopService } from '@/modules/shop';
 import { characterService } from '@/modules/character';
 import { inventoryService } from '@/modules/inventory';
 import type { ShopItem, ItemCategory, ItemQuality } from '@/modules/shop';
+
+defineProps<{
+  visible: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: 'close'): void;
+}>();
 
 const currentTab = ref<'buy' | 'sell'>('buy');
 const selectedCategory = ref<ItemCategory | 'all'>('all');
@@ -225,26 +234,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.shop-view {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.shop-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.shop-header h2 {
-  font-size: 24px;
-  color: #ffd700;
-}
-
 .gold-display {
-  font-size: 20px;
+  font-size: 14px;
   font-weight: bold;
+  color: #ffd700;
 }
 
 .shop-tabs {
@@ -254,12 +247,12 @@ onMounted(() => {
 }
 
 .tab-btn {
-  padding: 12px 24px;
+  padding: 10px 20px;
   background: rgba(255, 255, 255, 0.1);
   border: 2px solid #4a4a4a;
-  border-radius: 8px;
+  border-radius: 6px;
   color: #fff;
-  font-size: 16px;
+  font-size: 14px;
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -282,12 +275,12 @@ onMounted(() => {
 }
 
 .cat-btn {
-  padding: 8px 16px;
+  padding: 6px 14px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid #4a4a4a;
   border-radius: 4px;
   color: #888;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -303,17 +296,16 @@ onMounted(() => {
 }
 
 .shop-items {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  margin-bottom: 20px;
 }
 
 .item-card {
   background: rgba(255, 255, 255, 0.05);
   border: 2px solid #4a4a4a;
   border-radius: 8px;
-  padding: 16px;
+  padding: 14px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -325,23 +317,11 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.item-card.common {
-  border-color: #ffffff;
-}
-
-.item-card.uncommon {
-  border-color: #1eff00;
-}
-
-.item-card.rare {
-  border-color: #0070dd;
-}
-
-.item-card.epic {
-  border-color: #a335ee;
-}
-
-.item-card.legendary {
+.item-card.common { border-color: #ffffff; }
+.item-card.uncommon { border-color: #1eff00; }
+.item-card.rare { border-color: #0070dd; }
+.item-card.epic { border-color: #a335ee; }
+.item-card.legendary { 
   border-color: #ff8000;
   animation: legendary-glow 2s infinite;
 }
@@ -352,7 +332,7 @@ onMounted(() => {
 }
 
 .item-icon {
-  font-size: 32px;
+  font-size: 28px;
 }
 
 .item-info {
@@ -360,7 +340,7 @@ onMounted(() => {
 }
 
 .item-name {
-  font-size: 16px;
+  font-size: 14px;
   color: #fff;
   font-weight: bold;
   margin-bottom: 4px;
@@ -369,19 +349,19 @@ onMounted(() => {
 .item-desc {
   font-size: 12px;
   color: #888;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .item-price, .item-count {
-  font-size: 14px;
+  font-size: 13px;
   color: #ffd700;
 }
 
 .buy-btn, .sell-btn {
-  padding: 8px 16px;
+  padding: 6px 14px;
   border: none;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.3s;
@@ -408,26 +388,43 @@ onMounted(() => {
 
 .item-detail {
   background: rgba(0, 0, 0, 0.7);
-  border-radius: 8px;
-  padding: 16px;
-  border: 2px solid #4a4a4a;
+  border-radius: 6px;
+  padding: 14px;
+  border: 1px solid #4a4a4a;
+  margin-bottom: 16px;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
 }
 
 .item-detail h3 {
-  font-size: 18px;
+  font-size: 16px;
   color: #ffd700;
-  margin-bottom: 8px;
+  margin: 0;
+}
+
+.quality-badge {
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #888;
+  font-size: 12px;
 }
 
 .item-detail p {
   color: #aaa;
-  margin-bottom: 12px;
+  font-size: 13px;
+  margin: 8px 0;
 }
 
 .detail-info {
   display: flex;
-  gap: 16px;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .detail-info span {
@@ -435,11 +432,11 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   color: #888;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .effect-info span {
   color: #4CAF50;
-  font-size: 14px;
+  font-size: 13px;
 }
 </style>

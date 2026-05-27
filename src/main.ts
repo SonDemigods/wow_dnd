@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import { db } from '@/modules/data/core'
 import { dataInitializer } from '@/modules/data/service'
+import './styles/popup.less'
 
 async function initApp() {
   try {

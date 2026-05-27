@@ -5,7 +5,7 @@
         <h2>角色信息</h2>
         <button class="close-btn" @click="$emit('close')">×</button>
       </div>
-      
+
       <div class="popup-body" v-if="character">
         <!-- 角色基本信息 -->
         <div class="character-basic">
@@ -22,7 +22,7 @@
             <div class="char-level">等级 {{ character.level }}</div>
           </div>
         </div>
-        
+
         <!-- 资源条 -->
         <div class="resource-bars">
           <div class="resource-bar hp-bar">
@@ -38,7 +38,7 @@
             <div class="resource-text">EXP {{ currentExp }} / {{ maxExp }}</div>
           </div>
         </div>
-        
+
         <!-- 核心属性 -->
         <div class="attributes-section">
           <h3>核心属性</h3>
@@ -50,7 +50,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 次级属性 -->
         <div class="attributes-section">
           <h3>次级属性</h3>
@@ -89,7 +89,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 装备 -->
         <div class="equipment-section">
           <h3>装备</h3>
@@ -106,7 +106,9 @@
             </div>
           </div>
         </div>
-        
+      </div>
+
+      <div class="popup-footer">
         <!-- 选中装备信息 -->
         <div v-if="selectedSlot && selectedSlot.equipment" class="selected-equipment">
           <div class="equip-header">
@@ -128,6 +130,7 @@
             <button class="action-btn unequip" @click="unequipItem(selectedSlot.key)">卸下</button>
           </div>
         </div>
+        <button class="close-button" @click="$emit('close')">关闭</button>
       </div>
     </div>
   </div>
@@ -331,81 +334,18 @@ function unequipItem(slotKey: string) {
 </script>
 
 <style scoped>
-.popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  box-sizing: border-box;
-}
-
-.popup-content {
-  background: rgba(13, 17, 23, 0.98);
-  border-radius: 12px;
-  border: 2px solid #4a4a4a;
-  max-width: 600px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  position: relative;
-}
-
-.popup-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #4a4a4a;
-}
-
-.popup-header h2 {
-  font-size: 20px;
-  color: #ffd700;
-  margin: 0;
-}
-
-.close-btn {
-  width: 36px;
-  height: 36px;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  border-radius: 50%;
-  color: #f0f0f0;
-  font-size: 24px;
-  cursor: pointer;
-  transition: background 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.popup-body {
-  padding: 24px;
-}
-
 /* 角色基本信息 */
 .character-basic {
   display: flex;
-  gap: 20px;
-  padding: 20px;
+  gap: 16px;
+  padding: 16px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .char-avatar {
-  font-size: 64px;
+  font-size: 56px;
 }
 
 .char-info {
@@ -413,24 +353,25 @@ function unequipItem(slotKey: string) {
 }
 
 .char-name {
-  font-size: 24px;
+  font-size: 20px;
   color: #f0f0f0;
   font-weight: bold;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .char-details {
   display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 6px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
 }
 
 .char-details span {
-  padding: 4px 12px;
+  padding: 3px 10px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 4px;
   color: #8b8b8b;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .faction-tag {
@@ -438,31 +379,31 @@ function unequipItem(slotKey: string) {
 }
 
 .char-level {
-  font-size: 16px;
+  font-size: 14px;
   color: #ffd700;
   font-weight: bold;
 }
 
-/* 资源�?*/
+/* 资源条 */
 .resource-bars {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
 .resource-bar {
   position: relative;
-  height: 28px;
+  height: 24px;
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
+  border-radius: 12px;
   overflow: hidden;
 }
 
 .resource-fill {
   height: 100%;
   transition: width 0.3s;
-  border-radius: 14px;
+  border-radius: 12px;
 }
 
 .hp-bar .resource-fill {
@@ -483,101 +424,101 @@ function unequipItem(slotKey: string) {
   left: 50%;
   transform: translate(-50%, -50%);
   color: #f0f0f0;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-/* 属性区�?*/
+/* 属性区域 */
 .attributes-section {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .attributes-section h3 {
-  font-size: 16px;
+  font-size: 14px;
   color: #ffd700;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .attributes-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 10px;
 }
 
 .attr-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16px;
+  padding: 12px;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .attr-icon {
-  font-size: 28px;
-  margin-bottom: 8px;
+  font-size: 24px;
+  margin-bottom: 6px;
 }
 
 .attr-name {
-  font-size: 13px;
+  font-size: 12px;
   color: #8b8b8b;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .attr-value {
-  font-size: 20px;
+  font-size: 16px;
   color: #f0f0f0;
   font-weight: bold;
 }
 
-/* 次级属�?*/
+/* 次级属性 */
 .secondary-attributes {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .sec-attr-item {
   display: flex;
   justify-content: space-between;
-  padding: 10px 14px;
+  padding: 8px 12px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 6px;
 }
 
 .sec-attr-item span {
   color: #8b8b8b;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .sec-attr-item strong {
   color: #f0f0f0;
-  font-size: 14px;
+  font-size: 13px;
 }
 
-/* 装备�?*/
+/* 装备区域 */
 .equipment-section {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .equipment-section h3 {
-  font-size: 16px;
+  font-size: 14px;
   color: #ffd700;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .equipment-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .equip-slot {
   aspect-ratio: 1;
   background: rgba(255, 255, 255, 0.05);
   border: 2px solid #4a4a4a;
-  border-radius: 8px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -595,43 +536,44 @@ function unequipItem(slotKey: string) {
 }
 
 .slot-icon {
-  font-size: 32px;
+  font-size: 28px;
 }
 
 .slot-empty {
   color: #8b8b8b;
-  font-size: 12px;
+  font-size: 10px;
   text-align: center;
 }
 
 /* 选中装备信息 */
 .selected-equipment {
-  padding: 16px;
+  padding: 14px;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid #4a4a4a;
+  margin-bottom: 16px;
 }
 
 .equip-header {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .equip-icon {
-  font-size: 40px;
+  font-size: 36px;
 }
 
 .equip-name {
-  font-size: 18px;
+  font-size: 16px;
   color: #f0f0f0;
   font-weight: bold;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .equip-quality {
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .equip-quality.common { color: #ffffff; }
@@ -642,32 +584,32 @@ function unequipItem(slotKey: string) {
 
 .equip-desc {
   color: #8b8b8b;
-  font-size: 14px;
-  margin-bottom: 12px;
+  font-size: 13px;
+  margin-bottom: 10px;
 }
 
 .equip-stats {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 16px;
+  gap: 5px;
+  margin-bottom: 14px;
 }
 
 .equip-stats div {
   color: #4CAF50;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .equip-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .action-btn {
-  padding: 10px 20px;
+  padding: 8px 16px;
   border: none;
-  border-radius: 6px;
-  font-size: 14px;
+  border-radius: 4px;
+  font-size: 13px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.3s;
