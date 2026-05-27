@@ -3,8 +3,8 @@
  * @description 包含物品基础类型、背包物品、物品效果、排序筛选等相关类型定义
  */
 
-import type { Stats } from './character/types';
-import type { SkillType } from './skills/types';
+import type { Stats } from '../character/types';
+import type { SkillType } from '../skill/types';
 
 /**
  * 物品类型枚举

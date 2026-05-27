@@ -1,4 +1,4 @@
 export * from './types';
 export * from './db';
 export * from './service';
-export { useEnemyStore } from './store';
+export { useEnemiesStore } from './store';

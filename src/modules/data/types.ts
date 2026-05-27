@@ -7,7 +7,7 @@ import type { CharacterListItem } from '../character/types';
 import type { InventoryItem } from '../inventory/types';
 import type { QuestInstance } from '../quest/types';
 import type { EquipmentState } from '../equipment/types';
-import type { SkillsData } from '../skills/types';
+import type { SkillsData } from '../skill/types';
 import type { ExplorationState } from '../exploration/types';
 import type { CombatLog } from '../combat/types';
 import type { LogEntry } from '../log/types';

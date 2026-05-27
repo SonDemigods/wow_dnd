@@ -16,7 +16,7 @@ import type {
 import type { Enemy } from '../enemy/types';
 import { enemyService } from '../enemy/service';
 import { characterService } from '../character/service';
-import { skillsService } from '../skills/service';
+import { skillsService } from '../skill/service';
 import { inventoryService } from '../inventory/service';
 import { combatDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';

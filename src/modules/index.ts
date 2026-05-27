@@ -5,7 +5,7 @@ export * from './inventory';
 export * from './combat';
 export * from './shop';
 export * from './quest';
-export * from './skills';
+export * from './skill';
 export * from './exploration';
 export * from './map';
 export * from './gameData';
