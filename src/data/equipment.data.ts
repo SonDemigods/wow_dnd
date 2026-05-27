@@ -4,7 +4,8 @@
  * @module data/equipment
  */
 
-import type { EquipmentItem, ItemRarity, RarityConfig } from '../types';
+import type { EquipmentItem, RarityConfig } from '../modules/equipment/types';
+import type { ItemRarity } from '../modules/inventory/types';
 
 export const RARITY_CONFIG: Record<ItemRarity, RarityConfig> = {
   common: { name: '普通', color: '#ffffff', multiplier: 1.0 },

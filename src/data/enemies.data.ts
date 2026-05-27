@@ -4,7 +4,7 @@
  * @module data/enemies
  */
 
-import type { EnemyData } from '../types';
+import type { EnemyData } from '../modules/enemy/types';
 
 /**
  * 所有敌人的完整数据集

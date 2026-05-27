@@ -4,7 +4,8 @@
  * @module data/classes
  */
 
-import type { ClassData, Skill } from '../types';
+import type { ClassData,  } from '../modules/character/types';
+import type { Skill } from '../modules/skill/types';
 
 export const CLASSES: Record<string, ClassData> = {
   warrior: {

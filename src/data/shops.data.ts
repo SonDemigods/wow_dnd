@@ -4,7 +4,8 @@
  * @module data/shops
  */
 
-import type { ShopConfig, ItemRarity } from '../types';
+import type { ItemRarity } from '../modules/inventory/types';
+import type { ShopConfig } from '../modules/shop/types';
 
 export const RARITY_PRICE_MULTIPLIER: Record<ItemRarity, number> = {
   common: 1,
@@ -86,7 +87,6 @@ export const SHOPS: Record<string, ShopConfig> = {
     type: 'general',
     icon: '🏪',
     locationId: 'stormwind',
-    npcId: 'stormwind_quest_giver',
     refreshInterval: 300000,
     minItems: 6,
     maxItems: 10,
@@ -105,7 +105,6 @@ export const SHOPS: Record<string, ShopConfig> = {
     type: 'potions',
     icon: '⚗️',
     locationId: 'stormwind',
-    npcId: 'stormwind_quest_giver',
     refreshInterval: 600000,
     minItems: 5,
     maxItems: 8,
@@ -124,7 +123,6 @@ export const SHOPS: Record<string, ShopConfig> = {
     type: 'scrolls',
     icon: '📜',
     locationId: 'stormwind',
-    npcId: 'stormwind_quest_giver',
     refreshInterval: 900000,
     minItems: 3,
     maxItems: 6,
@@ -143,7 +141,6 @@ export const SHOPS: Record<string, ShopConfig> = {
     type: 'general',
     icon: '🏪',
     locationId: 'orgrimmar',
-    npcId: 'orgrimmar_quest_giver',
     refreshInterval: 300000,
     minItems: 6,
     maxItems: 10,
@@ -162,7 +159,6 @@ export const SHOPS: Record<string, ShopConfig> = {
     type: 'potions',
     icon: '🍶',
     locationId: 'orgrimmar',
-    npcId: 'orgrimmar_quest_giver',
     refreshInterval: 600000,
     minItems: 5,
     maxItems: 8,
@@ -181,7 +177,6 @@ export const SHOPS: Record<string, ShopConfig> = {
     type: 'faction',
     icon: '🎭',
     locationId: 'stormwind',
-    npcId: 'stormwind_quest_giver',
     refreshInterval: 1800000,
     minItems: 3,
     maxItems: 5,

@@ -4,7 +4,7 @@
  * @module data/items
  */
 
-import type { Item, ItemTypeData } from '../types';
+import type { Item, ItemTypeData } from '../modules/inventory/types';
 
 /**
  * 物品类型定义

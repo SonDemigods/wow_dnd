@@ -4,7 +4,7 @@
  * @module data/quests
  */
 
-import type { QuestDefinition } from '../types';
+import type { QuestDefinition } from '../modules/quest/types';
 
 export const QUESTS: Record<string, QuestDefinition> = {
   teldrassil_defense: {

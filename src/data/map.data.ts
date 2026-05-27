@@ -4,7 +4,7 @@
  * @module data/map
  */
 
-import type { LocationData, ContinentData } from '../types/maps.type';
+import type { LocationData, ContinentData } from '../modules/map/types';
 
 /**
  * 大陆数据
