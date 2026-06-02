@@ -117,6 +117,21 @@ export class QuestDbService {
   }
 
   /**
+   * 删除指定角色的任务实例
+   * @param characterId - 角色ID
+   */
+  async deleteCharacterQuests(characterId: string): Promise<void> {
+    await dbService.withRetry(async () => {
+      const allInstances = await gameDb.char_quests.toArray();
+      for (const instance of allInstances) {
+        if (instance.characterId === characterId) {
+          await gameDb.char_quests.delete(instance.questId);
+        }
+      }
+    });
+  }
+
+  /**
    * 保存任务定义
    * @param definition - 任务定义
    */

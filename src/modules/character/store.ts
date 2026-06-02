@@ -116,10 +116,10 @@ export const useCharacterStore = defineStore('character', () => {
     characterList.value = await characterService.getAllCharacters();
   }
 
-  function createCharacter(name: string, factionId: FactionType, raceId: RaceType, classId: ClassType): string {
-    const id = characterService.createCharacter(name, factionId, raceId, classId);
+  async function createCharacter(name: string, factionId: FactionType, raceId: RaceType, classId: ClassType): Promise<string> {
+    const id = await characterService.createCharacter(name, factionId, raceId, classId);
     character.value = characterService.getCharacterInfo();
-    loadCharacterList();
+    await loadCharacterList();
     return id;
   }
 

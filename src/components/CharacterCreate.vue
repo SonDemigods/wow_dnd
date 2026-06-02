@@ -399,10 +399,10 @@ function prevStep() {
   }
 }
 
-function createCharacter() {
+async function createCharacter() {
   if (!canCreate.value) return;
   
-  characterService.createCharacter(
+  await characterService.createCharacter(
     name.value,
     selectedFaction.value as any,
     selectedRace.value as any,

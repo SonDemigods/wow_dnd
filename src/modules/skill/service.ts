@@ -44,18 +44,20 @@ export class SkillsService implements ISkillsService {
    * 加载技能模板
    */
   private async loadSkillTemplates(): Promise<void> {
-    const templates = await skillsDbService.getAllSkillTemplates();
-    templates.forEach(skill => {
-      this.skillTemplates.set(skill.id, skill);
-    });
-
     const classId = characterService.getClass();
-    if (classId && CLASS_ABILITIES[classId]) {
-      CLASS_ABILITIES[classId].forEach(skill => {
-        if (!this.skillTemplates.has(skill.id)) {
-          this.skillTemplates.set(skill.id, skill);
-        }
+    if (classId) {
+      const templates = await skillsDbService.getSkillTemplatesByClass(classId);
+      templates.forEach(skill => {
+        this.skillTemplates.set(skill.id, skill);
       });
+
+      if (CLASS_ABILITIES[classId]) {
+        CLASS_ABILITIES[classId].forEach(skill => {
+          if (!this.skillTemplates.has(skill.id)) {
+            this.skillTemplates.set(skill.id, skill);
+          }
+        });
+      }
     }
   }
 
@@ -369,29 +371,25 @@ export class SkillsService implements ISkillsService {
   checkLevelUnlocks(): void {
     const characterLevel = characterService.getLevel();
     const currentClass = characterService.getClass();
+    if (!currentClass) return;
+
+    // 只获取当前职业的技能模板
+    const classAbilities = CLASS_ABILITIES[currentClass] || [];
     
-    // 获取所有技能模板
-    const templates = Array.from(this.skillTemplates.values());
-    
-    // 筛选当前职业的技能
-    const classSkills = templates.filter(skill => {
-      // 简单假设技能ID包含职业标识，或者从职业数据获取技能
-      return true; // 暂时全部技能都可用
-    });
+    let hasNewSkills = false;
     
     // 检查是否有新技能可以解锁
-    classSkills.forEach(template => {
+    classAbilities.forEach(template => {
       const exists = this.skills.some(s => s.id === template.id);
       if (!exists && template.unlockLevel <= characterLevel) {
         // 解锁新技能
         this.skills.push({ ...template });
+        hasNewSkills = true;
         
-        // 如果是第一个技能且技能栏有空位，自动装备
-        if (this.skills.length === 1) {
-          const emptySlot = this.skillBar.slots.findIndex(s => s === null);
-          if (emptySlot !== -1) {
-            this.equipSkill(template.id, emptySlot as SkillSlotIndex);
-          }
+        // 如果技能栏有空位，自动装备新技能
+        const emptySlot = this.skillBar.slots.findIndex(s => s === null);
+        if (emptySlot !== -1) {
+          this.skillBar.slots[emptySlot] = template.id;
         }
         
         // 触发事件
@@ -400,7 +398,9 @@ export class SkillsService implements ISkillsService {
     });
     
     // 保存
-    this.save();
+    if (hasNewSkills) {
+      this.save();
+    }
   }
 
   /**

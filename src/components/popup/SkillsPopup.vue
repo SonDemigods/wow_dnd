@@ -1,112 +1,90 @@
 <template>
   <BasePopup :visible="visible" title="技能面板" @close="$emit('close')">
     <template #default>
-      <div class="skill-bar-section">
-        <h3>当前激活技能 (战斗中使用)</h3>
-        <div class="skill-bar" :key="barRenderKey">
-          <div 
-            v-for="(slot, index) in skillBarSlots" 
-            :key="index"
-            :class="['skill-slot', { empty: !slot.skill, selected: selectedSlotIndex === index }]"
-            @click="selectBarSlot(index)"
-          >
-            <span v-if="slot.skill" class="slot-icon">{{ slot.skill.icon }}</span>
-            <span v-if="slot.skill" class="slot-name">{{ slot.skill.name }}</span>
-            <span v-if="slot.skill" class="slot-cost">{{ slot.skill.mpCost }} MP</span>
-            <span v-if="!slot.skill" class="slot-empty">+</span>
-            <span v-if="!slot.skill" class="slot-label">空栏位</span>
+      <div class="skills-content">
+        <div class="skill-bar-section">
+          <h3>已记忆技能 (战斗中使用)</h3>
+          <div class="skill-bar" :key="barRenderKey">
+            <div 
+              v-for="(slot, index) in skillBarSlots" 
+              :key="index"
+              :class="['bar-slot', { empty: !slot.skill, selected: selectedSlotIndex === index }]"
+              @click="selectBarSlot(index)"
+            >
+              <span v-if="slot.skill" class="bar-icon">{{ slot.skill.icon }}</span>
+              <span v-if="slot.skill" class="bar-name">{{ slot.skill.name }}</span>
+              <span v-if="!slot.skill" class="bar-empty">+</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div v-if="selectedSkill" class="selected-skill-section">
-        <div class="selected-header">
-          <span class="selected-icon">{{ selectedSkill.icon }}</span>
-          <div class="selected-info">
-            <h4>{{ selectedSkill.name }}</h4>
-            <span class="selected-type" :class="selectedSkill.type">{{ getSkillTypeName(selectedSkill.type) }}</span>
-          </div>
-          <span class="selected-level">Lv.{{ selectedSkill.unlockLevel }}</span>
-        </div>
-        <p class="selected-desc">{{ selectedSkill.description }}</p>
-        <div class="selected-meta">
-          <div class="meta-item">
-            <span class="meta-label">消耗</span>
-            <span class="meta-value mp">{{ selectedSkill.mpCost }} MP</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">效果</span>
-            <span class="meta-value effect">{{ getEffectText(selectedSkill) }}</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">解锁等级</span>
-            <span class="meta-value">{{ selectedSkill.unlockLevel }}</span>
-          </div>
-        </div>
-        <div class="selected-actions">
-          <button 
-            v-if="isSkillEquipped(selectedSkill.id)"
-            class="action-btn deactivate"
-            @click="deactivateSkill(selectedSkill.id)"
-          >
-            卸下
-          </button>
-          <button 
-            v-else-if="canUnlock(selectedSkill)"
-            class="action-btn activate"
-            @click="activateSkill(selectedSkill.id)"
-          >
-            激活到此栏位
-          </button>
-          <span v-else class="action-locked">
-            🔒 需要等级 {{ selectedSkill.unlockLevel }}
-          </span>
-        </div>
-      </div>
-
-      <div class="skills-list-section">
-        <h3>可用技能列表</h3>
-        <div class="skills-list">
-          <div 
-            v-for="skill in classSkills" 
-            :key="skill.id"
-            :class="['skill-card', { equipped: isSkillEquipped(skill.id), locked: !canUnlock(skill) }]"
-            @click="selectSkill(skill)"
-          >
-            <div class="skill-icon-wrapper">
+        <div class="skills-grid-section">
+          <h3>已学习技能</h3>
+          <div class="skills-grid">
+            <div 
+              v-for="skill in classSkills" 
+              :key="skill.id"
+              :class="['skill-slot', { equipped: isSkillEquipped(skill.id), locked: !canUnlock(skill), selected: selectedSkill?.id === skill.id }]"
+              @click="selectSkill(skill)"
+            >
               <span class="skill-icon">{{ skill.icon }}</span>
               <span v-if="!canUnlock(skill)" class="lock-badge">🔒</span>
+              <span v-if="isSkillEquipped(skill.id)" class="equipped-badge">✓</span>
             </div>
-            <div class="skill-info">
-              <div class="skill-header-row">
-                <h4>{{ skill.name }}</h4>
-                <span class="skill-status" :class="{ active: isSkillEquipped(skill.id) }">
-                  {{ isSkillEquipped(skill.id) ? '已激活' : canUnlock(skill) ? '未激活' : '未解锁' }}
-                </span>
+          </div>
+        </div>
+
+        <div :class="['skill-detail', { locked: selectedSkill && !canUnlock(selectedSkill) }]">
+          <template v-if="selectedSkill">
+            <div class="detail-top">
+              <div class="detail-header">
+                <div class="detail-icon">{{ selectedSkill.icon }}</div>
+                <div class="detail-info">
+                  <h3>{{ selectedSkill.name }}</h3>
+                  <div class="detail-tags">
+                    <span class="detail-type" :class="selectedSkill.type">{{ getSkillTypeName(selectedSkill.type) }}</span>
+                    <span class="detail-cost">{{ selectedSkill.mpCost }} MP</span>
+                  </div>
+                </div>
               </div>
-              <div class="skill-meta-row">
-                <span class="skill-type-tag" :class="skill.type">{{ getSkillTypeName(skill.type) }}</span>
-                <span class="skill-cost-tag">{{ skill.mpCost }} MP</span>
-                <span class="skill-effect-text">{{ getEffectText(skill) }}</span>
+              <div class="detail-actions">
+                <button 
+                  v-if="isSkillEquipped(selectedSkill.id)"
+                  class="action-btn forget"
+                  @click="deactivateSkill(selectedSkill.id)"
+                >
+                  遗忘
+                </button>
+                <button 
+                  v-else-if="canUnlock(selectedSkill)"
+                  class="action-btn memorize"
+                  @click="activateSkill(selectedSkill.id)"
+                >
+                  记忆
+                </button>
               </div>
             </div>
-            <div class="skill-action">
-              <button 
-                v-if="isSkillEquipped(skill.id)"
-                class="mini-btn deactivate"
-                @click.stop="deactivateSkill(skill.id)"
-              >
-                卸下
-              </button>
-              <button 
-                v-else-if="canUnlock(skill)"
-                class="mini-btn activate"
-                @click.stop="activateSkill(skill.id)"
-              >
-                激活
-              </button>
-              <span v-else class="mini-locked">🔒</span>
+            <p class="detail-desc">{{ selectedSkill.description }}</p>
+            <div class="detail-bottom">
+              <div class="detail-effect">
+                <span class="effect-label">效果:</span>
+                <span :class="['effect-value', selectedSkill.type]">{{ getEffectText(selectedSkill) }}</span>
+              </div>
+              <div class="detail-level-req">
+                <template v-if="!canUnlock(selectedSkill)">
+                  <span class="level-lock-icon">🔒</span>
+                  <span class="level-lock-text">需要等级 {{ selectedSkill.unlockLevel }}</span>
+                </template>
+                <template v-else>
+                  <span class="level-unlock-icon">✅</span>
+                  <span class="level-unlock-text">解锁等级 {{ selectedSkill.unlockLevel }}</span>
+                </template>
+              </div>
             </div>
+          </template>
+          <div v-else class="detail-placeholder">
+            <span class="placeholder-icon">⚔️</span>
+            <span class="placeholder-text">点击技能查看详情</span>
           </div>
         </div>
       </div>
@@ -170,8 +148,8 @@ function getSkillTypeName(type: string) {
 function getEffectText(skill: Skill): string {
   if (!skill.effect) return '';
   const { type, value } = skill.effect;
-  if (type === 'physical_damage' || type === 'magic_damage') return `伤害 ${value}`;
-  if (type === 'heal') return `治疗 ${value}`;
+  if (type === 'physical_damage' || type === 'magic_damage') return `造成 ${value} 点伤害`;
+  if (type === 'heal') return `恢复 ${value} 点生命值`;
   return `${value}`;
 }
 
@@ -244,250 +222,278 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.skill-bar-section {
-  margin-bottom: 16px;
+.skills-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.skill-bar-section h3 {
-  font-size: 14px;
+.skill-bar-section h3,
+.skills-grid-section h3 {
+  font-size: 13px;
   color: #ffd700;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   font-weight: bold;
 }
 
 .skill-bar {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: 8px;
   background: rgba(0, 0, 0, 0.4);
-  padding: 12px;
-  border-radius: 8px;
+  padding: 10px;
+  border-radius: 6px;
   border: 2px solid #4a4a4a;
 }
 
-.skill-slot {
+.bar-slot {
   position: relative;
-  padding: 12px 6px;
+  padding: 10px 6px;
   background: rgba(255, 255, 255, 0.05);
   border: 2px solid #4a4a4a;
-  border-radius: 8px;
+  border-radius: 6px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  min-height: 80px;
+  min-height: 60px;
   justify-content: center;
-  user-select: none;
 }
 
-.skill-slot:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: #888;
-  transform: translateY(-2px);
+.bar-slot:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #666;
 }
 
-.skill-slot.selected {
+.bar-slot.selected {
   border-color: #ffd700;
   background: rgba(255, 215, 0, 0.15);
-  box-shadow: 
-    0 0 10px rgba(255, 215, 0, 0.4),
-    0 0 20px rgba(255, 215, 0, 0.2),
-    inset 0 0 10px rgba(255, 215, 0, 0.1);
-  transform: translateY(-3px);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
 }
 
-.skill-slot.selected::before {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  border: 2px solid rgba(255, 215, 0, 0.5);
-  border-radius: 10px;
-  animation: pulse-border 1.5s infinite;
-}
-
-@keyframes pulse-border {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
-.skill-slot.empty {
+.bar-slot.empty {
   border-style: dashed;
   border-color: #555;
 }
 
-.skill-slot.empty:hover {
-  border-color: #777;
-  background: rgba(255, 255, 255, 0.08);
+.bar-icon {
+  font-size: 22px;
 }
 
-.slot-icon {
-  font-size: 24px;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-}
-
-.slot-name {
-  font-size: 11px;
+.bar-name {
+  font-size: 10px;
   color: #fff;
   font-weight: bold;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
-.slot-cost {
-  font-size: 10px;
-  color: #6e9bff;
-  font-weight: 500;
-}
-
-.slot-empty {
-  font-size: 28px;
-  color: #555;
-  transition: color 0.2s;
-}
-
-.skill-slot.empty:hover .slot-empty {
-  color: #888;
-}
-
-.slot-label {
-  font-size: 10px;
+.bar-empty {
+  font-size: 24px;
   color: #555;
 }
 
-.selected-skill-section {
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid #4a4a4a;
-  border-radius: 8px;
-  padding: 14px;
-  margin-bottom: 16px;
-  animation: fadeIn 0.2s ease;
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 10px;
+  border-radius: 6px;
+  border: 2px solid #4a4a4a;
+  max-height: 200px;
+  overflow-y: auto;
+  align-content: start;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
+.skills-grid::-webkit-scrollbar {
+  width: 6px;
 }
 
-.selected-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+.skills-grid::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
 }
 
-.selected-icon {
-  font-size: 32px;
-  width: 44px;
-  height: 44px;
+.skills-grid::-webkit-scrollbar-thumb {
+  background: #4a4a4a;
+  border-radius: 3px;
+}
+
+.skill-slot {
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid #4a4a4a;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 215, 0, 0.15);
-  border: 2px solid rgba(255, 215, 0, 0.3);
-  border-radius: 8px;
-  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
-.selected-info {
+.skill-slot:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.skill-slot.equipped {
+  border-color: #4CAF50;
+  background: rgba(76, 175, 80, 0.15);
+}
+
+.skill-slot.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.skill-slot.locked:hover {
+  transform: none;
+}
+
+.skill-slot.selected {
+  box-shadow: 0 0 0 2px #ffd700, 0 0 10px rgba(255, 215, 0, 0.4);
+}
+
+.skill-icon {
+  font-size: 22px;
+}
+
+.lock-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  font-size: 10px;
+}
+
+.equipped-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  font-size: 10px;
+  color: #4CAF50;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.skill-detail {
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  padding: 14px;
+  border: 1px solid #4a4a4a;
+  flex-shrink: 0;
+  min-height: 80px;
+  transition: all 0.3s ease;
+}
+
+.skill-detail.locked {
+  border-color: #666;
+  opacity: 0.85;
+}
+
+.detail-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   flex: 1;
 }
 
-.selected-info h4 {
+.detail-icon {
+  font-size: 36px;
+  flex-shrink: 0;
+}
+
+.skill-detail.locked .detail-icon {
+  filter: grayscale(0.5);
+}
+
+.detail-info {
+  flex: 1;
+}
+
+.detail-info h3 {
   font-size: 16px;
   color: #fff;
   font-weight: bold;
-  margin: 0 0 4px 0;
+  margin: 0 0 6px 0;
 }
 
-.selected-type {
+.skill-detail.locked .detail-info h3 {
+  color: #999;
+}
+
+.detail-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.detail-type {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 4px;
   font-weight: bold;
 }
 
-.selected-type.physical_damage {
+.detail-type.physical_damage {
   background: rgba(255, 107, 107, 0.2);
   color: #ff6b6b;
 }
 
-.selected-type.magic_damage {
+.detail-type.magic_damage {
   background: rgba(162, 155, 254, 0.2);
   color: #a29bfe;
 }
 
-.selected-type.heal {
+.detail-type.heal {
   background: rgba(78, 205, 196, 0.2);
   color: #4ecdc4;
 }
 
-.selected-level {
-  font-size: 12px;
-  color: #ffd700;
-  background: rgba(255, 215, 0, 0.1);
-  padding: 4px 10px;
+.skill-detail.locked .detail-type {
+  opacity: 0.6;
+}
+
+.detail-cost {
+  font-size: 11px;
+  padding: 2px 8px;
   border-radius: 4px;
-  font-weight: bold;
-}
-
-.selected-desc {
-  color: #aaa;
-  font-size: 13px;
-  margin: 0 0 10px 0;
-  line-height: 1.4;
-}
-
-.selected-meta {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.meta-label {
-  font-size: 12px;
-  color: #888;
-}
-
-.meta-value {
-  font-size: 13px;
-  color: #fff;
-  font-weight: bold;
-}
-
-.meta-value.mp {
+  background: rgba(110, 155, 255, 0.15);
   color: #6e9bff;
+  font-weight: bold;
 }
 
-.meta-value.effect {
-  color: #4CAF50;
+.skill-detail.locked .detail-cost {
+  opacity: 0.6;
 }
 
-.selected-actions {
-  display: flex;
-  gap: 8px;
+.detail-actions {
+  flex-shrink: 0;
 }
 
 .action-btn {
-  padding: 8px 20px;
+  padding: 8px 16px;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 13px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s ease;
-  user-select: none;
 }
 
 .action-btn:hover {
@@ -497,282 +503,142 @@ onMounted(() => {
 
 .action-btn:active {
   transform: translateY(0);
-  filter: brightness(0.95);
 }
 
-.action-btn.activate {
+.action-btn.memorize {
   background: linear-gradient(135deg, #4CAF50, #45a049);
   color: #fff;
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 }
 
-.action-btn.activate:hover {
-  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
-}
-
-.action-btn.deactivate {
+.action-btn.forget {
   background: linear-gradient(135deg, #ff6b6b, #ee5a24);
   color: #fff;
-  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
 }
 
-.action-btn.deactivate:hover {
-  box-shadow: 0 6px 16px rgba(255, 107, 107, 0.4);
-}
-
-.action-locked {
+.detail-desc {
+  color: #aaa;
   font-size: 13px;
-  color: #888;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  margin: 0 0 10px 0;
+  line-height: 1.4;
 }
 
-.skills-list-section h3 {
-  font-size: 14px;
-  color: #ffd700;
-  margin-bottom: 10px;
-  font-weight: bold;
+.skill-detail.locked .detail-desc {
+  color: #777;
 }
 
-.skills-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 240px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.skills-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.skills-list::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 3px;
-}
-
-.skills-list::-webkit-scrollbar-thumb {
-  background: #555;
-  border-radius: 3px;
-}
-
-.skills-list::-webkit-scrollbar-thumb:hover {
-  background: #777;
-}
-
-.skill-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid #4a4a4a;
-  border-radius: 6px;
-  padding: 10px 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none;
-}
-
-.skill-card:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: #666;
-  transform: translateX(4px);
-}
-
-.skill-card:active {
-  transform: translateX(2px);
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.skill-card.equipped {
-  border-color: #4CAF50;
-  background: rgba(76, 175, 80, 0.1);
-  border-left: 3px solid #4CAF50;
-}
-
-.skill-card.locked {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.skill-card.locked:hover {
-  transform: none;
-}
-
-.skill-icon-wrapper {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.skill-icon {
-  font-size: 28px;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-}
-
-.lock-badge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  font-size: 12px;
-}
-
-.skill-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.skill-header-row {
+.detail-bottom {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
 }
 
-.skill-header-row h4 {
-  font-size: 14px;
-  color: #fff;
-  font-weight: bold;
-  margin: 0;
-}
-
-.skill-status {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #888;
-  font-weight: bold;
-}
-
-.skill-status.active {
-  background: rgba(76, 175, 80, 0.2);
-  color: #4CAF50;
-}
-
-.skill-meta-row {
+.detail-effect {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.skill-type-tag {
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 3px;
+.effect-label {
+  font-size: 12px;
+  color: #888;
+}
+
+.effect-value {
+  font-size: 13px;
   font-weight: bold;
 }
 
-.skill-type-tag.physical_damage {
-  background: rgba(255, 107, 107, 0.2);
+.effect-value.physical_damage {
   color: #ff6b6b;
 }
 
-.skill-type-tag.magic_damage {
-  background: rgba(162, 155, 254, 0.2);
+.effect-value.magic_damage {
   color: #a29bfe;
 }
 
-.skill-type-tag.heal {
-  background: rgba(78, 205, 196, 0.2);
-  color: #4ecdc4;
-}
-
-.skill-cost-tag {
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 3px;
-  background: rgba(110, 155, 255, 0.15);
-  color: #6e9bff;
-}
-
-.skill-effect-text {
-  font-size: 11px;
+.effect-value.heal {
   color: #4CAF50;
 }
 
-.skill-action {
-  flex-shrink: 0;
+.skill-detail.locked .effect-value {
+  color: #666;
 }
 
-.mini-btn {
-  padding: 5px 12px;
-  border: none;
+.detail-level-req {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none;
 }
 
-.mini-btn:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.1);
+.level-lock-icon {
+  font-size: 12px;
 }
 
-.mini-btn:active {
-  transform: translateY(0);
-  filter: brightness(0.95);
+.level-lock-text {
+  color: #ff6b6b;
 }
 
-.mini-btn.activate {
-  background: linear-gradient(135deg, #4CAF50, #45a049);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+.detail-level-req:has(.level-lock-icon) {
+  background: rgba(255, 107, 107, 0.15);
+  border: 1px solid rgba(255, 107, 107, 0.3);
 }
 
-.mini-btn.activate:hover {
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+.level-unlock-icon {
+  font-size: 12px;
 }
 
-.mini-btn.deactivate {
-  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+.level-unlock-text {
+  color: #4CAF50;
 }
 
-.mini-btn.deactivate:hover {
-  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+.detail-level-req:has(.level-unlock-icon) {
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.2);
 }
 
-.mini-locked {
-  font-size: 16px;
+.detail-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+}
+
+.placeholder-icon {
+  font-size: 28px;
+  opacity: 0.5;
+}
+
+.placeholder-text {
+  color: #666;
+  font-size: 14px;
 }
 
 @media (max-width: 600px) {
   .skill-bar {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    padding: 10px;
-  }
-
-  .skill-slot {
-    padding: 10px 4px;
-    min-height: 70px;
-  }
-
-  .slot-icon {
-    font-size: 20px;
-  }
-
-  .slot-name {
-    font-size: 10px;
-  }
-
-  .selected-meta {
-    flex-direction: column;
     gap: 6px;
+    padding: 8px;
   }
 
-  .skills-list {
-    max-height: 200px;
+  .bar-slot {
+    padding: 8px 4px;
+    min-height: 50px;
   }
 
-  .skill-meta-row {
-    flex-wrap: wrap;
+  .bar-icon {
+    font-size: 18px;
+  }
+
+  .bar-name {
+    font-size: 9px;
+  }
+
+  .skills-grid {
+    max-height: 150px;
   }
 }
 </style>

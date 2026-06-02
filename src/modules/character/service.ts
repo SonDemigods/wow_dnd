@@ -22,6 +22,14 @@ import {
 } from '@/utils/calculations';
 import { MAX_LEVEL } from '@/config/character';
 import { gameDataService } from '../gameData/service';
+import { skillsDbService } from '../skill/db';
+import { inventoryDbService } from '../inventory/db';
+import { equipmentDbService } from '../equipment/db';
+import { explorationDbService } from '../exploration/db';
+import { adventureLogDbService } from '../log/db';
+import { questDbService } from '../quest/db';
+import { CLASS_ABILITIES } from '@/data/class.data';
+import type { Skill, SkillBar } from '../skill/types';
 
 /**
  * 角色服务实现类
@@ -64,7 +72,7 @@ export class CharacterService implements ICharacterService {
    * @param classId - 职业ID
    * @returns 角色ID
    */
-  createCharacter(name: string, factionId: FactionType, raceId: RaceType, classId: ClassType): string {
+  async createCharacter(name: string, factionId: FactionType, raceId: RaceType, classId: ClassType): Promise<string> {
     const characterId = this.generateId();
     
     // 获取种族和职业的属性加成（从缓存数据中获取）
@@ -117,9 +125,28 @@ export class CharacterService implements ICharacterService {
       lastPlayedTime: Date.now()
     };
     
-    // 保存到数据库（不设置为当前角色，等待用户点击进入游戏按钮）
-    characterDbService.saveCharacterListItem(listItem);
-    characterDbService.saveCharacterData(characterDbService.toStorageFormat(characterId, this.character, this.bonusStats));
+    // 初始化技能数据
+    const classAbilities = CLASS_ABILITIES[classId] || [];
+    const skills: Skill[] = classAbilities.filter(skill => skill.unlockLevel <= 1).map(skill => ({ ...skill }));
+    const skillBar: SkillBar = { slots: [null, null, null, null] };
+    
+    // 将已解锁的技能自动装备到技能栏
+    skills.forEach((skill, index) => {
+      if (index < 4) {
+        skillBar.slots[index] = skill.id;
+      }
+    });
+    
+    // 保存到数据库
+    await characterDbService.saveCharacterListItem(listItem);
+    await characterDbService.saveCharacterData(characterDbService.toStorageFormat(characterId, this.character, this.bonusStats));
+    await skillsDbService.saveSkillsData({
+      characterId,
+      skills,
+      skillBar,
+      currentClass: classId,
+      updatedAt: Date.now()
+    });
     
     // 触发事件
     eventBus.emit(GameEvents.CHARACTER_CREATED, { characterId, name });
@@ -175,9 +202,17 @@ export class CharacterService implements ICharacterService {
       return false;
     }
     
-    // 删除角色数据
+    // 删除角色基础数据
     await characterDbService.deleteCharacterListItem(characterId);
     await characterDbService.deleteCharacterData(characterId);
+    
+    // 删除角色相关模块数据
+    await skillsDbService.deleteSkillsData(characterId);
+    await inventoryDbService.deleteInventory(characterId);
+    await equipmentDbService.deleteEquipment(characterId);
+    await explorationDbService.deleteExplorationData(characterId);
+    await adventureLogDbService.deleteAdventureLog(characterId);
+    await questDbService.deleteCharacterQuests(characterId);
     
     // 如果删除的是当前角色，清空当前角色
     if (this.currentCharacterId === characterId) {

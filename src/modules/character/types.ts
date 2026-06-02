@@ -287,14 +287,14 @@ export interface ICharacterService {
    * @param {FactionType} factionId - 阵营ID
    * @param {RaceType} raceId - 种族ID
    * @param {ClassType} classId - 职业ID
-   * @returns {string} 角色ID
+   * @returns {Promise<string>} 角色ID
    */
   createCharacter(
     name: string,
     factionId: FactionType,
     raceId: RaceType,
     classId: ClassType
-  ): string;
+  ): Promise<string>;
 
   /**
    * 选择角色
