@@ -51,7 +51,7 @@ export class QuestDbService {
    */
   async saveQuestInstance(instance: QuestInstance): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.quests.put({
+      await gameDb.char_quests.put({
         questId: instance.questId,
         status: instance.status,
         progress: instance.progress,
@@ -68,7 +68,7 @@ export class QuestDbService {
    */
   async getQuestInstance(questId: string): Promise<QuestInstance | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.quests.get(questId);
+      const result = await gameDb.char_quests.get(questId);
       if (!result) return null;
       return {
         questId: result.questId,
@@ -86,7 +86,7 @@ export class QuestDbService {
    */
   async getAllQuestInstances(): Promise<QuestInstance[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.quests.toArray();
+      const results = await gameDb.char_quests.toArray();
       return results.map(result => ({
         questId: result.questId,
         status: result.status as QuestInstance['status'],
@@ -103,7 +103,7 @@ export class QuestDbService {
    */
   async deleteQuestInstance(questId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.quests.delete(questId);
+      await gameDb.char_quests.delete(questId);
     });
   }
 
@@ -112,7 +112,7 @@ export class QuestDbService {
    */
   async clearAllQuestInstances(): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.quests.clear();
+      await gameDb.char_quests.clear();
     });
   }
 
@@ -122,7 +122,7 @@ export class QuestDbService {
    */
   async saveQuestDefinition(definition: QuestDefinition): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.quests.put({
+      await gameDb.config_quests.put({
         id: definition.id,
         title: definition.title,
         description: definition.description,
@@ -144,7 +144,7 @@ export class QuestDbService {
    */
   async getQuestDefinition(questId: string): Promise<QuestDefinition | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.quests.get(questId);
+      const result = await gameDb.config_quests.get(questId);
       if (!result) return null;
       return {
         id: result.id,
@@ -175,7 +175,7 @@ export class QuestDbService {
    */
   async getAllQuestDefinitions(): Promise<QuestDefinition[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.quests.toArray();
+      const results = await gameDb.config_quests.toArray();
       return results.map(result => ({
         id: result.id,
         title: result.title,
@@ -206,7 +206,7 @@ export class QuestDbService {
    */
   async getQuestDefinitionsByBoard(boardId: string): Promise<QuestDefinition[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.quests.where('boardId').equals(boardId).toArray();
+      const results = await gameDb.config_quests.where('boardId').equals(boardId).toArray();
       return results.map(result => ({
         id: result.id,
         title: result.title,
@@ -236,7 +236,7 @@ export class QuestDbService {
    */
   async deleteQuestDefinition(questId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.quests.delete(questId);
+      await gameDb.config_quests.delete(questId);
     });
   }
 
@@ -245,7 +245,7 @@ export class QuestDbService {
    */
   async clearAllQuestDefinitions(): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.quests.clear();
+      await gameDb.config_quests.clear();
     });
   }
 }

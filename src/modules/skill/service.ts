@@ -7,6 +7,7 @@ import type { ISkillsService, Skill, SkillBar, SkillType, SkillSlotIndex, SkillU
 import { skillsDbService } from './db';
 import { characterService } from '../character/service';
 import { eventBus, GameEvents } from '../bus/core';
+import { CLASS_ABILITIES } from '@/data/class.data';
 
 /**
  * 技能服务实现类
@@ -47,6 +48,15 @@ export class SkillsService implements ISkillsService {
     templates.forEach(skill => {
       this.skillTemplates.set(skill.id, skill);
     });
+
+    const classId = characterService.getClass();
+    if (classId && CLASS_ABILITIES[classId]) {
+      CLASS_ABILITIES[classId].forEach(skill => {
+        if (!this.skillTemplates.has(skill.id)) {
+          this.skillTemplates.set(skill.id, skill);
+        }
+      });
+    }
   }
 
   /**
@@ -63,7 +73,7 @@ export class SkillsService implements ISkillsService {
    * @returns 技能数据
    */
   getSkill(id: string): Skill | null {
-    return this.skills.find(s => s.id === id) || null;
+    return this.skills.find(s => s.id === id) || this.skillTemplates.get(id) || null;
   }
 
   /**
@@ -240,6 +250,11 @@ export class SkillsService implements ISkillsService {
     const characterLevel = characterService.getLevel();
     if (skill.unlockLevel > characterLevel) {
       return false;
+    }
+    
+    // 如果技能不在已学习列表中，添加进去
+    if (!this.skills.some(s => s.id === skillId)) {
+      this.skills.push({ ...skill });
     }
     
     // 如果该槽位已有技能，先卸下

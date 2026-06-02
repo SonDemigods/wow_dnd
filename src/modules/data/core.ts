@@ -10,56 +10,67 @@ import { DATABASE_CONFIG, DB_SERVICE_CONFIG } from '@/config/database';
 /**
  * 游戏数据库 Schema 接口定义
  * 
- * 定义数据库中所有表的结构，分为三类：
- * 1. 角色数据相关表（characters, characterData, inventory, quests, equipment, skills, adventureLog）
- * 2. 基础游戏数据相关表（factions, races, classes, items, equipmentItems, enemies, itemTypes, rarityConfigs, classAbilities）
- * 3. 全局状态相关表（gameState, map, shop）
+ * 定义数据库中所有表的结构，按数据类型分为三类：
+ * 1. 配置表（config_*）：游戏定义数据，所有角色共享
+ * 2. 角色表（char_*）：绑定角色ID，每个角色独立
+ * 3. 运行时表（runtime_*）：日志和临时状态
  */
 export interface GameDatabaseSchema {
-  /** 角色列表 */
-  characters: Table<Record<string, unknown>, string>;
-  /** 角色详细数据 */
-  characterData: Table<Record<string, unknown>, string>;
-  /** 背包物品 */
-  inventory: Table<Record<string, unknown>, string>;
-  /** 任务进度 */
-  quests: Table<Record<string, unknown>, string>;
-  /** 装备数据 */
-  equipment: Table<Record<string, unknown>, string>;
-  /** 技能数据 */
-  skills: Table<Record<string, unknown>, string>;
-  /** 探索进度 */
-  exploration: Table<Record<string, unknown>, string>;
-  /** 战斗记录 */
-  combat: Table<Record<string, unknown>, string>;
-  /** 冒险日志 */
-  adventureLog: Table<Record<string, unknown>, string>;
-  
-  /** 阵营数据 */
-  factions: Table<Record<string, unknown>, string>;
-  /** 种族数据 */
-  races: Table<Record<string, unknown>, string>;
-  /** 职业数据 */
-  classes: Table<Record<string, unknown>, string>;
-  /** 物品模板 */
-  items: Table<Record<string, unknown>, string>;
-  /** 装备模板 */
-  equipmentItems: Table<Record<string, unknown>, string>;
-  /** 敌人模板 */
-  enemies: Table<Record<string, unknown>, string>;
-  /** 物品类型配置 */
-  itemTypes: Table<Record<string, unknown>, string>;
-  /** 稀有度配置 */
-  rarityConfigs: Table<Record<string, unknown>, string>;
+  // ==================== 配置表（config_*）====================
+  /** 阵营定义 */
+  config_factions: Table<Record<string, unknown>, string>;
+  /** 种族定义 */
+  config_races: Table<Record<string, unknown>, string>;
+  /** 职业定义 */
+  config_classes: Table<Record<string, unknown>, string>;
   /** 职业技能配置 */
-  classAbilities: Table<Record<string, unknown>, string>;
-  
-  /** 游戏全局状态 */
-  gameState: Table<Record<string, unknown>, string>;
-  /** 地图数据 */
-  map: Table<Record<string, unknown>, string>;
-  /** 商店数据 */
-  shop: Table<Record<string, unknown>, string>;
+  config_classAbilities: Table<Record<string, unknown>, string>;
+  /** 物品模板 */
+  config_items: Table<Record<string, unknown>, string>;
+  /** 装备模板 */
+  config_equipmentItems: Table<Record<string, unknown>, string>;
+  /** 敌人模板 */
+  config_enemies: Table<Record<string, unknown>, string>;
+  /** 物品类型 */
+  config_itemTypes: Table<Record<string, unknown>, string>;
+  /** 稀有度配置 */
+  config_rarityConfigs: Table<Record<string, unknown>, string>;
+  /** 任务定义 */
+  config_quests: Table<Record<string, unknown>, string>;
+  /** 技能模板 */
+  config_skills: Table<Record<string, unknown>, string>;
+  /** 地点数据 */
+  config_locations: Table<Record<string, unknown>, string>;
+  /** 商店配置 */
+  config_shops: Table<Record<string, unknown>, string>;
+
+  // ==================== 角色表（char_*）====================
+  /** 角色列表/档案 */
+  char_profiles: Table<Record<string, unknown>, string>;
+  /** 角色详细属性 */
+  char_data: Table<Record<string, unknown>, string>;
+  /** 背包物品 */
+  char_inventory: Table<Record<string, unknown>, string>;
+  /** 装备数据 */
+  char_equipment: Table<Record<string, unknown>, string>;
+  /** 角色已学技能 */
+  char_skills: Table<Record<string, unknown>, string>;
+  /** 角色任务进度 */
+  char_quests: Table<Record<string, unknown>, string>;
+  /** 探索进度 */
+  char_exploration: Table<Record<string, unknown>, string>;
+
+  // ==================== 运行时表（runtime_*）====================
+  /** 全局游戏状态 */
+  runtime_gameState: Table<Record<string, unknown>, string>;
+  /** 战斗日志 */
+  runtime_combatLogs: Table<Record<string, unknown>, string>;
+  /** 冒险日志 */
+  runtime_adventureLogs: Table<Record<string, unknown>, string>;
+  /** 地图视图状态 */
+  runtime_mapState: Table<Record<string, unknown>, string>;
+  /** 商店库存状态 */
+  runtime_shopInventories: Table<Record<string, unknown>, string>;
 }
 
 /**
@@ -69,32 +80,36 @@ export interface GameDatabaseSchema {
  * 使用单例模式，通过 db 实例对外提供服务。
  */
 export class GameDatabase extends Dexie {
-  // 角色数据相关表
-  characters!: Table<Record<string, unknown>, string>;
-  characterData!: Table<Record<string, unknown>, string>;
-  inventory!: Table<Record<string, unknown>, string>;
-  quests!: Table<Record<string, unknown>, string>;
-  equipment!: Table<Record<string, unknown>, string>;
-  skills!: Table<Record<string, unknown>, string>;
-  exploration!: Table<Record<string, unknown>, string>;
-  combat!: Table<Record<string, unknown>, string>;
-  adventureLog!: Table<Record<string, unknown>, string>;
-  
-  // 基础游戏数据相关表
-  factions!: Table<Record<string, unknown>, string>;
-  races!: Table<Record<string, unknown>, string>;
-  classes!: Table<Record<string, unknown>, string>;
-  items!: Table<Record<string, unknown>, string>;
-  equipmentItems!: Table<Record<string, unknown>, string>;
-  enemies!: Table<Record<string, unknown>, string>;
-  itemTypes!: Table<Record<string, unknown>, string>;
-  rarityConfigs!: Table<Record<string, unknown>, string>;
-  classAbilities!: Table<Record<string, unknown>, string>;
-  
-  // 全局状态相关表
-  gameState!: Table<Record<string, unknown>, string>;
-  map!: Table<Record<string, unknown>, string>;
-  shop!: Table<Record<string, unknown>, string>;
+  // ==================== 配置表（config_*）====================
+  config_factions!: Table<Record<string, unknown>, string>;
+  config_races!: Table<Record<string, unknown>, string>;
+  config_classes!: Table<Record<string, unknown>, string>;
+  config_classAbilities!: Table<Record<string, unknown>, string>;
+  config_items!: Table<Record<string, unknown>, string>;
+  config_equipmentItems!: Table<Record<string, unknown>, string>;
+  config_enemies!: Table<Record<string, unknown>, string>;
+  config_itemTypes!: Table<Record<string, unknown>, string>;
+  config_rarityConfigs!: Table<Record<string, unknown>, string>;
+  config_quests!: Table<Record<string, unknown>, string>;
+  config_skills!: Table<Record<string, unknown>, string>;
+  config_locations!: Table<Record<string, unknown>, string>;
+  config_shops!: Table<Record<string, unknown>, string>;
+
+  // ==================== 角色表（char_*）====================
+  char_profiles!: Table<Record<string, unknown>, string>;
+  char_data!: Table<Record<string, unknown>, string>;
+  char_inventory!: Table<Record<string, unknown>, string>;
+  char_equipment!: Table<Record<string, unknown>, string>;
+  char_skills!: Table<Record<string, unknown>, string>;
+  char_quests!: Table<Record<string, unknown>, string>;
+  char_exploration!: Table<Record<string, unknown>, string>;
+
+  // ==================== 运行时表（runtime_*）====================
+  runtime_gameState!: Table<Record<string, unknown>, string>;
+  runtime_combatLogs!: Table<Record<string, unknown>, string>;
+  runtime_adventureLogs!: Table<Record<string, unknown>, string>;
+  runtime_mapState!: Table<Record<string, unknown>, string>;
+  runtime_shopInventories!: Table<Record<string, unknown>, string>;
 
   /**
    * 构造函数：初始化数据库连接和表结构
@@ -103,31 +118,39 @@ export class GameDatabase extends Dexie {
     super(DATABASE_CONFIG.name);
 
     /**
-     * 版本 1：初始版本
-     * 定义所有数据表及其索引
+     * 版本 1：按配置/角色/运行时分类的表结构
      */
     this.version(1).stores({
-      characters: 'id, name, factionId, raceId, classId, level',
-      characterData: 'characterId',
-      inventory: 'characterId, itemId',
-      quests: 'characterId, status',
-      equipment: 'characterId, slot',
-      skills: 'characterId, skillId',
-      exploration: 'characterId, locationId',
-      combat: 'characterId, timestamp',
-      adventureLog: 'characterId, timestamp',
-      factions: 'id, name',
-      races: 'id, name, factionId',
-      classes: 'id, name, primaryStat',
-      items: 'id, name, type, rarity',
-      equipmentItems: 'id, name, type, rarity',
-      enemies: 'id, name, dangerLevel, isBoss',
-      itemTypes: 'id, name',
-      rarityConfigs: 'id',
-      classAbilities: 'classId',
-      gameState: 'id',
-      map: 'id',
-      shop: 'id'
+      // 配置表
+      config_factions: 'id, name',
+      config_races: 'id, name, factionId',
+      config_classes: 'id, name, primaryStat',
+      config_classAbilities: 'classId',
+      config_items: 'id, name, type, rarity',
+      config_equipmentItems: 'id, name, type, rarity',
+      config_enemies: 'id, name, dangerLevel, isBoss',
+      config_itemTypes: 'id, name',
+      config_rarityConfigs: 'id',
+      config_quests: 'id, boardId, type',
+      config_skills: 'id, classRestriction, type',
+      config_locations: 'id, continent, region',
+      config_shops: 'id, locationId, type',
+      
+      // 角色表
+      char_profiles: 'id, name, factionId, raceId, classId, level',
+      char_data: 'characterId',
+      char_inventory: 'characterId, itemId',
+      char_equipment: 'characterId, slot',
+      char_skills: 'characterId',
+      char_quests: 'characterId, status, questId',
+      char_exploration: 'characterId, locationId',
+      
+      // 运行时表
+      runtime_combatLogs: 'combatId, timestamp',
+      runtime_adventureLogs: 'characterId, timestamp',
+      runtime_gameState: 'id',
+      runtime_mapState: 'id',
+      runtime_shopInventories: 'shopId'
     });
 
     /**
@@ -142,7 +165,7 @@ export class GameDatabase extends Dexie {
    * 在数据库首次创建时调用，设置初始游戏配置
    */
   private async populateInitialData(): Promise<void> {
-    await this.gameState.put({
+    await this.runtime_gameState.put({
       id: 'gameState',
       currentCharacterId: null,
       lastPlayedAt: new Date().toISOString(),

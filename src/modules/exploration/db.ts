@@ -12,7 +12,7 @@ export interface ExplorationStorage {
 export class ExplorationDbService {
   async saveExplorationData(characterId: string, state: ExplorationState): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.exploration.put({
+      await gameDb.char_exploration.put({
         characterId,
         currentAreaId: state.currentAreaId,
         grid: state.grid,
@@ -24,7 +24,7 @@ export class ExplorationDbService {
 
   async getExplorationData(characterId: string): Promise<ExplorationStorage | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.exploration.get(characterId);
+      const result = await gameDb.char_exploration.get(characterId);
       if (!result) return null;
       return result as unknown as ExplorationStorage;
     });
@@ -32,19 +32,19 @@ export class ExplorationDbService {
 
   async deleteExplorationData(characterId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.exploration.delete(characterId);
+      await gameDb.char_exploration.delete(characterId);
     });
   }
 
   async clearAllExplorationData(): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.exploration.clear();
+      await gameDb.char_exploration.clear();
     });
   }
 
   async getAllExplorationData(): Promise<ExplorationStorage[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.exploration.toArray();
+      const results = await gameDb.char_exploration.toArray();
       return results as unknown as ExplorationStorage[];
     });
   }

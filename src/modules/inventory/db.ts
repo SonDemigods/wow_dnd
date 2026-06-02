@@ -45,7 +45,7 @@ export class InventoryDbService {
    */
   async saveInventory(characterId: string, items: InventoryItem[]): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.inventory.put({
+      await gameDb.char_inventory.put({
         characterId,
         items: JSON.stringify(items),
         updatedAt: Date.now()
@@ -60,7 +60,7 @@ export class InventoryDbService {
    */
   async getInventory(characterId: string): Promise<InventoryItem[]> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.inventory.get(characterId);
+      const data = await gameDb.char_inventory.get(characterId);
       if (!data) return [];
       try {
         return JSON.parse(data.items);
@@ -76,7 +76,7 @@ export class InventoryDbService {
    */
   async deleteInventory(characterId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.inventory.delete(characterId);
+      await gameDb.char_inventory.delete(characterId);
     });
   }
 
@@ -86,7 +86,7 @@ export class InventoryDbService {
    */
   async saveItemTemplate(item: Item): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.items.put({
+      await gameDb.config_items.put({
         id: item.id,
         name: item.name,
         type: item.type,
@@ -111,7 +111,7 @@ export class InventoryDbService {
    */
   async getItemTemplate(itemId: string): Promise<Item | null> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.items.get(itemId);
+      const data = await gameDb.config_items.get(itemId);
       if (!data) return null;
       
       let bonus: Partial<Item['bonus']> = {};
@@ -145,7 +145,7 @@ export class InventoryDbService {
    */
   async getAllItemTemplates(): Promise<Item[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.items.toArray();
+      const items = await gameDb.config_items.toArray();
       return items.map(data => {
         let bonus: Partial<Item['bonus']> = {};
         try {
@@ -179,7 +179,7 @@ export class InventoryDbService {
    */
   async deleteItemTemplate(itemId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.items.delete(itemId);
+      await gameDb.config_items.delete(itemId);
     });
   }
 }

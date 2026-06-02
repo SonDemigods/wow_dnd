@@ -50,7 +50,7 @@ export class MapDbService {
    */
   async saveMapState(state: MapState): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.map.put({
+      await gameDb.runtime_mapState.put({
         id: 'current',
         view: state.view
       });
@@ -63,7 +63,7 @@ export class MapDbService {
    */
   async getMapState(): Promise<MapState | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.map.get('current');
+      const result = await gameDb.runtime_mapState.get('current');
       if (!result) return null;
       return {
         view: result.view
@@ -77,7 +77,7 @@ export class MapDbService {
    */
   async saveLocationData(location: LocationData): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.map.put({
+      await gameDb.config_locations.put({
         id: location.name,
         name: location.name,
         displayName: location.displayName,
@@ -102,7 +102,7 @@ export class MapDbService {
    */
   async getLocationData(locationId: string): Promise<LocationData | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.map.get(locationId);
+      const result = await gameDb.config_locations.get(locationId);
       if (!result) return null;
       return {
         name: result.name,
@@ -127,7 +127,7 @@ export class MapDbService {
    */
   async getAllLocationData(): Promise<LocationData[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.map.toArray();
+      const results = await gameDb.config_locations.toArray();
       return results.map(result => ({
         name: result.name,
         displayName: result.displayName,
@@ -152,7 +152,7 @@ export class MapDbService {
    */
   async getLocationDataByContinent(continentId: string): Promise<LocationData[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.map.where('continent').equals(continentId).toArray();
+      const results = await gameDb.config_locations.where('continent').equals(continentId).toArray();
       return results.map(result => ({
         name: result.name,
         displayName: result.displayName,
@@ -176,7 +176,7 @@ export class MapDbService {
    */
   async deleteLocationData(locationId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.map.delete(locationId);
+      await gameDb.config_locations.delete(locationId);
     });
   }
 
@@ -185,7 +185,7 @@ export class MapDbService {
    */
   async clearAllLocationData(): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.map.clear();
+      await gameDb.config_locations.clear();
     });
   }
 
@@ -195,7 +195,7 @@ export class MapDbService {
    */
   async saveLocationMarker(marker: LocationMarker): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.map.put({
+      await gameDb.config_locations.put({
         id: marker.id,
         x: marker.x,
         y: marker.y,
@@ -216,7 +216,7 @@ export class MapDbService {
    */
   async getLocationMarkers(continentId: string): Promise<LocationMarker[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.map.where('continentId').equals(continentId).toArray();
+      const results = await gameDb.config_locations.where('continentId').equals(continentId).toArray();
       return results.map(result => ({
         id: result.id,
         x: result.x,
@@ -237,7 +237,7 @@ export class MapDbService {
    */
   async getAllLocationMarkers(): Promise<LocationMarker[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.map.toArray();
+      const results = await gameDb.config_locations.toArray();
       return results.map(result => ({
         id: result.id,
         x: result.x,
@@ -258,7 +258,7 @@ export class MapDbService {
    */
   async deleteLocationMarker(markerId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.map.delete(markerId);
+      await gameDb.config_locations.delete(markerId);
     });
   }
 
@@ -267,7 +267,7 @@ export class MapDbService {
    */
   async clearAllLocationMarkers(): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.map.clear();
+      await gameDb.config_locations.clear();
     });
   }
 
@@ -276,7 +276,7 @@ export class MapDbService {
    */
   async clearMapState(): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.map.clear();
+      await gameDb.runtime_mapState.clear();
     });
   }
 }

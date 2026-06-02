@@ -41,7 +41,7 @@ export class ShopDbService {
    */
   async saveShopConfig(config: ShopConfig): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.shop.put({
+      await gameDb.config_shops.put({
         id: config.id,
         name: config.name,
         type: config.type,
@@ -63,7 +63,7 @@ export class ShopDbService {
    */
   async getShopConfig(shopId: string): Promise<ShopConfig | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.shop.get(shopId);
+      const result = await gameDb.config_shops.get(shopId);
       if (!result) return null;
       return {
         id: result.id,
@@ -86,7 +86,7 @@ export class ShopDbService {
    */
   async getAllShopConfigs(): Promise<ShopConfig[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.shop.toArray();
+      const results = await gameDb.config_shops.toArray();
       return results.map(result => ({
         id: result.id,
         name: result.name,
@@ -109,7 +109,7 @@ export class ShopDbService {
    */
   async getShopConfigsByLocation(locationId: string): Promise<ShopConfig[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.shop.where('locationId').equals(locationId).toArray();
+      const results = await gameDb.config_shops.where('locationId').equals(locationId).toArray();
       return results.map(result => ({
         id: result.id,
         name: result.name,
@@ -131,7 +131,7 @@ export class ShopDbService {
    */
   async deleteShopConfig(shopId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.shop.delete(shopId);
+      await gameDb.config_shops.delete(shopId);
     });
   }
 
@@ -140,7 +140,7 @@ export class ShopDbService {
    */
   async clearAllShopConfigs(): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.shop.clear();
+      await gameDb.config_shops.clear();
     });
   }
 
@@ -150,7 +150,7 @@ export class ShopDbService {
    */
   async saveShopInventory(inventory: ShopInventory): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.shop.put({
+      await gameDb.runtime_shopInventories.put({
         shopId: inventory.shopId,
         items: inventory.items,
         lastRefresh: inventory.lastRefresh
@@ -165,7 +165,7 @@ export class ShopDbService {
    */
   async getShopInventory(shopId: string): Promise<ShopInventory | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.shop.get(shopId);
+      const result = await gameDb.runtime_shopInventories.get(shopId);
       if (!result) return null;
       return {
         shopId: result.shopId,
@@ -181,7 +181,7 @@ export class ShopDbService {
    */
   async getAllShopInventories(): Promise<ShopInventory[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.shop.toArray();
+      const results = await gameDb.runtime_shopInventories.toArray();
       return results.map(result => ({
         shopId: result.shopId,
         items: result.items,
@@ -196,7 +196,7 @@ export class ShopDbService {
    */
   async deleteShopInventory(shopId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.shop.delete(shopId);
+      await gameDb.runtime_shopInventories.delete(shopId);
     });
   }
 
@@ -205,7 +205,7 @@ export class ShopDbService {
    */
   async clearAllShopInventories(): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.shop.clear();
+      await gameDb.runtime_shopInventories.clear();
     });
   }
 }

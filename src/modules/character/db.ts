@@ -38,7 +38,7 @@ export class CharacterDbService {
    */
   async saveCharacterListItem(character: CharacterListItem): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.characters.put({
+      await gameDb.char_profiles.put({
         id: character.id,
         name: character.name,
         raceId: character.raceId,
@@ -57,7 +57,7 @@ export class CharacterDbService {
    */
   async getAllCharacterListItems(): Promise<CharacterListItem[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.characters.toArray();
+      const items = await gameDb.char_profiles.toArray();
       return items.map(item => ({
         id: item.id,
         name: item.name,
@@ -78,7 +78,7 @@ export class CharacterDbService {
    */
   async getCharacterListItem(characterId: string): Promise<CharacterListItem | null> {
     return dbService.withRetry(async () => {
-      const item = await gameDb.characters.get(characterId);
+      const item = await gameDb.char_profiles.get(characterId);
       if (!item) return null;
       return {
         id: item.id,
@@ -99,7 +99,7 @@ export class CharacterDbService {
    */
   async deleteCharacterListItem(characterId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.characters.delete(characterId);
+      await gameDb.char_profiles.delete(characterId);
     });
   }
 
@@ -109,7 +109,7 @@ export class CharacterDbService {
    */
   async saveCharacterData(data: CharacterDataStorage): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.characterData.put(data);
+      await gameDb.char_data.put(data);
     });
   }
 
@@ -120,7 +120,7 @@ export class CharacterDbService {
    */
   async getCharacterData(characterId: string): Promise<CharacterDataStorage | null> {
     return dbService.withRetry(async () => {
-      return await gameDb.characterData.get(characterId);
+      return await gameDb.char_data.get(characterId);
     });
   }
 
@@ -130,7 +130,7 @@ export class CharacterDbService {
    */
   async deleteCharacterData(characterId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.characterData.delete(characterId);
+      await gameDb.char_data.delete(characterId);
     });
   }
 
@@ -140,7 +140,7 @@ export class CharacterDbService {
    */
   async getGameState(): Promise<{ currentCharacterId: string | null } | null> {
     return dbService.withRetry(async () => {
-      return await gameDb.gameState.get('gameState');
+      return await gameDb.runtime_gameState.get('gameState');
     });
   }
 
@@ -150,7 +150,7 @@ export class CharacterDbService {
    */
   async saveGameState(currentCharacterId: string | null): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.gameState.put({
+      await gameDb.runtime_gameState.put({
         id: 'gameState',
         currentCharacterId,
         lastPlayedAt: new Date().toISOString()

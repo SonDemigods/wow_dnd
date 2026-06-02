@@ -10,7 +10,7 @@ export interface AdventureLogData {
 export class AdventureLogDbService {
   async saveAdventureLog(characterId: string, logs: LogEntry[]): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.adventureLog.put({
+      await gameDb.runtime_adventureLogs.put({
         characterId,
         logs,
         updatedAt: Date.now()
@@ -20,7 +20,7 @@ export class AdventureLogDbService {
 
   async getAdventureLog(characterId: string): Promise<AdventureLogData | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.adventureLog.get(characterId);
+      const result = await gameDb.runtime_adventureLogs.get(characterId);
       if (!result) return null;
       return result as unknown as AdventureLogData;
     });
@@ -28,13 +28,13 @@ export class AdventureLogDbService {
 
   async deleteAdventureLog(characterId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.adventureLog.delete(characterId);
+      await gameDb.runtime_adventureLogs.delete(characterId);
     });
   }
 
   async clearAllAdventureLogs(): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.adventureLog.clear();
+      await gameDb.runtime_adventureLogs.clear();
     });
   }
 }

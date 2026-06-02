@@ -40,7 +40,7 @@ export class CombatDbService {
    */
   async saveCombatLog(log: CombatLog): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.combatLogs.put({
+      await gameDb.runtime_combatLogs.put({
         combatId: log.combatId,
         battleLogId: log.battleLogId,
         timestamp: log.timestamp,
@@ -70,7 +70,7 @@ export class CombatDbService {
    */
   async getCombatLogs(combatId: string): Promise<CombatLog[]> {
     return dbService.withRetry(async () => {
-      const logs = await gameDb.combatLogs.where('combatId').equals(combatId).sortBy('timestamp');
+      const logs = await gameDb.runtime_combatLogs.where('combatId').equals(combatId).sortBy('timestamp');
       return logs.map(log => ({
         combatId: log.combatId,
         battleLogId: log.battleLogId,
@@ -100,7 +100,7 @@ export class CombatDbService {
    */
   async getAllCombatLogs(): Promise<CombatLog[]> {
     return dbService.withRetry(async () => {
-      const logs = await gameDb.combatLogs.toArray();
+      const logs = await gameDb.runtime_combatLogs.toArray();
       return logs.map(log => ({
         combatId: log.combatId,
         battleLogId: log.battleLogId,
@@ -130,7 +130,7 @@ export class CombatDbService {
    */
   async deleteCombatLog(battleLogId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.combatLogs.delete(battleLogId);
+      await gameDb.runtime_combatLogs.delete(battleLogId);
     });
   }
 
@@ -140,9 +140,9 @@ export class CombatDbService {
    */
   async deleteCombatLogs(combatId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      const logs = await gameDb.combatLogs.where('combatId').equals(combatId).toArray();
+      const logs = await gameDb.runtime_combatLogs.where('combatId').equals(combatId).toArray();
       for (const log of logs) {
-        await gameDb.combatLogs.delete(log.battleLogId);
+        await gameDb.runtime_combatLogs.delete(log.battleLogId);
       }
     });
   }
@@ -152,7 +152,7 @@ export class CombatDbService {
    */
   async clearAllCombatLogs(): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.combatLogs.clear();
+      await gameDb.runtime_combatLogs.clear();
     });
   }
 }

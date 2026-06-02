@@ -42,7 +42,7 @@ export class SkillsDbService {
    */
   async saveSkillsData(data: SkillsData): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.skills.put({
+      await gameDb.char_skills.put({
         characterId: data.characterId,
         skills: JSON.stringify(data.skills),
         skillBar: JSON.stringify(data.skillBar),
@@ -59,7 +59,7 @@ export class SkillsDbService {
    */
   async getSkillsData(characterId: string): Promise<SkillsData> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.skills.get(characterId);
+      const data = await gameDb.char_skills.get(characterId);
       if (!data) {
         return this.getDefaultSkillsData(characterId);
       }
@@ -108,7 +108,7 @@ export class SkillsDbService {
    */
   async deleteSkillsData(characterId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.skills.delete(characterId);
+      await gameDb.char_skills.delete(characterId);
     });
   }
 
@@ -119,7 +119,7 @@ export class SkillsDbService {
    */
   async saveSkillTemplate(skill: Skill, classRestriction?: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.skills.put({
+      await gameDb.config_skills.put({
         id: skill.id,
         name: skill.name,
         icon: skill.icon,
@@ -140,7 +140,7 @@ export class SkillsDbService {
    */
   async getSkillTemplate(skillId: string): Promise<Skill | null> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.skills.get(skillId);
+      const data = await gameDb.config_skills.get(skillId);
       if (!data) return null;
       
       let effect = { type: 'physical_damage' as SkillType, value: 0 };
@@ -169,7 +169,7 @@ export class SkillsDbService {
    */
   async getAllSkillTemplates(): Promise<Skill[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.skills.toArray();
+      const items = await gameDb.config_skills.toArray();
       return items.map(data => {
         let effect = { type: 'physical_damage' as SkillType, value: 0 };
         try {
@@ -199,7 +199,7 @@ export class SkillsDbService {
    */
   async getSkillTemplatesByClass(classId: string): Promise<Skill[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.skills.where('classRestriction').equals(classId).toArray();
+      const items = await gameDb.config_skills.where('classRestriction').equals(classId).toArray();
       return items.map(data => {
         let effect = { type: 'physical_damage' as SkillType, value: 0 };
         try {
@@ -228,7 +228,7 @@ export class SkillsDbService {
    */
   async deleteSkillTemplate(skillId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.skills.delete(skillId);
+      await gameDb.config_skills.delete(skillId);
     });
   }
 }

@@ -47,7 +47,7 @@ export class EquipmentDbService {
   ): Promise<void> {
     await dbService.withRetry(async () => {
       const serialized = JSON.stringify(equipment);
-      await gameDb.equipment.put({
+      await gameDb.char_equipment.put({
         characterId,
         equipment: serialized,
         updatedAt: Date.now()
@@ -64,7 +64,7 @@ export class EquipmentDbService {
     characterId: string
   ): Promise<Record<EquipmentSlot, EquippedItem | null>> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.equipment.get(characterId);
+      const data = await gameDb.char_equipment.get(characterId);
       if (!data) {
         return this.getDefaultEquipment();
       }
@@ -96,7 +96,7 @@ export class EquipmentDbService {
    */
   async deleteEquipment(characterId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.equipment.delete(characterId);
+      await gameDb.char_equipment.delete(characterId);
     });
   }
 
@@ -106,7 +106,7 @@ export class EquipmentDbService {
    */
   async saveEquipmentTemplate(item: EquipmentItem): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.equipmentItems.put({
+      await gameDb.config_equipmentItems.put({
         id: item.id,
         name: item.name,
         type: item.type,
@@ -129,7 +129,7 @@ export class EquipmentDbService {
    */
   async getEquipmentTemplate(itemId: string): Promise<EquipmentItem | null> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.equipmentItems.get(itemId);
+      const data = await gameDb.config_equipmentItems.get(itemId);
       if (!data) return null;
       
       let bonus: Partial<EquipmentItem['bonus']> = {};
@@ -169,7 +169,7 @@ export class EquipmentDbService {
    */
   async getAllEquipmentTemplates(): Promise<EquipmentItem[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.equipmentItems.toArray();
+      const items = await gameDb.config_equipmentItems.toArray();
       return items.map(data => {
         let bonus: Partial<EquipmentItem['bonus']> = {};
         let slots: EquipmentSlot[] = [];
@@ -209,7 +209,7 @@ export class EquipmentDbService {
    */
   async deleteEquipmentTemplate(itemId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.equipmentItems.delete(itemId);
+      await gameDb.config_equipmentItems.delete(itemId);
     });
   }
 }

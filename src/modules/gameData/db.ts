@@ -26,7 +26,7 @@ export class GameDataDbService {
    */
   async getAllFactions(): Promise<FactionData[]> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.factions.toArray();
+      const result = await gameDb.config_factions.toArray();
       return result as FactionData[];
     });
   }
@@ -36,7 +36,7 @@ export class GameDataDbService {
    */
   async getFactionById(id: string): Promise<FactionData | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.factions.get(id);
+      const result = await gameDb.config_factions.get(id);
       return result as FactionData | null;
     });
   }
@@ -47,7 +47,7 @@ export class GameDataDbService {
   async createFaction(data: FactionCreateUpdateData): Promise<string> {
     const id = this.generateId();
     await dbService.withRetry(async () => {
-      await gameDb.factions.add({
+      await gameDb.config_factions.add({
         id,
         ...data
       });
@@ -60,11 +60,11 @@ export class GameDataDbService {
    */
   async updateFaction(id: string, data: FactionCreateUpdateData): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.factions.get(id);
+      const existing = await gameDb.config_factions.get(id);
       if (!existing) {
         throw new Error('阵营不存在');
       }
-      await gameDb.factions.put({
+      await gameDb.config_factions.put({
         id,
         ...data
       });
@@ -76,11 +76,11 @@ export class GameDataDbService {
    */
   async deleteFaction(id: string): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.factions.get(id);
+      const existing = await gameDb.config_factions.get(id);
       if (!existing) {
         throw new Error('阵营不存在');
       }
-      await gameDb.factions.delete(id);
+      await gameDb.config_factions.delete(id);
     });
   }
 
@@ -91,7 +91,7 @@ export class GameDataDbService {
    */
   async getAllRaces(): Promise<RaceData[]> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.races.toArray();
+      const result = await gameDb.config_races.toArray();
       return result as RaceData[];
     });
   }
@@ -101,7 +101,7 @@ export class GameDataDbService {
    */
   async getRaceById(id: string): Promise<RaceData | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.races.get(id);
+      const result = await gameDb.config_races.get(id);
       return result as RaceData | null;
     });
   }
@@ -111,7 +111,7 @@ export class GameDataDbService {
    */
   async getRacesByFaction(factionId: string): Promise<RaceData[]> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.races.toArray();
+      const result = await gameDb.config_races.toArray();
       return (result as RaceData[]).filter(race => race.factionId === factionId);
     });
   }
@@ -122,7 +122,7 @@ export class GameDataDbService {
   async createRace(data: RaceCreateUpdateData): Promise<string> {
     const id = this.generateId();
     await dbService.withRetry(async () => {
-      await gameDb.races.add({
+      await gameDb.config_races.add({
         id,
         ...data
       });
@@ -135,11 +135,11 @@ export class GameDataDbService {
    */
   async updateRace(id: string, data: RaceCreateUpdateData): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.races.get(id);
+      const existing = await gameDb.config_races.get(id);
       if (!existing) {
         throw new Error('种族不存在');
       }
-      await gameDb.races.put({
+      await gameDb.config_races.put({
         id,
         ...data
       });
@@ -151,11 +151,11 @@ export class GameDataDbService {
    */
   async deleteRace(id: string): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.races.get(id);
+      const existing = await gameDb.config_races.get(id);
       if (!existing) {
         throw new Error('种族不存在');
       }
-      await gameDb.races.delete(id);
+      await gameDb.config_races.delete(id);
     });
   }
 
@@ -166,7 +166,7 @@ export class GameDataDbService {
    */
   async getAllClasses(): Promise<ClassData[]> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.classes.toArray();
+      const result = await gameDb.config_classes.toArray();
       return result as ClassData[];
     });
   }
@@ -176,7 +176,7 @@ export class GameDataDbService {
    */
   async getClassById(id: string): Promise<ClassData | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.classes.get(id);
+      const result = await gameDb.config_classes.get(id);
       return result as ClassData | null;
     });
   }
@@ -186,7 +186,7 @@ export class GameDataDbService {
    */
   async getClassesByRace(raceId: string): Promise<ClassData[]> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.classes.toArray();
+      const result = await gameDb.config_classes.toArray();
       return (result as ClassData[]).filter(cls => cls.raceIds.includes(raceId));
     });
   }
@@ -196,7 +196,7 @@ export class GameDataDbService {
    */
   async getClassesByFaction(factionId: string): Promise<ClassData[]> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.classes.toArray();
+      const result = await gameDb.config_classes.toArray();
       return (result as ClassData[]).filter(cls => cls.factionsIds.includes(factionId));
     });
   }
@@ -207,7 +207,7 @@ export class GameDataDbService {
   async createClass(data: ClassCreateUpdateData): Promise<string> {
     const id = this.generateId();
     await dbService.withRetry(async () => {
-      await gameDb.classes.add({
+      await gameDb.config_classes.add({
         id,
         ...data
       });
@@ -220,11 +220,11 @@ export class GameDataDbService {
    */
   async updateClass(id: string, data: ClassCreateUpdateData): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.classes.get(id);
+      const existing = await gameDb.config_classes.get(id);
       if (!existing) {
         throw new Error('职业不存在');
       }
-      await gameDb.classes.put({
+      await gameDb.config_classes.put({
         id,
         ...data
       });
@@ -236,11 +236,11 @@ export class GameDataDbService {
    */
   async deleteClass(id: string): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.classes.get(id);
+      const existing = await gameDb.config_classes.get(id);
       if (!existing) {
         throw new Error('职业不存在');
       }
-      await gameDb.classes.delete(id);
+      await gameDb.config_classes.delete(id);
     });
   }
 }
