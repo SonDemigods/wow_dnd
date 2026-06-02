@@ -7,7 +7,7 @@
         <button v-if="showClose" class="popup-close-btn" @click="$emit('close')">×</button>
       </div>
 
-      <div class="popup-body">
+      <div class="popup-body" :class="bodyClass">
         <slot />
       </div>
 
@@ -28,11 +28,13 @@ const props = withDefaults(defineProps<{
   maxWidth?: string;
   showClose?: boolean;
   showFooterClose?: boolean;
+  bodyClass?: string;
 }>(), {
   title: '',
   maxWidth: '600px',
   showClose: true,
-  showFooterClose: true
+  showFooterClose: true,
+  bodyClass: ''
 });
 
 defineEmits<{

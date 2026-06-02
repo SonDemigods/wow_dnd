@@ -1,75 +1,87 @@
 <template>
-  <BasePopup :visible="visible" title="背包" @close="$emit('close')">
+  <BasePopup :visible="visible" title="背包" body-class="inventory-body" @close="$emit('close')">
     <template #header-extra>
-      <div class="inventory-count">{{ inventoryItems.length }} / {{ maxSlots }}</div>
+      <div class="header-info">
+        <div class="gold-display">💰 {{ gold }}</div>
+        <div class="inventory-count">{{ inventoryItems.length }} / {{ maxSlots }}</div>
+      </div>
     </template>
 
     <template #default>
-      <div class="category-tabs">
-        <button 
-          v-for="cat in categories" 
-          :key="cat.id"
-          :class="['tab-btn', { active: selectedCategory === cat.id }]"
-          @click="selectedCategory = cat.id"
-        >
-          {{ cat.name }}
-        </button>
-      </div>
+      <div class="inventory-content">
+        <div class="category-tabs">
+          <button 
+            v-for="cat in categories" 
+            :key="cat.id"
+            :class="['tab-btn', { active: selectedCategory === cat.id }]"
+            @click="selectedCategory = cat.id"
+          >
+            {{ cat.name }}
+          </button>
+        </div>
 
-      <div class="inventory-grid">
-        <div 
-          v-for="(item, index) in filteredItems" 
-          :key="item.id || index"
-          :class="['item-slot', item.quality]"
-          @click="selectItem(item)"
-        >
-          <span class="item-icon">{{ getItemIcon(item.icon) }}</span>
-          <span v-if="item.count > 1" class="item-count">{{ item.count }}</span>
+        <div class="inventory-grid">
+          <div 
+            v-for="(entry, index) in displayItems" 
+            :key="entry.item.itemId || index"
+            :class="['item-slot', entry.info?.rarity, { equipped: isEquipped(entry.item.itemId), selected: selectedEntry?.item.itemId === entry.item.itemId }]"
+            @click="selectItem(entry)"
+          >
+            <span class="item-icon">{{ entry.info?.icon || '📦' }}</span>
+            <span v-if="entry.item.count > 1" class="item-count">{{ entry.item.count }}</span>
+          </div>
+          <div 
+            v-for="i in emptySlots" 
+            :key="'empty-' + i"
+            class="item-slot empty"
+          >
+          </div>
         </div>
-        <div 
-          v-for="i in emptySlots" 
-          :key="'empty-' + i"
-          class="item-slot empty"
-        >
-        </div>
-      </div>
-    </template>
 
-    <template #footer>
-      <div v-if="selectedItem" class="item-detail">
-        <div class="detail-header">
-          <h3 :class="selectedItem.quality">{{ selectedItem.name }}</h3>
-          <span class="quality-badge">{{ getQualityName(selectedItem.quality) }}</span>
-        </div>
-        <p>{{ selectedItem.description }}</p>
-        <div class="detail-info">
-          <span>类型: {{ getCategoryName(selectedItem.category) }}</span>
-          <span>数量: {{ selectedItem.count }}</span>
-        </div>
-        <div v-if="selectedItem.effect" class="effect-info">
-          <span>效果: {{ getEffectText(selectedItem.effect) }}</span>
-        </div>
-        <div class="detail-actions">
-          <button 
-            v-if="selectedItem.category === 'consumable'"
-            class="action-btn use"
-            @click="useItem(selectedItem.itemId)"
-          >
-            💊 使用
-          </button>
-          <button 
-            v-if="selectedItem.category === 'weapon' || selectedItem.category === 'armor' || selectedItem.category === 'accessory'"
-            class="action-btn equip"
-            @click="equipItem(selectedItem.itemId)"
-          >
-            🛡️ {{ selectedItem.equipped ? '卸下' : '装备' }}
-          </button>
-          <button 
-            class="action-btn drop"
-            @click="dropItem(selectedItem.itemId)"
-          >
-            🗑️ 丢弃
-          </button>
+        <div class="item-detail">
+          <template v-if="selectedEntry">
+            <div class="detail-header">
+              <h3 :class="selectedEntry.info?.rarity">{{ selectedEntry.info?.name }}</h3>
+              <span class="quality-badge">{{ getRarityName(selectedEntry.info?.rarity || 'common') }}</span>
+            </div>
+            <p class="detail-desc">{{ selectedEntry.info?.description }}</p>
+            <div class="detail-info">
+              <span>类型: {{ getTypeName(selectedEntry.info?.type || 'misc') }}</span>
+              <span>数量: {{ selectedEntry.item.count }}</span>
+            </div>
+            <div v-if="selectedEntry.info?.hpRestore" class="effect-info">
+              <span>效果: 恢复{{ selectedEntry.info.hpRestore }}点生命值</span>
+            </div>
+            <div v-if="selectedEntry.info?.mpRestore" class="effect-info">
+              <span>效果: 恢复{{ selectedEntry.info.mpRestore }}点法力值</span>
+            </div>
+            <div class="detail-actions">
+              <button 
+                v-if="selectedEntry.info?.consumable"
+                class="action-btn use"
+                @click="useItem(selectedEntry.item.itemId)"
+              >
+                💊 使用
+              </button>
+              <button 
+                v-if="isEquipment(selectedEntry.info?.type)"
+                class="action-btn equip"
+                @click="equipItem(selectedEntry.item.itemId)"
+              >
+                🛡️ {{ isEquipped(selectedEntry.item.itemId) ? '卸下' : '装备' }}
+              </button>
+              <button 
+                class="action-btn drop"
+                @click="dropItem(selectedEntry.item.itemId)"
+              >
+                🗑️ 丢弃
+              </button>
+            </div>
+          </template>
+          <div v-else class="detail-placeholder">
+            <span class="placeholder-icon">📦</span>
+            <span class="placeholder-text">点击物品查看详情</span>
+          </div>
         </div>
       </div>
     </template>
@@ -80,8 +92,13 @@
 import { ref, computed, onMounted } from 'vue';
 import BasePopup from '../common/BasePopup.vue';
 import { inventoryService } from '@/modules/inventory';
-import { characterService } from '@/modules/character';
-import type { InventoryItem, ItemCategory, ItemQuality } from '@/modules/inventory';
+import { characterService, useCharacterStore } from '@/modules/character';
+import type { InventoryItem, Item, ItemType, ItemRarity } from '@/modules/inventory';
+
+interface ItemEntry {
+  item: InventoryItem;
+  info: Item | null;
+}
 
 defineProps<{
   visible: boolean;
@@ -91,30 +108,27 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const selectedCategory = ref<ItemCategory | 'all'>('all');
-const selectedItem = ref<InventoryItem | null>(null);
+const characterStore = useCharacterStore();
+const gold = computed(() => characterStore.gold);
+
+const selectedCategory = ref<'all' | ItemType>('all');
+const selectedEntry = ref<ItemEntry | null>(null);
 
 const inventoryItems = ref<InventoryItem[]>([]);
 const maxSlots = 50;
 
 const categories = [
   { id: 'all' as const, name: '全部' },
-  { id: 'consumable' as const, name: '消耗品' },
+  { id: 'potion' as const, name: '药水' },
+  { id: 'scroll' as const, name: '卷轴' },
+  { id: 'food' as const, name: '食物' },
+  { id: 'material' as const, name: '材料' },
   { id: 'weapon' as const, name: '武器' },
   { id: 'armor' as const, name: '护甲' },
-  { id: 'accessory' as const, name: '饰品' },
-  { id: 'material' as const, name: '材料' },
-  { id: 'misc' as const, name: '其他' }
+  { id: 'misc' as const, name: '杂项' }
 ];
 
-const iconMap: Record<string, string> = {
-  potion: '🧪', sword: '⚔️', axe: '🪓', staff: '🔮',
-  armor: '🛡️', ring: '💍', necklace: '📿',
-  herb: '🌿', ore: '🪨', enchant: '✨',
-  scroll: '📜'
-};
-
-const qualityNames: Record<ItemQuality, string> = {
+const rarityNames: Record<ItemRarity, string> = {
   common: '普通',
   uncommon: '优秀',
   rare: '稀有',
@@ -122,105 +136,103 @@ const qualityNames: Record<ItemQuality, string> = {
   legendary: '传说'
 };
 
-const categoryNames: Record<string, string> = {
-  consumable: '消耗品',
+const typeNames: Record<ItemType, string> = {
+  gold: '货币',
+  potion: '药水',
+  scroll: '卷轴',
+  food: '食物',
+  material: '材料',
+  quest: '任务物品',
   weapon: '武器',
   armor: '护甲',
-  accessory: '饰品',
-  material: '材料',
-  misc: '其他'
+  misc: '杂项'
 };
 
-function getItemIcon(icon: string) {
-  return iconMap[icon] || '📦';
+function getRarityName(rarity: ItemRarity) {
+  return rarityNames[rarity] || rarity;
 }
 
-function getQualityName(quality: ItemQuality) {
-  return qualityNames[quality];
+function getTypeName(type: ItemType) {
+  return typeNames[type] || type;
 }
 
-function getCategoryName(category: string) {
-  return categoryNames[category] || category;
+function isEquipment(type?: ItemType) {
+  return type === 'weapon' || type === 'armor';
 }
 
-function getEffectText(effect: any) {
-  if (!effect) return '';
-  if (effect.type === 'heal') return `恢复${effect.value}点生命值`;
-  if (effect.type === 'stat') return `${effect.statType === 'physicalAttack' ? '物理攻击' : 
-    effect.statType === 'magicAttack' ? '魔法攻击' : 
-    effect.statType === 'physicalDefense' ? '物理防御' :
-    effect.statType === 'magicDefense' ? '魔法防御' :
-    effect.statType === 'maxHp' ? '最大生命值' :
-    effect.statType === 'allAttributes' ? '全属性' : effect.statType} +${effect.value}`;
-  return JSON.stringify(effect);
+function isEquipped(itemId: string) {
+  const equipment = inventoryService.getEquipment();
+  return equipment.some(e => e.itemId === itemId);
 }
+
+const displayItems = computed<ItemEntry[]>(() => {
+  return filteredItems.value.map(item => ({
+    item,
+    info: inventoryService.getItemInfo(item.itemId)
+  }));
+});
 
 const filteredItems = computed(() => {
   if (selectedCategory.value === 'all') return inventoryItems.value;
-  return inventoryItems.value.filter(item => item.category === selectedCategory.value);
+  return inventoryItems.value.filter(item => {
+    const info = inventoryService.getItemInfo(item.itemId);
+    return info?.type === selectedCategory.value;
+  });
 });
 
 const emptySlots = computed(() => {
-  const visibleCount = filteredItems.value.length;
-  const gridSize = Math.ceil(visibleCount / 10) * 10;
-  return Math.max(0, gridSize - visibleCount);
+  return Math.max(0, maxSlots - filteredItems.value.length);
 });
 
-function selectItem(item: InventoryItem) {
-  selectedItem.value = item;
+function selectItem(entry: ItemEntry) {
+  selectedEntry.value = entry;
 }
 
 function useItem(itemId: string) {
-  const item = inventoryItems.value.find(i => i.itemId === itemId);
-  if (!item || item.category !== 'consumable') return;
+  const index = inventoryItems.value.findIndex(i => i.itemId === itemId);
+  if (index === -1) return;
 
-  if (item.effect?.type === 'heal') {
-    characterService.addHp(item.effect.value);
-    alert(`使用 ${item.name}，恢复了 ${item.effect.value} HP！`);
-    inventoryService.removeItemByItemId(itemId, 1);
-    loadInventory();
-  } else if (item.effect?.type === 'stat' && item.effect.statType === 'maxMana') {
-    characterService.addMp(item.effect.value);
-    alert(`使用 ${item.name}，恢复了 ${item.effect.value} MP！`);
-    inventoryService.removeItemByItemId(itemId, 1);
-    loadInventory();
+  const info = inventoryService.getItemInfo(itemId);
+  if (!info?.consumable) return;
+
+  if (info.hpRestore) {
+    characterService.addHp(info.hpRestore);
+    alert(`使用 ${info.name}，恢复了 ${info.hpRestore} HP！`);
+  } else if (info.mpRestore) {
+    characterService.addMp(info.mpRestore);
+    alert(`使用 ${info.name}，恢复了 ${info.mpRestore} MP！`);
   }
+  
+  inventoryService.removeItem(index, 1);
+  loadInventory();
+  selectedEntry.value = null;
 }
 
 function equipItem(itemId: string) {
-  const item = inventoryItems.value.find(i => i.itemId === itemId);
-  if (!item) return;
+  const index = inventoryItems.value.findIndex(i => i.itemId === itemId);
+  if (index === -1) return;
 
-  if (item.equipped) {
-    const equipment = inventoryService.getEquipment();
-    const slot = equipment.find(e => e.itemId === itemId)?.slot;
-    if (slot) {
-      inventoryService.unequipItem(slot);
-      alert(`已卸下${item.name}`);
-    }
+  const result = inventoryService.equipItem(index);
+  if (result.success) {
+    const info = inventoryService.getItemInfo(itemId);
+    alert(`已装备${info?.name || itemId}`);
   } else {
-    const index = inventoryItems.value.findIndex(i => i.itemId === itemId);
-    if (index !== -1) {
-      const result = inventoryService.equipItem(index);
-      if (result.success) {
-        alert(`已装备${item.name}`);
-      } else {
-        alert(result.message);
-      }
-    }
+    alert(result.message);
   }
   loadInventory();
 }
 
 function dropItem(itemId: string) {
-  if (!confirm('确定丢弃此物品吗？')) return;
+  const info = inventoryService.getItemInfo(itemId);
+  if (!confirm(`确定丢弃 ${info?.name || '此物品'} 吗？`)) return;
   
-  const item = inventoryItems.value.find(i => i.itemId === itemId);
-  if (!item) return;
+  const index = inventoryItems.value.findIndex(i => i.itemId === itemId);
+  if (index === -1) return;
   
-  inventoryService.removeItemByItemId(itemId, 1);
-  alert(`已丢弃${item.name}`);
+  inventoryService.removeItem(index, 1);
+  alert(`已丢弃${info?.name || '物品'}`);
   loadInventory();
+  selectedEntry.value = null;
 }
 
 async function loadInventory() {
@@ -234,6 +246,29 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.inventory-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 14px;
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gold-display {
+  padding: 4px 10px;
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 4px;
+  color: #ffd700;
+  font-size: 13px;
+  font-weight: bold;
+}
+
 .inventory-count {
   padding: 4px 10px;
   background: rgba(255, 255, 255, 0.1);
@@ -242,11 +277,18 @@ onMounted(() => {
   font-size: 12px;
 }
 
+.inventory-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 14px;
+}
+
 .category-tabs {
   display: flex;
   gap: 6px;
-  margin-bottom: 14px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .tab-btn {
@@ -272,12 +314,36 @@ onMounted(() => {
 
 .inventory-grid {
   display: grid;
-  grid-template-columns: repeat(10, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
   gap: 6px;
   background: rgba(0, 0, 0, 0.5);
-  padding: 14px;
+  padding: 10px;
   border-radius: 6px;
   border: 2px solid #4a4a4a;
+  flex: 1;
+  min-height: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-content: start;
+}
+
+.inventory-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.inventory-grid::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+}
+
+.inventory-grid::-webkit-scrollbar-thumb {
+  background: #4a4a4a;
+  border-radius: 3px;
+}
+
+.inventory-grid::-webkit-scrollbar-thumb:hover {
+  background: #666;
 }
 
 .item-slot {
@@ -295,6 +361,7 @@ onMounted(() => {
 
 .item-slot:hover {
   background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
 }
 
 .item-slot.empty {
@@ -316,20 +383,24 @@ onMounted(() => {
   background: rgba(76, 175, 80, 0.2);
 }
 
+.item-slot.selected {
+  box-shadow: 0 0 0 2px #0099ff, 0 0 10px rgba(0, 153, 255, 0.5);
+}
+
 @keyframes legendary-glow {
   0%, 100% { box-shadow: 0 0 5px #ff8000; }
   50% { box-shadow: 0 0 20px #ff8000; }
 }
 
 .item-icon {
-  font-size: 24px;
+  font-size: 22px;
 }
 
 .item-count {
   position: absolute;
   bottom: 2px;
   right: 3px;
-  font-size: 11px;
+  font-size: 10px;
   color: #fff;
   font-weight: bold;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
@@ -340,7 +411,7 @@ onMounted(() => {
   border-radius: 6px;
   padding: 14px;
   border: 1px solid #4a4a4a;
-  margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .detail-header {
@@ -371,10 +442,28 @@ onMounted(() => {
   font-size: 12px;
 }
 
-.item-detail p {
+.detail-desc {
   color: #aaa;
   font-size: 13px;
   margin: 8px 0;
+}
+
+.detail-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+}
+
+.placeholder-icon {
+  font-size: 28px;
+  opacity: 0.5;
+}
+
+.placeholder-text {
+  color: #666;
+  font-size: 14px;
 }
 
 .detail-info {
@@ -429,5 +518,15 @@ onMounted(() => {
 
 .action-btn:hover {
   transform: translateY(-2px);
+}
+</style>
+
+<style>
+.popup-body.inventory-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 </style>
