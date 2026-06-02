@@ -1,5 +1,5 @@
 <template>
-  <BasePopup :visible="visible" title="背包" body-class="inventory-body" @close="$emit('close')">
+  <BasePopup :visible="visible" title="背包" @close="$emit('close')">
     <template #header-extra>
       <div class="header-info">
         <div class="gold-display">💰 {{ gold }}</div>
@@ -518,15 +518,5 @@ onMounted(() => {
 
 .action-btn:hover {
   transform: translateY(-2px);
-}
-</style>
-
-<style>
-.popup-body.inventory-body {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }
 </style>
