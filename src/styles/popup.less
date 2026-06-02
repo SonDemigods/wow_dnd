@@ -27,20 +27,23 @@
 
 .popup-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
+  min-height: 48px;
   border-bottom: 1px solid @popup-border-color;
   flex-shrink: 0;
-
-  h2 {
-    font-size: 16px;
-    color: @accent-color;
-    margin: 0;
-  }
+  gap: 10px;
 }
 
-.close-btn {
+.popup-title {
+  font-size: 16px;
+  color: @accent-color;
+  margin: 0;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.popup-close-btn {
   width: 28px;
   height: 28px;
   background: rgba(255, 255, 255, 0.1);
@@ -53,6 +56,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-left: auto;
+  flex-shrink: 0;
 
   &:hover {
     background: rgba(255, 255, 255, 0.2);
@@ -69,18 +74,32 @@
   padding: 12px 16px;
   border-top: 1px solid @popup-border-color;
   flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 10px;
+  min-height: 52px;
+  box-sizing: border-box;
+
+  & > * {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
-.close-button {
-  width: 100%;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.1);
+.popup-footer-btn {
+  padding: 10px 16px;
   border: 2px solid @popup-border-color;
   border-radius: 8px;
   color: @text-primary;
   font-size: 14px;
+  font-weight: bold;
   cursor: pointer;
   transition: all 0.3s;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   &:hover {
     border-color: #666;
@@ -88,58 +107,35 @@
   }
 }
 
-.confirm-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid @popup-border-color;
+.popup-footer-btn.cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: @text-primary;
+  border: 2px solid @popup-border-color;
 
-  h3 {
-    margin: 0;
-    color: @accent-color;
-    font-size: 16px;
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #666;
   }
 }
 
-.confirm-body {
-  padding: 16px;
+.popup-footer-btn.confirm {
+  background: @danger-color;
+  border-color: @danger-color;
+  color: @text-primary;
 
-  p {
-    margin: 0;
-    color: @text-secondary;
-    font-size: 14px;
+  &:hover {
+    background: darken(@danger-color, 10%);
+    border-color: darken(@danger-color, 10%);
   }
 }
 
-.confirm-footer {
-  display: flex;
-  gap: 12px;
-  padding: 12px 16px;
-  border-top: 1px solid @popup-border-color;
-}
+.popup-footer-btn.warn {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  border-color: #f57c00;
+  color: @text-primary;
 
-.confirm-btn {
-  flex: 1;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.3s;
-
-  &.cancel {
-    background: rgba(255, 255, 255, 0.1);
-    color: @text-primary;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-  }
-
-  &.confirm {
-    background: @danger-color;
-    color: @text-primary;
-
-    &:hover {
-      background: darken(@danger-color, 10%);
-    }
+  &:hover {
+    background: linear-gradient(135deg, #f57c00, #e65100);
+    border-color: #e65100;
   }
 }

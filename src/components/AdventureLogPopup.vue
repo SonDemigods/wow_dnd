@@ -1,47 +1,38 @@
-﻿<template>
-  <div v-if="visible" class="popup-overlay" @click.self="$emit('close')">
-    <div class="popup-content">
-      <div class="popup-header">
-        <h2>冒险日志</h2>
-        <button class="close-btn" @click="$emit('close')">×</button>
+<template>
+  <BasePopup :visible="visible" title="冒险日志" @close="$emit('close')">
+    <template #default>
+      <div class="log-header" v-if="currentArea">
+        {{ currentArea }} - 冒险记录
       </div>
 
-      <div class="popup-body">
-        <div class="log-header" v-if="currentArea">
-          {{ currentArea }} - 冒险记录
+      <div class="log-container" ref="logContainer">
+        <div
+          v-for="(log, index) in logs"
+          :key="log.id"
+          class="log-entry"
+          :class="`log-type-${log.type}`"
+        >
+          <span class="log-number">[{{ index + 1 }}]</span>
+          <span class="log-icon">{{ log.icon || getDefaultIcon(log.type) }}</span>
+          <span class="log-message">{{ log.message }}</span>
         </div>
 
-        <div class="log-container" ref="logContainer">
-          <div 
-            v-for="(log, index) in logs" 
-            :key="log.id" 
-            class="log-entry"
-            :class="`log-type-${log.type}`"
-          >
-            <span class="log-number">[{{ index + 1 }}]</span>
-            <span class="log-icon">{{ log.icon || getDefaultIcon(log.type) }}</span>
-            <span class="log-message">{{ log.message }}</span>
-          </div>
-
-          <div v-if="logs.length === 0" class="empty-logs">
-            暂无冒险记录
-          </div>
+        <div v-if="logs.length === 0" class="empty-logs">
+          暂无冒险记录
         </div>
       </div>
+    </template>
 
-      <div class="popup-footer">
-        <div class="footer-actions">
-          <button class="action-btn clear" @click="clearLogs">清空日志</button>
-        </div>
-        <button class="close-button" @click="$emit('close')">关闭</button>
-      </div>
-    </div>
-  </div>
+    <template #footer>
+      <button class="popup-footer-btn warn" @click="clearLogs">清空日志</button>
+    </template>
+  </BasePopup>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { useLogStore } from '../modules/log';
+import BasePopup from './BasePopup.vue';
 
 interface Props {
   visible: boolean;
@@ -176,28 +167,7 @@ onMounted(() => {
   font-size: 13px;
 }
 
-.footer-actions {
-  margin-bottom: 14px;
-}
 
-.action-btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.action-btn.clear {
-  background: linear-gradient(135deg, #ff9800, #f57c00);
-  color: #fff;
-}
-
-.action-btn:hover {
-  transform: translateY(-2px);
-}
 
 @media (max-width: 640px) {
   .log-entry {

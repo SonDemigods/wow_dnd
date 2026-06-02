@@ -1,12 +1,6 @@
 <template>
-  <div v-if="visible" class="popup-overlay" @click.self="$emit('close')">
-    <div class="popup-content">
-      <div class="popup-header">
-        <h2>任务看板</h2>
-        <button class="close-btn" @click="$emit('close')">×</button>
-      </div>
-
-      <div class="popup-body">
+  <BasePopup :visible="visible" title="任务看板" @close="$emit('close')">
+    <template #default>
         <div class="quest-tabs">
           <button 
             :class="['tab-btn', { active: currentTab === 'available' }]"
@@ -133,13 +127,8 @@
           <div class="empty-icon">🏆</div>
           <p>暂无已完成的任务</p>
         </div>
-      </div>
-
-      <div class="popup-footer">
-        <button class="close-button" @click="$emit('close')">关闭</button>
-      </div>
-    </div>
-  </div>
+    </template>
+  </BasePopup>
 </template>
 
 <script setup lang="ts">
@@ -147,6 +136,7 @@ import { ref, computed, onMounted } from 'vue';
 import { questService } from '@/modules/quest';
 import { characterService } from '@/modules/character';
 import type { Quest, QuestStatus } from '@/modules/quest';
+import BasePopup from './BasePopup.vue';
 
 defineProps<{
   visible: boolean;

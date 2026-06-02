@@ -1,88 +1,84 @@
 <template>
-  <div v-if="visible" class="popup-overlay" @click.self="$emit('close')">
-    <div class="popup-content">
-      <div class="popup-header">
-        <h2>背包</h2>
-        <div class="inventory-count">{{ inventoryItems.length }} / {{ maxSlots }}</div>
-        <button class="close-btn" @click="$emit('close')">×</button>
+  <BasePopup :visible="visible" title="背包" @close="$emit('close')">
+    <template #header-extra>
+      <div class="inventory-count">{{ inventoryItems.length }} / {{ maxSlots }}</div>
+    </template>
+
+    <template #default>
+      <div class="category-tabs">
+        <button 
+          v-for="cat in categories" 
+          :key="cat.id"
+          :class="['tab-btn', { active: selectedCategory === cat.id }]"
+          @click="selectedCategory = cat.id"
+        >
+          {{ cat.name }}
+        </button>
       </div>
 
-      <div class="popup-body">
-        <div class="category-tabs">
+      <div class="inventory-grid">
+        <div 
+          v-for="(item, index) in filteredItems" 
+          :key="item.id || index"
+          :class="['item-slot', item.quality]"
+          @click="selectItem(item)"
+        >
+          <span class="item-icon">{{ getItemIcon(item.icon) }}</span>
+          <span v-if="item.count > 1" class="item-count">{{ item.count }}</span>
+        </div>
+        <div 
+          v-for="i in emptySlots" 
+          :key="'empty-' + i"
+          class="item-slot empty"
+        >
+        </div>
+      </div>
+    </template>
+
+    <template #footer>
+      <div v-if="selectedItem" class="item-detail">
+        <div class="detail-header">
+          <h3 :class="selectedItem.quality">{{ selectedItem.name }}</h3>
+          <span class="quality-badge">{{ getQualityName(selectedItem.quality) }}</span>
+        </div>
+        <p>{{ selectedItem.description }}</p>
+        <div class="detail-info">
+          <span>类型: {{ getCategoryName(selectedItem.category) }}</span>
+          <span>数量: {{ selectedItem.count }}</span>
+        </div>
+        <div v-if="selectedItem.effect" class="effect-info">
+          <span>效果: {{ getEffectText(selectedItem.effect) }}</span>
+        </div>
+        <div class="detail-actions">
           <button 
-            v-for="cat in categories" 
-            :key="cat.id"
-            :class="['tab-btn', { active: selectedCategory === cat.id }]"
-            @click="selectedCategory = cat.id"
+            v-if="selectedItem.category === 'consumable'"
+            class="action-btn use"
+            @click="useItem(selectedItem.itemId)"
           >
-            {{ cat.name }}
+            💊 使用
+          </button>
+          <button 
+            v-if="selectedItem.category === 'weapon' || selectedItem.category === 'armor' || selectedItem.category === 'accessory'"
+            class="action-btn equip"
+            @click="equipItem(selectedItem.itemId)"
+          >
+            🛡️ {{ selectedItem.equipped ? '卸下' : '装备' }}
+          </button>
+          <button 
+            class="action-btn drop"
+            @click="dropItem(selectedItem.itemId)"
+          >
+            🗑️ 丢弃
           </button>
         </div>
-
-        <div class="inventory-grid">
-          <div 
-            v-for="(item, index) in filteredItems" 
-            :key="item.id || index"
-            :class="['item-slot', item.quality]"
-            @click="selectItem(item)"
-          >
-            <span class="item-icon">{{ getItemIcon(item.icon) }}</span>
-            <span v-if="item.count > 1" class="item-count">{{ item.count }}</span>
-          </div>
-          <div 
-            v-for="i in emptySlots" 
-            :key="'empty-' + i"
-            class="item-slot empty"
-          >
-          </div>
-        </div>
       </div>
-
-      <div class="popup-footer">
-        <div v-if="selectedItem" class="item-detail">
-          <div class="detail-header">
-            <h3 :class="selectedItem.quality">{{ selectedItem.name }}</h3>
-            <span class="quality-badge">{{ getQualityName(selectedItem.quality) }}</span>
-          </div>
-          <p>{{ selectedItem.description }}</p>
-          <div class="detail-info">
-            <span>类型: {{ getCategoryName(selectedItem.category) }}</span>
-            <span>数量: {{ selectedItem.count }}</span>
-          </div>
-          <div v-if="selectedItem.effect" class="effect-info">
-            <span>效果: {{ getEffectText(selectedItem.effect) }}</span>
-          </div>
-          <div class="detail-actions">
-            <button 
-              v-if="selectedItem.category === 'consumable'"
-              class="action-btn use"
-              @click="useItem(selectedItem.itemId)"
-            >
-              💊 使用
-            </button>
-            <button 
-              v-if="selectedItem.category === 'weapon' || selectedItem.category === 'armor' || selectedItem.category === 'accessory'"
-              class="action-btn equip"
-              @click="equipItem(selectedItem.itemId)"
-            >
-              🛡️ {{ selectedItem.equipped ? '卸下' : '装备' }}
-            </button>
-            <button 
-              class="action-btn drop"
-              @click="dropItem(selectedItem.itemId)"
-            >
-              🗑️ 丢弃
-            </button>
-          </div>
-        </div>
-        <button class="close-button" @click="$emit('close')">关闭</button>
-      </div>
-    </div>
-  </div>
+    </template>
+  </BasePopup>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import BasePopup from './BasePopup.vue';
 import { inventoryService } from '@/modules/inventory';
 import { characterService } from '@/modules/character';
 import type { InventoryItem, ItemCategory, ItemQuality } from '@/modules/inventory';

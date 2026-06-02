@@ -1,12 +1,7 @@
 <template>
-  <div v-if="visible" class="popup-overlay" @click.self="$emit('close')">
-    <div class="popup-content">
-      <div class="popup-header">
-        <h2>角色信息</h2>
-        <button class="close-btn" @click="$emit('close')">×</button>
-      </div>
-
-      <div class="popup-body" v-if="character">
+  <BasePopup :visible="visible" title="角色信息" @close="$emit('close')">
+    <template #default>
+      <div v-if="character">
         <!-- 角色信息和资源条 -->
         <div class="character-overview">
           <!-- 上面：角色基本信息 -->
@@ -186,33 +181,31 @@
           </div>
         </div>
       </div>
+    </template>
 
-      <div class="popup-footer">
-        <!-- 选中装备信息 -->
-        <div v-if="selectedSlot && selectedSlot.equipment" class="selected-equipment">
-          <div class="equip-header">
-            <div class="equip-icon">{{ getEquipIcon(selectedSlot.equipment.type) }}</div>
-            <div>
-              <div class="equip-name">{{ selectedSlot.equipment.name }}</div>
-              <div class="equip-quality" :class="selectedSlot.equipment.quality">
-                {{ getQualityName(selectedSlot.equipment.quality) }}
-              </div>
+    <template #footer>
+      <div v-if="selectedSlot && selectedSlot.equipment" class="selected-equipment">
+        <div class="equip-header">
+          <div class="equip-icon">{{ getEquipIcon(selectedSlot.equipment.type) }}</div>
+          <div>
+            <div class="equip-name">{{ selectedSlot.equipment.name }}</div>
+            <div class="equip-quality" :class="selectedSlot.equipment.quality">
+              {{ getQualityName(selectedSlot.equipment.quality) }}
             </div>
-          </div>
-          <div class="equip-desc">{{ selectedSlot.equipment.description }}</div>
-          <div class="equip-stats">
-            <div v-for="(value, stat) in selectedSlot.equipment.attributes" :key="stat">
-              {{ getStatName(stat) }} +{{ value }}
-            </div>
-          </div>
-          <div class="equip-actions">
-            <button class="action-btn unequip" @click="unequipItem(selectedSlot.key)">卸下</button>
           </div>
         </div>
-        <button class="close-button" @click="$emit('close')">关闭</button>
+        <div class="equip-desc">{{ selectedSlot.equipment.description }}</div>
+        <div class="equip-stats">
+          <div v-for="(value, stat) in selectedSlot.equipment.attributes" :key="stat">
+            {{ getStatName(stat) }} +{{ value }}
+          </div>
+        </div>
+        <div class="equip-actions">
+          <button class="action-btn unequip" @click="unequipItem(selectedSlot.key)">卸下</button>
+        </div>
       </div>
-    </div>
-  </div>
+    </template>
+  </BasePopup>
 </template>
 
 <script setup lang="ts">
@@ -222,6 +215,7 @@ import { equipmentService } from '@/modules/equipment';
 import { gameDataService } from '@/modules/gameData';
 import type { FactionData, RaceData, ClassData, Stats, Attributes } from '@/modules/character/types';
 import Tag from './Tag.vue';
+import BasePopup from './BasePopup.vue';
 
 defineProps<{
   visible: boolean;

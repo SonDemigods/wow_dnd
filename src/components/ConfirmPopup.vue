@@ -1,21 +1,17 @@
 <template>
-  <div v-if="visible" class="popup-overlay" @click.self="$emit('cancel')">
-    <div class="popup-content confirm-popup">
-      <div class="confirm-header">
-        <h3>{{ title }}</h3>
-      </div>
-      <div class="confirm-body">
-        <p>{{ message }}</p>
-      </div>
-      <div class="confirm-footer">
-        <button class="confirm-btn cancel" @click="$emit('cancel')">取消</button>
-        <button class="confirm-btn confirm" @click="$emit('confirm')">确认</button>
-      </div>
-    </div>
-  </div>
+  <BasePopup :visible="visible" :title="title || '确认'" max-width="400px" :show-close="false" :show-footer-close="false" @close="$emit('cancel')">
+    <p class="confirm-message">{{ message }}</p>
+
+    <template #footer>
+      <button class="popup-footer-btn cancel" @click="$emit('cancel')">取消</button>
+      <button class="popup-footer-btn confirm" @click="$emit('confirm')">确认</button>
+    </template>
+  </BasePopup>
 </template>
 
 <script setup lang="ts">
+import BasePopup from './BasePopup.vue';
+
 defineProps<{
   visible: boolean;
   title?: string;
@@ -29,17 +25,10 @@ defineEmits<{
 </script>
 
 <style scoped>
-.confirm-popup {
-  max-width: 400px;
+.confirm-message {
+  margin: 0;
+  color: #aaa;
+  font-size: 14px;
   text-align: center;
-}
-
-.confirm-btn.confirm {
-  background: #ff4444;
-  color: #fff;
-}
-
-.confirm-btn.confirm:hover {
-  background: #cc0000;
 }
 </style>

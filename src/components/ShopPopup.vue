@@ -1,96 +1,91 @@
 <template>
-  <div v-if="visible" class="popup-overlay" @click.self="$emit('close')">
-    <div class="popup-content">
-      <div class="popup-header">
-        <h2>商店</h2>
-        <div class="gold-display">💰 {{ gold }}</div>
-        <button class="close-btn" @click="$emit('close')">×</button>
+  <BasePopup :visible="visible" title="商店" @close="$emit('close')">
+    <template #header-extra>
+      <div class="gold-display">💰 {{ gold }}</div>
+    </template>
+
+    <template #default>
+      <div class="shop-tabs">
+        <button 
+          :class="['tab-btn', { active: currentTab === 'buy' }]"
+          @click="currentTab = 'buy'"
+        >
+          购买
+        </button>
+        <button 
+          :class="['tab-btn', { active: currentTab === 'sell' }]"
+          @click="currentTab = 'sell'"
+        >
+          出售
+        </button>
       </div>
 
-      <div class="popup-body">
-        <div class="shop-tabs">
+      <div class="category-filter">
+        <button 
+          v-for="cat in categories" 
+          :key="cat.id"
+          :class="['cat-btn', { active: selectedCategory === cat.id }]"
+          @click="selectedCategory = cat.id"
+        >
+          {{ cat.name }}
+        </button>
+      </div>
+
+      <div class="shop-items">
+        <div 
+          v-if="currentTab === 'buy'"
+          v-for="item in filteredShopItems" 
+          :key="item.id"
+          :class="['item-card', item.quality]"
+          @click="selectItem(item)"
+        >
+          <div class="item-icon">{{ getItemIcon(item.icon) }}</div>
+          <div class="item-info">
+            <div class="item-name">{{ item.name }}</div>
+            <div class="item-desc">{{ item.description }}</div>
+            <div class="item-price">💰 {{ item.price }}</div>
+          </div>
           <button 
-            :class="['tab-btn', { active: currentTab === 'buy' }]"
-            @click="currentTab = 'buy'"
+            class="buy-btn"
+            :disabled="!canAfford(item) || item.quantity <= 0"
+            @click.stop="buyItem(item.itemId)"
           >
             购买
           </button>
-          <button 
-            :class="['tab-btn', { active: currentTab === 'sell' }]"
-            @click="currentTab = 'sell'"
-          >
+        </div>
+
+        <div v-else v-for="item in filteredInventoryItems" :key="item.id" class="item-card" @click="selectItem(item)">
+          <div class="item-icon">{{ getItemIcon(item.icon) }}</div>
+          <div class="item-info">
+            <div class="item-name">{{ item.name }}</div>
+            <div class="item-desc">{{ item.description }}</div>
+            <div class="item-count">数量: {{ item.count }}</div>
+            <div class="item-price">💰 {{ getSellPrice(item.itemId) }}</div>
+          </div>
+          <button class="sell-btn" :disabled="item.count <= 0" @click.stop="sellItem(item.itemId)">
             出售
           </button>
         </div>
+      </div>
+    </template>
 
-        <div class="category-filter">
-          <button 
-            v-for="cat in categories" 
-            :key="cat.id"
-            :class="['cat-btn', { active: selectedCategory === cat.id }]"
-            @click="selectedCategory = cat.id"
-          >
-            {{ cat.name }}
-          </button>
+    <template #footer>
+      <div v-if="selectedItem" class="item-detail">
+        <div class="detail-header">
+          <h3>{{ selectedItem.name }}</h3>
+          <span class="quality-badge">{{ getQualityName(selectedItem.quality) }}</span>
         </div>
-
-        <div class="shop-items">
-          <div 
-            v-if="currentTab === 'buy'"
-            v-for="item in filteredShopItems" 
-            :key="item.id"
-            :class="['item-card', item.quality]"
-            @click="selectItem(item)"
-          >
-            <div class="item-icon">{{ getItemIcon(item.icon) }}</div>
-            <div class="item-info">
-              <div class="item-name">{{ item.name }}</div>
-              <div class="item-desc">{{ item.description }}</div>
-              <div class="item-price">💰 {{ item.price }}</div>
-            </div>
-            <button 
-              class="buy-btn"
-              :disabled="!canAfford(item) || item.quantity <= 0"
-              @click.stop="buyItem(item.itemId)"
-            >
-              购买
-            </button>
-          </div>
-
-          <div v-else v-for="item in filteredInventoryItems" :key="item.id" class="item-card" @click="selectItem(item)">
-            <div class="item-icon">{{ getItemIcon(item.icon) }}</div>
-            <div class="item-info">
-              <div class="item-name">{{ item.name }}</div>
-              <div class="item-desc">{{ item.description }}</div>
-              <div class="item-count">数量: {{ item.count }}</div>
-              <div class="item-price">💰 {{ getSellPrice(item.itemId) }}</div>
-            </div>
-            <button class="sell-btn" :disabled="item.count <= 0" @click.stop="sellItem(item.itemId)">
-              出售
-            </button>
-          </div>
+        <p>{{ selectedItem.description }}</p>
+        <div class="detail-info">
+          <span>类型: {{ getCategoryName(selectedItem.category) }}</span>
+          <span>稀有度: {{ getQualityName(selectedItem.quality) }}</span>
+        </div>
+        <div v-if="selectedItem.effect" class="effect-info">
+          <span>效果: {{ getEffectText(selectedItem.effect) }}</span>
         </div>
       </div>
-
-      <div class="popup-footer">
-        <div v-if="selectedItem" class="item-detail">
-          <div class="detail-header">
-            <h3>{{ selectedItem.name }}</h3>
-            <span class="quality-badge">{{ getQualityName(selectedItem.quality) }}</span>
-          </div>
-          <p>{{ selectedItem.description }}</p>
-          <div class="detail-info">
-            <span>类型: {{ getCategoryName(selectedItem.category) }}</span>
-            <span>稀有度: {{ getQualityName(selectedItem.quality) }}</span>
-          </div>
-          <div v-if="selectedItem.effect" class="effect-info">
-            <span>效果: {{ getEffectText(selectedItem.effect) }}</span>
-          </div>
-        </div>
-        <button class="close-button" @click="$emit('close')">关闭</button>
-      </div>
-    </div>
-  </div>
+    </template>
+  </BasePopup>
 </template>
 
 <script setup lang="ts">
@@ -99,6 +94,7 @@ import { shopService } from '@/modules/shop';
 import { characterService } from '@/modules/character';
 import { inventoryService } from '@/modules/inventory';
 import type { ShopItem, ItemCategory, ItemQuality } from '@/modules/shop';
+import BasePopup from './BasePopup.vue';
 
 defineProps<{
   visible: boolean;
