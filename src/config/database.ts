@@ -25,7 +25,7 @@ export interface BackupConfig {
 
 export const DATABASE_CONFIG: DatabaseConfig = {
   name: 'wow_dnd_game',
-  version: 3
+  version: 1
 };
 
 export const DB_SERVICE_CONFIG: DBServiceConfig = {
@@ -44,6 +44,6 @@ export const SYNC_ENGINE_CONFIG: SyncEngineConfig = {
 export const BACKUP_CONFIG: BackupConfig = {
   autoBackupKey: 'wow_dnd_auto_backups',
   maxAutoBackups: 5,
-  backupVersion: 'v1.1',
-  supportedVersions: ['v1.0', 'v1.1']
+  backupVersion: 'v1.0',
+  supportedVersions: ['v1.0']
 };
