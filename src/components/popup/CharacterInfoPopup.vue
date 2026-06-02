@@ -22,42 +22,9 @@
 
           <!-- 下面：资源条 -->
           <div class="resource-bars">
-            <div class="resource-item">
-              <span class="resource-icon">❤️</span>
-              <div class="resource-content">
-                <div class="resource-header">
-                  <span class="resource-name">HP</span>
-                  <span class="resource-value">{{ currentHp }}/{{ maxHp }}</span>
-                </div>
-                <div class="resource-bar">
-                  <div class="resource-fill hp-fill" :style="{ width: hpPercent + '%' }"></div>
-                </div>
-              </div>
-            </div>
-            <div class="resource-item">
-              <span class="resource-icon">💧</span>
-              <div class="resource-content">
-                <div class="resource-header">
-                  <span class="resource-name">MP</span>
-                  <span class="resource-value">{{ currentMp }}/{{ maxMp }}</span>
-                </div>
-                <div class="resource-bar">
-                  <div class="resource-fill mp-fill" :style="{ width: mpPercent + '%' }"></div>
-                </div>
-              </div>
-            </div>
-            <div class="resource-item">
-              <span class="resource-icon">⭐</span>
-              <div class="resource-content">
-                <div class="resource-header">
-                  <span class="resource-name">EXP</span>
-                  <span class="resource-value">{{ currentExp }}/{{ maxExp }}</span>
-                </div>
-                <div class="resource-bar">
-                  <div class="resource-fill exp-fill" :style="{ width: expPercent + '%' }"></div>
-                </div>
-              </div>
-            </div>
+            <ResourceBar icon="❤️" name="HP" :current="currentHp" :max="maxHp" :percent="hpPercent" type="hp" />
+            <ResourceBar icon="💧" name="MP" :current="currentMp" :max="maxMp" :percent="mpPercent" type="mp" />
+            <ResourceBar icon="⭐" name="EXP" :current="currentExp" :max="maxExp" :percent="expPercent" type="exp" />
           </div>
         </div>
 
@@ -214,8 +181,9 @@ import { useCharacterStore } from '@/modules/character';
 import { equipmentService } from '@/modules/equipment';
 import { gameDataService } from '@/modules/gameData';
 import type { FactionData, RaceData, ClassData, Stats, Attributes } from '@/modules/character/types';
-import Tag from './Tag.vue';
-import BasePopup from './BasePopup.vue';
+import Tag from '../common/Tag.vue';
+import BasePopup from '../common/BasePopup.vue';
+import ResourceBar from '../common/ResourceBar.vue';
 
 defineProps<{
   visible: boolean;
@@ -450,90 +418,6 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.resource-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.resource-icon {
-  font-size: 14px;
-  flex-shrink: 0;
-  width: 20px;
-  text-align: center;
-}
-
-.resource-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.resource-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.resource-name {
-  font-size: 11px;
-  color: #8b8b8b;
-  font-weight: bold;
-}
-
-.resource-value {
-  font-size: 11px;
-  color: #f0f0f0;
-  font-weight: bold;
-}
-
-.resource-bar {
-  height: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  overflow: hidden;
-  position: relative;
-}
-
-.resource-fill {
-  height: 100%;
-  transition: width 0.3s ease;
-  border-radius: 4px;
-  position: relative;
-}
-
-.resource-fill::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-.hp-fill {
-  background: linear-gradient(90deg, #ff6b6b, #ee5a5a, #d63031);
-  box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
-}
-
-.mp-fill {
-  background: linear-gradient(90deg, #74b9ff, #0984e3, #0652dd);
-  box-shadow: 0 0 10px rgba(116, 185, 255, 0.5);
-}
-
-.exp-fill {
-  background: linear-gradient(90deg, #fdcb6e, #f39c12, #e67e22);
-  box-shadow: 0 0 10px rgba(253, 203, 110, 0.5);
 }
 
 /* 核心属性 */

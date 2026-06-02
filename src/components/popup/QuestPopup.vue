@@ -136,7 +136,7 @@ import { ref, computed, onMounted } from 'vue';
 import { questService } from '@/modules/quest';
 import { characterService } from '@/modules/character';
 import type { Quest, QuestStatus } from '@/modules/quest';
-import BasePopup from './BasePopup.vue';
+import BasePopup from '../common/BasePopup.vue';
 
 defineProps<{
   visible: boolean;

@@ -38,7 +38,7 @@ import { ref, onMounted } from 'vue';
 import CharacterSelect from './components/CharacterSelect.vue';
 import CharacterCreate from './components/CharacterCreate.vue';
 import GameMain from './components/GameMain.vue';
-import ConfirmPopup from './components/ConfirmPopup.vue';
+import ConfirmPopup from './components/popup/ConfirmPopup.vue';
 import { useCharacterStore } from './modules/character';
 
 type GameState = 'character-select' | 'game';

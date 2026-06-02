@@ -108,7 +108,7 @@ import { ref, computed, onMounted } from 'vue';
 import { skillsService } from '@/modules/skill';
 import { characterService } from '@/modules/character';
 import type { Skill, SkillType } from '@/modules/skill';
-import BasePopup from './BasePopup.vue';
+import BasePopup from '../common/BasePopup.vue';
 
 defineProps<{
   visible: boolean;

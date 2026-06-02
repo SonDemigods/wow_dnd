@@ -31,8 +31,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue';
-import { useLogStore } from '../modules/log';
-import BasePopup from './BasePopup.vue';
+import { useLogStore } from '../../modules/log';
+import BasePopup from '../common/BasePopup.vue';
 
 interface Props {
   visible: boolean;

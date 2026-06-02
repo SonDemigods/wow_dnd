@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import BasePopup from './BasePopup.vue';
+import BasePopup from '../common/BasePopup.vue';
 import { inventoryService } from '@/modules/inventory';
 import { characterService } from '@/modules/character';
 import type { InventoryItem, ItemCategory, ItemQuality } from '@/modules/inventory';

@@ -2,31 +2,19 @@
   <div class="game-main">
     <div class="game-header">
       <div class="player-info" @click="showCharacterInfo = true">
-        <div class="player-icon">{{ getRaceIcon(character.raceId || 'human') }}</div>
+        <div class="player-avatar">{{ getRaceIcon(character.raceId || 'human') }}</div>
         <div class="player-details">
           <div class="player-name">{{ character.name }}</div>
-          <div class="player-level">Lv.{{ character.level }}</div>
+          <div class="player-meta">
+            <span class="player-level">Lv.{{ character.level }}</span>
+            <span class="player-gold">💰 {{ gold }}</span>
+          </div>
         </div>
       </div>
       <div class="player-resources">
-        <div class="resource-bar hp-bar">
-          <div class="resource-label">HP</div>
-          <div class="resource-fill" :style="{ width: hpPercent + '%' }"></div>
-          <div class="resource-text">{{ currentHp }} / {{ maxHp }}</div>
-        </div>
-        <div class="resource-bar mp-bar">
-          <div class="resource-label">MP</div>
-          <div class="resource-fill" :style="{ width: mpPercent + '%' }"></div>
-          <div class="resource-text">{{ currentMp }} / {{ maxMp }}</div>
-        </div>
-        <div class="resource-bar exp-bar">
-          <div class="resource-label">EXP</div>
-          <div class="resource-fill" :style="{ width: expPercent + '%' }"></div>
-          <div class="resource-text">{{ exp }} / {{ expToNext }}</div>
-        </div>
-      </div>
-      <div class="header-actions">
-        <div class="player-gold">💰 {{ gold }}</div>
+        <ResourceBar icon="❤️" name="HP" :current="currentHp" :max="maxHp" :percent="hpPercent" type="hp" />
+        <ResourceBar icon="💧" name="MP" :current="currentMp" :max="maxMp" :percent="mpPercent" type="mp" />
+        <ResourceBar icon="⭐" name="EXP" :current="exp" :max="expToNext" :percent="expPercent" type="exp" />
       </div>
     </div>
 
@@ -120,11 +108,12 @@ import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
 import MapView from './MapView.vue';
 import ExplorationView from './ExplorationView.vue';
-import InventoryPopup from './InventoryPopup.vue';
-import SkillsPopup from './SkillsPopup.vue';
-import QuestPopup from './QuestPopup.vue';
-import CharacterInfoPopup from './CharacterInfoPopup.vue';
-import AdventureLogPopup from './AdventureLogPopup.vue';
+import InventoryPopup from './popup/InventoryPopup.vue';
+import SkillsPopup from './popup/SkillsPopup.vue';
+import QuestPopup from './popup/QuestPopup.vue';
+import CharacterInfoPopup from './popup/CharacterInfoPopup.vue';
+import AdventureLogPopup from './popup/AdventureLogPopup.vue';
+import ResourceBar from './common/ResourceBar.vue';
 
 const emit = defineEmits<{
   (e: 'exit'): void;
@@ -209,32 +198,59 @@ defineExpose({ showNotif });
   align-items: center;
   gap: 12px;
   cursor: pointer;
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
   transition: background 0.2s;
 }
 
 .player-info:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 215, 0, 0.1);
 }
 
-.player-icon {
-  font-size: 36px;
+.player-avatar {
+  font-size: 32px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 215, 0, 0.15);
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  border-radius: 10px;
+  flex-shrink: 0;
 }
 
 .player-details {
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 
 .player-name {
-  font-size: 16px;
-  color: #fff;
+  font-size: 18px;
+  color: #f0f0f0;
   font-weight: bold;
+  line-height: 1.2;
 }
 
 .player-level {
   font-size: 12px;
+  color: #ffd700;
+  font-weight: bold;
+  background: rgba(255, 215, 0, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.player-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-gold {
+  font-size: 12px;
+  font-weight: bold;
   color: #ffd700;
 }
 
@@ -244,61 +260,6 @@ defineExpose({ showNotif });
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.resource-bar {
-  position: relative;
-  height: 20px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-}
-
-.hp-bar .resource-fill {
-  background: linear-gradient(90deg, #ff4444, #ff0000);
-}
-
-.mp-bar .resource-fill {
-  background: linear-gradient(90deg, #4444ff, #0000ff);
-}
-
-.exp-bar .resource-fill {
-  background: linear-gradient(90deg, #ffd700, #daa520);
-}
-
-.resource-label {
-  position: absolute;
-  left: 6px;
-  top: 2px;
-  font-size: 10px;
-  color: #fff;
-  font-weight: bold;
-  z-index: 1;
-}
-
-.resource-text {
-  position: absolute;
-  right: 6px;
-  top: 2px;
-  font-size: 10px;
-  color: #fff;
-  z-index: 1;
-}
-
-.resource-fill {
-  height: 100%;
-  transition: width 0.3s;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.player-gold {
-  font-size: 18px;
-  font-weight: bold;
 }
 
 .game-content {
@@ -427,15 +388,21 @@ defineExpose({ showNotif });
     padding: 10px 16px;
   }
   
-  .player-icon {
-    font-size: 28px;
+  .player-avatar {
+    font-size: 26px;
+    width: 40px;
+    height: 40px;
   }
   
   .player-name {
-    font-size: 14px;
+    font-size: 15px;
   }
   
   .player-level {
+    font-size: 11px;
+  }
+  
+  .player-gold {
     font-size: 11px;
   }
   
@@ -443,15 +410,6 @@ defineExpose({ showNotif });
     max-width: 100%;
     order: 3;
     width: 100%;
-  }
-  
-  .resource-bar {
-    height: 18px;
-  }
-  
-  .resource-label,
-  .resource-text {
-    font-size: 9px;
   }
   
   .player-gold {

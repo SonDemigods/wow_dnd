@@ -94,7 +94,7 @@ import { shopService } from '@/modules/shop';
 import { characterService } from '@/modules/character';
 import { inventoryService } from '@/modules/inventory';
 import type { ShopItem, ItemCategory, ItemQuality } from '@/modules/shop';
-import BasePopup from './BasePopup.vue';
+import BasePopup from '../common/BasePopup.vue';
 
 defineProps<{
   visible: boolean;

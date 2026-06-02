@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import BasePopup from './BasePopup.vue';
+import BasePopup from '../common/BasePopup.vue';
 
 defineProps<{
   visible: boolean;

@@ -57,7 +57,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { characterService } from '@/modules/character';
-import Tag from './Tag.vue';
+import Tag from './common/Tag.vue';
 import { gameDataService } from '@/modules/gameData';
 import type { CharacterListItem } from '@/modules/character';
 import type { RaceData, ClassData, FactionData } from '@/modules/character/types';

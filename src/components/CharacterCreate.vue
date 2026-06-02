@@ -90,7 +90,7 @@
                 v-model="name" 
                 type="text" 
                 placeholder="输入角色名"
-                maxlength="20"
+                maxlength="12"
                 class="name-input"
               />
             </div>
@@ -211,7 +211,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { characterService } from '@/modules/character';
 import { gameDataService } from '@/modules/gameData';
-import Tag from './Tag.vue';
+import Tag from './common/Tag.vue';
 import type { FactionData, RaceData, ClassData } from '@/modules/character/types';
 import {
   STAT_NAMES,
