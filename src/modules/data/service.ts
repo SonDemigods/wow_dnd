@@ -107,10 +107,6 @@ export class DataInitializer {
    */
   async initializeData(): Promise<void> {
     const isInitialized = await this.isDataInitialized();
-    if (isInitialized) {
-      console.log('Data already initialized, skipping...');
-      return;
-    }
 
     console.log('Initializing game data...');
 
@@ -122,26 +118,30 @@ export class DataInitializer {
         db.config_locations, db.config_shops, db.config_quests, db.config_skills,
         db.runtime_gameState, db.runtime_mapState,
         async () => {
-          await this.initFactions();
-          await this.initRaces();
-          await this.initClasses();
-          await this.initClassAbilities();
-          await this.initItemTypes();
-          await this.initItems();
-          await this.initEquipment();
-          await this.initEnemies();
-          await this.initRarityConfig();
+          // 地点和大陆数据每次都更新
           await this.initLocations();
           await this.initContinents();
-          await this.initShops();
-          await this.initQuests();
-          await this.initSkillTemplates();
-          await this.initGameConstants();
 
-          await db.runtime_gameState.put({
-            id: this.initFlagKey,
-            initializedAt: new Date().toISOString()
-          });
+          if (!isInitialized) {
+            await this.initFactions();
+            await this.initRaces();
+            await this.initClasses();
+            await this.initClassAbilities();
+            await this.initItemTypes();
+            await this.initItems();
+            await this.initEquipment();
+            await this.initEnemies();
+            await this.initRarityConfig();
+            await this.initShops();
+            await this.initQuests();
+            await this.initSkillTemplates();
+            await this.initGameConstants();
+
+            await db.runtime_gameState.put({
+              id: this.initFlagKey,
+              initializedAt: new Date().toISOString()
+            });
+          }
         });
 
       console.log('Game data initialization completed.');

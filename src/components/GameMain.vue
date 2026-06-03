@@ -24,7 +24,7 @@
           :class="['content-tab', { active: currentContentTab === 'map' }]"
           @click="currentContentTab = 'map'"
         >
-          🗺 大地图
+          🗺 地图
         </button>
         <button 
           :class="['content-tab', { active: currentContentTab === 'explore' }]"
@@ -176,10 +176,11 @@ defineExpose({ showNotif });
 
 <style scoped>
 .game-main {
-  min-height: 100vh;
+  height: 100vh;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .game-header {
@@ -309,7 +310,9 @@ defineExpose({ showNotif });
 .content-view {
   flex: 1;
   padding: 16px;
-  overflow: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .game-footer {

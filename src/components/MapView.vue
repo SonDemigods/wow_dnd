@@ -1,102 +1,149 @@
 <template>
   <div class="map-view">
-    <div class="map-header">
-      <h2>世界地图</h2>
-    </div>
-
-    <div class="map-container">
-      <div class="world-map">
+    <!-- 地图显示区域 -->
+    <div 
+      class="map-container"
+      ref="mapContainerRef"
+      @mousedown="onMapMouseDown"
+      @mousemove="onMapMouseMove"
+      @mouseup="onMapMouseUp"
+      @mouseleave="onMapMouseUp"
+      @wheel.prevent="onMapWheel"
+    >
+      <div 
+        class="world-map"
+        :style="mapTransformStyle"
+      >
+        <!-- 区域标记 -->
         <div 
           v-for="zone in zones" 
           :key="zone.id"
-          :class="['zone-marker', zone.status]"
-          :style="{ left: zone.coordinates.x + '%', top: zone.coordinates.y + '%' }"
-          @click="selectZone(zone)"
+          :class="['zone-marker', zone.status, { 'is-current': zone.id === currentZoneId, 'high-risk': zone.requiredLevel >= 10 }]"
+          :style="getMarkerStyle(zone.coordinates)"
+          @click.stop="selectZone(zone)"
         >
-          <div class="zone-icon">{{ getZoneIcon(zone.icon) }}</div>
-          <div class="zone-name">{{ zone.name }}</div>
-          <div v-if="zone.status === 'locked'" class="lock-icon">🔒</div>
+          <div class="marker-icon">{{ zone.icon }}</div>
         </div>
-        <div class="player-marker" :style="{ left: playerPos.x + '%', top: playerPos.y + '%' }">
-          🧙
-        </div>
+      </div>
+
+      <!-- 缩放控制 -->
+      <div class="zoom-controls">
+        <button class="zoom-btn" @click.stop="zoomIn" title="放大">+</button>
+        <span class="zoom-level">{{ zoomLevel.toFixed(1) }}x</span>
+        <button class="zoom-btn" @click.stop="zoomOut" title="缩小">-</button>
+      </div>
+
+      <!-- 区域信息面板 -->
+      <div class="zone-info-panel">
+        <template v-if="selectedZone">
+          <div class="panel-header">
+            <span class="panel-name">{{ selectedZone.name }}</span>
+          </div>
+          <div class="panel-body">
+            <div class="panel-row">
+              <span class="panel-label">等级</span>
+              <span class="panel-value">{{ selectedZone.requiredLevel }}+</span>
+            </div>
+            <div class="panel-row">
+              <span class="panel-label">状态</span>
+              <span :class="['panel-value', 'status-' + selectedZone.status]">{{ getStatusText(selectedZone.status) }}</span>
+            </div>
+            <div class="panel-row">
+              <span class="panel-label">描述</span>
+              <span class="panel-desc">{{ selectedZone.description }}</span>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button 
+              v-if="selectedZone.status !== 'locked'"
+              class="panel-btn enter"
+              @click.stop="onEnterZoneClick"
+            >
+              进入探索
+            </button>
+            <button 
+              v-else
+              class="panel-btn locked"
+              disabled
+            >
+              未解锁
+            </button>
+          </div>
+        </template>
+        <template v-else>
+          <div class="panel-header">
+            <span class="panel-name">区域信息</span>
+          </div>
+          <div class="panel-body">
+            <div class="panel-empty">点击地图上的标记查看详情</div>
+          </div>
+        </template>
       </div>
     </div>
 
-    <div v-if="selectedZone" class="zone-detail">
-      <h3>{{ selectedZone.name }}</h3>
-      <p class="zone-desc">{{ selectedZone.description }}</p>
-      <div class="zone-info">
-        <div class="info-item">
-          <span class="info-label">状�?</span>
-          <span :class="['info-value', selectedZone.status]">{{ getStatusText(selectedZone.status) }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">等级要求:</span>
-          <span class="info-value">Lv.{{ selectedZone.requiredLevel }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">解锁费用:</span>
-          <span class="info-value">💰 {{ selectedZone.requiredGold }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">奖励:</span>
-          <span class="info-value">💰{{ selectedZone.rewards.gold }} ✨{{ selectedZone.rewards.exp }}</span>
-        </div>
-      </div>
-      <div class="zone-actions">
-        <button 
-          v-if="selectedZone.status === 'locked'"
-          :disabled="!canUnlock"
-          class="action-btn unlock"
-          @click="unlockZone"
-        >
-          解锁 ({{ selectedZone.requiredGold }} 金币)
-        </button>
-        <button 
-          v-else-if="selectedZone.status !== 'completed'"
-          class="action-btn enter"
-          @click="enterZone"
-        >
-          进入探索
-        </button>
-        <button 
-          v-else
-          class="action-btn completed"
-          disabled
-        >
-          已完�?        </button>
-      </div>
-    </div>
+    <!-- 确认弹窗 -->
+    <ConfirmPopup
+      :visible="showConfirm"
+      title="切换区域"
+      message="切换区域将清空当前探索进度，确定继续？"
+      @confirm="onConfirmEnter"
+      @cancel="showConfirm = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { mapService } from '@/modules/map';
-import { characterService } from '@/modules/character';
+import { useMapStore } from '@/modules/map';
+import { useCharacterStore } from '@/modules/character';
 import type { MapZone, ZoneStatus } from '@/modules/map';
+import ConfirmPopup from './popup/ConfirmPopup.vue';
+import worldBgImg from '@/images/worldBg.jpg';
 
+const mapStore = useMapStore();
+const characterStore = useCharacterStore();
 const zones = ref<MapZone[]>([]);
 const selectedZone = ref<MapZone | null>(null);
-const playerPos = ref({ x: 35, y: 40 });
+const mapContainerRef = ref<HTMLElement | null>(null);
+const showConfirm = ref(false);
 
-const playerLevel = computed(() => characterService.getLevel());
-const playerGold = computed(() => characterService.getGold());
+// 缩放和平移
+const zoomLevel = ref(1);
+const panX = ref(0);
+const panY = ref(0);
 
-const canUnlock = computed(() => {
-  if (!selectedZone.value) return false;
-  return playerLevel.value >= selectedZone.value.requiredLevel && 
-         playerGold.value >= selectedZone.value.requiredGold;
+// 拖拽状态
+const isDragging = ref(false);
+const dragStartX = ref(0);
+const dragStartY = ref(0);
+const dragStartPanX = ref(0);
+const dragStartPanY = ref(0);
+
+// 当前区域ID
+const currentZoneId = computed(() => {
+  const currentLocation = mapStore.getCurrentLocation;
+  if (currentLocation) {
+    return currentLocation.name;
+  }
+  return zones.value.find(z => z.status !== 'locked')?.id || '';
 });
 
-const zoneIcons: Record<string, string> = {
-  castle: '🏰', fortress: '🏯', tree: '🌲', skull: '💀',
-  anvil: '⚒️', totem: '🗿', ship: '🚢', moon: '🌙'
-};
+const mapTransformStyle = computed(() => ({
+  transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoomLevel.value})`,
+  transformOrigin: '0 0',
+  backgroundImage: `url(${worldBgImg})`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center'
+}));
 
-function getZoneIcon(icon: string) {
-  return zoneIcons[icon] || '📍';
+function getMarkerStyle(pos: { x: number; y: number }) {
+  const counterScale = 1 / zoomLevel.value;
+  return {
+    left: pos.x + '%',
+    top: pos.y + '%',
+    transform: `translate(-50%, -50%) scale(${counterScale})`
+  };
 }
 
 function getStatusText(status: ZoneStatus) {
@@ -108,34 +155,65 @@ function getStatusText(status: ZoneStatus) {
   return texts[status];
 }
 
-function loadZones() {
-  zones.value = mapService.getZones();
+async function loadZones() {
+  const playerLevel = characterStore.level || 1;
+  await mapService.init();
+  zones.value = mapService.getZones(playerLevel);
 }
 
 function selectZone(zone: MapZone) {
   selectedZone.value = zone;
 }
 
-function unlockZone() {
-  if (!selectedZone.value || !canUnlock.value) return;
-  
-  const success = mapService.unlockZone(selectedZone.value.id);
-  if (success) {
-    loadZones();
-    alert(`成功解锁 ${selectedZone.value.name}！`);
+// 缩放控制
+function zoomIn() {
+  zoomLevel.value = Math.min(3, zoomLevel.value + 0.2);
+}
+
+function zoomOut() {
+  zoomLevel.value = Math.max(0.5, zoomLevel.value - 0.2);
+}
+
+function onMapWheel(e: WheelEvent) {
+  if (e.deltaY < 0) {
+    zoomIn();
   } else {
-    alert('解锁失败');
+    zoomOut();
   }
 }
 
-function enterZone() {
+// 拖拽控制
+function onMapMouseDown(e: MouseEvent) {
+  isDragging.value = true;
+  dragStartX.value = e.clientX;
+  dragStartY.value = e.clientY;
+  dragStartPanX.value = panX.value;
+  dragStartPanY.value = panY.value;
+}
+
+function onMapMouseMove(e: MouseEvent) {
+  if (!isDragging.value) return;
+  const dx = e.clientX - dragStartX.value;
+  const dy = e.clientY - dragStartY.value;
+  panX.value = dragStartPanX.value + dx;
+  panY.value = dragStartPanY.value + dy;
+}
+
+function onMapMouseUp() {
+  isDragging.value = false;
+}
+
+// 进入探索
+function onEnterZoneClick() {
   if (!selectedZone.value) return;
-  
+  showConfirm.value = true;
+}
+
+function onConfirmEnter() {
+  if (!selectedZone.value) return;
   const success = mapService.enterZone(selectedZone.value.id);
   if (success) {
-    alert(`进入 ${selectedZone.value.name}！`);
-  } else {
-    alert('无法进入该区域！');
+    showConfirm.value = false;
   }
 }
 
@@ -146,183 +224,272 @@ onMounted(() => {
 
 <style scoped>
 .map-view {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.map-header {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.map-header h2 {
-  font-size: 24px;
-  color: #ffd700;
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .map-container {
   position: relative;
-  height: 400px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 12px;
-  border: 2px solid #4a4a4a;
+  flex: 1;
+  min-height: 400px;
+  background: #1a1a2e;
+  border-radius: 8px;
+  border: 1px solid #30363d;
   overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-container:active {
+  cursor: grabbing;
 }
 
 .world-map {
   position: relative;
   width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 50%, #1a472a 100%);
+  aspect-ratio: 1201 / 800;
+  max-height: 100%;
+  transition: transform 0.1s ease-out;
 }
 
+/* 区域标记 */
 .zone-marker {
   position: absolute;
-  transform: translate(-50%, -50%);
-  text-align: center;
   cursor: pointer;
-  transition: transform 0.3s;
+  z-index: 2;
 }
 
-.zone-marker:hover {
-  transform: translate(-50%, -50%) scale(1.1);
+.zone-marker:hover .marker-dot {
+  transform: scale(1.2);
 }
 
-.zone-marker.locked {
+.marker-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  border-radius: 50%;
+  border: 2px solid;
+  transition: transform 0.15s;
+}
+
+/* 未解锁 - 灰色边框，半透明 */
+.zone-marker.locked .marker-icon {
+  border-color: #666;
+  background: rgba(0, 0, 0, 0.5);
   opacity: 0.5;
 }
 
-.zone-marker.unlocked {
-  animation: pulse 2s infinite;
+/* 已解锁 - 绿色边框 */
+.zone-marker.unlocked .marker-icon {
+  border-color: #00d2d3;
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 8px rgba(0, 210, 211, 0.3);
 }
 
-.zone-icon {
-  font-size: 36px;
-  display: block;
+/* 高风险 - 红色边框 */
+.zone-marker.high-risk .marker-icon {
+  border-color: #e94560;
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 8px rgba(233, 69, 96, 0.3);
 }
 
-.zone-name {
-  font-size: 12px;
+/* 当前位置 - 金色边框 */
+.zone-marker.is-current .marker-icon {
+  border-color: #ffd700;
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+}
+
+/* 缩放控制 */
+.zoom-controls {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 8px;
+  padding: 4px;
+  z-index: 20;
+}
+
+.zoom-btn {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 6px;
   color: #fff;
-  white-space: nowrap;
-  background: rgba(0, 0, 0, 0.7);
-  padding: 2px 6px;
-  border-radius: 4px;
-  margin-top: 4px;
-}
-
-.lock-icon {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  font-size: 16px;
-}
-
-.player-marker {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  font-size: 40px;
-  animation: bounce 1s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-@keyframes bounce {
-  0%, 100% { transform: translate(-50%, -50%) translateY(0); }
-  50% { transform: translate(-50%, -50%) translateY(-5px); }
-}
-
-.zone-detail {
-  margin-top: 20px;
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.7);
-  border-radius: 12px;
-  border: 2px solid #4a4a4a;
-}
-
-.zone-detail h3 {
   font-size: 20px;
-  color: #ffd700;
-  margin-bottom: 8px;
-}
-
-.zone-desc {
-  color: #aaa;
-  margin-bottom: 16px;
-}
-
-.zone-info {
+  cursor: pointer;
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 20px;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
 }
 
-.info-item {
-  display: flex;
-  gap: 8px;
+.zoom-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
 }
 
-.info-label {
-  color: #888;
+.zoom-btn:active {
+  background: rgba(255, 255, 255, 0.25);
 }
 
-.info-value {
+.zoom-level {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 2px 0;
+}
+
+/* 区域信息面板 */
+.zone-info-panel {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  width: 280px;
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 10px;
+  z-index: 20;
+  overflow: hidden;
+  animation: panel-in 0.2s ease-out;
+}
+
+.panel-header {
+  padding: 16px 20px 12px;
+}
+
+.panel-name {
+  font-size: 18px;
+  font-weight: 700;
   color: #fff;
-  font-weight: bold;
 }
 
-.info-value.locked {
-  color: #ff4444;
-}
-
-.info-value.unlocked {
-  color: #44ff44;
-}
-
-.info-value.completed {
-  color: #ffd700;
-}
-
-.zone-actions {
+.panel-body {
+  padding: 0 20px 16px;
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel-row {
+  display: flex;
+  align-items: baseline;
   gap: 12px;
 }
 
-.action-btn {
-  padding: 12px 24px;
+.panel-label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.45);
+  flex-shrink: 0;
+  min-width: 36px;
+}
+
+.panel-value {
+  font-size: 15px;
+  color: #fff;
+  font-weight: 500;
+}
+
+.panel-value.status-locked {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.panel-value.status-unlocked {
+  color: #58d68d;
+}
+
+.panel-value.status-completed {
+  color: #f4d03f;
+}
+
+.panel-desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.5;
+}
+
+.panel-empty {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.35);
+  text-align: center;
+  padding: 16px 0;
+}
+
+.panel-actions {
+  padding: 0 20px 16px;
+}
+
+.panel-btn {
+  width: 100%;
+  padding: 12px 20px;
   border: none;
   border-radius: 8px;
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.15s ease;
 }
 
-.action-btn.unlock {
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
-  color: #000;
+.panel-btn.enter {
+  background: #ffd700;
+  color: #1a1a2e;
 }
 
-.action-btn.enter {
-  background: linear-gradient(135deg, #4CAF50, #45a049);
-  color: #fff;
+.panel-btn.enter:hover {
+  background: #ffe433;
 }
 
-.action-btn.completed {
-  background: #666;
-  color: #999;
+.panel-btn.enter:active {
+  background: #e6c200;
+}
+
+.panel-btn.locked {
+  background: rgba(255, 255, 255, 0.1);
+  color: #8b8b8b;
   cursor: not-allowed;
 }
 
-.action-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
+/* 动画 */
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.action-btn:disabled {
-  opacity: 0.5;
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .map-container {
+    min-height: 300px;
+    border-radius: 0;
+  }
+
+  .zone-info-panel {
+    width: calc(100% - 32px);
+    bottom: 12px;
+    right: 16px;
+    left: 16px;
+  }
+
+  .zoom-controls {
+    top: 12px;
+    right: 12px;
+  }
 }
 </style>
