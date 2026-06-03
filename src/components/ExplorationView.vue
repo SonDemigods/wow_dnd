@@ -1,8 +1,17 @@
 <template>
   <div class="exploration-view">
     <!-- 探索网格区域 -->
-    <div class="exploration-grid-container">
-      <div class="grid-wrapper">
+    <div 
+      class="exploration-grid-container"
+      @mousedown="startDrag"
+      @mousemove="onDrag"
+      @mouseup="endDrag"
+      @mouseleave="endDrag"
+    >
+      <div 
+        class="grid-wrapper"
+        :style="{ transform: `translate(${panX}px, ${panY}px)` }"
+      >
         <div class="grid">
           <div 
             v-for="(row, y) in grid" 
@@ -10,7 +19,7 @@
             class="grid-row"
           >
             <div 
-              v-for="(cell, x) in row" 
+              v-for="(cell, x) in row"
               :key="x"
               :class="getCellClasses(cell)"
               @click="handleCellClick(cell)"
@@ -40,6 +49,13 @@ const mapStore = useMapStore();
 const grid = ref<ExplorationCell[][]>([]);
 const explorationComplete = ref(false);
 
+// 拖动相关状态
+const isDragging = ref(false);
+const startX = ref(0);
+const startY = ref(0);
+const panX = ref(0);
+const panY = ref(0);
+
 const explorationProgress = computed(() => {
   if (!grid.value.length) return 0;
   let total = 0;
@@ -63,7 +79,8 @@ const cellIcons: Record<string, string> = {
   event: '📋',
   trap: '⚠️',
   start: '🏁',
-  exit: '🚪'
+  exit: '🚪',
+  board: '📜'
 };
 
 function getCellIcon(type: string) {
@@ -85,6 +102,28 @@ function getCellClasses(cell: ExplorationCell) {
   return classes;
 }
 
+// 拖动功能
+function startDrag(e: MouseEvent) {
+  // 防止在格子上拖动时触发点击
+  if ((e.target as HTMLElement).closest('.cell')) return;
+  
+  isDragging.value = true;
+  startX.value = e.clientX - panX.value;
+  startY.value = e.clientY - panY.value;
+  e.preventDefault();
+}
+
+function onDrag(e: MouseEvent) {
+  if (!isDragging.value) return;
+  panX.value = e.clientX - startX.value;
+  panY.value = e.clientY - startY.value;
+  e.preventDefault();
+}
+
+function endDrag() {
+  isDragging.value = false;
+}
+
 function loadState() {
   const state = explorationService.getState();
   grid.value = state.grid.map(row => row.map(cell => ({ ...cell })));
@@ -93,10 +132,12 @@ function loadState() {
 
 function initExploration() {
   const currentLocation = mapStore.getCurrentLocation;
-  if (currentLocation) {
-    explorationService.enterArea(currentLocation.name);
-  } else {
-    explorationService.enterArea('village');
+  const targetArea = currentLocation?.name || 'village';
+  
+  // 只有切换区域时才重新生成探索网格
+  const currentAreaId = explorationService.getCurrentAreaId();
+  if (currentAreaId !== targetArea) {
+    explorationService.enterArea(targetArea);
   }
   loadState();
 }
@@ -119,6 +160,9 @@ onMounted(() => {
   flex-direction: column;
   height: 100%;
   background: #1a1a2e;
+  border-radius: 12px;
+  border: 2px solid #4a4a4a;
+  overflow: hidden;
 }
 
 /* 探索网格区域 */
@@ -127,42 +171,53 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 16px;
+  padding: 12px;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+}
+
+.exploration-grid-container:active {
+  cursor: grabbing;
 }
 
 .grid-wrapper {
   background: rgba(0, 0, 0, 0.5);
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #333;
+  padding: 12px;
+  border-radius: 10px;
+  border: 2px solid #555;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease-out;
 }
 
 .grid {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .grid-row {
   display: flex;
-  gap: 2px;
+  gap: 3px;
 }
 
 .cell {
-  width: 50px;
-  height: 50px;
+  width: 52px;
+  height: 52px;
   background: #2a2a3e;
   border: 1px solid #333;
-  border-radius: 4px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .cell:hover {
   border-color: #555;
+  transform: scale(1.05);
 }
 
 /* 未探索格子 */
@@ -175,6 +230,7 @@ onMounted(() => {
 .cell.hidden:hover {
   background: #1a1a2e;
   border-color: #2a2a3e;
+  transform: none;
 }
 
 /* 可访问的未探索格子 */
@@ -187,6 +243,7 @@ onMounted(() => {
 .cell.accessible:hover {
   background: #2a2a3e;
   border-color: #00d2d3;
+  box-shadow: 0 0 8px rgba(0, 210, 211, 0.3);
 }
 
 /* 已揭示格子 */
@@ -211,6 +268,12 @@ onMounted(() => {
 .cell.event {
   background: rgba(255, 193, 7, 0.3);
   border-color: #FFC107;
+}
+
+/* 任务看板 - 青色高亮 */
+.cell.board {
+  background: rgba(0, 188, 212, 0.3);
+  border-color: #00BCD4;
 }
 
 /* BOSS - 红色高亮 */
@@ -250,12 +313,12 @@ onMounted(() => {
 }
 
 .cell-icon {
-  font-size: 22px;
+  font-size: 24px;
 }
 
 .cell-hidden {
-  color: #333;
-  font-size: 18px;
+  color: #444;
+  font-size: 20px;
 }
 
 @keyframes boss-pulse {
@@ -280,12 +343,16 @@ onMounted(() => {
 /* 响应式 - 移动端 */
 @media (max-width: 768px) {
   .cell {
-    width: calc((100vw - 60px) / 10);
-    height: calc((100vw - 60px) / 10);
+    width: 44px;
+    height: 44px;
   }
   
   .cell-icon {
-    font-size: 18px;
+    font-size: 20px;
+  }
+  
+  .cell-hidden {
+    font-size: 16px;
   }
 }
 </style>

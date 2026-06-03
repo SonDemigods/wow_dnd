@@ -65,6 +65,7 @@ export class ExplorationService implements IExplorationService {
   };
 
   private currentCharacterId: string | null = null;
+  private pendingBattleCell: { x: number; y: number } | null = null;
 
   private getAreaConfig(areaId: string): AreaConfig {
     return AREA_CONFIGS[areaId] || {
@@ -76,6 +77,17 @@ export class ExplorationService implements IExplorationService {
       bossPool: [],
       itemPool: []
     };
+  }
+
+  private getDefaultShopId(): string {
+    // 根据当前区域返回默认商店ID
+    const areaShopMap: Record<string, string> = {
+      'village': 'shop_inn',
+      'goblin_camp': 'shop_inn',
+      'forest': 'shop_potion',
+      'mine': 'shop_weapon'
+    };
+    return areaShopMap[this.state.currentAreaId || 'village'] || 'shop_inn';
   }
 
   private getEdgePositions(): { x: number; y: number }[] {
@@ -174,13 +186,23 @@ export class ExplorationService implements IExplorationService {
 
     const corners = [[0, 0], [0, GRID_SIZE - 1], [GRID_SIZE - 1, 0], [GRID_SIZE - 1, GRID_SIZE - 1]];
     const availableCorners = corners.filter(c => !this.isOccupied(grid, c[0], c[1]));
-    const shopPos = availableCorners[Math.floor(Math.random() * availableCorners.length)];
+    
+    // 放置商店（角落位置）
+    const shopCornerIndex = Math.floor(Math.random() * availableCorners.length);
+    const shopPos = availableCorners[shopCornerIndex];
     grid[shopPos[1]][shopPos[0]] = { x: shopPos[0], y: shopPos[1], type: 'shop', explored: false, accessible: false, visited: false };
+    availableCorners.splice(shopCornerIndex, 1);
+    
+    // 放置任务看板（另一个角落位置）
+    const boardPos = availableCorners[Math.floor(Math.random() * availableCorners.length)];
+    grid[boardPos[1]][boardPos[0]] = { x: boardPos[0], y: boardPos[1], type: 'board', explored: false, accessible: false, visited: false };
 
-    const campPos = this.findNonAdjacentPosition(grid, [startPos, { x: shopPos[0], y: shopPos[1] }]);
+    // 放置营地（非相邻位置）
+    const campPos = this.findNonAdjacentPosition(grid, [startPos, { x: shopPos[0], y: shopPos[1] }, { x: boardPos[0], y: boardPos[1] }]);
     grid[campPos.y][campPos.x] = { x: campPos.x, y: campPos.y, type: 'rest', explored: false, accessible: false, visited: false };
 
-    const bossPos = this.findBossPosition(grid, [startPos, { x: shopPos[0], y: shopPos[1] }, campPos]);
+    // 放置BOSS（中心区域）
+    const bossPos = this.findBossPosition(grid, [startPos, { x: shopPos[0], y: shopPos[1] }, { x: boardPos[0], y: boardPos[1] }, campPos]);
     grid[bossPos.y][bossPos.x] = { x: bossPos.x, y: bossPos.y, type: 'boss', explored: false, accessible: false, visited: false };
   }
 
@@ -466,14 +488,52 @@ export class ExplorationService implements IExplorationService {
       rest: 'camp',
       boss: 'boss',
       event: 'trap',
-      start: 'empty'
+      start: 'empty',
+      board: 'board'
     };
     return typeMap[cellType] || 'empty';
   }
 
   revealGrid(x: number, y: number): boolean {
     const cell = this.state.grid[y]?.[x];
-    if (!cell || cell.explored || !cell.accessible) {
+    if (!cell || !cell.accessible) {
+      return false;
+    }
+
+    // 怪物和BOSS格子：允许重复挑战
+    if (cell.type === 'monster' || cell.type === 'boss') {
+      // 触发战斗，战斗结果由 onBattleResult 处理
+      this.triggerBattle(cell.type === 'boss' ? 'enemy_boss' : 'enemy_goblin');
+      // 记录当前挑战的格子位置
+      this.pendingBattleCell = { x, y };
+      return true;
+    }
+
+    // 商店和任务看板：可多次交互，始终标记为已探索但保持可访问
+    if (cell.type === 'shop' || cell.type === 'board') {
+      const isNewlyVisited = !cell.visited;
+      cell.explored = true;
+      cell.visited = true;
+      if (isNewlyVisited) {
+        this.state.visitedCells++;
+      }
+      
+      this.updateAccessibleCells();
+      
+      if (cell.type === 'shop') {
+        // 根据区域选择商店ID
+        const shopId = this.getDefaultShopId();
+        this.triggerShopInteraction(shopId);
+      } else {
+        this.triggerBoardInteraction('board_main');
+      }
+      
+      this.saveState();
+      return true;
+    }
+
+    // 其他格子：正常揭示逻辑
+    if (cell.explored) {
       return false;
     }
 
@@ -492,16 +552,12 @@ export class ExplorationService implements IExplorationService {
       eventData: {}
     });
 
-    if (cell.type === 'monster' || cell.type === 'boss') {
-      this.triggerBattle('');
-    } else if (cell.type === 'treasure') {
+    if (cell.type === 'treasure') {
       this.handleItemFound('item_gold_coin');
     } else if (cell.type === 'event') {
       this.handleTrapTriggered();
     } else if (cell.type === 'rest') {
       this.useCamp();
-    } else if (cell.type === 'shop') {
-      this.triggerShopInteraction('');
     }
 
     this.checkExplorationComplete();
@@ -549,6 +605,38 @@ export class ExplorationService implements IExplorationService {
 
   triggerBattle(monsterId: string): void {
     eventBus.emit(GameEvents.COMBAT_START, { characterId: this.currentCharacterId, monsterId });
+  }
+
+  onBattleResult(victory: boolean): void {
+    if (!this.pendingBattleCell) return;
+    
+    const { x, y } = this.pendingBattleCell;
+    const cell = this.state.grid[y]?.[x];
+    
+    if (!cell) {
+      this.pendingBattleCell = null;
+      return;
+    }
+
+    if (victory) {
+      // 战斗胜利：标记格子为已探索，更新可访问区域
+      if (!cell.explored) {
+        cell.explored = true;
+        cell.visited = true;
+        this.state.visitedCells++;
+      }
+      
+      if (cell.type === 'boss') {
+        this.state.bossDefeated = true;
+      }
+      
+      this.updateAccessibleCells();
+      this.checkExplorationComplete();
+      this.saveState();
+    }
+    // 战斗失败或逃跑：不标记为已探索，可再次挑战
+    
+    this.pendingBattleCell = null;
   }
 
   getCurrentAreaId(): string | null {

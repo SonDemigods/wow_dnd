@@ -20,6 +20,7 @@ import { skillsService } from '../skill/service';
 import { inventoryService } from '../inventory/service';
 import { combatDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
+import { explorationService } from '../exploration/service';
 
 /**
  * 战斗服务实现类
@@ -773,6 +774,9 @@ export class CombatService implements ICombatService {
     
     // 保存日志
     this.saveLogs();
+    
+    // 通知探索模块战斗结果
+    explorationService.onBattleResult(result === 'victory');
     
     // 触发战斗结束事件
     eventBus.emit(GameEvents.COMBAT_END, {

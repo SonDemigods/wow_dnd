@@ -234,6 +234,10 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  border-radius: 12px;
+  border: 2px solid #4a4a4a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
 }
 
 .map-container {
@@ -241,8 +245,7 @@ onMounted(() => {
   flex: 1;
   min-height: 400px;
   background: #1a1a2e;
-  border-radius: 8px;
-  border: 1px solid #30363d;
+  border: none;
   overflow: hidden;
   cursor: grab;
   user-select: none;

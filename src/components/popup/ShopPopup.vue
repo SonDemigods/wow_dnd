@@ -96,8 +96,9 @@ import { inventoryService } from '@/modules/inventory';
 import type { ShopItem, ItemCategory, ItemQuality } from '@/modules/shop';
 import BasePopup from '../common/BasePopup.vue';
 
-defineProps<{
+const props = defineProps<{
   visible: boolean;
+  shopId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -111,6 +112,7 @@ const selectedItem = ref<ShopItem | any>(null);
 const shopItems = ref<ShopItem[]>([]);
 const inventoryItems = ref<any[]>([]);
 
+const currentShopId = computed(() => props.shopId || 'shop_inn');
 const gold = computed(() => characterService.getGold());
 
 const categories = [
@@ -195,28 +197,23 @@ function selectItem(item: any) {
 }
 
 function buyItem(itemId: string) {
-  const result = shopService.buyItem(itemId, 1);
-  if (result.success) {
-    alert(result.message);
+  const result = shopService.buyItem(currentShopId.value, itemId, 1);
+  if (result) {
     loadShopItems();
     loadInventoryItems();
-  } else {
-    alert(result.message);
   }
 }
 
 function sellItem(itemId: string) {
   const result = shopService.sellItem(itemId, 1);
-  if (result.success) {
-    alert(result.message);
+  if (result) {
     loadInventoryItems();
-  } else {
-    alert(result.message);
   }
 }
 
 function loadShopItems() {
-  shopItems.value = shopService.getItems();
+  const inventory = shopService.getShopInventory(currentShopId.value);
+  shopItems.value = inventory?.items || [];
 }
 
 function loadInventoryItems() {

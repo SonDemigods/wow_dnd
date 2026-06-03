@@ -91,6 +91,7 @@ export interface IExplorationService {
   triggerShopInteraction(shopId: string): void
   triggerBoardInteraction(boardId: string): void
   triggerBattle(monsterId: string): void
+  onBattleResult(victory: boolean): void
   getCurrentAreaId(): string | null
   reset(): void
 }

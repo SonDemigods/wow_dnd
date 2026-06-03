@@ -99,18 +99,32 @@
       :current-area="currentArea"
       @close="showAdventureLog = false" 
     />
+    
+    <ShopPopup 
+      :visible="showShop" 
+      :shop-id="currentShopId"
+      @close="showShop = false" 
+    />
+    
+    <QuestBoardPopup 
+      :visible="showQuestBoard" 
+      @close="showQuestBoard = false" 
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
+import { eventBus, GameEvents } from '@/modules/bus/core';
 import MapView from './MapView.vue';
 import ExplorationView from './ExplorationView.vue';
 import InventoryPopup from './popup/InventoryPopup.vue';
 import SkillsPopup from './popup/SkillsPopup.vue';
 import QuestPopup from './popup/QuestPopup.vue';
+import ShopPopup from './popup/ShopPopup.vue';
+import QuestBoardPopup from './popup/QuestBoardPopup.vue';
 import CharacterInfoPopup from './popup/CharacterInfoPopup.vue';
 import AdventureLogPopup from './popup/AdventureLogPopup.vue';
 import ResourceBar from './common/ResourceBar.vue';
@@ -131,6 +145,9 @@ const showInventory = ref(false);
 const showSkills = ref(false);
 const showQuests = ref(false);
 const showAdventureLog = ref(false);
+const showShop = ref(false);
+const showQuestBoard = ref(false);
+const currentShopId = ref('shop_inn');
 
 const character = computed(() => characterStore.character || {});
 const currentHp = computed(() => characterStore.hp);
@@ -170,6 +187,26 @@ function showNotif(message: string, type: string = 'info') {
 function handleExit() {
   emit('exit');
 }
+
+// 监听探索事件，打开对应弹窗
+function handleShopOpened(data: { shopId?: string }) {
+  currentShopId.value = data?.shopId || 'shop_inn';
+  showShop.value = true;
+}
+
+function handleQuestAccepted() {
+  showQuestBoard.value = true;
+}
+
+onMounted(() => {
+  eventBus.on(GameEvents.SHOP_OPENED, handleShopOpened);
+  eventBus.on(GameEvents.QUEST_ACCEPTED, handleQuestAccepted);
+});
+
+onUnmounted(() => {
+  eventBus.off(GameEvents.SHOP_OPENED, handleShopOpened);
+  eventBus.off(GameEvents.QUEST_ACCEPTED, handleQuestAccepted);
+});
 
 defineExpose({ showNotif });
 </script>
