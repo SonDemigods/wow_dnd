@@ -457,6 +457,9 @@ export class CombatService implements ICombatService {
       return;
     }
     
+    // 触发敌人回合开始事件
+    eventBus.emit(GameEvents.COMBAT_ENEMY_TURN, null);
+
     // 添加回合开始日志
     this.addCombatLog({
       actorType: 'system',
@@ -496,7 +499,7 @@ export class CombatService implements ICombatService {
     });
     
     // 触发玩家回合开始事件
-    eventBus.emit(GameEvents.COMBAT_PLAYER_TURN);
+    eventBus.emit(GameEvents.COMBAT_PLAYER_TURN, null);
     
     this.saveLogs();
   }

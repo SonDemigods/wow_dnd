@@ -2,6 +2,7 @@ import type { GridCell, GridEventType, ExplorationState, GridEventProbability, A
 import { explorationDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
 import { characterService } from '../character/service';
+import { inventoryService } from '../inventory/service';
 
 const GRID_SIZE = 10;
 const INITIAL_MOVES = 20;
@@ -520,13 +521,14 @@ export class ExplorationService implements IExplorationService {
       
       this.updateAccessibleCells();
       
-      if (cell.type === 'shop') {
-        // 根据区域选择商店ID
-        const shopId = this.getDefaultShopId();
-        this.triggerShopInteraction(shopId);
-      } else {
-        this.triggerBoardInteraction('board_main');
-      }
+      const interactionId = cell.type === 'shop' ? this.getDefaultShopId() : 'board_main';
+      eventBus.emit(GameEvents.EXPLORATION_CELL_EXPLORED, {
+        characterId: this.currentCharacterId,
+        x,
+        y,
+        cellType: cell.type,
+        interactionId
+      });
       
       this.saveState();
       return true;
@@ -544,12 +546,10 @@ export class ExplorationService implements IExplorationService {
     // 更新可访问格子
     this.updateAccessibleCells();
 
-    eventBus.emit(GameEvents.EXPLORATION_EVENT, {
+    eventBus.emit(GameEvents.EXPLORATION_CELL_EXPLORED, {
       characterId: this.currentCharacterId,
       x,
-      y,
-      eventType: this.getEventType(cell.type),
-      eventData: {}
+      y
     });
 
     if (cell.type === 'treasure') {
@@ -586,27 +586,16 @@ export class ExplorationService implements IExplorationService {
 
     this.saveState();
     
-    eventBus.emit(GameEvents.EXPLORATION_EVENT, {
-      characterId: this.currentCharacterId,
-      eventType: 'camp',
-      eventData: {}
+    eventBus.emit(GameEvents.EXPLORATION_CAMP_USED, {
+      characterId: this.currentCharacterId
     });
 
     return true;
   }
 
-  triggerShopInteraction(shopId: string): void {
-    eventBus.emit(GameEvents.SHOP_OPENED, { characterId: this.currentCharacterId, shopId });
-  }
-
-  triggerBoardInteraction(boardId: string): void {
-    eventBus.emit(GameEvents.QUEST_ACCEPTED, { characterId: this.currentCharacterId, boardId });
-  }
-
   triggerBattle(monsterId: string): void {
-    eventBus.emit(GameEvents.EXPLORATION_EVENT, {
+    eventBus.emit(GameEvents.EXPLORATION_BATTLE_TRIGGERED, {
       characterId: this.currentCharacterId,
-      eventType: 'battle',
       eventData: { monsterId }
     });
   }
@@ -667,11 +656,10 @@ export class ExplorationService implements IExplorationService {
   }
 
   private handleItemFound(itemId: string): void {
-    eventBus.emit(GameEvents.INVENTORY_CHANGE, {
-      characterId: this.currentCharacterId,
-      itemId,
-      count: 1
-    });
+    const item = inventoryService.getItemInfo(itemId);
+    if (item) {
+      inventoryService.addItem(item);
+    }
   }
 
   private handleTrapTriggered(): void {
@@ -683,12 +671,7 @@ export class ExplorationService implements IExplorationService {
     const damage = Math.max(1, Math.floor(baseDamage + variance));
     
     characterService.addHp(-damage);
-    
-    eventBus.emit(GameEvents.CHARACTER_HP_CHANGE, {
-      characterId: this.currentCharacterId,
-      damage,
-      source: 'trap'
-    });
+    // characterService.addHp 内部已触发 CHARACTER_HP_CHANGE 事件，无需重复 emit
   }
 
   private saveState(): void {

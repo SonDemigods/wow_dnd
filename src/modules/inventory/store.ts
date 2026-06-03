@@ -281,19 +281,26 @@ export const useInventoryStore = defineStore('inventory', () => {
   }
 
   function setupEventListeners(): void {
-    eventBus.on(GameEvents.INVENTORY_CHANGE, () => {
+    eventBus.onGroup('inventoryStore', GameEvents.INVENTORY_CHANGE, () => {
       inventory.value = inventoryService.getInventory();
     });
 
-    eventBus.on(GameEvents.CHARACTER_SELECTED, (data) => {
+    eventBus.onGroup('inventoryStore', GameEvents.CHARACTER_SELECTED, (data) => {
       if (data?.characterId) {
         setCharacter(data.characterId);
       }
     });
 
-    eventBus.on(GameEvents.CHARACTER_LOGOUT, () => {
+    eventBus.onGroup('inventoryStore', GameEvents.CHARACTER_LOGOUT, () => {
       inventory.value = [];
     });
+  }
+
+  /**
+   * 清理事件监听
+   */
+  function dispose(): void {
+    eventBus.clearGroup('inventoryStore');
   }
 
   return {
@@ -333,6 +340,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     removeItemTemplate,
     setCharacter,
     reset,
-    setupEventListeners
+    setupEventListeners,
+    dispose
   };
 });

@@ -88,8 +88,6 @@ export interface IExplorationService {
   getGrid(x: number, y: number): GridCell | null
   revealGrid(x: number, y: number): boolean
   useCamp(): boolean
-  triggerShopInteraction(shopId: string): void
-  triggerBoardInteraction(boardId: string): void
   triggerBattle(monsterId: string): void
   onBattleResult(victory: boolean): void
   getCurrentAreaId(): string | null

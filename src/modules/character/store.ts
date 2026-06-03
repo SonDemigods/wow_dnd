@@ -224,48 +224,59 @@ export const useCharacterStore = defineStore('character', () => {
 
   // 事件监听
   function setupEventListeners(): void {
-    eventBus.on(GameEvents.CHARACTER_CREATED, () => {
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_CREATED, () => {
       character.value = characterService.getCharacterInfo();
       loadCharacterList();
     });
 
-    eventBus.on(GameEvents.CHARACTER_SELECTED, () => {
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_SELECTED, () => {
       currentCharacterId.value = characterService.getCurrentCharacterId();
       character.value = characterService.getCharacterInfo();
     });
 
-    eventBus.on(GameEvents.CHARACTER_DELETED, () => {
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_DELETED, () => {
       loadCharacterList();
     });
 
-    eventBus.on(GameEvents.CHARACTER_LEVEL_UP, () => {
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_LEVEL_UP, () => {
       character.value = characterService.getCharacterInfo();
     });
 
-    eventBus.on(GameEvents.CHARACTER_HP_CHANGE, () => {
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_HP_CHANGE, (data) => {
+      if (character.value) {
+        character.value = { ...character.value, hp: data.newHp, maxHp: data.maxHp };
+      }
+    });
+
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_MP_CHANGE, (data) => {
+      if (character.value) {
+        character.value = { ...character.value, mana: data.newMp, maxMana: data.maxMp };
+      }
+    });
+
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_STATS_CHANGE, () => {
       character.value = characterService.getCharacterInfo();
     });
 
-    eventBus.on(GameEvents.CHARACTER_MP_CHANGE, () => {
-      character.value = characterService.getCharacterInfo();
-    });
-
-    eventBus.on(GameEvents.CHARACTER_STATS_CHANGE, () => {
-      character.value = characterService.getCharacterInfo();
-    });
-
-    eventBus.on(GameEvents.CHARACTER_LOGOUT, () => {
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_LOGOUT, () => {
       currentCharacterId.value = null;
       character.value = null;
     });
 
-    eventBus.on(GameEvents.CHARACTER_DEATH, () => {
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_DEATH, () => {
       character.value = characterService.getCharacterInfo();
     });
 
-    eventBus.on(GameEvents.CHARACTER_RESURRECTED, () => {
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_RESURRECTED, () => {
       character.value = characterService.getCharacterInfo();
     });
+  }
+
+  /**
+   * 清理事件监听
+   */
+  function dispose(): void {
+    eventBus.clearGroup('characterStore');
   }
 
   return {
@@ -317,6 +328,7 @@ export const useCharacterStore = defineStore('character', () => {
     spendGold,
     setName,
     initialize,
-    setupEventListeners
+    setupEventListeners,
+    dispose
   };
 });

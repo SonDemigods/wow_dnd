@@ -114,14 +114,6 @@ export const useExplorationStore = defineStore('exploration', () => {
     return success;
   }
 
-  function triggerShopInteraction(shopId: string): void {
-    explorationService.triggerShopInteraction(shopId);
-  }
-
-  function triggerBoardInteraction(boardId: string): void {
-    explorationService.triggerBoardInteraction(boardId);
-  }
-
   function triggerBattle(monsterId: string): void {
     explorationService.triggerBattle(monsterId);
   }
@@ -140,30 +132,34 @@ export const useExplorationStore = defineStore('exploration', () => {
   }
 
   function exitExploration(): void {
-    isExploring.value = false;
-    eventBus.emit(GameEvents.EXPLORATION_END, { characterId: null });
+    reset();
   }
 
   function initEventListeners(): void {
-    eventBus.on(GameEvents.EXPLORATION_START, (data: { characterId: string | null; areaId?: string }) => {
+    eventBus.onGroup('explorationStore', GameEvents.EXPLORATION_START, (data: { characterId: string | null; areaId?: string }) => {
       if (data.areaId) {
         currentAreaId.value = data.areaId;
       }
       isExploring.value = true;
     });
 
-    eventBus.on(GameEvents.EXPLORATION_END, () => {
+    eventBus.onGroup('explorationStore', GameEvents.EXPLORATION_END, () => {
       isExploring.value = false;
     });
 
-    eventBus.on(GameEvents.EXPLORATION_EVENT, (data: { x?: number; y?: number }) => {
-      if (data.x !== undefined && data.y !== undefined) {
-        const cell = grid.value[data.y]?.[data.x];
-        if (cell) {
-          cell.explored = true;
-        }
+    eventBus.onGroup('explorationStore', GameEvents.EXPLORATION_CELL_EXPLORED, (data: { x: number; y: number }) => {
+      const cell = grid.value[data.y]?.[data.x];
+      if (cell) {
+        cell.explored = true;
       }
     });
+  }
+
+  /**
+   * 清理事件监听
+   */
+  function dispose(): void {
+    eventBus.clearGroup('explorationStore');
   }
 
   return {
@@ -187,10 +183,9 @@ export const useExplorationStore = defineStore('exploration', () => {
     handleEventChoice,
     revealGrid,
     useCamp,
-    triggerShopInteraction,
-    triggerBoardInteraction,
     triggerBattle,
     reset,
-    exitExploration
+    exitExploration,
+    dispose
   };
 });

@@ -124,18 +124,25 @@ export const useShopStore = defineStore('shop', () => {
    */
   function initEventListeners(): void {
     // 商店刷新事件
-    eventBus.on(GameEvents.SHOP_REFRESHED, (data: { shopId: string }) => {
+    eventBus.onGroup('shopStore', GameEvents.SHOP_REFRESHED, (data: { shopId: string }) => {
       if (currentShopId.value === data.shopId) {
         currentInventory.value = shopService.getShopInventory(data.shopId);
       }
     });
     
     // 物品购买事件
-    eventBus.on(GameEvents.SHOP_TRANSACTION, (data: { shopId: string }) => {
+    eventBus.onGroup('shopStore', GameEvents.SHOP_TRANSACTION, (data: { shopId: string }) => {
       if (currentShopId.value === data.shopId) {
         currentInventory.value = shopService.getShopInventory(data.shopId);
       }
     });
+  }
+
+  /**
+   * 清理事件监听
+   */
+  function dispose(): void {
+    eventBus.clearGroup('shopStore');
   }
   
   /**
@@ -178,6 +185,7 @@ export const useShopStore = defineStore('shop', () => {
     getShopInventory,
     getShopsByLocation,
     init,
-    reset
+    reset,
+    dispose
   };
 });

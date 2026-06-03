@@ -127,7 +127,7 @@ export const useCombatStore = defineStore('combat', () => {
    */
   function initEventListeners(): void {
     // 战斗开始事件
-    eventBus.on(GameEvents.COMBAT_START, (data: { enemy: Enemy }) => {
+    eventBus.onGroup('combatStore', GameEvents.COMBAT_START, (data: { enemy: Enemy }) => {
       state.value = 'fighting';
       enemy.value = data.enemy;
       turn.value = 'player';
@@ -135,21 +135,28 @@ export const useCombatStore = defineStore('combat', () => {
     });
     
     // 战斗结束事件
-    eventBus.on(GameEvents.COMBAT_END, () => {
+    eventBus.onGroup('combatStore', GameEvents.COMBAT_END, () => {
       state.value = 'ended';
     });
     
     // 玩家回合开始事件
-    eventBus.on(GameEvents.COMBAT_PLAYER_TURN, () => {
+    eventBus.onGroup('combatStore', GameEvents.COMBAT_PLAYER_TURN, () => {
       turn.value = 'player';
       updateState();
     });
     
     // 敌人回合开始事件
-    eventBus.on(GameEvents.COMBAT_ENEMY_TURN, () => {
+    eventBus.onGroup('combatStore', GameEvents.COMBAT_ENEMY_TURN, () => {
       turn.value = 'enemy';
       updateState();
     });
+  }
+  
+  /**
+   * 清理事件监听
+   */
+  function dispose(): void {
+    eventBus.clearGroup('combatStore');
   }
   
   /**
@@ -184,6 +191,7 @@ export const useCombatStore = defineStore('combat', () => {
     addLog,
     clearLogs,
     init,
-    updateState
+    updateState,
+    dispose
   };
 });

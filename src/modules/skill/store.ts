@@ -148,32 +148,35 @@ export const useSkillsStore = defineStore('skills', () => {
   }
 
   function setupEventListeners(): void {
-    eventBus.on(GameEvents.SKILL_LEARNED, () => {
+    eventBus.onGroup('skillStore', GameEvents.SKILL_LEARNED, () => {
       skills.value = skillsService.getSkills();
     });
 
-    eventBus.on(GameEvents.SKILL_BAR_UPDATE, () => {
+    eventBus.onGroup('skillStore', GameEvents.SKILL_BAR_UPDATE, () => {
       skillBar.value = skillsService.getSkillBar();
     });
 
-    eventBus.on(GameEvents.SKILL_CAST, () => {
-      // 技能施放后可能需要更新状态
-    });
-
-    eventBus.on(GameEvents.CHARACTER_SELECTED, (data) => {
+    eventBus.onGroup('skillStore', GameEvents.CHARACTER_SELECTED, (data) => {
       if (data?.characterId) {
         setCharacter(data.characterId);
       }
     });
 
-    eventBus.on(GameEvents.CHARACTER_LOGOUT, () => {
+    eventBus.onGroup('skillStore', GameEvents.CHARACTER_LOGOUT, () => {
       skills.value = [];
       skillBar.value = { slots: [null, null, null, null] };
     });
 
-    eventBus.on(GameEvents.CHARACTER_LEVEL_UP, () => {
+    eventBus.onGroup('skillStore', GameEvents.CHARACTER_LEVEL_UP, () => {
       checkLevelUnlocks();
     });
+  }
+
+  /**
+   * 清理事件监听
+   */
+  function dispose(): void {
+    eventBus.clearGroup('skillStore');
   }
 
   return {
@@ -204,6 +207,7 @@ export const useSkillsStore = defineStore('skills', () => {
     setCharacter,
     reset,
     setupEventListeners,
+    dispose,
     
     // 常量
     SKILL_TYPE_NAMES

@@ -249,7 +249,7 @@ export class CharacterService implements ICharacterService {
     this.character = null;
     this.bonusStats = {};
     await characterDbService.saveGameState(null);
-    eventBus.emit(GameEvents.CHARACTER_LOGOUT);
+    eventBus.emit(GameEvents.CHARACTER_LOGOUT, null);
   }
 
   /**

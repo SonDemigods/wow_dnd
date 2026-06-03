@@ -160,9 +160,16 @@ export const useMapStore = defineStore('map', () => {
    */
   function initEventListeners(): void {
     // 地点进入事件
-    eventBus.on(GameEvents.ZONE_ENTERED, (data: { locationId: string; location: LocationData }) => {
+    eventBus.onGroup('mapStore', GameEvents.ZONE_ENTERED, (data: { locationId: string; location: LocationData }) => {
       currentLocation.value = data.location;
     });
+  }
+
+  /**
+   * 清理事件监听
+   */
+  function dispose(): void {
+    eventBus.clearGroup('mapStore');
   }
   
   /**
@@ -212,6 +219,7 @@ export const useMapStore = defineStore('map', () => {
     setActiveMarker,
     toggleMarkers,
     init,
-    reset
+    reset,
+    dispose
   };
 });

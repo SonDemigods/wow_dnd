@@ -290,9 +290,16 @@ export const useGameDataStore = defineStore('gameData', () => {
   async function initialize(): Promise<void> {
     await loadAllData();
     
-    eventBus.on(GameEvents.GAME_DATA_UPDATED, async () => {
+    eventBus.onGroup('gameDataStore', GameEvents.GAME_DATA_UPDATED, async () => {
       await loadAllData();
     });
+  }
+
+  /**
+   * 清理事件监听
+   */
+  function dispose(): void {
+    eventBus.clearGroup('gameDataStore');
   }
   
   return {
@@ -334,6 +341,7 @@ export const useGameDataStore = defineStore('gameData', () => {
     selectRace,
     selectClass,
     resetSelection,
-    initialize
+    initialize,
+    dispose
   };
 });

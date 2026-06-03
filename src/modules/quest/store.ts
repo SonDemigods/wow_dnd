@@ -188,25 +188,37 @@ export const useQuestStore = defineStore('quest', () => {
    * 初始化事件监听
    */
   function initEventListeners(): void {
+    // 任务公告板打开事件（刷新可用任务列表）
+    eventBus.onGroup('questStore', GameEvents.QUEST_BOARD_OPENED, () => {
+      updateQuestLists();
+    });
+    
     // 任务接受事件
-    eventBus.on(GameEvents.QUEST_ACCEPTED, () => {
+    eventBus.onGroup('questStore', GameEvents.QUEST_ACCEPTED, () => {
       updateQuestLists();
     });
     
     // 任务完成事件
-    eventBus.on(GameEvents.QUEST_COMPLETED, () => {
+    eventBus.onGroup('questStore', GameEvents.QUEST_COMPLETED, () => {
       updateQuestLists();
     });
     
     // 任务提交事件
-    eventBus.on(GameEvents.QUEST_REWARDED, () => {
+    eventBus.onGroup('questStore', GameEvents.QUEST_REWARDED, () => {
       updateQuestLists();
     });
     
-    // 任务放弃事件
-    eventBus.on(GameEvents.QUEST_PROGRESS, () => {
+    // 任务进度事件
+    eventBus.onGroup('questStore', GameEvents.QUEST_PROGRESS, () => {
       updateQuestLists();
     });
+  }
+
+  /**
+   * 清理事件监听
+   */
+  function dispose(): void {
+    eventBus.clearGroup('questStore');
   }
   
   /**
@@ -251,6 +263,7 @@ export const useQuestStore = defineStore('quest', () => {
     turnInQuestToBoard,
     init,
     reset,
-    updateQuestLists
+    updateQuestLists,
+    dispose
   };
 });

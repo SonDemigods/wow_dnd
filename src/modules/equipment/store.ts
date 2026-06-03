@@ -168,17 +168,17 @@ export const useEquipmentStore = defineStore('equipment', () => {
   }
 
   function setupEventListeners(): void {
-    eventBus.on(GameEvents.EQUIPMENT_CHANGE, () => {
+    eventBus.onGroup('equipmentStore', GameEvents.EQUIPMENT_CHANGE, () => {
       equipment.value = equipmentService.getEquipment();
     });
 
-    eventBus.on(GameEvents.CHARACTER_SELECTED, (data) => {
+    eventBus.onGroup('equipmentStore', GameEvents.CHARACTER_SELECTED, (data) => {
       if (data?.characterId) {
         setCharacter(data.characterId);
       }
     });
 
-    eventBus.on(GameEvents.CHARACTER_LOGOUT, () => {
+    eventBus.onGroup('equipmentStore', GameEvents.CHARACTER_LOGOUT, () => {
       equipment.value = {
         weapon1: null,
         weapon2: null,
@@ -188,6 +188,13 @@ export const useEquipmentStore = defineStore('equipment', () => {
         armor4: null
       };
     });
+  }
+
+  /**
+   * 清理事件监听
+   */
+  function dispose(): void {
+    eventBus.clearGroup('equipmentStore');
   }
 
   return {
@@ -215,6 +222,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     removeEquipmentTemplate,
     setCharacter,
     reset,
-    setupEventListeners
+    setupEventListeners,
+    dispose
   };
 });

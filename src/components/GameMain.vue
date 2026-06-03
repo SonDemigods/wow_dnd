@@ -199,19 +199,20 @@ function handleExit() {
   emit('exit');
 }
 
-// 监听探索事件，打开对应弹窗
-function handleShopOpened(data: { shopId?: string }) {
-  currentShopId.value = data?.shopId || 'shop_inn';
-  showShop.value = true;
-}
-
-function handleQuestAccepted() {
-  showQuestBoard.value = true;
+// 监听探索格子翻开事件，处理交互
+function handleCellExplored(data: { cellType?: string; interactionId?: string }) {
+  const cellType = data?.cellType;
+  if (cellType === 'shop') {
+    currentShopId.value = data?.interactionId || 'shop_inn';
+    showShop.value = true;
+  } else if (cellType === 'board') {
+    showQuestBoard.value = true;
+  }
 }
 
 // 监听探索战斗事件
-function handleBattleTriggered(data: { eventType?: string; eventData?: { monsterId?: string } }) {
-  if (data?.eventType !== 'battle' || !data?.eventData?.monsterId) return;
+function handleBattleTriggered(data: { eventData?: { monsterId?: string } }) {
+  if (!data?.eventData?.monsterId) return;
   
   const monsterId = data.eventData.monsterId;
   
@@ -241,15 +242,13 @@ function handleCombatClose(_result?: CombatResult) {
 }
 
 onMounted(() => {
-  eventBus.on(GameEvents.SHOP_OPENED, handleShopOpened);
-  eventBus.on(GameEvents.QUEST_ACCEPTED, handleQuestAccepted);
-  eventBus.on(GameEvents.EXPLORATION_EVENT, handleBattleTriggered);
+  eventBus.on(GameEvents.EXPLORATION_CELL_EXPLORED, handleCellExplored);
+  eventBus.on(GameEvents.EXPLORATION_BATTLE_TRIGGERED, handleBattleTriggered);
 });
 
 onUnmounted(() => {
-  eventBus.off(GameEvents.SHOP_OPENED, handleShopOpened);
-  eventBus.off(GameEvents.QUEST_ACCEPTED, handleQuestAccepted);
-  eventBus.off(GameEvents.EXPLORATION_EVENT, handleBattleTriggered);
+  eventBus.off(GameEvents.EXPLORATION_CELL_EXPLORED, handleCellExplored);
+  eventBus.off(GameEvents.EXPLORATION_BATTLE_TRIGGERED, handleBattleTriggered);
 });
 
 defineExpose({ showNotif });
