@@ -41,16 +41,51 @@ export interface EnemyData {
 }
 
 /**
+ * 敌人基础属性
+ */
+export interface EnemyStats {
+  str: number;
+  dex: number;
+  con: number;
+  int: number;
+  wis: number;
+  cha: number;
+}
+
+/**
+ * 敌人掉落配置
+ */
+export interface EnemyDrop {
+  itemId: string;
+  minAmount: number;
+  maxAmount: number;
+  dropRate: number;
+}
+
+/**
  * 敌人实例接口（运行时使用）
  * 存储战斗中的敌人状态
  * @property {string} id - 敌人实例ID
  * @property {number} level - 敌人等级
  * @property {number} hp - 当前生命值
  * @property {InventoryItem[]} loot - 掉落物品
+ * @property {EnemyStats} stats - 敌人属性
+ * @property {number} expReward - 经验值奖励
+ * @property {number} goldReward - 金币奖励
+ * @property {EnemyDrop[]} drops - 掉落配置
  */
 export interface EnemyInstance extends EnemyData {
   id: string;
   level: number;
   hp: number;
   loot: InventoryItem[];
+  stats: EnemyStats;
+  expReward: number;
+  goldReward: number;
+  drops: EnemyDrop[];
 }
+
+/**
+ * 敌人类型别名（战斗服务使用）
+ */
+export type Enemy = EnemyInstance;

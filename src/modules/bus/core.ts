@@ -137,6 +137,12 @@ export enum GameEvents {
   COMBAT_TURN_CHANGE = 'combat_turn_change',
   /** 战斗日志 */
   COMBAT_LOG = 'combat_log',
+  /** 玩家回合开始 */
+  COMBAT_PLAYER_TURN = 'combat_player_turn',
+  /** 敌人回合开始 */
+  COMBAT_ENEMY_TURN = 'combat_enemy_turn',
+  /** 玩家行动 */
+  COMBAT_PLAYER_ACTION = 'combat_player_action',
   
   /** 探索开始 */
   EXPLORATION_START = 'exploration_start',

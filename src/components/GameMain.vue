@@ -110,6 +110,11 @@
       :visible="showQuestBoard" 
       @close="showQuestBoard = false" 
     />
+
+    <CombatPopup
+      :visible="showCombat"
+      @close="handleCombatClose"
+    />
   </div>
 </template>
 
@@ -118,6 +123,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
 import { eventBus, GameEvents } from '@/modules/bus/core';
+import { enemyService } from '@/modules/enemy/service';
+import { combatService } from '@/modules/combat/service';
+import { explorationService } from '@/modules/exploration/service';
+import type { CombatResult } from '@/modules/combat/types';
 import MapView from './MapView.vue';
 import ExplorationView from './ExplorationView.vue';
 import InventoryPopup from './popup/InventoryPopup.vue';
@@ -127,6 +136,7 @@ import ShopPopup from './popup/ShopPopup.vue';
 import QuestBoardPopup from './popup/QuestBoardPopup.vue';
 import CharacterInfoPopup from './popup/CharacterInfoPopup.vue';
 import AdventureLogPopup from './popup/AdventureLogPopup.vue';
+import CombatPopup from './popup/CombatPopup.vue';
 import ResourceBar from './common/ResourceBar.vue';
 
 const emit = defineEmits<{
@@ -147,6 +157,7 @@ const showQuests = ref(false);
 const showAdventureLog = ref(false);
 const showShop = ref(false);
 const showQuestBoard = ref(false);
+const showCombat = ref(false);
 const currentShopId = ref('shop_inn');
 
 const character = computed(() => characterStore.character || {});
@@ -198,14 +209,47 @@ function handleQuestAccepted() {
   showQuestBoard.value = true;
 }
 
+// 监听探索战斗事件
+function handleBattleTriggered(data: { eventType?: string; eventData?: { monsterId?: string } }) {
+  if (data?.eventType !== 'battle' || !data?.eventData?.monsterId) return;
+  
+  const monsterId = data.eventData.monsterId;
+  
+  // 根据区域确定怪物ID映射
+  const monsterMap: Record<string, string> = {
+    'enemy_goblin': 'goblin',
+    'enemy_wolf': 'wolf',
+    'enemy_spider': 'spider',
+    'enemy_orc': 'orc',
+    'enemy_goblin_boss': 'goblin',
+    'enemy_wolf_boss': 'wolf',
+    'enemy_orc_boss': 'orc',
+    'enemy_boss': 'dragon_whelp'
+  };
+  
+  const dataId = monsterMap[monsterId] || monsterId;
+  const enemy = enemyService.createEnemy(dataId);
+  
+  if (enemy) {
+    combatService.startCombat(enemy);
+    showCombat.value = true;
+  }
+}
+
+function handleCombatClose(_result?: CombatResult) {
+  showCombat.value = false;
+}
+
 onMounted(() => {
   eventBus.on(GameEvents.SHOP_OPENED, handleShopOpened);
   eventBus.on(GameEvents.QUEST_ACCEPTED, handleQuestAccepted);
+  eventBus.on(GameEvents.EXPLORATION_EVENT, handleBattleTriggered);
 });
 
 onUnmounted(() => {
   eventBus.off(GameEvents.SHOP_OPENED, handleShopOpened);
   eventBus.off(GameEvents.QUEST_ACCEPTED, handleQuestAccepted);
+  eventBus.off(GameEvents.EXPLORATION_EVENT, handleBattleTriggered);
 });
 
 defineExpose({ showNotif });

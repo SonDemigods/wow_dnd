@@ -604,7 +604,11 @@ export class ExplorationService implements IExplorationService {
   }
 
   triggerBattle(monsterId: string): void {
-    eventBus.emit(GameEvents.COMBAT_START, { characterId: this.currentCharacterId, monsterId });
+    eventBus.emit(GameEvents.EXPLORATION_EVENT, {
+      characterId: this.currentCharacterId,
+      eventType: 'battle',
+      eventData: { monsterId }
+    });
   }
 
   onBattleResult(victory: boolean): void {

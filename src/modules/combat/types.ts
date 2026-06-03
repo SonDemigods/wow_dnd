@@ -175,8 +175,8 @@ export interface CombatLog {
   skillName?: string;
   damage?: number;
   heal?: number;
-  isCrit: boolean;
-  isDodge: boolean;
+  isCrit?: boolean;
+  isDodge?: boolean;
   message: string;
 }
 
