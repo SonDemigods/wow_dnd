@@ -53,7 +53,7 @@
         <span class="footer-text">背包</span>
       </button>
       <button class="footer-btn" @click="showSkills = true" title="技能">
-        <span class="footer-icon">📜</span>
+        <span class="footer-icon">⚔️</span>
         <span class="footer-text">技能</span>
       </button>
       <button class="footer-btn" @click="showQuests = true" title="任务">
@@ -61,7 +61,7 @@
         <span class="footer-text">任务</span>
       </button>
       <button class="footer-btn" @click="showAdventureLog = true" title="日志">
-        <span class="footer-icon">📝</span>
+        <span class="footer-icon">📜</span>
         <span class="footer-text">日志</span>
       </button>
       <button class="footer-btn exit-btn" @click="handleExit" title="退出">
@@ -315,42 +315,91 @@ defineExpose({ showNotif });
 .game-footer {
   display: flex;
   justify-content: space-around;
-  padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.5);
-  border-top: 2px solid #4a4a4a;
+  align-items: center;
+  padding: 10px 12px 14px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.7) 100%);
+  border-top: 1px solid rgba(255, 215, 0, 0.2);
+  position: relative;
+}
+
+.game-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.4), transparent);
 }
 
 .footer-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid #4a4a4a;
-  border-radius: 8px;
-  color: #fff;
+  gap: 5px;
+  padding: 8px 4px 6px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
-  transition: all 0.3s;
-  min-width: 60px;
+  transition: all 0.3s ease;
+  min-width: 52px;
+  position: relative;
+  border-radius: 10px;
+}
+
+.footer-btn::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 2px;
+  background: #ffd700;
+  border-radius: 1px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.5);
 }
 
 .footer-btn:hover {
-  border-color: #666;
-  background: rgba(255, 255, 255, 0.1);
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.footer-btn:hover::after {
+  width: 70%;
+}
+
+.footer-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.footer-btn.exit-btn {
+  color: rgba(255, 100, 100, 0.7);
 }
 
 .footer-btn.exit-btn:hover {
-  border-color: #ff4444;
-  background: rgba(255, 68, 68, 0.2);
+  color: #ff6b6b;
+  background: rgba(255, 68, 68, 0.1);
+}
+
+.footer-btn.exit-btn::after {
+  background: #ff4444;
+  box-shadow: 0 0 6px rgba(255, 68, 68, 0.5);
 }
 
 .footer-icon {
-  font-size: 22px;
+  font-size: 24px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
 .footer-text {
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
 }
 
 .notification {
@@ -431,27 +480,31 @@ defineExpose({ showNotif });
   }
   
   .footer-btn {
-    padding: 6px 10px;
-    min-width: 50px;
+    padding: 6px 4px 5px;
+    min-width: 48px;
   }
   
   .footer-icon {
-    font-size: 18px;
+    font-size: 22px;
   }
   
   .footer-text {
-    font-size: 10px;
+    font-size: 9px;
   }
 }
 
 @media (max-width: 480px) {
+  .game-footer {
+    padding: 8px 8px 12px;
+  }
+
   .footer-btn {
-    min-width: 45px;
-    padding: 4px 6px;
+    min-width: 42px;
+    padding: 6px 2px 4px;
   }
   
   .footer-icon {
-    font-size: 16px;
+    font-size: 20px;
   }
   
   .footer-text {
