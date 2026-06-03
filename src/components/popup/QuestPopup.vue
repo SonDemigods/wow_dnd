@@ -1,144 +1,75 @@
 <template>
-  <BasePopup :visible="visible" title="任务看板" @close="$emit('close')">
+  <BasePopup :visible="visible" title="任务日志" @close="$emit('close')">
     <template #default>
-        <div class="quest-tabs">
-          <button 
-            :class="['tab-btn', { active: currentTab === 'available' }]"
-            @click="currentTab = 'available'"
-          >
-            可接取任务
-          </button>
-          <button 
-            :class="['tab-btn', { active: currentTab === 'active' }]"
-            @click="currentTab = 'active'"
-          >
-            进行中任务
-          </button>
-          <button 
-            :class="['tab-btn', { active: currentTab === 'completed' }]"
-            @click="currentTab = 'completed'"
-          >
-            已完成任务
-          </button>
-        </div>
-
-        <div v-if="currentTab === 'available'" class="quest-list">
-          <div 
-            v-for="quest in availableQuests" 
-            :key="quest.id"
-            class="quest-card available"
-          >
-            <div class="quest-icon">{{ getQuestIcon(quest.type) }}</div>
-            <div class="quest-content">
-              <div class="quest-header-row">
-                <h3>{{ quest.title }}</h3>
-                <span class="quest-level">Lv.{{ quest.requiredLevel }}</span>
-              </div>
-              <p class="quest-desc">{{ quest.description }}</p>
-              <div class="quest-rewards">
-                <span v-if="quest.rewards.gold">💰 {{ quest.rewards.gold }}</span>
-                <span v-if="quest.rewards.exp">✨ {{ quest.rewards.exp }}</span>
-                <span v-if="quest.rewards.items">📦 {{ quest.rewards.items.length }}</span>
-              </div>
-              <button 
-                class="accept-btn"
-                :disabled="characterLevel < quest.requiredLevel"
-                @click="acceptQuest(quest.id)"
+      <div class="quest-list">
+        <div 
+          v-for="quest in activeQuests" 
+          :key="quest.questId"
+          class="quest-card"
+        >
+          <div class="quest-icon">{{ getQuestIcon(quest.definition.type) }}</div>
+          <div class="quest-content">
+            <div class="quest-header-row">
+              <h3>{{ quest.definition.title }}</h3>
+              <span :class="['quest-status', quest.instance.status]">{{ getStatusText(quest.instance.status) }}</span>
+            </div>
+            <p class="quest-desc">{{ quest.definition.description }}</p>
+            <div class="objectives">
+              <div 
+                v-for="(obj, idx) in quest.definition.objectives" 
+                :key="obj.key"
+                :class="['objective', { completed: isObjectiveCompleted(quest.instance, idx) }]"
               >
-                接取任务
+                <span class="objective-checkbox">{{ isObjectiveCompleted(quest.instance, idx) ? '☑️' : '⬜' }}</span>
+                <span class="objective-text">{{ obj.description }}</span>
+                <span class="objective-progress">{{ getObjectiveProgress(quest.instance, idx) }}/{{ obj.target }}</span>
+              </div>
+            </div>
+            <div class="quest-rewards">
+              <span v-if="quest.definition.goldReward">💰 {{ quest.definition.goldReward }}</span>
+              <span v-if="quest.definition.xpReward">✨ {{ quest.definition.xpReward }}</span>
+            </div>
+            <div class="quest-actions">
+              <button 
+                v-if="quest.instance.status === 'completed'"
+                class="claim-btn"
+                @click="claimReward(quest.questId)"
+              >
+                领取奖励
+              </button>
+              <button 
+                v-else
+                class="abandon-btn"
+                @click="abandonQuest(quest.questId)"
+              >
+                放弃任务
               </button>
             </div>
           </div>
         </div>
+      </div>
 
-        <div v-else-if="currentTab === 'active'" class="quest-list">
-          <div 
-            v-for="quest in activeQuests" 
-            :key="quest.id"
-            class="quest-card active"
-          >
-            <div class="quest-icon">{{ getQuestIcon(quest.type) }}</div>
-            <div class="quest-content">
-              <div class="quest-header-row">
-                <h3>{{ quest.title }}</h3>
-                <span class="quest-status">{{ getStatusText(quest.status) }}</span>
-              </div>
-              <p class="quest-desc">{{ quest.description }}</p>
-              <div class="objectives">
-                <div 
-                  v-for="obj in quest.objectives" 
-                  :key="obj.id"
-                  :class="['objective', { completed: obj.completed }]"
-                >
-                  <span class="objective-checkbox">{{ obj.completed ? '☑️' : '⬜' }}</span>
-                  <span class="objective-text">{{ obj.description }}</span>
-                  <span class="objective-progress">{{ obj.current }}/{{ obj.required }}</span>
-                </div>
-              </div>
-              <div class="quest-actions">
-                <button 
-                  v-if="quest.status === 'completed'"
-                  class="claim-btn"
-                  @click="claimReward(quest.id)"
-                >
-                  领取奖励
-                </button>
-                <button 
-                  v-else
-                  class="abandon-btn"
-                  @click="abandonQuest(quest.id)"
-                >
-                  放弃任务
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-else class="quest-list">
-          <div 
-            v-for="quest in completedQuests" 
-            :key="quest.id"
-            class="quest-card completed"
-          >
-            <div class="quest-icon">🏆</div>
-            <div class="quest-content">
-              <h3>{{ quest.title }}</h3>
-              <p class="quest-desc">{{ quest.description }}</p>
-              <div class="quest-rewards">
-                <span v-if="quest.rewards.gold">💰 {{ quest.rewards.gold }}</span>
-                <span v-if="quest.rewards.exp">✨ {{ quest.rewards.exp }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="!availableQuests.length && currentTab === 'available'" class="empty-state">
-          <div class="empty-icon">📋</div>
-          <p>暂无可用任务</p>
-        </div>
-
-        <div v-if="!activeQuests.length && currentTab === 'active'" class="empty-state">
-          <div class="empty-icon">📝</div>
-          <p>暂无进行中的任务</p>
-        </div>
-
-        <div v-if="!completedQuests.length && currentTab === 'completed'" class="empty-state">
-          <div class="empty-icon">🏆</div>
-          <p>暂无已完成的任务</p>
-        </div>
+      <div v-if="!activeQuests.length" class="empty-state">
+        <div class="empty-icon">📝</div>
+        <p>暂无进行中的任务</p>
+      </div>
     </template>
   </BasePopup>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { questService } from '@/modules/quest';
-import { characterService } from '@/modules/character';
-import type { Quest, QuestStatus } from '@/modules/quest';
+import type { QuestDefinition, QuestInstance, QuestStatus } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';
 
-defineProps<{
+interface ActiveQuest {
+  questId: string;
+  definition: QuestDefinition;
+  instance: QuestInstance;
+}
+
+const props = defineProps<{
   visible: boolean;
 }>();
 
@@ -146,27 +77,16 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const currentTab = ref<'available' | 'active' | 'completed'>('available');
-
-const availableQuests = ref<Quest[]>([]);
-const activeQuests = ref<Quest[]>([]);
-const completedQuests = ref<Quest[]>([]);
-
-const characterLevel = computed(() => characterService.getLevel());
+const activeQuests = ref<ActiveQuest[]>([]);
 
 const questIcons: Record<string, string> = {
-  main: '⭐',
-  side: '📌',
-  daily: '📅'
+  kill: '⚔️',
+  collect: '📦'
 };
 
-const statusTexts: Record<QuestStatus, string> = {
-  available: '可接取',
-  not_available: '不可接',
+const statusTexts: Record<string, string> = {
   in_progress: '进行中',
-  completed: '可交付',
-  turned_in: '已领取',
-  abandoned: '已放弃'
+  completed: '可交付'
 };
 
 function getQuestIcon(type: string) {
@@ -174,18 +94,15 @@ function getQuestIcon(type: string) {
 }
 
 function getStatusText(status: QuestStatus) {
-  return statusTexts[status];
+  return statusTexts[status] || status;
 }
 
-function acceptQuest(questId: string) {
-  const success = questService.acceptQuest(questId);
-  if (success) {
-    const quest = questService.getQuestDefinition(questId);
-    alert(`已接受任务: ${quest?.title || questId}`);
-    loadQuests();
-  } else {
-    alert('无法接受此任务');
-  }
+function isObjectiveCompleted(instance: QuestInstance, index: number): boolean {
+  return instance.progress[index]?.current >= instance.progress[index]?.target;
+}
+
+function getObjectiveProgress(instance: QuestInstance, index: number): number {
+  return instance.progress[index]?.current || 0;
 }
 
 function claimReward(questId: string) {
@@ -210,50 +127,31 @@ function abandonQuest(questId: string) {
 
 async function loadQuests() {
   await questService.init();
-  const availableIds = questService.getAvailableQuests();
-  availableQuests.value = availableIds.map(id => questService.getQuestDefinition(id)).filter(Boolean);
   
-  const activeIds = questService.getInProgressQuests();
-  activeQuests.value = activeIds.map(id => questService.getQuestDefinition(id)).filter(Boolean);
-  
+  const inProgressIds = questService.getInProgressQuests();
   const completedIds = questService.getCompletedQuests();
-  completedQuests.value = completedIds.map(id => questService.getQuestDefinition(id)).filter(Boolean);
+  const allIds = [...inProgressIds, ...completedIds];
+  
+  activeQuests.value = allIds
+    .map(id => {
+      const definition = questService.getQuestDefinition(id);
+      const instance = questService.getQuestInstance(id);
+      if (!definition || !instance) return null;
+      return { questId: id, definition, instance };
+    })
+    .filter(Boolean) as ActiveQuest[];
 }
 
+watch(() => props.visible, (val) => {
+  if (val) loadQuests();
+});
+
 onMounted(() => {
-  loadQuests();
+  if (props.visible) loadQuests();
 });
 </script>
 
 <style scoped>
-.quest-tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
-}
-
-.tab-btn {
-  padding: 8px 18px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid #4a4a4a;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.tab-btn:hover {
-  border-color: #666;
-}
-
-.tab-btn.active {
-  background: rgba(255, 215, 0, 0.2);
-  border-color: #ffd700;
-  color: #ffd700;
-}
-
 .quest-list {
   display: flex;
   flex-direction: column;
@@ -267,19 +165,6 @@ onMounted(() => {
   padding: 14px;
   display: flex;
   gap: 10px;
-}
-
-.quest-card.available {
-  border-color: #0099ff;
-}
-
-.quest-card.active {
-  border-color: #ffd700;
-}
-
-.quest-card.completed {
-  border-color: #4CAF50;
-  opacity: 0.8;
 }
 
 .quest-icon {
@@ -305,39 +190,26 @@ onMounted(() => {
   margin: 0;
 }
 
-.quest-level {
+.quest-status {
   padding: 3px 8px;
-  background: rgba(255, 215, 0, 0.2);
   border-radius: 4px;
-  color: #ffd700;
   font-size: 12px;
 }
 
-.quest-status {
-  padding: 3px 8px;
+.quest-status.in_progress {
   background: rgba(0, 153, 255, 0.2);
-  border-radius: 4px;
   color: #0099ff;
-  font-size: 12px;
+}
+
+.quest-status.completed {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
 }
 
 .quest-desc {
   color: #aaa;
   font-size: 13px;
   margin: 6px 0;
-}
-
-.quest-rewards {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.quest-rewards span {
-  padding: 3px 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  font-size: 13px;
 }
 
 .objectives {
@@ -380,12 +252,25 @@ onMounted(() => {
   font-size: 13px;
 }
 
+.quest-rewards {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.quest-rewards span {
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
 .quest-actions {
   display: flex;
   gap: 10px;
 }
 
-.accept-btn, .claim-btn, .abandon-btn {
+.claim-btn, .abandon-btn {
   padding: 6px 14px;
   border: none;
   border-radius: 4px;
@@ -393,11 +278,6 @@ onMounted(() => {
   font-weight: bold;
   cursor: pointer;
   transition: all 0.3s;
-}
-
-.accept-btn {
-  background: linear-gradient(135deg, #4CAF50, #45a049);
-  color: #fff;
 }
 
 .claim-btn {
@@ -410,13 +290,8 @@ onMounted(() => {
   color: #fff;
 }
 
-.accept-btn:hover:not(:disabled), .claim-btn:hover, .abandon-btn:hover {
+.claim-btn:hover, .abandon-btn:hover {
   transform: translateY(-2px);
-}
-
-.accept-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .empty-state {
