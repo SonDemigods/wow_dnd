@@ -32,13 +32,13 @@
         >
           🏕 探索
         </button>
-        <div class="area-info" v-if="currentContentTab === 'map'">
+        <div class="area-info">
           区域: {{ currentArea }}
         </div>
       </div>
 
       <div class="content-view">
-        <MapView v-if="currentContentTab === 'map'" />
+        <MapView v-if="currentContentTab === 'map'" @enter-zone="currentContentTab = 'explore'" />
         <ExplorationView v-else />
       </div>
     </div>
@@ -143,7 +143,7 @@ const exp = computed(() => characterStore.exp);
 const expToNext = computed(() => characterStore.expToNextLevel);
 const expPercent = computed(() => characterStore.expPercentage);
 const gold = computed(() => characterStore.gold);
-const currentArea = computed(() => mapStore.getCurrentLocation?.name || '未知区域');
+const currentArea = computed(() => mapStore.getCurrentLocation?.displayName || '未知区域');
 
 const races: Record<string, string> = {
   human: '👨', dwarf: '🧔', gnome: '👦', nightelf: '🌙', draenei: '📜',

@@ -1,20 +1,7 @@
 <template>
   <div class="exploration-view">
-    <div class="exploration-header">
-      <h2>探索</h2>
-      <div class="exploration-stats">
-        <span>移动次数: {{ remainingMoves }}</span>
-        <span>访问格子: {{ visitedCells }} / {{ totalCells }}</span>
-        <span v-if="bossDefeated" class="boss-defeated">👑 BOSS已击败</span>
-      </div>
-    </div>
-
-    <div v-if="!hasGrid" class="no-grid">
-      <p>点击下方按钮开始探索</p>
-      <button class="start-btn" @click="startExploration">开始探索</button>
-    </div>
-
-    <div v-else class="exploration-grid-container">
+    <!-- 探索网格区域 -->
+    <div class="exploration-grid-container">
       <div class="grid-wrapper">
         <div class="grid">
           <div 
@@ -28,63 +15,17 @@
               :class="getCellClasses(cell)"
               @click="handleCellClick(cell)"
             >
-              <span v-if="cell.type !== 'empty'" class="cell-icon">{{ getCellIcon(cell.type) }}</span>
-              <span v-if="cell.visited" class="visited-marker"></span>
+              <span v-if="cell.explored" class="cell-icon">{{ getCellIcon(cell.type) }}</span>
+              <span v-else class="cell-icon cell-hidden">?</span>
             </div>
           </div>
         </div>
       </div>
-
-      <div class="move-controls">
-        <button 
-          class="move-btn" 
-          :disabled="!canMove('up')"
-          @click="move('up')"
-        >⬆️</button>
-        <div class="horizontal-moves">
-          <button 
-            class="move-btn" 
-            :disabled="!canMove('left')"
-            @click="move('left')"
-          >⬅️</button>
-          <button 
-            class="move-btn" 
-            :disabled="!canMove('down')"
-            @click="move('down')"
-          >⬇️</button>
-          <button 
-            class="move-btn" 
-            :disabled="!canMove('right')"
-            @click="move('right')"
-          >➡️</button>
-        </div>
-      </div>
     </div>
 
-    <div v-if="currentEvent" class="event-modal">
-      <div class="event-content">
-        <h3>{{ currentEvent.title }}</h3>
-        <p>{{ currentEvent.description }}</p>
-        <div v-if="currentEvent.choices" class="event-choices">
-          <button 
-            v-for="choice in currentEvent.choices" 
-            :key="choice.id"
-            class="choice-btn"
-            @click="handleChoice(choice.id)"
-          >
-            {{ choice.text }}
-          </button>
-        </div>
-        <button v-else class="close-btn" @click="closeEvent">关闭</button>
-      </div>
-    </div>
-
-    <div v-if="explorationComplete" class="complete-modal">
-      <div class="complete-content">
-        <h3>🎉 探索完成</h3>
-        <p>恭喜你完成了本次探索</p>
-        <button class="restart-btn" @click="startExploration">再次探索</button>
-      </div>
+    <!-- 探索进度 -->
+    <div class="exploration-footer">
+      <span class="exploration-progress">探索进度: {{ explorationProgress }}%</span>
     </div>
   </div>
 </template>
@@ -92,354 +33,259 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { explorationService } from '@/modules/exploration';
-import type { ExplorationCell, ExplorationEvent } from '@/modules/exploration';
+import { useMapStore } from '@/modules/map';
+import type { ExplorationCell } from '@/modules/exploration';
 
+const mapStore = useMapStore();
 const grid = ref<ExplorationCell[][]>([]);
-const playerPos = ref({ x: 0, y: 0 });
-const visitedCells = ref(0);
-const remainingMoves = ref(0);
-const totalCells = ref(100);
-const bossDefeated = ref(false);
-const currentEvent = ref<ExplorationEvent | null>(null);
 const explorationComplete = ref(false);
 
-const hasGrid = computed(() => grid.value.length > 0);
+const explorationProgress = computed(() => {
+  if (!grid.value.length) return 0;
+  let total = 0;
+  let explored = 0;
+  grid.value.forEach(row => {
+    row.forEach(cell => {
+      total++;
+      if (cell.explored) explored++;
+    });
+  });
+  return Math.round((explored / total) * 100);
+});
 
 const cellIcons: Record<string, string> = {
-  empty: '',
-  monster: '👹',
+  empty: '○',
+  monster: '⚔️',
   treasure: '📦',
   shop: '🏪',
   rest: '🏕️',
-  boss: '👑',
-  event: '✨',
-  start: '🚩',
+  boss: '👹',
+  event: '📋',
+  trap: '⚠️',
+  start: '🏁',
   exit: '🚪'
 };
 
 function getCellIcon(type: string) {
-  return cellIcons[type] || '';
+  return cellIcons[type] || '○';
 }
 
 function getCellClasses(cell: ExplorationCell) {
   const classes = ['cell'];
-  if (cell.x === playerPos.value.x && cell.y === playerPos.value.y) {
-    classes.push('player');
-  }
   if (cell.explored) {
-    classes.push('explored');
-  }
-  if (cell.accessible) {
+    classes.push('revealed');
+    if (cell.type !== 'empty') {
+      classes.push(cell.type);
+    }
+  } else if (cell.accessible) {
     classes.push('accessible');
-  }
-  if (cell.type !== 'empty') {
-    classes.push(cell.type);
+  } else {
+    classes.push('hidden');
   }
   return classes;
 }
 
 function loadState() {
   const state = explorationService.getState();
-  grid.value = state.grid;
-  playerPos.value = state.playerPosition;
-  visitedCells.value = state.visitedCells;
-  remainingMoves.value = state.remainingMoves;
-  bossDefeated.value = state.bossDefeated;
+  grid.value = state.grid.map(row => row.map(cell => ({ ...cell })));
   explorationComplete.value = state.explorationComplete;
 }
 
-function startExploration() {
-  explorationService.generateGrid();
+function initExploration() {
+  const currentLocation = mapStore.getCurrentLocation;
+  if (currentLocation) {
+    explorationService.enterArea(currentLocation.name);
+  } else {
+    explorationService.enterArea('village');
+  }
   loadState();
 }
 
 function handleCellClick(cell: ExplorationCell) {
   if (!cell.accessible) return;
   
-  const dx = cell.x - playerPos.value.x;
-  const dy = cell.y - playerPos.value.y;
-  
-  if (Math.abs(dx) + Math.abs(dy) !== 1) return;
-
-  if (dx === 1) move('right');
-  else if (dx === -1) move('left');
-  else if (dy === 1) move('down');
-  else if (dy === -1) move('up');
-}
-
-function move(direction: 'up' | 'down' | 'left' | 'right') {
-  const result = explorationService.movePlayer(direction);
+  explorationService.revealGrid(cell.x, cell.y);
   loadState();
-  
-  if (result.message) {
-    alert(result.message);
-  }
-  
-  if (result.rewards) {
-    alert(`获得奖励�?{result.rewards.gold} 金币�?{result.rewards.exp} 经验值`);
-  }
-}
-
-function canMove(direction: 'up' | 'down' | 'left' | 'right') {
-  return explorationService.canMove(direction);
-}
-
-function handleChoice(choiceId: string) {
-  const result = explorationService.handleEventChoice(choiceId);
-  alert(result.message);
-  closeEvent();
-  loadState();
-}
-
-function closeEvent() {
-  currentEvent.value = null;
 }
 
 onMounted(() => {
-  loadState();
+  initExploration();
 });
 </script>
 
 <style scoped>
 .exploration-view {
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.exploration-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.exploration-header h2 {
-  font-size: 24px;
-  color: #ffd700;
-}
-
-.exploration-stats {
-  display: flex;
-  gap: 16px;
-  color: #aaa;
-  font-size: 14px;
-}
-
-.boss-defeated {
-  color: #ffd700;
-  font-weight: bold;
-}
-
-.no-grid {
-  text-align: center;
-  padding: 40px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 12px;
-  border: 2px dashed #4a4a4a;
-}
-
-.no-grid p {
-  color: #888;
-  margin-bottom: 20px;
-}
-
-.start-btn {
-  padding: 12px 32px;
-  background: linear-gradient(135deg, #4CAF50, #45a049);
-  border: none;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.exploration-grid-container {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  background: #1a1a2e;
+}
+
+/* 探索网格区域 */
+.exploration-grid-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 20px;
+  padding: 16px;
 }
 
 .grid-wrapper {
   background: rgba(0, 0, 0, 0.5);
-  padding: 16px;
-  border-radius: 12px;
-  border: 2px solid #4a4a4a;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #333;
 }
 
 .grid {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .grid-row {
   display: flex;
-  gap: 4px;
+  gap: 2px;
 }
 
 .cell {
-  width: 40px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid #4a4a4a;
+  width: 50px;
+  height: 50px;
+  background: #2a2a3e;
+  border: 1px solid #333;
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.3s;
-  position: relative;
+  transition: all 0.2s;
 }
 
 .cell:hover {
-  background: rgba(255, 255, 255, 0.1);
+  border-color: #555;
 }
 
-.cell.player {
-  background: rgba(255, 215, 0, 0.3);
-  border-color: #ffd700;
+/* 未探索格子 */
+.cell.hidden {
+  background: #1a1a2e;
+  border-color: #2a2a3e;
+  cursor: default;
 }
 
-.cell.explored {
-  background: rgba(255, 255, 255, 0.08);
+.cell.hidden:hover {
+  background: #1a1a2e;
+  border-color: #2a2a3e;
 }
 
+/* 可访问的未探索格子 */
 .cell.accessible {
+  background: #1a1a2e;
+  border-color: #4a4a4a;
+  cursor: pointer;
+}
+
+.cell.accessible:hover {
+  background: #2a2a3e;
+  border-color: #00d2d3;
+}
+
+/* 已揭示格子 */
+.cell.revealed {
+  background: #2a2a3e;
+  border-color: #4a4a4a;
+}
+
+/* 营地 - 绿色高亮 */
+.cell.rest {
+  background: rgba(76, 175, 80, 0.3);
   border-color: #4CAF50;
 }
 
-.cell.monster {
-  background: rgba(255, 0, 0, 0.2);
+/* 商店 - 蓝色高亮 */
+.cell.shop {
+  background: rgba(33, 150, 243, 0.3);
+  border-color: #2196F3;
 }
 
-.cell.treasure {
-  background: rgba(255, 215, 0, 0.2);
+/* 任务看板 - 黄色高亮 */
+.cell.event {
+  background: rgba(255, 193, 7, 0.3);
+  border-color: #FFC107;
 }
 
+/* BOSS - 红色高亮 */
 .cell.boss {
-  background: rgba(128, 0, 128, 0.3);
-  animation: boss-pulse 1s infinite;
+  background: rgba(244, 67, 54, 0.3);
+  border-color: #F44336;
+  animation: boss-pulse 1.5s infinite;
+}
+
+/* 怪物 - 橙色 */
+.cell.monster {
+  background: rgba(255, 152, 0, 0.3);
+  border-color: #FF9800;
+}
+
+/* 物品 - 紫色 */
+.cell.treasure {
+  background: rgba(156, 39, 176, 0.3);
+  border-color: #9C27B0;
+}
+
+/* 陷阱 - 红色 */
+.cell.trap {
+  background: rgba(244, 67, 54, 0.2);
+  border-color: #F44336;
+}
+
+/* 空地 */
+.cell.empty {
+  background: #1a1a2e;
+}
+
+/* 起点 */
+.cell.start {
+  background: rgba(0, 210, 211, 0.2);
+  border-color: #00d2d3;
 }
 
 .cell-icon {
-  font-size: 20px;
+  font-size: 22px;
 }
 
-.visited-marker {
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  width: 6px;
-  height: 6px;
-  background: #4CAF50;
-  border-radius: 50%;
+.cell-hidden {
+  color: #333;
+  font-size: 18px;
 }
 
 @keyframes boss-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.7; }
 }
 
-.move-controls {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.move-btn {
-  width: 50px;
-  height: 50px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid #4a4a4a;
-  border-radius: 8px;
-  font-size: 24px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.move-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: #666;
-}
-
-.move-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.horizontal-moves {
-  display: flex;
-  gap: 8px;
-}
-
-.event-modal, .complete-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.event-content, .complete-content {
-  background: rgba(0, 0, 0, 0.9);
-  padding: 32px;
-  border-radius: 12px;
-  border: 2px solid #4a4a4a;
-  max-width: 400px;
+/* 探索底部 */
+.exploration-footer {
+  padding: 10px 16px;
   text-align: center;
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 1px solid #333;
 }
 
-.event-content h3, .complete-content h3 {
-  font-size: 24px;
-  color: #ffd700;
-  margin-bottom: 16px;
+.exploration-progress {
+  color: #00d2d3;
+  font-size: 14px;
+  font-weight: 500;
 }
 
-.event-content p, .complete-content p {
-  color: #aaa;
-  margin-bottom: 24px;
-}
-
-.event-choices {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.choice-btn, .close-btn, .restart-btn {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.choice-btn {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
-.choice-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.close-btn {
-  background: #666;
-  color: #fff;
-}
-
-.restart-btn {
-  background: linear-gradient(135deg, #4CAF50, #45a049);
-  color: #fff;
+/* 响应式 - 移动端 */
+@media (max-width: 768px) {
+  .cell {
+    width: calc((100vw - 60px) / 10);
+    height: calc((100vw - 60px) / 10);
+  }
+  
+  .cell-icon {
+    font-size: 18px;
+  }
 }
 </style>

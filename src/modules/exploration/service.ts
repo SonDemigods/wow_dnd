@@ -233,12 +233,24 @@ export class ExplorationService implements IExplorationService {
 
   generateGrid(): void {
     const areaConfig = this.getAreaConfig(this.state.currentAreaId || 'village');
+    const grid = this.generateGridInternal(areaConfig);
+    
+    // 从生成的网格中找到起点位置
+    let startPos = { x: 0, y: 0 };
+    for (let y = 0; y < GRID_SIZE; y++) {
+      for (let x = 0; x < GRID_SIZE; x++) {
+        if (grid[y][x].type === 'start') {
+          startPos = { x, y };
+          break;
+        }
+      }
+    }
     
     this.state = {
       currentAreaId: this.state.currentAreaId,
-      grid: this.generateGridInternal(areaConfig),
+      grid,
       campUsed: false,
-      playerPosition: { x: 0, y: 0 },
+      playerPosition: startPos,
       visitedCells: 1,
       remainingMoves: INITIAL_MOVES,
       bossDefeated: false,
@@ -252,16 +264,32 @@ export class ExplorationService implements IExplorationService {
   }
 
   private updateAccessibleCells(): void {
-    const { x, y } = this.state.playerPosition;
+    // 先将所有未探索格子标记为不可访问
+    for (let y = 0; y < GRID_SIZE; y++) {
+      for (let x = 0; x < GRID_SIZE; x++) {
+        if (!this.state.grid[y][x].explored) {
+          this.state.grid[y][x].accessible = false;
+        }
+      }
+    }
     
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        if (dx === 0 && dy === 0) continue;
-        const nx = x + dx;
-        const ny = y + dy;
-        
-        if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
-          this.state.grid[ny][nx].accessible = true;
+    // 遍历所有已探索格子，将其周围未探索格子标记为可访问
+    for (let y = 0; y < GRID_SIZE; y++) {
+      for (let x = 0; x < GRID_SIZE; x++) {
+        if (this.state.grid[y][x].explored) {
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = x + dx;
+              const ny = y + dy;
+              
+              if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+                if (!this.state.grid[ny][nx].explored) {
+                  this.state.grid[ny][nx].accessible = true;
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -445,11 +473,16 @@ export class ExplorationService implements IExplorationService {
 
   revealGrid(x: number, y: number): boolean {
     const cell = this.state.grid[y]?.[x];
-    if (!cell || cell.explored) {
+    if (!cell || cell.explored || !cell.accessible) {
       return false;
     }
 
     cell.explored = true;
+    cell.visited = true;
+    this.state.visitedCells++;
+    
+    // 更新可访问格子
+    this.updateAccessibleCells();
 
     eventBus.emit(GameEvents.EXPLORATION_EVENT, {
       characterId: this.currentCharacterId,
@@ -465,8 +498,13 @@ export class ExplorationService implements IExplorationService {
       this.handleItemFound('item_gold_coin');
     } else if (cell.type === 'event') {
       this.handleTrapTriggered();
+    } else if (cell.type === 'rest') {
+      this.useCamp();
+    } else if (cell.type === 'shop') {
+      this.triggerShopInteraction('');
     }
 
+    this.checkExplorationComplete();
     this.saveState();
     return true;
   }

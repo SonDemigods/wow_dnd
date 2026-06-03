@@ -101,6 +101,10 @@ import type { MapZone, ZoneStatus } from '@/modules/map';
 import ConfirmPopup from './popup/ConfirmPopup.vue';
 import worldBgImg from '@/images/worldBg.jpg';
 
+const emit = defineEmits<{
+  (e: 'enter-zone'): void;
+}>();
+
 const mapStore = useMapStore();
 const characterStore = useCharacterStore();
 const zones = ref<MapZone[]>([]);
@@ -211,9 +215,10 @@ function onEnterZoneClick() {
 
 function onConfirmEnter() {
   if (!selectedZone.value) return;
-  const success = mapService.enterZone(selectedZone.value.id);
+  const success = mapStore.enterLocation(selectedZone.value.id);
   if (success) {
     showConfirm.value = false;
+    emit('enter-zone');
   }
 }
 
