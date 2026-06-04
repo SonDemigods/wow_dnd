@@ -9,6 +9,10 @@
       @mouseup="onMapMouseUp"
       @mouseleave="onMapMouseUp"
       @wheel.prevent="onMapWheel"
+      @touchstart="onMapTouchStart"
+      @touchmove="onMapTouchMove"
+      @touchend="onMapTouchEnd"
+      @touchcancel="onMapTouchEnd"
     >
       <div 
         class="world-map"
@@ -98,7 +102,7 @@ import { mapService } from '@/modules/map';
 import { useMapStore } from '@/modules/map';
 import { useCharacterStore } from '@/modules/character';
 import type { MapZone, ZoneStatus } from '@/modules/map';
-import ConfirmPopup from './popup/ConfirmPopup.vue';
+import ConfirmPopup from './common/ConfirmPopup.vue';
 import worldBgImg from '@/images/worldBg.jpg';
 
 const emit = defineEmits<{
@@ -186,7 +190,7 @@ function onMapWheel(e: WheelEvent) {
   }
 }
 
-// 拖拽控制
+// 拖拽控制 - 鼠标事件
 function onMapMouseDown(e: MouseEvent) {
   isDragging.value = true;
   dragStartX.value = e.clientX;
@@ -204,6 +208,31 @@ function onMapMouseMove(e: MouseEvent) {
 }
 
 function onMapMouseUp() {
+  isDragging.value = false;
+}
+
+// 拖拽控制 - 触摸事件（移动端）
+function onMapTouchStart(e: TouchEvent) {
+  if (e.touches.length !== 1) return;
+  const touch = e.touches[0];
+  isDragging.value = true;
+  dragStartX.value = touch.clientX;
+  dragStartY.value = touch.clientY;
+  dragStartPanX.value = panX.value;
+  dragStartPanY.value = panY.value;
+}
+
+function onMapTouchMove(e: TouchEvent) {
+  if (!isDragging.value || e.touches.length !== 1) return;
+  e.preventDefault(); // 拖动时阻止页面滚动
+  const touch = e.touches[0];
+  const dx = touch.clientX - dragStartX.value;
+  const dy = touch.clientY - dragStartY.value;
+  panX.value = dragStartPanX.value + dx;
+  panY.value = dragStartPanY.value + dy;
+}
+
+function onMapTouchEnd() {
   isDragging.value = false;
 }
 

@@ -4,7 +4,7 @@
 
     <template #footer>
       <button class="popup-footer-btn cancel" @click="$emit('cancel')">取消</button>
-      <button class="popup-footer-btn confirm" @click="$emit('confirm')">确认</button>
+      <button :class="['popup-footer-btn', type === 'danger' ? 'danger' : 'confirm']" @click="$emit('confirm')">确认</button>
     </template>
   </BasePopup>
 </template>
@@ -12,11 +12,14 @@
 <script setup lang="ts">
 import BasePopup from '../common/BasePopup.vue';
 
-defineProps<{
+withDefaults(defineProps<{
   visible: boolean;
   title?: string;
   message: string;
-}>();
+  type?: 'normal' | 'danger';
+}>(), {
+  type: 'normal'
+});
 
 defineEmits<{
   (e: 'confirm'): void;

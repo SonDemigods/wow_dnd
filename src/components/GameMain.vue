@@ -70,10 +70,6 @@
       </button>
     </div>
 
-    <div v-if="showNotification" class="notification" :class="notificationType">
-      {{ notificationMessage }}
-    </div>
-
     <CharacterInfoPopup 
       :visible="showCharacterInfo" 
       @close="showCharacterInfo = false" 
@@ -126,6 +122,7 @@ import { mapDbService } from '@/modules/map/db';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import { enemyService } from '@/modules/enemy/service';
 import { combatService } from '@/modules/combat/service';
+import { useToast } from '@/composables/useToast';
 import type { CombatResult } from '@/modules/combat/types';
 import MapView from './MapView.vue';
 import ExplorationView from './ExplorationView.vue';
@@ -145,11 +142,9 @@ const emit = defineEmits<{
 
 const characterStore = useCharacterStore();
 const mapStore = useMapStore();
+const toast = useToast();
 
 const currentContentTab = ref('map');
-const showNotification = ref(false);
-const notificationMessage = ref('');
-const notificationType = ref('info');
 const showCharacterInfo = ref(false);
 const showInventory = ref(false);
 const showSkills = ref(false);
@@ -187,13 +182,8 @@ function getRaceIcon(race: string) {
   return races[race] || '👤';
 }
 
-function showNotif(message: string, type: string = 'info') {
-  notificationMessage.value = message;
-  notificationType.value = type;
-  showNotification.value = true;
-  setTimeout(() => {
-    showNotification.value = false;
-  }, 3000);
+function showNotif(message: string, type: 'info' | 'success' | 'warning' | 'danger' = 'info') {
+  toast.show({ message, type });
 }
 
 function handleExit() {
@@ -538,40 +528,6 @@ defineExpose({ showNotif });
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.5px;
-}
-
-.notification {
-  position: fixed;
-  top: 120px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 14px 28px;
-  border-radius: 8px;
-  color: #fff;
-  font-weight: bold;
-  z-index: 1000;
-  animation: fadeIn 0.3s ease;
-}
-
-.notification.info {
-  background: rgba(0, 150, 255, 0.9);
-}
-
-.notification.success {
-  background: rgba(76, 175, 80, 0.9);
-}
-
-.notification.danger {
-  background: rgba(255, 87, 34, 0.9);
-}
-
-.notification.error {
-  background: rgba(255, 0, 0, 0.9);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 @media (max-width: 768px) {

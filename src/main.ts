@@ -8,12 +8,10 @@ import './styles/popup.less'
 async function initApp() {
   try {
     await db.open()
-    console.log('Database initialized successfully')
 
     await dataInitializer.initializeData()
-    console.log('Game data initialized')
   } catch (error) {
-    console.error('Failed to initialize:', error)
+    console.error('初始化失败，请刷新页面重试:', error)
   }
 
   const app = createApp(App)

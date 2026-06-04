@@ -55,13 +55,24 @@
       </div>
     </template>
   </BasePopup>
+
+  <ConfirmPopup
+    :visible="confirmState.visible"
+    title="确认放弃"
+    :message="confirmState.message"
+    type="danger"
+    @confirm="onConfirmAbandon"
+    @cancel="confirmState.visible = false"
+  />
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
 import { questService } from '@/modules/quest';
+import { useToast } from '@/composables/useToast';
 import type { QuestDefinition, QuestInstance, QuestStatus } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';
+import ConfirmPopup from '../common/ConfirmPopup.vue';
 
 interface ActiveQuest {
   questId: string;
@@ -77,7 +88,14 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
+const toast = useToast();
 const activeQuests = ref<ActiveQuest[]>([]);
+
+const confirmState = reactive({
+  visible: false,
+  message: '',
+  questId: ''
+});
 
 const questIcons: Record<string, string> = {
   kill: '⚔️',
@@ -109,19 +127,26 @@ function claimReward(questId: string) {
   const success = questService.turnInQuest(questId);
   if (success) {
     const quest = questService.getQuestDefinition(questId);
-    alert(`已领取奖励: ${quest?.title || questId}`);
+    toast.show({ message: `已领取奖励: ${quest?.title || questId}`, type: 'success', icon: '🏆' });
     loadQuests();
   } else {
-    alert('无法领取奖励');
+    toast.show({ message: '无法领取奖励', type: 'danger', icon: '❌' });
   }
 }
 
 function abandonQuest(questId: string) {
-  if (!confirm('确定放弃此任务吗？')) return;
+  confirmState.questId = questId;
+  confirmState.message = '确定放弃此任务吗？放弃后任务进度将被清除。';
+  confirmState.visible = true;
+}
+
+function onConfirmAbandon() {
+  const questId = confirmState.questId;
+  confirmState.visible = false;
   const success = questService.abandonQuest(questId);
   if (success) {
     loadQuests();
-    alert('已放弃任务');
+    toast.show({ message: '已放弃任务', type: 'warning', icon: '⚠️' });
   }
 }
 

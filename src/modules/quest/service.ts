@@ -198,7 +198,9 @@ export class QuestService implements IQuestService {
     this.questInstances.set(questId, instance);
     const characterId = characterService.getCurrentCharacterId();
     if (characterId) {
-      questDbService.saveQuestInstance(instance, characterId);
+      questDbService.saveQuestInstance(instance, characterId).catch(err => {
+        console.error('保存任务实例失败:', err);
+      });
     }
     
     // 触发任务接受事件
@@ -252,7 +254,7 @@ export class QuestService implements IQuestService {
       // 保存更新
       this.questInstances.set(questId, instance);
       const cid = characterService.getCurrentCharacterId();
-      if (cid) questDbService.saveQuestInstance(instance, cid);
+      if (cid) questDbService.saveQuestInstance(instance, cid).catch(err => console.error('保存任务进度失败:', err));
     }
   }
   
@@ -296,7 +298,7 @@ export class QuestService implements IQuestService {
     instance.status = 'turned_in';
     this.questInstances.set(questId, instance);
     const cid2 = characterService.getCurrentCharacterId();
-    if (cid2) questDbService.saveQuestInstance(instance, cid2);
+    if (cid2) questDbService.saveQuestInstance(instance, cid2).catch(err => console.error('保存任务状态失败:', err));
     
     // 触发任务提交事件
     eventBus.emit(GameEvents.QUEST_REWARDED, { questId, definition });
@@ -325,7 +327,7 @@ export class QuestService implements IQuestService {
     instance.status = 'abandoned';
     this.questInstances.set(questId, instance);
     const cid3 = characterService.getCurrentCharacterId();
-    if (cid3) questDbService.saveQuestInstance(instance, cid3);
+    if (cid3) questDbService.saveQuestInstance(instance, cid3).catch(err => console.error('保存任务状态失败:', err));
     
     // 触发任务放弃事件
     eventBus.emit(GameEvents.QUEST_PROGRESS, { questId });

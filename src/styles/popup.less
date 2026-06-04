@@ -119,6 +119,17 @@
 }
 
 .popup-footer-btn.confirm {
+  background: @accent-color;
+  border-color: @accent-color;
+  color: #000;
+
+  &:hover {
+    background: darken(@accent-color, 10%);
+    border-color: darken(@accent-color, 10%);
+  }
+}
+
+.popup-footer-btn.danger {
   background: @danger-color;
   border-color: @danger-color;
   color: @text-primary;

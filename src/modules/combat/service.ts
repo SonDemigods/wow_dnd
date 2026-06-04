@@ -23,9 +23,7 @@ import { eventBus, GameEvents } from '../bus/core';
 import { explorationService } from '../exploration/service';
 import { logService } from '../log/service';
 
-/**
- * 战斗服务实现类
- */
+/** 战斗服务实现类 */
 export class CombatService implements ICombatService {
   /** 当前战斗状态 */
   private state: CombatState = 'idle';
@@ -44,6 +42,9 @@ export class CombatService implements ICombatService {
   
   /** 战斗日志 */
   private combatLogs: CombatLog[] = [];
+
+  /** 敌人回合延迟定时器 ID，用于在战斗提前结束时取消 */
+  private turnTimerId: ReturnType<typeof setTimeout> | null = null;
 
   /**
    * 获取战斗状态
@@ -131,23 +132,28 @@ export class CombatService implements ICombatService {
       };
     }
     
-    switch (action.type) {
-      case 'attack':
-        return this.playerAttack();
-      case 'skill':
-        if (!action.skillId) {
-          return { success: false, type: 'skill', message: '未指定技能！' };
-        }
-        return this.playerSkill(action.skillId);
-      case 'item':
-        if (!action.itemId) {
-          return { success: false, type: 'item', message: '未指定物品！' };
-        }
-        return this.playerUseItem(action.itemId);
-      case 'flee':
-        return this.playerFlee();
-      default:
-        return { success: false, type: action.type, message: '未知行动类型！' };
+    try {
+      switch (action.type) {
+        case 'attack':
+          return this.playerAttack();
+        case 'skill':
+          if (!action.skillId) {
+            return { success: false, type: 'skill', message: '未指定技能！' };
+          }
+          return this.playerSkill(action.skillId);
+        case 'item':
+          if (!action.itemId) {
+            return { success: false, type: 'item', message: '未指定物品！' };
+          }
+          return this.playerUseItem(action.itemId);
+        case 'flee':
+          return this.playerFlee();
+        default:
+          return { success: false, type: action.type, message: '未知行动类型！' };
+      }
+    } catch (e) {
+      console.error('[CombatService] 玩家行动异常:', e);
+      return { success: false, type: action.type, message: '行动执行失败' };
     }
   }
 
@@ -452,8 +458,9 @@ export class CombatService implements ICombatService {
       message: '玩家回合结束'
     });
     
-    // 触发敌人回合
-    setTimeout(() => {
+    // 触发敌人回合（保存定时器 ID，用于提前结束时取消）
+    this.turnTimerId = setTimeout(() => {
+      this.turnTimerId = null;
       this.enemyTurn();
     }, 500);
   }
@@ -487,52 +494,58 @@ export class CombatService implements ICombatService {
     if (!this.enemy) {
       return;
     }
-    
-    // 触发敌人回合开始事件
-    eventBus.emit(GameEvents.COMBAT_ENEMY_TURN, null);
 
-    // 添加回合开始日志
-    this.addCombatLog({
-      actorType: 'system',
-      actorId: 'system',
-      actorName: '系统',
-      eventType: 'combat_turn_start',
-      isCrit: false,
-      isDodge: false,
-      message: `${this.enemy.name} 的回合`
-    });
-    
-    // 敌人行动
-    const actionResult = this.enemyAction();
-    
-    if (actionResult.success) {
-      // 检查玩家是否死亡
-      const characterInfo = characterService.getCharacterInfo();
-      if (characterInfo.hp <= 0) {
-        this.endCombat('defeat');
-        this.saveLogs();
-        return;
+    try {
+      // 触发敌人回合开始事件
+      eventBus.emit(GameEvents.COMBAT_ENEMY_TURN, null);
+
+      // 添加回合开始日志
+      this.addCombatLog({
+        actorType: 'system',
+        actorId: 'system',
+        actorName: '系统',
+        eventType: 'combat_turn_start',
+        isCrit: false,
+        isDodge: false,
+        message: `${this.enemy.name} 的回合`
+      });
+      
+      // 敌人行动
+      const actionResult = this.enemyAction();
+      
+      if (actionResult.success) {
+        // 检查玩家是否死亡
+        const characterInfo = characterService.getCharacterInfo();
+        if (characterInfo.hp <= 0) {
+          this.endCombat('defeat');
+          this.saveLogs();
+          return;
+        }
       }
+      
+      // 结束敌人回合
+      this.turn = 'player';
+      this.turnCount++;
+      
+      this.addCombatLog({
+        actorType: 'system',
+        actorId: 'system',
+        actorName: '系统',
+        eventType: 'combat_turn_end',
+        isCrit: false,
+        isDodge: false,
+        message: `${this.enemy.name} 的回合结束`
+      });
+      
+      // 触发玩家回合开始事件
+      eventBus.emit(GameEvents.COMBAT_PLAYER_TURN, null);
+      
+      this.saveLogs();
+    } catch (e) {
+      console.error('[CombatService] 敌人回合异常:', e);
+      // 异常时恢复为玩家回合，避免战斗卡死
+      this.turn = 'player';
     }
-    
-    // 结束敌人回合
-    this.turn = 'player';
-    this.turnCount++;
-    
-    this.addCombatLog({
-      actorType: 'system',
-      actorId: 'system',
-      actorName: '系统',
-      eventType: 'combat_turn_end',
-      isCrit: false,
-      isDodge: false,
-      message: `${this.enemy.name} 的回合结束`
-    });
-    
-    // 触发玩家回合开始事件
-    eventBus.emit(GameEvents.COMBAT_PLAYER_TURN, null);
-    
-    this.saveLogs();
   }
 
   /**
@@ -757,97 +770,103 @@ export class CombatService implements ICombatService {
   endCombat(result: CombatResult): void {
     if (!this.enemy) return;
     
-    // 设置战斗状态
-    this.state = 'ended';
-    
-    const expGained = this.enemy.expReward;
-    const goldGained = this.enemy.goldReward;
-    
-    if (result === 'victory') {
-      // 胜利：获得经验和金币
-      characterService.addExp(expGained);
-      characterService.addGold(goldGained);
+    try {
+      // 设置战斗状态
+      this.state = 'ended';
       
-      this.addCombatLog({
-        actorType: 'system',
-        actorId: 'system',
-        actorName: '系统',
-        eventType: 'combat_end',
-        isCrit: false,
-        isDodge: false,
-        message: `战斗胜利！获得 ${expGained} 经验值和 ${goldGained} 金币！`
+      const expGained = this.enemy.expReward;
+      const goldGained = this.enemy.goldReward;
+      
+      if (result === 'victory') {
+        // 胜利：获得经验和金币
+        characterService.addExp(expGained);
+        characterService.addGold(goldGained);
+        
+        this.addCombatLog({
+          actorType: 'system',
+          actorId: 'system',
+          actorName: '系统',
+          eventType: 'combat_end',
+          isCrit: false,
+          isDodge: false,
+          message: `战斗胜利！获得 ${expGained} 经验值和 ${goldGained} 金币！`
+        });
+        
+        // 记录到冒险日志
+        logService.addLog({
+          id: logService.generateLogId(),
+          timestamp: Date.now(),
+          type: 'combat',
+          message: `击败 ${this.enemy.name}！获得 ${expGained} 经验值和 ${goldGained} 金币`,
+          icon: '🏆'
+        });
+        
+        // 处理掉落
+        this.handleLoot();
+      } else if (result === 'defeat') {
+        // 失败：损失经验
+        this.addCombatLog({
+          actorType: 'system',
+          actorId: 'system',
+          actorName: '系统',
+          eventType: 'combat_end',
+          isCrit: false,
+          isDodge: false,
+          message: '战斗失败！'
+        });
+        
+        // 记录到冒险日志
+        logService.addLog({
+          id: logService.generateLogId(),
+          timestamp: Date.now(),
+          type: 'combat',
+          message: `被 ${this.enemy.name} 击败！`,
+          icon: '💀'
+        });
+        
+        // 处理角色死亡
+        characterService.handleDeath();
+      } else if (result === 'fled') {
+        this.addCombatLog({
+          actorType: 'system',
+          actorId: 'system',
+          actorName: '系统',
+          eventType: 'combat_end',
+          isCrit: false,
+          isDodge: false,
+          message: '战斗以逃跑结束'
+        });
+        
+        // 记录到冒险日志
+        logService.addLog({
+          id: logService.generateLogId(),
+          timestamp: Date.now(),
+          type: 'combat',
+          message: `从 ${this.enemy.name} 面前逃跑`,
+          icon: '🏃'
+        });
+      }
+      
+      // 保存日志
+      this.saveLogs();
+      
+      // 通知探索模块战斗结果
+      explorationService.onBattleResult(result === 'victory');
+      
+      // 触发战斗结束事件
+      eventBus.emit(GameEvents.COMBAT_END, {
+        result,
+        enemy: this.enemy,
+        expGained: result === 'victory' ? expGained : 0
       });
       
-      // 记录到冒险日志
-      logService.addLog({
-        id: logService.generateLogId(),
-        timestamp: Date.now(),
-        type: 'combat',
-        message: `击败 ${this.enemy.name}！获得 ${expGained} 经验值和 ${goldGained} 金币`,
-        icon: '🏆'
-      });
-      
-      // 处理掉落
-      this.handleLoot();
-    } else if (result === 'defeat') {
-      // 失败：损失经验
-      this.addCombatLog({
-        actorType: 'system',
-        actorId: 'system',
-        actorName: '系统',
-        eventType: 'combat_end',
-        isCrit: false,
-        isDodge: false,
-        message: '战斗失败！'
-      });
-      
-      // 记录到冒险日志
-      logService.addLog({
-        id: logService.generateLogId(),
-        timestamp: Date.now(),
-        type: 'combat',
-        message: `被 ${this.enemy.name} 击败！`,
-        icon: '💀'
-      });
-      
-      // 处理角色死亡
-      characterService.handleDeath();
-    } else if (result === 'fled') {
-      this.addCombatLog({
-        actorType: 'system',
-        actorId: 'system',
-        actorName: '系统',
-        eventType: 'combat_end',
-        isCrit: false,
-        isDodge: false,
-        message: '战斗以逃跑结束'
-      });
-      
-      // 记录到冒险日志
-      logService.addLog({
-        id: logService.generateLogId(),
-        timestamp: Date.now(),
-        type: 'combat',
-        message: `从 ${this.enemy.name} 面前逃跑`,
-        icon: '🏃'
-      });
+      // 清理战斗状态
+      this.cleanup();
+    } catch (e) {
+      console.error('[CombatService] 结束战斗异常:', e);
+      // 即使异常也要清理状态，避免卡死
+      this.cleanup();
     }
-    
-    // 保存日志
-    this.saveLogs();
-    
-    // 通知探索模块战斗结果
-    explorationService.onBattleResult(result === 'victory');
-    
-    // 触发战斗结束事件
-    eventBus.emit(GameEvents.COMBAT_END, {
-      result,
-      enemy: this.enemy,
-      expGained: result === 'victory' ? expGained : 0
-    });
-    
-    // 清理战斗状态
-    this.cleanup();
   }
 
   /**
@@ -876,18 +895,24 @@ export class CombatService implements ICombatService {
     // 处理物品掉落
     this.enemy.drops.forEach(drop => {
       if (drop.itemId !== 'gold' && Math.random() < drop.dropRate) {
-        // 这里应该通过inventoryService添加物品，但需要先创建物品模板
-        const amount = Math.floor(Math.random() * (drop.maxAmount - drop.minAmount + 1)) + drop.minAmount;
-        
-        this.addCombatLog({
-          actorType: 'system',
-          actorId: 'system',
-          actorName: '系统',
-          eventType: 'combat_item',
-          isCrit: false,
-          isDodge: false,
-          message: `获得 ${amount} 个物品！`
-        });
+        // 从物品模板中获取物品信息
+        const itemTemplate = inventoryService.getItemInfo(drop.itemId);
+        if (itemTemplate) {
+          const amount = Math.floor(Math.random() * (drop.maxAmount - drop.minAmount + 1)) + drop.minAmount;
+          const added = inventoryService.addItems(itemTemplate, amount);
+          
+          if (added > 0) {
+            this.addCombatLog({
+              actorType: 'system',
+              actorId: 'system',
+              actorName: '系统',
+              eventType: 'combat_item',
+              isCrit: false,
+              isDodge: false,
+              message: `获得 ${itemTemplate.name} x${added}！`
+            });
+          }
+        }
       }
     });
   }
@@ -896,6 +921,12 @@ export class CombatService implements ICombatService {
    * 清理战斗状态
    */
   private cleanup(): void {
+    // 取消待执行的敌人回合定时器
+    if (this.turnTimerId !== null) {
+      clearTimeout(this.turnTimerId);
+      this.turnTimerId = null;
+    }
+
     // 清理敌人（如果敌人已死亡）
     if (this.enemy && this.enemy.hp <= 0) {
       enemyService.deleteEnemy(this.enemy.id);
@@ -945,8 +976,12 @@ export class CombatService implements ICombatService {
    * 保存战斗日志
    */
   private async saveLogs(): Promise<void> {
-    for (const log of this.combatLogs) {
-      await combatDbService.saveCombatLog(log);
+    try {
+      // 批量写入，减少数据库 IO
+      const logsToSave = [...this.combatLogs];
+      await Promise.all(logsToSave.map(log => combatDbService.saveCombatLog(log)));
+    } catch (e) {
+      console.error('[CombatService] 保存战斗日志失败:', e);
     }
   }
 
@@ -992,6 +1027,12 @@ export class CombatService implements ICombatService {
    * 重置战斗状态
    */
   reset(): void {
+    // 取消待执行的敌人回合定时器
+    if (this.turnTimerId !== null) {
+      clearTimeout(this.turnTimerId);
+      this.turnTimerId = null;
+    }
+
     this.state = 'idle';
     this.enemy = null;
     this.turn = 'player';

@@ -27,8 +27,16 @@
       :visible="showExitConfirm"
       title="退出游戏"
       message="确定要退出游戏吗？"
+      type="danger"
       @confirm="confirmExit"
       @cancel="cancelExit"
+    />
+
+    <Toast
+      :visible="toast.visible.value"
+      :message="toast.message.value"
+      :type="toast.type.value"
+      :icon="toast.icon.value"
     />
   </div>
 </template>
@@ -38,8 +46,10 @@ import { ref, onMounted } from 'vue';
 import CharacterSelect from './components/CharacterSelect.vue';
 import CharacterCreate from './components/CharacterCreate.vue';
 import GameMain from './components/GameMain.vue';
-import ConfirmPopup from './components/popup/ConfirmPopup.vue';
+import ConfirmPopup from './components/common/ConfirmPopup.vue';
+import Toast from './components/common/Toast.vue';
 import { useCharacterStore } from './modules/character';
+import { useToast } from './composables/useToast';
 
 type GameState = 'character-select' | 'game';
 
@@ -49,6 +59,7 @@ const showExitConfirm = ref(false);
 const characterSelectRef = ref<InstanceType<typeof CharacterSelect>>();
 
 const characterStore = useCharacterStore();
+const toast = useToast();
 
 onMounted(async () => {
   // 初始化角色服务，从数据库加载数据

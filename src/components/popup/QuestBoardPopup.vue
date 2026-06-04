@@ -100,6 +100,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { questService } from '@/modules/quest';
 import { characterService } from '@/modules/character';
 import { useExplorationStore } from '@/modules/exploration/store';
+import { useToast } from '@/composables/useToast';
 import type { QuestDefinition } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';
 
@@ -113,6 +114,7 @@ const emit = defineEmits<{
 }>();
 
 const explorationStore = useExplorationStore();
+const toast = useToast();
 
 const currentTab = ref<'available' | 'turnin'>('available');
 
@@ -141,10 +143,10 @@ function acceptQuest(questId: string) {
   const success = questService.acceptQuestFromBoard(boardId, questId);
   if (success) {
     const quest = questService.getQuestDefinition(questId);
-    alert(`已接受任务: ${quest?.title || questId}`);
+    toast.show({ message: `已接受任务: ${quest?.title || questId}`, type: 'success', icon: '✅' });
     loadQuests();
   } else {
-    alert('无法接受此任务');
+    toast.show({ message: '无法接受此任务', type: 'danger', icon: '❌' });
   }
 }
 
@@ -153,10 +155,10 @@ function turnInQuest(questId: string) {
   const success = questService.turnInQuestToBoard(boardId, questId);
   if (success) {
     const quest = questService.getQuestDefinition(questId);
-    alert(`已领取奖励: ${quest?.title || questId}`);
+    toast.show({ message: `已领取奖励: ${quest?.title || questId}`, type: 'success', icon: '🏆' });
     loadQuests();
   } else {
-    alert('无法领取奖励');
+    toast.show({ message: '无法领取奖励', type: 'danger', icon: '❌' });
   }
 }
 

@@ -15,6 +15,10 @@
         @mousemove="onDrag"
         @mouseup="endDrag"
         @mouseleave="endDrag"
+        @touchstart="onTouchStart"
+        @touchmove="onTouchMove"
+        @touchend="onTouchEnd"
+        @touchcancel="onTouchEnd"
       >
         <div 
           class="grid-wrapper"
@@ -69,6 +73,7 @@ const startX = ref(0);
 const startY = ref(0);
 const panX = ref(0);
 const panY = ref(0);
+const DRAG_THRESHOLD = 5; // 拖动阈值（像素）
 
 const explorationProgress = computed(() => {
   if (!grid.value.length) return 0;
@@ -115,7 +120,7 @@ function getCellClasses(cell: ExplorationCell) {
   return classes;
 }
 
-// 拖动功能
+// 拖动功能 - 鼠标事件
 function startDrag(e: MouseEvent) {
   // 防止在格子上拖动时触发点击
   if ((e.target as HTMLElement).closest('.cell')) return;
@@ -134,6 +139,42 @@ function onDrag(e: MouseEvent) {
 }
 
 function endDrag() {
+  isDragging.value = false;
+}
+
+// 拖动功能 - 触摸事件（移动端）
+let touchStartX = 0;
+let touchStartY = 0;
+let touchStartTime = 0;
+
+function onTouchStart(e: TouchEvent) {
+  if (e.touches.length !== 1) return;
+  
+  const touch = e.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+  touchStartTime = Date.now();
+  isDragging.value = true;
+  startX.value = touch.clientX - panX.value;
+  startY.value = touch.clientY - panY.value;
+}
+
+function onTouchMove(e: TouchEvent) {
+  if (!isDragging.value || e.touches.length !== 1) return;
+  
+  const touch = e.touches[0];
+  const dx = touch.clientX - touchStartX;
+  const dy = touch.clientY - touchStartY;
+  
+  // 只有移动超过阈值才视为拖动
+  if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+    e.preventDefault(); // 拖动时阻止页面滚动
+    panX.value = touch.clientX - startX.value;
+    panY.value = touch.clientY - startY.value;
+  }
+}
+
+function onTouchEnd() {
   isDragging.value = false;
 }
 
