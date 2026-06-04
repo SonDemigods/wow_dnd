@@ -114,9 +114,10 @@ export const useCharacterStore = defineStore('character', () => {
 
   // ==================== 内部辅助方法 ====================
 
-  /** 从 Service 同步最新角色数据到 Store */
+  /** 从 Service 同步最新角色数据到 Store（创建新对象以触发 Vue 响应式更新） */
   function syncCharacterFromService(): void {
-    character.value = characterService.getCharacterInfo();
+    const info = characterService.getCharacterInfo();
+    character.value = { ...info };
   }
 
   // ==================== 方法 ====================
@@ -243,6 +244,14 @@ export const useCharacterStore = defineStore('character', () => {
   function setupCrossModuleListeners(): void {
     // 战斗结束后刷新角色数据（经验值、金币等变化由战斗模块触发）
     eventBus.onGroup('characterStore', GameEvents.COMBAT_END, () => {
+      syncCharacterFromService();
+    });
+
+    // HP/MP 实时变化时同步（战斗中受伤治疗、探索陷阱/事件等）
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_HP_CHANGE, () => {
+      syncCharacterFromService();
+    });
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_MP_CHANGE, () => {
       syncCharacterFromService();
     });
   }

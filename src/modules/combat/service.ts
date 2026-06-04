@@ -21,6 +21,7 @@ import { inventoryService } from '../inventory/service';
 import { combatDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
 import { explorationService } from '../exploration/service';
+import { questService } from '../quest/service';
 import { logService } from '../log/service';
 
 /** 战斗服务实现类 */
@@ -801,8 +802,15 @@ export class CombatService implements ICombatService {
           icon: '🏆'
         });
         
-        // 处理掉落
-        this.handleLoot();
+        // 处理掉落（只有Boss才掉落物品）
+        if (this.enemy.isBoss) {
+          this.handleLoot();
+        }
+        
+        // 更新任务进度（击杀类任务）
+        if (this.enemy.dataId) {
+          questService.handleEnemyKill(this.enemy.dataId);
+        }
       } else if (result === 'defeat') {
         // 失败：损失经验
         this.addCombatLog({
@@ -870,32 +878,14 @@ export class CombatService implements ICombatService {
   }
 
   /**
-   * 处理掉落
+   * 处理掉落（仅Boss掉落物品，金币已通过 goldReward 发放）
    */
   private handleLoot(): void {
     if (!this.enemy) return;
     
-    // 处理金币掉落
-    const goldDrop = this.enemy.drops.find(d => d.itemId === 'gold');
-    if (goldDrop) {
-      const amount = Math.floor(Math.random() * (goldDrop.maxAmount - goldDrop.minAmount + 1)) + goldDrop.minAmount;
-      characterService.addGold(amount);
-      
-      this.addCombatLog({
-        actorType: 'system',
-        actorId: 'system',
-        actorName: '系统',
-        eventType: 'combat_item',
-        isCrit: false,
-        isDodge: false,
-        message: `获得 ${amount} 金币！`
-      });
-    }
-    
     // 处理物品掉落
     this.enemy.drops.forEach(drop => {
-      if (drop.itemId !== 'gold' && Math.random() < drop.dropRate) {
-        // 从物品模板中获取物品信息
+      if (Math.random() < drop.dropRate) {
         const itemTemplate = inventoryService.getItemInfo(drop.itemId);
         if (itemTemplate) {
           const amount = Math.floor(Math.random() * (drop.maxAmount - drop.minAmount + 1)) + drop.minAmount;

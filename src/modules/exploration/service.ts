@@ -8,7 +8,9 @@ import { inventoryService } from '../inventory/service';
 import { logService } from '../log/service';
 import { LOOT_ITEMS } from '../../data/item.data';
 import { ENEMIES } from '../../data/enemy.data';
+import { QUESTS } from '../../data/quest.data';
 import type { EnemyData } from '../enemy/types';
+import type { QuestDefinition } from '../quest/types';
 
 const GRID_SIZE = 10;
 const INITIAL_MOVES = 20;
@@ -220,23 +222,47 @@ export class ExplorationService implements IExplorationService {
     const corners = [[0, 0], [0, GRID_SIZE - 1], [GRID_SIZE - 1, 0], [GRID_SIZE - 1, GRID_SIZE - 1]];
     const availableCorners = corners.filter(c => !this.isOccupied(grid, c[0], c[1]));
     
-    // 放置商店（角落位置）
+    // 放置商店（角落位置，默认可见）
     const shopCornerIndex = Math.floor(Math.random() * availableCorners.length);
     const shopPos = availableCorners[shopCornerIndex];
-    grid[shopPos[1]][shopPos[0]] = { x: shopPos[0], y: shopPos[1], type: 'shop', explored: false, accessible: false, visited: false };
+    grid[shopPos[1]][shopPos[0]] = { x: shopPos[0], y: shopPos[1], type: 'shop', explored: true, accessible: true, visited: true };
     availableCorners.splice(shopCornerIndex, 1);
     
-    // 放置任务看板（另一个角落位置）
+    // 放置任务看板（另一个角落位置，默认可见）
     const boardPos = availableCorners[Math.floor(Math.random() * availableCorners.length)];
-    grid[boardPos[1]][boardPos[0]] = { x: boardPos[0], y: boardPos[1], type: 'board', explored: false, accessible: false, visited: false };
+    grid[boardPos[1]][boardPos[0]] = { x: boardPos[0], y: boardPos[1], type: 'board', explored: true, accessible: true, visited: true };
 
     // 放置营地（非相邻位置）
     const campPos = this.findNonAdjacentPosition(grid, [startPos, { x: shopPos[0], y: shopPos[1] }, { x: boardPos[0], y: boardPos[1] }]);
     grid[campPos.y][campPos.x] = { x: campPos.x, y: campPos.y, type: 'rest', explored: false, accessible: false, visited: false };
 
-    // 放置BOSS（中心区域）
+    // 放置BOSS（中心区域），从boss池中随机选择一个boss
     const bossPos = this.findBossPosition(grid, [startPos, { x: shopPos[0], y: shopPos[1] }, { x: boardPos[0], y: boardPos[1] }, campPos]);
-    grid[bossPos.y][bossPos.x] = { x: bossPos.x, y: bossPos.y, type: 'boss', explored: false, accessible: false, visited: false };
+    const bossPool = this.currentAreaConfig?.bossPool || [];
+    const bossMonsterId = bossPool.length > 0 ? bossPool[Math.floor(Math.random() * bossPool.length)] : undefined;
+    grid[bossPos.y][bossPos.x] = { x: bossPos.x, y: bossPos.y, type: 'boss', explored: false, accessible: false, visited: false, monsterId: bossMonsterId };
+  }
+
+  /**
+   * 获取当前区域任务所需的怪物ID列表（去重后的优先怪物池）
+   */
+  private getQuestRequiredMonsters(areaId: string): string[] {
+    const required: string[] = [];
+    // 从 QUESTS 数据中筛选当前区域的任务
+    for (const key of Object.keys(QUESTS)) {
+      const quest = QUESTS[key] as QuestDefinition;
+      if (quest.boardId === areaId) {
+        for (const obj of quest.objectives) {
+          if (obj.type === 'kill' && obj.enemyId) {
+            // 根据目标数量添加对应数量的怪物ID
+            for (let i = 0; i < obj.target; i++) {
+              required.push(obj.enemyId);
+            }
+          }
+        }
+      }
+    }
+    return required;
   }
 
   private generateGridInternal(areaConfig: AreaConfig): ExplorationCell[][] {
@@ -259,31 +285,69 @@ export class ExplorationService implements IExplorationService {
     this.placeFixedEvents(grid);
 
     const probability = areaConfig.eventProbability;
+    const monsterPool = areaConfig.monsterPool;
 
+    // 获取当前区域任务所需的怪物列表，作为优先放置的怪物池
+    const questMonsters = this.getQuestRequiredMonsters(areaConfig.areaId);
+    // 过滤掉boss类型（boss由固定事件放置），只保留普通怪物
+    const questNormalMonsters = questMonsters.filter(id => {
+      const data = ENEMIES[id] as EnemyData | undefined;
+      return data && !(data as any).isBoss;
+    });
+
+    // 收集所有空格子坐标
+    const emptyCells: { x: number; y: number }[] = [];
     for (let y = 0; y < GRID_SIZE; y++) {
       for (let x = 0; x < GRID_SIZE; x++) {
         if (grid[y][x].type === 'empty') {
-          const eventType = this.selectEventType(probability);
-          
-          let cellType = 'empty';
-          switch (eventType) {
-            case 'monster':
-              cellType = 'monster';
-              break;
-            case 'item':
-              cellType = 'treasure';
-              break;
-            case 'trap':
-              cellType = 'trap';
-              break;
-            case 'event':
-              cellType = 'event';
-              break;
-          }
-          
-          grid[y][x] = { x, y, type: cellType, explored: false, accessible: false, visited: false };
+          emptyCells.push({ x, y });
         }
       }
+    }
+
+    // 打乱空格子顺序
+    for (let i = emptyCells.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [emptyCells[i], emptyCells[j]] = [emptyCells[j], emptyCells[i]];
+    }
+
+    let cellIndex = 0;
+
+    // 第一步：优先放置任务所需的怪物
+    for (const monsterId of questNormalMonsters) {
+      if (cellIndex >= emptyCells.length) break;
+      const pos = emptyCells[cellIndex];
+      grid[pos.y][pos.x] = { x: pos.x, y: pos.y, type: 'monster', explored: false, accessible: false, visited: false, monsterId };
+      cellIndex++;
+    }
+
+    // 第二步：对剩余空格子按概率随机分配事件类型
+    for (let i = cellIndex; i < emptyCells.length; i++) {
+      const pos = emptyCells[i];
+      const eventType = this.selectEventType(probability);
+      
+      let cellType = 'empty';
+      let cellMonsterId: string | undefined;
+      switch (eventType) {
+        case 'monster':
+          cellType = 'monster';
+          // 从怪物池中随机选择一个怪物
+          if (monsterPool.length > 0) {
+            cellMonsterId = monsterPool[Math.floor(Math.random() * monsterPool.length)];
+          }
+          break;
+        case 'item':
+          cellType = 'treasure';
+          break;
+        case 'trap':
+          cellType = 'trap';
+          break;
+        case 'event':
+          cellType = 'event';
+          break;
+      }
+      
+      grid[pos.y][pos.x] = { x: pos.x, y: pos.y, type: cellType, explored: false, accessible: false, visited: false, monsterId: cellMonsterId };
     }
 
     return grid;
@@ -309,7 +373,7 @@ export class ExplorationService implements IExplorationService {
       grid,
       campUsed: false,
       playerPosition: startPos,
-      visitedCells: 1,
+      visitedCells: 3,
       remainingMoves: INITIAL_MOVES,
       bossDefeated: false,
       explorationComplete: false
@@ -399,7 +463,7 @@ export class ExplorationService implements IExplorationService {
     switch (targetCell.type) {
       case 'monster':
         result.message = '遭遇怪物！';
-        this.triggerBattle('enemy_goblin');
+        this.triggerBattle(targetCell.monsterId || 'goblin');
         break;
       case 'treasure':
         const gold = Math.floor(Math.random() * 50) + 10;
@@ -421,7 +485,7 @@ export class ExplorationService implements IExplorationService {
         break;
       case 'boss':
         result.message = '遭遇BOSS！';
-        this.triggerBattle('enemy_boss');
+        this.triggerBattle(targetCell.monsterId || 'dragon_whelp');
         break;
       case 'shop':
         result.message = '发现商店';
@@ -520,7 +584,10 @@ export class ExplorationService implements IExplorationService {
       x: cell.x,
       y: cell.y,
       status: cell.explored ? 'revealed' : 'unexplored',
-      eventType: this.getEventType(cell.type)
+      eventType: this.getEventType(cell.type),
+      eventData: {
+        monsterId: cell.monsterId
+      }
     };
   }
 
@@ -550,7 +617,8 @@ export class ExplorationService implements IExplorationService {
     if (cell.type === 'monster' || cell.type === 'boss') {
       // 已击败的怪物 type 已变为 empty，不会进入此分支
       // 逃跑/失败后 explored=true 但 type 仍为 monster/boss，可再次挑战
-      this.triggerBattle(cell.type === 'boss' ? 'enemy_boss' : 'enemy_goblin');
+      const battleId = cell.monsterId || (cell.type === 'boss' ? 'dragon_whelp' : 'goblin');
+      this.triggerBattle(battleId);
       this.pendingBattleCell = { x, y };
       return true;
     }

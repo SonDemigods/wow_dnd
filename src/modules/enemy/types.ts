@@ -76,6 +76,7 @@ export interface EnemyDrop {
  */
 export interface EnemyInstance extends EnemyData {
   id: string;
+  dataId: string;
   level: number;
   hp: number;
   loot: InventoryItem[];

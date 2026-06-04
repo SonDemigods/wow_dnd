@@ -216,20 +216,8 @@ function handleBattleTriggered(data: { eventData?: { monsterId?: string } }) {
   
   const monsterId = data.eventData.monsterId;
   
-  // 根据区域确定怪物ID映射
-  const monsterMap: Record<string, string> = {
-    'enemy_goblin': 'goblin',
-    'enemy_wolf': 'wolf',
-    'enemy_spider': 'spider',
-    'enemy_orc': 'orc',
-    'enemy_goblin_boss': 'goblin',
-    'enemy_wolf_boss': 'wolf',
-    'enemy_orc_boss': 'orc',
-    'enemy_boss': 'dragon_whelp'
-  };
-  
-  const dataId = monsterMap[monsterId] || monsterId;
-  const enemy = enemyService.createEnemy(dataId);
+  // 直接使用数据层ID（如 'goblin', 'spider', 'dragon_whelp'）
+  const enemy = enemyService.createEnemy(monsterId);
   
   if (enemy) {
     combatService.startCombat(enemy);

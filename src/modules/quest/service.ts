@@ -72,7 +72,7 @@ export class QuestService implements IQuestService {
             type: 'kill',
             description: '消灭哥布林',
             target: 10,
-            enemyId: 'enemy_goblin'
+            enemyId: 'goblin'
           }
         ],
         levelRequirement: 1,
@@ -110,7 +110,7 @@ export class QuestService implements IQuestService {
             type: 'kill',
             description: '消灭狼',
             target: 5,
-            enemyId: 'enemy_wolf'
+            enemyId: 'wolf'
           }
         ],
         levelRequirement: 2,
@@ -129,14 +129,14 @@ export class QuestService implements IQuestService {
             type: 'kill',
             description: '消灭兽人手下',
             target: 3,
-            enemyId: 'enemy_orc'
+            enemyId: 'orc'
           },
           {
             key: 'kill_orc_boss',
             type: 'kill',
             description: '击败兽人首领',
             target: 1,
-            enemyId: 'enemy_orc_boss'
+            enemyId: 'ogre'
           }
         ],
         levelRequirement: 5,

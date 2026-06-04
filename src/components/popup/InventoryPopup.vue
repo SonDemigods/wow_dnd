@@ -86,14 +86,25 @@
       </div>
     </template>
   </BasePopup>
+
+  <ConfirmPopup
+    :visible="showDropConfirm"
+    title="丢弃物品"
+    :message="`确定要丢弃 ${selectedEntry?.info?.name || '此物品'} 吗？`"
+    type="danger"
+    @confirm="confirmDrop"
+    @cancel="cancelDrop"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import BasePopup from '../common/BasePopup.vue';
+import ConfirmPopup from '../common/ConfirmPopup.vue';
 import { inventoryService } from '@/modules/inventory';
-import { characterService, useCharacterStore } from '@/modules/character';
+import { useCharacterStore } from '@/modules/character';
 import { eventBus, GameEvents } from '@/modules/bus/core';
+import { useToast } from '@/composables/useToast';
 import type { InventoryItem, Item, ItemType, ItemRarity } from '@/modules/inventory';
 
 interface ItemEntry {
@@ -110,10 +121,15 @@ const emit = defineEmits<{
 }>();
 
 const characterStore = useCharacterStore();
+const toast = useToast();
 const gold = computed(() => characterStore.gold);
 
 const selectedCategory = ref<'all' | ItemType>('all');
 const selectedEntry = ref<ItemEntry | null>(null);
+
+// 丢弃确认弹窗状态
+const showDropConfirm = ref(false);
+const pendingDropItemId = ref<string | null>(null);
 
 const inventoryItems = ref<InventoryItem[]>([]);
 const equippedItemIds = ref<Set<string>>(new Set());
@@ -189,7 +205,7 @@ function selectItem(entry: ItemEntry) {
   selectedEntry.value = entry;
 }
 
-function useItem(itemId: string) {
+async function useItem(itemId: string) {
   const index = inventoryItems.value.findIndex(i => i.itemId === itemId);
   if (index === -1) return;
 
@@ -197,11 +213,11 @@ function useItem(itemId: string) {
   if (!info?.consumable) return;
 
   if (info.hpRestore) {
-    characterService.addHp(info.hpRestore);
-    alert(`使用 ${info.name}，恢复了 ${info.hpRestore} HP！`);
+    await characterStore.addHp(info.hpRestore);
+    toast.show({ message: `使用 ${info.name}，恢复了 ${info.hpRestore} HP！`, type: 'success', icon: '💊' });
   } else if (info.mpRestore) {
-    characterService.addMp(info.mpRestore);
-    alert(`使用 ${info.name}，恢复了 ${info.mpRestore} MP！`);
+    await characterStore.addMp(info.mpRestore);
+    toast.show({ message: `使用 ${info.name}，恢复了 ${info.mpRestore} MP！`, type: 'success', icon: '💊' });
   }
   
   inventoryService.removeItem(index, 1);
@@ -216,24 +232,38 @@ function equipItem(itemId: string) {
   const result = inventoryService.equipItem(index);
   if (result.success) {
     const info = inventoryService.getItemInfo(itemId);
-    alert(`已装备${info?.name || itemId}`);
+    toast.show({ message: `已装备 ${info?.name || itemId}`, type: 'success', icon: '🛡️' });
   } else {
-    alert(result.message);
+    toast.show({ message: result.message, type: 'warning' });
   }
   loadInventory();
 }
 
 function dropItem(itemId: string) {
+  pendingDropItemId.value = itemId;
+  showDropConfirm.value = true;
+}
+
+function confirmDrop() {
+  const itemId = pendingDropItemId.value;
+  if (!itemId) return;
+  
   const info = inventoryService.getItemInfo(itemId);
-  if (!confirm(`确定丢弃 ${info?.name || '此物品'} 吗？`)) return;
-  
   const index = inventoryItems.value.findIndex(i => i.itemId === itemId);
-  if (index === -1) return;
+  if (index !== -1) {
+    inventoryService.removeItem(index, 1);
+    toast.show({ message: `已丢弃 ${info?.name || '物品'}`, type: 'info', icon: '🗑️' });
+    loadInventory();
+    selectedEntry.value = null;
+  }
   
-  inventoryService.removeItem(index, 1);
-  alert(`已丢弃${info?.name || '物品'}`);
-  loadInventory();
-  selectedEntry.value = null;
+  showDropConfirm.value = false;
+  pendingDropItemId.value = null;
+}
+
+function cancelDrop() {
+  showDropConfirm.value = false;
+  pendingDropItemId.value = null;
 }
 
 async function loadInventory() {

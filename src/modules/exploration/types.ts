@@ -23,6 +23,7 @@ export interface ExplorationCell {
   explored: boolean
   accessible: boolean
   visited: boolean
+  monsterId?: string
 }
 
 export interface ExplorationEventChoice {

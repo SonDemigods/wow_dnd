@@ -44,14 +44,28 @@ export class EnemyService {
     const expReward = Math.floor(data.xp * levelScale);
     const goldReward = Math.floor(data.gold * levelScale);
 
-    // 默认掉落配置
-    const drops: EnemyDrop[] = [
-      { itemId: 'gold', minAmount: Math.floor(data.gold * 0.5), maxAmount: data.gold, dropRate: 1.0 }
-    ];
+    // 默认掉落配置：只有金币（金币奖励已在战斗胜利时通过 goldReward 发放）
+    const drops: EnemyDrop[] = [];
+
+    // Boss 额外掉落物品
+    if (data.isBoss) {
+      const bossDrops: EnemyDrop[] = [
+        { itemId: 'largeHealthPotion', minAmount: 1, maxAmount: 2, dropRate: 0.6 },
+        { itemId: 'largeManaPotion', minAmount: 1, maxAmount: 1, dropRate: 0.4 },
+        { itemId: 'strengthPotion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+        { itemId: 'agilityPotion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+        { itemId: 'constitutionPotion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+        { itemId: 'intelligencePotion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+        { itemId: 'wisdomPotion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+        { itemId: 'charismaPotion', minAmount: 1, maxAmount: 1, dropRate: 0.15 }
+      ];
+      drops.push(...bossDrops);
+    }
 
     const enemy: EnemyInstance = {
       ...data,
       id,
+      dataId,
       level,
       hp: scaledHp,
       maxHp: scaledHp,
