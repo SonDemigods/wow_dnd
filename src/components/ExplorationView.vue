@@ -34,7 +34,8 @@
                 v-for="(cell, x) in row"
                 :key="x"
                 :class="getCellClasses(cell)"
-                @click="handleCellClick(cell)"
+                :data-x="x"
+                :data-y="y"
               >
                 <span v-if="cell.explored" class="cell-icon">{{ getCellIcon(cell.type) }}</span>
                 <span v-else class="cell-icon cell-hidden">?</span>
@@ -69,6 +70,7 @@ const hasCurrentLocation = computed(() => !!mapStore.getCurrentLocation);
 
 // 拖动相关状态
 const isDragging = ref(false);
+const hasDragged = ref(false);
 const startX = ref(0);
 const startY = ref(0);
 const panX = ref(0);
@@ -121,25 +123,44 @@ function getCellClasses(cell: ExplorationCell) {
 }
 
 // 拖动功能 - 鼠标事件
+const mouseDownTarget = ref<EventTarget | null>(null);
+
 function startDrag(e: MouseEvent) {
-  // 防止在格子上拖动时触发点击
-  if ((e.target as HTMLElement).closest('.cell')) return;
-  
   isDragging.value = true;
   startX.value = e.clientX - panX.value;
   startY.value = e.clientY - panY.value;
-  e.preventDefault();
+  mouseDownTarget.value = e.target;
 }
 
 function onDrag(e: MouseEvent) {
   if (!isDragging.value) return;
-  panX.value = e.clientX - startX.value;
-  panY.value = e.clientY - startY.value;
-  e.preventDefault();
+  const dx = e.clientX - (startX.value + panX.value);
+  const dy = e.clientY - (startY.value + panY.value);
+  // 移动超过阈值后才实际拖动
+  if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+    hasDragged.value = true;
+    panX.value = e.clientX - startX.value;
+    panY.value = e.clientY - startY.value;
+    e.preventDefault();
+  }
 }
 
 function endDrag() {
+  if (isDragging.value && !hasDragged.value) {
+    // 未超过阈值，视为点击
+    const target = mouseDownTarget.value as HTMLElement;
+    const cellEl = target?.closest('.cell') as HTMLElement;
+    if (cellEl) {
+      const x = Number(cellEl.dataset.x);
+      const y = Number(cellEl.dataset.y);
+      if (!isNaN(x) && !isNaN(y) && grid.value[y]?.[x]) {
+        handleCellClick(grid.value[y][x]);
+      }
+    }
+  }
   isDragging.value = false;
+  hasDragged.value = false;
+  mouseDownTarget.value = null;
 }
 
 // 拖动功能 - 触摸事件（移动端）
