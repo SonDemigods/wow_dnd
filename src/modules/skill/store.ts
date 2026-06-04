@@ -1,7 +1,8 @@
 /**
  * 技能模块状态管理
  * 
- * 使用 Pinia 管理技能状态，响应式更新UI
+ * 使用 Pinia 管理技能状态，响应式更新UI。
+ * Store 是技能数据的唯一持有者，Service 作为纯业务逻辑层供 Store 调用。
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
@@ -27,14 +28,18 @@ export const useSkillsStore = defineStore('skills', () => {
   const skillBar = ref<SkillBar>({ slots: [null, null, null, null] });
   const isLoading = ref(false);
 
-  // 计算属性
-  const unlockedSkills = computed(() => {
-    return skillsService.getUnlockedSkills();
-  });
+  /**
+   * 从 Service 同步最新技能数据到 Store
+   */
+  function syncFromService(): void {
+    skills.value = skillsService.getSkills();
+    skillBar.value = skillsService.getSkillBar();
+  }
 
-  const lockedSkills = computed(() => {
-    return skillsService.getLockedSkills();
-  });
+  // 计算属性
+  const unlockedSkills = computed(() => skillsService.getUnlockedSkills());
+
+  const lockedSkills = computed(() => skillsService.getLockedSkills());
 
   const equippedSkills = computed(() => {
     return skillBar.value.slots.map(skillId => {
@@ -73,8 +78,7 @@ export const useSkillsStore = defineStore('skills', () => {
   async function loadSkills(): Promise<void> {
     isLoading.value = true;
     await skillsService.initialize();
-    skills.value = skillsService.getSkills();
-    skillBar.value = skillsService.getSkillBar();
+    syncFromService();
     isLoading.value = false;
   }
 
@@ -88,7 +92,6 @@ export const useSkillsStore = defineStore('skills', () => {
 
   function useSkill(skillId: string): SkillUseResult {
     const result = skillsService.useSkill(skillId);
-    // 更新技能栏状态（如果需要）
     skillBar.value = skillsService.getSkillBar();
     return result;
   }
@@ -123,8 +126,7 @@ export const useSkillsStore = defineStore('skills', () => {
 
   function checkLevelUnlocks(): void {
     skillsService.checkLevelUnlocks();
-    skills.value = skillsService.getSkills();
-    skillBar.value = skillsService.getSkillBar();
+    syncFromService();
   }
 
   function addSkillTemplate(skill: Skill): void {
@@ -137,8 +139,7 @@ export const useSkillsStore = defineStore('skills', () => {
 
   function setCharacter(characterId: string): void {
     skillsService.setCharacter(characterId);
-    skills.value = skillsService.getSkills();
-    skillBar.value = skillsService.getSkillBar();
+    syncFromService();
   }
 
   function reset(): void {
@@ -147,15 +148,10 @@ export const useSkillsStore = defineStore('skills', () => {
     skillBar.value = { slots: [null, null, null, null] };
   }
 
-  function setupEventListeners(): void {
-    eventBus.onGroup('skillStore', GameEvents.SKILL_LEARNED, () => {
-      skills.value = skillsService.getSkills();
-    });
-
-    eventBus.onGroup('skillStore', GameEvents.SKILL_BAR_UPDATE, () => {
-      skillBar.value = skillsService.getSkillBar();
-    });
-
+  /**
+   * 跨模块事件监听
+   */
+  function setupCrossModuleListeners(): void {
     eventBus.onGroup('skillStore', GameEvents.CHARACTER_SELECTED, (data) => {
       if (data?.characterId) {
         setCharacter(data.characterId);
@@ -206,7 +202,7 @@ export const useSkillsStore = defineStore('skills', () => {
     removeSkillTemplate,
     setCharacter,
     reset,
-    setupEventListeners,
+    setupCrossModuleListeners,
     dispose,
     
     // 常量

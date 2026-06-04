@@ -21,6 +21,7 @@ import { inventoryService } from '../inventory/service';
 import { combatDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
 import { explorationService } from '../exploration/service';
+import { logService } from '../log/service';
 
 /**
  * 战斗服务实现类
@@ -98,6 +99,15 @@ export class CombatService implements ICombatService {
       actorName: '系统',
       eventType: 'combat_start',
       message: `战斗开始！你遭遇了 ${enemy.name}！`
+    });
+    
+    // 记录到冒险日志
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'combat',
+      message: `遭遇 ${enemy.name}！`,
+      icon: '⚔️'
     });
     
     // 触发战斗开始事件
@@ -768,6 +778,15 @@ export class CombatService implements ICombatService {
         message: `战斗胜利！获得 ${expGained} 经验值和 ${goldGained} 金币！`
       });
       
+      // 记录到冒险日志
+      logService.addLog({
+        id: logService.generateLogId(),
+        timestamp: Date.now(),
+        type: 'combat',
+        message: `击败 ${this.enemy.name}！获得 ${expGained} 经验值和 ${goldGained} 金币`,
+        icon: '🏆'
+      });
+      
       // 处理掉落
       this.handleLoot();
     } else if (result === 'defeat') {
@@ -782,6 +801,15 @@ export class CombatService implements ICombatService {
         message: '战斗失败！'
       });
       
+      // 记录到冒险日志
+      logService.addLog({
+        id: logService.generateLogId(),
+        timestamp: Date.now(),
+        type: 'combat',
+        message: `被 ${this.enemy.name} 击败！`,
+        icon: '💀'
+      });
+      
       // 处理角色死亡
       characterService.handleDeath();
     } else if (result === 'fled') {
@@ -793,6 +821,15 @@ export class CombatService implements ICombatService {
         isCrit: false,
         isDodge: false,
         message: '战斗以逃跑结束'
+      });
+      
+      // 记录到冒险日志
+      logService.addLog({
+        id: logService.generateLogId(),
+        timestamp: Date.now(),
+        type: 'combat',
+        message: `从 ${this.enemy.name} 面前逃跑`,
+        icon: '🏃'
       });
     }
     

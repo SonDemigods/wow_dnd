@@ -50,12 +50,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { explorationService } from '@/modules/exploration';
-import { characterService } from '@/modules/character/service';
+import { useExplorationStore } from '@/modules/exploration';
+import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { ExplorationCell } from '@/modules/exploration';
 
+const explorationStore = useExplorationStore();
+const characterStore = useCharacterStore();
 const mapStore = useMapStore();
 const grid = ref<ExplorationCell[][]>([]);
 const explorationComplete = ref(false);
@@ -88,10 +90,9 @@ const cellIcons: Record<string, string> = {
   shop: '🏪',
   rest: '🏕️',
   boss: '👹',
-  event: '📋',
+  event: '🎲',
   trap: '⚠️',
   start: '🏁',
-  exit: '🚪',
   board: '📜'
 };
 
@@ -137,12 +138,12 @@ function endDrag() {
 }
 
 function loadState() {
-  const state = explorationService.getState();
+  const state = explorationStore.state;
   grid.value = state.grid.map(row => row.map(cell => ({ ...cell })));
   explorationComplete.value = state.explorationComplete;
 }
 
-function initExploration() {
+async function initExploration() {
   const currentLocation = mapStore.getCurrentLocation;
   
   // 未选择区域时，清空网格
@@ -154,17 +155,17 @@ function initExploration() {
   const targetArea = currentLocation.name;
   
   // 只有切换区域时才重新生成探索网格
-  const currentAreaId = explorationService.getCurrentAreaId();
+  const currentAreaId = explorationStore.currentAreaId;
   if (currentAreaId !== targetArea) {
-    explorationService.enterArea(targetArea);
+    await explorationStore.enterArea(targetArea);
   }
   loadState();
 }
 
-function handleCellClick(cell: ExplorationCell) {
+async function handleCellClick(cell: ExplorationCell) {
   if (!cell.accessible) return;
   
-  explorationService.revealGrid(cell.x, cell.y);
+  await explorationStore.revealGrid(cell.x, cell.y);
   loadState();
 }
 
@@ -173,23 +174,24 @@ function onRefreshGrid() {
   loadState();
 }
 
+/** 事件监听分组标识，用于组件卸载时统一清理 */
+const EVENT_GROUP = 'explorationView';
+
 onMounted(async () => {
   // 确保探索服务已从数据库加载状态
-  const characterId = characterService.getCurrentCharacterId();
+  const characterId = characterStore.currentCharacterId;
   if (characterId) {
-    await explorationService.init(characterId);
+    await explorationStore.init(characterId);
   }
   
   initExploration();
-  eventBus.on(GameEvents.COMBAT_END, onRefreshGrid);
-  eventBus.on(GameEvents.SHOP_CLOSED, onRefreshGrid);
-  eventBus.on(GameEvents.QUEST_COMPLETED, onRefreshGrid);
+  eventBus.onGroup(EVENT_GROUP, GameEvents.COMBAT_END, onRefreshGrid);
+  eventBus.onGroup(EVENT_GROUP, GameEvents.SHOP_CLOSED, onRefreshGrid);
+  eventBus.onGroup(EVENT_GROUP, GameEvents.QUEST_COMPLETED, onRefreshGrid);
 });
 
 onUnmounted(() => {
-  eventBus.off(GameEvents.COMBAT_END, onRefreshGrid);
-  eventBus.off(GameEvents.SHOP_CLOSED, onRefreshGrid);
-  eventBus.off(GameEvents.QUEST_COMPLETED, onRefreshGrid);
+  eventBus.clearGroup(EVENT_GROUP);
 });
 </script>
 

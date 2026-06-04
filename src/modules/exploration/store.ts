@@ -2,7 +2,6 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { ExplorationCell, ExplorationState } from './types';
 import { explorationService } from './service';
-import { eventBus, GameEvents } from '../bus/core';
 
 export const useExplorationStore = defineStore('exploration', () => {
   const currentAreaId = ref<string | null>(null);
@@ -14,6 +13,19 @@ export const useExplorationStore = defineStore('exploration', () => {
   const remainingMoves = ref(20);
   const bossDefeated = ref(false);
   const explorationComplete = ref(false);
+
+  /** 从 Service 同步最新状态到 Store */
+  function syncFromService(): void {
+    const savedState = explorationService.getState();
+    currentAreaId.value = savedState.currentAreaId;
+    grid.value = savedState.grid;
+    campUsed.value = savedState.campUsed;
+    playerPosition.value = savedState.playerPosition;
+    visitedCells.value = savedState.visitedCells;
+    remainingMoves.value = savedState.remainingMoves;
+    bossDefeated.value = savedState.bossDefeated;
+    explorationComplete.value = savedState.explorationComplete;
+  }
 
   const state = computed<ExplorationState>(() => ({
     currentAreaId: currentAreaId.value,
@@ -34,53 +46,24 @@ export const useExplorationStore = defineStore('exploration', () => {
 
   async function init(characterId: string): Promise<void> {
     await explorationService.init(characterId);
-    const savedState = explorationService.getState();
-    currentAreaId.value = savedState.currentAreaId;
-    grid.value = savedState.grid;
-    campUsed.value = savedState.campUsed;
-    playerPosition.value = savedState.playerPosition;
-    visitedCells.value = savedState.visitedCells;
-    remainingMoves.value = savedState.remainingMoves;
-    bossDefeated.value = savedState.bossDefeated;
-    explorationComplete.value = savedState.explorationComplete;
-    isExploring.value = savedState.currentAreaId !== null;
-    initEventListeners();
+    syncFromService();
+    isExploring.value = currentAreaId.value !== null;
   }
 
-  function enterArea(areaId: string): void {
-    explorationService.enterArea(areaId);
-    const newState = explorationService.getState();
-    currentAreaId.value = newState.currentAreaId;
-    grid.value = newState.grid;
-    campUsed.value = newState.campUsed;
-    playerPosition.value = newState.playerPosition;
-    visitedCells.value = newState.visitedCells;
-    remainingMoves.value = newState.remainingMoves;
-    bossDefeated.value = newState.bossDefeated;
-    explorationComplete.value = newState.explorationComplete;
+  async function enterArea(areaId: string): Promise<void> {
+    await explorationService.enterArea(areaId);
+    syncFromService();
     isExploring.value = true;
   }
 
   function generateGrid(): void {
     explorationService.generateGrid();
-    const newState = explorationService.getState();
-    grid.value = newState.grid;
-    playerPosition.value = newState.playerPosition;
-    visitedCells.value = newState.visitedCells;
-    remainingMoves.value = newState.remainingMoves;
-    bossDefeated.value = newState.bossDefeated;
-    explorationComplete.value = newState.explorationComplete;
+    syncFromService();
   }
 
   function movePlayer(direction: 'up' | 'down' | 'left' | 'right') {
     const result = explorationService.movePlayer(direction);
-    const newState = explorationService.getState();
-    grid.value = newState.grid;
-    playerPosition.value = newState.playerPosition;
-    visitedCells.value = newState.visitedCells;
-    remainingMoves.value = newState.remainingMoves;
-    bossDefeated.value = newState.bossDefeated;
-    explorationComplete.value = newState.explorationComplete;
+    syncFromService();
     return result;
   }
 
@@ -90,16 +73,14 @@ export const useExplorationStore = defineStore('exploration', () => {
 
   function handleEventChoice(choiceId: string) {
     const result = explorationService.handleEventChoice(choiceId);
-    const newState = explorationService.getState();
-    grid.value = newState.grid;
+    grid.value = explorationService.getState().grid;
     return result;
   }
 
-  function revealGrid(x: number, y: number): boolean {
-    const success = explorationService.revealGrid(x, y);
+  async function revealGrid(x: number, y: number): Promise<boolean> {
+    const success = await explorationService.revealGrid(x, y);
     if (success) {
-      const newState = explorationService.getState();
-      grid.value = newState.grid;
+      grid.value = explorationService.getState().grid;
     }
     return success;
   }
@@ -107,9 +88,7 @@ export const useExplorationStore = defineStore('exploration', () => {
   function useCamp(): boolean {
     const success = explorationService.useCamp();
     if (success) {
-      const newState = explorationService.getState();
-      grid.value = newState.grid;
-      campUsed.value = newState.campUsed;
+      syncFromService();
     }
     return success;
   }
@@ -135,33 +114,6 @@ export const useExplorationStore = defineStore('exploration', () => {
     reset();
   }
 
-  function initEventListeners(): void {
-    eventBus.onGroup('explorationStore', GameEvents.EXPLORATION_START, (data: { characterId: string | null; areaId?: string }) => {
-      if (data.areaId) {
-        currentAreaId.value = data.areaId;
-      }
-      isExploring.value = true;
-    });
-
-    eventBus.onGroup('explorationStore', GameEvents.EXPLORATION_END, () => {
-      isExploring.value = false;
-    });
-
-    eventBus.onGroup('explorationStore', GameEvents.EXPLORATION_CELL_EXPLORED, (data: { x: number; y: number }) => {
-      const cell = grid.value[data.y]?.[data.x];
-      if (cell) {
-        cell.explored = true;
-      }
-    });
-  }
-
-  /**
-   * 清理事件监听
-   */
-  function dispose(): void {
-    eventBus.clearGroup('explorationStore');
-  }
-
   return {
     currentAreaId,
     grid,
@@ -185,7 +137,6 @@ export const useExplorationStore = defineStore('exploration', () => {
     useCamp,
     triggerBattle,
     reset,
-    exitExploration,
-    dispose
+    exitExploration
   };
 });

@@ -1,7 +1,8 @@
 /**
  * 战斗模块状态管理层
  * 
- * 使用 Pinia 管理战斗状态，提供响应式数据和事件监听
+ * 使用 Pinia 管理战斗状态，提供响应式数据。
+ * Store 是战斗数据的唯一持有者，Service 作为纯业务逻辑层供 Store 调用。
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
@@ -28,36 +29,22 @@ export const useCombatStore = defineStore('combat', () => {
   
   /** 战斗日志 */
   const combatLogs = ref<CombatLog[]>([]);
-  
-  /**
-   * 获取战斗状态
-   */
-  const getState = computed(() => state.value);
-  
-  /**
-   * 获取敌人
-   */
-  const getEnemy = computed(() => enemy.value);
-  
-  /**
-   * 获取当前回合
-   */
-  const getTurn = computed(() => turn.value);
-  
-  /**
-   * 获取回合数
-   */
-  const getTurnCount = computed(() => turnCount.value);
-  
-  /**
-   * 获取战斗日志
-   */
-  const getCombatLog = computed(() => combatLogs.value);
-  
+
   /**
    * 检查是否在战斗中
    */
   const isInCombat = computed(() => state.value === 'fighting');
+
+  /**
+   * 从 Service 同步最新战斗状态到 Store
+   */
+  function syncFromService(): void {
+    state.value = combatService.getState();
+    enemy.value = combatService.getEnemy();
+    turn.value = combatService.getTurn();
+    turnCount.value = combatService.getTurnCount();
+    combatLogs.value = combatService.getCombatLog();
+  }
   
   /**
    * 开始战斗
@@ -65,7 +52,7 @@ export const useCombatStore = defineStore('combat', () => {
    */
   function startCombat(enemyData: Enemy): void {
     combatService.startCombat(enemyData);
-    updateState();
+    syncFromService();
   }
   
   /**
@@ -75,7 +62,7 @@ export const useCombatStore = defineStore('combat', () => {
    */
   function playerAction(action: CombatAction): CombatActionResult {
     const result = combatService.playerAction(action);
-    updateState();
+    syncFromService();
     return result;
   }
   
@@ -85,18 +72,7 @@ export const useCombatStore = defineStore('combat', () => {
    */
   function endCombat(result: 'victory' | 'defeat' | 'fled'): void {
     combatService.endCombat(result);
-    updateState();
-  }
-  
-  /**
-   * 更新状态
-   */
-  function updateState(): void {
-    state.value = combatService.getState();
-    enemy.value = combatService.getEnemy();
-    turn.value = combatService.getTurn();
-    turnCount.value = combatService.getTurnCount();
-    combatLogs.value = combatService.getCombatLog();
+    syncFromService();
   }
   
   /**
@@ -104,7 +80,7 @@ export const useCombatStore = defineStore('combat', () => {
    */
   function reset(): void {
     combatService.reset();
-    updateState();
+    syncFromService();
   }
   
   /**
@@ -123,32 +99,22 @@ export const useCombatStore = defineStore('combat', () => {
   }
   
   /**
-   * 初始化事件监听
+   * 跨模块事件监听
+   * 
+   * 仅监听来自其他模块的事件。战斗模块自身发出的状态变更
+   * 由 Store Action 直接处理，不再通过事件总线回环。
    */
-  function initEventListeners(): void {
-    // 战斗开始事件
-    eventBus.onGroup('combatStore', GameEvents.COMBAT_START, (data: { enemy: Enemy }) => {
-      state.value = 'fighting';
-      enemy.value = data.enemy;
-      turn.value = 'player';
-      turnCount.value = 1;
-    });
-    
-    // 战斗结束事件
-    eventBus.onGroup('combatStore', GameEvents.COMBAT_END, () => {
-      state.value = 'ended';
-    });
-    
-    // 玩家回合开始事件
+  function setupCrossModuleListeners(): void {
+    // 当探索触发战斗时，由 GameMain 组件监听 EXPLORATION_BATTLE_TRIGGERED 并调用 startCombat
+    // 当外部模块通知玩家/敌人回合变化时更新 Store
     eventBus.onGroup('combatStore', GameEvents.COMBAT_PLAYER_TURN, () => {
       turn.value = 'player';
-      updateState();
+      syncFromService();
     });
     
-    // 敌人回合开始事件
     eventBus.onGroup('combatStore', GameEvents.COMBAT_ENEMY_TURN, () => {
       turn.value = 'enemy';
-      updateState();
+      syncFromService();
     });
   }
   
@@ -163,8 +129,8 @@ export const useCombatStore = defineStore('combat', () => {
    * 初始化
    */
   function init(): void {
-    updateState();
-    initEventListeners();
+    syncFromService();
+    setupCrossModuleListeners();
   }
   
   return {
@@ -176,11 +142,6 @@ export const useCombatStore = defineStore('combat', () => {
     combatLogs,
     
     // 计算属性
-    getState,
-    getEnemy,
-    getTurn,
-    getTurnCount,
-    getCombatLog,
     isInCombat,
     
     // 方法
@@ -191,7 +152,6 @@ export const useCombatStore = defineStore('combat', () => {
     addLog,
     clearLogs,
     init,
-    updateState,
     dispose
   };
 });

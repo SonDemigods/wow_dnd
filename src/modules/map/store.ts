@@ -162,10 +162,10 @@ export const useMapStore = defineStore('map', () => {
   }
   
   /**
-   * 初始化事件监听
+   * 跨模块事件监听
    */
-  function initEventListeners(): void {
-    // 地点进入事件
+  function setupCrossModuleListeners(): void {
+    // 地点进入事件（由其他模块触发）
     eventBus.onGroup('mapStore', GameEvents.ZONE_ENTERED, (data: { locationId: string; location: LocationData }) => {
       currentLocation.value = data.location;
     });
@@ -187,7 +187,7 @@ export const useMapStore = defineStore('map', () => {
     
     await mapService.init();
     updateState();
-    initEventListeners();
+    setupCrossModuleListeners();
     
     // 从数据库恢复上次选中的区域
     const savedLocationId = await mapDbService.getCurrentLocationId();

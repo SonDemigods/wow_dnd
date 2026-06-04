@@ -1,13 +1,13 @@
 /**
  * 商店模块状态管理层
  * 
- * 使用 Pinia 管理商店状态，提供响应式数据和事件监听
+ * Store 是商店数据的唯一持有者，Service 作为纯业务逻辑层供 Store 调用。
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { ShopConfig, ShopInventory } from './types';
 import { shopService } from './service';
-import { eventBus, GameEvents } from '../bus/core';
+import { eventBus } from '../bus/core';
 
 /**
  * 商店状态存储
@@ -21,6 +21,11 @@ export const useShopStore = defineStore('shop', () => {
   
   /** 当前商店库存 */
   const currentInventory = ref<ShopInventory | null>(null);
+
+  /** 从 Service 同步到 Store */
+  function syncFromService(): void {
+    shops.value = shopService.getAllShops();
+  }
   
   /**
    * 获取所有商店
@@ -39,13 +44,6 @@ export const useShopStore = defineStore('shop', () => {
    * 获取当前商店库存
    */
   const getCurrentInventory = computed(() => currentInventory.value);
-  
-  /**
-   * 更新商店列表
-   */
-  function updateShops(): void {
-    shops.value = shopService.getAllShops();
-  }
   
   /**
    * 选择商店
@@ -118,25 +116,6 @@ export const useShopStore = defineStore('shop', () => {
   function getShopsByLocation(locationId: string): ShopConfig[] {
     return shopService.getShopsByLocation(locationId);
   }
-  
-  /**
-   * 初始化事件监听
-   */
-  function initEventListeners(): void {
-    // 商店刷新事件
-    eventBus.onGroup('shopStore', GameEvents.SHOP_REFRESHED, (data: { shopId: string }) => {
-      if (currentShopId.value === data.shopId) {
-        currentInventory.value = shopService.getShopInventory(data.shopId);
-      }
-    });
-    
-    // 物品购买事件
-    eventBus.onGroup('shopStore', GameEvents.SHOP_TRANSACTION, (data: { shopId: string }) => {
-      if (currentShopId.value === data.shopId) {
-        currentInventory.value = shopService.getShopInventory(data.shopId);
-      }
-    });
-  }
 
   /**
    * 清理事件监听
@@ -150,8 +129,7 @@ export const useShopStore = defineStore('shop', () => {
    */
   async function init(): Promise<void> {
     await shopService.init();
-    updateShops();
-    initEventListeners();
+    syncFromService();
   }
   
   /**
@@ -159,7 +137,7 @@ export const useShopStore = defineStore('shop', () => {
    */
   function reset(): void {
     shopService.reset();
-    updateShops();
+    syncFromService();
     currentShopId.value = null;
     currentInventory.value = null;
   }
@@ -176,7 +154,6 @@ export const useShopStore = defineStore('shop', () => {
     getCurrentInventory,
     
     // 方法
-    updateShops,
     selectShop,
     buyItem,
     sellItem,

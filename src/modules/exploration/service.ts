@@ -1,57 +1,17 @@
 import type { GridCell, GridEventType, ExplorationState, GridEventProbability, AreaConfig, IExplorationService, ExplorationCell, MoveResult, EventChoiceResult } from './types';
+import type { LocationData } from '../map/types';
 import { explorationDbService } from './db';
+import { mapDbService } from '../map/db';
 import { eventBus, GameEvents } from '../bus/core';
 import { characterService } from '../character/service';
 import { inventoryService } from '../inventory/service';
+import { logService } from '../log/service';
+import { LOOT_ITEMS } from '../../data/item.data';
+import { ENEMIES } from '../../data/enemy.data';
+import type { EnemyData } from '../enemy/types';
 
 const GRID_SIZE = 10;
 const INITIAL_MOVES = 20;
-
-const DEFAULT_EVENT_PROBABILITY: GridEventProbability = {
-  monster: 35,
-  item: 20,
-  trap: 20,
-  empty: 25
-};
-
-const AREA_CONFIGS: Record<string, AreaConfig> = {
-  village: {
-    areaId: 'village',
-    name: '宁静村庄',
-    level: 1,
-    eventProbability: { monster: 20, item: 30, trap: 10, empty: 40 },
-    monsterPool: ['enemy_goblin', 'enemy_wolf'],
-    bossPool: [],
-    itemPool: ['item_potion_minor_heal', 'item_gold_coin']
-  },
-  goblin_camp: {
-    areaId: 'goblin_camp',
-    name: '哥布林营地',
-    level: 2,
-    eventProbability: { monster: 40, item: 15, trap: 20, empty: 25 },
-    monsterPool: ['enemy_goblin'],
-    bossPool: ['enemy_goblin_boss'],
-    itemPool: ['item_potion_minor_heal', 'item_gold_coin', 'item_herb']
-  },
-  forest: {
-    areaId: 'forest',
-    name: '幽暗森林',
-    level: 3,
-    eventProbability: { monster: 35, item: 20, trap: 20, empty: 25 },
-    monsterPool: ['enemy_wolf', 'enemy_spider'],
-    bossPool: ['enemy_wolf_boss'],
-    itemPool: ['item_potion_heal', 'item_gold_coin', 'item_herb']
-  },
-  mine: {
-    areaId: 'mine',
-    name: '废弃矿洞',
-    level: 6,
-    eventProbability: { monster: 45, item: 15, trap: 25, empty: 15 },
-    monsterPool: ['enemy_orc', 'enemy_golem'],
-    bossPool: ['enemy_orc_boss'],
-    itemPool: ['item_potion_heal', 'item_potion_mana', 'item_gold_coin']
-  }
-};
 
 export class ExplorationService implements IExplorationService {
   private state: ExplorationState = {
@@ -67,28 +27,97 @@ export class ExplorationService implements IExplorationService {
 
   private currentCharacterId: string | null = null;
   private pendingBattleCell: { x: number; y: number } | null = null;
+  private currentAreaConfig: AreaConfig | null = null;
 
-  private getAreaConfig(areaId: string): AreaConfig {
-    return AREA_CONFIGS[areaId] || {
-      areaId,
-      name: areaId,
+  /**
+   * 根据地点数据构建区域配置
+   */
+  private buildAreaConfig(location: LocationData): AreaConfig {
+    const [minLevel, maxLevel] = location.levelRange;
+    const avgLevel = Math.floor((minLevel + maxLevel) / 2);
+
+    // 根据地点等级动态生成事件概率
+    const eventProbability: GridEventProbability = {
+      monster: Math.min(30, 20 + avgLevel),
+      item: Math.max(15, 25 - avgLevel),
+      trap: Math.min(22, 12 + avgLevel),
+      event: 15,
+      empty: Math.max(15, 30 - avgLevel)
+    };
+    // 归一化确保总和为100
+    const total = eventProbability.monster + eventProbability.item + eventProbability.trap + eventProbability.event + eventProbability.empty;
+    eventProbability.monster = Math.round(eventProbability.monster / total * 100);
+    eventProbability.item = Math.round(eventProbability.item / total * 100);
+    eventProbability.trap = Math.round(eventProbability.trap / total * 100);
+    eventProbability.event = Math.round(eventProbability.event / total * 100);
+    eventProbability.empty = 100 - eventProbability.monster - eventProbability.item - eventProbability.trap - eventProbability.event;
+
+    // 怪物池：直接使用地点数据中的敌人列表
+    const monsterPool = location.enemies || [];
+
+    // Boss池：从敌人列表中筛选标记为Boss的敌人
+    const bossPool: string[] = [];
+    for (const enemyId of monsterPool) {
+      const enemy = ENEMIES[enemyId] as EnemyData | undefined;
+      if (enemy && (enemy as any).isBoss) {
+        bossPool.push(enemyId);
+      }
+    }
+
+    // 物品池：根据地点等级从 LOOT_ITEMS 中筛选合适的物品
+    const suitableItems = LOOT_ITEMS.filter(item => item.level >= minLevel - 1 && item.level <= maxLevel + 2);
+    const itemPool = suitableItems.slice(0, 5).map(item => item.id);
+    // 如果没有合适的物品，至少提供基础药水
+    if (itemPool.length === 0) {
+      itemPool.push('smallHealthPotion');
+    }
+
+    return {
+      areaId: location.name,
+      name: location.displayName,
+      level: minLevel,
+      eventProbability,
+      monsterPool,
+      bossPool,
+      itemPool
+    };
+  }
+
+  /**
+   * 从数据库加载当前区域配置并缓存
+   */
+  private async loadAreaConfig(areaId: string): Promise<void> {
+    const location = await mapDbService.getLocationData(areaId);
+    if (location) {
+      this.currentAreaConfig = this.buildAreaConfig(location);
+    } else {
+      // 回退：使用默认配置
+      this.currentAreaConfig = {
+        areaId,
+        name: areaId,
+        level: 1,
+        eventProbability: { monster: 25, item: 20, trap: 15, event: 15, empty: 25 },
+        monsterPool: [],
+        bossPool: [],
+        itemPool: ['smallHealthPotion']
+      };
+    }
+  }
+
+  private getAreaConfig(_areaId?: string): AreaConfig {
+    return this.currentAreaConfig || {
+      areaId: 'unknown',
+      name: '未知区域',
       level: 1,
-      eventProbability: DEFAULT_EVENT_PROBABILITY,
+      eventProbability: { monster: 25, item: 20, trap: 15, event: 15, empty: 25 },
       monsterPool: [],
       bossPool: [],
-      itemPool: []
+      itemPool: ['smallHealthPotion']
     };
   }
 
   private getDefaultShopId(): string {
-    // 根据当前区域返回默认商店ID
-    const areaShopMap: Record<string, string> = {
-      'village': 'shop_inn',
-      'goblin_camp': 'shop_inn',
-      'forest': 'shop_potion',
-      'mine': 'shop_weapon'
-    };
-    return areaShopMap[this.state.currentAreaId || 'village'] || 'shop_inn';
+    return 'shop_inn';
   }
 
   private getEdgePositions(): { x: number; y: number }[] {
@@ -166,7 +195,7 @@ export class ExplorationService implements IExplorationService {
   }
 
   private selectEventType(probability: GridEventProbability): GridEventType {
-    const total = probability.monster + probability.item + probability.trap + probability.empty;
+    const total = probability.monster + probability.item + probability.trap + probability.event + probability.empty;
     let random = Math.random() * total;
 
     if (random < probability.monster) return 'monster';
@@ -176,6 +205,9 @@ export class ExplorationService implements IExplorationService {
     random -= probability.item;
 
     if (random < probability.trap) return 'trap';
+    random -= probability.trap;
+
+    if (random < probability.event) return 'event';
     return 'empty';
   }
 
@@ -242,6 +274,9 @@ export class ExplorationService implements IExplorationService {
               cellType = 'treasure';
               break;
             case 'trap':
+              cellType = 'trap';
+              break;
+            case 'event':
               cellType = 'event';
               break;
           }
@@ -429,6 +464,11 @@ export class ExplorationService implements IExplorationService {
 
   async init(characterId: string): Promise<void> {
     this.currentCharacterId = characterId;
+    
+    // 确保日志服务和背包服务已初始化（否则物品获取和日志记录会静默失败）
+    await logService.init(characterId);
+    await inventoryService.initialize(characterId);
+    
     const stored = await explorationDbService.getExplorationData(characterId);
     
     if (stored && stored.currentAreaId && stored.grid && stored.grid.length > 0) {
@@ -443,6 +483,8 @@ export class ExplorationService implements IExplorationService {
         bossDefeated: stored.bossDefeated,
         explorationComplete: stored.explorationComplete
       };
+      // 恢复区域配置
+      await this.loadAreaConfig(stored.currentAreaId);
     } else {
       this.state = {
         currentAreaId: null,
@@ -461,8 +503,9 @@ export class ExplorationService implements IExplorationService {
     return { ...this.state };
   }
 
-  enterArea(areaId: string): void {
+  async enterArea(areaId: string): Promise<void> {
     this.state.currentAreaId = areaId;
+    await this.loadAreaConfig(areaId);
     this.generateGrid();
   }
 
@@ -489,14 +532,15 @@ export class ExplorationService implements IExplorationService {
       shop: 'shop',
       rest: 'camp',
       boss: 'boss',
-      event: 'trap',
+      trap: 'trap',
+      event: 'event',
       start: 'empty',
       board: 'board'
     };
     return typeMap[cellType] || 'empty';
   }
 
-  revealGrid(x: number, y: number): boolean {
+  async revealGrid(x: number, y: number): Promise<boolean> {
     const cell = this.state.grid[y]?.[x];
     if (!cell || !cell.accessible) {
       return false;
@@ -554,9 +598,17 @@ export class ExplorationService implements IExplorationService {
     });
 
     if (cell.type === 'treasure') {
-      this.handleItemFound('item_gold_coin');
+      // 从当前区域的物品池中随机选择一个物品
+      const areaConfig = this.getAreaConfig(this.state.currentAreaId || 'village');
+      const itemPool = areaConfig.itemPool;
+      if (itemPool.length > 0) {
+        const randomItemId = itemPool[Math.floor(Math.random() * itemPool.length)];
+        this.handleItemFound(randomItemId);
+      }
+    } else if (cell.type === 'trap') {
+      await this.handleTrapTriggered();
     } else if (cell.type === 'event') {
-      this.handleTrapTriggered();
+      await this.handleRandomEvent();
     } else if (cell.type === 'rest') {
       this.useCamp();
     }
@@ -668,10 +720,24 @@ export class ExplorationService implements IExplorationService {
     const item = inventoryService.getItemInfo(itemId);
     if (item) {
       inventoryService.addItem(item);
+      eventBus.emit(GameEvents.EXPLORATION_ITEM_FOUND, {
+        characterId: this.currentCharacterId,
+        itemId: itemId,
+        count: 1,
+        itemName: item.name
+      });
+      
+      logService.addLog({
+        id: logService.generateLogId(),
+        timestamp: Date.now(),
+        type: 'item',
+        message: `发现物品: ${item.name}`,
+        icon: '📦'
+      });
     }
   }
 
-  private handleTrapTriggered(): void {
+  private async handleTrapTriggered(): Promise<void> {
     if (!this.state.currentAreaId) return;
     
     const areaConfig = this.getAreaConfig(this.state.currentAreaId);
@@ -679,8 +745,87 @@ export class ExplorationService implements IExplorationService {
     const variance = (Math.random() - 0.5) * 10;
     const damage = Math.max(1, Math.floor(baseDamage + variance));
     
-    characterService.addHp(-damage);
-    // characterService.addHp 内部已触发 CHARACTER_HP_CHANGE 事件，无需重复 emit
+    await characterService.addHp(-damage);
+    
+    eventBus.emit(GameEvents.EXPLORATION_TRAP_TRIGGERED, {
+      characterId: this.currentCharacterId,
+      damage: damage,
+      trapType: '普通陷阱'
+    });
+    
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'combat',
+      message: `触发陷阱，受到 ${damage} 点伤害`,
+      icon: '⚠️'
+    });
+  }
+
+  private async handleRandomEvent(): Promise<void> {
+    if (!this.state.currentAreaId) return;
+    
+    const areaConfig = this.getAreaConfig(this.state.currentAreaId);
+    const random = Math.random();
+    let eventMessage = '';
+    let eventIcon = '🎲';
+    
+    // 30% 概率恢复生命值
+    if (random < 0.3) {
+      const healAmount = Math.floor(areaConfig.level * 3 + Math.random() * 10);
+      await characterService.addHp(healAmount);
+      eventMessage = `发现神秘泉水，恢复了 ${healAmount} 点生命值`;
+      eventIcon = '💧';
+    }
+    // 20% 概率恢复魔法值
+    else if (random < 0.5) {
+      const mpAmount = Math.floor(areaConfig.level * 2 + Math.random() * 8);
+      await characterService.addMp(mpAmount);
+      eventMessage = `发现魔法水晶，恢复了 ${mpAmount} 点魔法值`;
+      eventIcon = '💎';
+    }
+    // 15% 概率获得经验值
+    else if (random < 0.65) {
+      const expAmount = Math.floor(areaConfig.level * 10 + Math.random() * 20);
+      characterService.addExp(expAmount);
+      eventMessage = `发现古代石碑，获得了 ${expAmount} 点经验值`;
+      eventIcon = '📚';
+    }
+    // 15% 概率减少生命值（陷阱）
+    else if (random < 0.8) {
+      const trapDamage = Math.floor(areaConfig.level * 2 + Math.random() * 5);
+      await characterService.addHp(-trapDamage);
+      eventMessage = `触发了隐藏陷阱，受到 ${trapDamage} 点伤害`;
+      eventIcon = '⚠️';
+    }
+    // 10% 概率减少魔法值
+    else if (random < 0.9) {
+      const mpLoss = Math.floor(areaConfig.level * 1.5 + Math.random() * 5);
+      await characterService.addMp(-mpLoss);
+      eventMessage = `遭遇魔法干扰，损失了 ${mpLoss} 点魔法值`;
+      eventIcon = '🌀';
+    }
+    // 10% 概率获得金币
+    else {
+      const goldAmount = Math.floor(areaConfig.level * 5 + Math.random() * 15);
+      characterService.addGold(goldAmount);
+      eventMessage = `发现宝箱，获得了 ${goldAmount} 金币`;
+      eventIcon = '💰';
+    }
+    
+    eventBus.emit(GameEvents.EXPLORATION_RANDOM_EVENT, {
+      characterId: this.currentCharacterId,
+      message: eventMessage,
+      icon: eventIcon
+    });
+    
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'info',
+      message: eventMessage,
+      icon: eventIcon
+    });
   }
 
   private saveState(): void {

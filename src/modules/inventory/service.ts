@@ -6,6 +6,8 @@
 import type { IInventoryService, Item, InventoryItem, SortField, SortOrder, ItemFilters, ItemType, ItemRarity } from './types';
 import { inventoryDbService } from './db';
 import { characterService } from '../character/service';
+import { equipmentDbService } from '../equipment/db';
+import type { EquippedItem } from '../equipment/types';
 import { eventBus, GameEvents } from '../bus/core';
 
 /**
@@ -517,6 +519,17 @@ export class InventoryService implements IInventoryService {
   removeItemTemplate(itemId: string): void {
     this.itemTemplates.delete(itemId);
     inventoryDbService.deleteItemTemplate(itemId);
+  }
+
+  /**
+   * 获取当前角色已装备的物品列表
+   * @returns 已装备物品数组
+   */
+  async getEquipment(): Promise<EquippedItem[]> {
+    const characterId = this.characterId || characterService.getCurrentCharacterId();
+    if (!characterId) return [];
+    const equipmentRecord = await equipmentDbService.getEquipment(characterId);
+    return Object.values(equipmentRecord).filter((e): e is EquippedItem => e !== null);
   }
 
   /**

@@ -1,7 +1,8 @@
 /**
  * 背包模块状态管理
  * 
- * 使用 Pinia 管理背包状态，响应式更新UI
+ * 使用 Pinia 管理背包状态，响应式更新UI。
+ * Store 是背包数据的唯一持有者，Service 作为纯业务逻辑层供 Store 调用。
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
@@ -51,6 +52,13 @@ export const useInventoryStore = defineStore('inventory', () => {
   const sortOrder = ref<SortOrder>('asc');
   const searchKeyword = ref('');
   const isLoading = ref(false);
+
+  /**
+   * 从 Service 同步最新背包数据到 Store
+   */
+  function syncFromService(): void {
+    inventory.value = inventoryService.getInventory();
+  }
 
   // 计算属性
   const filteredInventory = computed(() => {
@@ -177,7 +185,7 @@ export const useInventoryStore = defineStore('inventory', () => {
   async function loadInventory(): Promise<void> {
     isLoading.value = true;
     await inventoryService.initialize();
-    inventory.value = inventoryService.getInventory();
+    syncFromService();
     isLoading.value = false;
   }
 
@@ -191,49 +199,37 @@ export const useInventoryStore = defineStore('inventory', () => {
 
   function addItem(item: Item): boolean {
     const success = inventoryService.addItem(item);
-    if (success) {
-      inventory.value = inventoryService.getInventory();
-    }
+    if (success) syncFromService();
     return success;
   }
 
   function addItems(item: Item, count: number): number {
     const added = inventoryService.addItems(item, count);
-    if (added > 0) {
-      inventory.value = inventoryService.getInventory();
-    }
+    if (added > 0) syncFromService();
     return added;
   }
 
   function removeItem(index: number): boolean {
     const success = inventoryService.removeItem(index);
-    if (success) {
-      inventory.value = inventoryService.getInventory();
-    }
+    if (success) syncFromService();
     return success;
   }
 
   function useItem(index: number): boolean {
     const success = inventoryService.useItem(index);
-    if (success) {
-      inventory.value = inventoryService.getInventory();
-    }
+    if (success) syncFromService();
     return success;
   }
 
   function dropItem(index: number, count?: number): boolean {
     const success = inventoryService.dropItem(index, count);
-    if (success) {
-      inventory.value = inventoryService.getInventory();
-    }
+    if (success) syncFromService();
     return success;
   }
 
   function dropItems(indices: number[]): boolean {
     const success = inventoryService.dropItems(indices);
-    if (success) {
-      inventory.value = inventoryService.getInventory();
-    }
+    if (success) syncFromService();
     return success;
   }
 
@@ -241,12 +237,12 @@ export const useInventoryStore = defineStore('inventory', () => {
     sortBy.value = sortField;
     sortOrder.value = order;
     inventoryService.sortItems(sortField, order);
-    inventory.value = inventoryService.getInventory();
+    syncFromService();
   }
 
   function organizeInventory(): void {
     inventoryService.organizeInventory();
-    inventory.value = inventoryService.getInventory();
+    syncFromService();
   }
 
   function setFilters(newFilters: ItemFilters): void {
@@ -272,7 +268,7 @@ export const useInventoryStore = defineStore('inventory', () => {
 
   function setCharacter(characterId: string): void {
     inventoryService.setCharacter(characterId);
-    inventory.value = inventoryService.getInventory();
+    syncFromService();
   }
 
   function reset(): void {
@@ -280,11 +276,10 @@ export const useInventoryStore = defineStore('inventory', () => {
     inventory.value = [];
   }
 
-  function setupEventListeners(): void {
-    eventBus.onGroup('inventoryStore', GameEvents.INVENTORY_CHANGE, () => {
-      inventory.value = inventoryService.getInventory();
-    });
-
+  /**
+   * 跨模块事件监听
+   */
+  function setupCrossModuleListeners(): void {
     eventBus.onGroup('inventoryStore', GameEvents.CHARACTER_SELECTED, (data) => {
       if (data?.characterId) {
         setCharacter(data.characterId);
@@ -340,7 +335,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     removeItemTemplate,
     setCharacter,
     reset,
-    setupEventListeners,
+    setupCrossModuleListeners,
     dispose
   };
 });

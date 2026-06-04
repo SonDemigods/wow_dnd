@@ -1,7 +1,8 @@
 /**
  * 角色模块状态管理
  * 
- * 使用 Pinia 管理角色状态，响应式更新UI
+ * 使用 Pinia 管理角色状态，响应式更新UI。
+ * Store 是角色数据的唯一持有者，Service 作为纯业务逻辑层供 Store 调用。
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
@@ -111,14 +112,22 @@ export const useCharacterStore = defineStore('character', () => {
     return cls?.bonus || {};
   });
 
-  // 方法
+  // ==================== 内部辅助方法 ====================
+
+  /** 从 Service 同步最新角色数据到 Store */
+  function syncCharacterFromService(): void {
+    character.value = characterService.getCharacterInfo();
+  }
+
+  // ==================== 方法 ====================
+
   async function loadCharacterList(): Promise<void> {
     characterList.value = await characterService.getAllCharacters();
   }
 
   async function createCharacter(name: string, factionId: FactionType, raceId: RaceType, classId: ClassType): Promise<string> {
     const id = await characterService.createCharacter(name, factionId, raceId, classId);
-    character.value = characterService.getCharacterInfo();
+    syncCharacterFromService();
     await loadCharacterList();
     return id;
   }
@@ -127,7 +136,7 @@ export const useCharacterStore = defineStore('character', () => {
     const success = await characterService.selectCharacter(characterId);
     if (success) {
       currentCharacterId.value = characterId;
-      character.value = characterService.getCharacterInfo();
+      syncCharacterFromService();
     }
     return success;
   }
@@ -150,58 +159,58 @@ export const useCharacterStore = defineStore('character', () => {
     character.value = null;
   }
 
-  function addExp(amount: number): void {
-    characterService.addExp(amount);
-    character.value = characterService.getCharacterInfo();
+  async function addExp(amount: number): Promise<void> {
+    await characterService.addExp(amount);
+    syncCharacterFromService();
   }
 
-  function addHp(amount: number): void {
-    characterService.addHp(amount);
-    character.value = characterService.getCharacterInfo();
+  async function addHp(amount: number): Promise<void> {
+    await characterService.addHp(amount);
+    syncCharacterFromService();
   }
 
-  function addMp(amount: number): void {
-    characterService.addMp(amount);
-    character.value = characterService.getCharacterInfo();
+  async function addMp(amount: number): Promise<void> {
+    await characterService.addMp(amount);
+    syncCharacterFromService();
   }
 
-  function setHp(value: number): void {
-    characterService.setHp(value);
-    character.value = characterService.getCharacterInfo();
+  async function setHp(value: number): Promise<void> {
+    await characterService.setHp(value);
+    syncCharacterFromService();
   }
 
-  function setMp(value: number): void {
-    characterService.setMp(value);
-    character.value = characterService.getCharacterInfo();
+  async function setMp(value: number): Promise<void> {
+    await characterService.setMp(value);
+    syncCharacterFromService();
   }
 
-  function applyBonus(bonus: Partial<Stats>): void {
-    characterService.applyBonus(bonus);
-    character.value = characterService.getCharacterInfo();
+  async function applyBonus(bonus: Partial<Stats>): Promise<void> {
+    await characterService.applyBonus(bonus);
+    syncCharacterFromService();
   }
 
-  function removeBonus(bonus: Partial<Stats>): void {
-    characterService.removeBonus(bonus);
-    character.value = characterService.getCharacterInfo();
+  async function removeBonus(bonus: Partial<Stats>): Promise<void> {
+    await characterService.removeBonus(bonus);
+    syncCharacterFromService();
   }
 
-  function addGold(amount: number): void {
-    characterService.addGold(amount);
-    character.value = characterService.getCharacterInfo();
+  async function addGold(amount: number): Promise<void> {
+    await characterService.addGold(amount);
+    syncCharacterFromService();
   }
 
-  function spendGold(amount: number): boolean {
-    const success = characterService.spendGold(amount);
+  async function spendGold(amount: number): Promise<boolean> {
+    const success = await characterService.spendGold(amount);
     if (success) {
-      character.value = characterService.getCharacterInfo();
+      syncCharacterFromService();
     }
     return success;
   }
 
-  function setName(name: string): void {
-    characterService.setName(name);
-    character.value = characterService.getCharacterInfo();
-    loadCharacterList();
+  async function setName(name: string): Promise<void> {
+    await characterService.setName(name);
+    syncCharacterFromService();
+    await loadCharacterList();
   }
 
   function getCurrentCharacterId(): string | null {
@@ -217,58 +226,24 @@ export const useCharacterStore = defineStore('character', () => {
     await characterService.initialize();
     currentCharacterId.value = characterService.getCurrentCharacterId();
     if (currentCharacterId.value) {
-      character.value = characterService.getCharacterInfo();
+      syncCharacterFromService();
     }
     await loadCharacterList();
+    
+    // 仅设置跨模块事件监听（不监听角色模块自身发出的事件）
+    setupCrossModuleListeners();
   }
 
-  // 事件监听
-  function setupEventListeners(): void {
-    eventBus.onGroup('characterStore', GameEvents.CHARACTER_CREATED, () => {
-      character.value = characterService.getCharacterInfo();
-      loadCharacterList();
-    });
-
-    eventBus.onGroup('characterStore', GameEvents.CHARACTER_SELECTED, () => {
-      currentCharacterId.value = characterService.getCurrentCharacterId();
-      character.value = characterService.getCharacterInfo();
-    });
-
-    eventBus.onGroup('characterStore', GameEvents.CHARACTER_DELETED, () => {
-      loadCharacterList();
-    });
-
-    eventBus.onGroup('characterStore', GameEvents.CHARACTER_LEVEL_UP, () => {
-      character.value = characterService.getCharacterInfo();
-    });
-
-    eventBus.onGroup('characterStore', GameEvents.CHARACTER_HP_CHANGE, (data) => {
-      if (character.value) {
-        character.value = { ...character.value, hp: data.newHp, maxHp: data.maxHp };
-      }
-    });
-
-    eventBus.onGroup('characterStore', GameEvents.CHARACTER_MP_CHANGE, (data) => {
-      if (character.value) {
-        character.value = { ...character.value, mana: data.newMp, maxMana: data.maxMp };
-      }
-    });
-
-    eventBus.onGroup('characterStore', GameEvents.CHARACTER_STATS_CHANGE, () => {
-      character.value = characterService.getCharacterInfo();
-    });
-
-    eventBus.onGroup('characterStore', GameEvents.CHARACTER_LOGOUT, () => {
-      currentCharacterId.value = null;
-      character.value = null;
-    });
-
-    eventBus.onGroup('characterStore', GameEvents.CHARACTER_DEATH, () => {
-      character.value = characterService.getCharacterInfo();
-    });
-
-    eventBus.onGroup('characterStore', GameEvents.CHARACTER_RESURRECTED, () => {
-      character.value = characterService.getCharacterInfo();
+  /**
+   * 跨模块事件监听
+   * 
+   * 仅监听来自其他模块的事件，用于同步角色数据。
+   * 角色模块自身发出的状态变更由 Store Action 直接处理，不再通过事件总线回环。
+   */
+  function setupCrossModuleListeners(): void {
+    // 战斗结束后刷新角色数据（经验值、金币等变化由战斗模块触发）
+    eventBus.onGroup('characterStore', GameEvents.COMBAT_END, () => {
+      syncCharacterFromService();
     });
   }
 
@@ -328,7 +303,7 @@ export const useCharacterStore = defineStore('character', () => {
     spendGold,
     setName,
     initialize,
-    setupEventListeners,
+    setupCrossModuleListeners,
     dispose
   };
 });

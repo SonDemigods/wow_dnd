@@ -7,12 +7,12 @@
 
       <div class="log-container" ref="logContainer">
         <div
-          v-for="(log, index) in logs"
+          v-for="log in logs"
           :key="log.id"
           class="log-entry"
           :class="`log-type-${log.type}`"
         >
-          <span class="log-number">[{{ index + 1 }}]</span>
+          <span class="log-time">{{ formatTimestamp(log.timestamp) }}</span>
           <span class="log-icon">{{ log.icon || getDefaultIcon(log.type) }}</span>
           <span class="log-message">{{ log.message }}</span>
         </div>
@@ -61,6 +61,16 @@ const getDefaultIcon = (type: string): string => {
     'level': '⬆️'
   };
   return iconMap[type] || '📜';
+};
+
+const formatTimestamp = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const seconds = date.getSeconds().toString().padStart(2, '0');
+  return `${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
 const clearLogs = () => {
@@ -125,10 +135,12 @@ onMounted(() => {
   line-height: 1.5;
 }
 
-.log-number {
-  color: #6a6a8a;
+.log-time {
+  color: #8a8aaa;
   font-family: monospace;
-  min-width: 28px;
+  font-size: 12px;
+  min-width: 110px;
+  flex-shrink: 0;
 }
 
 .log-icon {
@@ -174,8 +186,9 @@ onMounted(() => {
     font-size: 12px;
   }
   
-  .log-number {
-    min-width: 24px;
+  .log-time {
+    min-width: 95px;
+    font-size: 11px;
   }
 }
 </style>

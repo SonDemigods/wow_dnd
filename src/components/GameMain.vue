@@ -103,7 +103,7 @@
     <ShopPopup 
       :visible="showShop" 
       :shop-id="currentShopId"
-      @close="showShop = false" 
+      @close="handleShopClose" 
     />
     
     <QuestBoardPopup 
@@ -126,7 +126,6 @@ import { mapDbService } from '@/modules/map/db';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import { enemyService } from '@/modules/enemy/service';
 import { combatService } from '@/modules/combat/service';
-import { explorationService } from '@/modules/exploration/service';
 import type { CombatResult } from '@/modules/combat/types';
 import MapView from './MapView.vue';
 import ExplorationView from './ExplorationView.vue';
@@ -248,13 +247,44 @@ function handleBattleTriggered(data: { eventData?: { monsterId?: string } }) {
   }
 }
 
+// 监听物品发现事件
+function handleItemFound(data: { itemId?: string; count?: number; itemName?: string }) {
+  const itemName = data?.itemName || '未知物品';
+  const count = data?.count || 1;
+  showNotif(`发现物品: ${itemName} x${count}`, 'success');
+}
+
+// 监听陷阱触发事件
+function handleTrapTriggered(data: { damage?: number; trapType?: string }) {
+  const damage = data?.damage || 0;
+  const trapType = data?.trapType || '陷阱';
+  showNotif(`触发${trapType}，受到 ${damage} 点伤害`, 'danger');
+}
+
+// 监听随机事件
+function handleRandomEvent(data: { message?: string; icon?: string }) {
+  const message = data?.message || '触发了随机事件';
+  showNotif(message, 'info');
+}
+
 function handleCombatClose(_result?: CombatResult) {
   showCombat.value = false;
 }
 
+function handleShopClose() {
+  showShop.value = false;
+  eventBus.emit(GameEvents.SHOP_CLOSED, { shopId: currentShopId.value });
+}
+
+/** 事件监听分组标识，用于组件卸载时统一清理 */
+const EVENT_GROUP = 'gameMain';
+
 onMounted(async () => {
-  eventBus.on(GameEvents.EXPLORATION_CELL_EXPLORED, handleCellExplored);
-  eventBus.on(GameEvents.EXPLORATION_BATTLE_TRIGGERED, handleBattleTriggered);
+  eventBus.onGroup(EVENT_GROUP, GameEvents.EXPLORATION_CELL_EXPLORED, handleCellExplored);
+  eventBus.onGroup(EVENT_GROUP, GameEvents.EXPLORATION_BATTLE_TRIGGERED, handleBattleTriggered);
+  eventBus.onGroup(EVENT_GROUP, GameEvents.EXPLORATION_ITEM_FOUND, handleItemFound);
+  eventBus.onGroup(EVENT_GROUP, GameEvents.EXPLORATION_TRAP_TRIGGERED, handleTrapTriggered);
+  eventBus.onGroup(EVENT_GROUP, GameEvents.EXPLORATION_RANDOM_EVENT, handleRandomEvent);
   
   // 初始化地图模块（从数据库恢复当前区域等状态）
   await mapStore.init();
@@ -267,8 +297,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  eventBus.off(GameEvents.EXPLORATION_CELL_EXPLORED, handleCellExplored);
-  eventBus.off(GameEvents.EXPLORATION_BATTLE_TRIGGERED, handleBattleTriggered);
+  eventBus.clearGroup(EVENT_GROUP);
 });
 
 defineExpose({ showNotif });
@@ -530,6 +559,10 @@ defineExpose({ showNotif });
 
 .notification.success {
   background: rgba(76, 175, 80, 0.9);
+}
+
+.notification.danger {
+  background: rgba(255, 87, 34, 0.9);
 }
 
 .notification.error {

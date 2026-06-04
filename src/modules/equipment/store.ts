@@ -1,7 +1,7 @@
 /**
  * 装备模块状态管理
  * 
- * 使用 Pinia 管理装备状态，响应式更新UI
+ * Store 是装备数据的唯一持有者，Service 作为纯业务逻辑层供 Store 调用。
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
@@ -48,6 +48,11 @@ export const useEquipmentStore = defineStore('equipment', () => {
     armor4: null
   });
   const isLoading = ref(false);
+
+  /** 从 Service 同步装备数据到 Store */
+  function syncFromService(): void {
+    equipment.value = equipmentService.getEquipment();
+  }
 
   // 计算属性
   const totalStats = computed<Stats>(() => {
@@ -102,14 +107,14 @@ export const useEquipmentStore = defineStore('equipment', () => {
   async function loadEquipment(): Promise<void> {
     isLoading.value = true;
     await equipmentService.initialize();
-    equipment.value = equipmentService.getEquipment();
+    syncFromService();
     isLoading.value = false;
   }
 
   function equipItem(slot: EquipmentSlot, item: EquipmentItem): boolean {
     const success = equipmentService.equipItem(slot, item);
     if (success) {
-      equipment.value = equipmentService.getEquipment();
+      syncFromService();
     }
     return success;
   }
@@ -117,7 +122,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
   function unequipItem(slot: EquipmentSlot): EquippedItem | null {
     const result = equipmentService.unequipItem(slot);
     if (result) {
-      equipment.value = equipmentService.getEquipment();
+      syncFromService();
     }
     return result;
   }
@@ -152,7 +157,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
 
   function setCharacter(characterId: string): void {
     equipmentService.setCharacter(characterId);
-    equipment.value = equipmentService.getEquipment();
+    syncFromService();
   }
 
   function reset(): void {
@@ -167,11 +172,10 @@ export const useEquipmentStore = defineStore('equipment', () => {
     };
   }
 
-  function setupEventListeners(): void {
-    eventBus.onGroup('equipmentStore', GameEvents.EQUIPMENT_CHANGE, () => {
-      equipment.value = equipmentService.getEquipment();
-    });
-
+  /**
+   * 跨模块事件监听
+   */
+  function setupCrossModuleListeners(): void {
     eventBus.onGroup('equipmentStore', GameEvents.CHARACTER_SELECTED, (data) => {
       if (data?.characterId) {
         setCharacter(data.characterId);
@@ -222,7 +226,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     removeEquipmentTemplate,
     setCharacter,
     reset,
-    setupEventListeners,
+    setupCrossModuleListeners,
     dispose
   };
 });

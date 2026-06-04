@@ -1,13 +1,13 @@
 /**
  * 任务模块状态管理层
  * 
- * 使用 Pinia 管理任务状态，提供响应式数据和事件监听
+ * Store 是任务数据的唯一持有者，Service 作为纯业务逻辑层供 Store 调用。
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { QuestDefinition, QuestInstance } from './types';
 import { questService } from './service';
-import { eventBus, GameEvents } from '../bus/core';
+import { eventBus } from '../bus/core';
 
 /**
  * 任务状态存储
@@ -24,6 +24,11 @@ export const useQuestStore = defineStore('quest', () => {
   
   /** 已提交的任务列表 */
   const turnedInQuests = ref<QuestDefinition[]>([]);
+
+  /** 从 Service 同步任务列表到 Store */
+  function syncFromService(): void {
+    updateQuestLists();
+  }
   
   /**
    * 获取可用任务
@@ -89,7 +94,7 @@ export const useQuestStore = defineStore('quest', () => {
   function acceptQuest(questId: string): boolean {
     const success = questService.acceptQuest(questId);
     if (success) {
-      updateQuestLists();
+      syncFromService();
     }
     return success;
   }
@@ -102,7 +107,7 @@ export const useQuestStore = defineStore('quest', () => {
   function turnInQuest(questId: string): boolean {
     const success = questService.turnInQuest(questId);
     if (success) {
-      updateQuestLists();
+      syncFromService();
     }
     return success;
   }
@@ -115,7 +120,7 @@ export const useQuestStore = defineStore('quest', () => {
   function abandonQuest(questId: string): boolean {
     const success = questService.abandonQuest(questId);
     if (success) {
-      updateQuestLists();
+      syncFromService();
     }
     return success;
   }
@@ -165,7 +170,7 @@ export const useQuestStore = defineStore('quest', () => {
   function acceptQuestFromBoard(boardId: string, questId: string): boolean {
     const success = questService.acceptQuestFromBoard(boardId, questId);
     if (success) {
-      updateQuestLists();
+      syncFromService();
     }
     return success;
   }
@@ -179,39 +184,9 @@ export const useQuestStore = defineStore('quest', () => {
   function turnInQuestToBoard(boardId: string, questId: string): boolean {
     const success = questService.turnInQuestToBoard(boardId, questId);
     if (success) {
-      updateQuestLists();
+      syncFromService();
     }
     return success;
-  }
-  
-  /**
-   * 初始化事件监听
-   */
-  function initEventListeners(): void {
-    // 任务公告板打开事件（刷新可用任务列表）
-    eventBus.onGroup('questStore', GameEvents.QUEST_BOARD_OPENED, () => {
-      updateQuestLists();
-    });
-    
-    // 任务接受事件
-    eventBus.onGroup('questStore', GameEvents.QUEST_ACCEPTED, () => {
-      updateQuestLists();
-    });
-    
-    // 任务完成事件
-    eventBus.onGroup('questStore', GameEvents.QUEST_COMPLETED, () => {
-      updateQuestLists();
-    });
-    
-    // 任务提交事件
-    eventBus.onGroup('questStore', GameEvents.QUEST_REWARDED, () => {
-      updateQuestLists();
-    });
-    
-    // 任务进度事件
-    eventBus.onGroup('questStore', GameEvents.QUEST_PROGRESS, () => {
-      updateQuestLists();
-    });
   }
 
   /**
@@ -226,8 +201,7 @@ export const useQuestStore = defineStore('quest', () => {
    */
   async function init(): Promise<void> {
     await questService.init();
-    updateQuestLists();
-    initEventListeners();
+    syncFromService();
   }
   
   /**
@@ -235,7 +209,7 @@ export const useQuestStore = defineStore('quest', () => {
    */
   function reset(): void {
     questService.reset();
-    updateQuestLists();
+    syncFromService();
   }
   
   return {

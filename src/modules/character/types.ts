@@ -299,22 +299,22 @@ export interface ICharacterService {
   /**
    * 选择角色
    * @param {string} characterId - 角色ID
-   * @returns {boolean} 是否成功选择
+   * @returns {Promise<boolean>} 是否成功选择
    */
-  selectCharacter(characterId: string): boolean;
+  selectCharacter(characterId: string): Promise<boolean>;
 
   /**
    * 删除角色
    * @param {string} characterId - 角色ID
-   * @returns {boolean} 是否成功删除
+   * @returns {Promise<boolean>} 是否成功删除
    */
-  deleteCharacter(characterId: string): boolean;
+  deleteCharacter(characterId: string): Promise<boolean>;
 
   /**
    * 获取所有角色列表
-   * @returns {CharacterListItem[]} 角色列表
+   * @returns {Promise<CharacterListItem[]>} 角色列表
    */
-  getAllCharacters(): CharacterListItem[];
+  getAllCharacters(): Promise<CharacterListItem[]>;
 
   /**
    * 获取当前选中的角色ID
@@ -323,7 +323,7 @@ export interface ICharacterService {
   getCurrentCharacterId(): string | null;
 
   /** 登出当前角色 */
-  logout(): void;
+  logout(): Promise<void>;
 
   /**
    * 获取核心属性
@@ -395,87 +395,87 @@ export interface ICharacterService {
    * 添加经验值
    * @param {number} amount - 经验值数量
    */
-  addExp(amount: number): void;
+  addExp(amount: number): Promise<void>;
 
   /**
    * 添加生命值
    * @param {number} amount - 生命值数量
    */
-  addHp(amount: number): void;
+  addHp(amount: number): Promise<void>;
 
   /**
    * 添加法力值
    * @param {number} amount - 法力值数量
    */
-  addMp(amount: number): void;
+  addMp(amount: number): Promise<void>;
 
   /**
    * 设置生命值
    * @param {number} value - 生命值数值
    */
-  setHp(value: number): void;
+  setHp(value: number): Promise<void>;
 
   /**
    * 设置法力值
    * @param {number} value - 法力值数值
    */
-  setMp(value: number): void;
+  setMp(value: number): Promise<void>;
 
   /**
    * 应用属性加成
    * @param {Partial<Stats>} bonus - 属性加成
    */
-  applyBonus(bonus: Partial<Stats>): void;
+  applyBonus(bonus: Partial<Stats>): Promise<void>;
 
   /**
    * 移除属性加成
    * @param {Partial<Stats>} bonus - 属性加成
    */
-  removeBonus(bonus: Partial<Stats>): void;
+  removeBonus(bonus: Partial<Stats>): Promise<void>;
 
   /**
    * 添加金币
    * @param {number} amount - 金币数量
    */
-  addGold(amount: number): void;
+  addGold(amount: number): Promise<void>;
 
   /**
    * 花费金币
    * @param {number} amount - 金币数量
-   * @returns {boolean} 是否成功花费
+   * @returns {Promise<boolean>} 是否成功花费
    */
-  spendGold(amount: number): boolean;
+  spendGold(amount: number): Promise<boolean>;
 
   /**
    * 设置角色名称
    * @param {string} name - 角色名称
    */
-  setName(name: string): void;
+  setName(name: string): Promise<void>;
 
   /**
    * 设置阵营
    * @param {FactionType} factionId - 阵营ID
    */
-  setFactionId(factionId: FactionType): void;
+  setFactionId(factionId: FactionType): Promise<void>;
 
   /**
    * 设置种族
    * @param {RaceType} race - 种族ID
    */
-  setRace(race: RaceType): void;
+  setRace(race: RaceType): Promise<void>;
 
   /**
    * 设置职业
    * @param {ClassType} classId - 职业ID
    */
-  setClass(classId: ClassType): void;
+  setClass(classId: ClassType): Promise<void>;
 
   /** 重置角色数据 */
-  reset(): void;
+  reset(): Promise<void>;
 
   /** 处理角色死亡 */
-  handleDeath(): void;
+  handleDeath(): Promise<void>;
 
   /** 复活角色 */
-  resurrect(): void;
+  resurrect(): Promise<void>;
 }

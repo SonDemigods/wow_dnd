@@ -1,6 +1,6 @@
 export type GridStatus = 'unexplored' | 'revealed' | 'used' | 'camp' | 'shop' | 'board' | 'boss'
 
-export type GridEventType = 'monster' | 'item' | 'trap' | 'empty' | 'camp' | 'shop' | 'board' | 'boss'
+export type GridEventType = 'monster' | 'item' | 'trap' | 'event' | 'empty' | 'camp' | 'shop' | 'board' | 'boss'
 
 export interface GridCell {
   x: number
@@ -51,6 +51,7 @@ export interface GridEventProbability {
   monster: number
   item: number
   trap: number
+  event: number
   empty: number
 }
 
@@ -80,7 +81,7 @@ export interface EventChoiceResult {
 
 export interface IExplorationService {
   getState(): ExplorationState
-  enterArea(areaId: string): void
+  enterArea(areaId: string): Promise<void>
   generateGrid(): void
   movePlayer(direction: 'up' | 'down' | 'left' | 'right'): MoveResult
   canMove(direction: 'up' | 'down' | 'left' | 'right'): boolean

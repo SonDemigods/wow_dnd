@@ -6,6 +6,12 @@
  * 支持事件分组管理，便于模块级的批量注册与清理。
  */
 
+import type { Enemy } from '../enemy/types';
+import type { LocationData } from '../map/types';
+import type { QuestDefinition } from '../quest/types';
+import type { Skill } from '../skill/types';
+import type { EquippedItem } from '../equipment/types';
+
 // ============================================================
 // 事件参数类型定义
 // ============================================================
@@ -33,8 +39,8 @@ export interface GameEventPayloadMap {
   [GameEvents.CHARACTER_DEATH]: { cause: string };
   [GameEvents.CHARACTER_RESURRECTED]: { newHp: number; newMp: number };
   // 战斗
-  [GameEvents.COMBAT_START]: { enemy: import('../enemy/types').Enemy };
-  [GameEvents.COMBAT_END]: { result: string; enemy: import('../enemy/types').Enemy | null; expGained: number };
+  [GameEvents.COMBAT_START]: { enemy: Enemy };
+  [GameEvents.COMBAT_END]: { result: string; enemy: Enemy | null; expGained: number };
   [GameEvents.COMBAT_PLAYER_TURN]: null;
   [GameEvents.COMBAT_ENEMY_TURN]: null;
   // 探索
@@ -43,25 +49,29 @@ export interface GameEventPayloadMap {
   [GameEvents.EXPLORATION_CELL_EXPLORED]: { characterId: string | null; x: number; y: number; cellType?: string; interactionId?: string };
   [GameEvents.EXPLORATION_BATTLE_TRIGGERED]: { characterId: string | null; eventData: { monsterId: string } };
   [GameEvents.EXPLORATION_CAMP_USED]: { characterId: string | null };
+  [GameEvents.EXPLORATION_ITEM_FOUND]: { characterId: string | null; itemId: string; count: number; itemName?: string };
+  [GameEvents.EXPLORATION_TRAP_TRIGGERED]: { characterId: string | null; damage: number; trapType?: string };
+  [GameEvents.EXPLORATION_RANDOM_EVENT]: { characterId: string | null; message: string; icon: string };
   // 区域
-  [GameEvents.ZONE_ENTERED]: { locationId: string; location: import('../map/types').LocationData };
+  [GameEvents.ZONE_ENTERED]: { locationId: string; location: LocationData };
   // 商店
   [GameEvents.SHOP_OPENED]: { characterId?: string; shopId: string };
   [GameEvents.SHOP_REFRESHED]: { shopId: string };
+  [GameEvents.SHOP_CLOSED]: { shopId?: string };
   [GameEvents.SHOP_TRANSACTION]: { shopId?: string; itemId: string; quantity?: number; totalPrice?: number; sellPrice?: number };
   // 任务
   [GameEvents.QUEST_BOARD_OPENED]: { characterId?: string; boardId: string };
-  [GameEvents.QUEST_ACCEPTED]: { questId: string; definition: any };
+  [GameEvents.QUEST_ACCEPTED]: { questId: string; definition: QuestDefinition };
   [GameEvents.QUEST_PROGRESS]: { questId: string };
-  [GameEvents.QUEST_COMPLETED]: { questId: string; definition: any };
-  [GameEvents.QUEST_REWARDED]: { questId: string; definition: any };
+  [GameEvents.QUEST_COMPLETED]: { questId: string; definition: QuestDefinition };
+  [GameEvents.QUEST_REWARDED]: { questId: string; definition: QuestDefinition };
   // 背包/装备
   [GameEvents.INVENTORY_CHANGE]: { characterId?: string; itemId: string; count?: number };
-  [GameEvents.EQUIPMENT_CHANGE]: { slot: string; item: any };
+  [GameEvents.EQUIPMENT_CHANGE]: { slot: string; item: EquippedItem };
   // 技能
-  [GameEvents.SKILL_LEARNED]: { skill: any };
-  [GameEvents.SKILL_CAST]: { skill: any; success: boolean };
-  [GameEvents.SKILL_BAR_UPDATE]: { skillId?: string; slotIndex?: number; slots?: any[] };
+  [GameEvents.SKILL_LEARNED]: { skill: Skill };
+  [GameEvents.SKILL_CAST]: { skill: Skill; success: boolean };
+  [GameEvents.SKILL_BAR_UPDATE]: { skillId?: string; slotIndex?: number; slots?: (string | null)[] };
   // 游戏数据
   [GameEvents.GAME_DATA_UPDATED]: { type: string; action: string; id: string };
 }
@@ -260,6 +270,12 @@ export enum GameEvents {
   EXPLORATION_BATTLE_TRIGGERED = 'exploration_battle_triggered',
   /** 探索：使用营地 */
   EXPLORATION_CAMP_USED = 'exploration_camp_used',
+  /** 探索：发现物品 */
+  EXPLORATION_ITEM_FOUND = 'exploration_item_found',
+  /** 探索：触发陷阱 */
+  EXPLORATION_TRAP_TRIGGERED = 'exploration_trap_triggered',
+  /** 探索：随机事件 */
+  EXPLORATION_RANDOM_EVENT = 'exploration_random_event',
 
   // ==================== 区域 ====================
   /** 进入区域 */
@@ -272,6 +288,8 @@ export enum GameEvents {
   SHOP_TRANSACTION = 'shop_transaction',
   /** 商店刷新 */
   SHOP_REFRESHED = 'shop_refreshed',
+  /** 商店关闭 */
+  SHOP_CLOSED = 'shop_closed',
 
   // ==================== 任务 ====================
   /** 任务公告板打开（探索中与公告板交互） */

@@ -209,10 +209,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { characterService } from '@/modules/character';
-import { gameDataService } from '@/modules/gameData';
+import { useCharacterStore } from '@/modules/character';
+import { useGameDataStore } from '@/modules/gameData';
 import Tag from './common/Tag.vue';
-import type { FactionData, RaceData, ClassData } from '@/modules/character/types';
+import type { FactionData, RaceData, ClassData} from '@/modules/character/types';
+import type { FactionType, RaceType, ClassType } from '@/modules/character/types';
 import {
   STAT_NAMES,
   calculatePhysicalAttack,
@@ -224,6 +225,9 @@ import {
   calculateMaxHp,
   calculateMaxMana
 } from '@/utils/calculations';
+
+const characterStore = useCharacterStore();
+const gameDataStore = useGameDataStore();
 
 const emit = defineEmits<{
   (e: 'created'): void;
@@ -260,7 +264,7 @@ const availableRaces = computed(() => {
 
 const availableClasses = computed(() => {
   if (!selectedRace.value) return [];
-  return classList.value.filter(c => c.raceIds.includes(selectedRace.value as any));
+  return classList.value.filter(c => c.raceIds.includes(selectedRace.value as RaceType));
 });
 
 const currentAttributes = computed(() => {
@@ -321,9 +325,10 @@ const canCreate = computed(() => {
 });
 
 async function loadData() {
-  factionList.value = await gameDataService.getAllFactions();
-  raceList.value = await gameDataService.getAllRaces();
-  classList.value = await gameDataService.getAllClasses();
+  await gameDataStore.loadAllData();
+  factionList.value = gameDataStore.factions;
+  raceList.value = gameDataStore.races;
+  classList.value = gameDataStore.classes;
 }
 
 function selectFaction(id: string) {
@@ -402,11 +407,11 @@ function prevStep() {
 async function createCharacter() {
   if (!canCreate.value) return;
   
-  await characterService.createCharacter(
+  await characterStore.createCharacter(
     name.value,
-    selectedFaction.value as any,
-    selectedRace.value as any,
-    selectedClass.value as any
+    selectedFaction.value as FactionType,
+    selectedRace.value as RaceType,
+    selectedClass.value as ClassType
   );
   
   emit('created');

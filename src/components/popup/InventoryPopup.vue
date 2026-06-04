@@ -115,6 +115,7 @@ const selectedCategory = ref<'all' | ItemType>('all');
 const selectedEntry = ref<ItemEntry | null>(null);
 
 const inventoryItems = ref<InventoryItem[]>([]);
+const equippedItemIds = ref<Set<string>>(new Set());
 const maxSlots = 50;
 
 const categories = [
@@ -161,8 +162,7 @@ function isEquipment(type?: ItemType) {
 }
 
 function isEquipped(itemId: string) {
-  const equipment = inventoryService.getEquipment();
-  return equipment.some(e => e.itemId === itemId);
+  return equippedItemIds.value.has(itemId);
 }
 
 const displayItems = computed<ItemEntry[]>(() => {
@@ -238,6 +238,9 @@ function dropItem(itemId: string) {
 async function loadInventory() {
   await inventoryService.initialize();
   inventoryItems.value = inventoryService.getInventory();
+  // 加载已装备物品ID
+  const equipped = await inventoryService.getEquipment();
+  equippedItemIds.value = new Set(equipped.map(e => e.item.id));
 }
 
 onMounted(() => {
