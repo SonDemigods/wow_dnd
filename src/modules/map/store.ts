@@ -7,6 +7,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { MapState, LocationData, LocationMarker } from './types';
 import { mapService } from './service';
+import { mapDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
 
 /**
@@ -28,6 +29,9 @@ export const useMapStore = defineStore('map', () => {
   
   /** 当前大陆的地点标记 */
   const markers = ref<LocationMarker[]>([]);
+  
+  /** 初始化完成标志 */
+  let initialized = false;
   
   /**
    * 获取当前视图状态
@@ -97,6 +101,8 @@ export const useMapStore = defineStore('map', () => {
     const success = mapService.enterLocation(locationId);
     if (success) {
       currentLocation.value = mapService.getLocationData(locationId);
+      // 持久化当前区域ID
+      mapDbService.saveCurrentLocationId(locationId);
     }
     return success;
   }
@@ -176,9 +182,21 @@ export const useMapStore = defineStore('map', () => {
    * 初始化
    */
   async function init(): Promise<void> {
+    if (initialized) return;
+    initialized = true;
+    
     await mapService.init();
     updateState();
     initEventListeners();
+    
+    // 从数据库恢复上次选中的区域
+    const savedLocationId = await mapDbService.getCurrentLocationId();
+    if (savedLocationId) {
+      const location = mapService.getLocationData(savedLocationId);
+      if (location) {
+        currentLocation.value = location;
+      }
+    }
     
     // 默认加载东部王国的标记
     markers.value = mapService.getLocationMarkers('azeroth');
@@ -191,6 +209,7 @@ export const useMapStore = defineStore('map', () => {
     mapService.reset();
     currentLocation.value = null;
     markers.value = [];
+    initialized = false;
     updateState();
   }
   

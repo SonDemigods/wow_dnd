@@ -1,11 +1,16 @@
 import { db as gameDb, dbService } from '../data/core';
-import type { GridCell, ExplorationState } from './types';
+import type { ExplorationState, ExplorationCell } from './types';
 
 export interface ExplorationStorage {
   characterId: string;
   currentAreaId: string | null;
-  grid: GridCell[][];
+  grid: ExplorationCell[][];
   campUsed: boolean;
+  playerPosition: { x: number; y: number };
+  visitedCells: number;
+  remainingMoves: number;
+  bossDefeated: boolean;
+  explorationComplete: boolean;
   updatedAt: number;
 }
 
@@ -17,6 +22,11 @@ export class ExplorationDbService {
         currentAreaId: state.currentAreaId,
         grid: state.grid,
         campUsed: state.campUsed,
+        playerPosition: state.playerPosition,
+        visitedCells: state.visitedCells,
+        remainingMoves: state.remainingMoves,
+        bossDefeated: state.bossDefeated,
+        explorationComplete: state.explorationComplete,
         updatedAt: Date.now()
       });
     });
@@ -26,7 +36,19 @@ export class ExplorationDbService {
     return dbService.withRetry(async () => {
       const result = await gameDb.char_exploration.get(characterId);
       if (!result) return null;
-      return result as unknown as ExplorationStorage;
+      // 兼容旧数据：缺少新字段时使用默认值
+      return {
+        characterId: result.characterId as string,
+        currentAreaId: (result.currentAreaId as string) || null,
+        grid: (result.grid as unknown as ExplorationCell[][]) || [],
+        campUsed: (result.campUsed as boolean) || false,
+        playerPosition: (result.playerPosition as { x: number; y: number }) || { x: 0, y: 0 },
+        visitedCells: (result.visitedCells as number) || 0,
+        remainingMoves: (result.remainingMoves as number) ?? 20,
+        bossDefeated: (result.bossDefeated as boolean) || false,
+        explorationComplete: (result.explorationComplete as boolean) || false,
+        updatedAt: (result.updatedAt as number) || Date.now()
+      };
     });
   }
 

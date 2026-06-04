@@ -150,7 +150,10 @@ export class CharacterDbService {
    */
   async saveGameState(currentCharacterId: string | null): Promise<void> {
     await dbService.withRetry(async () => {
+      // 读取已有记录，保留其他字段（如 currentLocationId、currentTab 等）
+      const existing = await gameDb.runtime_gameState.get('gameState');
       await gameDb.runtime_gameState.put({
+        ...existing,
         id: 'gameState',
         currentCharacterId,
         lastPlayedAt: new Date().toISOString()

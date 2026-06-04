@@ -1,47 +1,57 @@
 <template>
   <div class="exploration-view">
+    <!-- 未选择区域时的提示 -->
+    <div v-if="!hasCurrentLocation" class="no-location-hint">
+      <div class="hint-icon">🗺️</div>
+      <div class="hint-text">请先在地图上选择一个区域</div>
+      <div class="hint-sub">点击地图标签，选择想要探索的区域后开始冒险</div>
+    </div>
+
     <!-- 探索网格区域 -->
-    <div 
-      class="exploration-grid-container"
-      @mousedown="startDrag"
-      @mousemove="onDrag"
-      @mouseup="endDrag"
-      @mouseleave="endDrag"
-    >
+    <template v-else>
       <div 
-        class="grid-wrapper"
-        :style="{ transform: `translate(${panX}px, ${panY}px)` }"
+        class="exploration-grid-container"
+        @mousedown="startDrag"
+        @mousemove="onDrag"
+        @mouseup="endDrag"
+        @mouseleave="endDrag"
       >
-        <div class="grid">
-          <div 
-            v-for="(row, y) in grid" 
-            :key="y" 
-            class="grid-row"
-          >
+        <div 
+          class="grid-wrapper"
+          :style="{ transform: `translate(${panX}px, ${panY}px)` }"
+        >
+          <div class="grid">
             <div 
-              v-for="(cell, x) in row"
-              :key="x"
-              :class="getCellClasses(cell)"
-              @click="handleCellClick(cell)"
+              v-for="(row, y) in grid" 
+              :key="y" 
+              class="grid-row"
             >
-              <span v-if="cell.explored" class="cell-icon">{{ getCellIcon(cell.type) }}</span>
-              <span v-else class="cell-icon cell-hidden">?</span>
+              <div 
+                v-for="(cell, x) in row"
+                :key="x"
+                :class="getCellClasses(cell)"
+                @click="handleCellClick(cell)"
+              >
+                <span v-if="cell.explored" class="cell-icon">{{ getCellIcon(cell.type) }}</span>
+                <span v-else class="cell-icon cell-hidden">?</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 探索进度 -->
-    <div class="exploration-footer">
-      <span class="exploration-progress">探索进度: {{ explorationProgress }}%</span>
-    </div>
+      <!-- 探索进度 -->
+      <div class="exploration-footer">
+        <span class="exploration-progress">探索进度: {{ explorationProgress }}%</span>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { explorationService } from '@/modules/exploration';
+import { characterService } from '@/modules/character/service';
 import { useMapStore } from '@/modules/map';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { ExplorationCell } from '@/modules/exploration';
@@ -49,6 +59,7 @@ import type { ExplorationCell } from '@/modules/exploration';
 const mapStore = useMapStore();
 const grid = ref<ExplorationCell[][]>([]);
 const explorationComplete = ref(false);
+const hasCurrentLocation = computed(() => !!mapStore.getCurrentLocation);
 
 // 拖动相关状态
 const isDragging = ref(false);
@@ -133,7 +144,14 @@ function loadState() {
 
 function initExploration() {
   const currentLocation = mapStore.getCurrentLocation;
-  const targetArea = currentLocation?.name || 'village';
+  
+  // 未选择区域时，清空网格
+  if (!currentLocation) {
+    grid.value = [];
+    return;
+  }
+  
+  const targetArea = currentLocation.name;
   
   // 只有切换区域时才重新生成探索网格
   const currentAreaId = explorationService.getCurrentAreaId();
@@ -155,7 +173,13 @@ function onRefreshGrid() {
   loadState();
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // 确保探索服务已从数据库加载状态
+  const characterId = characterService.getCurrentCharacterId();
+  if (characterId) {
+    await explorationService.init(characterId);
+  }
+  
   initExploration();
   eventBus.on(GameEvents.COMBAT_END, onRefreshGrid);
   eventBus.on(GameEvents.SHOP_CLOSED, onRefreshGrid);
@@ -369,5 +393,35 @@ onUnmounted(() => {
   .cell-hidden {
     font-size: 16px;
   }
+}
+
+/* 未选择区域时的提示 */
+.no-location-hint {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.hint-icon {
+  font-size: 64px;
+  opacity: 0.6;
+}
+
+.hint-text {
+  font-size: 20px;
+  color: #8b8b8b;
+  font-weight: 600;
+}
+
+.hint-sub {
+  font-size: 14px;
+  color: #555;
+  max-width: 280px;
+  line-height: 1.6;
 }
 </style>

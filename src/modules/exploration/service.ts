@@ -431,16 +431,17 @@ export class ExplorationService implements IExplorationService {
     this.currentCharacterId = characterId;
     const stored = await explorationDbService.getExplorationData(characterId);
     
-    if (stored) {
+    if (stored && stored.currentAreaId && stored.grid && stored.grid.length > 0) {
+      // 从数据库恢复完整的探索状态
       this.state = {
         currentAreaId: stored.currentAreaId,
         grid: stored.grid as unknown as ExplorationCell[][],
         campUsed: stored.campUsed,
-        playerPosition: { x: 0, y: 0 },
-        visitedCells: 0,
-        remainingMoves: INITIAL_MOVES,
-        bossDefeated: false,
-        explorationComplete: false
+        playerPosition: stored.playerPosition,
+        visitedCells: stored.visitedCells,
+        remainingMoves: stored.remainingMoves,
+        bossDefeated: stored.bossDefeated,
+        explorationComplete: stored.explorationComplete
       };
     } else {
       this.state = {

@@ -22,13 +22,13 @@
       <div class="content-tabs">
         <button 
           :class="['content-tab', { active: currentContentTab === 'map' }]"
-          @click="currentContentTab = 'map'"
+          @click="currentContentTab = 'map'; mapDbService.saveCurrentTab('map')"
         >
           🗺 地图
         </button>
         <button 
-          :class="['content-tab', { active: currentContentTab === 'explore' }]"
-          @click="currentContentTab = 'explore'"
+          :class="['content-tab', { active: currentContentTab === 'explore', disabled: !hasCurrentLocation }]"
+          @click="handleExploreTabClick"
         >
           🏕 探索
         </button>
@@ -122,6 +122,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
+import { mapDbService } from '@/modules/map/db';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import { enemyService } from '@/modules/enemy/service';
 import { combatService } from '@/modules/combat/service';
@@ -172,6 +173,7 @@ const expToNext = computed(() => characterStore.expToNextLevel);
 const expPercent = computed(() => characterStore.expPercentage);
 const gold = computed(() => characterStore.gold);
 const currentArea = computed(() => mapStore.getCurrentLocation?.displayName || '未知区域');
+const hasCurrentLocation = computed(() => !!mapStore.getCurrentLocation);
 
 const races: Record<string, string> = {
   human: '👨', dwarf: '🧔', gnome: '👦', nightelf: '🌙', draenei: '📜',
@@ -197,6 +199,15 @@ function showNotif(message: string, type: string = 'info') {
 
 function handleExit() {
   emit('exit');
+}
+
+function handleExploreTabClick() {
+  if (!hasCurrentLocation.value) {
+    showNotif('请先在地图上选择一个区域', 'info');
+    return;
+  }
+  currentContentTab.value = 'explore';
+  mapDbService.saveCurrentTab('explore');
 }
 
 // 监听探索格子翻开事件，处理交互
@@ -241,9 +252,18 @@ function handleCombatClose(_result?: CombatResult) {
   showCombat.value = false;
 }
 
-onMounted(() => {
+onMounted(async () => {
   eventBus.on(GameEvents.EXPLORATION_CELL_EXPLORED, handleCellExplored);
   eventBus.on(GameEvents.EXPLORATION_BATTLE_TRIGGERED, handleBattleTriggered);
+  
+  // 初始化地图模块（从数据库恢复当前区域等状态）
+  await mapStore.init();
+  
+  // 从数据库恢复上次的标签页状态
+  const savedTab = await mapDbService.getCurrentTab();
+  if (savedTab === 'explore' && hasCurrentLocation.value) {
+    currentContentTab.value = 'explore';
+  }
 });
 
 onUnmounted(() => {
@@ -379,6 +399,12 @@ defineExpose({ showNotif });
   border-color: #ffd700;
   background: rgba(255, 215, 0, 0.1);
   color: #ffd700;
+}
+
+.content-tab.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .area-info {

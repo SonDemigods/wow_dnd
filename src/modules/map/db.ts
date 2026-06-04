@@ -279,6 +279,60 @@ export class MapDbService {
       await gameDb.runtime_mapState.clear();
     });
   }
+
+  /**
+   * 保存当前选中的区域ID
+   * @param locationId - 区域ID
+   */
+  async saveCurrentLocationId(locationId: string): Promise<void> {
+    await dbService.withRetry(async () => {
+      let state = await gameDb.runtime_gameState.get('gameState');
+      if (!state) {
+        state = { id: 'gameState' };
+      }
+      state.currentLocationId = locationId;
+      await gameDb.runtime_gameState.put(state);
+    });
+  }
+
+  /**
+   * 获取当前选中的区域ID
+   * @returns 区域ID
+   */
+  async getCurrentLocationId(): Promise<string | null> {
+    return dbService.withRetry(async () => {
+      const state = await gameDb.runtime_gameState.get('gameState');
+      if (!state) return null;
+      return (state.currentLocationId as string) || null;
+    });
+  }
+
+  /**
+   * 保存当前标签页
+   * @param tab - 标签名
+   */
+  async saveCurrentTab(tab: string): Promise<void> {
+    await dbService.withRetry(async () => {
+      let state = await gameDb.runtime_gameState.get('gameState');
+      if (!state) {
+        state = { id: 'gameState' };
+      }
+      state.currentTab = tab;
+      await gameDb.runtime_gameState.put(state);
+    });
+  }
+
+  /**
+   * 获取当前标签页
+   * @returns 标签名
+   */
+  async getCurrentTab(): Promise<string | null> {
+    return dbService.withRetry(async () => {
+      const state = await gameDb.runtime_gameState.get('gameState');
+      if (!state) return null;
+      return (state.currentTab as string) || null;
+    });
+  }
 }
 
 /**
