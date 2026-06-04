@@ -49,10 +49,11 @@ export class QuestDbService {
    * 保存任务实例
    * @param instance - 任务实例
    */
-  async saveQuestInstance(instance: QuestInstance): Promise<void> {
+  async saveQuestInstance(instance: QuestInstance, characterId: string): Promise<void> {
     await dbService.withRetry(async () => {
       await gameDb.char_quests.put({
         questId: instance.questId,
+        characterId,
         status: instance.status,
         progress: instance.progress,
         acceptedAt: instance.acceptedAt,
@@ -63,12 +64,13 @@ export class QuestDbService {
 
   /**
    * 获取任务实例
+   * @param characterId - 角色ID
    * @param questId - 任务ID
    * @returns 任务实例
    */
-  async getQuestInstance(questId: string): Promise<QuestInstance | null> {
+  async getQuestInstance(characterId: string, questId: string): Promise<QuestInstance | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.char_quests.get(questId);
+      const result = await gameDb.char_quests.get([characterId, questId]);
       if (!result) return null;
       return {
         questId: result.questId,
@@ -82,11 +84,12 @@ export class QuestDbService {
 
   /**
    * 获取所有任务实例
+   * @param characterId - 角色ID
    * @returns 任务实例列表
    */
-  async getAllQuestInstances(): Promise<QuestInstance[]> {
+  async getAllQuestInstances(characterId: string): Promise<QuestInstance[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.char_quests.toArray();
+      const results = await gameDb.char_quests.where('characterId').equals(characterId).toArray();
       return results.map(result => ({
         questId: result.questId,
         status: result.status as QuestInstance['status'],
@@ -99,11 +102,12 @@ export class QuestDbService {
 
   /**
    * 删除任务实例
+   * @param characterId - 角色ID
    * @param questId - 任务ID
    */
-  async deleteQuestInstance(questId: string): Promise<void> {
+  async deleteQuestInstance(characterId: string, questId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.char_quests.delete(questId);
+      await gameDb.char_quests.delete([characterId, questId]);
     });
   }
 
@@ -122,11 +126,9 @@ export class QuestDbService {
    */
   async deleteCharacterQuests(characterId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      const allInstances = await gameDb.char_quests.toArray();
-      for (const instance of allInstances) {
-        if (instance.characterId === characterId) {
-          await gameDb.char_quests.delete(instance.questId);
-        }
+      const instances = await gameDb.char_quests.where('characterId').equals(characterId).toArray();
+      for (const instance of instances) {
+        await gameDb.char_quests.delete([characterId, instance.questId]);
       }
     });
   }

@@ -142,7 +142,7 @@ export class GameDatabase extends Dexie {
       char_inventory: 'characterId, itemId',
       char_equipment: 'characterId, slot',
       char_skills: 'characterId',
-      char_quests: 'characterId, status, questId',
+      char_quests: '[characterId+questId], status',
       char_exploration: 'characterId, locationId',
       
       // 运行时表

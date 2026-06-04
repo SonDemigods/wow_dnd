@@ -48,7 +48,9 @@ export class QuestService implements IQuestService {
    * 加载任务实例
    */
   private async loadQuestInstances(): Promise<void> {
-    const instances = await questDbService.getAllQuestInstances();
+    const characterId = characterService.getCurrentCharacterId();
+    if (!characterId) return;
+    const instances = await questDbService.getAllQuestInstances(characterId);
     instances.forEach(instance => {
       this.questInstances.set(instance.questId, instance);
     });
@@ -194,7 +196,10 @@ export class QuestService implements IQuestService {
     
     // 保存任务实例
     this.questInstances.set(questId, instance);
-    questDbService.saveQuestInstance(instance);
+    const characterId = characterService.getCurrentCharacterId();
+    if (characterId) {
+      questDbService.saveQuestInstance(instance, characterId);
+    }
     
     // 触发任务接受事件
     eventBus.emit(GameEvents.QUEST_ACCEPTED, { questId, definition });
@@ -246,7 +251,8 @@ export class QuestService implements IQuestService {
       
       // 保存更新
       this.questInstances.set(questId, instance);
-      questDbService.saveQuestInstance(instance);
+      const cid = characterService.getCurrentCharacterId();
+      if (cid) questDbService.saveQuestInstance(instance, cid);
     }
   }
   
@@ -289,7 +295,8 @@ export class QuestService implements IQuestService {
     // 更新任务状态
     instance.status = 'turned_in';
     this.questInstances.set(questId, instance);
-    questDbService.saveQuestInstance(instance);
+    const cid2 = characterService.getCurrentCharacterId();
+    if (cid2) questDbService.saveQuestInstance(instance, cid2);
     
     // 触发任务提交事件
     eventBus.emit(GameEvents.QUEST_REWARDED, { questId, definition });
@@ -317,7 +324,8 @@ export class QuestService implements IQuestService {
     // 更新任务状态
     instance.status = 'abandoned';
     this.questInstances.set(questId, instance);
-    questDbService.saveQuestInstance(instance);
+    const cid3 = characterService.getCurrentCharacterId();
+    if (cid3) questDbService.saveQuestInstance(instance, cid3);
     
     // 触发任务放弃事件
     eventBus.emit(GameEvents.QUEST_PROGRESS, { questId });

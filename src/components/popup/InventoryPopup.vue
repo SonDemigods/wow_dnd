@@ -89,10 +89,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import BasePopup from '../common/BasePopup.vue';
 import { inventoryService } from '@/modules/inventory';
 import { characterService, useCharacterStore } from '@/modules/character';
+import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { InventoryItem, Item, ItemType, ItemRarity } from '@/modules/inventory';
 
 interface ItemEntry {
@@ -245,6 +246,14 @@ async function loadInventory() {
 
 onMounted(() => {
   loadInventory();
+  // 监听背包变化事件，实时刷新
+  eventBus.onGroup('inventoryPopup', GameEvents.INVENTORY_CHANGE, () => {
+    loadInventory();
+  });
+});
+
+onUnmounted(() => {
+  eventBus.clearGroup('inventoryPopup');
 });
 </script>
 

@@ -99,6 +99,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { questService } from '@/modules/quest';
 import { characterService } from '@/modules/character';
+import { useExplorationStore } from '@/modules/exploration/store';
 import type { QuestDefinition } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';
 
@@ -110,6 +111,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void;
 }>();
+
+const explorationStore = useExplorationStore();
 
 const currentTab = ref<'available' | 'turnin'>('available');
 
@@ -127,10 +130,15 @@ function getQuestIcon(type: string) {
   return questIcons[type] || '📋';
 }
 
+// 获取当前区域的任务板ID
+function getBoardId(): string {
+  // 优先使用传入的 boardId，否则使用当前探索区域ID
+  return props.boardId || explorationStore.currentAreaId || 'village';
+}
+
 function acceptQuest(questId: string) {
-  const success = props.boardId 
-    ? questService.acceptQuestFromBoard(props.boardId, questId)
-    : questService.acceptQuest(questId);
+  const boardId = getBoardId();
+  const success = questService.acceptQuestFromBoard(boardId, questId);
   if (success) {
     const quest = questService.getQuestDefinition(questId);
     alert(`已接受任务: ${quest?.title || questId}`);
@@ -141,9 +149,8 @@ function acceptQuest(questId: string) {
 }
 
 function turnInQuest(questId: string) {
-  const success = props.boardId
-    ? questService.turnInQuestToBoard(props.boardId, questId)
-    : questService.turnInQuest(questId);
+  const boardId = getBoardId();
+  const success = questService.turnInQuestToBoard(boardId, questId);
   if (success) {
     const quest = questService.getQuestDefinition(questId);
     alert(`已领取奖励: ${quest?.title || questId}`);
@@ -156,17 +163,11 @@ function turnInQuest(questId: string) {
 async function loadQuests() {
   await questService.init();
 
-  if (props.boardId) {
-    const boardQuests = questService.getQuestsFromBoard(props.boardId);
-    availableQuests.value = boardQuests.filter(q => questService.isQuestAvailable(q.id));
-    turnInQuests.value = questService.getQuestsToTurnIn(props.boardId);
-  } else {
-    const availableIds = questService.getAvailableQuests();
-    availableQuests.value = availableIds.map(id => questService.getQuestDefinition(id)).filter(Boolean) as QuestDefinition[];
-
-    const completedIds = questService.getCompletedQuests();
-    turnInQuests.value = completedIds.map(id => questService.getQuestDefinition(id)).filter(Boolean) as QuestDefinition[];
-  }
+  const boardId = getBoardId();
+  // 从数据库获取指定任务板的任务
+  const boardQuests = questService.getQuestsFromBoard(boardId);
+  availableQuests.value = boardQuests.filter(q => questService.isQuestAvailable(q.id));
+  turnInQuests.value = questService.getQuestsToTurnIn(boardId);
 }
 
 watch(() => props.visible, (val) => {
