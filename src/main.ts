@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import { db } from '@/modules/data/core'
 import { dataInitializer } from '@/modules/data/service'
+import { initConsole } from '@/modules/console'
 import './styles/popup.less'
 
 async function initApp() {
@@ -19,6 +20,9 @@ async function initApp() {
 
   app.use(pinia)
   app.mount('#app')
+
+  // 挂载开发控制台命令到 window.cmd
+  initConsole()
 }
 
 initApp()
