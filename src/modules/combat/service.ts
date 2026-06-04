@@ -151,22 +151,13 @@ export class CombatService implements ICombatService {
     }
     
     // 获取角色属性
-    const stats = characterService.getStats();
     const attributes = characterService.getAttributes();
     
-    // 计算伤害
-    const baseDamage = attributes.physicalAttack;
-    const critChance = attributes.critChance;
-    const isCrit = Math.random() < critChance;
-    const critMultiplier = isCrit ? 1.5 : 1;
-    const damage = Math.floor(baseDamage * critMultiplier * (0.9 + Math.random() * 0.2));
-    
     // 检查敌人闪避
-    const enemyDodgeChance = this.enemy.stats.dex * 0.005;
+    const enemyDodgeChance = (this.enemy.dodgeChance || 0) / 100;
     const isDodge = Math.random() < enemyDodgeChance;
     
     if (isDodge) {
-      // 添加日志
       this.addCombatLog({
         actorType: 'player',
         actorId: 'player',
@@ -190,6 +181,18 @@ export class CombatService implements ICombatService {
         message: `${this.enemy.name} 闪避了你的攻击！`
       };
     }
+    
+    // 计算伤害（参考设计文档）
+    const baseDamage = Math.floor(attributes.physicalAttack * 0.4) + Math.floor(Math.random() * 10);
+    const enemyDefense = this.enemy.physicalDefense || 0;
+    const defenseReduction = Math.min(Math.floor(baseDamage * 0.3), enemyDefense);
+    const rawDamage = Math.max(1, baseDamage - defenseReduction);
+    
+    // 暴击判定（critChance 是百分比，如 5 表示 5%）
+    const critChance = attributes.critChance / 100;
+    const isCrit = Math.random() < critChance;
+    const critMultiplier = isCrit ? 1.5 : 1;
+    const damage = Math.floor(rawDamage * critMultiplier);
     
     // 造成伤害
     const isDead = enemyService.takeDamage(this.enemy.id, damage);
@@ -278,7 +281,7 @@ export class CombatService implements ICombatService {
         actorType: 'player',
         actorId: 'player',
         actorName: characterService.getName(),
-        eventType: 'combat_damage',
+        eventType: result.type === 'magic_damage' ? 'combat_skill_cast' : 'combat_damage',
         targetType: 'enemy',
         targetId: this.enemy?.id || '',
         targetName: this.enemy?.name || '',
@@ -287,7 +290,7 @@ export class CombatService implements ICombatService {
         damage: result.damage,
         isCrit: false,
         isDodge: false,
-        message: `${skill?.name || '技能'} 对 ${this.enemy?.name} 造成 ${result.damage} 点伤害！`
+        message: `${skill?.name || '技能'} 对 ${this.enemy?.name} 造成 ${result.damage} 点${result.type === 'magic_damage' ? '魔法' : '物理'}伤害！`
       });
       
       if (isDead || !this.enemy) {
@@ -446,6 +449,24 @@ export class CombatService implements ICombatService {
   }
 
   /**
+   * 跳过玩家回合，切换到敌人回合
+   */
+  skipTurn(): void {
+    if (this.state !== 'fighting' || this.turn !== 'player') {
+      return;
+    }
+    this.turn = 'enemy';
+
+    this.addCombatLog({
+      actorType: 'player',
+      actorId: 'player',
+      actorName: characterService.getName(),
+      eventType: 'combat_turn_end',
+      message: `${characterService.getName()} 跳过了回合`
+    });
+  }
+
+  /**
    * 敌人回合
    */
   enemyTurn(): void {
@@ -569,8 +590,8 @@ export class CombatService implements ICombatService {
     // 计算伤害
     const damage = enemyService.calculateDamage(this.enemy, characterService.getAttributes().physicalDefense);
     
-    // 检查玩家闪避
-    const dodgeChance = characterService.getAttributes().dodgeChance;
+    // 检查玩家闪避（dodgeChance 是百分比，如 3 表示 3%）
+    const dodgeChance = characterService.getAttributes().dodgeChance / 100;
     const isDodge = Math.random() < dodgeChance;
     
     if (isDodge) {
@@ -647,8 +668,8 @@ export class CombatService implements ICombatService {
       return { success: false, type: 'skill', message: '没有敌人！' };
     }
     
-    // 检查玩家闪避
-    const dodgeChance = characterService.getAttributes().dodgeChance;
+    // 检查玩家闪避（dodgeChance 是百分比）
+    const dodgeChance = characterService.getAttributes().dodgeChance / 100;
     const isDodge = Math.random() < dodgeChance;
     
     if (isDodge) {

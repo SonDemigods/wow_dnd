@@ -10,7 +10,7 @@
       <!-- 战斗区域：敌人 + 玩家 -->
       <div class="combat-arena">
         <!-- 敌人区域 -->
-        <div class="combatant enemy-side">
+        <div class="combatant enemy-side" :class="{ 'shake': enemyShake, 'defeated': enemyDefeated }">
           <div class="combatant-avatar">{{ enemy?.icon || '👹' }}</div>
           <div class="combatant-info">
             <div class="combatant-name">{{ enemy?.name || '未知敌人' }}</div>
@@ -25,13 +25,17 @@
               <span class="bar-text">{{ enemyHp }}/{{ enemyMaxHp }}</span>
             </div>
           </div>
+          <!-- 浮动伤害数字 -->
+          <div v-if="enemyFloating" :class="['floating-damage', enemyFloating.type]">
+            {{ enemyFloating.text }}
+          </div>
         </div>
 
         <!-- VS 分隔 -->
-        <div class="vs-divider">⚔️</div>
+        <div class="vs-divider" :class="{ 'flash': vsFlash }">⚔️</div>
 
         <!-- 玩家区域 -->
-        <div class="combatant player-side">
+        <div class="combatant player-side" :class="{ 'shake': playerShake }">
           <div class="combatant-avatar">{{ playerIcon }}</div>
           <div class="combatant-info">
             <div class="combatant-name">{{ playerName }}</div>
@@ -53,6 +57,10 @@
               <span class="bar-text">{{ playerMp }}/{{ playerMaxMp }}</span>
             </div>
           </div>
+          <!-- 浮动伤害数字 -->
+          <div v-if="playerFloating" :class="['floating-damage', playerFloating.type]">
+            {{ playerFloating.text }}
+          </div>
         </div>
       </div>
 
@@ -61,8 +69,10 @@
         <div v-for="(log, i) in logs" :key="i" :class="['log-entry', 'log-' + log.actorType]">
           <span class="log-turn">[{{ log.turn }}]</span>
           <span class="log-msg">{{ log.message }}</span>
-          <span v-if="log.damage && log.damage > 0" class="log-damage">-{{ log.damage }}</span>
-          <span v-if="log.heal && log.heal > 0" class="log-heal">+{{ log.heal }}</span>
+          <span v-if="log.damage && log.damage > 0" :class="['log-damage', getDamageTypeClass(log)]">
+            {{ getDamageTypeIcon(log) }} -{{ log.damage }}
+          </span>
+          <span v-if="log.heal && log.heal > 0" class="log-heal">💚 +{{ log.heal }}</span>
           <span v-if="log.isCrit" class="log-crit">暴击！</span>
           <span v-if="log.isDodge" class="log-dodge">闪避！</span>
         </div>
@@ -70,23 +80,21 @@
       </div>
 
       <!-- 行动按钮区域 -->
-      <div class="combat-actions" v-if="isPlayerTurn && isFighting">
-        <!-- 第一行：普通攻击 | 物品 | 跳过 | 逃跑 -->
+      <div class="combat-actions">
         <div class="action-row primary-actions">
-          <button class="action-btn attack-btn" @click="doAction('attack')" :disabled="isAnimating">
+          <button class="action-btn attack-btn" @click="doAction('attack')" :disabled="!canAct">
             ⚔️ 普通攻击
           </button>
-          <button class="action-btn item-btn" @click="openItemModal" :disabled="isAnimating || !hasConsumables">
+          <button class="action-btn item-btn" @click="openItemModal" :disabled="!canAct || !hasConsumables">
             💊 物品
           </button>
-          <button class="action-btn skip-btn" @click="doSkip" :disabled="isAnimating">
+          <button class="action-btn skip-btn" @click="doSkip" :disabled="!canAct">
             ⏭️ 跳过
           </button>
-          <button class="action-btn flee-btn" @click="doAction('flee')" :disabled="isAnimating || isBossFight">
+          <button class="action-btn flee-btn" @click="doAction('flee')" :disabled="!canAct || isBossFight">
             🏃 逃跑
           </button>
         </div>
-        <!-- 第二行：技能 -->
         <div class="action-row skill-actions" v-if="equippedSkills.length > 0">
           <button
             v-for="skill in equippedSkills"
@@ -94,7 +102,7 @@
             class="action-btn skill-btn"
             :class="{ 'no-mp': playerMp < skill.mpCost }"
             @click="doSkill(skill.id)"
-            :disabled="isAnimating || playerMp < skill.mpCost"
+            :disabled="!canAct || playerMp < skill.mpCost"
           >
             <span class="skill-icon">{{ getSkillTypeIcon(skill.type) }}</span>
             <span class="skill-name">{{ skill.name }}</span>
@@ -102,25 +110,28 @@
             <span class="skill-cost">{{ skill.mpCost }} MP</span>
           </button>
         </div>
+        <!-- 敌人回合遮罩 -->
+        <div v-if="!isPlayerTurn && isFighting" class="enemy-turn-overlay">
+          <span class="enemy-turn-text">⏳ 敌人行动中...</span>
+        </div>
       </div>
+    </div>
 
-      <!-- 等待敌人回合 -->
-      <div class="combat-actions waiting" v-if="!isPlayerTurn && isFighting">
-        <span class="waiting-text">敌人行动中...</span>
-      </div>
-
-      <!-- 战斗结束 -->
-      <div class="combat-result" v-if="combatResult">
+    <!-- 战斗结果弹窗 -->
+    <div v-if="combatResult" class="result-overlay">
+      <div class="result-popup">
+        <div class="result-icon">{{ combatResult === 'victory' ? '🏆' : combatResult === 'defeat' ? '💀' : '🏃' }}</div>
         <div :class="['result-text', 'result-' + combatResult]">
           {{ resultText }}
         </div>
         <div class="result-rewards" v-if="combatResult === 'victory'">
-          <span v-if="expGained > 0">⭐ +{{ expGained }} 经验</span>
-          <span v-if="goldGained > 0">💰 +{{ goldGained }} 金币</span>
+          <div v-if="expGained > 0" class="reward-item">⭐ +{{ expGained }} 经验</div>
+          <div v-if="goldGained > 0" class="reward-item">💰 +{{ goldGained }} 金币</div>
         </div>
         <div class="result-countdown" v-if="autoCloseCountdown > 0">
           {{ autoCloseCountdown }} 秒后自动关闭
         </div>
+        <button class="result-close-btn" @click="handleClose">确定</button>
       </div>
     </div>
 
@@ -155,7 +166,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { combatService } from '@/modules/combat/service';
-import { characterService } from '@/modules/character/service';
+import { useCharacterStore } from '@/modules/character';
 import { skillsService } from '@/modules/skill/service';
 import { inventoryService } from '@/modules/inventory/service';
 import { eventBus, GameEvents } from '@/modules/bus/core';
@@ -171,6 +182,7 @@ const emit = defineEmits<{
   (e: 'close', result?: CombatResult): void;
 }>();
 
+const characterStore = useCharacterStore();
 const logRef = ref<HTMLElement | null>(null);
 const isAnimating = ref(false);
 const combatResult = ref<CombatResult | null>(null);
@@ -187,14 +199,22 @@ const turnCount = ref(1);
 const enemy = ref<Enemy | null>(null);
 const logs = ref<CombatLog[]>([]);
 
-// 玩家数据
-const playerName = computed(() => characterService.getName());
-const playerLevel = computed(() => characterService.getCharacterInfo().level || 1);
+// 动画状态
+const enemyShake = ref(false);
+const playerShake = ref(false);
+const enemyDefeated = ref(false);
+const vsFlash = ref(false);
+const enemyFloating = ref<{ text: string; type: string } | null>(null);
+const playerFloating = ref<{ text: string; type: string } | null>(null);
+
+// 玩家数据（从 characterStore 读取，与主界面一致）
+const playerName = computed(() => characterStore.name);
+const playerLevel = computed(() => characterStore.level);
 const playerIcon = computed(() => '🧑');
-const playerHp = computed(() => characterService.getCharacterInfo().hp || 0);
-const playerMaxHp = computed(() => characterService.getCharacterInfo().maxHp || 1);
-const playerMp = computed(() => characterService.getCharacterInfo().mana || 0);
-const playerMaxMp = computed(() => characterService.getCharacterInfo().maxMana || 1);
+const playerHp = computed(() => characterStore.hp);
+const playerMaxHp = computed(() => characterStore.maxHp);
+const playerMp = computed(() => characterStore.mana);
+const playerMaxMp = computed(() => characterStore.maxMana);
 const playerHpPercent = computed(() => Math.max(0, Math.min(100, (playerHp.value / playerMaxHp.value) * 100)));
 const playerMpPercent = computed(() => Math.max(0, Math.min(100, (playerMp.value / playerMaxMp.value) * 100)));
 
@@ -207,13 +227,13 @@ const isBossFight = computed(() => enemy.value?.isBoss || false);
 // 状态
 const isPlayerTurn = computed(() => turn.value === 'player');
 const isFighting = computed(() => !combatResult.value);
+const canAct = computed(() => isPlayerTurn.value && isFighting.value && !isAnimating.value);
 
 // 可用技能：优先装备的，没有则显示已解锁的
 const equippedSkills = computed<Skill[]>(() => {
   try {
     const equipped = skillsService.getEquippedSkills();
-    if (equipped && equipped.length > 0) return equipped;
-    // 没有装备技能时，回退到已解锁技能
+    if (equipped && equipped.length > 0) return equipped.slice(0, 4);
     const unlocked = skillsService.getUnlockedSkills();
     return (unlocked || []).slice(0, 4);
   } catch {
@@ -263,6 +283,20 @@ function getSkillTypeIcon(type: string): string {
   return skillTypeIcons[type] || '✨';
 }
 
+// 根据日志事件类型获取伤害类型样式类
+function getDamageTypeClass(log: CombatLog): string {
+  if (log.eventType === 'combat_skill_cast') return 'magic-damage';
+  if (log.eventType === 'combat_critical') return 'crit-damage';
+  return 'physical-damage';
+}
+
+// 根据日志事件类型获取伤害类型图标
+function getDamageTypeIcon(log: CombatLog): string {
+  if (log.eventType === 'combat_skill_cast') return '🔮';
+  if (log.eventType === 'combat_critical') return '⚔️';
+  return '🗡️';
+}
+
 function getSkillEffectText(skill: Skill): string {
   const effect = skill.effect;
   if (!effect) return '';
@@ -288,7 +322,8 @@ const resultText = computed(() => {
 function updateState() {
   turn.value = combatService.getTurn();
   turnCount.value = combatService.getTurnCount();
-  enemy.value = combatService.getEnemy();
+  const e = combatService.getEnemy();
+  enemy.value = e ? { ...e } : null;
   logs.value = [...combatService.getCombatLog()];
   nextTick(() => scrollToBottom());
 }
@@ -299,41 +334,86 @@ function scrollToBottom() {
   }
 }
 
-// 执行玩家动作后进入敌人回合
+// 浮动伤害/治疗数字
+function showFloating(target: 'enemy' | 'player', text: string, type: string) {
+  const floating = target === 'enemy' ? enemyFloating : playerFloating;
+  floating.value = { text, type };
+  setTimeout(() => { floating.value = null; }, 1200);
+}
+
+// 震动效果
+function triggerShake(target: 'enemy' | 'player') {
+  const shake = target === 'enemy' ? enemyShake : playerShake;
+  shake.value = true;
+  setTimeout(() => { shake.value = false; }, 400);
+}
+
+// 执行玩家动作
 function doAction(type: CombatActionType) {
-  if (isAnimating.value || combatResult.value) return;
+  if (!canAct.value) return;
   isAnimating.value = true;
+  vsFlash.value = true;
+  setTimeout(() => { vsFlash.value = false; }, 300);
+
+  const prevEnemyHp = enemyHp.value;
+  const prevPlayerHp = playerHp.value;
 
   combatService.playerAction({ type });
-  updateState();
 
   if (!combatResult.value) {
+    updateState();
+    // 显示对敌人的效果
+    const dmgDealt = prevEnemyHp - enemyHp.value;
+    if (dmgDealt > 0) {
+      triggerShake('enemy');
+      showFloating('enemy', `-${dmgDealt}`, 'damage');
+    }
     runEnemyTurn();
   } else {
+    // 击败敌人
+    updateState();
+    enemyDefeated.value = true;
+    triggerShake('enemy');
+    const dmgDealt = prevEnemyHp - enemyHp.value;
+    if (dmgDealt > 0) {
+      showFloating('enemy', `-${dmgDealt}`, 'damage');
+    }
     isAnimating.value = false;
   }
 }
 
 // 使用技能
 function doSkill(skillId: string) {
-  if (isAnimating.value || combatResult.value) return;
+  if (!canAct.value) return;
   isAnimating.value = true;
+  vsFlash.value = true;
+  setTimeout(() => { vsFlash.value = false; }, 300);
+
+  const prevEnemyHp = enemyHp.value;
 
   combatService.playerAction({ type: 'skill', skillId });
-  updateState();
 
   if (!combatResult.value) {
+    updateState();
+    const dmgDealt = prevEnemyHp - enemyHp.value;
+    if (dmgDealt > 0) {
+      triggerShake('enemy');
+      showFloating('enemy', `-${dmgDealt}`, 'damage');
+    }
     runEnemyTurn();
   } else {
+    updateState();
+    enemyDefeated.value = true;
+    triggerShake('enemy');
     isAnimating.value = false;
   }
 }
 
 // 跳过回合
 function doSkip() {
-  if (isAnimating.value || combatResult.value) return;
+  if (!canAct.value) return;
   isAnimating.value = true;
-
+  combatService.skipTurn();
   runEnemyTurn();
 }
 
@@ -345,46 +425,63 @@ function openItemModal() {
 }
 
 function useItem(_itemId: string, _index: number) {
-  if (isAnimating.value || combatResult.value) return;
+  if (!canAct.value) return;
   showItemModal.value = false;
   isAnimating.value = true;
 
   combatService.playerAction({ type: 'item', itemId: _itemId });
-  updateState();
 
   if (!combatResult.value) {
+    updateState();
     runEnemyTurn();
   } else {
+    updateState();
     isAnimating.value = false;
   }
 }
 
 // 执行敌人回合
 function runEnemyTurn() {
+  // 第一阶段：显示敌人回合提示
   setTimeout(() => {
-    turn.value = 'enemy';
     updateState();
 
+    // 第二阶段：敌人攻击
     setTimeout(() => {
+      const prevPlayerHp = playerHp.value;
       combatService.enemyTurn();
-      updateState();
-      turn.value = combatService.getTurn();
+
+      if (!combatResult.value) {
+        updateState();
+        // 显示敌人对玩家的伤害
+        const dmgTaken = prevPlayerHp - playerHp.value;
+        if (dmgTaken > 0) {
+          triggerShake('player');
+          showFloating('player', `-${dmgTaken}`, 'damage');
+        }
+      }
       isAnimating.value = false;
-    }, 800);
-  }, 500);
+    }, 1200);
+  }, 600);
 }
 
-// 监听战斗结束事件（在 cleanup 之前由战斗服务发出）
+// 监听战斗结束事件
 function onCombatEnd(data: CombatEndEvent) {
   combatResult.value = data.result;
   expGained.value = data.expGained || 0;
   goldGained.value = data.enemy?.goldReward || 0;
   isAnimating.value = false;
-  updateState();
+
+  if (data.result === 'victory' && data.enemy) {
+    enemy.value = { ...data.enemy, hp: 0 };
+    enemyDefeated.value = true;
+  }
+
+  turn.value = 'player';
+  turnCount.value = combatService.getTurnCount() || turnCount.value;
   scheduleAutoClose();
 }
 
-// 战斗结束后延迟自动关闭
 function scheduleAutoClose() {
   clearAutoClose();
   const delay = combatResult.value === 'victory' ? 3 : 2;
@@ -393,7 +490,6 @@ function scheduleAutoClose() {
   autoCloseTimer = setInterval(() => {
     autoCloseCountdown.value--;
     if (autoCloseCountdown.value <= 0) {
-      // 只清除 interval，timeout 会自动触发 handleClose
       if (autoCloseTimer) {
         clearInterval(autoCloseTimer);
         autoCloseTimer = null;
@@ -424,24 +520,16 @@ function handleClose() {
   emit('close', combatResult.value || undefined);
 }
 
-// 监听玩家回合事件
-function onCombatPlayerTurn() {
-  turn.value = 'player';
-  updateState();
-}
-
 onMounted(() => {
-  eventBus.on(GameEvents.COMBAT_PLAYER_TURN, onCombatPlayerTurn);
   eventBus.on(GameEvents.COMBAT_END, onCombatEnd);
 });
 
 onUnmounted(() => {
-  eventBus.off(GameEvents.COMBAT_PLAYER_TURN, onCombatPlayerTurn);
   eventBus.off(GameEvents.COMBAT_END, onCombatEnd);
   clearAutoClose();
 });
 
-watch(() => props.visible, (val) => {
+watch(() => props.visible, async (val) => {
   if (val) {
     combatResult.value = null;
     expGained.value = 0;
@@ -449,7 +537,15 @@ watch(() => props.visible, (val) => {
     isAnimating.value = false;
     showItemModal.value = false;
     autoCloseCountdown.value = 0;
+    enemyDefeated.value = false;
+    enemyShake.value = false;
+    playerShake.value = false;
+    vsFlash.value = false;
+    enemyFloating.value = null;
+    playerFloating.value = null;
     clearAutoClose();
+    // 确保技能服务已初始化
+    await skillsService.initialize();
     updateState();
   } else {
     clearAutoClose();
@@ -495,16 +591,8 @@ watch(() => props.visible, (val) => {
   border-bottom: 1px solid #333;
 }
 
-.combat-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #e94560;
-}
-
-.combat-turn {
-  font-size: 13px;
-  color: #888;
-}
+.combat-title { font-size: 18px; font-weight: 700; color: #e94560; }
+.combat-turn { font-size: 13px; color: #888; }
 
 /* 战斗区域 */
 .combat-arena {
@@ -523,48 +611,50 @@ watch(() => props.visible, (val) => {
   flex-direction: column;
   gap: 10px;
   border: 1px solid #333;
+  position: relative;
+  transition: transform 0.1s;
 }
 
 .enemy-side { border-color: #e94560; }
 .player-side { border-color: #00d2d3; }
 
-.combatant-avatar {
-  font-size: 36px;
-  text-align: center;
+/* 震动效果 */
+.combatant.shake {
+  animation: shake 0.4s ease;
 }
 
+.combatant.defeated {
+  opacity: 0.4;
+  filter: grayscale(0.8);
+}
+
+/* 浮动伤害数字 */
+.floating-damage {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 22px;
+  font-weight: 900;
+  pointer-events: none;
+  animation: floatUp 1.2s ease forwards;
+  z-index: 10;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.floating-damage.damage { color: #ff4444; }
+.floating-damage.heal { color: #4CAF50; }
+.floating-damage.crit { color: #ffd700; font-size: 28px; }
+
+.combatant-avatar { font-size: 36px; text-align: center; }
 .combatant-info { text-align: center; }
+.combatant-name { font-size: 16px; font-weight: 700; color: #f0f0f0; }
+.combatant-level { font-size: 12px; color: #ffd700; margin-top: 2px; }
 
-.combatant-name {
-  font-size: 16px;
-  font-weight: 700;
-  color: #f0f0f0;
-}
+.combatant-bars { display: flex; flex-direction: column; gap: 6px; }
 
-.combatant-level {
-  font-size: 12px;
-  color: #ffd700;
-  margin-top: 2px;
-}
-
-.combatant-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.bar-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.bar-label {
-  font-size: 11px;
-  color: #888;
-  width: 22px;
-  text-align: right;
-}
+.bar-row { display: flex; align-items: center; gap: 6px; }
+.bar-label { font-size: 11px; color: #888; width: 22px; text-align: right; }
 
 .bar-track {
   flex: 1;
@@ -577,24 +667,24 @@ watch(() => props.visible, (val) => {
 .bar-fill {
   height: 100%;
   border-radius: 7px;
-  transition: width 0.4s ease;
+  transition: width 0.5s ease;
 }
 
 .hp-fill { background: linear-gradient(90deg, #e94560, #ff6b6b); }
 .mp-fill { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
 
-.bar-text {
-  font-size: 11px;
-  color: #aaa;
-  min-width: 55px;
-  text-align: left;
-}
+.bar-text { font-size: 11px; color: #aaa; min-width: 55px; text-align: left; }
 
 .vs-divider {
   display: flex;
   align-items: center;
   font-size: 24px;
   color: #ffd700;
+  transition: transform 0.2s;
+}
+
+.vs-divider.flash {
+  animation: vsFlash 0.3s ease;
 }
 
 /* 战斗日志 */
@@ -619,57 +709,30 @@ watch(() => props.visible, (val) => {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  animation: logSlideIn 0.3s ease;
 }
 
 .log-player .log-msg { color: #60a5fa; }
 .log-enemy .log-msg { color: #f87171; }
 .log-system .log-msg { color: #fbbf24; }
 
-.log-turn {
-  color: #666;
-  font-size: 11px;
-}
+.log-turn { color: #666; font-size: 11px; }
+.log-damage { font-weight: 700; font-size: 14px; }
+.log-damage.physical-damage { color: #ff8c00; }
+.log-damage.magic-damage { color: #a855f7; }
+.log-damage.crit-damage { color: #ffd700; }
+.log-heal { color: #4CAF50; font-weight: 700; font-size: 14px; }
+.log-crit { color: #ffd700; font-weight: 700; font-size: 12px; }
+.log-dodge { color: #888; font-weight: 700; font-size: 12px; }
+.log-empty { color: #555; text-align: center; padding: 20px 0; font-style: italic; }
 
-.log-damage {
-  color: #ff4444;
-  font-weight: 700;
-  font-size: 14px;
-  animation: popIn 0.3s ease;
-}
-
-.log-heal {
-  color: #4CAF50;
-  font-weight: 700;
-  font-size: 14px;
-  animation: popIn 0.3s ease;
-}
-
-.log-crit {
-  color: #ffd700;
-  font-weight: 700;
-  font-size: 12px;
-  animation: popIn 0.3s ease;
-}
-
-.log-dodge {
-  color: #888;
-  font-weight: 700;
-  font-size: 12px;
-}
-
-.log-empty {
-  color: #555;
-  text-align: center;
-  padding: 20px 0;
-  font-style: italic;
-}
-
-/* 行动按钮 */
+/* 行动按钮区域 */
 .combat-actions {
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: relative;
 }
 
 .action-row {
@@ -691,35 +754,12 @@ watch(() => props.visible, (val) => {
   text-align: center;
 }
 
-.action-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: #666;
-}
-
-.action-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.attack-btn:hover:not(:disabled) {
-  border-color: #e94560;
-  background: rgba(233, 69, 96, 0.15);
-}
-
-.item-btn:hover:not(:disabled) {
-  border-color: #4CAF50;
-  background: rgba(76, 175, 80, 0.15);
-}
-
-.skip-btn:hover:not(:disabled) {
-  border-color: #fbbf24;
-  background: rgba(251, 191, 36, 0.15);
-}
-
-.flee-btn:hover:not(:disabled) {
-  border-color: #888;
-  background: rgba(136, 136, 136, 0.15);
-}
+.action-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); border-color: #666; }
+.action-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.attack-btn:hover:not(:disabled) { border-color: #e94560; background: rgba(233, 69, 96, 0.15); }
+.item-btn:hover:not(:disabled) { border-color: #4CAF50; background: rgba(76, 175, 80, 0.15); }
+.skip-btn:hover:not(:disabled) { border-color: #fbbf24; background: rgba(251, 191, 36, 0.15); }
+.flee-btn:hover:not(:disabled) { border-color: #888; background: rgba(136, 136, 136, 0.15); }
 
 .skill-btn {
   border-color: #8b5cf6;
@@ -730,75 +770,104 @@ watch(() => props.visible, (val) => {
   padding: 8px 6px;
 }
 
-.skill-btn:hover:not(:disabled) {
-  background: rgba(139, 92, 246, 0.15);
-  border-color: #a78bfa;
-}
-
-.skill-btn.no-mp {
-  border-color: #555;
-}
-
+.skill-btn:hover:not(:disabled) { background: rgba(139, 92, 246, 0.15); border-color: #a78bfa; }
+.skill-btn.no-mp { border-color: #555; }
 .skill-icon { font-size: 18px; }
 .skill-name { font-size: 12px; font-weight: 600; }
-.skill-effect {
-  font-size: 10px;
+.skill-effect { font-size: 10px; color: #fbbf24; }
+.skill-cost { font-size: 10px; color: #60a5fa; }
+
+/* 敌人回合遮罩 */
+.enemy-turn-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  animation: fadeIn 0.3s ease;
+}
+
+.enemy-turn-text {
   color: #fbbf24;
-}
-.skill-cost {
-  font-size: 10px;
-  color: #60a5fa;
-}
-
-.continue-btn {
-  margin-top: 12px;
-  background: rgba(255, 215, 0, 0.15);
-  border-color: #ffd700;
-  color: #ffd700;
-  grid-column: 1 / -1;
-}
-
-.continue-btn:hover {
-  background: rgba(255, 215, 0, 0.25);
-}
-
-.waiting { justify-content: center; }
-
-.waiting-text {
-  color: #888;
-  font-size: 14px;
-  animation: pulse 1.5s infinite;
-}
-
-/* 战斗结果 */
-.combat-result {
-  padding: 20px;
-  text-align: center;
-}
-
-.result-text {
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 700;
-  margin-bottom: 12px;
+  animation: pulse 1.2s infinite;
 }
 
-.result-victory { color: #ffd700; }
-.result-defeat { color: #e94560; }
+/* 战斗结果弹窗 */
+.result-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2200;
+  animation: fadeIn 0.3s ease;
+}
+
+.result-popup {
+  background: linear-gradient(145deg, #1a1a2e, #16213e);
+  border: 2px solid #4a4a4a;
+  border-radius: 20px;
+  padding: 40px 50px;
+  text-align: center;
+  min-width: 300px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  animation: resultPopIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.result-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  animation: resultBounce 0.6s ease 0.2s both;
+}
+
+.result-text { font-size: 28px; font-weight: 700; margin-bottom: 16px; }
+.result-victory { color: #ffd700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
+.result-defeat { color: #e94560; text-shadow: 0 0 20px rgba(233, 69, 96, 0.3); }
 .result-fled { color: #888; }
 
 .result-rewards {
   display: flex;
-  justify-content: center;
-  gap: 20px;
-  margin-bottom: 16px;
-  font-size: 16px;
-  color: #ffd700;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
 }
 
-.result-countdown {
-  font-size: 13px;
-  color: #888;
-  margin-top: 8px;
+.reward-item {
+  font-size: 18px;
+  color: #ffd700;
+  animation: rewardSlideIn 0.4s ease both;
+}
+
+.reward-item:nth-child(2) { animation-delay: 0.2s; }
+
+.result-countdown { font-size: 13px; color: #888; margin-bottom: 16px; }
+
+.result-close-btn {
+  padding: 10px 36px;
+  background: rgba(255, 215, 0, 0.15);
+  border: 2px solid #ffd700;
+  border-radius: 8px;
+  color: #ffd700;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.result-close-btn:hover {
+  background: rgba(255, 215, 0, 0.25);
 }
 
 /* 物品选择弹窗 */
@@ -839,22 +908,10 @@ watch(() => props.visible, (val) => {
   color: #ffd700;
 }
 
-.item-modal-close {
-  background: none;
-  border: none;
-  color: #888;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 4px 8px;
-}
-
+.item-modal-close { background: none; border: none; color: #888; font-size: 18px; cursor: pointer; padding: 4px 8px; }
 .item-modal-close:hover { color: #fff; }
 
-.item-modal-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
+.item-modal-body { flex: 1; overflow-y: auto; padding: 8px; }
 
 .item-option {
   display: flex;
@@ -866,46 +923,15 @@ watch(() => props.visible, (val) => {
   transition: background 0.2s;
 }
 
-.item-option:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
+.item-option:hover { background: rgba(255, 255, 255, 0.08); }
+.item-option .item-icon { font-size: 24px; flex-shrink: 0; }
+.item-option .item-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.item-option .item-name { font-size: 14px; color: #f0f0f0; font-weight: 600; }
+.item-option .item-desc { font-size: 11px; color: #888; }
+.item-option .item-count { font-size: 13px; color: #aaa; flex-shrink: 0; }
+.item-empty { text-align: center; padding: 24px; color: #555; font-style: italic; }
 
-.item-option .item-icon {
-  font-size: 24px;
-  flex-shrink: 0;
-}
-
-.item-option .item-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.item-option .item-name {
-  font-size: 14px;
-  color: #f0f0f0;
-  font-weight: 600;
-}
-
-.item-option .item-desc {
-  font-size: 11px;
-  color: #888;
-}
-
-.item-option .item-count {
-  font-size: 13px;
-  color: #aaa;
-  flex-shrink: 0;
-}
-
-.item-empty {
-  text-align: center;
-  padding: 24px;
-  color: #555;
-  font-style: italic;
-}
-
+/* 动画 */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -916,42 +942,61 @@ watch(() => props.visible, (val) => {
   50% { opacity: 0.5; }
 }
 
-@keyframes popIn {
-  0% { transform: scale(0.5); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  30% { opacity: 1; transform: translateX(-50%) translateY(-20px) scale(1.2); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-50px) scale(0.8); }
+}
+
+@keyframes vsFlash {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4); color: #fff; }
+  100% { transform: scale(1); }
+}
+
+@keyframes logSlideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes resultPopIn {
+  0% { opacity: 0; transform: scale(0.5); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes resultBounce {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+@keyframes rewardSlideIn {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 /* 移动端 */
 @media (max-width: 600px) {
-  .combat-arena {
-    flex-direction: column;
-    padding: 10px;
-    gap: 8px;
-  }
-
+  .combat-arena { flex-direction: column; padding: 10px; gap: 8px; }
   .vs-divider { display: none; }
-
   .combatant-avatar { font-size: 28px; }
-
-  .combat-log {
-    min-height: 80px;
-    max-height: 120px;
-  }
-
-  .action-row {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-  }
-
-  .action-btn {
-    font-size: 11px;
-    padding: 8px 4px;
-  }
-
+  .combat-log { min-height: 80px; max-height: 120px; }
+  .action-row { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .action-btn { font-size: 11px; padding: 8px 4px; }
   .skill-btn { padding: 6px 4px; }
   .skill-icon { font-size: 16px; }
   .skill-name { font-size: 10px; }
   .skill-effect { font-size: 9px; }
   .skill-cost { font-size: 9px; }
+  .floating-damage { font-size: 18px; }
+  .floating-damage.crit { font-size: 22px; }
 }
 </style>

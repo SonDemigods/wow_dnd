@@ -40,9 +40,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { explorationService } from '@/modules/exploration';
 import { useMapStore } from '@/modules/map';
+import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { ExplorationCell } from '@/modules/exploration';
 
 const mapStore = useMapStore();
@@ -149,8 +150,22 @@ function handleCellClick(cell: ExplorationCell) {
   loadState();
 }
 
+// 战斗/商店/任务结束后刷新网格
+function onRefreshGrid() {
+  loadState();
+}
+
 onMounted(() => {
   initExploration();
+  eventBus.on(GameEvents.COMBAT_END, onRefreshGrid);
+  eventBus.on(GameEvents.SHOP_CLOSED, onRefreshGrid);
+  eventBus.on(GameEvents.QUEST_COMPLETED, onRefreshGrid);
+});
+
+onUnmounted(() => {
+  eventBus.off(GameEvents.COMBAT_END, onRefreshGrid);
+  eventBus.off(GameEvents.SHOP_CLOSED, onRefreshGrid);
+  eventBus.off(GameEvents.QUEST_COMPLETED, onRefreshGrid);
 });
 </script>
 

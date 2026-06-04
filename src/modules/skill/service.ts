@@ -144,12 +144,6 @@ export class SkillsService implements ISkillsService {
       return { canUse: false, failureReason: 'not_unlocked' };
     }
 
-    // 检查是否已装备
-    const isEquipped = this.skillBar.slots.includes(skillId);
-    if (!isEquipped) {
-      return { canUse: false, failureReason: 'not_equipped' };
-    }
-
     // 检查法力值
     const currentMp = characterService.getCharacterInfo().mana;
     if (currentMp < skill.mpCost) {

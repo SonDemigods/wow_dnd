@@ -501,11 +501,11 @@ export class ExplorationService implements IExplorationService {
       return false;
     }
 
-    // 怪物和BOSS格子：允许重复挑战
+    // 怪物和BOSS格子：击败后不可再挑战（type 变为 empty）
     if (cell.type === 'monster' || cell.type === 'boss') {
-      // 触发战斗，战斗结果由 onBattleResult 处理
+      // 已击败的怪物 type 已变为 empty，不会进入此分支
+      // 逃跑/失败后 explored=true 但 type 仍为 monster/boss，可再次挑战
       this.triggerBattle(cell.type === 'boss' ? 'enemy_boss' : 'enemy_goblin');
-      // 记录当前挑战的格子位置
       this.pendingBattleCell = { x, y };
       return true;
     }
@@ -612,22 +612,30 @@ export class ExplorationService implements IExplorationService {
     }
 
     if (victory) {
-      // 战斗胜利：标记格子为已探索，更新可访问区域
+      // 战斗胜利：标记格子为已探索，变为空地
+      if (cell.type === 'boss') {
+        this.state.bossDefeated = true;
+      }
       if (!cell.explored) {
         cell.explored = true;
         cell.visited = true;
         this.state.visitedCells++;
       }
-      
-      if (cell.type === 'boss') {
-        this.state.bossDefeated = true;
-      }
+      cell.type = 'empty';
       
       this.updateAccessibleCells();
       this.checkExplorationComplete();
       this.saveState();
+    } else {
+      // 战斗失败或逃跑：揭示格子内容，但保持可再次挑战
+      if (!cell.explored) {
+        cell.explored = true;
+        cell.visited = true;
+        this.state.visitedCells++;
+      }
+      this.updateAccessibleCells();
+      this.saveState();
     }
-    // 战斗失败或逃跑：不标记为已探索，可再次挑战
     
     this.pendingBattleCell = null;
   }
