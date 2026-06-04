@@ -511,7 +511,7 @@ onUnmounted(() => {
 }
 
 .item-slot.selected {
-  box-shadow: 0 0 0 2px #0099ff, 0 0 10px rgba(0, 153, 255, 0.5);
+  background: rgba(255, 215, 0, 0.25);
 }
 
 @keyframes legendary-glow {
