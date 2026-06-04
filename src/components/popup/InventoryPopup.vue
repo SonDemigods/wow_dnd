@@ -95,6 +95,24 @@
     @confirm="confirmDrop"
     @cancel="cancelDrop"
   />
+
+  <!-- 装备槽位选择弹窗 -->
+  <BasePopup :visible="showSlotSelect" title="选择装备位置" max-width="360px" @close="cancelSlotSelect">
+    <div class="slot-select-content">
+      <p class="slot-select-hint">为 {{ pendingEquipItem?.name }} 选择装备位置：</p>
+      <div class="slot-options">
+        <button
+          v-for="slot in availableSlots"
+          :key="slot"
+          class="slot-option-btn"
+          @click="selectEquipSlot(slot)"
+        >
+          <span class="slot-icon">{{ slot.startsWith('weapon') ? '⚔️' : '🛡️' }}</span>
+          <span class="slot-name">{{ SLOT_NAMES[slot] }}</span>
+        </button>
+      </div>
+    </div>
+  </BasePopup>
 </template>
 
 <script setup lang="ts">
@@ -103,14 +121,26 @@ import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
 import { inventoryService } from '@/modules/inventory';
 import { useCharacterStore } from '@/modules/character';
+import { equipmentService } from '@/modules/equipment/service';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import { useToast } from '@/composables/useToast';
 import type { InventoryItem, Item, ItemType, ItemRarity } from '@/modules/inventory';
+import type { EquipmentSlot, EquipmentItem } from '@/modules/equipment/types';
 
 interface ItemEntry {
   item: InventoryItem;
   info: Item | null;
 }
+
+// 槽位中文名称映射
+const SLOT_NAMES: Record<EquipmentSlot, string> = {
+  weapon1: '主手武器',
+  weapon2: '副手武器',
+  armor1: '护甲槽1',
+  armor2: '护甲槽2',
+  armor3: '护甲槽3',
+  armor4: '护甲槽4'
+};
 
 defineProps<{
   visible: boolean;
@@ -130,6 +160,11 @@ const selectedEntry = ref<ItemEntry | null>(null);
 // 丢弃确认弹窗状态
 const showDropConfirm = ref(false);
 const pendingDropItemId = ref<string | null>(null);
+
+// 装备槽位选择弹窗状态
+const showSlotSelect = ref(false);
+const availableSlots = ref<EquipmentSlot[]>([]);
+const pendingEquipItem = ref<EquipmentItem | null>(null);
 
 const inventoryItems = ref<InventoryItem[]>([]);
 const equippedItemIds = ref<Set<string>>(new Set());
@@ -209,34 +244,84 @@ async function useItem(itemId: string) {
   const index = inventoryItems.value.findIndex(i => i.itemId === itemId);
   if (index === -1) return;
 
+  const invItem = inventoryItems.value[index];
   const info = inventoryService.getItemInfo(itemId);
   if (!info?.consumable) return;
 
+  // 使用物品（内部处理HP/MP恢复和堆叠数量递减）
+  const success = inventoryService.useItem(index);
+  if (!success) return;
+
   if (info.hpRestore) {
-    await characterStore.addHp(info.hpRestore);
     toast.show({ message: `使用 ${info.name}，恢复了 ${info.hpRestore} HP！`, type: 'success', icon: '💊' });
   } else if (info.mpRestore) {
-    await characterStore.addMp(info.mpRestore);
     toast.show({ message: `使用 ${info.name}，恢复了 ${info.mpRestore} MP！`, type: 'success', icon: '💊' });
+  } else {
+    toast.show({ message: `使用了 ${info.name}`, type: 'success', icon: '💊' });
   }
   
-  inventoryService.removeItem(index, 1);
   loadInventory();
-  selectedEntry.value = null;
+  // 堆叠数归零时清除选中
+  if (invItem.count <= 1) {
+    selectedEntry.value = null;
+  }
 }
 
 function equipItem(itemId: string) {
-  const index = inventoryItems.value.findIndex(i => i.itemId === itemId);
-  if (index === -1) return;
-
-  const result = inventoryService.equipItem(index);
-  if (result.success) {
-    const info = inventoryService.getItemInfo(itemId);
-    toast.show({ message: `已装备 ${info?.name || itemId}`, type: 'success', icon: '🛡️' });
-  } else {
-    toast.show({ message: result.message, type: 'warning' });
+  // 获取装备模板
+  const equipTemplate = equipmentService.getEquipmentTemplate(itemId);
+  if (!equipTemplate) {
+    toast.show({ message: '无法找到该装备的配置数据', type: 'warning' });
+    return;
   }
-  loadInventory();
+
+  // 获取该装备可用的槽位
+  const slots = equipTemplate.slots;
+  if (!slots || slots.length === 0) {
+    toast.show({ message: '该装备没有可用的槽位', type: 'warning' });
+    return;
+  }
+
+  // 如果只有一个可用槽位，直接装备
+  if (slots.length === 1) {
+    doEquip(equipTemplate, slots[0]);
+    return;
+  }
+
+  // 多个可用槽位时，弹出选择框
+  pendingEquipItem.value = equipTemplate;
+  availableSlots.value = slots;
+  showSlotSelect.value = true;
+}
+
+function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
+  const success = equipmentService.equipItem(slot, item);
+  if (success) {
+    // 从背包中移除该物品
+    const index = inventoryItems.value.findIndex(i => i.itemId === item.id);
+    if (index !== -1) {
+      inventoryService.removeItem(index);
+    }
+    toast.show({ message: `已装备 ${item.name} 到 ${SLOT_NAMES[slot]}`, type: 'success', icon: '🛡️' });
+    loadInventory();
+    selectedEntry.value = null;
+  } else {
+    toast.show({ message: '装备失败，可能等级不足或槽位不匹配', type: 'warning' });
+  }
+  showSlotSelect.value = false;
+  pendingEquipItem.value = null;
+}
+
+function selectEquipSlot(slot: EquipmentSlot) {
+  if (pendingEquipItem.value) {
+    doEquip(pendingEquipItem.value, slot);
+  }
+}
+
+function cancelSlotSelect() {
+  showSlotSelect.value = false;
+  pendingEquipItem.value = null;
+  availableSlots.value = [];
 }
 
 function dropItem(itemId: string) {
@@ -251,7 +336,7 @@ function confirmDrop() {
   const info = inventoryService.getItemInfo(itemId);
   const index = inventoryItems.value.findIndex(i => i.itemId === itemId);
   if (index !== -1) {
-    inventoryService.removeItem(index, 1);
+    inventoryService.removeItem(index);
     toast.show({ message: `已丢弃 ${info?.name || '物品'}`, type: 'info', icon: '🗑️' });
     loadInventory();
     selectedEntry.value = null;
@@ -560,5 +645,53 @@ onUnmounted(() => {
 
 .action-btn:hover {
   transform: translateY(-2px);
+}
+
+.slot-select-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+}
+
+.slot-select-hint {
+  color: #aaa;
+  font-size: 14px;
+  margin: 0;
+}
+
+.slot-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.slot-option-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #4a4a4a;
+  border-radius: 6px;
+  color: #ccc;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.slot-option-btn:hover {
+  background: rgba(0, 153, 255, 0.15);
+  border-color: #0099ff;
+  color: #fff;
+}
+
+.slot-icon {
+  font-size: 18px;
+}
+
+.slot-name {
+  font-weight: bold;
 }
 </style>
