@@ -1,10 +1,14 @@
 /**
  * @fileoverview 物品模块类型定义
  * @description 包含物品基础类型、背包物品、物品效果、排序筛选等相关类型定义
+ *
+ * 本文件是物品相关类型定义的唯一来源，配置层（@/config/inventory）从这里导入类型。
  */
 
 import type { Stats } from '../character/types';
 import type { SkillType } from '../skill/types';
+
+// ==================== 基础类型定义 ====================
 
 /**
  * 物品类型枚举
@@ -30,11 +34,17 @@ export type ItemType =
   | 'misc';
 
 /**
+ * 物品稀有度枚举
+ * - common: 普通
+ * - uncommon: 优秀
+ * - rare: 稀有
+ * - epic: 史诗
+ * - legendary: 传说
+ */
+export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+
+/**
  * 物品类型数据接口
- * @property {string} name - 类型名称
- * @property {boolean} stackable - 是否可堆叠
- * @property {number} maxStack - 最大堆叠数量
- * @property {boolean} [usable] - 是否可使用
  */
 export interface ItemTypeData {
   id: ItemType;
@@ -45,14 +55,13 @@ export interface ItemTypeData {
 }
 
 /**
- * 物品稀有度枚举
- * - common: 普通
- * - uncommon: 优秀
- * - rare: 稀有
- * - epic: 史诗
- * - legendary: 传说
+ * 稀有度配置接口
  */
-export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+export interface RarityConfig {
+  name: string;
+  color: string;
+  multiplier: number;
+}
 
 /**
  * 技能效果类型枚举

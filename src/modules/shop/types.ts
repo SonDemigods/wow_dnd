@@ -1,6 +1,6 @@
 /**
  * @fileoverview 商店模块类型定义
- * @description 包含商店配置、商品池、价格系统等相关类型定义
+ * @description 包含商店配置、价格系统等相关类型定义
  */
 
 import type { ItemRarity } from '../inventory/types';
@@ -16,65 +16,31 @@ export interface PriceVariation {
 }
 
 /**
- * 库存变化范围接口
- * @property {number} min - 最小库存数量
- * @property {number} max - 最大库存数量
- */
-export interface StockVariation {
-  min: number;
-  max: number;
-}
-
-/**
  * 商店配置接口
  * @property {string} id - 商店唯一标识
  * @property {string} name - 商店名称，显示给玩家
- * @property {string} type - 商店类型，决定可用的商品池
+ * @property {string} type - 商店类型，决定可售商品类别
  * @property {string} icon - 商店图标，用于UI显示
- * @property {string} locationId - 商店所在地点ID
  * @property {number} refreshInterval - 商品自动刷新间隔（毫秒）
- * @property {number} minItems - 货架上最小商品数量
- * @property {number} maxItems - 货架上最大商品数量
  * @property {PriceVariation} priceVariation - 价格变化范围（相对于基础价格的倍数）
- * @property {StockVariation} stockVariation - 库存数量变化范围
  */
 export interface ShopConfig {
   id: string;
   name: string;
   type: string;
   icon: string;
-  locationId: string;
   refreshInterval: number;
-  minItems: number;
-  maxItems: number;
   priceVariation: PriceVariation;
-  stockVariation: StockVariation;
 }
 
 /**
  * 商店商品接口
  * @property {string} itemId - 物品ID
  * @property {number} price - 当前售价
- * @property {number} stock - 当前库存
- * @property {number} maxStock - 最大库存
  */
 export interface ShopItem {
   itemId: string;
   price: number;
-  stock: number;
-  maxStock: number;
-}
-
-/**
- * 商店库存接口
- * @property {string} shopId - 商店ID
- * @property {ShopItem[]} items - 当前货架上的商品
- * @property {number} lastRefresh - 上次刷新时间戳
- */
-export interface ShopInventory {
-  shopId: string;
-  items: ShopItem[];
-  lastRefresh: number;
 }
 
 /**
@@ -90,17 +56,17 @@ export interface IShopService {
   getShopConfig(shopId: string): ShopConfig | null;
 
   /**
-   * 获取商店库存
+   * 获取商店商品列表
    * @param {string} shopId - 商店ID
-   * @returns {ShopInventory | null} 商店库存
+   * @returns {ShopItem[]} 商品列表
    */
-  getShopInventory(shopId: string): ShopInventory | null;
+  getShopItems(shopId: string): ShopItem[];
 
   /**
-   * 刷新商店库存
+   * 刷新商店商品
    * @param {string} shopId - 商店ID
    */
-  refreshShopInventory(shopId: string): void;
+  refreshShopItems(shopId: string): void;
 
   /**
    * 购买物品
@@ -145,13 +111,6 @@ export interface IShopService {
    * @returns {ShopConfig[]} 商店配置列表
    */
   getAllShops(): ShopConfig[];
-
-  /**
-   * 获取指定地点的商店列表
-   * @param {string} locationId - 地点ID
-   * @returns {ShopConfig[]} 商店配置列表
-   */
-  getShopsByLocation(locationId: string): ShopConfig[];
 
   /**
    * 检查商店是否需要刷新

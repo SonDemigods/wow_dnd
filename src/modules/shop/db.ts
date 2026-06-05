@@ -4,7 +4,7 @@
  * 封装商店数据的 IndexedDB 操作，提供数据持久化能力
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { ShopConfig, ShopInventory, ShopItem } from './types';
+import type { ShopConfig, ShopItem } from './types';
 
 /**
  * 商店配置存储接口
@@ -14,18 +14,14 @@ export interface ShopConfigStorage {
   name: string;
   type: string;
   icon: string;
-  locationId: string;
   refreshInterval: number;
-  minItems: number;
-  maxItems: number;
   priceVariation: { min: number; max: number };
-  stockVariation: { min: number; max: number };
 }
 
 /**
- * 商店库存存储接口
+ * 商店商品存储接口
  */
-export interface ShopInventoryStorage {
+export interface ShopItemsStorage {
   shopId: string;
   items: ShopItem[];
   lastRefresh: number;
@@ -46,12 +42,8 @@ export class ShopDbService {
         name: config.name,
         type: config.type,
         icon: config.icon,
-        locationId: config.locationId,
         refreshInterval: config.refreshInterval,
-        minItems: config.minItems,
-        maxItems: config.maxItems,
-        priceVariation: config.priceVariation,
-        stockVariation: config.stockVariation
+        priceVariation: config.priceVariation
       });
     });
   }
@@ -70,12 +62,8 @@ export class ShopDbService {
         name: result.name,
         type: result.type,
         icon: result.icon,
-        locationId: result.locationId,
         refreshInterval: result.refreshInterval,
-        minItems: result.minItems,
-        maxItems: result.maxItems,
-        priceVariation: result.priceVariation,
-        stockVariation: result.stockVariation
+        priceVariation: result.priceVariation
       };
     });
   }
@@ -92,35 +80,8 @@ export class ShopDbService {
         name: result.name,
         type: result.type,
         icon: result.icon,
-        locationId: result.locationId,
         refreshInterval: result.refreshInterval,
-        minItems: result.minItems,
-        maxItems: result.maxItems,
-        priceVariation: result.priceVariation,
-        stockVariation: result.stockVariation
-      }));
-    });
-  }
-
-  /**
-   * 获取指定地点的商店配置
-   * @param locationId - 地点ID
-   * @returns 商店配置列表
-   */
-  async getShopConfigsByLocation(locationId: string): Promise<ShopConfig[]> {
-    return dbService.withRetry(async () => {
-      const results = await gameDb.config_shops.where('locationId').equals(locationId).toArray();
-      return results.map(result => ({
-        id: result.id,
-        name: result.name,
-        type: result.type,
-        icon: result.icon,
-        locationId: result.locationId,
-        refreshInterval: result.refreshInterval,
-        minItems: result.minItems,
-        maxItems: result.maxItems,
-        priceVariation: result.priceVariation,
-        stockVariation: result.stockVariation
+        priceVariation: result.priceVariation
       }));
     });
   }
@@ -145,67 +106,49 @@ export class ShopDbService {
   }
 
   /**
-   * 保存商店库存
-   * @param inventory - 商店库存
+   * 保存商店商品
+   * @param shopId - 商店ID
+   * @param items - 商品列表
    */
-  async saveShopInventory(inventory: ShopInventory): Promise<void> {
+  async saveShopItems(shopId: string, items: ShopItem[]): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.runtime_shopInventories.put({
-        shopId: inventory.shopId,
-        items: inventory.items,
-        lastRefresh: inventory.lastRefresh
+      await gameDb.runtime_shopItems.put({
+        shopId,
+        items,
+        lastRefresh: Date.now()
       });
     });
   }
 
   /**
-   * 获取商店库存
+   * 获取商店商品
    * @param shopId - 商店ID
-   * @returns 商店库存
+   * @returns 商品列表
    */
-  async getShopInventory(shopId: string): Promise<ShopInventory | null> {
+  async getShopItems(shopId: string): Promise<ShopItem[] | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.runtime_shopInventories.get(shopId);
+      const result = await gameDb.runtime_shopItems.get(shopId);
       if (!result) return null;
-      return {
-        shopId: result.shopId,
-        items: result.items,
-        lastRefresh: result.lastRefresh
-      };
+      return result.items;
     });
   }
 
   /**
-   * 获取所有商店库存
-   * @returns 商店库存列表
-   */
-  async getAllShopInventories(): Promise<ShopInventory[]> {
-    return dbService.withRetry(async () => {
-      const results = await gameDb.runtime_shopInventories.toArray();
-      return results.map(result => ({
-        shopId: result.shopId,
-        items: result.items,
-        lastRefresh: result.lastRefresh
-      }));
-    });
-  }
-
-  /**
-   * 删除商店库存
+   * 删除商店商品
    * @param shopId - 商店ID
    */
-  async deleteShopInventory(shopId: string): Promise<void> {
+  async deleteShopItems(shopId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.runtime_shopInventories.delete(shopId);
+      await gameDb.runtime_shopItems.delete(shopId);
     });
   }
 
   /**
-   * 清空所有商店库存
+   * 清空所有商店商品
    */
-  async clearAllShopInventories(): Promise<void> {
+  async clearAllShopItems(): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.runtime_shopInventories.clear();
+      await gameDb.runtime_shopItems.clear();
     });
   }
 }

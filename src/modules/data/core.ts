@@ -5,7 +5,7 @@
  * 包括数据库连接、重试机制、防抖同步等核心能力。
  */
 import Dexie, { Table } from 'dexie';
-import { DATABASE_CONFIG, DB_SERVICE_CONFIG } from '@/config/database';
+import { DATABASE_CONFIG, DB_SERVICE_CONFIG, SYNC_ENGINE_CONFIG, type DBServiceConfig, type SyncEngineConfig } from '@/config/database';
 
 /**
  * 游戏数据库 Schema 接口定义
@@ -69,8 +69,8 @@ export interface GameDatabaseSchema {
   runtime_adventureLogs: Table<Record<string, unknown>, string>;
   /** 地图视图状态 */
   runtime_mapState: Table<Record<string, unknown>, string>;
-  /** 商店库存状态 */
-  runtime_shopInventories: Table<Record<string, unknown>, string>;
+  /** 商店商品状态 */
+  runtime_shopItems: Table<Record<string, unknown>, string>;
 }
 
 /**
@@ -109,7 +109,7 @@ export class GameDatabase extends Dexie {
   runtime_combatLogs!: Table<Record<string, unknown>, string>;
   runtime_adventureLogs!: Table<Record<string, unknown>, string>;
   runtime_mapState!: Table<Record<string, unknown>, string>;
-  runtime_shopInventories!: Table<Record<string, unknown>, string>;
+  runtime_shopItems!: Table<Record<string, unknown>, string>;
 
   /**
    * 构造函数：初始化数据库连接和表结构
@@ -134,7 +134,7 @@ export class GameDatabase extends Dexie {
       config_quests: 'id, boardId, type',
       config_skills: 'id, classRestriction, type',
       config_locations: 'id, continent, region',
-      config_shops: 'id, locationId, type',
+      config_shops: 'id, type',
       
       // 角色表
       char_profiles: 'id, name, factionId, raceId, classId, level',
@@ -150,7 +150,7 @@ export class GameDatabase extends Dexie {
       runtime_adventureLogs: 'characterId, timestamp',
       runtime_gameState: 'id',
       runtime_mapState: 'id',
-      runtime_shopInventories: 'shopId'
+      runtime_shopItems: 'shopId'
     });
 
     /**
@@ -187,31 +187,20 @@ export class GameDatabase extends Dexie {
 export const db = new GameDatabase();
 
 /**
- * DBService 配置选项接口
- */
-export interface DBServiceOptions {
-  /** 最大重试次数 */
-  maxRetries: number;
-  /** 重试间隔（毫秒） */
-  delay: number;
-  /** 退避策略：exponential（指数退避）| linear（线性退避） */
-  backoff: 'exponential' | 'linear';
-}
-
-/**
  * 数据库服务类
  * 
  * 提供带重试机制的数据库操作封装，用于处理数据库操作失败时的自动重试。
+ * 配置类型 DBServiceConfig 定义在 @/config/database 中。
  */
 export class DBService {
   /** 当前配置选项 */
-  private options: DBServiceOptions;
+  private options: DBServiceConfig;
 
   /**
    * 构造函数
    * @param options - 可选配置，覆盖默认值
    */
-  constructor(options?: Partial<DBServiceOptions>) {
+  constructor(options?: Partial<DBServiceConfig>) {
     this.options = { ...DB_SERVICE_CONFIG, ...options };
   }
 
@@ -255,40 +244,17 @@ export class DBService {
    * 更新配置选项
    * @param options - 新的配置选项
    */
-  setOptions(options: Partial<DBServiceOptions>): void {
+  setOptions(options: Partial<DBServiceConfig>): void {
     this.options = { ...this.options, ...options };
   }
 }
-
-/**
- * SyncEngine 配置选项接口
- */
-export interface SyncOptions {
-  /** 防抖延迟（毫秒） */
-  debounceMs: number;
-  /** 最大重试次数 */
-  maxRetries: number;
-  /** 重试间隔（毫秒） */
-  delay: number;
-  /** 退避策略 */
-  backoff: 'exponential' | 'linear';
-}
-
-/**
- * SyncEngine 默认配置
- */
-const DEFAULT_SYNC_OPTIONS: SyncOptions = {
-  debounceMs: 500,
-  maxRetries: 3,
-  delay: 1000,
-  backoff: 'exponential'
-};
 
 /**
  * 同步引擎类
  * 
  * 提供防抖批量同步功能，将短时间内的多次写入操作合并为一次批量写入，
  * 减少数据库IO次数，优化性能。
+ * 配置类型 SyncEngineConfig 定义在 @/config/database 中。
  */
 export class SyncEngine {
   /** 待同步的数据缓存 */
@@ -296,14 +262,14 @@ export class SyncEngine {
   /** 防抖定时器 ID */
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
   /** 当前配置选项 */
-  private options: SyncOptions;
+  private options: SyncEngineConfig;
 
   /**
    * 构造函数
    * @param options - 可选配置
    */
-  constructor(options?: Partial<SyncOptions>) {
-    this.options = { ...DEFAULT_SYNC_OPTIONS, ...options };
+  constructor(options?: Partial<SyncEngineConfig>) {
+    this.options = { ...SYNC_ENGINE_CONFIG, ...options };
 
     /**
      * 监听页面卸载事件，确保未同步的数据被写入
@@ -403,7 +369,7 @@ export class SyncEngine {
    * 更新配置选项
    * @param options - 新的配置选项
    */
-  setOptions(options: Partial<SyncOptions>): void {
+  setOptions(options: Partial<SyncEngineConfig>): void {
     this.options = { ...this.options, ...options };
   }
 }

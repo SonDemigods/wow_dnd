@@ -3,7 +3,8 @@
  *
  * 提供敌人管理的核心业务逻辑，包括创建、查找、伤害计算等
  */
-import type { Enemy, EnemyInstance, EnemyStats, EnemyDrop } from './types';
+import type { Enemy, EnemyInstance, EnemyDrop } from './types';
+import type { Stats } from '../character/types';
 import { ENEMIES } from '../../data/enemy.data';
 
 /**
@@ -28,7 +29,7 @@ export class EnemyService {
     const id = `enemy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     // 根据基础数据推导属性
-    const stats: EnemyStats = {
+    const stats: Stats = {
       str: Math.floor((data.physicalAttack || 10) * 0.8),
       dex: Math.floor((data.dodgeChance || 5) * 1.5),
       con: Math.floor(data.maxHp * 0.3),

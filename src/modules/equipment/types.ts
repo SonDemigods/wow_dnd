@@ -3,20 +3,8 @@
  * @description 包含装备稀有度、装备槽位、装备服务等相关类型定义
  */
 
-import type { Item, ItemRarity } from '../inventory/types';
+import type { Item, ItemRarity, RarityConfig } from '../inventory/types';
 import type { Stats } from '../character/types';
-
-/**
- * 稀有度配置接口
- * @property {string} name - 稀有度名称
- * @property {string} color - 颜色
- * @property {number} multiplier - 属性倍率
- */
-export interface RarityConfig {
-  name: string;
-  color: string;
-  multiplier: number;
-}
 
 /**
  * 装备槽位枚举

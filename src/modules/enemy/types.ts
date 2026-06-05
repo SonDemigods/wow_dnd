@@ -4,6 +4,7 @@
  */
 
 import type { InventoryItem } from '../inventory/types';
+import type { Stats } from '../character/types';
 
 /**
  * 敌人数据接口
@@ -41,19 +42,11 @@ export interface EnemyData {
 }
 
 /**
- * 敌人基础属性
- */
-export interface EnemyStats {
-  str: number;
-  dex: number;
-  con: number;
-  int: number;
-  wis: number;
-  cha: number;
-}
-
-/**
  * 敌人掉落配置
+ * @property {string} itemId - 物品ID
+ * @property {number} minAmount - 最小掉落数量
+ * @property {number} maxAmount - 最大掉落数量
+ * @property {number} dropRate - 掉落概率（0-1）
  */
 export interface EnemyDrop {
   itemId: string;
@@ -69,7 +62,7 @@ export interface EnemyDrop {
  * @property {number} level - 敌人等级
  * @property {number} hp - 当前生命值
  * @property {InventoryItem[]} loot - 掉落物品
- * @property {EnemyStats} stats - 敌人属性
+ * @property {Stats} stats - 敌人属性
  * @property {number} expReward - 经验值奖励
  * @property {number} goldReward - 金币奖励
  * @property {EnemyDrop[]} drops - 掉落配置
@@ -80,7 +73,7 @@ export interface EnemyInstance extends EnemyData {
   level: number;
   hp: number;
   loot: InventoryItem[];
-  stats: EnemyStats;
+  stats: Stats;
   expReward: number;
   goldReward: number;
   drops: EnemyDrop[];

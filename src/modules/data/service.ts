@@ -1,6 +1,6 @@
 /**
  * 数据服务模块
- * 
+ *
  * 提供游戏数据的初始化、备份、导入等高级服务功能。
  * 包括：
  * - DataInitializer: 游戏数据初始化服务
@@ -9,32 +9,38 @@
  */
 import { db } from './core';
 import { BACKUP_CONFIG } from '@/config/database';
-import type { BackupFile, BackupData, ValidationResult, ImportResult, CompatibilityResult } from './types';
-import { 
-  CONTINENTS, 
-  LOCATIONS, 
-  SHOPS, 
-  QUESTS, 
-  ENEMIES, 
-  EQUIPMENT_ITEMS, 
-  LOOT_ITEMS, 
-  CLASSES, 
-  CLASS_ABILITIES, 
-  RACES, 
-  FACTIONS, 
-  ITEM_TYPES, 
-  RARITY_CONFIG, 
-  ITEM_BASE_PRICES, 
-  RARITY_PRICE_MULTIPLIER, 
-  RARITY_SELL_DISCOUNT, 
-  ITEM_POOLS, 
-  SHOP_TYPE_ITEM_POOL,
+import {
+  RARITY_SELL_DISCOUNT,
+  RARITY_PRICE_MULTIPLIER,
+  ITEM_TYPES,
+  RARITY_CONFIG
+} from '@/config/inventory';
+
+import type {
+  BackupFile,
+  BackupData,
+  ValidationResult,
+  ImportResult,
+  CompatibilityResult
+} from './types';
+import {
+  CONTINENTS,
+  LOCATIONS,
+  SHOPS,
+  QUESTS,
+  ENEMIES,
+  EQUIPMENT_ITEMS,
+  LOOT_ITEMS,
+  CLASSES,
+  CLASS_ABILITIES,
+  RACES,
+  FACTIONS,
   MAX_LEVEL
 } from '@/data';
 
 /**
  * 计算数据的校验和（简单哈希算法）
- * 
+ *
  * 用于验证备份文件的完整性
  * @param data - 要计算校验和的数据
  * @returns 校验和字符串
@@ -44,7 +50,7 @@ function calculateChecksum(data: unknown): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash;
   }
   return Math.abs(hash).toString(16);
@@ -52,7 +58,7 @@ function calculateChecksum(data: unknown): string {
 
 /**
  * 初始化数据接口
- * 
+ *
  * 定义游戏初始化数据的结构
  */
 export interface InitData {
@@ -71,16 +77,13 @@ export interface InitData {
   factions: typeof FACTIONS;
   itemTypes: typeof ITEM_TYPES;
   rarityConfig: typeof RARITY_CONFIG;
-  itemBasePrices: typeof ITEM_BASE_PRICES;
   rarityPriceMultiplier: typeof RARITY_PRICE_MULTIPLIER;
   raritySellDiscount: typeof RARITY_SELL_DISCOUNT;
-  itemPools: typeof ITEM_POOLS;
-  shopTypeItemPool: typeof SHOP_TYPE_ITEM_POOL;
 }
 
 /**
  * 数据初始化服务类
- * 
+ *
  * 负责在游戏首次启动时初始化基础游戏数据，包括：
  * - 阵营、种族、职业数据
  * - 物品、装备、敌人数据
@@ -102,7 +105,7 @@ export class DataInitializer {
 
   /**
    * 初始化游戏数据
-   * 
+   *
    * 如果数据已初始化则跳过，否则执行完整的初始化流程
    */
   async initializeData(): Promise<void> {
@@ -111,12 +114,23 @@ export class DataInitializer {
     console.log('Initializing game data...');
 
     try {
-      await db.transaction('rw', 
-        db.config_factions, db.config_races, db.config_classes, 
-        db.config_items, db.config_equipmentItems, db.config_enemies, 
-        db.config_itemTypes, db.config_rarityConfigs, db.config_classAbilities, 
-        db.config_locations, db.config_shops, db.config_quests, db.config_skills,
-        db.runtime_gameState, db.runtime_mapState,
+      await db.transaction(
+        'rw',
+        db.config_factions,
+        db.config_races,
+        db.config_classes,
+        db.config_items,
+        db.config_equipmentItems,
+        db.config_enemies,
+        db.config_itemTypes,
+        db.config_rarityConfigs,
+        db.config_classAbilities,
+        db.config_locations,
+        db.config_shops,
+        db.config_quests,
+        db.config_skills,
+        db.runtime_gameState,
+        db.runtime_mapState,
         async () => {
           // 地点和大陆数据每次都更新
           await this.initLocations();
@@ -142,7 +156,8 @@ export class DataInitializer {
               initializedAt: new Date().toISOString()
             });
           }
-        });
+        }
+      );
 
       console.log('Game data initialization completed.');
     } catch (error) {
@@ -243,7 +258,10 @@ export class DataInitializer {
    */
   private async initLocations(): Promise<void> {
     for (const [id, location] of Object.entries(LOCATIONS)) {
-      await db.config_locations.put({ id, ...location } as Record<string, unknown>);
+      await db.config_locations.put({ id, ...location } as Record<
+        string,
+        unknown
+      >);
     }
   }
 
@@ -252,7 +270,10 @@ export class DataInitializer {
    */
   private async initContinents(): Promise<void> {
     for (const [id, continent] of Object.entries(CONTINENTS)) {
-      await db.config_locations.put({ id, ...continent } as Record<string, unknown>);
+      await db.config_locations.put({ id, ...continent } as Record<
+        string,
+        unknown
+      >);
     }
   }
 
@@ -266,11 +287,6 @@ export class DataInitializer {
 
     await db.runtime_gameState.put({
       id: 'shop_config',
-      itemBasePrices: ITEM_BASE_PRICES,
-      rarityPriceMultiplier: RARITY_PRICE_MULTIPLIER,
-      raritySellDiscount: RARITY_SELL_DISCOUNT,
-      itemPools: ITEM_POOLS,
-      shopTypeItemPool: SHOP_TYPE_ITEM_POOL
     });
   }
 
@@ -309,7 +325,7 @@ export class DataInitializer {
 
   /**
    * 重置数据初始化标志
-   * 
+   *
    * 调用此方法后，下次启动时会重新初始化数据
    */
   async resetData(): Promise<void> {
@@ -340,7 +356,7 @@ export interface IImportService {
 
 /**
  * 备份服务类
- * 
+ *
  * 提供游戏数据的备份功能，包括：
  * - 创建备份
  * - 导出备份文件
@@ -356,7 +372,7 @@ export class BackupService implements IBackupService {
 
   /**
    * 创建备份
-   * 
+   *
    * 收集所有游戏数据并生成备份对象
    * @returns BackupFile - 备份文件对象
    */
@@ -376,12 +392,14 @@ export class BackupService implements IBackupService {
 
   /**
    * 导出备份文件
-   * 
+   *
    * 将备份数据导出为 JSON 文件供用户下载
    */
   async exportBackup(): Promise<void> {
     const backup = await this.createBackup();
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {
+      type: 'application/json'
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -415,7 +433,7 @@ export class BackupService implements IBackupService {
    */
   async deleteBackup(timestamp: number): Promise<void> {
     const backups = await this.getAutoBackups();
-    const filtered = backups.filter(b => b.timestamp !== timestamp);
+    const filtered = backups.filter((b) => b.timestamp !== timestamp);
     localStorage.setItem(this.AUTO_BACKUP_KEY, JSON.stringify(filtered));
   }
 
@@ -428,39 +446,41 @@ export class BackupService implements IBackupService {
 
   /**
    * 创建自动备份
-   * 
+   *
    * 将最新备份添加到自动备份列表，超过最大数量时移除最旧的备份
    */
   async createAutoBackup(): Promise<void> {
     const backup = await this.createBackup();
     const backups = await this.getAutoBackups();
     backups.unshift(backup);
-    
+
     if (backups.length > this.MAX_AUTO_BACKUPS) {
       backups.pop();
     }
-    
+
     localStorage.setItem(this.AUTO_BACKUP_KEY, JSON.stringify(backups));
   }
 
   /**
    * 收集所有游戏数据
-   * 
+   *
    * 从数据库中读取所有需要备份的数据表
    * @returns BackupData - 备份数据对象
    */
   private async collectAllData(): Promise<BackupData> {
-    const characters = await db.char_profiles.toArray() as unknown[];
-    const characterDataRecords = await db.char_data.toArray() as unknown[];
-    const inventoryRecords = await db.char_inventory.toArray() as unknown[];
-    const questsRecords = await db.char_quests.toArray() as unknown[];
-    const equipmentRecords = await db.char_equipment.toArray() as unknown[];
-    const skillsRecords = await db.char_skills.toArray() as unknown[];
-    const explorationRecords = await db.char_exploration.toArray() as unknown[];
-    const combatRecords = await db.runtime_combatLogs.toArray() as unknown[];
-    const adventureLogRecords = await db.runtime_adventureLogs.toArray() as unknown[];
-    const mapRecords = await db.config_locations.toArray() as unknown[];
-    const shopRecords = await db.config_shops.toArray() as unknown[];
+    const characters = (await db.char_profiles.toArray()) as unknown[];
+    const characterDataRecords = (await db.char_data.toArray()) as unknown[];
+    const inventoryRecords = (await db.char_inventory.toArray()) as unknown[];
+    const questsRecords = (await db.char_quests.toArray()) as unknown[];
+    const equipmentRecords = (await db.char_equipment.toArray()) as unknown[];
+    const skillsRecords = (await db.char_skills.toArray()) as unknown[];
+    const explorationRecords =
+      (await db.char_exploration.toArray()) as unknown[];
+    const combatRecords = (await db.runtime_combatLogs.toArray()) as unknown[];
+    const adventureLogRecords =
+      (await db.runtime_adventureLogs.toArray()) as unknown[];
+    const mapRecords = (await db.config_locations.toArray()) as unknown[];
+    const shopRecords = (await db.config_shops.toArray()) as unknown[];
     const gameStateRecord = await db.runtime_gameState.get('gameState');
 
     const characterData: Record<string, unknown> = {};
@@ -522,7 +542,7 @@ export class BackupService implements IBackupService {
 
 /**
  * 导入服务类
- * 
+ *
  * 提供游戏数据的导入功能，包括：
  * - 验证备份文件
  * - 导入备份数据
@@ -534,7 +554,7 @@ export class ImportService implements IImportService {
 
   /**
    * 验证备份文件
-   * 
+   *
    * 检查备份文件的格式、完整性和版本兼容性
    * @param file - 备份文件
    * @returns ValidationResult - 验证结果
@@ -542,29 +562,29 @@ export class ImportService implements IImportService {
   async validateBackup(file: File): Promise<ValidationResult> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      
+
       reader.onload = () => {
         try {
           const content = reader.result as string;
           const backup = JSON.parse(content);
-          
+
           if (!backup.version) {
             resolve({ success: false, error: '备份文件格式错误' });
             return;
           }
-          
+
           const checksum = calculateChecksum(backup.data);
           if (checksum !== backup.checksum) {
             resolve({ success: false, error: '备份文件已损坏' });
             return;
           }
-          
+
           const compatibility = this.checkVersionCompatibility(backup.version);
           if (!compatibility.compatible) {
             resolve({ success: false, error: compatibility.message });
             return;
           }
-          
+
           resolve({
             success: true,
             version: backup.version,
@@ -575,18 +595,18 @@ export class ImportService implements IImportService {
           resolve({ success: false, error: '备份文件格式错误' });
         }
       };
-      
+
       reader.onerror = () => {
         reject(new Error('读取文件失败'));
       };
-      
+
       reader.readAsText(file);
     });
   }
 
   /**
    * 导入备份文件
-   * 
+   *
    * 验证备份文件后，将数据导入数据库
    * @param file - 备份文件
    * @returns ImportResult - 导入结果
@@ -594,7 +614,12 @@ export class ImportService implements IImportService {
   async importBackup(file: File): Promise<ImportResult> {
     const validation = await this.validateBackup(file);
     if (!validation.success) {
-      return { success: false, error: validation.error, importedStores: [], skippedStores: [] };
+      return {
+        success: false,
+        error: validation.error,
+        importedStores: [],
+        skippedStores: []
+      };
     }
 
     const reader = new FileReader();
@@ -603,21 +628,26 @@ export class ImportService implements IImportService {
         try {
           const content = reader.result as string;
           const backup = JSON.parse(content) as BackupFile;
-          
+
           const result = await this.importData(backup.data);
           resolve(result);
         } catch (error) {
-          resolve({ success: false, error: '导入失败: ' + (error as Error).message, importedStores: [], skippedStores: [] });
+          resolve({
+            success: false,
+            error: '导入失败: ' + (error as Error).message,
+            importedStores: [],
+            skippedStores: []
+          });
         }
       };
-      
+
       reader.readAsText(file);
     });
   }
 
   /**
    * 检查版本兼容性
-   * 
+   *
    * @param backupVersion - 备份版本号
    * @returns CompatibilityResult - 兼容性检查结果
    */
@@ -626,7 +656,9 @@ export class ImportService implements IImportService {
       return {
         compatible: true,
         message: '版本兼容',
-        requiresMigration: backupVersion !== this.SUPPORTED_VERSIONS[this.SUPPORTED_VERSIONS.length - 1]
+        requiresMigration:
+          backupVersion !==
+          this.SUPPORTED_VERSIONS[this.SUPPORTED_VERSIONS.length - 1]
       };
     }
     return {
@@ -638,7 +670,7 @@ export class ImportService implements IImportService {
 
   /**
    * 导入数据到数据库
-   * 
+   *
    * 将备份数据写入数据库的各个表
    * @param data - 备份数据
    * @returns ImportResult - 导入结果
@@ -648,11 +680,20 @@ export class ImportService implements IImportService {
     const skippedStores: string[] = [];
 
     try {
-      await db.transaction('rw', 
-        db.char_profiles, db.char_data, db.char_inventory,
-        db.char_quests, db.char_equipment, db.char_skills,
-        db.char_exploration, db.runtime_combatLogs, db.runtime_adventureLogs,
-        db.config_locations, db.config_shops, db.runtime_gameState,
+      await db.transaction(
+        'rw',
+        db.char_profiles,
+        db.char_data,
+        db.char_inventory,
+        db.char_quests,
+        db.char_equipment,
+        db.char_skills,
+        db.char_exploration,
+        db.runtime_combatLogs,
+        db.runtime_adventureLogs,
+        db.config_locations,
+        db.config_shops,
+        db.runtime_gameState,
         async () => {
           if (data.characters && data.characters.length > 0) {
             await db.char_profiles.bulkPut(data.characters);
@@ -661,7 +702,10 @@ export class ImportService implements IImportService {
             skippedStores.push('char_profiles');
           }
 
-          if (data.characterData && Object.keys(data.characterData).length > 0) {
+          if (
+            data.characterData &&
+            Object.keys(data.characterData).length > 0
+          ) {
             await db.char_data.bulkPut(Object.values(data.characterData));
             importedStores.push('char_data');
           } else {
@@ -711,10 +755,12 @@ export class ImportService implements IImportService {
           }
 
           if (data.adventureLog && Object.keys(data.adventureLog).length > 0) {
-            const logEntries = Object.entries(data.adventureLog).map(([characterId, entries]) => ({
-              characterId,
-              entries
-            }));
+            const logEntries = Object.entries(data.adventureLog).map(
+              ([characterId, entries]) => ({
+                characterId,
+                entries
+              })
+            );
             await db.runtime_adventureLogs.bulkPut(logEntries);
             importedStores.push('runtime_adventureLogs');
           } else {
@@ -736,7 +782,10 @@ export class ImportService implements IImportService {
           }
 
           if (data.gameState) {
-            await db.runtime_gameState.put({ id: 'gameState', ...data.gameState });
+            await db.runtime_gameState.put({
+              id: 'gameState',
+              ...data.gameState
+            });
             importedStores.push('runtime_gameState');
           } else {
             skippedStores.push('runtime_gameState');
@@ -747,7 +796,12 @@ export class ImportService implements IImportService {
       return { success: true, importedStores, skippedStores };
     } catch (error) {
       console.error('Failed to import data:', error);
-      return { success: false, error: (error as Error).message, importedStores, skippedStores };
+      return {
+        success: false,
+        error: (error as Error).message,
+        importedStores,
+        skippedStores
+      };
     }
   }
 }
@@ -769,7 +823,7 @@ export const importService = new ImportService();
 
 /**
  * 获取游戏数据
- * 
+ *
  * 从 runtime_gameState 表中获取指定键的数据
  * @param key - 数据键名
  * @returns T | null - 数据对象或 null
@@ -777,7 +831,7 @@ export const importService = new ImportService();
 export async function getGameData<T>(key: string): Promise<T | null> {
   const result = await db.runtime_gameState.get(key);
   if (result) return result as unknown as T;
-  
+
   console.warn(`Game data not found in database: ${key}`);
   return null;
 }

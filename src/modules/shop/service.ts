@@ -6,7 +6,6 @@
 import type { 
   IShopService, 
   ShopConfig, 
-  ShopInventory, 
   ShopItem 
 } from './types';
 import type { ItemRarity } from '../inventory/types';
@@ -33,15 +32,17 @@ export class ShopService implements IShopService {
   /** 商店配置缓存 */
   private shopConfigs: Map<string, ShopConfig> = new Map();
   
-  /** 商店库存缓存 */
-  private shopInventories: Map<string, ShopInventory> = new Map();
+  /** 商店商品缓存 */
+  private shopItems: Map<string, ShopItem[]> = new Map();
+  
+  /** 上次刷新时间 */
+  private lastRefresh: Map<string, number> = new Map();
   
   /**
    * 初始化服务
    */
   async init(): Promise<void> {
     await this.loadShopConfigs();
-    await this.loadShopInventories();
     await this.initDefaultShops();
   }
   
@@ -56,67 +57,33 @@ export class ShopService implements IShopService {
   }
   
   /**
-   * 加载商店库存
-   */
-  private async loadShopInventories(): Promise<void> {
-    const inventories = await shopDbService.getAllShopInventories();
-    inventories.forEach(inventory => {
-      this.shopInventories.set(inventory.shopId, inventory);
-    });
-  }
-  
-  /**
    * 初始化默认商店
    */
   private async initDefaultShops(): Promise<void> {
     const defaultShops: ShopConfig[] = [
       {
-        id: 'shop_inn',
-        name: '旅馆商店',
+        id: 'generalGoods',
+        name: '杂货铺',
         type: 'general',
-        icon: '🏠',
-        locationId: 'village',
-        refreshInterval: 3600000, // 1小时
-        minItems: 5,
-        maxItems: 10,
-        priceVariation: { min: 0.9, max: 1.1 },
-        stockVariation: { min: 1, max: 5 }
+        icon: '🏪',
+        refreshInterval: 300000,
+        priceVariation: { min: 0.8, max: 1.2 }
       },
       {
-        id: 'shop_weapon',
-        name: '武器店',
-        type: 'weapon',
-        icon: '⚔️',
-        locationId: 'village',
-        refreshInterval: 7200000, // 2小时
-        minItems: 3,
-        maxItems: 6,
-        priceVariation: { min: 0.8, max: 1.2 },
-        stockVariation: { min: 1, max: 3 }
+        id: 'potionShop',
+        name: '炼金术士小屋',
+        type: 'potion',
+        icon: '⚗️',
+        refreshInterval: 600000,
+        priceVariation: { min: 0.85, max: 1.15 }
       },
       {
-        id: 'shop_armor',
-        name: '防具店',
-        type: 'armor',
-        icon: '🛡️',
-        locationId: 'village',
-        refreshInterval: 7200000, // 2小时
-        minItems: 3,
-        maxItems: 6,
-        priceVariation: { min: 0.8, max: 1.2 },
-        stockVariation: { min: 1, max: 3 }
-      },
-      {
-        id: 'shop_potion',
-        name: '药剂店',
-        type: 'consumable',
-        icon: '🧪',
-        locationId: 'village',
-        refreshInterval: 1800000, // 30分钟
-        minItems: 6,
-        maxItems: 12,
-        priceVariation: { min: 0.9, max: 1.1 },
-        stockVariation: { min: 3, max: 10 }
+        id: 'scrollShop',
+        name: '奥术商店',
+        type: 'scroll',
+        icon: '📜',
+        refreshInterval: 900000,
+        priceVariation: { min: 0.9, max: 1.1 }
       }
     ];
     
@@ -125,8 +92,8 @@ export class ShopService implements IShopService {
         await shopDbService.saveShopConfig(shop);
         this.shopConfigs.set(shop.id, shop);
         
-        // 初始化库存
-        this.refreshShopInventory(shop.id);
+        // 初始化商品
+        this.refreshShopItems(shop.id);
       }
     }
   }
@@ -141,31 +108,32 @@ export class ShopService implements IShopService {
   }
   
   /**
-   * 获取商店库存
+   * 获取商店商品列表
    * @param shopId - 商店ID
-   * @returns 商店库存
+   * @returns 商品列表
    */
-  getShopInventory(shopId: string): ShopInventory | null {
-    const inventory = this.shopInventories.get(shopId);
-    if (!inventory) {
-      // 如果没有库存，尝试刷新
-      this.refreshShopInventory(shopId);
-      return this.shopInventories.get(shopId) || null;
+  getShopItems(shopId: string): ShopItem[] {
+    let items = this.shopItems.get(shopId);
+    if (!items) {
+      // 如果没有商品，尝试刷新
+      this.refreshShopItems(shopId);
+      items = this.shopItems.get(shopId) || [];
     }
     
     // 检查是否需要刷新
     if (this.needsRefresh(shopId)) {
-      this.refreshShopInventory(shopId);
+      this.refreshShopItems(shopId);
+      items = this.shopItems.get(shopId) || [];
     }
     
-    return this.shopInventories.get(shopId) || null;
+    return items;
   }
   
   /**
-   * 刷新商店库存
+   * 刷新商店商品
    * @param shopId - 商店ID
    */
-  refreshShopInventory(shopId: string): void {
+  refreshShopItems(shopId: string): void {
     const config = this.getShopConfig(shopId);
     if (!config) {
       return;
@@ -173,14 +141,9 @@ export class ShopService implements IShopService {
     
     const items = this.generateShopItems(config);
     
-    const inventory: ShopInventory = {
-      shopId,
-      items,
-      lastRefresh: Date.now()
-    };
-    
-    this.shopInventories.set(shopId, inventory);
-    shopDbService.saveShopInventory(inventory);
+    this.shopItems.set(shopId, items);
+    this.lastRefresh.set(shopId, Date.now());
+    shopDbService.saveShopItems(shopId, items);
     
     // 触发商店刷新事件
     eventBus.emit(GameEvents.SHOP_REFRESHED, { shopId });
@@ -197,8 +160,8 @@ export class ShopService implements IShopService {
     // 根据商店类型生成不同的商品
     const itemPool = this.getItemPool(config.type);
     
-    // 随机选择商品数量
-    const itemCount = Math.floor(Math.random() * (config.maxItems - config.minItems + 1)) + config.minItems;
+    // 随机选择5-8个商品
+    const itemCount = Math.floor(Math.random() * 4) + 5;
     
     // 随机选择商品
     const shuffled = [...itemPool].sort(() => Math.random() - 0.5);
@@ -209,15 +172,9 @@ export class ShopService implements IShopService {
       const priceMultiplier = config.priceVariation.min + 
         Math.random() * (config.priceVariation.max - config.priceVariation.min);
       
-      // 随机库存
-      const stock = Math.floor(Math.random() * (config.stockVariation.max - config.stockVariation.min + 1)) + 
-        config.stockVariation.min;
-      
       items.push({
         itemId: item.id,
-        price: this.calculateBuyPrice(item.id, item.rarity, priceMultiplier),
-        stock,
-        maxStock: stock
+        price: this.calculateBuyPrice(item.id, item.rarity, priceMultiplier)
       });
     });
     
@@ -233,37 +190,15 @@ export class ShopService implements IShopService {
     // 根据商店类型返回不同的商品池
     const pools: Record<string, { id: string; rarity: ItemRarity }[]> = {
       general: [
-        { id: 'item_gold_coin', rarity: 'common' },
         { id: 'item_potion_minor_heal', rarity: 'common' },
         { id: 'item_potion_minor_mana', rarity: 'common' },
         { id: 'item_bandage', rarity: 'common' },
         { id: 'item_food_ration', rarity: 'common' },
         { id: 'item_map_fragment', rarity: 'uncommon' },
-        { id: 'item_potion_heal', rarity: 'uncommon' }
+        { id: 'item_potion_heal', rarity: 'uncommon' },
+        { id: 'item_antidote', rarity: 'common' }
       ],
-      weapon: [
-        { id: 'weapon_sword_iron', rarity: 'common' },
-        { id: 'weapon_axe_iron', rarity: 'common' },
-        { id: 'weapon_bow_iron', rarity: 'common' },
-        { id: 'weapon_dagger', rarity: 'common' },
-        { id: 'weapon_sword_steel', rarity: 'uncommon' },
-        { id: 'weapon_axe_steel', rarity: 'uncommon' },
-        { id: 'weapon_bow_steel', rarity: 'uncommon' },
-        { id: 'weapon_sword_mithril', rarity: 'rare' },
-        { id: 'weapon_axe_mithril', rarity: 'rare' }
-      ],
-      armor: [
-        { id: 'armor_leather', rarity: 'common' },
-        { id: 'armor_chainmail', rarity: 'uncommon' },
-        { id: 'armor_plate', rarity: 'rare' },
-        { id: 'helmet_leather', rarity: 'common' },
-        { id: 'helmet_chain', rarity: 'uncommon' },
-        { id: 'helmet_plate', rarity: 'rare' },
-        { id: 'boots_leather', rarity: 'common' },
-        { id: 'boots_chain', rarity: 'uncommon' },
-        { id: 'boots_plate', rarity: 'rare' }
-      ],
-      consumable: [
+      potion: [
         { id: 'item_potion_minor_heal', rarity: 'common' },
         { id: 'item_potion_minor_mana', rarity: 'common' },
         { id: 'item_potion_heal', rarity: 'uncommon' },
@@ -274,6 +209,27 @@ export class ShopService implements IShopService {
         { id: 'item_potion_dexterity', rarity: 'rare' },
         { id: 'item_antidote', rarity: 'common' },
         { id: 'item_ether', rarity: 'uncommon' }
+      ],
+      scroll: [
+        { id: 'scroll_fireball', rarity: 'uncommon' },
+        { id: 'scroll_heal', rarity: 'uncommon' },
+        { id: 'scroll_shield', rarity: 'uncommon' },
+        { id: 'scroll_lightning', rarity: 'rare' },
+        { id: 'scroll_ice', rarity: 'rare' },
+        { id: 'scroll_teleport', rarity: 'epic' }
+      ],
+      food: [
+        { id: 'item_bread', rarity: 'common' },
+        { id: 'item_roasted_meat', rarity: 'common' },
+        { id: 'item_magic_bread', rarity: 'uncommon' },
+        { id: 'item_feast', rarity: 'rare' }
+      ],
+      material: [
+        { id: 'item_magic_dust', rarity: 'common' },
+        { id: 'item_rune_stone', rarity: 'uncommon' },
+        { id: 'item_dragon_scale', rarity: 'rare' },
+        { id: 'item_healing_crystal', rarity: 'uncommon' },
+        { id: 'item_ancient_key', rarity: 'rare' }
       ]
     };
     
@@ -288,20 +244,12 @@ export class ShopService implements IShopService {
    * @returns 是否购买成功
    */
   buyItem(shopId: string, itemId: string, quantity: number = 1): boolean {
-    // 获取商店库存
-    const inventory = this.getShopInventory(shopId);
-    if (!inventory) {
-      return false;
-    }
+    // 获取商店商品
+    const items = this.getShopItems(shopId);
     
     // 查找商品
-    const shopItem = inventory.items.find(item => item.itemId === itemId);
+    const shopItem = items.find(item => item.itemId === itemId);
     if (!shopItem) {
-      return false;
-    }
-    
-    // 检查库存
-    if (shopItem.stock < quantity) {
       return false;
     }
     
@@ -323,13 +271,6 @@ export class ShopService implements IShopService {
       characterService.addGold(totalPrice);
       return false;
     }
-    
-    // 更新商店库存
-    shopItem.stock -= quantity;
-    
-    // 保存更新
-    this.shopInventories.set(shopId, inventory);
-    shopDbService.saveShopInventory(inventory);
     
     // 触发购买事件
     eventBus.emit(GameEvents.SHOP_TRANSACTION, { shopId, itemId, quantity, totalPrice });
@@ -399,32 +340,27 @@ export class ShopService implements IShopService {
       'item_bandage': 5,
       'item_food_ration': 3,
       
+      // 卷轴
+      'scroll_fireball': 40,
+      'scroll_heal': 35,
+      'scroll_shield': 30,
+      'scroll_lightning': 80,
+      'scroll_ice': 70,
+      'scroll_teleport': 200,
+      
+      // 食物
+      'item_bread': 5,
+      'item_roasted_meat': 15,
+      'item_magic_bread': 30,
+      'item_feast': 100,
+      
       // 材料
-      'item_gold_coin': 1,
-      'item_map_fragment': 20,
-      'item_herb': 5,
-      
-      // 武器
-      'weapon_sword_iron': 50,
-      'weapon_axe_iron': 50,
-      'weapon_bow_iron': 45,
-      'weapon_dagger': 30,
-      'weapon_sword_steel': 120,
-      'weapon_axe_steel': 120,
-      'weapon_bow_steel': 100,
-      'weapon_sword_mithril': 300,
-      'weapon_axe_mithril': 300,
-      
-      // 防具
-      'armor_leather': 40,
-      'armor_chainmail': 100,
-      'armor_plate': 250,
-      'helmet_leather': 20,
-      'helmet_chain': 50,
-      'helmet_plate': 120,
-      'boots_leather': 15,
-      'boots_chain': 40,
-      'boots_plate': 100
+      'item_magic_dust': 15,
+      'item_rune_stone': 25,
+      'item_dragon_scale': 80,
+      'item_healing_crystal': 45,
+      'item_ancient_key': 100,
+      'item_map_fragment': 20
     };
     
     const basePrice = basePrices[itemId] || 10;
@@ -454,43 +390,33 @@ export class ShopService implements IShopService {
   }
   
   /**
-   * 获取指定地点的商店列表
-   * @param locationId - 地点ID
-   * @returns 商店配置列表
-   */
-  getShopsByLocation(locationId: string): ShopConfig[] {
-    return Array.from(this.shopConfigs.values()).filter(
-      config => config.locationId === locationId
-    );
-  }
-  
-  /**
    * 检查商店是否需要刷新
    * @param shopId - 商店ID
    * @returns 是否需要刷新
    */
   needsRefresh(shopId: string): boolean {
     const config = this.getShopConfig(shopId);
-    const inventory = this.shopInventories.get(shopId);
+    const lastRefreshTime = this.lastRefresh.get(shopId);
     
-    if (!config || !inventory) {
+    if (!config || !lastRefreshTime) {
       return true;
     }
     
     const now = Date.now();
-    return now - inventory.lastRefresh >= config.refreshInterval;
+    return now - lastRefreshTime >= config.refreshInterval;
   }
   
   /**
    * 重置所有商店数据
    */
   reset(): void {
-    this.shopInventories.clear();
-    shopDbService.clearAllShopInventories();
+    this.shopItems.clear();
+    this.lastRefresh.clear();
+    shopDbService.clearAllShopItems();
     
-    // 重新初始化所有商店库存
+    // 重新初始化所有商店商品
     this.shopConfigs.forEach((_, shopId) => {
-      this.refreshShopInventory(shopId);
+      this.refreshShopItems(shopId);
     });
   }
 }

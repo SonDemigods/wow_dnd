@@ -4,18 +4,14 @@
  * @module data/equipment
  */
 
-import type { EquipmentItem, RarityConfig } from '../modules/equipment/types';
-import type { ItemRarity } from '../modules/inventory/types';
+import type { EquipmentItem } from '../modules/equipment/types';
 
-export const RARITY_CONFIG: Record<ItemRarity, RarityConfig> = {
-  common: { name: '普通', color: '#ffffff', multiplier: 1.0 },
-  uncommon: { name: '优秀', color: '#1eff00', multiplier: 1.2 },
-  rare: { name: '稀有', color: '#0070dd', multiplier: 1.5 },
-  epic: { name: '史诗', color: '#a335ee', multiplier: 2.0 },
-  legendary: { name: '传说', color: '#ff8000', multiplier: 3.0 }
-};
+// ============================================================================
+// 武器类装备
+// ============================================================================
 
-export const EQUIPMENT_ITEMS: EquipmentItem[] = [
+/** 剑类武器 - 力量型战士首选 */
+const SWORDS: EquipmentItem[] = [
   {
     id: 'ironSword',
     name: '铁剑',
@@ -59,33 +55,259 @@ export const EQUIPMENT_ITEMS: EquipmentItem[] = [
     levelRequirement: 10
   },
   {
-    id: 'shadowBlade',
-    name: '暗影打击者',
-    icon: '🗡️',
+    id: 'ashkandi',
+    name: '阿什坎迪，兄弟会之剑',
+    icon: '⚔️🔥',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
-    bonus: { str: 28, int: 10 },
+    bonus: { str: 35, con: 15, dex: 10 },
     rarity: 'epic',
-    description: '汲取暗影之力的神秘长剑',
-    value: 100,
+    description: '黑石山铸造的传奇巨剑，曾属于安度因·洛萨',
+    value: 180,
     stackable: false,
-    template: 'shadowBlade',
+    template: 'ashkandi',
     levelRequirement: 15
   },
   {
-    id: 'dragonFangBlade',
-    name: '龙牙之刃',
-    icon: '🐉',
+    id: 'thunderfury',
+    name: '雷霆之怒，逐风者的祝福之剑',
+    icon: '⚡⚔️',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
-    bonus: { str: 45, int: 20, dex: 15 },
+    bonus: { str: 55, dex: 35, int: 25 },
     rarity: 'legendary',
-    description: '用远古巨龙之牙锻造的传奇武器',
-    value: 200,
+    description: '封印着逐风者桑德兰灵魂的神剑',
+    value: 380,
     stackable: false,
-    template: 'dragonFangBlade',
+    template: 'thunderfury',
     levelRequirement: 20
+  }
+];
+
+/** 斧类武器 - 高伤害力量型 */
+const AXES: EquipmentItem[] = [
+  {
+    id: 'ironAxe',
+    name: '铁质战斧',
+    icon: '🪓',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { str: 10, con: 3 },
+    rarity: 'common',
+    description: '铁匠铺打造的战斧',
+    value: 12,
+    stackable: false,
+    template: 'ironAxe',
+    levelRequirement: 1
   },
+  {
+    id: 'mithrilAxe',
+    name: '秘银战斧',
+    icon: '🪓',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { str: 15, con: 5 },
+    rarity: 'uncommon',
+    description: '用轻盈的秘银锻造的战斧',
+    value: 28,
+    stackable: false,
+    template: 'mithrilAxe',
+    levelRequirement: 5
+  },
+  {
+    id: 'arcaniteReaper',
+    name: '奥金斧',
+    icon: '🪓✨',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { str: 25, con: 10 },
+    rarity: 'rare',
+    description: '用奥金锻造的精良战斧',
+    value: 75,
+    stackable: false,
+    template: 'arcaniteReaper',
+    levelRequirement: 10
+  },
+  {
+    id: 'dragonTalonAxe',
+    name: '龙爪巨斧',
+    icon: '🪓🐉',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { str: 35, dex: 15, con: 10 },
+    rarity: 'epic',
+    description: '用巨龙之爪打造的沉重战斧',
+    value: 160,
+    stackable: false,
+    template: 'dragonTalonAxe',
+    levelRequirement: 15
+  },
+  {
+    id: 'gorehowl',
+    name: '血吼',
+    icon: '🪓🩸',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { str: 50, con: 25 },
+    rarity: 'legendary',
+    description: '格罗玛什·地狱咆哮的传奇战斧',
+    value: 300,
+    stackable: false,
+    template: 'gorehowl',
+    levelRequirement: 20
+  }
+];
+
+/** 锤类武器 - 力量与体质兼备 */
+const HAMMERS: EquipmentItem[] = [
+  {
+    id: 'warHammer',
+    name: '战锤',
+    icon: '🔨',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { str: 10, con: 5 },
+    rarity: 'common',
+    description: '矮人工匠锻造的沉重战锤',
+    value: 12,
+    stackable: false,
+    template: 'warHammer',
+    levelRequirement: 1
+  },
+  {
+    id: 'steelMace',
+    name: '精钢铁锤',
+    icon: '🔨',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { str: 14, con: 8 },
+    rarity: 'uncommon',
+    description: '精钢锻造的铁锤',
+    value: 30,
+    stackable: false,
+    template: 'steelMace',
+    levelRequirement: 5
+  },
+  {
+    id: 'stormHammer',
+    name: '风暴战锤',
+    icon: '🔨⚡',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { str: 25, con: 10 },
+    rarity: 'rare',
+    description: '蕴含风暴之力的矮人战锤',
+    value: 52,
+    stackable: false,
+    template: 'stormHammer',
+    levelRequirement: 10
+  },
+  {
+    id: 'ironforgeSmasher',
+    name: '铁炉堡粉碎者',
+    icon: '�🏔️',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { str: 32, con: 15 },
+    rarity: 'epic',
+    description: '铁炉堡矮人大师锻造的战锤',
+    value: 145,
+    stackable: false,
+    template: 'ironforgeSmasher',
+    levelRequirement: 15
+  },
+  {
+    id: 'sulfuras',
+    name: '萨弗拉斯，炎魔拉格纳罗斯之手',
+    icon: '🔨🔥',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { str: 65, con: 40, int: 20 },
+    rarity: 'legendary',
+    description: '炎魔之王拉格纳罗斯的传奇战锤',
+    value: 420,
+    stackable: false,
+    template: 'sulfuras',
+    levelRequirement: 20
+  }
+];
+
+/** 匕首武器 - 敏捷型职业首选 */
+const DAGGERS: EquipmentItem[] = [
+  {
+    id: 'dagger',
+    name: '钢制匕首',
+    icon: '�️',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { dex: 10 },
+    rarity: 'common',
+    description: '普通的匕首',
+    value: 8,
+    stackable: false,
+    template: 'dagger',
+    levelRequirement: 1
+  },
+  {
+    id: 'poisonDagger',
+    name: '毒蛇之牙',
+    icon: '☠️',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { dex: 15 },
+    rarity: 'uncommon',
+    description: '涂抹致命毒药的匕首',
+    value: 22,
+    stackable: false,
+    template: 'poisonDagger',
+    levelRequirement: 5
+  },
+  {
+    id: 'shadowDagger',
+    name: '暗影匕首',
+    icon: '🖤',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { dex: 22, int: 8 },
+    rarity: 'rare',
+    description: '暗影能量凝聚的匕首',
+    value: 48,
+    stackable: false,
+    template: 'shadowDagger',
+    levelRequirement: 10
+  },
+  {
+    id: 'voidBlade',
+    name: '虚空撕裂者',
+    icon: '🌌',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { dex: 35, int: 20 },
+    rarity: 'epic',
+    description: '撕裂虚空的神秘匕首',
+    value: 100,
+    stackable: false,
+    template: 'voidBlade',
+    levelRequirement: 15
+  },
+  {
+    id: 'kingsfall',
+    name: '王者陨落',
+    icon: '🗡️👑',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { dex: 55, str: 25, int: 20 },
+    rarity: 'legendary',
+    description: '纳克萨玛斯掉落的传奇匕首，曾刺穿过国王心脏',
+    value: 320,
+    stackable: false,
+    template: 'kingsfall',
+    levelRequirement: 20
+  }
+];
+
+/** 法杖武器 - 法师和治疗职业首选 */
+const STAVES: EquipmentItem[] = [
   {
     id: 'oakStaff',
     name: '橡木法杖',
@@ -129,33 +351,189 @@ export const EQUIPMENT_ITEMS: EquipmentItem[] = [
     levelRequirement: 10
   },
   {
-    id: 'frostStaff',
-    name: '冰霜之触',
-    icon: '❄️',
+    id: 'jordanStaff',
+    name: '乔丹法杖',
+    icon: '🪄✨',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
-    bonus: { int: 38, wis: 15 },
+    bonus: { int: 40, wis: 20, cha: 10 },
     rarity: 'epic',
-    description: '凝结永恒寒冰的法杖',
-    value: 110,
+    description: '大法师乔丹遗留的奥术法杖',
+    value: 150,
     stackable: false,
-    template: 'frostStaff',
+    template: 'jordanStaff',
     levelRequirement: 15
   },
   {
-    id: 'shadowStaff',
-    name: '暗影烈焰法杖',
-    icon: '💜',
+    id: 'atiesh',
+    name: '埃提耶什，守护者的传说之杖',
+    icon: '🪄✨',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
-    bonus: { int: 55, wis: 25, cha: 15 },
+    bonus: { int: 60, wis: 30, cha: 20 },
     rarity: 'legendary',
-    description: '暗影议会传承的传奇法杖',
-    value: 220,
+    description: '守护者麦迪文的传说法杖，蕴含无尽奥术之力',
+    value: 400,
     stackable: false,
-    template: 'shadowStaff',
+    template: 'atiesh',
     levelRequirement: 20
+  }
+];
+
+/** 弓类武器 - 猎人和游侠职业首选 */
+const BOWS: EquipmentItem[] = [
+  {
+    id: 'huntingBow',
+    name: '猎人长弓',
+    icon: '🏹',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { dex: 8 },
+    rarity: 'common',
+    description: '猎人常用的长弓',
+    value: 10,
+    stackable: false,
+    template: 'huntingBow',
+    levelRequirement: 1
   },
+  {
+    id: 'reinforcedBow',
+    name: '强化复合弓',
+    icon: '🏹',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { dex: 14 },
+    rarity: 'uncommon',
+    description: '用强化材料制作的复合弓',
+    value: 24,
+    stackable: false,
+    template: 'reinforcedBow',
+    levelRequirement: 5
+  },
+  {
+    id: 'raptorBow',
+    name: '迅猛龙猎弓',
+    icon: '🏹',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { dex: 22, str: 8 },
+    rarity: 'rare',
+    description: '用迅猛龙筋制作的强力猎弓',
+    value: 50,
+    stackable: false,
+    template: 'raptorBow',
+    levelRequirement: 10
+  },
+  {
+    id: 'nerubianBow',
+    name: '蛛魔长弓',
+    icon: '🏹🕷️',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { dex: 32, str: 12 },
+    rarity: 'epic',
+    description: '用蛛魔材料制作的强力长弓',
+    value: 130,
+    stackable: false,
+    template: 'nerubianBow',
+    levelRequirement: 15
+  },
+  {
+    id: 'thoriDalis',
+    name: '索利达尔，群星之怒',
+    icon: '🏹⭐',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { dex: 50, str: 20, wis: 15 },
+    rarity: 'legendary',
+    description: '太阳之井高地掉落的传奇长弓，蕴含星辰之力',
+    value: 350,
+    stackable: false,
+    template: 'thoriDalis',
+    levelRequirement: 20
+  }
+];
+
+/** 盾牌武器 - 防御型职业首选 */
+const SHIELDS: EquipmentItem[] = [
+  {
+    id: 'ironShield',
+    name: '铁盾',
+    icon: '🛡️',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { con: 10 },
+    rarity: 'common',
+    description: '普通的铁盾',
+    value: 12,
+    stackable: false,
+    template: 'ironShield',
+    levelRequirement: 1
+  },
+  {
+    id: 'steelShield',
+    name: '精钢护盾',
+    icon: '🛡️',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { con: 18 },
+    rarity: 'uncommon',
+    description: '精钢锻造的盾牌',
+    value: 30,
+    stackable: false,
+    template: 'steelShield',
+    levelRequirement: 5
+  },
+  {
+    id: 'dragonScaleShield',
+    name: '龙鳞护盾',
+    icon: '🐉',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { con: 30, str: 10 },
+    rarity: 'rare',
+    description: '龙鳞镶嵌的盾牌',
+    value: 65,
+    stackable: false,
+    template: 'dragonScaleShield',
+    levelRequirement: 10
+  },
+  {
+    id: 'holyShield',
+    name: '圣光壁垒',
+    icon: '☀️',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { con: 45, wis: 20, cha: 15 },
+    rarity: 'epic',
+    description: '圣光加持的神圣盾牌',
+    value: 130,
+    stackable: false,
+    template: 'holyShield',
+    levelRequirement: 15
+  },
+  {
+    id: 'bulwark',
+    name: '壁垒之盾',
+    icon: '🛡️✨',
+    type: 'weapon',
+    slots: ['weapon1', 'weapon2'],
+    bonus: { con: 60, wis: 30, cha: 20, str: 15 },
+    rarity: 'legendary',
+    description: '安其拉神殿掉落的传奇盾牌，坚不可摧',
+    value: 280,
+    stackable: false,
+    template: 'bulwark',
+    levelRequirement: 20
+  }
+];
+
+// ============================================================================
+// 护甲类装备
+// ============================================================================
+
+/** 胸甲装备 - 核心防御装备 */
+const CHEST_ARMOR: EquipmentItem[] = [
   {
     id: 'leatherChest',
     name: '荒野皮甲',
@@ -225,7 +603,11 @@ export const EQUIPMENT_ITEMS: EquipmentItem[] = [
     stackable: false,
     template: 'holyArmor',
     levelRequirement: 20
-  },
+  }
+];
+
+/** 护腿装备 - 腿部防御 */
+const LEG_ARMOR: EquipmentItem[] = [
   {
     id: 'leatherPants',
     name: '皮制护腿',
@@ -295,7 +677,11 @@ export const EQUIPMENT_ITEMS: EquipmentItem[] = [
     stackable: false,
     template: 'frostLeggings',
     levelRequirement: 20
-  },
+  }
+];
+
+/** 靴子装备 - 移动和敏捷 */
+const BOOTS: EquipmentItem[] = [
   {
     id: 'leatherBoots',
     name: '旅行者之靴',
@@ -353,19 +739,23 @@ export const EQUIPMENT_ITEMS: EquipmentItem[] = [
     levelRequirement: 15
   },
   {
-    id: 'thunderBoots',
-    name: '雷霆之怒',
-    icon: '⚡',
+    id: 'bootsOfTheWingedSerpent',
+    name: '飞蛇之靴',
+    icon: '👢⚡',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { dex: 35, int: 20, wis: 15 },
     rarity: 'legendary',
-    description: '蕴含雷霆之力的传奇战靴',
+    description: '祖尔格拉布掉落的传奇靴子，轻盈如飞蛇',
     value: 190,
     stackable: false,
-    template: 'thunderBoots',
+    template: 'bootsOfTheWingedSerpent',
     levelRequirement: 20
-  },
+  }
+];
+
+/** 手套装备 - 攻击和技能 */
+const GLOVES: EquipmentItem[] = [
   {
     id: 'leatherGloves',
     name: '皮手套',
@@ -423,157 +813,42 @@ export const EQUIPMENT_ITEMS: EquipmentItem[] = [
     levelRequirement: 15
   },
   {
-    id: 'timeGauntlets',
-    name: '时空扭曲护手',
-    icon: '⏰',
+    id: 'handOfJustice',
+    name: '正义之手',
+    icon: '🧤⚖️',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { str: 30, int: 25, dex: 20 },
     rarity: 'legendary',
-    description: '扭曲时空的传奇护手',
+    description: '黑石深渊掉落的传奇护手，蕴含正义之力',
     value: 170,
     stackable: false,
-    template: 'timeGauntlets',
-    levelRequirement: 20
-  },
-  {
-    id: 'dagger',
-    name: '钢制匕首',
-    icon: '🗡️',
-    type: 'weapon',
-    slots: ['weapon1', 'weapon2'],
-    bonus: { dex: 10 },
-    rarity: 'common',
-    description: '普通的匕首',
-    value: 8,
-    stackable: false,
-    template: 'dagger',
-    levelRequirement: 1
-  },
-  {
-    id: 'poisonDagger',
-    name: '致命之刺',
-    icon: '☠️',
-    type: 'weapon',
-    slots: ['weapon1', 'weapon2'],
-    bonus: { dex: 15 },
-    rarity: 'uncommon',
-    description: '涂抹致命毒药的匕首',
-    value: 22,
-    stackable: false,
-    template: 'poisonDagger',
-    levelRequirement: 5
-  },
-  {
-    id: 'shadowDagger',
-    name: '暗影匕首',
-    icon: '🖤',
-    type: 'weapon',
-    slots: ['weapon1', 'weapon2'],
-    bonus: { dex: 22, int: 8 },
-    rarity: 'rare',
-    description: '暗影能量凝聚的匕首',
-    value: 48,
-    stackable: false,
-    template: 'shadowDagger',
-    levelRequirement: 10
-  },
-  {
-    id: 'voidBlade',
-    name: '虚空撕裂者',
-    icon: '🌌',
-    type: 'weapon',
-    slots: ['weapon1', 'weapon2'],
-    bonus: { dex: 35, int: 20 },
-    rarity: 'epic',
-    description: '撕裂虚空的神秘匕首',
-    value: 100,
-    stackable: false,
-    template: 'voidBlade',
-    levelRequirement: 15
-  },
-  {
-    id: 'doomBlade',
-    name: '毁灭之牙',
-    icon: '💀',
-    type: 'weapon',
-    slots: ['weapon1', 'weapon2'],
-    bonus: { dex: 50, int: 35, str: 20 },
-    rarity: 'legendary',
-    description: '带来毁灭的传奇匕首',
-    value: 210,
-    stackable: false,
-    template: 'doomBlade',
-    levelRequirement: 20
-  },
-  {
-    id: 'ironShield',
-    name: '铁盾',
-    icon: '🛡️',
-    type: 'weapon',
-    slots: ['weapon1', 'weapon2'],
-    bonus: { con: 10 },
-    rarity: 'common',
-    description: '普通的铁盾',
-    value: 12,
-    stackable: false,
-    template: 'ironShield',
-    levelRequirement: 1
-  },
-  {
-    id: 'steelShield',
-    name: '精钢护盾',
-    icon: '🛡️',
-    type: 'weapon',
-    slots: ['weapon1', 'weapon2'],
-    bonus: { con: 18 },
-    rarity: 'uncommon',
-    description: '精钢锻造的盾牌',
-    value: 30,
-    stackable: false,
-    template: 'steelShield',
-    levelRequirement: 5
-  },
-  {
-    id: 'dragonScaleShield',
-    name: '龙鳞护盾',
-    icon: '🐉',
-    type: 'weapon',
-    slots: ['weapon1', 'weapon2'],
-    bonus: { con: 30, str: 10 },
-    rarity: 'rare',
-    description: '龙鳞镶嵌的盾牌',
-    value: 65,
-    stackable: false,
-    template: 'dragonScaleShield',
-    levelRequirement: 10
-  },
-  {
-    id: 'holyShield',
-    name: '圣光壁垒',
-    icon: '☀️',
-    type: 'weapon',
-    slots: ['weapon1', 'weapon2'],
-    bonus: { con: 45, wis: 20, cha: 15 },
-    rarity: 'epic',
-    description: '圣光加持的神圣盾牌',
-    value: 130,
-    stackable: false,
-    template: 'holyShield',
-    levelRequirement: 15
-  },
-  {
-    id: 'worldShield',
-    name: '世界守护者',
-    icon: '🌍',
-    type: 'weapon',
-    slots: ['weapon1', 'weapon2'],
-    bonus: { con: 65, wis: 35, cha: 25, str: 20 },
-    rarity: 'legendary',
-    description: '守护世界的传奇盾牌',
-    value: 280,
-    stackable: false,
-    template: 'worldShield',
+    template: 'handOfJustice',
     levelRequirement: 20
   }
+];
+
+// ============================================================================
+// 导出所有装备
+// ============================================================================
+
+/**
+ * 所有可掉落装备物品数据
+ * @type {EquipmentItem[]}
+ */
+export const EQUIPMENT_ITEMS: EquipmentItem[] = [
+  // 武器类
+  ...SWORDS,
+  ...AXES,
+  ...HAMMERS,
+  ...DAGGERS,
+  ...STAVES,
+  ...BOWS,
+  ...SHIELDS,
+  
+  // 护甲类
+  ...CHEST_ARMOR,
+  ...LEG_ARMOR,
+  ...BOOTS,
+  ...GLOVES
 ];

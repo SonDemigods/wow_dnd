@@ -212,8 +212,8 @@ function sellItem(itemId: string) {
 }
 
 function loadShopItems() {
-  const inventory = shopService.getShopInventory(currentShopId.value);
-  shopItems.value = inventory?.items || [];
+  const items = shopService.getShopItems(currentShopId.value);
+  shopItems.value = items || [];
 }
 
 function loadInventoryItems() {

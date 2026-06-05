@@ -5,7 +5,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { ShopConfig, ShopInventory } from './types';
+import type { ShopConfig, ShopItem } from './types';
 import { shopService } from './service';
 import { eventBus } from '../bus/core';
 
@@ -19,8 +19,8 @@ export const useShopStore = defineStore('shop', () => {
   /** 当前选中的商店ID */
   const currentShopId = ref<string | null>(null);
   
-  /** 当前商店库存 */
-  const currentInventory = ref<ShopInventory | null>(null);
+  /** 当前商店商品列表 */
+  const currentItems = ref<ShopItem[]>([]);
 
   /** 从 Service 同步到 Store */
   function syncFromService(): void {
@@ -41,9 +41,9 @@ export const useShopStore = defineStore('shop', () => {
   });
   
   /**
-   * 获取当前商店库存
+   * 获取当前商店商品列表
    */
-  const getCurrentInventory = computed(() => currentInventory.value);
+  const getCurrentItems = computed(() => currentItems.value);
   
   /**
    * 选择商店
@@ -51,7 +51,7 @@ export const useShopStore = defineStore('shop', () => {
    */
   function selectShop(shopId: string): void {
     currentShopId.value = shopId;
-    currentInventory.value = shopService.getShopInventory(shopId);
+    currentItems.value = shopService.getShopItems(shopId);
   }
   
   /**
@@ -65,7 +65,7 @@ export const useShopStore = defineStore('shop', () => {
     
     const success = shopService.buyItem(currentShopId.value, itemId, quantity);
     if (success) {
-      currentInventory.value = shopService.getShopInventory(currentShopId.value);
+      currentItems.value = shopService.getShopItems(currentShopId.value);
     }
     
     return success;
@@ -82,12 +82,12 @@ export const useShopStore = defineStore('shop', () => {
   }
   
   /**
-   * 刷新商店库存
+   * 刷新商店商品
    */
-  function refreshInventory(): void {
+  function refreshItems(): void {
     if (!currentShopId.value) return;
-    shopService.refreshShopInventory(currentShopId.value);
-    currentInventory.value = shopService.getShopInventory(currentShopId.value);
+    shopService.refreshShopItems(currentShopId.value);
+    currentItems.value = shopService.getShopItems(currentShopId.value);
   }
   
   /**
@@ -100,23 +100,14 @@ export const useShopStore = defineStore('shop', () => {
   }
   
   /**
-   * 获取商店库存
+   * 获取商店商品列表
    * @param shopId - 商店ID
-   * @returns 商店库存
+   * @returns 商品列表
    */
-  function getShopInventory(shopId: string): ShopInventory | null {
-    return shopService.getShopInventory(shopId);
+  function getShopItems(shopId: string): ShopItem[] {
+    return shopService.getShopItems(shopId);
   }
   
-  /**
-   * 获取指定地点的商店
-   * @param locationId - 地点ID
-   * @returns 商店配置列表
-   */
-  function getShopsByLocation(locationId: string): ShopConfig[] {
-    return shopService.getShopsByLocation(locationId);
-  }
-
   /**
    * 清理事件监听
    */
@@ -139,28 +130,27 @@ export const useShopStore = defineStore('shop', () => {
     shopService.reset();
     syncFromService();
     currentShopId.value = null;
-    currentInventory.value = null;
+    currentItems.value = [];
   }
   
   return {
     // 状态
     shops,
     currentShopId,
-    currentInventory,
+    currentItems,
     
     // 计算属性
     getAllShops,
     getCurrentShop,
-    getCurrentInventory,
+    getCurrentItems,
     
     // 方法
     selectShop,
     buyItem,
     sellItem,
-    refreshInventory,
+    refreshItems,
     getShopConfig,
-    getShopInventory,
-    getShopsByLocation,
+    getShopItems,
     init,
     reset,
     dispose

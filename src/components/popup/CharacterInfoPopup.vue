@@ -611,12 +611,15 @@ onUnmounted(() => {
 }
 
 .equip-slot.selected {
-  border-color: #ffd700;
-  background: rgba(255, 215, 0, 0.1);
+  background: rgba(255, 215, 0, 0.25);
 }
 
 .equip-slot.equipped {
   background: rgba(255, 255, 255, 0.08);
+}
+
+.equip-slot.equipped.selected {
+  background: rgba(255, 215, 0, 0.25);
 }
 
 .equip-slot.rarity-common { border-color: #9d9d9d; }

@@ -11,10 +11,10 @@ export { FACTIONS, RACES } from './race.data';
 export { CLASSES, CLASS_ABILITIES } from './class.data';
 
 // 导出物品类型和战利品数据
-export { ITEM_TYPES, LOOT_ITEMS } from './item.data';
+export { LOOT_ITEMS } from './item.data';
 
 // 导出装备数据
-export { EQUIPMENT_ITEMS, RARITY_CONFIG } from './equipment.data';
+export { EQUIPMENT_ITEMS } from './equipment.data';
 
 // 导出敌人数据
 export { ENEMIES } from './enemy.data';
@@ -27,12 +27,7 @@ export { QUESTS } from './quest.data';
 
 // 导出商店数据
 export {
-  SHOPS,
-  ITEM_BASE_PRICES,
-  RARITY_PRICE_MULTIPLIER,
-  RARITY_SELL_DISCOUNT,
-  ITEM_POOLS,
-  SHOP_TYPE_ITEM_POOL
+  SHOPS
 } from './shop.data';
 
 // 导出配置常量

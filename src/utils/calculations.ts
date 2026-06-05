@@ -1,24 +1,14 @@
 /**
  * @fileoverview 计算函数模块
- * @description 包含游戏核心常量、属性计算和升级经验需求
+ * @description 包含属性计算和升级经验查询函数
  * @module utils/calculations
  */
 
 import type { Stats } from '@/modules/character/types';
-import { MAX_LEVEL } from '@/config/character';
+import { MAX_LEVEL, LEVEL_EXP_REQUIREMENTS } from '@/config/character';
 
-/**
- * 主属性名称映射表
- * @type {Record<string, string>}
- */
-export const STAT_NAMES = {
-  str: '力量',
-  dex: '敏捷',
-  con: '体质',
-  int: '智力',
-  wis: '感知',
-  cha: '魅力'
-} as const;
+// 重新导出配置常量，保持 data/index.ts 等下游导入路径不变
+export { STAT_NAMES, LEVEL_EXP_REQUIREMENTS } from '@/config/character';
 
 /**
  * 计算最大生命值
@@ -172,33 +162,6 @@ export function calculateAllAttributes(stats: Stats) {
     mpBonus: calculateMpBonus(stats)
   };
 }
-
-/**
- * 每级所需经验值表
- * @type {Record<number, number>}
- */
-export const LEVEL_EXP_REQUIREMENTS: Record<number, number> = {
-  1: 0,
-  2: 100,
-  3: 250,
-  4: 450,
-  5: 700,
-  6: 1000,
-  7: 1350,
-  8: 1750,
-  9: 2200,
-  10: 2700,
-  11: 3250,
-  12: 3850,
-  13: 4500,
-  14: 5200,
-  15: 5950,
-  16: 6750,
-  17: 7600,
-  18: 8500,
-  19: 9450,
-  20: 10450
-};
 
 /**
  * 获取指定等级所需的经验值
