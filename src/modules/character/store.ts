@@ -254,6 +254,11 @@ export const useCharacterStore = defineStore('character', () => {
     eventBus.onGroup('characterStore', GameEvents.CHARACTER_MP_CHANGE, () => {
       syncCharacterFromService();
     });
+
+    // 属性变化时同步（使用属性药剂、装备加成等）
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_STATS_CHANGE, () => {
+      syncCharacterFromService();
+    });
   }
 
   /**

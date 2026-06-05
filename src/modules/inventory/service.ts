@@ -72,12 +72,32 @@ export class InventoryService implements IInventoryService {
   }
 
   /**
-   * 加载物品模板
+   * 加载物品模板（同时加载普通物品和装备物品）
    */
   private async loadItemTemplates(): Promise<void> {
+    // 加载普通物品模板
     const templates = await inventoryDbService.getAllItemTemplates();
     templates.forEach(item => {
       this.itemTemplates.set(item.id, item);
+    });
+
+    // 加载装备模板并转换为物品格式
+    const equipmentTemplates = await equipmentDbService.getAllEquipmentTemplates();
+    equipmentTemplates.forEach(equip => {
+      if (!this.itemTemplates.has(equip.id)) {
+        this.itemTemplates.set(equip.id, {
+          id: equip.id,
+          name: equip.name,
+          type: equip.type,
+          rarity: equip.rarity,
+          icon: equip.icon,
+          description: equip.description,
+          bonus: equip.bonus,
+          value: equip.value,
+          stackable: equip.stackable || false,
+          levelRequirement: equip.levelRequirement
+        });
+      }
     });
   }
 
@@ -204,7 +224,7 @@ export class InventoryService implements IInventoryService {
    * @param index - 物品位置索引
    * @returns 是否成功使用
    */
-  useItem(index: number): boolean {
+  async useItem(index: number): Promise<boolean> {
     const inventoryItem = this.getItem(index);
     if (!inventoryItem) return false;
     
@@ -213,16 +233,16 @@ export class InventoryService implements IInventoryService {
     
     // 应用物品效果
     if (item.hpRestore && item.hpRestore > 0) {
-      characterService.addHp(item.hpRestore);
+      await characterService.addHp(item.hpRestore);
     }
     
     if (item.mpRestore && item.mpRestore > 0) {
-      characterService.addMp(item.mpRestore);
+      await characterService.addMp(item.mpRestore);
     }
     
     // 如果有属性加成，应用属性加成
     if (item.bonus) {
-      characterService.applyBonus(item.bonus);
+      await characterService.applyBonus(item.bonus);
     }
     
     // 减少物品数量或移除

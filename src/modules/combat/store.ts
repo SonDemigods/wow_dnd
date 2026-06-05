@@ -60,8 +60,8 @@ export const useCombatStore = defineStore('combat', () => {
    * @param action - 行动
    * @returns 行动结果
    */
-  function playerAction(action: CombatAction): CombatActionResult {
-    const result = combatService.playerAction(action);
+  async function playerAction(action: CombatAction): Promise<CombatActionResult> {
+    const result = await combatService.playerAction(action);
     syncFromService();
     return result;
   }

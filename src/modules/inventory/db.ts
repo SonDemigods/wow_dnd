@@ -149,7 +149,8 @@ export class InventoryDbService {
       return items.map(data => {
         let bonus: Partial<Item['bonus']> = {};
         try {
-          bonus = JSON.parse(data.bonus);
+          // 处理 bonus 字段（可能是对象或字符串）
+          bonus = typeof data.bonus === 'string' ? JSON.parse(data.bonus) : (data.bonus || {});
         } catch {
           bonus = {};
         }

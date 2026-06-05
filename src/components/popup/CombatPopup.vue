@@ -349,7 +349,7 @@ function triggerShake(target: 'enemy' | 'player') {
 }
 
 // 执行玩家动作
-function doAction(type: CombatActionType) {
+async function doAction(type: CombatActionType) {
   if (!canAct.value) return;
   isAnimating.value = true;
   vsFlash.value = true;
@@ -358,7 +358,7 @@ function doAction(type: CombatActionType) {
   const prevEnemyHp = enemyHp.value;
   const prevPlayerHp = playerHp.value;
 
-  combatService.playerAction({ type });
+  await combatService.playerAction({ type });
 
   if (!combatResult.value) {
     updateState();
@@ -383,7 +383,7 @@ function doAction(type: CombatActionType) {
 }
 
 // 使用技能
-function doSkill(skillId: string) {
+async function doSkill(skillId: string) {
   if (!canAct.value) return;
   isAnimating.value = true;
   vsFlash.value = true;
@@ -391,7 +391,7 @@ function doSkill(skillId: string) {
 
   const prevEnemyHp = enemyHp.value;
 
-  combatService.playerAction({ type: 'skill', skillId });
+  await combatService.playerAction({ type: 'skill', skillId });
 
   if (!combatResult.value) {
     updateState();
@@ -424,12 +424,12 @@ function openItemModal() {
   }
 }
 
-function useItem(_itemId: string, _index: number) {
+async function useItem(_itemId: string, _index: number) {
   if (!canAct.value) return;
   showItemModal.value = false;
   isAnimating.value = true;
 
-  combatService.playerAction({ type: 'item', itemId: _itemId });
+  await combatService.playerAction({ type: 'item', itemId: _itemId });
 
   if (!combatResult.value) {
     updateState();

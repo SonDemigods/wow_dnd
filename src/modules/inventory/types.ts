@@ -103,6 +103,7 @@ export interface Item {
   mpRestore?: number;
   consumable?: boolean;
   template?: string;
+  levelRequirement?: number;
 }
 
 /**

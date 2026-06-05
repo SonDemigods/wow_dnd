@@ -8,6 +8,7 @@ import type { Stats } from '../character/types';
 import type { ItemRarity } from '../inventory/types';
 import { equipmentDbService } from './db';
 import { characterService } from '../character/service';
+import { inventoryService } from '../inventory/service';
 import { eventBus, GameEvents } from '../bus/core';
 
 /**
@@ -82,7 +83,7 @@ export class EquipmentService implements IEquipmentService {
    * @param item - 装备物品
    * @returns 是否成功装备
    */
-  equipItem(slot: EquipmentSlot, item: EquipmentItem): boolean {
+  async equipItem(slot: EquipmentSlot, item: EquipmentItem): Promise<boolean> {
     if (!this.characterId) return false;
     
     // 检查是否可以装备
@@ -93,9 +94,26 @@ export class EquipmentService implements IEquipmentService {
     // 获取当前槽位的装备（如果有）
     const currentEquipped = this.equipment[slot];
     
-    // 如果有当前装备，先卸下它的属性加成
+    // 如果有当前装备，先卸下它的属性加成，并放回背包
     if (currentEquipped) {
-      this.removeItemBonus(currentEquipped.item);
+      await this.removeItemBonus(currentEquipped.item);
+      
+      // 将旧装备放回背包
+      const oldItemForInventory = {
+        id: currentEquipped.item.id,
+        itemId: currentEquipped.item.id,
+        name: currentEquipped.item.name,
+        icon: currentEquipped.item.icon,
+        type: currentEquipped.item.type,
+        rarity: currentEquipped.item.rarity,
+        description: currentEquipped.item.description,
+        value: currentEquipped.item.value,
+        stackable: currentEquipped.item.stackable,
+        count: 1
+      } as any;
+      
+      inventoryService.addItemTemplate(oldItemForInventory);
+      inventoryService.addItem(oldItemForInventory);
     }
     
     // 装备新物品
@@ -105,7 +123,7 @@ export class EquipmentService implements IEquipmentService {
     };
     
     // 应用新装备的属性加成
-    this.applyItemBonus(item);
+    await this.applyItemBonus(item);
     
     // 保存到数据库
     this.save();
@@ -121,18 +139,36 @@ export class EquipmentService implements IEquipmentService {
    * @param slot - 槽位
    * @returns 卸下的装备
    */
-  unequipItem(slot: EquipmentSlot): EquippedItem | null {
+  async unequipItem(slot: EquipmentSlot): Promise<EquippedItem | null> {
     const equippedItem = this.equipment[slot];
     if (!equippedItem) return null;
     
     // 移除属性加成
-    this.removeItemBonus(equippedItem.item);
+    await this.removeItemBonus(equippedItem.item);
     
     // 卸下装备
     this.equipment[slot] = null;
     
     // 保存到数据库
     this.save();
+    
+    // 将卸下的装备放回背包
+    const itemForInventory = {
+      id: equippedItem.item.id,
+      itemId: equippedItem.item.id,
+      name: equippedItem.item.name,
+      icon: equippedItem.item.icon,
+      type: equippedItem.item.type,
+      rarity: equippedItem.item.rarity,
+      description: equippedItem.item.description,
+      value: equippedItem.item.value,
+      stackable: equippedItem.item.stackable,
+      count: 1
+    } as any;
+    
+    // 确保物品模板存在
+    inventoryService.addItemTemplate(itemForInventory);
+    inventoryService.addItem(itemForInventory);
     
     // 触发事件
     eventBus.emit(GameEvents.EQUIPMENT_CHANGE, { slot, item: equippedItem.item });
@@ -352,10 +388,10 @@ export class EquipmentService implements IEquipmentService {
    * 应用装备属性加成
    * @param item - 装备物品
    */
-  private applyItemBonus(item: EquipmentItem): void {
+  private async applyItemBonus(item: EquipmentItem): Promise<void> {
     if (item.bonus) {
       const bonus = this.calculateRarityBonus(item.bonus, item.rarity);
-      characterService.applyBonus(bonus);
+      await characterService.applyBonus(bonus);
     }
   }
 
@@ -363,10 +399,10 @@ export class EquipmentService implements IEquipmentService {
    * 移除装备属性加成
    * @param item - 装备物品
    */
-  private removeItemBonus(item: EquipmentItem): void {
+  private async removeItemBonus(item: EquipmentItem): Promise<void> {
     if (item.bonus) {
       const bonus = this.calculateRarityBonus(item.bonus, item.rarity);
-      characterService.removeBonus(bonus);
+      await characterService.removeBonus(bonus);
     }
   }
 

@@ -215,8 +215,8 @@ export const useInventoryStore = defineStore('inventory', () => {
     return success;
   }
 
-  function useItem(index: number): boolean {
-    const success = inventoryService.useItem(index);
+  async function useItem(index: number): Promise<boolean> {
+    const success = await inventoryService.useItem(index);
     if (success) syncFromService();
     return success;
   }

@@ -85,16 +85,16 @@ export interface IEquipmentService {
    * 装备物品
    * @param {EquipmentSlot} slot - 槽位
    * @param {EquipmentItem} item - 装备物品
-   * @returns {boolean} 是否成功装备
+   * @returns {Promise<boolean>} 是否成功装备
    */
-  equipItem(slot: EquipmentSlot, item: EquipmentItem): boolean;
+  equipItem(slot: EquipmentSlot, item: EquipmentItem): Promise<boolean>;
 
   /**
    * 卸下装备
    * @param {EquipmentSlot} slot - 槽位
-   * @returns {EquippedItem | null} 卸下的装备
+   * @returns {Promise<EquippedItem | null>} 卸下的装备
    */
-  unequipItem(slot: EquipmentSlot): EquippedItem | null;
+  unequipItem(slot: EquipmentSlot): Promise<EquippedItem | null>;
 
   /**
    * 获取所有装备

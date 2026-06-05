@@ -124,7 +124,7 @@ export class CombatService implements ICombatService {
    * @param action - 行动
    * @returns 行动结果
    */
-  playerAction(action: CombatAction): CombatActionResult {
+  async playerAction(action: CombatAction): Promise<CombatActionResult> {
     if (this.state !== 'fighting' || this.turn !== 'player') {
       return {
         success: false,
@@ -146,7 +146,7 @@ export class CombatService implements ICombatService {
           if (!action.itemId) {
             return { success: false, type: 'item', message: '未指定物品！' };
           }
-          return this.playerUseItem(action.itemId);
+          return await this.playerUseItem(action.itemId);
         case 'flee':
           return this.playerFlee();
         default:
@@ -349,7 +349,7 @@ export class CombatService implements ICombatService {
    * @param itemId - 物品ID
    * @returns 行动结果
    */
-  private playerUseItem(itemId: string): CombatActionResult {
+  private async playerUseItem(itemId: string): Promise<CombatActionResult> {
     // 查找物品在背包中的位置
     const inventory = inventoryService.getInventory();
     const itemIndex = inventory.findIndex(item => item.itemId === itemId);
@@ -359,7 +359,7 @@ export class CombatService implements ICombatService {
     }
     
     // 使用物品
-    const success = inventoryService.useItem(itemIndex);
+    const success = await inventoryService.useItem(itemIndex);
     
     if (!success) {
       return { success: false, type: 'item', message: '无法使用该物品！' };

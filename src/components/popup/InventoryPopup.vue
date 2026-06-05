@@ -23,9 +23,9 @@
         <div class="inventory-grid">
           <div 
             v-for="(entry, index) in displayItems" 
-            :key="entry.item.itemId || index"
-            :class="['item-slot', entry.info?.rarity, { equipped: isEquipped(entry.item.itemId), selected: selectedEntry?.item.itemId === entry.item.itemId }]"
-            @click="selectItem(entry)"
+            :key="index"
+            :class="['item-slot', entry.info?.rarity, { equipped: isEquipped(entry.item.itemId), selected: selectedIndex === index }]"
+            @click="selectItem(entry, index)"
           >
             <span class="item-icon">{{ entry.info?.icon || '📦' }}</span>
             <span v-if="entry.item.count > 1" class="item-count">{{ entry.item.count }}</span>
@@ -48,6 +48,13 @@
             <div class="detail-info">
               <span>类型: {{ getTypeName(selectedEntry.info?.type || 'misc') }}</span>
               <span>数量: {{ selectedEntry.item.count }}</span>
+              <span v-if="selectedEntry.info?.levelRequirement">等级: {{ selectedEntry.info.levelRequirement }}</span>
+            </div>
+            <div v-if="selectedEntry.info?.bonus" class="bonus-info">
+              <div v-for="(value, stat) in selectedEntry.info.bonus" :key="stat" class="bonus-item">
+                <span class="bonus-name">{{ getStatName(stat) }}</span>
+                <span class="bonus-value">+{{ value }}</span>
+              </div>
             </div>
             <div v-if="selectedEntry.info?.hpRestore" class="effect-info">
               <span>效果: 恢复{{ selectedEntry.info.hpRestore }}点生命值</span>
@@ -156,6 +163,7 @@ const gold = computed(() => characterStore.gold);
 
 const selectedCategory = ref<'all' | ItemType>('all');
 const selectedEntry = ref<ItemEntry | null>(null);
+const selectedIndex = ref<number>(-1);
 
 // 丢弃确认弹窗状态
 const showDropConfirm = ref(false);
@@ -209,6 +217,18 @@ function getTypeName(type: ItemType) {
   return typeNames[type] || type;
 }
 
+function getStatName(stat: string) {
+  const statMap: Record<string, string> = {
+    str: '力量',
+    dex: '敏捷',
+    con: '体质',
+    int: '智力',
+    wis: '感知',
+    cha: '魅力'
+  };
+  return statMap[stat] || stat;
+}
+
 function isEquipment(type?: ItemType) {
   return type === 'weapon' || type === 'armor';
 }
@@ -236,8 +256,9 @@ const emptySlots = computed(() => {
   return Math.max(0, maxSlots - filteredItems.value.length);
 });
 
-function selectItem(entry: ItemEntry) {
+function selectItem(entry: ItemEntry, index: number) {
   selectedEntry.value = entry;
+  selectedIndex.value = index;
 }
 
 async function useItem(itemId: string) {
@@ -249,7 +270,7 @@ async function useItem(itemId: string) {
   if (!info?.consumable) return;
 
   // 使用物品（内部处理HP/MP恢复和堆叠数量递减）
-  const success = inventoryService.useItem(index);
+  const success = await inventoryService.useItem(index);
   if (!success) return;
 
   if (info.hpRestore) {
@@ -264,6 +285,7 @@ async function useItem(itemId: string) {
   // 堆叠数归零时清除选中
   if (invItem.count <= 1) {
     selectedEntry.value = null;
+    selectedIndex.value = -1;
   }
 }
 
@@ -294,8 +316,8 @@ function equipItem(itemId: string) {
   showSlotSelect.value = true;
 }
 
-function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
-  const success = equipmentService.equipItem(slot, item);
+async function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
+  const success = await equipmentService.equipItem(slot, item);
   if (success) {
     // 从背包中移除该物品
     const index = inventoryItems.value.findIndex(i => i.itemId === item.id);
@@ -305,6 +327,7 @@ function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
     toast.show({ message: `已装备 ${item.name} 到 ${SLOT_NAMES[slot]}`, type: 'success', icon: '🛡️' });
     loadInventory();
     selectedEntry.value = null;
+    selectedIndex.value = -1;
   } else {
     toast.show({ message: '装备失败，可能等级不足或槽位不匹配', type: 'warning' });
   }
@@ -340,6 +363,7 @@ function confirmDrop() {
     toast.show({ message: `已丢弃 ${info?.name || '物品'}`, type: 'info', icon: '🗑️' });
     loadInventory();
     selectedEntry.value = null;
+    selectedIndex.value = -1;
   }
   
   showDropConfirm.value = false;
@@ -353,6 +377,8 @@ function cancelDrop() {
 
 async function loadInventory() {
   await inventoryService.initialize();
+  // 确保装备服务已初始化（装备模板需要从装备服务加载）
+  await equipmentService.initialize();
   inventoryItems.value = inventoryService.getInventory();
   // 加载已装备物品ID
   const equipped = await inventoryService.getEquipment();
@@ -605,6 +631,33 @@ onUnmounted(() => {
   border-radius: 4px;
   color: #888;
   font-size: 13px;
+}
+
+.bonus-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.bonus-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background: rgba(76, 175, 80, 0.1);
+  border-radius: 4px;
+}
+
+.bonus-name {
+  color: #8b8b8b;
+  font-size: 13px;
+}
+
+.bonus-value {
+  color: #4CAF50;
+  font-size: 13px;
+  font-weight: bold;
 }
 
 .effect-info span {

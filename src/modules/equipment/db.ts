@@ -136,13 +136,13 @@ export class EquipmentDbService {
       let slots: EquipmentSlot[] = [];
       
       try {
-        bonus = JSON.parse(data.bonus);
+        bonus = typeof data.bonus === 'string' ? JSON.parse(data.bonus) : (data.bonus || {});
       } catch {
         bonus = {};
       }
       
       try {
-        slots = JSON.parse(data.slots);
+        slots = Array.isArray(data.slots) ? data.slots : JSON.parse(data.slots);
       } catch {
         slots = [];
       }
@@ -175,13 +175,13 @@ export class EquipmentDbService {
         let slots: EquipmentSlot[] = [];
         
         try {
-          bonus = JSON.parse(data.bonus);
+          bonus = typeof data.bonus === 'string' ? JSON.parse(data.bonus) : (data.bonus || {});
         } catch {
           bonus = {};
         }
         
         try {
-          slots = JSON.parse(data.slots);
+          slots = Array.isArray(data.slots) ? data.slots : JSON.parse(data.slots);
         } catch {
           slots = [];
         }

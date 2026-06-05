@@ -111,16 +111,16 @@ export const useEquipmentStore = defineStore('equipment', () => {
     isLoading.value = false;
   }
 
-  function equipItem(slot: EquipmentSlot, item: EquipmentItem): boolean {
-    const success = equipmentService.equipItem(slot, item);
+  async function equipItem(slot: EquipmentSlot, item: EquipmentItem): Promise<boolean> {
+    const success = await equipmentService.equipItem(slot, item);
     if (success) {
       syncFromService();
     }
     return success;
   }
 
-  function unequipItem(slot: EquipmentSlot): EquippedItem | null {
-    const result = equipmentService.unequipItem(slot);
+  async function unequipItem(slot: EquipmentSlot): Promise<EquippedItem | null> {
+    const result = await equipmentService.unequipItem(slot);
     if (result) {
       syncFromService();
     }

@@ -1,10 +1,9 @@
 <template>
   <BasePopup :visible="visible" title="角色信息" @close="$emit('close')">
     <template #default>
-      <div v-if="character">
+      <div v-if="character" class="character-content">
         <!-- 角色信息和资源条 -->
         <div class="character-overview">
-          <!-- 上面：角色基本信息 -->
           <div class="character-basic">
             <div class="char-row">
               <div class="char-avatar">{{ getRaceIcon(character.raceId) }}</div>
@@ -19,8 +18,6 @@
               <Tag type="class" :text="getClassName(character.classId)" :color="getClassColor(character.classId)" />
             </div>
           </div>
-
-          <!-- 下面：资源条 -->
           <div class="resource-bars">
             <ResourceBar icon="❤️" name="HP" :current="currentHp" :max="maxHp" :percent="hpPercent" type="hp" />
             <ResourceBar icon="💧" name="MP" :current="currentMp" :max="maxMp" :percent="mpPercent" type="mp" />
@@ -103,72 +100,83 @@
           </div>
         </div>
 
-        <!-- 装备 -->
+        <!-- 装备区域 -->
         <div class="equipment-section">
           <h3>装备</h3>
           
-          <!-- 武器 -->
-          <div class="equipment-group">
-            <div class="equipment-group-header">
-              <span class="group-icon">🗡️</span>
-              <span class="group-name">武器</span>
+          <div class="equipment-grid">
+            <!-- 武器槽 -->
+            <div 
+              v-for="slot in weaponSlots" 
+              :key="slot.key"
+              :class="['equip-slot', { equipped: slot.equipment, selected: selectedSlot?.key === slot.key }, slot.equipment ? 'rarity-' + slot.equipment.rarity : '']"
+              @click="selectEquipment(slot)"
+            >
+              <template v-if="slot.equipment">
+                <div class="slot-icon">{{ slot.equipment.icon || '⚔️' }}</div>
+                <div class="slot-name">{{ slot.equipment.name }}</div>
+              </template>
+              <template v-else>
+                <div class="slot-icon empty">⚔️</div>
+                <div class="slot-name empty">{{ slot.name }}</div>
+              </template>
             </div>
-            <div class="equipment-slots">
-              <div 
-                v-for="slot in weaponSlots" 
-                :key="slot.key"
-                class="equip-slot"
-                :class="{ equipped: slot.equipment }"
-                @click="selectEquipment(slot)"
-              >
-                <div class="slot-icon" v-if="slot.equipment">{{ getEquipIcon(slot.equipment.type) }}</div>
-                <div class="slot-empty" v-else>{{ slot.name }}</div>
-              </div>
+
+            <!-- 防具槽 -->
+            <div 
+              v-for="slot in armorSlots" 
+              :key="slot.key"
+              :class="['equip-slot', { equipped: slot.equipment, selected: selectedSlot?.key === slot.key }, slot.equipment ? 'rarity-' + slot.equipment.rarity : '']"
+              @click="selectEquipment(slot)"
+            >
+              <template v-if="slot.equipment">
+                <div class="slot-icon">{{ slot.equipment.icon || '🛡️' }}</div>
+                <div class="slot-name">{{ slot.equipment.name }}</div>
+              </template>
+              <template v-else>
+                <div class="slot-icon empty">🛡️</div>
+                <div class="slot-name empty">{{ slot.name }}</div>
+              </template>
             </div>
           </div>
 
-          <!-- 防具 -->
-          <div class="equipment-group">
-            <div class="equipment-group-header">
-              <span class="group-icon">🛡️</span>
-              <span class="group-name">防具</span>
-            </div>
-            <div class="equipment-slots">
-              <div 
-                v-for="slot in armorSlots" 
-                :key="slot.key"
-                class="equip-slot"
-                :class="{ equipped: slot.equipment }"
-                @click="selectEquipment(slot)"
-              >
-                <div class="slot-icon" v-if="slot.equipment">{{ getEquipIcon(slot.equipment.type) }}</div>
-                <div class="slot-empty" v-else>{{ slot.name }}</div>
+          <!-- 选中装备详情 -->
+          <div v-if="selectedSlot" class="equipment-detail">
+            <template v-if="selectedSlot.equipment">
+              <div class="detail-header">
+                <div class="detail-icon">{{ selectedSlot.equipment.icon || '📦' }}</div>
+                <div class="detail-info">
+                  <h4 :class="selectedSlot.equipment.rarity">{{ selectedSlot.equipment.name }}</h4>
+                  <span :class="['detail-rarity', selectedSlot.equipment.rarity]">{{ getRarityName(selectedSlot.equipment.rarity) }}</span>
+                </div>
               </div>
+              <p class="detail-desc">{{ selectedSlot.equipment.description }}</p>
+              <div v-if="selectedSlot.equipment.bonus" class="detail-stats">
+                <div v-for="(value, stat) in selectedSlot.equipment.bonus" :key="stat" class="stat-item">
+                  <span class="stat-name">{{ getStatName(stat) }}</span>
+                  <span class="stat-value">+{{ value }}</span>
+                </div>
+              </div>
+              <div v-if="selectedSlot.equipment.levelRequirement" class="detail-requirement">
+                需要等级: {{ selectedSlot.equipment.levelRequirement }}
+              </div>
+              <div class="detail-actions">
+                <button class="action-btn unequip" @click="unequipItem(selectedSlot.key)">卸下装备</button>
+              </div>
+            </template>
+            <template v-else>
+              <div class="detail-placeholder">
+                <span class="placeholder-icon">📦</span>
+                <span class="placeholder-text">槽位为空</span>
+              </div>
+            </template>
+          </div>
+          <div v-else class="equipment-detail">
+            <div class="detail-placeholder">
+              <span class="placeholder-icon">🛡️</span>
+              <span class="placeholder-text">点击装备槽位查看详情</span>
             </div>
           </div>
-        </div>
-      </div>
-    </template>
-
-    <template #footer>
-      <div v-if="selectedSlot && selectedSlot.equipment" class="selected-equipment">
-        <div class="equip-header">
-          <div class="equip-icon">{{ getEquipIcon(selectedSlot.equipment.type) }}</div>
-          <div>
-            <div class="equip-name">{{ selectedSlot.equipment.name }}</div>
-            <div class="equip-quality" :class="selectedSlot.equipment.quality">
-              {{ getQualityName(selectedSlot.equipment.quality) }}
-            </div>
-          </div>
-        </div>
-        <div class="equip-desc">{{ selectedSlot.equipment.description }}</div>
-        <div class="equip-stats">
-          <div v-for="(value, stat) in selectedSlot.equipment.attributes" :key="stat">
-            {{ getStatName(stat) }} +{{ value }}
-          </div>
-        </div>
-        <div class="equip-actions">
-          <button class="action-btn unequip" @click="unequipItem(selectedSlot.key)">卸下</button>
         </div>
       </div>
     </template>
@@ -176,11 +184,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { equipmentService } from '@/modules/equipment';
 import { gameDataService } from '@/modules/gameData';
+import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { FactionData, RaceData, ClassData, Stats, Attributes } from '@/modules/character/types';
+import type { EquipmentSlot } from '@/modules/equipment/types';
 import Tag from '../common/Tag.vue';
 import BasePopup from '../common/BasePopup.vue';
 import ResourceBar from '../common/ResourceBar.vue';
@@ -214,24 +224,25 @@ const hpPercent = computed(() => characterStore.hpPercentage);
 const mpPercent = computed(() => characterStore.manaPercentage);
 const expPercent = computed(() => characterStore.expPercentage);
 
-const weaponSlots = computed(() => {
-  const equipment = equipmentService.getEquipment();
-  return [
-    { key: 'weapon1', name: '武器1', equipment: equipment.weapon1 },
-    { key: 'weapon2', name: '武器2', equipment: equipment.weapon2 }
-  ];
-});
+interface SlotInfo {
+  key: EquipmentSlot;
+  name: string;
+  equipment: any;
+}
 
-const armorSlots = computed(() => {
-  const equipment = equipmentService.getEquipment();
-  return [
-    { key: 'armor1', name: '防具1', equipment: equipment.armor1 },
-    { key: 'armor2', name: '防具2', equipment: equipment.armor2 },
-    { key: 'armor3', name: '防具3', equipment: equipment.armor3 },
-    { key: 'armor4', name: '防具4', equipment: equipment.armor4 }
-  ];
-});
-const selectedSlot = ref<any>(null);
+const weaponSlots = ref<SlotInfo[]>([
+  { key: 'weapon1', name: '主手武器', equipment: null },
+  { key: 'weapon2', name: '副手武器', equipment: null }
+]);
+
+const armorSlots = ref<SlotInfo[]>([
+  { key: 'armor1', name: '护甲槽1', equipment: null },
+  { key: 'armor2', name: '护甲槽2', equipment: null },
+  { key: 'armor3', name: '护甲槽3', equipment: null },
+  { key: 'armor4', name: '护甲槽4', equipment: null }
+]);
+
+const selectedSlot = ref<SlotInfo | null>(null);
 
 const attrIcons: Record<string, string> = {
   str: '⚔️',
@@ -251,18 +262,7 @@ const attrNames: Record<string, string> = {
   cha: '魅力'
 };
 
-const equipTypes: Record<string, string> = {
-  weapon: '🗡️',
-  offhand: '🛡️',
-  head: '👑',
-  chest: '👕',
-  legs: '👖',
-  feet: '👢',
-  hands: '🧤',
-  accessory: '💍'
-};
-
-const qualityNames: Record<string, string> = {
+const rarityNames: Record<string, string> = {
   common: '普通',
   uncommon: '优秀',
   rare: '稀有',
@@ -310,42 +310,69 @@ function getAttrName(key: string) {
 
 function getStatName(stat: string) {
   const statMap: Record<string, string> = {
-    physicalAttack: '物理攻击',
-    physicalDefense: '物理防御',
-    magicAttack: '魔法攻击',
-    magicalAttack: '魔法攻击',
-    magicalDefense: '魔法防御',
-    magicDefense: '魔法防御',
-    maxHp: '最大HP',
-    maxMana: '最大MP',
-    maxMp: '最大MP'
+    str: '力量',
+    dex: '敏捷',
+    con: '体质',
+    int: '智力',
+    wis: '感知',
+    cha: '魅力'
   };
   return statMap[stat] || stat;
 }
 
-function getEquipIcon(type: string) {
-  return equipTypes[type] || '📦';
+function getRarityName(rarity: string) {
+  return rarityNames[rarity] || '';
 }
 
-function getQualityName(quality: string) {
-  return qualityNames[quality] || '';
-}
-
-function selectEquipment(slot: any) {
+function selectEquipment(slot: SlotInfo) {
   selectedSlot.value = slot;
 }
 
-function unequipItem(slotKey: string) {
-  equipmentService.unequipItem(slotKey);
-  selectedSlot.value = null;
+async function unequipItem(slotKey: string) {
+  const result = await equipmentService.unequipItem(slotKey as EquipmentSlot);
+  if (result) {
+    selectedSlot.value = null;
+    refreshEquipment();
+  }
+}
+
+function refreshEquipment() {
+  const equipment = equipmentService.getEquipment();
+  weaponSlots.value = [
+    { key: 'weapon1', name: '主手武器', equipment: equipment.weapon1?.item || null },
+    { key: 'weapon2', name: '副手武器', equipment: equipment.weapon2?.item || null }
+  ];
+  armorSlots.value = [
+    { key: 'armor1', name: '护甲槽1', equipment: equipment.armor1?.item || null },
+    { key: 'armor2', name: '护甲槽2', equipment: equipment.armor2?.item || null },
+    { key: 'armor3', name: '护甲槽3', equipment: equipment.armor3?.item || null },
+    { key: 'armor4', name: '护甲槽4', equipment: equipment.armor4?.item || null }
+  ];
 }
 
 onMounted(async () => {
   await loadData();
+  await equipmentService.initialize();
+  refreshEquipment();
+  
+  // 监听装备变化事件，实时刷新装备显示
+  eventBus.onGroup('characterInfoPopup', GameEvents.EQUIPMENT_CHANGE, () => {
+    refreshEquipment();
+  });
+});
+
+onUnmounted(() => {
+  eventBus.clearGroup('characterInfoPopup');
 });
 </script>
 
 <style scoped>
+.character-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 /* 角色信息和资源条概览 */
 .character-overview {
   display: flex;
@@ -354,10 +381,8 @@ onMounted(async () => {
   padding: 12px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
-  margin-bottom: 16px;
 }
 
-/* 角色基本信息 */
 .character-basic {
   display: flex;
   flex-direction: column;
@@ -413,7 +438,6 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
-/* 资源条 */
 .resource-bars {
   display: flex;
   flex-direction: column;
@@ -421,10 +445,6 @@ onMounted(async () => {
 }
 
 /* 核心属性 */
-.attributes-section {
-  margin-bottom: 16px;
-}
-
 .attributes-section h3 {
   font-size: 14px;
   color: #ffd700;
@@ -472,10 +492,6 @@ onMounted(async () => {
 }
 
 /* 次级属性 */
-.secondary-section {
-  margin-bottom: 16px;
-}
-
 .secondary-section h3 {
   font-size: 14px;
   color: #ffd700;
@@ -500,29 +516,12 @@ onMounted(async () => {
   border-left: 3px solid transparent;
 }
 
-.secondary-item.attack {
-  border-left-color: #ff6b6b;
-}
-
-.secondary-item.defense {
-  border-left-color: #4ecdc4;
-}
-
-.secondary-item.magic-attack {
-  border-left-color: #a29bfe;
-}
-
-.secondary-item.magic-defense {
-  border-left-color: #fd79a8;
-}
-
-.secondary-item.crit {
-  border-left-color: #fdcb6e;
-}
-
-.secondary-item.dodge {
-  border-left-color: #74b9ff;
-}
+.secondary-item.attack { border-left-color: #ff6b6b; }
+.secondary-item.defense { border-left-color: #4ecdc4; }
+.secondary-item.magic-attack { border-left-color: #a29bfe; }
+.secondary-item.magic-defense { border-left-color: #fd79a8; }
+.secondary-item.crit { border-left-color: #fdcb6e; }
+.secondary-item.dodge { border-left-color: #74b9ff; }
 
 .secondary-icon {
   font-size: 18px;
@@ -577,10 +576,6 @@ onMounted(async () => {
 }
 
 /* 装备区域 */
-.equipment-section {
-  margin-bottom: 16px;
-}
-
 .equipment-section h3 {
   font-size: 14px;
   color: #ffd700;
@@ -588,47 +583,26 @@ onMounted(async () => {
   font-weight: bold;
 }
 
-.equipment-group {
-  margin-bottom: 14px;
-}
-
-.equipment-group:last-child {
-  margin-bottom: 0;
-}
-
-.equipment-group-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.group-icon {
-  font-size: 16px;
-}
-
-.group-name {
-  font-size: 13px;
-  color: #f0f0f0;
-  font-weight: bold;
-}
-
-.equipment-slots {
-  display: flex;
+.equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+  margin-bottom: 12px;
 }
 
 .equip-slot {
-  flex: 1;
-  aspect-ratio: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid #4a4a4a;
-  border-radius: 6px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid #4a4a4a;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
+  min-height: 80px;
 }
 
 .equip-slot:hover {
@@ -636,78 +610,146 @@ onMounted(async () => {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.equip-slot.equipped {
+.equip-slot.selected {
   border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.equip-slot.equipped {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.equip-slot.rarity-common { border-color: #9d9d9d; }
+.equip-slot.rarity-uncommon { border-color: #1eff00; }
+.equip-slot.rarity-rare { border-color: #0070dd; }
+.equip-slot.rarity-epic { border-color: #a335ee; }
+.equip-slot.rarity-legendary { 
+  border-color: #ff8000;
+  box-shadow: 0 0 8px rgba(255, 128, 0, 0.4);
 }
 
 .slot-icon {
   font-size: 24px;
 }
 
-.slot-empty {
-  color: #8b8b8b;
+.slot-icon.empty {
+  opacity: 0.5;
+}
+
+.slot-name {
   font-size: 10px;
+  color: #f0f0f0;
   text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
-/* 选中装备信息 */
-.selected-equipment {
-  padding: 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
+.slot-name.empty {
+  color: #666;
+}
+
+/* 装备详情 */
+.equipment-detail {
+  background: rgba(0, 0, 0, 0.3);
   border: 1px solid #4a4a4a;
-  margin-bottom: 16px;
+  border-radius: 8px;
+  padding: 14px;
 }
 
-.equip-header {
+.detail-header {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
   margin-bottom: 10px;
 }
 
-.equip-icon {
+.detail-icon {
   font-size: 36px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
 }
 
-.equip-name {
+.detail-info {
+  flex: 1;
+}
+
+.detail-info h4 {
   font-size: 16px;
   color: #f0f0f0;
   font-weight: bold;
-  margin-bottom: 3px;
+  margin: 0 0 4px 0;
 }
 
-.equip-quality {
+.detail-info h4.common { color: #ffffff; }
+.detail-info h4.uncommon { color: #1eff00; }
+.detail-info h4.rare { color: #0070dd; }
+.detail-info h4.epic { color: #a335ee; }
+.detail-info h4.legendary { color: #ff8000; }
+
+.detail-rarity {
   font-size: 12px;
 }
 
-.equip-quality.common { color: #ffffff; }
-.equip-quality.uncommon { color: #1eff00; }
-.equip-quality.rare { color: #0070dd; }
-.equip-quality.epic { color: #a335ee; }
-.equip-quality.legendary { color: #ff8000; }
+.detail-rarity.common { color: #9d9d9d; }
+.detail-rarity.uncommon { color: #1eff00; }
+.detail-rarity.rare { color: #0070dd; }
+.detail-rarity.epic { color: #a335ee; }
+.detail-rarity.legendary { color: #ff8000; }
 
-.equip-desc {
-  color: #8b8b8b;
+.detail-desc {
+  color: #aaa;
   font-size: 13px;
+  margin: 8px 0;
+}
+
+.detail-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   margin-bottom: 10px;
 }
 
-.equip-stats {
+.stat-item {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin-bottom: 14px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background: rgba(76, 175, 80, 0.1);
+  border-radius: 4px;
 }
 
-.equip-stats div {
-  color: #4CAF50;
+.stat-name {
+  color: #8b8b8b;
   font-size: 13px;
 }
 
-.equip-actions {
+.stat-value {
+  color: #4CAF50;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.detail-requirement {
+  color: #ffd700;
+  font-size: 12px;
+  margin-bottom: 10px;
+  padding: 4px 8px;
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.detail-actions {
   display: flex;
   gap: 8px;
+  margin-top: 10px;
 }
 
 .action-btn {
@@ -717,7 +759,11 @@ onMounted(async () => {
   font-size: 13px;
   font-weight: bold;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
 }
 
 .unequip {
@@ -725,7 +771,22 @@ onMounted(async () => {
   color: #fff;
 }
 
-.action-btn:hover {
-  transform: translateY(-2px);
+.detail-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+}
+
+.placeholder-icon {
+  font-size: 32px;
+  opacity: 0.5;
+}
+
+.placeholder-text {
+  color: #666;
+  font-size: 13px;
 }
 </style>
