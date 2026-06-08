@@ -12,7 +12,6 @@ import type {
 } from './types';
 import { questDbService } from './db';
 import { characterService } from '../character/service';
-import { inventoryService } from '../inventory/service';
 import { eventBus, GameEvents } from '../bus/core';
 
 /**
@@ -24,6 +23,19 @@ export class QuestService implements IQuestService {
   
   /** 任务实例缓存 */
   private questInstances: Map<string, QuestInstance> = new Map();
+
+  constructor() {
+    this.setupCrossModuleListeners();
+  }
+
+  /**
+   * 注册跨模块事件监听——处理战斗模块发出的敌人击杀通知
+   */
+  private setupCrossModuleListeners(): void {
+    eventBus.on(GameEvents.QUEST_ENEMY_KILLED, (data: { enemyId: string }) => {
+      this.handleEnemyKill(data.enemyId);
+    });
+  }
   
   /**
    * 初始化服务
@@ -282,15 +294,15 @@ export class QuestService implements IQuestService {
     }
     
     // 发放经验奖励
-    characterService.addExp(definition.xpReward);
+    eventBus.emit(GameEvents.CHARACTER_GAIN_EXP, { amount: definition.xpReward, source: '任务奖励' });
     
     // 发放金币奖励
-    characterService.addGold(definition.goldReward);
+    eventBus.emit(GameEvents.CHARACTER_GAIN_GOLD, { amount: definition.goldReward, source: '任务奖励' });
     
     // 发放物品奖励
     if (definition.itemRewards) {
       definition.itemRewards.forEach(itemReward => {
-        inventoryService.addItem(itemReward.itemId, itemReward.amount);
+        eventBus.emit(GameEvents.INVENTORY_ADD_ITEM, { itemId: itemReward.itemId, quantity: itemReward.amount });
       });
     }
     

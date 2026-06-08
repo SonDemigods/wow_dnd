@@ -55,6 +55,44 @@ export class CharacterService implements ICharacterService {
   /** 职业数据缓存（从数据库加载） */
   private classesData: Record<string, ClassData> = {};
 
+  constructor() {
+    this.setupCrossModuleListeners();
+  }
+
+  /**
+   * 注册跨模块事件监听——处理其他模块请求的角色数据变更
+   */
+  private setupCrossModuleListeners(): void {
+    // 受到伤害
+    eventBus.on(GameEvents.CHARACTER_TAKE_DAMAGE, (data: { amount: number; source: string }) => {
+      this.addHp(-data.amount);
+    });
+    // 获得治疗
+    eventBus.on(GameEvents.CHARACTER_RECEIVE_HEAL, (data: { amount: number; source: string }) => {
+      this.addHp(data.amount);
+    });
+    // 魔力变化
+    eventBus.on(GameEvents.CHARACTER_RECEIVE_MP, (data: { amount: number; source: string }) => {
+      this.addMp(data.amount);
+    });
+    // 获得经验
+    eventBus.on(GameEvents.CHARACTER_GAIN_EXP, (data: { amount: number; source: string }) => {
+      this.addExp(data.amount);
+    });
+    // 获得金币
+    eventBus.on(GameEvents.CHARACTER_GAIN_GOLD, (data: { amount: number; source: string }) => {
+      this.addGold(data.amount);
+    });
+    // 应用属性加成
+    eventBus.on(GameEvents.CHARACTER_APPLY_BONUS, (data: { bonus: Partial<Stats> }) => {
+      this.applyBonus(data.bonus);
+    });
+    // 移除属性加成
+    eventBus.on(GameEvents.CHARACTER_REMOVE_BONUS, (data: { bonus: Partial<Stats> }) => {
+      this.removeBonus(data.bonus);
+    });
+  }
+
   /**
    * 生成唯一角色ID
    * @returns 角色ID

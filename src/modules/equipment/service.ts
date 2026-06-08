@@ -8,7 +8,6 @@ import type { Stats } from '../character/types';
 import type { ItemRarity } from '../inventory/types';
 import { equipmentDbService } from './db';
 import { characterService } from '../character/service';
-import { inventoryService } from '../inventory/service';
 import { eventBus, GameEvents } from '../bus/core';
 
 /**
@@ -112,8 +111,7 @@ export class EquipmentService implements IEquipmentService {
         count: 1
       } as any;
       
-      inventoryService.addItemTemplate(oldItemForInventory);
-      inventoryService.addItem(oldItemForInventory);
+      eventBus.emit(GameEvents.INVENTORY_ADD_ITEM, { itemId: oldItemForInventory.id, quantity: 1 });
     }
     
     // 装备新物品
@@ -167,8 +165,7 @@ export class EquipmentService implements IEquipmentService {
     } as any;
     
     // 确保物品模板存在
-    inventoryService.addItemTemplate(itemForInventory);
-    inventoryService.addItem(itemForInventory);
+    eventBus.emit(GameEvents.INVENTORY_ADD_ITEM, { itemId: itemForInventory.id, quantity: 1 });
     
     // 触发事件
     eventBus.emit(GameEvents.EQUIPMENT_CHANGE, { slot, item: equippedItem.item });
@@ -391,7 +388,7 @@ export class EquipmentService implements IEquipmentService {
   private async applyItemBonus(item: EquipmentItem): Promise<void> {
     if (item.bonus) {
       const bonus = this.calculateRarityBonus(item.bonus, item.rarity);
-      await characterService.applyBonus(bonus);
+      eventBus.emit(GameEvents.CHARACTER_APPLY_BONUS, { bonus });
     }
   }
 
@@ -402,7 +399,7 @@ export class EquipmentService implements IEquipmentService {
   private async removeItemBonus(item: EquipmentItem): Promise<void> {
     if (item.bonus) {
       const bonus = this.calculateRarityBonus(item.bonus, item.rarity);
-      await characterService.removeBonus(bonus);
+      eventBus.emit(GameEvents.CHARACTER_REMOVE_BONUS, { bonus });
     }
   }
 

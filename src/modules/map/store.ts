@@ -7,7 +7,6 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { MapState, LocationData } from './types';
 import { mapService } from './service';
-import { mapDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
 
 /**
@@ -83,8 +82,6 @@ export const useMapStore = defineStore('map', () => {
     const success = mapService.enterLocation(locationId);
     if (success) {
       currentLocation.value = mapService.getLocationData(locationId);
-      // 持久化当前区域ID
-      mapDbService.saveCurrentLocationId(locationId);
     }
     return success;
   }
@@ -154,7 +151,7 @@ export const useMapStore = defineStore('map', () => {
     setupCrossModuleListeners();
     
     // 从数据库恢复上次选中的区域
-    const savedLocationId = await mapDbService.getCurrentLocationId();
+    const savedLocationId = await mapService.getCurrentLocationId();
     if (savedLocationId) {
       const location = mapService.getLocationData(savedLocationId);
       if (location) {

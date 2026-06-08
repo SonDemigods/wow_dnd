@@ -124,6 +124,8 @@ export class MapService implements IMapService {
     const location = this.locations.get(locationId);
     if (!location) return false;
     eventBus.emit(GameEvents.ZONE_ENTERED, { locationId, location });
+    // 持久化当前区域ID
+    this.saveCurrentLocationId(locationId);
     return true;
   }
   
@@ -163,6 +165,20 @@ export class MapService implements IMapService {
     mapDbService.clearMapState();
   }
   
+  /**
+   * 持久化当前选中的区域ID
+   */
+  async saveCurrentLocationId(locationId: string): Promise<void> {
+    await mapDbService.saveCurrentLocationId(locationId);
+  }
+
+  /**
+   * 获取上次选中的区域ID
+   */
+  async getCurrentLocationId(): Promise<string | null> {
+    return mapDbService.getCurrentLocationId();
+  }
+
   /**
    * 保存状态
    */

@@ -167,7 +167,7 @@ export class SkillsService implements ISkillsService {
     const skill = this.getSkill(skillId)!;
     
     // 消耗法力值
-    characterService.addMp(-skill.mpCost);
+    eventBus.emit(GameEvents.CHARACTER_RECEIVE_MP, { amount: -skill.mpCost, source: '技能消耗' });
     
     // 计算技能效果
     const effect = this.calculateSkillEffect(skillId);
@@ -183,7 +183,7 @@ export class SkillsService implements ISkillsService {
         break;
       case 'heal':
         heal = effect.value;
-        characterService.addHp(effect.value);
+        eventBus.emit(GameEvents.CHARACTER_RECEIVE_HEAL, { amount: effect.value, source: '技能治疗' });
         break;
     }
     

@@ -27,7 +27,7 @@ type EventCallback = (...args: any[]) => void;
  * 为每个 GameEvent 定义对应的 payload 类型，确保 emit/on 的类型安全。
  */
 export interface GameEventPayloadMap {
-  // 角色
+  // ==================== 角色 ====================
   [GameEvents.CHARACTER_CREATED]: { characterId: string; name: string };
   [GameEvents.CHARACTER_SELECTED]: { characterId: string };
   [GameEvents.CHARACTER_DELETED]: { characterId: string };
@@ -38,12 +38,20 @@ export interface GameEventPayloadMap {
   [GameEvents.CHARACTER_STATS_CHANGE]: { oldStats: Record<string, number>; newStats: Record<string, number> };
   [GameEvents.CHARACTER_DEATH]: { cause: string };
   [GameEvents.CHARACTER_RESURRECTED]: { newHp: number; newMp: number };
-  // 战斗
+  // 角色——外部请求类事件（其他模块通知角色模块执行数据变更）
+  [GameEvents.CHARACTER_TAKE_DAMAGE]: { amount: number; source: string };
+  [GameEvents.CHARACTER_RECEIVE_HEAL]: { amount: number; source: string };
+  [GameEvents.CHARACTER_RECEIVE_MP]: { amount: number; source: string };
+  [GameEvents.CHARACTER_GAIN_EXP]: { amount: number; source: string };
+  [GameEvents.CHARACTER_GAIN_GOLD]: { amount: number; source: string };
+  [GameEvents.CHARACTER_APPLY_BONUS]: { bonus: Partial<{ str: number; dex: number; int: number; vit: number }> };
+  [GameEvents.CHARACTER_REMOVE_BONUS]: { bonus: Partial<{ str: number; dex: number; int: number; vit: number }> };
+  // ==================== 战斗 ====================
   [GameEvents.COMBAT_START]: { enemy: Enemy };
-  [GameEvents.COMBAT_END]: { result: string; enemy: Enemy | null; expGained: number };
+  [GameEvents.COMBAT_END]: { result: string; enemy: Enemy | null; expGained: number; goldGained?: number };
   [GameEvents.COMBAT_PLAYER_TURN]: null;
   [GameEvents.COMBAT_ENEMY_TURN]: null;
-  // 探索
+  // ==================== 探索 ====================
   [GameEvents.EXPLORATION_START]: { characterId: string | null; areaId?: string };
   [GameEvents.EXPLORATION_END]: { characterId: string | null };
   [GameEvents.EXPLORATION_CELL_EXPLORED]: { characterId: string | null; x: number; y: number; cellType?: string; interactionId?: string };
@@ -52,27 +60,32 @@ export interface GameEventPayloadMap {
   [GameEvents.EXPLORATION_ITEM_FOUND]: { characterId: string | null; itemId: string; count: number; itemName?: string };
   [GameEvents.EXPLORATION_TRAP_TRIGGERED]: { characterId: string | null; damage: number; trapType?: string };
   [GameEvents.EXPLORATION_RANDOM_EVENT]: { characterId: string | null; message: string; icon: string };
-  // 区域
+  // ==================== 区域 ====================
   [GameEvents.ZONE_ENTERED]: { locationId: string; location: LocationData };
-  // 商店
+  // ==================== 商店 ====================
   [GameEvents.SHOP_OPENED]: { characterId?: string; shopId: string };
   [GameEvents.SHOP_REFRESHED]: { shopId: string };
   [GameEvents.SHOP_CLOSED]: { shopId?: string };
   [GameEvents.SHOP_TRANSACTION]: { shopId?: string; itemId: string; quantity?: number; totalPrice?: number; sellPrice?: number };
-  // 任务
+  // ==================== 任务 ====================
   [GameEvents.QUEST_BOARD_OPENED]: { characterId?: string; boardId: string };
   [GameEvents.QUEST_ACCEPTED]: { questId: string; definition: QuestDefinition };
   [GameEvents.QUEST_PROGRESS]: { questId: string };
   [GameEvents.QUEST_COMPLETED]: { questId: string; definition: QuestDefinition };
   [GameEvents.QUEST_REWARDED]: { questId: string; definition: QuestDefinition };
-  // 背包/装备
+  // 任务——外部请求类事件
+  [GameEvents.QUEST_ENEMY_KILLED]: { enemyId: string };
+  // ==================== 背包/装备 ====================
   [GameEvents.INVENTORY_CHANGE]: { characterId?: string; itemId: string; count?: number };
   [GameEvents.EQUIPMENT_CHANGE]: { slot: string; item: EquippedItem };
-  // 技能
+  // 背包——外部请求类事件
+  [GameEvents.INVENTORY_ADD_ITEM]: { itemId: string; quantity: number };
+  [GameEvents.INVENTORY_USE_ITEM]: { itemId: string };
+  // ==================== 技能 ====================
   [GameEvents.SKILL_LEARNED]: { skill: Skill };
   [GameEvents.SKILL_CAST]: { skill: Skill; success: boolean };
   [GameEvents.SKILL_BAR_UPDATE]: { skillId?: string; slotIndex?: number; slots?: (string | null)[] };
-  // 游戏数据
+  // ==================== 游戏数据 ====================
   [GameEvents.GAME_DATA_UPDATED]: { type: string; action: string; id: string };
 }
 
@@ -248,6 +261,21 @@ export enum GameEvents {
   CHARACTER_DEATH = 'character_death',
   /** 角色复活 */
   CHARACTER_RESURRECTED = 'character_resurrected',
+  // 角色——外部请求类（其他模块请求角色模块变更数据）
+  /** 角色受到伤害 */
+  CHARACTER_TAKE_DAMAGE = 'character_take_damage',
+  /** 角色获得治疗 */
+  CHARACTER_RECEIVE_HEAL = 'character_receive_heal',
+  /** 角色魔力变化 */
+  CHARACTER_RECEIVE_MP = 'character_receive_mp',
+  /** 角色获得经验 */
+  CHARACTER_GAIN_EXP = 'character_gain_exp',
+  /** 角色获得金币 */
+  CHARACTER_GAIN_GOLD = 'character_gain_gold',
+  /** 角色应用属性加成 */
+  CHARACTER_APPLY_BONUS = 'character_apply_bonus',
+  /** 角色移除属性加成 */
+  CHARACTER_REMOVE_BONUS = 'character_remove_bonus',
 
   // ==================== 战斗 ====================
   /** 战斗开始 */
@@ -302,12 +330,20 @@ export enum GameEvents {
   QUEST_COMPLETED = 'quest_completed',
   /** 任务奖励可用 */
   QUEST_REWARDED = 'quest_rewarded',
+  // 任务——外部请求类
+  /** 敌人被击杀通知任务模块 */
+  QUEST_ENEMY_KILLED = 'quest_enemy_killed',
 
   // ==================== 背包/装备 ====================
   /** 背包变化 */
   INVENTORY_CHANGE = 'inventory_change',
   /** 装备变化 */
   EQUIPMENT_CHANGE = 'equipment_change',
+  // 背包——外部请求类
+  /** 添加物品到背包 */
+  INVENTORY_ADD_ITEM = 'inventory_add_item',
+  /** 在战斗中使用物品 */
+  INVENTORY_USE_ITEM = 'inventory_use_item',
 
   // ==================== 技能 ====================
   /** 技能学习 */

@@ -6,7 +6,6 @@ import { mapDbService } from '../map/db';
 import { enemyDbService } from '../enemy/db';
 import { questDbService } from '../quest/db';
 import { eventBus, GameEvents } from '../bus/core';
-import { characterService } from '../character/service';
 import { inventoryService } from '../inventory/service';
 import { logService } from '../log/service';
 
@@ -28,6 +27,21 @@ export class ExplorationService implements IExplorationService {
   private currentCharacterId: string | null = null;
   private pendingBattleCell: { x: number; y: number } | null = null;
   private currentAreaConfig: AreaConfig | null = null;
+
+  constructor() {
+    this.setupCrossModuleListeners();
+  }
+
+  /**
+   * 注册跨模块事件监听——处理战斗模块发出的 COMBAT_END 事件
+   */
+  private setupCrossModuleListeners(): void {
+    eventBus.on(GameEvents.COMBAT_END, (data) => {
+      // 战斗结束后，如果是探索中触发的战斗，更新对应格子状态
+      const isVictory = data.result === 'victory';
+      this.onBattleResult(isVictory);
+    });
+  }
 
   /**
    * 根据地点数据构建区域配置（异步，从数据库获取敌人和物品数据）
@@ -472,15 +486,18 @@ export class ExplorationService implements IExplorationService {
       case 'treasure':
         const gold = Math.floor(Math.random() * 50) + 10;
         const exp = Math.floor(Math.random() * 20) + 5;
-        characterService.addGold(gold);
-        characterService.addExp(exp);
+        eventBus.emit(GameEvents.CHARACTER_GAIN_GOLD, { amount: gold, source: '探索宝箱' });
+        eventBus.emit(GameEvents.CHARACTER_GAIN_EXP, { amount: exp, source: '探索宝箱' });
         result.rewards = { gold, exp };
         targetCell.type = 'empty';
         break;
       case 'rest':
         if (!this.state.campUsed) {
-          characterService.setHp(characterService.getAttributes().maxHp);
-          characterService.setMp(characterService.getAttributes().maxMana);
+          // 营地恢复：通知角色模块完全恢复HP和MP
+          const maxHp = 9999; // 角色模块会根据自身上限处理
+          const maxMp = 9999;
+          eventBus.emit(GameEvents.CHARACTER_RECEIVE_HEAL, { amount: maxHp, source: '营地休息' });
+          eventBus.emit(GameEvents.CHARACTER_RECEIVE_MP, { amount: maxMp, source: '营地休息' });
           this.state.campUsed = true;
           result.message = '休息完成，恢复全部状态';
         } else {
@@ -522,9 +539,9 @@ export class ExplorationService implements IExplorationService {
     };
     
     if (choiceId === 'search') {
-      characterService.addGold(20);
+      eventBus.emit(GameEvents.CHARACTER_GAIN_GOLD, { amount: 20, source: '随机事件' });
     } else if (choiceId === 'rest') {
-      characterService.addHp(20);
+      eventBus.emit(GameEvents.CHARACTER_RECEIVE_HEAL, { amount: 20, source: '随机事件' });
     }
 
     return { success: true, message: responses[choiceId] || '操作完成' };
@@ -695,8 +712,8 @@ export class ExplorationService implements IExplorationService {
       return false;
     }
 
-    characterService.setHp(characterService.getAttributes().maxHp);
-    characterService.setMp(characterService.getAttributes().maxMana);
+    eventBus.emit(GameEvents.CHARACTER_RECEIVE_HEAL, { amount: 9999, source: '营地休息' });
+    eventBus.emit(GameEvents.CHARACTER_RECEIVE_MP, { amount: 9999, source: '营地休息' });
     
     this.state.campUsed = true;
 
@@ -791,7 +808,7 @@ export class ExplorationService implements IExplorationService {
   private handleItemFound(itemId: string): void {
     const item = inventoryService.getItemInfo(itemId);
     if (item) {
-      inventoryService.addItem(item);
+      eventBus.emit(GameEvents.INVENTORY_ADD_ITEM, { itemId, quantity: 1 });
       eventBus.emit(GameEvents.EXPLORATION_ITEM_FOUND, {
         characterId: this.currentCharacterId,
         itemId: itemId,
@@ -817,7 +834,7 @@ export class ExplorationService implements IExplorationService {
     const variance = (Math.random() - 0.5) * 10;
     const damage = Math.max(1, Math.floor(baseDamage + variance));
     
-    await characterService.addHp(-damage);
+    eventBus.emit(GameEvents.CHARACTER_TAKE_DAMAGE, { amount: damage, source: '陷阱' });
     
     eventBus.emit(GameEvents.EXPLORATION_TRAP_TRIGGERED, {
       characterId: this.currentCharacterId,
@@ -845,42 +862,42 @@ export class ExplorationService implements IExplorationService {
     // 30% 概率恢复生命值
     if (random < 0.3) {
       const healAmount = Math.floor(areaConfig.level * 3 + Math.random() * 10);
-      await characterService.addHp(healAmount);
+      eventBus.emit(GameEvents.CHARACTER_RECEIVE_HEAL, { amount: healAmount, source: '神秘泉水' });
       eventMessage = `发现神秘泉水，恢复了 ${healAmount} 点生命值`;
       eventIcon = '💧';
     }
     // 20% 概率恢复魔法值
     else if (random < 0.5) {
       const mpAmount = Math.floor(areaConfig.level * 2 + Math.random() * 8);
-      await characterService.addMp(mpAmount);
+      eventBus.emit(GameEvents.CHARACTER_RECEIVE_MP, { amount: mpAmount, source: '魔法水晶' });
       eventMessage = `发现魔法水晶，恢复了 ${mpAmount} 点魔法值`;
       eventIcon = '💎';
     }
     // 15% 概率获得经验值
     else if (random < 0.65) {
       const expAmount = Math.floor(areaConfig.level * 10 + Math.random() * 20);
-      characterService.addExp(expAmount);
+      eventBus.emit(GameEvents.CHARACTER_GAIN_EXP, { amount: expAmount, source: '古代石碑' });
       eventMessage = `发现古代石碑，获得了 ${expAmount} 点经验值`;
       eventIcon = '📚';
     }
     // 15% 概率减少生命值（陷阱）
     else if (random < 0.8) {
       const trapDamage = Math.floor(areaConfig.level * 2 + Math.random() * 5);
-      await characterService.addHp(-trapDamage);
+      eventBus.emit(GameEvents.CHARACTER_TAKE_DAMAGE, { amount: trapDamage, source: '隐藏陷阱' });
       eventMessage = `触发了隐藏陷阱，受到 ${trapDamage} 点伤害`;
       eventIcon = '⚠️';
     }
     // 10% 概率减少魔法值
     else if (random < 0.9) {
       const mpLoss = Math.floor(areaConfig.level * 1.5 + Math.random() * 5);
-      await characterService.addMp(-mpLoss);
+      eventBus.emit(GameEvents.CHARACTER_RECEIVE_MP, { amount: -mpLoss, source: '魔法干扰' });
       eventMessage = `遭遇魔法干扰，损失了 ${mpLoss} 点魔法值`;
       eventIcon = '🌀';
     }
     // 10% 概率获得金币
     else {
       const goldAmount = Math.floor(areaConfig.level * 5 + Math.random() * 15);
-      characterService.addGold(goldAmount);
+      eventBus.emit(GameEvents.CHARACTER_GAIN_GOLD, { amount: goldAmount, source: '宝箱' });
       eventMessage = `发现宝箱，获得了 ${goldAmount} 金币`;
       eventIcon = '💰';
     }

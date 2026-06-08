@@ -59,6 +59,30 @@ export class InventoryService implements IInventoryService {
   /** 当前角色ID */
   private characterId: string | null = null;
 
+  constructor() {
+    this.setupCrossModuleListeners();
+  }
+
+  /**
+   * 注册跨模块事件监听——处理其他模块请求的背包操作
+   */
+  private setupCrossModuleListeners(): void {
+    // 添加物品到背包
+    eventBus.on(GameEvents.INVENTORY_ADD_ITEM, (data: { itemId: string; quantity: number }) => {
+      const item = this.getItemInfo(data.itemId);
+      if (item) {
+        this.addItems(item, data.quantity);
+      }
+    });
+    // 在战斗中消耗物品
+    eventBus.on(GameEvents.INVENTORY_USE_ITEM, (data: { itemId: string }) => {
+      const idx = this.inventory.findIndex(inv => inv.itemId === data.itemId);
+      if (idx !== -1) {
+        this.useItem(idx);
+      }
+    });
+  }
+
   /**
    * 初始化背包服务
    * @param characterId - 角色ID
@@ -233,16 +257,16 @@ export class InventoryService implements IInventoryService {
     
     // 应用物品效果
     if (item.hpRestore && item.hpRestore > 0) {
-      await characterService.addHp(item.hpRestore);
+      eventBus.emit(GameEvents.CHARACTER_RECEIVE_HEAL, { amount: item.hpRestore, source: item.name });
     }
     
     if (item.mpRestore && item.mpRestore > 0) {
-      await characterService.addMp(item.mpRestore);
+      eventBus.emit(GameEvents.CHARACTER_RECEIVE_MP, { amount: item.mpRestore, source: item.name });
     }
     
     // 如果有属性加成，应用属性加成
     if (item.bonus) {
-      await characterService.applyBonus(item.bonus);
+      eventBus.emit(GameEvents.CHARACTER_APPLY_BONUS, { bonus: item.bonus });
     }
     
     // 减少物品数量或移除

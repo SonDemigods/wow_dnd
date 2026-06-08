@@ -17,11 +17,8 @@ import type { Enemy } from '../enemy/types';
 import { enemyService } from '../enemy/service';
 import { characterService } from '../character/service';
 import { skillsService } from '../skill/service';
-import { inventoryService } from '../inventory/service';
 import { combatDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
-import { explorationService } from '../exploration/service';
-import { questService } from '../quest/service';
 import { logService } from '../log/service';
 
 /** 战斗服务实现类 */
@@ -350,22 +347,8 @@ export class CombatService implements ICombatService {
    * @returns 行动结果
    */
   private async playerUseItem(itemId: string): Promise<CombatActionResult> {
-    // 查找物品在背包中的位置
-    const inventory = inventoryService.getInventory();
-    const itemIndex = inventory.findIndex(item => item.itemId === itemId);
-    
-    if (itemIndex === -1) {
-      return { success: false, type: 'item', message: '物品不在背包中！' };
-    }
-    
-    // 使用物品
-    const success = await inventoryService.useItem(itemIndex);
-    
-    if (!success) {
-      return { success: false, type: 'item', message: '无法使用该物品！' };
-    }
-    
-    const item = inventoryService.getItemInfo(itemId);
+    // 通过事件通知背包模块使用物品（背包模块负责验证和效果处理）
+    eventBus.emit(GameEvents.INVENTORY_USE_ITEM, { itemId });
     
     this.addCombatLog({
       actorType: 'player',
@@ -374,7 +357,7 @@ export class CombatService implements ICombatService {
       eventType: 'combat_item',
       isCrit: false,
       isDodge: false,
-      message: `${characterService.getName()} 使用了 ${item?.name || '物品'}！`
+      message: `${characterService.getName()} 使用了物品！`
     });
     
     this.endPlayerTurn();
@@ -383,7 +366,7 @@ export class CombatService implements ICombatService {
     return {
       success: true,
       type: 'item',
-      message: `使用了 ${item?.name || '物品'}！`
+      message: '使用了物品！'
     };
   }
 
@@ -641,9 +624,7 @@ export class CombatService implements ICombatService {
     }
     
     // 造成伤害
-    characterService.addHp(-damage);
-    
-    const characterInfo = characterService.getCharacterInfo();
+    eventBus.emit(GameEvents.CHARACTER_TAKE_DAMAGE, { amount: damage, source: this.enemy.name });
     
     this.addCombatLog({
       actorType: 'enemy',
@@ -658,21 +639,6 @@ export class CombatService implements ICombatService {
       isDodge: false,
       message: `${this.enemy.name} 对 ${characterService.getName()} 造成 ${damage} 点伤害！`
     });
-    
-    if (characterInfo.hp <= 0) {
-      this.addCombatLog({
-        actorType: 'system',
-        actorId: 'system',
-        actorName: '系统',
-        eventType: 'combat_death',
-        targetType: 'player',
-        targetId: 'player',
-        targetName: characterService.getName(),
-        isCrit: false,
-        isDodge: false,
-        message: `${characterService.getName()} 被击败了！`
-      });
-    }
     
     return {
       success: true,
@@ -721,9 +687,7 @@ export class CombatService implements ICombatService {
     }
     
     // 造成伤害
-    characterService.addHp(-damage);
-    
-    const characterInfo = characterService.getCharacterInfo();
+    eventBus.emit(GameEvents.CHARACTER_TAKE_DAMAGE, { amount: damage, source: this.enemy.name });
     
     this.addCombatLog({
       actorType: 'enemy',
@@ -740,21 +704,6 @@ export class CombatService implements ICombatService {
       isDodge: false,
       message: `${this.enemy.name} 使用 ${skill.name}，对 ${characterService.getName()} 造成 ${damage} 点伤害！`
     });
-    
-    if (characterInfo.hp <= 0) {
-      this.addCombatLog({
-        actorType: 'system',
-        actorId: 'system',
-        actorName: '系统',
-        eventType: 'combat_death',
-        targetType: 'player',
-        targetId: 'player',
-        targetName: characterService.getName(),
-        isCrit: false,
-        isDodge: false,
-        message: `${characterService.getName()} 被击败了！`
-      });
-    }
     
     return {
       success: true,
@@ -779,9 +728,9 @@ export class CombatService implements ICombatService {
       const goldGained = this.enemy.goldReward;
       
       if (result === 'victory') {
-        // 胜利：获得经验和金币
-        characterService.addExp(expGained);
-        characterService.addGold(goldGained);
+        // 胜利：通过事件通知角色模块获得经验和金币
+        eventBus.emit(GameEvents.CHARACTER_GAIN_EXP, { amount: expGained, source: this.enemy.name });
+        eventBus.emit(GameEvents.CHARACTER_GAIN_GOLD, { amount: goldGained, source: this.enemy.name });
         
         this.addCombatLog({
           actorType: 'system',
@@ -807,9 +756,9 @@ export class CombatService implements ICombatService {
           this.handleLoot();
         }
         
-        // 更新任务进度（击杀类任务）
+        // 通过事件通知任务模块更新击杀进度
         if (this.enemy.dataId) {
-          questService.handleEnemyKill(this.enemy.dataId);
+          eventBus.emit(GameEvents.QUEST_ENEMY_KILLED, { enemyId: this.enemy.dataId });
         }
       } else if (result === 'defeat') {
         // 失败：损失经验
@@ -832,8 +781,8 @@ export class CombatService implements ICombatService {
           icon: '💀'
         });
         
-        // 处理角色死亡
-        characterService.handleDeath();
+        // 通过事件通知角色模块处理死亡
+        eventBus.emit(GameEvents.CHARACTER_DEATH, { cause: this.enemy.name });
       } else if (result === 'fled') {
         this.addCombatLog({
           actorType: 'system',
@@ -858,14 +807,12 @@ export class CombatService implements ICombatService {
       // 保存日志
       this.saveLogs();
       
-      // 通知探索模块战斗结果
-      explorationService.onBattleResult(result === 'victory');
-      
-      // 触发战斗结束事件
+      // 触发战斗结束事件（包含战斗结果信息，供探索等模块监听）
       eventBus.emit(GameEvents.COMBAT_END, {
         result,
         enemy: this.enemy,
-        expGained: result === 'victory' ? expGained : 0
+        expGained: result === 'victory' ? expGained : 0,
+        goldGained: result === 'victory' ? goldGained : 0
       });
       
       // 清理战斗状态
@@ -886,23 +833,18 @@ export class CombatService implements ICombatService {
     // 处理物品掉落
     this.enemy.drops.forEach(drop => {
       if (Math.random() < drop.dropRate) {
-        const itemTemplate = inventoryService.getItemInfo(drop.itemId);
-        if (itemTemplate) {
-          const amount = Math.floor(Math.random() * (drop.maxAmount - drop.minAmount + 1)) + drop.minAmount;
-          const added = inventoryService.addItems(itemTemplate, amount);
-          
-          if (added > 0) {
-            this.addCombatLog({
-              actorType: 'system',
-              actorId: 'system',
-              actorName: '系统',
-              eventType: 'combat_item',
-              isCrit: false,
-              isDodge: false,
-              message: `获得 ${itemTemplate.name} x${added}！`
-            });
-          }
-        }
+        const amount = Math.floor(Math.random() * (drop.maxAmount - drop.minAmount + 1)) + drop.minAmount;
+        eventBus.emit(GameEvents.INVENTORY_ADD_ITEM, { itemId: drop.itemId, quantity: amount });
+        
+        this.addCombatLog({
+          actorType: 'system',
+          actorId: 'system',
+          actorName: '系统',
+          eventType: 'combat_item',
+          isCrit: false,
+          isDodge: false,
+          message: `获得物品 ${drop.itemId} x${amount}！`
+        });
       }
     });
   }
