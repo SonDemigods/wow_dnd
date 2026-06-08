@@ -1,3 +1,8 @@
+/**
+ * @fileoverview 冒险日志模块状态管理层
+ * @description 使用 Pinia 管理冒险日志状态，提供响应式数据
+ * @module log
+ */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { LogEntry, LogType } from './types';

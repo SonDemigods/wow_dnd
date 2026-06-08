@@ -93,6 +93,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 技能面板弹窗组件
+ * @description 展示角色已学习的技能列表和战斗技能栏，支持将技能记忆/遗忘到战斗技能槽位中
+ */
+
 import { ref, computed, onMounted } from 'vue';
 import { useSkillsStore } from '@/modules/skill';
 import { characterService } from '@/modules/character';

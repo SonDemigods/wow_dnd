@@ -208,6 +208,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 角色创建组件
+ * @description 提供分步式的角色创建流程，依次选择阵营、种族、职业并输入角色名，实时预览属性加成和次级属性
+ */
+
 import { ref, computed, onMounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { useGameDataStore } from '@/modules/gameData';

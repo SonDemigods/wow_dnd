@@ -115,6 +115,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 游戏主界面组件
+ * @description 游戏的核心枢纽页面，集成地图/探索两个标签页，以及底部导航栏的角色、背包、技能、任务、日志等弹出面板
+ */
+
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';

@@ -9,6 +9,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 提示弹窗组件
+ * @description 基于 BasePopup 的简单提示弹窗，用于显示信息类通知，仅包含关闭确认按钮
+ */
+
 import BasePopup from '../common/BasePopup.vue';
 
 defineProps<{

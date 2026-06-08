@@ -89,6 +89,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 商店弹窗组件
+ * @description 提供购买和出售两个标签页的商品交易界面，支持按分类筛选物品
+ */
+
 import { ref, computed, onMounted } from 'vue';
 import { shopService } from '@/modules/shop';
 import { characterService } from '@/modules/character';

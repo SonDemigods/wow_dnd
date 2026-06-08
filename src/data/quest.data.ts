@@ -6,6 +6,10 @@
 
 import type { QuestDefinition } from '../modules/quest/types';
 
+/**
+ * 所有可接任务的完整数据集
+ * @type {QuestDefinition[]}
+ */
 export const QUESTS: QuestDefinition[] = [
   {
     id: 'teldrassil_defense',

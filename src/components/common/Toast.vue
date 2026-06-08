@@ -8,6 +8,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview Toast 提示组件
+ * @description 顶部浮动消息提示，支持 info/success/warning/danger 四种类型，带有进出场动画
+ */
+
 withDefaults(defineProps<{
   visible: boolean;
   message: string;

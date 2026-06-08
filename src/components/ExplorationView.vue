@@ -54,6 +54,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 探索视图组件
+ * @description 基于网格的探索玩法界面，支持拖拽平移探索地图、点击翻开格子触发战斗/商店/任务等交互事件
+ */
+
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useExplorationStore } from '@/modules/exploration';
 import { useCharacterStore } from '@/modules/character';

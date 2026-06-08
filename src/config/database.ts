@@ -15,17 +15,26 @@ import type {
 // 重新导出类型，保持下游导入路径不变
 export type { DatabaseConfig, DBServiceConfig, SyncEngineConfig, BackupConfig };
 
+/**
+ * 数据库连接配置
+ */
 export const DATABASE_CONFIG: DatabaseConfig = {
   name: 'wow_dnd_game',
   version: 1
 };
 
+/**
+ * 数据库服务重试配置
+ */
 export const DB_SERVICE_CONFIG: DBServiceConfig = {
   maxRetries: 3,
   delay: 1000,
   backoff: 'exponential'
 };
 
+/**
+ * 数据同步引擎配置
+ */
 export const SYNC_ENGINE_CONFIG: SyncEngineConfig = {
   debounceMs: 500,
   maxRetries: 3,
@@ -33,6 +42,9 @@ export const SYNC_ENGINE_CONFIG: SyncEngineConfig = {
   backoff: 'exponential'
 };
 
+/**
+ * 数据备份配置
+ */
 export const BACKUP_CONFIG: BackupConfig = {
   autoBackupKey: 'wow_dnd_auto_backups',
   maxAutoBackups: 5,

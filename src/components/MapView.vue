@@ -97,6 +97,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 地图视图组件
+ * @description 世界地图交互界面，支持缩放和拖拽平移，点击区域标记查看详情并进入对应探索区域
+ */
+
 import { ref, computed, onMounted } from 'vue';
 import { mapService } from '@/modules/map';
 import { useMapStore } from '@/modules/map';

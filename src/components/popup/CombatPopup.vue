@@ -164,6 +164,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 战斗弹窗组件
+ * @description 回合制战斗界面，支持普通攻击、技能释放、物品使用和逃跑等行动，包含回合日志、伤害浮动数字和战斗结果展示
+ */
+
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { combatService } from '@/modules/combat/service';
 import { useCharacterStore } from '@/modules/character';

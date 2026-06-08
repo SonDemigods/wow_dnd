@@ -1,3 +1,8 @@
+/**
+ * @fileoverview 探索模块数据层
+ * @description 封装探索数据的 IndexedDB 操作，提供数据持久化能力
+ * @module exploration
+ */
 import { db as gameDb, dbService } from '../data/core';
 import type { ExplorationState, ExplorationCell } from './types';
 

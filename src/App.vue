@@ -42,6 +42,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 应用根组件
+ * @description 管理游戏主界面状态（角色选择/游戏中），协调子组件间的交互，处理角色选择、创建和退出逻辑
+ */
+
 import { ref, onMounted } from 'vue';
 import CharacterSelect from './components/CharacterSelect.vue';
 import CharacterCreate from './components/CharacterCreate.vue';
@@ -51,11 +56,16 @@ import Toast from './components/common/Toast.vue';
 import { useCharacterStore } from './modules/character';
 import { useToast } from './composables/useToast';
 
+/** 游戏界面状态：角色选择 或 游戏中 */
 type GameState = 'character-select' | 'game';
 
+/** 当前游戏界面状态 */
 const gameState = ref<GameState>('character-select');
+/** 是否显示角色创建弹窗 */
 const showCreateModal = ref(false);
+/** 是否显示退出确认弹窗 */
 const showExitConfirm = ref(false);
+/** 角色选择组件引用 */
 const characterSelectRef = ref<InstanceType<typeof CharacterSelect>>();
 
 const characterStore = useCharacterStore();
@@ -72,12 +82,17 @@ onMounted(async () => {
   }
 });
 
+/**
+ * 选择角色并进入游戏
+ * @param {string} characterId - 选中的角色ID
+ */
 async function handleCharacterSelect(characterId: string) {
   console.log('Selected character:', characterId);
   await characterStore.selectCharacter(characterId);
   gameState.value = 'game';
 }
 
+/** 角色创建完成后关闭弹窗并刷新列表 */
 function handleCharacterCreated() {
   showCreateModal.value = false;
   if (characterSelectRef.value?.refreshData) {
@@ -85,16 +100,19 @@ function handleCharacterCreated() {
   }
 }
 
+/** 点击退出按钮，显示确认弹窗 */
 function handleExit() {
   showExitConfirm.value = true;
 }
 
+/** 确认退出，登出并返回角色选择界面 */
 async function confirmExit() {
   showExitConfirm.value = false;
   await characterStore.logout();
   gameState.value = 'character-select';
 }
 
+/** 取消退出操作 */
 function cancelExit() {
   showExitConfirm.value = false;
 }

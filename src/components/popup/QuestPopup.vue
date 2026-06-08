@@ -67,6 +67,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 任务日志弹窗组件
+ * @description 展示玩家当前进行中的任务列表，支持查看目标进度、领取已完成任务奖励和放弃任务
+ */
+
 import { ref, reactive, onMounted, watch } from 'vue';
 import { questService } from '@/modules/quest';
 import { useToast } from '@/composables/useToast';

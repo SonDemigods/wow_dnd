@@ -120,6 +120,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 背包弹窗组件
+ * @description 展示角色背包物品网格，支持按分类筛选、使用消耗品、装备武器/护甲到槽位及丢弃物品操作
+ */
+
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';

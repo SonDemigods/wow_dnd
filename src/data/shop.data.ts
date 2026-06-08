@@ -6,6 +6,10 @@
 
 import type { ShopConfig } from '../modules/shop/types';
 
+/**
+ * 所有商店配置的完整数据集
+ * @type {ShopConfig[]}
+ */
 export const SHOPS: ShopConfig[] = [
   {
     id: 'general_goods',

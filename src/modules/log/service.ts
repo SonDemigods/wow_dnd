@@ -1,3 +1,8 @@
+/**
+ * @fileoverview 冒险日志模块服务层
+ * @description 提供冒险日志的管理功能，包括日志添加、查询、筛选等
+ * @module log
+ */
 import type { LogEntry, LogType, ILogService } from './types';
 import { adventureLogDbService } from './db';
 

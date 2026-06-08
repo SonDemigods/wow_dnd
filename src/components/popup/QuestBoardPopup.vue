@@ -96,6 +96,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 任务看板弹窗组件
+ * @description 提供可接取任务和可交付任务两个标签页，支持从当前区域任务板接受/提交任务
+ */
+
 import { ref, computed, onMounted, watch } from 'vue';
 import { questService } from '@/modules/quest';
 import { characterService } from '@/modules/character';

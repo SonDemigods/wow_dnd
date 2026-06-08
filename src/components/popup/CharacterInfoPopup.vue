@@ -184,6 +184,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 角色信息弹窗组件
+ * @description 展示角色的完整属性面板，包括核心属性、次级属性、装备槽位和卸装操作
+ */
+
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { equipmentService } from '@/modules/equipment';

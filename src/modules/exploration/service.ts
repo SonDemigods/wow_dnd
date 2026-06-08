@@ -1,3 +1,8 @@
+/**
+ * @fileoverview 探索模块服务层
+ * @description 提供探索管理的核心业务逻辑，包括网格生成、玩家移动、事件处理等
+ * @module exploration
+ */
 import type { GridCell, GridEventType, ExplorationState, GridEventProbability, AreaConfig, IExplorationService, ExplorationCell, MoveResult, EventChoiceResult } from './types';
 import type { LocationData } from '../map/types';
 import { inventoryDbService } from '../inventory/db';

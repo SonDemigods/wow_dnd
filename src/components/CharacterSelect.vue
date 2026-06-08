@@ -55,6 +55,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 角色选择组件
+ * @description 展示已有角色列表，支持选择角色进入游戏、创建新角色和删除角色（带二次确认）
+ */
+
 import { ref, onMounted } from 'vue';
 import { characterService } from '@/modules/character';
 import Tag from './common/Tag.vue';

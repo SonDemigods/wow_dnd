@@ -20,6 +20,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 基础弹窗组件
+ * @description 通用的弹出层容器组件，提供标题栏、内容区、底部操作栏的插槽布局，支持自定义最大宽度和关闭按钮显隐
+ */
+
 import { computed } from 'vue';
 
 const props = withDefaults(defineProps<{

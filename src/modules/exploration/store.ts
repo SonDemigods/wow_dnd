@@ -1,3 +1,8 @@
+/**
+ * @fileoverview 探索模块状态管理层
+ * @description 使用 Pinia 管理探索状态，提供响应式数据，Store 是探索数据的唯一持有者
+ * @module exploration
+ */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { ExplorationCell, ExplorationState } from './types';

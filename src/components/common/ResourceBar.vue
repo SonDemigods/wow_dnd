@@ -12,6 +12,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 资源条组件
+ * @description 通用资源进度条展示组件，用于显示 HP/MP/EXP 等资源的当前值、最大值和百分比
+ */
+
 withDefaults(defineProps<{
   icon: string;
   name: string;

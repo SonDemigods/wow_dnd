@@ -8,6 +8,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @fileoverview 标签组件
+ * @description 用于展示种族、职业、阵营的彩色标签，支持自定义颜色
+ */
+
 const props = defineProps<{
   text: string;
   type: 'race' | 'class' | 'faction';
