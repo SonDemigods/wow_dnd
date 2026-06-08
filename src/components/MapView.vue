@@ -118,7 +118,6 @@ const mapStore = useMapStore();
 const characterStore = useCharacterStore();
 const zones = ref<MapZone[]>([]);
 const selectedZone = ref<MapZone | null>(null);
-const mapContainerRef = ref<HTMLElement | null>(null);
 const showConfirm = ref(false);
 
 // 缩放和平移
