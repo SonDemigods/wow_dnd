@@ -171,7 +171,6 @@ function endDrag() {
 // 拖动功能 - 触摸事件（移动端）
 let touchStartX = 0;
 let touchStartY = 0;
-let touchStartTime = 0;
 
 function onTouchStart(e: TouchEvent) {
   if (e.touches.length !== 1) return;
@@ -179,7 +178,6 @@ function onTouchStart(e: TouchEvent) {
   const touch = e.touches[0];
   touchStartX = touch.clientX;
   touchStartY = touch.clientY;
-  touchStartTime = Date.now();
   isDragging.value = true;
   startX.value = touch.clientX - panX.value;
   startY.value = touch.clientY - panY.value;

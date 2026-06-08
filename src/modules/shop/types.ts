@@ -6,6 +6,22 @@
 import type { ItemRarity } from '../inventory/types';
 
 /**
+ * 物品分类类型
+ * - consumable: 消耗品（药水、食物等）
+ * - weapon: 武器
+ * - armor: 护甲
+ * - accessory: 饰品
+ * - material: 材料
+ * - misc: 其他
+ */
+export type ItemCategory = 'consumable' | 'weapon' | 'armor' | 'accessory' | 'material' | 'misc';
+
+/**
+ * 物品品质类型（复用 ItemRarity）
+ */
+export type ItemQuality = ItemRarity;
+
+/**
  * 价格变化范围接口
  * @property {number} min - 最小价格倍数（相对于基础价格）
  * @property {number} max - 最大价格倍数（相对于基础价格）
@@ -41,6 +57,23 @@ export interface ShopConfig {
 export interface ShopItem {
   itemId: string;
   price: number;
+}
+
+/**
+ * 商店展示商品类型（合并了 ShopItem 和物品详情）
+ */
+export interface ShopDisplayItem {
+  id: string;
+  itemId: string;
+  name: string;
+  type: ItemCategory;
+  quality: ItemQuality;
+  icon: string;
+  description: string;
+  price: number;
+  quantity: number;
+  category: ItemCategory;
+  effect?: { type: string; value: number | Partial<Record<string, number>> };
 }
 
 /**

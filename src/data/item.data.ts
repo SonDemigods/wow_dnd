@@ -1,6 +1,6 @@
-﻿/**
+/**
  * @fileoverview 物品数据模块
- * @description 包含所有可获取物品的类型定义和掉落物品详情
+ * @description 包含所有可获取的掉落物品详情（药水、食物、卷轴、材料等）
  * @module data/item
  */
 

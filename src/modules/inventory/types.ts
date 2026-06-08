@@ -172,6 +172,13 @@ export interface IInventoryService {
   getItem(index: number): InventoryItem | null;
 
   /**
+   * 获取物品模板信息
+   * @param {string} itemId - 物品ID
+   * @returns {Item | null} 物品模板数据
+   */
+  getItemInfo(itemId: string): Item | null;
+
+  /**
    * 添加物品到背包
    * @param {Item} item - 物品数据
    * @returns {boolean} 是否成功添加
@@ -190,7 +197,7 @@ export interface IInventoryService {
    * @param {number} index - 物品位置索引
    * @returns {boolean} 是否成功使用
    */
-  useItem(index: number): boolean;
+  useItem(index: number): Promise<boolean>;
 
   /**
    * 获取空槽位数量

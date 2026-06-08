@@ -65,7 +65,7 @@ export class EquipmentDbService {
     characterId: string
   ): Promise<Record<EquipmentSlot, EquippedItem | null>> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.char_equipment.get(characterId);
+      const data = await gameDb.char_equipment.get(characterId) as unknown as EquipmentDataStorage | undefined;
       if (!data) {
         return this.getDefaultEquipment();
       }
@@ -131,7 +131,7 @@ export class EquipmentDbService {
    */
   async getEquipmentTemplate(itemId: string): Promise<EquipmentItem | null> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.config_equipmentItems.get(itemId);
+      const data = await gameDb.config_equipmentItems.get(itemId) as unknown as EquipmentTemplateStorage | undefined;
       if (!data) return null;
       
       return {
@@ -157,7 +157,7 @@ export class EquipmentDbService {
    */
   async getAllEquipmentTemplates(): Promise<EquipmentItem[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.config_equipmentItems.toArray();
+      const items = await gameDb.config_equipmentItems.toArray() as unknown as EquipmentTemplateStorage[];
       return items.map(data => ({
         id: data.id,
         name: data.name,

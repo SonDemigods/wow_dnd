@@ -10,7 +10,7 @@ export { FACTIONS, RACES } from './race.data';
 // 导出职业和职业技能数据
 export { CLASSES, CLASS_ABILITIES } from './class.data';
 
-// 导出物品类型和战利品数据
+// 导出物品和战利品数据
 export { LOOT_ITEMS } from './item.data';
 
 // 导出装备数据

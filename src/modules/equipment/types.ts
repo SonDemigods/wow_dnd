@@ -4,6 +4,7 @@
  */
 
 import type { Item, ItemRarity, RarityConfig } from '../inventory/types';
+export type { RarityConfig };
 import type { Stats } from '../character/types';
 
 /**

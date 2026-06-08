@@ -98,7 +98,7 @@ import { ref, computed, onMounted } from 'vue';
 import { shopService } from '@/modules/shop';
 import { characterService } from '@/modules/character';
 import { inventoryService } from '@/modules/inventory';
-import type { ShopItem, ItemCategory, ItemQuality } from '@/modules/shop';
+import type { ShopItem, ShopDisplayItem, ItemCategory, ItemQuality } from '@/modules/shop';
 import BasePopup from '../common/BasePopup.vue';
 
 const props = defineProps<{
@@ -112,9 +112,9 @@ const emit = defineEmits<{
 
 const currentTab = ref<'buy' | 'sell'>('buy');
 const selectedCategory = ref<ItemCategory | 'all'>('all');
-const selectedItem = ref<ShopItem | any>(null);
+const selectedItem = ref<ShopDisplayItem | null>(null);
 
-const shopItems = ref<ShopItem[]>([]);
+const shopItems = ref<ShopDisplayItem[]>([]);
 const inventoryItems = ref<any[]>([]);
 
 const currentShopId = computed(() => props.shopId || 'shop_inn');
@@ -219,7 +219,28 @@ function sellItem(itemId: string) {
 
 function loadShopItems() {
   const items = shopService.getShopItems(currentShopId.value);
-  shopItems.value = items || [];
+  if (!items) {
+    shopItems.value = [];
+    return;
+  }
+  
+  shopItems.value = items.map(shopItem => {
+    const itemInfo = inventoryService.getItemInfo(shopItem.itemId);
+    if (!itemInfo) return null;
+    return {
+      id: itemInfo.id,
+      itemId: shopItem.itemId,
+      name: itemInfo.name,
+      type: itemInfo.type as ItemCategory,
+      quality: itemInfo.rarity as ItemQuality,
+      icon: itemInfo.icon,
+      description: itemInfo.description,
+      price: shopItem.price,
+      quantity: 1,
+      category: itemInfo.type as ItemCategory,
+      effect: itemInfo.effect
+    } as ShopDisplayItem;
+  }).filter(Boolean) as ShopDisplayItem[];
 }
 
 function loadInventoryItems() {

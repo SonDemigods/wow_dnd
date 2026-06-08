@@ -4,7 +4,7 @@
  * 封装角色数据的 IndexedDB 操作，提供数据持久化能力
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { Character, CharacterListItem, Stats } from './types';
+import type { Character, CharacterListItem, Stats, FactionType, RaceType, ClassType } from './types';
 
 /**
  * 角色数据存储接口
@@ -12,9 +12,9 @@ import type { Character, CharacterListItem, Stats } from './types';
 export interface CharacterDataStorage {
   characterId: string;
   name: string;
-  factionId: string;
-  raceId: string;
-  classId: string;
+  factionId: FactionType;
+  raceId: RaceType;
+  classId: ClassType;
   level: number;
   exp: number;
   expToNextLevel: number;
@@ -62,7 +62,7 @@ export class CharacterDbService {
    */
   async getAllCharacterListItems(): Promise<CharacterListItem[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.char_data.toArray();
+      const items = await gameDb.char_data.toArray() as unknown as CharacterDataStorage[];
       return items.map(item => ({
         id: item.characterId,
         name: item.name,
@@ -83,7 +83,7 @@ export class CharacterDbService {
    */
   async getCharacterListItem(characterId: string): Promise<CharacterListItem | null> {
     return dbService.withRetry(async () => {
-      const item = await gameDb.char_data.get(characterId);
+      const item = await gameDb.char_data.get(characterId) as unknown as CharacterDataStorage | undefined;
       if (!item) return null;
       return {
         id: item.characterId,
@@ -112,7 +112,7 @@ export class CharacterDbService {
    */
   async saveCharacterData(data: CharacterDataStorage): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.char_data.put(data);
+      await gameDb.char_data.put(data as unknown as Record<string, unknown>);
     });
   }
 
@@ -123,7 +123,7 @@ export class CharacterDbService {
    */
   async getCharacterData(characterId: string): Promise<CharacterDataStorage | null> {
     return dbService.withRetry(async () => {
-      return await gameDb.char_data.get(characterId);
+      return await gameDb.char_data.get(characterId) as unknown as CharacterDataStorage | null;
     });
   }
 
@@ -143,7 +143,7 @@ export class CharacterDbService {
    */
   async getGameState(): Promise<{ currentCharacterId: string | null } | null> {
     return dbService.withRetry(async () => {
-      return await gameDb.runtime_gameState.get('gameState');
+      return await gameDb.runtime_gameState.get('gameState') as unknown as { currentCharacterId: string | null } | null;
     });
   }
 

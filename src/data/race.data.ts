@@ -9,7 +9,7 @@ import type { FactionData, RaceData } from '@/modules/character/types';
 
 /**
  * 阵营数据定义
- * 包含联盟和部落两大阵营的基本信息
+ * 包含联盟、部落和中立三大阵营的基本信息
  */
 export const FACTIONS: FactionData[] = [
   {

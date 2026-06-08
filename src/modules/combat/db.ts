@@ -70,7 +70,7 @@ export class CombatDbService {
    */
   async getCombatLogs(combatId: string): Promise<CombatLog[]> {
     return dbService.withRetry(async () => {
-      const logs = await gameDb.runtime_combatLogs.where('combatId').equals(combatId).sortBy('timestamp');
+      const logs = await gameDb.runtime_combatLogs.where('combatId').equals(combatId).sortBy('timestamp') as unknown as CombatLogStorage[];
       return logs.map(log => ({
         combatId: log.combatId,
         battleLogId: log.battleLogId,
@@ -100,7 +100,7 @@ export class CombatDbService {
    */
   async getAllCombatLogs(): Promise<CombatLog[]> {
     return dbService.withRetry(async () => {
-      const logs = await gameDb.runtime_combatLogs.toArray();
+      const logs = await gameDb.runtime_combatLogs.toArray() as unknown as CombatLogStorage[];
       return logs.map(log => ({
         combatId: log.combatId,
         battleLogId: log.battleLogId,
@@ -140,9 +140,9 @@ export class CombatDbService {
    */
   async deleteCombatLogs(combatId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      const logs = await gameDb.runtime_combatLogs.where('combatId').equals(combatId).toArray();
+      const logs = await gameDb.runtime_combatLogs.where('combatId').equals(combatId).toArray() as unknown as CombatLogStorage[];
       for (const log of logs) {
-        await gameDb.runtime_combatLogs.delete(log.battleLogId);
+        await gameDb.runtime_combatLogs.delete(log.battleLogId as string);
       }
     });
   }

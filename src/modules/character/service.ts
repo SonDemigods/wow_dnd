@@ -582,8 +582,8 @@ export class CharacterService implements ICharacterService {
     }
     
     eventBus.emit(GameEvents.CHARACTER_STATS_CHANGE, {
-      oldStats,
-      newStats: this.getStats()
+      oldStats: oldStats as unknown as Record<string, number>,
+      newStats: this.getStats() as unknown as Record<string, number>
     });
     
     await this.save();
@@ -609,8 +609,8 @@ export class CharacterService implements ICharacterService {
     this.character!.mana = Math.min(this.character!.mana, this.character!.maxMana);
     
     eventBus.emit(GameEvents.CHARACTER_STATS_CHANGE, {
-      oldStats,
-      newStats: this.getStats()
+      oldStats: oldStats as unknown as Record<string, number>,
+      newStats: this.getStats() as unknown as Record<string, number>
     });
     
     await this.save();

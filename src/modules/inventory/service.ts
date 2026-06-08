@@ -36,17 +36,6 @@ const ITEM_TYPE_NAMES: Record<ItemType, string> = {
 };
 
 /**
- * 物品稀有度颜色映射
- */
-const ITEM_RARITY_COLORS: Record<ItemRarity, string> = {
-  common: '#9d9d9d',
-  uncommon: '#1eff00',
-  rare: '#0070dd',
-  epic: '#a335ee',
-  legendary: '#ff8000'
-};
-
-/**
  * 背包服务实现类
  */
 export class InventoryService implements IInventoryService {

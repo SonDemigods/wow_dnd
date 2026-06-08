@@ -265,7 +265,19 @@ export class ShopService implements IShopService {
     characterService.addGold(-totalPrice);
     
     // 添加物品到背包
-    const success = inventoryService.addItem(itemId, quantity);
+    const itemTemplate = inventoryService.getItemInfo(itemId);
+    if (!itemTemplate) {
+      characterService.addGold(totalPrice);
+      return false;
+    }
+
+    let success = true;
+    for (let i = 0; i < quantity; i++) {
+      if (!inventoryService.addItem(itemTemplate)) {
+        success = false;
+        break;
+      }
+    }
     if (!success) {
       // 如果背包空间不足，返还金币
       characterService.addGold(totalPrice);
@@ -294,7 +306,7 @@ export class ShopService implements IShopService {
     // 检查背包中是否有足够数量
     const inventory = inventoryService.getInventory();
     const inventoryItem = inventory.find(item => item.itemId === itemId);
-    if (!inventoryItem || inventoryItem.amount < quantity) {
+    if (!inventoryItem || inventoryItem.count < quantity) {
       return false;
     }
     
@@ -302,8 +314,16 @@ export class ShopService implements IShopService {
     const sellPrice = this.calculateSellPrice(itemId, itemInfo.rarity) * quantity;
     
     // 移除物品
-    const success = inventoryService.removeItem(itemId, quantity);
-    if (!success) {
+    let removed = 0;
+    for (let i = 0; i < quantity; i++) {
+      const inventory = inventoryService.getInventory();
+      const index = inventory.findIndex(item => item.itemId === itemId);
+      if (index === -1) break;
+      if (inventoryService.removeItem(index)) {
+        removed++;
+      }
+    }
+    if (removed === 0) {
       return false;
     }
     

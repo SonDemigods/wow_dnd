@@ -6,7 +6,7 @@
 
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { FactionData, RaceData, ClassData } from '../character/types';
+import type { FactionData, RaceData, ClassData, RaceType, FactionType } from '../character/types';
 import { gameDataService } from './service';
 import { eventBus, GameEvents } from '../bus/core';
 
@@ -61,12 +61,12 @@ export const useGameDataStore = defineStore('gameData', () => {
   
   /** 根据种族获取职业 */
   const getClassesByRace = computed(() => (raceId: string) => {
-    return classes.value.filter(c => c.raceIds.includes(raceId));
+    return classes.value.filter(c => c.raceIds.includes(raceId as RaceType));
   });
   
   /** 根据阵营获取职业 */
   const getClassesByFaction = computed(() => (factionId: string) => {
-    return classes.value.filter(c => c.factionsIds.includes(factionId));
+    return classes.value.filter(c => c.factionsIds.includes(factionId as FactionType));
   });
   
   /** 当前选中的阵营 */

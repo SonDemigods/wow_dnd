@@ -160,7 +160,7 @@ const showQuestBoard = ref(false);
 const showCombat = ref(false);
 const currentShopId = ref('shop_inn');
 
-const character = computed(() => characterStore.character || {});
+const character = computed(() => characterStore.character || {} as { raceId?: string; name?: string; level?: number });
 const currentHp = computed(() => characterStore.hp);
 const maxHp = computed(() => characterStore.maxHp);
 const currentMp = computed(() => characterStore.mana);

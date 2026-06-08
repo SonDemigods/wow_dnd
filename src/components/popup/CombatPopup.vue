@@ -365,7 +365,6 @@ async function doAction(type: CombatActionType) {
   setTimeout(() => { vsFlash.value = false; }, 300);
 
   const prevEnemyHp = enemyHp.value;
-  const prevPlayerHp = playerHp.value;
 
   await combatService.playerAction({ type });
 

@@ -59,7 +59,7 @@ export class InventoryDbService {
    */
   async getInventory(characterId: string): Promise<InventoryItem[]> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.char_inventory.get(characterId);
+      const data = await gameDb.char_inventory.get(characterId) as unknown as InventoryDataStorage | undefined;
       if (!data) return [];
       try {
         return JSON.parse(data.items);
@@ -109,7 +109,7 @@ export class InventoryDbService {
    */
   async getItemTemplate(itemId: string): Promise<Item | null> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.config_items.get(itemId);
+      const data = await gameDb.config_items.get(itemId) as unknown as ItemDataStorage | undefined;
       if (!data) return null;
       
       return {
@@ -120,7 +120,7 @@ export class InventoryDbService {
         icon: data.icon,
         description: data.description,
         bonus: (data.bonus || {}) as Partial<Item['bonus']>,
-        effect: data.effect as ItemEffect | undefined,
+        effect: data.effect as unknown as ItemEffect | undefined,
         value: data.value,
         stackable: data.stackable,
         consumable: data.consumable || undefined,
@@ -135,7 +135,7 @@ export class InventoryDbService {
    */
   async getAllItemTemplates(): Promise<Item[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.config_items.toArray();
+      const items = await gameDb.config_items.toArray() as unknown as ItemDataStorage[];
       return items.map(data => ({
         id: data.id,
         name: data.name,
@@ -144,7 +144,7 @@ export class InventoryDbService {
         icon: data.icon,
         description: data.description,
         bonus: (data.bonus || {}) as Partial<Item['bonus']>,
-        effect: data.effect as ItemEffect | undefined,
+        effect: data.effect as unknown as ItemEffect | undefined,
         value: data.value,
         stackable: data.stackable,
         consumable: data.consumable || undefined,

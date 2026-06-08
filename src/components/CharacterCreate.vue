@@ -382,7 +382,7 @@ function getClassColor(id: string) {
 }
 
 function getStatName(stat: string) {
-  return STAT_NAMES[stat] || stat;
+  return STAT_NAMES[stat as keyof typeof STAT_NAMES] || stat;
 }
 
 function getStatIcon(stat: string): string {

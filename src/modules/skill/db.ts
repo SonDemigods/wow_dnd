@@ -59,7 +59,7 @@ export class SkillsDbService {
    */
   async getSkillsData(characterId: string): Promise<SkillsData> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.char_skills.get(characterId);
+      const data = await gameDb.char_skills.get(characterId) as unknown as SkillDataStorage | undefined;
       if (!data) {
         return this.getDefaultSkillsData(characterId);
       }
@@ -68,13 +68,13 @@ export class SkillsDbService {
       let skillBar: SkillBar = { slots: [null, null, null, null] };
       
       try {
-        skills = JSON.parse(data.skills);
+        skills = JSON.parse(data.skills as string);
       } catch {
         skills = [];
       }
       
       try {
-        skillBar = JSON.parse(data.skillBar);
+        skillBar = JSON.parse(data.skillBar as string);
       } catch {
         skillBar = { slots: [null, null, null, null] };
       }
@@ -140,7 +140,7 @@ export class SkillsDbService {
    */
   async getSkillTemplate(skillId: string): Promise<Skill | null> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.config_skills.get(skillId);
+      const data = await gameDb.config_skills.get(skillId) as unknown as SkillTemplateStorage | undefined;
       if (!data) return null;
       
       return {
@@ -162,7 +162,7 @@ export class SkillsDbService {
    */
   async getAllSkillTemplates(): Promise<Skill[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.config_skills.toArray();
+      const items = await gameDb.config_skills.toArray() as unknown as SkillTemplateStorage[];
       return items.map(data => ({
         id: data.id,
         name: data.name,
@@ -183,7 +183,7 @@ export class SkillsDbService {
    */
   async getSkillTemplatesByClass(classId: string): Promise<Skill[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.config_skills.where('classRestriction').equals(classId).toArray();
+      const items = await gameDb.config_skills.where('classRestriction').equals(classId).toArray() as unknown as SkillTemplateStorage[];
       return items.map(data => ({
         id: data.id,
         name: data.name,

@@ -233,7 +233,7 @@ export interface IExplorationService {
    * @param {number} y - Y坐标
    * @returns {boolean} 是否成功揭示
    */
-  revealGrid(x: number, y: number): boolean
+  revealGrid(x: number, y: number): Promise<boolean>
 
   /**
    * 使用营地

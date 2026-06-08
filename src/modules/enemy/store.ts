@@ -6,7 +6,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { Enemy, EnemyInstance } from './types';
+import type { Enemy } from './types';
 import { enemyService } from './service';
 
 /**

@@ -116,18 +116,20 @@ export class DataInitializer {
     try {
       await db.transaction(
         'rw',
-        db.config_factions,
-        db.config_races,
-        db.config_classes,
-        db.config_items,
-        db.config_equipmentItems,
-        db.config_enemies,
-        db.config_locations,
-        db.config_shops,
-        db.config_quests,
-        db.config_skills,
-        db.runtime_gameState,
-        db.runtime_mapState,
+        [
+          db.config_factions,
+          db.config_races,
+          db.config_classes,
+          db.config_items,
+          db.config_equipmentItems,
+          db.config_enemies,
+          db.config_locations,
+          db.config_shops,
+          db.config_quests,
+          db.config_skills,
+          db.runtime_gameState,
+          db.runtime_mapState,
+        ],
         async () => {
           // 地点和大陆数据每次都更新
           await this.initLocations();
@@ -170,7 +172,7 @@ export class DataInitializer {
    */
   private async initFactions(): Promise<void> {
     for (const faction of FACTIONS) {
-      await db.config_factions.put(faction as Record<string, unknown>);
+      await db.config_factions.put(faction as unknown as Record<string, unknown>);
     }
   }
 
@@ -179,7 +181,7 @@ export class DataInitializer {
    */
   private async initRaces(): Promise<void> {
     for (const race of RACES) {
-      await db.config_races.put(race as Record<string, unknown>);
+      await db.config_races.put(race as unknown as Record<string, unknown>);
     }
   }
 
@@ -188,7 +190,7 @@ export class DataInitializer {
    */
   private async initClasses(): Promise<void> {
     for (const cls of CLASSES) {
-      await db.config_classes.put(cls as Record<string, unknown>);
+      await db.config_classes.put(cls as unknown as Record<string, unknown>);
     }
   }
 
@@ -197,7 +199,7 @@ export class DataInitializer {
    */
   private async initItems(): Promise<void> {
     for (const item of LOOT_ITEMS) {
-      await db.config_items.put(item as Record<string, unknown>);
+      await db.config_items.put(item as unknown as Record<string, unknown>);
     }
   }
 
@@ -206,7 +208,7 @@ export class DataInitializer {
    */
   private async initEquipment(): Promise<void> {
     for (const equipment of EQUIPMENT_ITEMS) {
-      await db.config_equipmentItems.put(equipment as Record<string, unknown>);
+      await db.config_equipmentItems.put(equipment as unknown as Record<string, unknown>);
     }
   }
 
@@ -215,7 +217,7 @@ export class DataInitializer {
    */
   private async initEnemies(): Promise<void> {
     for (const enemy of ENEMIES) {
-      await db.config_enemies.put(enemy as Record<string, unknown>);
+      await db.config_enemies.put(enemy as unknown as Record<string, unknown>);
     }
   }
 
@@ -224,7 +226,7 @@ export class DataInitializer {
    */
   private async initLocations(): Promise<void> {
     for (const location of LOCATIONS) {
-      await db.config_locations.put(location as Record<string, unknown>);
+      await db.config_locations.put(location as unknown as Record<string, unknown>);
     }
   }
 
@@ -233,7 +235,7 @@ export class DataInitializer {
    */
   private async initContinents(): Promise<void> {
     for (const continent of CONTINENTS) {
-      await db.config_locations.put(continent as Record<string, unknown>);
+      await db.config_locations.put(continent as unknown as Record<string, unknown>);
     }
   }
 
@@ -242,7 +244,7 @@ export class DataInitializer {
    */
   private async initShops(): Promise<void> {
     for (const shop of SHOPS) {
-      await db.config_shops.put(shop as Record<string, unknown>);
+      await db.config_shops.put(shop as unknown as Record<string, unknown>);
     }
 
     await db.runtime_gameState.put({
@@ -255,7 +257,7 @@ export class DataInitializer {
    */
   private async initQuests(): Promise<void> {
     for (const quest of QUESTS) {
-      await db.config_quests.put(quest as Record<string, unknown>);
+      await db.config_quests.put(quest as unknown as Record<string, unknown>);
     }
   }
 
@@ -268,7 +270,7 @@ export class DataInitializer {
         await db.config_skills.put({
           ...skill,
           classRestriction: entry.class_id
-        } as Record<string, unknown>);
+        } as unknown as Record<string, unknown>);
       }
     }
   }
@@ -493,7 +495,7 @@ export class BackupService implements IBackupService {
       adventureLog: adventureLog as BackupData['adventureLog'],
       map: mapRecords as BackupData['map'],
       shop: shopRecords as BackupData['shop'],
-      gameState: gameStateRecord as BackupData['gameState']
+      gameState: gameStateRecord as unknown as BackupData['gameState']
     };
   }
 }
@@ -640,62 +642,64 @@ export class ImportService implements IImportService {
     try {
       await db.transaction(
         'rw',
-        db.char_data,
-        db.char_inventory,
-        db.char_quests,
-        db.char_equipment,
-        db.char_skills,
-        db.char_exploration,
-        db.runtime_combatLogs,
-        db.runtime_adventureLogs,
-        db.config_locations,
-        db.config_shops,
-        db.runtime_gameState,
+        [
+          db.char_data,
+          db.char_inventory,
+          db.char_quests,
+          db.char_equipment,
+          db.char_skills,
+          db.char_exploration,
+          db.runtime_combatLogs,
+          db.runtime_adventureLogs,
+          db.config_locations,
+          db.config_shops,
+          db.runtime_gameState,
+        ],
         async () => {
           if (data.characters && Object.keys(data.characters).length > 0) {
-            await db.char_data.bulkPut(Object.values(data.characters));
+            await db.char_data.bulkPut(Object.values(data.characters) as Record<string, unknown>[]);
             importedStores.push('char_data');
           } else {
             skippedStores.push('char_data');
           }
 
           if (data.inventory && Object.keys(data.inventory).length > 0) {
-            await db.char_inventory.bulkPut(Object.values(data.inventory));
+            await db.char_inventory.bulkPut(Object.values(data.inventory) as unknown as Record<string, unknown>[]);
             importedStores.push('char_inventory');
           } else {
             skippedStores.push('char_inventory');
           }
 
           if (data.quests && Object.keys(data.quests).length > 0) {
-            await db.char_quests.bulkPut(Object.values(data.quests));
+            await db.char_quests.bulkPut(Object.values(data.quests) as unknown as Record<string, unknown>[]);
             importedStores.push('char_quests');
           } else {
             skippedStores.push('char_quests');
           }
 
           if (data.equipment && Object.keys(data.equipment).length > 0) {
-            await db.char_equipment.bulkPut(Object.values(data.equipment));
+            await db.char_equipment.bulkPut(Object.values(data.equipment) as unknown as Record<string, unknown>[]);
             importedStores.push('char_equipment');
           } else {
             skippedStores.push('char_equipment');
           }
 
           if (data.skills && Object.keys(data.skills).length > 0) {
-            await db.char_skills.bulkPut(Object.values(data.skills));
+            await db.char_skills.bulkPut(Object.values(data.skills) as unknown as Record<string, unknown>[]);
             importedStores.push('char_skills');
           } else {
             skippedStores.push('char_skills');
           }
 
           if (data.exploration && Object.keys(data.exploration).length > 0) {
-            await db.char_exploration.bulkPut(Object.values(data.exploration));
+            await db.char_exploration.bulkPut(Object.values(data.exploration) as unknown as Record<string, unknown>[]);
             importedStores.push('char_exploration');
           } else {
             skippedStores.push('char_exploration');
           }
 
           if (data.combat && Object.keys(data.combat).length > 0) {
-            await db.runtime_combatLogs.bulkPut(Object.values(data.combat));
+            await db.runtime_combatLogs.bulkPut(Object.values(data.combat) as unknown as Record<string, unknown>[]);
             importedStores.push('runtime_combatLogs');
           } else {
             skippedStores.push('runtime_combatLogs');
@@ -715,14 +719,14 @@ export class ImportService implements IImportService {
           }
 
           if (data.map && data.map.length > 0) {
-            await db.config_locations.bulkPut(data.map);
+            await db.config_locations.bulkPut(data.map as unknown as Record<string, unknown>[]);
             importedStores.push('config_locations');
           } else {
             skippedStores.push('config_locations');
           }
 
           if (data.shop && data.shop.length > 0) {
-            await db.config_shops.bulkPut(data.shop);
+            await db.config_shops.bulkPut(data.shop as unknown as Record<string, unknown>[]);
             importedStores.push('config_shops');
           } else {
             skippedStores.push('config_shops');

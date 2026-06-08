@@ -8,8 +8,7 @@ import type {
   MapState, 
   MapView, 
   LocationData,
-  MapZone,
-  ZoneStatus
+  MapZone
 } from './types';
 import { mapDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
@@ -99,7 +98,7 @@ export class MapService implements IMapService {
    */
   getUnlockedLocations(playerLevel: number): string[] {
     const unlocked: string[] = [];
-    this.locations.forEach((location, locationId) => {
+    this.locations.forEach((_location, locationId) => {
       if (this.isLocationUnlocked(locationId, playerLevel)) {
         unlocked.push(locationId);
       }

@@ -34,6 +34,11 @@ export interface FactionData {
  * - night_elf: 暗夜精灵
  * - draenei: 德莱尼
  * - worgen: 狼人
+ * - void_elf: 虚空精灵
+ * - lightforged_draenei: 光铸德莱尼
+ * - dark_iron_dwarf: 黑铁矮人
+ * - kul_tiran: 库尔提拉人
+ * - mecha_gnome: 机械侏儒
  * - pandaren: 熊猫人
  * - orc: 兽人
  * - undead: 被遗忘者
@@ -41,6 +46,14 @@ export interface FactionData {
  * - troll: 巨魔
  * - blood_elves: 血精灵
  * - goblin: 地精
+ * - nightborne: 夜之子
+ * - highmountain_tauren: 至高岭牛头人
+ * - maghar_orc: 玛格汉兽人
+ * - zandalari: 赞达拉巨魔
+ * - vulpera: 狐人
+ * - dracthyr: 龙希尔
+ * - earthen: 土灵
+ * - harenei: 哈籁尼尔
  */
 export type RaceType =
   | 'human'
@@ -110,9 +123,10 @@ export interface RaceBonus {
  * - druid:  德鲁伊
  * - priest: 牧师
  * - shaman: 萨满
- * - deathknight: 死亡骑士
+ * - death_knight: 死亡骑士
  * - monk: 武僧
- * - demonhunter: 恶魔猎手
+ * - demon_hunter: 恶魔猎手
+ * - evoker: 唤魔师
  */
 export type ClassType =
   | 'warrior'
@@ -124,9 +138,9 @@ export type ClassType =
   | 'druid'
   | 'priest'
   | 'shaman'
-  | 'deathknight'
+  | 'death_knight'
   | 'monk'
-  | 'demonhunter'
+  | 'demon_hunter'
   | 'evoker';
 
 /**

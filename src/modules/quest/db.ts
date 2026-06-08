@@ -70,7 +70,7 @@ export class QuestDbService {
    */
   async getQuestInstance(characterId: string, questId: string): Promise<QuestInstance | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.char_quests.get([characterId, questId]);
+      const result = await gameDb.char_quests.get([characterId, questId]) as unknown as QuestInstanceStorage | undefined;
       if (!result) return null;
       return {
         questId: result.questId,
@@ -89,7 +89,7 @@ export class QuestDbService {
    */
   async getAllQuestInstances(characterId: string): Promise<QuestInstance[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.char_quests.where('characterId').equals(characterId).toArray();
+      const results = await gameDb.char_quests.where('characterId').equals(characterId).toArray() as unknown as QuestInstanceStorage[];
       return results.map(result => ({
         questId: result.questId,
         status: result.status as QuestInstance['status'],
@@ -107,7 +107,7 @@ export class QuestDbService {
    */
   async deleteQuestInstance(characterId: string, questId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.char_quests.delete([characterId, questId]);
+      await gameDb.char_quests.delete([characterId, questId] as unknown as string);
     });
   }
 
@@ -126,9 +126,9 @@ export class QuestDbService {
    */
   async deleteCharacterQuests(characterId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      const instances = await gameDb.char_quests.where('characterId').equals(characterId).toArray();
+      const instances = await gameDb.char_quests.where('characterId').equals(characterId).toArray() as unknown as QuestInstanceStorage[];
       for (const instance of instances) {
-        await gameDb.char_quests.delete([characterId, instance.questId]);
+        await gameDb.char_quests.delete([characterId, instance.questId] as unknown as string);
       }
     });
   }
@@ -161,7 +161,7 @@ export class QuestDbService {
    */
   async getQuestDefinition(questId: string): Promise<QuestDefinition | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.config_quests.get(questId);
+      const result = await gameDb.config_quests.get(questId) as unknown as QuestDefinitionStorage | undefined;
       if (!result) return null;
       return {
         id: result.id,
@@ -180,7 +180,7 @@ export class QuestDbService {
         levelRequirement: result.levelRequirement,
         xpReward: result.xpReward,
         goldReward: result.goldReward,
-        itemRewards: result.itemRewards,
+        itemRewards: result.itemRewards?.map(r => ({ itemId: r.itemId, count: r.amount })),
         boardId: result.boardId
       };
     });
@@ -192,7 +192,7 @@ export class QuestDbService {
    */
   async getAllQuestDefinitions(): Promise<QuestDefinition[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.config_quests.toArray();
+      const results = await gameDb.config_quests.toArray() as unknown as QuestDefinitionStorage[];
       return results.map(result => ({
         id: result.id,
         title: result.title,
@@ -210,7 +210,7 @@ export class QuestDbService {
         levelRequirement: result.levelRequirement,
         xpReward: result.xpReward,
         goldReward: result.goldReward,
-        itemRewards: result.itemRewards,
+        itemRewards: result.itemRewards?.map(r => ({ itemId: r.itemId, count: r.amount })),
         boardId: result.boardId
       }));
     });
@@ -223,7 +223,7 @@ export class QuestDbService {
    */
   async getQuestDefinitionsByBoard(boardId: string): Promise<QuestDefinition[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.config_quests.where('boardId').equals(boardId).toArray();
+      const results = await gameDb.config_quests.where('boardId').equals(boardId).toArray() as unknown as QuestDefinitionStorage[];
       return results.map(result => ({
         id: result.id,
         title: result.title,
@@ -241,7 +241,7 @@ export class QuestDbService {
         levelRequirement: result.levelRequirement,
         xpReward: result.xpReward,
         goldReward: result.goldReward,
-        itemRewards: result.itemRewards,
+        itemRewards: result.itemRewards?.map(r => ({ itemId: r.itemId, count: r.amount })),
         boardId: result.boardId
       }));
     });

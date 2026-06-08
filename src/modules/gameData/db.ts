@@ -27,7 +27,7 @@ export class GameDataDbService {
   async getAllFactions(): Promise<FactionData[]> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_factions.toArray();
-      return result as FactionData[];
+      return result as unknown as FactionData[];
     });
   }
 
@@ -37,7 +37,7 @@ export class GameDataDbService {
   async getFactionById(id: string): Promise<FactionData | null> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_factions.get(id);
-      return result as FactionData | null;
+      return result as unknown as FactionData | null;
     });
   }
 
@@ -92,7 +92,7 @@ export class GameDataDbService {
   async getAllRaces(): Promise<RaceData[]> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_races.toArray();
-      return result as RaceData[];
+      return result as unknown as RaceData[];
     });
   }
 
@@ -102,7 +102,7 @@ export class GameDataDbService {
   async getRaceById(id: string): Promise<RaceData | null> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_races.get(id);
-      return result as RaceData | null;
+      return result as unknown as RaceData | null;
     });
   }
 
@@ -112,7 +112,7 @@ export class GameDataDbService {
   async getRacesByFaction(factionId: string): Promise<RaceData[]> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_races.toArray();
-      return (result as RaceData[]).filter(race => race.factionId === factionId);
+      return (result as unknown as RaceData[]).filter(race => race.factionId === factionId);
     });
   }
 
@@ -167,7 +167,7 @@ export class GameDataDbService {
   async getAllClasses(): Promise<ClassData[]> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_classes.toArray();
-      return result as ClassData[];
+      return result as unknown as ClassData[];
     });
   }
 
@@ -177,7 +177,7 @@ export class GameDataDbService {
   async getClassById(id: string): Promise<ClassData | null> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_classes.get(id);
-      return result as ClassData | null;
+      return result as unknown as ClassData | null;
     });
   }
 
@@ -187,7 +187,7 @@ export class GameDataDbService {
   async getClassesByRace(raceId: string): Promise<ClassData[]> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_classes.toArray();
-      return (result as ClassData[]).filter(cls => cls.raceIds.includes(raceId));
+      return (result as unknown as ClassData[]).filter(cls => cls.raceIds.includes(raceId as any));
     });
   }
 
@@ -197,7 +197,7 @@ export class GameDataDbService {
   async getClassesByFaction(factionId: string): Promise<ClassData[]> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_classes.toArray();
-      return (result as ClassData[]).filter(cls => cls.factionsIds.includes(factionId));
+      return (result as unknown as ClassData[]).filter(cls => cls.factionsIds.includes(factionId as any));
     });
   }
 

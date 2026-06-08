@@ -55,7 +55,7 @@ export class ShopDbService {
    */
   async getShopConfig(shopId: string): Promise<ShopConfig | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.config_shops.get(shopId);
+      const result = await gameDb.config_shops.get(shopId) as unknown as ShopConfigStorage | undefined;
       if (!result) return null;
       return {
         id: result.id,
@@ -74,7 +74,7 @@ export class ShopDbService {
    */
   async getAllShopConfigs(): Promise<ShopConfig[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.config_shops.toArray();
+      const results = await gameDb.config_shops.toArray() as unknown as ShopConfigStorage[];
       return results.map(result => ({
         id: result.id,
         name: result.name,
@@ -127,7 +127,7 @@ export class ShopDbService {
    */
   async getShopItems(shopId: string): Promise<ShopItem[] | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.runtime_shopItems.get(shopId);
+      const result = await gameDb.runtime_shopItems.get(shopId) as unknown as ShopItemsStorage | undefined;
       if (!result) return null;
       return result.items;
     });

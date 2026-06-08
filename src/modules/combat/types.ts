@@ -260,7 +260,7 @@ export interface ICombatService {
    * @param {CombatAction} action - 行动
    * @returns {CombatActionResult} 行动结果
    */
-  playerAction(action: CombatAction): CombatActionResult;
+  playerAction(action: CombatAction): Promise<CombatActionResult>;
 
   /** 敌人回合 */
   enemyTurn(): void;

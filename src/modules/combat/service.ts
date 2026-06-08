@@ -10,7 +10,6 @@ import type {
   CombatAction, 
   CombatActionResult, 
   CombatLog,
-  CombatEventType,
   SkillCastResult
 } from './types';
 import type { Enemy } from '../enemy/types';
@@ -555,6 +554,9 @@ export class CombatService implements ICombatService {
         if (result.isHeal) {
           // 敌人治疗自己
           this.enemy = enemyService.getEnemyById(this.enemy!.id);
+          if (!this.enemy) {
+            return { success: false, type: 'skill', message: '找不到敌人数据' };
+          }
           
           this.addCombatLog({
             actorType: 'enemy',
@@ -923,7 +925,7 @@ export class CombatService implements ICombatService {
    * @param targetType - 目标类型
    * @returns 技能施放结果
    */
-  castSkill(skillId: string, targetType: 'self' | 'enemy'): SkillCastResult {
+  castSkill(skillId: string, _targetType: 'self' | 'enemy'): SkillCastResult {
     const skill = skillsService.getSkill(skillId);
     if (!skill) {
       return {

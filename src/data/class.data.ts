@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @fileoverview 魔兽世界职业数据模块
  * @description 包含所有可选职业的基础信息和技能详情
  * @module data/class
@@ -7,6 +7,10 @@
 import type { ClassData } from '../modules/character/types';
 import type { Skill } from '../modules/skill/types';
 
+/**
+ * 所有可选职业的完整数据集
+ * @type {ClassData[]}
+ */
 export const CLASSES: ClassData[] = [
   {
     id: 'warrior',
@@ -153,6 +157,11 @@ export const CLASSES: ClassData[] = [
   }
 ];
 
+/**
+ * 所有职业的技能数据
+ * 按职业分组，每个职业包含多个可解锁技能
+ * @type {{ class_id: string; skills: Skill[] }[]}
+ */
 export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
   {
     class_id: 'warrior',

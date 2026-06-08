@@ -62,7 +62,7 @@ export class MapDbService {
    */
   async getMapState(): Promise<MapState | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.runtime_mapState.get('current');
+      const result = await gameDb.runtime_mapState.get('current') as unknown as MapStateStorage | undefined;
       if (!result) return null;
       return {
         view: result.view
@@ -102,7 +102,7 @@ export class MapDbService {
    */
   async getLocationData(locationId: string): Promise<LocationData | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.config_locations.get(locationId);
+      const result = await gameDb.config_locations.get(locationId) as unknown as LocationDataStorage | undefined;
       if (!result) return null;
       return {
         id: result.id,
@@ -129,7 +129,7 @@ export class MapDbService {
    */
   async getAllLocationData(): Promise<LocationData[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.config_locations.where('type').equals('location').toArray();
+      const results = await gameDb.config_locations.where('type').equals('location').toArray() as unknown as LocationDataStorage[];
       return results.map(result => ({
         id: result.id,
         name: result.name,
@@ -156,7 +156,7 @@ export class MapDbService {
    */
   async getLocationDataByContinent(continentId: string): Promise<LocationData[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.config_locations.where('type').equals('location').toArray();
+      const results = await gameDb.config_locations.where('type').equals('location').toArray() as unknown as LocationDataStorage[];
       return results
         .filter(result => result.continent === continentId)
         .map(result => ({

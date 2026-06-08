@@ -8,6 +8,7 @@
  * - physical_damage: 物理伤害技能
  * - magic_damage: 魔法伤害技能
  * - health_restore: 治疗技能
+ * - mana_restore: 法力恢复技能
  */
 export type SkillType = 'physical_damage' | 'magic_damage' | 'health_restore' | 'mana_restore';
 

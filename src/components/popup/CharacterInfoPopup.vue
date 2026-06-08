@@ -153,7 +153,7 @@
               <p class="detail-desc">{{ selectedSlot.equipment.description }}</p>
               <div v-if="selectedSlot.equipment.bonus" class="detail-stats">
                 <div v-for="(value, stat) in selectedSlot.equipment.bonus" :key="stat" class="stat-item">
-                  <span class="stat-name">{{ getStatName(stat) }}</span>
+                  <span class="stat-name">{{ getStatName(String(stat)) }}</span>
                   <span class="stat-value">+{{ value }}</span>
                 </div>
               </div>

@@ -127,7 +127,7 @@ export class EquipmentService implements IEquipmentService {
     this.save();
     
     // 触发事件
-    eventBus.emit(GameEvents.EQUIPMENT_CHANGE, { slot, item });
+    eventBus.emit(GameEvents.EQUIPMENT_CHANGE, { slot, item: { item, equippedAt: Date.now() } });
     
     return true;
   }
@@ -168,7 +168,7 @@ export class EquipmentService implements IEquipmentService {
     eventBus.emit(GameEvents.INVENTORY_ADD_ITEM, { itemId: itemForInventory.id, quantity: 1 });
     
     // 触发事件
-    eventBus.emit(GameEvents.EQUIPMENT_CHANGE, { slot, item: equippedItem.item });
+    eventBus.emit(GameEvents.EQUIPMENT_CHANGE, { slot, item: equippedItem });
     
     return equippedItem;
   }

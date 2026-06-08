@@ -6,9 +6,7 @@
 import type { 
   IQuestService, 
   QuestDefinition, 
-  QuestInstance, 
-  QuestStatus,
-  QuestObjectiveProgress 
+  QuestInstance
 } from './types';
 import { questDbService } from './db';
 import { characterService } from '../character/service';
@@ -302,7 +300,7 @@ export class QuestService implements IQuestService {
     // 发放物品奖励
     if (definition.itemRewards) {
       definition.itemRewards.forEach(itemReward => {
-        eventBus.emit(GameEvents.INVENTORY_ADD_ITEM, { itemId: itemReward.itemId, quantity: itemReward.amount });
+        eventBus.emit(GameEvents.INVENTORY_ADD_ITEM, { itemId: itemReward.itemId, quantity: itemReward.count });
       });
     }
     
@@ -429,7 +427,7 @@ export class QuestService implements IQuestService {
   getAvailableQuests(): string[] {
     const available: string[] = [];
     
-    this.questDefinitions.forEach((definition, questId) => {
+    this.questDefinitions.forEach((_definition, questId) => {
       if (this.isQuestAvailable(questId)) {
         available.push(questId);
       }
