@@ -14,3 +14,6 @@ export * from './skill';
 export * from './exploration';
 export * from './map';
 export * from './gameData';
+export * from './enemy';
+export * from './equipment';
+export * from './log';

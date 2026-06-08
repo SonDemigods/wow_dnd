@@ -132,6 +132,7 @@ export const useGameDataStore = defineStore('gameData', () => {
   
   /**
    * 创建阵营
+   * @returns 是否创建成功
    */
   async function createFaction(data: Omit<FactionData, 'id'>): Promise<boolean> {
     const result = await gameDataService.createFaction(data);
@@ -144,6 +145,7 @@ export const useGameDataStore = defineStore('gameData', () => {
   
   /**
    * 更新阵营
+   * @returns 是否更新成功
    */
   async function updateFaction(id: string, data: Omit<FactionData, 'id'>): Promise<boolean> {
     const result = await gameDataService.updateFaction(id, data);
@@ -156,6 +158,7 @@ export const useGameDataStore = defineStore('gameData', () => {
   
   /**
    * 删除阵营
+   * @returns 是否删除成功
    */
   async function deleteFaction(id: string): Promise<boolean> {
     const result = await gameDataService.deleteFaction(id);
@@ -171,6 +174,7 @@ export const useGameDataStore = defineStore('gameData', () => {
   
   /**
    * 创建种族
+   * @returns 是否创建成功
    */
   async function createRace(data: Omit<RaceData, 'id'>): Promise<boolean> {
     const result = await gameDataService.createRace(data);
@@ -183,6 +187,7 @@ export const useGameDataStore = defineStore('gameData', () => {
   
   /**
    * 更新种族
+   * @returns 是否更新成功
    */
   async function updateRace(id: string, data: Omit<RaceData, 'id'>): Promise<boolean> {
     const result = await gameDataService.updateRace(id, data);
@@ -195,6 +200,7 @@ export const useGameDataStore = defineStore('gameData', () => {
   
   /**
    * 删除种族
+   * @returns 是否删除成功
    */
   async function deleteRace(id: string): Promise<boolean> {
     const result = await gameDataService.deleteRace(id);
@@ -210,6 +216,7 @@ export const useGameDataStore = defineStore('gameData', () => {
   
   /**
    * 创建职业
+   * @returns 是否创建成功
    */
   async function createClass(data: Omit<ClassData, 'id'>): Promise<boolean> {
     const result = await gameDataService.createClass(data);
@@ -234,6 +241,7 @@ export const useGameDataStore = defineStore('gameData', () => {
   
   /**
    * 删除职业
+   * @returns 是否删除成功
    */
   async function deleteClass(id: string): Promise<boolean> {
     const result = await gameDataService.deleteClass(id);

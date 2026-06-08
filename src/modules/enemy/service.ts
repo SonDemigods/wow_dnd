@@ -120,7 +120,7 @@ export class EnemyService {
   /**
    * 敌人使用技能
    * @param id - 敌人实例ID
-   * @param skillId - 技能ID
+   * @param _skillId - 技能ID
    * @returns 技能使用结果
    */
   useSkill(id: string, _skillId: string): { success: boolean; damage: number; isHeal: boolean } {

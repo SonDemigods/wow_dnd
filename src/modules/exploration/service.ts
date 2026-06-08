@@ -376,6 +376,11 @@ export class ExplorationService implements IExplorationService {
     return grid;
   }
 
+  /**
+   * 生成探索网格
+   * 随机生成10x10的探索网格，放置起点、商店、任务板、营地和BOSS等固定事件，
+   * 并根据区域配置的概率分布随机填充怪物、物品、陷阱等事件格子
+   */
   async generateGrid(): Promise<void> {
     const areaConfig = this.getAreaConfig(this.state.currentAreaId || 'village');
     const grid = await this.generateGridInternal(areaConfig);
@@ -440,6 +445,11 @@ export class ExplorationService implements IExplorationService {
     }
   }
 
+  /**
+   * 判断玩家是否可以朝指定方向移动
+   * @param direction - 移动方向：'up' | 'down' | 'left' | 'right'
+   * @returns 是否可以移动，剩余步数不足或目标格不可访问时返回false
+   */
   canMove(direction: 'up' | 'down' | 'left' | 'right'): boolean {
     if (this.state.remainingMoves <= 0) return false;
     
@@ -458,6 +468,13 @@ export class ExplorationService implements IExplorationService {
     return this.state.grid[ny][nx].accessible;
   }
 
+  /**
+   * 玩家朝指定方向移动
+   * 根据目标格类型触发对应事件（战斗、宝箱、营地、BOSS、商店、随机事件等），
+   * 更新可访问格子、检查探索完成状态并保存进度
+   * @param direction - 移动方向：'up' | 'down' | 'left' | 'right'
+   * @returns 移动结果，包含是否成功、消息和可能的奖励
+   */
   movePlayer(direction: 'up' | 'down' | 'left' | 'right'): MoveResult {
     if (!this.canMove(direction)) {
       return { success: false, message: '无法移动到该位置' };
@@ -535,6 +552,12 @@ export class ExplorationService implements IExplorationService {
     }
   }
 
+  /**
+   * 处理随机事件的玩家选择
+   * 根据选择ID触发对应效果（战斗、逃跑、搜索、休息等）
+   * @param choiceId - 选项ID：'fight' | 'flee' | 'search' | 'rest'
+   * @returns 事件选择结果
+   */
   handleEventChoice(choiceId: string): EventChoiceResult {
     const responses: Record<string, string> = {
       fight: '战斗胜利！获得奖励',
@@ -552,6 +575,12 @@ export class ExplorationService implements IExplorationService {
     return { success: true, message: responses[choiceId] || '操作完成' };
   }
 
+  /**
+   * 初始化探索服务
+   * 从数据库加载角色的探索状态，若存在未完成的探索则恢复，
+   * 否则初始化为空状态
+   * @param characterId - 角色ID
+   */
   async init(characterId: string): Promise<void> {
     this.currentCharacterId = characterId;
     
@@ -589,16 +618,32 @@ export class ExplorationService implements IExplorationService {
     }
   }
 
+  /**
+   * 获取当前探索状态的副本
+   * @returns 探索状态对象（浅拷贝）
+   */
   getState(): ExplorationState {
     return { ...this.state };
   }
 
+  /**
+   * 进入指定区域进行探索
+   * 加载区域配置并生成新的探索网格
+   * @param areaId - 区域ID
+   */
   async enterArea(areaId: string): Promise<void> {
     this.state.currentAreaId = areaId;
     await this.loadAreaConfig(areaId);
     await this.generateGrid();
   }
 
+  /**
+   * 获取指定坐标的格子信息
+   * 将内部存储格式的格子数据转换为对外的GridCell格式
+   * @param x - X坐标
+   * @param y - Y坐标
+   * @returns 格子信息，坐标越界或无数据时返回null
+   */
   getGrid(x: number, y: number): GridCell | null {
     if (y < 0 || y >= GRID_SIZE || x < 0 || x >= GRID_SIZE) {
       return null;
@@ -633,6 +678,14 @@ export class ExplorationService implements IExplorationService {
     return typeMap[cellType] || 'empty';
   }
 
+  /**
+   * 揭示指定坐标的格子
+   * 根据格子类型触发对应事件：怪物/BOSS触发战斗、商店/任务板打开交互、
+   * 宝箱发放物品、陷阱造成伤害、营地提供恢复、事件触发随机效果
+   * @param x - X坐标
+   * @param y - Y坐标
+   * @returns 是否成功揭示
+   */
   async revealGrid(x: number, y: number): Promise<boolean> {
     const cell = this.state.grid[y]?.[x];
     if (!cell || !cell.accessible) {
@@ -712,6 +765,11 @@ export class ExplorationService implements IExplorationService {
     return true;
   }
 
+  /**
+   * 使用营地休息恢复全部HP和MP
+   * 每个营地只能使用一次，使用后营地变为空地
+   * @returns 是否成功使用，已使用过时返回false
+   */
   useCamp(): boolean {
     if (this.state.campUsed) {
       return false;
@@ -740,6 +798,11 @@ export class ExplorationService implements IExplorationService {
     return true;
   }
 
+  /**
+   * 触发战斗事件
+   * 通过事件总线通知战斗模块开启战斗
+   * @param monsterId - 怪物ID
+   */
   triggerBattle(monsterId: string): void {
     eventBus.emit(GameEvents.EXPLORATION_BATTLE_TRIGGERED, {
       characterId: this.currentCharacterId,
@@ -747,6 +810,11 @@ export class ExplorationService implements IExplorationService {
     });
   }
 
+  /**
+   * 处理战斗结果
+   * 胜利时清空怪物格子并检查BOSS是否被击败；失败或逃跑时揭示格子内容但保留怪物允许再次挑战
+   * @param victory - 是否胜利
+   */
   onBattleResult(victory: boolean): void {
     if (!this.pendingBattleCell) return;
     
@@ -787,10 +855,18 @@ export class ExplorationService implements IExplorationService {
     this.pendingBattleCell = null;
   }
 
+  /**
+   * 获取当前探索区域ID
+   * @returns 当前区域ID，未进入任何区域时返回null
+   */
   getCurrentAreaId(): string | null {
     return this.state.currentAreaId;
   }
 
+  /**
+   * 重置探索状态
+   * 清空所有探索数据并删除数据库中的持久化记录
+   */
   reset(): void {
     this.state = {
       currentAreaId: null,

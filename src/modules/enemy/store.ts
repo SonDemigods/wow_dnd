@@ -43,6 +43,7 @@ export const useEnemiesStore = defineStore('enemies', () => {
   /**
    * 根据 ID 获取敌人
    * @param id - 敌人实例 ID
+   * @returns 敌人实例，不存在时返回 null
    */
   function getEnemyById(id: string): Enemy | null {
     return enemyService.getEnemyById(id);
@@ -85,6 +86,7 @@ export const useEnemiesStore = defineStore('enemies', () => {
   /**
    * 获取敌人可用技能
    * @param id - 敌人实例 ID
+   * @returns 可用技能列表
    */
   function getAvailableSkills(id: string): { id: string; name: string }[] {
     return enemyService.getAvailableSkills(id);
@@ -94,6 +96,7 @@ export const useEnemiesStore = defineStore('enemies', () => {
    * 敌人使用技能
    * @param id - 敌人实例 ID
    * @param skillId - 技能 ID
+   * @returns 技能使用结果，包含是否成功、伤害值和是否为治疗
    */
   function useSkill(id: string, skillId: string): { success: boolean; damage: number; isHeal: boolean } {
     return enemyService.useSkill(id, skillId);
@@ -103,6 +106,7 @@ export const useEnemiesStore = defineStore('enemies', () => {
    * 计算敌人伤害
    * @param enemy - 敌人实例
    * @param defense - 玩家防御值
+   * @returns 计算出的伤害值
    */
   function calculateDamage(enemy: Enemy, defense: number): number {
     return enemyService.calculateDamage(enemy, defense);

@@ -568,6 +568,7 @@ export class QuestService implements IQuestService {
   /**
    * 处理物品收集事件
    * @param itemId - 物品ID
+   * @param amount - 收集数量，默认为1
    */
   handleItemCollect(itemId: string, amount: number = 1): void {
     // 遍历所有进行中的任务，更新收集目标进度

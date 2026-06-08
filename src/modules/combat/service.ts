@@ -449,7 +449,7 @@ export class CombatService implements ICombatService {
   }
 
   /**
-   * 跳过玩家回合，切换到敌人回合
+   * 跳过玩家回合（不执行任何操作，直接切换回合控制权）
    */
   skipTurn(): void {
     if (this.state !== 'fighting' || this.turn !== 'player') {
@@ -922,7 +922,7 @@ export class CombatService implements ICombatService {
   /**
    * 施放技能
    * @param skillId - 技能ID
-   * @param targetType - 目标类型
+   * @param _targetType - 目标类型
    * @returns 技能施放结果
    */
   castSkill(skillId: string, _targetType: 'self' | 'enemy'): SkillCastResult {

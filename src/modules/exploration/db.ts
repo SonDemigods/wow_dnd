@@ -20,6 +20,11 @@ export interface ExplorationStorage {
 }
 
 export class ExplorationDbService {
+  /**
+   * 保存角色的探索数据到数据库
+   * @param characterId - 角色ID
+   * @param state - 探索状态对象
+   */
   async saveExplorationData(characterId: string, state: ExplorationState): Promise<void> {
     await dbService.withRetry(async () => {
       await gameDb.char_exploration.put({
@@ -37,6 +42,12 @@ export class ExplorationDbService {
     });
   }
 
+  /**
+   * 从数据库获取指定角色的探索数据
+   * 兼容旧版本数据，缺失字段使用默认值
+   * @param characterId - 角色ID
+   * @returns 探索存储数据，不存在时返回null
+   */
   async getExplorationData(characterId: string): Promise<ExplorationStorage | null> {
     return dbService.withRetry(async () => {
       const result = await gameDb.char_exploration.get(characterId);
@@ -57,18 +68,29 @@ export class ExplorationDbService {
     });
   }
 
+  /**
+   * 从数据库删除指定角色的探索数据
+   * @param characterId - 角色ID
+   */
   async deleteExplorationData(characterId: string): Promise<void> {
     await dbService.withRetry(async () => {
       await gameDb.char_exploration.delete(characterId);
     });
   }
 
+  /**
+   * 清除数据库中所有角色的探索数据
+   */
   async clearAllExplorationData(): Promise<void> {
     await dbService.withRetry(async () => {
       await gameDb.char_exploration.clear();
     });
   }
 
+  /**
+   * 从数据库获取所有角色的探索数据
+   * @returns 探索存储数据列表
+   */
   async getAllExplorationData(): Promise<ExplorationStorage[]> {
     return dbService.withRetry(async () => {
       const results = await gameDb.char_exploration.toArray();

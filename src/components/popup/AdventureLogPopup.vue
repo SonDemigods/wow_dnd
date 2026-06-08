@@ -32,7 +32,7 @@
 <script setup lang="ts">
 /**
  * @fileoverview 冒险日志弹窗组件
- * @description 展示当前区域的冒险记录列表，支持按类型着色和清空日志操作
+ * @description 展示冒险记录列表，支持按类型着色和清空日志操作
  */
 
 import { ref, computed, onMounted, nextTick } from 'vue';

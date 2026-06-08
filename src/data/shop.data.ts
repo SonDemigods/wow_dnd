@@ -48,7 +48,7 @@ export const SHOPS: ShopConfig[] = [
     id: 'supply_shop',
     name: '旅行者补给站',
     type: 'general',
-    icon: '�',
+    icon: '🎒',
     refreshInterval: 300000,
     priceVariation: {
       min: 0.8,

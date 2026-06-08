@@ -13,6 +13,11 @@ export interface AdventureLogData {
 }
 
 export class AdventureLogDbService {
+  /**
+   * 保存角色的冒险日志到数据库
+   * @param characterId - 角色ID
+   * @param logs - 日志记录列表
+   */
   async saveAdventureLog(characterId: string, logs: LogEntry[]): Promise<void> {
     await dbService.withRetry(async () => {
       await gameDb.runtime_adventureLogs.put({
@@ -23,6 +28,11 @@ export class AdventureLogDbService {
     });
   }
 
+  /**
+   * 从数据库获取指定角色的冒险日志
+   * @param characterId - 角色ID
+   * @returns 日志数据，不存在时返回null
+   */
   async getAdventureLog(characterId: string): Promise<AdventureLogData | null> {
     return dbService.withRetry(async () => {
       const result = await gameDb.runtime_adventureLogs.get(characterId);
@@ -31,12 +41,19 @@ export class AdventureLogDbService {
     });
   }
 
+  /**
+   * 从数据库删除指定角色的冒险日志
+   * @param characterId - 角色ID
+   */
   async deleteAdventureLog(characterId: string): Promise<void> {
     await dbService.withRetry(async () => {
       await gameDb.runtime_adventureLogs.delete(characterId);
     });
   }
 
+  /**
+   * 清除数据库中所有角色的冒险日志
+   */
   async clearAllAdventureLogs(): Promise<void> {
     await dbService.withRetry(async () => {
       await gameDb.runtime_adventureLogs.clear();

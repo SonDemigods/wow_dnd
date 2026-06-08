@@ -22,7 +22,7 @@ export const useQuestStore = defineStore('quest', () => {
   /** 已完成的任务列表 */
   const completedQuests = ref<QuestDefinition[]>([]);
   
-  /** 已提交的任务列表 */
+  /** 已完成（待提交奖励）的任务列表 */
   const turnedInQuests = ref<QuestDefinition[]>([]);
 
   /** 从 Service 同步任务列表到 Store */

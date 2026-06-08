@@ -48,6 +48,7 @@ export class QuestDbService {
   /**
    * 保存任务实例
    * @param instance - 任务实例
+   * @param characterId - 角色ID
    */
   async saveQuestInstance(instance: QuestInstance, characterId: string): Promise<void> {
     await dbService.withRetry(async () => {

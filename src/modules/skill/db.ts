@@ -115,7 +115,7 @@ export class SkillsDbService {
   /**
    * 保存技能模板到数据库
    * @param skill - 技能数据
-   * @param classRestriction - 职业限制
+   * @param classRestriction - 职业限制（可选）
    */
   async saveSkillTemplate(skill: Skill, classRestriction?: string): Promise<void> {
     await dbService.withRetry(async () => {

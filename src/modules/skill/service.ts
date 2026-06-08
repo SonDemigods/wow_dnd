@@ -25,7 +25,7 @@ export class SkillsService implements ISkillsService {
 
   /**
    * 初始化技能服务
-   * @param characterId - 角色ID
+   * @param characterId - 角色ID（可选，不传时自动从characterService获取）
    */
   async initialize(characterId?: string): Promise<void> {
     this.characterId = characterId || characterService.getCurrentCharacterId();
