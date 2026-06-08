@@ -31,7 +31,7 @@ export interface FactionData {
  * - human: 人类
  * - dwarf: 矮人
  * - gnome: 侏儒
- * - nightelf: 暗夜精灵
+ * - night_elf: 暗夜精灵
  * - draenei: 德莱尼
  * - worgen: 狼人
  * - pandaren: 熊猫人
@@ -39,31 +39,31 @@ export interface FactionData {
  * - undead: 被遗忘者
  * - tauren: 牛头人
  * - troll: 巨魔
- * - bloodelves: 血精灵
+ * - blood_elves: 血精灵
  * - goblin: 地精
  */
 export type RaceType =
   | 'human'
   | 'dwarf'
   | 'gnome'
-  | 'nightelf'
+  | 'night_elf'
   | 'draenei'
   | 'worgen'
-  | 'voidelf'
-  | 'lightforgeddraenei'
-  | 'darkirondwarf'
+  | 'void_elf'
+  | 'lightforged_draenei'
+  | 'dark_iron_dwarf'
   | 'kul_tiran'
-  | 'mechagnome'
+  | 'mecha_gnome'
   | 'pandaren'
   | 'orc'
   | 'undead'
   | 'tauren'
   | 'troll'
-  | 'bloodelves'
+  | 'blood_elves'
   | 'goblin'
   | 'nightborne'
-  | 'highmountaintauren'
-  | 'magharorc'
+  | 'highmountain_tauren'
+  | 'maghar_orc'
   | 'zandalari'
   | 'vulpera'
   | 'dracthyr'

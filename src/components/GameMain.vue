@@ -211,13 +211,13 @@ function handleCellExplored(data: { cellType?: string; interactionId?: string })
 }
 
 // 监听探索战斗事件
-function handleBattleTriggered(data: { eventData?: { monsterId?: string } }) {
+async function handleBattleTriggered(data: { eventData?: { monsterId?: string } }) {
   if (!data?.eventData?.monsterId) return;
   
   const monsterId = data.eventData.monsterId;
   
-  // 直接使用数据层ID（如 'goblin', 'spider', 'dragon_whelp'）
-  const enemy = enemyService.createEnemy(monsterId);
+  // 从数据库获取敌人模板数据
+  const enemy = await enemyService.createEnemy(monsterId);
   
   if (enemy) {
     combatService.startCombat(enemy);

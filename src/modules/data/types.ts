@@ -155,3 +155,55 @@ export interface CompatibilityResult {
   /** 是否需要数据迁移 */
   requiresMigration: boolean;
 }
+
+// ==================== 数据库配置接口 ====================
+
+/**
+ * 数据库基础配置接口
+ * @property {string} name - 数据库名称
+ * @property {number} version - 数据库版本号
+ */
+export interface DatabaseConfig {
+  name: string;
+  version: number;
+}
+
+/**
+ * 数据库服务配置接口
+ * @property {number} maxRetries - 最大重试次数
+ * @property {number} delay - 重试间隔（毫秒）
+ * @property {'exponential' | 'linear'} backoff - 退避策略
+ */
+export interface DBServiceConfig {
+  maxRetries: number;
+  delay: number;
+  backoff: 'exponential' | 'linear';
+}
+
+/**
+ * 同步引擎配置接口
+ * @property {number} debounceMs - 防抖间隔（毫秒）
+ * @property {number} maxRetries - 最大重试次数
+ * @property {number} delay - 重试间隔（毫秒）
+ * @property {'exponential' | 'linear'} backoff - 退避策略
+ */
+export interface SyncEngineConfig {
+  debounceMs: number;
+  maxRetries: number;
+  delay: number;
+  backoff: 'exponential' | 'linear';
+}
+
+/**
+ * 备份配置接口
+ * @property {string} autoBackupKey - 自动备份存储键名
+ * @property {number} maxAutoBackups - 最大自动备份数量
+ * @property {string} backupVersion - 备份格式版本号
+ * @property {string[]} supportedVersions - 支持的备份版本列表
+ */
+export interface BackupConfig {
+  autoBackupKey: string;
+  maxAutoBackups: number;
+  backupVersion: string;
+  supportedVersions: string[];
+}

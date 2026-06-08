@@ -54,9 +54,9 @@ export const useEnemiesStore = defineStore('enemies', () => {
    * @param level - 敌人等级
    * @returns 创建的敌人实例，失败返回 null
    */
-  function createEnemy(dataId: string, level?: number): Enemy | null {
+  async function createEnemy(dataId: string, level?: number): Promise<Enemy | null> {
     try {
-      const enemy = enemyService.createEnemy(dataId, level);
+      const enemy = await enemyService.createEnemy(dataId, level);
       activeEnemyIds.value.push(enemy.id);
       enemiesCache.value[enemy.id] = { ...enemy };
       return enemy;

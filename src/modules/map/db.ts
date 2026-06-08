@@ -4,7 +4,7 @@
  * 封装地图数据的 IndexedDB 操作，提供数据持久化能力
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { LocationData, LocationMarker, MapState } from './types';
+import type { LocationData, MapState } from './types';
 
 /**
  * 地图状态存储接口
@@ -16,8 +16,6 @@ export interface MapStateStorage {
     panX: number;
     panY: number;
     currentContinentId?: string;
-    showMarkers: boolean;
-    activeMarkerId?: string;
   };
 }
 
@@ -38,6 +36,7 @@ export interface LocationDataStorage {
   color: string;
   mapX: number;
   mapY: number;
+  type: 'location' | 'continent';
 }
 
 /**
@@ -78,7 +77,7 @@ export class MapDbService {
   async saveLocationData(location: LocationData): Promise<void> {
     await dbService.withRetry(async () => {
       await gameDb.config_locations.put({
-        id: location.name,
+        id: location.id,
         name: location.name,
         displayName: location.displayName,
         icon: location.icon,
@@ -90,7 +89,8 @@ export class MapDbService {
         levelRange: location.levelRange,
         color: location.color,
         mapX: location.mapX,
-        mapY: location.mapY
+        mapY: location.mapY,
+        type: 'location'
       });
     });
   }
@@ -105,6 +105,7 @@ export class MapDbService {
       const result = await gameDb.config_locations.get(locationId);
       if (!result) return null;
       return {
+        id: result.id,
         name: result.name,
         displayName: result.displayName,
         icon: result.icon,
@@ -116,19 +117,21 @@ export class MapDbService {
         levelRange: result.levelRange,
         color: result.color,
         mapX: result.mapX,
-        mapY: result.mapY
+        mapY: result.mapY,
+        type: 'location' as const
       };
     });
   }
 
   /**
-   * 获取所有地点数据
+   * 获取所有地点数据（仅 type='location' 类型）
    * @returns 地点数据列表
    */
   async getAllLocationData(): Promise<LocationData[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.config_locations.toArray();
+      const results = await gameDb.config_locations.where('type').equals('location').toArray();
       return results.map(result => ({
+        id: result.id,
         name: result.name,
         displayName: result.displayName,
         icon: result.icon,
@@ -140,20 +143,24 @@ export class MapDbService {
         levelRange: result.levelRange,
         color: result.color,
         mapX: result.mapX,
-        mapY: result.mapY
+        mapY: result.mapY,
+        type: 'location' as const
       }));
     });
   }
 
   /**
-   * 获取指定大陆的地点数据
+   * 获取指定大陆的地点数据（仅 type='location' 类型）
    * @param continentId - 大陆ID
    * @returns 地点数据列表
    */
   async getLocationDataByContinent(continentId: string): Promise<LocationData[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.config_locations.where('continent').equals(continentId).toArray();
-      return results.map(result => ({
+      const results = await gameDb.config_locations.where('type').equals('location').toArray();
+      return results
+        .filter(result => result.continent === continentId)
+        .map(result => ({
+        id: result.id,
         name: result.name,
         displayName: result.displayName,
         icon: result.icon,
@@ -165,7 +172,8 @@ export class MapDbService {
         levelRange: result.levelRange,
         color: result.color,
         mapX: result.mapX,
-        mapY: result.mapY
+        mapY: result.mapY,
+        type: 'location' as const
       }));
     });
   }
@@ -184,88 +192,6 @@ export class MapDbService {
    * 清空所有地点数据
    */
   async clearAllLocationData(): Promise<void> {
-    await dbService.withRetry(async () => {
-      await gameDb.config_locations.clear();
-    });
-  }
-
-  /**
-   * 保存地点标记
-   * @param marker - 地点标记
-   */
-  async saveLocationMarker(marker: LocationMarker): Promise<void> {
-    await dbService.withRetry(async () => {
-      await gameDb.config_locations.put({
-        id: marker.id,
-        x: marker.x,
-        y: marker.y,
-        icon: marker.icon,
-        name: marker.name,
-        locationId: marker.locationId,
-        requiredLevel: marker.requiredLevel,
-        difficulty: marker.difficulty,
-        parentMarkerId: marker.parentMarkerId
-      });
-    });
-  }
-
-  /**
-   * 获取地点标记
-   * @param continentId - 大陆ID
-   * @returns 地点标记列表
-   */
-  async getLocationMarkers(continentId: string): Promise<LocationMarker[]> {
-    return dbService.withRetry(async () => {
-      const results = await gameDb.config_locations.where('continentId').equals(continentId).toArray();
-      return results.map(result => ({
-        id: result.id,
-        x: result.x,
-        y: result.y,
-        icon: result.icon,
-        name: result.name,
-        locationId: result.locationId,
-        requiredLevel: result.requiredLevel,
-        difficulty: result.difficulty,
-        parentMarkerId: result.parentMarkerId
-      }));
-    });
-  }
-
-  /**
-   * 获取所有地点标记
-   * @returns 地点标记列表
-   */
-  async getAllLocationMarkers(): Promise<LocationMarker[]> {
-    return dbService.withRetry(async () => {
-      const results = await gameDb.config_locations.toArray();
-      return results.map(result => ({
-        id: result.id,
-        x: result.x,
-        y: result.y,
-        icon: result.icon,
-        name: result.name,
-        locationId: result.locationId,
-        requiredLevel: result.requiredLevel,
-        difficulty: result.difficulty,
-        parentMarkerId: result.parentMarkerId
-      }));
-    });
-  }
-
-  /**
-   * 删除地点标记
-   * @param markerId - 标记ID
-   */
-  async deleteLocationMarker(markerId: string): Promise<void> {
-    await dbService.withRetry(async () => {
-      await gameDb.config_locations.delete(markerId);
-    });
-  }
-
-  /**
-   * 清空所有地点标记
-   */
-  async clearAllLocationMarkers(): Promise<void> {
     await dbService.withRetry(async () => {
       await gameDb.config_locations.clear();
     });

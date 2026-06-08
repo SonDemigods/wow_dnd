@@ -13,7 +13,7 @@ import type { EquipmentItem } from '../modules/equipment/types';
 /** 剑类武器 - 力量型战士首选 */
 const SWORDS: EquipmentItem[] = [
   {
-    id: 'ironSword',
+    id: 'iron_sword',
     name: '铁剑',
     icon: '⚔️',
     type: 'weapon',
@@ -23,11 +23,11 @@ const SWORDS: EquipmentItem[] = [
     description: '普通的铁制长剑',
     value: 10,
     stackable: false,
-    template: 'ironSword',
+    template: 'iron_sword',
     levelRequirement: 1
   },
   {
-    id: 'steelSword',
+    id: 'steel_sword',
     name: '精钢长剑',
     icon: '⚔️',
     type: 'weapon',
@@ -37,11 +37,11 @@ const SWORDS: EquipmentItem[] = [
     description: '精炼钢材锻造的长剑',
     value: 25,
     stackable: false,
-    template: 'steelSword',
+    template: 'steel_sword',
     levelRequirement: 5
   },
   {
-    id: 'mithrilSword',
+    id: 'mithril_sword',
     name: '秘银之刃',
     icon: '⚔️',
     type: 'weapon',
@@ -51,7 +51,7 @@ const SWORDS: EquipmentItem[] = [
     description: '蕴含神秘力量的秘银长剑',
     value: 50,
     stackable: false,
-    template: 'mithrilSword',
+    template: 'mithril_sword',
     levelRequirement: 10
   },
   {
@@ -87,7 +87,7 @@ const SWORDS: EquipmentItem[] = [
 /** 斧类武器 - 高伤害力量型 */
 const AXES: EquipmentItem[] = [
   {
-    id: 'ironAxe',
+    id: 'iron_axe',
     name: '铁质战斧',
     icon: '🪓',
     type: 'weapon',
@@ -97,11 +97,11 @@ const AXES: EquipmentItem[] = [
     description: '铁匠铺打造的战斧',
     value: 12,
     stackable: false,
-    template: 'ironAxe',
+    template: 'iron_axe',
     levelRequirement: 1
   },
   {
-    id: 'mithrilAxe',
+    id: 'mithril_axe',
     name: '秘银战斧',
     icon: '🪓',
     type: 'weapon',
@@ -111,11 +111,11 @@ const AXES: EquipmentItem[] = [
     description: '用轻盈的秘银锻造的战斧',
     value: 28,
     stackable: false,
-    template: 'mithrilAxe',
+    template: 'mithril_axe',
     levelRequirement: 5
   },
   {
-    id: 'arcaniteReaper',
+    id: 'arcanite_reaper',
     name: '奥金斧',
     icon: '🪓✨',
     type: 'weapon',
@@ -125,11 +125,11 @@ const AXES: EquipmentItem[] = [
     description: '用奥金锻造的精良战斧',
     value: 75,
     stackable: false,
-    template: 'arcaniteReaper',
+    template: 'arcanite_reaper',
     levelRequirement: 10
   },
   {
-    id: 'dragonTalonAxe',
+    id: 'dragon_talon_axe',
     name: '龙爪巨斧',
     icon: '🪓🐉',
     type: 'weapon',
@@ -139,7 +139,7 @@ const AXES: EquipmentItem[] = [
     description: '用巨龙之爪打造的沉重战斧',
     value: 160,
     stackable: false,
-    template: 'dragonTalonAxe',
+    template: 'dragon_talon_axe',
     levelRequirement: 15
   },
   {
@@ -161,7 +161,7 @@ const AXES: EquipmentItem[] = [
 /** 锤类武器 - 力量与体质兼备 */
 const HAMMERS: EquipmentItem[] = [
   {
-    id: 'warHammer',
+    id: 'war_hammer',
     name: '战锤',
     icon: '🔨',
     type: 'weapon',
@@ -171,11 +171,11 @@ const HAMMERS: EquipmentItem[] = [
     description: '矮人工匠锻造的沉重战锤',
     value: 12,
     stackable: false,
-    template: 'warHammer',
+    template: 'war_hammer',
     levelRequirement: 1
   },
   {
-    id: 'steelMace',
+    id: 'steel_mace',
     name: '精钢铁锤',
     icon: '🔨',
     type: 'weapon',
@@ -185,11 +185,11 @@ const HAMMERS: EquipmentItem[] = [
     description: '精钢锻造的铁锤',
     value: 30,
     stackable: false,
-    template: 'steelMace',
+    template: 'steel_mace',
     levelRequirement: 5
   },
   {
-    id: 'stormHammer',
+    id: 'storm_hammer',
     name: '风暴战锤',
     icon: '🔨⚡',
     type: 'weapon',
@@ -199,13 +199,13 @@ const HAMMERS: EquipmentItem[] = [
     description: '蕴含风暴之力的矮人战锤',
     value: 52,
     stackable: false,
-    template: 'stormHammer',
+    template: 'storm_hammer',
     levelRequirement: 10
   },
   {
-    id: 'ironforgeSmasher',
+    id: 'ironforge_smasher',
     name: '铁炉堡粉碎者',
-    icon: '�🏔️',
+    icon: '🏔️',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { str: 32, con: 15 },
@@ -213,7 +213,7 @@ const HAMMERS: EquipmentItem[] = [
     description: '铁炉堡矮人大师锻造的战锤',
     value: 145,
     stackable: false,
-    template: 'ironforgeSmasher',
+    template: 'ironforge_smasher',
     levelRequirement: 15
   },
   {
@@ -237,7 +237,7 @@ const DAGGERS: EquipmentItem[] = [
   {
     id: 'dagger',
     name: '钢制匕首',
-    icon: '�️',
+    icon: '🗡️',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { dex: 10 },
@@ -249,7 +249,7 @@ const DAGGERS: EquipmentItem[] = [
     levelRequirement: 1
   },
   {
-    id: 'poisonDagger',
+    id: 'poison_dagger',
     name: '毒蛇之牙',
     icon: '☠️',
     type: 'weapon',
@@ -259,11 +259,11 @@ const DAGGERS: EquipmentItem[] = [
     description: '涂抹致命毒药的匕首',
     value: 22,
     stackable: false,
-    template: 'poisonDagger',
+    template: 'poison_dagger',
     levelRequirement: 5
   },
   {
-    id: 'shadowDagger',
+    id: 'shadow_dagger',
     name: '暗影匕首',
     icon: '🖤',
     type: 'weapon',
@@ -273,11 +273,11 @@ const DAGGERS: EquipmentItem[] = [
     description: '暗影能量凝聚的匕首',
     value: 48,
     stackable: false,
-    template: 'shadowDagger',
+    template: 'shadow_dagger',
     levelRequirement: 10
   },
   {
-    id: 'voidBlade',
+    id: 'void_blade',
     name: '虚空撕裂者',
     icon: '🌌',
     type: 'weapon',
@@ -287,7 +287,7 @@ const DAGGERS: EquipmentItem[] = [
     description: '撕裂虚空的神秘匕首',
     value: 100,
     stackable: false,
-    template: 'voidBlade',
+    template: 'void_blade',
     levelRequirement: 15
   },
   {
@@ -309,7 +309,7 @@ const DAGGERS: EquipmentItem[] = [
 /** 法杖武器 - 法师和治疗职业首选 */
 const STAVES: EquipmentItem[] = [
   {
-    id: 'oakStaff',
+    id: 'oak_staff',
     name: '橡木法杖',
     icon: '🪄',
     type: 'weapon',
@@ -319,11 +319,11 @@ const STAVES: EquipmentItem[] = [
     description: '普通的橡木法杖',
     value: 10,
     stackable: false,
-    template: 'oakStaff',
+    template: 'oak_staff',
     levelRequirement: 1
   },
   {
-    id: 'crystalStaff',
+    id: 'crystal_staff',
     name: '水晶聚焦器',
     icon: '🔮',
     type: 'weapon',
@@ -333,11 +333,11 @@ const STAVES: EquipmentItem[] = [
     description: '镶嵌水晶的精致法杖',
     value: 28,
     stackable: false,
-    template: 'crystalStaff',
+    template: 'crystal_staff',
     levelRequirement: 5
   },
   {
-    id: 'arcaneStaff',
+    id: 'arcane_staff',
     name: '奥术师法杖',
     icon: '✨',
     type: 'weapon',
@@ -347,11 +347,11 @@ const STAVES: EquipmentItem[] = [
     description: '蕴含强大奥术能量的法杖',
     value: 55,
     stackable: false,
-    template: 'arcaneStaff',
+    template: 'arcane_staff',
     levelRequirement: 10
   },
   {
-    id: 'jordanStaff',
+    id: 'jordan_staff',
     name: '乔丹法杖',
     icon: '🪄✨',
     type: 'weapon',
@@ -361,7 +361,7 @@ const STAVES: EquipmentItem[] = [
     description: '大法师乔丹遗留的奥术法杖',
     value: 150,
     stackable: false,
-    template: 'jordanStaff',
+    template: 'jordan_staff',
     levelRequirement: 15
   },
   {
@@ -383,7 +383,7 @@ const STAVES: EquipmentItem[] = [
 /** 弓类武器 - 猎人和游侠职业首选 */
 const BOWS: EquipmentItem[] = [
   {
-    id: 'huntingBow',
+    id: 'hunting_bow',
     name: '猎人长弓',
     icon: '🏹',
     type: 'weapon',
@@ -393,11 +393,11 @@ const BOWS: EquipmentItem[] = [
     description: '猎人常用的长弓',
     value: 10,
     stackable: false,
-    template: 'huntingBow',
+    template: 'hunting_bow',
     levelRequirement: 1
   },
   {
-    id: 'reinforcedBow',
+    id: 'reinforced_bow',
     name: '强化复合弓',
     icon: '🏹',
     type: 'weapon',
@@ -407,11 +407,11 @@ const BOWS: EquipmentItem[] = [
     description: '用强化材料制作的复合弓',
     value: 24,
     stackable: false,
-    template: 'reinforcedBow',
+    template: 'reinforced_bow',
     levelRequirement: 5
   },
   {
-    id: 'raptorBow',
+    id: 'raptor_bow',
     name: '迅猛龙猎弓',
     icon: '🏹',
     type: 'weapon',
@@ -421,11 +421,11 @@ const BOWS: EquipmentItem[] = [
     description: '用迅猛龙筋制作的强力猎弓',
     value: 50,
     stackable: false,
-    template: 'raptorBow',
+    template: 'raptor_bow',
     levelRequirement: 10
   },
   {
-    id: 'nerubianBow',
+    id: 'nerubian_bow',
     name: '蛛魔长弓',
     icon: '🏹🕷️',
     type: 'weapon',
@@ -435,11 +435,11 @@ const BOWS: EquipmentItem[] = [
     description: '用蛛魔材料制作的强力长弓',
     value: 130,
     stackable: false,
-    template: 'nerubianBow',
+    template: 'nerubian_bow',
     levelRequirement: 15
   },
   {
-    id: 'thoriDalis',
+    id: 'thori_dalis',
     name: '索利达尔，群星之怒',
     icon: '🏹⭐',
     type: 'weapon',
@@ -449,7 +449,7 @@ const BOWS: EquipmentItem[] = [
     description: '太阳之井高地掉落的传奇长弓，蕴含星辰之力',
     value: 350,
     stackable: false,
-    template: 'thoriDalis',
+    template: 'thori_dalis',
     levelRequirement: 20
   }
 ];
@@ -457,7 +457,7 @@ const BOWS: EquipmentItem[] = [
 /** 盾牌武器 - 防御型职业首选 */
 const SHIELDS: EquipmentItem[] = [
   {
-    id: 'ironShield',
+    id: 'iron_shield',
     name: '铁盾',
     icon: '🛡️',
     type: 'weapon',
@@ -467,11 +467,11 @@ const SHIELDS: EquipmentItem[] = [
     description: '普通的铁盾',
     value: 12,
     stackable: false,
-    template: 'ironShield',
+    template: 'iron_shield',
     levelRequirement: 1
   },
   {
-    id: 'steelShield',
+    id: 'steel_shield',
     name: '精钢护盾',
     icon: '🛡️',
     type: 'weapon',
@@ -481,11 +481,11 @@ const SHIELDS: EquipmentItem[] = [
     description: '精钢锻造的盾牌',
     value: 30,
     stackable: false,
-    template: 'steelShield',
+    template: 'steel_shield',
     levelRequirement: 5
   },
   {
-    id: 'dragonScaleShield',
+    id: 'dragon_scale_shield',
     name: '龙鳞护盾',
     icon: '🐉',
     type: 'weapon',
@@ -495,11 +495,11 @@ const SHIELDS: EquipmentItem[] = [
     description: '龙鳞镶嵌的盾牌',
     value: 65,
     stackable: false,
-    template: 'dragonScaleShield',
+    template: 'dragon_scale_shield',
     levelRequirement: 10
   },
   {
-    id: 'holyShield',
+    id: 'holy_shield',
     name: '圣光壁垒',
     icon: '☀️',
     type: 'weapon',
@@ -509,7 +509,7 @@ const SHIELDS: EquipmentItem[] = [
     description: '圣光加持的神圣盾牌',
     value: 130,
     stackable: false,
-    template: 'holyShield',
+    template: 'holy_shield',
     levelRequirement: 15
   },
   {
@@ -535,7 +535,7 @@ const SHIELDS: EquipmentItem[] = [
 /** 胸甲装备 - 核心防御装备 */
 const CHEST_ARMOR: EquipmentItem[] = [
   {
-    id: 'leatherChest',
+    id: 'leather_chest',
     name: '荒野皮甲',
     icon: '👕',
     type: 'armor',
@@ -545,11 +545,11 @@ const CHEST_ARMOR: EquipmentItem[] = [
     description: '轻便的皮甲护胸',
     value: 12,
     stackable: false,
-    template: 'leatherChest',
+    template: 'leather_chest',
     levelRequirement: 1
   },
   {
-    id: 'chainmailArmor',
+    id: 'chainmail_armor',
     name: '链甲护甲',
     icon: '🛡️',
     type: 'armor',
@@ -559,11 +559,11 @@ const CHEST_ARMOR: EquipmentItem[] = [
     description: '由金属环编织的锁子甲',
     value: 30,
     stackable: false,
-    template: 'chainmailArmor',
+    template: 'chainmail_armor',
     levelRequirement: 5
   },
   {
-    id: 'plateChest',
+    id: 'plate_chest',
     name: '板甲战衣',
     icon: '🛡️',
     type: 'armor',
@@ -573,11 +573,11 @@ const CHEST_ARMOR: EquipmentItem[] = [
     description: '厚重的板甲护胸',
     value: 60,
     stackable: false,
-    template: 'plateChest',
+    template: 'plate_chest',
     levelRequirement: 10
   },
   {
-    id: 'dragonChestplate',
+    id: 'dragon_chestplate',
     name: '巨龙护甲',
     icon: '🐉',
     type: 'armor',
@@ -587,11 +587,11 @@ const CHEST_ARMOR: EquipmentItem[] = [
     description: '用巨龙鳞片锻造的传奇胸甲',
     value: 120,
     stackable: false,
-    template: 'dragonChestplate',
+    template: 'dragon_chestplate',
     levelRequirement: 15
   },
   {
-    id: 'holyArmor',
+    id: 'holy_armor',
     name: '圣光守护者',
     icon: '☀️',
     type: 'armor',
@@ -601,7 +601,7 @@ const CHEST_ARMOR: EquipmentItem[] = [
     description: '沐浴圣光的神圣铠甲',
     value: 250,
     stackable: false,
-    template: 'holyArmor',
+    template: 'holy_armor',
     levelRequirement: 20
   }
 ];
@@ -609,7 +609,7 @@ const CHEST_ARMOR: EquipmentItem[] = [
 /** 护腿装备 - 腿部防御 */
 const LEG_ARMOR: EquipmentItem[] = [
   {
-    id: 'leatherPants',
+    id: 'leather_pants',
     name: '皮制护腿',
     icon: '👖',
     type: 'armor',
@@ -619,11 +619,11 @@ const LEG_ARMOR: EquipmentItem[] = [
     description: '轻便的皮制长裤',
     value: 8,
     stackable: false,
-    template: 'leatherPants',
+    template: 'leather_pants',
     levelRequirement: 1
   },
   {
-    id: 'ironLeggings',
+    id: 'iron_leggings',
     name: '铁纹护腿',
     icon: '🦵',
     type: 'armor',
@@ -633,11 +633,11 @@ const LEG_ARMOR: EquipmentItem[] = [
     description: '铁制护腿',
     value: 20,
     stackable: false,
-    template: 'ironLeggings',
+    template: 'iron_leggings',
     levelRequirement: 5
   },
   {
-    id: 'steelLeggings',
+    id: 'steel_leggings',
     name: '精钢腿甲',
     icon: '🦵',
     type: 'armor',
@@ -647,11 +647,11 @@ const LEG_ARMOR: EquipmentItem[] = [
     description: '精炼钢材打造的护腿',
     value: 45,
     stackable: false,
-    template: 'steelLeggings',
+    template: 'steel_leggings',
     levelRequirement: 10
   },
   {
-    id: 'shadowLeggings',
+    id: 'shadow_leggings',
     name: '暗影护腿',
     icon: '🖤',
     type: 'armor',
@@ -661,11 +661,11 @@ const LEG_ARMOR: EquipmentItem[] = [
     description: '暗影能量灌注的护腿',
     value: 90,
     stackable: false,
-    template: 'shadowLeggings',
+    template: 'shadow_leggings',
     levelRequirement: 15
   },
   {
-    id: 'frostLeggings',
+    id: 'frost_leggings',
     name: '冰霜巨人护腿',
     icon: '🧊',
     type: 'armor',
@@ -675,7 +675,7 @@ const LEG_ARMOR: EquipmentItem[] = [
     description: '永冻冰川铸造的护腿',
     value: 180,
     stackable: false,
-    template: 'frostLeggings',
+    template: 'frost_leggings',
     levelRequirement: 20
   }
 ];
@@ -683,7 +683,7 @@ const LEG_ARMOR: EquipmentItem[] = [
 /** 靴子装备 - 移动和敏捷 */
 const BOOTS: EquipmentItem[] = [
   {
-    id: 'leatherBoots',
+    id: 'leather_boots',
     name: '旅行者之靴',
     icon: '👢',
     type: 'armor',
@@ -693,11 +693,11 @@ const BOOTS: EquipmentItem[] = [
     description: '轻便的皮靴',
     value: 8,
     stackable: false,
-    template: 'leatherBoots',
+    template: 'leather_boots',
     levelRequirement: 1
   },
   {
-    id: 'ironBoots',
+    id: 'iron_boots',
     name: '铁履',
     icon: '👢',
     type: 'armor',
@@ -707,11 +707,11 @@ const BOOTS: EquipmentItem[] = [
     description: '铁制护靴',
     value: 20,
     stackable: false,
-    template: 'ironBoots',
+    template: 'iron_boots',
     levelRequirement: 5
   },
   {
-    id: 'windwalkerBoots',
+    id: 'windwalker_boots',
     name: '疾风步靴',
     icon: '💨',
     type: 'armor',
@@ -721,11 +721,11 @@ const BOOTS: EquipmentItem[] = [
     description: '轻盈如风的魔法靴子',
     value: 45,
     stackable: false,
-    template: 'windwalkerBoots',
+    template: 'windwalker_boots',
     levelRequirement: 10
   },
   {
-    id: 'shadowstepBoots',
+    id: 'shadowstep_boots',
     name: '暗影步之靴',
     icon: '👻',
     type: 'armor',
@@ -735,11 +735,11 @@ const BOOTS: EquipmentItem[] = [
     description: '暗影行走者的神秘靴子',
     value: 95,
     stackable: false,
-    template: 'shadowstepBoots',
+    template: 'shadowstep_boots',
     levelRequirement: 15
   },
   {
-    id: 'bootsOfTheWingedSerpent',
+    id: 'boots_of_the_winged_serpent',
     name: '飞蛇之靴',
     icon: '👢⚡',
     type: 'armor',
@@ -749,7 +749,7 @@ const BOOTS: EquipmentItem[] = [
     description: '祖尔格拉布掉落的传奇靴子，轻盈如飞蛇',
     value: 190,
     stackable: false,
-    template: 'bootsOfTheWingedSerpent',
+    template: 'boots_of_the_winged_serpent',
     levelRequirement: 20
   }
 ];
@@ -757,7 +757,7 @@ const BOOTS: EquipmentItem[] = [
 /** 手套装备 - 攻击和技能 */
 const GLOVES: EquipmentItem[] = [
   {
-    id: 'leatherGloves',
+    id: 'leather_gloves',
     name: '皮手套',
     icon: '🧤',
     type: 'armor',
@@ -767,11 +767,11 @@ const GLOVES: EquipmentItem[] = [
     description: '轻便的皮手套',
     value: 6,
     stackable: false,
-    template: 'leatherGloves',
+    template: 'leather_gloves',
     levelRequirement: 1
   },
   {
-    id: 'ironGauntlets',
+    id: 'iron_gauntlets',
     name: '铁护手',
     icon: '🧤',
     type: 'armor',
@@ -781,11 +781,11 @@ const GLOVES: EquipmentItem[] = [
     description: '铁制护手',
     value: 18,
     stackable: false,
-    template: 'ironGauntlets',
+    template: 'iron_gauntlets',
     levelRequirement: 5
   },
   {
-    id: 'steelGauntlets',
+    id: 'steel_gauntlets',
     name: '精钢护手',
     icon: '⚔️',
     type: 'armor',
@@ -795,11 +795,11 @@ const GLOVES: EquipmentItem[] = [
     description: '精钢锻造的护手',
     value: 40,
     stackable: false,
-    template: 'steelGauntlets',
+    template: 'steel_gauntlets',
     levelRequirement: 10
   },
   {
-    id: 'flameGauntlets',
+    id: 'flame_gauntlets',
     name: '烈焰守卫',
     icon: '🔥',
     type: 'armor',
@@ -809,11 +809,11 @@ const GLOVES: EquipmentItem[] = [
     description: '燃烧着永恒火焰的护手',
     value: 85,
     stackable: false,
-    template: 'flameGauntlets',
+    template: 'flame_gauntlets',
     levelRequirement: 15
   },
   {
-    id: 'handOfJustice',
+    id: 'hand_of_justice',
     name: '正义之手',
     icon: '🧤⚖️',
     type: 'armor',
@@ -823,7 +823,7 @@ const GLOVES: EquipmentItem[] = [
     description: '黑石深渊掉落的传奇护手，蕴含正义之力',
     value: 170,
     stackable: false,
-    template: 'handOfJustice',
+    template: 'hand_of_justice',
     levelRequirement: 20
   }
 ];

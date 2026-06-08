@@ -14,9 +14,9 @@ import { enemyService } from './enemy/service';
 import { combatService } from './combat/service';
 import { explorationService } from './exploration/service';
 import { mapService } from './map/service';
-import { LOOT_ITEMS } from '../data/item.data';
-import { EQUIPMENT_ITEMS } from '../data/equipment.data';
-import { ENEMIES } from '../data/enemy.data';
+import { enemyDbService } from './enemy/db';
+import { inventoryDbService } from './inventory/db';
+import { equipmentDbService } from './equipment/db';
 import { MAX_LEVEL } from '../config/character';
 import { getExpForLevel } from '../utils/calculations';
 
@@ -234,14 +234,16 @@ registerCommand({
   name: 'item',
   description: '添加物品到背包（消耗品和装备）',
   usage: 'item <物品ID> [数量]',
-  handler(args) {
+  async handler(args) {
     if (args.length === 0) {
       const lines = ['═══ 消耗品 ═══'];
-      for (const item of LOOT_ITEMS) {
+      const lootItems = await inventoryDbService.getAllItemTemplates();
+      for (const item of lootItems) {
         lines.push(`  ${item.id.padEnd(22)} ${item.name}`);
       }
       lines.push('═══ 装备 ═══');
-      for (const item of EQUIPMENT_ITEMS) {
+      const equipItems = await equipmentDbService.getAllEquipmentTemplates();
+      for (const item of equipItems) {
         lines.push(`  ${item.id.padEnd(22)} ${item.name} [${item.type}]`);
       }
       lines.push('═══════════════════');
@@ -251,7 +253,7 @@ registerCommand({
     const itemId = args[0];
 
     // 先查找消耗品
-    const lootItem = LOOT_ITEMS.find(i => i.id === itemId);
+    const lootItem = await inventoryDbService.getItemTemplate(itemId);
     if (lootItem) {
       const count = args[1] ? parseInt(args[1], 10) : 1;
       if (isNaN(count) || count <= 0) {
@@ -265,7 +267,7 @@ registerCommand({
     }
 
     // 再查找装备
-    const equipItem = EQUIPMENT_ITEMS.find(i => i.id === itemId);
+    const equipItem = await equipmentDbService.getEquipmentTemplate(itemId);
     if (equipItem) {
       const added = inventoryService.addItems(equipItem, 1);
       if (added > 0) {
@@ -283,11 +285,12 @@ registerCommand({
   name: 'spawn',
   description: '生成敌人并进入战斗',
   usage: 'spawn <敌人ID>',
-  handler(args) {
+  async handler(args) {
     if (args.length === 0) {
       const lines = ['═══ 可用敌人ID ═══'];
-      for (const [id, data] of Object.entries(ENEMIES)) {
-        lines.push(`  ${id.padEnd(22)} ${data.name} (HP:${data.maxHp})`);
+      const enemies = await enemyDbService.getAllEnemyTemplates();
+      for (const data of enemies) {
+        lines.push(`  ${data.id.padEnd(22)} ${data.name} (HP:${data.maxHp})`);
       }
       lines.push('═══════════════════');
       return { success: true, message: lines.join('\n') };
@@ -295,7 +298,7 @@ registerCommand({
 
     const enemyId = args[0];
     try {
-      const enemy = enemyService.createEnemy(enemyId);
+      const enemy = await enemyService.createEnemy(enemyId);
       combatService.startCombat(enemy);
       return { success: true, message: `已生成 ${enemy.name} (HP:${enemy.hp}) 并进入战斗` };
     } catch {
@@ -355,10 +358,14 @@ registerCommand({
   usage: 'goto <地点ID>',
   handler(args) {
     if (args.length === 0) {
-      const markers = mapService.getLocationMarkers('azeroth');
+      const allLocations = [
+        ...mapService.getLocationsByContinent('kalimdor'),
+        ...mapService.getLocationsByContinent('eastern_kingdoms'),
+        ...mapService.getLocationsByContinent('northrend')
+      ];
       const lines = ['═══ 可用地点 ═══'];
-      for (const m of markers) {
-        lines.push(`  ${m.locationId.padEnd(22)} ${m.name}`);
+      for (const loc of allLocations) {
+        lines.push(`  ${loc.id.padEnd(22)} ${loc.displayName}`);
       }
       lines.push('═══════════════════');
       return { success: true, message: lines.join('\n') };

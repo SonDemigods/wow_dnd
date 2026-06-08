@@ -12,11 +12,13 @@
  * @property {string} color - 主色调
  */
 export interface ContinentData {
+  id: string;
   name: string;
   icon: string;
   description: string;
   position: string;
   color: string;
+  type: 'continent';
 }
 
 /**
@@ -25,16 +27,12 @@ export interface ContinentData {
  * @property {number} panX - X平移量
  * @property {number} panY - Y平移量
  * @property {string} [currentContinentId] - 当前大陆ID
- * @property {boolean} showMarkers - 是否显示标记
- * @property {string} [activeMarkerId] - 当前激活的标记ID
  */
 export interface MapView {
   zoomLevel: number;
   panX: number;
   panY: number;
   currentContinentId?: string;
-  showMarkers: boolean;
-  activeMarkerId?: string;
 }
 
 /**
@@ -61,6 +59,7 @@ export interface MapState {
  * @property {number} mapY - 地图Y坐标
  */
 export interface LocationData {
+  id: string;
   name: string;
   displayName: string;
   icon: string;
@@ -73,6 +72,7 @@ export interface LocationData {
   color: string;
   mapX: number;
   mapY: number;
+  type: 'location';
 }
 
 /**
@@ -104,30 +104,6 @@ export interface MapZone {
 }
 
 /**
- * 地点标记接口
- * @property {string} id - 标记ID
- * @property {number} x - X坐标
- * @property {number} y - Y坐标
- * @property {string} icon - 图标
- * @property {string} name - 名称
- * @property {string} locationId - 关联地点ID
- * @property {number} requiredLevel - 等级要求
- * @property {'normal' | 'heroic' | 'mythic'} [difficulty] - 难度
- * @property {string} [parentMarkerId] - 父标记ID
- */
-export interface LocationMarker {
-  id: string;
-  x: number;
-  y: number;
-  icon: string;
-  name: string;
-  locationId: string;
-  requiredLevel: number;
-  difficulty?: 'normal' | 'heroic' | 'mythic';
-  parentMarkerId?: string;
-}
-
-/**
  * 地图服务接口
  * 提供地图管理的核心功能
  */
@@ -151,13 +127,6 @@ export interface IMapService {
    * @returns {LocationData[]} 地点列表
    */
   getLocationsByContinent(continentId: string): LocationData[];
-
-  /**
-   * 获取地点标记
-   * @param {string} continentId - 大陆ID
-   * @returns {LocationMarker[]} 标记列表
-   */
-  getLocationMarkers(continentId: string): LocationMarker[];
 
   /**
    * 获取已解锁的地点

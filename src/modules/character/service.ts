@@ -28,7 +28,6 @@ import { equipmentDbService } from '../equipment/db';
 import { explorationDbService } from '../exploration/db';
 import { adventureLogDbService } from '../log/db';
 import { questDbService } from '../quest/db';
-import { CLASS_ABILITIES } from '@/data/class.data';
 import type { Skill, SkillBar } from '../skill/types';
 
 /**
@@ -125,8 +124,8 @@ export class CharacterService implements ICharacterService {
       lastPlayedTime: Date.now()
     };
     
-    // 初始化技能数据
-    const classAbilities = CLASS_ABILITIES[classId] || [];
+    // 初始化技能数据（从数据库获取职业技能模板）
+    const classAbilities = await skillsDbService.getSkillTemplatesByClass(classId);
     const skills: Skill[] = classAbilities.filter(skill => skill.unlockLevel <= 1).map(skill => ({ ...skill }));
     const skillBar: SkillBar = { slots: [null, null, null, null] };
     

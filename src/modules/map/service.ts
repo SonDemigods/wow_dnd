@@ -7,8 +7,7 @@ import type {
   IMapService, 
   MapState, 
   MapView, 
-  LocationData, 
-  LocationMarker,
+  LocationData,
   MapZone,
   ZoneStatus
 } from './types';
@@ -21,8 +20,7 @@ import { eventBus, GameEvents } from '../bus/core';
 const DEFAULT_MAP_VIEW: MapView = {
   zoomLevel: 1,
   panX: 0,
-  panY: 0,
-  showMarkers: true
+  panY: 0
 };
 
 /**
@@ -94,13 +92,6 @@ export class MapService implements IMapService {
     return Array.from(this.locations.values()).filter(
       location => location.continent === continentId
     );
-  }
-  
-  /**
-   * 获取地点标记
-   */
-  getLocationMarkers(continentId: string): LocationMarker[] {
-    return [];
   }
   
   /**
@@ -223,22 +214,6 @@ export class MapService implements IMapService {
    */
   enterZone(zoneId: string): boolean {
     return this.enterLocation(zoneId);
-  }
-  
-  /**
-   * 设置激活的标记
-   */
-  setActiveMarker(markerId: string | undefined): void {
-    this.state.view.activeMarkerId = markerId;
-    this.saveState();
-  }
-  
-  /**
-   * 切换标记显示
-   */
-  toggleMarkers(): void {
-    this.state.view.showMarkers = !this.state.view.showMarkers;
-    this.saveState();
   }
 }
 

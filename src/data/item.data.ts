@@ -13,7 +13,7 @@ import type { Item } from '../modules/inventory/types';
 /** 治疗药水 - 恢复生命值 */
 const HEALTH_POTIONS: Item[] = [
   {
-    id: 'smallHealthPotion',
+    id: 'small_health_potion',
     name: '初级治疗药水',
     icon: '❤️',
     type: 'potion',
@@ -23,10 +23,10 @@ const HEALTH_POTIONS: Item[] = [
     stackable: true,
     hpRestore: 30,
     consumable: true,
-    template: 'smallHealthPotion'
+    template: 'small_health_potion'
   },
   {
-    id: 'mediumHealthPotion',
+    id: 'medium_health_potion',
     name: '次级治疗药水',
     icon: '💗',
     type: 'potion',
@@ -36,10 +36,10 @@ const HEALTH_POTIONS: Item[] = [
     stackable: true,
     hpRestore: 60,
     consumable: true,
-    template: 'mediumHealthPotion'
+    template: 'medium_health_potion'
   },
   {
-    id: 'largeHealthPotion',
+    id: 'large_health_potion',
     name: '强效治疗药水',
     icon: '💖',
     type: 'potion',
@@ -49,10 +49,10 @@ const HEALTH_POTIONS: Item[] = [
     stackable: true,
     hpRestore: 100,
     consumable: true,
-    template: 'largeHealthPotion'
+    template: 'large_health_potion'
   },
   {
-    id: 'superHealthPotion',
+    id: 'super_health_potion',
     name: '超级治疗药水',
     icon: '❤️‍🔥',
     type: 'potion',
@@ -62,14 +62,14 @@ const HEALTH_POTIONS: Item[] = [
     stackable: true,
     hpRestore: 150,
     consumable: true,
-    template: 'superHealthPotion'
+    template: 'super_health_potion'
   }
 ];
 
 /** 法力药水 - 恢复法力值 */
 const MANA_POTIONS: Item[] = [
   {
-    id: 'smallManaPotion',
+    id: 'small_mana_potion',
     name: '初级法力药水',
     icon: '💙',
     type: 'potion',
@@ -79,10 +79,10 @@ const MANA_POTIONS: Item[] = [
     stackable: true,
     mpRestore: 30,
     consumable: true,
-    template: 'smallManaPotion'
+    template: 'small_mana_potion'
   },
   {
-    id: 'mediumManaPotion',
+    id: 'medium_mana_potion',
     name: '次级法力药水',
     icon: '💎',
     type: 'potion',
@@ -92,10 +92,10 @@ const MANA_POTIONS: Item[] = [
     stackable: true,
     mpRestore: 60,
     consumable: true,
-    template: 'mediumManaPotion'
+    template: 'medium_mana_potion'
   },
   {
-    id: 'largeManaPotion',
+    id: 'large_mana_potion',
     name: '强效法力药水',
     icon: '🔮',
     type: 'potion',
@@ -105,10 +105,10 @@ const MANA_POTIONS: Item[] = [
     stackable: true,
     mpRestore: 100,
     consumable: true,
-    template: 'largeManaPotion'
+    template: 'large_mana_potion'
   },
   {
-    id: 'superManaPotion',
+    id: 'super_mana_potion',
     name: '超级法力药水',
     icon: '✨',
     type: 'potion',
@@ -118,14 +118,14 @@ const MANA_POTIONS: Item[] = [
     stackable: true,
     mpRestore: 150,
     consumable: true,
-    template: 'superManaPotion'
+    template: 'super_mana_potion'
   }
 ];
 
 /** 属性药剂 - 永久提升属性 */
 const ATTRIBUTE_POTIONS: Item[] = [
   {
-    id: 'strengthPotion',
+    id: 'strength_potion',
     name: '巨人之力药剂',
     icon: '💪',
     type: 'potion',
@@ -135,10 +135,10 @@ const ATTRIBUTE_POTIONS: Item[] = [
     stackable: true,
     bonus: { str: 1 },
     consumable: true,
-    template: 'strengthPotion'
+    template: 'strength_potion'
   },
   {
-    id: 'agilityPotion',
+    id: 'agility_potion',
     name: '猫鼬药剂',
     icon: '🦶',
     type: 'potion',
@@ -148,10 +148,10 @@ const ATTRIBUTE_POTIONS: Item[] = [
     stackable: true,
     bonus: { dex: 1 },
     consumable: true,
-    template: 'agilityPotion'
+    template: 'agility_potion'
   },
   {
-    id: 'constitutionPotion',
+    id: 'constitution_potion',
     name: '坚韧药剂',
     icon: '🏋️',
     type: 'potion',
@@ -161,10 +161,10 @@ const ATTRIBUTE_POTIONS: Item[] = [
     stackable: true,
     bonus: { con: 1 },
     consumable: true,
-    template: 'constitutionPotion'
+    template: 'constitution_potion'
   },
   {
-    id: 'intelligencePotion',
+    id: 'intelligence_potion',
     name: '智慧药剂',
     icon: '🧠',
     type: 'potion',
@@ -174,10 +174,10 @@ const ATTRIBUTE_POTIONS: Item[] = [
     stackable: true,
     bonus: { int: 1 },
     consumable: true,
-    template: 'intelligencePotion'
+    template: 'intelligence_potion'
   },
   {
-    id: 'wisdomPotion',
+    id: 'wisdom_potion',
     name: '洞察药剂',
     icon: '👁️',
     type: 'potion',
@@ -187,10 +187,10 @@ const ATTRIBUTE_POTIONS: Item[] = [
     stackable: true,
     bonus: { wis: 1 },
     consumable: true,
-    template: 'wisdomPotion'
+    template: 'wisdom_potion'
   },
   {
-    id: 'charismaPotion',
+    id: 'charisma_potion',
     name: '魅力药剂',
     icon: '💃',
     type: 'potion',
@@ -200,7 +200,7 @@ const ATTRIBUTE_POTIONS: Item[] = [
     stackable: true,
     bonus: { cha: 1 },
     consumable: true,
-    template: 'charismaPotion'
+    template: 'charisma_potion'
   }
 ];
 
@@ -224,7 +224,7 @@ const COMMON_FOOD: Item[] = [
     template: 'bread'
   },
   {
-    id: 'roastQuail',
+    id: 'roast_quail',
     name: '烤鹌鹑',
     icon: '🍗',
     type: 'food',
@@ -234,14 +234,14 @@ const COMMON_FOOD: Item[] = [
     stackable: true,
     hpRestore: 25,
     consumable: true,
-    template: 'roastQuail'
+    template: 'roast_quail'
   }
 ];
 
 /** 优质食物 - 恢复中等生命值 */
 const PREMIUM_FOOD: Item[] = [
   {
-    id: 'roastedMeat',
+    id: 'roasted_meat',
     name: '烤野猪肉',
     icon: '🍖',
     type: 'food',
@@ -251,10 +251,10 @@ const PREMIUM_FOOD: Item[] = [
     stackable: true,
     hpRestore: 40,
     consumable: true,
-    template: 'roastedMeat'
+    template: 'roasted_meat'
   },
   {
-    id: 'murlocFinSoup',
+    id: 'murloc_fin_soup',
     name: '鱼人鳍汤',
     icon: '🥣',
     type: 'food',
@@ -264,10 +264,10 @@ const PREMIUM_FOOD: Item[] = [
     stackable: true,
     hpRestore: 45,
     consumable: true,
-    template: 'murlocFinSoup'
+    template: 'murloc_fin_soup'
   },
   {
-    id: 'stormwindStew',
+    id: 'stormwind_stew',
     name: '暴风城炖肉',
     icon: '🍲',
     type: 'food',
@@ -277,14 +277,14 @@ const PREMIUM_FOOD: Item[] = [
     stackable: true,
     hpRestore: 50,
     consumable: true,
-    template: 'stormwindStew'
+    template: 'stormwind_stew'
   }
 ];
 
 /** 稀有食物 - 恢复大量生命值，可能有额外效果 */
 const RARE_FOOD: Item[] = [
   {
-    id: 'magicBread',
+    id: 'magic_bread',
     name: '魔法蛋糕',
     icon: '✨',
     type: 'food',
@@ -294,10 +294,10 @@ const RARE_FOOD: Item[] = [
     stackable: true,
     hpRestore: 60,
     consumable: true,
-    template: 'magicBread'
+    template: 'magic_bread'
   },
   {
-    id: 'dragonBreathChili',
+    id: 'dragon_breath_chili',
     name: '龙息辣椒',
     icon: '🌶️',
     type: 'food',
@@ -308,7 +308,7 @@ const RARE_FOOD: Item[] = [
     hpRestore: 55,
     bonus: { str: 2 },
     consumable: true,
-    template: 'dragonBreathChili'
+    template: 'dragon_breath_chili'
   }
 ];
 
@@ -319,7 +319,7 @@ const RARE_FOOD: Item[] = [
 /** 攻击型卷轴 */
 const OFFENSIVE_SCROLLS: Item[] = [
   {
-    id: 'scrollFireball',
+    id: 'scroll_fireball',
     name: '卷轴：火球术',
     icon: '📜🔥',
     type: 'scroll',
@@ -328,10 +328,10 @@ const OFFENSIVE_SCROLLS: Item[] = [
     value: 40,
     stackable: true,
     consumable: true,
-    template: 'scrollFireball'
+    template: 'scroll_fireball'
   },
   {
-    id: 'scrollBlizzard',
+    id: 'scroll_blizzard',
     name: '卷轴：暴风雪',
     icon: '📜❄️',
     type: 'scroll',
@@ -340,10 +340,10 @@ const OFFENSIVE_SCROLLS: Item[] = [
     value: 60,
     stackable: true,
     consumable: true,
-    template: 'scrollBlizzard'
+    template: 'scroll_blizzard'
   },
   {
-    id: 'scrollChainLightning',
+    id: 'scroll_chain_lightning',
     name: '卷轴：闪电链',
     icon: '📜⚡️',
     type: 'scroll',
@@ -352,14 +352,14 @@ const OFFENSIVE_SCROLLS: Item[] = [
     value: 55,
     stackable: true,
     consumable: true,
-    template: 'scrollChainLightning'
+    template: 'scroll_chain_lightning'
   }
 ];
 
 /** 治疗型卷轴 */
 const HEALING_SCROLLS: Item[] = [
   {
-    id: 'scrollHeal',
+    id: 'scroll_heal',
     name: '卷轴：治疗术',
     icon: '📜❤️',
     type: 'scroll',
@@ -369,10 +369,10 @@ const HEALING_SCROLLS: Item[] = [
     stackable: true,
     hpRestore: 50,
     consumable: true,
-    template: 'scrollHeal'
+    template: 'scroll_heal'
   },
   {
-    id: 'scrollMassHeal',
+    id: 'scroll_mass_heal',
     name: '卷轴：群体治疗',
     icon: '📜✨',
     type: 'scroll',
@@ -382,7 +382,7 @@ const HEALING_SCROLLS: Item[] = [
     stackable: true,
     hpRestore: 80,
     consumable: true,
-    template: 'scrollMassHeal'
+    template: 'scroll_mass_heal'
   }
 ];
 
@@ -393,7 +393,7 @@ const HEALING_SCROLLS: Item[] = [
 /** 基础材料 */
 const BASIC_MATERIALS: Item[] = [
   {
-    id: 'magicDust',
+    id: 'magic_dust',
     name: '奥术粉尘',
     icon: '✨',
     type: 'material',
@@ -401,14 +401,14 @@ const BASIC_MATERIALS: Item[] = [
     description: '奥术能量凝结的闪光粉尘',
     value: 15,
     stackable: true,
-    template: 'magicDust'
+    template: 'magic_dust'
   }
 ];
 
 /** 稀有材料 */
 const RARE_MATERIALS: Item[] = [
   {
-    id: 'dragonScale',
+    id: 'dragon_scale',
     name: '红龙鳞片',
     icon: '🐉',
     type: 'material',
@@ -416,10 +416,10 @@ const RARE_MATERIALS: Item[] = [
     description: '来自红龙幼崽的珍贵鳞片',
     value: 80,
     stackable: true,
-    template: 'dragonScale'
+    template: 'dragon_scale'
   },
   {
-    id: 'dreamFragment',
+    id: 'dream_fragment',
     name: '梦境碎片',
     icon: '💎🌿',
     type: 'material',
@@ -427,14 +427,14 @@ const RARE_MATERIALS: Item[] = [
     description: '翡翠梦境中散落的神秘碎片',
     value: 65,
     stackable: true,
-    template: 'dreamFragment'
+    template: 'dream_fragment'
   }
 ];
 
 /** 源生精华 - 元素材料 */
 const PRIMAL_MATERIALS: Item[] = [
   {
-    id: 'primalLife',
+    id: 'primal_life',
     name: '源生生命',
     icon: '🌱',
     type: 'material',
@@ -442,10 +442,10 @@ const PRIMAL_MATERIALS: Item[] = [
     description: '生命能量凝聚而成的原始精华',
     value: 50,
     stackable: true,
-    template: 'primalLife'
+    template: 'primal_life'
   },
   {
-    id: 'primalFire',
+    id: 'primal_fire',
     name: '源生火焰',
     icon: '🔥',
     type: 'material',
@@ -453,10 +453,10 @@ const PRIMAL_MATERIALS: Item[] = [
     description: '火焰之地诞生的原始火焰精华',
     value: 55,
     stackable: true,
-    template: 'primalFire'
+    template: 'primal_fire'
   },
   {
-    id: 'primalWater',
+    id: 'primal_water',
     name: '源生之水',
     icon: '💧',
     type: 'material',
@@ -464,10 +464,10 @@ const PRIMAL_MATERIALS: Item[] = [
     description: '深海中凝聚的原始水之精华',
     value: 50,
     stackable: true,
-    template: 'primalWater'
+    template: 'primal_water'
   },
   {
-    id: 'primalAir',
+    id: 'primal_air',
     name: '源生空气',
     icon: '💨',
     type: 'material',
@@ -475,10 +475,10 @@ const PRIMAL_MATERIALS: Item[] = [
     description: '风暴之巅诞生的原始空气精华',
     value: 50,
     stackable: true,
-    template: 'primalAir'
+    template: 'primal_air'
   },
   {
-    id: 'primalEarth',
+    id: 'primal_earth',
     name: '源生大地',
     icon: '🪨',
     type: 'material',
@@ -486,14 +486,14 @@ const PRIMAL_MATERIALS: Item[] = [
     description: '大地之心凝聚的原始土之精华',
     value: 50,
     stackable: true,
-    template: 'primalEarth'
+    template: 'primal_earth'
   }
 ];
 
 /** 史诗材料 */
 const EPIC_MATERIALS: Item[] = [
   {
-    id: 'voidCrystal',
+    id: 'void_crystal',
     name: '虚空水晶',
     icon: '🔮💜',
     type: 'material',
@@ -501,7 +501,7 @@ const EPIC_MATERIALS: Item[] = [
     description: '扭曲虚空中诞生的神秘水晶',
     value: 100,
     stackable: true,
-    template: 'voidCrystal'
+    template: 'void_crystal'
   },
   {
     id: 'sunmote',

@@ -5,7 +5,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { MapState, LocationData, LocationMarker } from './types';
+import type { MapState, LocationData } from './types';
 import { mapService } from './service';
 import { mapDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
@@ -19,16 +19,12 @@ export const useMapStore = defineStore('map', () => {
     view: {
       zoomLevel: 1,
       panX: 0,
-      panY: 0,
-      showMarkers: true
+      panY: 0
     }
   });
   
   /** 当前选中的地点 */
   const currentLocation = ref<LocationData | null>(null);
-  
-  /** 当前大陆的地点标记 */
-  const markers = ref<LocationMarker[]>([]);
   
   /** 初始化完成标志 */
   let initialized = false;
@@ -42,11 +38,6 @@ export const useMapStore = defineStore('map', () => {
    * 获取当前选中的地点
    */
   const getCurrentLocation = computed(() => currentLocation.value);
-  
-  /**
-   * 获取当前大陆的标记
-   */
-  const getMarkers = computed(() => markers.value);
   
   /**
    * 更新地图状态
@@ -71,15 +62,6 @@ export const useMapStore = defineStore('map', () => {
    */
   function getLocationsByContinent(continentId: string): LocationData[] {
     return mapService.getLocationsByContinent(continentId);
-  }
-  
-  /**
-   * 获取地点标记
-   * @param continentId - 大陆ID
-   * @returns 标记列表
-   */
-  function getLocationMarkers(continentId: string): LocationMarker[] {
-    return mapService.getLocationMarkers(continentId);
   }
   
   /**
@@ -140,24 +122,6 @@ export const useMapStore = defineStore('map', () => {
    */
   function setCurrentContinent(continentId: string): void {
     mapService.setCurrentContinent(continentId);
-    markers.value = mapService.getLocationMarkers(continentId);
-    updateState();
-  }
-  
-  /**
-   * 设置激活的标记
-   * @param markerId - 标记ID
-   */
-  function setActiveMarker(markerId: string | undefined): void {
-    mapService.setActiveMarker(markerId);
-    updateState();
-  }
-  
-  /**
-   * 切换标记显示
-   */
-  function toggleMarkers(): void {
-    mapService.toggleMarkers();
     updateState();
   }
   
@@ -197,9 +161,6 @@ export const useMapStore = defineStore('map', () => {
         currentLocation.value = location;
       }
     }
-    
-    // 默认加载东部王国的标记
-    markers.value = mapService.getLocationMarkers('azeroth');
   }
   
   /**
@@ -208,7 +169,6 @@ export const useMapStore = defineStore('map', () => {
   function reset(): void {
     mapService.reset();
     currentLocation.value = null;
-    markers.value = [];
     initialized = false;
     updateState();
   }
@@ -217,26 +177,21 @@ export const useMapStore = defineStore('map', () => {
     // 状态
     state,
     currentLocation,
-    markers,
     
     // 计算属性
     getView,
     getCurrentLocation,
-    getMarkers,
     
     // 方法
     updateState,
     getLocationData,
     getLocationsByContinent,
-    getLocationMarkers,
     isLocationUnlocked,
     enterLocation,
     zoomTo,
     panTo,
     resetView,
     setCurrentContinent,
-    setActiveMarker,
-    toggleMarkers,
     init,
     reset,
     dispose

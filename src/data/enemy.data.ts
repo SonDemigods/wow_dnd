@@ -8,10 +8,11 @@ import type { EnemyData } from '../modules/enemy/types';
 
 /**
  * 所有敌人的完整数据集
- * @type {Record<string, EnemyData>}
+ * @type {EnemyData[]}
  */
-export const ENEMIES: Record<string, EnemyData> = {
-  goblin: {
+export const ENEMIES: EnemyData[] = [
+  {
+    id: 'goblin',
     name: '豺狼人',
     icon: '👺',
     maxHp: 25,
@@ -26,7 +27,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 5,
     dodgeChance: 3
   },
-  kobold: {
+  {
+    id: 'kobold',
     name: '狗头人',
     icon: '🐀',
     maxHp: 20,
@@ -41,7 +43,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 4,
     dodgeChance: 5
   },
-  murloc: {
+  {
+    id: 'murloc',
     name: '鱼人',
     icon: '🐟',
     maxHp: 22,
@@ -56,7 +59,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 3,
     dodgeChance: 4
   },
-  skeleton: {
+  {
+    id: 'skeleton',
     name: '骷髅',
     icon: '💀',
     maxHp: 30,
@@ -71,7 +75,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 6,
     dodgeChance: 2
   },
-  orc: {
+  {
+    id: 'orc',
     name: '兽人战士',
     icon: '👹',
     maxHp: 45,
@@ -86,7 +91,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 8,
     dodgeChance: 4
   },
-  spider: {
+  {
+    id: 'spider',
     name: '剧毒蜘蛛',
     icon: '🕷️',
     maxHp: 35,
@@ -101,7 +107,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 12,
     dodgeChance: 8
   },
-  bandit: {
+  {
+    id: 'bandit',
     name: '迪菲亚强盗',
     icon: '🗡️',
     maxHp: 40,
@@ -116,7 +123,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 10,
     dodgeChance: 8
   },
-  troll: {
+  {
+    id: 'troll',
     name: '丛林巨魔',
     icon: '🧌',
     maxHp: 80,
@@ -131,7 +139,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 8,
     dodgeChance: 5
   },
-  dragon_whelp: {
+  {
+    id: 'dragon_whelp',
     name: '幼龙',
     icon: '🐉',
     maxHp: 120,
@@ -147,7 +156,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 12,
     dodgeChance: 6
   },
-  demon: {
+  {
+    id: 'demon',
     name: '恶魔卫士',
     icon: '👿',
     maxHp: 150,
@@ -163,7 +173,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 15,
     dodgeChance: 8
   },
-  wolf: {
+  {
+    id: 'wolf',
     name: '灰狼',
     icon: '🐺',
     maxHp: 28,
@@ -178,7 +189,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 8,
     dodgeChance: 10
   },
-  ghoul: {
+  {
+    id: 'ghoul',
     name: '食尸鬼',
     icon: '🧟',
     maxHp: 32,
@@ -193,7 +205,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 6,
     dodgeChance: 4
   },
-  frostwyrm: {
+  {
+    id: 'frost_wyrm',
     name: '冰霜巨龙',
     icon: '🐲',
     maxHp: 130,
@@ -209,7 +222,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 14,
     dodgeChance: 5
   },
-  iron_dwarf: {
+  {
+    id: 'iron_dwarf',
     name: '铁矮人',
     icon: '⚒️',
     maxHp: 70,
@@ -224,7 +238,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 7,
     dodgeChance: 3
   },
-  elemental: {
+  {
+    id: 'elemental',
     name: '元素生物',
     icon: '🔮',
     maxHp: 65,
@@ -239,7 +254,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 10,
     dodgeChance: 5
   },
-  nerubian: {
+  {
+    id: 'nerubian',
     name: '蛛魔',
     icon: '🕸️',
     maxHp: 75,
@@ -254,7 +270,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 12,
     dodgeChance: 8
   },
-  vrykul: {
+  {
+    id: 'vrykul',
     name: '维库人',
     icon: '⚔️',
     maxHp: 78,
@@ -269,7 +286,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 9,
     dodgeChance: 4
   },
-  undead: {
+  {
+    id: 'undead',
     name: '亡灵',
     icon: '💀',
     maxHp: 35,
@@ -284,7 +302,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 5,
     dodgeChance: 3
   },
-  bear: {
+  {
+    id: 'bear',
     name: '棕熊',
     icon: '🐻',
     maxHp: 50,
@@ -299,7 +318,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 7,
     dodgeChance: 4
   },
-  boar: {
+  {
+    id: 'boar',
     name: '野猪',
     icon: '🐗',
     maxHp: 38,
@@ -314,7 +334,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 5,
     dodgeChance: 3
   },
-  centaur: {
+  {
+    id: 'centaur',
     name: '半人马',
     icon: '🏇',
     maxHp: 60,
@@ -329,7 +350,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 8,
     dodgeChance: 6
   },
-  harpy: {
+  {
+    id: 'harpy',
     name: '鹰身人',
     icon: '🦅',
     maxHp: 42,
@@ -344,7 +366,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 10,
     dodgeChance: 12
   },
-  naga: {
+  {
+    id: 'naga',
     name: '纳迦',
     icon: '🐍',
     maxHp: 85,
@@ -359,7 +382,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 10,
     dodgeChance: 8
   },
-  ogre: {
+  {
+    id: 'ogre',
     name: '食人魔',
     icon: '👹',
     maxHp: 90,
@@ -374,7 +398,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 7,
     dodgeChance: 3
   },
-  quilboar: {
+  {
+    id: 'quilboar',
     name: '野猪人',
     icon: '🐗',
     maxHp: 48,
@@ -389,7 +414,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 8,
     dodgeChance: 5
   },
-  scorpid: {
+  {
+    id: 'scorpid',
     name: '蝎子',
     icon: '🦂',
     maxHp: 36,
@@ -404,7 +430,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 10,
     dodgeChance: 6
   },
-  silithid: {
+  {
+    id: 'silithid',
     name: '异种虫',
     icon: '🦗',
     maxHp: 95,
@@ -419,7 +446,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 15,
     dodgeChance: 10
   },
-  gnoll: {
+  {
+    id: 'gnoll',
     name: '豺狼人',
     icon: '🐺',
     maxHp: 33,
@@ -434,7 +462,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 6,
     dodgeChance: 5
   },
-  undead_knight: {
+  {
+    id: 'undead_knight',
     name: '死亡骑士',
     icon: '⚔️',
     maxHp: 110,
@@ -450,7 +479,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 12,
     dodgeChance: 6
   },
-  lich: {
+  {
+    id: 'lich',
     name: '巫妖',
     icon: '💀',
     maxHp: 140,
@@ -466,7 +496,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 15,
     dodgeChance: 8
   },
-  frost_giant: {
+  {
+    id: 'frost_giant',
     name: '冰霜巨人',
     icon: '🧊',
     maxHp: 160,
@@ -482,7 +513,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 12,
     dodgeChance: 4
   },
-  tiger: {
+  {
+    id: 'tiger',
     name: '猛虎',
     icon: '🐅',
     maxHp: 75,
@@ -497,7 +529,8 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 15,
     dodgeChance: 12
   },
-  dwarf: {
+  {
+    id: 'dwarf',
     name: '黑铁矮人',
     icon: '⚒️',
     maxHp: 65,
@@ -512,4 +545,4 @@ export const ENEMIES: Record<string, EnemyData> = {
     critChance: 7,
     dodgeChance: 4
   }
-};
+];

@@ -4,143 +4,143 @@
  * @module data/class
  */
 
-import type { ClassData,  } from '../modules/character/types';
+import type { ClassData } from '../modules/character/types';
 import type { Skill } from '../modules/skill/types';
 
-export const CLASSES: Record<string, ClassData> = {
-  warrior: {
+export const CLASSES: ClassData[] = [
+  {
     id: 'warrior',
     name: '战士',
     icon: '⚔️',
     primaryStat: 'str',
     factionsIds: ['alliance', 'horde', 'neutral'],
-    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
+    raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
     description: '精通所有武器和护甲，是战场上的中坚力量',
     color: '#C79C6E',
     bonus: { str: 2, con: 1, int: -1, wis: -1 }
   },
-  paladin: {
+  {
     id: 'paladin',
     name: '圣骑士',
     icon: '🔨',
     primaryStat: 'cha',
     factionsIds: ['alliance', 'horde', 'neutral'],
-    raceIds: ['human', 'dwarf', 'draenei', 'lightforgeddraenei', 'darkirondwarf', 'tauren', 'bloodelves', 'zandalari', 'earthen'],
+    raceIds: ['human', 'dwarf', 'draenei', 'lightforged_draenei', 'dark_iron_dwarf', 'tauren', 'blood_elves', 'zandalari', 'earthen'],
     description: '神圣的战士，使用圣光之力治疗和保护',
     color: '#F58CBA',
     bonus: { str: 1, con: 1, dex: -1, int: -1, cha: 2 }
   },
-  hunter: {
+  {
     id: 'hunter',
     name: '猎人',
     icon: '🏹',
     primaryStat: 'dex',
     factionsIds: ['alliance', 'horde', 'neutral'],
-    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
+    raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
     description: '远程武器和野兽控制专家',
     color: '#ABD473',
     bonus: { dex: 2, con: 1, int: -1, wis: 1, cha: -1 }
   },
-  rogue: {
+  {
     id: 'rogue',
     name: '潜行者',
     icon: '🗡️',
     primaryStat: 'dex',
     factionsIds: ['alliance', 'horde', 'neutral'],
-    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
+    raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
     description: '擅长偷袭和暗杀的敏捷杀手',
     color: '#FFF569',
     bonus: { dex: 3, str: -1, con: -1, int: -1 }
   },
-  priest: {
+  {
     id: 'priest',
     name: '牧师',
     icon: '✝️',
     primaryStat: 'wis',
     factionsIds: ['alliance', 'horde', 'neutral'],
-    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
+    raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
     description: '圣光的仆从，擅长治疗和驱散',
     color: '#FFFFFF',
     bonus: { int: 1, wis: 3, str: -1, dex: -1, con: -1, cha: -1 }
   },
-  shaman: {
+  {
     id: 'shaman',
     name: '萨满祭司',
     icon: '⚡',
     primaryStat: 'wis',
     factionsIds: ['alliance', 'horde', 'neutral'],
-    raceIds: ['dwarf', 'draenei', 'darkirondwarf', 'kul_tiran', 'orc', 'tauren', 'troll', 'goblin', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'earthen', 'harenei'],
+    raceIds: ['dwarf', 'draenei', 'dark_iron_dwarf', 'kul_tiran', 'orc', 'tauren', 'troll', 'goblin', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'earthen', 'harenei'],
     description: '与元素之灵沟通的通灵者',
     color: '#0070DE',
     bonus: { con: 1, int: 1, wis: 2, dex: -1, cha: -1 }
   },
-  mage: {
+  {
     id: 'mage',
     name: '法师',
     icon: '🧙',
     primaryStat: 'int',
     factionsIds: ['alliance', 'horde', 'neutral'],
-    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
+    raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
     description: '操控奥术、冰霜和火焰魔法的施法者',
     color: '#69CCF0',
     bonus: { int: 3, str: -1, con: -1, cha: -1 }
   },
-  warlock: {
+  {
     id: 'warlock',
     name: '术士',
     icon: '💜',
     primaryStat: 'int',
     factionsIds: ['alliance', 'horde', 'neutral'],
-    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
+    raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
     description: '使用暗影魔法的危险施法者',
     color: '#9482C9',
     bonus: { int: 2, str: -1, con: -1, wis: -1, cha: 2 }
   },
-  monk: {
+  {
     id: 'monk',
     name: '武僧',
     icon: '🥋',
     primaryStat: 'dex',
     factionsIds: ['alliance', 'horde', 'neutral'],
-    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren', 'earthen', 'harenei'],
+    raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'earthen', 'harenei'],
     description: '掌握着古老武学之道的修行者',
     color: '#00FF96',
     bonus: { dex: 2, con: 1, wis: 1, str: -1, cha: -1 }
   },
-  druid: {
+  {
     id: 'druid',
     name: '德鲁伊',
     icon: '🌿',
     primaryStat: 'wis',
     factionsIds: ['alliance', 'horde', 'neutral'],
-    raceIds: ['nightelf', 'worgen', 'kul_tiran', 'tauren', 'troll', 'highmountaintauren', 'zandalari', 'harenei'],
+    raceIds: ['night_elf', 'worgen', 'kul_tiran', 'tauren', 'troll', 'highmountain_tauren', 'zandalari', 'harenei'],
     description: '自然的守护者，可变身为多种形态',
     color: '#FF7D0A',
     bonus: { dex: 1, int: 1, wis: 2, str: -1, cha: -1 }
   },
-  deathknight: {
-    id: 'deathknight',
+  {
+    id: 'death_knight',
     name: '死亡骑士',
     icon: '💀',
     primaryStat: 'str',
     factionsIds: ['alliance', 'horde'],
-    raceIds: ['human', 'dwarf', 'gnome', 'nightelf', 'draenei', 'worgen', 'voidelf', 'lightforgeddraenei', 'darkirondwarf', 'kul_tiran', 'mechagnome', 'orc', 'undead', 'tauren', 'troll', 'bloodelves', 'goblin', 'nightborne', 'highmountaintauren', 'magharorc', 'zandalari', 'vulpera', 'pandaren'],
+    raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren'],
     description: '由死亡中苏醒的骑士，掌控着冰霜与暗影之力',
     color: '#C41F3B',
     bonus: { str: 2, con: 1, dex: -1, int: -1, wis: -1, cha: 1 }
   },
-  demonhunter: {
-    id: 'demonhunter',
+  {
+    id: 'demon_hunter',
     name: '恶魔猎手',
     icon: '👿',
     primaryStat: 'dex',
     factionsIds: ['alliance', 'horde'],
-    raceIds: ['nightelf', 'bloodelves'],
+    raceIds: ['night_elf', 'blood_elves'],
     description: '为对抗燃烧军团而生的暗影猎人',
     color: '#A330C9',
     bonus: { dex: 3, int: 1, con: -1, wis: -1 }
   },
-  evoker: {
+  {
     id: 'evoker',
     name: '唤魔师',
     icon: '🐉',
@@ -151,10 +151,12 @@ export const CLASSES: Record<string, ClassData> = {
     color: '#33937F',
     bonus: { int: 3, con: -1 }
   }
-};
+];
 
-export const CLASS_ABILITIES: Record<string, Skill[]> = {
-  warrior: [
+export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
+  {
+    class_id: 'warrior',
+    skills: [
     {
       id: 'warrior_heroic_strike',
       name: '英雄打击',
@@ -255,8 +257,11 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       effect: { type: 'physical_damage', value: 45 },
       unlockLevel: 10
     }
-  ],
-  mage: [
+    ]
+  },
+  {
+    class_id: 'mage',
+    skills: [
     {
       id: 'mage_fireball',
       name: '火球术',
@@ -357,8 +362,11 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       effect: { type: 'magic_damage', value: 55 },
       unlockLevel: 10
     }
-  ],
-  paladin: [
+    ]
+  },
+  {
+    class_id: 'paladin',
+    skills: [
     {
       id: 'paladin_holy_light',
       name: '圣光术',
@@ -459,8 +467,11 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       effect: { type: 'magic_damage', value: 43 },
       unlockLevel: 10
     }
-  ],
-  hunter: [
+    ]
+  },
+  {
+    class_id: 'hunter',
+    skills: [
     {
       id: 'hunter_steady_shot',
       name: '稳固射击',
@@ -561,8 +572,11 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       effect: { type: 'physical_damage', value: 48 },
       unlockLevel: 10
     }
-  ],
-  rogue: [
+    ]
+  },
+  {
+    class_id: 'rogue',
+    skills: [
     {
       id: 'rogue_shadow_strike',
       name: '影袭',
@@ -663,8 +677,11 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       effect: { type: 'physical_damage', value: 50 },
       unlockLevel: 10
     }
-  ],
-  warlock: [
+    ]
+  },
+  {
+    class_id: 'warlock',
+    skills: [
     {
       id: 'warlock_shadow_bolt',
       name: '暗影箭',
@@ -765,8 +782,11 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       effect: { type: 'magic_damage', value: 55 },
       unlockLevel: 10
     }
-  ],
-  druid: [
+    ]
+  },
+  {
+    class_id: 'druid',
+    skills: [
     {
       id: 'druid_starfire',
       name: '星火术',
@@ -867,8 +887,11 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       effect: { type: 'magic_damage', value: 52 },
       unlockLevel: 10
     }
-  ],
-  priest: [
+    ]
+  },
+  {
+    class_id: 'priest',
+    skills: [
     {
       id: 'priest_heal',
       name: '治疗术',
@@ -969,8 +992,11 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       effect: { type: 'heal', value: 55 },
       unlockLevel: 10
     }
-  ],
-  shaman: [
+    ]
+  },
+  {
+    class_id: 'shaman',
+    skills: [
     {
       id: 'shaman_lightning_bolt',
       name: '闪电箭',
@@ -1071,10 +1097,13 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       effect: { type: 'magic_damage', value: 50 },
       unlockLevel: 10
     }
-  ],
-  deathknight: [
+    ]
+  },
+  {
+    class_id: 'death_knight',
+    skills: [
     {
-      id: 'dk_frost_touch',
+      id: 'death_knight_frost_touch',
       name: '冰冷触摸',
       icon: '❄️',
       description: '冰霜能量攻击',
@@ -1084,7 +1113,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 1
     },
     {
-      id: 'dk_shadow_strike',
+      id: 'death_knight_shadow_strike',
       name: '暗影打击',
       icon: '🖤',
       description: '暗影攻击',
@@ -1094,7 +1123,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 1
     },
     {
-      id: 'dk_death_grip',
+      id: 'death_knight_death_grip',
       name: '死亡之握',
       icon: '💀',
       description: '将敌人拉到身边',
@@ -1104,7 +1133,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 2
     },
     {
-      id: 'dk_heart_strike',
+      id: 'death_knight_heart_strike',
       name: '心脏打击',
       icon: '❤️',
       description: '强力攻击',
@@ -1114,7 +1143,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 3
     },
     {
-      id: 'dk_death_strike',
+      id: 'death_knight_death_strike',
       name: '灵界打击',
       icon: '👻',
       description: '攻击并治疗自己',
@@ -1124,7 +1153,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 4
     },
     {
-      id: 'dk_frost_strike',
+      id: 'death_knight_frost_strike',
       name: '冰霜打击',
       icon: '🧊',
       description: '冰霜攻击',
@@ -1134,7 +1163,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 5
     },
     {
-      id: 'dk_death_and_decay',
+      id: 'death_knight_death_and_decay',
       name: '死亡凋零',
       icon: '💀',
       description: '区域伤害',
@@ -1144,7 +1173,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 6
     },
     {
-      id: 'dk_rune_blade_waltz',
+      id: 'death_knight_rune_blade_waltz',
       name: '符文刃舞',
       icon: '⚔️',
       description: '召唤符文武器',
@@ -1154,7 +1183,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 7
     },
     {
-      id: 'dk_scourge_strike',
+      id: 'death_knight_scourge_strike',
       name: '天灾打击',
       icon: '💀',
       description: '天灾力量攻击',
@@ -1164,7 +1193,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 8
     },
     {
-      id: 'dk_sindragosas_breath',
+      id: 'death_knight_sindragosas_breath',
       name: '辛达苟萨之息',
       icon: '🐉',
       description: '终极技能，冰霜巨龙的吐息',
@@ -1173,8 +1202,11 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       effect: { type: 'magic_damage', value: 55 },
       unlockLevel: 10
     }
-  ],
-  monk: [
+    ]
+  },
+  {
+    class_id: 'monk',
+    skills: [
     {
       id: 'monk_sun_strike',
       name: '贯日击',
@@ -1275,10 +1307,13 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       effect: { type: 'physical_damage', value: 52 },
       unlockLevel: 10
     }
-  ],
-  demonhunter: [
+    ]
+  },
+  {
+    class_id: 'demon_hunter',
+    skills: [
     {
-      id: 'dh_chaos_strike',
+      id: 'demon_hunter_chaos_strike',
       name: '混乱打击',
       icon: '🔥',
       description: '混乱能量攻击',
@@ -1288,7 +1323,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 1
     },
     {
-      id: 'dh_blade_dance',
+      id: 'demon_hunter_blade_dance',
       name: '刃舞',
       icon: '⚔️',
       description: '挥舞双刃攻击',
@@ -1298,7 +1333,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 1
     },
     {
-      id: 'dh_fel_rush',
+      id: 'demon_hunter_fel_rush',
       name: '邪能冲锋',
       icon: '💨',
       description: '冲锋并造成伤害',
@@ -1308,7 +1343,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 2
     },
     {
-      id: 'dh_fel_strike',
+      id: 'demon_hunter_fel_strike',
       name: '邪能打击',
       icon: '✨',
       description: '邪能攻击',
@@ -1318,7 +1353,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 3
     },
     {
-      id: 'dh_throw_glaive',
+      id: 'demon_hunter_throw_glaive',
       name: '投掷利刃',
       icon: '🗡️',
       description: '投掷利刃',
@@ -1328,7 +1363,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 4
     },
     {
-      id: 'dh_eye_beam',
+      id: 'demon_hunter_eye_beam',
       name: '眼棱',
       icon: '👁️',
       description: '眼睛发射邪能射线',
@@ -1338,7 +1373,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 5
     },
     {
-      id: 'dh_metamorphosis',
+      id: 'demon_hunter_metamorphosis',
       name: '毁灭打击',
       icon: '😈',
       description: '毁灭攻击',
@@ -1348,7 +1383,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 6
     },
     {
-      id: 'dh_immolation_aura',
+      id: 'demon_hunter_immolation_aura',
       name: '献祭光环',
       icon: '🔥',
       description: '灼烧周围敌人',
@@ -1358,7 +1393,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 7
     },
     {
-      id: 'dh_chaos_nova',
+      id: 'demon_hunter_chaos_nova',
       name: '幽魂锁链',
       icon: '🔗',
       description: '灵魂锁链攻击',
@@ -1368,7 +1403,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 8
     },
     {
-      id: 'dh_cataclysm',
+      id: 'demon_hunter_cataclysm',
       name: '浩劫',
       icon: '💥',
       description: '终极技能，毁灭性的邪能爆发',
@@ -1377,8 +1412,11 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       effect: { type: 'magic_damage', value: 59 },
       unlockLevel: 10
     }
-  ],
-  evoker: [
+    ]
+  },
+  {
+    class_id: 'evoker',
+    skills: [
     {
       id: 'evoker_dragon_breath',
       name: '龙息',
@@ -1450,7 +1488,7 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       unlockLevel: 6
     },
     {
-      id: 'evoker_ Emerald_Winds',
+      id: 'evoker_emerald_winds',
       name: '翡翠之风',
       icon: '🌪️',
       description: '范围治疗',
@@ -1479,5 +1517,6 @@ export const CLASS_ABILITIES: Record<string, Skill[]> = {
       effect: { type: 'magic_damage', value: 58 },
       unlockLevel: 10
     }
-  ]
-};
+    ]
+  }
+];

@@ -1,16 +1,14 @@
 import type { GridCell, GridEventType, ExplorationState, GridEventProbability, AreaConfig, IExplorationService, ExplorationCell, MoveResult, EventChoiceResult } from './types';
 import type { LocationData } from '../map/types';
+import { inventoryDbService } from '../inventory/db';
 import { explorationDbService } from './db';
 import { mapDbService } from '../map/db';
+import { enemyDbService } from '../enemy/db';
+import { questDbService } from '../quest/db';
 import { eventBus, GameEvents } from '../bus/core';
 import { characterService } from '../character/service';
 import { inventoryService } from '../inventory/service';
 import { logService } from '../log/service';
-import { LOOT_ITEMS } from '../../data/item.data';
-import { ENEMIES } from '../../data/enemy.data';
-import { QUESTS } from '../../data/quest.data';
-import type { EnemyData } from '../enemy/types';
-import type { QuestDefinition } from '../quest/types';
 
 const GRID_SIZE = 10;
 const INITIAL_MOVES = 20;
@@ -32,9 +30,9 @@ export class ExplorationService implements IExplorationService {
   private currentAreaConfig: AreaConfig | null = null;
 
   /**
-   * 根据地点数据构建区域配置
+   * 根据地点数据构建区域配置（异步，从数据库获取敌人和物品数据）
    */
-  private buildAreaConfig(location: LocationData): AreaConfig {
+  private async buildAreaConfig(location: LocationData): Promise<AreaConfig> {
     const [minLevel, maxLevel] = location.levelRange;
     const avgLevel = Math.floor((minLevel + maxLevel) / 2);
 
@@ -57,21 +55,25 @@ export class ExplorationService implements IExplorationService {
     // 怪物池：直接使用地点数据中的敌人列表
     const monsterPool = location.enemies || [];
 
-    // Boss池：从敌人列表中筛选标记为Boss的敌人
+    // Boss池：从数据库查询敌人数据，筛选标记为Boss的敌人
     const bossPool: string[] = [];
     for (const enemyId of monsterPool) {
-      const enemy = ENEMIES[enemyId] as EnemyData | undefined;
-      if (enemy && (enemy as any).isBoss) {
+      const enemy = await enemyDbService.getEnemyTemplate(enemyId);
+      if (enemy && enemy.isBoss) {
         bossPool.push(enemyId);
       }
     }
 
-    // 物品池：根据地点等级从 LOOT_ITEMS 中筛选合适的物品
-    const suitableItems = LOOT_ITEMS.filter(item => item.level >= minLevel - 1 && item.level <= maxLevel + 2);
+    // 物品池：从数据库获取所有物品模板，根据地点等级筛选合适的物品
+    const allItems = await inventoryDbService.getAllItemTemplates();
+    const suitableItems = allItems.filter(item => {
+      const itemLevel = item.level ?? 0;
+      return itemLevel >= minLevel - 1 && itemLevel <= maxLevel + 2;
+    });
     const itemPool = suitableItems.slice(0, 5).map(item => item.id);
     // 如果没有合适的物品，至少提供基础药水
     if (itemPool.length === 0) {
-      itemPool.push('smallHealthPotion');
+      itemPool.push('small_health_potion');
     }
 
     return {
@@ -91,7 +93,7 @@ export class ExplorationService implements IExplorationService {
   private async loadAreaConfig(areaId: string): Promise<void> {
     const location = await mapDbService.getLocationData(areaId);
     if (location) {
-      this.currentAreaConfig = this.buildAreaConfig(location);
+      this.currentAreaConfig = await this.buildAreaConfig(location);
     } else {
       // 回退：使用默认配置
       this.currentAreaConfig = {
@@ -114,7 +116,7 @@ export class ExplorationService implements IExplorationService {
       eventProbability: { monster: 25, item: 20, trap: 15, event: 15, empty: 25 },
       monsterPool: [],
       bossPool: [],
-      itemPool: ['smallHealthPotion']
+      itemPool: ['small_health_potion']
     };
   }
 
@@ -245,19 +247,18 @@ export class ExplorationService implements IExplorationService {
 
   /**
    * 获取当前区域任务所需的怪物ID列表（去重后的优先怪物池）
+   * 从数据库查询任务定义
    */
-  private getQuestRequiredMonsters(areaId: string): string[] {
+  private async getQuestRequiredMonsters(areaId: string): Promise<string[]> {
     const required: string[] = [];
-    // 从 QUESTS 数据中筛选当前区域的任务
-    for (const key of Object.keys(QUESTS)) {
-      const quest = QUESTS[key] as QuestDefinition;
-      if (quest.boardId === areaId) {
-        for (const obj of quest.objectives) {
-          if (obj.type === 'kill' && obj.enemyId) {
-            // 根据目标数量添加对应数量的怪物ID
-            for (let i = 0; i < obj.target; i++) {
-              required.push(obj.enemyId);
-            }
+    // 从数据库获取当前区域的任务定义
+    const quests = await questDbService.getQuestDefinitionsByBoard(areaId);
+    for (const quest of quests) {
+      for (const obj of quest.objectives) {
+        if (obj.type === 'kill' && obj.enemyId) {
+          // 根据目标数量添加对应数量的怪物ID
+          for (let i = 0; i < obj.target; i++) {
+            required.push(obj.enemyId);
           }
         }
       }
@@ -265,7 +266,7 @@ export class ExplorationService implements IExplorationService {
     return required;
   }
 
-  private generateGridInternal(areaConfig: AreaConfig): ExplorationCell[][] {
+  private async generateGridInternal(areaConfig: AreaConfig): Promise<ExplorationCell[][]> {
     const grid: ExplorationCell[][] = [];
     
     for (let y = 0; y < GRID_SIZE; y++) {
@@ -288,12 +289,15 @@ export class ExplorationService implements IExplorationService {
     const monsterPool = areaConfig.monsterPool;
 
     // 获取当前区域任务所需的怪物列表，作为优先放置的怪物池
-    const questMonsters = this.getQuestRequiredMonsters(areaConfig.areaId);
+    const questMonsters = await this.getQuestRequiredMonsters(areaConfig.areaId);
     // 过滤掉boss类型（boss由固定事件放置），只保留普通怪物
-    const questNormalMonsters = questMonsters.filter(id => {
-      const data = ENEMIES[id] as EnemyData | undefined;
-      return data && !(data as any).isBoss;
-    });
+    const questNormalMonsters: string[] = [];
+    for (const id of questMonsters) {
+      const data = await enemyDbService.getEnemyTemplate(id);
+      if (data && !data.isBoss) {
+        questNormalMonsters.push(id);
+      }
+    }
 
     // 收集所有空格子坐标
     const emptyCells: { x: number; y: number }[] = [];
@@ -353,9 +357,9 @@ export class ExplorationService implements IExplorationService {
     return grid;
   }
 
-  generateGrid(): void {
+  async generateGrid(): Promise<void> {
     const areaConfig = this.getAreaConfig(this.state.currentAreaId || 'village');
-    const grid = this.generateGridInternal(areaConfig);
+    const grid = await this.generateGridInternal(areaConfig);
     
     // 从生成的网格中找到起点位置
     let startPos = { x: 0, y: 0 };
@@ -570,7 +574,7 @@ export class ExplorationService implements IExplorationService {
   async enterArea(areaId: string): Promise<void> {
     this.state.currentAreaId = areaId;
     await this.loadAreaConfig(areaId);
-    this.generateGrid();
+    await this.generateGrid();
   }
 
   getGrid(x: number, y: number): GridCell | null {

@@ -8,38 +8,45 @@ import type { LocationData, ContinentData } from '../modules/map/types';
 
 /**
  * 大陆数据
- * @type {Record<string, ContinentData>}
+ * @type {ContinentData[]}
  */
-export const CONTINENTS: Record<string, ContinentData> = {
-  kalimdor: {
+export const CONTINENTS: ContinentData[] = [
+  {
+    id: 'kalimdor',
     name: '卡利姆多',
     icon: '🌳',
     description: '古老的大陆，暗夜精灵与牛头人的家园',
     position: 'west',
-    color: '#2d5a3d'
+    color: '#2d5a3d',
+    type: 'continent'
   },
-  eastern_kingdoms: {
+  {
+    id: 'eastern_kingdoms',
     name: '东部王国',
     icon: '🏰',
     description: '人类、矮人与亡灵的领地',
     position: 'east',
-    color: '#5a3d2d'
+    color: '#5a3d2d',
+    type: 'continent'
   },
-  northrend: {
+  {
+    id: 'northrend',
     name: '诺森德',
     icon: '❄️',
     description: '冰封的北地，巫妖王的领地',
     position: 'north',
-    color: '#3d4a5a'
+    color: '#3d4a5a',
+    type: 'continent'
   }
-};
+];
 
 /**
  * 世界地图位置数据
- * @type {Record<string, LocationData>}
+ * @type {LocationData[]}
  */
-export const LOCATIONS: Record<string, LocationData> = {
-  teldrassil: {
+export const LOCATIONS: LocationData[] = [
+  {
+    id: 'teldrassil',
     name: 'teldrassil',
     displayName: '泰达希尔',
     icon: '🌳',
@@ -50,9 +57,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [1, 5],
     color: '#2d5a3d',
     mapX: 15,
-    mapY: 27
+    mapY: 27,
+    type: 'location'
   },
-  darkshore: {
+  {
+    id: 'darkshore',
     name: 'darkshore',
     displayName: '黑海岸',
     icon: '🌊',
@@ -63,9 +72,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [5, 10],
     color: '#2c3e50',
     mapX: 18,
-    mapY: 35
+    mapY: 35,
+    type: 'location'
   },
-  azuremyst: {
+  {
+    id: 'azuremyst',
     name: 'azuremyst',
     displayName: '秘蓝岛',
     icon: '🏝️',
@@ -76,9 +87,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [1, 5],
     color: '#4169e1',
     mapX: 7,
-    mapY: 40
+    mapY: 40,
+    type: 'location'
   },
-  bloodmyst: {
+  {
+    id: 'bloodmyst',
     name: 'bloodmyst',
     displayName: '秘血岛',
     icon: '🩸',
@@ -89,9 +102,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [5, 10],
     color: '#8b0000',
     mapX: 5,
-    mapY: 35
+    mapY: 35,
+    type: 'location'
   },
-  winterspring: {
+  {
+    id: 'winterspring',
     name: 'winterspring',
     displayName: '冬泉谷',
     icon: '❄️',
@@ -102,9 +117,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [14, 18],
     color: '#87ceeb',
     mapX: 27,
-    mapY: 34
+    mapY: 34,
+    type: 'location'
   },
-  hyjal: {
+  {
+    id: 'hyjal',
     name: 'hyjal',
     displayName: '海加尔山',
     icon: '🔥',
@@ -115,9 +132,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [17, 20],
     color: '#ff4500',
     mapX: 25,
-    mapY: 39
+    mapY: 39,
+    type: 'location'
   },
-  ashenvale: {
+  {
+    id: 'ashenvale',
     name: 'ashenvale',
     displayName: '灰谷',
     icon: '🌿',
@@ -128,9 +147,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [5, 10],
     color: '#228b22',
     mapX: 21,
-    mapY: 45
+    mapY: 45,
+    type: 'location'
   },
-  felwood: {
+  {
+    id: 'felwood',
     name: 'felwood',
     displayName: '费伍德森林',
     icon: '💜',
@@ -141,9 +162,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [10, 14],
     color: '#9932cc',
     mapX: 21,
-    mapY: 39
+    mapY: 39,
+    type: 'location'
   },
-  stonetalon: {
+  {
+    id: 'stonetalon',
     name: 'stonetalon',
     displayName: '石爪山脉',
     icon: '⛰️',
@@ -154,9 +177,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [7, 11],
     color: '#8b7355',
     mapX: 16,
-    mapY: 52
+    mapY: 52,
+    type: 'location'
   },
-  desolace: {
+  {
+    id: 'desolace',
     name: 'desolace',
     displayName: '凄凉之地',
     icon: '🏜️',
@@ -167,9 +192,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [12, 16],
     color: '#8b4513',
     mapX: 14,
-    mapY: 60
+    mapY: 60,
+    type: 'location'
   },
-  durotar: {
+  {
+    id: 'durotar',
     name: 'durotar',
     displayName: '杜隆塔尔',
     icon: '🏜️',
@@ -180,9 +207,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [1, 5],
     color: '#d4a574',
     mapX: 27,
-    mapY: 53
+    mapY: 53,
+    type: 'location'
   },
-  mulgore: {
+  {
+    id: 'mulgore',
     name: 'mulgore',
     displayName: '莫高雷',
     icon: '🐂',
@@ -193,9 +222,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [1, 5],
     color: '#8fbc8f',
     mapX: 20,
-    mapY: 67
+    mapY: 67,
+    type: 'location'
   },
-  barrens: {
+  {
+    id: 'barrens',
     name: 'barrens',
     displayName: '贫瘠之地',
     icon: '🌵',
@@ -206,9 +237,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [5, 10],
     color: '#daa520',
     mapX: 23,
-    mapY: 60
+    mapY: 60,
+    type: 'location'
   },
-  thousand_needles: {
+  {
+    id: 'thousand_needles',
     name: 'thousand_needles',
     displayName: '千针石林',
     icon: '🏔️',
@@ -219,9 +252,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [10, 14],
     color: '#cd853f',
     mapX: 20,
-    mapY: 78
+    mapY: 78,
+    type: 'location'
   },
-  deserts: {
+  {
+    id: 'deserts',
     name: 'deserts',
     displayName: '塔纳利斯',
     icon: '🏜️',
@@ -232,9 +267,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [11, 15],
     color: '#daa520',
     mapX: 25,
-    mapY: 84
+    mapY: 84,
+    type: 'location'
   },
-  feralas: {
+  {
+    id: 'feralas',
     name: 'feralas',
     displayName: '菲拉斯',
     icon: '🌴',
@@ -245,9 +282,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [13, 17],
     color: '#228b22',
     mapX: 15,
-    mapY: 74
+    mapY: 74,
+    type: 'location'
   },
-  silithus: {
+  {
+    id: 'silithus',
     name: 'silithus',
     displayName: '希利苏斯',
     icon: '💎',
@@ -258,9 +297,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [15, 20],
     color: '#8b4513',
     mapX: 16,
-    mapY: 85
+    mapY: 85,
+    type: 'location'
   },
-  plaguelands: {
+  {
+    id: 'plaguelands',
     name: 'plaguelands',
     displayName: '东瘟疫之地',
     icon: '☠️',
@@ -271,9 +312,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [15, 20],
     color: '#556b2f',
     mapX: 87,
-    mapY: 35
+    mapY: 35,
+    type: 'location'
   },
-  western_plaguelands: {
+  {
+    id: 'western_plaguelands',
     name: 'western_plaguelands',
     displayName: '西瘟疫之地',
     icon: '💀',
@@ -284,9 +327,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [13, 17],
     color: '#4a4a4a',
     mapX: 82,
-    mapY: 38
+    mapY: 38,
+    type: 'location'
   },
-  silverpine: {
+  {
+    id: 'silverpine',
     name: 'silverpine',
     displayName: '银松森林',
     icon: '🌲',
@@ -297,9 +342,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [4, 8],
     color: '#556b2f',
     mapX: 75,
-    mapY: 46
+    mapY: 46,
+    type: 'location'
   },
-  tirisfal: {
+  {
+    id: 'tirisfal',
     name: 'tirisfal',
     displayName: '提瑞斯法林地',
     icon: '🌲',
@@ -310,9 +357,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [1, 5],
     color: '#4a4a4a',
     mapX: 77,
-    mapY: 38
+    mapY: 38,
+    type: 'location'
   },
-  loch_modan: {
+  {
+    id: 'loch_modan',
     name: 'loch_modan',
     displayName: '洛克莫丹',
     icon: '💧',
@@ -323,9 +372,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [5, 10],
     color: '#4682b4',
     mapX: 77,
-    mapY: 64
+    mapY: 64,
+    type: 'location'
   },
-  wetlands: {
+  {
+    id: 'wetlands',
     name: 'wetlands',
     displayName: '湿地',
     icon: '🐸',
@@ -336,9 +387,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [7, 12],
     color: '#556b2f',
     mapX: 85,
-    mapY: 60
+    mapY: 60,
+    type: 'location'
   },
-  arathi: {
+  {
+    id: 'arathi',
     name: 'arathi',
     displayName: '阿拉希高地',
     icon: '⚔️',
@@ -349,9 +402,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [10, 14],
     color: '#8b7355',
     mapX: 84,
-    mapY: 52
+    mapY: 52,
+    type: 'location'
   },
-  hillsbrad: {
+  {
+    id: 'hillsbrad',
     name: 'hillsbrad',
     displayName: '希尔斯布莱德丘陵',
     icon: '🏕️',
@@ -362,9 +417,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [6, 11],
     color: '#90ee90',
     mapX: 79,
-    mapY: 48
+    mapY: 48,
+    type: 'location'
   },
-  elwynn: {
+  {
+    id: 'elwynn',
     name: 'elwynn',
     displayName: '艾尔文森林',
     icon: '🌲',
@@ -375,9 +432,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [1, 5],
     color: '#228b22',
     mapX: 77,
-    mapY: 75
+    mapY: 75,
+    type: 'location'
   },
-  westfall: {
+  {
+    id: 'westfall',
     name: 'westfall',
     displayName: '西部荒野',
     icon: '🏜️',
@@ -388,9 +447,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [5, 10],
     color: '#d4a574',
     mapX: 74,
-    mapY: 81
+    mapY: 81,
+    type: 'location'
   },
-  redridge: {
+  {
+    id: 'redridge',
     name: 'redridge',
     displayName: '赤脊山',
     icon: '⛰️',
@@ -401,9 +462,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [8, 12],
     color: '#cd853f',
     mapX: 83,
-    mapY: 75
+    mapY: 75,
+    type: 'location'
   },
-  duskwood: {
+  {
+    id: 'duskwood',
     name: 'duskwood',
     displayName: '暮色森林',
     icon: '🌙',
@@ -414,9 +477,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [7, 11],
     color: '#4b0082',
     mapX: 79,
-    mapY: 81
+    mapY: 81,
+    type: 'location'
   },
-  deadwind: {
+  {
+    id: 'deadwind',
     name: 'deadwind',
     displayName: '逆风小径',
     icon: '🌫️',
@@ -427,9 +492,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [13, 17],
     color: '#8b008b',
     mapX: 81,
-    mapY: 83
+    mapY: 83,
+    type: 'location'
   },
-  stranglethorn: {
+  {
+    id: 'stranglethorn',
     name: 'stranglethorn',
     displayName: '荆棘谷',
     icon: '🌴',
@@ -440,9 +507,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [10, 15],
     color: '#228b22',
     mapX: 78,
-    mapY: 88
+    mapY: 88,
+    type: 'location'
   },
-  burning_steppes: {
+  {
+    id: 'burning_steppes',
     name: 'burning_steppes',
     displayName: '燃烧平原',
     icon: '🔥',
@@ -453,9 +522,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [14, 18],
     color: '#ff4500',
     mapX: 80,
-    mapY: 69
+    mapY: 69,
+    type: 'location'
   },
-  searing_gorge: {
+  {
+    id: 'searing_gorge',
     name: 'searing_gorge',
     displayName: '灼热峡谷',
     icon: '🌋',
@@ -466,9 +537,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [12, 16],
     color: '#8b0000',
     mapX: 80,
-    mapY: 65
+    mapY: 65,
+    type: 'location'
   },
-  badlands: {
+  {
+    id: 'badlands',
     name: 'badlands',
     displayName: '荒芜之地',
     icon: '🏜️',
@@ -479,9 +552,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [11, 15],
     color: '#a0522d',
     mapX: 85,
-    mapY: 65
+    mapY: 65,
+    type: 'location'
   },
-  swamp_of_sorrows: {
+  {
+    id: 'swamp_of_sorrows',
     name: 'swamp_of_sorrows',
     displayName: '悲伤沼泽',
     icon: '🐊',
@@ -492,9 +567,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [8, 13],
     color: '#2f4f4f',
     mapX: 85,
-    mapY: 78
+    mapY: 78,
+    type: 'location'
   },
-  blasted_lands: {
+  {
+    id: 'blasted_lands',
     name: 'blasted_lands',
     displayName: '诅咒之地',
     icon: '☠️',
@@ -505,9 +582,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [16, 20],
     color: '#4a0000',
     mapX: 84,
-    mapY: 84
+    mapY: 84,
+    type: 'location'
   },
-  hinterlands: {
+  {
+    id: 'hinterlands',
     name: 'hinterlands',
     displayName: '辛特兰',
     icon: '🏔️',
@@ -518,9 +597,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [11, 16],
     color: '#228b22',
     mapX: 87,
-    mapY: 41
+    mapY: 41,
+    type: 'location'
   },
-  zuldrak: {
+  {
+    id: 'zuldrak',
     name: 'zuldrak',
     displayName: '祖达克',
     icon: '🦴',
@@ -531,9 +612,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [14, 18],
     color: '#8b0000',
     mapX: 61,
-    mapY: 17
+    mapY: 17,
+    type: 'location'
   },
-  storm_peaks: {
+  {
+    id: 'storm_peaks',
     name: 'storm_peaks',
     displayName: '风暴峭壁',
     icon: '⛈️',
@@ -544,22 +627,26 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [16, 20],
     color: '#708090',
     mapX: 56,
-    mapY: 10
+    mapY: 10,
+    type: 'location'
   },
-  icecrown: {
+  {
+    id: 'icecrown',
     name: 'icecrown',
     displayName: '冰冠冰川',
     icon: '❄️',
     description: '巫妖王的领地，冰冠堡垒在此',
     continent: 'northrend',
     region: 'north',
-    enemies: ['lich', 'undead_knight', 'demon', 'frostwyrm', 'undead'],
+    enemies: ['lich', 'undead_knight', 'demon', 'frost_wyrm', 'undead'],
     levelRange: [17, 20],
     color: '#b0c4de',
     mapX: 48,
-    mapY: 13
+    mapY: 13,
+    type: 'location'
   },
-  borean_tundra: {
+  {
+    id: 'borean_tundra',
     name: 'borean_tundra',
     displayName: '北风苔原',
     icon: '🦕',
@@ -570,9 +657,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [12, 16],
     color: '#2f4f4f',
     mapX: 41,
-    mapY: 23
+    mapY: 23,
+    type: 'location'
   },
-  howling_fjord: {
+  {
+    id: 'howling_fjord',
     name: 'howling_fjord',
     displayName: '嚎风峡湾',
     icon: '🌊',
@@ -583,22 +672,26 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [12, 16],
     color: '#696969',
     mapX: 63,
-    mapY: 31
+    mapY: 31,
+    type: 'location'
   },
-  dragonblight: {
+  {
+    id: 'dragonblight',
     name: 'dragonblight',
     displayName: '龙骨荒野',
     icon: '💀',
     description: '巨龙的安息之地，龙眠神殿在此',
     continent: 'northrend',
     region: 'center',
-    enemies: ['dragon_whelp', 'undead', 'lich', 'frostwyrm'],
+    enemies: ['dragon_whelp', 'undead', 'lich', 'frost_wyrm'],
     levelRange: [15, 19],
     color: '#4a4a4a',
     mapX: 53,
-    mapY: 23
+    mapY: 23,
+    type: 'location'
   },
-  grizzly_hills: {
+  {
+    id: 'grizzly_hills',
     name: 'grizzly_hills',
     displayName: '灰熊丘陵',
     icon: '🐻',
@@ -609,9 +702,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [13, 17],
     color: '#228b22',
     mapX: 61,
-    mapY: 23
+    mapY: 23,
+    type: 'location'
   },
-  sholazar: {
+  {
+    id: 'sholazar',
     name: 'sholazar',
     displayName: '索拉查盆地',
     icon: '🌿',
@@ -622,9 +717,11 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [14, 18],
     color: '#228b22',
     mapX: 43,
-    mapY: 16
+    mapY: 16,
+    type: 'location'
   },
-  crystal_song: {
+  {
+    id: 'crystal_song',
     name: 'crystal_song',
     displayName: '晶歌森林',
     icon: '💎',
@@ -635,6 +732,7 @@ export const LOCATIONS: Record<string, LocationData> = {
     levelRange: [16, 20],
     color: '#4169e1',
     mapX: 52,
-    mapY: 17
+    mapY: 17,
+    type: 'location'
   }
-};
+];

@@ -31,12 +31,10 @@ export {
 } from './shop.data';
 
 // 导出配置常量
-export { MAX_LEVEL } from '@/config/character';
+export { MAX_LEVEL, STAT_NAMES, LEVEL_EXP_REQUIREMENTS } from '@/config/character';
 
-// 导出常量和计算函数
+// 导出计算函数
 export {
-  STAT_NAMES,
-  LEVEL_EXP_REQUIREMENTS,
   calculateAllAttributes,
   calculateMaxHp,
   calculateMaxMana,

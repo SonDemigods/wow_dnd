@@ -6,9 +6,9 @@
 
 import type { ShopConfig } from '../modules/shop/types';
 
-export const SHOPS: Record<string, ShopConfig> = {
-  generalGoods: {
-    id: 'generalGoods',
+export const SHOPS: ShopConfig[] = [
+  {
+    id: 'general_goods',
     name: '杂货铺',
     type: 'general',
     icon: '🏪',
@@ -18,8 +18,8 @@ export const SHOPS: Record<string, ShopConfig> = {
       max: 1.2
     }
   },
-  potionShop: {
-    id: 'potionShop',
+  {
+    id: 'potion_shop',
     name: '炼金术士小屋',
     type: 'potion',
     icon: '⚗️',
@@ -29,8 +29,8 @@ export const SHOPS: Record<string, ShopConfig> = {
       max: 1.15
     }
   },
-  scrollShop: {
-    id: 'scrollShop',
+  {
+    id: 'scroll_shop',
     name: '奥术商店',
     type: 'scroll',
     icon: '📜',
@@ -40,8 +40,8 @@ export const SHOPS: Record<string, ShopConfig> = {
       max: 1.1
     }
   },
-  supplyShop: {
-    id: 'supplyShop',
+  {
+    id: 'supply_shop',
     name: '旅行者补给站',
     type: 'general',
     icon: '�',
@@ -51,8 +51,8 @@ export const SHOPS: Record<string, ShopConfig> = {
       max: 1.25
     }
   },
-  alchemyShop: {
-    id: 'alchemyShop',
+  {
+    id: 'alchemy_shop',
     name: '药剂商行',
     type: 'potion',
     icon: '🍶',
@@ -62,8 +62,8 @@ export const SHOPS: Record<string, ShopConfig> = {
       max: 1.2
     }
   },
-  mysteriousTrader: {
-    id: 'mysteriousTrader',
+  {
+    id: 'mysterious_trader',
     name: '旅行商人',
     type: 'general',
     icon: '🎭',
@@ -73,4 +73,4 @@ export const SHOPS: Record<string, ShopConfig> = {
       max: 1.3
     }
   }
-};
+];

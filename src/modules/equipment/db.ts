@@ -30,6 +30,7 @@ export interface EquipmentTemplateStorage {
   slots: string;
   levelRequirement: number | null;
   stackable: boolean;
+  template: string;
 }
 
 /**
@@ -117,7 +118,8 @@ export class EquipmentDbService {
         value: item.value,
         slots: JSON.stringify(item.slots),
         levelRequirement: item.levelRequirement || null,
-        stackable: item.stackable || false
+        stackable: item.stackable || false,
+        template: item.template || ''
       });
     });
   }
@@ -158,7 +160,8 @@ export class EquipmentDbService {
         value: data.value,
         slots,
         levelRequirement: data.levelRequirement || undefined,
-        stackable: data.stackable || false
+        stackable: data.stackable || false,
+        template: data.template || undefined
       };
     });
   }
@@ -197,7 +200,8 @@ export class EquipmentDbService {
           value: data.value,
           slots,
           levelRequirement: data.levelRequirement || undefined,
-          stackable: data.stackable || false
+          stackable: data.stackable || false,
+          template: data.template || undefined
         };
       });
     });

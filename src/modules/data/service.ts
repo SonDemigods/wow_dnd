@@ -175,7 +175,7 @@ export class DataInitializer {
    * 初始化阵营数据
    */
   private async initFactions(): Promise<void> {
-    for (const faction of Object.values(FACTIONS)) {
+    for (const faction of FACTIONS) {
       await db.config_factions.put(faction as Record<string, unknown>);
     }
   }
@@ -184,7 +184,7 @@ export class DataInitializer {
    * 初始化种族数据
    */
   private async initRaces(): Promise<void> {
-    for (const race of Object.values(RACES)) {
+    for (const race of RACES) {
       await db.config_races.put(race as Record<string, unknown>);
     }
   }
@@ -193,7 +193,7 @@ export class DataInitializer {
    * 初始化职业数据
    */
   private async initClasses(): Promise<void> {
-    for (const cls of Object.values(CLASSES)) {
+    for (const cls of CLASSES) {
       await db.config_classes.put(cls as Record<string, unknown>);
     }
   }
@@ -202,8 +202,8 @@ export class DataInitializer {
    * 初始化职业技能数据
    */
   private async initClassAbilities(): Promise<void> {
-    for (const [classId, abilities] of Object.entries(CLASS_ABILITIES)) {
-      await db.config_classAbilities.put({ classId, abilities });
+    for (const entry of CLASS_ABILITIES) {
+      await db.config_classAbilities.put({ classId: entry.class_id, abilities: entry.skills });
     }
   }
 
@@ -238,8 +238,8 @@ export class DataInitializer {
    * 初始化敌人数据
    */
   private async initEnemies(): Promise<void> {
-    for (const [id, enemy] of Object.entries(ENEMIES)) {
-      await db.config_enemies.put({ id, ...enemy } as Record<string, unknown>);
+    for (const enemy of ENEMIES) {
+      await db.config_enemies.put(enemy as Record<string, unknown>);
     }
   }
 
@@ -257,11 +257,8 @@ export class DataInitializer {
    * 初始化地点数据
    */
   private async initLocations(): Promise<void> {
-    for (const [id, location] of Object.entries(LOCATIONS)) {
-      await db.config_locations.put({ id, ...location } as Record<
-        string,
-        unknown
-      >);
+    for (const location of LOCATIONS) {
+      await db.config_locations.put(location as Record<string, unknown>);
     }
   }
 
@@ -269,11 +266,8 @@ export class DataInitializer {
    * 初始化大陆数据
    */
   private async initContinents(): Promise<void> {
-    for (const [id, continent] of Object.entries(CONTINENTS)) {
-      await db.config_locations.put({ id, ...continent } as Record<
-        string,
-        unknown
-      >);
+    for (const continent of CONTINENTS) {
+      await db.config_locations.put(continent as Record<string, unknown>);
     }
   }
 
@@ -281,7 +275,7 @@ export class DataInitializer {
    * 初始化商店数据
    */
   private async initShops(): Promise<void> {
-    for (const shop of Object.values(SHOPS)) {
+    for (const shop of SHOPS) {
       await db.config_shops.put(shop as Record<string, unknown>);
     }
 
@@ -294,7 +288,7 @@ export class DataInitializer {
    * 初始化任务数据
    */
   private async initQuests(): Promise<void> {
-    for (const quest of Object.values(QUESTS)) {
+    for (const quest of QUESTS) {
       await db.config_quests.put(quest as Record<string, unknown>);
     }
   }
@@ -303,11 +297,11 @@ export class DataInitializer {
    * 初始化技能模板数据
    */
   private async initSkillTemplates(): Promise<void> {
-    for (const [classId, skills] of Object.entries(CLASS_ABILITIES)) {
-      for (const skill of skills) {
+    for (const entry of CLASS_ABILITIES) {
+      for (const skill of entry.skills) {
         await db.config_skills.put({
           ...skill,
-          classRestriction: classId
+          classRestriction: entry.class_id
         } as Record<string, unknown>);
       }
     }

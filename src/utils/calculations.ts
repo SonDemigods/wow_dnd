@@ -7,9 +7,6 @@
 import type { Stats } from '@/modules/character/types';
 import { MAX_LEVEL, LEVEL_EXP_REQUIREMENTS } from '@/config/character';
 
-// 重新导出配置常量，保持 data/index.ts 等下游导入路径不变
-export { STAT_NAMES, LEVEL_EXP_REQUIREMENTS } from '@/config/character';
-
 /**
  * 计算最大生命值
  * @param {Stats} stats - 角色主属性对象

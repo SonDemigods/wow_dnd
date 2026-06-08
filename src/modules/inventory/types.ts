@@ -113,6 +113,7 @@ export interface Item {
   consumable?: boolean;
   template?: string;
   levelRequirement?: number;
+  level?: number;
 }
 
 /**

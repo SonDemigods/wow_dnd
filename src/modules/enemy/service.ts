@@ -5,7 +5,7 @@
  */
 import type { Enemy, EnemyInstance, EnemyDrop } from './types';
 import type { Stats } from '../character/types';
-import { ENEMIES } from '../../data/enemy.data';
+import { enemyDbService } from './db';
 
 /**
  * 敌人服务实现类
@@ -20,8 +20,8 @@ export class EnemyService {
    * @param level - 敌人等级，默认为 1
    * @returns 创建的敌人实例
    */
-  createEnemy(dataId: string, level: number = 1): Enemy {
-    const data = ENEMIES[dataId];
+  async createEnemy(dataId: string, level: number = 1): Promise<Enemy> {
+    const data = await enemyDbService.getEnemyTemplate(dataId);
     if (!data) {
       throw new Error(`Enemy data not found: ${dataId}`);
     }
@@ -51,14 +51,14 @@ export class EnemyService {
     // Boss 额外掉落物品
     if (data.isBoss) {
       const bossDrops: EnemyDrop[] = [
-        { itemId: 'largeHealthPotion', minAmount: 1, maxAmount: 2, dropRate: 0.6 },
-        { itemId: 'largeManaPotion', minAmount: 1, maxAmount: 1, dropRate: 0.4 },
-        { itemId: 'strengthPotion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
-        { itemId: 'agilityPotion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
-        { itemId: 'constitutionPotion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
-        { itemId: 'intelligencePotion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
-        { itemId: 'wisdomPotion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
-        { itemId: 'charismaPotion', minAmount: 1, maxAmount: 1, dropRate: 0.15 }
+        { itemId: 'large_health_potion', minAmount: 1, maxAmount: 2, dropRate: 0.6 },
+        { itemId: 'large_mana_potion', minAmount: 1, maxAmount: 1, dropRate: 0.4 },
+        { itemId: 'strength_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+        { itemId: 'agility_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+        { itemId: 'constitution_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+        { itemId: 'intelligence_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+        { itemId: 'wisdom_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+        { itemId: 'charisma_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 }
       ];
       drops.push(...bossDrops);
     }

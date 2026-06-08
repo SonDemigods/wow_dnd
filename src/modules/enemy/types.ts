@@ -25,6 +25,7 @@ import type { Stats } from '../character/types';
  * @property {number} [dodgeChance] - 闪避率
  */
 export interface EnemyData {
+  id: string;
   name: string;
   icon: string;
   maxHp: number;

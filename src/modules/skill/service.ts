@@ -7,8 +7,6 @@ import type { ISkillsService, Skill, SkillBar, SkillType, SkillSlotIndex, SkillU
 import { skillsDbService } from './db';
 import { characterService } from '../character/service';
 import { eventBus, GameEvents } from '../bus/core';
-import { CLASS_ABILITIES } from '@/data/class.data';
-
 /**
  * 技能服务实现类
  */
@@ -50,14 +48,6 @@ export class SkillsService implements ISkillsService {
       templates.forEach(skill => {
         this.skillTemplates.set(skill.id, skill);
       });
-
-      if (CLASS_ABILITIES[classId]) {
-        CLASS_ABILITIES[classId].forEach(skill => {
-          if (!this.skillTemplates.has(skill.id)) {
-            this.skillTemplates.set(skill.id, skill);
-          }
-        });
-      }
     }
   }
 
@@ -367,8 +357,8 @@ export class SkillsService implements ISkillsService {
     const currentClass = characterService.getClass();
     if (!currentClass) return;
 
-    // 只获取当前职业的技能模板
-    const classAbilities = CLASS_ABILITIES[currentClass] || [];
+    // 从已加载的技能模板中获取当前职业的技能
+    const classAbilities = Array.from(this.skillTemplates.values());
     
     let hasNewSkills = false;
     

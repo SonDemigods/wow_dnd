@@ -4,7 +4,7 @@ import type { LogEntry } from './types';
 export interface AdventureLogData {
   characterId: string;
   logs: LogEntry[];
-  updatedAt: number;
+  timestamp: number;
 }
 
 export class AdventureLogDbService {
@@ -13,7 +13,7 @@ export class AdventureLogDbService {
       await gameDb.runtime_adventureLogs.put({
         characterId,
         logs,
-        updatedAt: Date.now()
+        timestamp: Date.now()
       });
     });
   }

@@ -1,27 +1,19 @@
-export interface DatabaseConfig {
-  name: string;
-  version: number;
-}
+/**
+ * 数据库相关配置
+ *
+ * 包含数据库连接、重试策略、同步引擎和备份的配置常量。
+ * 类型定义已移至 modules/data/types.ts，此处只保留配置数据。
+ */
 
-export interface DBServiceConfig {
-  maxRetries: number;
-  delay: number;
-  backoff: 'exponential' | 'linear';
-}
+import type {
+  DatabaseConfig,
+  DBServiceConfig,
+  SyncEngineConfig,
+  BackupConfig
+} from '../modules/data/types';
 
-export interface SyncEngineConfig {
-  debounceMs: number;
-  maxRetries: number;
-  delay: number;
-  backoff: 'exponential' | 'linear';
-}
-
-export interface BackupConfig {
-  autoBackupKey: string;
-  maxAutoBackups: number;
-  backupVersion: string;
-  supportedVersions: string[];
-}
+// 重新导出类型，保持下游导入路径不变
+export type { DatabaseConfig, DBServiceConfig, SyncEngineConfig, BackupConfig };
 
 export const DATABASE_CONFIG: DatabaseConfig = {
   name: 'wow_dnd_game',

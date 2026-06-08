@@ -96,7 +96,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useSkillsStore } from '@/modules/skill';
 import { characterService } from '@/modules/character';
-import { CLASS_ABILITIES } from '@/data/class.data';
+import { skillsDbService } from '@/modules/skill/db';
 import type { Skill, SkillSlotIndex } from '@/modules/skill';
 import BasePopup from '../common/BasePopup.vue';
 
@@ -204,8 +204,9 @@ function findEmptySlot(): number | null {
 
 async function loadClassSkills() {
   const classId = characterService.getClass();
-  if (classId && CLASS_ABILITIES[classId]) {
-    classSkills.value = [...CLASS_ABILITIES[classId]].sort((a, b) => a.unlockLevel - b.unlockLevel);
+  if (classId) {
+    const templates = await skillsDbService.getSkillTemplatesByClass(classId);
+    classSkills.value = [...templates].sort((a, b) => a.unlockLevel - b.unlockLevel);
   } else {
     classSkills.value = [];
   }

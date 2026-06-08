@@ -133,17 +133,17 @@ export class GameDatabase extends Dexie {
       config_rarityConfigs: 'id',
       config_quests: 'id, boardId, type',
       config_skills: 'id, classRestriction, type',
-      config_locations: 'id, continent, region',
+      config_locations: 'id, type, continent, region',
       config_shops: 'id, type',
       
       // 角色表
       char_profiles: 'id, name, factionId, raceId, classId, level',
       char_data: 'characterId',
-      char_inventory: 'characterId, itemId',
-      char_equipment: 'characterId, slot',
+      char_inventory: 'characterId',
+      char_equipment: 'characterId',
       char_skills: 'characterId',
       char_quests: '[characterId+questId], characterId, status',
-      char_exploration: 'characterId, locationId',
+      char_exploration: 'characterId, currentAreaId',
       
       // 运行时表
       runtime_combatLogs: 'combatId, timestamp',

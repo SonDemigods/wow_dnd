@@ -214,8 +214,8 @@ import { useGameDataStore } from '@/modules/gameData';
 import Tag from './common/Tag.vue';
 import type { FactionData, RaceData, ClassData} from '@/modules/character/types';
 import type { FactionType, RaceType, ClassType } from '@/modules/character/types';
+import { STAT_NAMES } from '@/config/character';
 import {
-  STAT_NAMES,
   calculatePhysicalAttack,
   calculatePhysicalDefense,
   calculateMagicAttack,
