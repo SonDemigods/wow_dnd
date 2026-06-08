@@ -23,18 +23,12 @@ export interface GameDatabaseSchema {
   config_races: Table<Record<string, unknown>, string>;
   /** 职业定义 */
   config_classes: Table<Record<string, unknown>, string>;
-  /** 职业技能配置 */
-  config_classAbilities: Table<Record<string, unknown>, string>;
   /** 物品模板 */
   config_items: Table<Record<string, unknown>, string>;
   /** 装备模板 */
   config_equipmentItems: Table<Record<string, unknown>, string>;
   /** 敌人模板 */
   config_enemies: Table<Record<string, unknown>, string>;
-  /** 物品类型 */
-  config_itemTypes: Table<Record<string, unknown>, string>;
-  /** 稀有度配置 */
-  config_rarityConfigs: Table<Record<string, unknown>, string>;
   /** 任务定义 */
   config_quests: Table<Record<string, unknown>, string>;
   /** 技能模板 */
@@ -45,9 +39,7 @@ export interface GameDatabaseSchema {
   config_shops: Table<Record<string, unknown>, string>;
 
   // ==================== 角色表（char_*）====================
-  /** 角色列表/档案 */
-  char_profiles: Table<Record<string, unknown>, string>;
-  /** 角色详细属性 */
+  /** 角色数据 */
   char_data: Table<Record<string, unknown>, string>;
   /** 背包物品 */
   char_inventory: Table<Record<string, unknown>, string>;
@@ -84,19 +76,15 @@ export class GameDatabase extends Dexie {
   config_factions!: Table<Record<string, unknown>, string>;
   config_races!: Table<Record<string, unknown>, string>;
   config_classes!: Table<Record<string, unknown>, string>;
-  config_classAbilities!: Table<Record<string, unknown>, string>;
   config_items!: Table<Record<string, unknown>, string>;
   config_equipmentItems!: Table<Record<string, unknown>, string>;
   config_enemies!: Table<Record<string, unknown>, string>;
-  config_itemTypes!: Table<Record<string, unknown>, string>;
-  config_rarityConfigs!: Table<Record<string, unknown>, string>;
   config_quests!: Table<Record<string, unknown>, string>;
   config_skills!: Table<Record<string, unknown>, string>;
   config_locations!: Table<Record<string, unknown>, string>;
   config_shops!: Table<Record<string, unknown>, string>;
 
   // ==================== 角色表（char_*）====================
-  char_profiles!: Table<Record<string, unknown>, string>;
   char_data!: Table<Record<string, unknown>, string>;
   char_inventory!: Table<Record<string, unknown>, string>;
   char_equipment!: Table<Record<string, unknown>, string>;
@@ -125,19 +113,15 @@ export class GameDatabase extends Dexie {
       config_factions: 'id, name',
       config_races: 'id, name, factionId',
       config_classes: 'id, name, primaryStat',
-      config_classAbilities: 'classId',
       config_items: 'id, name, type, rarity',
       config_equipmentItems: 'id, name, type, rarity',
       config_enemies: 'id, name, dangerLevel, isBoss',
-      config_itemTypes: 'id, name',
-      config_rarityConfigs: 'id',
       config_quests: 'id, boardId, type',
       config_skills: 'id, classRestriction, type',
       config_locations: 'id, type, continent, region',
-      config_shops: 'id, type',
+      config_shops: 'id',
       
       // 角色表
-      char_profiles: 'id, name, factionId, raceId, classId, level',
       char_data: 'characterId',
       char_inventory: 'characterId',
       char_equipment: 'characterId',

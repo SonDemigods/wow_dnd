@@ -4,7 +4,7 @@
  * 封装背包数据的 IndexedDB 操作，提供数据持久化能力
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { Item, InventoryItem } from './types';
+import type { Item, InventoryItem, ItemEffect } from './types';
 
 /**
  * 背包数据存储接口
@@ -25,11 +25,10 @@ export interface ItemDataStorage {
   rarity: string;
   icon: string;
   description: string;
-  bonus: string;
+  bonus: Record<string, number>;
+  effect: Record<string, unknown> | null;
   value: number;
   stackable: boolean;
-  hpRestore: number | null;
-  mpRestore: number | null;
   consumable: boolean;
   template: string | null;
 }
@@ -93,11 +92,10 @@ export class InventoryDbService {
         rarity: item.rarity,
         icon: item.icon,
         description: item.description,
-        bonus: JSON.stringify(item.bonus || {}),
+        bonus: item.bonus || {},
+        effect: (item.effect as Record<string, unknown> | undefined) || null,
         value: item.value,
         stackable: item.stackable,
-        hpRestore: item.hpRestore || null,
-        mpRestore: item.mpRestore || null,
         consumable: item.consumable || false,
         template: item.template || null
       });
@@ -114,13 +112,6 @@ export class InventoryDbService {
       const data = await gameDb.config_items.get(itemId);
       if (!data) return null;
       
-      let bonus: Partial<Item['bonus']> = {};
-      try {
-        bonus = JSON.parse(data.bonus);
-      } catch {
-        bonus = {};
-      }
-      
       return {
         id: data.id,
         name: data.name,
@@ -128,11 +119,10 @@ export class InventoryDbService {
         rarity: data.rarity as Item['rarity'],
         icon: data.icon,
         description: data.description,
-        bonus: bonus as Partial<Item['bonus']>,
+        bonus: (data.bonus || {}) as Partial<Item['bonus']>,
+        effect: data.effect as ItemEffect | undefined,
         value: data.value,
         stackable: data.stackable,
-        hpRestore: data.hpRestore || undefined,
-        mpRestore: data.mpRestore || undefined,
         consumable: data.consumable || undefined,
         template: data.template || undefined
       };
@@ -146,31 +136,20 @@ export class InventoryDbService {
   async getAllItemTemplates(): Promise<Item[]> {
     return dbService.withRetry(async () => {
       const items = await gameDb.config_items.toArray();
-      return items.map(data => {
-        let bonus: Partial<Item['bonus']> = {};
-        try {
-          // 处理 bonus 字段（可能是对象或字符串）
-          bonus = typeof data.bonus === 'string' ? JSON.parse(data.bonus) : (data.bonus || {});
-        } catch {
-          bonus = {};
-        }
-        
-        return {
-          id: data.id,
-          name: data.name,
-          type: data.type as Item['type'],
-          rarity: data.rarity as Item['rarity'],
-          icon: data.icon,
-          description: data.description,
-          bonus: bonus as Partial<Item['bonus']>,
-          value: data.value,
-          stackable: data.stackable,
-          hpRestore: data.hpRestore || undefined,
-          mpRestore: data.mpRestore || undefined,
-          consumable: data.consumable || undefined,
-          template: data.template || undefined
-        };
-      });
+      return items.map(data => ({
+        id: data.id,
+        name: data.name,
+        type: data.type as Item['type'],
+        rarity: data.rarity as Item['rarity'],
+        icon: data.icon,
+        description: data.description,
+        bonus: (data.bonus || {}) as Partial<Item['bonus']>,
+        effect: data.effect as ItemEffect | undefined,
+        value: data.value,
+        stackable: data.stackable,
+        consumable: data.consumable || undefined,
+        template: data.template || undefined
+      }));
     });
   }
 

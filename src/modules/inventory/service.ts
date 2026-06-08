@@ -255,13 +255,14 @@ export class InventoryService implements IInventoryService {
     const item = this.getItemInfo(inventoryItem.itemId);
     if (!item || !item.consumable) return false;
     
-    // 应用物品效果
-    if (item.hpRestore && item.hpRestore > 0) {
-      eventBus.emit(GameEvents.CHARACTER_RECEIVE_HEAL, { amount: item.hpRestore, source: item.name });
-    }
-    
-    if (item.mpRestore && item.mpRestore > 0) {
-      eventBus.emit(GameEvents.CHARACTER_RECEIVE_MP, { amount: item.mpRestore, source: item.name });
+    // 应用物品效果（仅限恢复类；伤害类物品在战斗中使用，由战斗服务处理）
+    if (item.effect) {
+      const { type, value } = item.effect;
+      if (type === 'health_restore' && typeof value === 'number' && value > 0) {
+        eventBus.emit(GameEvents.CHARACTER_RECEIVE_HEAL, { amount: value, source: item.name });
+      } else if (type === 'mana_restore' && typeof value === 'number' && value > 0) {
+        eventBus.emit(GameEvents.CHARACTER_RECEIVE_MP, { amount: value, source: item.name });
+      }
     }
     
     // 如果有属性加成，应用属性加成

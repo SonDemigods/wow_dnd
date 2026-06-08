@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @fileoverview 魔兽世界职业数据模块
  * @description 包含所有可选职业的基础信息和技能详情
  * @module data/class
@@ -373,8 +373,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '☀️',
       description: '治疗一个友方目标',
       mpCost: 12,
-      type: 'heal',
-      effect: { type: 'heal', value: 31 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 31 },
       unlockLevel: 1
     },
     {
@@ -403,8 +403,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '✨',
       description: '快速治疗一个目标',
       mpCost: 8,
-      type: 'heal',
-      effect: { type: 'heal', value: 18 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 18 },
       unlockLevel: 3
     },
     {
@@ -443,8 +443,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '🌟',
       description: '强力治疗技能',
       mpCost: 20,
-      type: 'heal',
-      effect: { type: 'heal', value: 42 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 42 },
       unlockLevel: 7
     },
     {
@@ -748,8 +748,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '💚',
       description: '吸取敌人生命',
       mpCost: 10,
-      type: 'heal',
-      effect: { type: 'heal', value: 15 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 15 },
       unlockLevel: 6
     },
     {
@@ -823,8 +823,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '🌿',
       description: '治疗一个目标',
       mpCost: 14,
-      type: 'heal',
-      effect: { type: 'heal', value: 26 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 26 },
       unlockLevel: 3
     },
     {
@@ -833,8 +833,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '🌸',
       description: '治疗效果',
       mpCost: 10,
-      type: 'heal',
-      effect: { type: 'heal', value: 15 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 15 },
       unlockLevel: 4
     },
     {
@@ -863,8 +863,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '❤️',
       description: '强力治疗技能',
       mpCost: 16,
-      type: 'heal',
-      effect: { type: 'heal', value: 31 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 31 },
       unlockLevel: 7
     },
     {
@@ -898,8 +898,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '💚',
       description: '基础治疗技能',
       mpCost: 12,
-      type: 'heal',
-      effect: { type: 'heal', value: 28 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 28 },
       unlockLevel: 1
     },
     {
@@ -908,8 +908,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '⚡',
       description: '快速治疗一个目标',
       mpCost: 10,
-      type: 'heal',
-      effect: { type: 'heal', value: 22 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 22 },
       unlockLevel: 1
     },
     {
@@ -938,8 +938,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '🛡️',
       description: '召唤光明之泉',
       mpCost: 14,
-      type: 'heal',
-      effect: { type: 'heal', value: 18 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 18 },
       unlockLevel: 4
     },
     {
@@ -948,8 +948,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '💚',
       description: '持续治疗',
       mpCost: 8,
-      type: 'heal',
-      effect: { type: 'heal', value: 13 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 13 },
       unlockLevel: 5
     },
     {
@@ -968,8 +968,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '🙏',
       description: '群体治疗',
       mpCost: 18,
-      type: 'heal',
-      effect: { type: 'heal', value: 35 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 35 },
       unlockLevel: 7
     },
     {
@@ -988,8 +988,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '🎵',
       description: '终极技能，强力群体治疗',
       mpCost: 32,
-      type: 'heal',
-      effect: { type: 'heal', value: 55 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 55 },
       unlockLevel: 10
     }
     ]
@@ -1023,8 +1023,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '🌊',
       description: '治疗一个目标',
       mpCost: 14,
-      type: 'heal',
-      effect: { type: 'heal', value: 30 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 30 },
       unlockLevel: 2
     },
     {
@@ -1033,8 +1033,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '⚓',
       description: '治疗多个目标',
       mpCost: 16,
-      type: 'heal',
-      effect: { type: 'heal', value: 25 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 25 },
       unlockLevel: 3
     },
     {
@@ -1253,8 +1253,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '🔮',
       description: '放置治疗珠',
       mpCost: 10,
-      type: 'heal',
-      effect: { type: 'heal', value: 18 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 18 },
       unlockLevel: 4
     },
     {
@@ -1283,8 +1283,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '🌺',
       description: '治疗技能',
       mpCost: 14,
-      type: 'heal',
-      effect: { type: 'heal', value: 28 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 28 },
       unlockLevel: 7
     },
     {
@@ -1433,8 +1433,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '💚',
       description: '治疗技能',
       mpCost: 12,
-      type: 'heal',
-      effect: { type: 'heal', value: 26 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 26 },
       unlockLevel: 1
     },
     {
@@ -1493,8 +1493,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '🌪️',
       description: '范围治疗',
       mpCost: 18,
-      type: 'heal',
-      effect: { type: 'heal', value: 32 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 32 },
       unlockLevel: 7
     },
     {
@@ -1503,8 +1503,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '🌸',
       description: '强力治疗',
       mpCost: 20,
-      type: 'heal',
-      effect: { type: 'heal', value: 38 },
+      type: 'health_restore',
+      effect: { type: 'health_restore', value: 38 },
       unlockLevel: 8
     },
     {

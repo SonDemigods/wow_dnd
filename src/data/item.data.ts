@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @fileoverview 物品数据模块
  * @description 包含所有可获取物品的类型定义和掉落物品详情
  * @module data/item
@@ -21,7 +21,7 @@ const HEALTH_POTIONS: Item[] = [
     description: '恢复30点生命值',
     value: 10,
     stackable: true,
-    hpRestore: 30,
+    effect: { type: 'health_restore', value: 30 },
     consumable: true,
     template: 'small_health_potion'
   },
@@ -34,7 +34,7 @@ const HEALTH_POTIONS: Item[] = [
     description: '恢复60点生命值',
     value: 25,
     stackable: true,
-    hpRestore: 60,
+    effect: { type: 'health_restore', value: 60 },
     consumable: true,
     template: 'medium_health_potion'
   },
@@ -47,7 +47,7 @@ const HEALTH_POTIONS: Item[] = [
     description: '恢复100点生命值',
     value: 50,
     stackable: true,
-    hpRestore: 100,
+    effect: { type: 'health_restore', value: 100 },
     consumable: true,
     template: 'large_health_potion'
   },
@@ -60,7 +60,7 @@ const HEALTH_POTIONS: Item[] = [
     description: '恢复150点生命值，燃烧军团的炼金产物',
     value: 80,
     stackable: true,
-    hpRestore: 150,
+    effect: { type: 'health_restore', value: 150 },
     consumable: true,
     template: 'super_health_potion'
   }
@@ -77,7 +77,7 @@ const MANA_POTIONS: Item[] = [
     description: '恢复30点法力值',
     value: 10,
     stackable: true,
-    mpRestore: 30,
+    effect: { type: 'mana_restore', value: 30 },
     consumable: true,
     template: 'small_mana_potion'
   },
@@ -90,7 +90,7 @@ const MANA_POTIONS: Item[] = [
     description: '恢复60点法力值',
     value: 25,
     stackable: true,
-    mpRestore: 60,
+    effect: { type: 'mana_restore', value: 60 },
     consumable: true,
     template: 'medium_mana_potion'
   },
@@ -103,7 +103,7 @@ const MANA_POTIONS: Item[] = [
     description: '恢复100点法力值',
     value: 50,
     stackable: true,
-    mpRestore: 100,
+    effect: { type: 'mana_restore', value: 100 },
     consumable: true,
     template: 'large_mana_potion'
   },
@@ -116,7 +116,7 @@ const MANA_POTIONS: Item[] = [
     description: '恢复150点法力值，蕴含无尽奥术能量',
     value: 80,
     stackable: true,
-    mpRestore: 150,
+    effect: { type: 'mana_restore', value: 150 },
     consumable: true,
     template: 'super_mana_potion'
   }
@@ -219,7 +219,7 @@ const COMMON_FOOD: Item[] = [
     description: '暴风城特产的黑面包',
     value: 5,
     stackable: true,
-    hpRestore: 20,
+    effect: { type: 'health_restore', value: 20 },
     consumable: true,
     template: 'bread'
   },
@@ -232,7 +232,7 @@ const COMMON_FOOD: Item[] = [
     description: '暴风城厨师精心烤制的鹌鹑',
     value: 8,
     stackable: true,
-    hpRestore: 25,
+    effect: { type: 'health_restore', value: 25 },
     consumable: true,
     template: 'roast_quail'
   }
@@ -249,7 +249,7 @@ const PREMIUM_FOOD: Item[] = [
     description: '新鲜烤制的野猪腿肉',
     value: 15,
     stackable: true,
-    hpRestore: 40,
+    effect: { type: 'health_restore', value: 40 },
     consumable: true,
     template: 'roasted_meat'
   },
@@ -262,7 +262,7 @@ const PREMIUM_FOOD: Item[] = [
     description: '用鱼人鳍熬制的鲜美汤品',
     value: 20,
     stackable: true,
-    hpRestore: 45,
+    effect: { type: 'health_restore', value: 45 },
     consumable: true,
     template: 'murloc_fin_soup'
   },
@@ -275,7 +275,7 @@ const PREMIUM_FOOD: Item[] = [
     description: '暴风城王家厨师的招牌炖肉',
     value: 25,
     stackable: true,
-    hpRestore: 50,
+    effect: { type: 'health_restore', value: 50 },
     consumable: true,
     template: 'stormwind_stew'
   }
@@ -292,7 +292,7 @@ const RARE_FOOD: Item[] = [
     description: '达拉然法师特制的魔法糕点',
     value: 30,
     stackable: true,
-    hpRestore: 60,
+    effect: { type: 'health_restore', value: 60 },
     consumable: true,
     template: 'magic_bread'
   },
@@ -305,7 +305,7 @@ const RARE_FOOD: Item[] = [
     description: '据说吃下后能喷出龙息的神奇辣椒',
     value: 35,
     stackable: true,
-    hpRestore: 55,
+    effect: { type: 'health_restore', value: 55 },
     bonus: { str: 2 },
     consumable: true,
     template: 'dragon_breath_chili'
@@ -367,7 +367,7 @@ const HEALING_SCROLLS: Item[] = [
     description: '记载着治疗术的神圣卷轴',
     value: 35,
     stackable: true,
-    hpRestore: 50,
+    effect: { type: 'health_restore', value: 50 },
     consumable: true,
     template: 'scroll_heal'
   },
@@ -380,7 +380,7 @@ const HEALING_SCROLLS: Item[] = [
     description: '记载着群体治疗神术的神圣卷轴',
     value: 90,
     stackable: true,
-    hpRestore: 80,
+    effect: { type: 'health_restore', value: 80 },
     consumable: true,
     template: 'scroll_mass_heal'
   }

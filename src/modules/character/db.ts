@@ -25,6 +25,8 @@ export interface CharacterDataStorage {
   currentMp: number;
   maxMp: number;
   bonusStats: Partial<Stats>;
+  createdTime: number;
+  lastPlayedTime: number;
   updatedAt: number;
 }
 
@@ -33,20 +35,23 @@ export interface CharacterDataStorage {
  */
 export class CharacterDbService {
   /**
-   * 保存角色列表项到数据库
+   * 保存角色列表项（写入 char_data，仅更新列表字段）
    * @param character - 角色列表项
    */
   async saveCharacterListItem(character: CharacterListItem): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.char_profiles.put({
-        id: character.id,
+      const existing = await gameDb.char_data.get(character.id);
+      await gameDb.char_data.put({
+        ...existing,
+        characterId: character.id,
         name: character.name,
+        factionId: character.factionId,
         raceId: character.raceId,
         classId: character.classId,
-        factionId: character.factionId,
         level: character.level,
         createdTime: character.createdTime,
-        lastPlayedTime: character.lastPlayedTime
+        lastPlayedTime: character.lastPlayedTime,
+        updatedAt: Date.now()
       });
     });
   }
@@ -57,9 +62,9 @@ export class CharacterDbService {
    */
   async getAllCharacterListItems(): Promise<CharacterListItem[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.char_profiles.toArray();
+      const items = await gameDb.char_data.toArray();
       return items.map(item => ({
-        id: item.id,
+        id: item.characterId,
         name: item.name,
         raceId: item.raceId,
         classId: item.classId,
@@ -78,10 +83,10 @@ export class CharacterDbService {
    */
   async getCharacterListItem(characterId: string): Promise<CharacterListItem | null> {
     return dbService.withRetry(async () => {
-      const item = await gameDb.char_profiles.get(characterId);
+      const item = await gameDb.char_data.get(characterId);
       if (!item) return null;
       return {
-        id: item.id,
+        id: item.characterId,
         name: item.name,
         raceId: item.raceId,
         classId: item.classId,
@@ -94,13 +99,11 @@ export class CharacterDbService {
   }
 
   /**
-   * 删除角色列表项
+   * 删除角色列表项（即删除角色数据）
    * @param characterId - 角色ID
    */
   async deleteCharacterListItem(characterId: string): Promise<void> {
-    await dbService.withRetry(async () => {
-      await gameDb.char_profiles.delete(characterId);
-    });
+    await this.deleteCharacterData(characterId);
   }
 
   /**
@@ -189,6 +192,8 @@ export class CharacterDbService {
       currentMp: character.mana,
       maxMp: character.maxMana,
       bonusStats,
+      createdTime: (character as any).createdTime ?? Date.now(),
+      lastPlayedTime: Date.now(),
       updatedAt: Date.now()
     };
   }

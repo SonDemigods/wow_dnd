@@ -14,7 +14,7 @@ export interface EnemyTemplateStorage {
   name: string;
   icon: string;
   maxHp: number;
-  damage: string;
+  damage: [number, number];
   xp: number;
   gold: number;
   dangerLevel: string;
@@ -42,7 +42,7 @@ export class EnemyDbService {
         name: enemy.name,
         icon: enemy.icon,
         maxHp: enemy.maxHp,
-        damage: JSON.stringify(enemy.damage),
+        damage: enemy.damage,
         xp: enemy.xp,
         gold: enemy.gold,
         dangerLevel: enemy.dangerLevel,
@@ -96,15 +96,10 @@ export class EnemyDbService {
    * 将数据库存储格式转换为 EnemyData
    */
   private fromStorage(data: Record<string, unknown>): EnemyData {
-    let damage: [number, number] = [1, 3];
-    try {
-      const parsed = typeof data.damage === 'string' ? JSON.parse(data.damage as string) : data.damage;
-      if (Array.isArray(parsed) && parsed.length >= 2) {
-        damage = [Number(parsed[0]), Number(parsed[1])];
-      }
-    } catch {
-      damage = [1, 3];
-    }
+    const rawDamage = data.damage as [number, number] | undefined;
+    const damage: [number, number] = (Array.isArray(rawDamage) && rawDamage.length >= 2)
+      ? [Number(rawDamage[0]), Number(rawDamage[1])]
+      : [1, 3];
 
     return {
       id: data.id as string,

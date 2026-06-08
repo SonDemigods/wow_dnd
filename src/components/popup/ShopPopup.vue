@@ -163,7 +163,8 @@ function getCategoryName(category: string) {
 
 function getEffectText(effect: any) {
   if (!effect) return '';
-  if (effect.type === 'heal') return `恢复${effect.value}点生命值`;
+  if (effect.type === 'health_restore') return `恢复${effect.value}点生命值`;
+  if (effect.type === 'mana_restore') return `恢复${effect.value}点法力值`;
   if (effect.type === 'stat') return `${effect.statType === 'physicalAttack' ? '物理攻击' : 
     effect.statType === 'magicAttack' ? '魔法攻击' : 
     effect.statType === 'physicalDefense' ? '物理防御' :

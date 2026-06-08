@@ -181,9 +181,12 @@ export class SkillsService implements ISkillsService {
       case 'magic_damage':
         damage = effect.value;
         break;
-      case 'heal':
+      case 'health_restore':
         heal = effect.value;
         eventBus.emit(GameEvents.CHARACTER_RECEIVE_HEAL, { amount: effect.value, source: '技能治疗' });
+        break;
+      case 'mana_restore':
+        eventBus.emit(GameEvents.CHARACTER_RECEIVE_MP, { amount: effect.value, source: '技能回复' });
         break;
     }
     
@@ -340,9 +343,13 @@ export class SkillsService implements ISkillsService {
         // 魔法伤害 = 基础值 + 智力 * 系数
         effect.value = Math.floor(skill.effect.value + stats.int * (skill.effect.coefficient || 0.5));
         break;
-      case 'heal':
+      case 'health_restore':
         // 治疗量 = 基础值 + 智慧 * 系数
         effect.value = Math.floor(skill.effect.value + stats.wis * (skill.effect.coefficient || 0.3));
+        break;
+      case 'mana_restore':
+        // 法力回复 = 基础值 + 智力 * 系数
+        effect.value = Math.floor(skill.effect.value + stats.int * (skill.effect.coefficient || 0.3));
         break;
     }
     

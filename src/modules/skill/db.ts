@@ -27,7 +27,7 @@ export interface SkillTemplateStorage {
   description: string;
   mpCost: number;
   type: string;
-  effect: string;
+  effect: { type: string; value: number };
   unlockLevel: number;
   classRestriction: string | null;
 }
@@ -126,7 +126,7 @@ export class SkillsDbService {
         description: skill.description,
         mpCost: skill.mpCost,
         type: skill.type,
-        effect: JSON.stringify(skill.effect),
+        effect: skill.effect,
         unlockLevel: skill.unlockLevel,
         classRestriction: classRestriction || null
       });
@@ -143,13 +143,6 @@ export class SkillsDbService {
       const data = await gameDb.config_skills.get(skillId);
       if (!data) return null;
       
-      let effect = { type: 'physical_damage' as SkillType, value: 0 };
-      try {
-        effect = JSON.parse(data.effect);
-      } catch {
-        effect = { type: 'physical_damage', value: 0 };
-      }
-      
       return {
         id: data.id,
         name: data.name,
@@ -157,7 +150,7 @@ export class SkillsDbService {
         description: data.description,
         mpCost: data.mpCost,
         type: data.type as SkillType,
-        effect,
+        effect: (data.effect || { type: 'physical_damage', value: 0 }) as Skill['effect'],
         unlockLevel: data.unlockLevel
       };
     });
@@ -170,25 +163,16 @@ export class SkillsDbService {
   async getAllSkillTemplates(): Promise<Skill[]> {
     return dbService.withRetry(async () => {
       const items = await gameDb.config_skills.toArray();
-      return items.map(data => {
-        let effect = { type: 'physical_damage' as SkillType, value: 0 };
-        try {
-          effect = JSON.parse(data.effect);
-        } catch {
-          effect = { type: 'physical_damage', value: 0 };
-        }
-        
-        return {
-          id: data.id,
-          name: data.name,
-          icon: data.icon,
-          description: data.description,
-          mpCost: data.mpCost,
-          type: data.type as SkillType,
-          effect,
-          unlockLevel: data.unlockLevel
-        };
-      });
+      return items.map(data => ({
+        id: data.id,
+        name: data.name,
+        icon: data.icon,
+        description: data.description,
+        mpCost: data.mpCost,
+        type: data.type as SkillType,
+        effect: (data.effect || { type: 'physical_damage', value: 0 }) as Skill['effect'],
+        unlockLevel: data.unlockLevel
+      }));
     });
   }
 
@@ -200,25 +184,16 @@ export class SkillsDbService {
   async getSkillTemplatesByClass(classId: string): Promise<Skill[]> {
     return dbService.withRetry(async () => {
       const items = await gameDb.config_skills.where('classRestriction').equals(classId).toArray();
-      return items.map(data => {
-        let effect = { type: 'physical_damage' as SkillType, value: 0 };
-        try {
-          effect = JSON.parse(data.effect);
-        } catch {
-          effect = { type: 'physical_damage', value: 0 };
-        }
-        
-        return {
-          id: data.id,
-          name: data.name,
-          icon: data.icon,
-          description: data.description,
-          mpCost: data.mpCost,
-          type: data.type as SkillType,
-          effect,
-          unlockLevel: data.unlockLevel
-        };
-      });
+      return items.map(data => ({
+        id: data.id,
+        name: data.name,
+        icon: data.icon,
+        description: data.description,
+        mpCost: data.mpCost,
+        type: data.type as SkillType,
+        effect: (data.effect || { type: 'physical_damage', value: 0 }) as Skill['effect'],
+        unlockLevel: data.unlockLevel
+      }));
     });
   }
 

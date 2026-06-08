@@ -56,11 +56,8 @@
                 <span class="bonus-value">+{{ value }}</span>
               </div>
             </div>
-            <div v-if="selectedEntry.info?.hpRestore" class="effect-info">
-              <span>效果: 恢复{{ selectedEntry.info.hpRestore }}点生命值</span>
-            </div>
-            <div v-if="selectedEntry.info?.mpRestore" class="effect-info">
-              <span>效果: 恢复{{ selectedEntry.info.mpRestore }}点法力值</span>
+            <div v-if="selectedEntry.info?.effect" class="effect-info">
+              <span>{{ getEffectText(selectedEntry.info.effect) }}</span>
             </div>
             <div class="detail-actions">
               <button 
@@ -131,7 +128,7 @@ import { useCharacterStore } from '@/modules/character';
 import { equipmentService } from '@/modules/equipment/service';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import { useToast } from '@/composables/useToast';
-import type { InventoryItem, Item, ItemType, ItemRarity } from '@/modules/inventory';
+import type { InventoryItem, Item, ItemType, ItemRarity, ItemEffect } from '@/modules/inventory';
 import type { EquipmentSlot, EquipmentItem } from '@/modules/equipment/types';
 
 interface ItemEntry {
@@ -229,6 +226,30 @@ function getStatName(stat: string) {
   return statMap[stat] || stat;
 }
 
+function getEffectText(effect: ItemEffect): string {
+  const { type, value } = effect;
+  switch (type) {
+    case 'health_restore': return `恢复 ${value} 点生命值`;
+    case 'mana_restore': return `恢复 ${value} 点法力值`;
+    case 'physical_damage': return `造成 ${value} 点物理伤害`;
+    case 'magic_damage': return `造成 ${value} 点魔法伤害`;
+    case 'stat': return '提升属性';
+    default: return '';
+  }
+}
+
+function getEffectToast(info: Item): string {
+  if (!info.effect) return `使用了 ${info.name}`;
+  const { type, value } = info.effect;
+  switch (type) {
+    case 'health_restore': return `恢复了 ${value} 点生命值`;
+    case 'mana_restore': return `恢复了 ${value} 点法力值`;
+    case 'physical_damage':
+    case 'magic_damage': return `造成了 ${value} 点伤害`;
+    default: return `使用了 ${info.name}`;
+  }
+}
+
 function isEquipment(type?: ItemType) {
   return type === 'weapon' || type === 'armor';
 }
@@ -273,13 +294,7 @@ async function useItem(itemId: string) {
   const success = await inventoryService.useItem(index);
   if (!success) return;
 
-  if (info.hpRestore) {
-    toast.show({ message: `使用 ${info.name}，恢复了 ${info.hpRestore} HP！`, type: 'success', icon: '💊' });
-  } else if (info.mpRestore) {
-    toast.show({ message: `使用 ${info.name}，恢复了 ${info.mpRestore} MP！`, type: 'success', icon: '💊' });
-  } else {
-    toast.show({ message: `使用了 ${info.name}`, type: 'success', icon: '💊' });
-  }
+  toast.show({ message: getEffectToast(info), type: 'success', icon: '💊' });
   
   loadInventory();
   // 堆叠数归零时清除选中

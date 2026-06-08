@@ -266,17 +266,20 @@ const consumableItems = computed(() => {
 
 const hasConsumables = computed(() => consumableItems.value.length > 0);
 
-function buildItemDescription(info: { hpRestore?: number; mpRestore?: number; description?: string }): string {
+function buildItemDescription(info: { effect?: { type: string; value: unknown }; description?: string }): string {
+  const { effect, description } = info;
+  if (!effect || typeof effect.value !== 'number') return description || '';
   const parts: string[] = [];
-  if (info.hpRestore && info.hpRestore > 0) parts.push(`HP+${info.hpRestore}`);
-  if (info.mpRestore && info.mpRestore > 0) parts.push(`MP+${info.mpRestore}`);
-  return parts.length > 0 ? parts.join(' ') : (info.description || '');
+  if (effect.type === 'health_restore' && effect.value > 0) parts.push(`HP+${effect.value}`);
+  if (effect.type === 'mana_restore' && effect.value > 0) parts.push(`MP+${effect.value}`);
+  return parts.length > 0 ? parts.join(' ') : (description || '');
 }
 
 const skillTypeIcons: Record<string, string> = {
   physical_damage: '⚔️',
   magic_damage: '🔮',
-  heal: '💚'
+  health_restore: '💚',
+  mana_restore: '💙'
 };
 
 function getSkillTypeIcon(type: string): string {
@@ -305,7 +308,8 @@ function getSkillEffectText(skill: Skill): string {
   switch (effect.type) {
     case 'physical_damage': return `物伤${value}${coeff}`;
     case 'magic_damage': return `魔伤${value}${coeff}`;
-    case 'heal': return `治疗${value}${coeff}`;
+    case 'health_restore': return `治疗${value}${coeff}`;
+    case 'mana_restore': return `回蓝${value}${coeff}`;
     default: return '';
   }
 }

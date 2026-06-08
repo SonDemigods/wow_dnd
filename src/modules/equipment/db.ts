@@ -25,9 +25,9 @@ export interface EquipmentTemplateStorage {
   rarity: string;
   icon: string;
   description: string;
-  bonus: string;
+  bonus: Record<string, number>;
   value: number;
-  slots: string;
+  slots: EquipmentSlot[];
   levelRequirement: number | null;
   stackable: boolean;
   template: string;
@@ -114,9 +114,9 @@ export class EquipmentDbService {
         rarity: item.rarity,
         icon: item.icon,
         description: item.description,
-        bonus: JSON.stringify(item.bonus || {}),
+        bonus: item.bonus || {},
         value: item.value,
-        slots: JSON.stringify(item.slots),
+        slots: item.slots,
         levelRequirement: item.levelRequirement || null,
         stackable: item.stackable || false,
         template: item.template || ''
@@ -134,21 +134,6 @@ export class EquipmentDbService {
       const data = await gameDb.config_equipmentItems.get(itemId);
       if (!data) return null;
       
-      let bonus: Partial<EquipmentItem['bonus']> = {};
-      let slots: EquipmentSlot[] = [];
-      
-      try {
-        bonus = typeof data.bonus === 'string' ? JSON.parse(data.bonus) : (data.bonus || {});
-      } catch {
-        bonus = {};
-      }
-      
-      try {
-        slots = Array.isArray(data.slots) ? data.slots : JSON.parse(data.slots);
-      } catch {
-        slots = [];
-      }
-      
       return {
         id: data.id,
         name: data.name,
@@ -156,9 +141,9 @@ export class EquipmentDbService {
         rarity: data.rarity as EquipmentItem['rarity'],
         icon: data.icon,
         description: data.description,
-        bonus: bonus as Partial<EquipmentItem['bonus']>,
+        bonus: (data.bonus || {}) as Partial<EquipmentItem['bonus']>,
         value: data.value,
-        slots,
+        slots: (Array.isArray(data.slots) ? data.slots : []) as EquipmentSlot[],
         levelRequirement: data.levelRequirement || undefined,
         stackable: data.stackable || false,
         template: data.template || undefined
@@ -173,37 +158,20 @@ export class EquipmentDbService {
   async getAllEquipmentTemplates(): Promise<EquipmentItem[]> {
     return dbService.withRetry(async () => {
       const items = await gameDb.config_equipmentItems.toArray();
-      return items.map(data => {
-        let bonus: Partial<EquipmentItem['bonus']> = {};
-        let slots: EquipmentSlot[] = [];
-        
-        try {
-          bonus = typeof data.bonus === 'string' ? JSON.parse(data.bonus) : (data.bonus || {});
-        } catch {
-          bonus = {};
-        }
-        
-        try {
-          slots = Array.isArray(data.slots) ? data.slots : JSON.parse(data.slots);
-        } catch {
-          slots = [];
-        }
-        
-        return {
-          id: data.id,
-          name: data.name,
-          type: data.type as EquipmentItem['type'],
-          rarity: data.rarity as EquipmentItem['rarity'],
-          icon: data.icon,
-          description: data.description,
-          bonus: bonus as Partial<EquipmentItem['bonus']>,
-          value: data.value,
-          slots,
-          levelRequirement: data.levelRequirement || undefined,
-          stackable: data.stackable || false,
-          template: data.template || undefined
-        };
-      });
+      return items.map(data => ({
+        id: data.id,
+        name: data.name,
+        type: data.type as EquipmentItem['type'],
+        rarity: data.rarity as EquipmentItem['rarity'],
+        icon: data.icon,
+        description: data.description,
+        bonus: (data.bonus || {}) as Partial<EquipmentItem['bonus']>,
+        value: data.value,
+        slots: (Array.isArray(data.slots) ? data.slots : []) as EquipmentSlot[],
+        levelRequirement: data.levelRequirement || undefined,
+        stackable: data.stackable || false,
+        template: data.template || undefined
+      }));
     });
   }
 

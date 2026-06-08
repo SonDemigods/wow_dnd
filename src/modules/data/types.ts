@@ -3,7 +3,6 @@
  * 
  * 定义备份、导入相关的数据结构和接口
  */
-import type { CharacterListItem } from '../character/types';
 import type { InventoryItem } from '../inventory/types';
 import type { QuestInstance } from '../quest/types';
 import type { EquipmentState } from '../equipment/types';
@@ -82,10 +81,8 @@ export interface CharacterData {
  * 定义备份包含的所有数据结构
  */
 export interface BackupData {
-  /** 角色列表 */
-  characters: CharacterListItem[];
-  /** 角色详细数据（以角色ID为键） */
-  characterData: Record<string, CharacterData>;
+  /** 角色数据（以角色ID为键） */
+  characters: Record<string, unknown>;
   /** 背包数据（以角色ID为键） */
   inventory: Record<string, InventoryItem>;
   /** 任务进度（以角色ID为键） */

@@ -122,9 +122,6 @@ export class DataInitializer {
         db.config_items,
         db.config_equipmentItems,
         db.config_enemies,
-        db.config_itemTypes,
-        db.config_rarityConfigs,
-        db.config_classAbilities,
         db.config_locations,
         db.config_shops,
         db.config_quests,
@@ -140,12 +137,9 @@ export class DataInitializer {
             await this.initFactions();
             await this.initRaces();
             await this.initClasses();
-            await this.initClassAbilities();
-            await this.initItemTypes();
             await this.initItems();
             await this.initEquipment();
             await this.initEnemies();
-            await this.initRarityConfig();
             await this.initShops();
             await this.initQuests();
             await this.initSkillTemplates();
@@ -199,24 +193,6 @@ export class DataInitializer {
   }
 
   /**
-   * 初始化职业技能数据
-   */
-  private async initClassAbilities(): Promise<void> {
-    for (const entry of CLASS_ABILITIES) {
-      await db.config_classAbilities.put({ classId: entry.class_id, abilities: entry.skills });
-    }
-  }
-
-  /**
-   * 初始化物品类型数据
-   */
-  private async initItemTypes(): Promise<void> {
-    for (const itemType of Object.values(ITEM_TYPES)) {
-      await db.config_itemTypes.put(itemType as Record<string, unknown>);
-    }
-  }
-
-  /**
    * 初始化物品数据
    */
   private async initItems(): Promise<void> {
@@ -241,16 +217,6 @@ export class DataInitializer {
     for (const enemy of ENEMIES) {
       await db.config_enemies.put(enemy as Record<string, unknown>);
     }
-  }
-
-  /**
-   * 初始化稀有度配置
-   */
-  private async initRarityConfig(): Promise<void> {
-    await db.config_rarityConfigs.put({
-      id: 'rarity_config',
-      config: RARITY_CONFIG
-    });
   }
 
   /**
@@ -462,8 +428,7 @@ export class BackupService implements IBackupService {
    * @returns BackupData - 备份数据对象
    */
   private async collectAllData(): Promise<BackupData> {
-    const characters = (await db.char_profiles.toArray()) as unknown[];
-    const characterDataRecords = (await db.char_data.toArray()) as unknown[];
+    const characterRecords = (await db.char_data.toArray()) as unknown[];
     const inventoryRecords = (await db.char_inventory.toArray()) as unknown[];
     const questsRecords = (await db.char_quests.toArray()) as unknown[];
     const equipmentRecords = (await db.char_equipment.toArray()) as unknown[];
@@ -477,9 +442,9 @@ export class BackupService implements IBackupService {
     const shopRecords = (await db.config_shops.toArray()) as unknown[];
     const gameStateRecord = await db.runtime_gameState.get('gameState');
 
-    const characterData: Record<string, unknown> = {};
-    characterDataRecords.forEach((item: any) => {
-      characterData[item.characterId] = item;
+    const characters: Record<string, unknown> = {};
+    characterRecords.forEach((item: any) => {
+      characters[item.characterId] = item;
     });
 
     const inventory: Record<string, unknown> = {};
@@ -519,7 +484,6 @@ export class BackupService implements IBackupService {
 
     return {
       characters: characters as BackupData['characters'],
-      characterData: characterData as BackupData['characterData'],
       inventory: inventory as BackupData['inventory'],
       quests: quests as BackupData['quests'],
       equipment: equipment as BackupData['equipment'],
@@ -676,7 +640,6 @@ export class ImportService implements IImportService {
     try {
       await db.transaction(
         'rw',
-        db.char_profiles,
         db.char_data,
         db.char_inventory,
         db.char_quests,
@@ -689,18 +652,8 @@ export class ImportService implements IImportService {
         db.config_shops,
         db.runtime_gameState,
         async () => {
-          if (data.characters && data.characters.length > 0) {
-            await db.char_profiles.bulkPut(data.characters);
-            importedStores.push('char_profiles');
-          } else {
-            skippedStores.push('char_profiles');
-          }
-
-          if (
-            data.characterData &&
-            Object.keys(data.characterData).length > 0
-          ) {
-            await db.char_data.bulkPut(Object.values(data.characterData));
+          if (data.characters && Object.keys(data.characters).length > 0) {
+            await db.char_data.bulkPut(Object.values(data.characters));
             importedStores.push('char_data');
           } else {
             skippedStores.push('char_data');

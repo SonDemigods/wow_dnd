@@ -7,9 +7,9 @@
  * 技能类型枚举
  * - physical_damage: 物理伤害技能
  * - magic_damage: 魔法伤害技能
- * - heal: 治疗技能
+ * - health_restore: 治疗技能
  */
-export type SkillType = 'physical_damage' | 'magic_damage' | 'heal';
+export type SkillType = 'physical_damage' | 'magic_damage' | 'health_restore' | 'mana_restore';
 
 /**
  * 技能槽位索引类型

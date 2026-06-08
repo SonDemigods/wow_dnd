@@ -138,7 +138,8 @@ const skillBarSlots = computed(() => {
 const skillTypeNames: Record<string, string> = {
   physical_damage: '物理伤害',
   magic_damage: '魔法伤害',
-  heal: '治疗'
+  health_restore: '治疗',
+  mana_restore: '法力回复'
 };
 
 function getSkillTypeName(type: string) {
@@ -149,7 +150,8 @@ function getEffectText(skill: Skill): string {
   if (!skill.effect) return '';
   const { type, value } = skill.effect;
   if (type === 'physical_damage' || type === 'magic_damage') return `造成 ${value} 点伤害`;
-  if (type === 'heal') return `恢复 ${value} 点生命值`;
+  if (type === 'health_restore') return `恢复 ${value} 点生命值`;
+  if (type === 'mana_restore') return `恢复 ${value} 点法力值`;
   return `${value}`;
 }
 

@@ -16,7 +16,8 @@ import { eventBus, GameEvents } from '../bus/core';
 const SKILL_TYPE_NAMES: Record<SkillType, string> = {
   physical_damage: '物理伤害',
   magic_damage: '魔法伤害',
-  heal: '治疗'
+  health_restore: '治疗',
+  mana_restore: '法力回复'
 };
 
 /**
@@ -64,7 +65,8 @@ export const useSkillsStore = defineStore('skills', () => {
     const counts: Record<SkillType, number> = {
       physical_damage: 0,
       magic_damage: 0,
-      heal: 0
+      health_restore: 0,
+      mana_restore: 0
     };
     
     skills.value.forEach(skill => {
