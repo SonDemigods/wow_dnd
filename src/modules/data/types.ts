@@ -12,6 +12,7 @@ import type { CombatLog } from '../combat/types';
 import type { LogEntry } from '../log/types';
 import type { LocationData } from '../map/types';
 import type { ShopConfig } from '../shop/types';
+import type { MapStateStorage, GameStateStorage, ShopItemsStorage } from './core';
 
 /**
  * 备份文件接口
@@ -109,8 +110,12 @@ export interface BackupData {
   map: LocationData[];
   /** 商店配置 */
   shop: ShopConfig[];
-  /** 游戏状态 */
-  gameState: GameStateData;
+  /** 游戏状态（runtime_gameState 全量表，以 id 为键） */
+  gameState: Record<string, GameStateStorage>;
+  /** 商店商品数据（runtime_shopItems 全量表，以 shopId 为键） */
+  shopItems: Record<string, ShopItemsStorage>;
+  /** 地图运行时状态（以 map_{characterId} 为键） */
+  mapState?: Record<string, MapStateStorage>;
   // ==================== 配置表备份（v1.1 新增） ====================
   /** 阵营配置 */
   factions?: Record<string, unknown>[];

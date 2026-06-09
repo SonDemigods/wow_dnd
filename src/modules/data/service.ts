@@ -9,7 +9,7 @@
  */
 import { db } from './core';
 import { eventBus, GameEvents } from '../bus/core';
-import type { FactionStorage, RaceStorage, ClassStorage, ItemStorage, EquipmentItemStorage, EnemyStorage, LocationStorage, ShopConfigStorage, SkillConfigStorage, QuestConfigStorage, GameStateStorage, CharacterDataStorage, InventoryStorage, EquipmentStorage, CharSkillsStorage, CharQuestStorage, ExplorationStorage, CombatLogStorage, AdventureLogStorage } from './core';
+import type { FactionStorage, RaceStorage, ClassStorage, ItemStorage, EquipmentItemStorage, EnemyStorage, LocationStorage, ShopConfigStorage, SkillConfigStorage, QuestConfigStorage, GameStateStorage, CharacterDataStorage, InventoryStorage, EquipmentStorage, CharSkillsStorage, CharQuestStorage, ExplorationStorage, CombatLogStorage, AdventureLogStorage, MapStateStorage, ShopItemsStorage } from './core';
 import { BACKUP_CONFIG } from '@/config/database';
 import {
   RARITY_SELL_DISCOUNT,
@@ -447,7 +447,9 @@ export class BackupService implements IBackupService {
       (await db.runtime_adventureLogs.toArray()) as unknown[];
     const mapRecords = (await db.config_locations.toArray()) as unknown[];
     const shopRecords = (await db.config_shops.toArray()) as unknown[];
-    const gameStateRecord = await db.runtime_gameState.get('gameState');
+    const gameStateRecords = (await db.runtime_gameState.toArray()) as unknown[];
+    const mapStateRecords = (await db.runtime_mapState.toArray()) as unknown[];
+    const shopItemsRecords = (await db.runtime_shopItems.toArray()) as unknown[];
 
     // 收集完整配置表数据
     const factionsRecords = (await db.config_factions.toArray()) as unknown[];
@@ -498,6 +500,21 @@ export class BackupService implements IBackupService {
       adventureLog[item.characterId] = item.entries || [];
     });
 
+    const mapState: Record<string, unknown> = {};
+    mapStateRecords.forEach((item: any) => {
+      mapState[item.id] = item;
+    });
+
+    const gameState: Record<string, unknown> = {};
+    gameStateRecords.forEach((item: any) => {
+      gameState[item.id] = item;
+    });
+
+    const shopItems: Record<string, unknown> = {};
+    shopItemsRecords.forEach((item: any) => {
+      shopItems[item.shopId] = item;
+    });
+
     return {
       characters: characters as BackupData['characters'],
       inventory: inventory as BackupData['inventory'],
@@ -509,7 +526,9 @@ export class BackupService implements IBackupService {
       adventureLog: adventureLog as BackupData['adventureLog'],
       map: mapRecords as BackupData['map'],
       shop: shopRecords as BackupData['shop'],
-      gameState: gameStateRecord as unknown as BackupData['gameState'],
+      gameState: gameState as BackupData['gameState'],
+      shopItems: shopItems as BackupData['shopItems'],
+      mapState: mapState as BackupData['mapState'],
       // 配置表数据
       factions: factionsRecords as Record<string, unknown>[],
       races: racesRecords as Record<string, unknown>[],
@@ -683,6 +702,8 @@ export class ImportService implements IImportService {
           db.config_equipmentItems,
           db.config_enemies,
           db.config_skills,
+          db.runtime_mapState,
+          db.runtime_shopItems,
         ],
         async () => {
           if (data.characters && Object.keys(data.characters).length > 0) {
@@ -791,14 +812,23 @@ export class ImportService implements IImportService {
             importedStores.push('config_skills');
           }
 
-          if (data.gameState) {
-            await db.runtime_gameState.put({
-              id: 'gameState',
-              ...data.gameState
-            } as GameStateStorage);
+          if (data.gameState && Object.keys(data.gameState).length > 0) {
+            await db.runtime_gameState.bulkPut(Object.values(data.gameState) as unknown as GameStateStorage[]);
             importedStores.push('runtime_gameState');
           } else {
             skippedStores.push('runtime_gameState');
+          }
+
+          // 恢复地图运行时状态（含 currentLocationId、视图状态等）
+          if (data.mapState && Object.keys(data.mapState).length > 0) {
+            await db.runtime_mapState.bulkPut(Object.values(data.mapState) as unknown as MapStateStorage[]);
+            importedStores.push('runtime_mapState');
+          }
+
+          // 恢复商店商品数据
+          if (data.shopItems && Object.keys(data.shopItems).length > 0) {
+            await db.runtime_shopItems.bulkPut(Object.values(data.shopItems) as unknown as ShopItemsStorage[]);
+            importedStores.push('runtime_shopItems');
           }
         }
       );
