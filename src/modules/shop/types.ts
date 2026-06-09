@@ -154,5 +154,5 @@ export interface IShopService {
   needsRefresh(shopId: string): boolean;
 
   /** 重置所有商店数据 */
-  reset(): void;
+  reset(): Promise<void>;
 }

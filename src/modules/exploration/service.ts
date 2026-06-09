@@ -612,6 +612,8 @@ export class ExplorationService implements IExplorationService {
         bossDefeated: stored.bossDefeated,
         explorationComplete: stored.explorationComplete
       };
+      // 恢复本次探索随机选取的商店ID（用于点击商店格子时传递正确的 interactionId）
+      this.currentShopId = stored.currentShopId || '';
       // 恢复区域配置
       await this.loadAreaConfig(stored.currentAreaId);
     } else {
@@ -647,6 +649,8 @@ export class ExplorationService implements IExplorationService {
     // 进入探索区域时随机选取一个商店
     await this.pickRandomShop();
     await this.generateGrid();
+    // 立即持久化网格数据和商店ID，防止刷新丢失
+    this.saveState();
   }
 
   /**
@@ -1012,7 +1016,7 @@ export class ExplorationService implements IExplorationService {
 
   private saveState(): void {
     if (this.currentCharacterId) {
-      explorationDbService.saveExplorationData(this.currentCharacterId, this.state);
+      explorationDbService.saveExplorationData(this.currentCharacterId, this.state, this.currentShopId);
     }
   }
 }

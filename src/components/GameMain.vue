@@ -192,10 +192,15 @@ function handleExploreTabClick() {
 }
 
 // 监听探索格子翻开事件，处理交互
-function handleCellExplored(data: { cellType?: string; interactionId?: string }) {
+async function handleCellExplored(data: { cellType?: string; interactionId?: string }) {
   const cellType = data?.cellType;
   if (cellType === 'shop') {
-    shopStore.selectShop(data?.interactionId || '');
+    const shopId = data?.interactionId || '';
+    if (!shopId) {
+      console.warn('[GameMain] 商店交互ID为空，无法打开商店');
+      return;
+    }
+    await shopStore.selectShop(shopId);
     showShop.value = true;
   } else if (cellType === 'board') {
     showQuestBoard.value = true;

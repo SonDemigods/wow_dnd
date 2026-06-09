@@ -158,12 +158,14 @@ export class ShopDbService {
    */
   async saveCurrentShopId(shopId: string | null): Promise<void> {
     await dbService.withRetry(async () => {
-      let state: Record<string, unknown> | undefined = await gameDb.runtime_gameState.get('gameState');
-      if (!state) {
-        state = { id: 'gameState' };
-      }
-      state.currentShopId = shopId;
-      await gameDb.runtime_gameState.put(state);
+      // 读取已有记录，保留其他字段（如 currentCharacterId、currentLocationId 等）
+      const existing = await gameDb.runtime_gameState.get('gameState');
+      await gameDb.runtime_gameState.put({
+        ...existing,
+        id: 'gameState',
+        currentShopId: shopId,
+        lastPlayedAt: new Date().toISOString()
+      });
     });
   }
 

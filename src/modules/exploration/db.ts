@@ -9,6 +9,7 @@ import type { ExplorationState, ExplorationCell } from './types';
 export interface ExplorationStorage {
   characterId: string;
   currentAreaId: string | null;
+  currentShopId: string;
   grid: ExplorationCell[][];
   campUsed: boolean;
   playerPosition: { x: number; y: number };
@@ -25,11 +26,12 @@ export class ExplorationDbService {
    * @param characterId - 角色ID
    * @param state - 探索状态对象
    */
-  async saveExplorationData(characterId: string, state: ExplorationState): Promise<void> {
+  async saveExplorationData(characterId: string, state: ExplorationState, currentShopId: string = ''): Promise<void> {
     await dbService.withRetry(async () => {
       await gameDb.char_exploration.put({
         characterId,
         currentAreaId: state.currentAreaId,
+        currentShopId,
         grid: state.grid,
         campUsed: state.campUsed,
         playerPosition: state.playerPosition,
@@ -56,6 +58,7 @@ export class ExplorationDbService {
       return {
         characterId: result.characterId as string,
         currentAreaId: (result.currentAreaId as string) || null,
+        currentShopId: (result.currentShopId as string) || '',
         grid: (result.grid as unknown as ExplorationCell[][]) || [],
         campUsed: (result.campUsed as boolean) || false,
         playerPosition: (result.playerPosition as { x: number; y: number }) || { x: 0, y: 0 },

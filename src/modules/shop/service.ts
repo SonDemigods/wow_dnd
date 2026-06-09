@@ -407,9 +407,9 @@ export class ShopService implements IShopService {
   /**
    * 重置所有商店数据
    */
-  reset(): void {
-    shopDbService.clearAllShopItems();
-    this.reinit();
+  async reset(): Promise<void> {
+    await shopDbService.clearAllShopItems();
+    await this.reinit();
   }
 }
 

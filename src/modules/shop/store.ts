@@ -48,13 +48,26 @@ export const useShopStore = defineStore('shop', () => {
   const getCurrentItems = computed(() => currentItems.value);
   
   /**
-   * 选择商店（设置 ID 并通过 service 持久化到 gameState）
+   * 选择商店（先持久化到 DB，成功后再更新响应式状态）
    * @param shopId - 商店ID
    */
-  function selectShop(shopId: string): void {
-    currentShopId.value = shopId;
-    currentItems.value = [];
-    shopService.saveCurrentShopId(shopId);
+  async function selectShop(shopId: string): Promise<void> {
+    // 防御：不保存空的商店ID
+    if (!shopId) {
+      console.warn('[ShopStore] selectShop 收到空 shopId，已忽略');
+      return;
+    }
+    // 仅在切换商店时清空旧数据
+    if (currentShopId.value !== shopId) {
+      currentItems.value = [];
+    }
+    try {
+      // 先持久化到 DB，确保写入成功后再更新响应式状态
+      await shopService.saveCurrentShopId(shopId);
+      currentShopId.value = shopId;
+    } catch (err) {
+      console.error('[ShopStore] 保存 currentShopId 失败:', err);
+    }
   }
   
   /**
@@ -149,12 +162,12 @@ export const useShopStore = defineStore('shop', () => {
   /**
    * 重置
    */
-  function reset(): void {
-    shopService.reset();
+  async function reset(): Promise<void> {
+    await shopService.reset();
     syncFromService();
     currentShopId.value = null;
     currentItems.value = [];
-    shopService.saveCurrentShopId(null);
+    await shopService.saveCurrentShopId(null);
   }
   
   return {
