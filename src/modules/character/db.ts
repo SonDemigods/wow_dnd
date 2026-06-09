@@ -7,9 +7,9 @@ import { db as gameDb, dbService } from '../data/core';
 import type { Character, CharacterListItem, Stats, FactionType, RaceType, ClassType } from './types';
 
 /**
- * 角色数据存储接口
+ * 角色数据存储接口（内部使用，与 data/core.ts 的 CharacterDataStorage 对应）
  */
-export interface CharacterDataStorage {
+interface CharacterDataStorage {
   characterId: string;
   name: string;
   factionId: FactionType;
@@ -42,7 +42,7 @@ export class CharacterDbService {
     await dbService.withRetry(async () => {
       const existing = await gameDb.char_data.get(character.id);
       await gameDb.char_data.put({
-        ...existing,
+        ...(existing || {} as CharacterDataStorage),
         characterId: character.id,
         name: character.name,
         factionId: character.factionId,
@@ -52,7 +52,7 @@ export class CharacterDbService {
         createdTime: character.createdTime,
         lastPlayedTime: character.lastPlayedTime,
         updatedAt: Date.now()
-      });
+      } as unknown as import('../data/core').CharacterDataStorage);
     });
   }
 
@@ -112,7 +112,7 @@ export class CharacterDbService {
    */
   async saveCharacterData(data: CharacterDataStorage): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.char_data.put(data as unknown as Record<string, unknown>);
+      await gameDb.char_data.put(data as unknown as import('../data/core').CharacterDataStorage);
     });
   }
 
@@ -149,17 +149,20 @@ export class CharacterDbService {
 
   /**
    * 保存游戏状态（当前选中角色ID）
+   * 
+   * 使用事务确保原子性读-改-写，避免与 shop/map 等模块并发写入时丢失数据。
    * @param currentCharacterId - 当前角色ID
    */
   async saveGameState(currentCharacterId: string | null): Promise<void> {
     await dbService.withRetry(async () => {
-      // 读取已有记录，保留其他字段（如 currentLocationId、currentTab 等）
-      const existing = await gameDb.runtime_gameState.get('gameState');
-      await gameDb.runtime_gameState.put({
-        ...existing,
-        id: 'gameState',
-        currentCharacterId,
-        lastPlayedAt: new Date().toISOString()
+      await gameDb.transaction('rw', gameDb.runtime_gameState, async () => {
+        const existing = await gameDb.runtime_gameState.get('gameState');
+        await gameDb.runtime_gameState.put({
+          ...existing,
+          id: 'gameState',
+          currentCharacterId,
+          lastPlayedAt: new Date().toISOString()
+        });
       });
     });
   }

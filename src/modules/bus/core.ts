@@ -87,6 +87,8 @@ export interface GameEventPayloadMap {
   [GameEvents.SKILL_BAR_UPDATE]: { skillId?: string; slotIndex?: number; slots?: (string | null)[] };
   // ==================== 游戏数据 ====================
   [GameEvents.GAME_DATA_UPDATED]: { type: string; action: string; id: string };
+  // ==================== 日志 ====================
+  [GameEvents.LOG_ENTRY_ADDED]: { type: string; message: string; icon?: string };
 }
 
 /**
@@ -241,11 +243,11 @@ export class EventBus {
  */
 export enum GameEvents {
   // ==================== 角色 ====================
-  /** 角色创建成功 */
+  /** 角色创建成功（供 UI 组件监听，刷新角色列表） */
   CHARACTER_CREATED = 'character_created',
-  /** 角色被选中 */
+  /** 角色被选中（供 UI 和各模块 store 监听以加载角色数据） */
   CHARACTER_SELECTED = 'character_selected',
-  /** 角色被删除 */
+  /** 角色被删除（供 UI 组件监听，刷新角色列表） */
   CHARACTER_DELETED = 'character_deleted',
   /** 角色登出 */
   CHARACTER_LOGOUT = 'character_logout',
@@ -278,7 +280,7 @@ export enum GameEvents {
   CHARACTER_REMOVE_BONUS = 'character_remove_bonus',
 
   // ==================== 战斗 ====================
-  /** 战斗开始 */
+  /** 战斗开始（供 UI 组件监听，进入战斗界面） */
   COMBAT_START = 'combat_start',
   /** 战斗结束 */
   COMBAT_END = 'combat_end',
@@ -314,7 +316,7 @@ export enum GameEvents {
   SHOP_OPENED = 'shop_opened',
   /** 商店交易 */
   SHOP_TRANSACTION = 'shop_transaction',
-  /** 商店刷新 */
+  /** 商店刷新（供 UI 组件监听，刷新商品列表） */
   SHOP_REFRESHED = 'shop_refreshed',
   /** 商店关闭 */
   SHOP_CLOSED = 'shop_closed',
@@ -337,7 +339,7 @@ export enum GameEvents {
   // ==================== 背包/装备 ====================
   /** 背包变化 */
   INVENTORY_CHANGE = 'inventory_change',
-  /** 装备变化 */
+  /** 装备变化（供 UI 组件监听，更新装备显示） */
   EQUIPMENT_CHANGE = 'equipment_change',
   // 背包——外部请求类
   /** 添加物品到背包 */
@@ -355,7 +357,11 @@ export enum GameEvents {
 
   // ==================== 游戏数据 ====================
   /** 游戏数据更新（阵营/种族/职业配置变更） */
-  GAME_DATA_UPDATED = 'game_data_updated'
+  GAME_DATA_UPDATED = 'game_data_updated',
+  
+  // ==================== 日志 ====================
+  /** 日志条目添加（其他模块可通过此事件通知日志模块记录） */
+  LOG_ENTRY_ADDED = 'log_entry_added'
 }
 
 /**

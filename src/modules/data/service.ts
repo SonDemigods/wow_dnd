@@ -8,6 +8,8 @@
  * - ImportService: 数据导入服务
  */
 import { db } from './core';
+import { eventBus, GameEvents } from '../bus/core';
+import type { FactionStorage, RaceStorage, ClassStorage, ItemStorage, EquipmentItemStorage, EnemyStorage, LocationStorage, ShopConfigStorage, SkillConfigStorage, QuestConfigStorage, GameStateStorage, CharacterDataStorage, InventoryStorage, EquipmentStorage, CharSkillsStorage, CharQuestStorage, ExplorationStorage, CombatLogStorage, AdventureLogStorage } from './core';
 import { BACKUP_CONFIG } from '@/config/database';
 import {
   RARITY_SELL_DISCOUNT,
@@ -150,12 +152,15 @@ export class DataInitializer {
             await db.runtime_gameState.put({
               id: this.initFlagKey,
               initializedAt: new Date().toISOString()
-            });
+            } as GameStateStorage);
           }
         }
       );
 
       console.log('Game data initialization completed.');
+      
+      // 通知 gameDataStore 重新加载最新数据
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: 'init', action: 'bulk', id: '*' });
     } catch (error) {
       console.error('Failed to initialize game data:', error);
       if (error instanceof Error) {
@@ -172,7 +177,7 @@ export class DataInitializer {
    */
   private async initFactions(): Promise<void> {
     for (const faction of FACTIONS) {
-      await db.config_factions.put(faction as unknown as Record<string, unknown>);
+      await db.config_factions.put(faction as unknown as FactionStorage);
     }
   }
 
@@ -181,7 +186,7 @@ export class DataInitializer {
    */
   private async initRaces(): Promise<void> {
     for (const race of RACES) {
-      await db.config_races.put(race as unknown as Record<string, unknown>);
+      await db.config_races.put(race as unknown as RaceStorage);
     }
   }
 
@@ -190,7 +195,7 @@ export class DataInitializer {
    */
   private async initClasses(): Promise<void> {
     for (const cls of CLASSES) {
-      await db.config_classes.put(cls as unknown as Record<string, unknown>);
+      await db.config_classes.put(cls as unknown as ClassStorage);
     }
   }
 
@@ -199,7 +204,7 @@ export class DataInitializer {
    */
   private async initItems(): Promise<void> {
     for (const item of LOOT_ITEMS) {
-      await db.config_items.put(item as unknown as Record<string, unknown>);
+      await db.config_items.put(item as unknown as ItemStorage);
     }
   }
 
@@ -208,7 +213,7 @@ export class DataInitializer {
    */
   private async initEquipment(): Promise<void> {
     for (const equipment of EQUIPMENT_ITEMS) {
-      await db.config_equipmentItems.put(equipment as unknown as Record<string, unknown>);
+      await db.config_equipmentItems.put(equipment as unknown as EquipmentItemStorage);
     }
   }
 
@@ -217,7 +222,7 @@ export class DataInitializer {
    */
   private async initEnemies(): Promise<void> {
     for (const enemy of ENEMIES) {
-      await db.config_enemies.put(enemy as unknown as Record<string, unknown>);
+      await db.config_enemies.put(enemy as unknown as EnemyStorage);
     }
   }
 
@@ -226,7 +231,7 @@ export class DataInitializer {
    */
   private async initLocations(): Promise<void> {
     for (const location of LOCATIONS) {
-      await db.config_locations.put(location as unknown as Record<string, unknown>);
+      await db.config_locations.put(location as unknown as LocationStorage);
     }
   }
 
@@ -235,7 +240,7 @@ export class DataInitializer {
    */
   private async initContinents(): Promise<void> {
     for (const continent of CONTINENTS) {
-      await db.config_locations.put(continent as unknown as Record<string, unknown>);
+      await db.config_locations.put(continent as unknown as LocationStorage);
     }
   }
 
@@ -244,12 +249,12 @@ export class DataInitializer {
    */
   private async initShops(): Promise<void> {
     for (const shop of SHOPS) {
-      await db.config_shops.put(shop as unknown as Record<string, unknown>);
+      await db.config_shops.put(shop as unknown as ShopConfigStorage);
     }
 
     await db.runtime_gameState.put({
       id: 'shop_config',
-    });
+    } as GameStateStorage);
   }
 
   /**
@@ -257,7 +262,7 @@ export class DataInitializer {
    */
   private async initQuests(): Promise<void> {
     for (const quest of QUESTS) {
-      await db.config_quests.put(quest as unknown as Record<string, unknown>);
+      await db.config_quests.put(quest as unknown as QuestConfigStorage);
     }
   }
 
@@ -270,7 +275,7 @@ export class DataInitializer {
         await db.config_skills.put({
           ...skill,
           classRestriction: entry.class_id
-        } as unknown as Record<string, unknown>);
+        } as unknown as SkillConfigStorage);
       }
     }
   }
@@ -282,7 +287,7 @@ export class DataInitializer {
     await db.runtime_gameState.put({
       id: 'game_constants',
       maxLevel: MAX_LEVEL
-    });
+    } as GameStateStorage);
   }
 
   /**
@@ -426,7 +431,7 @@ export class BackupService implements IBackupService {
   /**
    * 收集所有游戏数据
    *
-   * 从数据库中读取所有需要备份的数据表
+   * 从数据库中读取所有需要备份的数据表，包括运行时数据和完整配置表。
    * @returns BackupData - 备份数据对象
    */
   private async collectAllData(): Promise<BackupData> {
@@ -443,6 +448,15 @@ export class BackupService implements IBackupService {
     const mapRecords = (await db.config_locations.toArray()) as unknown[];
     const shopRecords = (await db.config_shops.toArray()) as unknown[];
     const gameStateRecord = await db.runtime_gameState.get('gameState');
+
+    // 收集完整配置表数据
+    const factionsRecords = (await db.config_factions.toArray()) as unknown[];
+    const racesRecords = (await db.config_races.toArray()) as unknown[];
+    const classesRecords = (await db.config_classes.toArray()) as unknown[];
+    const itemsRecords = (await db.config_items.toArray()) as unknown[];
+    const equipmentItemsRecords = (await db.config_equipmentItems.toArray()) as unknown[];
+    const enemiesRecords = (await db.config_enemies.toArray()) as unknown[];
+    const skillTemplatesRecords = (await db.config_skills.toArray()) as unknown[];
 
     const characters: Record<string, unknown> = {};
     characterRecords.forEach((item: any) => {
@@ -495,7 +509,15 @@ export class BackupService implements IBackupService {
       adventureLog: adventureLog as BackupData['adventureLog'],
       map: mapRecords as BackupData['map'],
       shop: shopRecords as BackupData['shop'],
-      gameState: gameStateRecord as unknown as BackupData['gameState']
+      gameState: gameStateRecord as unknown as BackupData['gameState'],
+      // 配置表数据
+      factions: factionsRecords as Record<string, unknown>[],
+      races: racesRecords as Record<string, unknown>[],
+      classes: classesRecords as Record<string, unknown>[],
+      items: itemsRecords as Record<string, unknown>[],
+      equipmentItems: equipmentItemsRecords as Record<string, unknown>[],
+      enemies: enemiesRecords as Record<string, unknown>[],
+      skillTemplates: skillTemplatesRecords as Record<string, unknown>[]
     };
   }
 }
@@ -654,52 +676,59 @@ export class ImportService implements IImportService {
           db.config_locations,
           db.config_shops,
           db.runtime_gameState,
+          db.config_factions,
+          db.config_races,
+          db.config_classes,
+          db.config_items,
+          db.config_equipmentItems,
+          db.config_enemies,
+          db.config_skills,
         ],
         async () => {
           if (data.characters && Object.keys(data.characters).length > 0) {
-            await db.char_data.bulkPut(Object.values(data.characters) as Record<string, unknown>[]);
+            await db.char_data.bulkPut(Object.values(data.characters) as unknown as CharacterDataStorage[]);
             importedStores.push('char_data');
           } else {
             skippedStores.push('char_data');
           }
 
           if (data.inventory && Object.keys(data.inventory).length > 0) {
-            await db.char_inventory.bulkPut(Object.values(data.inventory) as unknown as Record<string, unknown>[]);
+            await db.char_inventory.bulkPut(Object.values(data.inventory) as unknown as InventoryStorage[]);
             importedStores.push('char_inventory');
           } else {
             skippedStores.push('char_inventory');
           }
 
           if (data.quests && Object.keys(data.quests).length > 0) {
-            await db.char_quests.bulkPut(Object.values(data.quests) as unknown as Record<string, unknown>[]);
+            await db.char_quests.bulkPut(Object.values(data.quests) as unknown as CharQuestStorage[]);
             importedStores.push('char_quests');
           } else {
             skippedStores.push('char_quests');
           }
 
           if (data.equipment && Object.keys(data.equipment).length > 0) {
-            await db.char_equipment.bulkPut(Object.values(data.equipment) as unknown as Record<string, unknown>[]);
+            await db.char_equipment.bulkPut(Object.values(data.equipment) as unknown as EquipmentStorage[]);
             importedStores.push('char_equipment');
           } else {
             skippedStores.push('char_equipment');
           }
 
           if (data.skills && Object.keys(data.skills).length > 0) {
-            await db.char_skills.bulkPut(Object.values(data.skills) as unknown as Record<string, unknown>[]);
+            await db.char_skills.bulkPut(Object.values(data.skills) as unknown as CharSkillsStorage[]);
             importedStores.push('char_skills');
           } else {
             skippedStores.push('char_skills');
           }
 
           if (data.exploration && Object.keys(data.exploration).length > 0) {
-            await db.char_exploration.bulkPut(Object.values(data.exploration) as unknown as Record<string, unknown>[]);
+            await db.char_exploration.bulkPut(Object.values(data.exploration) as unknown as ExplorationStorage[]);
             importedStores.push('char_exploration');
           } else {
             skippedStores.push('char_exploration');
           }
 
           if (data.combat && Object.keys(data.combat).length > 0) {
-            await db.runtime_combatLogs.bulkPut(Object.values(data.combat) as unknown as Record<string, unknown>[]);
+            await db.runtime_combatLogs.bulkPut(Object.values(data.combat) as unknown as CombatLogStorage[]);
             importedStores.push('runtime_combatLogs');
           } else {
             skippedStores.push('runtime_combatLogs');
@@ -711,7 +740,7 @@ export class ImportService implements IImportService {
                 characterId,
                 entries
               })
-            );
+            ) as unknown as AdventureLogStorage[];
             await db.runtime_adventureLogs.bulkPut(logEntries);
             importedStores.push('runtime_adventureLogs');
           } else {
@@ -719,24 +748,54 @@ export class ImportService implements IImportService {
           }
 
           if (data.map && data.map.length > 0) {
-            await db.config_locations.bulkPut(data.map as unknown as Record<string, unknown>[]);
+            await db.config_locations.bulkPut(data.map as unknown as LocationStorage[]);
             importedStores.push('config_locations');
           } else {
             skippedStores.push('config_locations');
           }
 
           if (data.shop && data.shop.length > 0) {
-            await db.config_shops.bulkPut(data.shop as unknown as Record<string, unknown>[]);
+            await db.config_shops.bulkPut(data.shop as unknown as ShopConfigStorage[]);
             importedStores.push('config_shops');
           } else {
             skippedStores.push('config_shops');
+          }
+
+          // 恢复配置表数据（v1.1 新增，兼容旧备份不含这些字段）
+          if (data.factions && data.factions.length > 0) {
+            await db.config_factions.bulkPut(data.factions as unknown as FactionStorage[]);
+            importedStores.push('config_factions');
+          }
+          if (data.races && data.races.length > 0) {
+            await db.config_races.bulkPut(data.races as unknown as RaceStorage[]);
+            importedStores.push('config_races');
+          }
+          if (data.classes && data.classes.length > 0) {
+            await db.config_classes.bulkPut(data.classes as unknown as ClassStorage[]);
+            importedStores.push('config_classes');
+          }
+          if (data.items && data.items.length > 0) {
+            await db.config_items.bulkPut(data.items as unknown as ItemStorage[]);
+            importedStores.push('config_items');
+          }
+          if (data.equipmentItems && data.equipmentItems.length > 0) {
+            await db.config_equipmentItems.bulkPut(data.equipmentItems as unknown as EquipmentItemStorage[]);
+            importedStores.push('config_equipmentItems');
+          }
+          if (data.enemies && data.enemies.length > 0) {
+            await db.config_enemies.bulkPut(data.enemies as unknown as EnemyStorage[]);
+            importedStores.push('config_enemies');
+          }
+          if (data.skillTemplates && data.skillTemplates.length > 0) {
+            await db.config_skills.bulkPut(data.skillTemplates as unknown as SkillConfigStorage[]);
+            importedStores.push('config_skills');
           }
 
           if (data.gameState) {
             await db.runtime_gameState.put({
               id: 'gameState',
               ...data.gameState
-            });
+            } as GameStateStorage);
             importedStores.push('runtime_gameState');
           } else {
             skippedStores.push('runtime_gameState');

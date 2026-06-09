@@ -25,9 +25,6 @@ export const useMapStore = defineStore('map', () => {
   
   /** 当前选中的地点 */
   const currentLocation = ref<LocationData | null>(null);
-  
-  /** 当前角色ID */
-  let currentCharacterId: string | null = null;
 
   /** 模块是否已完成初始化 */
   const initialized = ref(false);
@@ -170,7 +167,6 @@ export const useMapStore = defineStore('map', () => {
    * @param characterId - 角色ID
    */
   async function loadCharacterMap(characterId: string): Promise<void> {
-    currentCharacterId = characterId;
     await mapService.init(characterId);
     updateState();
     

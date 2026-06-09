@@ -4,28 +4,8 @@
  * 封装敌人模板数据的 IndexedDB 操作，提供数据持久化能力
  */
 import { db as gameDb, dbService } from '../data/core';
+import type { EnemyStorage } from '../data/core';
 import type { EnemyData } from './types';
-
-/**
- * 敌人模板存储接口
- */
-export interface EnemyTemplateStorage {
-  id: string;
-  name: string;
-  icon: string;
-  maxHp: number;
-  damage: [number, number];
-  xp: number;
-  gold: number;
-  dangerLevel: string;
-  isBoss: number;
-  physicalAttack: number | null;
-  physicalDefense: number | null;
-  magicAttack: number | null;
-  magicDefense: number | null;
-  critChance: number | null;
-  dodgeChance: number | null;
-}
 
 /**
  * 敌人数据层服务
@@ -67,7 +47,7 @@ export class EnemyDbService {
       const data = await gameDb.config_enemies.get(enemyId);
       if (!data) return null;
 
-      return this.fromStorage(data as Record<string, unknown>);
+      return this.fromStorage(data);
     });
   }
 
@@ -78,7 +58,7 @@ export class EnemyDbService {
   async getAllEnemyTemplates(): Promise<EnemyData[]> {
     return dbService.withRetry(async () => {
       const items = await gameDb.config_enemies.toArray();
-      return items.map(item => this.fromStorage(item as Record<string, unknown>));
+      return items.map(item => this.fromStorage(item));
     });
   }
 
@@ -95,22 +75,22 @@ export class EnemyDbService {
   /**
    * 将数据库存储格式转换为 EnemyData
    */
-  private fromStorage(data: Record<string, unknown>): EnemyData {
-    const rawDamage = data.damage as [number, number] | undefined;
+  private fromStorage(data: EnemyStorage): EnemyData {
+    const rawDamage = data.damage;
     const damage: [number, number] = (Array.isArray(rawDamage) && rawDamage.length >= 2)
       ? [Number(rawDamage[0]), Number(rawDamage[1])]
       : [1, 3];
 
     return {
-      id: data.id as string,
-      name: data.name as string,
-      icon: data.icon as string,
+      id: data.id,
+      name: data.name,
+      icon: data.icon,
       maxHp: Number(data.maxHp) || 10,
       damage,
       xp: Number(data.xp) || 0,
       gold: Number(data.gold) || 0,
-      dangerLevel: data.dangerLevel as string || '普通',
-      isBoss: (data.isBoss as number) === 1 || undefined,
+      dangerLevel: data.dangerLevel || '普通',
+      isBoss: data.isBoss === 1 || undefined,
       physicalAttack: data.physicalAttack != null ? Number(data.physicalAttack) : undefined,
       physicalDefense: data.physicalDefense != null ? Number(data.physicalDefense) : undefined,
       magicAttack: data.magicAttack != null ? Number(data.magicAttack) : undefined,

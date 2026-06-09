@@ -9,7 +9,7 @@ import { ref, computed } from 'vue';
 import type { Character, CharacterListItem, Stats, Attributes, FactionType, RaceType, ClassType, FactionData, RaceData, ClassData } from './types';
 import { characterService } from './service';
 import { eventBus, GameEvents } from '../bus/core';
-import { gameDataService } from '../gameData/service';
+import { useGameDataStore } from '../gameData/store';
 import { useInventoryStore } from '../inventory/store';
 import { useEquipmentStore } from '../equipment/store';
 import { useSkillsStore } from '../skill/store';
@@ -246,10 +246,18 @@ export const useCharacterStore = defineStore('character', () => {
   }
 
   async function initialize(): Promise<void> {
-    // 从数据库加载阵营、种族、职业数据到缓存
-    factionsData.value = await gameDataService.getFactions();
-    racesData.value = await gameDataService.getRaces();
-    classesData.value = await gameDataService.getClasses();
+    // 从 gameDataStore 获取已加载的基础数据（避免重复查询数据库）
+    const gameDataStore = useGameDataStore();
+    // 等待 gameDataStore 初始化完成（由 main.ts 中的初始化顺序保证）
+    factionsData.value = Object.fromEntries(
+      gameDataStore.factions.map(f => [f.id, f])
+    );
+    racesData.value = Object.fromEntries(
+      gameDataStore.races.map(r => [r.id, r])
+    );
+    classesData.value = Object.fromEntries(
+      gameDataStore.classes.map(c => [c.id, c])
+    );
     
     await characterService.initialize();
     currentCharacterId.value = characterService.getCurrentCharacterId();
@@ -273,28 +281,48 @@ export const useCharacterStore = defineStore('character', () => {
    * 跨模块事件监听
    * 
    * 仅监听来自其他模块的事件，用于同步角色数据。
+   * 优先使用 payload 中的增量数据进行局部更新，避免全量 reload。
    * 角色模块自身发出的状态变更由 Store Action 直接处理，不再通过事件总线回环。
    */
   function setupCrossModuleListeners(): void {
-    // 战斗结束后刷新角色数据（经验值、金币等变化由战斗模块触发）
+    // 战斗结束后刷新角色数据（经验值、金币等变化由战斗模块触发，涉及复合变更需要全量同步）
     eventBus.onGroup('characterStore', GameEvents.COMBAT_END, () => {
       syncCharacterFromService();
     });
 
-    // HP/MP 实时变化时同步（战斗中受伤治疗、探索陷阱/事件等）
-    eventBus.onGroup('characterStore', GameEvents.CHARACTER_HP_CHANGE, () => {
-      syncCharacterFromService();
-    });
-    eventBus.onGroup('characterStore', GameEvents.CHARACTER_MP_CHANGE, () => {
-      syncCharacterFromService();
-    });
-
-    // 属性变化时同步（使用属性药剂、装备加成等）
-    eventBus.onGroup('characterStore', GameEvents.CHARACTER_STATS_CHANGE, () => {
-      syncCharacterFromService();
+    // HP 实时变化时增量更新（战斗中受伤治疗、探索陷阱/事件等）
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_HP_CHANGE, (payload: { oldHp: number; newHp: number; maxHp: number }) => {
+      if (character.value) {
+        character.value = {
+          ...character.value,
+          hp: payload.newHp,
+          maxHp: payload.maxHp
+        };
+      }
     });
 
-    // 商店交易后同步金币
+    // MP 实时变化时增量更新
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_MP_CHANGE, (payload: { oldMp: number; newMp: number; maxMp: number }) => {
+      if (character.value) {
+        character.value = {
+          ...character.value,
+          mana: payload.newMp,
+          maxMana: payload.maxMp
+        };
+      }
+    });
+
+    // 属性变化时增量更新（使用属性药剂、装备加成等）
+    eventBus.onGroup('characterStore', GameEvents.CHARACTER_STATS_CHANGE, (payload: { oldStats: Record<string, number>; newStats: Record<string, number> }) => {
+      if (character.value) {
+        character.value = {
+          ...character.value,
+          stats: { ...character.value.stats, ...payload.newStats }
+        };
+      }
+    });
+
+    // 商店交易后同步金币（涉及 gold + 可能的装备变化，需全量同步）
     eventBus.onGroup('characterStore', GameEvents.SHOP_TRANSACTION, () => {
       syncCharacterFromService();
     });

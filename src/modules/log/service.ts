@@ -5,6 +5,7 @@
  */
 import type { LogEntry, LogType, ILogService } from './types';
 import { adventureLogDbService } from './db';
+import { eventBus, GameEvents } from '../bus/core';
 
 /** 日志变更回调类型 */
 export type LogChangeCallback = () => void;
@@ -37,7 +38,7 @@ export class LogService implements ILogService {
   async init(characterId: string): Promise<void> {
     this.currentCharacterId = characterId;
     const stored = await adventureLogDbService.getAdventureLog(characterId);
-    this.logs = stored?.logs || [];
+    this.logs = stored?.entries || [];
   }
 
   /**
@@ -69,6 +70,12 @@ export class LogService implements ILogService {
     this.logs.unshift(logEntry);
     this.saveLogs();
     this.notifyChanged();
+    // 同时通过事件总线通知其他模块（UI组件可监听此事件）
+    eventBus.emit(GameEvents.LOG_ENTRY_ADDED, {
+      type: logEntry.type,
+      message: logEntry.message,
+      icon: logEntry.icon
+    });
   }
 
   /**

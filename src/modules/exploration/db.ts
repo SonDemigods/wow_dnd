@@ -4,22 +4,8 @@
  * @module exploration
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { ExplorationState, ExplorationCell } from './types';
-
-export interface ExplorationStorage {
-  characterId: string;
-  currentAreaId: string | null;
-  /** 当前探索网格中分配的商店ID（与 runtime_gameState.currentShopId 不同，后者是UI当前打开的商店） */
-  assignedShopId: string;
-  grid: ExplorationCell[][];
-  campUsed: boolean;
-  playerPosition: { x: number; y: number };
-  visitedCells: number;
-  remainingMoves: number;
-  bossDefeated: boolean;
-  explorationComplete: boolean;
-  updatedAt: number;
-}
+import type { ExplorationStorage } from '../data/core';
+import type { ExplorationState } from './types';
 
 export class ExplorationDbService {
   /**
@@ -33,7 +19,7 @@ export class ExplorationDbService {
         characterId,
         currentAreaId: state.currentAreaId,
         assignedShopId,
-        grid: state.grid,
+        grid: state.grid as unknown as ExplorationStorage['grid'],
         campUsed: state.campUsed,
         playerPosition: state.playerPosition,
         visitedCells: state.visitedCells,
@@ -55,19 +41,18 @@ export class ExplorationDbService {
     return dbService.withRetry(async () => {
       const result = await gameDb.char_exploration.get(characterId);
       if (!result) return null;
-      // 兼容旧数据：缺少新字段时使用默认值
+      // 兼容旧数据：缺失字段使用默认值，旧版 currentShopId 兼容到 assignedShopId
       return {
-        characterId: result.characterId as string,
-        currentAreaId: (result.currentAreaId as string) || null,
-        assignedShopId: (result.assignedShopId as string) || (result.currentShopId as string) || '',
-        grid: (result.grid as unknown as ExplorationCell[][]) || [],
-        campUsed: (result.campUsed as boolean) || false,
-        playerPosition: (result.playerPosition as { x: number; y: number }) || { x: 0, y: 0 },
-        visitedCells: (result.visitedCells as number) || 0,
-        remainingMoves: (result.remainingMoves as number) ?? 20,
-        bossDefeated: (result.bossDefeated as boolean) || false,
-        explorationComplete: (result.explorationComplete as boolean) || false,
-        updatedAt: (result.updatedAt as number) || Date.now()
+        ...result,
+        assignedShopId: (result.assignedShopId || (result as unknown as Record<string, unknown>).currentShopId as string) || '',
+        grid: result.grid || [],
+        playerPosition: result.playerPosition || { x: 0, y: 0 },
+        visitedCells: result.visitedCells || 0,
+        remainingMoves: result.remainingMoves ?? 20,
+        bossDefeated: result.bossDefeated || false,
+        explorationComplete: result.explorationComplete || false,
+        campUsed: result.campUsed || false,
+        updatedAt: result.updatedAt || Date.now()
       };
     });
   }
@@ -97,8 +82,7 @@ export class ExplorationDbService {
    */
   async getAllExplorationData(): Promise<ExplorationStorage[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.char_exploration.toArray();
-      return results as unknown as ExplorationStorage[];
+      return await gameDb.char_exploration.toArray();
     });
   }
 }

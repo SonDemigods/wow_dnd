@@ -7,9 +7,9 @@ import { db as gameDb, dbService } from '../data/core';
 import type { ShopConfig, ShopItem } from './types';
 
 /**
- * 商店配置存储接口
+ * 商店配置存储接口（内部使用，与 data/core.ts 的 ShopConfigStorage 对应）
  */
-export interface ShopConfigStorage {
+interface ShopConfigStorage {
   id: string;
   name: string;
   type: string;
@@ -19,9 +19,9 @@ export interface ShopConfigStorage {
 }
 
 /**
- * 商店商品存储接口
+ * 商店商品存储接口（内部使用，与 data/core.ts 的 ShopItemsStorage 对应）
  */
-export interface ShopItemsStorage {
+interface ShopItemsStorage {
   shopId: string;
   items: ShopItem[];
   lastRefresh: number;
@@ -154,17 +154,20 @@ export class ShopDbService {
 
   /**
    * 保存当前打开的商店ID到 gameState（持久化，供页面刷新后恢复）
+   * 
+   * 使用事务确保原子性读-改-写，避免与 character/map 等模块并发写入时丢失数据。
    * @param shopId - 商店ID，null 表示关闭商店
    */
   async saveCurrentShopId(shopId: string | null): Promise<void> {
     await dbService.withRetry(async () => {
-      // 读取已有记录，保留其他字段（如 currentCharacterId、currentLocationId 等）
-      const existing = await gameDb.runtime_gameState.get('gameState');
-      await gameDb.runtime_gameState.put({
-        ...existing,
-        id: 'gameState',
-        currentShopId: shopId,
-        lastPlayedAt: new Date().toISOString()
+      await gameDb.transaction('rw', gameDb.runtime_gameState, async () => {
+        const existing = await gameDb.runtime_gameState.get('gameState');
+        await gameDb.runtime_gameState.put({
+          ...existing,
+          id: 'gameState',
+          currentShopId: shopId,
+          lastPlayedAt: new Date().toISOString()
+        });
       });
     });
   }

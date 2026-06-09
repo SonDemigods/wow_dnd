@@ -7,9 +7,9 @@ import { db as gameDb, dbService } from '../data/core';
 import type { CombatLog } from './types';
 
 /**
- * 战斗日志存储接口
+ * 战斗日志存储接口（内部使用，与 data/core.ts 的 CombatLogStorage 对应）
  */
-export interface CombatLogStorage {
+interface CombatLogStorage {
   combatId: string;
   battleLogId: string;
   timestamp: number;

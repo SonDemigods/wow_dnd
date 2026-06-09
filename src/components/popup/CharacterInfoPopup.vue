@@ -114,7 +114,7 @@
             >
               <template v-if="slot.equipment">
                 <div class="slot-icon">{{ slot.equipment.icon || '⚔️' }}</div>
-                <div class="slot-name">{{ slot.equipment.name }}</div>
+                <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>
                 <div class="slot-icon empty">⚔️</div>
@@ -131,7 +131,7 @@
             >
               <template v-if="slot.equipment">
                 <div class="slot-icon">{{ slot.equipment.icon || '🛡️' }}</div>
-                <div class="slot-name">{{ slot.equipment.name }}</div>
+                <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>
                 <div class="slot-icon empty">🛡️</div>

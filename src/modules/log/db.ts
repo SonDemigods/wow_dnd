@@ -8,8 +8,8 @@ import type { LogEntry } from './types';
 
 export interface AdventureLogData {
   characterId: string;
-  logs: LogEntry[];
-  timestamp: number;
+  entries: LogEntry[];
+  updatedAt?: number;
 }
 
 export class AdventureLogDbService {
@@ -22,8 +22,8 @@ export class AdventureLogDbService {
     await dbService.withRetry(async () => {
       await gameDb.runtime_adventureLogs.put({
         characterId,
-        logs,
-        timestamp: Date.now()
+        entries: logs,
+        updatedAt: Date.now()
       });
     });
   }
@@ -35,9 +35,9 @@ export class AdventureLogDbService {
    */
   async getAdventureLog(characterId: string): Promise<AdventureLogData | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.runtime_adventureLogs.get(characterId);
+      const result = await gameDb.runtime_adventureLogs.get(characterId) as unknown as AdventureLogData | undefined;
       if (!result) return null;
-      return result as unknown as AdventureLogData;
+      return result;
     });
   }
 

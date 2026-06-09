@@ -86,7 +86,7 @@ export interface CharacterData {
 /**
  * 备份数据接口
  * 
- * 定义备份包含的所有数据结构
+ * 定义备份包含的所有数据结构，涵盖运行时数据和完整配置表。
  */
 export interface BackupData {
   /** 角色数据（以角色ID为键） */
@@ -105,12 +105,27 @@ export interface BackupData {
   combat: Record<string, CombatLog>;
   /** 冒险日志（以角色ID为键） */
   adventureLog: Record<string, LogEntry[]>;
-  /** 地图数据 */
+  /** 地图数据（地点配置） */
   map: LocationData[];
   /** 商店配置 */
   shop: ShopConfig[];
   /** 游戏状态 */
   gameState: GameStateData;
+  // ==================== 配置表备份（v1.1 新增） ====================
+  /** 阵营配置 */
+  factions?: Record<string, unknown>[];
+  /** 种族配置 */
+  races?: Record<string, unknown>[];
+  /** 职业配置 */
+  classes?: Record<string, unknown>[];
+  /** 物品模板 */
+  items?: Record<string, unknown>[];
+  /** 装备模板 */
+  equipmentItems?: Record<string, unknown>[];
+  /** 敌人模板 */
+  enemies?: Record<string, unknown>[];
+  /** 技能模板 */
+  skillTemplates?: Record<string, unknown>[];
 }
 
 /**
@@ -180,20 +195,6 @@ export interface DatabaseConfig {
  * @property {'exponential' | 'linear'} backoff - 退避策略
  */
 export interface DBServiceConfig {
-  maxRetries: number;
-  delay: number;
-  backoff: 'exponential' | 'linear';
-}
-
-/**
- * 同步引擎配置接口
- * @property {number} debounceMs - 防抖间隔（毫秒）
- * @property {number} maxRetries - 最大重试次数
- * @property {number} delay - 重试间隔（毫秒）
- * @property {'exponential' | 'linear'} backoff - 退避策略
- */
-export interface SyncEngineConfig {
-  debounceMs: number;
   maxRetries: number;
   delay: number;
   backoff: 'exponential' | 'linear';

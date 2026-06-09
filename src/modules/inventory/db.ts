@@ -6,6 +6,7 @@
  */
 import { db as gameDb, dbService } from '../data/core';
 import type { Item, InventoryItem, ItemEffect } from './types';
+import type { ItemStorage } from '../data/core';
 
 /**
  * 背包数据存储接口（存储到 char_inventory 表的结构）
@@ -108,7 +109,7 @@ export class InventoryDbService {
         icon: item.icon,
         description: item.description,
         bonus: item.bonus || {},
-        effect: (item.effect as Record<string, unknown> | undefined) || null,
+        effect: item.effect as unknown as ItemStorage['effect'] || null,
         value: item.value,
         stackable: item.stackable,
         consumable: item.consumable || false,

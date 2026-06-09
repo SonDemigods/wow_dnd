@@ -8,9 +8,9 @@ import { db as gameDb, dbService } from '../data/core';
 import type { LocationData, MapState } from './types';
 
 /**
- * 地图状态存储接口
+ * 地图状态存储接口（内部使用，与 data/core.ts 的 MapStateStorage 对应）
  */
-export interface MapStateStorage {
+interface MapStateStorage {
   id: string;
   view: {
     zoomLevel: number;
@@ -57,17 +57,21 @@ function getMapStateKey(characterId: string): string {
 export class MapDbService {
   /**
    * 保存地图视图状态（按角色ID隔离，合并写入）
+   * 
+   * 使用事务确保读-改-写的原子性。
    * @param characterId - 角色ID
    * @param state - 地图状态
    */
   async saveMapState(characterId: string, state: MapState): Promise<void> {
     await dbService.withRetry(async () => {
       const key = getMapStateKey(characterId);
-      const existing = await gameDb.runtime_mapState.get(key);
-      await gameDb.runtime_mapState.put({
-        ...existing,
-        id: key,
-        view: state.view
+      await gameDb.transaction('rw', gameDb.runtime_mapState, async () => {
+        const existing = await gameDb.runtime_mapState.get(key);
+        await gameDb.runtime_mapState.put({
+          ...existing,
+          id: key,
+          view: state.view
+        });
       });
     });
   }

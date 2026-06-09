@@ -145,7 +145,7 @@ export class QuestDbService {
         title: definition.title,
         description: definition.description,
         type: definition.type,
-        objectives: definition.objectives,
+        objectives: definition.objectives as any,
         levelRequirement: definition.levelRequirement,
         xpReward: definition.xpReward,
         goldReward: definition.goldReward,
