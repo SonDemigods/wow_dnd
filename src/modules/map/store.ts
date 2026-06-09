@@ -29,6 +29,9 @@ export const useMapStore = defineStore('map', () => {
   /** 当前角色ID */
   let currentCharacterId: string | null = null;
 
+  /** 模块是否已完成初始化 */
+  const initialized = ref(false);
+
   /**
    * 获取当前视图状态
    */
@@ -195,12 +198,14 @@ export const useMapStore = defineStore('map', () => {
   async function init(characterId: string): Promise<void> {
     setupCrossModuleListeners();
     await loadCharacterMap(characterId);
+    initialized.value = true;
   }
   
   return {
     // 状态
     state,
     currentLocation,
+    initialized,
     
     // 计算属性
     getView,

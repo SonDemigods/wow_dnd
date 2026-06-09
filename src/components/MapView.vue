@@ -16,7 +16,7 @@
     >
       <div 
         class="world-map"
-        :style="mapTransformStyle"
+        :style="[mapSizeStyle, mapTransformStyle]"
       >
         <!-- 区域标记 -->
         <div 
@@ -102,7 +102,7 @@
  * @description 世界地图交互界面，支持缩放和拖拽平移，点击区域标记查看详情并进入对应探索区域
  */
 
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { mapService } from '@/modules/map';
 import { useMapStore } from '@/modules/map';
 import { useCharacterStore } from '@/modules/character';
@@ -119,6 +119,13 @@ const characterStore = useCharacterStore();
 const zones = ref<MapZone[]>([]);
 const selectedZone = ref<MapZone | null>(null);
 const showConfirm = ref(false);
+
+// 地图容器引用
+const mapContainerRef = ref<HTMLElement | null>(null);
+// 动态计算的地图尺寸（保持宽高比适配容器）
+const mapWidth = ref(0);
+const mapHeight = ref(0);
+let resizeObserver: ResizeObserver | null = null;
 
 // 缩放和平移
 const zoomLevel = ref(1);
@@ -148,6 +155,32 @@ const mapTransformStyle = computed(() => ({
   backgroundSize: 'cover',
   backgroundPosition: 'center'
 }));
+
+// 动态计算地图尺寸，保持宽高比适配容器
+const mapSizeStyle = computed(() => ({
+  width: mapWidth.value + 'px',
+  height: mapHeight.value + 'px'
+}));
+
+function fitMapToContainer() {
+  if (!mapContainerRef.value) return;
+  const containerWidth = mapContainerRef.value.clientWidth;
+  const containerHeight = mapContainerRef.value.clientHeight;
+  const aspectRatio = 1201 / 800;
+
+  // 优先按高度适配
+  let w = containerHeight * aspectRatio;
+  let h = containerHeight;
+
+  // 若宽度超出容器，改为按宽度适配
+  if (w > containerWidth) {
+    w = containerWidth;
+    h = containerWidth / aspectRatio;
+  }
+
+  mapWidth.value = w;
+  mapHeight.value = h;
+}
 
 function getMarkerStyle(pos: { x: number; y: number }) {
   const counterScale = 1 / zoomLevel.value;
@@ -256,7 +289,36 @@ function onConfirmEnter() {
 }
 
 onMounted(() => {
-  loadZones();
+  // 监听 mapStore 初始化完成后再加载区域数据
+  // 避免 mapService.init() 异步未完成时 getZones() 返回空数组
+  watch(
+    () => mapStore.initialized,
+    (ready) => {
+      if (ready) {
+        loadZones();
+      }
+    },
+    { immediate: true }
+  );
+
+  if (mapContainerRef.value) {
+    // 使用 ResizeObserver 监听容器尺寸变化，自动重新计算地图尺寸
+    resizeObserver = new ResizeObserver(() => {
+      fitMapToContainer();
+    });
+    resizeObserver.observe(mapContainerRef.value);
+    // 兜底：rAF 后再次确保尺寸正确（处理部分浏览器 ResizeObserver 回调合并的情况）
+    requestAnimationFrame(() => {
+      fitMapToContainer();
+    });
+  }
+});
+
+onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
 });
 </script>
 
@@ -293,9 +355,7 @@ onMounted(() => {
 
 .world-map {
   position: relative;
-  width: 100%;
   aspect-ratio: 1201 / 800;
-  max-height: 100%;
   transition: transform 0.1s ease-out;
 }
 
