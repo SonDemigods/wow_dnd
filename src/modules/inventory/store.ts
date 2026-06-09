@@ -302,6 +302,11 @@ export const useInventoryStore = defineStore('inventory', () => {
     eventBus.onGroup('inventoryStore', GameEvents.SHOP_TRANSACTION, () => {
       syncFromService();
     });
+
+    // 背包物品变更时同步（控制台命令、战斗掉落等）
+    eventBus.onGroup('inventoryStore', GameEvents.INVENTORY_CHANGE, () => {
+      syncFromService();
+    });
   }
 
   /**

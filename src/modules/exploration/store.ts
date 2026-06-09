@@ -7,6 +7,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { ExplorationCell, ExplorationState } from './types';
 import { explorationService } from './service';
+import { eventBus, GameEvents } from '../bus/core';
 
 export const useExplorationStore = defineStore('exploration', () => {
   const currentAreaId = ref<string | null>(null);
@@ -53,6 +54,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     await explorationService.init(characterId);
     syncFromService();
     isExploring.value = currentAreaId.value !== null;
+    setupCrossModuleListeners();
   }
 
   async function enterArea(areaId: string): Promise<void> {
@@ -119,7 +121,25 @@ export const useExplorationStore = defineStore('exploration', () => {
     reset();
   }
 
+  /**
+   * 跨模块事件监听
+   */
+  function setupCrossModuleListeners(): void {
+    // 角色登出时重置探索状态
+    eventBus.onGroup('explorationStore', GameEvents.CHARACTER_LOGOUT, () => {
+      reset();
+    });
+  }
+
+  /**
+   * 清理事件监听
+   */
+  function dispose(): void {
+    eventBus.clearGroup('explorationStore');
+  }
+
   return {
+    // 状态
     currentAreaId,
     grid,
     campUsed,
@@ -142,6 +162,8 @@ export const useExplorationStore = defineStore('exploration', () => {
     useCamp,
     triggerBattle,
     reset,
-    exitExploration
+    exitExploration,
+    setupCrossModuleListeners,
+    dispose
   };
 });
