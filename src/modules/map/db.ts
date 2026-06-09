@@ -17,6 +17,10 @@ export interface MapStateStorage {
     panY: number;
     currentContinentId?: string;
   };
+  /** 当前选中的地点ID（地图UI状态，非探索区域） */
+  currentLocationId?: string;
+  /** 当前地图标签页 */
+  currentTab?: string;
 }
 
 /**
@@ -44,12 +48,14 @@ export interface LocationDataStorage {
  */
 export class MapDbService {
   /**
-   * 保存地图状态
+   * 保存地图状态（合并写入，不覆盖 locationId/tab 等字段）
    * @param state - 地图状态
    */
   async saveMapState(state: MapState): Promise<void> {
     await dbService.withRetry(async () => {
+      const existing = await gameDb.runtime_mapState.get('current');
       await gameDb.runtime_mapState.put({
+        ...existing,
         id: 'current',
         view: state.view
       });
@@ -58,15 +64,13 @@ export class MapDbService {
 
   /**
    * 获取地图状态
-   * @returns 地图状态
+   * @returns 地图状态，含视图、当前地点和标签页
    */
-  async getMapState(): Promise<MapState | null> {
+  async getMapState(): Promise<MapStateStorage | null> {
     return dbService.withRetry(async () => {
       const result = await gameDb.runtime_mapState.get('current') as unknown as MapStateStorage | undefined;
       if (!result) return null;
-      return {
-        view: result.view
-      };
+      return result;
     });
   }
 
@@ -207,56 +211,56 @@ export class MapDbService {
   }
 
   /**
-   * 保存当前选中的区域ID
+   * 保存当前选中的区域ID到地图状态
    * @param locationId - 区域ID
    */
   async saveCurrentLocationId(locationId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      let state = await gameDb.runtime_gameState.get('gameState');
-      if (!state) {
-        state = { id: 'gameState' };
-      }
-      state.currentLocationId = locationId;
-      await gameDb.runtime_gameState.put(state);
+      const existing = await gameDb.runtime_mapState.get('current');
+      await gameDb.runtime_mapState.put({
+        ...(existing || {}),
+        id: 'current',
+        currentLocationId: locationId
+      });
     });
   }
 
   /**
-   * 获取当前选中的区域ID
+   * 获取当前选中的区域ID（从地图状态中读取）
    * @returns 区域ID
    */
   async getCurrentLocationId(): Promise<string | null> {
     return dbService.withRetry(async () => {
-      const state = await gameDb.runtime_gameState.get('gameState');
+      const state = await gameDb.runtime_mapState.get('current') as unknown as MapStateStorage | undefined;
       if (!state) return null;
-      return (state.currentLocationId as string) || null;
+      return state.currentLocationId || null;
     });
   }
 
   /**
-   * 保存当前标签页
+   * 保存当前标签页到地图状态
    * @param tab - 标签名
    */
   async saveCurrentTab(tab: string): Promise<void> {
     await dbService.withRetry(async () => {
-      let state = await gameDb.runtime_gameState.get('gameState');
-      if (!state) {
-        state = { id: 'gameState' };
-      }
-      state.currentTab = tab;
-      await gameDb.runtime_gameState.put(state);
+      const existing = await gameDb.runtime_mapState.get('current');
+      await gameDb.runtime_mapState.put({
+        ...(existing || {}),
+        id: 'current',
+        currentTab: tab
+      });
     });
   }
 
   /**
-   * 获取当前标签页
+   * 获取当前标签页（从地图状态中读取）
    * @returns 标签名
    */
   async getCurrentTab(): Promise<string | null> {
     return dbService.withRetry(async () => {
-      const state = await gameDb.runtime_gameState.get('gameState');
+      const state = await gameDb.runtime_mapState.get('current') as unknown as MapStateStorage | undefined;
       if (!state) return null;
-      return (state.currentTab as string) || null;
+      return state.currentTab || null;
     });
   }
 }

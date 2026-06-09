@@ -34,7 +34,7 @@ export class ExplorationService implements IExplorationService {
   private pendingBattleCell: { x: number; y: number } | null = null;
   private currentAreaConfig: AreaConfig | null = null;
   /** 当前探索区域随机选取的商店ID */
-  private currentShopId: string = '';
+  private assignedShopId: string = '';
 
   constructor() {
     this.setupCrossModuleListeners();
@@ -149,7 +149,7 @@ export class ExplorationService implements IExplorationService {
     const shops = await shopDbService.getAllShopConfigs();
     if (shops && shops.length > 0) {
       const idx = Math.floor(Math.random() * shops.length);
-      this.currentShopId = shops[idx].id;
+      this.assignedShopId = shops[idx].id;
     }
   }
 
@@ -613,7 +613,7 @@ export class ExplorationService implements IExplorationService {
         explorationComplete: stored.explorationComplete
       };
       // 恢复本次探索随机选取的商店ID（用于点击商店格子时传递正确的 interactionId）
-      this.currentShopId = stored.currentShopId || '';
+      this.assignedShopId = stored.assignedShopId || '';
       // 恢复区域配置
       await this.loadAreaConfig(stored.currentAreaId);
     } else {
@@ -729,7 +729,7 @@ export class ExplorationService implements IExplorationService {
       
       this.updateAccessibleCells();
       
-      const interactionId = cell.type === 'shop' ? this.currentShopId : 'board_main';
+      const interactionId = cell.type === 'shop' ? this.assignedShopId : 'board_main';
       eventBus.emit(GameEvents.EXPLORATION_CELL_EXPLORED, {
         characterId: this.currentCharacterId,
         x,
@@ -1016,7 +1016,7 @@ export class ExplorationService implements IExplorationService {
 
   private saveState(): void {
     if (this.currentCharacterId) {
-      explorationDbService.saveExplorationData(this.currentCharacterId, this.state, this.currentShopId);
+      explorationDbService.saveExplorationData(this.currentCharacterId, this.state, this.assignedShopId);
     }
   }
 }

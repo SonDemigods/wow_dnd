@@ -49,11 +49,7 @@ export interface GameStateData {
     autoSave: boolean;
     difficulty: string;
   };
-  /** 当前选中的区域ID */
-  currentLocationId?: string;
-  /** 当前激活的标签页（'map' | 'explore'） */
-  currentTab?: string;
-  /** 当前打开的商店ID（null 表示未打开商店） */
+  /** 当前打开的商店ID（null 表示未打开商店，由商店模块管理） */
   currentShopId?: string | null;
 }
 

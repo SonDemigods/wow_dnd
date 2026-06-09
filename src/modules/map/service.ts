@@ -45,8 +45,8 @@ export class MapService implements IMapService {
     
     // 加载地图状态
     const savedState = await mapDbService.getMapState();
-    if (savedState) {
-      this.state = savedState;
+    if (savedState?.view) {
+      this.state = { view: savedState.view };
     }
     
     // 从数据库加载地点数据
