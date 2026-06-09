@@ -623,7 +623,6 @@ registerCommand({
   usage: 'resetExplore',
   handler() {
     explorationService.reset();
-    eventBus.emit(GameEvents.EXPLORATION_END, { characterId: characterService.getCurrentCharacterId() });
     return { success: true, message: '探索状态已重置' };
   }
 });

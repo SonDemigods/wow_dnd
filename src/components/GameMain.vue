@@ -123,6 +123,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
 import { useShopStore } from '@/modules/shop';
+import { useLogStore } from '@/modules/log';
 import { mapDbService } from '@/modules/map/db';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import { enemyService } from '@/modules/enemy/service';
@@ -148,6 +149,7 @@ const emit = defineEmits<{
 const characterStore = useCharacterStore();
 const mapStore = useMapStore();
 const shopStore = useShopStore();
+const logStore = useLogStore();
 const toast = useToast();
 
 const currentContentTab = ref('map');
@@ -278,6 +280,7 @@ onMounted(async () => {
   const cid = characterStore.currentCharacterId;
   if (cid) {
     await mapStore.init(cid);
+    await logStore.init(cid);
     
     // 从数据库恢复上次的标签页状态（按角色隔离）
     const savedTab = await mapDbService.getCurrentTab(cid);

@@ -18,6 +18,12 @@ export const useLogStore = defineStore('log', () => {
     currentCharacterId.value = characterId;
     await logService.init(characterId);
     logs.value = logService.getLogs();
+
+    // 订阅 logService 变更，保持响应式数据同步
+    // 这样其他服务直接调用 logService.addLog() 时，Store 也会自动刷新
+    logService.subscribe(() => {
+      logs.value = logService.getLogs();
+    });
   }
 
   function addLog(entry: LogEntry): void {

@@ -9,6 +9,7 @@ import { characterService } from '../character/service';
 import { equipmentDbService } from '../equipment/db';
 import type { EquippedItem } from '../equipment/types';
 import { eventBus, GameEvents } from '../bus/core';
+import { logService } from '../log/service';
 
 /**
  * 背包容量
@@ -183,6 +184,16 @@ export class InventoryService implements IInventoryService {
     this.inventory.push({ itemId: item.id, count: 1 });
     this.save();
     eventBus.emit(GameEvents.INVENTORY_CHANGE, { itemId: item.id, count: 1 });
+
+    // 记录冒险日志
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'item',
+      message: `获得了物品：${item.name}`,
+      icon: '📦'
+    });
+
     return true;
   }
 
@@ -218,6 +229,16 @@ export class InventoryService implements IInventoryService {
     if (added > 0) {
       this.save();
       eventBus.emit(GameEvents.INVENTORY_CHANGE, { itemId: item.id, count: added });
+
+      // 记录冒险日志
+      const countText = added > 1 ? ` x${added}` : '';
+      logService.addLog({
+        id: logService.generateLogId(),
+        timestamp: Date.now(),
+        type: 'item',
+        message: `获得了物品：${item.name}${countText}`,
+        icon: '📦'
+      });
     }
     
     return added;
@@ -276,6 +297,16 @@ export class InventoryService implements IInventoryService {
     
     this.save();
     eventBus.emit(GameEvents.INVENTORY_CHANGE, { itemId: item.id });
+
+    // 记录冒险日志
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'item',
+      message: `使用了：${item.name}`,
+      icon: '🧪'
+    });
+
     return true;
   }
 
@@ -342,6 +373,20 @@ export class InventoryService implements IInventoryService {
     
     this.save();
     eventBus.emit(GameEvents.INVENTORY_CHANGE, { itemId: item.itemId, count: dropCount });
+
+    // 记录冒险日志
+    const droppedItem = this.getItemInfo(item.itemId);
+    if (droppedItem) {
+      const countText = dropCount > 1 ? ` x${dropCount}` : '';
+      logService.addLog({
+        id: logService.generateLogId(),
+        timestamp: Date.now(),
+        type: 'item',
+        message: `丢弃了：${droppedItem.name}${countText}`,
+        icon: '🗑️'
+      });
+    }
+
     return true;
   }
 

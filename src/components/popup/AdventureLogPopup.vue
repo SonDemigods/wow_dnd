@@ -24,9 +24,18 @@
     </template>
 
     <template #footer>
-      <button class="popup-footer-btn warn" @click="clearLogs">清空日志</button>
+      <button class="popup-footer-btn warn" @click="showClearConfirm = true">清空日志</button>
     </template>
   </BasePopup>
+
+  <ConfirmPopup
+    :visible="showClearConfirm"
+    title="清空日志"
+    message="确定要清空所有冒险日志吗？此操作不可撤销。"
+    type="danger"
+    @confirm="confirmClear"
+    @cancel="showClearConfirm = false"
+  />
 </template>
 
 <script setup lang="ts">
@@ -38,6 +47,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { useLogStore } from '../../modules/log';
 import BasePopup from '../common/BasePopup.vue';
+import ConfirmPopup from '../common/ConfirmPopup.vue';
 
 interface Props {
   visible: boolean;
@@ -53,8 +63,10 @@ const emit = defineEmits<Emits>();
 
 const logStore = useLogStore();
 const logContainer = ref<HTMLDivElement | null>(null);
+const showClearConfirm = ref(false);
 
-const logs = computed(() => logStore.getLogs());
+// 直接使用 store 的响应式 logs ref，确保每次日志变更都触发界面更新
+const logs = computed(() => logStore.logs);
 const currentArea = computed(() => props.currentArea || '未知区域');
 
 const getDefaultIcon = (type: string): string => {
@@ -63,7 +75,13 @@ const getDefaultIcon = (type: string): string => {
     'combat': '⚔️',
     'quest': '📋',
     'item': '📦',
-    'level': '⬆️'
+    'level': '⬆️',
+    'death': '💀',
+    'resurrect': '✨',
+    'shop': '🛒',
+    'skill': '✨',
+    'exploration': '🗺️',
+    'zone': '📍'
   };
   return iconMap[type] || '📜';
 };
@@ -78,10 +96,9 @@ const formatTimestamp = (timestamp: number): string => {
   return `${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
-const clearLogs = () => {
-  if (confirm('确定要清空所有冒险日志吗？')) {
-    logStore.clearLogs();
-  }
+const confirmClear = () => {
+  logStore.clearLogs();
+  showClearConfirm.value = false;
 };
 
 const scrollToBottom = () => {
@@ -175,6 +192,30 @@ onMounted(() => {
 
 .log-type-level {
   background: rgba(200, 180, 80, 0.1);
+}
+
+.log-type-death {
+  background: rgba(180, 40, 40, 0.15);
+}
+
+.log-type-resurrect {
+  background: rgba(80, 200, 180, 0.1);
+}
+
+.log-type-shop {
+  background: rgba(200, 150, 80, 0.1);
+}
+
+.log-type-skill {
+  background: rgba(80, 200, 80, 0.1);
+}
+
+.log-type-exploration {
+  background: rgba(80, 120, 200, 0.1);
+}
+
+.log-type-zone {
+  background: rgba(150, 100, 200, 0.1);
 }
 
 .empty-logs {

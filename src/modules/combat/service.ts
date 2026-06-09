@@ -730,10 +730,16 @@ export class CombatService implements ICombatService {
       const goldGained = this.enemy.goldReward;
       
       if (result === 'victory') {
-        // 胜利：通过事件通知角色模块获得经验和金币
-        eventBus.emit(GameEvents.CHARACTER_GAIN_EXP, { amount: expGained, source: this.enemy.name });
-        eventBus.emit(GameEvents.CHARACTER_GAIN_GOLD, { amount: goldGained, source: this.enemy.name });
-        
+        // 先记录击败怪物日志，再通过事件触发奖励（角色服务会独立记录经验/金币获得日志）
+        logService.addLog({
+          id: logService.generateLogId(),
+          timestamp: Date.now(),
+          type: 'combat',
+          message: `击败 ${this.enemy.name}！`,
+          icon: '🏆'
+        });
+
+        // 内部战斗日志（战斗弹窗用）
         this.addCombatLog({
           actorType: 'system',
           actorId: 'system',
@@ -743,15 +749,10 @@ export class CombatService implements ICombatService {
           isDodge: false,
           message: `战斗胜利！获得 ${expGained} 经验值和 ${goldGained} 金币！`
         });
-        
-        // 记录到冒险日志
-        logService.addLog({
-          id: logService.generateLogId(),
-          timestamp: Date.now(),
-          type: 'combat',
-          message: `击败 ${this.enemy.name}！获得 ${expGained} 经验值和 ${goldGained} 金币`,
-          icon: '🏆'
-        });
+
+        // 胜利：通过事件通知角色模块获得经验和金币
+        eventBus.emit(GameEvents.CHARACTER_GAIN_EXP, { amount: expGained, source: this.enemy.name });
+        eventBus.emit(GameEvents.CHARACTER_GAIN_GOLD, { amount: goldGained, source: this.enemy.name });
         
         // 处理掉落（只有Boss才掉落物品）
         if (this.enemy.isBoss) {

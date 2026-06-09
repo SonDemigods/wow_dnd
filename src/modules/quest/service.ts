@@ -11,6 +11,7 @@ import type {
 import { questDbService } from './db';
 import { characterService } from '../character/service';
 import { eventBus, GameEvents } from '../bus/core';
+import { logService } from '../log/service';
 
 /**
  * 任务服务实现类
@@ -220,6 +221,15 @@ export class QuestService implements IQuestService {
     
     // 触发任务接受事件
     eventBus.emit(GameEvents.QUEST_ACCEPTED, { questId, definition });
+
+    // 记录冒险日志
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'quest',
+      message: `接受了任务：${definition.title}`,
+      icon: '📋'
+    });
     
     return true;
   }
@@ -264,6 +274,15 @@ export class QuestService implements IQuestService {
         
         // 触发任务完成事件
         eventBus.emit(GameEvents.QUEST_COMPLETED, { questId, definition });
+
+        // 记录冒险日志
+        logService.addLog({
+          id: logService.generateLogId(),
+          timestamp: Date.now(),
+          type: 'quest',
+          message: `完成了任务：${definition.title}！`,
+          icon: '✅'
+        });
       }
       
       // 保存更新
@@ -317,6 +336,19 @@ export class QuestService implements IQuestService {
     
     // 触发任务提交事件
     eventBus.emit(GameEvents.QUEST_REWARDED, { questId, definition });
+
+    // 记录冒险日志
+    const rewardParts: string[] = [];
+    if (definition.xpReward > 0) rewardParts.push(`${definition.xpReward} 经验`);
+    if (definition.goldReward > 0) rewardParts.push(`${definition.goldReward} 金币`);
+    const rewardText = rewardParts.length > 0 ? `，获得奖励：${rewardParts.join('、')}` : '';
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'quest',
+      message: `提交了任务：${definition.title}${rewardText}`,
+      icon: '🏆'
+    });
     
     return true;
   }
@@ -346,6 +378,18 @@ export class QuestService implements IQuestService {
     
     // 触发任务放弃事件
     eventBus.emit(GameEvents.QUEST_PROGRESS, { questId });
+
+    // 记录冒险日志
+    const abandonedDef = this.getQuestDefinition(questId);
+    if (abandonedDef) {
+      logService.addLog({
+        id: logService.generateLogId(),
+        timestamp: Date.now(),
+        type: 'quest',
+        message: `放弃了任务：${abandonedDef.title}`,
+        icon: '❌'
+      });
+    }
     
     return true;
   }

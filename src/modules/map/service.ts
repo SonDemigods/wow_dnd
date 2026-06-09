@@ -13,6 +13,7 @@ import type {
 } from './types';
 import { mapDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
+import { logService } from '../log/service';
 
 /**
  * 默认地图状态
@@ -124,6 +125,16 @@ export class MapService implements IMapService {
     const location = this.locations.get(locationId);
     if (!location) return false;
     eventBus.emit(GameEvents.ZONE_ENTERED, { locationId, location });
+
+    // 记录冒险日志
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'zone',
+      message: `进入了：${location.displayName}`,
+      icon: '📍'
+    });
+
     // 持久化当前区域ID（按角色隔离）
     this.saveCurrentLocationId(locationId);
     return true;

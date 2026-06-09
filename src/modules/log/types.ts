@@ -5,13 +5,19 @@
 
 /**
  * 日志类型枚举
- * - INFO: 普通信息
- * - COMBAT: 战斗日志
- * - QUEST: 任务日志
- * - ITEM: 物品日志
- * - LEVEL: 升级日志
+ * - info: 普通信息
+ * - combat: 战斗日志（战斗开始、胜利、失败、逃跑）
+ * - quest: 任务日志（接取、完成、提交、放弃）
+ * - item: 物品日志（获得、使用、丢弃、装备、卸下）
+ * - level: 升级日志
+ * - death: 死亡日志
+ * - resurrect: 复活日志
+ * - shop: 商店交易日志（购买、出售）
+ * - skill: 技能日志（学习、施放）
+ * - exploration: 探索日志（开始、结束、营地使用）
+ * - zone: 区域进入日志
  */
-export type LogType = 'info' | 'combat' | 'quest' | 'item' | 'level';
+export type LogType = 'info' | 'combat' | 'quest' | 'item' | 'level' | 'death' | 'resurrect' | 'shop' | 'skill' | 'exploration' | 'zone';
 
 /**
  * 游戏日志条目接口

@@ -27,6 +27,7 @@ import { inventoryDbService } from '../inventory/db';
 import { equipmentDbService } from '../equipment/db';
 import { explorationDbService } from '../exploration/db';
 import { adventureLogDbService } from '../log/db';
+import { logService } from '../log/service';
 import { questDbService } from '../quest/db';
 import type { Skill, SkillBar } from '../skill/types';
 
@@ -422,6 +423,15 @@ export class CharacterService implements ICharacterService {
    */
   async addExp(amount: number): Promise<void> {
     if (!this.character || amount <= 0) return;
+
+    // 记录经验获取日志
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'info',
+      message: `获得了 ${amount} 点经验值`,
+      icon: '📜'
+    });
     
     let newExp = this.character.exp + amount;
     let newLevel = this.character.level;
@@ -480,6 +490,15 @@ export class CharacterService implements ICharacterService {
     eventBus.emit(GameEvents.CHARACTER_LEVEL_UP, {
       oldLevel: newLevel - 1,
       newLevel
+    });
+
+    // 记录升级日志
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'level',
+      message: `升级了！达到 Lv.${newLevel}！`,
+      icon: '⬆️'
     });
   }
 
@@ -624,6 +643,19 @@ export class CharacterService implements ICharacterService {
     if (!this.character || amount === 0) return;
     
     this.character.gold += amount;
+
+    // 记录金币变动日志（获得或花费较大金额时）
+    if (Math.abs(amount) >= 10) {
+      const isGain = amount > 0;
+      logService.addLog({
+        id: logService.generateLogId(),
+        timestamp: Date.now(),
+        type: 'info',
+        message: isGain ? `获得了 ${amount} 金币` : `花费了 ${Math.abs(amount)} 金币`,
+        icon: isGain ? '💰' : '💸'
+      });
+    }
+
     await this.save();
   }
 
@@ -763,6 +795,15 @@ export class CharacterService implements ICharacterService {
     
     // 触发死亡事件
     eventBus.emit(GameEvents.CHARACTER_DEATH, { cause: 'death' });
+
+    // 记录死亡日志
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'death',
+      message: `角色已阵亡，失去了未积累的经验值`,
+      icon: '💀'
+    });
     
     // 自动复活
     await this.resurrect();
@@ -780,6 +821,15 @@ export class CharacterService implements ICharacterService {
     eventBus.emit(GameEvents.CHARACTER_RESURRECTED, {
       newHp: this.character.hp,
       newMp: this.character.mana
+    });
+
+    // 记录复活日志
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'resurrect',
+      message: `角色已复活，恢复了50%生命值和法力值`,
+      icon: '✨'
     });
     
     await this.save();

@@ -6,17 +6,28 @@
 import type { LogEntry, LogType, ILogService } from './types';
 import { adventureLogDbService } from './db';
 
+/** 日志变更回调类型 */
+export type LogChangeCallback = () => void;
+
 const LOG_TYPE_ICONS: Record<LogType, string> = {
   info: '📜',
   combat: '⚔️',
   quest: '📋',
   item: '📦',
-  level: '⬆️'
+  level: '⬆️',
+  death: '💀',
+  resurrect: '✨',
+  shop: '🛒',
+  skill: '✨',
+  exploration: '🗺️',
+  zone: '📍'
 };
 
 export class LogService implements ILogService {
   private logs: LogEntry[] = [];
   private currentCharacterId: string | null = null;
+  /** 日志变更订阅者列表 */
+  private subscribers: Set<LogChangeCallback> = new Set();
 
   /**
    * 初始化日志服务
@@ -27,6 +38,22 @@ export class LogService implements ILogService {
     this.currentCharacterId = characterId;
     const stored = await adventureLogDbService.getAdventureLog(characterId);
     this.logs = stored?.logs || [];
+  }
+
+  /**
+   * 订阅日志变更通知
+   * 每当 addLog / clearLogs 被调用时，所有订阅者都会收到通知
+   * @param callback - 变更回调
+   * @returns 取消订阅的函数
+   */
+  subscribe(callback: LogChangeCallback): () => void {
+    this.subscribers.add(callback);
+    return () => { this.subscribers.delete(callback); };
+  }
+
+  /** 通知所有订阅者日志已变更 */
+  private notifyChanged(): void {
+    this.subscribers.forEach(cb => cb());
   }
 
   /**
@@ -41,6 +68,7 @@ export class LogService implements ILogService {
     };
     this.logs.unshift(logEntry);
     this.saveLogs();
+    this.notifyChanged();
   }
 
   /**
@@ -66,6 +94,7 @@ export class LogService implements ILogService {
   clearLogs(): void {
     this.logs = [];
     this.saveLogs();
+    this.notifyChanged();
   }
 
   /**

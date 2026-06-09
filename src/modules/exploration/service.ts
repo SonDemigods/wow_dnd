@@ -421,6 +421,16 @@ export class ExplorationService implements IExplorationService {
     this.saveState();
     
     eventBus.emit(GameEvents.EXPLORATION_START, { characterId: this.currentCharacterId });
+
+    // 记录冒险日志
+    const areaName = this.currentAreaConfig?.name || '未知区域';
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'exploration',
+      message: `开始探索：${areaName}`,
+      icon: '🗺️'
+    });
   }
 
   private updateAccessibleCells(): void {
@@ -582,7 +592,18 @@ export class ExplorationService implements IExplorationService {
       eventBus.emit(GameEvents.CHARACTER_RECEIVE_HEAL, { amount: 20, source: '随机事件' });
     }
 
-    return { success: true, message: responses[choiceId] || '操作完成' };
+    const message = responses[choiceId] || '操作完成';
+
+    // 记录冒险日志
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'exploration',
+      message: `随机事件：${message}`,
+      icon: '🎲'
+    });
+
+    return { success: true, message };
   }
 
   /**
@@ -811,6 +832,15 @@ export class ExplorationService implements IExplorationService {
       characterId: this.currentCharacterId
     });
 
+    // 记录冒险日志
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'exploration',
+      message: `在营地休息，恢复了全部生命值和法力值`,
+      icon: '🏕️'
+    });
+
     return true;
   }
 
@@ -883,6 +913,8 @@ export class ExplorationService implements IExplorationService {
    * 重置探索内存状态（不删除数据库数据，保留各角色的探索进度）
    */
   reset(): void {
+    const hadActiveExploration = this.state.currentAreaId !== null;
+
     this.state = {
       currentAreaId: null,
       grid: [],
@@ -901,25 +933,37 @@ export class ExplorationService implements IExplorationService {
     // 切换角色时通过 init(characterId) 加载对应角色的数据
     
     eventBus.emit(GameEvents.EXPLORATION_END, { characterId: this.currentCharacterId });
+
+    // 只在真正有探索进行中时才记录日志，避免切换角色/清理 UI 时产生重复日志
+    if (hadActiveExploration) {
+      logService.addLog({
+        id: logService.generateLogId(),
+        timestamp: Date.now(),
+        type: 'exploration',
+        message: `探索结束`,
+        icon: '🏁'
+      });
+    }
   }
 
   private handleItemFound(itemId: string): void {
     const item = inventoryService.getItemInfo(itemId);
     if (item) {
-      eventBus.emit(GameEvents.INVENTORY_ADD_ITEM, { itemId, quantity: 1 });
-      eventBus.emit(GameEvents.EXPLORATION_ITEM_FOUND, {
-        characterId: this.currentCharacterId,
-        itemId: itemId,
-        count: 1,
-        itemName: item.name
-      });
-      
+      // 先记录"发现"日志，再触发物品入包（入包时会同步记录"获得"日志，保证先发现后获得的顺序）
       logService.addLog({
         id: logService.generateLogId(),
         timestamp: Date.now(),
         type: 'item',
         message: `发现物品: ${item.name}`,
         icon: '📦'
+      });
+
+      eventBus.emit(GameEvents.INVENTORY_ADD_ITEM, { itemId, quantity: 1 });
+      eventBus.emit(GameEvents.EXPLORATION_ITEM_FOUND, {
+        characterId: this.currentCharacterId,
+        itemId: itemId,
+        count: 1,
+        itemName: item.name
       });
     }
   }

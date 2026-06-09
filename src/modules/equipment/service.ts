@@ -9,6 +9,7 @@ import type { ItemRarity } from '../inventory/types';
 import { equipmentDbService } from './db';
 import { characterService } from '../character/service';
 import { eventBus, GameEvents } from '../bus/core';
+import { logService } from '../log/service';
 
 /**
  * 稀有度配置
@@ -128,6 +129,15 @@ export class EquipmentService implements IEquipmentService {
     
     // 触发事件
     eventBus.emit(GameEvents.EQUIPMENT_CHANGE, { slot, item: { item, equippedAt: Date.now() } });
+
+    // 记录冒险日志
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'item',
+      message: `装备了：${item.name}`,
+      icon: '⚔️'
+    });
     
     return true;
   }
@@ -169,6 +179,15 @@ export class EquipmentService implements IEquipmentService {
     
     // 触发事件
     eventBus.emit(GameEvents.EQUIPMENT_CHANGE, { slot, item: equippedItem });
+
+    // 记录冒险日志
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'item',
+      message: `卸下了：${equippedItem.item.name}`,
+      icon: '🔽'
+    });
     
     return equippedItem;
   }

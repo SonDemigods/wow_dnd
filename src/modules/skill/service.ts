@@ -7,6 +7,7 @@ import type { ISkillsService, Skill, SkillBar, SkillType, SkillSlotIndex, SkillU
 import { skillsDbService } from './db';
 import { characterService } from '../character/service';
 import { eventBus, GameEvents } from '../bus/core';
+import { logService } from '../log/service';
 /**
  * 技能服务实现类
  */
@@ -192,6 +193,15 @@ export class SkillsService implements ISkillsService {
     
     // 触发事件
     eventBus.emit(GameEvents.SKILL_CAST, { skill, success: true });
+
+    // 记录冒险日志
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'skill',
+      message: `施放了技能：${skill.name}`,
+      icon: '⚡'
+    });
     
     return {
       success: true,
@@ -385,6 +395,15 @@ export class SkillsService implements ISkillsService {
         
         // 触发事件
         eventBus.emit(GameEvents.SKILL_LEARNED, { skill: template });
+
+        // 记录冒险日志
+        logService.addLog({
+          id: logService.generateLogId(),
+          timestamp: Date.now(),
+          type: 'skill',
+          message: `学会了新技能：${template.name}！`,
+          icon: '📖'
+        });
       }
     });
     

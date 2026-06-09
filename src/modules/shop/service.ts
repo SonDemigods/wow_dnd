@@ -13,6 +13,7 @@ import { shopDbService } from './db';
 import { characterService } from '../character/service';
 import { inventoryService } from '../inventory/service';
 import { eventBus, GameEvents } from '../bus/core';
+import { logService } from '../log/service';
 import { RARITY_SELL_DISCOUNT, RARITY_PRICE_MULTIPLIER } from '@/config/inventory';
 import { SHOPS } from '@/data/shop.data';
 
@@ -296,6 +297,19 @@ export class ShopService implements IShopService {
     
     // 触发购买事件
     eventBus.emit(GameEvents.SHOP_TRANSACTION, { shopId, itemId, quantity, totalPrice });
+
+    // 记录冒险日志
+    const buyItemInfo = inventoryService.getItemInfo(itemId);
+    if (buyItemInfo) {
+      const qtyText = quantity > 1 ? ` x${quantity}` : '';
+      logService.addLog({
+        id: logService.generateLogId(),
+        timestamp: Date.now(),
+        type: 'shop',
+        message: `购买了：${buyItemInfo.name}${qtyText}，花费 ${totalPrice} 金币`,
+        icon: '🛒'
+      });
+    }
     
     return true;
   }
@@ -347,6 +361,16 @@ export class ShopService implements IShopService {
     
     // 触发出售事件
     eventBus.emit(GameEvents.SHOP_TRANSACTION, { shopId, itemId, quantity: actualQuantity, sellPrice });
+
+    // 记录冒险日志
+    const qtyText2 = actualQuantity > 1 ? ` x${actualQuantity}` : '';
+    logService.addLog({
+      id: logService.generateLogId(),
+      timestamp: Date.now(),
+      type: 'shop',
+      message: `出售了：${itemInfo.name}${qtyText2}，获得 ${sellPrice} 金币`,
+      icon: '💰'
+    });
     
     return true;
   }
