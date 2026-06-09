@@ -122,11 +122,19 @@ export const useExplorationStore = defineStore('exploration', () => {
   }
 
   /**
-   * 跨模块事件监听
+   * 跨模块事件监听（每次调用前会先清理旧监听器，防止重复注册）
    */
   function setupCrossModuleListeners(): void {
-    // 角色登出时重置探索状态
+    // 先清理旧监听器，防止重复注册
+    eventBus.clearGroup('explorationStore');
+
+    // 角色登出时只清除UI状态，不删除数据库中的探索数据
     eventBus.onGroup('explorationStore', GameEvents.CHARACTER_LOGOUT, () => {
+      reset();
+    });
+
+    // 角色选中时清除旧角色的探索UI状态，新角色数据在打开探索标签时延迟加载
+    eventBus.onGroup('explorationStore', GameEvents.CHARACTER_SELECTED, () => {
       reset();
     });
   }

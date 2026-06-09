@@ -274,8 +274,8 @@ export const useInventoryStore = defineStore('inventory', () => {
     inventoryService.removeItemTemplate(itemId);
   }
 
-  function setCharacter(characterId: string): void {
-    inventoryService.setCharacter(characterId);
+  async function setCharacter(characterId: string): Promise<void> {
+    await inventoryService.setCharacter(characterId);
     syncFromService();
   }
 
@@ -285,12 +285,15 @@ export const useInventoryStore = defineStore('inventory', () => {
   }
 
   /**
-   * 跨模块事件监听
+   * 跨模块事件监听（每次调用前会先清理旧监听器，防止重复注册）
    */
   function setupCrossModuleListeners(): void {
-    eventBus.onGroup('inventoryStore', GameEvents.CHARACTER_SELECTED, (data) => {
+    // 先清理旧监听器，防止重复注册
+    eventBus.clearGroup('inventoryStore');
+
+    eventBus.onGroup('inventoryStore', GameEvents.CHARACTER_SELECTED, async (data) => {
       if (data?.characterId) {
-        setCharacter(data.characterId);
+        await setCharacter(data.characterId);
       }
     });
 

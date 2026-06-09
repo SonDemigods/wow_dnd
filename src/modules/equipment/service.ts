@@ -368,7 +368,7 @@ export class EquipmentService implements IEquipmentService {
    * 设置当前角色
    * @param characterId - 角色ID
    */
-  setCharacter(characterId: string): void {
+  async setCharacter(characterId: string): Promise<void> {
     this.characterId = characterId;
     this.equipment = {
       weapon1: null,
@@ -378,7 +378,7 @@ export class EquipmentService implements IEquipmentService {
       armor3: null,
       armor4: null
     };
-    this.initialize(characterId);
+    await this.initialize(characterId);
   }
 
   /**

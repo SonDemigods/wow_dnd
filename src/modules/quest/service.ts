@@ -45,22 +45,27 @@ export class QuestService implements IQuestService {
   }
   
   /**
-   * 加载任务定义
+   * 加载任务定义（全局数据，仅首次加载）
    */
   private async loadQuestDefinitions(): Promise<void> {
     const definitions = await questDbService.getAllQuestDefinitions();
+    this.questDefinitions.clear();
     definitions.forEach(def => {
       this.questDefinitions.set(def.id, def);
     });
   }
   
   /**
-   * 加载任务实例
+   * 加载任务实例（加载前先清除旧数据，防止角色切换后数据串扰）
    */
   private async loadQuestInstances(): Promise<void> {
     const characterId = characterService.getCurrentCharacterId();
-    if (!characterId) return;
+    if (!characterId) {
+      this.questInstances.clear();
+      return;
+    }
     const instances = await questDbService.getAllQuestInstances(characterId);
+    this.questInstances.clear();
     instances.forEach(instance => {
       this.questInstances.set(instance.questId, instance);
     });
@@ -540,9 +545,12 @@ export class QuestService implements IQuestService {
   /**
    * 重置所有任务数据（用于测试或新游戏）
    */
+  /**
+   * 重置任务内存状态（不删除数据库数据，保留各角色的任务进度）
+   */
   reset(): void {
     this.questInstances.clear();
-    questDbService.clearAllQuestInstances();
+    // 不再清除数据库中的任务实例，各角色的任务进度独立保留
   }
   
   /**

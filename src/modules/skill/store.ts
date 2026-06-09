@@ -139,8 +139,8 @@ export const useSkillsStore = defineStore('skills', () => {
     skillsService.removeSkillTemplate(skillId);
   }
 
-  function setCharacter(characterId: string): void {
-    skillsService.setCharacter(characterId);
+  async function setCharacter(characterId: string): Promise<void> {
+    await skillsService.setCharacter(characterId);
     syncFromService();
   }
 
@@ -151,12 +151,15 @@ export const useSkillsStore = defineStore('skills', () => {
   }
 
   /**
-   * 跨模块事件监听
+   * 跨模块事件监听（每次调用前会先清理旧监听器，防止重复注册）
    */
   function setupCrossModuleListeners(): void {
-    eventBus.onGroup('skillStore', GameEvents.CHARACTER_SELECTED, (data) => {
+    // 先清理旧监听器，防止重复注册
+    eventBus.clearGroup('skillStore');
+
+    eventBus.onGroup('skillStore', GameEvents.CHARACTER_SELECTED, async (data) => {
       if (data?.characterId) {
-        setCharacter(data.characterId);
+        await setCharacter(data.characterId);
       }
     });
 

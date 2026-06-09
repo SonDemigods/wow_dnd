@@ -1,7 +1,8 @@
 /**
  * 地图模块状态管理层
  * 
- * 使用 Pinia 管理地图状态，提供响应式数据和事件监听
+ * 使用 Pinia 管理地图状态，提供响应式数据和事件监听。
+ * 角色切换时自动加载对应角色的地图数据，不删除其他角色的数据。
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
@@ -25,9 +26,9 @@ export const useMapStore = defineStore('map', () => {
   /** 当前选中的地点 */
   const currentLocation = ref<LocationData | null>(null);
   
-  /** 初始化完成标志 */
-  let initialized = false;
-  
+  /** 当前角色ID */
+  let currentCharacterId: string | null = null;
+
   /**
    * 获取当前视图状态
    */
@@ -123,32 +124,52 @@ export const useMapStore = defineStore('map', () => {
   }
   
   /**
-   * 跨模块事件监听
+   * 跨模块事件监听（每次调用前会先清理旧监听器，防止重复注册）
    */
   function setupCrossModuleListeners(): void {
+    // 先清理旧监听器，防止重复注册
+    eventBus.clearGroup('mapStore');
+
     // 地点进入事件（由其他模块触发）
     eventBus.onGroup('mapStore', GameEvents.ZONE_ENTERED, (data: { locationId: string; location: LocationData }) => {
       currentLocation.value = data.location;
     });
+
+    // 角色选中时重新加载对应角色的地图数据
+    eventBus.onGroup('mapStore', GameEvents.CHARACTER_SELECTED, (data: { characterId: string }) => {
+      if (data?.characterId) {
+        loadCharacterMap(data.characterId);
+      }
+    });
+
+    // 角色登出时只清除UI状态，不删除数据库数据
+    eventBus.onGroup('mapStore', GameEvents.CHARACTER_LOGOUT, () => {
+      clearUIState();
+    });
   }
 
   /**
-   * 清理事件监听
+   * 清除UI状态（不删除数据库数据）
    */
-  function dispose(): void {
-    eventBus.clearGroup('mapStore');
+  function clearUIState(): void {
+    state.value = {
+      view: {
+        zoomLevel: 1,
+        panX: 0,
+        panY: 0
+      }
+    };
+    currentLocation.value = null;
   }
-  
+
   /**
-   * 初始化
+   * 加载指定角色的地图数据
+   * @param characterId - 角色ID
    */
-  async function init(): Promise<void> {
-    if (initialized) return;
-    initialized = true;
-    
-    await mapService.init();
+  async function loadCharacterMap(characterId: string): Promise<void> {
+    currentCharacterId = characterId;
+    await mapService.init(characterId);
     updateState();
-    setupCrossModuleListeners();
     
     // 从数据库恢复上次选中的区域
     const savedLocationId = await mapService.getCurrentLocationId();
@@ -159,15 +180,21 @@ export const useMapStore = defineStore('map', () => {
       }
     }
   }
+
+  /**
+   * 清理事件监听
+   */
+  function dispose(): void {
+    eventBus.clearGroup('mapStore');
+  }
   
   /**
-   * 重置
+   * 初始化地图模块（首次挂载时调用，传入角色ID加载对应数据并注册事件监听）
+   * @param characterId - 角色ID
    */
-  function reset(): void {
-    mapService.reset();
-    currentLocation.value = null;
-    initialized = false;
-    updateState();
+  async function init(characterId: string): Promise<void> {
+    setupCrossModuleListeners();
+    await loadCharacterMap(characterId);
   }
   
   return {
@@ -190,7 +217,7 @@ export const useMapStore = defineStore('map', () => {
     resetView,
     setCurrentContinent,
     init,
-    reset,
+    clearUIState,
     dispose
   };
 });

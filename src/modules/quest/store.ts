@@ -7,7 +7,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { QuestDefinition, QuestInstance } from './types';
 import { questService } from './service';
-import { eventBus } from '../bus/core';
+import { eventBus, GameEvents } from '../bus/core';
 
 /**
  * 任务状态存储
@@ -190,6 +190,27 @@ export const useQuestStore = defineStore('quest', () => {
   }
 
   /**
+   * 跨模块事件监听
+   */
+  function setupCrossModuleListeners(): void {
+    eventBus.clearGroup('questStore');
+
+    // 角色选中时重新加载对应角色的任务数据
+    eventBus.onGroup('questStore', GameEvents.CHARACTER_SELECTED, async () => {
+      await questService.init();
+      syncFromService();
+    });
+
+    // 角色登出时只清除UI状态，不删除数据库数据
+    eventBus.onGroup('questStore', GameEvents.CHARACTER_LOGOUT, () => {
+      availableQuests.value = [];
+      inProgressQuests.value = [];
+      completedQuests.value = [];
+      turnedInQuests.value = [];
+    });
+  }
+
+  /**
    * 清理事件监听
    */
   function dispose(): void {
@@ -238,6 +259,7 @@ export const useQuestStore = defineStore('quest', () => {
     init,
     reset,
     updateQuestLists,
+    setupCrossModuleListeners,
     dispose
   };
 });

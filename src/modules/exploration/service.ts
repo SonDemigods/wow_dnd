@@ -880,8 +880,7 @@ export class ExplorationService implements IExplorationService {
   }
 
   /**
-   * 重置探索状态
-   * 清空所有探索数据并删除数据库中的持久化记录
+   * 重置探索内存状态（不删除数据库数据，保留各角色的探索进度）
    */
   reset(): void {
     this.state = {
@@ -894,10 +893,12 @@ export class ExplorationService implements IExplorationService {
       bossDefeated: false,
       explorationComplete: false
     };
+    this.pendingBattleCell = null;
+    this.currentAreaConfig = null;
+    this.assignedShopId = '';
     
-    if (this.currentCharacterId) {
-      explorationDbService.deleteExplorationData(this.currentCharacterId);
-    }
+    // 不再删除数据库中的探索数据，各角色的探索进度独立保留
+    // 切换角色时通过 init(characterId) 加载对应角色的数据
     
     eventBus.emit(GameEvents.EXPLORATION_END, { characterId: this.currentCharacterId });
   }

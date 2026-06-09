@@ -1,7 +1,8 @@
 /**
  * 地图模块服务层
  * 
- * 提供地图管理的核心业务逻辑
+ * 提供地图管理的核心业务逻辑。
+ * 地图数据按角色ID隔离存储，切换角色时加载对应角色的地图状态。
  */
 import type { 
   IMapService, 
@@ -31,28 +32,29 @@ export class MapService implements IMapService {
     view: { ...DEFAULT_MAP_VIEW }
   };
   
-  /** 地点数据缓存 */
+  /** 地点数据缓存（全局共享，所有角色共用） */
   private locations: Map<string, LocationData> = new Map();
   
-  /** 初始化完成标志 */
-  private initialized = false;
+  /** 当前角色ID */
+  private currentCharacterId: string | null = null;
   
   /**
-   * 初始化服务，从数据库加载地点数据
+   * 初始化服务（按角色ID从数据库加载地图状态和数据）
+   * @param characterId - 角色ID
    */
-  async init(): Promise<void> {
-    if (this.initialized) return;
-    
+  async init(characterId: string): Promise<void> {
+    this.currentCharacterId = characterId;
+
     // 加载地图状态
-    const savedState = await mapDbService.getMapState();
+    const savedState = await mapDbService.getMapState(characterId);
     if (savedState?.view) {
       this.state = { view: savedState.view };
+    } else {
+      this.state = { view: { ...DEFAULT_MAP_VIEW } };
     }
     
-    // 从数据库加载地点数据
+    // 从数据库加载地点数据（全局共享）
     await this.loadLocations();
-    
-    this.initialized = true;
   }
   
   /**
@@ -63,7 +65,6 @@ export class MapService implements IMapService {
     const locationList = await mapDbService.getAllLocationData();
     this.locations.clear();
     locationList.forEach(location => {
-      // 只加载有效的地点数据（必须有 mapX 和 mapY）
       if (location.mapX != null && location.mapY != null) {
         this.locations.set(location.name, location);
       }
@@ -123,7 +124,7 @@ export class MapService implements IMapService {
     const location = this.locations.get(locationId);
     if (!location) return false;
     eventBus.emit(GameEvents.ZONE_ENTERED, { locationId, location });
-    // 持久化当前区域ID
+    // 持久化当前区域ID（按角色隔离）
     this.saveCurrentLocationId(locationId);
     return true;
   }
@@ -155,34 +156,40 @@ export class MapService implements IMapService {
   }
   
   /**
-   * 重置地图数据
+   * 重置地图内存状态（不删除数据库数据，保留各角色的地图状态）
    */
   reset(): void {
     this.state = { view: { ...DEFAULT_MAP_VIEW } };
     this.locations.clear();
-    this.initialized = false;
-    mapDbService.clearMapState();
+    this.currentCharacterId = null;
   }
   
   /**
-   * 持久化当前选中的区域ID
+   * 持久化当前选中的区域ID（按角色隔离）
    */
   async saveCurrentLocationId(locationId: string): Promise<void> {
-    await mapDbService.saveCurrentLocationId(locationId);
+    if (this.currentCharacterId) {
+      await mapDbService.saveCurrentLocationId(this.currentCharacterId, locationId);
+    }
   }
 
   /**
-   * 获取上次选中的区域ID
+   * 获取当前角色的上次选中区域ID
    */
   async getCurrentLocationId(): Promise<string | null> {
-    return mapDbService.getCurrentLocationId();
+    if (this.currentCharacterId) {
+      return mapDbService.getCurrentLocationId(this.currentCharacterId);
+    }
+    return null;
   }
 
   /**
-   * 保存状态
+   * 保存地图状态（按角色隔离）
    */
   private saveState(): void {
-    mapDbService.saveMapState(this.state);
+    if (this.currentCharacterId) {
+      mapDbService.saveMapState(this.currentCharacterId, this.state);
+    }
   }
   
   /**

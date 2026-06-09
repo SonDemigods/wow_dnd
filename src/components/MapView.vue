@@ -169,7 +169,7 @@ function getStatusText(status: ZoneStatus) {
 
 async function loadZones() {
   const playerLevel = characterStore.level || 1;
-  await mapService.init();
+  // mapService 已由 GameMain 通过 mapStore.init(characterId) 初始化，直接获取区域数据即可
   zones.value = mapService.getZones(playerLevel);
 }
 

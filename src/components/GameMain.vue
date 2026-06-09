@@ -22,7 +22,7 @@
       <div class="content-tabs">
         <button 
           :class="['content-tab', { active: currentContentTab === 'map' }]"
-          @click="currentContentTab = 'map'; mapDbService.saveCurrentTab('map')"
+          @click="handleMapTabClick"
         >
           🗺 地图
         </button>
@@ -151,6 +151,8 @@ const shopStore = useShopStore();
 const toast = useToast();
 
 const currentContentTab = ref('map');
+/** 当前角色ID（响应式计算，用于地图数据隔离） */
+const currentCharacterId = computed(() => characterStore.currentCharacterId);
 const showCharacterInfo = ref(false);
 const showInventory = ref(false);
 const showSkills = ref(false);
@@ -182,13 +184,24 @@ function handleExit() {
   emit('exit');
 }
 
+function handleMapTabClick() {
+  currentContentTab.value = 'map';
+  const cid = currentCharacterId.value;
+  if (cid) {
+    mapDbService.saveCurrentTab(cid, 'map');
+  }
+}
+
 function handleExploreTabClick() {
   if (!hasCurrentLocation.value) {
     showNotif('请先在地图上选择一个区域', 'info');
     return;
   }
   currentContentTab.value = 'explore';
-  mapDbService.saveCurrentTab('explore');
+  const cid = currentCharacterId.value;
+  if (cid) {
+    mapDbService.saveCurrentTab(cid, 'explore');
+  }
 }
 
 // 监听探索格子翻开事件，处理交互
@@ -261,13 +274,16 @@ onMounted(async () => {
   eventBus.onGroup(EVENT_GROUP, GameEvents.EXPLORATION_TRAP_TRIGGERED, handleTrapTriggered);
   eventBus.onGroup(EVENT_GROUP, GameEvents.EXPLORATION_RANDOM_EVENT, handleRandomEvent);
   
-  // 初始化地图模块（从数据库恢复当前区域等状态）
-  await mapStore.init();
-  
-  // 从数据库恢复上次的标签页状态
-  const savedTab = await mapDbService.getCurrentTab();
-  if (savedTab === 'explore' && hasCurrentLocation.value) {
-    currentContentTab.value = 'explore';
+  // 初始化地图模块（按角色ID从数据库恢复当前区域等状态）
+  const cid = characterStore.currentCharacterId;
+  if (cid) {
+    await mapStore.init(cid);
+    
+    // 从数据库恢复上次的标签页状态（按角色隔离）
+    const savedTab = await mapDbService.getCurrentTab(cid);
+    if (savedTab === 'explore' && hasCurrentLocation.value) {
+      currentContentTab.value = 'explore';
+    }
   }
 });
 

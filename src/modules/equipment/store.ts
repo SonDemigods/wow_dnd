@@ -155,8 +155,8 @@ export const useEquipmentStore = defineStore('equipment', () => {
     equipmentService.removeEquipmentTemplate(itemId);
   }
 
-  function setCharacter(characterId: string): void {
-    equipmentService.setCharacter(characterId);
+  async function setCharacter(characterId: string): Promise<void> {
+    await equipmentService.setCharacter(characterId);
     syncFromService();
   }
 
@@ -173,12 +173,15 @@ export const useEquipmentStore = defineStore('equipment', () => {
   }
 
   /**
-   * 跨模块事件监听
+   * 跨模块事件监听（每次调用前会先清理旧监听器，防止重复注册）
    */
   function setupCrossModuleListeners(): void {
-    eventBus.onGroup('equipmentStore', GameEvents.CHARACTER_SELECTED, (data) => {
+    // 先清理旧监听器，防止重复注册
+    eventBus.clearGroup('equipmentStore');
+
+    eventBus.onGroup('equipmentStore', GameEvents.CHARACTER_SELECTED, async (data) => {
       if (data?.characterId) {
-        setCharacter(data.characterId);
+        await setCharacter(data.characterId);
       }
     });
 

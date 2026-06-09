@@ -1,7 +1,8 @@
 /**
  * 地图模块数据层
  * 
- * 封装地图数据的 IndexedDB 操作，提供数据持久化能力
+ * 封装地图数据的 IndexedDB 操作，提供数据持久化能力。
+ * 地图状态按角色ID隔离存储，切换角色后各角色数据独立保留。
  */
 import { db as gameDb, dbService } from '../data/core';
 import type { LocationData, MapState } from './types';
@@ -44,31 +45,42 @@ export interface LocationDataStorage {
 }
 
 /**
+ * 根据角色ID生成地图状态存储键
+ */
+function getMapStateKey(characterId: string): string {
+  return `map_${characterId}`;
+}
+
+/**
  * 地图数据层服务
  */
 export class MapDbService {
   /**
-   * 保存地图状态（合并写入，不覆盖 locationId/tab 等字段）
+   * 保存地图视图状态（按角色ID隔离，合并写入）
+   * @param characterId - 角色ID
    * @param state - 地图状态
    */
-  async saveMapState(state: MapState): Promise<void> {
+  async saveMapState(characterId: string, state: MapState): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.runtime_mapState.get('current');
+      const key = getMapStateKey(characterId);
+      const existing = await gameDb.runtime_mapState.get(key);
       await gameDb.runtime_mapState.put({
         ...existing,
-        id: 'current',
+        id: key,
         view: state.view
       });
     });
   }
 
   /**
-   * 获取地图状态
+   * 获取指定角色的地图状态
+   * @param characterId - 角色ID
    * @returns 地图状态，含视图、当前地点和标签页
    */
-  async getMapState(): Promise<MapStateStorage | null> {
+  async getMapState(characterId: string): Promise<MapStateStorage | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.runtime_mapState.get('current') as unknown as MapStateStorage | undefined;
+      const key = getMapStateKey(characterId);
+      const result = await gameDb.runtime_mapState.get(key) as unknown as MapStateStorage | undefined;
       if (!result) return null;
       return result;
     });
@@ -202,63 +214,73 @@ export class MapDbService {
   }
 
   /**
-   * 清空地图状态
+   * 清空指定角色的地图状态
+   * @param characterId - 角色ID
    */
-  async clearMapState(): Promise<void> {
+  async clearMapState(characterId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.runtime_mapState.clear();
+      const key = getMapStateKey(characterId);
+      await gameDb.runtime_mapState.delete(key);
     });
   }
 
   /**
-   * 保存当前选中的区域ID到地图状态
+   * 保存当前选中的区域ID（按角色ID隔离）
+   * @param characterId - 角色ID
    * @param locationId - 区域ID
    */
-  async saveCurrentLocationId(locationId: string): Promise<void> {
+  async saveCurrentLocationId(characterId: string, locationId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.runtime_mapState.get('current');
+      const key = getMapStateKey(characterId);
+      const existing = await gameDb.runtime_mapState.get(key);
       await gameDb.runtime_mapState.put({
         ...(existing || {}),
-        id: 'current',
+        id: key,
         currentLocationId: locationId
       });
     });
   }
 
   /**
-   * 获取当前选中的区域ID（从地图状态中读取）
+   * 获取指定角色的当前选中区域ID
+   * @param characterId - 角色ID
    * @returns 区域ID
    */
-  async getCurrentLocationId(): Promise<string | null> {
+  async getCurrentLocationId(characterId: string): Promise<string | null> {
     return dbService.withRetry(async () => {
-      const state = await gameDb.runtime_mapState.get('current') as unknown as MapStateStorage | undefined;
+      const key = getMapStateKey(characterId);
+      const state = await gameDb.runtime_mapState.get(key) as unknown as MapStateStorage | undefined;
       if (!state) return null;
       return state.currentLocationId || null;
     });
   }
 
   /**
-   * 保存当前标签页到地图状态
+   * 保存当前标签页（按角色ID隔离）
+   * @param characterId - 角色ID
    * @param tab - 标签名
    */
-  async saveCurrentTab(tab: string): Promise<void> {
+  async saveCurrentTab(characterId: string, tab: string): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.runtime_mapState.get('current');
+      const key = getMapStateKey(characterId);
+      const existing = await gameDb.runtime_mapState.get(key);
       await gameDb.runtime_mapState.put({
         ...(existing || {}),
-        id: 'current',
+        id: key,
         currentTab: tab
       });
     });
   }
 
   /**
-   * 获取当前标签页（从地图状态中读取）
+   * 获取指定角色的当前标签页
+   * @param characterId - 角色ID
    * @returns 标签名
    */
-  async getCurrentTab(): Promise<string | null> {
+  async getCurrentTab(characterId: string): Promise<string | null> {
     return dbService.withRetry(async () => {
-      const state = await gameDb.runtime_mapState.get('current') as unknown as MapStateStorage | undefined;
+      const key = getMapStateKey(characterId);
+      const state = await gameDb.runtime_mapState.get(key) as unknown as MapStateStorage | undefined;
       if (!state) return null;
       return state.currentTab || null;
     });

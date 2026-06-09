@@ -10,6 +10,10 @@ import type { Character, CharacterListItem, Stats, Attributes, FactionType, Race
 import { characterService } from './service';
 import { eventBus, GameEvents } from '../bus/core';
 import { gameDataService } from '../gameData/service';
+import { useInventoryStore } from '../inventory/store';
+import { useEquipmentStore } from '../equipment/store';
+import { useSkillsStore } from '../skill/store';
+import { useQuestStore } from '../quest/store';
 import {
   calculateMaxHp,
   calculateMaxMana,
@@ -42,6 +46,12 @@ export const useCharacterStore = defineStore('character', () => {
   const isLoggedIn = computed(() => currentCharacterId.value !== null);
   
   const stats = computed<Stats>(() => {
+    // 通过 character.value 建立响应式依赖，确保角色切换后重新计算
+    // character.value 由 syncCharacterFromService() 更新，是 characterService 数据的快照
+    if (!character.value) {
+      return { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+    }
+    // 从 characterService 获取含装备加成和 bonusStats 的最终属性值
     return characterService.getStats();
   });
 
@@ -250,6 +260,13 @@ export const useCharacterStore = defineStore('character', () => {
     
     // 仅设置跨模块事件监听（不监听角色模块自身发出的事件）
     setupCrossModuleListeners();
+
+    // 注册所有子模块的跨模块事件监听器（确保角色切换时各模块数据正确切换）
+    // 这些监听器需要在应用启动时就注册，而不是等到用户打开对应面板时才注册
+    useInventoryStore().setupCrossModuleListeners();
+    useEquipmentStore().setupCrossModuleListeners();
+    useSkillsStore().setupCrossModuleListeners();
+    useQuestStore().setupCrossModuleListeners();
   }
 
   /**

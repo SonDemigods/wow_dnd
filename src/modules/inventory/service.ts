@@ -595,10 +595,10 @@ export class InventoryService implements IInventoryService {
    * 设置当前角色
    * @param characterId - 角色ID
    */
-  setCharacter(characterId: string): void {
+  async setCharacter(characterId: string): Promise<void> {
     this.characterId = characterId;
     this.inventory = [];
-    this.initialize(characterId);
+    await this.initialize(characterId);
   }
 }
 
