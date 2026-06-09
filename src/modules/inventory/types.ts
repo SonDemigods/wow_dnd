@@ -60,7 +60,6 @@ export interface ItemTypeData {
 export interface RarityConfig {
   name: string;
   color: string;
-  multiplier: number;
 }
 
 /**

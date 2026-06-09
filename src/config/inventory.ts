@@ -28,11 +28,11 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeData> = {
  * 稀有度配置表
  */
 export const RARITY_CONFIG: Record<ItemRarity, RarityConfig> = {
-  common: { name: '普通', color: '#ffffff', multiplier: 1.0 },
-  uncommon: { name: '优秀', color: '#1eff00', multiplier: 1.2 },
-  rare: { name: '稀有', color: '#0070dd', multiplier: 1.5 },
-  epic: { name: '史诗', color: '#a335ee', multiplier: 2.0 },
-  legendary: { name: '传说', color: '#ff8000', multiplier: 3.0 }
+  common: { name: '普通', color: '#ffffff'},
+  uncommon: { name: '优秀', color: '#1eff00'},
+  rare: { name: '稀有', color: '#0070dd'},
+  epic: { name: '史诗', color: '#a335ee'},
+  legendary: { name: '传说', color: '#ff8000'}
 };
 
 /**

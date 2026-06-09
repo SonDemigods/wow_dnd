@@ -45,12 +45,14 @@ export class SkillsDbService {
    */
   async saveSkillsData(data: SkillsData): Promise<void> {
     await dbService.withRetry(async () => {
+      // JSON 序列化往返：去除 undefined 值，确保所有数据可被结构化克隆
+      const clean = JSON.parse(JSON.stringify(data));
       await gameDb.char_skills.put({
-        characterId: data.characterId,
-        skills: data.skills,
-        skillBar: data.skillBar,
-        currentClass: data.currentClass,
-        updatedAt: data.updatedAt
+        characterId: clean.characterId,
+        skills: clean.skills,
+        skillBar: clean.skillBar,
+        currentClass: clean.currentClass,
+        updatedAt: clean.updatedAt
       });
     });
   }

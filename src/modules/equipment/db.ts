@@ -1,17 +1,19 @@
 /**
  * 装备模块数据层
  * 
- * 封装装备数据的 IndexedDB 操作，提供数据持久化能力
+ * 封装装备数据的 IndexedDB 操作，提供数据持久化能力。
+ * 装备数据以原生对象存储，无需 JSON 序列化/反序列化。
  */
 import { db as gameDb, dbService } from '../data/core';
 import type { EquipmentItem, EquipmentSlot, EquippedItem } from './types';
 
 /**
- * 装备数据存储接口
+ * 装备数据存储接口（存储到 char_equipment 表的结构）
  */
 export interface EquipmentDataStorage {
   characterId: string;
-  equipment: string;
+  /** 装备槽位数据（原生对象，非 JSON 字符串） */
+  equipment: Record<EquipmentSlot, EquippedItem | null>;
   updatedAt: number;
 }
 
@@ -38,7 +40,7 @@ export interface EquipmentTemplateStorage {
  */
 export class EquipmentDbService {
   /**
-   * 保存装备数据到数据库
+   * 保存装备数据到数据库（原生存储，不做 JSON 序列化）
    * @param characterId - 角色ID
    * @param equipment - 装备数据
    */
@@ -47,17 +49,18 @@ export class EquipmentDbService {
     equipment: Record<EquipmentSlot, EquippedItem | null>
   ): Promise<void> {
     await dbService.withRetry(async () => {
-      const serialized = JSON.stringify(equipment);
+      // JSON 序列化往返：去除 undefined 值，确保所有数据可被结构化克隆
+      const clean = JSON.parse(JSON.stringify(equipment));
       await gameDb.char_equipment.put({
         characterId,
-        equipment: serialized,
+        equipment: clean,
         updatedAt: Date.now()
       });
     });
   }
 
   /**
-   * 获取装备数据
+   * 获取装备数据（原生读取，不做 JSON 反序列化）
    * @param characterId - 角色ID
    * @returns 装备数据
    */
@@ -69,11 +72,22 @@ export class EquipmentDbService {
       if (!data) {
         return this.getDefaultEquipment();
       }
-      try {
-        return JSON.parse(data.equipment);
-      } catch {
-        return this.getDefaultEquipment();
+
+      // 兼容旧数据：如果 equipment 是 JSON 字符串（旧格式），尝试解析
+      if (typeof data.equipment === 'string') {
+        try {
+          return JSON.parse(data.equipment);
+        } catch {
+          return this.getDefaultEquipment();
+        }
       }
+
+      // 新格式：原生对象，直接返回
+      if (data.equipment && typeof data.equipment === 'object') {
+        return data.equipment;
+      }
+
+      return this.getDefaultEquipment();
     });
   }
 

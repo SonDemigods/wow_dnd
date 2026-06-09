@@ -9,6 +9,7 @@ import { ref, computed } from 'vue';
 import type { Item, InventoryItem, SortField, SortOrder, ItemFilters, ItemType, ItemRarity } from './types';
 import { inventoryService } from './service';
 import { eventBus, GameEvents } from '../bus/core';
+import { RARITY_CONFIG } from '../../config/inventory';
 
 /**
  * 背包容量
@@ -28,17 +29,6 @@ const ITEM_TYPE_NAMES: Record<ItemType, string> = {
   weapon: '武器',
   armor: '护甲',
   misc: '杂项'
-};
-
-/**
- * 物品稀有度配置
- */
-const ITEM_RARITY_CONFIG: Record<ItemRarity, { color: string; name: string }> = {
-  common: { color: '#9d9d9d', name: '普通' },
-  uncommon: { color: '#1eff00', name: '优秀' },
-  rare: { color: '#0070dd', name: '稀有' },
-  epic: { color: '#a335ee', name: '史诗' },
-  legendary: { color: '#ff8000', name: '传说' }
 };
 
 /**
@@ -177,7 +167,7 @@ export const useInventoryStore = defineStore('inventory', () => {
   });
 
   const allRarities = computed(() => {
-    return Object.entries(ITEM_RARITY_CONFIG).map(([key, value]) => ({
+    return Object.entries(RARITY_CONFIG).map(([key, value]) => ({
       id: key as ItemRarity,
       name: value.name,
       color: value.color

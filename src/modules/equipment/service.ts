@@ -10,17 +10,7 @@ import { equipmentDbService } from './db';
 import { characterService } from '../character/service';
 import { eventBus, GameEvents } from '../bus/core';
 import { logService } from '../log/service';
-
-/**
- * 稀有度配置
- */
-const RARITY_CONFIGS: Record<ItemRarity, RarityConfig> = {
-  common: { name: '普通', color: '#9d9d9d', multiplier: 1.0 },
-  uncommon: { name: '优秀', color: '#1eff00', multiplier: 1.5 },
-  rare: { name: '稀有', color: '#0070dd', multiplier: 2.0 },
-  epic: { name: '史诗', color: '#a335ee', multiplier: 3.0 },
-  legendary: { name: '传说', color: '#ff8000', multiplier: 5.0 }
-};
+import { RARITY_CONFIG } from '../../config/inventory';
 
 /**
  * 槽位类型映射
@@ -225,10 +215,9 @@ export class EquipmentService implements IEquipmentService {
     
     Object.values(this.equipment).forEach(equippedItem => {
       if (equippedItem && equippedItem.item.bonus) {
-        const bonus = this.calculateRarityBonus(equippedItem.item.bonus, equippedItem.item.rarity);
-        Object.keys(bonus).forEach(key => {
+        Object.keys(equippedItem.item.bonus).forEach(key => {
           const statKey = key as keyof Stats;
-          stats[statKey] += bonus[statKey] || 0;
+          stats[statKey] += equippedItem.item.bonus![statKey] || 0;
         });
       }
     });
@@ -314,7 +303,7 @@ export class EquipmentService implements IEquipmentService {
    * @returns 稀有度配置
    */
   getRarityConfig(rarity: ItemRarity): RarityConfig {
-    return RARITY_CONFIGS[rarity];
+    return RARITY_CONFIG[rarity];
   }
 
   /**
@@ -323,37 +312,7 @@ export class EquipmentService implements IEquipmentService {
    * @returns 颜色
    */
   getRarityColor(rarity: ItemRarity): string {
-    return RARITY_CONFIGS[rarity].color;
-  }
-
-  /**
-   * 获取稀有度倍率
-   * @param rarity - 稀有度
-   * @returns 倍率
-   */
-  getRarityMultiplier(rarity: ItemRarity): number {
-    return RARITY_CONFIGS[rarity].multiplier;
-  }
-
-  /**
-   * 计算稀有度加成
-   * @param baseBonus - 基础属性
-   * @param rarity - 稀有度
-   * @returns 加成后的属性
-   */
-  calculateRarityBonus(
-    baseBonus: Partial<Stats>,
-    rarity: ItemRarity
-  ): Partial<Stats> {
-    const multiplier = this.getRarityMultiplier(rarity);
-    const result: Partial<Stats> = {};
-    
-    Object.keys(baseBonus).forEach(key => {
-      const statKey = key as keyof Stats;
-      result[statKey] = Math.floor((baseBonus[statKey] || 0) * multiplier);
-    });
-    
-    return result;
+    return RARITY_CONFIG[rarity].color;
   }
 
   /**
@@ -406,8 +365,7 @@ export class EquipmentService implements IEquipmentService {
    */
   private async applyItemBonus(item: EquipmentItem): Promise<void> {
     if (item.bonus) {
-      const bonus = this.calculateRarityBonus(item.bonus, item.rarity);
-      eventBus.emit(GameEvents.CHARACTER_APPLY_BONUS, { bonus });
+      eventBus.emit(GameEvents.CHARACTER_APPLY_BONUS, { bonus: { ...item.bonus } });
     }
   }
 
@@ -417,8 +375,7 @@ export class EquipmentService implements IEquipmentService {
    */
   private async removeItemBonus(item: EquipmentItem): Promise<void> {
     if (item.bonus) {
-      const bonus = this.calculateRarityBonus(item.bonus, item.rarity);
-      eventBus.emit(GameEvents.CHARACTER_REMOVE_BONUS, { bonus });
+      eventBus.emit(GameEvents.CHARACTER_REMOVE_BONUS, { bonus: { ...item.bonus } });
     }
   }
 

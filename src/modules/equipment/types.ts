@@ -139,21 +139,4 @@ export interface IEquipmentService {
    */
   getRarityColor(rarity: ItemRarity): string;
 
-  /**
-   * 获取稀有度倍率
-   * @param {ItemRarity} rarity - 稀有度
-   * @returns {number} 倍率
-   */
-  getRarityMultiplier(rarity: ItemRarity): number;
-
-  /**
-   * 计算稀有度加成
-   * @param {Partial<Stats>} baseBonus - 基础属性
-   * @param {ItemRarity} rarity - 稀有度
-   * @returns {Partial<Stats>} 加成后的属性
-   */
-  calculateRarityBonus(
-    baseBonus: Partial<Stats>,
-    rarity: ItemRarity
-  ): Partial<Stats>;
 }
