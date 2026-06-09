@@ -144,6 +144,14 @@ export class InventoryService implements IInventoryService {
   }
 
   /**
+   * 获取所有物品模板（用于商店商品池等需要遍历全部物品的场景）
+   * @returns 全部物品模板列表
+   */
+  getAllItems(): Item[] {
+    return Array.from(this.itemTemplates.values());
+  }
+
+  /**
    * 添加物品到背包
    * @param item - 物品数据
    * @returns 是否成功添加

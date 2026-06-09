@@ -151,6 +151,33 @@ export class ShopDbService {
       await gameDb.runtime_shopItems.clear();
     });
   }
+
+  /**
+   * 保存当前打开的商店ID到 gameState（持久化，供页面刷新后恢复）
+   * @param shopId - 商店ID，null 表示关闭商店
+   */
+  async saveCurrentShopId(shopId: string | null): Promise<void> {
+    await dbService.withRetry(async () => {
+      let state: Record<string, unknown> | undefined = await gameDb.runtime_gameState.get('gameState');
+      if (!state) {
+        state = { id: 'gameState' };
+      }
+      state.currentShopId = shopId;
+      await gameDb.runtime_gameState.put(state);
+    });
+  }
+
+  /**
+   * 从 gameState 中获取上次保存的商店ID
+   * @returns 商店ID，未保存过则返回 null
+   */
+  async getCurrentShopId(): Promise<string | null> {
+    return dbService.withRetry(async () => {
+      const state = await gameDb.runtime_gameState.get('gameState');
+      if (!state) return null;
+      return (state.currentShopId as string) || null;
+    });
+  }
 }
 
 /**

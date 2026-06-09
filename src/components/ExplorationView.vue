@@ -192,7 +192,10 @@ function onTouchMove(e: TouchEvent) {
   
   // 只有移动超过阈值才视为拖动
   if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
-    e.preventDefault(); // 拖动时阻止页面滚动
+    // 仅当事件可取消时才阻止默认行为，避免控制台警告
+    if (e.cancelable) {
+      e.preventDefault(); // 拖动时阻止页面滚动
+    }
     panX.value = touch.clientX - startX.value;
     panY.value = touch.clientY - startY.value;
   }

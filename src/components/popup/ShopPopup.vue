@@ -1,87 +1,158 @@
 <template>
-  <BasePopup :visible="visible" title="商店" @close="$emit('close')">
+  <BasePopup :visible="visible" :title="shopName || '商店'" @close="$emit('close')">
     <template #header-extra>
-      <div class="gold-display">💰 {{ gold }}</div>
+      <div class="header-info">
+        <span class="gold-display">💰 {{ gold }}</span>
+      </div>
     </template>
 
     <template #default>
-      <div class="shop-tabs">
-        <button 
-          :class="['tab-btn', { active: currentTab === 'buy' }]"
-          @click="currentTab = 'buy'"
-        >
-          购买
-        </button>
-        <button 
-          :class="['tab-btn', { active: currentTab === 'sell' }]"
-          @click="currentTab = 'sell'"
-        >
-          出售
-        </button>
-      </div>
-
-      <div class="category-filter">
-        <button 
-          v-for="cat in categories" 
-          :key="cat.id"
-          :class="['cat-btn', { active: selectedCategory === cat.id }]"
-          @click="selectedCategory = cat.id"
-        >
-          {{ cat.name }}
-        </button>
-      </div>
-
-      <div class="shop-items">
-        <div 
-          v-if="currentTab === 'buy'"
-          v-for="item in filteredShopItems" 
-          :key="item.id"
-          :class="['item-card', item.quality]"
-          @click="selectItem(item)"
-        >
-          <div class="item-icon">{{ getItemIcon(item.icon) }}</div>
-          <div class="item-info">
-            <div class="item-name">{{ item.name }}</div>
-            <div class="item-desc">{{ item.description }}</div>
-            <div class="item-price">💰 {{ item.price }}</div>
-          </div>
-          <button 
-            class="buy-btn"
-            :disabled="!canAfford(item) || item.quantity <= 0"
-            @click.stop="buyItem(item.itemId)"
+      <div class="shop-content">
+        <!-- 买卖标签 -->
+        <div class="shop-tabs">
+          <button
+            :class="['tab-btn', { active: currentTab === 'buy' }]"
+            @click="currentTab = 'buy'"
           >
             购买
           </button>
-        </div>
-
-        <div v-else v-for="item in filteredInventoryItems" :key="item.id" class="item-card" @click="selectItem(item)">
-          <div class="item-icon">{{ getItemIcon(item.icon) }}</div>
-          <div class="item-info">
-            <div class="item-name">{{ item.name }}</div>
-            <div class="item-desc">{{ item.description }}</div>
-            <div class="item-count">数量: {{ item.count }}</div>
-            <div class="item-price">💰 {{ getSellPrice(item.itemId) }}</div>
-          </div>
-          <button class="sell-btn" :disabled="item.count <= 0" @click.stop="sellItem(item.itemId)">
+          <button
+            :class="['tab-btn', { active: currentTab === 'sell' }]"
+            @click="currentTab = 'sell'"
+          >
             出售
           </button>
         </div>
-      </div>
-    </template>
 
-    <template #footer>
-      <div v-if="selectedItem" class="item-detail">
-        <div class="detail-header">
-          <h3>{{ selectedItem.name }}</h3>
-          <span class="quality-badge">{{ getQualityName(selectedItem.quality) }}</span>
+        <!-- 分类筛选 -->
+        <div class="category-tabs">
+          <button
+            v-for="cat in categories"
+            :key="cat.id"
+            :class="['cat-btn', { active: selectedCategory === cat.id }]"
+            @click="selectedCategory = cat.id"
+          >
+            {{ cat.name }}
+          </button>
         </div>
-        <p>{{ selectedItem.description }}</p>
-        <div class="detail-info">
-          <span>类型: {{ getCategoryName(selectedItem.category) }}</span>
-          <span>稀有度: {{ getQualityName(selectedItem.quality) }}</span>
+
+        <!-- 购买标签：商店物品列表 -->
+        <div v-if="currentTab === 'buy'" class="item-list">
+          <div
+            v-for="(entry, index) in displayShopItems"
+            :key="entry.id"
+            :class="['item-card', entry.quality, { selected: buySelectedIndex === index }]"
+            @click="selectBuyItem(entry, index)"
+          >
+            <div class="card-icon">{{ getItemIcon(entry.icon) }}</div>
+            <div class="card-info">
+              <div class="card-name">{{ entry.name }}</div>
+              <div class="card-desc">{{ entry.description }}</div>
+              <div v-if="entry.quantity > 1" class="card-quantity">剩余: {{ entry.quantity }}</div>
+            </div>
+            <div class="card-price">💰 {{ entry.price }}</div>
+          </div>
         </div>
-        <div v-if="selectedItem.effect" class="effect-info">
-          <span>效果: {{ getEffectText(selectedItem.effect) }}</span>
+
+        <!-- 出售标签：背包物品列表 -->
+        <div v-else class="item-list">
+          <div
+            v-for="(entry, index) in displaySellItems"
+            :key="index"
+            :class="['item-card', entry.info?.rarity, { selected: sellSelectedIndex === index }]"
+            @click="selectSellItem(entry, index)"
+          >
+            <div class="card-icon">{{ getItemIcon(entry.info?.icon || '') }}</div>
+            <div class="card-info">
+              <div class="card-name">{{ entry.info?.name }}</div>
+              <div class="card-desc">{{ entry.info?.description }}</div>
+              <div class="card-count">数量: {{ entry.item.count }}</div>
+            </div>
+            <div class="card-price">💰 {{ getSellPrice(entry.item.itemId) }}</div>
+          </div>
+        </div>
+
+        <!-- 物品详情面板 -->
+        <div class="item-detail">
+          <!-- 购买详情 -->
+          <template v-if="currentTab === 'buy' && selectedBuyEntry">
+            <div class="detail-header">
+              <h3 :class="selectedBuyEntry.quality">{{ selectedBuyEntry.name }}</h3>
+              <span class="quality-badge">{{ getRarityName(selectedBuyEntry.quality) }}</span>
+            </div>
+            <p class="detail-desc">{{ selectedBuyEntry.description }}</p>
+            <div class="detail-info">
+              <span>类型: {{ getTypeName(selectedBuyEntry.type) }}</span>
+              <span>单价: 💰 {{ selectedBuyEntry.price }}</span>
+            </div>
+            <div v-if="selectedBuyEntry.effect" class="effect-info">
+              <span>{{ getEffectText(selectedBuyEntry.effect) }}</span>
+            </div>
+            <div class="detail-actions">
+              <div class="quantity-selector">
+                <button class="qty-btn" :disabled="buyQuantity <= 1" @click="buyQuantity--">−</button>
+                <input
+                  type="number"
+                  class="qty-input"
+                  v-model.number="buyQuantity"
+                  :min="1"
+                  :max="buyMaxQuantity"
+                  @change="clampBuyQuantity"
+                />
+                <button class="qty-btn" :disabled="buyQuantity >= buyMaxQuantity" @click="buyQuantity++">+</button>
+              </div>
+              <button
+                class="action-btn buy"
+                :disabled="!canAffordBuy()"
+                @click="handleBuy(selectedBuyEntry.itemId)"
+              >
+                💰 购买 ×{{ buyQuantity }}（{{ totalBuyPrice }}）
+              </button>
+            </div>
+          </template>
+
+          <!-- 出售详情 -->
+          <template v-else-if="currentTab === 'sell' && selectedSellEntry">
+            <div class="detail-header">
+              <h3 :class="selectedSellEntry.info?.rarity">{{ selectedSellEntry.info?.name }}</h3>
+              <span class="quality-badge">{{ getRarityName(selectedSellEntry.info?.rarity || 'common') }}</span>
+            </div>
+            <p class="detail-desc">{{ selectedSellEntry.info?.description }}</p>
+            <div class="detail-info">
+              <span>类型: {{ getTypeName(selectedSellEntry.info?.type || 'misc') }}</span>
+              <span>持有: {{ selectedSellEntry.item.count }}</span>
+              <span>单价: 💰 {{ getSellPrice(selectedSellEntry.item.itemId) }}</span>
+            </div>
+            <div v-if="selectedSellEntry.info?.effect" class="effect-info">
+              <span>{{ getEffectText(selectedSellEntry.info.effect) }}</span>
+            </div>
+            <div class="detail-actions">
+              <div class="quantity-selector">
+                <button class="qty-btn" :disabled="sellQuantity <= 1" @click="sellQuantity--">−</button>
+                <input
+                  type="number"
+                  class="qty-input"
+                  v-model.number="sellQuantity"
+                  :min="1"
+                  :max="selectedSellEntry.item.count"
+                  @change="clampSellQuantity"
+                />
+                <button class="qty-btn" :disabled="sellQuantity >= selectedSellEntry.item.count" @click="sellQuantity++">+</button>
+              </div>
+              <button
+                class="action-btn sell"
+                :disabled="selectedSellEntry.item.count <= 0"
+                @click="handleSell(selectedSellEntry.item.itemId)"
+              >
+                💰 出售 ×{{ sellQuantity }}（{{ totalSellPrice }}）
+              </button>
+            </div>
+          </template>
+
+          <div v-else class="detail-placeholder">
+            <span class="placeholder-icon">📦</span>
+            <span class="placeholder-text">点击物品查看详情</span>
+          </div>
         </div>
       </div>
     </template>
@@ -91,53 +162,79 @@
 <script setup lang="ts">
 /**
  * @fileoverview 商店弹窗组件
- * @description 提供购买和出售两个标签页的商品交易界面，支持按分类筛选物品
+ * @description 提供购买和出售两个标签页的商品交易界面，支持按分类筛选物品，以列表形式展示。
  */
 
-import { ref, computed, onMounted } from 'vue';
-import { shopService } from '@/modules/shop';
-import { characterService } from '@/modules/character';
-import { inventoryService } from '@/modules/inventory';
-import type { ShopItem, ShopDisplayItem, ItemCategory, ItemQuality } from '@/modules/shop';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useShopStore } from '@/modules/shop';
+import { useCharacterStore } from '@/modules/character';
+import { useInventoryStore } from '@/modules/inventory';
+import type { ShopDisplayItem, ItemQuality, ItemCategory } from '@/modules/shop';
+import type { InventoryItem, Item, ItemType, ItemRarity, ItemEffect } from '@/modules/inventory';
 import BasePopup from '../common/BasePopup.vue';
+
+/** 出售标签的物品条目（关联背包数据和物品模板） */
+interface SellItemEntry {
+  item: InventoryItem;
+  info: Item | null;
+}
 
 const props = defineProps<{
   visible: boolean;
-  shopId?: string;
 }>();
 
 const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
+const shopStore = useShopStore();
+const characterStore = useCharacterStore();
+const inventoryStore = useInventoryStore();
+
+// ==================== 状态 ====================
+
 const currentTab = ref<'buy' | 'sell'>('buy');
-const selectedCategory = ref<ItemCategory | 'all'>('all');
-const selectedItem = ref<ShopDisplayItem | null>(null);
+const selectedCategory = ref<'all' | ItemType>('all');
 
-const shopItems = ref<ShopDisplayItem[]>([]);
-const inventoryItems = ref<any[]>([]);
+// 购买标签选中
+const selectedBuyEntry = ref<ShopDisplayItem | null>(null);
+const buySelectedIndex = ref<number>(-1);
 
-const currentShopId = computed(() => props.shopId || 'shop_inn');
-const gold = computed(() => characterService.getGold());
+// 出售标签选中
+const selectedSellEntry = ref<SellItemEntry | null>(null);
+const sellSelectedIndex = ref<number>(-1);
 
+// 数量选择
+const buyQuantity = ref(1);
+const sellQuantity = ref(1);
+
+const currentShopId = computed(() => shopStore.currentShopId || '');
+const shopName = ref<string>('商店');
+const gold = computed(() => characterStore.gold);
+
+/** 手动同步商店名称（getShopConfig 读取非响应式 Map，computed 不会自动更新） */
+function updateShopName() {
+  const config = shopStore.getShopConfig(currentShopId.value);
+  shopName.value = config?.name || '商店';
+}
+
+// ==================== 分类 ====================
+
+/** 分类选项（与背包界面保持一致，使用 ItemType） */
 const categories = [
   { id: 'all' as const, name: '全部' },
-  { id: 'consumable' as const, name: '消耗品' },
-  { id: 'weapon' as const, name: '武器' },
-  { id: 'armor' as const, name: '装备' },
-  { id: 'accessory' as const, name: '饰品' },
+  { id: 'potion' as const, name: '药水' },
+  { id: 'scroll' as const, name: '卷轴' },
+  { id: 'food' as const, name: '食物' },
   { id: 'material' as const, name: '材料' },
-  { id: 'misc' as const, name: '其他' }
+  { id: 'weapon' as const, name: '武器' },
+  { id: 'armor' as const, name: '护甲' },
+  { id: 'misc' as const, name: '杂项' }
 ];
 
-const iconMap: Record<string, string> = {
-  potion: '🧪', sword: '⚔️', axe: '🪓', staff: '🔮',
-  armor: '🛡️', ring: '💍', necklace: '📿',
-  herb: '🌿', ore: '🪨', enchant: '✨',
-  scroll: '📜'
-};
+// ==================== 图标/名称映射 ====================
 
-const qualityNames: Record<ItemQuality, string> = {
+const rarityNames: Record<ItemRarity, string> = {
   common: '普通',
   uncommon: '优秀',
   rare: '稀有',
@@ -145,88 +242,93 @@ const qualityNames: Record<ItemQuality, string> = {
   legendary: '传说'
 };
 
-const categoryNames: Record<string, string> = {
-  consumable: '消耗品',
+const typeNames: Record<ItemType, string> = {
+  gold: '货币',
+  potion: '药水',
+  scroll: '卷轴',
+  food: '食物',
+  material: '材料',
+  quest: '任务物品',
   weapon: '武器',
   armor: '护甲',
-  accessory: '饰品',
-  material: '材料',
-  misc: '其他'
+  misc: '杂项'
 };
 
+// ==================== 工具函数 ====================
+
+/** 物品模板中 icon 字段已直接存储 emoji（如 ❤️、🍞），直接返回即可 */
 function getItemIcon(icon: string) {
-  return iconMap[icon] || '📦';
+  return icon || '📦';
 }
 
-function getQualityName(quality: ItemQuality) {
-  return qualityNames[quality];
+function getRarityName(rarity: ItemRarity | ItemQuality) {
+  return rarityNames[rarity] || rarity;
 }
 
-function getCategoryName(category: string) {
-  return categoryNames[category] || category;
+function getTypeName(type: ItemType | string) {
+  return typeNames[type as ItemType] || type;
 }
 
-function getEffectText(effect: any) {
+function getEffectText(effect: ItemEffect | { type: string; value: number | Partial<Record<string, number>> }) {
   if (!effect) return '';
-  if (effect.type === 'health_restore') return `恢复${effect.value}点生命值`;
-  if (effect.type === 'mana_restore') return `恢复${effect.value}点法力值`;
-  if (effect.type === 'stat') return `${effect.statType === 'physicalAttack' ? '物理攻击' : 
-    effect.statType === 'magicAttack' ? '魔法攻击' : 
-    effect.statType === 'physicalDefense' ? '物理防御' :
-    effect.statType === 'magicDefense' ? '魔法防御' :
-    effect.statType === 'maxHp' ? '最大生命值' :
-    effect.statType === 'allAttributes' ? '全属性' : effect.statType} +${effect.value}`;
-  return JSON.stringify(effect);
-}
-
-const filteredShopItems = computed(() => {
-  if (selectedCategory.value === 'all') return shopItems.value;
-  return shopItems.value.filter(item => item.category === selectedCategory.value);
-});
-
-const filteredInventoryItems = computed(() => {
-  if (selectedCategory.value === 'all') return inventoryItems.value;
-  return inventoryItems.value.filter(item => item.category === selectedCategory.value);
-});
-
-function canAfford(item: ShopItem) {
-  return gold.value >= item.price;
+  if (effect.type === 'health_restore') return `恢复 ${effect.value} 点生命值`;
+  if (effect.type === 'mana_restore') return `恢复 ${effect.value} 点法力值`;
+  if (effect.type === 'physical_damage') return `造成 ${effect.value} 点物理伤害`;
+  if (effect.type === 'magic_damage') return `造成 ${effect.value} 点魔法伤害`;
+  if (effect.type === 'stat') return '提升属性';
+  return '';
 }
 
 function getSellPrice(itemId: string) {
-  const basePrice = shopItems.value.find(i => i.itemId === itemId)?.price || 10;
-  return Math.floor(basePrice * 0.5);
+  const itemInfo = inventoryStore.getItemInfo(itemId);
+  if (!itemInfo) return 0;
+  return shopStore.calculateSellPrice(itemId, itemInfo.rarity);
 }
 
-function selectItem(item: any) {
-  selectedItem.value = item;
+/** 购买最大数量（受金币和回购剩余数量限制） */
+const buyMaxQuantity = computed(() => {
+  if (!selectedBuyEntry.value || selectedBuyEntry.value.price <= 0) return 1;
+  const byGold = Math.floor(gold.value / selectedBuyEntry.value.price);
+  const byStock = selectedBuyEntry.value.quantity;
+  return Math.max(1, Math.min(byGold, byStock));
+});
+
+/** 购买总价 */
+const totalBuyPrice = computed(() => {
+  if (!selectedBuyEntry.value) return 0;
+  return selectedBuyEntry.value.price * buyQuantity.value;
+});
+
+/** 出售总价 */
+const totalSellPrice = computed(() => {
+  if (!selectedSellEntry.value) return 0;
+  return getSellPrice(selectedSellEntry.value.item.itemId) * sellQuantity.value;
+});
+
+function canAffordBuy() {
+  if (!selectedBuyEntry.value) return false;
+  return gold.value >= selectedBuyEntry.value.price * buyQuantity.value;
 }
 
-function buyItem(itemId: string) {
-  const result = shopService.buyItem(currentShopId.value, itemId, 1);
-  if (result) {
-    loadShopItems();
-    loadInventoryItems();
-  }
+function clampBuyQuantity() {
+  buyQuantity.value = Math.max(1, Math.min(buyQuantity.value || 1, buyMaxQuantity.value));
 }
 
-function sellItem(itemId: string) {
-  const result = shopService.sellItem(itemId, 1);
-  if (result) {
-    loadInventoryItems();
-  }
+function clampSellQuantity() {
+  if (!selectedSellEntry.value) return;
+  sellQuantity.value = Math.max(1, Math.min(sellQuantity.value || 1, selectedSellEntry.value.item.count));
 }
 
-function loadShopItems() {
-  const items = shopService.getShopItems(currentShopId.value);
-  if (!items) {
-    shopItems.value = [];
-    return;
-  }
-  
-  shopItems.value = items.map(shopItem => {
-    const itemInfo = inventoryService.getItemInfo(shopItem.itemId);
+// ==================== 购买标签：筛选后的商店物品（直接从 store 读取并富化） ====================
+
+/**
+ * 将 store 的 ShopItem[] 富化为 ShopDisplayItem[]（注入物品模板信息），并按分类筛选
+ */
+const displayShopItems = computed<ShopDisplayItem[]>(() => {
+  const enriched = shopStore.currentItems.map(shopItem => {
+    const itemInfo = inventoryStore.getItemInfo(shopItem.itemId);
     if (!itemInfo) return null;
+    const soldCount = shopStore.getSoldItemCount(currentShopId.value, shopItem.itemId);
     return {
       id: itemInfo.id,
       itemId: shopItem.itemId,
@@ -236,34 +338,164 @@ function loadShopItems() {
       icon: itemInfo.icon,
       description: itemInfo.description,
       price: shopItem.price,
-      quantity: 1,
+      quantity: soldCount > 0 ? soldCount : 1,
       category: itemInfo.type as ItemCategory,
       effect: itemInfo.effect
     } as ShopDisplayItem;
   }).filter(Boolean) as ShopDisplayItem[];
+
+  if (selectedCategory.value === 'all') return enriched;
+  return enriched.filter(item => {
+    const info = inventoryStore.getItemInfo(item.itemId);
+    return info?.type === selectedCategory.value;
+  });
+});
+
+// ==================== 出售标签：筛选后的背包物品（直接从 inventoryStore 读取） ====================
+
+const displaySellItems = computed<SellItemEntry[]>(() => {
+  const invItems = inventoryStore.inventory;
+  const filtered = selectedCategory.value === 'all'
+    ? invItems
+    : invItems.filter(item => {
+        const info = inventoryStore.getItemInfo(item.itemId);
+        return info?.type === selectedCategory.value;
+      });
+  return filtered.map(item => ({
+    item,
+    info: inventoryStore.getItemInfo(item.itemId)
+  }));
+});
+
+// ==================== 选择物品 ====================
+
+function selectBuyItem(entry: ShopDisplayItem, index: number) {
+  selectedBuyEntry.value = entry;
+  buySelectedIndex.value = index;
+  buyQuantity.value = 1;
+  // 切换标签时清除另一边选中
+  selectedSellEntry.value = null;
+  sellSelectedIndex.value = -1;
 }
 
-function loadInventoryItems() {
-  inventoryItems.value = inventoryService.getInventory();
+function selectSellItem(entry: SellItemEntry, index: number) {
+  selectedSellEntry.value = entry;
+  sellSelectedIndex.value = index;
+  sellQuantity.value = 1;
+  // 切换标签时清除另一边选中
+  selectedBuyEntry.value = null;
+  buySelectedIndex.value = -1;
 }
+
+// ==================== 买卖操作 ====================
+
+function handleBuy(itemId: string) {
+  const result = shopStore.buyItem(itemId, buyQuantity.value);
+  if (result) {
+    selectedBuyEntry.value = null;
+    buySelectedIndex.value = -1;
+    buyQuantity.value = 1;
+  }
+}
+
+function handleSell(itemId: string) {
+  const result = shopStore.sellItem(itemId, sellQuantity.value);
+  if (result) {
+    selectedSellEntry.value = null;
+    sellSelectedIndex.value = -1;
+    sellQuantity.value = 1;
+  }
+}
+
+// ==================== 数据加载 ====================
+
+/** 防止并发重复加载的守卫 */
+let isLoading = false;
+
+async function loadShopItems() {
+  if (isLoading) return;
+  isLoading = true;
+  try {
+    // 通过 store 初始化（内部调用 shopService.init() + 恢复上次的 currentShopId）
+    await shopStore.init();
+
+    // 确保物品模板已加载
+    await inventoryStore.loadInventory();
+
+    // 同步商店名称（init 填充非响应式 Map 后必须手动更新）
+    updateShopName();
+
+    // 切换商店时强制刷新（await 确保 DB 写入完成）
+    await shopStore.refreshItems();
+  } catch (err) {
+    console.error('[ShopPopup] 加载商店数据失败:', err);
+  } finally {
+    isLoading = false;
+  }
+}
+
+// ==================== 生命周期 ====================
 
 onMounted(() => {
   loadShopItems();
-  loadInventoryItems();
+});
+
+onUnmounted(() => {
+  // 保留，供未来扩展
+});
+
+// 切换商店时刷新数据（监听 store.currentShopId，非 prop）
+watch(() => shopStore.currentShopId, (newId) => {
+  if (!newId) return;
+  loadShopItems();
+  selectedBuyEntry.value = null;
+  buySelectedIndex.value = -1;
+  buyQuantity.value = 1;
+  selectedSellEntry.value = null;
+  sellSelectedIndex.value = -1;
+  sellQuantity.value = 1;
+});
+
+// 切换买卖标签时清除选中和数量
+watch(currentTab, () => {
+  selectedBuyEntry.value = null;
+  buySelectedIndex.value = -1;
+  buyQuantity.value = 1;
+  selectedSellEntry.value = null;
+  sellSelectedIndex.value = -1;
+  sellQuantity.value = 1;
 });
 </script>
 
 <style scoped>
+.shop-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 14px;
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shop-name {
+  font-size: 13px;
+  color: #aaa;
+}
+
 .gold-display {
   font-size: 14px;
   font-weight: bold;
   color: #ffd700;
 }
 
+/* 买卖标签栏 */
 .shop-tabs {
   display: flex;
   gap: 12px;
-  margin-bottom: 16px;
 }
 
 .tab-btn {
@@ -287,10 +519,10 @@ onMounted(() => {
   color: #ffd700;
 }
 
-.category-filter {
+/* 分类筛选栏 */
+.category-tabs {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
   flex-wrap: wrap;
 }
 
@@ -315,103 +547,165 @@ onMounted(() => {
   color: #0099ff;
 }
 
-.shop-items {
+/* 物品列表 */
+.item-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 2px;
 }
 
+.item-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.item-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.item-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+/* 物品列表卡片 */
 .item-card {
   background: rgba(255, 255, 255, 0.05);
   border: 2px solid #4a4a4a;
   border-radius: 8px;
-  padding: 14px;
+  padding: 10px 14px;
   display: flex;
   align-items: center;
   gap: 12px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
 }
 
 .item-card:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.item-card.common { border-color: #ffffff; }
+.item-card.selected {
+  border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+}
+
+/* 稀有度边框色 */
+.item-card.common { border-color: #9d9d9d; }
 .item-card.uncommon { border-color: #1eff00; }
 .item-card.rare { border-color: #0070dd; }
 .item-card.epic { border-color: #a335ee; }
-.item-card.legendary { 
+.item-card.legendary {
   border-color: #ff8000;
   animation: legendary-glow 2s infinite;
 }
 
 @keyframes legendary-glow {
   0%, 100% { box-shadow: 0 0 5px #ff8000; }
-  50% { box-shadow: 0 0 20px #ff8000; }
+  50% { box-shadow: 0 0 15px #ff8000; }
 }
 
-.item-icon {
-  font-size: 28px;
+.card-icon {
+  font-size: 26px;
+  flex-shrink: 0;
 }
 
-.item-info {
+.card-info {
   flex: 1;
+  min-width: 0;
 }
 
-.item-name {
+.card-name {
   font-size: 14px;
   color: #fff;
   font-weight: bold;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
-.item-desc {
+.card-desc {
   font-size: 12px;
   color: #888;
-  margin-bottom: 6px;
 }
 
-.item-price, .item-count {
+.card-count {
+  font-size: 12px;
+  color: #ffd700;
+  margin-top: 2px;
+}
+
+.card-price {
   font-size: 13px;
   color: #ffd700;
-}
-
-.buy-btn, .sell-btn {
-  padding: 6px 14px;
-  border: none;
-  border-radius: 4px;
-  font-size: 13px;
   font-weight: bold;
+  flex-shrink: 0;
+}
+
+.card-quantity {
+  font-size: 12px;
+  color: #4CAF50;
+  margin-top: 2px;
+}
+
+/* 数量选择器 */
+.quantity-selector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 12px;
+}
+
+.qty-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #4a4a4a;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 16px;
   cursor: pointer;
-  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
 
-.buy-btn {
-  background: linear-gradient(135deg, #4CAF50, #45a049);
-  color: #fff;
+.qty-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
 }
 
-.sell-btn {
-  background: linear-gradient(135deg, #ff9800, #f57c00);
-  color: #fff;
-}
-
-.buy-btn:hover:not(:disabled), .sell-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-}
-
-.buy-btn:disabled, .sell-btn:disabled {
-  opacity: 0.5;
+.qty-btn:disabled {
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
+.qty-input {
+  width: 52px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid #4a4a4a;
+  border-radius: 4px;
+  color: #ffd700;
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.qty-input::-webkit-inner-spin-button,
+.qty-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* 物品详情面板 */
 .item-detail {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.6);
   border-radius: 6px;
   padding: 14px;
   border: 1px solid #4a4a4a;
-  margin-bottom: 16px;
 }
 
 .detail-header {
@@ -421,11 +715,16 @@ onMounted(() => {
   margin-bottom: 8px;
 }
 
-.item-detail h3 {
+.detail-header h3 {
   font-size: 16px;
-  color: #ffd700;
   margin: 0;
 }
+
+.detail-header h3.common { color: #ffffff; }
+.detail-header h3.uncommon { color: #1eff00; }
+.detail-header h3.rare { color: #0070dd; }
+.detail-header h3.epic { color: #a335ee; }
+.detail-header h3.legendary { color: #ff8000; }
 
 .quality-badge {
   padding: 3px 8px;
@@ -435,16 +734,17 @@ onMounted(() => {
   font-size: 12px;
 }
 
-.item-detail p {
+.detail-desc {
   color: #aaa;
   font-size: 13px;
-  margin: 8px 0;
+  margin: 0 0 8px 0;
 }
 
 .detail-info {
   display: flex;
   gap: 12px;
   margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 
 .detail-info span {
@@ -455,8 +755,65 @@ onMounted(() => {
   font-size: 13px;
 }
 
+.effect-info {
+  margin-bottom: 10px;
+}
+
 .effect-info span {
   color: #4CAF50;
   font-size: 13px;
+}
+
+.detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.action-btn {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  color: #fff;
+}
+
+.action-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn.buy {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+}
+
+.action-btn.sell {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+}
+
+/* 占位符 */
+.detail-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0;
+  color: #555;
+  gap: 8px;
+}
+
+.placeholder-icon {
+  font-size: 32px;
+}
+
+.placeholder-text {
+  font-size: 14px;
 }
 </style>

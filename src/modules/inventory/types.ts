@@ -179,6 +179,12 @@ export interface IInventoryService {
   getItemInfo(itemId: string): Item | null;
 
   /**
+   * 获取所有物品模板（用于商店商品池等需要遍历全部物品的场景）
+   * @returns {Item[]} 全部物品模板列表
+   */
+  getAllItems(): Item[];
+
+  /**
    * 添加物品到背包
    * @param {Item} item - 物品数据
    * @returns {boolean} 是否成功添加

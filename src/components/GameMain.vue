@@ -2,7 +2,7 @@
   <div class="game-main">
     <div class="game-header">
       <div class="player-info" @click="showCharacterInfo = true">
-        <div class="player-avatar">{{ getRaceIcon(character.raceId || 'human') }}</div>
+        <div class="player-avatar">{{ characterStore.raceIcon }}</div>
         <div class="player-details">
           <div class="player-name">{{ character.name }}</div>
           <div class="player-meta">
@@ -98,7 +98,6 @@
     
     <ShopPopup 
       :visible="showShop" 
-      :shop-id="currentShopId"
       @close="handleShopClose" 
     />
     
@@ -123,6 +122,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
+import { useShopStore } from '@/modules/shop';
 import { mapDbService } from '@/modules/map/db';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import { enemyService } from '@/modules/enemy/service';
@@ -147,6 +147,7 @@ const emit = defineEmits<{
 
 const characterStore = useCharacterStore();
 const mapStore = useMapStore();
+const shopStore = useShopStore();
 const toast = useToast();
 
 const currentContentTab = ref('map');
@@ -158,9 +159,8 @@ const showAdventureLog = ref(false);
 const showShop = ref(false);
 const showQuestBoard = ref(false);
 const showCombat = ref(false);
-const currentShopId = ref('shop_inn');
 
-const character = computed(() => characterStore.character || {} as { raceId?: string; name?: string; level?: number });
+const character = computed(() => characterStore.character || {} as { icon?: string; name?: string; level?: number; });
 const currentHp = computed(() => characterStore.hp);
 const maxHp = computed(() => characterStore.maxHp);
 const currentMp = computed(() => characterStore.mana);
@@ -173,19 +173,6 @@ const expPercent = computed(() => characterStore.expPercentage);
 const gold = computed(() => characterStore.gold);
 const currentArea = computed(() => mapStore.getCurrentLocation?.displayName || '未知区域');
 const hasCurrentLocation = computed(() => !!mapStore.getCurrentLocation);
-
-const races: Record<string, string> = {
-  human: '👨', dwarf: '🧔', gnome: '👦', nightelf: '🌙', draenei: '📜',
-  orc: '👹', undead: '💀', tauren: '🐂', troll: '👺', bloodelves: '🧝',
-  worgen: '🐺', pandaren: '🐼', goblin: '👺', voidelf: '🌌', lightforgeddraenei: '✨',
-  darkirondwarf: '⛏️', kul_tiran: '🌊', mechagnome: '🤖', nightborne: '🌙',
-  highmountaintauren: '⛰️', magharorc: '🔥', zandalari: '🐊', vulpera: '🦊',
-  dracthyr: '🐉', earthen: '🪨', harenei: '✨'
-};
-
-function getRaceIcon(race: string) {
-  return races[race] || '👤';
-}
 
 function showNotif(message: string, type: 'info' | 'success' | 'warning' | 'danger' = 'info') {
   toast.show({ message, type });
@@ -208,7 +195,7 @@ function handleExploreTabClick() {
 function handleCellExplored(data: { cellType?: string; interactionId?: string }) {
   const cellType = data?.cellType;
   if (cellType === 'shop') {
-    currentShopId.value = data?.interactionId || 'shop_inn';
+    shopStore.selectShop(data?.interactionId || '');
     showShop.value = true;
   } else if (cellType === 'board') {
     showQuestBoard.value = true;
@@ -256,7 +243,7 @@ function handleCombatClose(_result?: CombatResult) {
 
 function handleShopClose() {
   showShop.value = false;
-  eventBus.emit(GameEvents.SHOP_CLOSED, { shopId: currentShopId.value });
+  eventBus.emit(GameEvents.SHOP_CLOSED, { shopId: shopStore.currentShopId || '' });
 }
 
 /** 事件监听分组标识，用于组件卸载时统一清理 */

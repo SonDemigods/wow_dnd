@@ -10,6 +10,7 @@ import { explorationDbService } from './db';
 import { mapDbService } from '../map/db';
 import { enemyDbService } from '../enemy/db';
 import { questDbService } from '../quest/db';
+import { shopDbService } from '../shop/db';
 import { eventBus, GameEvents } from '../bus/core';
 import { inventoryService } from '../inventory/service';
 import { logService } from '../log/service';
@@ -32,6 +33,8 @@ export class ExplorationService implements IExplorationService {
   private currentCharacterId: string | null = null;
   private pendingBattleCell: { x: number; y: number } | null = null;
   private currentAreaConfig: AreaConfig | null = null;
+  /** 当前探索区域随机选取的商店ID */
+  private currentShopId: string = '';
 
   constructor() {
     this.setupCrossModuleListeners();
@@ -139,8 +142,15 @@ export class ExplorationService implements IExplorationService {
     };
   }
 
-  private getDefaultShopId(): string {
-    return 'shop_inn';
+  /**
+   * 从数据库加载所有商店配置，随机选取一个作为本次探索的商店
+   */
+  private async pickRandomShop(): Promise<void> {
+    const shops = await shopDbService.getAllShopConfigs();
+    if (shops && shops.length > 0) {
+      const idx = Math.floor(Math.random() * shops.length);
+      this.currentShopId = shops[idx].id;
+    }
   }
 
   private getEdgePositions(): { x: number; y: number }[] {
@@ -634,6 +644,8 @@ export class ExplorationService implements IExplorationService {
   async enterArea(areaId: string): Promise<void> {
     this.state.currentAreaId = areaId;
     await this.loadAreaConfig(areaId);
+    // 进入探索区域时随机选取一个商店
+    await this.pickRandomShop();
     await this.generateGrid();
   }
 
@@ -713,7 +725,7 @@ export class ExplorationService implements IExplorationService {
       
       this.updateAccessibleCells();
       
-      const interactionId = cell.type === 'shop' ? this.getDefaultShopId() : 'board_main';
+      const interactionId = cell.type === 'shop' ? this.currentShopId : 'board_main';
       eventBus.emit(GameEvents.EXPLORATION_CELL_EXPLORED, {
         characterId: this.currentCharacterId,
         x,

@@ -34,15 +34,27 @@ export interface BackupFile {
 /**
  * 游戏状态数据接口
  * 
- * 定义游戏全局状态
+ * 对应 runtime_gameState 表中 id='gameState' 的记录，
+ * 存储游戏运行时的全局状态。各模块通过此记录共享持久化状态。
  */
 export interface GameStateData {
-  /** 游戏是否正在运行 */
-  isRunning: boolean;
-  /** 游戏是否暂停 */
-  isPaused: boolean;
-  /** 游戏是否结束 */
-  isEnded: boolean;
+  /** 当前选中的角色ID（null 表示未选择角色） */
+  currentCharacterId: string | null;
+  /** 上次游玩时间（ISO 8601 格式） */
+  lastPlayedAt: string;
+  /** 游戏设置 */
+  settings: {
+    soundEnabled: boolean;
+    musicEnabled: boolean;
+    autoSave: boolean;
+    difficulty: string;
+  };
+  /** 当前选中的区域ID */
+  currentLocationId?: string;
+  /** 当前激活的标签页（'map' | 'explore'） */
+  currentTab?: string;
+  /** 当前打开的商店ID（null 表示未打开商店） */
+  currentShopId?: string | null;
 }
 
 /**

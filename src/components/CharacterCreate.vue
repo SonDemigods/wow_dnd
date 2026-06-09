@@ -11,22 +11,34 @@
       <!-- 步骤 1: 选择阵营 -->
       <div v-if="currentStep === 1" class="step-grid">
         <div class="faction-grid">
-          <button 
-            v-for="faction in factionList.filter(f => f.id !== 'neutral')" 
+          <button
+            v-for="faction in gameDataStore.factions.filter(
+              (f) => f.id !== 'neutral'
+            )"
             :key="faction.id"
-            :class="['faction-card', 'main-faction', { active: selectedFaction === faction.id }]"
+            :class="[
+              'faction-card',
+              'main-faction',
+              { active: selectedFaction === faction.id }
+            ]"
             :style="{ '--faction-color': faction.color }"
             @click="selectFaction(faction.id)"
           >
             <div class="faction-icon">{{ faction.icon }}</div>
             <div class="faction-name">{{ faction.name }}</div>
-            <div class="faction-desc">{{ getFactionRaceNames(faction.id) }}</div>
+            <div class="faction-desc">
+              {{ getFactionRaceNames(faction.id) }}
+            </div>
           </button>
         </div>
         <div class="neutral-faction-row">
-          <button 
+          <button
             v-if="neutralFaction"
-            :class="['faction-card', 'neutral-faction', { active: selectedFaction === 'neutral' }]"
+            :class="[
+              'faction-card',
+              'neutral-faction',
+              { active: selectedFaction === 'neutral' }
+            ]"
             :style="{ '--faction-color': '#4CAF50' }"
             @click="selectFaction('neutral')"
           >
@@ -40,8 +52,8 @@
       <!-- 步骤 2: 选择种族 -->
       <div v-if="currentStep === 2" class="step-grid">
         <div :class="['race-grid', selectedFaction]">
-          <button 
-            v-for="race in availableRaces" 
+          <button
+            v-for="race in availableRaces"
             :key="race.id"
             :class="['race-card', { active: selectedRace === race.id }]"
             @click="selectRace(race.id)"
@@ -49,7 +61,9 @@
             <div class="race-icon">{{ race.icon }}</div>
             <div class="race-name">{{ race.name }}</div>
             <div class="race-bonus" v-if="race.bonus">
-              <span v-for="(value, stat) in race.bonus" :key="stat">+{{ value }} {{ getStatName(stat) }}</span>
+              <span v-for="(value, stat) in race.bonus" :key="stat"
+                >+{{ value }} {{ getStatName(stat) }}</span
+              >
             </div>
           </button>
         </div>
@@ -58,8 +72,8 @@
       <!-- 步骤 3: 选择职业 -->
       <div v-if="currentStep === 3" class="step-grid">
         <div class="class-grid">
-          <button 
-            v-for="cls in availableClasses" 
+          <button
+            v-for="cls in availableClasses"
             :key="cls.id"
             :class="['class-card', { active: selectedClass === cls.id }]"
             :style="{ '--class-color': cls.color }"
@@ -68,12 +82,13 @@
             <div class="class-icon">{{ cls.icon }}</div>
             <div class="class-name">{{ cls.name }}</div>
             <div class="class-bonus" v-if="cls.bonus">
-              <span 
-                v-for="(value, stat) in cls.bonus" 
+              <span
+                v-for="(value, stat) in cls.bonus"
                 :key="stat"
                 :class="{ negative: value && value < 0 }"
               >
-                {{ value && value > 0 ? '+' : '' }}{{ value || 0 }} {{ getStatName(stat) }}
+                {{ value && value > 0 ? '+' : '' }}{{ value || 0 }}
+                {{ getStatName(stat) }}
               </span>
             </div>
           </button>
@@ -84,11 +99,13 @@
       <div v-if="currentStep === 4" class="step-grid">
         <div class="character-preview">
           <div class="preview-row">
-            <div class="preview-avatar">{{ getRaceIcon(selectedRace || '') }}</div>
+            <div class="preview-avatar">
+              {{ gameDataStore.getRaceIcon(selectedRace || '') }}
+            </div>
             <div class="name-input-wrapper">
-              <input 
-                v-model="name" 
-                type="text" 
+              <input
+                v-model="name"
+                type="text"
                 placeholder="输入角色名"
                 maxlength="12"
                 class="name-input"
@@ -96,9 +113,20 @@
             </div>
           </div>
           <div class="preview-details">
-            <Tag type="faction" :text="getFactionName(selectedFaction || '')" :color="getFactionColor(selectedFaction || '')" />
-            <Tag type="race" :text="getRaceName(selectedRace || '')" />
-            <Tag type="class" :text="getClassName(selectedClass || '')" :color="getClassColor(selectedClass || '')" />
+            <Tag
+              type="faction"
+              :text="gameDataStore.getFactionName(selectedFaction || '')"
+              :color="gameDataStore.getFactionColor(selectedFaction || '')"
+            />
+            <Tag
+              type="race"
+              :text="gameDataStore.getRaceName(selectedRace || '')"
+            />
+            <Tag
+              type="class"
+              :text="gameDataStore.getClassName(selectedClass || '')"
+              :color="gameDataStore.getClassColor(selectedClass || '')"
+            />
           </div>
         </div>
       </div>
@@ -110,7 +138,11 @@
       <div v-if="currentStep <= 3" class="attribute-preview">
         <div class="preview-title">属性预览</div>
         <div class="attr-list">
-          <div v-for="(value, stat) in currentAttributes" :key="stat" class="attr-item">
+          <div
+            v-for="(value, stat) in currentAttributes"
+            :key="stat"
+            class="attr-item"
+          >
             <span class="attr-icon">{{ getStatIcon(stat) }}</span>
             <span class="attr-name">{{ getStatName(stat) }}</span>
             <span class="attr-value">{{ value }}</span>
@@ -122,7 +154,11 @@
       <div v-if="currentStep === 4" class="final-attributes">
         <div class="final-title">最终属性</div>
         <div class="attr-grid">
-          <div v-for="(value, stat) in currentAttributes" :key="stat" class="attr-box">
+          <div
+            v-for="(value, stat) in currentAttributes"
+            :key="stat"
+            class="attr-box"
+          >
             <div class="attr-icon">{{ getStatIcon(stat) }}</div>
             <div class="attr-label">{{ getStatName(stat) }}</div>
             <div class="attr-value">{{ value }}</div>
@@ -178,15 +214,11 @@
 
       <!-- 导航按钮 -->
       <div class="navigation-buttons">
-        <button 
-          v-if="currentStep > 1"
-          class="nav-btn prev"
-          @click="prevStep"
-        >
+        <button v-if="currentStep > 1" class="nav-btn prev" @click="prevStep">
           上一步
         </button>
         <div class="spacer"></div>
-        <button 
+        <button
           v-if="currentStep < 4"
           class="nav-btn next"
           :disabled="!canProceed"
@@ -194,7 +226,7 @@
         >
           下一步
         </button>
-        <button 
+        <button
           v-if="currentStep === 4"
           class="nav-btn create"
           :disabled="!canCreate"
@@ -217,8 +249,11 @@ import { ref, computed, onMounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { useGameDataStore } from '@/modules/gameData';
 import Tag from './common/Tag.vue';
-import type { FactionData, RaceData, ClassData} from '@/modules/character/types';
-import type { FactionType, RaceType, ClassType } from '@/modules/character/types';
+import type {
+  FactionType,
+  RaceType,
+  ClassType
+} from '@/modules/character/types';
 import { STAT_NAMES } from '@/config/character';
 import {
   calculatePhysicalAttack,
@@ -244,39 +279,46 @@ const selectedFaction = ref<string | null>(null);
 const selectedRace = ref<string | null>(null);
 const selectedClass = ref<string | null>(null);
 
-const factionList = ref<FactionData[]>([]);
-const raceList = ref<RaceData[]>([]);
-const classList = ref<ClassData[]>([]);
-
 const currentStepTitle = computed(() => {
   switch (currentStep.value) {
-    case 1: return '请选择阵营';
-    case 2: return `请选择种族 (${getFactionName(selectedFaction.value || '')})`;
-    case 3: return '请选择职业';
-    case 4: return '请输入角色名';
-    default: return '';
+    case 1:
+      return '请选择阵营';
+    case 2:
+      return `请选择种族 (${gameDataStore.getFactionName(selectedFaction.value || '')})`;
+    case 3:
+      return '请选择职业';
+    case 4:
+      return '请输入角色名';
+    default:
+      return '';
   }
 });
 
 const neutralFaction = computed(() => {
-  return factionList.value.find(f => f.id === 'neutral');
+  return gameDataStore.factions.find((f) => f.id === 'neutral');
 });
 
 const availableRaces = computed(() => {
   if (!selectedFaction.value) return [];
-  return raceList.value.filter(r => r.factionId === selectedFaction.value);
+  return gameDataStore.races.filter(
+    (r) => r.factionId === selectedFaction.value
+  );
 });
 
 const availableClasses = computed(() => {
   if (!selectedRace.value) return [];
-  return classList.value.filter(c => c.raceIds.includes(selectedRace.value as RaceType));
+  return gameDataStore.classes.filter((c) =>
+    c.raceIds.includes(selectedRace.value as RaceType)
+  );
 });
 
 const currentAttributes = computed(() => {
   const base = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
-  
+
   if (selectedRace.value) {
-    const raceData = raceList.value.find(r => r.id === selectedRace.value);
+    const raceData = gameDataStore.races.find(
+      (r) => r.id === selectedRace.value
+    );
     if (raceData?.bonus) {
       for (const [stat, value] of Object.entries(raceData.bonus)) {
         if (stat in base) {
@@ -285,9 +327,11 @@ const currentAttributes = computed(() => {
       }
     }
   }
-  
+
   if (selectedClass.value) {
-    const classData = classList.value.find(c => c.id === selectedClass.value);
+    const classData = gameDataStore.classes.find(
+      (c) => c.id === selectedClass.value
+    );
     if (classData?.bonus) {
       for (const [stat, value] of Object.entries(classData.bonus)) {
         if (stat in base) {
@@ -296,7 +340,7 @@ const currentAttributes = computed(() => {
       }
     }
   }
-  
+
   return base;
 });
 
@@ -315,25 +359,28 @@ const derivedAttributes = computed(() => {
 
 const canProceed = computed(() => {
   switch (currentStep.value) {
-    case 1: return selectedFaction.value !== null;
-    case 2: return selectedRace.value !== null;
-    case 3: return selectedClass.value !== null;
-    default: return true;
+    case 1:
+      return selectedFaction.value !== null;
+    case 2:
+      return selectedRace.value !== null;
+    case 3:
+      return selectedClass.value !== null;
+    default:
+      return true;
   }
 });
 
 const canCreate = computed(() => {
-  return name.value.trim().length > 0 && 
-         selectedFaction.value && 
-         selectedRace.value && 
-         selectedClass.value;
+  return (
+    name.value.trim().length > 0 &&
+    selectedFaction.value &&
+    selectedRace.value &&
+    selectedClass.value
+  );
 });
 
 async function loadData() {
   await gameDataStore.loadAllData();
-  factionList.value = gameDataStore.factions;
-  raceList.value = gameDataStore.races;
-  classList.value = gameDataStore.classes;
 }
 
 function selectFaction(id: string) {
@@ -349,36 +396,11 @@ function selectClass(id: string) {
   selectedClass.value = id;
 }
 
-function getFactionName(id: string) {
-  return factionList.value.find(f => f.id === id)?.name || '';
-}
-
 function getFactionRaceNames(factionId: string) {
-  const factionRaces = raceList.value.filter(r => r.factionId === factionId);
-  return factionRaces.map(r => r.name).join(' · ');
-}
-
-function getRaceName(id: string) {
-  return raceList.value.find(r => r.id === id)?.name || '';
-}
-
-function getRaceIcon(id: string) {
-  return raceList.value.find(r => r.id === id)?.icon || '👤';
-}
-
-function getClassName(id: string) {
-  return classList.value.find(c => c.id === id)?.name || '';
-}
-
-function getFactionColor(id: string) {
-  if (id === 'alliance') return '#0078ff';
-  if (id === 'horde') return '#ff4400';
-  if (id === 'neutral') return '#4CAF50';
-  return '#9d9d9d';
-}
-
-function getClassColor(id: string) {
-  return classList.value.find(c => c.id === id)?.color || '#9d9d9d';
+  const factionRaces = gameDataStore.races.filter(
+    (r) => r.factionId === factionId
+  );
+  return factionRaces.map((r) => r.name).join(' · ');
 }
 
 function getStatName(stat: string) {
@@ -411,14 +433,14 @@ function prevStep() {
 
 async function createCharacter() {
   if (!canCreate.value) return;
-  
+
   await characterStore.createCharacter(
     name.value,
     selectedFaction.value as FactionType,
     selectedRace.value as RaceType,
     selectedClass.value as ClassType
   );
-  
+
   emit('created');
 }
 
@@ -568,9 +590,9 @@ onMounted(async () => {
 }
 
 .race-grid.neutral .race-card.active {
-  border-color: #4CAF50;
+  border-color: #4caf50;
   background: rgba(255, 215, 0, 0.1);
-  box-shadow: 0 0 15px #4CAF50;
+  box-shadow: 0 0 15px #4caf50;
 }
 
 .race-icon {
@@ -590,7 +612,7 @@ onMounted(async () => {
   flex-direction: column;
   gap: 2px;
   font-size: 12px;
-  color: #4CAF50;
+  color: #4caf50;
 }
 
 /* 职业选择 */
@@ -641,7 +663,7 @@ onMounted(async () => {
 }
 
 .class-bonus span {
-  color: #4CAF50;
+  color: #4caf50;
 }
 
 .class-bonus span.negative {
@@ -712,7 +734,11 @@ onMounted(async () => {
 
 /* 属性预览 */
 .attribute-preview {
-  background: linear-gradient(135deg, rgba(13, 17, 23, 0.98) 0%, rgba(20, 25, 35, 0.98) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(13, 17, 23, 0.98) 0%,
+    rgba(20, 25, 35, 0.98) 100%
+  );
   border-radius: 8px;
   padding: 8px;
   border: 1px solid rgba(255, 215, 0.15);
@@ -773,7 +799,11 @@ onMounted(async () => {
 
 /* 最终属性 */
 .final-attributes {
-  background: linear-gradient(135deg, rgba(13, 17, 23, 0.98) 0%, rgba(20, 25, 35, 0.98) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(13, 17, 23, 0.98) 0%,
+    rgba(20, 25, 35, 0.98) 100%
+  );
   border-radius: 8px;
   padding: 8px;
   border: 1px solid rgba(255, 215, 0, 0.15);

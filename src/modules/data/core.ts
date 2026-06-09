@@ -152,6 +152,7 @@ export class GameDatabase extends Dexie {
     await this.runtime_gameState.put({
       id: 'gameState',
       currentCharacterId: null,
+      currentShopId: null,
       lastPlayedAt: new Date().toISOString(),
       settings: {
         soundEnabled: true,

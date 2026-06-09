@@ -114,9 +114,10 @@ export interface IShopService {
    * 出售物品
    * @param {string} itemId - 物品ID
    * @param {number} [quantity] - 出售数量，默认为1
+   * @param {string} [shopId] - 商店ID（出售到的商店）
    * @returns {boolean} 是否出售成功
    */
-  sellItem(itemId: string, quantity?: number): boolean;
+  sellItem(itemId: string, quantity?: number, shopId?: string): boolean;
 
   /**
    * 计算物品售价

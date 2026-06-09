@@ -1,11 +1,13 @@
 /**
  * 商店模块状态管理层
  * 
- * Store 是商店数据的唯一持有者，Service 作为纯业务逻辑层供 Store 调用。
+ * Store 是商店数据的唯一持有者，所有数据通过 service 层读写。
+ * UI 组件只通过 Store 操作数据，不得直接引用 service 或 db。
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { ShopConfig, ShopItem } from './types';
+import type { ItemRarity } from '../inventory/types';
 import { shopService } from './service';
 import { eventBus } from '../bus/core';
 
@@ -46,12 +48,13 @@ export const useShopStore = defineStore('shop', () => {
   const getCurrentItems = computed(() => currentItems.value);
   
   /**
-   * 选择商店
+   * 选择商店（设置 ID 并通过 service 持久化到 gameState）
    * @param shopId - 商店ID
    */
   function selectShop(shopId: string): void {
     currentShopId.value = shopId;
-    currentItems.value = shopService.getShopItems(shopId);
+    currentItems.value = [];
+    shopService.saveCurrentShopId(shopId);
   }
   
   /**
@@ -78,22 +81,21 @@ export const useShopStore = defineStore('shop', () => {
    * @returns 是否出售成功
    */
   function sellItem(itemId: string, quantity: number = 1): boolean {
-    return shopService.sellItem(itemId, quantity);
+    return shopService.sellItem(itemId, quantity, currentShopId.value || undefined);
   }
   
   /**
    * 刷新商店商品
    */
-  function refreshItems(): void {
+  async function refreshItems(): Promise<void> {
     if (!currentShopId.value) return;
-    shopService.refreshShopItems(currentShopId.value);
+    await shopService.refreshShopItems(currentShopId.value);
     currentItems.value = shopService.getShopItems(currentShopId.value);
   }
   
   /**
    * 获取商店配置
    * @param shopId - 商店ID
-   * @returns 商店配置
    */
   function getShopConfig(shopId: string): ShopConfig | null {
     return shopService.getShopConfig(shopId);
@@ -102,12 +104,29 @@ export const useShopStore = defineStore('shop', () => {
   /**
    * 获取商店商品列表
    * @param shopId - 商店ID
-   * @returns 商品列表
    */
   function getShopItems(shopId: string): ShopItem[] {
     return shopService.getShopItems(shopId);
   }
-  
+
+  /**
+   * 计算物品售价（代理 service 方法，供 UI 使用）
+   * @param itemId - 物品ID
+   * @param rarity - 稀有度
+   */
+  function calculateSellPrice(itemId: string, rarity: ItemRarity): number {
+    return shopService.calculateSellPrice(itemId, rarity);
+  }
+
+  /**
+   * 获取指定物品在商店的回购剩余数量（代理 service 方法，供 UI 使用）
+   * @param shopId - 商店ID
+   * @param itemId - 物品ID
+   */
+  function getSoldItemCount(shopId: string, itemId: string): number {
+    return shopService.getSoldItemCount(shopId, itemId);
+  }
+
   /**
    * 清理事件监听
    */
@@ -116,11 +135,15 @@ export const useShopStore = defineStore('shop', () => {
   }
   
   /**
-   * 初始化
+   * 初始化（加载商店配置，恢复上次的 currentShopId）
    */
   async function init(): Promise<void> {
     await shopService.init();
     syncFromService();
+    const savedShopId = await shopService.getCurrentShopId();
+    if (savedShopId) {
+      currentShopId.value = savedShopId;
+    }
   }
   
   /**
@@ -131,6 +154,7 @@ export const useShopStore = defineStore('shop', () => {
     syncFromService();
     currentShopId.value = null;
     currentItems.value = [];
+    shopService.saveCurrentShopId(null);
   }
   
   return {
@@ -151,6 +175,8 @@ export const useShopStore = defineStore('shop', () => {
     refreshItems,
     getShopConfig,
     getShopItems,
+    calculateSellPrice,
+    getSoldItemCount,
     init,
     reset,
     dispose

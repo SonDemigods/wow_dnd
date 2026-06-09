@@ -112,6 +112,23 @@ export const useCharacterStore = defineStore('character', () => {
     return cls?.bonus || {};
   });
 
+  // 图标和颜色计算属性（避免各组件重复实现 getRaceIcon / getFactionColor 等逻辑）
+  const raceIcon = computed(() => {
+    return racesData.value[raceId.value]?.icon || '👤';
+  });
+  const factionIcon = computed(() => {
+    return factionsData.value[factionId.value]?.icon || '🏳️';
+  });
+  const classIcon = computed(() => {
+    return classesData.value[classId.value]?.icon || '⚔️';
+  });
+  const factionColor = computed(() => {
+    return factionsData.value[factionId.value]?.color || '#9d9d9d';
+  });
+  const classColor = computed(() => {
+    return classesData.value[classId.value]?.color || '#9d9d9d';
+  });
+
   // ==================== 内部辅助方法 ====================
 
   /** 从 Service 同步最新角色数据到 Store（创建新对象以触发 Vue 响应式更新） */
@@ -298,6 +315,11 @@ export const useCharacterStore = defineStore('character', () => {
     className,
     raceBonus,
     classBonus,
+    raceIcon,
+    factionIcon,
+    classIcon,
+    factionColor,
+    classColor,
     
     // 方法
     loadCharacterList,

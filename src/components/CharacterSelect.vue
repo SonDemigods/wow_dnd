@@ -18,19 +18,19 @@
         :key="char.id"
         class="character-card"
         :class="{ selected: selectedId === char.id }"
-        :style="{ '--class-color': getClassColor(char.classId), '--faction-color': getFactionColor(char.factionId) }"
+        :style="{ '--class-color': gameDataStore.getClassColor(char.classId), '--faction-color': gameDataStore.getFactionColor(char.factionId) }"
         @click="selectCharacter(char.id)"
       >
-        <div class="char-icon">{{ getRaceIcon(char.raceId) }}</div>
+        <div class="char-icon">{{ gameDataStore.getRaceIcon(char.raceId) }}</div>
         <div class="char-info">
           <div class="char-header">
             <span class="char-name">{{ char.name }}</span>
             <span class="char-level">Lv.{{ char.level }}</span>
           </div>
           <div class="char-details">
-            <Tag type="faction" :text="getFactionName(char.factionId)" :color="getFactionColor(char.factionId)" />
-            <Tag type="race" :text="getRaceName(char.raceId)" />
-            <Tag type="class" :text="getClassName(char.classId)" :color="getClassColor(char.classId)" />
+            <Tag type="faction" :text="gameDataStore.getFactionName(char.factionId)" :color="gameDataStore.getFactionColor(char.factionId)" />
+            <Tag type="race" :text="gameDataStore.getRaceName(char.raceId)" />
+            <Tag type="class" :text="gameDataStore.getClassName(char.classId)" :color="gameDataStore.getClassColor(char.classId)" />
           </div>
         </div>
         <div class="char-delete" @click.stop="deleteCharacter(char.id)">🗑️</div>
@@ -63,52 +63,23 @@
 import { ref, onMounted } from 'vue';
 import { characterService } from '@/modules/character';
 import Tag from './common/Tag.vue';
-import { gameDataService } from '@/modules/gameData';
+import { useGameDataStore } from '@/modules/gameData';
 import type { CharacterListItem } from '@/modules/character';
-import type { RaceData, ClassData, FactionData } from '@/modules/character/types';
 
 const emit = defineEmits<{
   (e: 'select', id: string): void;
   (e: 'create'): void;
 }>();
 
+const gameDataStore = useGameDataStore();
+
 const characters = ref<CharacterListItem[]>([]);
 const selectedId = ref<string | null>(null);
 const showConfirmModal = ref(false);
 const deletingCharacterId = ref<string | null>(null);
 
-const factions = ref<FactionData[]>([]);
-const races = ref<RaceData[]>([]);
-const classes = ref<ClassData[]>([]);
-
-function getFactionName(id: string) {
-  return factions.value.find(f => f.id === id)?.name || '';
-}
-
-function getFactionColor(id: string) {
-  return factions.value.find(f => f.id === id)?.color || '#9d9d9d';
-}
-
-function getRaceName(id: string) {
-  return races.value.find(r => r.id === id)?.name || '';
-}
-
-function getRaceIcon(id: string) {
-  return races.value.find(r => r.id === id)?.icon || '👤';
-}
-
-function getClassName(id: string) {
-  return classes.value.find(c => c.id === id)?.name || '';
-}
-
-function getClassColor(id: string) {
-  return classes.value.find(c => c.id === id)?.color || '#9d9d9d';
-}
-
 async function loadData() {
-  factions.value = await gameDataService.getAllFactions();
-  races.value = await gameDataService.getAllRaces();
-  classes.value = await gameDataService.getAllClasses();
+  await gameDataStore.loadAllData();
 }
 
 async function loadCharacters() {

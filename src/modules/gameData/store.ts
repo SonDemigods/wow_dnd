@@ -86,6 +86,34 @@ export const useGameDataStore = defineStore('gameData', () => {
     if (!selectedClassId.value) return null;
     return classes.value.find(c => c.id === selectedClassId.value) || null;
   });
+
+  // ==================== 快捷取值方法 ====================
+  // 直接返回 name / icon / color，避免各组件重复编写 find + 回退值逻辑
+
+  const getRaceIcon = computed(() => (id: string) => {
+    return races.value.find(r => r.id === id)?.icon || '👤';
+  });
+  const getRaceName = computed(() => (id: string) => {
+    return races.value.find(r => r.id === id)?.name || '';
+  });
+  const getFactionIcon = computed(() => (id: string) => {
+    return factions.value.find(f => f.id === id)?.icon || '🏳️';
+  });
+  const getFactionName = computed(() => (id: string) => {
+    return factions.value.find(f => f.id === id)?.name || '';
+  });
+  const getFactionColor = computed(() => (id: string) => {
+    return factions.value.find(f => f.id === id)?.color || '#9d9d9d';
+  });
+  const getClassIcon = computed(() => (id: string) => {
+    return classes.value.find(c => c.id === id)?.icon || '⚔️';
+  });
+  const getClassName = computed(() => (id: string) => {
+    return classes.value.find(c => c.id === id)?.name || '';
+  });
+  const getClassColor = computed(() => (id: string) => {
+    return classes.value.find(c => c.id === id)?.color || '#9d9d9d';
+  });
   
   // ==================== 方法 ====================
   
@@ -330,6 +358,16 @@ export const useGameDataStore = defineStore('gameData', () => {
     selectedFaction,
     selectedRace,
     selectedClass,
+    
+    // 快捷取值方法
+    getRaceIcon,
+    getRaceName,
+    getFactionIcon,
+    getFactionName,
+    getFactionColor,
+    getClassIcon,
+    getClassName,
+    getClassColor,
     
     // 方法
     loadAllData,
