@@ -222,7 +222,7 @@ export interface ISkillsService {
   calculateSkillEffect(skillId: string): SkillEffect;
 
   /** 检查等级解锁 */
-  checkLevelUnlocks(): void;
+  checkLevelUnlocks(shouldAutoEquip?: boolean): void;
 
   /** 重置技能数据 */
   reset(): void;

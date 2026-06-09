@@ -172,6 +172,8 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { combatService } from '@/modules/combat/service';
 import { useCharacterStore } from '@/modules/character';
+import { useSkillsStore } from '@/modules/skill/store';
+import { useInventoryStore } from '@/modules/inventory/store';
 import { skillsService } from '@/modules/skill/service';
 import { inventoryService } from '@/modules/inventory/service';
 import { eventBus, GameEvents } from '@/modules/bus/core';
@@ -188,6 +190,8 @@ const emit = defineEmits<{
 }>();
 
 const characterStore = useCharacterStore();
+const skillsStore = useSkillsStore();
+const inventoryStore = useInventoryStore();
 const logRef = ref<HTMLElement | null>(null);
 const isAnimating = ref(false);
 const combatResult = ref<CombatResult | null>(null);
@@ -234,22 +238,22 @@ const isPlayerTurn = computed(() => turn.value === 'player');
 const isFighting = computed(() => !combatResult.value);
 const canAct = computed(() => isPlayerTurn.value && isFighting.value && !isAnimating.value);
 
-// 可用技能：优先装备的，没有则显示已解锁的
+// 可用技能：使用 skillsStore 响应式数据，确保角色切换后自动更新
 const equippedSkills = computed<Skill[]>(() => {
   try {
-    const equipped = skillsService.getEquippedSkills();
-    if (equipped && equipped.length > 0) return equipped.slice(0, 4);
-    const unlocked = skillsService.getUnlockedSkills();
+    const equipped = skillsStore.equippedSkills;
+    if (equipped && equipped.length > 0) return equipped.filter((s): s is Skill => s !== null).slice(0, 4);
+    const unlocked = skillsStore.unlockedSkills;
     return (unlocked || []).slice(0, 4);
   } catch {
     return [];
   }
 });
 
-// 消耗品物品
+// 消耗品物品：使用 inventoryStore 响应式数据
 const consumableItems = computed(() => {
   try {
-    const inventory = inventoryService.getInventory();
+    const inventory = inventoryStore.inventory;
     return inventory
       .map((invItem, index) => {
         const info = inventoryService.getItemInfo(invItem.itemId);

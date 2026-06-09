@@ -36,13 +36,16 @@ export class SkillsService implements ISkillsService {
       this.skillBar = data.skillBar;
     }
     await this.loadSkillTemplates();
-    this.checkLevelUnlocks();
+    // 初始化时不自动装备新技能（仅添加技能到已学列表），避免覆盖用户手动卸下的技能
+    this.checkLevelUnlocks(false);
   }
 
   /**
    * 加载技能模板
    */
   private async loadSkillTemplates(): Promise<void> {
+    // 清除旧职业的模板缓存，防止跨职业技能污染
+    this.skillTemplates.clear();
     const classId = characterService.getClass();
     if (classId) {
       const templates = await skillsDbService.getSkillTemplatesByClass(classId);
@@ -368,17 +371,18 @@ export class SkillsService implements ISkillsService {
 
   /**
    * 检查等级解锁
+   * @param shouldAutoEquip - 是否自动装备新技能到空槽位（首次解锁时传 true，初始化加载时传 false）
    */
-  checkLevelUnlocks(): void {
+  checkLevelUnlocks(shouldAutoEquip: boolean = true): void {
     const characterLevel = characterService.getLevel();
     const currentClass = characterService.getClass();
     if (!currentClass) return;
 
     // 从已加载的技能模板中获取当前职业的技能
     const classAbilities = Array.from(this.skillTemplates.values());
-    
+
     let hasNewSkills = false;
-    
+
     // 检查是否有新技能可以解锁
     classAbilities.forEach(template => {
       const exists = this.skills.some(s => s.id === template.id);
@@ -386,13 +390,15 @@ export class SkillsService implements ISkillsService {
         // 解锁新技能
         this.skills.push({ ...template });
         hasNewSkills = true;
-        
-        // 如果技能栏有空位，自动装备新技能
-        const emptySlot = this.skillBar.slots.findIndex(s => s === null);
-        if (emptySlot !== -1) {
-          this.skillBar.slots[emptySlot] = template.id;
+
+        // 仅在首次解锁时自动装备新技能（用户主动升级的场景）
+        if (shouldAutoEquip) {
+          const emptySlot = this.skillBar.slots.findIndex(s => s === null);
+          if (emptySlot !== -1) {
+            this.skillBar.slots[emptySlot] = template.id;
+          }
         }
-        
+
         // 触发事件
         eventBus.emit(GameEvents.SKILL_LEARNED, { skill: template });
 
@@ -406,7 +412,7 @@ export class SkillsService implements ISkillsService {
         });
       }
     });
-    
+
     // 保存
     if (hasNewSkills) {
       this.save();

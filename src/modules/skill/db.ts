@@ -1,18 +1,21 @@
 /**
  * 技能模块数据层
  * 
- * 封装技能数据的 IndexedDB 操作，提供数据持久化能力
+ * 封装技能数据的 IndexedDB 操作，提供数据持久化能力。
+ * 技能和技能栏以原生数组/对象存储，无需 JSON 序列化/反序列化。
  */
 import { db as gameDb, dbService } from '../data/core';
 import type { Skill, SkillBar, SkillsData, SkillType } from './types';
 
 /**
- * 技能数据存储接口
+ * 技能数据存储接口（存储到 char_skills 表的结构）
  */
 export interface SkillDataStorage {
   characterId: string;
-  skills: string;
-  skillBar: string;
+  /** 已学技能列表（原生数组，非 JSON 字符串） */
+  skills: Skill[];
+  /** 技能栏装备状态（原生对象，非 JSON 字符串） */
+  skillBar: SkillBar;
   currentClass: string | null;
   updatedAt: number;
 }
@@ -37,15 +40,15 @@ export interface SkillTemplateStorage {
  */
 export class SkillsDbService {
   /**
-   * 保存技能数据到数据库
+   * 保存技能数据到数据库（原生存储，不做 JSON 序列化）
    * @param data - 技能数据
    */
   async saveSkillsData(data: SkillsData): Promise<void> {
     await dbService.withRetry(async () => {
       await gameDb.char_skills.put({
         characterId: data.characterId,
-        skills: JSON.stringify(data.skills),
-        skillBar: JSON.stringify(data.skillBar),
+        skills: data.skills,
+        skillBar: data.skillBar,
         currentClass: data.currentClass,
         updatedAt: data.updatedAt
       });
@@ -53,7 +56,7 @@ export class SkillsDbService {
   }
 
   /**
-   * 获取技能数据
+   * 获取技能数据（原生读取，不做 JSON 反序列化）
    * @param characterId - 角色ID
    * @returns 技能数据
    */
@@ -63,22 +66,31 @@ export class SkillsDbService {
       if (!data) {
         return this.getDefaultSkillsData(characterId);
       }
-      
+
+      // 兼容旧数据：如果 skills/skillBar 是 JSON 字符串（旧格式），尝试解析
       let skills: Skill[] = [];
       let skillBar: SkillBar = { slots: [null, null, null, null] };
-      
-      try {
-        skills = JSON.parse(data.skills as string);
-      } catch {
-        skills = [];
+
+      if (Array.isArray(data.skills)) {
+        skills = data.skills;
+      } else if (typeof data.skills === 'string') {
+        try {
+          skills = JSON.parse(data.skills);
+        } catch {
+          skills = [];
+        }
       }
-      
-      try {
-        skillBar = JSON.parse(data.skillBar as string);
-      } catch {
-        skillBar = { slots: [null, null, null, null] };
+
+      if (data.skillBar && Array.isArray((data.skillBar as SkillBar).slots)) {
+        skillBar = data.skillBar as SkillBar;
+      } else if (typeof data.skillBar === 'string') {
+        try {
+          skillBar = JSON.parse(data.skillBar);
+        } catch {
+          skillBar = { slots: [null, null, null, null] };
+        }
       }
-      
+
       return {
         characterId: data.characterId,
         skills,
@@ -142,7 +154,7 @@ export class SkillsDbService {
     return dbService.withRetry(async () => {
       const data = await gameDb.config_skills.get(skillId) as unknown as SkillTemplateStorage | undefined;
       if (!data) return null;
-      
+
       return {
         id: data.id,
         name: data.name,

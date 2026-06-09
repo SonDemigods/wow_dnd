@@ -103,7 +103,7 @@
 
 import { ref, computed, onMounted, watch } from 'vue';
 import { questService } from '@/modules/quest';
-import { characterService } from '@/modules/character';
+import { useCharacterStore } from '@/modules/character';
 import { useExplorationStore } from '@/modules/exploration/store';
 import { useToast } from '@/composables/useToast';
 import type { QuestDefinition } from '@/modules/quest';
@@ -119,6 +119,7 @@ const emit = defineEmits<{
 }>();
 
 const explorationStore = useExplorationStore();
+const characterStore = useCharacterStore();
 const toast = useToast();
 
 const currentTab = ref<'available' | 'turnin'>('available');
@@ -126,7 +127,7 @@ const currentTab = ref<'available' | 'turnin'>('available');
 const availableQuests = ref<QuestDefinition[]>([]);
 const turnInQuests = ref<QuestDefinition[]>([]);
 
-const characterLevel = computed(() => characterService.getLevel());
+const characterLevel = computed(() => characterStore.level);
 
 const questIcons: Record<string, string> = {
   kill: '⚔️',
