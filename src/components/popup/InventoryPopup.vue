@@ -259,8 +259,12 @@ function isEquipment(type?: ItemType) {
   return type === 'weapon' || type === 'armor';
 }
 
-function isEquipped(itemId: string) {
-  return equippedItemIds.value.has(itemId);
+function isEquipped(itemId: string): boolean {
+  if (!equippedItemIds.value.has(itemId)) return false;
+  // 如果背包中仍有该物品的副本，说明存在未被装备的实例，不应显示为"已装备"
+  // （所有副本都已装备时，物品不会出现在背包网格中，equipped 样式不会误显示）
+  const stillInInventory = inventoryItems.value.some(i => i.itemId === itemId);
+  return !stillInInventory;
 }
 
 const displayItems = computed<ItemEntry[]>(() => {
