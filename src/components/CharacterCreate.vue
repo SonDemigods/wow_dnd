@@ -1,5 +1,17 @@
 <template>
   <div class="character-create">
+    <!-- 校验/确认弹窗 -->
+    <div v-if="showModal" class="modal-overlay" @click="cancelModal">
+      <div class="modal-box" @click.stop>
+        <div class="modal-icon">{{ modalIcon }}</div>
+        <h3>{{ modalTitle }}</h3>
+        <p>{{ modalMessage }}</p>
+        <div class="modal-buttons">
+          <button v-if="modalType === 'confirm'" class="modal-btn-cancel" @click="cancelModal">取消</button>
+          <button class="modal-btn-confirm" @click="onModalConfirm">{{ modalConfirmText }}</button>
+        </div>
+      </div>
+    </div>
     <!-- 顶部固定区域 -->
     <div class="create-header">
       <h2>创建新角色 - 步骤 {{ currentStep }}/4</h2>
@@ -106,8 +118,7 @@
               <input
                 v-model="name"
                 type="text"
-                placeholder="输入角色名"
-                maxlength="12"
+                placeholder="输入角色名（最多8个汉字或16个英文字母）"
                 class="name-input"
               />
             </div>
@@ -279,6 +290,14 @@ const selectedFaction = ref<string | null>(null);
 const selectedRace = ref<string | null>(null);
 const selectedClass = ref<string | null>(null);
 
+/** 弹窗状态 */
+const showModal = ref(false);
+const modalType = ref<'error' | 'confirm'>('error');
+const modalIcon = ref('');
+const modalTitle = ref('');
+const modalMessage = ref('');
+const modalConfirmText = ref('');
+
 const currentStepTitle = computed(() => {
   switch (currentStep.value) {
     case 1:
@@ -431,17 +450,87 @@ function prevStep() {
   }
 }
 
-async function createCharacter() {
-  if (!canCreate.value) return;
+/** 计算名称的有效字符长度：中文计2，英文/数字计1 */
+function calcNameLength(str: string): number {
+  let len = 0;
+  for (const ch of str) {
+    len += /[\u4e00-\u9fff]/.test(ch) ? 2 : 1;
+  }
+  return len;
+}
 
+/** 校验角色名，返回错误信息，无错误返回 null */
+function validateName(input: string): string | null {
+  const trimmed = input.trim();
+  if (trimmed.length === 0) {
+    return '角色名不能为空';
+  }
+  if (!/^[\u4e00-\u9fffa-zA-Z0-9]+$/.test(trimmed)) {
+    return '角色名只能包含中文、英文和数字，不允许特殊符号';
+  }
+  const len = calcNameLength(trimmed);
+  if (len > 16) {
+    return '角色名过长，最多8个汉字或16个英文字母';
+  }
+  return null;
+}
+
+/** 显示错误弹窗 */
+function showErrorModal(msg: string) {
+  modalType.value = 'error';
+  modalIcon.value = '⚠️';
+  modalTitle.value = '角色名不符合要求';
+  modalMessage.value = msg;
+  modalConfirmText.value = '返回修改';
+  showModal.value = true;
+}
+
+/** 显示确认弹窗 */
+function showConfirmModal() {
+  modalType.value = 'confirm';
+  modalIcon.value = '✅';
+  modalTitle.value = '确认创建角色';
+  modalMessage.value = `确认创建角色「${name.value.trim()}」吗？`;
+  modalConfirmText.value = '确认创建';
+  showModal.value = true;
+}
+
+/** 关闭弹窗 */
+function cancelModal() {
+  showModal.value = false;
+}
+
+/** 弹窗确认按钮回调 */
+function onModalConfirm() {
+  showModal.value = false;
+  if (modalType.value === 'confirm') {
+    doCreate();
+  }
+}
+
+/** 执行实际创建逻辑 */
+async function doCreate() {
   await characterStore.createCharacter(
-    name.value,
+    name.value.trim(),
     selectedFaction.value as FactionType,
     selectedRace.value as RaceType,
     selectedClass.value as ClassType
   );
 
   emit('created');
+}
+
+/** 点击创建角色：先校验，通过后弹出确认弹窗 */
+async function createCharacter() {
+  if (!canCreate.value) return;
+
+  const error = validateName(name.value);
+  if (error) {
+    showErrorModal(error);
+    return;
+  }
+
+  showConfirmModal();
 }
 
 onMounted(async () => {
@@ -968,6 +1057,99 @@ onMounted(async () => {
 .nav-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* 校验/确认弹窗 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-box {
+  background: rgba(20, 25, 35, 0.98);
+  border: 2px solid #ffd700;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 360px;
+  width: 90%;
+  text-align: center;
+  animation: scaleIn 0.2s ease;
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.modal-box h3 {
+  color: #ffd700;
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.modal-box p {
+  color: #b0b0b0;
+  font-size: 14px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.modal-btn-cancel {
+  padding: 10px 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid #666;
+  border-radius: 6px;
+  color: #f0f0f0;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.modal-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #888;
+}
+
+.modal-btn-confirm {
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  border: none;
+  border-radius: 6px;
+  color: #000;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.modal-btn-confirm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
 }
 
 /* 移动端适配 */

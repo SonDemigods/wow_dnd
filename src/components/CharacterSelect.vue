@@ -146,15 +146,42 @@ defineExpose({
 
 .character-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
   margin-bottom: 24px;
 }
 
+/* 移动端：每行显示一个角色 */
 @media (max-width: 480px) {
   .character-list {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: 1fr;
     gap: 12px;
+  }
+}
+
+/* PC端：卡片尺寸加大 */
+@media (min-width: 769px) {
+  .character-card {
+    height: 180px;
+    padding: 20px 14px;
+  }
+  .char-icon {
+    font-size: 52px;
+  }
+  .char-name {
+    font-size: 16px;
+  }
+  .char-level {
+    font-size: 13px;
+  }
+  .char-details {
+    font-size: 12px;
+  }
+  .add-character {
+    height: 180px;
+  }
+  .add-icon {
+    font-size: 40px;
   }
 }
 
@@ -222,28 +249,12 @@ defineExpose({
 
 .char-details {
   display: flex;
-  gap: 3px;
-  font-size: 11px;
-  justify-content: center;
-  white-space: nowrap;
-  width: 100%;
-  overflow: hidden;
-}
-
-.char-details {
-  display: flex;
   gap: 4px;
   font-size: 11px;
   justify-content: center;
   white-space: nowrap;
   width: 100%;
   overflow: hidden;
-}
-
-.char-level {
-  color: #ffd700;
-  font-size: 13px;
-  margin-top: 4px;
 }
 
 .char-delete {
