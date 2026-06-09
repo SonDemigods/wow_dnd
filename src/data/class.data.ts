@@ -1438,7 +1438,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     },
     {
       id: 'evoker_emerald_blossom',
-      name: '翡翠 Blossom',
+      name: '翡翠',
       icon: '💚',
       description: '治疗技能',
       mpCost: 12,
