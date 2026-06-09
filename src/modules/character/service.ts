@@ -621,7 +621,7 @@ export class CharacterService implements ICharacterService {
    * @param amount - 金币数量
    */
   async addGold(amount: number): Promise<void> {
-    if (!this.character || amount <= 0) return;
+    if (!this.character || amount === 0) return;
     
     this.character.gold += amount;
     await this.save();

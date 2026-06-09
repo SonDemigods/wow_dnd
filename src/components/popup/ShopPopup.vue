@@ -48,7 +48,7 @@
             <div class="card-info">
               <div class="card-name">{{ entry.name }}</div>
               <div class="card-desc">{{ entry.description }}</div>
-              <div v-if="entry.quantity > 1" class="card-quantity">剩余: {{ entry.quantity }}</div>
+              <div v-if="entry.quantity > 0" class="card-quantity">库存: {{ entry.quantity }}</div>
             </div>
             <div class="card-price">💰 {{ entry.price }}</div>
           </div>
@@ -323,12 +323,12 @@ function clampSellQuantity() {
 
 /**
  * 将 store 的 ShopItem[] 富化为 ShopDisplayItem[]（注入物品模板信息），并按分类筛选
+ * 库存为 0 的商品已在 service 层被过滤，此处不再展示
  */
 const displayShopItems = computed<ShopDisplayItem[]>(() => {
   const enriched = shopStore.currentItems.map(shopItem => {
     const itemInfo = inventoryStore.getItemInfo(shopItem.itemId);
     if (!itemInfo) return null;
-    const soldCount = shopStore.getSoldItemCount(currentShopId.value, shopItem.itemId);
     return {
       id: itemInfo.id,
       itemId: shopItem.itemId,
@@ -338,7 +338,7 @@ const displayShopItems = computed<ShopDisplayItem[]>(() => {
       icon: itemInfo.icon,
       description: itemInfo.description,
       price: shopItem.price,
-      quantity: soldCount > 0 ? soldCount : 1,
+      quantity: shopItem.quantity,
       category: itemInfo.type as ItemCategory,
       effect: itemInfo.effect
     } as ShopDisplayItem;

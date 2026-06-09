@@ -109,11 +109,11 @@ export class ShopService implements IShopService {
     // 合并玩家卖给商店的物品（排在前面，方便买回，按 itemId 去重后每个仅一条）
     const soldMap = this.soldItems.get(shopId);
     const sold = soldMap
-      ? Array.from(soldMap.values()).map(e => ({ itemId: e.itemId, price: e.price }))
+      ? Array.from(soldMap.values()).map(e => ({ itemId: e.itemId, price: e.price, quantity: e.count }))
       : [];
-    // 去重：生成商品中排除已存在于回购列表的 itemId
+    // 去重：生成商品中排除已存在于回购列表的 itemId，同时过滤掉库存为 0 的商品
     const soldIds = new Set(sold.map(s => s.itemId));
-    const filteredItems = items.filter(i => !soldIds.has(i.itemId));
+    const filteredItems = items.filter(i => !soldIds.has(i.itemId) && i.quantity > 0);
     return [...sold, ...filteredItems];
   }
 
@@ -175,9 +175,12 @@ export class ShopService implements IShopService {
     
     selectedItems.forEach(item => {
       // 商店商品按原价（基础价值 × 稀有度倍率），不浮动
+      // 随机库存 1-10 件
+      const stock = Math.floor(Math.random() * 10) + 1;
       items.push({
         itemId: item.id,
-        price: this.calculateBuyPrice(item.id, item.rarity)
+        price: this.calculateBuyPrice(item.id, item.rarity),
+        quantity: stock
       });
     });
     
@@ -273,6 +276,20 @@ export class ShopService implements IShopService {
         }
         if (soldMap.size === 0) {
           this.soldItems.delete(shopId);
+        }
+      }
+    }
+    
+    // 扣减商店商品库存（非回购物品）
+    if (!soldMap?.has(itemId)) {
+      const shopItems = this.shopItems.get(shopId);
+      if (shopItems) {
+        const idx = shopItems.findIndex(i => i.itemId === itemId);
+        if (idx !== -1) {
+          shopItems[idx].quantity -= quantity;
+          if (shopItems[idx].quantity <= 0) {
+            shopItems.splice(idx, 1);
+          }
         }
       }
     }

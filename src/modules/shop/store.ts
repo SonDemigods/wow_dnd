@@ -94,7 +94,15 @@ export const useShopStore = defineStore('shop', () => {
    * @returns 是否出售成功
    */
   function sellItem(itemId: string, quantity: number = 1): boolean {
-    return shopService.sellItem(itemId, quantity, currentShopId.value || undefined);
+    if (!currentShopId.value) return false;
+    
+    const success = shopService.sellItem(itemId, quantity, currentShopId.value);
+    if (success) {
+      // 出售后刷新商店商品列表（回购物品会出现在购买列表中）
+      currentItems.value = shopService.getShopItems(currentShopId.value);
+    }
+    
+    return success;
   }
   
   /**

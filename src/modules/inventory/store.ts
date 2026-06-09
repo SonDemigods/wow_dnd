@@ -53,6 +53,9 @@ export const useInventoryStore = defineStore('inventory', () => {
   const searchKeyword = ref('');
   const isLoading = ref(false);
 
+  /** 跨模块事件监听是否已注册（避免重复注册） */
+  let crossModuleListenersSetup = false;
+
   /**
    * 从 Service 同步最新背包数据到 Store
    */
@@ -186,6 +189,11 @@ export const useInventoryStore = defineStore('inventory', () => {
     isLoading.value = true;
     await inventoryService.initialize();
     syncFromService();
+    // 首次加载时注册跨模块事件监听（商店交易后自动刷新背包）
+    if (!crossModuleListenersSetup) {
+      setupCrossModuleListeners();
+      crossModuleListenersSetup = true;
+    }
     isLoading.value = false;
   }
 
@@ -288,6 +296,11 @@ export const useInventoryStore = defineStore('inventory', () => {
 
     eventBus.onGroup('inventoryStore', GameEvents.CHARACTER_LOGOUT, () => {
       inventory.value = [];
+    });
+
+    // 商店交易后刷新背包物品列表
+    eventBus.onGroup('inventoryStore', GameEvents.SHOP_TRANSACTION, () => {
+      syncFromService();
     });
   }
 

@@ -53,10 +53,12 @@ export interface ShopConfig {
  * 商店商品接口
  * @property {string} itemId - 物品ID
  * @property {number} price - 当前售价
+ * @property {number} quantity - 库存数量（回购物品为可回购数量）
  */
 export interface ShopItem {
   itemId: string;
   price: number;
+  quantity: number;
 }
 
 /**

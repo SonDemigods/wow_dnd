@@ -276,6 +276,11 @@ export const useCharacterStore = defineStore('character', () => {
     eventBus.onGroup('characterStore', GameEvents.CHARACTER_STATS_CHANGE, () => {
       syncCharacterFromService();
     });
+
+    // 商店交易后同步金币
+    eventBus.onGroup('characterStore', GameEvents.SHOP_TRANSACTION, () => {
+      syncCharacterFromService();
+    });
   }
 
   /**
