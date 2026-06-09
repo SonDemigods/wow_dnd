@@ -28,7 +28,7 @@ const HEALTH_POTIONS: Item[] = [
   {
     id: 'medium_health_potion',
     name: '次级治疗药水',
-    icon: '💗',
+    icon: '❤️',
     type: 'potion',
     rarity: 'uncommon',
     description: '恢复60点生命值',
@@ -41,7 +41,7 @@ const HEALTH_POTIONS: Item[] = [
   {
     id: 'large_health_potion',
     name: '强效治疗药水',
-    icon: '💖',
+    icon: '❤️',
     type: 'potion',
     rarity: 'rare',
     description: '恢复100点生命值',
@@ -54,7 +54,7 @@ const HEALTH_POTIONS: Item[] = [
   {
     id: 'super_health_potion',
     name: '超级治疗药水',
-    icon: '❤️‍🔥',
+    icon: '❤️',
     type: 'potion',
     rarity: 'epic',
     description: '恢复150点生命值，燃烧军团的炼金产物',
@@ -84,7 +84,7 @@ const MANA_POTIONS: Item[] = [
   {
     id: 'medium_mana_potion',
     name: '次级法力药水',
-    icon: '💎',
+    icon: '💙',
     type: 'potion',
     rarity: 'uncommon',
     description: '恢复60点法力值',
@@ -97,7 +97,7 @@ const MANA_POTIONS: Item[] = [
   {
     id: 'large_mana_potion',
     name: '强效法力药水',
-    icon: '🔮',
+    icon: '💙',
     type: 'potion',
     rarity: 'rare',
     description: '恢复100点法力值',
@@ -110,7 +110,7 @@ const MANA_POTIONS: Item[] = [
   {
     id: 'super_mana_potion',
     name: '超级法力药水',
-    icon: '✨',
+    icon: '💙',
     type: 'potion',
     rarity: 'epic',
     description: '恢复150点法力值，蕴含无尽奥术能量',
@@ -127,7 +127,7 @@ const ATTRIBUTE_POTIONS: Item[] = [
   {
     id: 'strength_potion',
     name: '巨人之力药剂',
-    icon: '💪',
+    icon: '🧪',
     type: 'potion',
     rarity: 'uncommon',
     description: '饮用后力量永久提升',
@@ -140,7 +140,7 @@ const ATTRIBUTE_POTIONS: Item[] = [
   {
     id: 'agility_potion',
     name: '猫鼬药剂',
-    icon: '🦶',
+    icon: '🧪',
     type: 'potion',
     rarity: 'uncommon',
     description: '饮用后敏捷永久提升',
@@ -153,7 +153,7 @@ const ATTRIBUTE_POTIONS: Item[] = [
   {
     id: 'constitution_potion',
     name: '坚韧药剂',
-    icon: '🏋️',
+    icon: '🧪',
     type: 'potion',
     rarity: 'uncommon',
     description: '饮用后体质永久提升',
@@ -166,7 +166,7 @@ const ATTRIBUTE_POTIONS: Item[] = [
   {
     id: 'intelligence_potion',
     name: '智慧药剂',
-    icon: '🧠',
+    icon: '🧪',
     type: 'potion',
     rarity: 'uncommon',
     description: '饮用后智力永久提升',
@@ -179,7 +179,7 @@ const ATTRIBUTE_POTIONS: Item[] = [
   {
     id: 'wisdom_potion',
     name: '洞察药剂',
-    icon: '👁️',
+    icon: '🧪',
     type: 'potion',
     rarity: 'uncommon',
     description: '饮用后感知永久提升',
@@ -192,7 +192,7 @@ const ATTRIBUTE_POTIONS: Item[] = [
   {
     id: 'charisma_potion',
     name: '魅力药剂',
-    icon: '💃',
+    icon: '🧪',
     type: 'potion',
     rarity: 'uncommon',
     description: '饮用后魅力永久提升',
@@ -321,7 +321,7 @@ const OFFENSIVE_SCROLLS: Item[] = [
   {
     id: 'scroll_fireball',
     name: '卷轴：火球术',
-    icon: '📜🔥',
+    icon: '📜',
     type: 'scroll',
     rarity: 'uncommon',
     description: '记载着火球术的魔法卷轴',
@@ -333,7 +333,7 @@ const OFFENSIVE_SCROLLS: Item[] = [
   {
     id: 'scroll_blizzard',
     name: '卷轴：暴风雪',
-    icon: '📜❄️',
+    icon: '📜',
     type: 'scroll',
     rarity: 'rare',
     description: '记载着暴风雪法术的古老卷轴',
@@ -345,7 +345,7 @@ const OFFENSIVE_SCROLLS: Item[] = [
   {
     id: 'scroll_chain_lightning',
     name: '卷轴：闪电链',
-    icon: '📜⚡️',
+    icon: '📜',
     type: 'scroll',
     rarity: 'rare',
     description: '记载着闪电链法术的魔法卷轴',
@@ -361,7 +361,7 @@ const HEALING_SCROLLS: Item[] = [
   {
     id: 'scroll_heal',
     name: '卷轴：治疗术',
-    icon: '📜❤️',
+    icon: '📜',
     type: 'scroll',
     rarity: 'uncommon',
     description: '记载着治疗术的神圣卷轴',
@@ -374,7 +374,7 @@ const HEALING_SCROLLS: Item[] = [
   {
     id: 'scroll_mass_heal',
     name: '卷轴：群体治疗',
-    icon: '📜✨',
+    icon: '📜',
     type: 'scroll',
     rarity: 'epic',
     description: '记载着群体治疗神术的神圣卷轴',
@@ -421,7 +421,7 @@ const RARE_MATERIALS: Item[] = [
   {
     id: 'dream_fragment',
     name: '梦境碎片',
-    icon: '💎🌿',
+    icon: '💎',
     type: 'material',
     rarity: 'rare',
     description: '翡翠梦境中散落的神秘碎片',
@@ -495,7 +495,7 @@ const EPIC_MATERIALS: Item[] = [
   {
     id: 'void_crystal',
     name: '虚空水晶',
-    icon: '🔮💜',
+    icon: '🔮',
     type: 'material',
     rarity: 'epic',
     description: '扭曲虚空中诞生的神秘水晶',
@@ -506,7 +506,7 @@ const EPIC_MATERIALS: Item[] = [
   {
     id: 'sunmote',
     name: '太阳之尘',
-    icon: '☀️✨',
+    icon: '☀️',
     type: 'material',
     rarity: 'epic',
     description: '太阳之井高地散落的神圣尘埃',

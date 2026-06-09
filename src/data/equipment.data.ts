@@ -57,7 +57,7 @@ const SWORDS: EquipmentItem[] = [
   {
     id: 'ashkandi',
     name: '阿什坎迪，兄弟会之剑',
-    icon: '⚔️🔥',
+    icon: '⚔️',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { str: 35, con: 15, dex: 10 },
@@ -71,7 +71,7 @@ const SWORDS: EquipmentItem[] = [
   {
     id: 'thunderfury',
     name: '雷霆之怒，逐风者的祝福之剑',
-    icon: '⚡⚔️',
+    icon: '⚔️',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { str: 55, dex: 35, int: 25 },
@@ -117,7 +117,7 @@ const AXES: EquipmentItem[] = [
   {
     id: 'arcanite_reaper',
     name: '奥金斧',
-    icon: '🪓✨',
+    icon: '🪓',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { str: 25, con: 10 },
@@ -131,7 +131,7 @@ const AXES: EquipmentItem[] = [
   {
     id: 'dragon_talon_axe',
     name: '龙爪巨斧',
-    icon: '🪓🐉',
+    icon: '🪓',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { str: 35, dex: 15, con: 10 },
@@ -145,7 +145,7 @@ const AXES: EquipmentItem[] = [
   {
     id: 'gorehowl',
     name: '血吼',
-    icon: '🪓🩸',
+    icon: '🪓',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { str: 50, con: 25 },
@@ -191,7 +191,7 @@ const HAMMERS: EquipmentItem[] = [
   {
     id: 'storm_hammer',
     name: '风暴战锤',
-    icon: '🔨⚡',
+    icon: '🔨',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { str: 25, con: 10 },
@@ -205,7 +205,7 @@ const HAMMERS: EquipmentItem[] = [
   {
     id: 'ironforge_smasher',
     name: '铁炉堡粉碎者',
-    icon: '🏔️',
+    icon: '🔨',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { str: 32, con: 15 },
@@ -219,7 +219,7 @@ const HAMMERS: EquipmentItem[] = [
   {
     id: 'sulfuras',
     name: '萨弗拉斯，炎魔拉格纳罗斯之手',
-    icon: '🔨🔥',
+    icon: '🔨',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { str: 65, con: 40, int: 20 },
@@ -251,7 +251,7 @@ const DAGGERS: EquipmentItem[] = [
   {
     id: 'poison_dagger',
     name: '毒蛇之牙',
-    icon: '☠️',
+    icon: '🗡️',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { dex: 15 },
@@ -265,7 +265,7 @@ const DAGGERS: EquipmentItem[] = [
   {
     id: 'shadow_dagger',
     name: '暗影匕首',
-    icon: '🖤',
+    icon: '🗡️',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { dex: 22, int: 8 },
@@ -279,7 +279,7 @@ const DAGGERS: EquipmentItem[] = [
   {
     id: 'void_blade',
     name: '虚空撕裂者',
-    icon: '🌌',
+    icon: '🗡️',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { dex: 35, int: 20 },
@@ -293,7 +293,7 @@ const DAGGERS: EquipmentItem[] = [
   {
     id: 'kingsfall',
     name: '王者陨落',
-    icon: '🗡️👑',
+    icon: '🗡️',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { dex: 55, str: 25, int: 20 },
@@ -325,7 +325,7 @@ const STAVES: EquipmentItem[] = [
   {
     id: 'crystal_staff',
     name: '水晶聚焦器',
-    icon: '🔮',
+    icon: '🪄',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { int: 15, wis: 5 },
@@ -339,7 +339,7 @@ const STAVES: EquipmentItem[] = [
   {
     id: 'arcane_staff',
     name: '奥术师法杖',
-    icon: '✨',
+    icon: '🪄',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { int: 25, wis: 10 },
@@ -353,7 +353,7 @@ const STAVES: EquipmentItem[] = [
   {
     id: 'jordan_staff',
     name: '乔丹法杖',
-    icon: '🪄✨',
+    icon: '🪄',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { int: 40, wis: 20, cha: 10 },
@@ -367,7 +367,7 @@ const STAVES: EquipmentItem[] = [
   {
     id: 'atiesh',
     name: '埃提耶什，守护者的传说之杖',
-    icon: '🪄✨',
+    icon: '🪄',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { int: 60, wis: 30, cha: 20 },
@@ -427,7 +427,7 @@ const BOWS: EquipmentItem[] = [
   {
     id: 'nerubian_bow',
     name: '蛛魔长弓',
-    icon: '🏹🕷️',
+    icon: '🏹',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { dex: 32, str: 12 },
@@ -441,7 +441,7 @@ const BOWS: EquipmentItem[] = [
   {
     id: 'thori_dalis',
     name: '索利达尔，群星之怒',
-    icon: '🏹⭐',
+    icon: '🏹',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { dex: 50, str: 20, wis: 15 },
@@ -487,7 +487,7 @@ const SHIELDS: EquipmentItem[] = [
   {
     id: 'dragon_scale_shield',
     name: '龙鳞护盾',
-    icon: '🐉',
+    icon: '🛡️',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { con: 30, str: 10 },
@@ -501,7 +501,7 @@ const SHIELDS: EquipmentItem[] = [
   {
     id: 'holy_shield',
     name: '圣光壁垒',
-    icon: '☀️',
+    icon: '🛡️',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { con: 45, wis: 20, cha: 15 },
@@ -515,7 +515,7 @@ const SHIELDS: EquipmentItem[] = [
   {
     id: 'bulwark',
     name: '壁垒之盾',
-    icon: '🛡️✨',
+    icon: '🛡️',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { con: 60, wis: 30, cha: 20, str: 15 },
@@ -551,7 +551,7 @@ const CHEST_ARMOR: EquipmentItem[] = [
   {
     id: 'chainmail_armor',
     name: '链甲护甲',
-    icon: '🛡️',
+    icon: '👕',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { con: 10, dex: 5 },
@@ -565,7 +565,7 @@ const CHEST_ARMOR: EquipmentItem[] = [
   {
     id: 'plate_chest',
     name: '板甲战衣',
-    icon: '🛡️',
+    icon: '👕',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { con: 18, str: 10 },
@@ -579,7 +579,7 @@ const CHEST_ARMOR: EquipmentItem[] = [
   {
     id: 'dragon_chestplate',
     name: '巨龙护甲',
-    icon: '🐉',
+    icon: '👕',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { con: 30, str: 20, dex: 10 },
@@ -593,7 +593,7 @@ const CHEST_ARMOR: EquipmentItem[] = [
   {
     id: 'holy_armor',
     name: '圣光守护者',
-    icon: '☀️',
+    icon: '👕',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { con: 45, str: 30, wis: 20, cha: 15 },
@@ -653,7 +653,7 @@ const LEG_ARMOR: EquipmentItem[] = [
   {
     id: 'shadow_leggings',
     name: '暗影护腿',
-    icon: '🖤',
+    icon: '🦵',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { con: 25, str: 15, int: 10 },
@@ -667,7 +667,7 @@ const LEG_ARMOR: EquipmentItem[] = [
   {
     id: 'frost_leggings',
     name: '冰霜巨人护腿',
-    icon: '🧊',
+    icon: '🦵',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { con: 38, str: 25, int: 20 },
@@ -713,7 +713,7 @@ const BOOTS: EquipmentItem[] = [
   {
     id: 'windwalker_boots',
     name: '疾风步靴',
-    icon: '💨',
+    icon: '👢',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { dex: 15, con: 8 },
@@ -727,7 +727,7 @@ const BOOTS: EquipmentItem[] = [
   {
     id: 'shadowstep_boots',
     name: '暗影步之靴',
-    icon: '👻',
+    icon: '👢',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { dex: 25, int: 10 },
@@ -741,7 +741,7 @@ const BOOTS: EquipmentItem[] = [
   {
     id: 'boots_of_the_winged_serpent',
     name: '飞蛇之靴',
-    icon: '👢⚡',
+    icon: '👢',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { dex: 35, int: 20, wis: 15 },
@@ -787,7 +787,7 @@ const GLOVES: EquipmentItem[] = [
   {
     id: 'steel_gauntlets',
     name: '精钢护手',
-    icon: '⚔️',
+    icon: '🧤',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { str: 12, dex: 8 },
@@ -801,7 +801,7 @@ const GLOVES: EquipmentItem[] = [
   {
     id: 'flame_gauntlets',
     name: '烈焰守卫',
-    icon: '🔥',
+    icon: '🧤',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { str: 20, int: 15 },
@@ -815,7 +815,7 @@ const GLOVES: EquipmentItem[] = [
   {
     id: 'hand_of_justice',
     name: '正义之手',
-    icon: '🧤⚖️',
+    icon: '🧤',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { str: 30, int: 25, dex: 20 },
