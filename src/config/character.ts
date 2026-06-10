@@ -10,6 +10,11 @@
 export const MAX_LEVEL = 20;
 
 /**
+ * 单属性数值上限（核心属性最高不超过此值）
+ */
+export const MAX_STAT = 999;
+
+/**
  * 主属性名称映射表
  */
 export const STAT_NAMES = {

@@ -20,7 +20,7 @@ import {
   calculateHealBonus,
   getExpForLevel
 } from '@/utils/calculations';
-import { MAX_LEVEL } from '@/config/character';
+import { MAX_LEVEL, MAX_STAT } from '@/config/character';
 import { gameDataService } from '../gameData/service';
 import { skillsDbService } from '../skill/db';
 import { inventoryDbService } from '../inventory/db';
@@ -120,14 +120,14 @@ export class CharacterService implements ICharacterService {
     this.raceBonus = race?.bonus || {};
     this.classBonus = classData?.bonus || {};
     
-    // 计算基础属性（基础10 + 种族调整 + 职业调整）
+    // 计算基础属性（基础10 + 种族调整 + 职业调整，下限1，上限MAX_STAT）
     const baseStats: Stats = {
-      str: Math.max(1, 10 + (this.raceBonus.str || 0) + (this.classBonus.str || 0)),
-      dex: Math.max(1, 10 + (this.raceBonus.dex || 0) + (this.classBonus.dex || 0)),
-      con: Math.max(1, 10 + (this.raceBonus.con || 0) + (this.classBonus.con || 0)),
-      int: Math.max(1, 10 + (this.raceBonus.int || 0) + (this.classBonus.int || 0)),
-      wis: Math.max(1, 10 + (this.raceBonus.wis || 0) + (this.classBonus.wis || 0)),
-      cha: Math.max(1, 10 + (this.raceBonus.cha || 0) + (this.classBonus.cha || 0))
+      str: Math.min(MAX_STAT, Math.max(1, 10 + (this.raceBonus.str || 0) + (this.classBonus.str || 0))),
+      dex: Math.min(MAX_STAT, Math.max(1, 10 + (this.raceBonus.dex || 0) + (this.classBonus.dex || 0))),
+      con: Math.min(MAX_STAT, Math.max(1, 10 + (this.raceBonus.con || 0) + (this.classBonus.con || 0))),
+      int: Math.min(MAX_STAT, Math.max(1, 10 + (this.raceBonus.int || 0) + (this.classBonus.int || 0))),
+      wis: Math.min(MAX_STAT, Math.max(1, 10 + (this.raceBonus.wis || 0) + (this.classBonus.wis || 0))),
+      cha: Math.min(MAX_STAT, Math.max(1, 10 + (this.raceBonus.cha || 0) + (this.classBonus.cha || 0)))
     };
     
     // 计算衍生属性
@@ -301,12 +301,12 @@ export class CharacterService implements ICharacterService {
     
     const base = this.character.stats;
     return {
-      str: base.str + (this.bonusStats.str || 0),
-      dex: base.dex + (this.bonusStats.dex || 0),
-      con: base.con + (this.bonusStats.con || 0),
-      int: base.int + (this.bonusStats.int || 0),
-      wis: base.wis + (this.bonusStats.wis || 0),
-      cha: base.cha + (this.bonusStats.cha || 0)
+      str: Math.min(MAX_STAT, base.str + (this.bonusStats.str || 0)),
+      dex: Math.min(MAX_STAT, base.dex + (this.bonusStats.dex || 0)),
+      con: Math.min(MAX_STAT, base.con + (this.bonusStats.con || 0)),
+      int: Math.min(MAX_STAT, base.int + (this.bonusStats.int || 0)),
+      wis: Math.min(MAX_STAT, base.wis + (this.bonusStats.wis || 0)),
+      cha: Math.min(MAX_STAT, base.cha + (this.bonusStats.cha || 0))
     };
   }
 
@@ -466,13 +466,13 @@ export class CharacterService implements ICharacterService {
   private handleLevelUp(newLevel: number): void {
     if (!this.character) return;
     
-    // 基础属性增长（每级每项+1）
-    this.character.stats.str += 1;
-    this.character.stats.dex += 1;
-    this.character.stats.con += 1;
-    this.character.stats.int += 1;
-    this.character.stats.wis += 1;
-    this.character.stats.cha += 1;
+    // 基础属性增长（每级每项+1，不超过MAX_STAT）
+    this.character.stats.str = Math.min(MAX_STAT, this.character.stats.str + 1);
+    this.character.stats.dex = Math.min(MAX_STAT, this.character.stats.dex + 1);
+    this.character.stats.con = Math.min(MAX_STAT, this.character.stats.con + 1);
+    this.character.stats.int = Math.min(MAX_STAT, this.character.stats.int + 1);
+    this.character.stats.wis = Math.min(MAX_STAT, this.character.stats.wis + 1);
+    this.character.stats.cha = Math.min(MAX_STAT, this.character.stats.cha + 1);
     
     // 计算新的HP和MP上限
     const stats = this.getStats();
@@ -587,7 +587,7 @@ export class CharacterService implements ICharacterService {
     
     Object.keys(bonus).forEach(key => {
       const statKey = key as keyof Stats;
-      this.bonusStats[statKey] = (this.bonusStats[statKey] || 0) + (bonus[statKey] || 0);
+      this.bonusStats[statKey] = Math.min(MAX_STAT, (this.bonusStats[statKey] || 0) + (bonus[statKey] || 0));
     });
     
     // 更新HP/MP上限（如果体质或智力等影响上限的属性变化）
@@ -748,12 +748,12 @@ export class CharacterService implements ICharacterService {
     
     // 重新计算基础属性
     const base: Stats = {
-      str: Math.max(1, 10 + (this.raceBonus.str || 0) + (this.classBonus.str || 0)),
-      dex: Math.max(1, 10 + (this.raceBonus.dex || 0) + (this.classBonus.dex || 0)),
-      con: Math.max(1, 10 + (this.raceBonus.con || 0) + (this.classBonus.con || 0)),
-      int: Math.max(1, 10 + (this.raceBonus.int || 0) + (this.classBonus.int || 0)),
-      wis: Math.max(1, 10 + (this.raceBonus.wis || 0) + (this.classBonus.wis || 0)),
-      cha: Math.max(1, 10 + (this.raceBonus.cha || 0) + (this.classBonus.cha || 0))
+      str: Math.min(MAX_STAT, Math.max(1, 10 + (this.raceBonus.str || 0) + (this.classBonus.str || 0))),
+      dex: Math.min(MAX_STAT, Math.max(1, 10 + (this.raceBonus.dex || 0) + (this.classBonus.dex || 0))),
+      con: Math.min(MAX_STAT, Math.max(1, 10 + (this.raceBonus.con || 0) + (this.classBonus.con || 0))),
+      int: Math.min(MAX_STAT, Math.max(1, 10 + (this.raceBonus.int || 0) + (this.classBonus.int || 0))),
+      wis: Math.min(MAX_STAT, Math.max(1, 10 + (this.raceBonus.wis || 0) + (this.classBonus.wis || 0))),
+      cha: Math.min(MAX_STAT, Math.max(1, 10 + (this.raceBonus.cha || 0) + (this.classBonus.cha || 0)))
     };
     
     this.character.stats = base;

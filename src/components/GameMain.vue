@@ -1,7 +1,7 @@
 <template>
   <div class="game-main">
     <div class="game-header">
-      <div class="player-info" @click="onClickPanel('character_info'); showCharacterInfo = true">
+      <div class="player-info">
         <div class="player-avatar">{{ characterStore.raceIcon }}</div>
         <div class="player-details">
           <div class="player-name">{{ character.name }}</div>
