@@ -51,6 +51,11 @@ export interface GameEventPayloadMap {
   [GameEvents.COMBAT_END]: { result: string; enemy: Enemy | null; expGained: number; goldGained?: number };
   [GameEvents.COMBAT_PLAYER_TURN]: null;
   [GameEvents.COMBAT_ENEMY_TURN]: null;
+  // ==================== 战斗——伤害/治疗类型 ====================
+  /** 造成伤害事件（携带伤害类型，物伤/魔伤） */
+  [GameEvents.COMBAT_DEAL_DAMAGE]: { amount: number; damageType: 'physical' | 'magic'; targetName: string };
+  /** 施放治疗事件（携带治疗类型，生命/法力） */
+  [GameEvents.COMBAT_CAST_HEAL]: { amount: number; healType: 'health' | 'mana'; targetName: string };
   // ==================== 探索 ====================
   [GameEvents.EXPLORATION_START]: { characterId: string | null; areaId?: string };
   [GameEvents.EXPLORATION_END]: { characterId: string | null };
@@ -301,6 +306,12 @@ export enum GameEvents {
   COMBAT_PLAYER_TURN = 'combat_player_turn',
   /** 敌人回合开始 */
   COMBAT_ENEMY_TURN = 'combat_enemy_turn',
+
+  // ==================== 战斗——伤害/治疗类型 ====================
+  /** 造成伤害（含伤害类型，用于区分物伤/魔伤音效） */
+  COMBAT_DEAL_DAMAGE = 'combat_deal_damage',
+  /** 施放治疗（含治疗类型，用于区分血量/法力回复音效） */
+  COMBAT_CAST_HEAL = 'combat_cast_heal',
 
   // ==================== 探索 ====================
   /** 探索开始 */

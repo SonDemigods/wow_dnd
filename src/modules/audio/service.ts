@@ -295,6 +295,37 @@ class AudioService implements IAudioService {
         this.fmSynth.set({ harmonicity: 6 });
         break;
 
+      case 'physical_damage':
+        // 物理伤害：沉重打击 低频膜鼓 + 噪声纹理
+        this.membrane.triggerAttackRelease('C2', '8n', now, 0.85);
+        this.noiseSynth.triggerAttackRelease('32n', now + 0.003, 0.35);
+        break;
+
+      case 'magic_damage':
+        // 魔法伤害：FM 扫频 下行能量感 + 高音闪烁
+        this.fmSynth.set({ harmonicity: 12 });
+        this.fmSynth.triggerAttackRelease('G5', '16n', now, 0.55);
+        this.fmSynth.triggerAttackRelease('D6', '32n', now + 0.04, 0.35);
+        this.fmSynth.triggerAttackRelease('A6', '64n', now + 0.07, 0.2);
+        this.fmSynth.set({ harmonicity: 6 });
+        break;
+
+      case 'health_restore':
+        // 生命回复：温暖上行琶音 + 柔和铺底
+        this.synth.triggerAttackRelease('C4', '16n', now, 0.45);
+        this.synth.triggerAttackRelease('E4', '16n', now + 0.08, 0.45);
+        this.synth.triggerAttackRelease('G4', '16n', now + 0.16, 0.45);
+        this.bgmSynth.triggerAttackRelease(['C4', 'E4', 'G4'], '8n', now + 0.24, 0.2);
+        break;
+
+      case 'mana_restore':
+        // 法力回复：清脆高音 星辰闪烁感
+        this.metalSynth.triggerAttackRelease('C6', '32n', now, 0.35);
+        this.metalSynth.triggerAttackRelease('E6', '64n', now + 0.06, 0.25);
+        this.metalSynth.triggerAttackRelease('G6', '64n', now + 0.10, 0.2);
+        this.synth.triggerAttackRelease('C7', '128n', now + 0.14, 0.15);
+        break;
+
       case 'combat_start':
         // 战斗号角：下行五度 + 紧张节奏
         this.bgmSynth.triggerAttackRelease(['C3', 'G3', 'C4'], '16n', now, 0.4);
@@ -903,6 +934,14 @@ class AudioService implements IAudioService {
 
     eventBus.on(GameEvents.COMBAT_ENEMY_TURN, () => {
       // 敌人回合开始
+    });
+
+    eventBus.on(GameEvents.COMBAT_DEAL_DAMAGE, (data) => {
+      this.playSfx(data.damageType === 'magic' ? 'magic_damage' : 'physical_damage');
+    });
+
+    eventBus.on(GameEvents.COMBAT_CAST_HEAL, (data) => {
+      this.playSfx(data.healType === 'mana' ? 'mana_restore' : 'health_restore');
     });
 
     // -- 角色事件 --

@@ -12,6 +12,10 @@ export type SfxType =
   | 'player_hurt'     // 玩家受伤
   | 'enemy_hurt'      // 敌人受伤
   | 'spell_cast'      // 技能/法术施放
+  | 'physical_damage' // 物理伤害
+  | 'magic_damage'    // 魔法伤害
+  | 'health_restore'  // 生命回复
+  | 'mana_restore'    // 法力回复
   | 'combat_start'    // 战斗开始
   | 'combat_victory'  // 战斗胜利
   | 'combat_defeat'   // 战斗失败

@@ -16,6 +16,7 @@ import type { Enemy } from '../enemy/types';
 import { enemyService } from '../enemy/service';
 import { characterService } from '../character/service';
 import { skillsService } from '../skill/service';
+import { inventoryService } from '../inventory/service';
 import { combatDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
 import { logService } from '../log/service';
@@ -210,6 +211,9 @@ export class CombatService implements ICombatService {
     // 造成伤害
     const isDead = enemyService.takeDamage(this.enemy.id, damage);
     
+    // 物理伤害音效事件
+    eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, { amount: damage, damageType: 'physical', targetName: this.enemy?.name || '敌人' });
+
     // 更新敌人状态
     this.enemy = enemyService.getEnemyById(this.enemy.id);
     
@@ -289,6 +293,13 @@ export class CombatService implements ICombatService {
     if (result.damage && (result.type === 'physical_damage' || result.type === 'magic_damage')) {
       const isDead = enemyService.takeDamage(this.enemy.id, result.damage);
       this.enemy = enemyService.getEnemyById(this.enemy.id);
+
+      // 伤害类型音效事件
+      eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
+        amount: result.damage,
+        damageType: result.type === 'magic_damage' ? 'magic' : 'physical',
+        targetName: this.enemy?.name || '敌人'
+      });
       
       this.addCombatLog({
         actorType: 'player',
@@ -312,6 +323,13 @@ export class CombatService implements ICombatService {
         this.endPlayerTurn();
       }
     } else if (result.heal) {
+      // 治疗技能音效事件
+      eventBus.emit(GameEvents.COMBAT_CAST_HEAL, {
+        amount: result.heal,
+        healType: result.type === 'mana_restore' ? 'mana' : 'health',
+        targetName: characterService.getName()
+      });
+
       // 治疗技能
       this.addCombatLog({
         actorType: 'player',
@@ -348,6 +366,19 @@ export class CombatService implements ICombatService {
   private async playerUseItem(itemId: string): Promise<CombatActionResult> {
     // 通过事件通知背包模块使用物品（背包模块负责验证和效果处理）
     eventBus.emit(GameEvents.INVENTORY_USE_ITEM, { itemId });
+
+    // 根据物品类型发出对应的治疗音效事件
+    const itemInfo = inventoryService.getItemInfo(itemId);
+    if (itemInfo?.effect) {
+      const { type, value } = itemInfo.effect;
+      if ((type === 'health_restore' || type === 'mana_restore') && typeof value === 'number' && value > 0) {
+        eventBus.emit(GameEvents.COMBAT_CAST_HEAL, {
+          amount: value,
+          healType: type === 'mana_restore' ? 'mana' : 'health',
+          targetName: characterService.getName()
+        });
+      }
+    }
     
     this.addCombatLog({
       actorType: 'player',
@@ -627,6 +658,8 @@ export class CombatService implements ICombatService {
     
     // 造成伤害
     eventBus.emit(GameEvents.CHARACTER_TAKE_DAMAGE, { amount: damage, source: this.enemy.name });
+    // 物理伤害音效（敌方攻击）
+    eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, { amount: damage, damageType: 'physical', targetName: characterService.getName() });
     
     this.addCombatLog({
       actorType: 'enemy',
@@ -688,8 +721,10 @@ export class CombatService implements ICombatService {
       };
     }
     
-    // 造成伤害
+    // 造成伤害（敌方技能）
     eventBus.emit(GameEvents.CHARACTER_TAKE_DAMAGE, { amount: damage, source: this.enemy.name });
+    // 物理伤害音效（敌方技能）
+    eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, { amount: damage, damageType: 'physical', targetName: characterService.getName() });
     
     this.addCombatLog({
       actorType: 'enemy',
