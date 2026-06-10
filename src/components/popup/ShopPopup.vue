@@ -12,13 +12,13 @@
         <div class="shop-tabs">
           <button
             :class="['tab-btn', { active: currentTab === 'buy' }]"
-            @click="currentTab = 'buy'"
+          @click="switchTab('buy')"
           >
             购买
           </button>
           <button
             :class="['tab-btn', { active: currentTab === 'sell' }]"
-            @click="currentTab = 'sell'"
+          @click="switchTab('sell')"
           >
             出售
           </button>
@@ -30,7 +30,7 @@
             v-for="cat in categories"
             :key="cat.id"
             :class="['cat-btn', { active: selectedCategory === cat.id }]"
-            @click="selectedCategory = cat.id"
+            @click="selectShopCategory(cat.id)"
           >
             {{ cat.name }}
           </button>
@@ -90,7 +90,7 @@
             </div>
             <div class="detail-actions">
               <div class="quantity-selector">
-                <button class="qty-btn" :disabled="buyQuantity <= 1" @click="buyQuantity--">−</button>
+                <button class="qty-btn" :disabled="buyQuantity <= 1" @click="decBuyQty">−</button>
                 <input
                   type="number"
                   class="qty-input"
@@ -99,7 +99,7 @@
                   :max="buyMaxQuantity"
                   @change="clampBuyQuantity"
                 />
-                <button class="qty-btn" :disabled="buyQuantity >= buyMaxQuantity" @click="buyQuantity++">+</button>
+                <button class="qty-btn" :disabled="buyQuantity >= buyMaxQuantity" @click="incBuyQty">+</button>
               </div>
               <button
                 class="action-btn buy"
@@ -128,7 +128,7 @@
             </div>
             <div class="detail-actions">
               <div class="quantity-selector">
-                <button class="qty-btn" :disabled="sellQuantity <= 1" @click="sellQuantity--">−</button>
+                <button class="qty-btn" :disabled="sellQuantity <= 1" @click="decSellQty">−</button>
                 <input
                   type="number"
                   class="qty-input"
@@ -137,7 +137,7 @@
                   :max="selectedSellEntry.item.count"
                   @change="clampSellQuantity"
                 />
-                <button class="qty-btn" :disabled="sellQuantity >= selectedSellEntry.item.count" @click="sellQuantity++">+</button>
+                <button class="qty-btn" :disabled="sellQuantity >= selectedSellEntry.item.count" @click="incSellQty">+</button>
               </div>
               <button
                 class="action-btn sell"
@@ -169,6 +169,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useShopStore } from '@/modules/shop';
 import { useCharacterStore } from '@/modules/character';
 import { useInventoryStore } from '@/modules/inventory';
+import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { ShopDisplayItem, ItemQuality, ItemCategory } from '@/modules/shop';
 import type { InventoryItem, Item, ItemType, ItemRarity, ItemEffect } from '@/modules/inventory';
 import BasePopup from '../common/BasePopup.vue';
@@ -194,6 +195,11 @@ const inventoryStore = useInventoryStore();
 // ==================== 状态 ====================
 
 const currentTab = ref<'buy' | 'sell'>('buy');
+
+function switchTab(tab: 'buy' | 'sell') {
+  currentTab.value = tab;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_tab' });
+}
 const selectedCategory = ref<'all' | ItemType>('all');
 
 // 购买标签选中
@@ -319,6 +325,30 @@ function clampSellQuantity() {
   sellQuantity.value = Math.max(1, Math.min(sellQuantity.value || 1, selectedSellEntry.value.item.count));
 }
 
+// 分类切换
+function selectShopCategory(catId: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_category' });
+  selectedCategory.value = catId as 'all' | ItemType;
+}
+
+// 数量加减按钮
+function decBuyQty() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_qty_dec' });
+  buyQuantity.value--;
+}
+function incBuyQty() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_qty_inc' });
+  buyQuantity.value++;
+}
+function decSellQty() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_qty_dec' });
+  sellQuantity.value--;
+}
+function incSellQty() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_qty_inc' });
+  sellQuantity.value++;
+}
+
 // ==================== 购买标签：筛选后的商店物品（直接从 store 读取并富化） ====================
 
 /**
@@ -390,6 +420,7 @@ function selectSellItem(entry: SellItemEntry, index: number) {
 // ==================== 买卖操作 ====================
 
 function handleBuy(itemId: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_buy' });
   const result = shopStore.buyItem(itemId, buyQuantity.value);
   if (result) {
     selectedBuyEntry.value = null;
@@ -399,6 +430,7 @@ function handleBuy(itemId: string) {
 }
 
 function handleSell(itemId: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_sell' });
   const result = shopStore.sellItem(itemId, sellQuantity.value);
   if (result) {
     selectedSellEntry.value = null;

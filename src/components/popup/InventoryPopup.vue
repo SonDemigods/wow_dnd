@@ -14,7 +14,7 @@
             v-for="cat in categories" 
             :key="cat.id"
             :class="['tab-btn', { active: selectedCategory === cat.id }]"
-            @click="selectedCategory = cat.id"
+            @click="selectCategory(cat.id)"
           >
             {{ cat.name }}
           </button>
@@ -286,12 +286,19 @@ const emptySlots = computed(() => {
   return Math.max(0, maxSlots - filteredItems.value.length);
 });
 
+function selectCategory(catId: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_category' });
+  selectedCategory.value = catId as 'all' | ItemType;
+}
+
 function selectItem(entry: ItemEntry, index: number) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_select_item' });
   selectedEntry.value = entry;
   selectedIndex.value = index;
 }
 
 async function useItem(itemId: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_use_item' });
   const index = inventoryItems.value.findIndex(i => i.itemId === itemId);
   if (index === -1) return;
 
@@ -314,6 +321,7 @@ async function useItem(itemId: string) {
 }
 
 function equipItem(itemId: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_equip_item' });
   // 获取装备模板
   const equipTemplate = equipmentService.getEquipmentTemplate(itemId);
   if (!equipTemplate) {
@@ -360,6 +368,7 @@ async function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
 }
 
 function selectEquipSlot(slot: EquipmentSlot) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_equip_slot' });
   if (pendingEquipItem.value) {
     doEquip(pendingEquipItem.value, slot);
   }
@@ -372,6 +381,7 @@ function cancelSlotSelect() {
 }
 
 function dropItem(itemId: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_drop_item' });
   pendingDropItemId.value = itemId;
   showDropConfirm.value = true;
 }
@@ -384,6 +394,7 @@ function confirmDrop() {
   const index = inventoryItems.value.findIndex(i => i.itemId === itemId);
   if (index !== -1) {
     inventoryService.removeItem(index);
+    eventBus.emit(GameEvents.ITEM_DROPPED, { itemId });
     toast.show({ message: `已丢弃 ${info?.name || '物品'}`, type: 'info', icon: '🗑️' });
     loadInventory();
     selectedEntry.value = null;

@@ -17,3 +17,4 @@ export * from './gameData';
 export * from './enemy';
 export * from './equipment';
 export * from './log';
+export * from './audio';

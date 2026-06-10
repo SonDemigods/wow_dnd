@@ -1,7 +1,7 @@
 <template>
   <div class="game-main">
     <div class="game-header">
-      <div class="player-info" @click="showCharacterInfo = true">
+      <div class="player-info" @click="onClickPanel('character_info'); showCharacterInfo = true">
         <div class="player-avatar">{{ characterStore.raceIcon }}</div>
         <div class="player-details">
           <div class="player-name">{{ character.name }}</div>
@@ -44,56 +44,56 @@
     </div>
 
     <div class="game-footer">
-      <button class="footer-btn" @click="showCharacterInfo = true" title="角色">
+      <button class="footer-btn" @click="showCharacterInfo = true; onClickPanel('character_info')" title="角色">
         <span class="footer-icon">👤</span>
         <span class="footer-text">角色</span>
       </button>
-      <button class="footer-btn" @click="showInventory = true" title="背包">
+      <button class="footer-btn" @click="showInventory = true; onClickPanel('inventory')" title="背包">
         <span class="footer-icon">🎒</span>
         <span class="footer-text">背包</span>
       </button>
-      <button class="footer-btn" @click="showSkills = true" title="技能">
+      <button class="footer-btn" @click="showSkills = true; onClickPanel('skills')" title="技能">
         <span class="footer-icon">⚔️</span>
         <span class="footer-text">技能</span>
       </button>
-      <button class="footer-btn" @click="showQuests = true" title="任务">
+      <button class="footer-btn" @click="showQuests = true; onClickPanel('quests')" title="任务">
         <span class="footer-icon">📋</span>
         <span class="footer-text">任务</span>
       </button>
-      <button class="footer-btn" @click="showAdventureLog = true" title="日志">
+      <button class="footer-btn" @click="showAdventureLog = true; onClickPanel('adventure_log')" title="日志">
         <span class="footer-icon">📜</span>
         <span class="footer-text">日志</span>
       </button>
-      <button class="footer-btn exit-btn" @click="handleExit" title="退出">
-        <span class="footer-icon">🚪</span>
-        <span class="footer-text">退出</span>
+      <button class="footer-btn" @click="showSystem = true; onClickPanel('system')" title="系统">
+        <span class="footer-icon">⚙️</span>
+        <span class="footer-text">系统</span>
       </button>
     </div>
 
     <CharacterInfoPopup 
       :visible="showCharacterInfo" 
-      @close="showCharacterInfo = false" 
+      @close="showCharacterInfo = false; onPanelClose('character_info')" 
     />
     
     <InventoryPopup 
       :visible="showInventory" 
-      @close="showInventory = false" 
+      @close="showInventory = false; onPanelClose('inventory')" 
     />
     
     <SkillsPopup 
       :visible="showSkills" 
-      @close="showSkills = false" 
+      @close="showSkills = false; onPanelClose('skills')" 
     />
     
     <QuestPopup 
       :visible="showQuests" 
-      @close="showQuests = false" 
+      @close="showQuests = false; onPanelClose('quests')" 
     />
     
     <AdventureLogPopup 
       :visible="showAdventureLog" 
       :current-area="currentArea"
-      @close="showAdventureLog = false" 
+      @close="showAdventureLog = false; onPanelClose('adventure_log')" 
     />
     
     <ShopPopup 
@@ -103,12 +103,24 @@
     
     <QuestBoardPopup 
       :visible="showQuestBoard" 
-      @close="showQuestBoard = false" 
+      @close="showQuestBoard = false; onPanelClose('quest_board')" 
     />
 
     <CombatPopup
       :visible="showCombat"
       @close="handleCombatClose"
+    />
+
+    <AudioSettingsPopup
+      :visible="showAudioSettings"
+      @close="showAudioSettings = false; onPanelClose('audio_settings')"
+    />
+
+    <SystemPopup
+      :visible="showSystem"
+      @close="showSystem = false; onPanelClose('system')"
+      @exit="handleExit"
+      @open-audio="openAudioFromSystem"
     />
   </div>
 </template>
@@ -140,6 +152,8 @@ import QuestBoardPopup from './popup/QuestBoardPopup.vue';
 import CharacterInfoPopup from './popup/CharacterInfoPopup.vue';
 import AdventureLogPopup from './popup/AdventureLogPopup.vue';
 import CombatPopup from './popup/CombatPopup.vue';
+import AudioSettingsPopup from './popup/AudioSettingsPopup.vue';
+import SystemPopup from './popup/SystemPopup.vue';
 import ResourceBar from './common/ResourceBar.vue';
 
 const emit = defineEmits<{
@@ -163,6 +177,8 @@ const showAdventureLog = ref(false);
 const showShop = ref(false);
 const showQuestBoard = ref(false);
 const showCombat = ref(false);
+const showAudioSettings = ref(false);
+const showSystem = ref(false);
 
 const character = computed(() => characterStore.character || {} as { icon?: string; name?: string; level?: number; });
 const currentHp = computed(() => characterStore.hp);
@@ -186,8 +202,31 @@ function handleExit() {
   emit('exit');
 }
 
+/** 面板打开时发送总线事件和点击音效 */
+function onClickPanel(name: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: `nav_${name}` });
+  onPanelOpen(name);
+}
+
+/** 面板打开时发送总线事件 */
+function onPanelOpen(name: string) {
+  eventBus.emit(GameEvents.UI_PANEL_OPENED, { panel: name });
+}
+
+/** 面板关闭时发送总线事件 */
+function onPanelClose(name: string) {
+  eventBus.emit(GameEvents.UI_PANEL_CLOSED, { panel: name });
+}
+
+/** 从系统菜单打开音量设置 */
+function openAudioFromSystem() {
+  showAudioSettings.value = true;
+  onPanelOpen('audio_settings');
+}
+
 function handleMapTabClick() {
   currentContentTab.value = 'map';
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'tab_map' });
   const cid = currentCharacterId.value;
   if (cid) {
     mapDbService.saveCurrentTab(cid, 'map');
@@ -200,6 +239,7 @@ function handleExploreTabClick() {
     return;
   }
   currentContentTab.value = 'explore';
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'tab_explore' });
   const cid = currentCharacterId.value;
   if (cid) {
     mapDbService.saveCurrentTab(cid, 'explore');
@@ -217,8 +257,10 @@ async function handleCellExplored(data: { cellType?: string; interactionId?: str
     }
     await shopStore.selectShop(shopId);
     showShop.value = true;
+    onPanelOpen('shop');
   } else if (cellType === 'board') {
     showQuestBoard.value = true;
+    onPanelOpen('quest_board');
   }
 }
 
@@ -259,10 +301,12 @@ function handleRandomEvent(data: { message?: string; icon?: string }) {
 
 function handleCombatClose(_result?: CombatResult) {
   showCombat.value = false;
+  onPanelClose('combat');
 }
 
 function handleShopClose() {
   showShop.value = false;
+  onPanelClose('shop');
   eventBus.emit(GameEvents.SHOP_CLOSED, { shopId: shopStore.currentShopId || '' });
 }
 
@@ -506,20 +550,6 @@ defineExpose({ showNotif });
 
 .footer-btn:active {
   transform: translateY(0) scale(0.95);
-}
-
-.footer-btn.exit-btn {
-  color: rgba(255, 100, 100, 0.7);
-}
-
-.footer-btn.exit-btn:hover {
-  color: #ff6b6b;
-  background: rgba(255, 68, 68, 0.1);
-}
-
-.footer-btn.exit-btn::after {
-  background: #ff4444;
-  box-shadow: 0 0 6px rgba(255, 68, 68, 0.5);
 }
 
 .footer-icon {

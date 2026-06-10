@@ -24,7 +24,7 @@
     </template>
 
     <template #footer>
-      <button class="popup-footer-btn warn" @click="showClearConfirm = true">清空日志</button>
+      <button class="popup-footer-btn warn" @click="showClearConfirm = true; eventBus.emit(GameEvents.UI_CLICK, { source: 'log_clear_btn' })">清空日志</button>
     </template>
   </BasePopup>
 
@@ -46,6 +46,7 @@
 
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { useLogStore } from '../../modules/log';
+import { eventBus, GameEvents } from '@/modules/bus/core';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
 

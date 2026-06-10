@@ -331,9 +331,11 @@ function getRarityName(rarity: string) {
 
 function selectEquipment(slot: SlotInfo) {
   selectedSlot.value = slot;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'equip_slot' });
 }
 
 async function unequipItem(slotKey: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'unequip_btn' });
   const result = await equipmentService.unequipItem(slotKey as EquipmentSlot);
   if (result) {
     selectedSlot.value = null;

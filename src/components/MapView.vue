@@ -106,6 +106,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { mapService } from '@/modules/map';
 import { useMapStore } from '@/modules/map';
 import { useCharacterStore } from '@/modules/character';
+import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { MapZone, ZoneStatus } from '@/modules/map';
 import ConfirmPopup from './common/ConfirmPopup.vue';
 import worldBgImg from '@/images/worldBg.jpg';
@@ -208,14 +209,17 @@ async function loadZones() {
 
 function selectZone(zone: MapZone) {
   selectedZone.value = zone;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'map_zone' });
 }
 
 // 缩放控制
 function zoomIn() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'map_zoom_in' });
   zoomLevel.value = Math.min(3, zoomLevel.value + 0.2);
 }
 
 function zoomOut() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'map_zoom_out' });
   zoomLevel.value = Math.max(0.5, zoomLevel.value - 0.2);
 }
 
@@ -277,6 +281,7 @@ function onMapTouchEnd() {
 function onEnterZoneClick() {
   if (!selectedZone.value) return;
   showConfirm.value = true;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'enter_zone_btn' });
 }
 
 function onConfirmEnter() {

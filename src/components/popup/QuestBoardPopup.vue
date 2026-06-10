@@ -4,13 +4,13 @@
       <div class="quest-tabs">
         <button 
           :class="['tab-btn', { active: currentTab === 'available' }]"
-          @click="currentTab = 'available'"
+          @click="switchTab('available')"
         >
           可接取任务
         </button>
         <button 
           :class="['tab-btn', { active: currentTab === 'turnin' }]"
-          @click="currentTab = 'turnin'"
+          @click="switchTab('turnin')"
         >
           可交付任务
         </button>
@@ -105,6 +105,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { questService } from '@/modules/quest';
 import { useCharacterStore } from '@/modules/character';
 import { useExplorationStore } from '@/modules/exploration/store';
+import { eventBus, GameEvents } from '@/modules/bus/core';
 import { useToast } from '@/composables/useToast';
 import type { QuestDefinition } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';
@@ -123,6 +124,11 @@ const characterStore = useCharacterStore();
 const toast = useToast();
 
 const currentTab = ref<'available' | 'turnin'>('available');
+
+function switchTab(tab: 'available' | 'turnin') {
+  currentTab.value = tab;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'quest_board_tab' });
+}
 
 const availableQuests = ref<QuestDefinition[]>([]);
 const turnInQuests = ref<QuestDefinition[]>([]);
@@ -145,6 +151,7 @@ function getBoardId(): string {
 }
 
 function acceptQuest(questId: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'quest_board_accept' });
   const boardId = getBoardId();
   const success = questService.acceptQuestFromBoard(boardId, questId);
   if (success) {
@@ -157,6 +164,7 @@ function acceptQuest(questId: string) {
 }
 
 function turnInQuest(questId: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'quest_board_turnin' });
   const boardId = getBoardId();
   const success = questService.turnInQuestToBoard(boardId, questId);
   if (success) {

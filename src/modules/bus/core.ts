@@ -89,6 +89,19 @@ export interface GameEventPayloadMap {
   [GameEvents.GAME_DATA_UPDATED]: { type: string; action: string; id: string };
   // ==================== 日志 ====================
   [GameEvents.LOG_ENTRY_ADDED]: { type: string; message: string; icon?: string };
+  // ==================== UI ====================
+  [GameEvents.UI_PANEL_OPENED]: { panel: string };
+  [GameEvents.UI_PANEL_CLOSED]: { panel: string };
+  [GameEvents.CONFIRM_CONFIRMED]: { action: string };
+  [GameEvents.CONFIRM_CANCELED]: { action: string };
+  [GameEvents.ITEM_DROPPED]: { itemId: string };
+  [GameEvents.COMBAT_SKIP_TURN]: null;
+  [GameEvents.QUEST_ABANDONED]: { questId: string };
+  [GameEvents.SKILL_MEMORIZED]: { skillId: string };
+  [GameEvents.SKILL_FORGOTTEN]: { skillId: string };
+  [GameEvents.DATA_EXPORTED]: null;
+  [GameEvents.DATA_IMPORTED]: null;
+  [GameEvents.UI_CLICK]: { source: string };
 }
 
 /**
@@ -361,7 +374,43 @@ export enum GameEvents {
   
   // ==================== 日志 ====================
   /** 日志条目添加（其他模块可通过此事件通知日志模块记录） */
-  LOG_ENTRY_ADDED = 'log_entry_added'
+  LOG_ENTRY_ADDED = 'log_entry_added',
+
+  // ==================== UI ====================
+  /** UI 面板打开 */
+  UI_PANEL_OPENED = 'ui_panel_opened',
+  /** UI 面板关闭 */
+  UI_PANEL_CLOSED = 'ui_panel_closed',
+  /** UI 通用点击 */
+  UI_CLICK = 'ui_click',
+  /** 确认弹窗 - 确认 */
+  CONFIRM_CONFIRMED = 'confirm_confirmed',
+  /** 确认弹窗 - 取消 */
+  CONFIRM_CANCELED = 'confirm_canceled',
+
+  // ==================== 物品 ====================
+  /** 物品被丢弃 */
+  ITEM_DROPPED = 'item_dropped',
+
+  // ==================== 战斗补充 ====================
+  /** 跳过回合 */
+  COMBAT_SKIP_TURN = 'combat_skip_turn',
+
+  // ==================== 任务补充 ====================
+  /** 放弃任务 */
+  QUEST_ABANDONED = 'quest_abandoned',
+
+  // ==================== 技能补充 ====================
+  /** 技能记忆到技能栏 */
+  SKILL_MEMORIZED = 'skill_memorized',
+  /** 技能从技能栏遗忘 */
+  SKILL_FORGOTTEN = 'skill_forgotten',
+
+  // ==================== 存档 ====================
+  /** 存档导出 */
+  DATA_EXPORTED = 'data_exported',
+  /** 存档导入 */
+  DATA_IMPORTED = 'data_imported'
 }
 
 /**

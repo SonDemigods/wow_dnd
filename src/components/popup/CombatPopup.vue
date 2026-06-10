@@ -140,7 +140,7 @@
       <div class="item-modal">
         <div class="item-modal-header">
           <span>选择物品</span>
-          <button class="item-modal-close" @click="showItemModal = false">✕</button>
+          <button class="item-modal-close" @click="showItemModal = false; eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_item_modal_close' })">✕</button>
         </div>
         <div class="item-modal-body">
           <div
@@ -364,6 +364,7 @@ function triggerShake(target: 'enemy' | 'player') {
 // 执行玩家动作
 async function doAction(type: CombatActionType) {
   if (!canAct.value) return;
+  eventBus.emit(GameEvents.UI_CLICK, { source: `combat_${type}` });
   isAnimating.value = true;
   vsFlash.value = true;
   setTimeout(() => { vsFlash.value = false; }, 300);
@@ -397,6 +398,7 @@ async function doAction(type: CombatActionType) {
 // 使用技能
 async function doSkill(skillId: string) {
   if (!canAct.value) return;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_skill' });
   isAnimating.value = true;
   vsFlash.value = true;
   setTimeout(() => { vsFlash.value = false; }, 300);
@@ -424,7 +426,9 @@ async function doSkill(skillId: string) {
 // 跳过回合
 function doSkip() {
   if (!canAct.value) return;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_skip' });
   isAnimating.value = true;
+  eventBus.emit(GameEvents.COMBAT_SKIP_TURN, null);
   combatService.skipTurn();
   runEnemyTurn();
 }
@@ -433,11 +437,13 @@ function doSkip() {
 function openItemModal() {
   if (hasConsumables.value) {
     showItemModal.value = true;
+    eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_item_btn' });
   }
 }
 
 async function useItem(_itemId: string, _index: number) {
   if (!canAct.value) return;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_use_item' });
   showItemModal.value = false;
   isAnimating.value = true;
 
@@ -528,6 +534,7 @@ function clearAutoClose() {
 }
 
 function handleClose() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_result_close' });
   clearAutoClose();
   emit('close', combatResult.value || undefined);
 }

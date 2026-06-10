@@ -259,6 +259,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { useGameDataStore } from '@/modules/gameData';
+import { eventBus, GameEvents } from '@/modules/bus/core';
 import Tag from './common/Tag.vue';
 import type {
   FactionType,
@@ -405,14 +406,17 @@ async function loadData() {
 function selectFaction(id: string) {
   selectedFaction.value = id;
   selectedRace.value = null;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'select_faction' });
 }
 
 function selectRace(id: string) {
   selectedRace.value = id;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'select_race' });
 }
 
 function selectClass(id: string) {
   selectedClass.value = id;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'select_class' });
 }
 
 function getFactionRaceNames(factionId: string) {
@@ -441,12 +445,14 @@ function getStatIcon(stat: string): string {
 function nextStep() {
   if (currentStep.value < 4) {
     currentStep.value++;
+    eventBus.emit(GameEvents.UI_CLICK, { source: 'create_next' });
   }
 }
 
 function prevStep() {
   if (currentStep.value > 1) {
     currentStep.value--;
+    eventBus.emit(GameEvents.UI_CLICK, { source: 'create_prev' });
   }
 }
 
@@ -498,11 +504,13 @@ function showConfirmModal() {
 /** 关闭弹窗 */
 function cancelModal() {
   showModal.value = false;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'create_cancel_modal' });
 }
 
 /** 弹窗确认按钮回调 */
 function onModalConfirm() {
   showModal.value = false;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'create_confirm_modal' });
   if (modalType.value === 'confirm') {
     doCreate();
   }
@@ -523,6 +531,7 @@ async function doCreate() {
 /** 点击创建角色：先校验，通过后弹出确认弹窗 */
 async function createCharacter() {
   if (!canCreate.value) return;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'create_btn' });
 
   const error = validateName(name.value);
   if (error) {

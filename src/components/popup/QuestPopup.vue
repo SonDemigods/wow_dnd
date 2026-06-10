@@ -74,6 +74,7 @@
 
 import { ref, reactive, onMounted, watch } from 'vue';
 import { questService } from '@/modules/quest';
+import { eventBus, GameEvents } from '@/modules/bus/core';
 import { useToast } from '@/composables/useToast';
 import type { QuestDefinition, QuestInstance, QuestStatus } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';
@@ -129,6 +130,7 @@ function getObjectiveProgress(instance: QuestInstance, index: number): number {
 }
 
 function claimReward(questId: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'quest_claim_reward' });
   const success = questService.turnInQuest(questId);
   if (success) {
     const quest = questService.getQuestDefinition(questId);
@@ -140,6 +142,7 @@ function claimReward(questId: string) {
 }
 
 function abandonQuest(questId: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'quest_abandon_btn' });
   confirmState.questId = questId;
   confirmState.message = '确定放弃此任务吗？放弃后任务进度将被清除。';
   confirmState.visible = true;
@@ -150,6 +153,7 @@ function onConfirmAbandon() {
   confirmState.visible = false;
   const success = questService.abandonQuest(questId);
   if (success) {
+    eventBus.emit(GameEvents.QUEST_ABANDONED, { questId });
     loadQuests();
     toast.show({ message: '已放弃任务', type: 'warning', icon: '⚠️' });
   }

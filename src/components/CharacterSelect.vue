@@ -71,7 +71,7 @@
         <div class="char-delete" @click.stop="deleteCharacter(char.id)">🗑️</div>
       </div>
 
-      <button v-if="characters.length < 10" class="add-character" @click="$emit('create')">
+      <button v-if="characters.length < 10" class="add-character" @click="onCreateClick">
         <div class="add-icon">+</div>
         <div class="add-text">创建角色</div>
       </button>
@@ -105,6 +105,7 @@
 
 import { ref, onMounted } from 'vue';
 import { characterService } from '@/modules/character';
+import { eventBus, GameEvents } from '@/modules/bus/core';
 import Tag from './common/Tag.vue';
 import { useGameDataStore } from '@/modules/gameData';
 import { backupService, importService } from '@/modules/data';
@@ -146,19 +147,23 @@ async function loadCharacters() {
 
 function selectCharacter(id: string) {
   selectedId.value = id;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'select_character' });
 }
 
 function deleteCharacter(id: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'delete_char_btn' });
   deletingCharacterId.value = id;
   showConfirmModal.value = true;
 }
 
 function cancelDelete() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'cancel_delete' });
   showConfirmModal.value = false;
   deletingCharacterId.value = null;
 }
 
 async function confirmDelete() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'confirm_delete' });
   if (deletingCharacterId.value) {
     await characterService.deleteCharacter(deletingCharacterId.value);
     await loadCharacters();
@@ -171,10 +176,17 @@ async function confirmDelete() {
 }
 
 async function confirmSelect() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'enter_game' });
   if (selectedId.value) {
     await characterService.selectCharacter(selectedId.value);
     emit('select', selectedId.value);
   }
+}
+
+// 创建角色按钮
+function onCreateClick() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'create_character_btn' });
+  emit('create');
 }
 
 // ==================== 导出/导入功能 ====================
@@ -183,8 +195,10 @@ async function confirmSelect() {
  * 导出存档：调用 BackupService 导出 JSON 文件
  */
 async function handleExport() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'export_archive' });
   try {
     await backupService.exportBackup();
+    eventBus.emit(GameEvents.DATA_EXPORTED, null);
   } catch (error) {
     showResult(false, '导出失败', (error as Error).message || '未知错误');
   }
@@ -194,6 +208,7 @@ async function handleExport() {
  * 触发导入：打开文件选择对话框
  */
 function triggerImport() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'import_btn' });
   fileInputRef.value?.click();
 }
 
@@ -229,18 +244,21 @@ async function handleFileSelected(event: Event) {
 function cancelImport() {
   showImportModal.value = false;
   selectedFile.value = null;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'cancel_import' });
 }
 
 /**
  * 确认导入：执行数据导入并刷新角色列表
  */
 async function confirmImport() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'confirm_import' });
   if (!selectedFile.value) return;
   showImportModal.value = false;
 
   try {
     const result: ImportResult = await importService.importBackup(selectedFile.value);
     if (result.success) {
+      eventBus.emit(GameEvents.DATA_IMPORTED, null);
       // 刷新数据和角色列表
       await loadData();
       await loadCharacters();
@@ -260,6 +278,7 @@ async function confirmImport() {
  */
 function closeResult() {
   showResultModal.value = false;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'result_close' });
 }
 
 /**

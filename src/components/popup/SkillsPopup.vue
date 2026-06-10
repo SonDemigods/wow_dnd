@@ -102,6 +102,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useSkillsStore } from '@/modules/skill';
 import { characterService } from '@/modules/character';
 import { skillsDbService } from '@/modules/skill/db';
+import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { Skill, SkillSlotIndex } from '@/modules/skill';
 import BasePopup from '../common/BasePopup.vue';
 
@@ -171,10 +172,12 @@ function canUnlock(skill: Skill): boolean {
 function selectSkill(skill: Skill) {
   selectedSkill.value = skill;
   selectedSlotIndex.value = null;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'skill_select' });
 }
 
 function selectBarSlot(index: number) {
   selectedSlotIndex.value = index;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'skill_bar_slot' });
   const slot = skillBarSlots.value[index];
   if (slot.skill) {
     selectedSkill.value = slot.skill;
@@ -182,6 +185,7 @@ function selectBarSlot(index: number) {
 }
 
 function activateSkill(skillId: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'skill_memorize' });
   const targetSlot = selectedSlotIndex.value ?? findEmptySlot();
   if (targetSlot === null) {
     skillsStore.unequipSkill(0 as SkillSlotIndex);
@@ -191,9 +195,11 @@ function activateSkill(skillId: string) {
   }
   selectedSlotIndex.value = null;
   barRenderKey.value++;
+  eventBus.emit(GameEvents.SKILL_MEMORIZED, { skillId });
 }
 
 function deactivateSkill(skillId: string) {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'skill_forget' });
   const slotIndex = skillsStore.skillBar.slots.findIndex(id => id === skillId);
   if (slotIndex !== -1) {
     skillsStore.unequipSkill(slotIndex as SkillSlotIndex);
@@ -202,6 +208,7 @@ function deactivateSkill(skillId: string) {
     selectedSkill.value = null;
   }
   barRenderKey.value++;
+  eventBus.emit(GameEvents.SKILL_FORGOTTEN, { skillId });
 }
 
 function findEmptySlot(): number | null {
