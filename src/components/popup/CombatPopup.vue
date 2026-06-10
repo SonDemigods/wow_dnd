@@ -1,6 +1,9 @@
 <template>
   <div v-if="visible" class="combat-overlay">
     <div class="combat-container">
+      <!-- 屏幕闪白遮罩（暴击特效） -->
+      <div v-if="screenFlash" :class="['screen-flash', screenFlashType]"></div>
+
       <!-- 标题 -->
       <div class="combat-header">
         <span class="combat-title">{{ isBossFight ? 'BOSS 战斗！' : '遭遇战斗！' }}</span>
@@ -10,7 +13,7 @@
       <!-- 战斗区域：敌人 + 玩家 -->
       <div class="combat-arena">
         <!-- 敌人区域 -->
-        <div class="combatant enemy-side" :class="{ 'shake': enemyShake, 'defeated': enemyDefeated }">
+        <div class="combatant enemy-side" :class="{ 'shake': enemyShake, 'crit-shake': enemyCritShake, 'dodge-blink': enemyDodgeBlink, 'defeated': enemyDefeated }">
           <div class="combatant-avatar">{{ enemy?.icon || '👹' }}</div>
           <div class="combatant-info">
             <div class="combatant-name">{{ enemy?.name || '未知敌人' }}</div>
@@ -35,7 +38,7 @@
         <div class="vs-divider" :class="{ 'flash': vsFlash }">⚔️</div>
 
         <!-- 玩家区域 -->
-        <div class="combatant player-side" :class="{ 'shake': playerShake }">
+        <div class="combatant player-side" :class="{ 'shake': playerShake, 'crit-shake': playerCritShake, 'dodge-blink': playerDodgeBlink }">
           <div class="combatant-avatar">{{ playerIcon }}</div>
           <div class="combatant-info">
             <div class="combatant-name">{{ playerName }}</div>
@@ -211,10 +214,16 @@ const logs = ref<CombatLog[]>([]);
 // 动画状态
 const enemyShake = ref(false);
 const playerShake = ref(false);
+const enemyCritShake = ref(false);
+const playerCritShake = ref(false);
+const enemyDodgeBlink = ref(false);
+const playerDodgeBlink = ref(false);
 const enemyDefeated = ref(false);
 const vsFlash = ref(false);
 const enemyFloating = ref<{ text: string; type: string } | null>(null);
 const playerFloating = ref<{ text: string; type: string } | null>(null);
+const screenFlash = ref(false);
+const screenFlashType = ref<'crit' | 'dodge'>('crit');
 
 // 玩家数据（从 characterStore 读取，与主界面一致）
 const playerName = computed(() => characterStore.name);
@@ -351,14 +360,56 @@ function scrollToBottom() {
 function showFloating(target: 'enemy' | 'player', text: string, type: string) {
   const floating = target === 'enemy' ? enemyFloating : playerFloating;
   floating.value = { text, type };
-  setTimeout(() => { floating.value = null; }, 1200);
+  setTimeout(() => { floating.value = null; }, 1800);
 }
 
-// 震动效果
+// 震动效果（普通攻击）
 function triggerShake(target: 'enemy' | 'player') {
   const shake = target === 'enemy' ? enemyShake : playerShake;
   shake.value = true;
-  setTimeout(() => { shake.value = false; }, 400);
+  setTimeout(() => { shake.value = false; }, 600);
+}
+
+// 暴击震动效果（更强、更持久）
+function triggerCritShake(target: 'enemy' | 'player') {
+  const shake = target === 'enemy' ? enemyCritShake : playerCritShake;
+  shake.value = true;
+  setTimeout(() => { shake.value = false; }, 900);
+}
+
+// 闪避闪烁效果
+function triggerDodgeBlink(target: 'enemy' | 'player') {
+  const blink = target === 'enemy' ? enemyDodgeBlink : playerDodgeBlink;
+  blink.value = true;
+  setTimeout(() => { blink.value = false; }, 800);
+}
+
+// 屏幕闪白特效
+function triggerScreenFlash(type: 'crit' | 'dodge') {
+  screenFlashType.value = type;
+  screenFlash.value = true;
+  setTimeout(() => { screenFlash.value = false; }, 600);
+}
+
+// 暴击事件处理
+function onCritHit(data: { amount: number; damageType: string; targetName: string; actorType: 'player' | 'enemy' }) {
+  // 暴击震动目标（对敌人暴击震敌人，敌人暴击震玩家）
+  const shakeTarget = data.actorType === 'player' ? 'enemy' : 'player';
+  triggerCritShake(shakeTarget);
+  // 暴击浮动文字（金色 + "暴击!" 前缀）
+  showFloating(shakeTarget, `暴击! -${data.amount}`, 'crit');
+  // 屏幕闪白
+  triggerScreenFlash('crit');
+}
+
+// 闪避事件处理
+function onDodge(data: { attackerName: string; dodgerName: string; dodgerType: 'player' | 'enemy' }) {
+  // 闪避者闪烁
+  triggerDodgeBlink(data.dodgerType);
+  // 闪避浮动文字
+  showFloating(data.dodgerType, '闪避!', 'dodge');
+  // 屏幕轻闪
+  triggerScreenFlash('dodge');
 }
 
 // 执行玩家动作
@@ -367,7 +418,7 @@ async function doAction(type: CombatActionType) {
   eventBus.emit(GameEvents.UI_CLICK, { source: `combat_${type}` });
   isAnimating.value = true;
   vsFlash.value = true;
-  setTimeout(() => { vsFlash.value = false; }, 300);
+  setTimeout(() => { vsFlash.value = false; }, 450);
 
   const prevEnemyHp = enemyHp.value;
 
@@ -401,18 +452,25 @@ async function doSkill(skillId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_skill' });
   isAnimating.value = true;
   vsFlash.value = true;
-  setTimeout(() => { vsFlash.value = false; }, 300);
+  setTimeout(() => { vsFlash.value = false; }, 450);
 
   const prevEnemyHp = enemyHp.value;
+  const prevPlayerHp = playerHp.value;
 
   await combatService.playerAction({ type: 'skill', skillId });
 
   if (!combatResult.value) {
     updateState();
+    // 对敌人的伤害
     const dmgDealt = prevEnemyHp - enemyHp.value;
     if (dmgDealt > 0) {
       triggerShake('enemy');
       showFloating('enemy', `-${dmgDealt}`, 'damage');
+    }
+    // 技能治疗（玩家恢复生命/法力）
+    const healAmount = playerHp.value - prevPlayerHp;
+    if (healAmount > 0) {
+      showFloating('player', `+${healAmount}`, 'heal');
     }
     runEnemyTurn();
   } else {
@@ -447,10 +505,22 @@ async function useItem(_itemId: string, _index: number) {
   showItemModal.value = false;
   isAnimating.value = true;
 
+  const prevPlayerHp = playerHp.value;
+  const prevPlayerMp = playerMp.value;
+
   await combatService.playerAction({ type: 'item', itemId: _itemId });
 
   if (!combatResult.value) {
     updateState();
+    // 物品恢复（生命/法力）
+    const hpHeal = playerHp.value - prevPlayerHp;
+    if (hpHeal > 0) {
+      showFloating('player', `+${hpHeal}`, 'heal');
+    }
+    const mpHeal = playerMp.value - prevPlayerMp;
+    if (mpHeal > 0) {
+      showFloating('player', `MP+${mpHeal}`, 'heal');
+    }
     runEnemyTurn();
   } else {
     updateState();
@@ -541,10 +611,14 @@ function handleClose() {
 
 onMounted(() => {
   eventBus.on(GameEvents.COMBAT_END, onCombatEnd);
+  eventBus.on(GameEvents.COMBAT_CRITICAL_HIT, onCritHit);
+  eventBus.on(GameEvents.COMBAT_DODGE, onDodge);
 });
 
 onUnmounted(() => {
   eventBus.off(GameEvents.COMBAT_END, onCombatEnd);
+  eventBus.off(GameEvents.COMBAT_CRITICAL_HIT, onCritHit);
+  eventBus.off(GameEvents.COMBAT_DODGE, onDodge);
   clearAutoClose();
 });
 
@@ -559,9 +633,14 @@ watch(() => props.visible, async (val) => {
     enemyDefeated.value = false;
     enemyShake.value = false;
     playerShake.value = false;
+    enemyCritShake.value = false;
+    playerCritShake.value = false;
+    enemyDodgeBlink.value = false;
+    playerDodgeBlink.value = false;
     vsFlash.value = false;
     enemyFloating.value = null;
     playerFloating.value = null;
+    screenFlash.value = false;
     clearAutoClose();
     // 确保技能服务已初始化
     await skillsService.initialize();
@@ -598,6 +677,27 @@ watch(() => props.visible, async (val) => {
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  position: relative;
+}
+
+/* 屏幕闪白遮罩 */
+.screen-flash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  pointer-events: none;
+  border-radius: 14px;
+}
+
+.screen-flash.crit {
+  animation: screenFlashCrit 0.6s ease-out;
+}
+
+.screen-flash.dodge {
+  animation: screenFlashDodge 0.6s ease-out;
 }
 
 /* 标题 */
@@ -639,7 +739,17 @@ watch(() => props.visible, async (val) => {
 
 /* 震动效果 */
 .combatant.shake {
-  animation: shake 0.4s ease;
+  animation: shake 0.6s ease;
+}
+
+/* 暴击震动效果（更强） */
+.combatant.crit-shake {
+  animation: critShake 0.9s ease;
+}
+
+/* 闪避闪烁 */
+.combatant.dodge-blink {
+  animation: dodgeBlink 0.8s ease;
 }
 
 .combatant.defeated {
@@ -656,14 +766,25 @@ watch(() => props.visible, async (val) => {
   font-size: 22px;
   font-weight: 900;
   pointer-events: none;
-  animation: floatUp 1.2s ease forwards;
+  animation: floatUp 1.6s ease forwards;
   z-index: 10;
   text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
 .floating-damage.damage { color: #ff4444; }
 .floating-damage.heal { color: #4CAF50; }
-.floating-damage.crit { color: #ffd700; font-size: 28px; }
+.floating-damage.crit {
+  color: #ffd700;
+  font-size: 30px;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8), 0 2px 6px rgba(0, 0, 0, 0.6);
+  animation: floatUpCrit 1.8s ease forwards;
+}
+.floating-damage.dodge {
+  color: #888;
+  font-size: 22px;
+  font-style: italic;
+  animation: floatUp 1.2s ease forwards;
+}
 
 .combatant-avatar { font-size: 36px; text-align: center; }
 .combatant-info { text-align: center; }
@@ -703,7 +824,7 @@ watch(() => props.visible, async (val) => {
 }
 
 .vs-divider.flash {
-  animation: vsFlash 0.3s ease;
+  animation: vsFlash 0.45s ease;
 }
 
 /* 战斗日志 */
@@ -969,10 +1090,46 @@ watch(() => props.visible, async (val) => {
   80% { transform: translateX(4px); }
 }
 
+@keyframes critShake {
+  0%, 100% { transform: translateX(0) scale(1); }
+  10% { transform: translateX(-14px) scale(1.05); }
+  30% { transform: translateX(14px) scale(0.95); }
+  50% { transform: translateX(-10px) scale(1.03); }
+  70% { transform: translateX(10px) scale(0.97); }
+  85% { transform: translateX(-4px) scale(1.01); }
+}
+
+@keyframes dodgeBlink {
+  0%, 100% { opacity: 1; filter: brightness(1); }
+  25% { opacity: 0.2; filter: brightness(2); }
+  50% { opacity: 1; filter: brightness(1); }
+  75% { opacity: 0.3; filter: brightness(1.5); }
+}
+
 @keyframes floatUp {
   0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
   30% { opacity: 1; transform: translateX(-50%) translateY(-20px) scale(1.2); }
   100% { opacity: 0; transform: translateX(-50%) translateY(-50px) scale(0.8); }
+}
+
+@keyframes floatUpCrit {
+  0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(0.5); }
+  20% { opacity: 1; transform: translateX(-50%) translateY(-15px) scale(1.4); }
+  40% { opacity: 1; transform: translateX(-50%) translateY(-30px) scale(1.1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-60px) scale(0.7); }
+}
+
+@keyframes screenFlashCrit {
+  0% { background: rgba(255, 215, 0, 0.4); }
+  30% { background: rgba(255, 215, 0, 0.15); }
+  70% { background: rgba(255, 255, 255, 0.05); }
+  100% { background: transparent; }
+}
+
+@keyframes screenFlashDodge {
+  0% { background: rgba(255, 255, 255, 0.2); }
+  50% { background: rgba(255, 255, 255, 0.05); }
+  100% { background: transparent; }
 }
 
 @keyframes vsFlash {
@@ -1016,6 +1173,7 @@ watch(() => props.visible, async (val) => {
   .skill-effect { font-size: 9px; }
   .skill-cost { font-size: 9px; }
   .floating-damage { font-size: 18px; }
-  .floating-damage.crit { font-size: 22px; }
+  .floating-damage.crit { font-size: 24px; }
+  .floating-damage.dodge { font-size: 18px; }
 }
 </style>

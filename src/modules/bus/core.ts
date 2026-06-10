@@ -56,6 +56,10 @@ export interface GameEventPayloadMap {
   [GameEvents.COMBAT_DEAL_DAMAGE]: { amount: number; damageType: 'physical' | 'magic'; targetName: string };
   /** 施放治疗事件（携带治疗类型，生命/法力） */
   [GameEvents.COMBAT_CAST_HEAL]: { amount: number; healType: 'health' | 'mana'; targetName: string };
+  /** 暴击事件（携带伤害量和目标，用于触发暴击视觉特效和音效） */
+  [GameEvents.COMBAT_CRITICAL_HIT]: { amount: number; damageType: 'physical' | 'magic'; targetName: string; actorType: 'player' | 'enemy' };
+  /** 闪避事件（携带攻击者和闪避者信息） */
+  [GameEvents.COMBAT_DODGE]: { attackerName: string; dodgerName: string; dodgerType: 'player' | 'enemy' };
   // ==================== 探索 ====================
   [GameEvents.EXPLORATION_START]: { characterId: string | null; areaId?: string };
   [GameEvents.EXPLORATION_END]: { characterId: string | null };
@@ -312,6 +316,10 @@ export enum GameEvents {
   COMBAT_DEAL_DAMAGE = 'combat_deal_damage',
   /** 施放治疗（含治疗类型，用于区分血量/法力回复音效） */
   COMBAT_CAST_HEAL = 'combat_cast_heal',
+  /** 暴击（含伤害量和目标，用于触发视觉特效和音效） */
+  COMBAT_CRITICAL_HIT = 'combat_critical_hit',
+  /** 闪避（含攻击者和闪避者信息） */
+  COMBAT_DODGE = 'combat_dodge',
 
   // ==================== 探索 ====================
   /** 探索开始 */

@@ -185,6 +185,13 @@ export class CombatService implements ICombatService {
         message: `${characterService.getName()} 攻击被 ${this.enemy.name} 闪避了！`
       });
       
+      // 发射闪避事件（音效 + 视觉特效）
+      eventBus.emit(GameEvents.COMBAT_DODGE, {
+        attackerName: characterService.getName(),
+        dodgerName: this.enemy.name,
+        dodgerType: 'enemy'
+      });
+      
       this.endPlayerTurn();
       this.saveLogs();
       
@@ -213,6 +220,16 @@ export class CombatService implements ICombatService {
     
     // 物理伤害音效事件
     eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, { amount: damage, damageType: 'physical', targetName: this.enemy?.name || '敌人' });
+
+    // 暴击事件（视觉特效 + 暴击音效）
+    if (isCrit) {
+      eventBus.emit(GameEvents.COMBAT_CRITICAL_HIT, {
+        amount: damage,
+        damageType: 'physical',
+        targetName: this.enemy?.name || '敌人',
+        actorType: 'player'
+      });
+    }
 
     // 更新敌人状态
     this.enemy = enemyService.getEnemyById(this.enemy.id);
@@ -648,6 +665,13 @@ export class CombatService implements ICombatService {
         message: `${this.enemy.name} 的攻击被 ${characterService.getName()} 闪避了！`
       });
       
+      // 发射闪避事件（音效 + 视觉特效）
+      eventBus.emit(GameEvents.COMBAT_DODGE, {
+        attackerName: this.enemy.name,
+        dodgerName: characterService.getName(),
+        dodgerType: 'player'
+      });
+      
       return {
         success: true,
         type: 'attack',
@@ -711,6 +735,13 @@ export class CombatService implements ICombatService {
         isCrit: false,
         isDodge: true,
         message: `${this.enemy.name} 的 ${skill.name} 被 ${characterService.getName()} 闪避了！`
+      });
+      
+      // 发射闪避事件（音效 + 视觉特效）
+      eventBus.emit(GameEvents.COMBAT_DODGE, {
+        attackerName: this.enemy.name,
+        dodgerName: characterService.getName(),
+        dodgerType: 'player'
       });
       
       return {

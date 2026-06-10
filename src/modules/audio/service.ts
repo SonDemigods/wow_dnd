@@ -944,6 +944,16 @@ class AudioService implements IAudioService {
       this.playSfx(data.healType === 'mana' ? 'mana_restore' : 'health_restore');
     });
 
+    // -- 暴击音效 --
+    eventBus.on(GameEvents.COMBAT_CRITICAL_HIT, () => {
+      this.playSfx('attack_crit');
+    });
+
+    // -- 闪避音效 --
+    eventBus.on(GameEvents.COMBAT_DODGE, () => {
+      this.playSfx('attack_miss');
+    });
+
     // -- 角色事件 --
     eventBus.on(GameEvents.CHARACTER_HP_CHANGE, (data) => {
       if (data.newHp < data.oldHp) {
