@@ -113,7 +113,7 @@ export class DataInitializer {
   async initializeData(): Promise<void> {
     const isInitialized = await this.isDataInitialized();
 
-    console.log('Initializing game data...');
+    console.log('初始化游戏数据中...');
 
     try {
       await db.transaction(
@@ -157,16 +157,16 @@ export class DataInitializer {
         }
       );
 
-      console.log('Game data initialization completed.');
+      console.log('游戏数据初始化完成');
       
       // 通知 gameDataStore 重新加载最新数据
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: 'init', action: 'bulk', id: '*' });
     } catch (error) {
-      console.error('Failed to initialize game data:', error);
+      console.error('初始化游戏数据失败:', error);
       if (error instanceof Error) {
-        console.error('Error name:', error.name);
-        console.error('Error message:', error.message);
-        console.error('Error stack:', error.stack);
+        console.error('错误名称:', error.name);
+        console.error('错误信息:', error.message);
+        console.error('错误栈:', error.stack);
       }
       throw error;
     }
@@ -297,7 +297,7 @@ export class DataInitializer {
    */
   async resetData(): Promise<void> {
     await db.runtime_gameState.delete(this.initFlagKey);
-    console.log('Data initialization flag cleared.');
+    console.log('数据初始化标志已重置');
   }
 }
 
@@ -389,7 +389,7 @@ export class BackupService implements IBackupService {
         return JSON.parse(stored);
       }
     } catch (error) {
-      console.error('Failed to load auto backups:', error);
+      console.error('加载自动备份失败:', error);
     }
     return [];
   }
@@ -835,7 +835,7 @@ export class ImportService implements IImportService {
 
       return { success: true, importedStores, skippedStores };
     } catch (error) {
-      console.error('Failed to import data:', error);
+      console.error('导入数据失败:', error);
       return {
         success: false,
         error: (error as Error).message,
@@ -872,6 +872,6 @@ export async function getGameData<T>(key: string): Promise<T | null> {
   const result = await db.runtime_gameState.get(key);
   if (result) return result as unknown as T;
 
-  console.warn(`Game data not found in database: ${key}`);
+  console.warn(`数据库中未找到游戏数据: ${key}`);
   return null;
 }

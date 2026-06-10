@@ -53,7 +53,7 @@ export interface GameEventPayloadMap {
   [GameEvents.COMBAT_ENEMY_TURN]: null;
   // ==================== 战斗——伤害/治疗类型 ====================
   /** 造成伤害事件（携带伤害类型，物伤/魔伤） */
-  [GameEvents.COMBAT_DEAL_DAMAGE]: { amount: number; damageType: 'physical' | 'magic'; targetName: string };
+  [GameEvents.COMBAT_DEAL_DAMAGE]: { amount: number; damageType: 'physical' | 'magic'; targetName: string; actorType?: 'player' | 'enemy' };
   /** 施放治疗事件（携带治疗类型，生命/法力） */
   [GameEvents.COMBAT_CAST_HEAL]: { amount: number; healType: 'health' | 'mana'; targetName: string };
   /** 暴击事件（携带伤害量和目标，用于触发暴击视觉特效和音效） */

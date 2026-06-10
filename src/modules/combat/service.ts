@@ -219,7 +219,7 @@ export class CombatService implements ICombatService {
     const isDead = enemyService.takeDamage(this.enemy.id, damage);
     
     // 物理伤害音效事件
-    eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, { amount: damage, damageType: 'physical', targetName: this.enemy?.name || '敌人' });
+    eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, { amount: damage, damageType: 'physical', targetName: this.enemy?.name || '敌人', actorType: 'player' });
 
     // 暴击事件（视觉特效 + 暴击音效）
     if (isCrit) {
@@ -315,7 +315,8 @@ export class CombatService implements ICombatService {
       eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
         amount: result.damage,
         damageType: result.type === 'magic_damage' ? 'magic' : 'physical',
-        targetName: this.enemy?.name || '敌人'
+        targetName: this.enemy?.name || '敌人',
+        actorType: 'player'
       });
       
       this.addCombatLog({
@@ -683,7 +684,7 @@ export class CombatService implements ICombatService {
     // 造成伤害
     eventBus.emit(GameEvents.CHARACTER_TAKE_DAMAGE, { amount: damage, source: this.enemy.name });
     // 物理伤害音效（敌方攻击）
-    eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, { amount: damage, damageType: 'physical', targetName: characterService.getName() });
+    eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, { amount: damage, damageType: 'physical', targetName: characterService.getName(), actorType: 'enemy' });
     
     this.addCombatLog({
       actorType: 'enemy',
@@ -755,7 +756,7 @@ export class CombatService implements ICombatService {
     // 造成伤害（敌方技能）
     eventBus.emit(GameEvents.CHARACTER_TAKE_DAMAGE, { amount: damage, source: this.enemy.name });
     // 物理伤害音效（敌方技能）
-    eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, { amount: damage, damageType: 'physical', targetName: characterService.getName() });
+    eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, { amount: damage, damageType: 'physical', targetName: characterService.getName(), actorType: 'enemy' });
     
     this.addCombatLog({
       actorType: 'enemy',

@@ -89,6 +89,19 @@ class AudioService implements IAudioService {
   /** BGM 滤波器低频振荡器 —— 探索/主菜单场景的呼吸感 */
   private bgmFilterLfo: Tone.LFO | null = null;
 
+  // ==================== BGM 音色配置辅助 ====================
+
+  /**
+   * 设置 BGM 合成器音色
+   * PolySynth 的 TS 类型定义不完整，内部封装一次性类型断言
+   */
+  private setBgmConfig(config: {
+    envelope?: Partial<typeof Tone.Synth.prototype.envelope>;
+    oscillator?: Partial<{ type: string }>;
+  }): void {
+    this.bgmSynth.set(config as Parameters<typeof this.bgmSynth.set>[0]);
+  }
+
   // ==================== 状态 ====================
   private initialized = false;
   private contextReady = false;
@@ -388,6 +401,23 @@ class AudioService implements IAudioService {
         this.fmSynth.set({ harmonicity: 6 });
         break;
 
+      case 'camp_rest':
+        // 营地休息：温暖篝火氛围 —— 柔和铺底和弦 + 篝火噪声纹理
+        this.bgmSynth.triggerAttackRelease(['C3', 'E3', 'G3'], '4n', now, 0.2);
+        this.noiseSynth.triggerAttackRelease('4n', now + 0.01, 0.06);
+        this.bgmSynth.triggerAttackRelease(['C3', 'E3', 'G3', 'C4'], '2n', now + 0.5, 0.18);
+        break;
+
+      case 'random_event':
+        // 随机事件：意外发现 —— FM 惊喜上行
+        this.fmSynth.set({ harmonicity: 5, modulationIndex: 10 });
+        this.fmSynth.triggerAttackRelease('D4', '32n', now, 0.35);
+        this.fmSynth.triggerAttackRelease('F4', '32n', now + 0.05, 0.3);
+        this.fmSynth.triggerAttackRelease('A4', '16n', now + 0.10, 0.25);
+        this.fmSynth.set({ harmonicity: 6, modulationIndex: 14 });
+        this.metalSynth.triggerAttackRelease('D5', '32n', now + 0.12, 0.15);
+        break;
+
       // -- 角色 --
       case 'level_up':
         // 升级：多层琶音 + 持续高音
@@ -415,11 +445,33 @@ class AudioService implements IAudioService {
         break;
 
       case 'heal':
-        // 治疗：温暖上行和弦
-        this.synth.triggerAttackRelease('E4', '16n', now, 0.5);
-        this.synth.triggerAttackRelease('A4', '16n', now + 0.1, 0.5);
-        this.synth.triggerAttackRelease('C5', '16n', now + 0.2, 0.5);
-        this.bgmSynth.triggerAttackRelease(['E4', 'A4', 'C5'], '8n', now + 0.3, 0.3);
+        // 治疗：温暖上行纯五度 —— 简洁温暖的治愈感（与 health_restore 琶音铺底区分）
+        this.synth.triggerAttackRelease('G4', '8n', now, 0.4);
+        this.bgmSynth.triggerAttackRelease(['C3', 'G4'], '8n', now, 0.1);
+        break;
+
+      case 'resurrect':
+        // 复活：圣光上升 —— 多音色层次叠加
+        this.synth.triggerAttackRelease('C3', '16n', now, 0.4);
+        this.synth.triggerAttackRelease('E3', '16n', now + 0.10, 0.4);
+        this.synth.triggerAttackRelease('G3', '16n', now + 0.20, 0.4);
+        this.synth.triggerAttackRelease('C4', '16n', now + 0.30, 0.5);
+        this.bgmSynth.triggerAttackRelease(['C3', 'E3', 'G3', 'C4'], '2n', now + 0.40, 0.35);
+        this.metalSynth.triggerAttackRelease('C5', '32n', now + 0.40, 0.3);
+        break;
+
+      case 'gain_exp':
+        // 获得经验：轻快三连音上行
+        this.synth.triggerAttackRelease('D4', '32n', now, 0.3);
+        this.synth.triggerAttackRelease('F4', '32n', now + 0.04, 0.3);
+        this.synth.triggerAttackRelease('A4', '32n', now + 0.08, 0.25);
+        break;
+
+      case 'mana_recover':
+        // 法力回复：清澈星辰闪烁 —— 比 mana_restore 更轻盈
+        this.metalSynth.triggerAttackRelease('C6', '64n', now, 0.2);
+        this.metalSynth.triggerAttackRelease('E6', '64n', now + 0.05, 0.18);
+        this.synth.triggerAttackRelease('C7', '128n', now + 0.10, 0.12);
         break;
 
       // -- UI --
@@ -461,6 +513,13 @@ class AudioService implements IAudioService {
         this.coin(now);
         break;
 
+      case 'shop_refresh':
+        // 刷新商品：翻页卷动感 —— 快速噪声 + 轻快双音
+        this.noiseSynth.triggerAttackRelease('16n', now, 0.08);
+        this.synth.triggerAttackRelease('E4', '64n', now + 0.03, 0.2);
+        this.synth.triggerAttackRelease('G4', '64n', now + 0.06, 0.15);
+        break;
+
       // -- 任务 --
       case 'quest_accept':
         // 接任务：自信短句
@@ -477,6 +536,14 @@ class AudioService implements IAudioService {
         this.synth.triggerAttackRelease('C5', '16n', now + 0.21, 0.6);
         this.synth.triggerAttackRelease('E5', '16n', now + 0.30, 0.5);
         this.synth.triggerAttackRelease('C6', '8n', now + 0.40, 0.35);
+        break;
+
+      case 'quest_reward':
+        // 领取奖励：金币 + 完成旋律组合
+        this.metalSynth.triggerAttackRelease('G6', '64n', now, 0.4);
+        this.metalSynth.triggerAttackRelease('G6', '64n', now + 0.07, 0.4);
+        this.synth.triggerAttackRelease('C5', '16n', now + 0.15, 0.45);
+        this.synth.triggerAttackRelease('E5', '16n', now + 0.22, 0.4);
         break;
 
       // -- 装备 & 物品 --
@@ -662,10 +729,10 @@ class AudioService implements IAudioService {
     this.startBgmOscillator(50);
     this.startFilterLfo(0.3, 400);
 
-    this.bgmSynth.set({
+    this.setBgmConfig({
       envelope: { attack: 1.2, decay: 1.0, sustain: 0.5, release: 3 },
       oscillator: { type: 'sine' },
-    } as any);
+    });
 
     const progression = [
       ['C3', 'Eb3', 'G3', 'Bb3'],    // Cm7
@@ -697,10 +764,10 @@ class AudioService implements IAudioService {
     this.startFilterLfo(0.15, 600);
 
     // 统一包络：兼顾 pad 长音和旋律短音
-    this.bgmSynth.set({
+    this.setBgmConfig({
       envelope: { attack: 0.8, decay: 0.5, sustain: 0.4, release: 2.5 },
       oscillator: { type: 'sine' },
-    } as any);
+    });
 
     // D 多利亚调式 和弦进行: Dm7 → F → Cmaj7 → Am7
     const chords = [
@@ -741,10 +808,10 @@ class AudioService implements IAudioService {
     this.stopFilterLfo();
     this.bgmFilter.frequency.value = 600;
 
-    this.bgmSynth.set({
+    this.setBgmConfig({
       envelope: { attack: 0.15, decay: 0.3, sustain: 0.4, release: 0.5 },
       oscillator: { type: 'sawtooth' },
-    } as any);
+    });
 
     // 紧张的低音重复段 —— C 弗里吉亚
     const bassLine = ['C2', 'C2', 'Db2', 'C2', 'Eb2', 'Db2', 'C2', 'F2'];
@@ -771,10 +838,10 @@ class AudioService implements IAudioService {
     this.stopFilterLfo();
     this.bgmFilter.frequency.value = 350;
 
-    this.bgmSynth.set({
+    this.setBgmConfig({
       envelope: { attack: 0.4, decay: 0.3, sustain: 0.5, release: 2 },
       oscillator: { type: 'triangle' },
-    } as any);
+    });
 
     const progression = [
       ['C3', 'E3', 'G3', 'B3'],     // Cmaj7
@@ -802,10 +869,10 @@ class AudioService implements IAudioService {
     this.startBgmOscillator(55);
 
     const now = Tone.now();
-    this.bgmSynth.set({
+    this.setBgmConfig({
       envelope: { attack: 0.1, decay: 0.3, sustain: 0.5, release: 1.5 },
       oscillator: { type: 'triangle' },
-    } as any);
+    });
 
     // C 大调上行
     this.bgmSynth.triggerAttackRelease(['C3', 'E3', 'G3', 'C4'], '8n', now, 0.4);
@@ -826,10 +893,10 @@ class AudioService implements IAudioService {
     this.startBgmOscillator(36);
 
     const now = Tone.now();
-    this.bgmSynth.set({
+    this.setBgmConfig({
       envelope: { attack: 0.1, decay: 0.4, sustain: 0.4, release: 1.5 },
       oscillator: { type: 'triangle' },
-    } as any);
+    });
 
     // 下行
     this.bgmSynth.triggerAttackRelease(['C3', 'Eb3', 'G3'], '8n', now, 0.4);
@@ -937,7 +1004,18 @@ class AudioService implements IAudioService {
     });
 
     eventBus.on(GameEvents.COMBAT_DEAL_DAMAGE, (data) => {
-      this.playSfx(data.damageType === 'magic' ? 'magic_damage' : 'physical_damage');
+      if (data.damageType === 'magic') {
+        this.playSfx('magic_damage');
+      } else if (data.actorType === 'player') {
+        // 玩家攻击命中敌人
+        this.playSfx('attack_hit');
+      } else if (data.actorType === 'enemy') {
+        // 敌人攻击命中玩家
+        this.playSfx('enemy_hurt');
+      } else {
+        // 无攻击方区分时回退到通用物理伤害
+        this.playSfx('physical_damage');
+      }
     });
 
     eventBus.on(GameEvents.COMBAT_CAST_HEAL, (data) => {
@@ -977,6 +1055,21 @@ class AudioService implements IAudioService {
       this.playSfx('heal');
     });
 
+    eventBus.on(GameEvents.CHARACTER_RESURRECTED, () => {
+      this.playSfx('resurrect');
+    });
+
+    eventBus.on(GameEvents.CHARACTER_GAIN_EXP, () => {
+      this.playSfx('gain_exp');
+    });
+
+    eventBus.on(GameEvents.CHARACTER_MP_CHANGE, (data) => {
+      // 仅在法力增加时播放音效
+      if (data.newMp > data.oldMp) {
+        this.playSfx('mana_recover');
+      }
+    });
+
     // -- 探索事件 --
     eventBus.on(GameEvents.EXPLORATION_CELL_EXPLORED, () => {
       this.playSfx('step');
@@ -998,6 +1091,14 @@ class AudioService implements IAudioService {
       this.playSfx('door_open');
     });
 
+    eventBus.on(GameEvents.EXPLORATION_CAMP_USED, () => {
+      this.playSfx('camp_rest');
+    });
+
+    eventBus.on(GameEvents.EXPLORATION_RANDOM_EVENT, () => {
+      this.playSfx('random_event');
+    });
+
     // -- 商店事件 --
     eventBus.on(GameEvents.SHOP_OPENED, () => {
       this.playSfx('shop_open');
@@ -1012,6 +1113,10 @@ class AudioService implements IAudioService {
       this.setBgmScene('exploration');
     });
 
+    eventBus.on(GameEvents.SHOP_REFRESHED, () => {
+      this.playSfx('shop_refresh');
+    });
+
     // -- 任务事件 --
     eventBus.on(GameEvents.QUEST_ACCEPTED, () => {
       this.playSfx('quest_accept');
@@ -1019,6 +1124,10 @@ class AudioService implements IAudioService {
 
     eventBus.on(GameEvents.QUEST_COMPLETED, () => {
       this.playSfx('quest_complete');
+    });
+
+    eventBus.on(GameEvents.QUEST_REWARDED, () => {
+      this.playSfx('quest_reward');
     });
 
     // -- 技能事件 --

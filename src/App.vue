@@ -98,7 +98,7 @@ onMounted(async () => {
  * @param {string} characterId - 选中的角色ID
  */
 async function handleCharacterSelect(characterId: string) {
-  console.log('Selected character:', characterId);
+  console.log('选择角色:', characterId);
   await characterStore.selectCharacter(characterId);
   gameState.value = 'game';
 }
