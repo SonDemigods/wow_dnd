@@ -99,6 +99,38 @@ function registerCommand(def: CommandDef): void {
 // 内置命令 —— 系统类
 // ============================================================
 
+/** 进入后台管理系统 */
+registerCommand({
+  name: 'admin',
+  category: '系统',
+  description: '进入游戏后台管理系统',
+  usage: 'admin',
+  handler() {
+    const gs = (window as any).__gameState;
+    if (!gs) {
+      return { success: false, message: 'gameState 未初始化，请等待游戏加载完成' };
+    }
+    gs.value = 'admin';
+    return { success: true, message: '已进入后台管理系统，输入 cmd.game() 返回游戏' };
+  }
+});
+
+/** 返回游戏界面 */
+registerCommand({
+  name: 'game',
+  category: '系统',
+  description: '从后台返回游戏界面',
+  usage: 'game',
+  handler() {
+    const gs = (window as any).__gameState;
+    if (!gs) {
+      return { success: false, message: 'gameState 未初始化，请等待游戏加载完成' };
+    }
+    gs.value = 'character-select';
+    return { success: true, message: '已返回游戏界面' };
+  }
+});
+
 /** 帮助命令 */
 registerCommand({
   name: 'help',
@@ -642,7 +674,7 @@ registerCommand({
       ];
       logTag('goto', '═══ 可用地点 ═══');
       for (const loc of allLocations) {
-        console.log(`  %c${loc.id.padEnd(24)}%c ${loc.displayName}`, STYLE.label, STYLE.value);
+        console.log(`  %c${loc.id.padEnd(24)}%c ${loc.name}`, STYLE.label, STYLE.value);
       }
       return { success: true, message: '已在上方列出所有可用地点' };
     }

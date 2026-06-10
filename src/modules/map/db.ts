@@ -33,7 +33,6 @@ export interface LocationDataStorage {
   icon: string;
   description: string;
   continent: string;
-  region: string;
   enemies?: string[];
   quests?: string[];
   levelRange: [number, number];
@@ -101,7 +100,6 @@ export class MapDbService {
         icon: location.icon,
         description: location.description,
         continent: location.continent,
-        region: location.region,
         enemies: location.enemies,
         quests: location.quests,
         levelRange: location.levelRange,
@@ -128,7 +126,6 @@ export class MapDbService {
         icon: result.icon,
         description: result.description,
         continent: result.continent,
-        region: result.region,
         enemies: result.enemies,
         quests: result.quests,
         levelRange: result.levelRange,
@@ -153,7 +150,6 @@ export class MapDbService {
         icon: result.icon,
         description: result.description,
         continent: result.continent,
-        region: result.region,
         enemies: result.enemies,
         quests: result.quests,
         levelRange: result.levelRange,
@@ -181,7 +177,6 @@ export class MapDbService {
         icon: result.icon,
         description: result.description,
         continent: result.continent,
-        region: result.region,
         enemies: result.enemies,
         quests: result.quests,
         levelRange: result.levelRange,

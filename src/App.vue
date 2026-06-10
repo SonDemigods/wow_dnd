@@ -16,6 +16,10 @@
       <GameMain ref="gameMainRef" @exit="handleExit" />
     </div>
 
+    <div v-else-if="gameState === 'admin'" class="admin-screen">
+      <AdminLayout @exit="handleAdminExit" />
+    </div>
+
     <div v-if="showCreateModal" class="modal-overlay">
       <div class="modal-content">
         <button class="modal-close" @click="showCreateModal = false">×</button>
@@ -51,14 +55,15 @@ import { ref, onMounted } from 'vue';
 import CharacterSelect from './components/CharacterSelect.vue';
 import CharacterCreate from './components/CharacterCreate.vue';
 import GameMain from './components/GameMain.vue';
+import AdminLayout from './components/admin/AdminLayout.vue';
 import ConfirmPopup from './components/common/ConfirmPopup.vue';
 import Toast from './components/common/Toast.vue';
 import { useCharacterStore } from './modules/character';
 import { useGameDataStore } from './modules/gameData';
 import { useToast } from './composables/useToast';
 
-/** 游戏界面状态：角色选择 或 游戏中 */
-type GameState = 'character-select' | 'game';
+/** 游戏界面状态：角色选择 | 游戏中 | 后台管理 */
+type GameState = 'character-select' | 'game' | 'admin';
 
 /** 当前游戏界面状态 */
 const gameState = ref<GameState>('character-select');
@@ -74,6 +79,9 @@ const gameDataStore = useGameDataStore();
 const toast = useToast();
 
 onMounted(async () => {
+  // 暴露 gameState 到全局，供控制台命令切换视图
+  (window as any).__gameState = gameState;
+
   // 先初始化基础数据（阵营、种族、职业），再初始化角色模块
   await gameDataStore.initialize();
   await characterStore.initialize();
@@ -118,6 +126,11 @@ async function confirmExit() {
 /** 取消退出操作 */
 function cancelExit() {
   showExitConfirm.value = false;
+}
+
+/** 退出后台管理，返回角色选择界面 */
+function handleAdminExit() {
+  gameState.value = 'character-select';
 }
 </script>
 
@@ -263,5 +276,9 @@ function cancelExit() {
 .exit-btn:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: #ffd700;
+}
+
+.admin-screen {
+  min-height: 100vh;
 }
 </style>

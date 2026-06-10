@@ -136,7 +136,6 @@ export interface LocationStorage {
   type: 'location' | 'continent';
   /** 地点特有字段 */
   continent?: string;
-  region?: string;
   enemies?: string[];
   quests?: string[];
   levelRange?: [number, number];
@@ -368,7 +367,7 @@ export class GameDatabase extends Dexie {
       config_enemies: 'id, name, dangerLevel, isBoss',
       config_quests: 'id, boardId, type',
       config_skills: 'id, classRestriction, type',
-      config_locations: 'id, type, continent, region',
+      config_locations: 'id, type, continent',
       config_shops: 'id',
       
       // 角色表

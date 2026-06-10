@@ -63,7 +63,6 @@ export interface LocationData {
   icon: string;
   description: string;
   continent: string;
-  region: string;
   enemies?: string[];
   quests?: string[];
   levelRange: [number, number];
