@@ -490,8 +490,30 @@ export class InventoryService implements IInventoryService {
       }
     });
     
-    // 按类型排序
-    this.sortItems('type', 'asc');
+    // 按品质（高→低）再按分类排序
+    const rarityOrder: Record<string, number> = {
+      legendary: 4,
+      epic: 3,
+      rare: 2,
+      uncommon: 1,
+      common: 0
+    };
+    this.inventory.sort((a, b) => {
+      const itemA = this.getItemInfo(a.itemId);
+      const itemB = this.getItemInfo(b.itemId);
+      
+      // 先按品质降序（传说优先）
+      const rarityA = rarityOrder[itemA?.rarity || 'common'] || 0;
+      const rarityB = rarityOrder[itemB?.rarity || 'common'] || 0;
+      if (rarityA !== rarityB) return rarityB - rarityA;
+      
+      // 同品质按分类升序
+      const typeA = ITEM_TYPE_NAMES[itemA?.type || 'misc'] || '';
+      const typeB = ITEM_TYPE_NAMES[itemB?.type || 'misc'] || '';
+      return typeA.localeCompare(typeB);
+    });
+    
+    this.save();
   }
 
   /**

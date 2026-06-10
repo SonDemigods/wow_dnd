@@ -1,7 +1,7 @@
 <template>
   <BasePopup
     :visible="visible"
-    title="⚙️ 系统"
+    title="系统"
     max-width="340px"
     :show-footer-close="false"
     @close="$emit('close')"
@@ -18,7 +18,7 @@
     </div>
 
     <template #footer>
-      <button class="popup-footer-btn confirm" @click="handleClose">关闭</button>
+      <button class="popup-footer-btn" @click="handleClose">关闭</button>
     </template>
   </BasePopup>
 </template>

@@ -107,6 +107,7 @@ export class InventoryDbService {
         name: item.name,
         type: item.type,
         rarity: item.rarity,
+        level: item.level,
         icon: item.icon,
         description: item.description,
         bonus: item.bonus || {},

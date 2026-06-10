@@ -141,12 +141,23 @@
 }
 
 .popup-footer-btn.warn {
-  background: linear-gradient(135deg, #ff9800, #f57c00);
-  border-color: #f57c00;
+  background: @warning-color;
+  border-color: @warning-color;
   color: @text-primary;
 
   &:hover {
-    background: linear-gradient(135deg, #f57c00, #e65100);
-    border-color: #e65100;
+    background: darken(@warning-color, 10%);
+    border-color: darken(@warning-color, 10%);
+  }
+}
+
+.popup-footer-btn.organize {
+  background: @skill-blue;
+  border-color: @skill-blue;
+  color: @text-primary;
+
+  &:hover {
+    background: darken(@skill-blue, 10%);
+    border-color: darken(@skill-blue, 10%);
   }
 }

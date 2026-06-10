@@ -24,7 +24,7 @@
     </template>
 
     <template #footer>
-      <button class="popup-footer-btn warn" @click="showClearConfirm = true; eventBus.emit(GameEvents.UI_CLICK, { source: 'log_clear_btn' })">清空日志</button>
+      <button class="popup-footer-btn danger" @click="showClearConfirm = true; eventBus.emit(GameEvents.UI_CLICK, { source: 'log_clear_btn' })">清空日志</button>
     </template>
   </BasePopup>
 

@@ -89,6 +89,12 @@
         </div>
       </div>
     </template>
+
+    <template #footer>
+      <button class="popup-footer-btn organize" @click="doOrganize">
+        整理背包
+      </button>
+    </template>
   </BasePopup>
 
   <ConfirmPopup
@@ -122,7 +128,7 @@
 <script setup lang="ts">
 /**
  * @fileoverview 背包弹窗组件
- * @description 展示角色背包物品网格，支持按分类筛选、使用消耗品、装备武器/护甲到槽位及丢弃物品操作
+ * @description 展示角色背包物品网格，支持按分类筛选、整理堆叠、使用消耗品、装备武器/护甲到槽位及丢弃物品操作
  */
 
 import { ref, computed, onMounted, onUnmounted } from 'vue';
@@ -267,19 +273,19 @@ function isEquipped(itemId: string): boolean {
   return !stillInInventory;
 }
 
-const displayItems = computed<ItemEntry[]>(() => {
-  return filteredItems.value.map(item => ({
-    item,
-    info: inventoryService.getItemInfo(item.itemId)
-  }));
-});
-
 const filteredItems = computed(() => {
   if (selectedCategory.value === 'all') return inventoryItems.value;
   return inventoryItems.value.filter(item => {
     const info = inventoryService.getItemInfo(item.itemId);
     return info?.type === selectedCategory.value;
   });
+});
+
+const displayItems = computed<ItemEntry[]>(() => {
+  return filteredItems.value.map(item => ({
+    item,
+    info: inventoryService.getItemInfo(item.itemId)
+  }));
 });
 
 const emptySlots = computed(() => {
@@ -291,15 +297,42 @@ function selectCategory(catId: string) {
   selectedCategory.value = catId as 'all' | ItemType;
 }
 
+/**
+ * 整理背包：自动堆叠相同物品并按品质、分类排序
+ */
+async function doOrganize() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_organize' });
+  inventoryService.organizeInventory();
+  await loadInventory();
+  selectedEntry.value = null;
+  selectedIndex.value = -1;
+  toast.show({ message: '背包已整理', type: 'success', icon: '📋' });
+}
+
 function selectItem(entry: ItemEntry, index: number) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_select_item' });
   selectedEntry.value = entry;
   selectedIndex.value = index;
 }
 
+/**
+ * 查找物品索引，优先使用选中的那一组
+ * 当背包中存在多组相同 itemId 的物品时，优先返回当前选中的位置
+ */
+function findSelectedOrFirstIndex(itemId: string): number {
+  if (selectedEntry.value && selectedEntry.value.item.itemId === itemId && selectedIndex.value >= 0) {
+    const item = inventoryItems.value[selectedIndex.value];
+    if (item && item.itemId === itemId) {
+      return selectedIndex.value;
+    }
+  }
+  return inventoryItems.value.findIndex(i => i.itemId === itemId);
+}
+
 async function useItem(itemId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_use_item' });
-  const index = inventoryItems.value.findIndex(i => i.itemId === itemId);
+  // 优先使用选中的那一组
+  const index = findSelectedOrFirstIndex(itemId);
   if (index === -1) return;
 
   const invItem = inventoryItems.value[index];
@@ -351,8 +384,8 @@ function equipItem(itemId: string) {
 async function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
   const success = await equipmentService.equipItem(slot, item);
   if (success) {
-    // 从背包中移除该物品
-    const index = inventoryItems.value.findIndex(i => i.itemId === item.id);
+    // 从背包中移除该物品（优先移除选中的那一组）
+    const index = findSelectedOrFirstIndex(item.id);
     if (index !== -1) {
       inventoryService.removeItem(index);
     }
@@ -391,7 +424,8 @@ function confirmDrop() {
   if (!itemId) return;
   
   const info = inventoryService.getItemInfo(itemId);
-  const index = inventoryItems.value.findIndex(i => i.itemId === itemId);
+  // 优先丢弃选中的那一组
+  const index = findSelectedOrFirstIndex(itemId);
   if (index !== -1) {
     inventoryService.removeItem(index);
     eventBus.emit(GameEvents.ITEM_DROPPED, { itemId });
