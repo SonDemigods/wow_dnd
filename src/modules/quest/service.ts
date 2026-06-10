@@ -94,7 +94,7 @@ export class QuestService implements IQuestService {
         levelRequirement: 1,
         xpReward: 100,
         goldReward: 50,
-        boardId: 'board_village'
+        boardId: 'village'
       },
       {
         id: 'quest_collect_herbs',
@@ -113,7 +113,7 @@ export class QuestService implements IQuestService {
         levelRequirement: 1,
         xpReward: 80,
         goldReward: 30,
-        boardId: 'board_village'
+        boardId: 'village'
       },
       {
         id: 'quest_kill_wolf',
@@ -132,7 +132,7 @@ export class QuestService implements IQuestService {
         levelRequirement: 2,
         xpReward: 150,
         goldReward: 80,
-        boardId: 'board_village'
+        boardId: 'village'
       },
       {
         id: 'quest_kill_boss_orc',
@@ -158,7 +158,7 @@ export class QuestService implements IQuestService {
         levelRequirement: 5,
         xpReward: 500,
         goldReward: 300,
-        boardId: 'board_village'
+        boardId: 'village'
       }
     ];
     

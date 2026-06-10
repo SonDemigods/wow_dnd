@@ -88,11 +88,15 @@ export class ExplorationService implements IExplorationService {
 
     // 物品池：从数据库获取所有物品模板，根据地点等级筛选合适的物品
     const allItems = await inventoryDbService.getAllItemTemplates();
+    // 稀有度默认等级映射（兼容旧数据中缺少 level 字段的物品）
+    const rarityLevelMap: Record<string, number> = { common: 1, uncommon: 3, rare: 5, epic: 7 };
     const suitableItems = allItems.filter(item => {
-      const itemLevel = item.level ?? 0;
+      const itemLevel = item.level ?? rarityLevelMap[item.rarity] ?? 0;
       return itemLevel >= minLevel - 1 && itemLevel <= maxLevel + 2;
     });
-    const itemPool = suitableItems.slice(0, 5).map(item => item.id);
+    // 随机打乱后取最多5个，保证每次探索的物品池有变化
+    const shuffled = suitableItems.sort(() => Math.random() - 0.5);
+    const itemPool = shuffled.slice(0, 5).map(item => item.id);
     // 如果没有合适的物品，至少提供基础药水
     if (itemPool.length === 0) {
       itemPool.push('small_health_potion');
@@ -125,7 +129,7 @@ export class ExplorationService implements IExplorationService {
         eventProbability: { monster: 25, item: 20, trap: 15, event: 15, empty: 25 },
         monsterPool: [],
         bossPool: [],
-        itemPool: ['smallHealthPotion']
+        itemPool: ['small_health_potion']
       };
     }
   }
@@ -247,7 +251,7 @@ export class ExplorationService implements IExplorationService {
   private placeFixedEvents(grid: ExplorationCell[][]): void {
     const edgePositions = this.getEdgePositions();
     const startPos = edgePositions[Math.floor(Math.random() * edgePositions.length)];
-    grid[startPos.y][startPos.x] = { x: startPos.x, y: startPos.y, type: 'start', explored: true, accessible: true, visited: true };
+    grid[startPos.y][startPos.x] = { x: startPos.x, y: startPos.y, type: 'start', explored: true, accessible: true, visited: true, completed: false };
     this.state.playerPosition = startPos;
 
     const corners = [[0, 0], [0, GRID_SIZE - 1], [GRID_SIZE - 1, 0], [GRID_SIZE - 1, GRID_SIZE - 1]];
@@ -256,22 +260,22 @@ export class ExplorationService implements IExplorationService {
     // 放置商店（角落位置，默认可见）
     const shopCornerIndex = Math.floor(Math.random() * availableCorners.length);
     const shopPos = availableCorners[shopCornerIndex];
-    grid[shopPos[1]][shopPos[0]] = { x: shopPos[0], y: shopPos[1], type: 'shop', explored: true, accessible: true, visited: true };
+    grid[shopPos[1]][shopPos[0]] = { x: shopPos[0], y: shopPos[1], type: 'shop', explored: true, accessible: true, visited: true, completed: false };
     availableCorners.splice(shopCornerIndex, 1);
     
     // 放置任务看板（另一个角落位置，默认可见）
     const boardPos = availableCorners[Math.floor(Math.random() * availableCorners.length)];
-    grid[boardPos[1]][boardPos[0]] = { x: boardPos[0], y: boardPos[1], type: 'board', explored: true, accessible: true, visited: true };
+    grid[boardPos[1]][boardPos[0]] = { x: boardPos[0], y: boardPos[1], type: 'board', explored: true, accessible: true, visited: true, completed: false };
 
     // 放置营地（非相邻位置）
     const campPos = this.findNonAdjacentPosition(grid, [startPos, { x: shopPos[0], y: shopPos[1] }, { x: boardPos[0], y: boardPos[1] }]);
-    grid[campPos.y][campPos.x] = { x: campPos.x, y: campPos.y, type: 'rest', explored: false, accessible: false, visited: false };
+    grid[campPos.y][campPos.x] = { x: campPos.x, y: campPos.y, type: 'rest', explored: false, accessible: false, visited: false, completed: false };
 
     // 放置BOSS（中心区域），从boss池中随机选择一个boss
     const bossPos = this.findBossPosition(grid, [startPos, { x: shopPos[0], y: shopPos[1] }, { x: boardPos[0], y: boardPos[1] }, campPos]);
     const bossPool = this.currentAreaConfig?.bossPool || [];
     const bossMonsterId = bossPool.length > 0 ? bossPool[Math.floor(Math.random() * bossPool.length)] : undefined;
-    grid[bossPos.y][bossPos.x] = { x: bossPos.x, y: bossPos.y, type: 'boss', explored: false, accessible: false, visited: false, monsterId: bossMonsterId };
+    grid[bossPos.y][bossPos.x] = { x: bossPos.x, y: bossPos.y, type: 'boss', explored: false, accessible: false, visited: false, completed: false, monsterId: bossMonsterId };
   }
 
   /**
@@ -307,7 +311,8 @@ export class ExplorationService implements IExplorationService {
           type: 'empty',
           explored: false,
           accessible: false,
-          visited: false
+          visited: false,
+          completed: false
         };
       }
     }
@@ -350,7 +355,7 @@ export class ExplorationService implements IExplorationService {
     for (const monsterId of questNormalMonsters) {
       if (cellIndex >= emptyCells.length) break;
       const pos = emptyCells[cellIndex];
-      grid[pos.y][pos.x] = { x: pos.x, y: pos.y, type: 'monster', explored: false, accessible: false, visited: false, monsterId };
+      grid[pos.y][pos.x] = { x: pos.x, y: pos.y, type: 'monster', explored: false, accessible: false, visited: false, completed: false, monsterId };
       cellIndex++;
     }
 
@@ -380,7 +385,7 @@ export class ExplorationService implements IExplorationService {
           break;
       }
       
-      grid[pos.y][pos.x] = { x: pos.x, y: pos.y, type: cellType, explored: false, accessible: false, visited: false, monsterId: cellMonsterId };
+      grid[pos.y][pos.x] = { x: pos.x, y: pos.y, type: cellType, explored: false, accessible: false, visited: false, completed: false, monsterId: cellMonsterId };
     }
 
     return grid;
@@ -531,7 +536,7 @@ export class ExplorationService implements IExplorationService {
         eventBus.emit(GameEvents.CHARACTER_GAIN_GOLD, { amount: gold, source: '探索宝箱' });
         eventBus.emit(GameEvents.CHARACTER_GAIN_EXP, { amount: exp, source: '探索宝箱' });
         result.rewards = { gold, exp };
-        targetCell.type = 'empty';
+        targetCell.completed = true;
         break;
       case 'rest':
         if (!this.state.campUsed) {
@@ -542,6 +547,7 @@ export class ExplorationService implements IExplorationService {
           eventBus.emit(GameEvents.CHARACTER_RECEIVE_MP, { amount: maxMp, source: '营地休息' });
           this.state.campUsed = true;
           result.message = '休息完成，恢复全部状态';
+          targetCell.completed = true;
         } else {
           result.message = '营地已使用过';
         }
@@ -555,6 +561,7 @@ export class ExplorationService implements IExplorationService {
         break;
       case 'event':
         result.message = '触发随机事件';
+        targetCell.completed = true;
         break;
     }
 
@@ -729,9 +736,9 @@ export class ExplorationService implements IExplorationService {
       return false;
     }
 
-    // 怪物和BOSS格子：击败后不可再挑战（type 变为 empty）
+    // 怪物和BOSS格子：未被击败时可触发战斗
     if (cell.type === 'monster' || cell.type === 'boss') {
-      // 已击败的怪物 type 已变为 empty，不会进入此分支
+      // 已击败的怪物 accessible 为 false，不会进入此分支
       // 逃跑/失败后 explored=true 但 type 仍为 monster/boss，可再次挑战
       const battleId = cell.monsterId || (cell.type === 'boss' ? 'dragon_whelp' : 'goblin');
       this.triggerBattle(battleId);
@@ -789,12 +796,16 @@ export class ExplorationService implements IExplorationService {
         const randomItemId = itemPool[Math.floor(Math.random() * itemPool.length)];
         this.handleItemFound(randomItemId);
       }
+      cell.completed = true;
     } else if (cell.type === 'trap') {
       await this.handleTrapTriggered();
+      cell.completed = true;
     } else if (cell.type === 'event') {
       await this.handleRandomEvent();
+      cell.completed = true;
     } else if (cell.type === 'rest') {
       this.useCamp();
+      cell.completed = true;
     }
 
     this.checkExplorationComplete();
@@ -804,7 +815,7 @@ export class ExplorationService implements IExplorationService {
 
   /**
    * 使用营地休息恢复全部HP和MP
-   * 每个营地只能使用一次，使用后营地变为空地
+   * 每个营地只能使用一次，使用后营地变灰表示已使用
    * @returns 是否成功使用，已使用过时返回false
    */
   useCamp(): boolean {
@@ -816,15 +827,6 @@ export class ExplorationService implements IExplorationService {
     eventBus.emit(GameEvents.CHARACTER_RECEIVE_MP, { amount: 9999, source: '营地休息' });
     
     this.state.campUsed = true;
-
-    for (let y = 0; y < GRID_SIZE; y++) {
-      for (let x = 0; x < GRID_SIZE; x++) {
-        if (this.state.grid[y]?.[x]?.type === 'rest') {
-          this.state.grid[y][x].type = 'empty';
-          break;
-        }
-      }
-    }
 
     this.saveState();
     
@@ -873,7 +875,7 @@ export class ExplorationService implements IExplorationService {
     }
 
     if (victory) {
-      // 战斗胜利：标记格子为已探索，变为空地
+      // 战斗胜利：标记格子为已探索
       if (cell.type === 'boss') {
         this.state.bossDefeated = true;
       }
@@ -882,7 +884,8 @@ export class ExplorationService implements IExplorationService {
         cell.visited = true;
         this.state.visitedCells++;
       }
-      cell.type = 'empty';
+      cell.completed = true; // 击败后标记为已完成，前端显示褪色
+      cell.accessible = false;
       
       this.updateAccessibleCells();
       this.checkExplorationComplete();
@@ -964,6 +967,28 @@ export class ExplorationService implements IExplorationService {
         itemId: itemId,
         count: 1,
         itemName: item.name
+      });
+    } else {
+      // 兜底：物品模板不存在时，发放金币和经验作为补偿，避免用户空手而归
+      console.warn(`[探索] 物品模板 "${itemId}" 不存在，发放兜底奖励`);
+      const gold = Math.floor(Math.random() * 30) + 5;
+      const exp = Math.floor(Math.random() * 15) + 3;
+      eventBus.emit(GameEvents.CHARACTER_GAIN_GOLD, { amount: gold, source: '探索宝箱' });
+      eventBus.emit(GameEvents.CHARACTER_GAIN_EXP, { amount: exp, source: '探索宝箱' });
+
+      logService.addLog({
+        id: logService.generateLogId(),
+        timestamp: Date.now(),
+        type: 'item',
+        message: `发现宝箱，获得 ${gold} 金币和 ${exp} 经验`,
+        icon: '📦'
+      });
+
+      eventBus.emit(GameEvents.EXPLORATION_ITEM_FOUND, {
+        characterId: this.currentCharacterId,
+        itemId: itemId,
+        count: 0,
+        itemName: `未知物品（已转换为 ${gold} 金币 + ${exp} 经验）`
       });
     }
   }

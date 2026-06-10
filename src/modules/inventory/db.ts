@@ -26,6 +26,7 @@ export interface ItemDataStorage {
   name: string;
   type: string;
   rarity: string;
+  level?: number;
   icon: string;
   description: string;
   bonus: Record<string, number>;
@@ -133,6 +134,7 @@ export class InventoryDbService {
         name: data.name,
         type: data.type as Item['type'],
         rarity: data.rarity as Item['rarity'],
+        level: data.level,
         icon: data.icon,
         description: data.description,
         bonus: (data.bonus || {}) as Partial<Item['bonus']>,
@@ -157,6 +159,7 @@ export class InventoryDbService {
         name: data.name,
         type: data.type as Item['type'],
         rarity: data.rarity as Item['rarity'],
+        level: data.level,
         icon: data.icon,
         description: data.description,
         bonus: (data.bonus || {}) as Partial<Item['bonus']>,

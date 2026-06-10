@@ -68,6 +68,8 @@ export interface ExplorationCell {
   explored: boolean
   accessible: boolean
   visited: boolean
+  /** 事件是否已完成（战斗胜利、宝箱已开等），已完成则褪色显示 */
+  completed?: boolean
   monsterId?: string
 }
 

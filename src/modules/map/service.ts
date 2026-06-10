@@ -67,7 +67,7 @@ export class MapService implements IMapService {
     this.locations.clear();
     locationList.forEach(location => {
       if (location.mapX != null && location.mapY != null) {
-        this.locations.set(location.name, location);
+        this.locations.set(location.id, location);
       }
     });
   }

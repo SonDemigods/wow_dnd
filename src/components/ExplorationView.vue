@@ -116,7 +116,8 @@ function getCellClasses(cell: ExplorationCell) {
   const classes = ['cell'];
   if (cell.explored) {
     classes.push('revealed');
-    if (cell.type !== 'empty') {
+    // 已完成的事件褪色显示，未完成（如逃跑后）保留类型高亮色
+    if (!cell.completed && cell.type !== 'empty') {
       classes.push(cell.type);
     }
   } else if (cell.accessible) {
@@ -220,7 +221,7 @@ async function initExploration() {
     return;
   }
   
-  const targetArea = currentLocation.name;
+  const targetArea = currentLocation.id;
   
   // 只有切换区域时才重新生成探索网格
   const currentAreaId = explorationStore.currentAreaId;
