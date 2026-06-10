@@ -100,7 +100,7 @@ export class ExplorationService implements IExplorationService {
 
     return {
       areaId: location.name,
-      name: location.displayName,
+      name: location.name,
       level: minLevel,
       eventProbability,
       monsterPool,

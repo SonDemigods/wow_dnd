@@ -175,7 +175,7 @@ const exp = computed(() => characterStore.exp);
 const expToNext = computed(() => characterStore.expToNextLevel);
 const expPercent = computed(() => characterStore.expPercentage);
 const gold = computed(() => characterStore.gold);
-const currentArea = computed(() => mapStore.getCurrentLocation?.displayName || '未知区域');
+const currentArea = computed(() => mapStore.getCurrentLocation?.name || '未知区域');
 const hasCurrentLocation = computed(() => !!mapStore.getCurrentLocation);
 
 function showNotif(message: string, type: 'info' | 'success' | 'warning' | 'danger' = 'info') {

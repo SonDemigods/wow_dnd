@@ -47,8 +47,7 @@ export const CONTINENTS: ContinentData[] = [
 export const LOCATIONS: LocationData[] = [
   {
     id: 'teldrassil',
-    name: 'teldrassil',
-    displayName: '泰达希尔',
+    name: '泰达希尔',
     icon: '🌳',
     description: '暗夜精灵的世界之树，达纳苏斯坐落于此',
     continent: 'kalimdor',
@@ -62,8 +61,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'darkshore',
-    name: 'darkshore',
-    displayName: '黑海岸',
+    name: '黑海岸',
     icon: '🌊',
     description: '暗夜精灵的沿海地区，古老的遗迹遍布',
     continent: 'kalimdor',
@@ -77,8 +75,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'azuremyst',
-    name: 'azuremyst',
-    displayName: '秘蓝岛',
+    name: '秘蓝岛',
     icon: '🏝️',
     description: '德莱尼的流亡之地，神秘的水晶遍布',
     continent: 'kalimdor',
@@ -92,8 +89,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'bloodmyst',
-    name: 'bloodmyst',
-    displayName: '秘血岛',
+    name: '秘血岛',
     icon: '🩸',
     description: '被血雾笼罩的岛屿，德莱尼的战场',
     continent: 'kalimdor',
@@ -107,8 +103,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'winterspring',
-    name: 'winterspring',
-    displayName: '冬泉谷',
+    name: '冬泉谷',
     icon: '❄️',
     description: '永冻的北部冰川，蓝龙的领地',
     continent: 'kalimdor',
@@ -122,8 +117,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'hyjal',
-    name: 'hyjal',
-    displayName: '海加尔山',
+    name: '海加尔山',
     icon: '🔥',
     description: '世界之魂的圣山，上古之战的战场',
     continent: 'kalimdor',
@@ -137,8 +131,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'ashenvale',
-    name: 'ashenvale',
-    displayName: '灰谷',
+    name: '灰谷',
     icon: '🌿',
     description: '古老的森林，联盟与部落在此时常冲突',
     continent: 'kalimdor',
@@ -152,8 +145,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'felwood',
-    name: 'felwood',
-    displayName: '费伍德森林',
+    name: '费伍德森林',
     icon: '💜',
     description: '被燃烧军团腐化的森林，充满恶魔的力量',
     continent: 'kalimdor',
@@ -167,8 +159,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'stonetalon',
-    name: 'stonetalon',
-    displayName: '石爪山脉',
+    name: '石爪山脉',
     icon: '⛰️',
     description: '荒凉的山地，半人马的领地',
     continent: 'kalimdor',
@@ -182,8 +173,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'desolace',
-    name: 'desolace',
-    displayName: '凄凉之地',
+    name: '凄凉之地',
     icon: '🏜️',
     description: '一片荒芜的土地，半人马与玛拉顿的所在',
     continent: 'kalimdor',
@@ -197,8 +187,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'durotar',
-    name: 'durotar',
-    displayName: '杜隆塔尔',
+    name: '杜隆塔尔',
     icon: '🏜️',
     description: '兽人的新家园，奥格瑞玛坐落于此',
     continent: 'kalimdor',
@@ -212,8 +201,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'mulgore',
-    name: 'mulgore',
-    displayName: '莫高雷',
+    name: '莫高雷',
     icon: '🐂',
     description: '牛头人的家园，广袤的草原',
     continent: 'kalimdor',
@@ -227,8 +215,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'barrens',
-    name: 'barrens',
-    displayName: '贫瘠之地',
+    name: '贫瘠之地',
     icon: '🌵',
     description: '广袤的荒原，十字路口是重要的枢纽',
     continent: 'kalimdor',
@@ -242,8 +229,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'thousand_needles',
-    name: 'thousand_needles',
-    displayName: '千针石林',
+    name: '千针石林',
     icon: '🏔️',
     description: '奇特的石林地貌，高地上有许多遗迹',
     continent: 'kalimdor',
@@ -257,8 +243,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'deserts',
-    name: 'deserts',
-    displayName: '塔纳利斯',
+    name: '塔纳利斯',
     icon: '🏜️',
     description: '炙热的沙漠，加基森和时光之穴在此',
     continent: 'kalimdor',
@@ -272,8 +257,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'feralas',
-    name: 'feralas',
-    displayName: '菲拉斯',
+    name: '菲拉斯',
     icon: '🌴',
     description: '未开发的原始森林，厄运之槌在此',
     continent: 'kalimdor',
@@ -287,8 +271,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'silithus',
-    name: 'silithus',
-    displayName: '希利苏斯',
+    name: '希利苏斯',
     icon: '💎',
     description: '虫人的领土，安其拉废墟在此',
     continent: 'kalimdor',
@@ -302,8 +285,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'plaguelands',
-    name: 'plaguelands',
-    displayName: '东瘟疫之地',
+    name: '东瘟疫之地',
     icon: '☠️',
     description: '被亡灵天灾污染的土地，纳克萨玛斯漂浮于此',
     continent: 'eastern_kingdoms',
@@ -317,8 +299,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'western_plaguelands',
-    name: 'western_plaguelands',
-    displayName: '西瘟疫之地',
+    name: '西瘟疫之地',
     icon: '💀',
     description: '天灾军团的前沿阵地，通灵学院在此',
     continent: 'eastern_kingdoms',
@@ -332,8 +313,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'silverpine',
-    name: 'silverpine',
-    displayName: '银松森林',
+    name: '银松森林',
     icon: '🌲',
     description: '阴森的古老森林，影牙城堡矗立其中',
     continent: 'eastern_kingdoms',
@@ -347,8 +327,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'tirisfal',
-    name: 'tirisfal',
-    displayName: '提瑞斯法林地',
+    name: '提瑞斯法林地',
     icon: '🌲',
     description: '古老的洛丹伦遗址，幽暗城坐落于此',
     continent: 'eastern_kingdoms',
@@ -362,8 +341,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'loch_modan',
-    name: 'loch_modan',
-    displayName: '洛克莫丹',
+    name: '洛克莫丹',
     icon: '💧',
     description: '高山湖泊地区，矮人的领地',
     continent: 'eastern_kingdoms',
@@ -377,8 +355,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'wetlands',
-    name: 'wetlands',
-    displayName: '湿地',
+    name: '湿地',
     icon: '🐸',
     description: '蚊虫肆虐的沼泽，米奈希尔港在此',
     continent: 'eastern_kingdoms',
@@ -392,8 +369,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'arathi',
-    name: 'arathi',
-    displayName: '阿拉希高地',
+    name: '阿拉希高地',
     icon: '⚔️',
     description: '古老的战场，阿拉希盆地是著名的战场',
     continent: 'eastern_kingdoms',
@@ -407,8 +383,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'hillsbrad',
-    name: 'hillsbrad',
-    displayName: '希尔斯布莱德丘陵',
+    name: '希尔斯布莱德丘陵',
     icon: '🏕️',
     description: '联盟与部落频繁冲突的地区',
     continent: 'eastern_kingdoms',
@@ -422,8 +397,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'elwynn',
-    name: 'elwynn',
-    displayName: '艾尔文森林',
+    name: '艾尔文森林',
     icon: '🌲',
     description: '宁静的森林，暴风城坐落于此',
     continent: 'eastern_kingdoms',
@@ -437,8 +411,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'westfall',
-    name: 'westfall',
-    displayName: '西部荒野',
+    name: '西部荒野',
     icon: '🏜️',
     description: '荒芜的农场和矿坑，迪菲亚兄弟会的据点',
     continent: 'eastern_kingdoms',
@@ -452,8 +425,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'redridge',
-    name: 'redridge',
-    displayName: '赤脊山',
+    name: '赤脊山',
     icon: '⛰️',
     description: '山路崎岖的山脉，黑石兽人在此活动',
     continent: 'eastern_kingdoms',
@@ -467,8 +439,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'duskwood',
-    name: 'duskwood',
-    displayName: '暮色森林',
+    name: '暮色森林',
     icon: '🌙',
     description: '阴暗恐怖的黑森林，亡灵在此游荡',
     continent: 'eastern_kingdoms',
@@ -482,8 +453,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'deadwind',
-    name: 'deadwind',
-    displayName: '逆风小径',
+    name: '逆风小径',
     icon: '🌫️',
     description: '卡拉赞所在的神秘山谷',
     continent: 'eastern_kingdoms',
@@ -497,8 +467,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'stranglethorn',
-    name: 'stranglethorn',
-    displayName: '荆棘谷',
+    name: '荆棘谷',
     icon: '🌴',
     description: '危险的热带丛林，竞技场和藏宝海湾在此',
     continent: 'eastern_kingdoms',
@@ -512,8 +481,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'burning_steppes',
-    name: 'burning_steppes',
-    displayName: '燃烧平原',
+    name: '燃烧平原',
     icon: '🔥',
     description: '被火焰和熔岩覆盖的地区，黑石塔在此',
     continent: 'eastern_kingdoms',
@@ -527,8 +495,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'searing_gorge',
-    name: 'searing_gorge',
-    displayName: '灼热峡谷',
+    name: '灼热峡谷',
     icon: '🌋',
     description: '连接燃烧平原和洛克莫丹的火山峡谷',
     continent: 'eastern_kingdoms',
@@ -542,8 +509,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'badlands',
-    name: 'badlands',
-    displayName: '荒芜之地',
+    name: '荒芜之地',
     icon: '🏜️',
     description: '荒凉的火山岩地带，奥达曼副本在此',
     continent: 'eastern_kingdoms',
@@ -557,8 +523,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'swamp_of_sorrows',
-    name: 'swamp_of_sorrows',
-    displayName: '悲伤沼泽',
+    name: '悲伤沼泽',
     icon: '🐊',
     description: '阴暗潮湿的沼泽，神庙在此',
     continent: 'eastern_kingdoms',
@@ -572,8 +537,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'blasted_lands',
-    name: 'blasted_lands',
-    displayName: '诅咒之地',
+    name: '诅咒之地',
     icon: '☠️',
     description: '黑暗之门所在地，通往外域的入口',
     continent: 'eastern_kingdoms',
@@ -587,8 +551,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'hinterlands',
-    name: 'hinterlands',
-    displayName: '辛特兰',
+    name: '辛特兰',
     icon: '🏔️',
     description: '巨魔的领地，辛萨罗在此',
     continent: 'eastern_kingdoms',
@@ -602,8 +565,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'zuldrak',
-    name: 'zuldrak',
-    displayName: '祖达克',
+    name: '祖达克',
     icon: '🦴',
     description: '维库人的古老领地，达克萨隆要塞在此',
     continent: 'northrend',
@@ -617,8 +579,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'storm_peaks',
-    name: 'storm_peaks',
-    displayName: '风暴峭壁',
+    name: '风暴峭壁',
     icon: '⛈️',
     description: '冰冷的山巅，奥杜尔副本在此',
     continent: 'northrend',
@@ -632,8 +593,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'icecrown',
-    name: 'icecrown',
-    displayName: '冰冠冰川',
+    name: '冰冠冰川',
     icon: '❄️',
     description: '巫妖王的领地，冰冠堡垒在此',
     continent: 'northrend',
@@ -647,8 +607,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'borean_tundra',
-    name: 'borean_tundra',
-    displayName: '北风苔原',
+    name: '北风苔原',
     icon: '🦕',
     description: '苔原与猛犸象的领地，考达拉在此',
     continent: 'northrend',
@@ -662,8 +621,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'howling_fjord',
-    name: 'howling_fjord',
-    displayName: '嚎风峡湾',
+    name: '嚎风峡湾',
     icon: '🌊',
     description: '充满危险的峡谷，乌特加德要塞在此',
     continent: 'northrend',
@@ -677,8 +635,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'dragonblight',
-    name: 'dragonblight',
-    displayName: '龙骨荒野',
+    name: '龙骨荒野',
     icon: '💀',
     description: '巨龙的安息之地，龙眠神殿在此',
     continent: 'northrend',
@@ -692,8 +649,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'grizzly_hills',
-    name: 'grizzly_hills',
-    displayName: '灰熊丘陵',
+    name: '灰熊丘陵',
     icon: '🐻',
     description: '充满熊和德鲁伊的森林地区',
     continent: 'northrend',
@@ -707,8 +663,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'sholazar',
-    name: 'sholazar',
-    displayName: '索拉查盆地',
+    name: '索拉查盆地',
     icon: '🌿',
     description: '被泰坦守护的原始森林',
     continent: 'northrend',
@@ -722,8 +677,7 @@ export const LOCATIONS: LocationData[] = [
   },
   {
     id: 'crystal_song',
-    name: 'crystal_song',
-    displayName: '晶歌森林',
+    name: '晶歌森林',
     icon: '💎',
     description: '被蓝龙魔法影响的水晶森林',
     continent: 'northrend',

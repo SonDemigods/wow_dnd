@@ -46,7 +46,6 @@ export interface MapState {
 /**
  * 地点数据接口
  * @property {string} name - 地点名称
- * @property {string} displayName - 显示名称
  * @property {string} icon - 地点图标
  * @property {string} description - 地点描述
  * @property {string} continent - 所属大陆
@@ -61,7 +60,6 @@ export interface MapState {
 export interface LocationData {
   id: string;
   name: string;
-  displayName: string;
   icon: string;
   description: string;
   continent: string;

@@ -135,7 +135,6 @@ export interface LocationStorage {
   description: string;
   type: 'location' | 'continent';
   /** 地点特有字段 */
-  displayName?: string;
   continent?: string;
   region?: string;
   enemies?: string[];

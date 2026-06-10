@@ -30,7 +30,6 @@ interface MapStateStorage {
 export interface LocationDataStorage {
   id: string;
   name: string;
-  displayName: string;
   icon: string;
   description: string;
   continent: string;
@@ -99,7 +98,6 @@ export class MapDbService {
       await gameDb.config_locations.put({
         id: location.id,
         name: location.name,
-        displayName: location.displayName,
         icon: location.icon,
         description: location.description,
         continent: location.continent,
@@ -127,7 +125,6 @@ export class MapDbService {
       return {
         id: result.id,
         name: result.name,
-        displayName: result.displayName,
         icon: result.icon,
         description: result.description,
         continent: result.continent,
@@ -153,7 +150,6 @@ export class MapDbService {
       return results.map(result => ({
         id: result.id,
         name: result.name,
-        displayName: result.displayName,
         icon: result.icon,
         description: result.description,
         continent: result.continent,
@@ -182,7 +178,6 @@ export class MapDbService {
         .map(result => ({
         id: result.id,
         name: result.name,
-        displayName: result.displayName,
         icon: result.icon,
         description: result.description,
         continent: result.continent,

@@ -131,7 +131,7 @@ export class MapService implements IMapService {
       id: logService.generateLogId(),
       timestamp: Date.now(),
       type: 'zone',
-      message: `进入了：${location.displayName}`,
+      message: `进入了：${location.name}`,
       icon: '📍'
     });
 
@@ -222,7 +222,7 @@ export class MapService implements IMapService {
       const requiredLevel = location.levelRange[0];
       zoneList.push({
         id: locationId,
-        name: location.displayName,
+        name: location.name,
         icon: location.icon,
         description: location.description,
         coordinates: {
