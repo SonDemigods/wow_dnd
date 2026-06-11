@@ -59,18 +59,26 @@
  * @description 基于网格的探索玩法界面，支持拖拽平移探索地图、点击翻开格子触发战斗/商店/任务等交互事件
  */
 
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useExplorationStore } from '@/modules/exploration';
 import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
-import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { ExplorationCell } from '@/modules/exploration';
 
 const explorationStore = useExplorationStore();
 const characterStore = useCharacterStore();
 const mapStore = useMapStore();
-const grid = ref<ExplorationCell[][]>([]);
-const explorationComplete = ref(false);
+
+/** 探索网格，直接从 Store 响应式数据派生 */
+const grid = computed(() => {
+  const currentLocation = mapStore.getCurrentLocation;
+  if (!currentLocation) return [] as ExplorationCell[][];
+  return explorationStore.state.grid;
+});
+
+/** 探索是否完成，直接从 Store 响应式数据派生 */
+const explorationComplete = computed(() => explorationStore.state.explorationComplete);
+
 const hasCurrentLocation = computed(() => !!mapStore.getCurrentLocation);
 
 // 拖动相关状态
@@ -206,18 +214,11 @@ function onTouchEnd() {
   isDragging.value = false;
 }
 
-function loadState() {
-  const state = explorationStore.state;
-  grid.value = state.grid.map(row => row.map(cell => ({ ...cell })));
-  explorationComplete.value = state.explorationComplete;
-}
-
 async function initExploration() {
   const currentLocation = mapStore.getCurrentLocation;
   
-  // 未选择区域时，清空网格
+  // 未选择区域时无需操作（computed grid 会自动返回空数组）
   if (!currentLocation) {
-    grid.value = [];
     return;
   }
   
@@ -228,23 +229,13 @@ async function initExploration() {
   if (currentAreaId !== targetArea) {
     await explorationStore.enterArea(targetArea);
   }
-  loadState();
 }
 
 async function handleCellClick(cell: ExplorationCell) {
   if (!cell.accessible) return;
   
   await explorationStore.revealGrid(cell.x, cell.y);
-  loadState();
 }
-
-// 战斗/商店/任务结束后刷新网格
-function onRefreshGrid() {
-  loadState();
-}
-
-/** 事件监听分组标识，用于组件卸载时统一清理 */
-const EVENT_GROUP = 'explorationView';
 
 onMounted(async () => {
   // 确保探索服务已从数据库加载状态
@@ -254,13 +245,6 @@ onMounted(async () => {
   }
   
   initExploration();
-  eventBus.onGroup(EVENT_GROUP, GameEvents.COMBAT_END, onRefreshGrid);
-  eventBus.onGroup(EVENT_GROUP, GameEvents.SHOP_CLOSED, onRefreshGrid);
-  eventBus.onGroup(EVENT_GROUP, GameEvents.QUEST_COMPLETED, onRefreshGrid);
-});
-
-onUnmounted(() => {
-  eventBus.clearGroup(EVENT_GROUP);
 });
 </script>
 

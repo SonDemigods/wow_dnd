@@ -103,12 +103,11 @@
  * @description 展示已有角色列表，支持选择角色进入游戏、创建新角色、删除角色（带二次确认）以及导出/导入存档
  */
 
-import { ref, onMounted } from 'vue';
-import { characterService } from '@/modules/character';
+import { ref, computed, onMounted } from 'vue';
+import { useCharacterStore } from '@/modules/character';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import Tag from './common/Tag.vue';
 import { useGameDataStore } from '@/modules/gameData';
-import { backupService, importService } from '@/modules/data';
 import type { CharacterListItem } from '@/modules/character';
 import type { ImportResult } from '@/modules/data';
 
@@ -118,8 +117,10 @@ const emit = defineEmits<{
 }>();
 
 const gameDataStore = useGameDataStore();
+const characterStore = useCharacterStore();
 
-const characters = ref<CharacterListItem[]>([]);
+/** 直接从 Store 读取的响应式角色列表 */
+const characters = computed(() => characterStore.characterList);
 const selectedId = ref<string | null>(null);
 
 // 删除确认弹窗
@@ -139,7 +140,7 @@ async function loadData() {
 }
 
 async function loadCharacters() {
-  characters.value = await characterService.getAllCharacters();
+  await characterStore.loadCharacterList();
   if (characters.value.length > 0 && !selectedId.value) {
     selectedId.value = characters.value[0].id;
   }
@@ -165,7 +166,7 @@ function cancelDelete() {
 async function confirmDelete() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'confirm_delete' });
   if (deletingCharacterId.value) {
-    await characterService.deleteCharacter(deletingCharacterId.value);
+    await characterStore.deleteCharacter(deletingCharacterId.value);
     await loadCharacters();
     if (selectedId.value === deletingCharacterId.value) {
       selectedId.value = characters.value.length > 0 ? characters.value[0].id : null;
@@ -178,7 +179,7 @@ async function confirmDelete() {
 async function confirmSelect() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'enter_game' });
   if (selectedId.value) {
-    await characterService.selectCharacter(selectedId.value);
+    await characterStore.selectCharacter(selectedId.value);
     emit('select', selectedId.value);
   }
 }
@@ -197,7 +198,7 @@ function onCreateClick() {
 async function handleExport() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'export_archive' });
   try {
-    await backupService.exportBackup();
+    await characterStore.exportBackup();
     eventBus.emit(GameEvents.DATA_EXPORTED, null);
   } catch (error) {
     showResult(false, '导出失败', (error as Error).message || '未知错误');
@@ -221,7 +222,7 @@ async function handleFileSelected(event: Event) {
   if (!file) return;
 
   try {
-    const validation = await importService.validateBackup(file);
+    const validation = await characterStore.validateImportBackup(file);
     if (!validation.success) {
       showResult(false, '验证失败', validation.error || '备份文件无效');
       // 重置 input，以便再次选择同一文件时能触发 change 事件
@@ -256,7 +257,7 @@ async function confirmImport() {
   showImportModal.value = false;
 
   try {
-    const result: ImportResult = await importService.importBackup(selectedFile.value);
+    const result: ImportResult = await characterStore.importBackup(selectedFile.value);
     if (result.success) {
       eventBus.emit(GameEvents.DATA_IMPORTED, null);
       // 刷新数据和角色列表

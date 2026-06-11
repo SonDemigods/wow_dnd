@@ -6,6 +6,7 @@
  */
 import { db as gameDb, dbService } from '../data/core';
 import type { EquipmentItem, EquipmentSlot, EquippedItem } from './types';
+import { toRawData } from '../../utils';
 
 /**
  * 装备数据存储接口（存储到 char_equipment 表的结构）
@@ -50,7 +51,7 @@ export class EquipmentDbService {
   ): Promise<void> {
     await dbService.withRetry(async () => {
       // JSON 序列化往返：去除 undefined 值，确保所有数据可被结构化克隆
-      const clean = JSON.parse(JSON.stringify(equipment));
+      const clean = toRawData(equipment);
       await gameDb.char_equipment.put({
         characterId,
         equipment: clean,

@@ -4,7 +4,8 @@
  * 将设置存储在 runtime_gameState 表中，以特定键标识
  */
 
-import { db } from '../data/core';
+import { type GameStateStorage } from '../data/core';
+import { getGameState, saveGameState } from '../data/gameStateHelper';
 import type { AudioSettings } from './types';
 
 /** runtime_gameState 中存储音频设置的键名 */
@@ -21,10 +22,7 @@ class AudioDbService {
    */
   async saveSettings(settings: AudioSettings): Promise<void> {
     try {
-      await db.runtime_gameState.put({
-        id: DB_KEY,
-        ...settings,
-      } as any);
+      await saveGameState(settings as unknown as Partial<GameStateStorage>, DB_KEY);
     } catch (e) {
       console.warn('[AudioDb] 保存音频设置失败:', e);
     }
@@ -36,16 +34,16 @@ class AudioDbService {
    */
   async loadSettings(): Promise<AudioSettings | null> {
     try {
-      const saved = await db.runtime_gameState.get(DB_KEY);
+      const saved = await getGameState(DB_KEY);
       if (!saved) return null;
 
       return {
-        masterVolume: (saved as any).masterVolume ?? undefined,
-        sfxVolume: (saved as any).sfxVolume ?? undefined,
-        bgmVolume: (saved as any).bgmVolume ?? undefined,
-        muted: (saved as any).muted ?? undefined,
-        sfxEnabled: (saved as any).sfxEnabled ?? undefined,
-        bgmEnabled: (saved as any).bgmEnabled ?? undefined,
+        masterVolume: (saved as Record<string, unknown>).masterVolume as number | undefined,
+        sfxVolume: (saved as Record<string, unknown>).sfxVolume as number | undefined,
+        bgmVolume: (saved as Record<string, unknown>).bgmVolume as number | undefined,
+        muted: (saved as Record<string, unknown>).muted as boolean | undefined,
+        sfxEnabled: (saved as Record<string, unknown>).sfxEnabled as boolean | undefined,
+        bgmEnabled: (saved as Record<string, unknown>).bgmEnabled as boolean | undefined,
       };
     } catch (e) {
       console.warn('[AudioDb] 加载音频设置失败:', e);

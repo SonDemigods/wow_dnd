@@ -10,7 +10,6 @@ import type { Enemy } from '../enemy/types';
 import type { LocationData } from '../map/types';
 import type { QuestDefinition } from '../quest/types';
 import type { Skill } from '../skill/types';
-import type { EquippedItem } from '../equipment/types';
 
 // ============================================================
 // 事件参数类型定义
@@ -27,38 +26,26 @@ type EventCallback = (...args: any[]) => void;
  * 为每个 GameEvent 定义对应的 payload 类型，确保 emit/on 的类型安全。
  */
 export interface GameEventPayloadMap {
-  // ==================== 角色 ====================
+  // ==================== 角色（仅保留 UI/音效事件，数据变更事件已迁移到 Store Action） ====================
   [GameEvents.CHARACTER_CREATED]: { characterId: string; name: string };
-  [GameEvents.CHARACTER_SELECTED]: { characterId: string };
   [GameEvents.CHARACTER_DELETED]: { characterId: string };
   [GameEvents.CHARACTER_LOGOUT]: null;
   [GameEvents.CHARACTER_LEVEL_UP]: { oldLevel: number; newLevel: number };
-  [GameEvents.CHARACTER_HP_CHANGE]: { oldHp: number; newHp: number; maxHp: number };
-  [GameEvents.CHARACTER_MP_CHANGE]: { oldMp: number; newMp: number; maxMp: number };
-  [GameEvents.CHARACTER_STATS_CHANGE]: { oldStats: Record<string, number>; newStats: Record<string, number> };
   [GameEvents.CHARACTER_DEATH]: { cause: string };
   [GameEvents.CHARACTER_RESURRECTED]: { newHp: number; newMp: number };
-  // 角色——外部请求类事件（其他模块通知角色模块执行数据变更）
-  [GameEvents.CHARACTER_TAKE_DAMAGE]: { amount: number; source: string };
-  [GameEvents.CHARACTER_RECEIVE_HEAL]: { amount: number; source: string };
-  [GameEvents.CHARACTER_RECEIVE_MP]: { amount: number; source: string };
-  [GameEvents.CHARACTER_GAIN_EXP]: { amount: number; source: string };
-  [GameEvents.CHARACTER_GAIN_GOLD]: { amount: number; source: string };
-  [GameEvents.CHARACTER_APPLY_BONUS]: { bonus: Partial<{ str: number; dex: number; int: number; vit: number }> };
-  [GameEvents.CHARACTER_REMOVE_BONUS]: { bonus: Partial<{ str: number; dex: number; int: number; vit: number }> };
   // ==================== 战斗 ====================
   [GameEvents.COMBAT_START]: { enemy: Enemy };
   [GameEvents.COMBAT_END]: { result: string; enemy: Enemy | null; expGained: number; goldGained?: number };
   [GameEvents.COMBAT_PLAYER_TURN]: null;
   [GameEvents.COMBAT_ENEMY_TURN]: null;
-  // ==================== 战斗——伤害/治疗类型 ====================
-  /** 造成伤害事件（携带伤害类型，物伤/魔伤） */
+  // ==================== 战斗——伤害/治疗类型（仅保留 UI/音效事件） ====================
+  /** 造成伤害事件（携带伤害类型，物伤/魔伤，用于音效） */
   [GameEvents.COMBAT_DEAL_DAMAGE]: { amount: number; damageType: 'physical' | 'magic'; targetName: string; actorType?: 'player' | 'enemy' };
-  /** 施放治疗事件（携带治疗类型，生命/法力） */
+  /** 施放治疗事件（携带治疗类型，生命/法力，用于音效） */
   [GameEvents.COMBAT_CAST_HEAL]: { amount: number; healType: 'health' | 'mana'; targetName: string };
-  /** 暴击事件（携带伤害量和目标，用于触发暴击视觉特效和音效） */
+  /** 暴击事件（用于触发暴击视觉特效和音效） */
   [GameEvents.COMBAT_CRITICAL_HIT]: { amount: number; damageType: 'physical' | 'magic'; targetName: string; actorType: 'player' | 'enemy' };
-  /** 闪避事件（携带攻击者和闪避者信息） */
+  /** 闪避事件（用于触发闪避视觉特效和音效） */
   [GameEvents.COMBAT_DODGE]: { attackerName: string; dodgerName: string; dodgerType: 'player' | 'enemy' };
   // ==================== 探索 ====================
   [GameEvents.EXPLORATION_START]: { characterId: string | null; areaId?: string };
@@ -73,27 +60,16 @@ export interface GameEventPayloadMap {
   [GameEvents.ZONE_ENTERED]: { locationId: string; location: LocationData };
   // ==================== 商店 ====================
   [GameEvents.SHOP_OPENED]: { characterId?: string; shopId: string };
-  [GameEvents.SHOP_REFRESHED]: { shopId: string };
   [GameEvents.SHOP_CLOSED]: { shopId?: string };
   [GameEvents.SHOP_TRANSACTION]: { shopId?: string; itemId: string; quantity?: number; totalPrice?: number; sellPrice?: number };
-  // ==================== 任务 ====================
+  // ==================== 任务（仅保留 UI 通知事件） ====================
   [GameEvents.QUEST_BOARD_OPENED]: { characterId?: string; boardId: string };
   [GameEvents.QUEST_ACCEPTED]: { questId: string; definition: QuestDefinition };
-  [GameEvents.QUEST_PROGRESS]: { questId: string };
   [GameEvents.QUEST_COMPLETED]: { questId: string; definition: QuestDefinition };
   [GameEvents.QUEST_REWARDED]: { questId: string; definition: QuestDefinition };
-  // 任务——外部请求类事件
-  [GameEvents.QUEST_ENEMY_KILLED]: { enemyId: string };
-  // ==================== 背包/装备 ====================
-  [GameEvents.INVENTORY_CHANGE]: { characterId?: string; itemId: string; count?: number };
-  [GameEvents.EQUIPMENT_CHANGE]: { slot: string; item: EquippedItem };
-  // 背包——外部请求类事件
-  [GameEvents.INVENTORY_ADD_ITEM]: { itemId: string; quantity: number };
-  [GameEvents.INVENTORY_USE_ITEM]: { itemId: string };
-  // ==================== 技能 ====================
+  // ==================== 技能（仅保留 UI/音效事件） ====================
   [GameEvents.SKILL_LEARNED]: { skill: Skill };
   [GameEvents.SKILL_CAST]: { skill: Skill; success: boolean };
-  [GameEvents.SKILL_BAR_UPDATE]: { skillId?: string; slotIndex?: number; slots?: (string | null)[] };
   // ==================== 游戏数据 ====================
   [GameEvents.GAME_DATA_UPDATED]: { type: string; action: string; id: string };
   // ==================== 日志 ====================
@@ -105,9 +81,6 @@ export interface GameEventPayloadMap {
   [GameEvents.CONFIRM_CANCELED]: { action: string };
   [GameEvents.ITEM_DROPPED]: { itemId: string };
   [GameEvents.COMBAT_SKIP_TURN]: null;
-  [GameEvents.QUEST_ABANDONED]: { questId: string };
-  [GameEvents.SKILL_MEMORIZED]: { skillId: string };
-  [GameEvents.SKILL_FORGOTTEN]: { skillId: string };
   [GameEvents.DATA_EXPORTED]: null;
   [GameEvents.DATA_IMPORTED]: null;
   [GameEvents.UI_CLICK]: { source: string };
@@ -264,45 +237,22 @@ export class EventBus {
  * 9. 游戏数据事件（GAME_DATA_*）
  */
 export enum GameEvents {
-  // ==================== 角色 ====================
-  /** 角色创建成功（供 UI 组件监听，刷新角色列表） */
+  // ==================== 角色（仅保留 UI/音效事件） ====================
+  /** 角色创建成功（UI 刷新角色列表） */
   CHARACTER_CREATED = 'character_created',
-  /** 角色被选中（供 UI 和各模块 store 监听以加载角色数据） */
-  CHARACTER_SELECTED = 'character_selected',
-  /** 角色被删除（供 UI 组件监听，刷新角色列表） */
+  /** 角色被删除（UI 刷新角色列表） */
   CHARACTER_DELETED = 'character_deleted',
   /** 角色登出 */
   CHARACTER_LOGOUT = 'character_logout',
-  /** 角色升级 */
+  /** 角色升级（UI 动画 + 音效） */
   CHARACTER_LEVEL_UP = 'character_level_up',
-  /** 角色生命值变化 */
-  CHARACTER_HP_CHANGE = 'character_hp_change',
-  /** 角色魔法值变化 */
-  CHARACTER_MP_CHANGE = 'character_mp_change',
-  /** 角色属性变化 */
-  CHARACTER_STATS_CHANGE = 'character_stats_change',
-  /** 角色死亡 */
+  /** 角色死亡（UI 死亡画面 + 音效） */
   CHARACTER_DEATH = 'character_death',
-  /** 角色复活 */
+  /** 角色复活（UI 动画 + 音效） */
   CHARACTER_RESURRECTED = 'character_resurrected',
-  // 角色——外部请求类（其他模块请求角色模块变更数据）
-  /** 角色受到伤害 */
-  CHARACTER_TAKE_DAMAGE = 'character_take_damage',
-  /** 角色获得治疗 */
-  CHARACTER_RECEIVE_HEAL = 'character_receive_heal',
-  /** 角色魔力变化 */
-  CHARACTER_RECEIVE_MP = 'character_receive_mp',
-  /** 角色获得经验 */
-  CHARACTER_GAIN_EXP = 'character_gain_exp',
-  /** 角色获得金币 */
-  CHARACTER_GAIN_GOLD = 'character_gain_gold',
-  /** 角色应用属性加成 */
-  CHARACTER_APPLY_BONUS = 'character_apply_bonus',
-  /** 角色移除属性加成 */
-  CHARACTER_REMOVE_BONUS = 'character_remove_bonus',
 
   // ==================== 战斗 ====================
-  /** 战斗开始（供 UI 组件监听，进入战斗界面） */
+  /** 战斗开始（UI 进入战斗界面 + 音效） */
   COMBAT_START = 'combat_start',
   /** 战斗结束 */
   COMBAT_END = 'combat_end',
@@ -311,14 +261,14 @@ export enum GameEvents {
   /** 敌人回合开始 */
   COMBAT_ENEMY_TURN = 'combat_enemy_turn',
 
-  // ==================== 战斗——伤害/治疗类型 ====================
-  /** 造成伤害（含伤害类型，用于区分物伤/魔伤音效） */
+  // ==================== 战斗——伤害/治疗类型（用于音效和动画） ====================
+  /** 造成伤害（用于区分物伤/魔伤音效） */
   COMBAT_DEAL_DAMAGE = 'combat_deal_damage',
-  /** 施放治疗（含治疗类型，用于区分血量/法力回复音效） */
+  /** 施放治疗（用于区分血量/法力回复音效） */
   COMBAT_CAST_HEAL = 'combat_cast_heal',
-  /** 暴击（含伤害量和目标，用于触发视觉特效和音效） */
+  /** 暴击（用于触发视觉特效和音效） */
   COMBAT_CRITICAL_HIT = 'combat_critical_hit',
-  /** 闪避（含攻击者和闪避者信息） */
+  /** 闪避（用于触发闪避文字和音效） */
   COMBAT_DODGE = 'combat_dodge',
 
   // ==================== 探索 ====================
@@ -348,51 +298,31 @@ export enum GameEvents {
   SHOP_OPENED = 'shop_opened',
   /** 商店交易 */
   SHOP_TRANSACTION = 'shop_transaction',
-  /** 商店刷新（供 UI 组件监听，刷新商品列表） */
-  SHOP_REFRESHED = 'shop_refreshed',
   /** 商店关闭 */
   SHOP_CLOSED = 'shop_closed',
 
-  // ==================== 任务 ====================
-  /** 任务公告板打开（探索中与公告板交互） */
+  // ==================== 任务（仅保留 UI 通知事件） ====================
+  /** 任务公告板打开 */
   QUEST_BOARD_OPENED = 'quest_board_opened',
-  /** 任务接取（玩家确认接取任务） */
+  /** 任务接取 */
   QUEST_ACCEPTED = 'quest_accepted',
-  /** 任务进度更新 */
-  QUEST_PROGRESS = 'quest_progress',
   /** 任务完成 */
   QUEST_COMPLETED = 'quest_completed',
   /** 任务奖励可用 */
   QUEST_REWARDED = 'quest_rewarded',
-  // 任务——外部请求类
-  /** 敌人被击杀通知任务模块 */
-  QUEST_ENEMY_KILLED = 'quest_enemy_killed',
 
-  // ==================== 背包/装备 ====================
-  /** 背包变化 */
-  INVENTORY_CHANGE = 'inventory_change',
-  /** 装备变化（供 UI 组件监听，更新装备显示） */
-  EQUIPMENT_CHANGE = 'equipment_change',
-  // 背包——外部请求类
-  /** 添加物品到背包 */
-  INVENTORY_ADD_ITEM = 'inventory_add_item',
-  /** 在战斗中使用物品 */
-  INVENTORY_USE_ITEM = 'inventory_use_item',
-
-  // ==================== 技能 ====================
+  // ==================== 技能（仅保留 UI/音效事件） ====================
   /** 技能学习 */
   SKILL_LEARNED = 'skill_learned',
   /** 技能施放 */
   SKILL_CAST = 'skill_cast',
-  /** 技能栏更新 */
-  SKILL_BAR_UPDATE = 'skill_bar_update',
 
   // ==================== 游戏数据 ====================
   /** 游戏数据更新（阵营/种族/职业配置变更） */
   GAME_DATA_UPDATED = 'game_data_updated',
   
   // ==================== 日志 ====================
-  /** 日志条目添加（其他模块可通过此事件通知日志模块记录） */
+  /** 日志条目添加 */
   LOG_ENTRY_ADDED = 'log_entry_added',
 
   // ==================== UI ====================
@@ -414,16 +344,6 @@ export enum GameEvents {
   // ==================== 战斗补充 ====================
   /** 跳过回合 */
   COMBAT_SKIP_TURN = 'combat_skip_turn',
-
-  // ==================== 任务补充 ====================
-  /** 放弃任务 */
-  QUEST_ABANDONED = 'quest_abandoned',
-
-  // ==================== 技能补充 ====================
-  /** 技能记忆到技能栏 */
-  SKILL_MEMORIZED = 'skill_memorized',
-  /** 技能从技能栏遗忘 */
-  SKILL_FORGOTTEN = 'skill_forgotten',
 
   // ==================== 存档 ====================
   /** 存档导出 */

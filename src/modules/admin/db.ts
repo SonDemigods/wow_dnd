@@ -5,6 +5,7 @@
  * 复用现有 db（GameDatabase）实例
  */
 import { db as gameDb, dbService } from '../data/core';
+import { toRawData } from '../../utils';
 
 /**
  * 管理后台数据库服务类
@@ -65,11 +66,13 @@ export class AdminDbService {
     return dbService.withRetry(async () => {
       const table = (gameDb as any)[tableName];
       if (!table) throw new Error(`表 ${tableName} 不存在`);
+      // JSON 序列化去除 Vue/Proxy 包装，避免 IndexedDB DataCloneError
+      const cleanData = toRawData(data);
       if (key) {
-        await table.add({ ...data, id: key }, key);
+        await table.add({ ...cleanData, id: key }, key);
         return key;
       }
-      return await table.add(data);
+      return await table.add(cleanData);
     });
   }
 
@@ -85,7 +88,9 @@ export class AdminDbService {
       if (!table) throw new Error(`表 ${tableName} 不存在`);
       const existing = await table.get(id);
       if (!existing) throw new Error('记录不存在');
-      await table.put({ ...existing, ...data, id: existing.id ?? id });
+      // JSON 序列化去除 Vue/Proxy 包装，避免 IndexedDB DataCloneError
+      const cleanData = toRawData({ ...existing, ...data, id: existing.id ?? id });
+      await table.put(cleanData);
     });
   }
 

@@ -121,15 +121,15 @@
     </div>
 
     <!-- 战斗结果弹窗 -->
-    <div v-if="combatResult" class="result-overlay">
+    <div v-if="combatStore.combatResult" class="result-overlay">
       <div class="result-popup">
-        <div class="result-icon">{{ combatResult === 'victory' ? '🏆' : combatResult === 'defeat' ? '💀' : '🏃' }}</div>
-        <div :class="['result-text', 'result-' + combatResult]">
+        <div class="result-icon">{{ combatStore.combatResult === 'victory' ? '🏆' : combatStore.combatResult === 'defeat' ? '💀' : '🏃' }}</div>
+        <div :class="['result-text', 'result-' + combatStore.combatResult]">
           {{ resultText }}
         </div>
-        <div class="result-rewards" v-if="combatResult === 'victory'">
-          <div v-if="expGained > 0" class="reward-item">⭐ +{{ expGained }} 经验</div>
-          <div v-if="goldGained > 0" class="reward-item">💰 +{{ goldGained }} 金币</div>
+        <div class="result-rewards" v-if="combatStore.combatResult === 'victory'">
+          <div v-if="combatStore.expGained > 0" class="reward-item">⭐ +{{ combatStore.expGained }} 经验</div>
+          <div v-if="combatStore.goldGained > 0" class="reward-item">💰 +{{ combatStore.goldGained }} 金币</div>
         </div>
         <div class="result-countdown" v-if="autoCloseCountdown > 0">
           {{ autoCloseCountdown }} 秒后自动关闭
@@ -173,14 +173,12 @@
  */
 
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
-import { combatService } from '@/modules/combat/service';
+import { useCombatStore } from '@/modules/combat/store';
 import { useCharacterStore } from '@/modules/character';
 import { useSkillsStore } from '@/modules/skill/store';
 import { useInventoryStore } from '@/modules/inventory/store';
-import { skillsService } from '@/modules/skill/service';
-import { inventoryService } from '@/modules/inventory/service';
 import { eventBus, GameEvents } from '@/modules/bus/core';
-import type { CombatLog, CombatResult, CombatActionType, CombatEndEvent } from '@/modules/combat/types';
+import type { CombatLog, CombatResult, CombatActionType } from '@/modules/combat/types';
 import type { Enemy } from '@/modules/enemy/types';
 import type { Skill } from '@/modules/skill/types';
 
@@ -195,21 +193,19 @@ const emit = defineEmits<{
 const characterStore = useCharacterStore();
 const skillsStore = useSkillsStore();
 const inventoryStore = useInventoryStore();
+const combatStore = useCombatStore();
 const logRef = ref<HTMLElement | null>(null);
 const isAnimating = ref(false);
-const combatResult = ref<CombatResult | null>(null);
-const expGained = ref(0);
-const goldGained = ref(0);
 const showItemModal = ref(false);
 const autoCloseCountdown = ref(0);
 let autoCloseTimer: ReturnType<typeof setInterval> | null = null;
 let autoCloseTimeout: ReturnType<typeof setTimeout> | null = null;
 
-// 战斗状态
-const turn = ref<'player' | 'enemy'>('player');
-const turnCount = ref(1);
-const enemy = ref<Enemy | null>(null);
-const logs = ref<CombatLog[]>([]);
+// 战斗状态 - 直接从 Combat Store 响应式数据派生
+const turn = computed(() => combatStore.turn);
+const turnCount = computed(() => combatStore.turnCount);
+const enemy = computed(() => combatStore.enemy);
+const logs = computed(() => combatStore.combatLogs);
 
 // 动画状态
 const enemyShake = ref(false);
@@ -244,7 +240,7 @@ const isBossFight = computed(() => enemy.value?.isBoss || false);
 
 // 状态
 const isPlayerTurn = computed(() => turn.value === 'player');
-const isFighting = computed(() => !combatResult.value);
+const isFighting = computed(() => !combatStore.combatResult);
 const canAct = computed(() => isPlayerTurn.value && isFighting.value && !isAnimating.value);
 
 // 可用技能：使用 skillsStore 响应式数据，确保角色切换后自动更新
@@ -265,7 +261,7 @@ const consumableItems = computed(() => {
     const inventory = inventoryStore.inventory;
     return inventory
       .map((invItem, index) => {
-        const info = inventoryService.getItemInfo(invItem.itemId);
+        const info = inventoryStore.getItemInfo(invItem.itemId);
         if (!info || !info.consumable) return null;
         return {
           index,
@@ -333,7 +329,7 @@ function getSkillEffectText(skill: Skill): string {
 }
 
 const resultText = computed(() => {
-  switch (combatResult.value) {
+  switch (combatStore.combatResult) {
     case 'victory': return '战斗胜利！';
     case 'defeat': return '战斗失败...';
     case 'fled': return '成功逃跑！';
@@ -341,14 +337,10 @@ const resultText = computed(() => {
   }
 });
 
-function updateState() {
-  turn.value = combatService.getTurn();
-  turnCount.value = combatService.getTurnCount();
-  const e = combatService.getEnemy();
-  enemy.value = e ? { ...e } : null;
-  logs.value = [...combatService.getCombatLog()];
+/** 战斗日志变化时自动滚动到底部 */
+watch(logs, () => {
   nextTick(() => scrollToBottom());
-}
+});
 
 function scrollToBottom() {
   if (logRef.value) {
@@ -412,7 +404,7 @@ function onDodge(data: { attackerName: string; dodgerName: string; dodgerType: '
   triggerScreenFlash('dodge');
 }
 
-// 执行玩家动作
+// 执行玩家动作（普通攻击/逃跑）
 async function doAction(type: CombatActionType) {
   if (!canAct.value) return;
   eventBus.emit(GameEvents.UI_CLICK, { source: `combat_${type}` });
@@ -420,30 +412,32 @@ async function doAction(type: CombatActionType) {
   vsFlash.value = true;
   setTimeout(() => { vsFlash.value = false; }, 450);
 
-  const prevEnemyHp = enemyHp.value;
+  const result = await combatStore.playerAction({ type });
 
-  await combatService.playerAction({ type });
+  if (!result.success) {
+    isAnimating.value = false;
+    return;
+  }
 
-  if (!combatResult.value) {
-    updateState();
-    // 显示对敌人的效果
-    const dmgDealt = prevEnemyHp - enemyHp.value;
-    if (dmgDealt > 0) {
-      triggerShake('enemy');
-      showFloating('enemy', `-${dmgDealt}`, 'damage');
-    }
-    runEnemyTurn();
-  } else {
-    // 击败敌人
-    updateState();
-    enemyDefeated.value = true;
+  // 视觉特效：基于 ActionResult 播放，不再自行编排流程
+  if (result.damage && result.damage > 0) {
     triggerShake('enemy');
-    const dmgDealt = prevEnemyHp - enemyHp.value;
-    if (dmgDealt > 0) {
-      showFloating('enemy', `-${dmgDealt}`, 'damage');
-    }
+    showFloating('enemy', `-${result.damage}`, result.isCrit ? 'crit' : 'damage');
+  }
+  if (result.isCrit) {
+    triggerCritShake('enemy');
+    triggerScreenFlash('crit');
+  }
+  if (result.isDodge) {
+    // 闪避特效由 COMBAT_DODGE EventBus 事件驱动
+  }
+
+  if (combatStore.combatResult) {
+    // 战斗结束（击败/逃跑失败等）
+    enemyDefeated.value = true;
     isAnimating.value = false;
   }
+  // 否则 isAnimating 由 watch(turn) 在敌人回合结束后恢复
 }
 
 // 使用技能
@@ -454,29 +448,24 @@ async function doSkill(skillId: string) {
   vsFlash.value = true;
   setTimeout(() => { vsFlash.value = false; }, 450);
 
-  const prevEnemyHp = enemyHp.value;
-  const prevPlayerHp = playerHp.value;
+  const result = await combatStore.playerAction({ type: 'skill', skillId });
 
-  await combatService.playerAction({ type: 'skill', skillId });
+  if (!result.success) {
+    isAnimating.value = false;
+    return;
+  }
 
-  if (!combatResult.value) {
-    updateState();
-    // 对敌人的伤害
-    const dmgDealt = prevEnemyHp - enemyHp.value;
-    if (dmgDealt > 0) {
-      triggerShake('enemy');
-      showFloating('enemy', `-${dmgDealt}`, 'damage');
-    }
-    // 技能治疗（玩家恢复生命/法力）
-    const healAmount = playerHp.value - prevPlayerHp;
-    if (healAmount > 0) {
-      showFloating('player', `+${healAmount}`, 'heal');
-    }
-    runEnemyTurn();
-  } else {
-    updateState();
-    enemyDefeated.value = true;
+  // 视觉特效
+  if (result.damage && result.damage > 0) {
     triggerShake('enemy');
+    showFloating('enemy', `-${result.damage}`, 'damage');
+  }
+  if (result.heal && result.heal > 0) {
+    showFloating('player', `+${result.heal}`, 'heal');
+  }
+
+  if (combatStore.combatResult) {
+    enemyDefeated.value = true;
     isAnimating.value = false;
   }
 }
@@ -486,9 +475,9 @@ function doSkip() {
   if (!canAct.value) return;
   eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_skip' });
   isAnimating.value = true;
-  eventBus.emit(GameEvents.COMBAT_SKIP_TURN, null);
-  combatService.skipTurn();
-  runEnemyTurn();
+  // skipTurn 内部调用 endPlayerTurn → 自动调度敌人回合
+  combatStore.skipTurn();
+  // isAnimating 由 watch(turn) 在敌人回合结束后恢复
 }
 
 // 使用物品
@@ -508,11 +497,10 @@ async function useItem(_itemId: string, _index: number) {
   const prevPlayerHp = playerHp.value;
   const prevPlayerMp = playerMp.value;
 
-  await combatService.playerAction({ type: 'item', itemId: _itemId });
+  await combatStore.playerAction({ type: 'item', itemId: _itemId });
 
-  if (!combatResult.value) {
-    updateState();
-    // 物品恢复（生命/法力）
+  if (!combatStore.combatResult) {
+    // 物品恢复效果（通过 HP/MP 差值计算，因为 useItem action 不返回 heal 值）
     const hpHeal = playerHp.value - prevPlayerHp;
     if (hpHeal > 0) {
       showFloating('player', `+${hpHeal}`, 'heal');
@@ -521,58 +509,34 @@ async function useItem(_itemId: string, _index: number) {
     if (mpHeal > 0) {
       showFloating('player', `MP+${mpHeal}`, 'heal');
     }
-    runEnemyTurn();
-  } else {
-    updateState();
+  }
+  // isAnimating 由 watch(turn) 在敌人回合结束后恢复
+}
+
+// ========== 敌人回合动画监听（替代 runEnemyTurn 编排） ==========
+
+// 监听 turn 切换：玩家回合恢复后可操作
+watch(() => combatStore.turn, (newTurn, oldTurn) => {
+  // 仅在战斗中、结果未出、且回合从 enemy 切回 player 时，恢复操作
+  if (newTurn === 'player' && oldTurn === 'enemy' && !combatStore.combatResult) {
     isAnimating.value = false;
   }
-}
+});
 
-// 执行敌人回合
-function runEnemyTurn() {
-  // 第一阶段：显示敌人回合提示
-  setTimeout(() => {
-    updateState();
-
-    // 第二阶段：敌人攻击
-    setTimeout(() => {
-      const prevPlayerHp = playerHp.value;
-      combatService.enemyTurn();
-
-      if (!combatResult.value) {
-        updateState();
-        // 显示敌人对玩家的伤害
-        const dmgTaken = prevPlayerHp - playerHp.value;
-        if (dmgTaken > 0) {
-          triggerShake('player');
-          showFloating('player', `-${dmgTaken}`, 'damage');
-        }
-      }
-      isAnimating.value = false;
-    }, 1200);
-  }, 600);
-}
-
-// 监听战斗结束事件
-function onCombatEnd(data: CombatEndEvent) {
-  combatResult.value = data.result;
-  expGained.value = data.expGained || 0;
-  goldGained.value = data.enemy?.goldReward || 0;
-  isAnimating.value = false;
-
-  if (data.result === 'victory' && data.enemy) {
-    enemy.value = { ...data.enemy, hp: 0 };
-    enemyDefeated.value = true;
+// 监听 combatResult：战斗结束时显示结果弹窗
+watch(() => combatStore.combatResult, (result) => {
+  if (result) {
+    isAnimating.value = false;
+    if (result === 'victory' && combatStore.enemy) {
+      enemyDefeated.value = true;
+    }
+    scheduleAutoClose();
   }
-
-  turn.value = 'player';
-  turnCount.value = combatService.getTurnCount() || turnCount.value;
-  scheduleAutoClose();
-}
+});
 
 function scheduleAutoClose() {
   clearAutoClose();
-  const delay = combatResult.value === 'victory' ? 3 : 2;
+  const delay = combatStore.combatResult === 'victory' ? 3 : 2;
   autoCloseCountdown.value = delay;
 
   autoCloseTimer = setInterval(() => {
@@ -606,17 +570,15 @@ function clearAutoClose() {
 function handleClose() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_result_close' });
   clearAutoClose();
-  emit('close', combatResult.value || undefined);
+  emit('close', combatStore.combatResult || undefined);
 }
 
 onMounted(() => {
-  eventBus.on(GameEvents.COMBAT_END, onCombatEnd);
   eventBus.on(GameEvents.COMBAT_CRITICAL_HIT, onCritHit);
   eventBus.on(GameEvents.COMBAT_DODGE, onDodge);
 });
 
 onUnmounted(() => {
-  eventBus.off(GameEvents.COMBAT_END, onCombatEnd);
   eventBus.off(GameEvents.COMBAT_CRITICAL_HIT, onCritHit);
   eventBus.off(GameEvents.COMBAT_DODGE, onDodge);
   clearAutoClose();
@@ -624,9 +586,6 @@ onUnmounted(() => {
 
 watch(() => props.visible, async (val) => {
   if (val) {
-    combatResult.value = null;
-    expGained.value = 0;
-    goldGained.value = 0;
     isAnimating.value = false;
     showItemModal.value = false;
     autoCloseCountdown.value = 0;
@@ -642,9 +601,8 @@ watch(() => props.visible, async (val) => {
     playerFloating.value = null;
     screenFlash.value = false;
     clearAutoClose();
-    // 确保技能服务已初始化
-    await skillsService.initialize();
-    updateState();
+    // 确保技能 Store 已初始化
+    await skillsStore.initialize();
   } else {
     clearAutoClose();
   }

@@ -6,6 +6,7 @@
  */
 import { db as gameDb, dbService } from '../data/core';
 import type { Skill, SkillBar, SkillsData, SkillType } from './types';
+import { toRawData } from '../../utils';
 
 /**
  * 技能数据存储接口（存储到 char_skills 表的结构）
@@ -46,7 +47,7 @@ export class SkillsDbService {
   async saveSkillsData(data: SkillsData): Promise<void> {
     await dbService.withRetry(async () => {
       // JSON 序列化往返：去除 undefined 值，确保所有数据可被结构化克隆
-      const clean = JSON.parse(JSON.stringify(data));
+      const clean = toRawData(data);
       await gameDb.char_skills.put({
         characterId: clean.characterId,
         skills: clean.skills,

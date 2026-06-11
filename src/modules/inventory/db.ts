@@ -7,6 +7,7 @@
 import { db as gameDb, dbService } from '../data/core';
 import type { Item, InventoryItem, ItemEffect } from './types';
 import type { ItemStorage } from '../data/core';
+import { toRawData } from '../../utils';
 
 /**
  * 背包数据存储接口（存储到 char_inventory 表的结构）
@@ -49,7 +50,7 @@ export class InventoryDbService {
   async saveInventory(characterId: string, items: InventoryItem[]): Promise<void> {
     await dbService.withRetry(async () => {
       // JSON 序列化往返：去除 undefined 值，确保所有数据可被结构化克隆
-      const clean = JSON.parse(JSON.stringify(items));
+      const clean = toRawData(items);
       await gameDb.char_inventory.put({
         characterId,
         items: clean,

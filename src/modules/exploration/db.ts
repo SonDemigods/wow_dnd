@@ -6,6 +6,7 @@
 import { db as gameDb, dbService } from '../data/core';
 import type { ExplorationStorage } from '../data/core';
 import type { ExplorationState } from './types';
+import { toRawData } from '../../utils';
 
 export class ExplorationDbService {
   /**
@@ -15,11 +16,12 @@ export class ExplorationDbService {
    */
   async saveExplorationData(characterId: string, state: ExplorationState, assignedShopId: string = ''): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.char_exploration.put({
+      // JSON 序列化去除 Vue/Proxy 包装，避免 IndexedDB DataCloneError
+      const cleanData = toRawData({
         characterId,
         currentAreaId: state.currentAreaId,
         assignedShopId,
-        grid: state.grid as unknown as ExplorationStorage['grid'],
+        grid: state.grid,
         campUsed: state.campUsed,
         playerPosition: state.playerPosition,
         visitedCells: state.visitedCells,
@@ -28,6 +30,7 @@ export class ExplorationDbService {
         explorationComplete: state.explorationComplete,
         updatedAt: Date.now()
       });
+      await gameDb.char_exploration.put(cleanData);
     });
   }
 

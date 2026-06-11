@@ -131,12 +131,12 @@
  * @description 展示角色背包物品网格，支持按分类筛选、整理堆叠、使用消耗品、装备武器/护甲到槽位及丢弃物品操作
  */
 
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
-import { inventoryService } from '@/modules/inventory';
+import { useInventoryStore } from '@/modules/inventory';
 import { useCharacterStore } from '@/modules/character';
-import { equipmentService } from '@/modules/equipment/service';
+import { useEquipmentStore } from '@/modules/equipment';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import { useToast } from '@/composables/useToast';
 import type { InventoryItem, Item, ItemType, ItemRarity, ItemEffect } from '@/modules/inventory';
@@ -166,6 +166,7 @@ const emit = defineEmits<{
 }>();
 
 const characterStore = useCharacterStore();
+const equipmentStore = useEquipmentStore();
 const toast = useToast();
 const gold = computed(() => characterStore.gold);
 
@@ -182,8 +183,17 @@ const showSlotSelect = ref(false);
 const availableSlots = ref<EquipmentSlot[]>([]);
 const pendingEquipItem = ref<EquipmentItem | null>(null);
 
-const inventoryItems = ref<InventoryItem[]>([]);
-const equippedItemIds = ref<Set<string>>(new Set());
+/** 直接从 Store 读取的响应式背包物品列表 */
+const inventoryItems = computed(() => useInventoryStore().inventory);
+
+/** 已装备物品ID集合，直接从装备 Store 响应式数据派生 */
+const equippedItemIds = computed(() => {
+  const ids = new Set<string>();
+  Object.values(equipmentStore.equipment).forEach(e => {
+    if (e) ids.add(e.item.id);
+  });
+  return ids;
+});
 const maxSlots = 50;
 
 const categories = [
@@ -276,7 +286,7 @@ function isEquipped(itemId: string): boolean {
 const filteredItems = computed(() => {
   if (selectedCategory.value === 'all') return inventoryItems.value;
   return inventoryItems.value.filter(item => {
-    const info = inventoryService.getItemInfo(item.itemId);
+    const info = useInventoryStore().getItemInfo(item.itemId);
     return info?.type === selectedCategory.value;
   });
 });
@@ -284,7 +294,7 @@ const filteredItems = computed(() => {
 const displayItems = computed<ItemEntry[]>(() => {
   return filteredItems.value.map(item => ({
     item,
-    info: inventoryService.getItemInfo(item.itemId)
+    info: useInventoryStore().getItemInfo(item.itemId)
   }));
 });
 
@@ -302,7 +312,7 @@ function selectCategory(catId: string) {
  */
 async function doOrganize() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_organize' });
-  inventoryService.organizeInventory();
+  useInventoryStore().organizeInventory();
   await loadInventory();
   selectedEntry.value = null;
   selectedIndex.value = -1;
@@ -336,11 +346,11 @@ async function useItem(itemId: string) {
   if (index === -1) return;
 
   const invItem = inventoryItems.value[index];
-  const info = inventoryService.getItemInfo(itemId);
+  const info = useInventoryStore().getItemInfo(itemId);
   if (!info?.consumable) return;
 
   // 使用物品（内部处理HP/MP恢复和堆叠数量递减）
-  const success = await inventoryService.useItem(index);
+  const success = await useInventoryStore().useItemByIndex(index);
   if (!success) return;
 
   toast.show({ message: getEffectToast(info), type: 'success', icon: '💊' });
@@ -356,7 +366,7 @@ async function useItem(itemId: string) {
 function equipItem(itemId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_equip_item' });
   // 获取装备模板
-  const equipTemplate = equipmentService.getEquipmentTemplate(itemId);
+  const equipTemplate = equipmentStore.getEquipmentTemplate(itemId);
   if (!equipTemplate) {
     toast.show({ message: '无法找到该装备的配置数据', type: 'warning' });
     return;
@@ -382,12 +392,12 @@ function equipItem(itemId: string) {
 }
 
 async function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
-  const success = await equipmentService.equipItem(slot, item);
+  const success = await equipmentStore.equipItem(slot, item);
   if (success) {
     // 从背包中移除该物品（优先移除选中的那一组）
     const index = findSelectedOrFirstIndex(item.id);
     if (index !== -1) {
-      inventoryService.removeItem(index);
+      useInventoryStore().removeItemByIndex(index);
     }
     toast.show({ message: `已装备 ${item.name} 到 ${SLOT_NAMES[slot]}`, type: 'success', icon: '🛡️' });
     loadInventory();
@@ -423,11 +433,11 @@ function confirmDrop() {
   const itemId = pendingDropItemId.value;
   if (!itemId) return;
   
-  const info = inventoryService.getItemInfo(itemId);
+  const info = useInventoryStore().getItemInfo(itemId);
   // 优先丢弃选中的那一组
   const index = findSelectedOrFirstIndex(itemId);
   if (index !== -1) {
-    inventoryService.removeItem(index);
+    useInventoryStore().removeItemByIndex(index);
     eventBus.emit(GameEvents.ITEM_DROPPED, { itemId });
     toast.show({ message: `已丢弃 ${info?.name || '物品'}`, type: 'info', icon: '🗑️' });
     loadInventory();
@@ -445,25 +455,15 @@ function cancelDrop() {
 }
 
 async function loadInventory() {
-  await inventoryService.initialize();
-  // 确保装备服务已初始化（装备模板需要从装备服务加载）
-  await equipmentService.initialize();
-  inventoryItems.value = inventoryService.getInventory();
-  // 加载已装备物品ID
-  const equipped = await inventoryService.getEquipment();
-  equippedItemIds.value = new Set(equipped.map(e => e.item.id));
+  await useInventoryStore().initialize(characterStore.currentCharacterId!);
+  // 确保装备 Store 已初始化（装备模块需要从装备 Store 加载）
+  if (characterStore.currentCharacterId) {
+    await equipmentStore.initialize(characterStore.currentCharacterId);
+  }
 }
 
 onMounted(() => {
   loadInventory();
-  // 监听背包变化事件，实时刷新
-  eventBus.onGroup('inventoryPopup', GameEvents.INVENTORY_CHANGE, () => {
-    loadInventory();
-  });
-});
-
-onUnmounted(() => {
-  eventBus.clearGroup('inventoryPopup');
 });
 </script>
 

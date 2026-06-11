@@ -51,9 +51,9 @@
  * 实现所有10个配置表（阵营/种族/职业/物品/装备/敌人/任务/技能/地点/商店）的统一管理
  */
 import { ref, computed, onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useAdminStore } from '@/modules/admin';
 import { CONFIG_TABLES, type ConfigTableName } from '@/modules/admin/types';
-import { adminDbService } from '@/modules/admin/db';
 import type { TableColumn } from './AdminTable.vue';
 import type { FormField } from './AdminForm.vue';
 import AdminTable from './AdminTable.vue';
@@ -106,28 +106,16 @@ function t(map: Record<string, string>, val: any): string {
 }
 
 /** 参考数据缓存 —— 供下拉选择使用 */
-const factionOptions = ref<Array<{ value: string; label: string }>>([]);
-const raceOptions = ref<Array<{ value: string; label: string }>>([]);
-const classOptions = ref<Array<{ value: string; label: string }>>([]);
-const locationOptions = ref<Array<{ value: string; label: string }>>([]);
-/** 大陆选项（从 config_locations 中 type='continent' 的记录加载） */
-const continentOptions = ref<Array<{ value: string; label: string }>>([]);
+const {
+  referenceFactions: factionOptions,
+  referenceRaces: raceOptions,
+  referenceClasses: classOptions,
+  referenceLocations: locationOptions,
+  referenceContinents: continentOptions,
+} = storeToRefs(store);
 
-onMounted(async () => {
-  const [factions, races, classes, locations] = await Promise.all([
-    adminDbService.getAll<any>('config_factions'),
-    adminDbService.getAll<any>('config_races'),
-    adminDbService.getAll<any>('config_classes'),
-    adminDbService.getAll<any>('config_locations'),
-  ]);
-  factionOptions.value = factions.map((f: any) => ({ value: f.id, label: f.name }));
-  raceOptions.value = races.map((r: any) => ({ value: r.id, label: r.name }));
-  classOptions.value = classes.map((c: any) => ({ value: c.id, label: c.name }));
-  locationOptions.value = locations.map((l: any) => ({ value: l.id, label: l.name }));
-  // 从地点中筛选 type='continent' 的记录作为大陆选项
-  continentOptions.value = locations
-    .filter((l: any) => l.type === 'continent')
-    .map((l: any) => ({ value: l.id, label: l.name }));
+onMounted(() => {
+  store.loadReferenceData();
 });
 
 /** 是否显示删除确认 */

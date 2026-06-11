@@ -100,8 +100,7 @@
 
 import { ref, computed, onMounted } from 'vue';
 import { useSkillsStore } from '@/modules/skill';
-import { characterService } from '@/modules/character';
-import { skillsDbService } from '@/modules/skill/db';
+import { useCharacterStore } from '@/modules/character';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { Skill, SkillSlotIndex } from '@/modules/skill';
 import BasePopup from '../common/BasePopup.vue';
@@ -115,6 +114,7 @@ defineEmits<{
 }>();
 
 const skillsStore = useSkillsStore();
+const characterStore = useCharacterStore();
 
 const selectedSkill = ref<Skill | null>(null);
 const selectedSlotIndex = ref<number | null>(null);
@@ -166,7 +166,7 @@ function isSkillEquipped(skillId: string): boolean {
 }
 
 function canUnlock(skill: Skill): boolean {
-  return skill.unlockLevel <= characterService.getLevel();
+  return skill.unlockLevel <= characterStore.level;
 }
 
 function selectSkill(skill: Skill) {
@@ -188,27 +188,28 @@ function activateSkill(skillId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'skill_memorize' });
   const targetSlot = selectedSlotIndex.value ?? findEmptySlot();
   if (targetSlot === null) {
-    skillsStore.unequipSkill(0 as SkillSlotIndex);
+    const skillAtSlot0 = skillsStore.skillBar.slots[0];
+    if (skillAtSlot0) {
+      skillsStore.unequipSkill(skillAtSlot0);
+    }
     skillsStore.equipSkill(skillId, 0 as SkillSlotIndex);
   } else {
     skillsStore.equipSkill(skillId, targetSlot as SkillSlotIndex);
   }
   selectedSlotIndex.value = null;
   barRenderKey.value++;
-  eventBus.emit(GameEvents.SKILL_MEMORIZED, { skillId });
 }
 
 function deactivateSkill(skillId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'skill_forget' });
   const slotIndex = skillsStore.skillBar.slots.findIndex(id => id === skillId);
   if (slotIndex !== -1) {
-    skillsStore.unequipSkill(slotIndex as SkillSlotIndex);
+    skillsStore.unequipSkill(skillId);
   }
   if (selectedSkill.value?.id === skillId) {
     selectedSkill.value = null;
   }
   barRenderKey.value++;
-  eventBus.emit(GameEvents.SKILL_FORGOTTEN, { skillId });
 }
 
 function findEmptySlot(): number | null {
@@ -217,9 +218,9 @@ function findEmptySlot(): number | null {
 }
 
 async function loadClassSkills() {
-  const classId = characterService.getClass();
+  const classId = characterStore.classId;
   if (classId) {
-    const templates = await skillsDbService.getSkillTemplatesByClass(classId);
+    const templates = await skillsStore.getSkillTemplatesByClass(classId);
     classSkills.value = [...templates].sort((a, b) => a.unlockLevel - b.unlockLevel);
   } else {
     classSkills.value = [];
@@ -227,7 +228,7 @@ async function loadClassSkills() {
 }
 
 async function loadData() {
-  await skillsStore.loadSkills();
+  await skillsStore.initialize(characterStore.currentCharacterId!);
   await loadClassSkills();
 }
 

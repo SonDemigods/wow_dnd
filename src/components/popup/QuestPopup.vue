@@ -72,8 +72,8 @@
  * @description 展示玩家当前进行中的任务列表，支持查看目标进度、领取已完成任务奖励和放弃任务
  */
 
-import { ref, reactive, onMounted, watch } from 'vue';
-import { questService } from '@/modules/quest';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { useQuestStore } from '@/modules/quest';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import { useToast } from '@/composables/useToast';
 import type { QuestDefinition, QuestInstance, QuestStatus } from '@/modules/quest';
@@ -95,7 +95,23 @@ const emit = defineEmits<{
 }>();
 
 const toast = useToast();
-const activeQuests = ref<ActiveQuest[]>([]);
+const questStore = useQuestStore();
+
+/** 活跃任务列表，直接从 Quest Store 响应式数据派生 */
+const activeQuests = computed<ActiveQuest[]>(() => {
+  const inProgressIds = questStore.activeQuests.map(i => i.questId);
+  const completedIds = questStore.completedQuests.map(i => i.questId);
+  const allIds = [...inProgressIds, ...completedIds];
+
+  return allIds
+    .map(id => {
+      const definition = questStore.getQuestDefinition(id);
+      const instance = questStore.getQuestInstance(id);
+      if (!definition || !instance) return null;
+      return { questId: id, definition, instance };
+    })
+    .filter(Boolean) as ActiveQuest[];
+});
 
 const confirmState = reactive({
   visible: false,
@@ -129,11 +145,11 @@ function getObjectiveProgress(instance: QuestInstance, index: number): number {
   return instance.progress[index]?.current || 0;
 }
 
-function claimReward(questId: string) {
+async function claimReward(questId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'quest_claim_reward' });
-  const success = questService.turnInQuest(questId);
+  const success = await questStore.turnInQuest(questId);
   if (success) {
-    const quest = questService.getQuestDefinition(questId);
+    const quest = questStore.getQuestDefinition(questId);
     toast.show({ message: `已领取奖励: ${quest?.title || questId}`, type: 'success', icon: '🏆' });
     loadQuests();
   } else {
@@ -148,32 +164,18 @@ function abandonQuest(questId: string) {
   confirmState.visible = true;
 }
 
-function onConfirmAbandon() {
+async function onConfirmAbandon() {
   const questId = confirmState.questId;
   confirmState.visible = false;
-  const success = questService.abandonQuest(questId);
+  const success = await questStore.abandonQuest(questId);
   if (success) {
-    eventBus.emit(GameEvents.QUEST_ABANDONED, { questId });
     loadQuests();
     toast.show({ message: '已放弃任务', type: 'warning', icon: '⚠️' });
   }
 }
 
 async function loadQuests() {
-  await questService.init();
-  
-  const inProgressIds = questService.getInProgressQuests();
-  const completedIds = questService.getCompletedQuests();
-  const allIds = [...inProgressIds, ...completedIds];
-  
-  activeQuests.value = allIds
-    .map(id => {
-      const definition = questService.getQuestDefinition(id);
-      const instance = questService.getQuestInstance(id);
-      if (!definition || !instance) return null;
-      return { questId: id, definition, instance };
-    })
-    .filter(Boolean) as ActiveQuest[];
+  await questStore.init();
 }
 
 watch(() => props.visible, (val) => {

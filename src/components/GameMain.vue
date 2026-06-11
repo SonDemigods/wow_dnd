@@ -136,10 +136,10 @@ import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
 import { useShopStore } from '@/modules/shop';
 import { useLogStore } from '@/modules/log';
-import { mapDbService } from '@/modules/map/db';
+import { useExplorationStore, type ExplorationUICallbacks } from '@/modules/exploration';
 import { eventBus, GameEvents } from '@/modules/bus/core';
-import { enemyService } from '@/modules/enemy/service';
-import { combatService } from '@/modules/combat/service';
+import { useEnemiesStore } from '@/modules/enemy';
+import { useCombatStore } from '@/modules/combat/store';
 import { useToast } from '@/composables/useToast';
 import type { CombatResult } from '@/modules/combat/types';
 import MapView from './MapView.vue';
@@ -167,8 +167,6 @@ const logStore = useLogStore();
 const toast = useToast();
 
 const currentContentTab = ref('map');
-/** 当前角色ID（响应式计算，用于地图数据隔离） */
-const currentCharacterId = computed(() => characterStore.currentCharacterId);
 const showCharacterInfo = ref(false);
 const showInventory = ref(false);
 const showSkills = ref(false);
@@ -227,10 +225,7 @@ function openAudioFromSystem() {
 function handleMapTabClick() {
   currentContentTab.value = 'map';
   eventBus.emit(GameEvents.UI_CLICK, { source: 'tab_map' });
-  const cid = currentCharacterId.value;
-  if (cid) {
-    mapDbService.saveCurrentTab(cid, 'map');
-  }
+  mapStore.saveCurrentTab('map');
 }
 
 function handleExploreTabClick() {
@@ -240,10 +235,7 @@ function handleExploreTabClick() {
   }
   currentContentTab.value = 'explore';
   eventBus.emit(GameEvents.UI_CLICK, { source: 'tab_explore' });
-  const cid = currentCharacterId.value;
-  if (cid) {
-    mapDbService.saveCurrentTab(cid, 'explore');
-  }
+  mapStore.saveCurrentTab('explore');
 }
 
 // 监听探索格子翻开事件，处理交互
@@ -271,10 +263,10 @@ async function handleBattleTriggered(data: { eventData?: { monsterId?: string } 
   const monsterId = data.eventData.monsterId;
   
   // 从数据库获取敌人模板数据
-  const enemy = await enemyService.createEnemy(monsterId);
+  const enemy = await useEnemiesStore().createEnemy(monsterId);
   
   if (enemy) {
-    combatService.startCombat(enemy);
+    useCombatStore().startCombat(enemy);
     showCombat.value = true;
   }
 }
@@ -304,30 +296,32 @@ function handleCombatClose(_result?: CombatResult) {
   onPanelClose('combat');
 }
 
-function handleShopClose() {
+async function handleShopClose() {
   showShop.value = false;
   onPanelClose('shop');
-  eventBus.emit(GameEvents.SHOP_CLOSED, { shopId: shopStore.currentShopId || '' });
+  await shopStore.closeShop();
 }
 
-/** 事件监听分组标识，用于组件卸载时统一清理 */
-const EVENT_GROUP = 'gameMain';
-
 onMounted(async () => {
-  eventBus.onGroup(EVENT_GROUP, GameEvents.EXPLORATION_CELL_EXPLORED, handleCellExplored);
-  eventBus.onGroup(EVENT_GROUP, GameEvents.EXPLORATION_BATTLE_TRIGGERED, handleBattleTriggered);
-  eventBus.onGroup(EVENT_GROUP, GameEvents.EXPLORATION_ITEM_FOUND, handleItemFound);
-  eventBus.onGroup(EVENT_GROUP, GameEvents.EXPLORATION_TRAP_TRIGGERED, handleTrapTriggered);
-  eventBus.onGroup(EVENT_GROUP, GameEvents.EXPLORATION_RANDOM_EVENT, handleRandomEvent);
+  const explorationStore = useExplorationStore();
+
+  // 注册探索 UI 回调（替代 EventBus 跨模块数据事件监听）
+  explorationStore.registerUICallbacks({
+    onCellExplored: handleCellExplored,
+    onBattleTriggered: handleBattleTriggered,
+    onItemFound: handleItemFound,
+    onTrapTriggered: handleTrapTriggered,
+    onRandomEvent: handleRandomEvent
+  } as ExplorationUICallbacks);
   
   // 初始化地图模块（按角色ID从数据库恢复当前区域等状态）
   const cid = characterStore.currentCharacterId;
   if (cid) {
-    await mapStore.init(cid);
-    await logStore.init(cid);
+    await mapStore.initialize(cid);
+    await logStore.initialize(cid);
     
-    // 从数据库恢复上次的标签页状态（按角色隔离）
-    const savedTab = await mapDbService.getCurrentTab(cid);
+    // 从数据库恢复上次的标签页状态（按角色隔离，通过 mapStore action 获取）
+    const savedTab = await mapStore.getCurrentTab();
     if (savedTab === 'explore' && hasCurrentLocation.value) {
       currentContentTab.value = 'explore';
     }
@@ -335,7 +329,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  eventBus.clearGroup(EVENT_GROUP);
+  useExplorationStore().unregisterUICallbacks();
 });
 
 defineExpose({ showNotif });

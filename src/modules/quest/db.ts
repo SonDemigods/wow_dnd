@@ -5,6 +5,7 @@
  */
 import { db as gameDb, dbService } from '../data/core';
 import type { QuestInstance, QuestDefinition } from './types';
+import { toRawData } from '../../utils';
 
 /**
  * 任务实例存储接口
@@ -52,7 +53,8 @@ export class QuestDbService {
    */
   async saveQuestInstance(instance: QuestInstance, characterId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.char_quests.put({
+      // JSON 序列化去除 Vue/Proxy 包装，避免 IndexedDB DataCloneError
+      const cleanData = toRawData({
         questId: instance.questId,
         characterId,
         status: instance.status,
@@ -60,6 +62,7 @@ export class QuestDbService {
         acceptedAt: instance.acceptedAt,
         completedAt: instance.completedAt
       });
+      await gameDb.char_quests.put(cleanData);
     });
   }
 

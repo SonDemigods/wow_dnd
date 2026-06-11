@@ -8,21 +8,20 @@
  *   cmd.spawn('goblin')    — 生成敌人并进入战斗
  *   cmd.help()             — 查看所有命令
  */
-import { characterService } from './character/service';
-import { inventoryService } from './inventory/service';
-import { enemyService } from './enemy/service';
-import { combatService } from './combat/service';
-import { explorationService } from './exploration/service';
-import { mapService } from './map/service';
-import { skillsService } from './skill/service';
-import { equipmentService } from './equipment/service';
-import { shopService } from './shop/service';
-import { questService } from './quest/service';
-import { logService } from './log/service';
+import { useCharacterStore } from './character/store';
+import { useInventoryStore } from './inventory/store';
+import { useEnemiesStore } from './enemy/store';
+import { useCombatStore } from './combat/store';
+import { useExplorationStore } from './exploration/store';
+import { useMapStore } from './map/store';
+import { useSkillsStore } from './skill/store';
+import { useEquipmentStore } from './equipment/store';
+import { useShopStore } from './shop/store';
+import { useQuestStore } from './quest/store';
+import { useLogStore } from './log/store';
 import { enemyDbService } from './enemy/db';
 import { inventoryDbService } from './inventory/db';
 import { equipmentDbService } from './equipment/db';
-import { eventBus, GameEvents } from './bus/core';
 import { MAX_LEVEL } from '../config/character';
 import { getExpForLevel } from '../utils/calculations';
 
@@ -185,17 +184,17 @@ registerCommand({
   description: '显示当前角色完整属性',
   usage: 'stats',
   handler() {
-    if (!characterService.getCurrentCharacterId()) {
+    if (!useCharacterStore().currentCharacterId) {
       return { success: false, message: '当前没有选中角色' };
     }
 
-    const info = characterService.getCharacterInfo();
-    const stats = characterService.getStats();
-    const attrs = characterService.getAttributes();
+    const info = useCharacterStore().character;
+    const stats = useCharacterStore().effectiveStats;
+    const attrs = useCharacterStore().attributes;
 
-    logTag('stats', `${info.name}  Lv.${info.level}  ${info.factionId}/${info.raceId}/${info.classId}`);
-    console.log(`  HP ${info.hp}/${info.maxHp}  |  MP ${info.mana}/${info.maxMana}  |  金币 ${info.gold}`);
-    console.log(`  EXP ${info.exp}/${info.expToNextLevel}`);
+    logTag('stats', `${info!.name}  Lv.${info!.level}  ${info!.factionId}/${info!.raceId}/${info!.classId}`);
+    console.log(`  HP ${info!.hp}/${info!.maxHp}  |  MP ${info!.mana}/${info!.maxMana}  |  金币 ${info!.gold}`);
+    console.log(`  EXP ${info!.exp}/${info!.expToNextLevel}`);
     console.log(`  ── 基础 ──  力量 ${stats.str}  敏捷 ${stats.dex}  体质 ${stats.con}`);
     console.log(`             智力 ${stats.int}  感知 ${stats.wis}  魅力 ${stats.cha}`);
     console.log(`  ── 战斗 ──  物攻 ${attrs.physicalAttack}  物防 ${attrs.physicalDefense}`);
@@ -216,8 +215,7 @@ registerCommand({
     if (isNaN(amount)) {
       return { success: false, message: '请输入有效的数字' };
     }
-    await characterService.addGold(amount);
-    eventBus.emit(GameEvents.CHARACTER_STATS_CHANGE, { oldStats: {}, newStats: {} });
+    await useCharacterStore().gainGold(amount);
     return { success: true, message: `已添加 ${amount} 金币` };
   }
 });
@@ -233,10 +231,9 @@ registerCommand({
     if (isNaN(amount) || amount <= 0) {
       return { success: false, message: '请输入有效的正整数' };
     }
-    const oldLevel = characterService.getLevel();
-    await characterService.addExp(amount);
-    const newLevel = characterService.getLevel();
-    eventBus.emit(GameEvents.CHARACTER_STATS_CHANGE, { oldStats: {}, newStats: {} });
+    const oldLevel = useCharacterStore().level;
+    await useCharacterStore().gainExp(amount);
+    const newLevel = useCharacterStore().level;
     const msg = newLevel > oldLevel
       ? `已添加 ${amount} 经验值，从 ${oldLevel} 级升到 ${newLevel} 级！`
       : `已添加 ${amount} 经验值`;
@@ -255,7 +252,7 @@ registerCommand({
     if (isNaN(value)) {
       return { success: false, message: '请输入有效的数字' };
     }
-    await characterService.setHp(value);
+    await useCharacterStore().setHp(value);
     return { success: true, message: `生命值已设置为 ${value}` };
   }
 });
@@ -271,7 +268,7 @@ registerCommand({
     if (isNaN(value)) {
       return { success: false, message: '请输入有效的数字' };
     }
-    await characterService.setMp(value);
+    await useCharacterStore().setMp(value);
     return { success: true, message: `法力值已设置为 ${value}` };
   }
 });
@@ -283,10 +280,10 @@ registerCommand({
   description: '恢复满生命值和法力值',
   usage: 'heal',
   async handler() {
-    const info = characterService.getCharacterInfo();
-    await characterService.setHp(info.maxHp);
-    await characterService.setMp(info.maxMana);
-    return { success: true, message: `已恢复满 HP(${info.maxHp}) 和 MP(${info.maxMana})` };
+    const info = useCharacterStore().character;
+    await useCharacterStore().setHp(info!.maxHp);
+    await useCharacterStore().setMp(info!.maxMana);
+    return { success: true, message: `已恢复满 HP(${info!.maxHp}) 和 MP(${info!.maxMana})` };
   }
 });
 
@@ -302,29 +299,28 @@ registerCommand({
       return { success: false, message: `等级必须在 1-${MAX_LEVEL} 之间` };
     }
 
-    const currentLevel = characterService.getLevel();
+    const currentLevel = useCharacterStore().level;
     if (targetLevel === currentLevel) {
       return { success: true, message: `当前已经是 ${targetLevel} 级` };
     }
 
     if (targetLevel < currentLevel) {
-      await characterService.reset();
+      await useCharacterStore().reset();
       if (targetLevel > 1) {
         let totalExp = 0;
         for (let i = 2; i <= targetLevel; i++) {
           totalExp += getExpForLevel(i);
         }
-        await characterService.addExp(totalExp);
+        await useCharacterStore().gainExp(totalExp);
       }
     } else {
       let totalExp = 0;
       for (let i = currentLevel + 1; i <= targetLevel; i++) {
         totalExp += getExpForLevel(i);
       }
-      await characterService.addExp(totalExp);
+      await useCharacterStore().gainExp(totalExp);
     }
 
-    eventBus.emit(GameEvents.CHARACTER_STATS_CHANGE, { oldStats: {}, newStats: {} });
     return { success: true, message: `等级已从 ${currentLevel} 变为 ${targetLevel}` };
   }
 });
@@ -336,11 +332,10 @@ registerCommand({
   description: '复活当前角色（恢复50%生命法力）',
   usage: 'resurrect',
   async handler() {
-    if (!characterService.getCurrentCharacterId()) {
+    if (!useCharacterStore().currentCharacterId) {
       return { success: false, message: '当前没有选中角色' };
     }
-    await characterService.resurrect();
-    eventBus.emit(GameEvents.CHARACTER_STATS_CHANGE, { oldStats: {}, newStats: {} });
+    await useCharacterStore().resurrect();
     return { success: true, message: '角色已复活（恢复50% HP/MP）' };
   }
 });
@@ -366,8 +361,7 @@ registerCommand({
     }
     const bonus: Partial<Record<string, number>> = {};
     bonus[attr] = value;
-    await characterService.applyBonus(bonus as any);
-    eventBus.emit(GameEvents.CHARACTER_STATS_CHANGE, { oldStats: {}, newStats: {} });
+    await useCharacterStore().applyBonus(bonus as any);
     return { success: true, message: `已应用加成: ${attr}+${value}` };
   }
 });
@@ -379,11 +373,10 @@ registerCommand({
   description: '重置角色到初始状态（危险操作！）',
   usage: 'resetChar',
   async handler() {
-    if (!characterService.getCurrentCharacterId()) {
+    if (!useCharacterStore().currentCharacterId) {
       return { success: false, message: '当前没有选中角色' };
     }
-    await characterService.reset();
-    eventBus.emit(GameEvents.CHARACTER_STATS_CHANGE, { oldStats: {}, newStats: {} });
+    await useCharacterStore().reset();
     return { success: true, message: '角色已重置为初始状态' };
   }
 });
@@ -423,9 +416,8 @@ registerCommand({
       if (isNaN(count) || count <= 0) {
         return { success: false, message: '数量必须为正整数' };
       }
-      const added = inventoryService.addItems(lootItem, count);
+      const added = useInventoryStore().addItem(lootItem.id, count);
       if (added > 0) {
-        eventBus.emit(GameEvents.INVENTORY_CHANGE, { itemId: lootItem.id, count: added });
         return { success: true, message: `已添加 ${lootItem.name} x${added}` };
       }
       return { success: false, message: '背包已满，无法添加物品' };
@@ -433,9 +425,8 @@ registerCommand({
 
     const equipItem = await equipmentDbService.getEquipmentTemplate(itemId);
     if (equipItem) {
-      const added = inventoryService.addItems(equipItem, 1);
+      const added = useInventoryStore().addItem(equipItem.id, 1);
       if (added > 0) {
-        eventBus.emit(GameEvents.INVENTORY_CHANGE, { itemId: equipItem.id, count: added });
         return { success: true, message: `已添加 ${equipItem.name} 到背包` };
       }
       return { success: false, message: '背包已满，无法添加物品' };
@@ -452,14 +443,14 @@ registerCommand({
   description: '显示背包物品',
   usage: 'bag',
   handler() {
-    const items = inventoryService.getInventory();
+    const items = useInventoryStore().inventory;
     if (items.length === 0) {
       return { success: true, message: '背包是空的' };
     }
 
     logTag('bag', '═══ 背包物品 ═══');
     for (const invItem of items) {
-      const info = inventoryService.getItemInfo(invItem.itemId);
+      const info = useInventoryStore().getItemInfo(invItem.itemId);
       const name = info?.name || invItem.itemId;
       console.log(`  %c${invItem.itemId.padEnd(24)}%c ${name} %cx${invItem.count}`, STYLE.label, STYLE.value, STYLE.hint);
     }
@@ -474,8 +465,7 @@ registerCommand({
   description: '清空背包',
   usage: 'clearBag',
   handler() {
-    inventoryService.reset();
-    eventBus.emit(GameEvents.INVENTORY_CHANGE, { itemId: '', count: 0 });
+    useInventoryStore().resetInventory();
     return { success: true, message: '背包已清空' };
   }
 });
@@ -487,7 +477,7 @@ registerCommand({
   description: '查看当前装备状态',
   usage: 'equips',
   handler() {
-    const equipment = equipmentService.getEquipment();
+    const equipment = useEquipmentStore().equipment;
     const slots = Object.entries(equipment) as [string, any][];
     const occupied = slots.filter(([_, item]) => item !== null);
 
@@ -531,8 +521,11 @@ registerCommand({
 
     const enemyId = args[0];
     try {
-      const enemy = await enemyService.createEnemy(enemyId);
-      combatService.startCombat(enemy);
+      const enemy = await useEnemiesStore().createEnemy(enemyId);
+      if (!enemy) {
+        return { success: false, message: `未找到敌人: ${enemyId}，输入 spawn 查看可用列表` };
+      }
+      await useCombatStore().startCombat(enemy);
       return { success: true, message: `已生成 ${enemy.name} (HP:${enemy.hp}) 并进入战斗` };
     } catch {
       return { success: false, message: `未找到敌人: ${enemyId}，输入 spawn 查看可用列表` };
@@ -547,10 +540,10 @@ registerCommand({
   description: '强制结束当前战斗（胜利）',
   usage: 'win',
   handler() {
-    if (!combatService.isInCombat()) {
+    if (!useCombatStore().isInCombat) {
       return { success: false, message: '当前没有在战斗中' };
     }
-    combatService.endCombat('victory');
+    useCombatStore().endCombat('victory');
     return { success: true, message: '战斗已强制胜利' };
   }
 });
@@ -562,10 +555,10 @@ registerCommand({
   description: '强制结束当前战斗（逃跑）',
   usage: 'flee',
   handler() {
-    if (!combatService.isInCombat()) {
+    if (!useCombatStore().isInCombat) {
       return { success: false, message: '当前没有在战斗中' };
     }
-    combatService.endCombat('fled');
+    useCombatStore().endCombat('fled');
     return { success: true, message: '已从战斗中逃跑' };
   }
 });
@@ -577,15 +570,15 @@ registerCommand({
   description: '使当前敌人立即死亡',
   usage: 'kill',
   handler() {
-    if (!combatService.isInCombat()) {
+    if (!useCombatStore().isInCombat) {
       return { success: false, message: '当前没有在战斗中' };
     }
-    const enemy = combatService.getEnemy();
+    const enemy = useCombatStore().enemy;
     if (!enemy) {
       return { success: false, message: '没有敌人' };
     }
-    enemyService.takeDamage(enemy.id, 99999);
-    combatService.endCombat('victory');
+    useEnemiesStore().takeDamage(enemy.id, 99999);
+    useCombatStore().endCombat('victory');
     return { success: true, message: `${enemy.name} 已被消灭` };
   }
 });
@@ -600,10 +593,10 @@ registerCommand({
   category: '技能',
   description: '查看技能列表或装备技能',
   usage: 'skills [技能ID] [槽位0-3]  (不带参数列出技能，带参数装备技能)',
-  handler(args) {
+  async handler(args) {
     if (args.length === 0) {
-      const allSkills = skillsService.getSkills();
-      const bar = skillsService.getSkillBar();
+      const allSkills = useSkillsStore().skills;
+      const bar = useSkillsStore().skillBar;
 
       logTag('skills', '═══ 技能栏 ═══');
       for (let i = 0; i < 4; i++) {
@@ -613,13 +606,13 @@ registerCommand({
       }
 
       logTag('skills', '═══ 已解锁技能 ═══');
-      const unlocked = skillsService.getUnlockedSkills();
+      const unlocked = useSkillsStore().unlockedSkills;
       for (const s of unlocked) {
         const mp = s.mpCost !== undefined ? ` MP:${s.mpCost}` : '';
         console.log(`  %c${s.id.padEnd(24)}%c ${s.name} %c[${s.type}]${mp}`, STYLE.label, STYLE.value, STYLE.hint);
       }
 
-      const locked = skillsService.getLockedSkills();
+      const locked = useSkillsStore().lockedSkills;
       if (locked.length > 0) {
         logTag('skills', '═══ 未解锁技能 ═══');
         for (const s of locked) {
@@ -634,9 +627,8 @@ registerCommand({
     if (![0, 1, 2, 3].includes(slotIndex)) {
       return { success: false, message: '槽位必须在 0-3 之间' };
     }
-    const success = skillsService.equipSkill(skillId, slotIndex);
+    const success = await useSkillsStore().equipSkill(skillId, slotIndex);
     if (success) {
-      eventBus.emit(GameEvents.SKILL_BAR_UPDATE, { skillId, slotIndex });
       return { success: true, message: `技能 ${skillId} 已装备到槽位 ${slotIndex}` };
     }
     return { success: false, message: '装备失败，请检查技能ID和槽位是否可用' };
@@ -654,7 +646,7 @@ registerCommand({
   description: '重置当前区域的探索状态',
   usage: 'resetExplore',
   handler() {
-    explorationService.reset();
+    useExplorationStore().reset();
     return { success: true, message: '探索状态已重置' };
   }
 });
@@ -668,9 +660,9 @@ registerCommand({
   handler(args) {
     if (args.length === 0) {
       const allLocations = [
-        ...mapService.getLocationsByContinent('kalimdor'),
-        ...mapService.getLocationsByContinent('eastern_kingdoms'),
-        ...mapService.getLocationsByContinent('northrend')
+        ...useMapStore().getLocationsByContinent('kalimdor'),
+        ...useMapStore().getLocationsByContinent('eastern_kingdoms'),
+        ...useMapStore().getLocationsByContinent('northrend')
       ];
       logTag('goto', '═══ 可用地点 ═══');
       for (const loc of allLocations) {
@@ -680,7 +672,7 @@ registerCommand({
     }
 
     const locationId = args[0];
-    const success = mapService.enterLocation(locationId);
+    const success = useMapStore().enterZone(locationId);
     if (success) {
       return { success: true, message: `已传送到 ${locationId}` };
     }
@@ -700,9 +692,9 @@ registerCommand({
   usage: 'quests [accept|complete|abandon <任务ID>]',
   async handler(args) {
     if (args.length === 0) {
-      const available = questService.getAvailableQuests();
-      const inProgress = questService.getInProgressQuests();
-      const completed = questService.getCompletedQuests();
+      const available = useQuestStore().availableQuests;
+      const inProgress = useQuestStore().activeQuests;
+      const completed = useQuestStore().completedQuests;
 
       if (available.length === 0 && inProgress.length === 0 && completed.length === 0) {
         return { success: true, message: '当前没有任何任务' };
@@ -710,26 +702,24 @@ registerCommand({
 
       if (inProgress.length > 0) {
         logTag('quests', '═══ 进行中的任务 ═══');
-        for (const id of inProgress) {
-          const inst = questService.getQuestInstance(id);
-          const def = questService.getQuestDefinition(id);
-          console.log(`  %c${id.padEnd(24)}%c ${def?.title || id} %c${inst?.progress || ''}`, STYLE.label, STYLE.value, STYLE.hint);
+        for (const instance of inProgress) {
+          const def = useQuestStore().getQuestDefinition(instance.questId);
+          console.log(`  %c${instance.questId.padEnd(24)}%c ${def?.title || instance.questId} %c${JSON.stringify(instance.progress)}`, STYLE.label, STYLE.value, STYLE.hint);
         }
       }
 
       if (available.length > 0) {
         logTag('quests', '═══ 可接任务 ═══');
-        for (const id of available) {
-          const def = questService.getQuestDefinition(id);
-          console.log(`  %c${id.padEnd(24)}%c ${def?.title || id}`, STYLE.label, STYLE.value);
+        for (const def of available) {
+          console.log(`  %c${def.id.padEnd(24)}%c ${def.title}`, STYLE.label, STYLE.value);
         }
       }
 
       if (completed.length > 0) {
         logTag('quests', '═══ 已完成（可提交）═══');
-        for (const id of completed) {
-          const def = questService.getQuestDefinition(id);
-          console.log(`  %c${id.padEnd(24)}%c ${def?.title || id}`, STYLE.label, STYLE.value);
+        for (const instance of completed) {
+          const def = useQuestStore().getQuestDefinition(instance.questId);
+          console.log(`  %c${instance.questId.padEnd(24)}%c ${def?.title || instance.questId}`, STYLE.label, STYLE.value);
         }
       }
 
@@ -745,23 +735,21 @@ registerCommand({
 
     switch (action) {
       case 'accept': {
-        const ok = questService.acceptQuest(questId);
+        const ok = await useQuestStore().acceptQuest(questId);
         if (ok) {
-          eventBus.emit(GameEvents.QUEST_ACCEPTED, { questId, definition: questService.getQuestDefinition(questId)! });
           return { success: true, message: `已接受任务: ${questId}` };
         }
         return { success: false, message: `无法接受任务: ${questId}` };
       }
       case 'complete': {
-        const ok = questService.turnInQuest(questId);
+        const ok = await useQuestStore().claimReward(questId);
         if (ok) {
-          eventBus.emit(GameEvents.QUEST_REWARDED, { questId, definition: questService.getQuestDefinition(questId)! });
           return { success: true, message: `已提交任务: ${questId}` };
         }
         return { success: false, message: `无法提交任务: ${questId}（可能尚未完成）` };
       }
       case 'abandon': {
-        const ok = questService.abandonQuest(questId);
+        const ok = await useQuestStore().abandonQuest(questId);
         if (ok) {
           return { success: true, message: `已放弃任务: ${questId}` };
         }
@@ -784,8 +772,8 @@ registerCommand({
   description: '查看可用商店列表',
   usage: 'shops',
   async handler() {
-    await shopService.init();
-    const shops = shopService.getAllShops();
+    await useShopStore().init();
+    const shops = useShopStore().shops;
     if (shops.length === 0) {
       return { success: true, message: '没有可用商店' };
     }
@@ -811,9 +799,9 @@ registerCommand({
     const count = args[0] ? parseInt(args[0], 10) : 10;
     const filterType = args[1] as string | undefined;
 
-    let logs = logService.getLogs();
+    let logs = useLogStore().getLogs();
     if (filterType) {
-      logs = logService.getLogsByType(filterType as any);
+      logs = useLogStore().getLogsByType(filterType as any);
     }
     const recent = logs.slice(0, Math.min(count, logs.length));
 
@@ -826,7 +814,7 @@ registerCommand({
       const time = new Date(entry.timestamp || '').toLocaleTimeString();
       console.log(`  %c[${time}]%c ${entry.icon || ''} ${entry.message}`, STYLE.hint, STYLE.value);
     }
-    return { success: true, message: `共 ${logService.getLogCount()} 条日志` };
+    return { success: true, message: `共 ${useLogStore().getLogCount()} 条日志` };
   }
 });
 

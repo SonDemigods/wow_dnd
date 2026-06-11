@@ -5,6 +5,7 @@
  */
 import { db as gameDb, dbService } from '../data/core';
 import type { LogEntry } from './types';
+import { toRawData } from '../../utils';
 
 export interface AdventureLogData {
   characterId: string;
@@ -20,11 +21,13 @@ export class AdventureLogDbService {
    */
   async saveAdventureLog(characterId: string, logs: LogEntry[]): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.runtime_adventureLogs.put({
+      // JSON 序列化去除 Vue/Proxy 包装，避免 IndexedDB DataCloneError
+      const cleanData = toRawData({
         characterId,
         entries: logs,
         updatedAt: Date.now()
       });
+      await gameDb.runtime_adventureLogs.put(cleanData);
     });
   }
 

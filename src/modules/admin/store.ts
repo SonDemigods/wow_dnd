@@ -45,6 +45,17 @@ export const useAdminStore = defineStore('admin', () => {
   /** 搜索关键词 */
   const searchKeyword = ref('');
 
+  /** 参考数据：阵营下拉选项 */
+  const referenceFactions = ref<Array<{ value: string; label: string }>>([]);
+  /** 参考数据：种族下拉选项 */
+  const referenceRaces = ref<Array<{ value: string; label: string }>>([]);
+  /** 参考数据：职业下拉选项 */
+  const referenceClasses = ref<Array<{ value: string; label: string }>>([]);
+  /** 参考数据：地点下拉选项 */
+  const referenceLocations = ref<Array<{ value: string; label: string }>>([]);
+  /** 参考数据：大陆下拉选项（从 locations 中筛选 type='continent'） */
+  const referenceContinents = ref<Array<{ value: string; label: string }>>([]);
+
   // ==================== 计算属性 ====================
 
   /** 当前选中表的元信息 */
@@ -168,6 +179,26 @@ export const useAdminStore = defineStore('admin', () => {
     await loadTableData();
   }
 
+  /**
+   * 加载参考数据（阵营、种族、职业、地点列表）
+   * 用于配置管理页面中的下拉选项
+   */
+  async function loadReferenceData(): Promise<void> {
+    const [factions, races, classes, locations] = await Promise.all([
+      adminService.getAll<any>('config_factions'),
+      adminService.getAll<any>('config_races'),
+      adminService.getAll<any>('config_classes'),
+      adminService.getAll<any>('config_locations'),
+    ]);
+    referenceFactions.value = factions.map((f: any) => ({ value: f.id, label: f.name }));
+    referenceRaces.value = races.map((r: any) => ({ value: r.id, label: r.name }));
+    referenceClasses.value = classes.map((c: any) => ({ value: c.id, label: c.name }));
+    referenceLocations.value = locations.map((l: any) => ({ value: l.id, label: l.name }));
+    referenceContinents.value = locations
+      .filter((l: any) => l.type === 'continent')
+      .map((l: any) => ({ value: l.id, label: l.name }));
+  }
+
   return {
     // 状态
     currentView,
@@ -178,6 +209,11 @@ export const useAdminStore = defineStore('admin', () => {
     formConfig,
     editingRecord,
     searchKeyword,
+    referenceFactions,
+    referenceRaces,
+    referenceClasses,
+    referenceLocations,
+    referenceContinents,
 
     // 计算属性
     currentTableMeta,
@@ -193,5 +229,6 @@ export const useAdminStore = defineStore('admin', () => {
     closeForm,
     saveRecord,
     deleteRecord,
+    loadReferenceData,
   };
 });

@@ -23,3 +23,6 @@ export * from './core';
 
 /** 导出数据服务类和实例 */
 export * from './service';
+
+/** 导出游戏状态辅助模块 */
+export * from './gameStateHelper';

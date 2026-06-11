@@ -215,14 +215,14 @@ const buyQuantity = ref(1);
 const sellQuantity = ref(1);
 
 const currentShopId = computed(() => shopStore.currentShopId || '');
-const shopName = ref<string>('商店');
-const gold = computed(() => characterStore.gold);
 
-/** 手动同步商店名称（getShopConfig 读取非响应式 Map，computed 不会自动更新） */
-function updateShopName() {
+/** 商店名称，直接从 Shop Store 响应式数据派生 */
+const shopName = computed(() => {
   const config = shopStore.getShopConfig(currentShopId.value);
-  shopName.value = config?.name || '商店';
-}
+  return config?.name || '商店';
+});
+
+const gold = computed(() => characterStore.gold);
 
 // ==================== 分类 ====================
 
@@ -288,7 +288,7 @@ function getEffectText(effect: ItemEffect | { type: string; value: number | Part
 function getSellPrice(itemId: string) {
   const itemInfo = inventoryStore.getItemInfo(itemId);
   if (!itemInfo) return 0;
-  return shopStore.calculateSellPrice(itemId, itemInfo.rarity);
+  return shopStore.calculateSellPrice(itemId);
 }
 
 /** 购买最大数量（受金币和回购剩余数量限制） */
@@ -419,9 +419,9 @@ function selectSellItem(entry: SellItemEntry, index: number) {
 
 // ==================== 买卖操作 ====================
 
-function handleBuy(itemId: string) {
+async function handleBuy(itemId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_buy' });
-  const result = shopStore.buyItem(itemId, buyQuantity.value);
+  const result = await shopStore.buyItem(itemId, buyQuantity.value);
   if (result) {
     selectedBuyEntry.value = null;
     buySelectedIndex.value = -1;
@@ -429,9 +429,9 @@ function handleBuy(itemId: string) {
   }
 }
 
-function handleSell(itemId: string) {
+async function handleSell(itemId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_sell' });
-  const result = shopStore.sellItem(itemId, sellQuantity.value);
+  const result = await shopStore.sellItem(itemId, sellQuantity.value);
   if (result) {
     selectedSellEntry.value = null;
     sellSelectedIndex.value = -1;
@@ -448,14 +448,11 @@ async function loadShopItems() {
   if (isLoading) return;
   isLoading = true;
   try {
-    // 通过 store 初始化（内部调用 shopService.init() + 恢复上次的 currentShopId）
+    // 通过 store 初始化（加载商店配置 + 恢复上次的 currentShopId）
     await shopStore.init();
 
     // 确保物品模板已加载
     await inventoryStore.loadInventory();
-
-    // 同步商店名称（init 填充非响应式 Map 后必须手动更新）
-    updateShopName();
 
     // 切换商店时强制刷新（await 确保 DB 写入完成）
     await shopStore.refreshItems();

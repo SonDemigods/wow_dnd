@@ -5,25 +5,10 @@
  */
 
 import type { Stats, FactionData, RaceData, ClassData } from '../character/types';
+import type { OperationResult, PaginatedResult } from '../data/types';
 
-/**
- * 基础数据操作结果接口
- */
-export interface GameDataOperationResult<T = void> {
-  success: boolean;
-  error?: string;
-  data?: T;
-}
-
-/**
- * 分页查询结果接口
- */
-export interface PaginatedResult<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
+// 重新导出共享类型，保持向后兼容
+export type { OperationResult as GameDataOperationResult, PaginatedResult } from '../data/types';
 
 /**
  * 阵营创建/更新数据接口

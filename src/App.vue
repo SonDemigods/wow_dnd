@@ -1,24 +1,26 @@
 <template>
   <div id="app" class="app-container">
-    <div v-if="gameState === 'character-select'" class="character-select-screen">
-      <div class="screen-header">
-        <h1>魔兽世界：地下城</h1>
-        <p class="subtitle">World of Warcraft: Dungeons & Dragons</p>
+    <template v-if="!loading">
+      <div v-if="gameState === 'character-select'" class="character-select-screen">
+        <div class="screen-header">
+          <h1>魔兽世界：地下城</h1>
+          <p class="subtitle">World of Warcraft: Dungeons & Dragons</p>
+        </div>
+        <CharacterSelect 
+          ref="characterSelectRef"
+          @select="handleCharacterSelect" 
+          @create="showCreateModal = true"
+        />
       </div>
-      <CharacterSelect 
-        ref="characterSelectRef"
-        @select="handleCharacterSelect" 
-        @create="showCreateModal = true"
-      />
-    </div>
 
-    <div v-else-if="gameState === 'game'" class="game-screen">
-      <GameMain ref="gameMainRef" @exit="handleExit" />
-    </div>
+      <div v-else-if="gameState === 'game'" class="game-screen">
+        <GameMain ref="gameMainRef" @exit="handleExit" />
+      </div>
 
-    <div v-else-if="gameState === 'admin'" class="admin-screen">
-      <AdminLayout @exit="handleAdminExit" />
-    </div>
+      <div v-else-if="gameState === 'admin'" class="admin-screen">
+        <AdminLayout @exit="handleAdminExit" />
+      </div>
+    </template>
 
     <div v-if="showCreateModal" class="modal-overlay">
       <div class="modal-content">
@@ -67,6 +69,8 @@ type GameState = 'character-select' | 'game' | 'admin';
 
 /** 当前游戏界面状态 */
 const gameState = ref<GameState>('character-select');
+/** 是否正在初始化，初始化完成前不渲染任何视图，避免页面闪烁 */
+const loading = ref(true);
 /** 是否显示角色创建弹窗 */
 const showCreateModal = ref(false);
 /** 是否显示退出确认弹窗 */
@@ -86,11 +90,13 @@ onMounted(async () => {
   await gameDataStore.initialize();
   await characterStore.initialize();
   // 检查是否有当前角色
-  const currentCharacterId = characterStore.getCurrentCharacterId();
+  const currentCharacterId = characterStore.getCharacterId();
   if (currentCharacterId) {
     // 如果有当前角色ID，直接进入游戏
     gameState.value = 'game';
   }
+  // 初始化完成，解除加载状态
+  loading.value = false;
 });
 
 /**

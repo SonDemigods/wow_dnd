@@ -102,8 +102,7 @@
  * @description 世界地图交互界面，支持缩放和拖拽平移，点击区域标记查看详情并进入对应探索区域
  */
 
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { mapService } from '@/modules/map';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useMapStore } from '@/modules/map';
 import { useCharacterStore } from '@/modules/character';
 import { eventBus, GameEvents } from '@/modules/bus/core';
@@ -117,7 +116,11 @@ const emit = defineEmits<{
 
 const mapStore = useMapStore();
 const characterStore = useCharacterStore();
-const zones = ref<MapZone[]>([]);
+/** 直接从 Store 读取的响应式区域列表，依赖角色等级自动刷新 */
+const zones = computed(() => {
+  if (!mapStore.initialized) return [];
+  return mapStore.getZones(characterStore.level || 1);
+});
 const selectedZone = ref<MapZone | null>(null);
 const showConfirm = ref(false);
 
@@ -201,12 +204,6 @@ function getStatusText(status: ZoneStatus) {
   return texts[status];
 }
 
-async function loadZones() {
-  const playerLevel = characterStore.level || 1;
-  // mapService 已由 GameMain 通过 mapStore.init(characterId) 初始化，直接获取区域数据即可
-  zones.value = mapService.getZones(playerLevel);
-}
-
 function selectZone(zone: MapZone) {
   selectedZone.value = zone;
   eventBus.emit(GameEvents.UI_CLICK, { source: 'map_zone' });
@@ -286,7 +283,7 @@ function onEnterZoneClick() {
 
 function onConfirmEnter() {
   if (!selectedZone.value) return;
-  const success = mapStore.enterLocation(selectedZone.value.id);
+  const success = mapStore.enterZone(selectedZone.value.id);
   if (success) {
     showConfirm.value = false;
     emit('enter-zone');
@@ -294,17 +291,6 @@ function onConfirmEnter() {
 }
 
 onMounted(() => {
-  // 监听 mapStore 初始化完成后再加载区域数据
-  // 避免 mapService.init() 异步未完成时 getZones() 返回空数组
-  watch(
-    () => mapStore.initialized,
-    (ready) => {
-      if (ready) {
-        loadZones();
-      }
-    },
-    { immediate: true }
-  );
 
   if (mapContainerRef.value) {
     // 使用 ResizeObserver 监听容器尺寸变化，自动重新计算地图尺寸

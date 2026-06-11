@@ -1033,12 +1033,6 @@ class AudioService implements IAudioService {
     });
 
     // -- 角色事件 --
-    eventBus.on(GameEvents.CHARACTER_HP_CHANGE, (data) => {
-      if (data.newHp < data.oldHp) {
-        this.playSfx('player_hurt');
-      }
-    });
-
     eventBus.on(GameEvents.CHARACTER_LEVEL_UP, () => {
       this.playSfx('level_up');
     });
@@ -1047,27 +1041,8 @@ class AudioService implements IAudioService {
       this.playSfx('death');
     });
 
-    eventBus.on(GameEvents.CHARACTER_GAIN_GOLD, () => {
-      this.playSfx('coin');
-    });
-
-    eventBus.on(GameEvents.CHARACTER_RECEIVE_HEAL, () => {
-      this.playSfx('heal');
-    });
-
     eventBus.on(GameEvents.CHARACTER_RESURRECTED, () => {
       this.playSfx('resurrect');
-    });
-
-    eventBus.on(GameEvents.CHARACTER_GAIN_EXP, () => {
-      this.playSfx('gain_exp');
-    });
-
-    eventBus.on(GameEvents.CHARACTER_MP_CHANGE, (data) => {
-      // 仅在法力增加时播放音效
-      if (data.newMp > data.oldMp) {
-        this.playSfx('mana_recover');
-      }
     });
 
     // -- 探索事件 --
@@ -1111,10 +1086,6 @@ class AudioService implements IAudioService {
 
     eventBus.on(GameEvents.SHOP_CLOSED, () => {
       this.setBgmScene('exploration');
-    });
-
-    eventBus.on(GameEvents.SHOP_REFRESHED, () => {
-      this.playSfx('shop_refresh');
     });
 
     // -- 任务事件 --
@@ -1170,16 +1141,6 @@ class AudioService implements IAudioService {
       this.playSfx('cancel');
     });
 
-    // -- 装备事件 --
-    eventBus.on(GameEvents.EQUIPMENT_CHANGE, () => {
-      this.playSfx('equip');
-    });
-
-    // -- 物品使用事件 --
-    eventBus.on(GameEvents.INVENTORY_USE_ITEM, () => {
-      this.playSfx('item_use');
-    });
-
     // -- 物品丢弃事件 --
     eventBus.on(GameEvents.ITEM_DROPPED, () => {
       this.playSfx('item_drop');
@@ -1193,20 +1154,6 @@ class AudioService implements IAudioService {
     // -- 跳过回合事件 --
     eventBus.on(GameEvents.COMBAT_SKIP_TURN, () => {
       this.playSfx('combat_skip');
-    });
-
-    // -- 放弃任务事件 --
-    eventBus.on(GameEvents.QUEST_ABANDONED, () => {
-      this.playSfx('quest_abandon');
-    });
-
-    // -- 技能记忆/遗忘事件 --
-    eventBus.on(GameEvents.SKILL_MEMORIZED, () => {
-      this.playSfx('skill_memorize');
-    });
-
-    eventBus.on(GameEvents.SKILL_FORGOTTEN, () => {
-      this.playSfx('skill_forget');
     });
 
     // -- 存档事件 --

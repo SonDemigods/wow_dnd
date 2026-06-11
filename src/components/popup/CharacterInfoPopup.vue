@@ -191,10 +191,10 @@
 
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
-import { equipmentService } from '@/modules/equipment';
-import { gameDataService } from '@/modules/gameData';
+import { useEquipmentStore } from '@/modules/equipment';
+import { useGameDataStore } from '@/modules/gameData';
 import { eventBus, GameEvents } from '@/modules/bus/core';
-import type { FactionData, RaceData, ClassData, Stats, Attributes } from '@/modules/character/types';
+import type { Stats, Attributes } from '@/modules/character/types';
 import type { EquipmentSlot } from '@/modules/equipment/types';
 import Tag from '../common/Tag.vue';
 import BasePopup from '../common/BasePopup.vue';
@@ -209,14 +209,16 @@ const emit = defineEmits<{
 }>();
 
 const characterStore = useCharacterStore();
+const equipmentStore = useEquipmentStore();
+const gameDataStore = useGameDataStore();
 
 const character = computed(() => characterStore.character);
-const stats = computed<Stats>(() => characterStore.stats);
+const stats = computed<Stats>(() => characterStore.effectiveStats);
 const attributes = computed<Attributes>(() => characterStore.attributes);
 
-const factions = ref<FactionData[]>([]);
-const races = ref<RaceData[]>([]);
-const classes = ref<ClassData[]>([]);
+const factions = computed(() => gameDataStore.factions);
+const races = computed(() => gameDataStore.races);
+const classes = computed(() => gameDataStore.classes);
 
 const currentHp = computed(() => characterStore.hp);
 const maxHp = computed(() => characterStore.maxHp);
@@ -235,16 +237,16 @@ interface SlotInfo {
   equipment: any;
 }
 
-const weaponSlots = ref<SlotInfo[]>([
-  { key: 'weapon1', name: '主手武器', equipment: null },
-  { key: 'weapon2', name: '副手武器', equipment: null }
+const weaponSlots = computed<SlotInfo[]>(() => [
+  { key: 'weapon1', name: '主手武器', equipment: equipmentStore.equipment.weapon1?.item || null },
+  { key: 'weapon2', name: '副手武器', equipment: equipmentStore.equipment.weapon2?.item || null }
 ]);
 
-const armorSlots = ref<SlotInfo[]>([
-  { key: 'armor1', name: '护甲槽1', equipment: null },
-  { key: 'armor2', name: '护甲槽2', equipment: null },
-  { key: 'armor3', name: '护甲槽3', equipment: null },
-  { key: 'armor4', name: '护甲槽4', equipment: null }
+const armorSlots = computed<SlotInfo[]>(() => [
+  { key: 'armor1', name: '护甲槽1', equipment: equipmentStore.equipment.armor1?.item || null },
+  { key: 'armor2', name: '护甲槽2', equipment: equipmentStore.equipment.armor2?.item || null },
+  { key: 'armor3', name: '护甲槽3', equipment: equipmentStore.equipment.armor3?.item || null },
+  { key: 'armor4', name: '护甲槽4', equipment: equipmentStore.equipment.armor4?.item || null }
 ]);
 
 const selectedSlot = ref<SlotInfo | null>(null);
@@ -276,9 +278,7 @@ const rarityNames: Record<string, string> = {
 };
 
 async function loadData() {
-  factions.value = await gameDataService.getAllFactions();
-  races.value = await gameDataService.getAllRaces();
-  classes.value = await gameDataService.getAllClasses();
+  await gameDataStore.loadAllData();
 }
 
 function getRaceIcon(raceId: string) {
@@ -336,36 +336,19 @@ function selectEquipment(slot: SlotInfo) {
 
 async function unequipItem(slotKey: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'unequip_btn' });
-  const result = await equipmentService.unequipItem(slotKey as EquipmentSlot);
+  const result = await equipmentStore.unequipItem(slotKey as EquipmentSlot);
   if (result) {
     selectedSlot.value = null;
-    refreshEquipment();
   }
 }
 
-function refreshEquipment() {
-  const equipment = equipmentService.getEquipment();
-  weaponSlots.value = [
-    { key: 'weapon1', name: '主手武器', equipment: equipment.weapon1?.item || null },
-    { key: 'weapon2', name: '副手武器', equipment: equipment.weapon2?.item || null }
-  ];
-  armorSlots.value = [
-    { key: 'armor1', name: '护甲槽1', equipment: equipment.armor1?.item || null },
-    { key: 'armor2', name: '护甲槽2', equipment: equipment.armor2?.item || null },
-    { key: 'armor3', name: '护甲槽3', equipment: equipment.armor3?.item || null },
-    { key: 'armor4', name: '护甲槽4', equipment: equipment.armor4?.item || null }
-  ];
-}
+
 
 onMounted(async () => {
   await loadData();
-  await equipmentService.initialize();
-  refreshEquipment();
-  
-  // 监听装备变化事件，实时刷新装备显示
-  eventBus.onGroup('characterInfoPopup', GameEvents.EQUIPMENT_CHANGE, () => {
-    refreshEquipment();
-  });
+  if (characterStore.currentCharacterId) {
+    await equipmentStore.initialize(characterStore.currentCharacterId);
+  }
 });
 
 onUnmounted(() => {

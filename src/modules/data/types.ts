@@ -14,6 +14,27 @@ import type { LocationData } from '../map/types';
 import type { ShopConfig } from '../shop/types';
 import type { MapStateStorage, GameStateStorage, ShopItemsStorage } from './core';
 
+// ==================== 通用共享类型 ====================
+
+/**
+ * 通用操作结果接口
+ */
+export interface OperationResult<T = void> {
+  success: boolean;
+  error?: string;
+  data?: T;
+}
+
+/**
+ * 分页查询结果接口
+ */
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 /**
  * 备份文件接口
  * 

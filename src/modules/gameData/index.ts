@@ -6,5 +6,5 @@
 
 export * from './types';
 export { gameDataDbService } from './db';
-export { gameDataService } from './service';
+export { factionsArrayToRecord, racesArrayToRecord, classesArrayToRecord } from './service';
 export { useGameDataStore } from './store';

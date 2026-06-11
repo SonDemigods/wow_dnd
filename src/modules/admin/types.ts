@@ -4,6 +4,11 @@
  * 定义管理后台通用的类型、接口和枚举
  */
 
+import type { OperationResult, PaginatedResult } from '../data/types';
+
+// 重新导出共享类型，保持向后兼容
+export type { OperationResult as AdminOperationResult, PaginatedResult } from '../data/types';
+
 /** 管理后台视图状态 */
 export type AdminView = 'dashboard' | 'config';
 
@@ -46,13 +51,6 @@ export const CONFIG_TABLES: ConfigTableMeta[] = [
   { key: 'shops', label: '商店', description: '商店配置', dbTable: 'config_shops' },
 ];
 
-/** 通用操作结果 */
-export interface AdminOperationResult<T = void> {
-  success: boolean;
-  error?: string;
-  data?: T;
-}
-
 /** 分页参数 */
 export interface PaginationParams {
   page: number;
@@ -60,14 +58,6 @@ export interface PaginationParams {
   sortField?: string;
   sortOrder?: 'asc' | 'desc';
   searchKeyword?: string;
-}
-
-/** 分页结果 */
-export interface PaginatedResult<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
 }
 
 /** 表单模式 */

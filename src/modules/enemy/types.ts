@@ -6,6 +6,9 @@
 import type { InventoryItem } from '../inventory/types';
 import type { Stats } from '../character/types';
 
+/** 危险等级 */
+export type DangerLevel = '普通' | '精英' | '稀有' | 'BOSS';
+
 /**
  * 敌人数据接口
  * 存储敌人的基础属性和战斗相关配置
@@ -15,7 +18,7 @@ import type { Stats } from '../character/types';
  * @property {[number, number]} damage - 伤害范围
  * @property {number} xp - 经验值奖励
  * @property {number} gold - 金币奖励
- * @property {string} dangerLevel - 危险等级
+ * @property {DangerLevel} dangerLevel - 危险等级
  * @property {boolean} [isBoss] - 是否为BOSS
  * @property {number} [physicalAttack] - 物理攻击力
  * @property {number} [physicalDefense] - 物理防御力
@@ -32,7 +35,7 @@ export interface EnemyData {
   damage: [number, number];
   xp: number;
   gold: number;
-  dangerLevel: string;
+  dangerLevel: DangerLevel;
   isBoss?: boolean;
   physicalAttack?: number;
   physicalDefense?: number;

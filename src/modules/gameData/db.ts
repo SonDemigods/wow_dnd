@@ -7,18 +7,12 @@
 import { db as gameDb, dbService } from '../data/core';
 import type { FactionData, RaceData, ClassData } from '../character/types';
 import type { FactionCreateUpdateData, RaceCreateUpdateData, ClassCreateUpdateData } from './types';
+import { generateGameDataId, filterRacesByFaction, filterClassesByRace, filterClassesByFaction } from './service';
 
 /**
  * 基础数据数据库服务类
  */
 export class GameDataDbService {
-  /**
-   * 生成唯一ID
-   */
-  private generateId(): string {
-    return `game_data_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
   // ==================== 阵营操作 ====================
 
   /**
@@ -45,7 +39,7 @@ export class GameDataDbService {
    * 创建阵营
    */
   async createFaction(data: FactionCreateUpdateData): Promise<string> {
-    const id = this.generateId();
+    const id = generateGameDataId();
     await dbService.withRetry(async () => {
       await gameDb.config_factions.add({
         id,
@@ -62,7 +56,7 @@ export class GameDataDbService {
     await dbService.withRetry(async () => {
       const existing = await gameDb.config_factions.get(id);
       if (!existing) {
-        throw new Error('阵营不存在');
+        throw new Error('Faction not found');
       }
       await gameDb.config_factions.put({
         ...existing,
@@ -79,7 +73,7 @@ export class GameDataDbService {
     await dbService.withRetry(async () => {
       const existing = await gameDb.config_factions.get(id);
       if (!existing) {
-        throw new Error('阵营不存在');
+        throw new Error('Faction not found');
       }
       await gameDb.config_factions.delete(id);
     });
@@ -108,12 +102,12 @@ export class GameDataDbService {
   }
 
   /**
-   * 根据阵营获取种族
+   * 根据阵营获取种族（委托给 service 纯函数做内存过滤）
    */
   async getRacesByFaction(factionId: string): Promise<RaceData[]> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_races.toArray();
-      return (result as unknown as RaceData[]).filter(race => race.factionId === factionId);
+      return filterRacesByFaction(result as unknown as RaceData[], factionId);
     });
   }
 
@@ -121,7 +115,7 @@ export class GameDataDbService {
    * 创建种族
    */
   async createRace(data: RaceCreateUpdateData): Promise<string> {
-    const id = this.generateId();
+    const id = generateGameDataId();
     await dbService.withRetry(async () => {
       await gameDb.config_races.add({
         id,
@@ -138,7 +132,7 @@ export class GameDataDbService {
     await dbService.withRetry(async () => {
       const existing = await gameDb.config_races.get(id);
       if (!existing) {
-        throw new Error('种族不存在');
+        throw new Error('Race not found');
       }
       await gameDb.config_races.put({
         ...existing,
@@ -155,7 +149,7 @@ export class GameDataDbService {
     await dbService.withRetry(async () => {
       const existing = await gameDb.config_races.get(id);
       if (!existing) {
-        throw new Error('种族不存在');
+        throw new Error('Race not found');
       }
       await gameDb.config_races.delete(id);
     });
@@ -184,22 +178,22 @@ export class GameDataDbService {
   }
 
   /**
-   * 根据种族获取职业
+   * 根据种族获取职业（委托给 service 纯函数做内存过滤）
    */
   async getClassesByRace(raceId: string): Promise<ClassData[]> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_classes.toArray();
-      return (result as unknown as ClassData[]).filter(cls => cls.raceIds.includes(raceId as any));
+      return filterClassesByRace(result as unknown as ClassData[], raceId);
     });
   }
 
   /**
-   * 根据阵营获取职业
+   * 根据阵营获取职业（委托给 service 纯函数做内存过滤）
    */
   async getClassesByFaction(factionId: string): Promise<ClassData[]> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_classes.toArray();
-      return (result as unknown as ClassData[]).filter(cls => cls.factionsIds.includes(factionId as any));
+      return filterClassesByFaction(result as unknown as ClassData[], factionId);
     });
   }
 
@@ -207,7 +201,7 @@ export class GameDataDbService {
    * 创建职业
    */
   async createClass(data: ClassCreateUpdateData): Promise<string> {
-    const id = this.generateId();
+    const id = generateGameDataId();
     await dbService.withRetry(async () => {
       await gameDb.config_classes.add({
         id,
@@ -224,7 +218,7 @@ export class GameDataDbService {
     await dbService.withRetry(async () => {
       const existing = await gameDb.config_classes.get(id);
       if (!existing) {
-        throw new Error('职业不存在');
+        throw new Error('Class not found');
       }
       await gameDb.config_classes.put({
         ...existing,
@@ -241,7 +235,7 @@ export class GameDataDbService {
     await dbService.withRetry(async () => {
       const existing = await gameDb.config_classes.get(id);
       if (!existing) {
-        throw new Error('职业不存在');
+        throw new Error('Class not found');
       }
       await gameDb.config_classes.delete(id);
     });

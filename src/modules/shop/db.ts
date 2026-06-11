@@ -3,29 +3,10 @@
  * 
  * 封装商店数据的 IndexedDB 操作，提供数据持久化能力
  */
-import { db as gameDb, dbService } from '../data/core';
+import { db as gameDb, dbService, type ShopConfigStorage, type ShopItemsStorage } from '../data/core';
+import { getGameState, saveGameState } from '../data/gameStateHelper';
 import type { ShopConfig, ShopItem } from './types';
-
-/**
- * 商店配置存储接口（内部使用，与 data/core.ts 的 ShopConfigStorage 对应）
- */
-interface ShopConfigStorage {
-  id: string;
-  name: string;
-  type: string;
-  icon: string;
-  refreshInterval: number;
-  priceVariation: { min: number; max: number };
-}
-
-/**
- * 商店商品存储接口（内部使用，与 data/core.ts 的 ShopItemsStorage 对应）
- */
-interface ShopItemsStorage {
-  shopId: string;
-  items: ShopItem[];
-  lastRefresh: number;
-}
+import { toRawData } from '../../utils';
 
 /**
  * 商店数据层服务
@@ -55,7 +36,7 @@ export class ShopDbService {
    */
   async getShopConfig(shopId: string): Promise<ShopConfig | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.config_shops.get(shopId) as unknown as ShopConfigStorage | undefined;
+      const result = await gameDb.config_shops.get(shopId) as ShopConfigStorage | undefined;
       if (!result) return null;
       return {
         id: result.id,
@@ -74,7 +55,7 @@ export class ShopDbService {
    */
   async getAllShopConfigs(): Promise<ShopConfig[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.config_shops.toArray() as unknown as ShopConfigStorage[];
+      const results = await gameDb.config_shops.toArray() as ShopConfigStorage[];
       return results.map(result => ({
         id: result.id,
         name: result.name,
@@ -112,11 +93,13 @@ export class ShopDbService {
    */
   async saveShopItems(shopId: string, items: ShopItem[]): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.runtime_shopItems.put({
+      // JSON 序列化去除 Vue/Proxy 包装，避免 IndexedDB DataCloneError
+      const cleanData = toRawData({
         shopId,
         items,
         lastRefresh: Date.now()
       });
+      await gameDb.runtime_shopItems.put(cleanData);
     });
   }
 
@@ -127,7 +110,7 @@ export class ShopDbService {
    */
   async getShopItems(shopId: string): Promise<ShopItem[] | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.runtime_shopItems.get(shopId) as unknown as ShopItemsStorage | undefined;
+      const result = await gameDb.runtime_shopItems.get(shopId) as ShopItemsStorage | undefined;
       if (!result) return null;
       return result.items;
     });
@@ -154,22 +137,10 @@ export class ShopDbService {
 
   /**
    * 保存当前打开的商店ID到 gameState（持久化，供页面刷新后恢复）
-   * 
-   * 使用事务确保原子性读-改-写，避免与 character/map 等模块并发写入时丢失数据。
    * @param shopId - 商店ID，null 表示关闭商店
    */
   async saveCurrentShopId(shopId: string | null): Promise<void> {
-    await dbService.withRetry(async () => {
-      await gameDb.transaction('rw', gameDb.runtime_gameState, async () => {
-        const existing = await gameDb.runtime_gameState.get('gameState');
-        await gameDb.runtime_gameState.put({
-          ...existing,
-          id: 'gameState',
-          currentShopId: shopId,
-          lastPlayedAt: new Date().toISOString()
-        });
-      });
-    });
+    await saveGameState({ currentShopId: shopId, lastPlayedAt: new Date().toISOString() });
   }
 
   /**
@@ -177,11 +148,9 @@ export class ShopDbService {
    * @returns 商店ID，未保存过则返回 null
    */
   async getCurrentShopId(): Promise<string | null> {
-    return dbService.withRetry(async () => {
-      const state = await gameDb.runtime_gameState.get('gameState');
-      if (!state) return null;
-      return (state.currentShopId as string) || null;
-    });
+    const state = await getGameState();
+    if (!state) return null;
+    return (state.currentShopId as string) || null;
   }
 }
 

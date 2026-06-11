@@ -102,7 +102,7 @@
  */
 
 import { ref, computed, onMounted, watch } from 'vue';
-import { questService } from '@/modules/quest';
+import { useQuestStore } from '@/modules/quest';
 import { useCharacterStore } from '@/modules/character';
 import { useExplorationStore } from '@/modules/exploration/store';
 import { eventBus, GameEvents } from '@/modules/bus/core';
@@ -121,6 +121,7 @@ const emit = defineEmits<{
 
 const explorationStore = useExplorationStore();
 const characterStore = useCharacterStore();
+const questStore = useQuestStore();
 const toast = useToast();
 
 const currentTab = ref<'available' | 'turnin'>('available');
@@ -130,8 +131,17 @@ function switchTab(tab: 'available' | 'turnin') {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'quest_board_tab' });
 }
 
-const availableQuests = ref<QuestDefinition[]>([]);
-const turnInQuests = ref<QuestDefinition[]>([]);
+/** 当前任务板上可接取的任务定义列表，直接从 Store 响应式数据派生 */
+const availableQuests = computed(() => {
+  const boardId = getBoardId();
+  return questStore.getQuestsFromBoard(boardId).filter(q => questStore.isQuestAvailable(q.id));
+});
+
+/** 当前任务板上可提交的任务定义列表，直接从 Store 响应式数据派生 */
+const turnInQuests = computed(() => {
+  const boardId = getBoardId();
+  return questStore.getQuestsToTurnIn(boardId);
+});
 
 const characterLevel = computed(() => characterStore.level);
 
@@ -150,12 +160,12 @@ function getBoardId(): string {
   return props.boardId || explorationStore.currentAreaId || 'village';
 }
 
-function acceptQuest(questId: string) {
+async function acceptQuest(questId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'quest_board_accept' });
   const boardId = getBoardId();
-  const success = questService.acceptQuestFromBoard(boardId, questId);
+  const success = await questStore.acceptQuestFromBoard(boardId, questId);
   if (success) {
-    const quest = questService.getQuestDefinition(questId);
+    const quest = questStore.getQuestDefinition(questId);
     toast.show({ message: `已接受任务: ${quest?.title || questId}`, type: 'success', icon: '✅' });
     loadQuests();
   } else {
@@ -163,12 +173,12 @@ function acceptQuest(questId: string) {
   }
 }
 
-function turnInQuest(questId: string) {
+async function turnInQuest(questId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'quest_board_turnin' });
   const boardId = getBoardId();
-  const success = questService.turnInQuestToBoard(boardId, questId);
+  const success = await questStore.turnInQuestToBoard(boardId, questId);
   if (success) {
-    const quest = questService.getQuestDefinition(questId);
+    const quest = questStore.getQuestDefinition(questId);
     toast.show({ message: `已领取奖励: ${quest?.title || questId}`, type: 'success', icon: '🏆' });
     loadQuests();
   } else {
@@ -177,13 +187,7 @@ function turnInQuest(questId: string) {
 }
 
 async function loadQuests() {
-  await questService.init();
-
-  const boardId = getBoardId();
-  // 从数据库获取指定任务板的任务
-  const boardQuests = questService.getQuestsFromBoard(boardId);
-  availableQuests.value = boardQuests.filter(q => questService.isQuestAvailable(q.id));
-  turnInQuests.value = questService.getQuestsToTurnIn(boardId);
+  await questStore.init();
 }
 
 watch(() => props.visible, (val) => {

@@ -1,19 +1,25 @@
 /**
- * 装备模块状态管理
+ * 装备模块状态管理（Store 核心架构）
  * 
- * Store 是装备数据的唯一持有者，Service 作为纯业务逻辑层供 Store 调用。
+ * Store 是装备数据的唯一持有者，所有响应式状态集中管理。
+ * Action 负责编排：调用纯函数 → 更新 Store → 调用其他 Store Action → 调用 DB 持久化。
+ * 跨模块通信通过直接调用其他 Store 的 Action 实现，不再通过 EventBus。
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { EquipmentItem, EquipmentSlot, EquippedItem } from './types';
 import type { Stats } from '../character/types';
 import type { ItemRarity } from '../inventory/types';
-import { equipmentService } from './service';
-import { eventBus, GameEvents } from '../bus/core';
+import { equipmentDbService } from './db';
+import { useLogStore } from '../log/store';
+import { generateLogId } from '../log/service';
 import { RARITY_CONFIG } from '../../config/inventory';
+import { useCharacterStore } from '../character/store';
+import { useInventoryStore } from '../inventory/store';
+import { validateSlot, computeEquipBonus, canEquipItem, getEquipmentBySlot } from './service';
 
 /**
- * 槽位配置
+ * 槽位配置（UI 展示用）
  */
 const SLOT_CONFIG: Record<EquipmentSlot, { name: string; icon: string }> = {
   weapon1: { name: '主手', icon: '⚔️' },
@@ -25,26 +31,30 @@ const SLOT_CONFIG: Record<EquipmentSlot, { name: string; icon: string }> = {
 };
 
 /**
- * 装备状态存储
+ * 获取默认空装备状态
  */
-export const useEquipmentStore = defineStore('equipment', () => {
-  // 状态
-  const equipment = ref<Record<EquipmentSlot, EquippedItem | null>>({
+function getDefaultEquipment(): Record<EquipmentSlot, EquippedItem | null> {
+  return {
     weapon1: null,
     weapon2: null,
     armor1: null,
     armor2: null,
     armor3: null,
     armor4: null
-  });
+  };
+}
+
+/**
+ * 装备状态存储
+ */
+export const useEquipmentStore = defineStore('equipment', () => {
+  // ==================== 响应式状态（Store 是唯一数据源） ====================
+  const equipment = ref<Record<EquipmentSlot, EquippedItem | null>>(getDefaultEquipment());
+  const equipmentTemplates = ref<Map<string, EquipmentItem>>(new Map());
+  const currentCharacterId = ref<string | null>(null);
   const isLoading = ref(false);
 
-  /** 从 Service 同步装备数据到 Store */
-  function syncFromService(): void {
-    equipment.value = equipmentService.getEquipment();
-  }
-
-  // 计算属性
+  // ==================== 计算属性 ====================
   const totalStats = computed<Stats>(() => {
     const stats: Stats = {
       str: 0,
@@ -54,7 +64,6 @@ export const useEquipmentStore = defineStore('equipment', () => {
       wis: 0,
       cha: 0
     };
-    
     Object.values(equipment.value).forEach(equippedItem => {
       if (equippedItem && equippedItem.item.bonus) {
         Object.keys(equippedItem.item.bonus).forEach(key => {
@@ -63,7 +72,6 @@ export const useEquipmentStore = defineStore('equipment', () => {
         });
       }
     });
-    
     return stats;
   });
 
@@ -89,123 +97,269 @@ export const useEquipmentStore = defineStore('equipment', () => {
     return slotList.value.filter(slot => !slot.isWeapon);
   });
 
-  // 方法
-  async function loadEquipment(): Promise<void> {
+  // ==================== 辅助方法 ====================
+
+  /** 持久化装备数据到数据库 */
+  async function persist(): Promise<void> {
+    if (currentCharacterId.value) {
+      await equipmentDbService.saveEquipment(currentCharacterId.value, equipment.value);
+    }
+  }
+
+  // ==================== Action：初始化 ====================
+
+  /**
+   * 初始化装备模块：从 DB 加载装备数据和模板
+   * @param characterId - 角色ID
+   */
+  async function initialize(characterId: string): Promise<void> {
     isLoading.value = true;
-    await equipmentService.initialize();
-    syncFromService();
+    currentCharacterId.value = characterId;
+
+    // 从 DB 加载装备数据
+    equipment.value = await equipmentDbService.getEquipment(characterId);
+
+    // 加载装备模板
+    const templates = await equipmentDbService.getAllEquipmentTemplates();
+    const map = new Map<string, EquipmentItem>();
+    templates.forEach(item => map.set(item.id, item));
+    equipmentTemplates.value = map;
+
     isLoading.value = false;
   }
 
+  // ==================== Action：装备物品 ====================
+
+  /**
+   * 将物品装备到指定槽位
+   * @param slot - 目标槽位
+   * @param item - 装备物品
+   * @returns 是否装备成功
+   */
   async function equipItem(slot: EquipmentSlot, item: EquipmentItem): Promise<boolean> {
-    const success = await equipmentService.equipItem(slot, item);
-    if (success) {
-      syncFromService();
+    if (!currentCharacterId.value) return false;
+
+    // 1. 校验槽位
+    if (!validateSlot(item, slot)) {
+      return false;
     }
-    return success;
+
+    // 2. 检查等级要求
+    const characterStore = useCharacterStore();
+    if (item.levelRequirement && characterStore.level < item.levelRequirement) {
+      return false;
+    }
+
+    // 3. 获取当前槽位的旧装备（如果有的话，需要卸下并放回背包）
+    const currentEquipped = equipment.value[slot];
+
+    // 4. 如果有旧装备，先移除它的属性加成，并放回背包
+    if (currentEquipped) {
+      const oldBonus = computeEquipBonus(currentEquipped.item);
+      if (Object.keys(oldBonus).length > 0) {
+        await characterStore.removeBonus(oldBonus);
+      }
+
+      // 将旧装备放回背包
+      const inventoryStore = useInventoryStore();
+      inventoryStore.addItem(currentEquipped.item.id, 1);
+    }
+
+    // 5. 装备新物品
+    equipment.value[slot] = {
+      item,
+      equippedAt: Date.now()
+    };
+
+    // 6. 应用新装备的属性加成
+    const newBonus = computeEquipBonus(item);
+    if (Object.keys(newBonus).length > 0) {
+      await characterStore.applyBonus(newBonus);
+    }
+
+    // 7. 持久化到数据库
+    await persist();
+
+    // 8. 记录冒险日志
+    useLogStore().addLogEntry({
+      id: generateLogId(),
+      timestamp: Date.now(),
+      type: 'item',
+      message: `装备了：${item.name}`,
+      icon: '⚔️'
+    });
+
+    return true;
   }
 
+  // ==================== Action：卸下装备 ====================
+
+  /**
+   * 卸下指定槽位的装备
+   * @param slot - 目标槽位
+   * @returns 卸下的装备（失败返回 null）
+   */
   async function unequipItem(slot: EquipmentSlot): Promise<EquippedItem | null> {
-    const result = await equipmentService.unequipItem(slot);
-    if (result) {
-      syncFromService();
+    if (!currentCharacterId.value) return null;
+
+    const equippedItem = equipment.value[slot];
+    if (!equippedItem) return null;
+
+    // 1. 移除属性加成
+    const bonus = computeEquipBonus(equippedItem.item);
+    if (Object.keys(bonus).length > 0) {
+      const characterStore = useCharacterStore();
+      await characterStore.removeBonus(bonus);
     }
-    return result;
+
+    // 2. 清空槽位
+    equipment.value[slot] = null;
+
+    // 3. 持久化到数据库
+    await persist();
+
+    // 4. 将卸下的装备放回背包
+    const inventoryStore = useInventoryStore();
+    inventoryStore.addItem(equippedItem.item.id, 1);
+
+    // 5. 记录冒险日志
+    useLogStore().addLogEntry({
+      id: generateLogId(),
+      timestamp: Date.now(),
+      type: 'item',
+      message: `卸下了：${equippedItem.item.name}`,
+      icon: '🔽'
+    });
+
+    return equippedItem;
   }
 
+  // ==================== Action：查询 ====================
+
+  /** 获取当前装备状态（返回副本，纯查询） */
+  function getEquipment(): Record<EquipmentSlot, EquippedItem | null> {
+    return { ...equipment.value };
+  }
+
+  /** 获取指定槽位的装备 */
   function getEquippedItem(slot: EquipmentSlot): EquippedItem | null {
-    return equipmentService.getEquippedItem(slot);
+    return getEquipmentBySlot(equipment.value, slot);
   }
 
+  /**
+   * 检查物品是否可以装备
+   * @param item - 装备物品
+   * @param slot - 可选的目标槽位
+   * @returns 是否可以装备
+   */
   function canEquip(item: EquipmentItem, slot?: EquipmentSlot): boolean {
-    return equipmentService.canEquip(item, slot);
+    // 检查等级要求
+    if (item.levelRequirement) {
+      const characterStore = useCharacterStore();
+      if (characterStore.level < item.levelRequirement) {
+        return false;
+      }
+    }
+
+    // 如果指定了槽位，检查槽位是否匹配
+    if (slot) {
+      return validateSlot(item, slot);
+    }
+
+    // 未指定槽位时，检查是否有可用的兼容槽位
+    const result = canEquipItem(item, equipment.value);
+    return result.canEquip;
   }
 
+  /** 获取稀有度配置 */
   function getRarityConfig(rarity: ItemRarity) {
     return RARITY_CONFIG[rarity];
   }
 
+  /** 获取稀有度颜色 */
   function getRarityColor(rarity: ItemRarity): string {
     return RARITY_CONFIG[rarity].color;
   }
 
+  /** 获取装备模板 */
   function getEquipmentTemplate(itemId: string): EquipmentItem | null {
-    return equipmentService.getEquipmentTemplate(itemId);
+    return equipmentTemplates.value.get(itemId) || null;
   }
 
+  /** 添加装备模板 */
   function addEquipmentTemplate(item: EquipmentItem): void {
-    equipmentService.addEquipmentTemplate(item);
+    equipmentTemplates.value.set(item.id, item);
+    equipmentDbService.saveEquipmentTemplate(item);
   }
 
+  /** 删除装备模板 */
   function removeEquipmentTemplate(itemId: string): void {
-    equipmentService.removeEquipmentTemplate(itemId);
+    equipmentTemplates.value.delete(itemId);
+    equipmentDbService.deleteEquipmentTemplate(itemId);
   }
 
-  async function setCharacter(characterId: string): Promise<void> {
-    await equipmentService.setCharacter(characterId);
-    syncFromService();
-  }
-
-  function reset(): void {
-    equipmentService.reset();
-    equipment.value = {
-      weapon1: null,
-      weapon2: null,
-      armor1: null,
-      armor2: null,
-      armor3: null,
-      armor4: null
-    };
-  }
+  // ==================== Action：重置 ====================
 
   /**
-   * 跨模块事件监听（每次调用前会先清理旧监听器，防止重复注册）
+   * 重置装备模块状态（退出角色时调用）
+   * 移除所有装备属性加成，清空 Store 状态
    */
-  function setupCrossModuleListeners(): void {
-    // 先清理旧监听器，防止重复注册
-    eventBus.clearGroup('equipmentStore');
+  async function reset(): Promise<void> {
+    const charId = currentCharacterId.value;
 
-    eventBus.onGroup('equipmentStore', GameEvents.CHARACTER_SELECTED, async (data) => {
-      if (data?.characterId) {
-        await setCharacter(data.characterId);
+    // 移除所有装备属性加成
+    if (charId) {
+      const characterStore = useCharacterStore();
+      for (const eq of Object.values(equipment.value)) {
+        if (eq) {
+          const bonus = computeEquipBonus(eq.item);
+          if (Object.keys(bonus).length > 0) {
+            await characterStore.removeBonus(bonus);
+          }
+        }
       }
-    });
+    }
 
-    eventBus.onGroup('equipmentStore', GameEvents.CHARACTER_LOGOUT, () => {
-      equipment.value = {
-        weapon1: null,
-        weapon2: null,
-        armor1: null,
-        armor2: null,
-        armor3: null,
-        armor4: null
-      };
-    });
+    // 持久化清空后的装备状态
+    equipment.value = getDefaultEquipment();
+    if (charId) {
+      await equipmentDbService.saveEquipment(charId, equipment.value);
+    }
+
+    // 清空 Store 状态
+    currentCharacterId.value = null;
+    equipmentTemplates.value = new Map();
   }
 
+  // ==================== 生命周期 ====================
+
   /**
-   * 清理事件监听
+   * 清理资源
+   * Store 核心架构下无需清理事件监听，跨模块通信通过直接 Store Action 调用实现。
    */
   function dispose(): void {
-    eventBus.clearGroup('equipmentStore');
+    // 无需清理（无事件监听）
   }
 
   return {
     // 状态
     equipment,
+    equipmentTemplates,
+    currentCharacterId,
     isLoading,
-    
+
     // 计算属性
     totalStats,
     equippedCount,
     slotList,
     weaponSlots,
     armorSlots,
-    
-    // 方法
-    loadEquipment,
+
+    // Action
+    initialize,
     equipItem,
     unequipItem,
+    getEquipment,
     getEquippedItem,
     canEquip,
     getRarityConfig,
@@ -213,9 +367,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     getEquipmentTemplate,
     addEquipmentTemplate,
     removeEquipmentTemplate,
-    setCharacter,
     reset,
-    setupCrossModuleListeners,
     dispose
   };
 });

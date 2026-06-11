@@ -3,32 +3,10 @@
  * 
  * 封装角色数据的 IndexedDB 操作，提供数据持久化能力
  */
-import { db as gameDb, dbService } from '../data/core';
-import type { Character, CharacterListItem, Stats, FactionType, RaceType, ClassType } from './types';
-
-/**
- * 角色数据存储接口（内部使用，与 data/core.ts 的 CharacterDataStorage 对应）
- */
-interface CharacterDataStorage {
-  characterId: string;
-  name: string;
-  factionId: FactionType;
-  raceId: RaceType;
-  classId: ClassType;
-  level: number;
-  exp: number;
-  expToNextLevel: number;
-  gold: number;
-  baseStats: Stats;
-  currentHp: number;
-  maxHp: number;
-  currentMp: number;
-  maxMp: number;
-  bonusStats: Partial<Stats>;
-  createdTime: number;
-  lastPlayedTime: number;
-  updatedAt: number;
-}
+import { db as gameDb, dbService, type CharacterDataStorage } from '../data/core';
+import { getGameState, saveGameState } from '../data/gameStateHelper';
+import type { Character, CharacterListItem, Stats } from './types';
+import { toRawData } from '../../utils';
 
 /**
  * 角色数据层服务
@@ -52,7 +30,7 @@ export class CharacterDbService {
         createdTime: character.createdTime,
         lastPlayedTime: character.lastPlayedTime,
         updatedAt: Date.now()
-      } as unknown as import('../data/core').CharacterDataStorage);
+      } as CharacterDataStorage);
     });
   }
 
@@ -62,7 +40,7 @@ export class CharacterDbService {
    */
   async getAllCharacterListItems(): Promise<CharacterListItem[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.char_data.toArray() as unknown as CharacterDataStorage[];
+      const items = await gameDb.char_data.toArray() as CharacterDataStorage[];
       return items.map(item => ({
         id: item.characterId,
         name: item.name,
@@ -83,7 +61,7 @@ export class CharacterDbService {
    */
   async getCharacterListItem(characterId: string): Promise<CharacterListItem | null> {
     return dbService.withRetry(async () => {
-      const item = await gameDb.char_data.get(characterId) as unknown as CharacterDataStorage | undefined;
+      const item = await gameDb.char_data.get(characterId) as CharacterDataStorage | undefined;
       if (!item) return null;
       return {
         id: item.characterId,
@@ -112,7 +90,9 @@ export class CharacterDbService {
    */
   async saveCharacterData(data: CharacterDataStorage): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.char_data.put(data as unknown as import('../data/core').CharacterDataStorage);
+      // JSON 序列化去除 Vue/Proxy 包装，避免 IndexedDB DataCloneError
+      const cleanData = toRawData(data);
+      await gameDb.char_data.put(cleanData);
     });
   }
 
@@ -123,7 +103,7 @@ export class CharacterDbService {
    */
   async getCharacterData(characterId: string): Promise<CharacterDataStorage | null> {
     return dbService.withRetry(async () => {
-      return await gameDb.char_data.get(characterId) as unknown as CharacterDataStorage | null;
+      return await gameDb.char_data.get(characterId) as CharacterDataStorage | null;
     });
   }
 
@@ -142,29 +122,17 @@ export class CharacterDbService {
    * @returns 当前角色ID或null
    */
   async getGameState(): Promise<{ currentCharacterId: string | null } | null> {
-    return dbService.withRetry(async () => {
-      return await gameDb.runtime_gameState.get('gameState') as unknown as { currentCharacterId: string | null } | null;
-    });
+    const state = await getGameState();
+    if (!state) return null;
+    return { currentCharacterId: state.currentCharacterId ?? null };
   }
 
   /**
    * 保存游戏状态（当前选中角色ID）
-   * 
-   * 使用事务确保原子性读-改-写，避免与 shop/map 等模块并发写入时丢失数据。
    * @param currentCharacterId - 当前角色ID
    */
   async saveGameState(currentCharacterId: string | null): Promise<void> {
-    await dbService.withRetry(async () => {
-      await gameDb.transaction('rw', gameDb.runtime_gameState, async () => {
-        const existing = await gameDb.runtime_gameState.get('gameState');
-        await gameDb.runtime_gameState.put({
-          ...existing,
-          id: 'gameState',
-          currentCharacterId,
-          lastPlayedAt: new Date().toISOString()
-        });
-      });
-    });
+    await saveGameState({ currentCharacterId, lastPlayedAt: new Date().toISOString() });
   }
 
   /**

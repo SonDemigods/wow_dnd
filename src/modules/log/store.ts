@@ -1,72 +1,122 @@
 /**
- * @fileoverview 冒险日志模块状态管理层
- * @description 使用 Pinia 管理冒险日志状态，提供响应式数据
+ * @fileoverview 冒险日志模块状态管理层（Store 核心架构）
+ * @description Store 是日志数据的唯一持有者，Action 负责编排：
+ *   调用纯函数 → 更新 Store 状态 → 调 DB 持久化 → emit 事件通知 UI
  * @module log
  */
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import type { LogEntry, LogType } from './types';
-import { logService } from './service';
+import { generateLogId, formatLogMessage } from './service';
+import { adventureLogDbService } from './db';
+import { eventBus, GameEvents } from '../bus/core';
+
+/** 日志变更回调类型 */
+export type LogChangeCallback = () => void;
 
 export const useLogStore = defineStore('log', () => {
+  // ==================== 状态 ====================
   const logs = ref<LogEntry[]>([]);
   const currentCharacterId = ref<string | null>(null);
 
+  // ==================== 计算属性 ====================
   const logCount = computed(() => logs.value.length);
 
-  async function init(characterId: string): Promise<void> {
-    currentCharacterId.value = characterId;
-    await logService.init(characterId);
-    logs.value = logService.getLogs();
+  // ==================== 持久化 ====================
+  async function saveToDb(): Promise<void> {
+    if (currentCharacterId.value) {
+      await adventureLogDbService.saveAdventureLog(currentCharacterId.value, logs.value);
+    }
+  }
 
-    // 订阅 logService 变更，保持响应式数据同步
-    // 这样其他服务直接调用 logService.addLog() 时，Store 也会自动刷新
-    logService.subscribe(() => {
-      logs.value = logService.getLogs();
+  // ==================== 订阅者（向后兼容旧 subscribe 模式） ====================
+  const subscribers = new Set<LogChangeCallback>();
+
+  /** 基于 watch 实现的 subscribe —— 向后兼容旧 API */
+  function subscribe(callback: LogChangeCallback): () => void {
+    subscribers.add(callback);
+    return () => { subscribers.delete(callback); };
+  }
+
+  // 日志变更时通知所有订阅者
+  watch(logs, () => {
+    subscribers.forEach(cb => cb());
+  }, { deep: true });
+
+  // ==================== 动作 ====================
+
+  /**
+   * 初始化 —— 从数据库加载指定角色的日志
+   */
+  async function initialize(characterId: string): Promise<void> {
+    currentCharacterId.value = characterId;
+    const stored = await adventureLogDbService.getAdventureLog(characterId);
+    logs.value = stored?.entries || [];
+  }
+
+  /**
+   * 添加日志条目
+   * 步骤：格式化 → 插入头部 → 持久化 → emit 事件通知 UI
+   */
+  function addLogEntry(entry: LogEntry): void {
+    const formatted = formatLogMessage(entry);
+    logs.value = [formatted, ...logs.value];
+    saveToDb();
+    eventBus.emit(GameEvents.LOG_ENTRY_ADDED, {
+      type: formatted.type,
+      message: formatted.message,
+      icon: formatted.icon
     });
   }
 
-  function addLog(entry: LogEntry): void {
-    logService.addLog(entry);
-    logs.value = logService.getLogs();
-  }
-
-  function addLogWithType(message: string, type: LogType): void {
-    const entry: LogEntry = {
-      id: logService.generateLogId(),
+  /**
+   * 便捷方法：按类型和消息创建日志条目
+   */
+  function addLogByType(message: string, type: LogType): void {
+    addLogEntry({
+      id: generateLogId(),
       timestamp: Date.now(),
       type,
       message
-    };
-    addLog(entry);
+    });
   }
 
+  /** 获取所有日志 */
   function getLogs(): LogEntry[] {
-    return logService.getLogs();
+    return logs.value;
   }
 
+  /** 按类型筛选日志 */
   function getLogsByType(type: LogType): LogEntry[] {
-    return logService.getLogsByType(type);
+    return logs.value.filter(log => log.type === type);
   }
 
-  function clearLogs(): void {
-    logService.clearLogs();
-    logs.value = [];
-  }
-
+  /** 获取日志数量 */
   function getLogCount(): number {
-    return logService.getLogCount();
+    return logs.value.length;
+  }
+
+  /** 清空日志并持久化 */
+  async function clearLogs(): Promise<void> {
+    logs.value = [];
+    await saveToDb();
   }
 
   return {
+    // 状态
     logs,
     logCount,
-    init,
-    addLog,
-    addLogWithType,
+
+    // 动作
+    initialize,
+    addLogEntry,
+    addLogByType,
     getLogs,
     getLogsByType,
+    getLogCount,
     clearLogs,
-    getLogCount
+
+    // 向后兼容
+    subscribe
   };
 });

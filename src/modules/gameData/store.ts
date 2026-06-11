@@ -1,13 +1,13 @@
 /**
- * 基础数据管理模块状态管理
- * 
- * 使用 Pinia 管理阵营、种族、职业等基础数据的状态
+ * 基础数据管理模块状态管理（Store 核心架构）
+ *
+ * Store 是基础数据的唯一持有者，Action 负责编排：
+ *   直接调 DB → 更新 Store 状态 → emit 事件通知其他模块
  */
-
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { FactionData, RaceData, ClassData, RaceType, FactionType } from '../character/types';
-import { gameDataService } from './service';
+import { gameDataDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
 
 /**
@@ -15,72 +15,72 @@ import { eventBus, GameEvents } from '../bus/core';
  */
 export const useGameDataStore = defineStore('gameData', () => {
   // ==================== 状态 ====================
-  
+
   /** 阵营列表 */
   const factions = ref<FactionData[]>([]);
-  
+
   /** 种族列表 */
   const races = ref<RaceData[]>([]);
-  
+
   /** 职业列表 */
   const classes = ref<ClassData[]>([]);
-  
+
   /** 是否正在加载 */
   const isLoading = ref(false);
-  
+
   /** 当前选中的阵营ID */
   const selectedFactionId = ref<string | null>(null);
-  
+
   /** 当前选中的种族ID */
   const selectedRaceId = ref<string | null>(null);
-  
+
   /** 当前选中的职业ID */
   const selectedClassId = ref<string | null>(null);
-  
+
   // ==================== 计算属性 ====================
-  
+
   /** 根据ID获取阵营 */
   const getFactionById = computed(() => (id: string) => {
     return factions.value.find(f => f.id === id) || null;
   });
-  
+
   /** 根据ID获取种族 */
   const getRaceById = computed(() => (id: string) => {
     return races.value.find(r => r.id === id) || null;
   });
-  
+
   /** 根据ID获取职业 */
   const getClassById = computed(() => (id: string) => {
     return classes.value.find(c => c.id === id) || null;
   });
-  
+
   /** 根据阵营获取种族 */
   const getRacesByFaction = computed(() => (factionId: string) => {
     return races.value.filter(r => r.factionId === factionId);
   });
-  
+
   /** 根据种族获取职业 */
   const getClassesByRace = computed(() => (raceId: string) => {
     return classes.value.filter(c => c.raceIds.includes(raceId as RaceType));
   });
-  
+
   /** 根据阵营获取职业 */
   const getClassesByFaction = computed(() => (factionId: string) => {
     return classes.value.filter(c => c.factionsIds.includes(factionId as FactionType));
   });
-  
+
   /** 当前选中的阵营 */
   const selectedFaction = computed(() => {
     if (!selectedFactionId.value) return null;
     return factions.value.find(f => f.id === selectedFactionId.value) || null;
   });
-  
+
   /** 当前选中的种族 */
   const selectedRace = computed(() => {
     if (!selectedRaceId.value) return null;
     return races.value.find(r => r.id === selectedRaceId.value) || null;
   });
-  
+
   /** 当前选中的职业 */
   const selectedClass = computed(() => {
     if (!selectedClassId.value) return null;
@@ -88,7 +88,6 @@ export const useGameDataStore = defineStore('gameData', () => {
   });
 
   // ==================== 快捷取值方法 ====================
-  // 直接返回 name / icon / color，避免各组件重复编写 find + 回退值逻辑
 
   const getRaceIcon = computed(() => (id: string) => {
     return races.value.find(r => r.id === id)?.icon || '👤';
@@ -114,9 +113,9 @@ export const useGameDataStore = defineStore('gameData', () => {
   const getClassColor = computed(() => (id: string) => {
     return classes.value.find(c => c.id === id)?.color || '#9d9d9d';
   });
-  
+
   // ==================== 方法 ====================
-  
+
   /**
    * 加载所有基础数据
    */
@@ -124,11 +123,11 @@ export const useGameDataStore = defineStore('gameData', () => {
     isLoading.value = true;
     try {
       const [factionsData, racesData, classesData] = await Promise.all([
-        gameDataService.getAllFactions(),
-        gameDataService.getAllRaces(),
-        gameDataService.getAllClasses()
+        gameDataDbService.getAllFactions(),
+        gameDataDbService.getAllRaces(),
+        gameDataDbService.getAllClasses()
       ]);
-      
+
       factions.value = factionsData;
       races.value = racesData;
       classes.value = classesData;
@@ -136,153 +135,208 @@ export const useGameDataStore = defineStore('gameData', () => {
       isLoading.value = false;
     }
   }
-  
+
   /**
    * 加载阵营数据
    */
   async function loadFactions(): Promise<void> {
-    factions.value = await gameDataService.getAllFactions();
+    factions.value = await gameDataDbService.getAllFactions();
   }
-  
+
   /**
    * 加载种族数据
    */
   async function loadRaces(): Promise<void> {
-    races.value = await gameDataService.getAllRaces();
+    races.value = await gameDataDbService.getAllRaces();
   }
-  
+
   /**
    * 加载职业数据
    */
   async function loadClasses(): Promise<void> {
-    classes.value = await gameDataService.getAllClasses();
+    classes.value = await gameDataDbService.getAllClasses();
   }
-  
+
   /**
    * 创建阵营
-   * @returns 是否创建成功
    */
   async function createFaction(data: Omit<FactionData, 'id'>): Promise<boolean> {
-    const result = await gameDataService.createFaction(data);
-    if (result.success) {
+    try {
+      const id = await gameDataDbService.createFaction(data);
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
+        type: 'faction',
+        action: 'create',
+        id
+      });
       await loadFactions();
       return true;
+    } catch (error) {
+      console.error('[GameDataStore] 创建阵营失败:', error);
+      return false;
     }
-    return false;
   }
-  
+
   /**
    * 更新阵营
-   * @returns 是否更新成功
    */
   async function updateFaction(id: string, data: Omit<FactionData, 'id'>): Promise<boolean> {
-    const result = await gameDataService.updateFaction(id, data);
-    if (result.success) {
+    try {
+      await gameDataDbService.updateFaction(id, data);
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
+        type: 'faction',
+        action: 'update',
+        id
+      });
       await loadFactions();
       return true;
+    } catch (error) {
+      console.error('[GameDataStore] 更新阵营失败:', error);
+      return false;
     }
-    return false;
   }
-  
+
   /**
    * 删除阵营
-   * @returns 是否删除成功
    */
   async function deleteFaction(id: string): Promise<boolean> {
-    const result = await gameDataService.deleteFaction(id);
-    if (result.success) {
+    try {
+      await gameDataDbService.deleteFaction(id);
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
+        type: 'faction',
+        action: 'delete',
+        id
+      });
       await loadFactions();
       if (selectedFactionId.value === id) {
         selectedFactionId.value = null;
       }
       return true;
+    } catch (error) {
+      console.error('[GameDataStore] 删除阵营失败:', error);
+      return false;
     }
-    return false;
   }
-  
+
   /**
    * 创建种族
-   * @returns 是否创建成功
    */
   async function createRace(data: Omit<RaceData, 'id'>): Promise<boolean> {
-    const result = await gameDataService.createRace(data);
-    if (result.success) {
+    try {
+      const id = await gameDataDbService.createRace(data);
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
+        type: 'race',
+        action: 'create',
+        id
+      });
       await loadRaces();
       return true;
+    } catch (error) {
+      console.error('[GameDataStore] 创建种族失败:', error);
+      return false;
     }
-    return false;
   }
-  
+
   /**
    * 更新种族
-   * @returns 是否更新成功
    */
   async function updateRace(id: string, data: Omit<RaceData, 'id'>): Promise<boolean> {
-    const result = await gameDataService.updateRace(id, data);
-    if (result.success) {
+    try {
+      await gameDataDbService.updateRace(id, data);
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
+        type: 'race',
+        action: 'update',
+        id
+      });
       await loadRaces();
       return true;
+    } catch (error) {
+      console.error('[GameDataStore] 更新种族失败:', error);
+      return false;
     }
-    return false;
   }
-  
+
   /**
    * 删除种族
-   * @returns 是否删除成功
    */
   async function deleteRace(id: string): Promise<boolean> {
-    const result = await gameDataService.deleteRace(id);
-    if (result.success) {
+    try {
+      await gameDataDbService.deleteRace(id);
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
+        type: 'race',
+        action: 'delete',
+        id
+      });
       await loadRaces();
       if (selectedRaceId.value === id) {
         selectedRaceId.value = null;
       }
       return true;
+    } catch (error) {
+      console.error('[GameDataStore] 删除种族失败:', error);
+      return false;
     }
-    return false;
   }
-  
+
   /**
    * 创建职业
-   * @returns 是否创建成功
    */
   async function createClass(data: Omit<ClassData, 'id'>): Promise<boolean> {
-    const result = await gameDataService.createClass(data);
-    if (result.success) {
+    try {
+      const id = await gameDataDbService.createClass(data);
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
+        type: 'class',
+        action: 'create',
+        id
+      });
       await loadClasses();
       return true;
+    } catch (error) {
+      console.error('[GameDataStore] 创建职业失败:', error);
+      return false;
     }
-    return false;
   }
-  
+
   /**
    * 更新职业
    */
   async function updateClass(id: string, data: Omit<ClassData, 'id'>): Promise<boolean> {
-    const result = await gameDataService.updateClass(id, data);
-    if (result.success) {
+    try {
+      await gameDataDbService.updateClass(id, data);
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
+        type: 'class',
+        action: 'update',
+        id
+      });
       await loadClasses();
       return true;
+    } catch (error) {
+      console.error('[GameDataStore] 更新职业失败:', error);
+      return false;
     }
-    return false;
   }
-  
+
   /**
    * 删除职业
-   * @returns 是否删除成功
    */
   async function deleteClass(id: string): Promise<boolean> {
-    const result = await gameDataService.deleteClass(id);
-    if (result.success) {
+    try {
+      await gameDataDbService.deleteClass(id);
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
+        type: 'class',
+        action: 'delete',
+        id
+      });
       await loadClasses();
       if (selectedClassId.value === id) {
         selectedClassId.value = null;
       }
       return true;
+    } catch (error) {
+      console.error('[GameDataStore] 删除职业失败:', error);
+      return false;
     }
-    return false;
   }
-  
+
   /**
    * 选择阵营
    */
@@ -293,7 +347,7 @@ export const useGameDataStore = defineStore('gameData', () => {
       selectedClassId.value = null;
     }
   }
-  
+
   /**
    * 选择种族
    */
@@ -303,14 +357,14 @@ export const useGameDataStore = defineStore('gameData', () => {
       selectedClassId.value = null;
     }
   }
-  
+
   /**
    * 选择职业
    */
   function selectClass(id: string | null): void {
     selectedClassId.value = id;
   }
-  
+
   /**
    * 重置选中状态
    */
@@ -319,16 +373,16 @@ export const useGameDataStore = defineStore('gameData', () => {
     selectedRaceId.value = null;
     selectedClassId.value = null;
   }
-  
+
   /**
    * 初始化
+   * 直接调用 loadAllData 加载基础数据，并通过 EventBus 通知其他模块已完成初始化。
+   * 注意：不再自监听 GAME_DATA_UPDATED，CRUD 操作后直接调用对应 load 方法刷新
    */
   async function initialize(): Promise<void> {
     await loadAllData();
-    
-    eventBus.onGroup('gameDataStore', GameEvents.GAME_DATA_UPDATED, async () => {
-      await loadAllData();
-    });
+    // 通知其他模块基础数据已就绪
+    eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: 'init', action: 'bulk', id: '*' });
   }
 
   /**
@@ -337,7 +391,7 @@ export const useGameDataStore = defineStore('gameData', () => {
   function dispose(): void {
     eventBus.clearGroup('gameDataStore');
   }
-  
+
   return {
     // 状态
     factions,
@@ -347,7 +401,7 @@ export const useGameDataStore = defineStore('gameData', () => {
     selectedFactionId,
     selectedRaceId,
     selectedClassId,
-    
+
     // 计算属性
     getFactionById,
     getRaceById,
@@ -358,7 +412,7 @@ export const useGameDataStore = defineStore('gameData', () => {
     selectedFaction,
     selectedRace,
     selectedClass,
-    
+
     // 快捷取值方法
     getRaceIcon,
     getRaceName,
@@ -368,7 +422,7 @@ export const useGameDataStore = defineStore('gameData', () => {
     getClassIcon,
     getClassName,
     getClassColor,
-    
+
     // 方法
     loadAllData,
     loadFactions,
