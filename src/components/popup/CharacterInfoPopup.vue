@@ -192,7 +192,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { useEquipmentStore } from '@/modules/equipment';
-import { useGameDataStore } from '@/modules/gameData';
+import { useBaseStore } from '@/modules/base';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { Stats, Attributes } from '@/modules/character/types';
 import type { EquipmentSlot } from '@/modules/equipment/types';
@@ -210,15 +210,15 @@ const emit = defineEmits<{
 
 const characterStore = useCharacterStore();
 const equipmentStore = useEquipmentStore();
-const gameDataStore = useGameDataStore();
+const baseStore = useBaseStore();
 
 const character = computed(() => characterStore.character);
 const stats = computed<Stats>(() => characterStore.effectiveStats);
 const attributes = computed<Attributes>(() => characterStore.attributes);
 
-const factions = computed(() => gameDataStore.factions);
-const races = computed(() => gameDataStore.races);
-const classes = computed(() => gameDataStore.classes);
+const factions = computed(() => baseStore.factions);
+const races = computed(() => baseStore.races);
+const classes = computed(() => baseStore.classes);
 
 const currentHp = computed(() => characterStore.hp);
 const maxHp = computed(() => characterStore.maxHp);
@@ -278,7 +278,7 @@ const rarityNames: Record<string, string> = {
 };
 
 async function loadData() {
-  await gameDataStore.loadAllData();
+  await baseStore.loadAllData();
 }
 
 function getRaceIcon(raceId: string) {

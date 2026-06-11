@@ -61,7 +61,7 @@ import AdminLayout from './components/admin/AdminLayout.vue';
 import ConfirmPopup from './components/common/ConfirmPopup.vue';
 import Toast from './components/common/Toast.vue';
 import { useCharacterStore } from './modules/character';
-import { useGameDataStore } from './modules/gameData';
+import { useBaseStore } from './modules/base';
 import { useToast } from './composables/useToast';
 
 /** 游戏界面状态：角色选择 | 游戏中 | 后台管理 */
@@ -79,7 +79,7 @@ const showExitConfirm = ref(false);
 const characterSelectRef = ref<InstanceType<typeof CharacterSelect>>();
 
 const characterStore = useCharacterStore();
-const gameDataStore = useGameDataStore();
+const baseStore = useBaseStore();
 const toast = useToast();
 
 onMounted(async () => {
@@ -87,7 +87,7 @@ onMounted(async () => {
   (window as any).__gameState = gameState;
 
   // 先初始化基础数据（阵营、种族、职业），再初始化角色模块
-  await gameDataStore.initialize();
+  await baseStore.initialize();
   await characterStore.initialize();
   // 检查是否有当前角色
   const currentCharacterId = characterStore.getCharacterId();

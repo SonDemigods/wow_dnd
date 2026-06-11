@@ -9,8 +9,8 @@ import type { FactionData, RaceData, ClassData } from '../character/types';
 /**
  * 生成唯一 ID
  */
-export function generateGameDataId(): string {
-  return `game_data_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+export function generateBaseId(): string {
+  return `base_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
 /**

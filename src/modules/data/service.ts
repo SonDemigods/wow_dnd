@@ -141,7 +141,7 @@ export class DataInitializer {
 
       console.log('游戏数据初始化完成');
       
-      // 通知 gameDataStore 重新加载最新数据
+      // 通知 baseStore 重新加载最新数据
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: 'init', action: 'bulk', id: '*' });
     } catch (error) {
       console.error('初始化游戏数据失败:', error);

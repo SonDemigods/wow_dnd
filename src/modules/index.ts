@@ -13,7 +13,7 @@ export * from './quest';
 export * from './skill';
 export * from './exploration';
 export * from './map';
-export * from './gameData';
+export * from './base';
 export * from './enemy';
 export * from './equipment';
 export * from './log';

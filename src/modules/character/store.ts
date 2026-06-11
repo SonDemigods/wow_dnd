@@ -9,7 +9,7 @@ import { ref, computed } from 'vue';
 import type { Character, CharacterListItem, Stats, Attributes, FactionType, RaceType, ClassType, FactionData, RaceData, ClassData, CreateCharacterParams } from './types';
 import { characterDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
-import { useGameDataStore } from '../gameData/store';
+import { useBaseStore } from '../base/store';
 import { skillsDbService } from '../skill/db';
 import { inventoryDbService } from '../inventory/db';
 import { equipmentDbService } from '../equipment/db';
@@ -119,11 +119,11 @@ export const useCharacterStore = defineStore('character', () => {
   // ==================== Action：初始化 ====================
 
   async function initialize(): Promise<void> {
-    // 从 gameDataStore 获取基础数据
-    const gameDataStore = useGameDataStore();
-    factionsData.value = Object.fromEntries(gameDataStore.factions.map(f => [f.id, f]));
-    racesData.value = Object.fromEntries(gameDataStore.races.map(r => [r.id, r]));
-    classesData.value = Object.fromEntries(gameDataStore.classes.map(c => [c.id, c]));
+    // 从 baseStore 获取基础数据
+    const baseStore = useBaseStore();
+    factionsData.value = Object.fromEntries(baseStore.factions.map(f => [f.id, f]));
+    racesData.value = Object.fromEntries(baseStore.races.map(r => [r.id, r]));
+    classesData.value = Object.fromEntries(baseStore.classes.map(c => [c.id, c]));
 
     // 从数据库恢复上次登录的角色
     const gameState = await characterDbService.getGameState();

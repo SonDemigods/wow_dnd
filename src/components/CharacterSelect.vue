@@ -53,19 +53,19 @@
         :key="char.id"
         class="character-card"
         :class="{ selected: selectedId === char.id }"
-        :style="{ '--class-color': gameDataStore.getClassColor(char.classId), '--faction-color': gameDataStore.getFactionColor(char.factionId) }"
+        :style="{ '--class-color': baseStore.getClassColor(char.classId), '--faction-color': baseStore.getFactionColor(char.factionId) }"
         @click="selectCharacter(char.id)"
       >
-        <div class="char-icon">{{ gameDataStore.getRaceIcon(char.raceId) }}</div>
+        <div class="char-icon">{{ baseStore.getRaceIcon(char.raceId) }}</div>
         <div class="char-info">
           <div class="char-header">
             <span class="char-name">{{ char.name }}</span>
             <span class="char-level">Lv.{{ char.level }}</span>
           </div>
           <div class="char-details">
-            <Tag type="faction" :text="gameDataStore.getFactionName(char.factionId)" :color="gameDataStore.getFactionColor(char.factionId)" />
-            <Tag type="race" :text="gameDataStore.getRaceName(char.raceId)" />
-            <Tag type="class" :text="gameDataStore.getClassName(char.classId)" :color="gameDataStore.getClassColor(char.classId)" />
+            <Tag type="faction" :text="baseStore.getFactionName(char.factionId)" :color="baseStore.getFactionColor(char.factionId)" />
+            <Tag type="race" :text="baseStore.getRaceName(char.raceId)" />
+            <Tag type="class" :text="baseStore.getClassName(char.classId)" :color="baseStore.getClassColor(char.classId)" />
           </div>
         </div>
         <div class="char-delete" @click.stop="deleteCharacter(char.id)">🗑️</div>
@@ -107,7 +107,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import Tag from './common/Tag.vue';
-import { useGameDataStore } from '@/modules/gameData';
+import { useBaseStore } from '@/modules/base';
 import type { CharacterListItem } from '@/modules/character';
 import type { ImportResult } from '@/modules/data';
 
@@ -116,7 +116,7 @@ const emit = defineEmits<{
   (e: 'create'): void;
 }>();
 
-const gameDataStore = useGameDataStore();
+const baseStore = useBaseStore();
 const characterStore = useCharacterStore();
 
 /** 直接从 Store 读取的响应式角色列表 */
@@ -136,7 +136,7 @@ const importSuccess = ref(false);
 const importMessage = ref('');
 
 async function loadData() {
-  await gameDataStore.loadAllData();
+  await baseStore.loadAllData();
 }
 
 async function loadCharacters() {

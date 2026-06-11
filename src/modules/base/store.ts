@@ -7,13 +7,13 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { FactionData, RaceData, ClassData, RaceType, FactionType } from '../character/types';
-import { gameDataDbService } from './db';
+import { baseDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
 
 /**
  * 基础数据状态存储
  */
-export const useGameDataStore = defineStore('gameData', () => {
+export const useBaseStore = defineStore('base', () => {
   // ==================== 状态 ====================
 
   /** 阵营列表 */
@@ -123,9 +123,9 @@ export const useGameDataStore = defineStore('gameData', () => {
     isLoading.value = true;
     try {
       const [factionsData, racesData, classesData] = await Promise.all([
-        gameDataDbService.getAllFactions(),
-        gameDataDbService.getAllRaces(),
-        gameDataDbService.getAllClasses()
+        baseDbService.getAllFactions(),
+        baseDbService.getAllRaces(),
+        baseDbService.getAllClasses()
       ]);
 
       factions.value = factionsData;
@@ -140,21 +140,21 @@ export const useGameDataStore = defineStore('gameData', () => {
    * 加载阵营数据
    */
   async function loadFactions(): Promise<void> {
-    factions.value = await gameDataDbService.getAllFactions();
+    factions.value = await baseDbService.getAllFactions();
   }
 
   /**
    * 加载种族数据
    */
   async function loadRaces(): Promise<void> {
-    races.value = await gameDataDbService.getAllRaces();
+    races.value = await baseDbService.getAllRaces();
   }
 
   /**
    * 加载职业数据
    */
   async function loadClasses(): Promise<void> {
-    classes.value = await gameDataDbService.getAllClasses();
+    classes.value = await baseDbService.getAllClasses();
   }
 
   /**
@@ -162,7 +162,7 @@ export const useGameDataStore = defineStore('gameData', () => {
    */
   async function createFaction(data: Omit<FactionData, 'id'>): Promise<boolean> {
     try {
-      const id = await gameDataDbService.createFaction(data);
+      const id = await baseDbService.createFaction(data);
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
         type: 'faction',
         action: 'create',
@@ -171,7 +171,7 @@ export const useGameDataStore = defineStore('gameData', () => {
       await loadFactions();
       return true;
     } catch (error) {
-      console.error('[GameDataStore] 创建阵营失败:', error);
+      console.error('[BaseStore] 创建阵营失败:', error);
       return false;
     }
   }
@@ -181,7 +181,7 @@ export const useGameDataStore = defineStore('gameData', () => {
    */
   async function updateFaction(id: string, data: Omit<FactionData, 'id'>): Promise<boolean> {
     try {
-      await gameDataDbService.updateFaction(id, data);
+      await baseDbService.updateFaction(id, data);
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
         type: 'faction',
         action: 'update',
@@ -190,7 +190,7 @@ export const useGameDataStore = defineStore('gameData', () => {
       await loadFactions();
       return true;
     } catch (error) {
-      console.error('[GameDataStore] 更新阵营失败:', error);
+      console.error('[BaseStore] 更新阵营失败:', error);
       return false;
     }
   }
@@ -200,7 +200,7 @@ export const useGameDataStore = defineStore('gameData', () => {
    */
   async function deleteFaction(id: string): Promise<boolean> {
     try {
-      await gameDataDbService.deleteFaction(id);
+      await baseDbService.deleteFaction(id);
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
         type: 'faction',
         action: 'delete',
@@ -212,7 +212,7 @@ export const useGameDataStore = defineStore('gameData', () => {
       }
       return true;
     } catch (error) {
-      console.error('[GameDataStore] 删除阵营失败:', error);
+      console.error('[BaseStore] 删除阵营失败:', error);
       return false;
     }
   }
@@ -222,7 +222,7 @@ export const useGameDataStore = defineStore('gameData', () => {
    */
   async function createRace(data: Omit<RaceData, 'id'>): Promise<boolean> {
     try {
-      const id = await gameDataDbService.createRace(data);
+      const id = await baseDbService.createRace(data);
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
         type: 'race',
         action: 'create',
@@ -231,7 +231,7 @@ export const useGameDataStore = defineStore('gameData', () => {
       await loadRaces();
       return true;
     } catch (error) {
-      console.error('[GameDataStore] 创建种族失败:', error);
+      console.error('[BaseStore] 创建种族失败:', error);
       return false;
     }
   }
@@ -241,7 +241,7 @@ export const useGameDataStore = defineStore('gameData', () => {
    */
   async function updateRace(id: string, data: Omit<RaceData, 'id'>): Promise<boolean> {
     try {
-      await gameDataDbService.updateRace(id, data);
+      await baseDbService.updateRace(id, data);
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
         type: 'race',
         action: 'update',
@@ -250,7 +250,7 @@ export const useGameDataStore = defineStore('gameData', () => {
       await loadRaces();
       return true;
     } catch (error) {
-      console.error('[GameDataStore] 更新种族失败:', error);
+      console.error('[BaseStore] 更新种族失败:', error);
       return false;
     }
   }
@@ -260,7 +260,7 @@ export const useGameDataStore = defineStore('gameData', () => {
    */
   async function deleteRace(id: string): Promise<boolean> {
     try {
-      await gameDataDbService.deleteRace(id);
+      await baseDbService.deleteRace(id);
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
         type: 'race',
         action: 'delete',
@@ -272,7 +272,7 @@ export const useGameDataStore = defineStore('gameData', () => {
       }
       return true;
     } catch (error) {
-      console.error('[GameDataStore] 删除种族失败:', error);
+      console.error('[BaseStore] 删除种族失败:', error);
       return false;
     }
   }
@@ -282,7 +282,7 @@ export const useGameDataStore = defineStore('gameData', () => {
    */
   async function createClass(data: Omit<ClassData, 'id'>): Promise<boolean> {
     try {
-      const id = await gameDataDbService.createClass(data);
+      const id = await baseDbService.createClass(data);
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
         type: 'class',
         action: 'create',
@@ -291,7 +291,7 @@ export const useGameDataStore = defineStore('gameData', () => {
       await loadClasses();
       return true;
     } catch (error) {
-      console.error('[GameDataStore] 创建职业失败:', error);
+      console.error('[BaseStore] 创建职业失败:', error);
       return false;
     }
   }
@@ -301,7 +301,7 @@ export const useGameDataStore = defineStore('gameData', () => {
    */
   async function updateClass(id: string, data: Omit<ClassData, 'id'>): Promise<boolean> {
     try {
-      await gameDataDbService.updateClass(id, data);
+      await baseDbService.updateClass(id, data);
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
         type: 'class',
         action: 'update',
@@ -310,7 +310,7 @@ export const useGameDataStore = defineStore('gameData', () => {
       await loadClasses();
       return true;
     } catch (error) {
-      console.error('[GameDataStore] 更新职业失败:', error);
+      console.error('[BaseStore] 更新职业失败:', error);
       return false;
     }
   }
@@ -320,7 +320,7 @@ export const useGameDataStore = defineStore('gameData', () => {
    */
   async function deleteClass(id: string): Promise<boolean> {
     try {
-      await gameDataDbService.deleteClass(id);
+      await baseDbService.deleteClass(id);
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
         type: 'class',
         action: 'delete',
@@ -332,7 +332,7 @@ export const useGameDataStore = defineStore('gameData', () => {
       }
       return true;
     } catch (error) {
-      console.error('[GameDataStore] 删除职业失败:', error);
+      console.error('[BaseStore] 删除职业失败:', error);
       return false;
     }
   }
@@ -389,7 +389,7 @@ export const useGameDataStore = defineStore('gameData', () => {
    * 清理事件监听
    */
   function dispose(): void {
-    eventBus.clearGroup('gameDataStore');
+    eventBus.clearGroup('baseStore');
   }
 
   return {

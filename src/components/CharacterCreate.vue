@@ -24,7 +24,7 @@
       <div v-if="currentStep === 1" class="step-grid">
         <div class="faction-grid">
           <button
-            v-for="faction in gameDataStore.factions.filter(
+            v-for="faction in baseStore.factions.filter(
               (f) => f.id !== 'neutral'
             )"
             :key="faction.id"
@@ -112,7 +112,7 @@
         <div class="character-preview">
           <div class="preview-row">
             <div class="preview-avatar">
-              {{ gameDataStore.getRaceIcon(selectedRace || '') }}
+              {{ baseStore.getRaceIcon(selectedRace || '') }}
             </div>
             <div class="name-input-wrapper">
               <input
@@ -126,17 +126,17 @@
           <div class="preview-details">
             <Tag
               type="faction"
-              :text="gameDataStore.getFactionName(selectedFaction || '')"
-              :color="gameDataStore.getFactionColor(selectedFaction || '')"
+              :text="baseStore.getFactionName(selectedFaction || '')"
+              :color="baseStore.getFactionColor(selectedFaction || '')"
             />
             <Tag
               type="race"
-              :text="gameDataStore.getRaceName(selectedRace || '')"
+              :text="baseStore.getRaceName(selectedRace || '')"
             />
             <Tag
               type="class"
-              :text="gameDataStore.getClassName(selectedClass || '')"
-              :color="gameDataStore.getClassColor(selectedClass || '')"
+              :text="baseStore.getClassName(selectedClass || '')"
+              :color="baseStore.getClassColor(selectedClass || '')"
             />
           </div>
         </div>
@@ -258,7 +258,7 @@
 
 import { ref, computed, onMounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
-import { useGameDataStore } from '@/modules/gameData';
+import { useBaseStore } from '@/modules/base';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import Tag from './common/Tag.vue';
 import type {
@@ -279,7 +279,7 @@ import {
 } from '@/utils/calculations';
 
 const characterStore = useCharacterStore();
-const gameDataStore = useGameDataStore();
+const baseStore = useBaseStore();
 
 const emit = defineEmits<{
   (e: 'created'): void;
@@ -304,7 +304,7 @@ const currentStepTitle = computed(() => {
     case 1:
       return '请选择阵营';
     case 2:
-      return `请选择种族 (${gameDataStore.getFactionName(selectedFaction.value || '')})`;
+      return `请选择种族 (${baseStore.getFactionName(selectedFaction.value || '')})`;
     case 3:
       return '请选择职业';
     case 4:
@@ -315,19 +315,19 @@ const currentStepTitle = computed(() => {
 });
 
 const neutralFaction = computed(() => {
-  return gameDataStore.factions.find((f) => f.id === 'neutral');
+  return baseStore.factions.find((f) => f.id === 'neutral');
 });
 
 const availableRaces = computed(() => {
   if (!selectedFaction.value) return [];
-  return gameDataStore.races.filter(
+  return baseStore.races.filter(
     (r) => r.factionId === selectedFaction.value
   );
 });
 
 const availableClasses = computed(() => {
   if (!selectedRace.value) return [];
-  return gameDataStore.classes.filter((c) =>
+  return baseStore.classes.filter((c) =>
     c.raceIds.includes(selectedRace.value as RaceType)
   );
 });
@@ -336,7 +336,7 @@ const currentAttributes = computed(() => {
   const base = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
 
   if (selectedRace.value) {
-    const raceData = gameDataStore.races.find(
+    const raceData = baseStore.races.find(
       (r) => r.id === selectedRace.value
     );
     if (raceData?.bonus) {
@@ -349,7 +349,7 @@ const currentAttributes = computed(() => {
   }
 
   if (selectedClass.value) {
-    const classData = gameDataStore.classes.find(
+    const classData = baseStore.classes.find(
       (c) => c.id === selectedClass.value
     );
     if (classData?.bonus) {
@@ -400,7 +400,7 @@ const canCreate = computed(() => {
 });
 
 async function loadData() {
-  await gameDataStore.loadAllData();
+  await baseStore.loadAllData();
 }
 
 function selectFaction(id: string) {
@@ -420,7 +420,7 @@ function selectClass(id: string) {
 }
 
 function getFactionRaceNames(factionId: string) {
-  const factionRaces = gameDataStore.races.filter(
+  const factionRaces = baseStore.races.filter(
     (r) => r.factionId === factionId
   );
   return factionRaces.map((r) => r.name).join(' · ');

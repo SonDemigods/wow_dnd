@@ -7,12 +7,12 @@
 import { db as gameDb, dbService } from '../data/core';
 import type { FactionData, RaceData, ClassData } from '../character/types';
 import type { FactionCreateUpdateData, RaceCreateUpdateData, ClassCreateUpdateData } from './types';
-import { generateGameDataId, filterRacesByFaction, filterClassesByRace, filterClassesByFaction } from './service';
+import { generateBaseId, filterRacesByFaction, filterClassesByRace, filterClassesByFaction } from './service';
 
 /**
  * 基础数据数据库服务类
  */
-export class GameDataDbService {
+export class BaseDbService {
   // ==================== 阵营操作 ====================
 
   /**
@@ -39,7 +39,7 @@ export class GameDataDbService {
    * 创建阵营
    */
   async createFaction(data: FactionCreateUpdateData): Promise<string> {
-    const id = generateGameDataId();
+    const id = generateBaseId();
     await dbService.withRetry(async () => {
       await gameDb.config_factions.add({
         id,
@@ -115,7 +115,7 @@ export class GameDataDbService {
    * 创建种族
    */
   async createRace(data: RaceCreateUpdateData): Promise<string> {
-    const id = generateGameDataId();
+    const id = generateBaseId();
     await dbService.withRetry(async () => {
       await gameDb.config_races.add({
         id,
@@ -201,7 +201,7 @@ export class GameDataDbService {
    * 创建职业
    */
   async createClass(data: ClassCreateUpdateData): Promise<string> {
-    const id = generateGameDataId();
+    const id = generateBaseId();
     await dbService.withRetry(async () => {
       await gameDb.config_classes.add({
         id,
@@ -245,4 +245,4 @@ export class GameDataDbService {
 /**
  * 基础数据数据库服务实例
  */
-export const gameDataDbService = new GameDataDbService();
+export const baseDbService = new BaseDbService();
