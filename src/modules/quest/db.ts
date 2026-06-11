@@ -37,7 +37,7 @@ export interface QuestDefinitionStorage {
   levelRequirement: number;
   xpReward: number;
   goldReward: number;
-  itemRewards?: { itemId: string; amount: number }[];
+  itemRewards?: { itemId: string; count: number }[];
   boardId: string;
 }
 
@@ -181,7 +181,7 @@ export class QuestDbService {
         levelRequirement: result.levelRequirement,
         xpReward: result.xpReward,
         goldReward: result.goldReward,
-        itemRewards: result.itemRewards?.map(r => ({ itemId: r.itemId, count: r.amount })),
+        itemRewards: result.itemRewards?.map(r => ({ itemId: r.itemId, count: r.count })),
         boardId: result.boardId
       };
     });
@@ -211,7 +211,7 @@ export class QuestDbService {
         levelRequirement: result.levelRequirement,
         xpReward: result.xpReward,
         goldReward: result.goldReward,
-        itemRewards: result.itemRewards?.map(r => ({ itemId: r.itemId, count: r.amount })),
+        itemRewards: result.itemRewards?.map(r => ({ itemId: r.itemId, count: r.count })),
         boardId: result.boardId
       }));
     });
@@ -242,7 +242,7 @@ export class QuestDbService {
         levelRequirement: result.levelRequirement,
         xpReward: result.xpReward,
         goldReward: result.goldReward,
-        itemRewards: result.itemRewards?.map(r => ({ itemId: r.itemId, count: r.amount })),
+        itemRewards: result.itemRewards?.map(r => ({ itemId: r.itemId, count: r.count })),
         boardId: result.boardId
       }));
     });

@@ -65,8 +65,9 @@ export class GameDataDbService {
         throw new Error('阵营不存在');
       }
       await gameDb.config_factions.put({
-        id,
-        ...data
+        ...existing,
+        ...data,
+        id
       });
     });
   }
@@ -140,8 +141,9 @@ export class GameDataDbService {
         throw new Error('种族不存在');
       }
       await gameDb.config_races.put({
-        id,
-        ...data
+        ...existing,
+        ...data,
+        id
       });
     });
   }
@@ -225,8 +227,9 @@ export class GameDataDbService {
         throw new Error('职业不存在');
       }
       await gameDb.config_classes.put({
-        id,
-        ...data
+        ...existing,
+        ...data,
+        id
       });
     });
   }

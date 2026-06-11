@@ -492,7 +492,7 @@ export class BackupService implements IBackupService {
 
     const combat: Record<string, unknown> = {};
     combatRecords.forEach((item: any) => {
-      combat[item.characterId] = item;
+      combat[item.battleLogId || `${item.combatId}_${item.timestamp}`] = item;
     });
 
     const adventureLog: Record<string, unknown[]> = {};

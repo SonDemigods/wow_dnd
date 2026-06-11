@@ -102,7 +102,7 @@ export interface BackupData {
   skills: Record<string, SkillsData>;
   /** 探索进度（以角色ID为键） */
   exploration: Record<string, ExplorationState>;
-  /** 战斗记录（以角色ID为键） */
+  /** 战斗记录（以 battleLogId 为键） */
   combat: Record<string, CombatLog>;
   /** 冒险日志（以角色ID为键） */
   adventureLog: Record<string, LogEntry[]>;
