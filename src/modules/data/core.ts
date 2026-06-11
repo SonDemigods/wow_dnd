@@ -3,254 +3,17 @@
  * 
  * 封装基于 Dexie 的 IndexedDB 数据库操作，提供基础的数据库管理功能，
  * 包括数据库连接、重试机制等核心能力。
+ * 
+ * 注意：Storage 类型定义已迁移到各模块的 types.ts 中。
+ * 此文件仅保留 Dexie 表声明的通用类型。
  */
 import Dexie, { Table } from 'dexie';
 import { DATABASE_CONFIG, DB_SERVICE_CONFIG, type DBServiceConfig } from '@/config/database';
 
-// ============================================================
-// 数据库存储类型定义
-// ============================================================
-// 为避免循环依赖，在 data/core.ts 中统一定义所有数据表的存储格式。
-// 各模块的 db.ts 文件应导入这些类型以实现编译期类型检查。
-
-/** 阵营存储格式 */
-export interface FactionStorage {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  description: string;
-}
-
-/** 种族存储格式 */
-export interface RaceStorage {
-  id: string;
-  name: string;
-  icon: string;
-  factionId: string;
-  bonus?: Partial<Record<string, number>>;
-  description: string;
-}
-
-/** 职业存储格式 */
-export interface ClassStorage {
-  id: string;
-  name: string;
-  icon: string;
-  primaryStat: string;
-  factionsIds: string[];
-  raceIds: string[];
-  description: string;
-  color: string;
-  bonus?: Partial<Record<string, number>>;
-}
-
-/** 物品模板存储格式 */
-export interface ItemStorage {
-  id: string;
-  name: string;
-  type: string;
-  rarity: string;
-  icon: string;
-  description: string;
-  bonus?: Partial<Record<string, number>>;
-  effect?: { type: string; value: number | Partial<Record<string, number>> } | null;
-  value: number;
-  stackable: boolean;
-  consumable?: boolean;
-  template?: string | null;
-  levelRequirement?: number | null;
-  level?: number;
-}
-
-/** 装备模板存储格式 */
-export interface EquipmentItemStorage {
-  id: string;
-  name: string;
-  type: string;
-  rarity: string;
-  icon: string;
-  description: string;
-  bonus?: Partial<Record<string, number>>;
-  effect?: { type: string; value: number | Partial<Record<string, number>> } | null;
-  value: number;
-  stackable: boolean;
-  consumable?: boolean;
-  levelRequirement?: number | null;
-  slots: string[];
-  [key: string]: unknown;
-}
-
-/** 敌人模板存储格式 */
-export interface EnemyStorage {
-  id: string;
-  name: string;
-  icon: string;
-  maxHp: number;
-  damage: [number, number];
-  xp: number;
-  gold: number;
-  dangerLevel: string;
-  isBoss?: number;
-  physicalAttack?: number | null;
-  physicalDefense?: number | null;
-  magicAttack?: number | null;
-  magicDefense?: number | null;
-  critChance?: number | null;
-  dodgeChance?: number | null;
-}
-
-/** 任务定义存储格式 */
-export interface QuestConfigStorage {
-  id: string;
-  title: string;
-  description: string;
-  type: string;
-  objectives: Array<{ key: string; type: string; description: string; target: number; [key: string]: unknown }>;
-  levelRequirement: number;
-  xpReward: number;
-  goldReward: number;
-  itemRewards?: Array<{ itemId: string; count: number }>;
-  boardId: string;
-}
-
-/** 技能模板存储格式 */
-export interface SkillConfigStorage {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-  mpCost: number;
-  type: string;
-  effect: { type: string; value: number; coefficient?: number };
-  unlockLevel: number;
-  classRestriction?: string | null;
-}
-
-/** 地点/大陆存储格式（通过 type 字段区分） */
-export interface LocationStorage {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-  type: 'location' | 'continent';
-  /** 地点特有字段 */
-  continent?: string;
-  enemies?: string[];
-  quests?: string[];
-  levelRange?: [number, number];
-  mapX?: number;
-  mapY?: number;
-  color?: string;
-  /** 大陆特有字段 */
-  position?: string;
-}
-
-/** 商店配置存储格式 */
-export interface ShopConfigStorage {
-  id: string;
-  name: string;
-  type: string;
-  icon: string;
-  refreshInterval: number;
-  priceVariation: { min: number; max: number };
-}
-
-/** 角色数据存储格式 */
-export interface CharacterDataStorage {
-  characterId: string;
-  name: string;
-  factionId: string;
-  raceId: string;
-  classId: string;
-  level: number;
-  exp: number;
-  expToNextLevel: number;
-  gold: number;
-  baseStats: Record<string, number>;
-  currentHp: number;
-  maxHp: number;
-  currentMp: number;
-  maxMp: number;
-  bonusStats: Partial<Record<string, number>>;
-  createdTime: number;
-  lastPlayedTime: number;
-  updatedAt: number;
-}
-
-/** 背包存储格式 */
-export interface InventoryStorage {
-  characterId: string;
-  items: Array<{ itemId: string; count: number }>;
-  updatedAt?: number;
-}
-
-/** 装备存储格式 */
-export interface EquipmentStorage {
-  characterId: string;
-  equipment: Record<string, { item: Record<string, unknown>; equippedAt: number } | null>;
-  updatedAt?: number;
-}
-
-/** 角色技能存储格式 */
-export interface CharSkillsStorage {
-  characterId: string;
-  skills: Array<{ id: string; name: string; [key: string]: unknown }>;
-  skillBar: { slots: [string | null, string | null, string | null, string | null] };
-  currentClass: string | null;
-  updatedAt: number;
-}
-
-/** 角色任务存储格式 */
-export interface CharQuestStorage {
-  characterId: string;
-  questId: string;
-  status: string;
-  progress: Array<{ objectiveKey: string; current: number; target: number }>;
-  acceptedAt: number;
-  completedAt?: number;
-}
-
-/** 探索进度存储格式 */
-export interface ExplorationStorage {
-  characterId: string;
-  currentAreaId: string | null;
-  /** 当前探索网格中分配的商店ID（与 runtime_gameState.currentShopId 不同） */
-  assignedShopId?: string;
-  /** 旧版本兼容字段 */
-  currentShopId?: string;
-  grid: Array<Array<{ x: number; y: number; type: string; explored: boolean; accessible: boolean; visited: boolean; [key: string]: unknown }>>;
-  playerPosition: { x: number; y: number };
-  visitedCells: number;
-  remainingMoves: number;
-  bossDefeated: boolean;
-  explorationComplete: boolean;
-  campUsed: boolean;
-  updatedAt?: number;
-}
-
-/** 战斗日志存储格式 */
-export interface CombatLogStorage {
-  combatId: string;
-  battleLogId?: string;
-  timestamp: number;
-  turn: number;
-  actorType: string;
-  actorId: string;
-  actorName: string;
-  eventType: string;
-  message: string;
-  [key: string]: unknown;
-}
-
-/** 冒险日志存储格式 */
-export interface AdventureLogStorage {
-  characterId: string;
-  entries: Array<{ id: string; timestamp: number; type: string; message: string; icon?: string }>;
-  updatedAt?: number;
-}
-
-/** 全局游戏状态存储格式 */
+/**
+ * 全局游戏状态存储格式
+ * 属于 data 模块自身的运行时状态，不归属任何业务模块
+ */
 export interface GameStateStorage {
   id: string;
   currentCharacterId?: string | null;
@@ -262,21 +25,6 @@ export interface GameStateStorage {
   [key: string]: unknown;
 }
 
-/** 地图状态存储格式 */
-export interface MapStateStorage {
-  id: string;
-  view?: { zoomLevel: number; panX: number; panY: number; currentContinentId?: string };
-  currentLocationId?: string;
-  currentTab?: string;
-}
-
-/** 商店商品存储格式 */
-export interface ShopItemsStorage {
-  shopId: string;
-  items: Array<{ itemId: string; price: number; quantity: number }>;
-  lastRefresh: number;
-}
-
 /**
  * 游戏数据库 Schema 接口定义
  * 
@@ -284,34 +32,37 @@ export interface ShopItemsStorage {
  * 1. 配置表（config_*）：游戏定义数据，所有角色共享
  * 2. 角色表（char_*）：绑定角色ID，每个角色独立
  * 3. 运行时表（runtime_*）：日志和临时状态
+ * 
+ * 表类型使用 `Table<any, string>` 作为通用类型，
+ * 具体的 Storage 类型定义在各模块的 types.ts 中。
  */
 export interface GameDatabaseSchema {
   // ==================== 配置表（config_*）====================
-  config_factions: Table<FactionStorage, string>;
-  config_races: Table<RaceStorage, string>;
-  config_classes: Table<ClassStorage, string>;
-  config_items: Table<ItemStorage, string>;
-  config_equipmentItems: Table<EquipmentItemStorage, string>;
-  config_enemies: Table<EnemyStorage, string>;
-  config_quests: Table<QuestConfigStorage, string>;
-  config_skills: Table<SkillConfigStorage, string>;
-  config_locations: Table<LocationStorage, string>;
-  config_shops: Table<ShopConfigStorage, string>;
+  config_factions: Table<any, string>;
+  config_races: Table<any, string>;
+  config_classes: Table<any, string>;
+  config_items: Table<any, string>;
+  config_equipmentItems: Table<any, string>;
+  config_enemies: Table<any, string>;
+  config_quests: Table<any, string>;
+  config_skills: Table<any, string>;
+  config_locations: Table<any, string>;
+  config_shops: Table<any, string>;
 
   // ==================== 角色表（char_*）====================
-  char_data: Table<CharacterDataStorage, string>;
-  char_inventory: Table<InventoryStorage, string>;
-  char_equipment: Table<EquipmentStorage, string>;
-  char_skills: Table<CharSkillsStorage, string>;
-  char_quests: Table<CharQuestStorage, string>;
-  char_exploration: Table<ExplorationStorage, string>;
+  char_data: Table<any, string>;
+  char_inventory: Table<any, string>;
+  char_equipment: Table<any, string>;
+  char_skills: Table<any, string>;
+  char_quests: Table<any, string>;
+  char_exploration: Table<any, string>;
 
   // ==================== 运行时表（runtime_*）====================
   runtime_gameState: Table<GameStateStorage, string>;
-  runtime_combatLogs: Table<CombatLogStorage, string>;
-  runtime_adventureLogs: Table<AdventureLogStorage, string>;
-  runtime_mapState: Table<MapStateStorage, string>;
-  runtime_shopItems: Table<ShopItemsStorage, string>;
+  runtime_combatLogs: Table<any, string>;
+  runtime_adventureLogs: Table<any, string>;
+  runtime_mapState: Table<any, string>;
+  runtime_shopItems: Table<any, string>;
 }
 
 /**
@@ -322,31 +73,31 @@ export interface GameDatabaseSchema {
  */
 export class GameDatabase extends Dexie {
   // ==================== 配置表（config_*）====================
-  config_factions!: Table<FactionStorage, string>;
-  config_races!: Table<RaceStorage, string>;
-  config_classes!: Table<ClassStorage, string>;
-  config_items!: Table<ItemStorage, string>;
-  config_equipmentItems!: Table<EquipmentItemStorage, string>;
-  config_enemies!: Table<EnemyStorage, string>;
-  config_quests!: Table<QuestConfigStorage, string>;
-  config_skills!: Table<SkillConfigStorage, string>;
-  config_locations!: Table<LocationStorage, string>;
-  config_shops!: Table<ShopConfigStorage, string>;
+  config_factions!: Table<any, string>;
+  config_races!: Table<any, string>;
+  config_classes!: Table<any, string>;
+  config_items!: Table<any, string>;
+  config_equipmentItems!: Table<any, string>;
+  config_enemies!: Table<any, string>;
+  config_quests!: Table<any, string>;
+  config_skills!: Table<any, string>;
+  config_locations!: Table<any, string>;
+  config_shops!: Table<any, string>;
 
   // ==================== 角色表（char_*）====================
-  char_data!: Table<CharacterDataStorage, string>;
-  char_inventory!: Table<InventoryStorage, string>;
-  char_equipment!: Table<EquipmentStorage, string>;
-  char_skills!: Table<CharSkillsStorage, string>;
-  char_quests!: Table<CharQuestStorage, string>;
-  char_exploration!: Table<ExplorationStorage, string>;
+  char_data!: Table<any, string>;
+  char_inventory!: Table<any, string>;
+  char_equipment!: Table<any, string>;
+  char_skills!: Table<any, string>;
+  char_quests!: Table<any, string>;
+  char_exploration!: Table<any, string>;
 
   // ==================== 运行时表（runtime_*）====================
   runtime_gameState!: Table<GameStateStorage, string>;
-  runtime_combatLogs!: Table<CombatLogStorage, string>;
-  runtime_adventureLogs!: Table<AdventureLogStorage, string>;
-  runtime_mapState!: Table<MapStateStorage, string>;
-  runtime_shopItems!: Table<ShopItemsStorage, string>;
+  runtime_combatLogs!: Table<any, string>;
+  runtime_adventureLogs!: Table<any, string>;
+  runtime_mapState!: Table<any, string>;
+  runtime_shopItems!: Table<any, string>;
 
   /**
    * 构造函数：初始化数据库连接和表结构

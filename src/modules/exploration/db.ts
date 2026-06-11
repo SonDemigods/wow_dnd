@@ -4,7 +4,7 @@
  * @module exploration
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { ExplorationStorage } from '../data/core';
+import type { ExplorationStorage } from './types';
 import type { ExplorationState } from './types';
 import { toRawData } from '../../utils';
 

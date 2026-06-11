@@ -5,36 +5,8 @@
  * 装备数据以原生对象存储，无需 JSON 序列化/反序列化。
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { EquipmentItem, EquipmentSlot, EquippedItem } from './types';
+import type { EquipmentDataStorage, EquipmentTemplateStorage, EquipmentItem, EquipmentSlot, EquippedItem } from './types';
 import { toRawData } from '../../utils';
-
-/**
- * 装备数据存储接口（存储到 char_equipment 表的结构）
- */
-export interface EquipmentDataStorage {
-  characterId: string;
-  /** 装备槽位数据（原生对象，非 JSON 字符串） */
-  equipment: Record<EquipmentSlot, EquippedItem | null>;
-  updatedAt: number;
-}
-
-/**
- * 装备模板存储接口
- */
-export interface EquipmentTemplateStorage {
-  id: string;
-  name: string;
-  type: string;
-  rarity: string;
-  icon: string;
-  description: string;
-  bonus: Record<string, number>;
-  value: number;
-  slots: EquipmentSlot[];
-  levelRequirement: number | null;
-  stackable: boolean;
-  template: string;
-}
 
 /**
  * 装备数据层服务

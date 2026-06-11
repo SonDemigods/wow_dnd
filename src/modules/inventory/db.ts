@@ -5,38 +5,8 @@
  * 背包数据以原生数组存储，无需 JSON 序列化/反序列化。
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { Item, InventoryItem, ItemEffect } from './types';
-import type { ItemStorage } from '../data/core';
+import type { Item, InventoryItem, ItemEffect, InventoryDataStorage, ItemDataStorage, ItemStorage } from './types';
 import { toRawData } from '../../utils';
-
-/**
- * 背包数据存储接口（存储到 char_inventory 表的结构）
- */
-export interface InventoryDataStorage {
-  characterId: string;
-  /** 背包物品列表（原生数组，非 JSON 字符串） */
-  items: InventoryItem[];
-  updatedAt: number;
-}
-
-/**
- * 物品数据存储接口
- */
-export interface ItemDataStorage {
-  id: string;
-  name: string;
-  type: string;
-  rarity: string;
-  level?: number;
-  icon: string;
-  description: string;
-  bonus: Record<string, number>;
-  effect: Record<string, unknown> | null;
-  value: number;
-  stackable: boolean;
-  consumable: boolean;
-  template: string | null;
-}
 
 /**
  * 背包数据层服务

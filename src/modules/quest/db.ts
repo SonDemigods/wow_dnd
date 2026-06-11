@@ -4,43 +4,8 @@
  * 封装任务数据的 IndexedDB 操作，提供数据持久化能力
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { QuestInstance, QuestDefinition } from './types';
+import type { QuestInstance, QuestDefinition, QuestInstanceStorage, QuestDefinitionStorage } from './types';
 import { toRawData } from '../../utils';
-
-/**
- * 任务实例存储接口
- */
-export interface QuestInstanceStorage {
-  questId: string;
-  status: string;
-  progress: { objectiveKey: string; current: number; target: number }[];
-  acceptedAt: number;
-  completedAt?: number;
-}
-
-/**
- * 任务定义存储接口
- */
-export interface QuestDefinitionStorage {
-  id: string;
-  title: string;
-  description: string;
-  type: string;
-  objectives: {
-    key: string;
-    type: string;
-    description: string;
-    target: number;
-    itemId?: string;
-    enemyId?: string;
-    locationId?: string;
-  }[];
-  levelRequirement: number;
-  xpReward: number;
-  goldReward: number;
-  itemRewards?: { itemId: string; count: number }[];
-  boardId: string;
-}
 
 /**
  * 任务数据层服务

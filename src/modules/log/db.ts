@@ -4,14 +4,8 @@
  * @module log
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { LogEntry } from './types';
+import type { LogEntry, AdventureLogData } from './types';
 import { toRawData } from '../../utils';
-
-export interface AdventureLogData {
-  characterId: string;
-  entries: LogEntry[];
-  updatedAt?: number;
-}
 
 export class AdventureLogDbService {
   /**

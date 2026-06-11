@@ -140,3 +140,60 @@ export interface IEquipmentService {
   getRarityColor(rarity: ItemRarity): string;
 
 }
+
+/**
+ * 装备数据存储接口（存储到 char_equipment 表的结构）
+ */
+export interface EquipmentDataStorage {
+  characterId: string;
+  /** 装备槽位数据（原生对象，非 JSON 字符串） */
+  equipment: Record<EquipmentSlot, EquippedItem | null>;
+  updatedAt: number;
+}
+
+/**
+ * 装备模板存储接口
+ */
+export interface EquipmentTemplateStorage {
+  id: string;
+  name: string;
+  type: string;
+  rarity: string;
+  icon: string;
+  description: string;
+  bonus: Record<string, number>;
+  value: number;
+  slots: EquipmentSlot[];
+  levelRequirement: number | null;
+  stackable: boolean;
+  template: string;
+}
+
+/**
+ * 装备模板存储格式
+ */
+export interface EquipmentItemStorage {
+  id: string;
+  name: string;
+  type: string;
+  rarity: string;
+  icon: string;
+  description: string;
+  bonus?: Partial<Record<string, number>>;
+  effect?: { type: string; value: number | Partial<Record<string, number>> } | null;
+  value: number;
+  stackable: boolean;
+  consumable?: boolean;
+  levelRequirement?: number | null;
+  slots: string[];
+  [key: string]: unknown;
+}
+
+/**
+ * 装备存储格式
+ */
+export interface EquipmentStorage {
+  characterId: string;
+  equipment: Record<string, { item: Record<string, unknown>; equippedAt: number } | null>;
+  updatedAt?: number;
+}

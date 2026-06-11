@@ -5,42 +5,7 @@
  * 地图状态按角色ID隔离存储，切换角色后各角色数据独立保留。
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { LocationData, MapState } from './types';
-
-/**
- * 地图状态存储接口（内部使用，与 data/core.ts 的 MapStateStorage 对应）
- */
-interface MapStateStorage {
-  id: string;
-  view: {
-    zoomLevel: number;
-    panX: number;
-    panY: number;
-    currentContinentId?: string;
-  };
-  /** 当前选中的地点ID（地图UI状态，非探索区域） */
-  currentLocationId?: string;
-  /** 当前地图标签页 */
-  currentTab?: string;
-}
-
-/**
- * 地点数据存储接口
- */
-export interface LocationDataStorage {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-  continent: string;
-  enemies?: string[];
-  quests?: string[];
-  levelRange: [number, number];
-  color: string;
-  mapX: number;
-  mapY: number;
-  type: 'location' | 'continent';
-}
+import type { LocationDataStorage, MapState, LocationData, MapStateStorage } from './types';
 
 /**
  * 根据角色ID生成地图状态存储键

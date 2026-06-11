@@ -7,7 +7,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { ExplorationCell, ExplorationState, AreaConfig, GridEventProbability } from './types';
+import type { ExplorationCell, ExplorationState, AreaConfig, ExplorationUICallbacks } from './types';
 import type { LocationData } from '../map/types';
 import { explorationDbService } from './db';
 import { mapDbService } from '../map/db';
@@ -41,14 +41,8 @@ const INITIAL_MOVES = 20;
  * 探索 UI 回调接口 —— 供 GameMain 等 UI 组件注册，替代 EventBus 跨模块监听。
  * 当探索 Store 内部触发格子探索、战斗、物品发现、陷阱、随机事件时，
  * 同步调用已注册的回调，避免 UI 组件直接依赖 EventBus 进行数据通信。
+ * @deprecated 类型定义已迁移到 ./types.ts，此处保留注释供参考
  */
-export interface ExplorationUICallbacks {
-  onCellExplored?: (data: { cellType?: string; interactionId?: string }) => void;
-  onBattleTriggered?: (data: { eventData: { monsterId: string } }) => void;
-  onItemFound?: (data: { itemId: string; count: number; itemName: string }) => void;
-  onTrapTriggered?: (data: { damage: number; trapType: string }) => void;
-  onRandomEvent?: (data: { message: string; icon: string }) => void;
-}
 
 export const useExplorationStore = defineStore('exploration', () => {
   // ==================== 响应式状态（Store 是唯一数据源） ====================
@@ -426,20 +420,8 @@ export const useExplorationStore = defineStore('exploration', () => {
     cell.visited = true;
     visitedCells.value++;
 
-    // 更新可访问格子
-    grid.value = updateAccessibleCells(grid.value);
-
-    // 发射格子探索事件
-    eventBus.emit(GameEvents.EXPLORATION_CELL_EXPLORED, {
-      characterId: currentCharacterId.value,
-      x,
-      y
-    });
-
-    // 同步通知已注册的 UI 回调（无 cellType 的普通格子探索）
-    uiCallbacks?.onCellExplored?.({});
-
-    // 根据格子类型处理对应事件
+    // 先处理格子事件（必须在 updateAccessibleCells 之前，
+    // 否则 completed 状态无法通过浅拷贝同步到新网格中）
     switch (cell.type) {
       case 'treasure': {
         const areaConfig = getAreaConfig();
@@ -461,11 +443,24 @@ export const useExplorationStore = defineStore('exploration', () => {
         break;
       }
       case 'rest': {
-        useCampInternal(characterStore);
+        await useCampInternal(characterStore);
         cell.completed = true;
         break;
       }
     }
+
+    // 更新可访问格子（浅拷贝会将上面设置的 completed 状态同步到新网格）
+    grid.value = updateAccessibleCells(grid.value);
+
+    // 发射格子探索事件
+    eventBus.emit(GameEvents.EXPLORATION_CELL_EXPLORED, {
+      characterId: currentCharacterId.value,
+      x,
+      y
+    });
+
+    // 同步通知已注册的 UI 回调（无 cellType 的普通格子探索）
+    uiCallbacks?.onCellExplored?.({});
 
     checkCompletion();
     await persistState();

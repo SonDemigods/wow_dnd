@@ -3,7 +3,7 @@
  * @description 提供探索相关的纯计算函数，不持有状态、不调用 DB、不 emit 事件
  * @module exploration
  */
-import type { GridEventType, GridEventProbability, ExplorationCell } from './types';
+import type { GridEventType, GridEventProbability, ExplorationCell, RandomEventResult, GridGenerationConfig } from './types';
 
 /** 默认网格尺寸 */
 const GRID_SIZE = 10;
@@ -127,16 +127,7 @@ export function generateEnemyForCell(monsterPool: string[]): string {
   return monsterPool[Math.floor(Math.random() * monsterPool.length)];
 }
 
-/** 随机事件效果类型 */
-export type RandomEventEffectType = 'heal' | 'mana' | 'exp' | 'damage' | 'mpLoss' | 'gold';
 
-/** 随机事件结果 */
-export interface RandomEventResult {
-  message: string;
-  icon: string;
-  /** 事件产生的效果（供 Store 层应用） */
-  effect: { type: RandomEventEffectType; amount: number };
-}
 
 /**
  * 生成随机事件（纯计算，不含副作用）
@@ -203,20 +194,6 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
 // ============================================================
 // 导出：网格生成纯函数
 // ============================================================
-
-/** 网格生成所需的配置参数 */
-export interface GridGenerationConfig {
-  /** 网格尺寸（默认 10） */
-  size?: number;
-  /** 事件概率分布 */
-  eventProbability: GridEventProbability;
-  /** 普通怪物池（怪物 ID 列表） */
-  monsterPool: string[];
-  /** Boss 怪物池（Boss ID 列表） */
-  bossPool: string[];
-  /** 任务所需的普通怪物列表（优先放置） */
-  questNormalMonsters: string[];
-}
 
 /**
  * 生成完整的探索网格（纯函数）

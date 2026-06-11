@@ -158,3 +158,31 @@ export interface IShopService {
   /** 重置所有商店数据 */
   reset(): Promise<void>;
 }
+
+/**
+ * 商店商品存储格式
+ */
+export interface ShopItemsStorage {
+  shopId: string;
+  items: Array<{ itemId: string; price: number; quantity: number }>;
+  lastRefresh: number;
+}
+
+/**
+ * 商店配置存储格式
+ */
+export interface ShopConfigStorage {
+  id: string;
+  name: string;
+  type: string;
+  icon: string;
+  refreshInterval: number;
+  priceVariation: { min: number; max: number };
+}
+
+/** 出售物品的回购跟踪条目 */
+export interface SoldItemEntry {
+  itemId: string;
+  price: number;
+  count: number;
+}

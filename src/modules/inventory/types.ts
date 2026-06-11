@@ -272,3 +272,61 @@ export interface IInventoryService {
    */
   filterItems(filters: ItemFilters): InventoryItem[];
 }
+
+/**
+ * 背包数据存储接口（存储到 char_inventory 表的结构）
+ */
+export interface InventoryDataStorage {
+  characterId: string;
+  /** 背包物品列表（原生数组，非 JSON 字符串） */
+  items: InventoryItem[];
+  updatedAt: number;
+}
+
+/**
+ * 物品数据存储接口
+ */
+export interface ItemDataStorage {
+  id: string;
+  name: string;
+  type: string;
+  rarity: string;
+  level?: number;
+  icon: string;
+  description: string;
+  bonus: Record<string, number>;
+  effect: Record<string, unknown> | null;
+  value: number;
+  stackable: boolean;
+  consumable: boolean;
+  template: string | null;
+}
+
+/**
+ * 物品模板存储格式
+ */
+export interface ItemStorage {
+  id: string;
+  name: string;
+  type: string;
+  rarity: string;
+  icon: string;
+  description: string;
+  bonus?: Partial<Record<string, number>>;
+  effect?: { type: string; value: number | Partial<Record<string, number>> } | null;
+  value: number;
+  stackable: boolean;
+  consumable?: boolean;
+  template?: string | null;
+  levelRequirement?: number | null;
+  level?: number;
+}
+
+/**
+ * 背包存储格式
+ */
+export interface InventoryStorage {
+  characterId: string;
+  items: Array<{ itemId: string; count: number }>;
+  updatedAt?: number;
+}

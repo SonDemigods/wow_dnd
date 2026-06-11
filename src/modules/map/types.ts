@@ -166,3 +166,50 @@ export interface IMapService {
   /** 重置地图数据 */
   reset(): void;
 }
+
+/**
+ * 地点数据存储接口
+ */
+export interface LocationDataStorage {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  continent: string;
+  enemies?: string[];
+  quests?: string[];
+  levelRange: [number, number];
+  color: string;
+  mapX: number;
+  mapY: number;
+  type: 'location' | 'continent';
+}
+
+/**
+ * 地图状态存储格式
+ */
+export interface MapStateStorage {
+  id: string;
+  view?: { zoomLevel: number; panX: number; panY: number; currentContinentId?: string };
+  currentLocationId?: string;
+  currentTab?: string;
+}
+
+/**
+ * 地点/大陆存储格式（通过 type 字段区分）
+ */
+export interface LocationStorage {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  type: 'location' | 'continent';
+  continent?: string;
+  enemies?: string[];
+  quests?: string[];
+  levelRange?: [number, number];
+  mapX?: number;
+  mapY?: number;
+  color?: string;
+  position?: string;
+}

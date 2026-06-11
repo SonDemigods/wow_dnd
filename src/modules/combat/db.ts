@@ -4,31 +4,7 @@
  * 封装战斗数据的 IndexedDB 操作，提供数据持久化能力
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { CombatLog } from './types';
-
-/**
- * 战斗日志存储接口（内部使用，与 data/core.ts 的 CombatLogStorage 对应）
- */
-interface CombatLogStorage {
-  combatId: string;
-  battleLogId: string;
-  timestamp: number;
-  turn: number;
-  actorType: string;
-  actorId: string;
-  actorName: string;
-  eventType: string;
-  targetType?: string;
-  targetId?: string;
-  targetName?: string;
-  skillId?: string;
-  skillName?: string;
-  damage?: number;
-  heal?: number;
-  isCrit?: boolean;
-  isDodge?: boolean;
-  message: string;
-}
+import type { CombatLog, CombatLogStorage } from './types';
 
 /**
  * 战斗数据层服务

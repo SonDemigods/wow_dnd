@@ -3,7 +3,8 @@
  * 
  * 封装角色数据的 IndexedDB 操作，提供数据持久化能力
  */
-import { db as gameDb, dbService, type CharacterDataStorage } from '../data/core';
+import { db as gameDb, dbService } from '../data/core';
+import type { CharacterDataStorage } from './types';
 import { getGameState, saveGameState } from '../data/gameStateHelper';
 import type { Character, CharacterListItem, Stats } from './types';
 import { toRawData } from '../../utils';

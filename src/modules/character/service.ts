@@ -5,7 +5,7 @@
  * 所有业务逻辑均为纯函数，数据通过参数传入、通过返回值输出。
  * Store 层负责调用这些纯函数并管理响应式状态与持久化。
  */
-import type { Character, Stats, Attributes, RaceType, ClassType, FactionType, RaceData, ClassData } from './types';
+import type { Character, Stats, Attributes, RaceData, ClassData, CreateCharacterParams, ExpGainResult } from './types';
 import {
   calculateMaxHp,
   calculateMaxMana,
@@ -79,15 +79,7 @@ export function computeAttributes(stats: Stats): Attributes {
 
 // ==================== 角色创建 ====================
 
-/** 创建初始角色参数 */
-export interface CreateCharacterParams {
-  name: string;
-  factionId: FactionType;
-  raceId: RaceType;
-  classId: ClassType;
-}
-
-/** 创建初始角色数据（不含持久化） */
+/** 创建初始角色（纯函数） */
 export function createInitialCharacter(params: CreateCharacterParams, raceData: RaceData, classData: ClassData): Character {
   const raceBonus = raceData?.bonus || {};
   const classBonus = classData?.bonus || {};
@@ -130,14 +122,6 @@ export function isDead(character: Character): boolean {
 }
 
 // ==================== 经验值与升级 ====================
-
-/** 经验值增益结果 */
-export interface ExpGainResult {
-  character: Character;
-  leveledUp: boolean;
-  levelsGained: number;
-  newLevel: number;
-}
 
 /** 计算经验值增益后的角色数据（含升级判定） */
 export function applyExpGain(character: Character, amount: number): ExpGainResult {

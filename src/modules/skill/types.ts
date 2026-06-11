@@ -261,3 +261,57 @@ export interface SkillValidationResult {
   currentMp?: number;
   requiredMp?: number;
 }
+
+/**
+ * 技能数据存储接口（存储到 char_skills 表的结构）
+ */
+export interface SkillDataStorage {
+  characterId: string;
+  /** 已学技能列表（原生数组，非 JSON 字符串） */
+  skills: Skill[];
+  /** 技能栏装备状态（原生对象，非 JSON 字符串） */
+  skillBar: SkillBar;
+  currentClass: string | null;
+  updatedAt: number;
+}
+
+/**
+ * 技能模板存储接口
+ */
+export interface SkillTemplateStorage {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  mpCost: number;
+  type: string;
+  effect: { type: string; value: number };
+  unlockLevel: number;
+  classRestriction: string | null;
+}
+
+/**
+ * 技能模板存储格式
+ */
+export interface SkillConfigStorage {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  mpCost: number;
+  type: string;
+  effect: { type: string; value: number; coefficient?: number };
+  unlockLevel: number;
+  classRestriction?: string | null;
+}
+
+/**
+ * 角色技能存储格式
+ */
+export interface CharSkillsStorage {
+  characterId: string;
+  skills: Array<{ id: string; name: string; [key: string]: unknown }>;
+  skillBar: { slots: [string | null, string | null, string | null, string | null] };
+  currentClass: string | null;
+  updatedAt: number;
+}

@@ -291,3 +291,27 @@ export interface ICombatService {
    */
   castSkill(skillId: string, targetType: 'self' | 'enemy'): SkillCastResult;
 }
+
+/**
+ * 战斗日志存储接口
+ */
+export interface CombatLogStorage {
+  combatId: string;
+  battleLogId: string;
+  timestamp: number;
+  turn: number;
+  actorType: string;
+  actorId: string;
+  actorName: string;
+  eventType: string;
+  targetType?: string;
+  targetId?: string;
+  targetName?: string;
+  skillId?: string;
+  skillName?: string;
+  damage?: number;
+  heal?: number;
+  isCrit?: boolean;
+  isDodge?: boolean;
+  message: string;
+}

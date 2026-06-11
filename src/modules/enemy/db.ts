@@ -4,7 +4,7 @@
  * 封装敌人模板数据的 IndexedDB 操作，提供数据持久化能力
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { EnemyStorage } from '../data/core';
+import type { EnemyStorage } from './types';
 import type { EnemyData } from './types';
 
 /**

@@ -4,7 +4,7 @@
  * 将设置存储在 runtime_gameState 表中，以特定键标识
  */
 
-import { type GameStateStorage } from '../data/core';
+import type { GameStateStorage } from '../data/core';
 import { getGameState, saveGameState } from '../data/gameStateHelper';
 import type { AudioSettings } from './types';
 

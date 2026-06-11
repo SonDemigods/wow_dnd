@@ -38,8 +38,10 @@
       </div>
 
       <div class="content-view">
-        <MapView v-if="currentContentTab === 'map'" @enter-zone="currentContentTab = 'explore'" />
-        <ExplorationView v-else />
+        <template v-if="!loading">
+          <MapView v-if="currentContentTab === 'map'" @enter-zone="currentContentTab = 'explore'" />
+          <ExplorationView v-else />
+        </template>
       </div>
     </div>
 
@@ -167,6 +169,8 @@ const logStore = useLogStore();
 const toast = useToast();
 
 const currentContentTab = ref('map');
+/** 是否正在初始化，初始化完成前不渲染内容区域，避免页面闪烁 */
+const loading = ref(true);
 const showCharacterInfo = ref(false);
 const showInventory = ref(false);
 const showSkills = ref(false);
@@ -326,6 +330,8 @@ onMounted(async () => {
       currentContentTab.value = 'explore';
     }
   }
+  // 初始化完成，解除加载状态
+  loading.value = false;
 });
 
 onUnmounted(() => {

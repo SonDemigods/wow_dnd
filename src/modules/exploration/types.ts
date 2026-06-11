@@ -179,6 +179,61 @@ export interface EventChoiceResult {
 }
 
 /**
+ * 随机事件效果类型
+ * - heal: 治疗
+ * - mana: 回蓝
+ * - exp: 经验
+ * - damage: 伤害
+ * - mpLoss: 法力损失
+ * - gold: 金币
+ */
+export type RandomEventEffectType = 'heal' | 'mana' | 'exp' | 'damage' | 'mpLoss' | 'gold';
+
+/**
+ * 随机事件结果接口
+ * @property {string} message - 事件消息
+ * @property {string} icon - 事件图标
+ * @property {{ type: RandomEventEffectType; amount: number }} effect - 事件产生的效果
+ */
+export interface RandomEventResult {
+  message: string;
+  icon: string;
+  effect: { type: RandomEventEffectType; amount: number };
+}
+
+/**
+ * 网格生成配置参数接口
+ * @property {number} [size] - 网格尺寸（默认 10）
+ * @property {GridEventProbability} eventProbability - 事件概率分布
+ * @property {string[]} monsterPool - 普通怪物池
+ * @property {string[]} bossPool - Boss 怪物池
+ * @property {string[]} questNormalMonsters - 任务所需的普通怪物列表
+ */
+export interface GridGenerationConfig {
+  /** 网格尺寸（默认 10） */
+  size?: number;
+  /** 事件概率分布 */
+  eventProbability: GridEventProbability;
+  /** 普通怪物池（怪物 ID 列表） */
+  monsterPool: string[];
+  /** Boss 怪物池（Boss ID 列表） */
+  bossPool: string[];
+  /** 任务所需的普通怪物列表（优先放置） */
+  questNormalMonsters: string[];
+}
+
+/**
+ * 探索 UI 回调接口 —— 供 GameMain 等 UI 组件注册
+ */
+export interface ExplorationUICallbacks {
+  onCellExplored?: (data: { cellType?: string; interactionId?: string }) => void;
+  onBattleTriggered?: (data: { eventData: { monsterId: string } }) => void;
+  onItemFound?: (data: { itemId: string; count: number; itemName: string }) => void;
+  onTrapTriggered?: (data: { damage: number; trapType: string }) => void;
+  onRandomEvent?: (data: { message: string; icon: string }) => void;
+}
+
+/**
  * 探索服务接口
  * 提供探索管理的核心功能
  */
@@ -264,5 +319,25 @@ export interface IExplorationService {
   /**
    * 重置探索数据
    */
-  reset(): void
+  reset(): void;
+}
+
+/**
+ * 探索进度存储格式
+ */
+export interface ExplorationStorage {
+  characterId: string;
+  currentAreaId: string | null;
+  /** 当前探索网格中分配的商店ID */
+  assignedShopId?: string;
+  /** 旧版本兼容字段 */
+  currentShopId?: string;
+  grid: Array<Array<{ x: number; y: number; type: string; explored: boolean; accessible: boolean; visited: boolean; [key: string]: unknown }>>;
+  playerPosition: { x: number; y: number };
+  visitedCells: number;
+  remainingMoves: number;
+  bossDefeated: boolean;
+  explorationComplete: boolean;
+  campUsed: boolean;
+  updatedAt?: number;
 }

@@ -5,36 +5,8 @@
  * 技能和技能栏以原生数组/对象存储，无需 JSON 序列化/反序列化。
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { Skill, SkillBar, SkillsData, SkillType } from './types';
+import type { Skill, SkillBar, SkillsData, SkillType, SkillDataStorage, SkillTemplateStorage } from './types';
 import { toRawData } from '../../utils';
-
-/**
- * 技能数据存储接口（存储到 char_skills 表的结构）
- */
-export interface SkillDataStorage {
-  characterId: string;
-  /** 已学技能列表（原生数组，非 JSON 字符串） */
-  skills: Skill[];
-  /** 技能栏装备状态（原生对象，非 JSON 字符串） */
-  skillBar: SkillBar;
-  currentClass: string | null;
-  updatedAt: number;
-}
-
-/**
- * 技能模板存储接口
- */
-export interface SkillTemplateStorage {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-  mpCost: number;
-  type: string;
-  effect: { type: string; value: number };
-  unlockLevel: number;
-  classRestriction: string | null;
-}
 
 /**
  * 技能数据层服务

@@ -6,7 +6,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { ShopConfig, ShopItem } from './types';
+import type { ShopConfig, ShopItem, SoldItemEntry } from './types';
 import { shopDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
 import { useLogStore } from '../log/store';
@@ -15,15 +15,6 @@ import { useCharacterStore } from '../character/store';
 import { useInventoryStore } from '../inventory/store';
 import { calculatePrice, generateShopItems, canAffordItem } from './service';
 import { SHOPS } from '@/data/shop.data';
-
-// ==================== 内部类型 ====================
-
-/** 出售物品的回购跟踪条目 */
-interface SoldItemEntry {
-  itemId: string;
-  price: number;
-  count: number;
-}
 
 /**
  * 商店状态存储

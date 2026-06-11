@@ -291,6 +291,34 @@ export interface CharacterListItem {
 }
 
 /**
+ * 创建角色参数接口
+ * @property {string} name - 角色名称
+ * @property {FactionType} factionId - 阵营ID
+ * @property {RaceType} raceId - 种族ID
+ * @property {ClassType} classId - 职业ID
+ */
+export interface CreateCharacterParams {
+  name: string;
+  factionId: FactionType;
+  raceId: RaceType;
+  classId: ClassType;
+}
+
+/**
+ * 经验值增益结果接口
+ * @property {Character} character - 增益后的角色数据
+ * @property {boolean} leveledUp - 是否升级了
+ * @property {number} levelsGained - 升级了几级
+ * @property {number} newLevel - 增益后的等级
+ */
+export interface ExpGainResult {
+  character: Character;
+  leveledUp: boolean;
+  levelsGained: number;
+  newLevel: number;
+}
+
+/**
  * 角色服务接口
  * 提供角色管理的核心功能
  */
@@ -492,4 +520,66 @@ export interface ICharacterService {
 
   /** 复活角色 */
   resurrect(): Promise<void>;
+}
+
+/**
+ * 阵营存储格式
+ */
+export interface FactionStorage {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  description: string;
+}
+
+/**
+ * 种族存储格式
+ */
+export interface RaceStorage {
+  id: string;
+  name: string;
+  icon: string;
+  factionId: string;
+  bonus?: Partial<Record<string, number>>;
+  description: string;
+}
+
+/**
+ * 职业存储格式
+ */
+export interface ClassStorage {
+  id: string;
+  name: string;
+  icon: string;
+  primaryStat: string;
+  factionsIds: string[];
+  raceIds: string[];
+  description: string;
+  color: string;
+  bonus?: Partial<Record<string, number>>;
+}
+
+/**
+ * 角色数据存储格式
+ */
+export interface CharacterDataStorage {
+  characterId: string;
+  name: string;
+  factionId: string;
+  raceId: string;
+  classId: string;
+  level: number;
+  exp: number;
+  expToNextLevel: number;
+  gold: number;
+  baseStats: Record<string, number>;
+  currentHp: number;
+  maxHp: number;
+  currentMp: number;
+  maxMp: number;
+  bonusStats: Partial<Record<string, number>>;
+  createdTime: number;
+  lastPlayedTime: number;
+  updatedAt: number;
 }

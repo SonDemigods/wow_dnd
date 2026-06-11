@@ -8,22 +8,29 @@
  * - ImportService: 数据导入服务
  */
 import { db } from './core';
+import type { GameStateStorage } from './core';
 import { eventBus, GameEvents } from '../bus/core';
-import type { FactionStorage, RaceStorage, ClassStorage, ItemStorage, EquipmentItemStorage, EnemyStorage, LocationStorage, ShopConfigStorage, SkillConfigStorage, QuestConfigStorage, GameStateStorage, CharacterDataStorage, InventoryStorage, EquipmentStorage, CharSkillsStorage, CharQuestStorage, ExplorationStorage, CombatLogStorage, AdventureLogStorage, MapStateStorage, ShopItemsStorage } from './core';
+import type { FactionStorage, RaceStorage, ClassStorage, CharacterDataStorage } from '../character/types';
+import type { ItemStorage, InventoryStorage } from '../inventory/types';
+import type { EquipmentItemStorage, EquipmentStorage } from '../equipment/types';
+import type { EnemyStorage } from '../enemy/types';
+import type { LocationStorage, MapStateStorage } from '../map/types';
+import type { ShopConfigStorage, ShopItemsStorage } from '../shop/types';
+import type { SkillConfigStorage, CharSkillsStorage } from '../skill/types';
+import type { QuestConfigStorage, CharQuestStorage } from '../quest/types';
+import type { ExplorationStorage } from '../exploration/types';
+import type { CombatLogStorage } from '../combat/types';
+import type { AdventureLogStorage } from '../log/types';
 import { BACKUP_CONFIG } from '@/config/database';
-import {
-  RARITY_SELL_DISCOUNT,
-  RARITY_PRICE_MULTIPLIER,
-  ITEM_TYPES,
-  RARITY_CONFIG
-} from '@/config/inventory';
 
 import type {
   BackupFile,
   BackupData,
   ValidationResult,
   ImportResult,
-  CompatibilityResult
+  CompatibilityResult,
+  IBackupService,
+  IImportService
 } from './types';
 import {
   CONTINENTS,
@@ -56,31 +63,6 @@ function calculateChecksum(data: unknown): string {
     hash = hash & hash;
   }
   return Math.abs(hash).toString(16);
-}
-
-/**
- * 初始化数据接口
- *
- * 定义游戏初始化数据的结构
- */
-export interface InitData {
-  map: {
-    continents: typeof CONTINENTS;
-    locations: typeof LOCATIONS;
-  };
-  shops: typeof SHOPS;
-  quests: typeof QUESTS;
-  enemies: typeof ENEMIES;
-  equipment: typeof EQUIPMENT_ITEMS;
-  items: typeof LOOT_ITEMS;
-  classes: typeof CLASSES;
-  classAbilities: typeof CLASS_ABILITIES;
-  races: typeof RACES;
-  factions: typeof FACTIONS;
-  itemTypes: typeof ITEM_TYPES;
-  rarityConfig: typeof RARITY_CONFIG;
-  rarityPriceMultiplier: typeof RARITY_PRICE_MULTIPLIER;
-  raritySellDiscount: typeof RARITY_SELL_DISCOUNT;
 }
 
 /**
@@ -299,26 +281,6 @@ export class DataInitializer {
     await db.runtime_gameState.delete(this.initFlagKey);
     console.log('数据初始化标志已重置');
   }
-}
-
-/**
- * 备份服务接口
- */
-export interface IBackupService {
-  createBackup(): Promise<BackupFile>;
-  exportBackup(): Promise<void>;
-  getAutoBackups(): Promise<BackupFile[]>;
-  deleteBackup(timestamp: number): Promise<void>;
-  clearAutoBackups(): Promise<void>;
-}
-
-/**
- * 导入服务接口
- */
-export interface IImportService {
-  validateBackup(file: File): Promise<ValidationResult>;
-  importBackup(file: File): Promise<ImportResult>;
-  checkVersionCompatibility(backupVersion: string): CompatibilityResult;
 }
 
 /**

@@ -6,13 +6,10 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed, watch } from 'vue';
-import type { LogEntry, LogType } from './types';
+import type { LogEntry, LogType, LogChangeCallback } from './types';
 import { generateLogId, formatLogMessage } from './service';
 import { adventureLogDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
-
-/** 日志变更回调类型 */
-export type LogChangeCallback = () => void;
 
 export const useLogStore = defineStore('log', () => {
   // ==================== 状态 ====================

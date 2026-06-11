@@ -74,3 +74,21 @@ export interface ILogService {
    */
   generateLogId(): string;
 }
+
+export interface AdventureLogData {
+  characterId: string;
+  entries: LogEntry[];
+  updatedAt?: number;
+}
+
+/**
+ * 冒险日志存储格式
+ */
+export interface AdventureLogStorage {
+  characterId: string;
+  entries: Array<{ id: string; timestamp: number; type: string; message: string; icon?: string }>;
+  updatedAt?: number;
+}
+
+/** 日志变更回调类型 */
+export type LogChangeCallback = () => void;

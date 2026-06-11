@@ -230,3 +230,66 @@ export interface IQuestService {
   /** 重置所有任务数据（用于测试或新游戏） */
   reset(): void;
 }
+
+/**
+ * 任务实例存储接口
+ */
+export interface QuestInstanceStorage {
+  questId: string;
+  status: string;
+  progress: { objectiveKey: string; current: number; target: number }[];
+  acceptedAt: number;
+  completedAt?: number;
+}
+
+/**
+ * 任务定义存储接口
+ */
+export interface QuestDefinitionStorage {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  objectives: {
+    key: string;
+    type: string;
+    description: string;
+    target: number;
+    itemId?: string;
+    enemyId?: string;
+    locationId?: string;
+  }[];
+  levelRequirement: number;
+  xpReward: number;
+  goldReward: number;
+  itemRewards?: { itemId: string; count: number }[];
+  boardId: string;
+}
+
+/**
+ * 任务定义存储格式
+ */
+export interface QuestConfigStorage {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  objectives: Array<{ key: string; type: string; description: string; target: number; [key: string]: unknown }>;
+  levelRequirement: number;
+  xpReward: number;
+  goldReward: number;
+  itemRewards?: Array<{ itemId: string; count: number }>;
+  boardId: string;
+}
+
+/**
+ * 角色任务存储格式
+ */
+export interface CharQuestStorage {
+  characterId: string;
+  questId: string;
+  status: string;
+  progress: Array<{ objectiveKey: string; current: number; target: number }>;
+  acceptedAt: number;
+  completedAt?: number;
+}

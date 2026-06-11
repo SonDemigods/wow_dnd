@@ -87,3 +87,24 @@ export interface EnemyInstance extends EnemyData {
  * 敌人类型别名（战斗服务使用）
  */
 export type Enemy = EnemyInstance;
+
+/**
+ * 敌人模板存储格式
+ */
+export interface EnemyStorage {
+  id: string;
+  name: string;
+  icon: string;
+  maxHp: number;
+  damage: [number, number];
+  xp: number;
+  gold: number;
+  dangerLevel: string;
+  isBoss?: number;
+  physicalAttack?: number | null;
+  physicalDefense?: number | null;
+  magicAttack?: number | null;
+  magicDefense?: number | null;
+  critChance?: number | null;
+  dodgeChance?: number | null;
+}

@@ -6,7 +6,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { Character, CharacterListItem, Stats, Attributes, FactionType, RaceType, ClassType, FactionData, RaceData, ClassData } from './types';
+import type { Character, CharacterListItem, Stats, Attributes, FactionType, RaceType, ClassType, FactionData, RaceData, ClassData, CreateCharacterParams } from './types';
 import { characterDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
 import { useGameDataStore } from '../gameData/store';
@@ -35,7 +35,6 @@ import {
 import { getExpForLevel } from '@/utils/calculations';
 import { backupService, importService } from '../data';
 import type { ImportResult, ValidationResult } from '../data';
-import type { CreateCharacterParams } from './service';
 import type { Skill, SkillBar } from '../skill/types';
 
 export const useCharacterStore = defineStore('character', () => {

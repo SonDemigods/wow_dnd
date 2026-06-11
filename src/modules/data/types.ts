@@ -12,7 +12,28 @@ import type { CombatLog } from '../combat/types';
 import type { LogEntry } from '../log/types';
 import type { LocationData } from '../map/types';
 import type { ShopConfig } from '../shop/types';
-import type { MapStateStorage, GameStateStorage, ShopItemsStorage } from './core';
+import type { MapStateStorage } from '../map/types';
+import type { ShopItemsStorage } from '../shop/types';
+import type { GameStateStorage } from './core';
+import {
+  CONTINENTS,
+  LOCATIONS,
+  SHOPS,
+  QUESTS,
+  ENEMIES,
+  EQUIPMENT_ITEMS,
+  LOOT_ITEMS,
+  CLASSES,
+  CLASS_ABILITIES,
+  RACES,
+  FACTIONS
+} from '@/data';
+import {
+  RARITY_SELL_DISCOUNT,
+  RARITY_PRICE_MULTIPLIER,
+  ITEM_TYPES,
+  RARITY_CONFIG
+} from '@/config/inventory';
 
 // ==================== 通用共享类型 ====================
 
@@ -238,4 +259,51 @@ export interface BackupConfig {
   maxAutoBackups: number;
   backupVersion: string;
   supportedVersions: string[];
+}
+
+// ==================== 初始化与服务接口 ====================
+
+/**
+ * 初始化数据接口
+ *
+ * 定义游戏初始化数据的结构
+ */
+export interface InitData {
+  map: {
+    continents: typeof CONTINENTS;
+    locations: typeof LOCATIONS;
+  };
+  shops: typeof SHOPS;
+  quests: typeof QUESTS;
+  enemies: typeof ENEMIES;
+  equipment: typeof EQUIPMENT_ITEMS;
+  items: typeof LOOT_ITEMS;
+  classes: typeof CLASSES;
+  classAbilities: typeof CLASS_ABILITIES;
+  races: typeof RACES;
+  factions: typeof FACTIONS;
+  itemTypes: typeof ITEM_TYPES;
+  rarityConfig: typeof RARITY_CONFIG;
+  rarityPriceMultiplier: typeof RARITY_PRICE_MULTIPLIER;
+  raritySellDiscount: typeof RARITY_SELL_DISCOUNT;
+}
+
+/**
+ * 备份服务接口
+ */
+export interface IBackupService {
+  createBackup(): Promise<BackupFile>;
+  exportBackup(): Promise<void>;
+  getAutoBackups(): Promise<BackupFile[]>;
+  deleteBackup(timestamp: number): Promise<void>;
+  clearAutoBackups(): Promise<void>;
+}
+
+/**
+ * 导入服务接口
+ */
+export interface IImportService {
+  validateBackup(file: File): Promise<ValidationResult>;
+  importBackup(file: File): Promise<ImportResult>;
+  checkVersionCompatibility(backupVersion: string): CompatibilityResult;
 }
