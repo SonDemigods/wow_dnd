@@ -363,7 +363,8 @@ export const useExplorationStore = defineStore('exploration', () => {
    */
   async function revealGrid(x: number, y: number): Promise<boolean> {
     const cell = grid.value[y]?.[x];
-    if (!cell || !cell.accessible) {
+    // 允许 accessible 的格子（新探索）以及已探索但未完成的格子（商店/任务板/未击败怪物）交互
+    if (!cell || (!cell.accessible && !cell.explored) || cell.completed) {
       return false;
     }
 

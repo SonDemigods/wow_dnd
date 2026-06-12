@@ -232,7 +232,9 @@ async function initExploration() {
 }
 
 async function handleCellClick(cell: ExplorationCell) {
-  if (!cell.accessible) return;
+  // 允许点击 accessible 的格子（新探索）以及已探索但未完成的格子（商店/任务板/未击败怪物）
+  if (!cell.accessible && !cell.explored) return;
+  if (cell.completed) return;
   
   await explorationStore.revealGrid(cell.x, cell.y);
 }
