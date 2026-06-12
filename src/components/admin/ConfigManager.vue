@@ -158,7 +158,14 @@ const tableColumns: Record<ConfigTableName, TableColumn[]> = {
     { key: 'rarity', label: '稀有度' },
     { key: 'value', label: '价值' },
   ],
-  enemies: [
+  mobs: [
+    { key: 'id', label: 'ID', width: '180px' },
+    { key: 'name', label: '名称' },
+    { key: 'dangerLevel', label: '危险等级' },
+    { key: 'maxHp', label: '生命值' },
+    { key: 'xp', label: '经验值' },
+  ],
+  bosses: [
     { key: 'id', label: 'ID', width: '180px' },
     { key: 'name', label: '名称' },
     { key: 'dangerLevel', label: '危险等级' },
@@ -264,16 +271,25 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'slots', label: '适用槽位', type: 'multiselect' },
     { key: 'levelRequirement', label: '等级需求', type: 'number' },
   ],
-  enemies: [
+  mobs: [
     { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
-    { key: 'name', label: '名称', type: 'text', placeholder: '敌人名称' },
+    { key: 'name', label: '名称', type: 'text', placeholder: '怪物名称' },
     { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标' },
     { key: 'maxHp', label: '最大生命值', type: 'number' },
     { key: 'damage', label: '伤害范围', type: 'json', placeholder: '[5, 15]' },
     { key: 'xp', label: '经验值', type: 'number' },
     { key: 'gold', label: '金币', type: 'number' },
     { key: 'dangerLevel', label: '危险等级', type: 'text', placeholder: '危险等级' },
-    { key: 'isBoss', label: '是否Boss', type: 'switch' },
+  ],
+  bosses: [
+    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
+    { key: 'name', label: '名称', type: 'text', placeholder: 'Boss名称' },
+    { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标' },
+    { key: 'maxHp', label: '最大生命值', type: 'number' },
+    { key: 'damage', label: '伤害范围', type: 'json', placeholder: '[5, 15]' },
+    { key: 'xp', label: '经验值', type: 'number' },
+    { key: 'gold', label: '金币', type: 'number' },
+    { key: 'dangerLevel', label: '危险等级', type: 'text', placeholder: '危险等级' },
   ],
   quests: [
     { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },

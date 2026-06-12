@@ -1,36 +1,53 @@
 <template>
   <div v-if="visible" class="combat-overlay">
-    <div class="combat-container">
+    <div :class="['combat-container', speedClass]">
       <!-- 屏幕闪白遮罩（暴击特效） -->
       <div v-if="screenFlash" :class="['screen-flash', screenFlashType]"></div>
 
       <!-- 标题 -->
       <div class="combat-header">
-        <span class="combat-title">{{ isBossFight ? 'BOSS 战斗！' : '遭遇战斗！' }}</span>
+        <span class="combat-title">{{ combatStore.hasBossEnemy ? 'BOSS 战斗！' : '遭遇战斗！' }}</span>
+        <button class="speed-toggle" @click="toggleSpeed" :title="combatSpeed === 1 ? '切换2倍速' : '切换1倍速'">
+          {{ combatSpeed === 1 ? '⚡1x' : '⚡⚡2x' }}
+        </button>
         <span class="combat-turn">第 {{ turnCount }} 回合</span>
       </div>
 
       <!-- 战斗区域：敌人 + 玩家 -->
       <div class="combat-arena">
-        <!-- 敌人区域 -->
-        <div class="combatant enemy-side" :class="{ 'shake': enemyShake, 'crit-shake': enemyCritShake, 'dodge-blink': enemyDodgeBlink, 'defeated': enemyDefeated }">
-          <div class="combatant-avatar">{{ enemy?.icon || '👹' }}</div>
-          <div class="combatant-info">
-            <div class="combatant-name">{{ enemy?.name || '未知敌人' }}</div>
-            <div class="combatant-level">Lv.{{ enemy?.level || 1 }}</div>
-          </div>
-          <div class="combatant-bars">
-            <div class="bar-row">
-              <span class="bar-label">HP</span>
-              <div class="bar-track hp-track">
-                <div class="bar-fill hp-fill" :style="{ width: enemyHpPercent + '%' }"></div>
-              </div>
-              <span class="bar-text">{{ enemyHp }}/{{ enemyMaxHp }}</span>
+        <!-- 敌人区域（多敌人） -->
+        <div class="enemy-list">
+          <div
+            v-for="e in combatStore.enemies"
+            :key="e.id"
+            :class="['combatant', 'enemy-side', {
+              'shake': enemyShakes[e.id],
+              'crit-shake': enemyCritShakes[e.id],
+              'dodge-blink': enemyDodgeBlinks[e.id],
+              'defeated': e.hp <= 0,
+              'targeted': combatStore.targetEnemyId === e.id && e.hp > 0
+            }]"
+            @click="selectTarget(e.id)"
+          >
+            <div class="combatant-avatar">{{ e.icon || '👹' }}</div>
+            <div class="combatant-info">
+              <div class="combatant-name">{{ e.name }}</div>
+              <div class="combatant-level">Lv.{{ e.level || 1 }}</div>
+              <div v-if="e.isBoss" class="boss-badge">👑 BOSS</div>
             </div>
-          </div>
-          <!-- 浮动伤害数字 -->
-          <div v-if="enemyFloating" :class="['floating-damage', enemyFloating.type]">
-            {{ enemyFloating.text }}
+            <div class="combatant-bars">
+              <div class="bar-row">
+                <span class="bar-label">HP</span>
+                <div class="bar-track hp-track">
+                  <div class="bar-fill hp-fill" :style="{ width: getHpPercent(e) + '%' }"></div>
+                </div>
+                <span class="bar-text">{{ e.hp }}/{{ e.maxHp }}</span>
+              </div>
+            </div>
+            <!-- 浮动伤害数字（每个敌人独立） -->
+            <div v-if="enemyFloatings[e.id]" :class="['floating-damage', enemyFloatings[e.id]!.type]">
+              {{ enemyFloatings[e.id]!.text }}
+            </div>
           </div>
         </div>
 
@@ -58,6 +75,12 @@
                 <div class="bar-fill mp-fill" :style="{ width: playerMpPercent + '%' }"></div>
               </div>
               <span class="bar-text">{{ playerMp }}/{{ playerMaxMp }}</span>
+            </div>
+            <!-- Buff/Debuff 效果指示器 -->
+            <div v-if="combatStore.playerEffects.effects.length > 0" class="effects-indicator">
+              <span v-for="eff in combatStore.playerEffects.effects" :key="eff.id" :class="['effect-badge', 'effect-' + eff.type]">
+                {{ getEffectIcon(eff.type) }} {{ eff.remainingTurns }}回合
+              </span>
             </div>
           </div>
           <!-- 浮动伤害数字 -->
@@ -94,7 +117,7 @@
           <button class="action-btn skip-btn" @click="doSkip" :disabled="!canAct">
             ⏭️ 跳过
           </button>
-          <button class="action-btn flee-btn" @click="doAction('flee')" :disabled="!canAct || isBossFight">
+          <button class="action-btn flee-btn" @click="doAction('flee')" :disabled="!canAct || combatStore.hasBossEnemy">
             🏃 逃跑
           </button>
         </div>
@@ -103,14 +126,18 @@
             v-for="skill in equippedSkills"
             :key="skill.id"
             class="action-btn skill-btn"
-            :class="{ 'no-mp': playerMp < skill.mpCost }"
+            :class="{ 'no-mp': playerMp < skill.mpCost, 'on-cooldown': skillsStore.isOnCooldown(skill.id) }"
             @click="doSkill(skill.id)"
-            :disabled="!canAct || playerMp < skill.mpCost"
+            :disabled="!canAct || playerMp < skill.mpCost || skillsStore.isOnCooldown(skill.id)"
           >
             <span class="skill-icon">{{ getSkillTypeIcon(skill.type) }}</span>
             <span class="skill-name">{{ skill.name }}</span>
             <span class="skill-effect">{{ getSkillEffectText(skill) }}</span>
             <span class="skill-cost">{{ skill.mpCost }} MP</span>
+            <span v-if="getTargetTypeText(skill.targetType)" class="skill-target">{{ getTargetTypeText(skill.targetType) }}</span>
+            <span v-if="skillsStore.isOnCooldown(skill.id)" class="skill-cooldown">
+              冷却 {{ skillsStore.getCooldownRemaining(skill.id) }}
+            </span>
           </button>
         </div>
         <!-- 敌人回合遮罩 -->
@@ -179,7 +206,6 @@ import { useSkillsStore } from '@/modules/skill/store';
 import { useInventoryStore } from '@/modules/inventory/store';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { CombatLog, CombatResult, CombatActionType } from '@/modules/combat/types';
-import type { Enemy } from '@/modules/enemy/types';
 import type { Skill } from '@/modules/skill/types';
 
 const props = defineProps<{
@@ -198,25 +224,34 @@ const logRef = ref<HTMLElement | null>(null);
 const isAnimating = ref(false);
 const showItemModal = ref(false);
 const autoCloseCountdown = ref(0);
+
+// 战斗速度（从 Store 读取）
+const combatSpeed = computed(() => combatStore.combatSpeed);
+
+function toggleSpeed() {
+  combatStore.toggleCombatSpeed();
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_speed_toggle' });
+}
+
+const speedClass = computed(() => combatSpeed.value === 2 ? 'speed-x2' : '');
 let autoCloseTimer: ReturnType<typeof setInterval> | null = null;
 let autoCloseTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // 战斗状态 - 直接从 Combat Store 响应式数据派生
 const turn = computed(() => combatStore.turn);
 const turnCount = computed(() => combatStore.turnCount);
-const enemy = computed(() => combatStore.enemy);
 const logs = computed(() => combatStore.combatLogs);
 
-// 动画状态
-const enemyShake = ref(false);
+// 动画状态（按敌人 ID 索引）
+const enemyShakes = ref<Record<string, boolean>>({});
+const enemyCritShakes = ref<Record<string, boolean>>({});
+const enemyDodgeBlinks = ref<Record<string, boolean>>({});
+const enemyFloatings = ref<Record<string, { text: string; type: string } | null>>({});
+// 保留这些全局动画
 const playerShake = ref(false);
-const enemyCritShake = ref(false);
 const playerCritShake = ref(false);
-const enemyDodgeBlink = ref(false);
 const playerDodgeBlink = ref(false);
-const enemyDefeated = ref(false);
 const vsFlash = ref(false);
-const enemyFloating = ref<{ text: string; type: string } | null>(null);
 const playerFloating = ref<{ text: string; type: string } | null>(null);
 const screenFlash = ref(false);
 const screenFlashType = ref<'crit' | 'dodge'>('crit');
@@ -232,11 +267,12 @@ const playerMaxMp = computed(() => characterStore.maxMana);
 const playerHpPercent = computed(() => Math.max(0, Math.min(100, (playerHp.value / playerMaxHp.value) * 100)));
 const playerMpPercent = computed(() => Math.max(0, Math.min(100, (playerMp.value / playerMaxMp.value) * 100)));
 
-// 敌人数据
-const enemyHp = computed(() => enemy.value?.hp || 0);
-const enemyMaxHp = computed(() => enemy.value?.maxHp || 1);
-const enemyHpPercent = computed(() => Math.max(0, Math.min(100, (enemyHp.value / enemyMaxHp.value) * 100)));
-const isBossFight = computed(() => enemy.value?.isBoss || false);
+// 敌人数据（当前目标）
+const currentTarget = computed(() => combatStore.currentTarget);
+
+function getHpPercent(e: { hp: number; maxHp: number }): number {
+  return Math.max(0, Math.min(100, (e.hp / e.maxHp) * 100));
+}
 
 // 状态
 const isPlayerTurn = computed(() => turn.value === 'player');
@@ -328,6 +364,29 @@ function getSkillEffectText(skill: Skill): string {
   }
 }
 
+/** 获取技能目标类型文本 */
+function getTargetTypeText(targetType?: string): string {
+  switch (targetType) {
+    case 'all_enemies': return 'AOE';
+    case 'self': return '自身';
+    case 'ally': return '友方';
+    default: return '';
+  }
+}
+
+/** 效果图标映射 */
+const effectIcons: Record<string, string> = {
+  poison: '☠️', burn: '🔥', stun: '⚡', freeze: '❄️', silence: '🔇',
+  shield: '🛡️', attack_up: '⬆️', attack_down: '⬇️', defense_up: '🛡️',
+  defense_down: '🔻', speed_up: '💨', speed_down: '🐢', regen: '💚',
+  thorn: '🌹', vulnerable: '💔',
+};
+
+/** 获取效果对应的图标 */
+function getEffectIcon(type: string): string {
+  return effectIcons[type] || '✨';
+}
+
 const resultText = computed(() => {
   switch (combatStore.combatResult) {
     case 'victory': return '战斗胜利！';
@@ -349,31 +408,47 @@ function scrollToBottom() {
 }
 
 // 浮动伤害/治疗数字
-function showFloating(target: 'enemy' | 'player', text: string, type: string) {
-  const floating = target === 'enemy' ? enemyFloating : playerFloating;
-  floating.value = { text, type };
-  setTimeout(() => { floating.value = null; }, 1800);
+function showFloating(target: 'enemy' | 'player', text: string, type: string, enemyId?: string) {
+  if (target === 'enemy' && enemyId) {
+    enemyFloatings.value[enemyId] = { text, type };
+    setTimeout(() => { if (enemyFloatings.value[enemyId]) enemyFloatings.value[enemyId] = null; }, 1800);
+  } else {
+    playerFloating.value = { text, type };
+    setTimeout(() => { playerFloating.value = null; }, 1800);
+  }
 }
 
 // 震动效果（普通攻击）
-function triggerShake(target: 'enemy' | 'player') {
-  const shake = target === 'enemy' ? enemyShake : playerShake;
-  shake.value = true;
-  setTimeout(() => { shake.value = false; }, 600);
+function triggerShake(target: 'enemy' | 'player', enemyId?: string) {
+  if (target === 'enemy' && enemyId) {
+    enemyShakes.value[enemyId] = true;
+    setTimeout(() => { enemyShakes.value[enemyId] = false; }, 600);
+  } else {
+    playerShake.value = true;
+    setTimeout(() => { playerShake.value = false; }, 600);
+  }
 }
 
 // 暴击震动效果（更强、更持久）
-function triggerCritShake(target: 'enemy' | 'player') {
-  const shake = target === 'enemy' ? enemyCritShake : playerCritShake;
-  shake.value = true;
-  setTimeout(() => { shake.value = false; }, 900);
+function triggerCritShake(target: 'enemy' | 'player', enemyId?: string) {
+  if (target === 'enemy' && enemyId) {
+    enemyCritShakes.value[enemyId] = true;
+    setTimeout(() => { enemyCritShakes.value[enemyId] = false; }, 900);
+  } else {
+    playerCritShake.value = true;
+    setTimeout(() => { playerCritShake.value = false; }, 900);
+  }
 }
 
 // 闪避闪烁效果
-function triggerDodgeBlink(target: 'enemy' | 'player') {
-  const blink = target === 'enemy' ? enemyDodgeBlink : playerDodgeBlink;
-  blink.value = true;
-  setTimeout(() => { blink.value = false; }, 800);
+function triggerDodgeBlink(target: 'enemy' | 'player', enemyId?: string) {
+  if (target === 'enemy' && enemyId) {
+    enemyDodgeBlinks.value[enemyId] = true;
+    setTimeout(() => { enemyDodgeBlinks.value[enemyId] = false; }, 800);
+  } else {
+    playerDodgeBlink.value = true;
+    setTimeout(() => { playerDodgeBlink.value = false; }, 800);
+  }
 }
 
 // 屏幕闪白特效
@@ -384,24 +459,33 @@ function triggerScreenFlash(type: 'crit' | 'dodge') {
 }
 
 // 暴击事件处理
-function onCritHit(data: { amount: number; damageType: string; targetName: string; actorType: 'player' | 'enemy' }) {
+function onCritHit(data: { amount: number; damageType: string; targetName: string; actorType: 'player' | 'enemy'; enemyId?: string }) {
   // 暴击震动目标（对敌人暴击震敌人，敌人暴击震玩家）
   const shakeTarget = data.actorType === 'player' ? 'enemy' : 'player';
-  triggerCritShake(shakeTarget);
+  triggerCritShake(shakeTarget, data.enemyId);
   // 暴击浮动文字（金色 + "暴击!" 前缀）
-  showFloating(shakeTarget, `暴击! -${data.amount}`, 'crit');
+  showFloating(shakeTarget, `暴击! -${data.amount}`, 'crit', data.enemyId);
   // 屏幕闪白
   triggerScreenFlash('crit');
 }
 
 // 闪避事件处理
-function onDodge(data: { attackerName: string; dodgerName: string; dodgerType: 'player' | 'enemy' }) {
+function onDodge(data: { attackerName: string; dodgerName: string; dodgerType: 'player' | 'enemy'; enemyId?: string }) {
   // 闪避者闪烁
-  triggerDodgeBlink(data.dodgerType);
+  triggerDodgeBlink(data.dodgerType, data.enemyId);
   // 闪避浮动文字
-  showFloating(data.dodgerType, '闪避!', 'dodge');
+  showFloating(data.dodgerType, '闪避!', 'dodge', data.enemyId);
   // 屏幕轻闪
   triggerScreenFlash('dodge');
+}
+
+// 选择攻击目标
+function selectTarget(enemyId: string) {
+  if (!canAct.value) return;
+  const e = combatStore.enemies.find(en => en.id === enemyId);
+  if (e && e.hp > 0) {
+    combatStore.targetEnemyId = enemyId;
+  }
 }
 
 // 执行玩家动作（普通攻击/逃跑）
@@ -421,11 +505,11 @@ async function doAction(type: CombatActionType) {
 
   // 视觉特效：基于 ActionResult 播放，不再自行编排流程
   if (result.damage && result.damage > 0) {
-    triggerShake('enemy');
-    showFloating('enemy', `-${result.damage}`, result.isCrit ? 'crit' : 'damage');
+    triggerShake('enemy', currentTarget.value?.id);
+    showFloating('enemy', `-${result.damage}`, result.isCrit ? 'crit' : 'damage', currentTarget.value?.id);
   }
   if (result.isCrit) {
-    triggerCritShake('enemy');
+    triggerCritShake('enemy', currentTarget.value?.id);
     triggerScreenFlash('crit');
   }
   if (result.isDodge) {
@@ -434,7 +518,6 @@ async function doAction(type: CombatActionType) {
 
   if (combatStore.combatResult) {
     // 战斗结束（击败/逃跑失败等）
-    enemyDefeated.value = true;
     isAnimating.value = false;
   }
   // 否则 isAnimating 由 watch(turn) 在敌人回合结束后恢复
@@ -457,15 +540,14 @@ async function doSkill(skillId: string) {
 
   // 视觉特效
   if (result.damage && result.damage > 0) {
-    triggerShake('enemy');
-    showFloating('enemy', `-${result.damage}`, 'damage');
+    triggerShake('enemy', currentTarget.value?.id);
+    showFloating('enemy', `-${result.damage}`, 'damage', currentTarget.value?.id);
   }
   if (result.heal && result.heal > 0) {
     showFloating('player', `+${result.heal}`, 'heal');
   }
 
   if (combatStore.combatResult) {
-    enemyDefeated.value = true;
     isAnimating.value = false;
   }
 }
@@ -527,9 +609,6 @@ watch(() => combatStore.turn, (newTurn, oldTurn) => {
 watch(() => combatStore.combatResult, (result) => {
   if (result) {
     isAnimating.value = false;
-    if (result === 'victory' && combatStore.enemy) {
-      enemyDefeated.value = true;
-    }
     scheduleAutoClose();
   }
 });
@@ -589,15 +668,14 @@ watch(() => props.visible, async (val) => {
     isAnimating.value = false;
     showItemModal.value = false;
     autoCloseCountdown.value = 0;
-    enemyDefeated.value = false;
-    enemyShake.value = false;
+    enemyShakes.value = {};
+    enemyCritShakes.value = {};
+    enemyDodgeBlinks.value = {};
+    enemyFloatings.value = {};
     playerShake.value = false;
-    enemyCritShake.value = false;
     playerCritShake.value = false;
-    enemyDodgeBlink.value = false;
     playerDodgeBlink.value = false;
     vsFlash.value = false;
-    enemyFloating.value = null;
     playerFloating.value = null;
     screenFlash.value = false;
     clearAutoClose();
@@ -694,6 +772,46 @@ watch(() => props.visible, async (val) => {
 
 .enemy-side { border-color: #e94560; }
 .player-side { border-color: #00d2d3; }
+
+/* 多敌人列表容器 */
+.enemy-list {
+  flex: 1.2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-content: flex-start;
+}
+
+.enemy-list .combatant {
+  flex: 0 1 calc(50% - 4px);
+  min-width: 120px;
+  padding: 10px;
+  gap: 6px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+
+.enemy-list .combatant:hover {
+  border-color: #ff6b6b;
+}
+
+/* 选中目标高亮 */
+.combatant.targeted {
+  border-color: #ffd700 !important;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+}
+
+.enemy-list .combatant.targeted:hover {
+  border-color: #ffd700 !important;
+}
+
+/* Boss 徽章 */
+.boss-badge {
+  font-size: 11px;
+  color: #ff6b5a;
+  margin-top: 2px;
+  font-weight: 700;
+}
 
 /* 震动效果 */
 .combatant.shake {
@@ -874,6 +992,13 @@ watch(() => props.visible, async (val) => {
 .skill-name { font-size: 12px; font-weight: 600; }
 .skill-effect { font-size: 10px; color: #fbbf24; }
 .skill-cost { font-size: 10px; color: #60a5fa; }
+.skill-target {
+  font-size: 10px;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.15);
+  border-radius: 3px;
+  padding: 0 4px;
+}
 
 /* 敌人回合遮罩 */
 .enemy-turn-overlay {
@@ -1134,4 +1259,74 @@ watch(() => props.visible, async (val) => {
   .floating-damage.crit { font-size: 24px; }
   .floating-damage.dodge { font-size: 18px; }
 }
+
+/* 技能冷却 */
+.skill-btn.on-cooldown {
+  opacity: 0.5;
+  position: relative;
+}
+.skill-cooldown {
+  font-size: 10px;
+  color: #ff6b6b;
+  display: block;
+  margin-top: 2px;
+}
+
+/* 速度切换按钮 */
+.speed-toggle {
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid #ffd700;
+  color: #ffd700;
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.speed-toggle:hover {
+  background: rgba(255, 215, 0, 0.3);
+}
+
+/* 2 倍速模式动画加速 */
+.speed-x2 .combatant.shake { animation-duration: 0.3s; }
+.speed-x2 .combatant.crit-shake { animation-duration: 0.45s; }
+.speed-x2 .combatant.dodge-blink { animation-duration: 0.4s; }
+.speed-x2 .floating-damage { animation-duration: 0.9s; }
+.speed-x2 .screen-flash.crit { animation-duration: 0.3s; }
+.speed-x2 .screen-flash.dodge { animation-duration: 0.3s; }
+
+/* Buff/Debuff 效果指示器 */
+.effects-indicator {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.effect-badge {
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: #ccc;
+  white-space: nowrap;
+}
+
+.effect-badge.effect-poison { border-color: #8bc34a; color: #8bc34a; }
+.effect-badge.effect-burn { border-color: #ff9800; color: #ff9800; }
+.effect-badge.effect-stun { border-color: #ffeb3b; color: #ffeb3b; }
+.effect-badge.effect-freeze { border-color: #00bcd4; color: #00bcd4; }
+.effect-badge.effect-silence { border-color: #9c27b0; color: #9c27b0; }
+.effect-badge.effect-shield { border-color: #2196f3; color: #2196f3; }
+.effect-badge.effect-attack_up { border-color: #f44336; color: #f44336; }
+.effect-badge.effect-attack_down { border-color: #607d8b; color: #607d8b; }
+.effect-badge.effect-defense_up { border-color: #4caf50; color: #4caf50; }
+.effect-badge.effect-defense_down { border-color: #795548; color: #795548; }
+.effect-badge.effect-speed_up { border-color: #03a9f4; color: #03a9f4; }
+.effect-badge.effect-speed_down { border-color: #9e9e9e; color: #9e9e9e; }
+.effect-badge.effect-regen { border-color: #4caf50; color: #4caf50; }
+.effect-badge.effect-thorn { border-color: #e91e63; color: #e91e63; }
+.effect-badge.effect-vulnerable { border-color: #ff5722; color: #ff5722; }
 </style>

@@ -13,6 +13,7 @@ import { explorationDbService } from './db';
 import { mapDbService } from '../map/db';
 import { inventoryDbService } from '../inventory/db';
 import { enemyDbService } from '../enemy/db';
+import { bossDbService } from '../boss/db';
 import { questDbService } from '../quest/db';
 import { shopDbService } from '../shop/db';
 import { eventBus, GameEvents } from '../bus/core';
@@ -147,11 +148,11 @@ export const useExplorationStore = defineStore('exploration', () => {
     // 怪物池：直接使用地点数据中的敌人列表
     const monsterPool = location.enemies || [];
 
-    // Boss 池：从数据库查询敌人数据，筛选标记为 Boss 的敌人
+    // Boss 池：从 Boss 表中查询该地点是否有 Boss
     const bossPool: string[] = [];
     for (const enemyId of monsterPool) {
-      const enemy = await enemyDbService.getEnemyTemplate(enemyId);
-      if (enemy && enemy.isBoss) {
+      const boss = await bossDbService.getBossTemplate(enemyId);
+      if (boss) {
         bossPool.push(enemyId);
       }
     }
@@ -299,16 +300,9 @@ export const useExplorationStore = defineStore('exploration', () => {
     // 2. 随机选取商店
     await pickRandomShop();
 
-    // 3. 获取任务所需的怪物列表
+    // 3. 获取任务所需的怪物列表（从配置表已确定，Boss 由固定事件放置）
     const questMonsters = await getQuestRequiredMonsters(areaId);
-    // 过滤掉 Boss 类型的怪物（Boss 由固定事件放置）
-    const questNormalMonsters: string[] = [];
-    for (const id of questMonsters) {
-      const data = await enemyDbService.getEnemyTemplate(id);
-      if (data && !data.isBoss) {
-        questNormalMonsters.push(id);
-      }
-    }
+    const questNormalMonsters: string[] = [...questMonsters];
 
     // 4. 调用纯函数生成网格
     const areaConfig = getAreaConfig();
@@ -753,6 +747,34 @@ export const useExplorationStore = defineStore('exploration', () => {
     });
   }
 
+  // ==================== 调试 / 开发用 ====================
+
+  /**
+   * 揭示当前探索区域的所有格子（调试/控制台命令专用）
+   * 构建全新网格对象，将所有格子的 explored/visited 设为 true，accessible 设为 false
+   */
+  async function revealAllCells(): Promise<void> {
+    if (!currentAreaId.value || grid.value.length === 0) {
+      console.warn('[探索] 当前没有激活的探索区域');
+      return;
+    }
+
+    // 构建全新网格 — 每个 cell 都是新对象，确保 Vue computed 能追踪到引用变化
+    const newGrid: ExplorationCell[][] = grid.value.map(row =>
+      row.map(cell => ({
+        ...cell,
+        explored: true,
+        visited: true,
+        accessible: false,
+      }))
+    );
+
+    grid.value = newGrid;
+    visitedCells.value = GRID_SIZE * GRID_SIZE;
+    checkCompletion();
+    await persistState();
+  }
+
   // ==================== 清洁 ====================
 
   /** 清理资源（在新架构下不再需要事件分组清理） */
@@ -784,6 +806,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     init,
     enterArea,
     revealGrid,
+    revealAllCells,
     onBattleResult,
     triggerBattle,
     reset,

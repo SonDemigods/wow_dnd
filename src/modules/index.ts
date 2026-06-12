@@ -15,6 +15,7 @@ export * from './exploration';
 export * from './map';
 export * from './base';
 export * from './enemy';
+export * from './boss';
 export * from './equipment';
 export * from './log';
 export * from './audio';

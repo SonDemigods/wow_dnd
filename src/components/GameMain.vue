@@ -270,7 +270,7 @@ async function handleBattleTriggered(data: { eventData?: { monsterId?: string } 
   const enemy = await useEnemiesStore().createEnemy(monsterId);
   
   if (enemy) {
-    useCombatStore().startCombat(enemy);
+    useCombatStore().startCombat([enemy]);
     showCombat.value = true;
   }
 }

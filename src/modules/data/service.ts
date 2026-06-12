@@ -14,6 +14,7 @@ import type { FactionStorage, RaceStorage, ClassStorage, CharacterDataStorage } 
 import type { ItemStorage, InventoryStorage } from '../inventory/types';
 import type { EquipmentItemStorage, EquipmentStorage } from '../equipment/types';
 import type { EnemyStorage } from '../enemy/types';
+import type { BossStorage } from '../boss/types';
 import type { LocationStorage, MapStateStorage } from '../map/types';
 import type { ShopConfigStorage, ShopItemsStorage } from '../shop/types';
 import type { SkillConfigStorage, CharSkillsStorage } from '../skill/types';
@@ -37,7 +38,8 @@ import {
   LOCATIONS,
   SHOPS,
   QUESTS,
-  ENEMIES,
+  MOBS,
+  BOSSES,
   EQUIPMENT_ITEMS,
   LOOT_ITEMS,
   CLASSES,
@@ -106,7 +108,8 @@ export class DataInitializer {
           db.config_classes,
           db.config_items,
           db.config_equipmentItems,
-          db.config_enemies,
+          db.config_mobs,
+          db.config_bosses,
           db.config_locations,
           db.config_shops,
           db.config_quests,
@@ -125,7 +128,8 @@ export class DataInitializer {
             await this.initClasses();
             await this.initItems();
             await this.initEquipment();
-            await this.initEnemies();
+            await this.initMobs();
+            await this.initBosses();
             await this.initShops();
             await this.initQuests();
             await this.initSkillTemplates();
@@ -200,11 +204,20 @@ export class DataInitializer {
   }
 
   /**
-   * 初始化敌人数据
+   * 初始化普通怪物数据
    */
-  private async initEnemies(): Promise<void> {
-    for (const enemy of ENEMIES) {
-      await db.config_enemies.put(enemy as unknown as EnemyStorage);
+  private async initMobs(): Promise<void> {
+    for (const mob of MOBS) {
+      await db.config_mobs.put(mob as unknown as EnemyStorage);
+    }
+  }
+
+  /**
+   * 初始化 Boss 数据
+   */
+  private async initBosses(): Promise<void> {
+    for (const boss of BOSSES) {
+      await db.config_bosses.put(boss as unknown as BossStorage);
     }
   }
 
@@ -419,7 +432,8 @@ export class BackupService implements IBackupService {
     const classesRecords = (await db.config_classes.toArray()) as unknown[];
     const itemsRecords = (await db.config_items.toArray()) as unknown[];
     const equipmentItemsRecords = (await db.config_equipmentItems.toArray()) as unknown[];
-    const enemiesRecords = (await db.config_enemies.toArray()) as unknown[];
+    const mobsRecords = (await db.config_mobs.toArray()) as unknown[];
+    const bossesRecords = (await db.config_bosses.toArray()) as unknown[];
     const skillTemplatesRecords = (await db.config_skills.toArray()) as unknown[];
 
     const characters: Record<string, unknown> = {};
@@ -497,7 +511,8 @@ export class BackupService implements IBackupService {
       classes: classesRecords as Record<string, unknown>[],
       items: itemsRecords as Record<string, unknown>[],
       equipmentItems: equipmentItemsRecords as Record<string, unknown>[],
-      enemies: enemiesRecords as Record<string, unknown>[],
+      mobs: mobsRecords as Record<string, unknown>[],
+      bosses: bossesRecords as Record<string, unknown>[],
       skillTemplates: skillTemplatesRecords as Record<string, unknown>[]
     };
   }
@@ -662,7 +677,8 @@ export class ImportService implements IImportService {
           db.config_classes,
           db.config_items,
           db.config_equipmentItems,
-          db.config_enemies,
+          db.config_mobs,
+          db.config_bosses,
           db.config_skills,
           db.runtime_mapState,
           db.runtime_shopItems,
@@ -765,9 +781,13 @@ export class ImportService implements IImportService {
             await db.config_equipmentItems.bulkPut(data.equipmentItems as unknown as EquipmentItemStorage[]);
             importedStores.push('config_equipmentItems');
           }
-          if (data.enemies && data.enemies.length > 0) {
-            await db.config_enemies.bulkPut(data.enemies as unknown as EnemyStorage[]);
-            importedStores.push('config_enemies');
+          if (data.mobs && data.mobs.length > 0) {
+            await db.config_mobs.bulkPut(data.mobs as unknown as EnemyStorage[]);
+            importedStores.push('config_mobs');
+          }
+          if (data.bosses && data.bosses.length > 0) {
+            await db.config_bosses.bulkPut(data.bosses as unknown as BossStorage[]);
+            importedStores.push('config_bosses');
           }
           if (data.skillTemplates && data.skillTemplates.length > 0) {
             await db.config_skills.bulkPut(data.skillTemplates as unknown as SkillConfigStorage[]);

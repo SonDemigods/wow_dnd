@@ -54,6 +54,9 @@ export const useSkillsStore = defineStore('skills', () => {
   /** 加载状态 */
   const isLoading = ref(false);
 
+  /** 技能冷却状态（key=skillId, value=剩余冷却回合数） */
+  const cooldowns = ref<Record<string, number>>({});
+
   // ==================== 计算属性 ====================
 
   /** 已解锁技能（角色等级足够） */
@@ -272,6 +275,11 @@ export const useSkillsStore = defineStore('skills', () => {
       message: `施放了技能：${skill.name}`,
       icon: '⚡'
     });
+
+    // 7. 记录冷却（如果技能有冷却）
+    if (skill && skill.cooldown && skill.cooldown > 0) {
+      cooldowns.value[skillId] = skill.cooldown;
+    }
 
     return {
       success: true,
@@ -517,6 +525,40 @@ export const useSkillsStore = defineStore('skills', () => {
     await skillsDbService.deleteSkillTemplate(skillId);
   }
 
+  // ==================== Action：冷却管理 ====================
+
+  /**
+   * 减少所有冷却回合数（每回合结束时调用）
+   */
+  function tickCooldowns(): void {
+    for (const key of Object.keys(cooldowns.value)) {
+      if (cooldowns.value[key] > 0) {
+        cooldowns.value[key]--;
+        if (cooldowns.value[key] === 0) {
+          delete cooldowns.value[key];
+        }
+      }
+    }
+  }
+
+  /**
+   * 检查技能是否在冷却中
+   * @param skillId - 技能 ID
+   * @returns 是否在冷却中
+   */
+  function isOnCooldown(skillId: string): boolean {
+    return (cooldowns.value[skillId] || 0) > 0;
+  }
+
+  /**
+   * 获取冷却剩余回合数
+   * @param skillId - 技能 ID
+   * @returns 剩余冷却回合数
+   */
+  function getCooldownRemaining(skillId: string): number {
+    return cooldowns.value[skillId] || 0;
+  }
+
   // ==================== Action：重置 ====================
 
   /**
@@ -526,6 +568,7 @@ export const useSkillsStore = defineStore('skills', () => {
     skills.value = [];
     skillBar.value = { slots: [null, null, null, null] };
     skillTemplates.value.clear();
+    cooldowns.value = {};
     currentCharacterId.value = null;
     await persist();
   }
@@ -549,6 +592,7 @@ export const useSkillsStore = defineStore('skills', () => {
     skillTemplates,
     currentCharacterId,
     isLoading,
+    cooldowns,
 
     // 计算属性
     unlockedSkills,
@@ -575,6 +619,11 @@ export const useSkillsStore = defineStore('skills', () => {
     removeSkillTemplate,
     reset,
     dispose,
+
+    // 冷却管理
+    tickCooldowns,
+    isOnCooldown,
+    getCooldownRemaining,
 
     // 常量
     SKILL_TYPE_NAMES

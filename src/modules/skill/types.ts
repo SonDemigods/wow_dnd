@@ -29,6 +29,8 @@ export interface SkillEffect {
   type: SkillType;
   value: number;
   coefficient?: number;
+  /** 技能目标类型 */
+  targetType?: 'single' | 'all_enemies' | 'self' | 'ally';
 }
 
 /**
@@ -52,6 +54,12 @@ export interface Skill {
   type: SkillType;
   effect: SkillEffect;
   unlockLevel: number;
+  /** 冷却回合数，0=无冷却 */
+  cooldown?: number;
+  /** 可使用此技能的角色类型，默认仅玩家 */
+  usableBy?: 'player' | 'enemy' | 'both';
+  /** 技能目标类型 */
+  targetType?: 'single' | 'all_enemies' | 'self' | 'ally';
 }
 
 /**
@@ -288,6 +296,7 @@ export interface SkillTemplateStorage {
   effect: { type: string; value: number };
   unlockLevel: number;
   classRestriction: string | null;
+  targetType?: string;
 }
 
 /**
@@ -303,6 +312,7 @@ export interface SkillConfigStorage {
   effect: { type: string; value: number; coefficient?: number };
   unlockLevel: number;
   classRestriction?: string | null;
+  targetType?: string;
 }
 
 /**

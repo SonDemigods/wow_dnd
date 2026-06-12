@@ -43,7 +43,8 @@ export interface GameDatabaseSchema {
   config_classes: Table<any, string>;
   config_items: Table<any, string>;
   config_equipmentItems: Table<any, string>;
-  config_enemies: Table<any, string>;
+  config_mobs: Table<any, string>;
+  config_bosses: Table<any, string>;
   config_quests: Table<any, string>;
   config_skills: Table<any, string>;
   config_locations: Table<any, string>;
@@ -78,7 +79,8 @@ export class GameDatabase extends Dexie {
   config_classes!: Table<any, string>;
   config_items!: Table<any, string>;
   config_equipmentItems!: Table<any, string>;
-  config_enemies!: Table<any, string>;
+  config_mobs!: Table<any, string>;
+  config_bosses!: Table<any, string>;
   config_quests!: Table<any, string>;
   config_skills!: Table<any, string>;
   config_locations!: Table<any, string>;
@@ -115,7 +117,8 @@ export class GameDatabase extends Dexie {
       config_classes: 'id, name, primaryStat',
       config_items: 'id, name, type, rarity',
       config_equipmentItems: 'id, name, type, rarity',
-      config_enemies: 'id, name, dangerLevel, isBoss',
+      config_mobs: 'id, name, dangerLevel',
+      config_bosses: 'id, name, dangerLevel',
       config_quests: 'id, boardId, type',
       config_skills: 'id, classRestriction, type',
       config_locations: 'id, type, continent',

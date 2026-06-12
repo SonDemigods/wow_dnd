@@ -19,7 +19,7 @@ export const useAdminStore = defineStore('admin', () => {
   const currentView = ref<AdminView>('dashboard');
 
   /** 当前选中的配置表 */
-  const selectedConfigTable = ref<ConfigTableName>('factions');
+  const selectedConfigTable = ref<ConfigTableName>('mobs');
 
   /** 表格数据缓存 */
   const tableData = ref<any[]>([]);

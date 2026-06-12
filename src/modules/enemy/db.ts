@@ -1,23 +1,23 @@
 /**
- * 敌人模块数据层
+ * 普通怪物数据层
  * 
- * 封装敌人模板数据的 IndexedDB 操作，提供数据持久化能力
+ * 封装普通怪物模板数据的 IndexedDB 操作，提供数据持久化能力
+ * （Boss 数据已拆分至 ../boss/db.ts）
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { EnemyStorage } from './types';
-import type { EnemyData } from './types';
+import type { EnemyStorage, EnemyData } from './types';
 
 /**
- * 敌人数据层服务
+ * 普通怪物数据层服务
  */
 export class EnemyDbService {
   /**
-   * 保存敌人模板到数据库
-   * @param enemy - 敌人数据
+   * 保存怪物模板到数据库
+   * @param enemy - 怪物数据
    */
   async saveEnemyTemplate(enemy: EnemyData): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.config_enemies.put({
+      await gameDb.config_mobs.put({
         id: enemy.id,
         name: enemy.name,
         icon: enemy.icon,
@@ -26,7 +26,6 @@ export class EnemyDbService {
         xp: enemy.xp,
         gold: enemy.gold,
         dangerLevel: enemy.dangerLevel,
-        isBoss: enemy.isBoss ? 1 : 0,
         physicalAttack: enemy.physicalAttack ?? null,
         physicalDefense: enemy.physicalDefense ?? null,
         magicAttack: enemy.magicAttack ?? null,
@@ -38,13 +37,13 @@ export class EnemyDbService {
   }
 
   /**
-   * 获取敌人模板
-   * @param enemyId - 敌人ID
-   * @returns 敌人数据或null
+   * 获取怪物模板
+   * @param enemyId - 怪物 ID
+   * @returns 怪物数据或 null
    */
   async getEnemyTemplate(enemyId: string): Promise<EnemyData | null> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.config_enemies.get(enemyId);
+      const data = await gameDb.config_mobs.get(enemyId);
       if (!data) return null;
 
       return this.fromStorage(data);
@@ -52,23 +51,23 @@ export class EnemyDbService {
   }
 
   /**
-   * 获取所有敌人模板
-   * @returns 敌人模板列表
+   * 获取所有怪物模板
+   * @returns 怪物模板列表
    */
   async getAllEnemyTemplates(): Promise<EnemyData[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.config_enemies.toArray();
+      const items = await gameDb.config_mobs.toArray();
       return items.map(item => this.fromStorage(item));
     });
   }
 
   /**
-   * 删除敌人模板
-   * @param enemyId - 敌人ID
+   * 删除怪物模板
+   * @param enemyId - 怪物 ID
    */
   async deleteEnemyTemplate(enemyId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.config_enemies.delete(enemyId);
+      await gameDb.config_mobs.delete(enemyId);
     });
   }
 
@@ -90,7 +89,6 @@ export class EnemyDbService {
       xp: Number(data.xp) || 0,
       gold: Number(data.gold) || 0,
       dangerLevel: data.dangerLevel || '普通',
-      isBoss: data.isBoss === 1 || undefined,
       physicalAttack: data.physicalAttack != null ? Number(data.physicalAttack) : undefined,
       physicalDefense: data.physicalDefense != null ? Number(data.physicalDefense) : undefined,
       magicAttack: data.magicAttack != null ? Number(data.magicAttack) : undefined,
@@ -102,6 +100,6 @@ export class EnemyDbService {
 }
 
 /**
- * 敌人数据层实例
+ * 普通怪物数据层实例
  */
 export const enemyDbService = new EnemyDbService();

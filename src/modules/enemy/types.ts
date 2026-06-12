@@ -5,9 +5,13 @@
 
 import type { InventoryItem } from '../inventory/types';
 import type { Stats } from '../character/types';
+import type { BossPhase, BossIntro, BossDialogue } from '../boss/types';
 
 /** 危险等级 */
-export type DangerLevel = '普通' | '精英' | '稀有' | 'BOSS';
+export type DangerLevel = '普通' | '困难' | '危险' | '极危险' | '致命';
+
+/** AI 策略类型 */
+export type AiStrategyType = 'aggressive' | 'defensive' | 'balanced' | 'boss_phase';
 
 /**
  * 敌人数据接口
@@ -43,6 +47,16 @@ export interface EnemyData {
   magicDefense?: number;
   critChance?: number;
   dodgeChance?: number;
+  /** 可用技能模板ID列表 */
+  skillPool?: string[];
+  /** AI策略类型 */
+  aiStrategy?: AiStrategyType;
+  /** Boss阶段配置 */
+  phases?: BossPhase[];
+  /** Boss出场演出配置 */
+  intro?: BossIntro;
+  /** Boss台词 */
+  dialogues?: BossDialogue[];
 }
 
 /**
@@ -100,7 +114,6 @@ export interface EnemyStorage {
   xp: number;
   gold: number;
   dangerLevel: string;
-  isBoss?: number;
   physicalAttack?: number | null;
   physicalDefense?: number | null;
   magicAttack?: number | null;

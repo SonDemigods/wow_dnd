@@ -184,7 +184,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 18 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      targetType: 'all_enemies'
     },
     {
       id: 'warrior_shield_bash',
@@ -214,7 +215,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 9,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 17 },
-      unlockLevel: 4
+      unlockLevel: 4,
+      targetType: 'all_enemies'
     },
     {
       id: 'warrior_whirlwind',
@@ -319,7 +321,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 18,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 31 },
-      unlockLevel: 4
+      unlockLevel: 4,
+      targetType: 'all_enemies'
     },
     {
       id: 'mage_cone_of_cold',
@@ -329,7 +332,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 5
+      unlockLevel: 5,
+      targetType: 'all_enemies'
     },
     {
       id: 'mage_arcane_blast',
@@ -359,7 +363,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 22,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 37 },
-      unlockLevel: 8
+      unlockLevel: 8,
+      targetType: 'all_enemies'
     },
     {
       id: 'mage_pyroblast',
@@ -404,7 +409,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 18 },
-      unlockLevel: 2
+      unlockLevel: 2,
+      targetType: 'all_enemies'
     },
     {
       id: 'paladin_flash_of_light',
@@ -474,7 +480,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 28,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 43 },
-      unlockLevel: 10
+      unlockLevel: 10,
+      targetType: 'all_enemies'
     }
     ]
   },
@@ -509,7 +516,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 2
+      unlockLevel: 2,
+      targetType: 'all_enemies'
     },
     {
       id: 'hunter_serpent_sting',
@@ -529,7 +537,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 19 },
-      unlockLevel: 4
+      unlockLevel: 4,
+      targetType: 'all_enemies'
     },
     {
       id: 'hunter_trap',
@@ -749,7 +758,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 18,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 28 },
-      unlockLevel: 5
+      unlockLevel: 5,
+      targetType: 'all_enemies'
     },
     {
       id: 'warlock_life_drain',
@@ -894,7 +904,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 28,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 52 },
-      unlockLevel: 10
+      unlockLevel: 10,
+      targetType: 'all_enemies'
     }
     ]
   },
@@ -989,7 +1000,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 16,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 8
+      unlockLevel: 8,
+      targetType: 'all_enemies'
     },
     {
       id: 'priest_divine_hymn',
@@ -1074,7 +1086,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 16,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 25 },
-      unlockLevel: 6
+      unlockLevel: 6,
+      targetType: 'all_enemies'
     },
     {
       id: 'shaman_windfury',
@@ -1104,7 +1117,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 28,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 50 },
-      unlockLevel: 10
+      unlockLevel: 10,
+      targetType: 'all_enemies'
     }
     ]
   },
@@ -1179,7 +1193,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 18,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 28 },
-      unlockLevel: 6
+      unlockLevel: 6,
+      targetType: 'all_enemies'
     },
     {
       id: 'death_knight_rune_blade_waltz',
@@ -1209,7 +1224,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 30,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 55 },
-      unlockLevel: 10
+      unlockLevel: 10,
+      targetType: 'all_enemies'
     }
     ]
   },
@@ -1399,7 +1415,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 17 },
-      unlockLevel: 7
+      unlockLevel: 7,
+      targetType: 'all_enemies'
     },
     {
       id: 'demon_hunter_chaos_nova',
@@ -1419,7 +1436,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 32,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 59 },
-      unlockLevel: 10
+      unlockLevel: 10,
+      targetType: 'all_enemies'
     }
     ]
   },
@@ -1524,7 +1542,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 32,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 58 },
-      unlockLevel: 10
+      unlockLevel: 10,
+      targetType: 'all_enemies'
     }
     ]
   }

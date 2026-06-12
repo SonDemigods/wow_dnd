@@ -16,8 +16,8 @@ export { LOOT_ITEMS } from './item.data';
 // 导出装备数据
 export { EQUIPMENT_ITEMS } from './equipment.data';
 
-// 导出敌人数据
-export { ENEMIES } from './enemy.data';
+// 导出敌人数据（普通怪物 + Boss）
+export { MOBS, BOSSES } from './enemy.data';
 
 // 导出大陆和世界地点数据（使用别名 LOCATIONS 保持兼容性）
 export { CONTINENTS, LOCATIONS } from './map.data';

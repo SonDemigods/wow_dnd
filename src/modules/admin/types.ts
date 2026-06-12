@@ -19,7 +19,8 @@ export type ConfigTableName =
   | 'classes'
   | 'items'
   | 'equipmentItems'
-  | 'enemies'
+  | 'mobs'
+  | 'bosses'
   | 'quests'
   | 'skills'
   | 'locations'
@@ -44,7 +45,8 @@ export const CONFIG_TABLES: ConfigTableMeta[] = [
   { key: 'classes', label: '职业', description: '13个职业定义', dbTable: 'config_classes' },
   { key: 'items', label: '物品', description: '消耗品/材料模板', dbTable: 'config_items' },
   { key: 'equipmentItems', label: '装备', description: '武器装备模板', dbTable: 'config_equipmentItems' },
-  { key: 'enemies', label: '敌人', description: '怪物/Boss模板', dbTable: 'config_enemies' },
+  { key: 'mobs', label: '普通怪物', description: '普通怪物模板', dbTable: 'config_mobs' },
+  { key: 'bosses', label: 'Boss', description: 'Boss 模板', dbTable: 'config_bosses' },
   { key: 'quests', label: '任务', description: '任务定义', dbTable: 'config_quests' },
   { key: 'skills', label: '技能', description: '职业技能模板', dbTable: 'config_skills' },
   { key: 'locations', label: '地点', description: '大陆/地点数据', dbTable: 'config_locations' },

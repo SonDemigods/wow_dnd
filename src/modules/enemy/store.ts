@@ -7,44 +7,12 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Enemy } from './types';
+import type { Skill } from '../skill/types';
 import { createEnemyInstance, calculateEnemyDamage } from './service';
 import { enemyDbService } from './db';
-
-/**
- * 敌人通用技能定义（基于敌人属性派生，无需额外数据配置）
- * 每个敌人至少拥有一个基础攻击技能，部分敌人拥有特殊技能
- */
-interface EnemySkillDef {
-  id: string;
-  name: string;
-  /** 伤害倍率（相对于敌人物理攻击力） */
-  damageMultiplier: number;
-  /** 是否为治疗技能 */
-  isHeal: boolean;
-  /** 使用该技能所需的最低危险等级 */
-  minDangerLevel: string;
-}
-
-/** 敌人通用技能表 */
-const ENEMY_SKILLS: EnemySkillDef[] = [
-  { id: 'enemy_slam', name: '猛击', damageMultiplier: 1.5, isHeal: false, minDangerLevel: '普通' },
-  { id: 'enemy_sweep', name: '横扫', damageMultiplier: 1.2, isHeal: false, minDangerLevel: '普通' },
-  { id: 'enemy_charge', name: '冲锋', damageMultiplier: 1.3, isHeal: false, minDangerLevel: '困难' },
-  { id: 'enemy_rend', name: '撕裂', damageMultiplier: 1.4, isHeal: false, minDangerLevel: '困难' },
-  { id: 'enemy_crush', name: '粉碎', damageMultiplier: 1.8, isHeal: false, minDangerLevel: '危险' },
-  { id: 'enemy_fireball', name: '火球术', damageMultiplier: 1.6, isHeal: false, minDangerLevel: '危险' },
-  { id: 'enemy_heal', name: '自我修复', damageMultiplier: 0.5, isHeal: true, minDangerLevel: '困难' },
-  { id: 'enemy_boss_slam', name: '毁灭打击', damageMultiplier: 2.5, isHeal: false, minDangerLevel: '极危险' },
-];
-
-/** 危险等级权重映射 */
-const DANGER_LEVEL_RANK: Record<string, number> = {
-  '普通': 1,
-  '困难': 2,
-  '危险': 3,
-  '极危险': 4,
-  '致命': 5,
-};
+import { bossDbService } from '../boss/db';
+import { createBossInstance } from '../boss/service';
+import { useSkillsStore } from '../skill/store';
 
 /**
  * 敌人状态存储
@@ -74,14 +42,25 @@ export const useEnemiesStore = defineStore('enemies', () => {
    */
   async function createEnemy(dataId: string, level: number = 1): Promise<Enemy | null> {
     try {
-      const template = await enemyDbService.getEnemyTemplate(dataId);
-      if (!template) {
-        throw new Error(`Enemy data not found: ${dataId}`);
+      // 优先从普通怪物表查找
+      let template = await enemyDbService.getEnemyTemplate(dataId);
+      if (template) {
+        const enemy = createEnemyInstance(template, level);
+        activeEnemyIds.value.push(enemy.id);
+        enemiesCache.value[enemy.id] = { ...enemy };
+        return enemy;
       }
-      const enemy = createEnemyInstance(template, level);
-      activeEnemyIds.value.push(enemy.id);
-      enemiesCache.value[enemy.id] = { ...enemy };
-      return enemy;
+
+      // 回退到 Boss 表查找
+      const bossTemplate = await bossDbService.getBossTemplate(dataId);
+      if (bossTemplate) {
+        const boss = createBossInstance(bossTemplate, level);
+        activeEnemyIds.value.push(boss.id);
+        enemiesCache.value[boss.id] = { ...boss };
+        return boss;
+      }
+
+      throw new Error(`Enemy data not found: ${dataId}`);
     } catch (e) {
       console.error('[EnemiesStore] 创建敌人失败:', e);
       return null;
@@ -111,32 +90,29 @@ export const useEnemiesStore = defineStore('enemies', () => {
   }
 
   /**
-   * 获取敌人可用技能列表（根据敌人危险等级筛选通用技能表）
+   * 获取敌人可用技能列表（从 skillPool 读取技能ID，通过 skillsStore 获取真实技能数据）
    * @param id - 敌人实例 ID
-   * @returns 可用技能列表（至少包含一个基础技能）
+   * @returns 可用技能列表
    */
-  function getAvailableSkills(id: string): { id: string; name: string }[] {
+  function getAvailableSkills(id: string): { id: string; name: string; isHeal?: boolean; damageMultiplier?: number }[] {
     const enemy = enemiesCache.value[id];
-    if (!enemy) return [];
+    if (!enemy || !enemy.skillPool || enemy.skillPool.length === 0) return [];
 
-    const enemyRank = DANGER_LEVEL_RANK[enemy.dangerLevel] || 0;
+    const skillsStore = useSkillsStore();
 
-    // 筛选出敌人当前危险等级可用的技能
-    const available = ENEMY_SKILLS.filter(skill => {
-      const skillMinRank = DANGER_LEVEL_RANK[skill.minDangerLevel] || 0;
-      return skillMinRank <= enemyRank;
-    });
-
-    // 始终返回至少一个基础技能
-    if (available.length === 0) {
-      return [{ id: 'enemy_slam', name: '猛击' }];
-    }
-
-    return available.map(s => ({ id: s.id, name: s.name }));
+    return enemy.skillPool
+      .map(skillId => skillsStore.getSkill(skillId))
+      .filter((s): s is Skill => s !== null)
+      .map(s => ({
+        id: s.id,
+        name: s.name,
+        isHeal: s.type === 'health_restore' || s.type === 'mana_restore',
+        damageMultiplier: s.effect.coefficient || 1
+      }));
   }
 
   /**
-   * 敌人使用技能（基于敌人属性计算伤害/治疗量）
+   * 敌人使用技能（通过 skillsStore 获取真实技能数据，基于敌人属性计算伤害/治疗量）
    * @param id - 敌人实例 ID
    * @param skillId - 技能 ID
    * @returns 技能使用结果（成功状态、伤害/治疗值、是否为治疗）
@@ -147,17 +123,22 @@ export const useEnemiesStore = defineStore('enemies', () => {
       return { success: false, damage: 0, isHeal: false };
     }
 
-    // 查找技能定义
-    const skillDef = ENEMY_SKILLS.find(s => s.id === skillId);
-    if (!skillDef) {
+    // 通过 skillsStore 获取真实技能数据
+    const skillsStore = useSkillsStore();
+    const skill = skillsStore.getSkill(skillId);
+    if (!skill) {
       return { success: false, damage: 0, isHeal: false };
     }
 
-    // 基于敌人物理攻击力 * 技能倍率计算伤害
-    const baseDamage = Math.round((enemy.physicalAttack || enemy.stats?.physicalAttack || 10) * skillDef.damageMultiplier);
+    const isHeal = skill.type === 'health_restore' || skill.type === 'mana_restore';
 
-    if (skillDef.isHeal) {
-      // 治疗技能：恢复生命值
+    // 基于技能 effect 数据和敌人攻击属性计算实际效果
+    const attackStat = (enemy.physicalAttack || enemy.stats?.physicalAttack || 10);
+    const coefficient = skill.effect.coefficient || 1;
+    const baseDamage = Math.round(attackStat * coefficient + skill.effect.value);
+
+    if (isHeal) {
+      // 治疗技能：恢复敌人生命值
       const healAmount = Math.min(baseDamage, enemy.maxHp - enemy.hp);
       enemy.hp += healAmount;
       enemiesCache.value[id] = { ...enemy };

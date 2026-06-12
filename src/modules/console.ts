@@ -20,6 +20,7 @@ import { useShopStore } from './shop/store';
 import { useQuestStore } from './quest/store';
 import { useLogStore } from './log/store';
 import { enemyDbService } from './enemy/db';
+import { bossDbService } from './boss/db';
 import { inventoryDbService } from './inventory/db';
 import { equipmentDbService } from './equipment/db';
 import { MAX_LEVEL } from '../config/character';
@@ -511,12 +512,17 @@ registerCommand({
   usage: 'spawn <敌人ID>',
   async handler(args) {
     if (args.length === 0) {
-      const enemies = await enemyDbService.getAllEnemyTemplates();
-      logTag('spawn', '═══ 可用敌人ID ═══');
-      for (const data of enemies) {
+      const mobs = await enemyDbService.getAllEnemyTemplates();
+      const bosses = await bossDbService.getAllBossTemplates();
+      logTag('spawn', '═══ 普通怪物 ═══');
+      for (const data of mobs) {
         console.log(`  %c${data.id.padEnd(22)}%c ${data.name} %c(HP:${data.maxHp})`, STYLE.label, STYLE.value, STYLE.hint);
       }
-      return { success: true, message: '已在上方列出所有可用敌人' };
+      logTag('spawn', '═══ Boss ═══');
+      for (const data of bosses) {
+        console.log(`  %c${data.id.padEnd(22)}%c ${data.name} %c(HP:${data.maxHp})`, STYLE.label, STYLE.value, STYLE.hint);
+      }
+      return { success: true, message: '已在上方列出所有可用怪物和Boss' };
     }
 
     const enemyId = args[0];
@@ -525,7 +531,7 @@ registerCommand({
       if (!enemy) {
         return { success: false, message: `未找到敌人: ${enemyId}，输入 spawn 查看可用列表` };
       }
-      await useCombatStore().startCombat(enemy);
+      await useCombatStore().startCombat([enemy]);
       return { success: true, message: `已生成 ${enemy.name} (HP:${enemy.hp}) 并进入战斗` };
     } catch {
       return { success: false, message: `未找到敌人: ${enemyId}，输入 spawn 查看可用列表` };
@@ -573,13 +579,14 @@ registerCommand({
     if (!useCombatStore().isInCombat) {
       return { success: false, message: '当前没有在战斗中' };
     }
-    const enemy = useCombatStore().enemy;
+    // 优先使用当前选中的目标，否则使用第一个存活敌人
+    const enemy = useCombatStore().currentTarget;
     if (!enemy) {
-      return { success: false, message: '没有敌人' };
+      return { success: false, message: '没有存活的敌人' };
     }
     useEnemiesStore().takeDamage(enemy.id, 99999);
     useCombatStore().endCombat('victory');
-    return { success: true, message: `${enemy.name} 已被消灭` };
+    return { success: true, message: `${enemy.name} 已被消灭（${enemy.id}）` };
   }
 });
 
@@ -677,6 +684,21 @@ registerCommand({
       return { success: true, message: `已传送到 ${locationId}` };
     }
     return { success: false, message: `未找到地点: ${locationId}，输入 goto 查看可用列表` };
+  }
+});
+
+/** 揭示当前探索区域所有格子 */
+registerCommand({
+  name: 'revealall',
+  category: '探索',
+  description: '揭示当前探索区域的所有格子',
+  usage: 'revealAll',
+  async handler() {
+    if (!useExplorationStore().isExploring) {
+      return { success: false, message: '当前没有在探索中' };
+    }
+    await useExplorationStore().revealAllCells();
+    return { success: true, message: '所有探索格子已揭示' };
   }
 });
 

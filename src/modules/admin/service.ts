@@ -97,7 +97,7 @@ export class AdminService {
   }> {
     const tableNames = [
       'config_factions', 'config_races', 'config_classes',
-      'config_items', 'config_equipmentItems', 'config_enemies',
+      'config_items', 'config_equipmentItems', 'config_mobs', 'config_bosses',
       'config_quests', 'config_skills', 'config_locations', 'config_shops',
     ];
 

@@ -40,6 +40,23 @@ import {
   generateBattleLogId,
   isBossCombat
 } from './service';
+import {
+  addEffect as addEffectToContainer,
+  tickEffects,
+  applyShield,
+  getStatModifiers,
+  isDisabled,
+  getThornDamage,
+  generateEffectId,
+  type Effect,
+  type EffectContainer,
+  type StatModifiers
+} from './effects';
+import { AggressiveStrategy, DefensiveStrategy, BalancedStrategy, BossPhaseStrategy } from './ai/strategies';
+import type { IAiStrategy, BattleContext } from './ai/types';
+import type { AiStrategyType } from '../enemy/types';
+import { BossPhaseManager, processBossPhaseMechanics, applyPhaseStats, type BossPhase } from '../boss/engine';
+import type { BossIntro } from '../boss/types';
 
 /**
  * 战斗状态存储
@@ -50,8 +67,16 @@ export const useCombatStore = defineStore('combat', () => {
   /** 当前战斗状态 */
   const state = ref<CombatState>('idle');
   
-  /** 当前敌人 */
-  const enemy = ref<Enemy | null>(null);
+  /** 当前敌人 ID 列表（数据存在 enemiesStore 缓存中） */
+  const enemyIds = ref<string[]>([]);
+
+  /** 当前目标敌人 ID */
+  const targetEnemyId = ref<string | null>(null);
+
+  /** Boss 阶段管理器（按敌人 ID 索引） */
+  const bossPhaseManagers = new Map<string, BossPhaseManager>();
+  /** Boss 出场演出数据（按敌人 ID 索引，战斗开始后立即清空） */
+  const bossIntros = ref<Record<string, BossIntro>>({});
   
   /** 当前回合 */
   const turn = ref<'player' | 'enemy'>('player');
@@ -74,6 +99,21 @@ export const useCombatStore = defineStore('combat', () => {
   /** 获得金币（供 UI 结果弹窗展示） */
   const goldGained = ref(0);
 
+  /** 行动顺序（按速度排序的单位ID列表） */
+  const initiativeOrder = ref<string[]>([]);
+
+  /** 当前行动序号索引 */
+  const currentInitiativeIndex = ref(0);
+
+  /** 战斗速度倍率 */
+  const combatSpeed = ref<1 | 2>(1);
+
+  /** 玩家当前效果容器（Buff/Debuff） */
+  const playerEffects = ref<EffectContainer>({ effects: [] });
+
+  /** 敌人效果容器映射（敌人ID -> 效果容器，用于护盾等临时效果） */
+  const enemyEffects = ref<Map<string, EffectContainer>>(new Map());
+
   /** 敌人回合延迟定时器 ID（非响应式，用于战斗提前结束时取消） */
   let turnTimerId: ReturnType<typeof setTimeout> | null = null;
 
@@ -85,6 +125,23 @@ export const useCombatStore = defineStore('combat', () => {
 
   /** 是否正在战斗中 */
   const isInCombat = computed(() => state.value === 'fighting');
+
+  /**
+   * 敌人列表（从 enemiesStore 缓存实时读取，自动响应 HP 变化）
+   * 不再维护本地副本，数据源唯一
+   */
+  const enemies = computed<Enemy[]>(() =>
+    enemyIds.value.map(id => enemiesStore.getEnemyById(id)).filter((e): e is Enemy => e !== null && e !== undefined)
+  );
+
+  /** 存活敌人列表 */
+  const aliveEnemies = computed(() => enemies.value.filter(e => e.hp > 0));
+
+  /** 是否存在 Boss 敌人 */
+  const hasBossEnemy = computed(() => enemies.value.some(e => isBossCombat(e)));
+
+  /** 当前攻击目标（优先选择的目标 > 第一个存活敌人） */
+  const currentTarget = computed(() => enemies.value.find(e => e.id === targetEnemyId.value) || aliveEnemies.value[0] || null);
 
   // ==================== 内部辅助：战斗日志 ====================
 
@@ -117,40 +174,49 @@ export const useCombatStore = defineStore('combat', () => {
 
   /**
    * 结束玩家回合（内部方法）
-   * 设置敌人回合延迟定时器
+   * 使用速度制先攻排序，通过 advanceTurn 决定下一个行动者
    */
   function endPlayerTurn(): void {
-    turn.value = 'enemy';
+    const next = advanceTurn();
+    if (next.isPlayer) {
+      // 玩家再次行动（速度极快的情况）
+      turn.value = 'player';
+      useSkillsStore().tickCooldowns();
+      eventBus.emit(GameEvents.COMBAT_PLAYER_TURN, null);
+    } else {
+      turn.value = 'enemy';
+      turnTimerId = setTimeout(() => {
+        turnTimerId = null;
+        singleEnemyTurn(next.unitId);
+      }, Math.round(500 / combatSpeed.value));
+    }
+  }
 
-    addCombatLog({
-      actorType: 'system',
-      actorId: 'system',
-      actorName: '系统',
-      eventType: 'combat_turn_end',
-      isCrit: false,
-      isDodge: false,
-      message: '玩家回合结束'
-    });
+  // ==================== 内部辅助：AI 策略 ====================
 
-    // 延迟执行敌人回合
-    turnTimerId = setTimeout(() => {
-      turnTimerId = null;
-      enemyTurn();
-    }, 500);
+  /** AI 策略注册表 */
+  const strategyRegistry: Record<AiStrategyType, IAiStrategy> = {
+    aggressive: new AggressiveStrategy(),
+    defensive: new DefensiveStrategy(),
+    balanced: new BalancedStrategy(),
+    boss_phase: new BossPhaseStrategy(),
+  };
+
+  /**
+   * 根据策略类型获取 AI 策略实例
+   */
+  function getStrategy(type: AiStrategyType): IAiStrategy {
+    return strategyRegistry[type] || strategyRegistry.balanced;
   }
 
   // ==================== 内部辅助：敌人行动 ====================
 
   /**
    * 敌人普通攻击（内部方法）
+   * @param e - 执行攻击的敌人
    */
-  function enemyBasicAttack(): CombatActionResult {
-    if (!enemy.value) {
-      return { success: false, type: 'attack', message: '没有敌人！' };
-    }
-
+  function enemyBasicAttack(e: Enemy): CombatActionResult {
     const characterStore = useCharacterStore();
-    const e = enemy.value;
 
     // 计算伤害
     const damage = enemiesStore.calculateDamage(e, characterStore.attributes.physicalDefense);
@@ -188,8 +254,11 @@ export const useCombatStore = defineStore('combat', () => {
       };
     }
 
+    // 应用玩家护盾（伤害计算后、实际扣血前）
+    const { actualDamage, absorbed } = applyShield(playerEffects.value, damage);
+
     // 造成伤害 → 直接调用 characterStore Action
-    characterStore.takeDamage(damage);
+    characterStore.takeDamage(actualDamage);
 
     // 物理伤害音效（敌方攻击）
     eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
@@ -207,17 +276,38 @@ export const useCombatStore = defineStore('combat', () => {
       targetType: 'player',
       targetId: 'player',
       targetName: characterStore.name,
-      damage,
+      damage: actualDamage,
       isCrit: false,
       isDodge: false,
-      message: `${e.name} 对 ${characterStore.name} 造成 ${damage} 点伤害！`
+      message: absorbed > 0
+        ? `${e.name} 对 ${characterStore.name} 造成 ${actualDamage} 点伤害（护盾吸收 ${absorbed}）！`
+        : `${e.name} 对 ${characterStore.name} 造成 ${actualDamage} 点伤害！`
     });
+
+    // 荆棘反伤
+    const thorns = getThornDamage(playerEffects.value, damage);
+    if (thorns > 0) {
+      enemiesStore.takeDamage(e.id, thorns);
+      addCombatLog({
+        actorType: 'player',
+        actorId: 'player',
+        actorName: characterStore.name,
+        eventType: 'combat_damage',
+        targetType: 'enemy',
+        targetId: e.id,
+        targetName: e.name,
+        damage: thorns,
+        isCrit: false,
+        isDodge: false,
+        message: `荆棘反伤对 ${e.name} 造成 ${thorns} 点伤害！`
+      });
+    }
 
     return {
       success: true,
       type: 'attack',
-      damage,
-      message: `${e.name} 对你造成 ${damage} 点伤害！`
+      damage: actualDamage,
+      message: `${e.name} 对你造成 ${actualDamage} 点伤害！`
     };
   }
 
@@ -225,14 +315,10 @@ export const useCombatStore = defineStore('combat', () => {
    * 敌人使用技能攻击（内部方法）
    * @param damage - 技能伤害值
    * @param skill - 技能信息
+   * @param e - 执行攻击的敌人
    */
-  function enemyAttackWithSkill(damage: number, skill: { id: string; name: string }): CombatActionResult {
-    if (!enemy.value) {
-      return { success: false, type: 'skill', message: '没有敌人！' };
-    }
-
+  function enemyAttackWithSkill(damage: number, skill: { id: string; name: string }, e: Enemy): CombatActionResult {
     const characterStore = useCharacterStore();
-    const e = enemy.value;
 
     // 检查玩家闪避
     const dodgeChance = characterStore.attributes.dodgeChance / 100;
@@ -273,8 +359,11 @@ export const useCombatStore = defineStore('combat', () => {
     const defense = characterStore.attributes.physicalDefense;
     const mitigated = Math.max(1, Math.floor(damage - defense * 0.3));
 
+    // 应用玩家护盾（伤害计算后、实际扣血前）
+    const { actualDamage, absorbed } = applyShield(playerEffects.value, mitigated);
+
     // 造成伤害 → 直接调用 characterStore Action
-    characterStore.takeDamage(mitigated);
+    characterStore.takeDamage(actualDamage);
 
     // 物理伤害音效（敌方技能）
     eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
@@ -294,75 +383,144 @@ export const useCombatStore = defineStore('combat', () => {
       targetName: characterStore.name,
       skillId: skill.id,
       skillName: skill.name,
-      damage: mitigated,
+      damage: actualDamage,
       isCrit: false,
       isDodge: false,
-      message: `${e.name} 使用 ${skill.name}，对 ${characterStore.name} 造成 ${mitigated} 点伤害！`
+      message: absorbed > 0
+        ? `${e.name} 使用 ${skill.name}，对 ${characterStore.name} 造成 ${actualDamage} 点伤害（护盾吸收 ${absorbed}）！`
+        : `${e.name} 使用 ${skill.name}，对 ${characterStore.name} 造成 ${actualDamage} 点伤害！`
     });
+
+    // 荆棘反伤
+    const thorns = getThornDamage(playerEffects.value, mitigated);
+    if (thorns > 0) {
+      enemiesStore.takeDamage(e.id, thorns);
+      addCombatLog({
+        actorType: 'player',
+        actorId: 'player',
+        actorName: characterStore.name,
+        eventType: 'combat_damage',
+        targetType: 'enemy',
+        targetId: e.id,
+        targetName: e.name,
+        damage: thorns,
+        isCrit: false,
+        isDodge: false,
+        message: `荆棘反伤对 ${e.name} 造成 ${thorns} 点伤害！`
+      });
+    }
 
     return {
       success: true,
       type: 'skill',
-      damage: mitigated,
-      message: `${e.name} 使用了 ${skill.name}，对你造成 ${mitigated} 点伤害！`
+      damage: actualDamage,
+      message: `${e.name} 使用了 ${skill.name}，对你造成 ${actualDamage} 点伤害！`
     };
   }
 
   /**
-   * 敌人行动（内部方法）
+   * 敌人行动（内部方法，使用 AI 策略模式决定行动）
+   * @param e - 执行行动的敌人
    */
-  function enemyAction(): CombatActionResult {
-    if (!enemy.value) {
-      return { success: false, type: 'attack', message: '没有敌人！' };
+  function enemyAction(e: Enemy): CombatActionResult {
+    if (state.value !== 'fighting') {
+      return { success: false, type: 'attack', message: '战斗已结束' };
     }
 
-    // 检查敌人是否有可用技能
-    const availableSkills = enemiesStore.getAvailableSkills(enemy.value.id);
+    const characterStore = useCharacterStore();
 
-    // 决定使用技能还是普通攻击（30% 几率使用技能）
-    const useSkill = availableSkills.length > 0 && Math.random() < 0.3;
+    // 获取敌人可用技能
+    const availableSkills = enemiesStore.getAvailableSkills(e.id);
 
-    if (useSkill) {
-      // 随机选择一个可用技能
-      const skill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
-      const result = enemiesStore.useSkill(enemy.value.id, skill.id);
+    // 构建战斗上下文
+    const context: BattleContext = {
+      playerHp: characterStore.hp,
+      playerMaxHp: characterStore.maxHp,
+      enemyHp: e.hp,
+      enemyMaxHp: e.maxHp,
+      availableSkills,
+      turnCount: turnCount.value,
+    };
 
-      if (result.success) {
-        if (result.isHeal) {
-          // 敌人治疗自己
-          enemy.value = enemiesStore.getEnemyById(enemy.value.id);
-          if (!enemy.value) {
+    // 根据敌人 AI 策略类型选择策略
+    const strategy = getStrategy(e.aiStrategy || 'balanced');
+    const decision = strategy.decideAction(e, context);
+
+    switch (decision.type) {
+      case 'skill': {
+        const result = enemiesStore.useSkill(e.id, decision.skillId);
+        if (result.success) {
+          if (result.isHeal) {
+            // 敌人治疗自己
+            const updatedEnemy = enemiesStore.getEnemyById(e.id);
+            if (!updatedEnemy) {
+              return { success: false, type: 'skill', message: '找不到敌人数据' };
+            }
+
+            addCombatLog({
+              actorType: 'enemy',
+              actorId: updatedEnemy.id,
+              actorName: updatedEnemy.name,
+              eventType: 'combat_heal',
+              skillId: decision.skillId,
+              skillName: decision.skillId,
+              heal: -result.damage,
+              isCrit: false,
+              isDodge: false,
+              message: `${updatedEnemy.name} 恢复了生命值！`
+            });
+
+            return {
+              success: true,
+              type: 'skill',
+              heal: -result.damage,
+              message: `${e.name} 恢复了生命值！`
+            };
+          } else {
+            // 敌人使用攻击技能
+            const skillData = availableSkills.find(s => s.id === decision.skillId);
+            return enemyAttackWithSkill(result.damage, { id: decision.skillId, name: skillData?.name || decision.skillId }, e);
+          }
+        }
+        break;
+      }
+      case 'heal': {
+        const result = enemiesStore.useSkill(e.id, decision.skillId);
+        if (result.success) {
+          const updatedEnemy = enemiesStore.getEnemyById(e.id);
+          if (!updatedEnemy) {
             return { success: false, type: 'skill', message: '找不到敌人数据' };
           }
 
           addCombatLog({
             actorType: 'enemy',
-            actorId: enemy.value.id,
-            actorName: enemy.value.name,
+            actorId: updatedEnemy.id,
+            actorName: updatedEnemy.name,
             eventType: 'combat_heal',
-            skillId: skill.id,
-            skillName: skill.name,
+            skillId: decision.skillId,
+            skillName: decision.skillId,
             heal: -result.damage,
             isCrit: false,
             isDodge: false,
-            message: `${enemy.value.name} 使用 ${skill.name}，恢复了 ${-result.damage} 点生命值！`
+            message: `${updatedEnemy.name} 恢复了生命值！`
           });
 
           return {
             success: true,
             type: 'skill',
             heal: -result.damage,
-            message: `${enemy.value.name} 使用了 ${skill.name}！`
+            message: `${e.name} 恢复了生命值！`
           };
-        } else {
-          // 敌人使用攻击技能
-          return enemyAttackWithSkill(result.damage, skill);
         }
+        break;
       }
+      case 'basic_attack':
+      default:
+        return enemyBasicAttack(e);
     }
 
-    // 普通攻击
-    return enemyBasicAttack();
+    // 所有分支失败时的兜底
+    return enemyBasicAttack(e);
   }
 
   // ==================== 内部辅助：玩家行动 ====================
@@ -371,15 +529,15 @@ export const useCombatStore = defineStore('combat', () => {
    * 玩家普通攻击（内部方法）
    */
   function playerAttack(): CombatActionResult {
-    if (!enemy.value) {
-      return { success: false, type: 'attack', message: '没有敌人！' };
+    const target = currentTarget.value;
+    if (!target) {
+      return { success: false, type: 'attack', message: '没有可攻击的目标！' };
     }
 
     const characterStore = useCharacterStore();
-    const e = enemy.value;
 
     // 检查敌人闪避（dodgeChance 是百分比，如 3 表示 3%）
-    const enemyDodgeChance = (e.dodgeChance || 0) / 100;
+    const enemyDodgeChance = (target.dodgeChance || 0) / 100;
     const isDodge = rollDodge(enemyDodgeChance);
 
     if (isDodge) {
@@ -389,17 +547,17 @@ export const useCombatStore = defineStore('combat', () => {
         actorName: characterStore.name,
         eventType: 'combat_miss',
         targetType: 'enemy',
-        targetId: e.id,
-        targetName: e.name,
+        targetId: target.id,
+        targetName: target.name,
         isCrit: false,
         isDodge: true,
-        message: `${characterStore.name} 攻击被 ${e.name} 闪避了！`
+        message: `${characterStore.name} 攻击被 ${target.name} 闪避了！`
       });
 
       // 发射闪避事件（音效 + 视觉特效）
       eventBus.emit(GameEvents.COMBAT_DODGE, {
         attackerName: characterStore.name,
-        dodgerName: e.name,
+        dodgerName: target.name,
         dodgerType: 'enemy'
       });
 
@@ -410,14 +568,14 @@ export const useCombatStore = defineStore('combat', () => {
         success: true,
         type: 'attack',
         isDodge: true,
-        message: `${e.name} 闪避了你的攻击！`
+        message: `${target.name} 闪避了你的攻击！`
       };
     }
 
     // 使用纯函数计算伤害
     const { rawDamage } = calculatePlayerDamage(
       characterStore.attributes.physicalAttack,
-      e.physicalDefense || 0
+      target.physicalDefense || 0
     );
 
     // 暴击判定
@@ -426,14 +584,22 @@ export const useCombatStore = defineStore('combat', () => {
     const critMultiplier = isCrit ? 1.5 : 1;
     const damage = Math.floor(rawDamage * critMultiplier);
 
+    // 应用敌人护盾（临时处理）
+    const enemyEff = enemyEffects.value.get(target.id);
+    let finalDamage = damage;
+    if (enemyEff) {
+      const shieldResult = applyShield(enemyEff, damage);
+      finalDamage = shieldResult.actualDamage;
+    }
+
     // 造成伤害
-    const isDead = enemiesStore.takeDamage(e.id, damage);
+    const isDead = enemiesStore.takeDamage(target.id, finalDamage);
 
     // 物理伤害音效事件
     eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
       amount: damage,
       damageType: 'physical',
-      targetName: e.name || '敌人',
+      targetName: target.name || '敌人',
       actorType: 'player'
     });
 
@@ -442,13 +608,13 @@ export const useCombatStore = defineStore('combat', () => {
       eventBus.emit(GameEvents.COMBAT_CRITICAL_HIT, {
         amount: damage,
         damageType: 'physical',
-        targetName: e.name || '敌人',
+        targetName: target.name || '敌人',
         actorType: 'player'
       });
     }
 
     // 更新敌人状态
-    enemy.value = enemiesStore.getEnemyById(e.id);
+    const updatedTarget = enemiesStore.getEnemyById(target.id);
 
     // 添加日志
     addCombatLog({
@@ -457,18 +623,18 @@ export const useCombatStore = defineStore('combat', () => {
       actorName: characterStore.name,
       eventType: isCrit ? 'combat_critical' : 'combat_damage',
       targetType: 'enemy',
-      targetId: enemy.value?.id || '',
-      targetName: enemy.value?.name || '',
-      damage,
+      targetId: updatedTarget?.id || '',
+      targetName: updatedTarget?.name || '',
+      damage: finalDamage,
       isCrit,
       isDodge: false,
       message: isCrit
-        ? `${characterStore.name} 暴击！对 ${enemy.value?.name} 造成 ${damage} 点伤害！`
-        : `${characterStore.name} 对 ${enemy.value?.name} 造成 ${damage} 点伤害！`
+        ? `${characterStore.name} 暴击！对 ${updatedTarget?.name} 造成 ${finalDamage} 点伤害！`
+        : `${characterStore.name} 对 ${updatedTarget?.name} 造成 ${finalDamage} 点伤害！`
     });
 
     // 检查战斗是否结束
-    if (isDead || !enemy.value) {
+    if (isDead || !updatedTarget || aliveEnemies.value.length === 0) {
       endCombat('victory');
     } else {
       endPlayerTurn();
@@ -479,11 +645,11 @@ export const useCombatStore = defineStore('combat', () => {
     return {
       success: true,
       type: 'attack',
-      damage,
+      damage: finalDamage,
       isCrit,
       message: isCrit
-        ? `暴击！造成 ${damage} 点伤害！`
-        : `造成 ${damage} 点伤害！`
+        ? `暴击！造成 ${finalDamage} 点伤害！`
+        : `造成 ${finalDamage} 点伤害！`
     };
   }
 
@@ -495,10 +661,6 @@ export const useCombatStore = defineStore('combat', () => {
     const skillsStore = useSkillsStore();
     const characterStore = useCharacterStore();
 
-    if (!enemy.value) {
-      return { success: false, type: 'skill', message: '没有敌人！' };
-    }
-
     const skill = skillsStore.getSkill(skillId);
     const result = await skillsStore.castSkill(skillId);
 
@@ -509,6 +671,9 @@ export const useCombatStore = defineStore('combat', () => {
         message: result.message
       };
     }
+
+    // 读取技能目标类型，默认单目标
+    const targetType = skill?.targetType || 'single';
 
     // 添加技能施放日志
     addCombatLog({
@@ -523,40 +688,89 @@ export const useCombatStore = defineStore('combat', () => {
       message: `${characterStore.name} 使用了 ${skill?.name || '技能'}！`
     });
 
-    // 如果是伤害技能，对敌人造成伤害
+    // 如果是伤害技能，根据目标类型决定影响范围
     if (result.damage && (result.type === 'physical_damage' || result.type === 'magic_damage')) {
-      const e = enemy.value;
-      const isDead = enemiesStore.takeDamage(e.id, result.damage);
-      enemy.value = enemiesStore.getEnemyById(e.id);
+      if (targetType === 'all_enemies') {
+        // AOE：对所有活着的敌人造成 70% 伤害
+        const livingEnemies = aliveEnemies.value;
+        const aoeDamage = Math.round(result.damage * 0.7);
 
-      // 伤害类型音效事件
-      eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
-        amount: result.damage,
-        damageType: result.type === 'magic_damage' ? 'magic' : 'physical',
-        targetName: enemy.value?.name || '敌人',
-        actorType: 'player'
-      });
+        for (const e of livingEnemies) {
+          enemiesStore.takeDamage(e.id, aoeDamage);
 
-      addCombatLog({
-        actorType: 'player',
-        actorId: 'player',
-        actorName: characterStore.name,
-        eventType: result.type === 'magic_damage' ? 'combat_skill_cast' : 'combat_damage',
-        targetType: 'enemy',
-        targetId: enemy.value?.id || '',
-        targetName: enemy.value?.name || '',
-        skillId,
-        skillName: skill?.name || '',
-        damage: result.damage,
-        isCrit: false,
-        isDodge: false,
-        message: `${skill?.name || '技能'} 对 ${enemy.value?.name} 造成 ${result.damage} 点${result.type === 'magic_damage' ? '魔法' : '物理'}伤害！`
-      });
+          // 伤害类型音效事件
+          eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
+            amount: aoeDamage,
+            damageType: result.type === 'magic_damage' ? 'magic' : 'physical',
+            targetName: e.name || '敌人',
+            actorType: 'player'
+          });
 
-      if (isDead || !enemy.value) {
-        endCombat('victory');
-      } else {
+          addCombatLog({
+            actorType: 'player',
+            actorId: 'player',
+            actorName: characterStore.name,
+            eventType: result.type === 'magic_damage' ? 'combat_skill_cast' : 'combat_damage',
+            targetType: 'enemy',
+            targetId: e.id,
+            targetName: e.name || '',
+            skillId,
+            skillName: skill?.name || '',
+            damage: aoeDamage,
+            isCrit: false,
+            isDodge: false,
+            message: `${skill?.name || '技能'} 对 ${e.name} 造成 ${aoeDamage} 点${result.type === 'magic_damage' ? '魔法' : '物理'}伤害！`
+          });
+        }
+
+        // 检查是否所有敌人死亡
+        if (aliveEnemies.value.length === 0) {
+          endCombat('victory');
+        } else {
+          endPlayerTurn();
+        }
+      } else if (targetType === 'self') {
+        // 对自身生效（自伤技能，实际上不太合理，按治疗逻辑处理）
         endPlayerTurn();
+      } else {
+        // 单目标（默认）：现有逻辑
+        const target = currentTarget.value;
+        if (!target) {
+          return { success: false, type: 'skill', message: '没有可攻击的目标！' };
+        }
+
+        const isDead = enemiesStore.takeDamage(target.id, result.damage);
+        const updatedTarget = enemiesStore.getEnemyById(target.id);
+
+        // 伤害类型音效事件
+        eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
+          amount: result.damage,
+          damageType: result.type === 'magic_damage' ? 'magic' : 'physical',
+          targetName: updatedTarget?.name || '敌人',
+          actorType: 'player'
+        });
+
+        addCombatLog({
+          actorType: 'player',
+          actorId: 'player',
+          actorName: characterStore.name,
+          eventType: result.type === 'magic_damage' ? 'combat_skill_cast' : 'combat_damage',
+          targetType: 'enemy',
+          targetId: updatedTarget?.id || '',
+          targetName: updatedTarget?.name || '',
+          skillId,
+          skillName: skill?.name || '',
+          damage: result.damage,
+          isCrit: false,
+          isDodge: false,
+          message: `${skill?.name || '技能'} 对 ${updatedTarget?.name} 造成 ${result.damage} 点${result.type === 'magic_damage' ? '魔法' : '物理'}伤害！`
+        });
+
+        if (isDead || !updatedTarget || aliveEnemies.value.length === 0) {
+          endCombat('victory');
+        } else {
+          endPlayerTurn();
+        }
       }
     } else if (result.heal) {
       // 治疗技能音效事件（skillsStore.castSkill 已通过 characterStore.receiveHeal 应用治疗）
@@ -643,7 +857,7 @@ export const useCombatStore = defineStore('combat', () => {
   function playerFlee(): CombatActionResult {
     const characterStore = useCharacterStore();
 
-    if (!enemy.value || isBossCombat(enemy.value)) {
+    if (hasBossEnemy.value) {
       return { success: false, type: 'flee', message: '无法从Boss战中逃跑！' };
     }
 
@@ -695,11 +909,10 @@ export const useCombatStore = defineStore('combat', () => {
 
   /**
    * 处理掉落（内部方法，仅 Boss 掉落物品）
+   * @param e - 敌人数据
    */
-  function handleLoot(): void {
-    if (!enemy.value) return;
-
-    enemy.value.drops.forEach(drop => {
+  function handleLoot(e: Enemy): void {
+    e.drops.forEach(drop => {
       if (Math.random() < drop.dropRate) {
         const amount = Math.floor(Math.random() * (drop.maxAmount - drop.minAmount + 1)) + drop.minAmount;
 
@@ -723,19 +936,233 @@ export const useCombatStore = defineStore('combat', () => {
     });
   }
 
+  // ==================== 内部辅助：先攻排序 ====================
+
+  /**
+   * 初始化 Boss 专属功能（阶段管理器、出场演出）
+   */
+  function initBossFeatures(enemiesData: Enemy[]): void {
+    bossPhaseManagers.clear();
+    const intros: Record<string, BossIntro> = {};
+    for (const e of enemiesData) {
+      if (e.isBoss && e.phases && e.phases.length > 0) {
+        bossPhaseManagers.set(e.id, new BossPhaseManager());
+      }
+      if (e.isBoss && e.intro) {
+        intros[e.id] = e.intro;
+      }
+    }
+    bossIntros.value = intros;
+  }
+
+  /**
+   * 构建先攻顺序（玩家 + 所有敌人按速度降序排列）
+   * @param characterStore - 角色 Store 实例
+   */
+  function buildInitiativeOrder(characterStore: ReturnType<typeof useCharacterStore>): void {
+    const units: { id: string; speed: number }[] = [];
+
+    // 玩家速度
+    const playerSpeed = characterStore.effectiveStats?.dex || characterStore.attributes?.dexterity || 10;
+    units.push({ id: 'player', speed: playerSpeed });
+
+    // 所有敌人速度
+    for (const e of enemies.value) {
+      const enemySpeed = e.stats?.dexterity || e.dodgeChance || 5;
+      units.push({ id: e.id, speed: enemySpeed });
+    }
+
+    // 按速度降序排列
+    units.sort((a, b) => b.speed - a.speed);
+    initiativeOrder.value = units.map(u => u.id);
+    currentInitiativeIndex.value = 0;
+  }
+
+  /**
+   * 推进到下一个行动者
+   * @returns 下一个行动者的 ID 和是否为玩家
+   */
+  function advanceTurn(): { unitId: string; isPlayer: boolean } {
+    currentInitiativeIndex.value = (currentInitiativeIndex.value + 1) % initiativeOrder.value.length;
+    if (currentInitiativeIndex.value === 0) {
+      turnCount.value++;
+    }
+    const unitId = initiativeOrder.value[currentInitiativeIndex.value];
+    return { unitId, isPlayer: unitId === 'player' };
+  }
+
+  /**
+   * 切换战斗速度（1x / 2x）
+   */
+  function toggleCombatSpeed(): void {
+    combatSpeed.value = combatSpeed.value === 1 ? 2 : 1;
+  }
+
+  /**
+   * 单个敌人回合（速度制先攻调度用）
+   * 执行该敌人的行动，然后推进到下一个行动者。
+   * 如果下一个仍是敌人则继续链式调用，直到回合回到玩家。
+   * @param enemyId - 敌人 ID
+   */
+  function singleEnemyTurn(enemyId: string): void {
+    if (state.value !== 'fighting') return;
+
+    // 推进玩家效果（持续伤害、恢复等）
+    const characterStore = useCharacterStore();
+    const tickResult = tickEffects(playerEffects.value);
+    if (tickResult.dotDamage > 0) {
+      characterStore.takeDamage(tickResult.dotDamage);
+      addCombatLog({
+        actorType: 'system',
+        actorId: 'system',
+        actorName: '系统',
+        eventType: 'combat_damage',
+        targetType: 'player',
+        targetId: 'player',
+        targetName: characterStore.name,
+        damage: tickResult.dotDamage,
+        isCrit: false,
+        isDodge: false,
+        message: `持续伤害对 ${characterStore.name} 造成 ${tickResult.dotDamage} 点伤害！`
+      });
+    }
+    if (tickResult.regenAmount > 0) {
+      characterStore.receiveHeal(tickResult.regenAmount);
+      addCombatLog({
+        actorType: 'system',
+        actorId: 'system',
+        actorName: '系统',
+        eventType: 'combat_heal',
+        targetType: 'player',
+        targetId: 'player',
+        targetName: characterStore.name,
+        heal: tickResult.regenAmount,
+        isCrit: false,
+        isDodge: false,
+        message: `生命恢复为 ${characterStore.name} 恢复了 ${tickResult.regenAmount} 点生命值！`
+      });
+    }
+
+    // 检查玩家是否因持续伤害死亡
+    if (characterStore.hp <= 0) {
+      endCombat('defeat');
+      saveLogs();
+      return;
+    }
+
+    const e = enemies.value.find(en => en.id === enemyId);
+    if (!e || e.hp <= 0) {
+      // 敌人已死亡，跳过到下一个行动者
+      const next = advanceTurn();
+      if (next.isPlayer) {
+        turn.value = 'player';
+        useSkillsStore().tickCooldowns();
+        eventBus.emit(GameEvents.COMBAT_PLAYER_TURN, null);
+      } else {
+        turn.value = 'enemy';
+        turnTimerId = setTimeout(() => {
+          turnTimerId = null;
+          singleEnemyTurn(next.unitId);
+        }, Math.round(500 / combatSpeed.value));
+      }
+      return;
+    }
+
+    // 记录敌人行动开始
+    addCombatLog({
+      actorType: 'system',
+      actorId: 'system',
+      actorName: '系统',
+      eventType: 'combat_turn_start',
+      isCrit: false,
+      isDodge: false,
+      message: `${e.name} 的回合`
+    });
+
+    // 处理 Boss 阶段转换和机制
+    if (e.isBoss && e.phases && e.phases.length > 0) {
+      const phaseManager = bossPhaseManagers.get(e.id);
+      if (phaseManager) {
+        const currentPhase = phaseManager.getCurrentPhase(e.phases, e.hp, e.maxHp);
+        const transition = phaseManager.checkPhaseTransition(e.phases, e.hp, e.maxHp);
+        if (transition.changed && transition.newPhase) {
+          applyPhaseStats(e, transition.newPhase);
+          addCombatLog({
+            actorType: 'system', actorId: 'system', actorName: '系统',
+            eventType: 'combat_event', targetType: 'enemy', targetId: e.id,
+            targetName: e.name, isCrit: false, isDodge: false,
+            message: `【阶段转换】${e.name} 进入 "${transition.newPhase.name}" 阶段！`
+          });
+          if (transition.newPhase.dialogue && transition.newPhase.dialogue.length > 0) {
+            for (const line of transition.newPhase.dialogue) {
+              addCombatLog({
+                actorType: 'system', actorId: 'system', actorName: e.name,
+                eventType: 'combat_event', targetType: 'enemy', targetId: e.id,
+                targetName: e.name, isCrit: false, isDodge: false,
+                message: `"${line}"`
+              });
+            }
+          }
+        }
+        if (currentPhase) {
+          const triggered = processBossPhaseMechanics(e, currentPhase, turnCount.value);
+          for (const mechType of triggered) {
+            const mechNames: Record<string, string> = {
+              enrage: '狂暴', damage_shield: '伤害护盾', aoe_attack: '范围攻击',
+              summon_minions: '召唤小怪', stun_player: '眩晕玩家', debuff_aura: '减益光环'
+            };
+            addCombatLog({
+              actorType: 'system', actorId: 'system', actorName: '系统',
+              eventType: 'combat_event', targetType: 'enemy', targetId: e.id,
+              targetName: e.name, isCrit: false, isDodge: false,
+              message: `${e.name} 触发了【${mechNames[mechType] || mechType}】机制！`
+            });
+          }
+        }
+      }
+    }
+
+    // 执行敌人行动
+    enemyAction(e);
+
+    // 检查玩家是否死亡
+    if (characterStore.hp <= 0) {
+      endCombat('defeat');
+      saveLogs();
+      return;
+    }
+
+    // 推进到下一个行动者
+    const next = advanceTurn();
+    if (next.isPlayer) {
+      turn.value = 'player';
+      useSkillsStore().tickCooldowns();
+      eventBus.emit(GameEvents.COMBAT_PLAYER_TURN, null);
+    } else {
+      turn.value = 'enemy';
+      turnTimerId = setTimeout(() => {
+        turnTimerId = null;
+        singleEnemyTurn(next.unitId);
+      }, Math.round(500 / combatSpeed.value));
+    }
+
+    saveLogs();
+  }
+
   // ==================== Action：开始战斗 ====================
 
   /**
    * 开始战斗
-   * @param enemyData - 敌人数据
+   * @param enemiesData - 敌人数据数组
    */
-  function startCombat(enemyData: Enemy): void {
+  function startCombat(enemiesData: Enemy[]): void {
     // 创建战斗 ID
     combatId.value = generateCombatId();
 
     // 设置战斗状态
     state.value = 'fighting';
-    enemy.value = enemyData;
+    enemyIds.value = enemiesData.map(e => e.id);
+    targetEnemyId.value = null;
     turn.value = 'player';
     turnCount.value = 1;
     combatLogs.value = [];
@@ -745,13 +1172,27 @@ export const useCombatStore = defineStore('combat', () => {
     expGained.value = 0;
     goldGained.value = 0;
 
+    // 重置效果容器
+    playerEffects.value = { effects: [] };
+    enemyEffects.value = new Map();
+
+    // 初始化 Boss 功能（阶段管理器 + 出场演出）
+    initBossFeatures(enemiesData);
+
+    // 计算先攻顺序（玩家 + 所有敌人按速度排序）
+    const characterStore = useCharacterStore();
+    buildInitiativeOrder(characterStore);
+
+    // 构建敌人名称列表
+    const enemyNames = enemiesData.map(e => e.name).join('、');
+
     // 添加战斗开始日志
     addCombatLog({
       actorType: 'system',
       actorId: 'system',
       actorName: '系统',
       eventType: 'combat_start',
-      message: `战斗开始！你遭遇了 ${enemyData.name}！`
+      message: `战斗开始！你遭遇了 ${enemyNames}！`
     });
 
     // 记录到冒险日志
@@ -759,12 +1200,12 @@ export const useCombatStore = defineStore('combat', () => {
       id: generateLogId(),
       timestamp: Date.now(),
       type: 'combat',
-      message: `遭遇 ${enemyData.name}！`,
+      message: `遭遇 ${enemyNames}！`,
       icon: '⚔️'
     });
 
     // 触发战斗开始事件（UI 进入战斗界面 + 音效）
-    eventBus.emit(GameEvents.COMBAT_START, { enemy: enemyData });
+    eventBus.emit(GameEvents.COMBAT_START, { enemies: enemiesData });
 
     // 触发玩家回合事件
     eventBus.emit(GameEvents.COMBAT_PLAYER_TURN, null);
@@ -853,31 +1294,30 @@ export const useCombatStore = defineStore('combat', () => {
       return;
     }
 
-    if (!enemy.value) {
-      return;
-    }
-
     try {
       const characterStore = useCharacterStore();
 
       // 触发敌人回合开始事件
       eventBus.emit(GameEvents.COMBAT_ENEMY_TURN, null);
 
-      // 添加回合开始日志
-      addCombatLog({
-        actorType: 'system',
-        actorId: 'system',
-        actorName: '系统',
-        eventType: 'combat_turn_start',
-        isCrit: false,
-        isDodge: false,
-        message: `${enemy.value.name} 的回合`
-      });
+      // 获取存活敌人列表
+      const livingEnemies = aliveEnemies.value;
+      for (const e of livingEnemies) {
+        // 战斗可能已经结束（上一个敌人行动导致玩家死亡）
+        if (state.value !== 'fighting') return;
 
-      // 敌人行动
-      const actionResult = enemyAction();
+        addCombatLog({
+          actorType: 'system',
+          actorId: 'system',
+          actorName: '系统',
+          eventType: 'combat_turn_start',
+          isCrit: false,
+          isDodge: false,
+          message: `${e.name} 的回合`
+        });
 
-      if (actionResult.success) {
+        const actionResult = enemyAction(e);
+
         // 检查玩家是否死亡（characterStore.hp 是 computed，默认 0）
         if (characterStore.hp <= 0) {
           endCombat('defeat');
@@ -889,16 +1329,6 @@ export const useCombatStore = defineStore('combat', () => {
       // 结束敌人回合
       turn.value = 'player';
       turnCount.value++;
-
-      addCombatLog({
-        actorType: 'system',
-        actorId: 'system',
-        actorName: '系统',
-        eventType: 'combat_turn_end',
-        isCrit: false,
-        isDodge: false,
-        message: `${enemy.value.name} 的回合结束`
-      });
 
       // 触发玩家回合开始事件
       eventBus.emit(GameEvents.COMBAT_PLAYER_TURN, null);
@@ -918,7 +1348,7 @@ export const useCombatStore = defineStore('combat', () => {
    * @param result - 战斗结果
    */
   function endCombat(result: CombatResult): void {
-    if (!enemy.value) return;
+    if (enemies.value.length === 0) return;
 
     try {
       const characterStore = useCharacterStore();
@@ -926,21 +1356,28 @@ export const useCombatStore = defineStore('combat', () => {
       // 设置战斗状态
       state.value = 'ended';
 
-      const exp = enemy.value.expReward;
-      const gold = enemy.value.goldReward;
+      // 构建敌人名称列表
+      const enemyNames = enemies.value.map(e => e.name).join('、');
 
-      // 设置 UI 战斗结果（供弹窗展示）
-      combatResult.value = result;
-      expGained.value = exp;
-      goldGained.value = gold;
+      // 计算总经验和金币
+      let totalExp = 0;
+      let totalGold = 0;
 
       if (result === 'victory') {
-        // 先记录击败怪物日志，再通过 Store Action 触发奖励
+        totalExp = enemies.value.reduce((sum, e) => sum + (e.expReward || 0), 0);
+        totalGold = enemies.value.reduce((sum, e) => sum + (e.goldReward || 0), 0);
+
+        // 设置 UI 战斗结果（供弹窗展示）
+        combatResult.value = result;
+        expGained.value = totalExp;
+        goldGained.value = totalGold;
+
+        // 先记录击败怪物日志
         logStore.addLogEntry({
           id: generateLogId(),
           timestamp: Date.now(),
           type: 'combat',
-          message: `击败 ${enemy.value.name}！`,
+          message: `击败 ${enemyNames}！`,
           icon: '🏆'
         });
 
@@ -952,25 +1389,32 @@ export const useCombatStore = defineStore('combat', () => {
           eventType: 'combat_end',
           isCrit: false,
           isDodge: false,
-          message: `战斗胜利！获得 ${exp} 经验值和 ${gold} 金币！`
+          message: `战斗胜利！获得 ${totalExp} 经验值和 ${totalGold} 金币！`
         });
 
         // 胜利：直接调用 characterStore Action 获得经验和金币
-        characterStore.gainExp(exp);
-        characterStore.gainGold(gold);
+        characterStore.gainExp(totalExp);
+        characterStore.gainGold(totalGold);
 
-        // 处理掉落（只有 Boss 才掉落物品）
-        if (isBossCombat(enemy.value)) {
-          handleLoot();
+        // 处理掉落（遍历所有敌人，只有 Boss 才掉落物品）
+        for (const e of enemies.value) {
+          if (isBossCombat(e)) {
+            handleLoot(e);
+          }
         }
 
         // 直接调用 questStore 更新击杀进度
-        if (enemy.value.dataId) {
-          const questStore = useQuestStore();
-          questStore.onEnemyKilled(enemy.value.dataId);
+        for (const e of enemies.value) {
+          if (e.dataId) {
+            const questStore = useQuestStore();
+            questStore.onEnemyKilled(e.dataId);
+          }
         }
       } else if (result === 'defeat') {
-        // 失败：损失经验
+        combatResult.value = result;
+        expGained.value = 0;
+        goldGained.value = 0;
+
         addCombatLog({
           actorType: 'system',
           actorId: 'system',
@@ -986,13 +1430,17 @@ export const useCombatStore = defineStore('combat', () => {
           id: generateLogId(),
           timestamp: Date.now(),
           type: 'combat',
-          message: `被 ${enemy.value.name} 击败！`,
+          message: `被 ${enemyNames} 击败！`,
           icon: '💀'
         });
 
         // 直接调用 characterStore Action 处理死亡
         characterStore.handleDeath();
       } else if (result === 'fled') {
+        combatResult.value = result;
+        expGained.value = 0;
+        goldGained.value = 0;
+
         addCombatLog({
           actorType: 'system',
           actorId: 'system',
@@ -1008,7 +1456,7 @@ export const useCombatStore = defineStore('combat', () => {
           id: generateLogId(),
           timestamp: Date.now(),
           type: 'combat',
-          message: `从 ${enemy.value.name} 面前逃跑`,
+          message: `从 ${enemyNames} 面前逃跑`,
           icon: '🏃'
         });
       }
@@ -1019,9 +1467,9 @@ export const useCombatStore = defineStore('combat', () => {
       // 触发战斗结束事件（包含战斗结果信息，供探索等模块监听）
       eventBus.emit(GameEvents.COMBAT_END, {
         result,
-        enemy: enemy.value,
-        expGained: result === 'victory' ? exp : 0,
-        goldGained: result === 'victory' ? gold : 0
+        enemies: enemies.value,
+        expGained: result === 'victory' ? totalExp : 0,
+        goldGained: result === 'victory' ? totalGold : 0
       });
 
       // 清理战斗状态
@@ -1046,16 +1494,21 @@ export const useCombatStore = defineStore('combat', () => {
     }
 
     // 清理敌人（如果敌人已死亡）
-    if (enemy.value && enemy.value.hp <= 0) {
-      enemiesStore.deleteEnemy(enemy.value.id);
+    for (const e of enemies.value) {
+      if (e.hp <= 0) {
+        enemiesStore.deleteEnemy(e.id);
+      }
     }
 
     // 重置战斗状态
-    enemy.value = null;
+    enemyIds.value = [];
+    targetEnemyId.value = null;
     turn.value = 'player';
     turnCount.value = 0;
     combatId.value = '';
     combatLogs.value = [];
+    bossPhaseManagers.clear();
+    bossIntros.value = {};
   }
 
   // ==================== Action：重置 ====================
@@ -1071,7 +1524,8 @@ export const useCombatStore = defineStore('combat', () => {
     }
 
     state.value = 'idle';
-    enemy.value = null;
+    enemyIds.value = [];
+    targetEnemyId.value = null;
     turn.value = 'player';
     turnCount.value = 0;
     combatId.value = '';
@@ -1079,6 +1533,27 @@ export const useCombatStore = defineStore('combat', () => {
     combatResult.value = null;
     expGained.value = 0;
     goldGained.value = 0;
+    playerEffects.value = { effects: [] };
+    enemyEffects.value = new Map();
+    bossPhaseManagers.clear();
+    bossIntros.value = {};
+  }
+
+  // ==================== Action：效果操作 ====================
+
+  /**
+   * 为玩家添加效果（供外部模块直接调用）
+   * @param effect - 效果实例
+   */
+  function addEffectToPlayer(effect: Effect): void {
+    addEffectToContainer(playerEffects.value, effect);
+  }
+
+  /**
+   * 获取玩家当前属性修正
+   */
+  function getPlayerStatModifiers(): StatModifiers {
+    return getStatModifiers(playerEffects.value);
   }
 
   // ==================== 跨模块事件监听（新架构下无需监听） ====================
@@ -1097,16 +1572,26 @@ export const useCombatStore = defineStore('combat', () => {
   return {
     // 状态
     state,
-    enemy,
+    enemies,
+    targetEnemyId,
     turn,
     turnCount,
     combatLogs,
     combatResult,
     expGained,
     goldGained,
+    initiativeOrder,
+    currentInitiativeIndex,
+    combatSpeed,
+    playerEffects,
+    enemyEffects,
 
     // 计算属性
     isInCombat,
+    aliveEnemies,
+    hasBossEnemy,
+    bossIntros,
+    currentTarget,
 
     // Action
     startCombat,
@@ -1115,6 +1600,10 @@ export const useCombatStore = defineStore('combat', () => {
     skipTurn,
     endCombat,
     reset,
+    advanceTurn,
+    toggleCombatSpeed,
+    addEffectToPlayer,
+    getPlayerStatModifiers,
 
     // 生命周期
     setupCrossModuleListeners,

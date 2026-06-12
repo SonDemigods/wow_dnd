@@ -20,7 +20,8 @@ import {
   LOCATIONS,
   SHOPS,
   QUESTS,
-  ENEMIES,
+  MOBS,
+  BOSSES,
   EQUIPMENT_ITEMS,
   LOOT_ITEMS,
   CLASSES,
@@ -169,8 +170,10 @@ export interface BackupData {
   items?: Record<string, unknown>[];
   /** 装备模板 */
   equipmentItems?: Record<string, unknown>[];
-  /** 敌人模板 */
-  enemies?: Record<string, unknown>[];
+  /** 普通怪物模板 */
+  mobs?: Record<string, unknown>[];
+  /** Boss 模板 */
+  bosses?: Record<string, unknown>[];
   /** 技能模板 */
   skillTemplates?: Record<string, unknown>[];
 }
@@ -275,7 +278,8 @@ export interface InitData {
   };
   shops: typeof SHOPS;
   quests: typeof QUESTS;
-  enemies: typeof ENEMIES;
+  mobs: typeof MOBS;
+  bosses: typeof BOSSES;
   equipment: typeof EQUIPMENT_ITEMS;
   items: typeof LOOT_ITEMS;
   classes: typeof CLASSES;

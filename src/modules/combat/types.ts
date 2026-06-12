@@ -251,9 +251,9 @@ export interface ICombatService {
 
   /**
    * 开始战斗
-   * @param {Enemy} enemy - 敌人
+   * @param {Enemy[]} enemies - 敌人数组
    */
-  startCombat(enemy: EnemyInstance): void;
+  startCombat(enemies: EnemyInstance[]): void;
 
   /**
    * 玩家行动

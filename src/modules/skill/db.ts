@@ -115,7 +115,8 @@ export class SkillsDbService {
         type: skill.type,
         effect: skill.effect,
         unlockLevel: skill.unlockLevel,
-        classRestriction: classRestriction || null
+        classRestriction: classRestriction || null,
+        targetType: skill.targetType || null
       });
     });
   }
@@ -138,7 +139,8 @@ export class SkillsDbService {
         mpCost: data.mpCost,
         type: data.type as SkillType,
         effect: (data.effect || { type: 'physical_damage', value: 0 }) as Skill['effect'],
-        unlockLevel: data.unlockLevel
+        unlockLevel: data.unlockLevel,
+        targetType: (data.targetType as Skill['targetType']) || undefined
       };
     });
   }
@@ -158,7 +160,8 @@ export class SkillsDbService {
         mpCost: data.mpCost,
         type: data.type as SkillType,
         effect: (data.effect || { type: 'physical_damage', value: 0 }) as Skill['effect'],
-        unlockLevel: data.unlockLevel
+        unlockLevel: data.unlockLevel,
+        targetType: (data.targetType as Skill['targetType']) || undefined
       }));
     });
   }
@@ -179,7 +182,8 @@ export class SkillsDbService {
         mpCost: data.mpCost,
         type: data.type as SkillType,
         effect: (data.effect || { type: 'physical_damage', value: 0 }) as Skill['effect'],
-        unlockLevel: data.unlockLevel
+        unlockLevel: data.unlockLevel,
+        targetType: (data.targetType as Skill['targetType']) || undefined
       }));
     });
   }
