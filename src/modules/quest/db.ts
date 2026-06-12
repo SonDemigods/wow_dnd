@@ -140,7 +140,6 @@ export class QuestDbService {
         objectives: result.objectives.map(obj => ({
           key: obj.key,
           type: obj.type as 'kill' | 'collect',
-          description: obj.description,
           target: obj.target,
           itemId: obj.itemId,
           enemyId: obj.enemyId,
@@ -170,7 +169,6 @@ export class QuestDbService {
         objectives: result.objectives.map(obj => ({
           key: obj.key,
           type: obj.type as 'kill' | 'collect',
-          description: obj.description,
           target: obj.target,
           itemId: obj.itemId,
           enemyId: obj.enemyId,
@@ -201,7 +199,6 @@ export class QuestDbService {
         objectives: result.objectives.map(obj => ({
           key: obj.key,
           type: obj.type as 'kill' | 'collect',
-          description: obj.description,
           target: obj.target,
           itemId: obj.itemId,
           enemyId: obj.enemyId,

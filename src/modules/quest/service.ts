@@ -135,7 +135,6 @@ export function getDefaultQuests(): QuestDefinition[] {
         {
           key: 'kill_goblin',
           type: 'kill',
-          description: '消灭哥布林',
           target: 10,
           enemyId: 'goblin'
         }
@@ -154,7 +153,6 @@ export function getDefaultQuests(): QuestDefinition[] {
         {
           key: 'collect_herb',
           type: 'collect',
-          description: '采集草药',
           target: 15,
           itemId: 'item_herb'
         }
@@ -173,7 +171,6 @@ export function getDefaultQuests(): QuestDefinition[] {
         {
           key: 'kill_wolf',
           type: 'kill',
-          description: '消灭狼',
           target: 5,
           enemyId: 'wolf'
         }
@@ -192,14 +189,12 @@ export function getDefaultQuests(): QuestDefinition[] {
         {
           key: 'kill_orc_minion',
           type: 'kill',
-          description: '消灭兽人手下',
           target: 3,
           enemyId: 'orc'
         },
         {
           key: 'kill_orc_boss',
           type: 'kill',
-          description: '击败兽人首领',
           target: 1,
           enemyId: 'ogre'
         }

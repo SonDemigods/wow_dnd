@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @fileoverview 游戏任务数据模块
  * @description 包含所有可接任务的详细信息，包括任务目标和奖励
  * @module data/quest
@@ -20,7 +20,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_spider',
         type: 'kill',
-        description: '清除巢穴中的剧毒蜘蛛，还暗影森林一片净土',
         target: 5,
         enemyId: 'spider'
       }
@@ -39,7 +38,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_gnoll',
         type: 'kill',
-        description: '前往多兰纳尔大道，消灭据守关隘的豺狼人强盗，恢复森林要道的安全通行',
         target: 4,
         enemyId: 'gnoll'
       }
@@ -58,7 +56,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_spider',
         type: 'kill',
-        description: '剿灭洞穴中涌出的变异蜘蛛群，阻止它们向定居点扩散',
         target: 6,
         enemyId: 'spider'
       }
@@ -77,7 +74,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_gnoll',
         type: 'kill',
-        description: '突袭豺狼人据点，将盘踞在此的强盗头目与喽啰一并消灭',
         target: 3,
         enemyId: 'gnoll'
       }
@@ -96,7 +92,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_orc',
         type: 'kill',
-        description: '驱逐疯狂伐木的战吼兽人，守护苍翠之谷的每棵古树',
         target: 5,
         enemyId: 'orc'
       }
@@ -115,7 +110,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_spider',
         type: 'kill',
-        description: '猎杀盘踞在密林深处的巨型毒蛛，夺回被蛛网覆盖的领地',
         target: 4,
         enemyId: 'spider'
       }
@@ -134,7 +128,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_gnoll',
         type: 'kill',
-        description: '清除四处劫掠的豺狼人突袭队，守护农场的安宁',
         target: 4,
         enemyId: 'gnoll'
       }
@@ -153,7 +146,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_bandit',
         type: 'kill',
-        description: '追捕商路上的亡命盗匪，用正义终结他们的暴行',
         target: 3,
         enemyId: 'bandit'
       }
@@ -172,7 +164,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_bandit',
         type: 'kill',
-        description: '阻击正在重组的暗影公会势力，粉碎他们的扩张野心',
         target: 5,
         enemyId: 'bandit'
       }
@@ -191,7 +182,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_skeleton',
         type: 'kill',
-        description: '净化闹鬼农场中徘徊的冤魂骷髅，让亡者安息',
         target: 3,
         enemyId: 'skeleton'
       }
@@ -210,7 +200,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_orc',
         type: 'kill',
-        description: '趁兽人集结未成，击溃黑崖兽人的先遣战斗力量',
         target: 4,
         enemyId: 'orc'
       }
@@ -229,7 +218,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_spider',
         type: 'kill',
-        description: '清理潜伏在峡谷岩石间的伏击蜘蛛，打通安全的通行之路',
         target: 3,
         enemyId: 'spider'
       }
@@ -248,7 +236,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_skeleton',
         type: 'kill',
-        description: '净化夜晚从墓园爬出的亡灵，查明亡灵之潮的源头',
         target: 6,
         enemyId: 'skeleton'
       }
@@ -267,7 +254,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_spider',
         type: 'kill',
-        description: '猎杀被黑暗魔法侵蚀的森林毒蛛，获取珍贵的解毒材料',
         target: 4,
         enemyId: 'spider'
       }
@@ -286,7 +272,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_skeleton',
         type: 'kill',
-        description: '击溃失控的亡灵军团残余，阻止其向灰狼领方向扩散',
         target: 5,
         enemyId: 'skeleton'
       }
@@ -305,7 +290,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_wolf',
         type: 'kill',
-        description: '狩猎被瘟疫污染的疯狼群，让灰松森林重回安宁',
         target: 4,
         enemyId: 'wolf'
       }
@@ -324,7 +308,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_skeleton',
         type: 'kill',
-        description: '净化幽冥林地中游荡的无主亡灵遗骸',
         target: 4,
         enemyId: 'skeleton'
       }
@@ -343,7 +326,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_ghoul',
         type: 'kill',
-        description: '消灭掘墓觅食的食尸鬼，让死者的安息不受打扰',
         target: 3,
         enemyId: 'ghoul'
       }
@@ -362,7 +344,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_skeleton',
         type: 'kill',
-        description: '歼灭亡者军团的亡灵先锋队，撕开腐地的黑暗防线',
         target: 5,
         enemyId: 'skeleton'
       }
@@ -381,7 +362,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_demon',
         type: 'kill',
-        description: '打断恶魔术士的召唤仪式，摧毁深渊传送法阵',
         target: 3,
         enemyId: 'demon'
       }
@@ -400,7 +380,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_troll',
         type: 'kill',
-        description: '反击血棘巨魔的劫掠小队，夺回被抢的军火物资',
         target: 4,
         enemyId: 'troll'
       }
@@ -419,7 +398,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_orc',
         type: 'kill',
-        description: '阻止黑铁商会的兽人伐木队，保护棘藤谷的原始雨林',
         target: 3,
         enemyId: 'orc'
       }
@@ -438,7 +416,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_orc',
         type: 'kill',
-        description: '攻破石脊山脉的兽人要塞，保护山脉深处的大地之灵',
         target: 5,
         enemyId: 'orc'
       }
@@ -457,7 +434,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_spider',
         type: 'kill',
-        description: '铲除封锁矿道的洞穴毒蛛，解救被困矮人矿工',
         target: 4,
         enemyId: 'spider'
       }
@@ -476,7 +452,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_troll',
         type: 'kill',
-        description: '剿灭沙漠巨魔的劫掠小队，拯救被俘的商队幸存者',
         target: 4,
         enemyId: 'troll'
       }
@@ -495,7 +470,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_skeleton',
         type: 'kill',
-        description: '清除被诅咒石板唤醒的远古亡灵，阻止它们靠近金沙城',
         target: 5,
         enemyId: 'skeleton'
       }
@@ -514,7 +488,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_troll',
         type: 'kill',
-        description: '击溃叛逃的暗风氏族信徒，摧毁亵渎的丛林仪式',
         target: 5,
         enemyId: 'troll'
       }
@@ -533,7 +506,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_dragon',
         type: 'kill',
-        description: '在翠绿幼龙的围攻中杀出一条路，接近古代遗迹',
         target: 2,
         enemyId: 'dragon_whelp'
       }
@@ -552,7 +524,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_troll',
         type: 'kill',
-        description: '攻破冰雪巨魔的献祭据点，拯救被绑的牦牛村村民',
         target: 5,
         enemyId: 'troll'
       }
@@ -571,7 +542,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_nerubian',
         type: 'kill',
-        description: '摧毁虫族战士的地下隧道网，阻止它们从后方突袭北伐军营地',
         target: 4,
         enemyId: 'nerubian'
       }
@@ -590,7 +560,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_dwarf',
         type: 'kill',
-        description: '击溃铁矮人守卫队，阻止他们挖掘远古神器',
         target: 5,
         enemyId: 'iron_dwarf'
       }
@@ -609,7 +578,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_elemental',
         type: 'kill',
-        description: '平息狂暴的风暴元素，阻止它们汇聚成毁灭性的闪电风暴',
         target: 4,
         enemyId: 'elemental'
       }
@@ -628,7 +596,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_demon',
         type: 'kill',
-        description: '摧毁灵魂熔炉中的恶魔术士，解放被囚禁的勇士灵魂',
         target: 6,
         enemyId: 'demon'
       }
@@ -647,7 +614,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_undead',
         type: 'kill',
-        description: '扫清寒冰荒原外围的亡者爪牙，为北伐军打开进攻通道',
         target: 5,
         enemyId: 'undead'
       }
@@ -666,7 +632,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_murloc',
         type: 'kill',
-        description: '清理潮池一带的蛙人巢穴，夺回被偷的渔获',
         target: 6,
         enemyId: 'murloc'
       }
@@ -685,7 +650,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_bear',
         type: 'kill',
-        description: '制服被药剂激怒的狂躁灰熊，保护旅人与伐木工人',
         target: 4,
         enemyId: 'bear'
       }
@@ -704,7 +668,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_gnoll',
         type: 'kill',
-        description: '击退有组织突袭海岸营地的豺狼人部队',
         target: 5,
         enemyId: 'gnoll'
       }
@@ -723,7 +686,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_elemental',
         type: 'kill',
-        description: '平息被奥术能量扰动的暴走元素生物，保护定居点',
         target: 5,
         enemyId: 'elemental'
       }
@@ -742,7 +704,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_demon',
         type: 'kill',
-        description: '摧毁飞船残骸旁的恶魔祭坛，中断邪恶的召唤仪式',
         target: 2,
         enemyId: 'demon'
       }
@@ -761,7 +722,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_elemental',
         type: 'kill',
-        description: '击碎封锁商路的冰霜元素，打通远望镇的贸易生命线',
         target: 5,
         enemyId: 'elemental'
       }
@@ -780,7 +740,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_demon',
         type: 'kill',
-        description: '阻止恶魔术士破坏远古封印，防止梦魇领主重获自由',
         target: 3,
         enemyId: 'demon'
       }
@@ -799,7 +758,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_dragon',
         type: 'kill',
-        description: '迎战冰蓝幼龙，在冰与魔法的试炼中证明自己',
         target: 2,
         enemyId: 'dragon_whelp'
       }
@@ -818,7 +776,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_demon',
         type: 'kill',
-        description: '清除盘踞在圣山裂缝中的恶魔残党，阻止对世界之树的腐化',
         target: 4,
         enemyId: 'demon'
       }
@@ -837,7 +794,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_dragon',
         type: 'kill',
-        description: '在圣山脚下击败远古巨龙幼崽，赢得攀登圣山之巅的资格',
         target: 3,
         enemyId: 'dragon_whelp'
       }
@@ -856,7 +812,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_demon',
         type: 'kill',
-        description: '清除腐水河沿岸的恶魔营地，遏制魔能对森林的持续腐化',
         target: 4,
         enemyId: 'demon'
       }
@@ -875,7 +830,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_troll',
         type: 'kill',
-        description: '消灭崇拜恶魔的堕落森林巨魔，打断灵魂献祭仪式',
         target: 3,
         enemyId: 'troll'
       }
@@ -894,7 +848,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_centaur',
         type: 'kill',
-        description: '平息半人马氏族的血腥内斗，保护经过荒瘠废土的过往商户',
         target: 5,
         enemyId: 'centaur'
       }
@@ -913,7 +866,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_skeleton',
         type: 'kill',
-        description: '净化自行复生的巨兽骸骨，平息荒瘠废土的古老诅咒',
         target: 6,
         enemyId: 'skeleton'
       }
@@ -932,7 +884,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_boar',
         type: 'kill',
-        description: '猎杀破坏农田的暴怒野猪群，保护赤岩谷的庄稼收成',
         target: 6,
         enemyId: 'boar'
       }
@@ -951,7 +902,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_quilboar',
         type: 'kill',
-        description: '击退入侵赤岩谷的猪面人突袭队，捍卫铁血盟约的领地',
         target: 4,
         enemyId: 'quilboar'
       }
@@ -970,7 +920,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_wolf',
         type: 'kill',
-        description: '狩猎袭击村庄畜栏的灰狼群，保护巨角兽牧群',
         target: 5,
         enemyId: 'wolf'
       }
@@ -989,7 +938,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_bear',
         type: 'kill',
-        description: '驱散占据牧区的狂暴棕熊，恢复牛角族草场的安宁',
         target: 4,
         enemyId: 'bear'
       }
@@ -1008,7 +956,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_quilboar',
         type: 'kill',
-        description: '摧毁猪面人在荆棘深处的武装营地，解除对周边的威胁',
         target: 5,
         enemyId: 'quilboar'
       }
@@ -1027,7 +974,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_centaur',
         type: 'kill',
-        description: '歼灭拦路劫掠的半人马匪帮，让黄金商路重归畅通',
         target: 4,
         enemyId: 'centaur'
       }
@@ -1046,7 +992,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_centaur',
         type: 'kill',
-        description: '攻破半人马把守的高地据点，打通峡谷中的交通要道',
         target: 5,
         enemyId: 'centaur'
       }
@@ -1065,7 +1010,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_harpy',
         type: 'kill',
-        description: '击落峡谷柱顶的鹰身人，摧毁它们的繁殖巢穴',
         target: 4,
         enemyId: 'harpy'
       }
@@ -1084,7 +1028,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_silithid',
         type: 'kill',
-        description: '剿灭从虫巢废墟扩散的异种虫群，阻止虫巢继续向外蔓延',
         target: 4,
         enemyId: 'silithid'
       }
@@ -1103,7 +1046,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_demon',
         type: 'kill',
-        description: '消灭与异种虫勾结的恶魔术士，摧毁魔能虫族孵化场',
         target: 3,
         enemyId: 'demon'
       }
@@ -1122,7 +1064,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_undead',
         type: 'kill',
-        description: '阻截从死灵学院涌出的亡灵潮，保护四风农场的农户',
         target: 6,
         enemyId: 'undead'
       }
@@ -1141,7 +1082,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_ghoul',
         type: 'kill',
-        description: '将乱葬坑中爬出的食尸鬼潮埋葬回它们该待的坟墓',
         target: 5,
         enemyId: 'ghoul'
       }
@@ -1160,7 +1100,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_kobold',
         type: 'kill',
-        description: '驱逐占据矿洞的狗头人，夺回矮人的金矿脉',
         target: 6,
         enemyId: 'kobold'
       }
@@ -1179,7 +1118,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_spider',
         type: 'kill',
-        description: '斩断洞穴蜘蛛的封锁网，救出被困在蛛茧中的矮人矿工',
         target: 4,
         enemyId: 'spider'
       }
@@ -1198,7 +1136,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_murloc',
         type: 'kill',
-        description: '清理沼泽河岸的蛙人群落，恢复水路贸易通道',
         target: 6,
         enemyId: 'murloc'
       }
@@ -1217,7 +1154,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_troll',
         type: 'kill',
-        description: '阻止沼泽巨魔的考古挖掘行动，保护未知的远古遗迹',
         target: 3,
         enemyId: 'troll'
       }
@@ -1236,7 +1172,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_orc',
         type: 'kill',
-        description: '摧毁碎岩兽人在铁刃高地上的新建前哨站',
         target: 5,
         enemyId: 'orc'
       }
@@ -1255,7 +1190,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_troll',
         type: 'kill',
-        description: '净化被巫毒能量复活的巨魔守陵者，稳固远古封印',
         target: 4,
         enemyId: 'troll'
       }
@@ -1274,7 +1208,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_orc',
         type: 'kill',
-        description: '清除在丘陵各处绘制地图的兽人斥候，防止情报外泄',
         target: 4,
         enemyId: 'orc'
       }
@@ -1293,7 +1226,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_bandit',
         type: 'kill',
-        description: '追捕丘陵间的强盗走私团伙，切断他们的走私路线',
         target: 5,
         enemyId: 'bandit'
       }
@@ -1312,7 +1244,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_demon',
         type: 'kill',
-        description: '清除在观星之塔废墟吸食魔法能量的恶魔术士',
         target: 4,
         enemyId: 'demon'
       }
@@ -1331,7 +1262,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_undead',
         type: 'kill',
-        description: '净化从观星之塔地窖中走出的怨灵，让不幸的灵魂得以解脱',
         target: 5,
         enemyId: 'undead'
       }
@@ -1350,7 +1280,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_orc',
         type: 'kill',
-        description: '打乱黑崖兽人的东进行动，阻止其与龙吼氏族汇合',
         target: 5,
         enemyId: 'orc'
       }
@@ -1369,7 +1298,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_dragon',
         type: 'kill',
-        description: '在赤红幼龙被暗黑龙族完全腐化之前击败它们',
         target: 3,
         enemyId: 'dragon_whelp'
       }
@@ -1388,7 +1316,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_elemental',
         type: 'kill',
-        description: '扑灭从火山口涌出的火焰元素，保护矿场与铁匠铺',
         target: 5,
         enemyId: 'elemental'
       }
@@ -1407,7 +1334,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_spider',
         type: 'kill',
-        description: '铲除封锁矿道主通道的熔岩蜘蛛，让矿工重回岗位',
         target: 4,
         enemyId: 'spider'
       }
@@ -1426,7 +1352,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_elemental',
         type: 'kill',
-        description: '击碎从先祖殿堂涌出的土元素守御者，恢复通往遗迹的道路',
         target: 5,
         enemyId: 'elemental'
       }
@@ -1445,7 +1370,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_ogre',
         type: 'kill',
-        description: '从食人魔手中夺回考古营地，抢救被损坏的文物',
         target: 3,
         enemyId: 'ogre'
       }
@@ -1464,7 +1388,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_murloc',
         type: 'kill',
-        description: '清剿沼泽浅滩的蛙人部落，保障部落补给线安全',
         target: 6,
         enemyId: 'murloc'
       }
@@ -1483,7 +1406,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_troll',
         type: 'kill',
-        description: '击退神庙守卫劈颅巨魔，为考古探险队打开通道',
         target: 4,
         enemyId: 'troll'
       }
@@ -1502,7 +1424,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_demon',
         type: 'kill',
-        description: '阻止恶魔术士打通世界之门，断绝军团援军通道',
         target: 4,
         enemyId: 'demon'
       }
@@ -1521,7 +1442,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_dragon',
         type: 'kill',
-        description: '消灭熔岩裂隙中孵化的暗黑幼龙，不留给灭世之龙任何后裔',
         target: 3,
         enemyId: 'dragon_whelp'
       }
@@ -1540,7 +1460,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_troll',
         type: 'kill',
-        description: '攻打崖顶城的暗枝巨魔猎头小队，解除低地农场的威胁',
         target: 5,
         enemyId: 'troll'
       }
@@ -1559,7 +1478,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_wolf',
         type: 'kill',
-        description: '猎杀膨胀的巨狼群，为前往祖尔祭坛的探险者扫清障碍',
         target: 6,
         enemyId: 'wolf'
       }
@@ -1578,7 +1496,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_vrykul',
         type: 'kill',
-        description: '截击北境蛮族远征队的补给线，阻止其在亡谷建立永久兵营',
         target: 5,
         enemyId: 'vrykul'
       }
@@ -1597,7 +1514,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_undead',
         type: 'kill',
-        description: '阻挡亡者军团对亡谷的入侵，帮助冰霜守卫守住防线',
         target: 6,
         enemyId: 'undead'
       }
@@ -1616,7 +1532,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_vrykul',
         type: 'kill',
-        description: '攻入北境要塞外围，打击正在为亡者君主招兵的北境蛮族战士',
         target: 5,
         enemyId: 'vrykul'
       }
@@ -1635,7 +1550,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_troll',
         type: 'kill',
-        description: '突袭冰巨魔的献祭平台，解救被俘的先锋军工兵',
         target: 4,
         enemyId: 'troll'
       }
@@ -1654,7 +1568,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_dragon',
         type: 'kill',
-        description: '击败被黑曜石魔法控制的冰蓝幼龙，解除心智操控',
         target: 3,
         enemyId: 'dragon_whelp'
       }
@@ -1673,7 +1586,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_undead',
         type: 'kill',
-        description: '粉碎在巨龙墓地盗掘龙骨的亡灵，捍卫龙族的尊严',
         target: 6,
         enemyId: 'undead'
       }
@@ -1692,7 +1604,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_bear',
         type: 'kill',
-        description: '狩猎灰熊之王及其巡逻护卫，让伐木营地重获安全',
         target: 5,
         enemyId: 'bear'
       }
@@ -1711,7 +1622,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_orc',
         type: 'kill',
-        description: '拔除兽人在熊岭中秘密修建的前哨据点',
         target: 4,
         enemyId: 'orc'
       }
@@ -1730,7 +1640,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_tiger',
         type: 'kill',
-        description: '追踪并击退袭击营地的剑齿猛虎，保护远征狩猎队',
         target: 4,
         enemyId: 'tiger'
       }
@@ -1749,7 +1658,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_spider',
         type: 'kill',
-        description: '撕开树冠层的巨蛛网，防止它们窒息雨林的生态',
         target: 5,
         enemyId: 'spider'
       }
@@ -1768,7 +1676,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_elemental',
         type: 'kill',
-        description: '净化被亡者魔法腐化的水晶元素，阻止森林彻底沦陷',
         target: 5,
         enemyId: 'elemental'
       }
@@ -1787,7 +1694,6 @@ export const QUESTS: QuestDefinition[] = [
       {
         key: 'kill_dragon',
         type: 'kill',
-        description: '驱赶守护水晶的冰蓝幼龙，为奥法学院采集关键奥术样本',
         target: 3,
         enemyId: 'dragon_whelp'
       }

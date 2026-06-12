@@ -6,4 +6,5 @@
 export * from './types';
 export * from './db';
 export * from './service';
+export * from './objective_utils';
 export { useQuestStore } from './store';

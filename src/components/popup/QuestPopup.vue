@@ -21,7 +21,7 @@
                 :class="['objective', { completed: isObjectiveCompleted(quest.instance, idx) }]"
               >
                 <span class="objective-checkbox">{{ isObjectiveCompleted(quest.instance, idx) ? '☑️' : '⬜' }}</span>
-                <span class="objective-text">{{ obj.description }}</span>
+                <span class="objective-text">{{ getObjectiveText(obj) }}</span>
                 <span class="objective-progress">{{ getObjectiveProgress(quest.instance, idx) }}/{{ obj.target }}</span>
               </div>
             </div>
@@ -77,6 +77,7 @@ import { useQuestStore } from '@/modules/quest';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import { useToast } from '@/composables/useToast';
 import type { QuestDefinition, QuestInstance, QuestStatus } from '@/modules/quest';
+import { getObjectiveText } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
 

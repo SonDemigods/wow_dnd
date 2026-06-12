@@ -33,16 +33,14 @@ export type QuestType = 'kill' | 'collect';
  * 任务目标接口
  * @property {string} key - 目标键，用于唯一标识此目标
  * @property {QuestType} type - 目标类型，决定任务的完成方式
- * @property {string} description - 目标描述，显示给玩家的文本
  * @property {number} target - 目标数量，需要完成的次数
  * @property {string} [itemId] - 物品ID（收集任务专用）
- * @property {string} [enemyId] - 敌人ID（击杀任务专用）
+ * @property {string} [enemyId] - 敌人ID（击杀任务专用，UI 层自动从 enemyId 解析怪物名称生成描述文本）
  * @property {string} [locationId] - 地点ID（交互任务专用）
  */
 export interface QuestObjective {
   key: string;
   type: QuestType;
-  description: string;
   target: number;
   itemId?: string;
   enemyId?: string;
@@ -253,7 +251,7 @@ export interface QuestDefinitionStorage {
   objectives: {
     key: string;
     type: string;
-    description: string;
+    description?: string; // 已废弃，仅用于兼容旧数据
     target: number;
     itemId?: string;
     enemyId?: string;
@@ -274,7 +272,7 @@ export interface QuestConfigStorage {
   title: string;
   description: string;
   type: string;
-  objectives: Array<{ key: string; type: string; description: string; target: number; [key: string]: unknown }>;
+  objectives: Array<{ key: string; type: string; target: number; [key: string]: unknown }>;
   levelRequirement: number;
   xpReward: number;
   goldReward: number;
