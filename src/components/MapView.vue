@@ -147,7 +147,7 @@ const dragStartPanY = ref(0);
 const currentZoneId = computed(() => {
   const currentLocation = mapStore.getCurrentLocation;
   if (currentLocation) {
-    return currentLocation.name;
+    return currentLocation.id;
   }
   return zones.value.find(z => z.status !== 'locked')?.id || '';
 });
