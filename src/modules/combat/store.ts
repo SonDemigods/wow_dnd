@@ -662,7 +662,7 @@ export const useCombatStore = defineStore('combat', () => {
     const characterStore = useCharacterStore();
 
     const skill = skillsStore.getSkill(skillId);
-    const result = await skillsStore.castSkill(skillId);
+    const result = await skillsStore.castSkill(skillId, true);
 
     if (!result.success) {
       return {

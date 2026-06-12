@@ -212,7 +212,7 @@ export const useSkillsStore = defineStore('skills', () => {
    * @param skillId - 技能 ID
    * @returns 使用结果
    */
-  async function castSkill(skillId: string): Promise<SkillUseResult> {
+  async function castSkill(skillId: string, skipAdventureLog = false): Promise<SkillUseResult> {
     const characterStore = useCharacterStore();
     const charData = characterStore.getCharacterData();
     const skill = skills.value.find(s => s.id === skillId)
@@ -267,14 +267,16 @@ export const useSkillsStore = defineStore('skills', () => {
     // 5. 通知 UI（动画 + 音效）
     eventBus.emit(GameEvents.SKILL_CAST, { skill, success: true });
 
-    // 6. 记录冒险日志
-    useLogStore().addLogEntry({
-      id: generateLogId(),
-      timestamp: Date.now(),
-      type: 'skill',
-      message: `施放了技能：${skill.name}`,
-      icon: '⚡'
-    });
+    // 6. 记录冒险日志（战斗中施放技能不记录）
+    if (!skipAdventureLog) {
+      useLogStore().addLogEntry({
+        id: generateLogId(),
+        timestamp: Date.now(),
+        type: 'skill',
+        message: `施放了技能：${skill.name}`,
+        icon: '⚡'
+      });
+    }
 
     // 7. 记录冷却（如果技能有冷却）
     if (skill && skill.cooldown && skill.cooldown > 0) {
