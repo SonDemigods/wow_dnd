@@ -406,14 +406,17 @@ export const useExplorationStore = defineStore('exploration', () => {
       return true;
     }
 
-    // 其他格子：正常揭示逻辑
-    if (cell.explored) {
+    // 其他格子：正常揭示逻辑（已探索且未完成则允许再次交互，如 revealAll 后点击宝箱/陷阱）
+    if (cell.explored && cell.completed) {
       return false;
     }
 
+    const isFirstVisit = !cell.explored;
     cell.explored = true;
     cell.visited = true;
-    visitedCells.value++;
+    if (isFirstVisit) {
+      visitedCells.value++;
+    }
 
     // 先处理格子事件（必须在 updateAccessibleCells 之前，
     // 否则 completed 状态无法通过浅拷贝同步到新网格中）
