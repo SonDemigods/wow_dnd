@@ -14,7 +14,7 @@ import { generateLogId } from '../log/service';
 import { useCharacterStore } from '../character/store';
 import { useInventoryStore } from '../inventory/store';
 import { calculatePrice, generateShopItems, canAffordItem } from './service';
-import { SHOPS } from '@/data/shop.data';
+import { SHOPS } from '@/data/config_shops';
 
 /**
  * 商店状态存储

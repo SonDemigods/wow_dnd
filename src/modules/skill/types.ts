@@ -29,8 +29,6 @@ export interface SkillEffect {
   type: SkillType;
   value: number;
   coefficient?: number;
-  /** 技能目标类型 */
-  targetType?: 'single' | 'all_enemies' | 'self' | 'ally';
 }
 
 /**

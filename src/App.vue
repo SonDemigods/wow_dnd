@@ -3,8 +3,8 @@
     <template v-if="!loading">
       <div v-if="gameState === 'character-select'" class="character-select-screen">
         <div class="screen-header">
-          <h1>魔兽世界：地下城</h1>
-          <p class="subtitle">World of Warcraft: Dungeons & Dragons</p>
+          <h1>战争艺术：地下城</h1>
+          <p class="subtitle">Art of War: Dungeons</p>
         </div>
         <CharacterSelect 
           ref="characterSelectRef"

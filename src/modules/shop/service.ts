@@ -8,7 +8,7 @@ import type { ShopConfig, ShopItem } from './types';
 import type { Item, ItemType } from '../inventory/types';
 import type { Character } from '../character/types';
 import { RARITY_SELL_DISCOUNT, RARITY_PRICE_MULTIPLIER } from '@/config/inventory';
-import { SHOPS } from '@/data/shop.data';
+import { SHOPS } from '@/data/config_shops';
 
 // ==================== 常量 ====================
 

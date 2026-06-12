@@ -4,31 +4,38 @@
  * @module data
  */
 
-// 导出阵营和种族数据
-export { FACTIONS, RACES } from './race.data';
+// 导出阵营数据
+export { FACTIONS } from './config_factions';
 
-// 导出职业和职业技能数据
-export { CLASSES, CLASS_ABILITIES } from './class.data';
+// 导出种族数据
+export { RACES } from './config_races';
+
+// 导出职业数据
+export { CLASSES } from './config_classes';
+
+// 导出职业技能数据
+export { CLASS_ABILITIES } from './config_skills';
 
 // 导出物品和战利品数据
-export { LOOT_ITEMS } from './item.data';
+export { LOOT_ITEMS } from './config_items';
 
 // 导出装备数据
-export { EQUIPMENT_ITEMS } from './equipment.data';
+export { EQUIPMENT_ITEMS } from './config_equipmentItems';
 
-// 导出敌人数据（普通怪物 + Boss）
-export { MOBS, BOSSES } from './enemy.data';
+// 导出普通怪物数据
+export { MOBS } from './config_mobs';
 
-// 导出大陆和世界地点数据（使用别名 LOCATIONS 保持兼容性）
-export { CONTINENTS, LOCATIONS } from './map.data';
+// 导出 Boss 怪物数据
+export { BOSSES } from './config_bosses';
+
+// 导出世界地图数据（大陆 + 地点）
+export { CONTINENTS, LOCATIONS } from './config_locations';
 
 // 导出任务数据
-export { QUESTS } from './quest.data';
+export { QUESTS } from './config_quests';
 
 // 导出商店数据
-export {
-  SHOPS
-} from './shop.data';
+export { SHOPS } from './config_shops';
 
 // 导出配置常量
 export { MAX_LEVEL, STAT_NAMES, LEVEL_EXP_REQUIREMENTS } from '@/config/character';

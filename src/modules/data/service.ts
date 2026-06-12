@@ -213,7 +213,7 @@ export class DataInitializer {
   }
 
   /**
-   * 初始化 Boss 数据
+   * 初始化 Boss 怪物数据
    */
   private async initBosses(): Promise<void> {
     for (const boss of BOSSES) {

@@ -5,8 +5,8 @@
 
 /**
  * 阵营类型枚举
- * - alliance: 联盟
- * - horde: 部落
+ * - alliance: 光辉盟约
+ * - horde: 铁血盟约
  * - neutral: 中立
  */
 export type FactionType = 'alliance' | 'horde' | 'neutral';
@@ -31,29 +31,29 @@ export interface FactionData {
  * - human: 人类
  * - dwarf: 矮人
  * - gnome: 侏儒
- * - night_elf: 暗夜精灵
- * - draenei: 德莱尼
+ * - night_elf: 暮精灵
+ * - draenei: 星裔
  * - worgen: 狼人
- * - void_elf: 虚空精灵
- * - lightforged_draenei: 光铸德莱尼
- * - dark_iron_dwarf: 黑铁矮人
- * - kul_tiran: 库尔提拉人
- * - mecha_gnome: 机械侏儒
- * - pandaren: 熊猫人
+ * - void_elf: 暗影精灵
+ * - lightforged_draenei: 圣光星裔
+ * - dark_iron_dwarf: 铁炉矮人
+ * - kul_tiran: 海民
+ * - mecha_gnome: 机关侏儒
+ * - pandaren: 兽灵族
  * - orc: 兽人
- * - undead: 被遗忘者
- * - tauren: 牛头人
+ * - undead: 亡者
+ * - tauren: 牛角族
  * - troll: 巨魔
- * - blood_elves: 血精灵
+ * - blood_elves: 银辉精灵
  * - goblin: 地精
- * - nightborne: 夜之子
- * - highmountain_tauren: 至高岭牛头人
- * - maghar_orc: 玛格汉兽人
- * - zandalari: 赞达拉巨魔
- * - vulpera: 狐人
- * - dracthyr: 龙希尔
- * - earthen: 土灵
- * - harenei: 哈籁尼尔
+ * - nightborne: 暮光后裔
+ * - highmountain_tauren: 高岭牛角族
+ * - maghar_orc: 棕皮兽人
+ * - zandalari: 远古巨魔
+ * - vulpera: 狐族
+ * - dracthyr: 龙裔
+ * - earthen: 大地之子
+ * - harenei: 林荫精灵
  */
 export type RaceType =
   | 'human'
@@ -123,10 +123,10 @@ export interface RaceBonus {
  * - druid:  德鲁伊
  * - priest: 牧师
  * - shaman: 萨满
- * - death_knight: 死亡骑士
+ * - death_knight: 亡灵骑士
  * - monk: 武僧
- * - demon_hunter: 恶魔猎手
- * - evoker: 唤魔师
+ * - demon_hunter: 影刃猎手
+ * - evoker: 龙脉术士
  */
 export type ClassType =
   | 'warrior'

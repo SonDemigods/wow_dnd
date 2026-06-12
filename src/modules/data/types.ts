@@ -170,7 +170,7 @@ export interface BackupData {
   items?: Record<string, unknown>[];
   /** 装备模板 */
   equipmentItems?: Record<string, unknown>[];
-  /** 普通怪物模板 */
+  /** 敌人模板（普通怪物 + Boss 合并） */
   mobs?: Record<string, unknown>[];
   /** Boss 模板 */
   bosses?: Record<string, unknown>[];

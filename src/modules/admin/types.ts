@@ -40,7 +40,7 @@ export interface ConfigTableMeta {
 
 /** 所有配置表元信息列表 */
 export const CONFIG_TABLES: ConfigTableMeta[] = [
-  { key: 'factions', label: '阵营', description: '联盟/部落/中立阵营', dbTable: 'config_factions' },
+  { key: 'factions', label: '阵营', description: '光辉盟约/铁血盟约/中立阵营', dbTable: 'config_factions' },
   { key: 'races', label: '种族', description: '26个可选种族', dbTable: 'config_races' },
   { key: 'classes', label: '职业', description: '13个职业定义', dbTable: 'config_classes' },
   { key: 'items', label: '物品', description: '消耗品/材料模板', dbTable: 'config_items' },

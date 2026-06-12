@@ -64,7 +64,7 @@ const store = useAdminStore();
 // ========== 字典值 → 中文翻译映射表 ==========
 
 const FACTION_NAMES: Record<string, string> = {
-  alliance: '联盟', horde: '部落', neutral: '中立',
+  alliance: '光辉盟约', horde: '铁血盟约', neutral: '中立',
 };
 
 const STAT_NAMES: Record<string, string> = {

@@ -80,8 +80,8 @@ export interface BossMechanic {
   intervalTurns: number;
   /** 上次触发回合 */
   lastTriggerTurn?: number;
-  /** 机制参数 */
-  params?: Record<string, number>;
+  /** 机制参数（支持数值和字符串配置） */
+  params?: Record<string, string | number>;
 }
 
 /** Boss 阶段 */
