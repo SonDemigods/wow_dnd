@@ -92,7 +92,7 @@
 
       <!-- 战斗日志 -->
       <div class="combat-log" ref="logRef">
-        <div v-for="(log, i) in logs" :key="i" :class="['log-entry', 'log-' + log.actorType]">
+        <div v-for="(log, i) in logsReversed" :key="i" :class="['log-entry', 'log-' + log.actorType]">
           <span class="log-turn">[{{ log.turn }}]</span>
           <span class="log-msg">{{ log.message }}</span>
           <span v-if="log.damage && log.damage > 0" :class="['log-damage', getDamageTypeClass(log)]">
@@ -241,6 +241,9 @@ let autoCloseTimeout: ReturnType<typeof setTimeout> | null = null;
 const turn = computed(() => combatStore.turn);
 const turnCount = computed(() => combatStore.turnCount);
 const logs = computed(() => combatStore.combatLogs);
+
+/** 战斗日志倒序（最新在最上面） */
+const logsReversed = computed(() => [...logs.value].reverse());
 
 // 动画状态（按敌人 ID 索引）
 const enemyShakes = ref<Record<string, boolean>>({});
@@ -396,14 +399,14 @@ const resultText = computed(() => {
   }
 });
 
-/** 战斗日志变化时自动滚动到底部 */
+/** 战斗日志变化时自动滚动到顶部（倒序显示，最新在最上面） */
 watch(logs, () => {
-  nextTick(() => scrollToBottom());
+  nextTick(() => scrollToTop());
 });
 
-function scrollToBottom() {
+function scrollToTop() {
   if (logRef.value) {
-    logRef.value.scrollTop = logRef.value.scrollHeight;
+    logRef.value.scrollTop = 0;
   }
 }
 
@@ -1222,8 +1225,8 @@ watch(() => props.visible, async (val) => {
 }
 
 @keyframes logSlideIn {
-  from { opacity: 0; transform: translateX(-10px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes resultPopIn {
