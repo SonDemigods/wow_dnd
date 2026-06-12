@@ -37,7 +37,7 @@ export const useShopStore = defineStore('shop', () => {
   /** 是否正在加载 */
   const isLoading = ref(false);
 
-  // ==================== 内部状态（不对外暴露） ====================
+  // ==================== 内部状态 ====================
 
   /** 玩家卖给商店的商品（按 shopId → itemId → 条目 组织，支持回购） */
   const soldItems = ref<Map<string, Map<string, SoldItemEntry>>>(new Map());
@@ -490,6 +490,10 @@ export const useShopStore = defineStore('shop', () => {
     currentItems,
     currentCharacterId,
     isLoading,
+
+    // 内部状态（回购列表、刷新时间，供 UI 查询回购信息）
+    soldItems,
+    lastRefresh,
 
     // 计算属性
     currentShopConfig,

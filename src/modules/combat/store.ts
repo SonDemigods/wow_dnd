@@ -269,12 +269,16 @@ export const useCombatStore = defineStore('combat', () => {
       };
     }
 
+    // 应用防御减免计算实际伤害
+    const defense = characterStore.attributes.physicalDefense;
+    const mitigated = Math.max(1, Math.floor(damage - defense * 0.3));
+
     // 造成伤害 → 直接调用 characterStore Action
-    characterStore.takeDamage(damage);
+    characterStore.takeDamage(mitigated);
 
     // 物理伤害音效（敌方技能）
     eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
-      amount: damage,
+      amount: mitigated,
       damageType: 'physical',
       targetName: characterStore.name,
       actorType: 'enemy'
@@ -290,17 +294,17 @@ export const useCombatStore = defineStore('combat', () => {
       targetName: characterStore.name,
       skillId: skill.id,
       skillName: skill.name,
-      damage,
+      damage: mitigated,
       isCrit: false,
       isDodge: false,
-      message: `${e.name} 使用 ${skill.name}，对 ${characterStore.name} 造成 ${damage} 点伤害！`
+      message: `${e.name} 使用 ${skill.name}，对 ${characterStore.name} 造成 ${mitigated} 点伤害！`
     });
 
     return {
       success: true,
       type: 'skill',
-      damage,
-      message: `${e.name} 使用了 ${skill.name}，对你造成 ${damage} 点伤害！`
+      damage: mitigated,
+      message: `${e.name} 使用了 ${skill.name}，对你造成 ${mitigated} 点伤害！`
     };
   }
 
