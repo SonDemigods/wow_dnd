@@ -113,6 +113,43 @@ class AudioService implements IAudioService {
   /** 上次调度时间戳，防止同一帧内多次调度同一合成器冲突 */
   private lastScheduleTime = 0;
 
+  /** 各合成器的最后调度时间（按合成器 key 分别追踪） */
+  private synthScheduleTimes = new Map<string, number>();
+
+  /**
+   * 安全调度合成器，确保传入的时间始终 >= 该合成器上次调度时间，
+   * 避免 Tone.js 内部振荡器时间冲突。
+   */
+  private scheduleAt(key: string, time: number): number {
+    const last = this.synthScheduleTimes.get(key) ?? 0;
+    if (time <= last) {
+      time = last + 0.005;
+    }
+    this.synthScheduleTimes.set(key, time);
+    return time;
+  }
+
+  // ---- 合成器快捷方法，自动处理时间调度安全 ----
+
+  private tSynth(note: string, dur: string, time: number, vel?: number): void {
+    this.synth.triggerAttackRelease(note, dur, this.scheduleAt('synth', time), vel);
+  }
+  private tMembrane(note: string, dur: string, time: number, vel?: number): void {
+    this.membrane.triggerAttackRelease(note, dur, this.scheduleAt('membrane', time), vel);
+  }
+  private tFM(note: string, dur: string, time: number, vel?: number): void {
+    this.fmSynth.triggerAttackRelease(note, dur, this.scheduleAt('fmSynth', time), vel);
+  }
+  private tNoise(dur: string, time: number, vel?: number): void {
+    this.noiseSynth.triggerAttackRelease(dur, this.scheduleAt('noiseSynth', time), vel);
+  }
+  private tMetal(note: string, dur: string, time: number, vel?: number): void {
+    this.metalSynth.triggerAttackRelease(note, dur, this.scheduleAt('metalSynth', time), vel);
+  }
+  private tBGM(chord: string | string[], dur: string, time: number, vel?: number): void {
+    this.bgmSynth.triggerAttackRelease(chord, dur, this.scheduleAt('bgmSynth', time), vel);
+  }
+
   constructor() {
     // 构造函数中不启动音频上下文，等待用户交互
   }
@@ -270,238 +307,238 @@ class AudioService implements IAudioService {
       // -- 战斗 --
       case 'attack_hit':
         // 厚重打击：低音鼓 + 噪声冲击纹理
-        this.membrane.triggerAttackRelease('D2', '8n', now, 0.9);
-        this.noiseSynth.triggerAttackRelease('32n', now + 0.003, 0.3);
+        this.tMembrane('D2', '8n', now, 0.9);
+        this.tNoise('32n', now + 0.003, 0.3);
         break;
 
       case 'attack_miss':
         // 挥空：短促呼啸（默认噪声衰减已足够短）
-        this.noiseSynth.triggerAttackRelease('8n', now, 0.2);
+        this.tNoise('8n', now, 0.2);
         break;
 
       case 'attack_crit':
         // 暴击：强打击 + 高频闪光
-        this.membrane.triggerAttackRelease('G2', '16n', now, 0.8);
-        this.membrane.triggerAttackRelease('G3', '32n', now + 0.01, 0.6);
-        this.fmSynth.triggerAttackRelease('D6', '32n', now + 0.02, 0.4);
-        this.noiseSynth.triggerAttackRelease('32n', now + 0.005, 0.35);
+        this.tMembrane('G2', '16n', now, 0.8);
+        this.tMembrane('G3', '32n', now + 0.01, 0.6);
+        this.tFM('D6', '32n', now + 0.02, 0.4);
+        this.tNoise('32n', now + 0.005, 0.35);
         break;
 
       case 'player_hurt':
         // 玩家受伤：低频重击
-        this.membrane.triggerAttackRelease('A1', '8n', now, 0.9);
-        this.fmSynth.triggerAttackRelease('A2', '8n', now + 0.02, 0.3);
+        this.tMembrane('A1', '8n', now, 0.9);
+        this.tFM('A2', '8n', now + 0.02, 0.3);
         break;
 
       case 'enemy_hurt':
         // 敌人受伤：较高打击
-        this.membrane.triggerAttackRelease('E2', '16n', now, 0.7);
-        this.noiseSynth.triggerAttackRelease('32n', now + 0.003, 0.2);
+        this.tMembrane('E2', '16n', now, 0.7);
+        this.tNoise('32n', now + 0.003, 0.2);
         break;
 
       case 'spell_cast':
         // 法术：FM 扫频 + 混响尾音
         this.fmSynth.set({ harmonicity: 8 });
-        this.fmSynth.triggerAttackRelease('C5', '8n', now, 0.5);
-        this.fmSynth.triggerAttackRelease('G5', '16n', now + 0.06, 0.35);
-        this.fmSynth.triggerAttackRelease('E6', '16n', now + 0.12, 0.2);
+        this.tFM('C5', '8n', now, 0.5);
+        this.tFM('G5', '16n', now + 0.06, 0.35);
+        this.tFM('E6', '16n', now + 0.12, 0.2);
         this.fmSynth.set({ harmonicity: 6 });
         break;
 
       case 'physical_damage':
         // 物理伤害：沉重打击 低频膜鼓 + 噪声纹理
-        this.membrane.triggerAttackRelease('C2', '8n', now, 0.85);
-        this.noiseSynth.triggerAttackRelease('32n', now + 0.003, 0.35);
+        this.tMembrane('C2', '8n', now, 0.85);
+        this.tNoise('32n', now + 0.003, 0.35);
         break;
 
       case 'magic_damage':
         // 魔法伤害：FM 扫频 下行能量感 + 高音闪烁
         this.fmSynth.set({ harmonicity: 12 });
-        this.fmSynth.triggerAttackRelease('G5', '16n', now, 0.55);
-        this.fmSynth.triggerAttackRelease('D6', '32n', now + 0.04, 0.35);
-        this.fmSynth.triggerAttackRelease('A6', '64n', now + 0.07, 0.2);
+        this.tFM('G5', '16n', now, 0.55);
+        this.tFM('D6', '32n', now + 0.04, 0.35);
+        this.tFM('A6', '64n', now + 0.07, 0.2);
         this.fmSynth.set({ harmonicity: 6 });
         break;
 
       case 'health_restore':
         // 生命回复：温暖上行琶音 + 柔和铺底
-        this.synth.triggerAttackRelease('C4', '16n', now, 0.45);
-        this.synth.triggerAttackRelease('E4', '16n', now + 0.08, 0.45);
-        this.synth.triggerAttackRelease('G4', '16n', now + 0.16, 0.45);
-        this.bgmSynth.triggerAttackRelease(['C4', 'E4', 'G4'], '8n', now + 0.24, 0.2);
+        this.tSynth('C4', '16n', now, 0.45);
+        this.tSynth('E4', '16n', now + 0.08, 0.45);
+        this.tSynth('G4', '16n', now + 0.16, 0.45);
+        this.tBGM(['C4', 'E4', 'G4'], '8n', now + 0.24, 0.2);
         break;
 
       case 'mana_restore':
         // 法力回复：清脆高音 星辰闪烁感
-        this.metalSynth.triggerAttackRelease('C6', '32n', now, 0.35);
-        this.metalSynth.triggerAttackRelease('E6', '64n', now + 0.06, 0.25);
-        this.metalSynth.triggerAttackRelease('G6', '64n', now + 0.10, 0.2);
-        this.synth.triggerAttackRelease('C7', '128n', now + 0.14, 0.15);
+        this.tMetal('C6', '32n', now, 0.35);
+        this.tMetal('E6', '64n', now + 0.06, 0.25);
+        this.tMetal('G6', '64n', now + 0.10, 0.2);
+        this.tSynth('C7', '128n', now + 0.14, 0.15);
         break;
 
       case 'combat_start':
         // 战斗号角：下行五度 + 紧张节奏
-        this.bgmSynth.triggerAttackRelease(['C3', 'G3', 'C4'], '16n', now, 0.4);
-        this.bgmSynth.triggerAttackRelease(['C3', 'G3', 'C4'], '16n', now + 0.15, 0.4);
-        this.bgmSynth.triggerAttackRelease(['C3', 'Eb3', 'Bb3'], '8n', now + 0.3, 0.5);
-        this.bgmSynth.triggerAttackRelease(['C3', 'F3', 'A3'], '8n', now + 0.5, 0.5);
+        this.tBGM(['C3', 'G3', 'C4'], '16n', now, 0.4);
+        this.tBGM(['C3', 'G3', 'C4'], '16n', now + 0.15, 0.4);
+        this.tBGM(['C3', 'Eb3', 'Bb3'], '8n', now + 0.3, 0.5);
+        this.tBGM(['C3', 'F3', 'A3'], '8n', now + 0.5, 0.5);
         break;
 
       case 'combat_victory':
         // 胜利旋律：C大调上行琶音
-        this.synth.triggerAttackRelease('C4', '32n', now, 0.6);
-        this.synth.triggerAttackRelease('E4', '32n', now + 0.08, 0.6);
-        this.synth.triggerAttackRelease('G4', '32n', now + 0.16, 0.6);
-        this.synth.triggerAttackRelease('C5', '32n', now + 0.24, 0.7);
-        this.synth.triggerAttackRelease('E5', '16n', now + 0.32, 0.7);
-        this.synth.triggerAttackRelease('G5', '16n', now + 0.42, 0.6);
-        this.synth.triggerAttackRelease('C6', '8n', now + 0.54, 0.5);
+        this.tSynth('C4', '32n', now, 0.6);
+        this.tSynth('E4', '32n', now + 0.08, 0.6);
+        this.tSynth('G4', '32n', now + 0.16, 0.6);
+        this.tSynth('C5', '32n', now + 0.24, 0.7);
+        this.tSynth('E5', '16n', now + 0.32, 0.7);
+        this.tSynth('G5', '16n', now + 0.42, 0.6);
+        this.tSynth('C6', '8n', now + 0.54, 0.5);
         break;
 
       case 'combat_defeat':
         // 失败：C小调下行
-        this.synth.triggerAttackRelease('C4', '16n', now, 0.5);
-        this.synth.triggerAttackRelease('Ab3', '16n', now + 0.2, 0.5);
-        this.synth.triggerAttackRelease('F3', '8n', now + 0.4, 0.6);
-        this.membrane.triggerAttackRelease('F1', '4n', now + 0.3, 0.3);
+        this.tSynth('C4', '16n', now, 0.5);
+        this.tSynth('Ab3', '16n', now + 0.2, 0.5);
+        this.tSynth('F3', '8n', now + 0.4, 0.6);
+        this.tMembrane('F1', '4n', now + 0.3, 0.3);
         break;
 
       case 'combat_flee':
         // 逃跑：快速上行
-        this.noiseSynth.triggerAttackRelease('32n', now, 0.15);
-        this.synth.triggerAttackRelease('D4', '64n', now + 0.03, 0.3);
-        this.synth.triggerAttackRelease('F4', '64n', now + 0.06, 0.3);
-        this.synth.triggerAttackRelease('A4', '64n', now + 0.09, 0.3);
+        this.tNoise('32n', now, 0.15);
+        this.tSynth('D4', '64n', now + 0.03, 0.3);
+        this.tSynth('F4', '64n', now + 0.06, 0.3);
+        this.tSynth('A4', '64n', now + 0.09, 0.3);
         break;
 
       // -- 探索 --
       case 'step':
         // 脚步：极短低频噪声
-        this.noiseSynth.triggerAttackRelease('128n', now, 0.1);
+        this.tNoise('128n', now, 0.1);
         break;
 
       case 'item_pickup':
         // 拾取：明亮双音
-        this.synth.triggerAttackRelease('D5', '32n', now, 0.6);
-        this.synth.triggerAttackRelease('A5', '32n', now + 0.06, 0.6);
-        this.metalSynth.triggerAttackRelease('D6', '32n', now + 0.1, 0.25);
+        this.tSynth('D5', '32n', now, 0.6);
+        this.tSynth('A5', '32n', now + 0.06, 0.6);
+        this.tMetal('D6', '32n', now + 0.1, 0.25);
         break;
 
       case 'trap_trigger':
         // 陷阱：冲击噪声 + 低频轰隆
-        this.noiseSynth.triggerAttackRelease('8n', now, 0.35);
-        this.membrane.triggerAttackRelease('D2', '8n', now + 0.02, 0.5);
+        this.tNoise('8n', now, 0.35);
+        this.tMembrane('D2', '8n', now + 0.02, 0.5);
         break;
 
       case 'door_open':
         // 开门：FM 扫频 → 打开
         this.fmSynth.set({ harmonicity: 3 });
-        this.fmSynth.triggerAttackRelease('F3', '8n', now, 0.4);
-        this.fmSynth.triggerAttackRelease('A4', '8n', now + 0.06, 0.3);
+        this.tFM('F3', '8n', now, 0.4);
+        this.tFM('A4', '8n', now + 0.06, 0.3);
         this.fmSynth.set({ harmonicity: 6 });
         break;
 
       case 'camp_rest':
         // 营地休息：温暖篝火氛围 —— 柔和铺底和弦 + 篝火噪声纹理
-        this.bgmSynth.triggerAttackRelease(['C3', 'E3', 'G3'], '4n', now, 0.2);
-        this.noiseSynth.triggerAttackRelease('4n', now + 0.01, 0.06);
-        this.bgmSynth.triggerAttackRelease(['C3', 'E3', 'G3', 'C4'], '2n', now + 0.5, 0.18);
+        this.tBGM(['C3', 'E3', 'G3'], '4n', now, 0.2);
+        this.tNoise('4n', now + 0.01, 0.06);
+        this.tBGM(['C3', 'E3', 'G3', 'C4'], '2n', now + 0.5, 0.18);
         break;
 
       case 'random_event':
         // 随机事件：意外发现 —— FM 惊喜上行
         this.fmSynth.set({ harmonicity: 5, modulationIndex: 10 });
-        this.fmSynth.triggerAttackRelease('D4', '32n', now, 0.35);
-        this.fmSynth.triggerAttackRelease('F4', '32n', now + 0.05, 0.3);
-        this.fmSynth.triggerAttackRelease('A4', '16n', now + 0.10, 0.25);
+        this.tFM('D4', '32n', now, 0.35);
+        this.tFM('F4', '32n', now + 0.05, 0.3);
+        this.tFM('A4', '16n', now + 0.10, 0.25);
         this.fmSynth.set({ harmonicity: 6, modulationIndex: 14 });
-        this.metalSynth.triggerAttackRelease('D5', '32n', now + 0.12, 0.15);
+        this.tMetal('D5', '32n', now + 0.12, 0.15);
         break;
 
       // -- 角色 --
       case 'level_up':
         // 升级：多层琶音 + 持续高音
-        this.synth.triggerAttackRelease('C4', '32n', now, 0.5);
-        this.synth.triggerAttackRelease('E4', '32n', now + 0.06, 0.5);
-        this.synth.triggerAttackRelease('G4', '32n', now + 0.12, 0.5);
-        this.synth.triggerAttackRelease('C5', '32n', now + 0.18, 0.6);
-        this.synth.triggerAttackRelease('E5', '16n', now + 0.24, 0.6);
-        this.synth.triggerAttackRelease('G5', '16n', now + 0.30, 0.5);
-        this.synth.triggerAttackRelease('C6', '8n', now + 0.38, 0.4);
-        this.metalSynth.triggerAttackRelease('C6', '32n', now + 0.38, 0.3);
+        this.tSynth('C4', '32n', now, 0.5);
+        this.tSynth('E4', '32n', now + 0.06, 0.5);
+        this.tSynth('G4', '32n', now + 0.12, 0.5);
+        this.tSynth('C5', '32n', now + 0.18, 0.6);
+        this.tSynth('E5', '16n', now + 0.24, 0.6);
+        this.tSynth('G5', '16n', now + 0.30, 0.5);
+        this.tSynth('C6', '8n', now + 0.38, 0.4);
+        this.tMetal('C6', '32n', now + 0.38, 0.3);
         break;
 
       case 'death':
         // 死亡：深层下行
-        this.fmSynth.triggerAttackRelease('C2', '4n', now, 0.7);
-        this.synth.triggerAttackRelease('B1', '8n', now + 0.15, 0.5);
-        this.synth.triggerAttackRelease('G1', '4n', now + 0.3, 0.6);
-        this.noiseSynth.triggerAttackRelease('8n', now + 0.4, 0.2);
+        this.tFM('C2', '4n', now, 0.7);
+        this.tSynth('B1', '8n', now + 0.15, 0.5);
+        this.tSynth('G1', '4n', now + 0.3, 0.6);
+        this.tNoise('8n', now + 0.4, 0.2);
         break;
 
       case 'coin':
         // 金币：清脆金属
-        this.metalSynth.triggerAttackRelease('G6', '32n', now, 0.45);
+        this.tMetal('G6', '32n', now, 0.45);
         break;
 
       case 'heal':
         // 治疗：温暖上行纯五度 —— 简洁温暖的治愈感（与 health_restore 琶音铺底区分）
-        this.synth.triggerAttackRelease('G4', '8n', now, 0.4);
-        this.bgmSynth.triggerAttackRelease(['C3', 'G4'], '8n', now, 0.1);
+        this.tSynth('G4', '8n', now, 0.4);
+        this.tBGM(['C3', 'G4'], '8n', now, 0.1);
         break;
 
       case 'resurrect':
         // 复活：圣光上升 —— 多音色层次叠加
-        this.synth.triggerAttackRelease('C3', '16n', now, 0.4);
-        this.synth.triggerAttackRelease('E3', '16n', now + 0.10, 0.4);
-        this.synth.triggerAttackRelease('G3', '16n', now + 0.20, 0.4);
-        this.synth.triggerAttackRelease('C4', '16n', now + 0.30, 0.5);
-        this.bgmSynth.triggerAttackRelease(['C3', 'E3', 'G3', 'C4'], '2n', now + 0.40, 0.35);
-        this.metalSynth.triggerAttackRelease('C5', '32n', now + 0.40, 0.3);
+        this.tSynth('C3', '16n', now, 0.4);
+        this.tSynth('E3', '16n', now + 0.10, 0.4);
+        this.tSynth('G3', '16n', now + 0.20, 0.4);
+        this.tSynth('C4', '16n', now + 0.30, 0.5);
+        this.tBGM(['C3', 'E3', 'G3', 'C4'], '2n', now + 0.40, 0.35);
+        this.tMetal('C5', '32n', now + 0.40, 0.3);
         break;
 
       case 'gain_exp':
         // 获得经验：轻快三连音上行
-        this.synth.triggerAttackRelease('D4', '32n', now, 0.3);
-        this.synth.triggerAttackRelease('F4', '32n', now + 0.04, 0.3);
-        this.synth.triggerAttackRelease('A4', '32n', now + 0.08, 0.25);
+        this.tSynth('D4', '32n', now, 0.3);
+        this.tSynth('F4', '32n', now + 0.04, 0.3);
+        this.tSynth('A4', '32n', now + 0.08, 0.25);
         break;
 
       case 'mana_recover':
         // 法力回复：清澈星辰闪烁 —— 比 mana_restore 更轻盈
-        this.metalSynth.triggerAttackRelease('C6', '64n', now, 0.2);
-        this.metalSynth.triggerAttackRelease('E6', '64n', now + 0.05, 0.18);
-        this.synth.triggerAttackRelease('C7', '128n', now + 0.10, 0.12);
+        this.tMetal('C6', '64n', now, 0.2);
+        this.tMetal('E6', '64n', now + 0.05, 0.18);
+        this.tSynth('C7', '128n', now + 0.10, 0.12);
         break;
 
       // -- UI --
       case 'ui_click':
         // UI 点击：轻快触感
-        this.synth.triggerAttackRelease('E6', '128n', now, 0.3);
-        this.noiseSynth.triggerAttackRelease('128n', now + 0.002, 0.08);
+        this.tSynth('E6', '128n', now, 0.3);
+        this.tNoise('128n', now + 0.002, 0.08);
         break;
 
       case 'ui_open':
         // 打开面板：低沉柔和的闷响 + 微弱上行
-        this.membrane.triggerAttackRelease('A1', '8n', now, 0.3);
-        this.noiseSynth.triggerAttackRelease('16n', now + 0.005, 0.06);
-        this.synth.triggerAttackRelease('D4', '32n', now + 0.06, 0.1);
-        this.synth.triggerAttackRelease('G4', '32n', now + 0.10, 0.08);
+        this.tMembrane('A1', '8n', now, 0.3);
+        this.tNoise('16n', now + 0.005, 0.06);
+        this.tSynth('D4', '32n', now + 0.06, 0.1);
+        this.tSynth('G4', '32n', now + 0.10, 0.08);
         break;
 
       case 'ui_close':
         // 关闭面板：低沉柔和的闷响 + 微弱下行
-        this.membrane.triggerAttackRelease('A1', '8n', now, 0.25);
-        this.noiseSynth.triggerAttackRelease('16n', now + 0.005, 0.05);
-        this.synth.triggerAttackRelease('G4', '32n', now + 0.06, 0.08);
-        this.synth.triggerAttackRelease('D4', '32n', now + 0.10, 0.08);
+        this.tMembrane('A1', '8n', now, 0.25);
+        this.tNoise('16n', now + 0.005, 0.05);
+        this.tSynth('G4', '32n', now + 0.06, 0.08);
+        this.tSynth('D4', '32n', now + 0.10, 0.08);
         break;
 
       // -- 商店 --
       case 'shop_open':
         // 商店开门：悦耳铃声
-        this.metalSynth.triggerAttackRelease('C5', '16n', now, 0.35);
-        this.metalSynth.triggerAttackRelease('E5', '32n', now + 0.1, 0.25);
+        this.tMetal('C5', '16n', now, 0.35);
+        this.tMetal('E5', '32n', now + 0.1, 0.25);
         break;
 
       case 'shop_buy':
@@ -515,155 +552,155 @@ class AudioService implements IAudioService {
 
       case 'shop_refresh':
         // 刷新商品：翻页卷动感 —— 快速噪声 + 轻快双音
-        this.noiseSynth.triggerAttackRelease('16n', now, 0.08);
-        this.synth.triggerAttackRelease('E4', '64n', now + 0.03, 0.2);
-        this.synth.triggerAttackRelease('G4', '64n', now + 0.06, 0.15);
+        this.tNoise('16n', now, 0.08);
+        this.tSynth('E4', '64n', now + 0.03, 0.2);
+        this.tSynth('G4', '64n', now + 0.06, 0.15);
         break;
 
       // -- 任务 --
       case 'quest_accept':
         // 接任务：自信短句
-        this.synth.triggerAttackRelease('C4', '16n', now, 0.5);
-        this.synth.triggerAttackRelease('F4', '16n', now + 0.12, 0.5);
-        this.synth.triggerAttackRelease('A4', '8n', now + 0.24, 0.4);
+        this.tSynth('C4', '16n', now, 0.5);
+        this.tSynth('F4', '16n', now + 0.12, 0.5);
+        this.tSynth('A4', '8n', now + 0.24, 0.4);
         break;
 
       case 'quest_complete':
         // 完成：完整上行旋律
-        this.synth.triggerAttackRelease('C4', '32n', now, 0.5);
-        this.synth.triggerAttackRelease('E4', '32n', now + 0.07, 0.5);
-        this.synth.triggerAttackRelease('G4', '32n', now + 0.14, 0.5);
-        this.synth.triggerAttackRelease('C5', '16n', now + 0.21, 0.6);
-        this.synth.triggerAttackRelease('E5', '16n', now + 0.30, 0.5);
-        this.synth.triggerAttackRelease('C6', '8n', now + 0.40, 0.35);
+        this.tSynth('C4', '32n', now, 0.5);
+        this.tSynth('E4', '32n', now + 0.07, 0.5);
+        this.tSynth('G4', '32n', now + 0.14, 0.5);
+        this.tSynth('C5', '16n', now + 0.21, 0.6);
+        this.tSynth('E5', '16n', now + 0.30, 0.5);
+        this.tSynth('C6', '8n', now + 0.40, 0.35);
         break;
 
       case 'quest_reward':
         // 领取奖励：金币 + 完成旋律组合
-        this.metalSynth.triggerAttackRelease('G6', '64n', now, 0.4);
-        this.metalSynth.triggerAttackRelease('G6', '64n', now + 0.07, 0.4);
-        this.synth.triggerAttackRelease('C5', '16n', now + 0.15, 0.45);
-        this.synth.triggerAttackRelease('E5', '16n', now + 0.22, 0.4);
+        this.tMetal('G6', '64n', now, 0.4);
+        this.tMetal('G6', '64n', now + 0.07, 0.4);
+        this.tSynth('C5', '16n', now + 0.15, 0.45);
+        this.tSynth('E5', '16n', now + 0.22, 0.4);
         break;
 
       // -- 装备 & 物品 --
       case 'equip':
         // 装备：厚重金属啮合声 —— 低频撞击 + 金属共振
-        this.membrane.triggerAttackRelease('A2', '8n', now, 0.6);
-        this.noiseSynth.triggerAttackRelease('16n', now + 0.005, 0.15);
-        this.metalSynth.triggerAttackRelease('D5', '32n', now + 0.06, 0.35);
-        this.synth.triggerAttackRelease('D4', '16n', now + 0.08, 0.25);
+        this.tMembrane('A2', '8n', now, 0.6);
+        this.tNoise('16n', now + 0.005, 0.15);
+        this.tMetal('D5', '32n', now + 0.06, 0.35);
+        this.tSynth('D4', '16n', now + 0.08, 0.25);
         break;
 
       case 'unequip':
         // 卸下装备：轻版金属声 —— 较弱的撞击 + 下行
-        this.membrane.triggerAttackRelease('D2', '16n', now, 0.35);
-        this.metalSynth.triggerAttackRelease('A4', '32n', now + 0.04, 0.25);
-        this.synth.triggerAttackRelease('A3', '16n', now + 0.06, 0.18);
+        this.tMembrane('D2', '16n', now, 0.35);
+        this.tMetal('A4', '32n', now + 0.04, 0.25);
+        this.tSynth('A3', '16n', now + 0.06, 0.18);
         break;
 
       case 'item_use':
         // 使用消耗品：气泡上升感 —— 温暖上行音
         this.fmSynth.set({ harmonicity: 3, modulationIndex: 8 });
-        this.fmSynth.triggerAttackRelease('F4', '32n', now, 0.35);
-        this.fmSynth.triggerAttackRelease('A4', '32n', now + 0.06, 0.3);
-        this.fmSynth.triggerAttackRelease('C5', '16n', now + 0.12, 0.25);
+        this.tFM('F4', '32n', now, 0.35);
+        this.tFM('A4', '32n', now + 0.06, 0.3);
+        this.tFM('C5', '16n', now + 0.12, 0.25);
         this.fmSynth.set({ harmonicity: 6, modulationIndex: 14 });
         break;
 
       case 'item_drop':
         // 丢弃物品：落地闷响
-        this.membrane.triggerAttackRelease('C2', '8n', now, 0.5);
-        this.noiseSynth.triggerAttackRelease('32n', now + 0.01, 0.12);
+        this.tMembrane('C2', '8n', now, 0.5);
+        this.tNoise('32n', now + 0.01, 0.12);
         break;
 
       // -- 角色创建 --
       case 'character_create':
         // 创建角色：凯旋号角 —— C大调和弦 + 金属闪光
-        this.synth.triggerAttackRelease('C4', '32n', now, 0.5);
-        this.synth.triggerAttackRelease('E4', '32n', now + 0.07, 0.5);
-        this.synth.triggerAttackRelease('G4', '32n', now + 0.14, 0.5);
-        this.bgmSynth.triggerAttackRelease(['C4', 'E4', 'G4', 'C5'], '8n', now + 0.22, 0.4);
-        this.metalSynth.triggerAttackRelease('C6', '32n', now + 0.22, 0.3);
+        this.tSynth('C4', '32n', now, 0.5);
+        this.tSynth('E4', '32n', now + 0.07, 0.5);
+        this.tSynth('G4', '32n', now + 0.14, 0.5);
+        this.tBGM(['C4', 'E4', 'G4', 'C5'], '8n', now + 0.22, 0.4);
+        this.tMetal('C6', '32n', now + 0.22, 0.3);
         break;
 
       // -- 战斗跳过 --
       case 'combat_skip':
         // 跳过回合：轻快掠过
-        this.noiseSynth.triggerAttackRelease('16n', now, 0.15);
-        this.synth.triggerAttackRelease('E4', '64n', now + 0.02, 0.2);
-        this.synth.triggerAttackRelease('G4', '64n', now + 0.04, 0.15);
+        this.tNoise('16n', now, 0.15);
+        this.tSynth('E4', '64n', now + 0.02, 0.2);
+        this.tSynth('G4', '64n', now + 0.04, 0.15);
         break;
 
       // -- 任务放弃 --
       case 'quest_abandon':
         // 放弃任务：小调下行遗憾感
-        this.synth.triggerAttackRelease('E4', '16n', now, 0.35);
-        this.synth.triggerAttackRelease('C4', '16n', now + 0.1, 0.35);
-        this.synth.triggerAttackRelease('A3', '8n', now + 0.2, 0.3);
+        this.tSynth('E4', '16n', now, 0.35);
+        this.tSynth('C4', '16n', now + 0.1, 0.35);
+        this.tSynth('A3', '8n', now + 0.2, 0.3);
         break;
 
       // -- 确认/取消 --
       case 'confirm':
         // 确认：肯定上行
-        this.synth.triggerAttackRelease('C5', '32n', now, 0.45);
-        this.synth.triggerAttackRelease('E5', '32n', now + 0.05, 0.4);
+        this.tSynth('C5', '32n', now, 0.45);
+        this.tSynth('E5', '32n', now + 0.05, 0.4);
         break;
 
       case 'cancel':
         // 取消：平缓回退
-        this.synth.triggerAttackRelease('B4', '32n', now, 0.3);
-        this.synth.triggerAttackRelease('F4', '32n', now + 0.05, 0.25);
+        this.tSynth('B4', '32n', now, 0.3);
+        this.tSynth('F4', '32n', now + 0.05, 0.25);
         break;
 
       // -- 技能记忆/遗忘 --
       case 'skill_memorize':
         // 记忆技能：魔法符文铭刻
         this.fmSynth.set({ harmonicity: 4, modulationIndex: 10 });
-        this.fmSynth.triggerAttackRelease('D4', '16n', now, 0.35);
-        this.fmSynth.triggerAttackRelease('A4', '32n', now + 0.08, 0.3);
+        this.tFM('D4', '16n', now, 0.35);
+        this.tFM('A4', '32n', now + 0.08, 0.3);
         this.fmSynth.set({ harmonicity: 6, modulationIndex: 14 });
-        this.metalSynth.triggerAttackRelease('D5', '32n', now + 0.10, 0.2);
+        this.tMetal('D5', '32n', now + 0.10, 0.2);
         break;
 
       case 'skill_forget':
         // 遗忘技能：符文消散
         this.fmSynth.set({ harmonicity: 4, modulationIndex: 10 });
-        this.fmSynth.triggerAttackRelease('A4', '16n', now, 0.3);
-        this.fmSynth.triggerAttackRelease('D4', '32n', now + 0.08, 0.25);
+        this.tFM('A4', '16n', now, 0.3);
+        this.tFM('D4', '32n', now + 0.08, 0.25);
         this.fmSynth.set({ harmonicity: 6, modulationIndex: 14 });
         break;
 
       // -- 存档 --
       case 'data_export':
         // 导出：书写/羊皮纸卷起
-        this.synth.triggerAttackRelease('F4', '32n', now, 0.3);
-        this.synth.triggerAttackRelease('A4', '32n', now + 0.06, 0.3);
-        this.synth.triggerAttackRelease('C5', '16n', now + 0.12, 0.35);
-        this.noiseSynth.triggerAttackRelease('16n', now + 0.02, 0.08);
+        this.tSynth('F4', '32n', now, 0.3);
+        this.tSynth('A4', '32n', now + 0.06, 0.3);
+        this.tSynth('C5', '16n', now + 0.12, 0.35);
+        this.tNoise('16n', now + 0.02, 0.08);
         break;
 
       case 'data_import':
         // 导入：羊皮纸展开
-        this.noiseSynth.triggerAttackRelease('16n', now, 0.08);
-        this.synth.triggerAttackRelease('C5', '32n', now + 0.03, 0.3);
-        this.synth.triggerAttackRelease('A4', '32n', now + 0.09, 0.3);
-        this.synth.triggerAttackRelease('F4', '16n', now + 0.15, 0.35);
+        this.tNoise('16n', now, 0.08);
+        this.tSynth('C5', '32n', now + 0.03, 0.3);
+        this.tSynth('A4', '32n', now + 0.09, 0.3);
+        this.tSynth('F4', '16n', now + 0.15, 0.35);
         break;
 
       // -- 系统 --
       case 'exit_menu':
         // 退出到菜单：沉重关门
-        this.membrane.triggerAttackRelease('A1', '4n', now, 0.6);
-        this.noiseSynth.triggerAttackRelease('16n', now + 0.01, 0.15);
-        this.synth.triggerAttackRelease('E3', '8n', now + 0.1, 0.2);
+        this.tMembrane('A1', '4n', now, 0.6);
+        this.tNoise('16n', now + 0.01, 0.15);
+        this.tSynth('E3', '8n', now + 0.1, 0.2);
         break;
     }
   }
 
   /** 播放金币音效 */
   private coin(time: number): void {
-    this.metalSynth.triggerAttackRelease('G6', '64n', time, 0.4);
+    this.tMetal('G6', '64n', time, 0.4);
   }
 
   // ==================== 背景音乐 ====================
@@ -743,7 +780,7 @@ class AudioService implements IAudioService {
 
     this.bgmPattern = new Tone.Pattern(
       (time, chord) => {
-        this.bgmSynth.triggerAttackRelease(chord, '2n', time, 0.25);
+        this.tBGM(chord, '2n', time, 0.25);
       },
       progression,
       'up'
@@ -779,7 +816,7 @@ class AudioService implements IAudioService {
 
     this.bgmPattern = new Tone.Pattern(
       (time, chord) => {
-        this.bgmSynth.triggerAttackRelease(chord, '1m', time, 0.15);
+        this.tBGM(chord, '1m', time, 0.15);
       },
       chords,
       'up'
@@ -791,7 +828,7 @@ class AudioService implements IAudioService {
 
     this.bgmLoop = new Tone.Loop((time) => {
       const note = melody[Math.floor(Math.random() * melody.length)];
-      this.bgmSynth.triggerAttackRelease(note, '4n', time, 0.06);
+      this.tBGM(note, '4n', time, 0.06);
     }, '4n').start(0);
 
     Tone.getTransport().bpm.value = 50;
@@ -818,7 +855,7 @@ class AudioService implements IAudioService {
 
     this.bgmPattern = new Tone.Pattern(
       (time, note) => {
-        this.bgmSynth.triggerAttackRelease([note, Tone.Frequency(note).transpose(7).toNote()], '8n', time, 0.2);
+        this.tBGM([note, Tone.Frequency(note).transpose(7).toNote()], '8n', time, 0.2);
       },
       bassLine,
       'up'
@@ -852,7 +889,7 @@ class AudioService implements IAudioService {
 
     this.bgmPattern = new Tone.Pattern(
       (time, chord) => {
-        this.bgmSynth.triggerAttackRelease(chord, '2n', time, 0.18);
+        this.tBGM(chord, '2n', time, 0.18);
       },
       progression,
       'up'
@@ -875,10 +912,10 @@ class AudioService implements IAudioService {
     });
 
     // C 大调上行
-    this.bgmSynth.triggerAttackRelease(['C3', 'E3', 'G3', 'C4'], '8n', now, 0.4);
-    this.bgmSynth.triggerAttackRelease(['F3', 'A3', 'C4', 'F4'], '8n', now + 0.3, 0.35);
-    this.bgmSynth.triggerAttackRelease(['G3', 'B3', 'D4', 'G4'], '8n', now + 0.6, 0.35);
-    this.bgmSynth.triggerAttackRelease(['C3', 'E3', 'G3', 'C4'], '4n', now + 0.9, 0.4);
+    this.tBGM(['C3', 'E3', 'G3', 'C4'], '8n', now, 0.4);
+    this.tBGM(['F3', 'A3', 'C4', 'F4'], '8n', now + 0.3, 0.35);
+    this.tBGM(['G3', 'B3', 'D4', 'G4'], '8n', now + 0.6, 0.35);
+    this.tBGM(['C3', 'E3', 'G3', 'C4'], '4n', now + 0.9, 0.4);
 
     // 3 秒后切回探索
     setTimeout(() => {
@@ -899,10 +936,10 @@ class AudioService implements IAudioService {
     });
 
     // 下行
-    this.bgmSynth.triggerAttackRelease(['C3', 'Eb3', 'G3'], '8n', now, 0.4);
-    this.bgmSynth.triggerAttackRelease(['Ab3', 'C3', 'Eb3'], '8n', now + 0.35, 0.35);
-    this.bgmSynth.triggerAttackRelease(['F3', 'Ab3', 'C3'], '8n', now + 0.7, 0.35);
-    this.bgmSynth.triggerAttackRelease(['G3', 'B2', 'D3'], '4n', now + 1.0, 0.4);
+    this.tBGM(['C3', 'Eb3', 'G3'], '8n', now, 0.4);
+    this.tBGM(['Ab3', 'C3', 'Eb3'], '8n', now + 0.35, 0.35);
+    this.tBGM(['F3', 'Ab3', 'C3'], '8n', now + 0.7, 0.35);
+    this.tBGM(['G3', 'B2', 'D3'], '4n', now + 1.0, 0.4);
 
     // 3 秒后切回探索
     setTimeout(() => {
