@@ -3,14 +3,24 @@
  * @description 包含技能类型、技能数据、技能栏、技能服务等相关类型定义
  */
 
+import type { EffectType } from '../combat/effects';
+
 /**
  * 技能类型枚举
  * - physical_damage: 物理伤害技能
  * - magic_damage: 魔法伤害技能
  * - health_restore: 治疗技能
  * - mana_restore: 法力恢复技能
+ * - buff: 增益技能（对自身/友方施加正面效果）
+ * - debuff: 减益技能（对敌人施加负面效果）
  */
-export type SkillType = 'physical_damage' | 'magic_damage' | 'health_restore' | 'mana_restore';
+export type SkillType =
+  | 'physical_damage'
+  | 'magic_damage'
+  | 'health_restore'
+  | 'mana_restore'
+  | 'buff'
+  | 'debuff';
 
 /**
  * 技能槽位索引类型
@@ -29,6 +39,21 @@ export interface SkillEffect {
   type: SkillType;
   value: number;
   coefficient?: number;
+}
+
+/**
+ * 技能 Buff/Debuff 效果配置
+ * @property {EffectType} type - 效果类型（如 attack_up、poison、shield 等）
+ * @property {number} value - 效果基础值
+ * @property {number} turns - 持续回合数
+ */
+export interface SkillBuffEffect {
+  /** 效果类型（引用 combat/effects 中的 EffectType） */
+  type: EffectType;
+  /** 效果基础值（攻击/防御变化点数、护盾量、DoT 伤害等） */
+  value: number;
+  /** 持续回合数 */
+  turns: number;
 }
 
 /**
@@ -58,6 +83,18 @@ export interface Skill {
   usableBy?: 'player' | 'enemy' | 'both';
   /** 技能目标类型 */
   targetType?: 'single' | 'all_enemies' | 'self' | 'ally';
+  /** Buff/Debuff 效果列表（仅 buff/debuff 类型技能使用） */
+  buffs?: SkillBuffEffect[];
+}
+
+/** 技能施放应用的效果记录 */
+export interface AppliedEffectInfo {
+  /** 效果类型 */
+  type: EffectType;
+  /** 效果数值 */
+  value: number;
+  /** 持续回合数 */
+  turns: number;
 }
 
 /**
@@ -69,6 +106,7 @@ export interface Skill {
  * @property {number} [damage] - 造成的伤害
  * @property {number} [heal] - 治疗量
  * @property {string} message - 结果消息
+ * @property {AppliedEffectInfo[]} [appliedEffects] - 施加的效果列表（buff/debuff 技能时返回）
  */
 export interface SkillUseResult {
   success: boolean;
@@ -77,6 +115,8 @@ export interface SkillUseResult {
   damage?: number;
   heal?: number;
   message: string;
+  /** 施加的效果列表（buff/debuff 技能使用后返回） */
+  appliedEffects?: AppliedEffectInfo[];
 }
 
 /**

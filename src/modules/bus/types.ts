@@ -81,6 +81,8 @@ export enum GameEvents {
 
   // ==================== 战斗补充 ====================
   COMBAT_SKIP_TURN = 'combat_skip_turn',
+  COMBAT_BOSS_INTRO = 'combat_boss_intro',
+  COMBAT_BOSS_PHASE = 'combat_boss_phase',
 
   // ==================== 存档 ====================
   DATA_EXPORTED = 'data_exported',
@@ -104,7 +106,7 @@ export interface GameEventPayloadMap {
   [GameEvents.COMBAT_PLAYER_TURN]: null;
   [GameEvents.COMBAT_ENEMY_TURN]: null;
   [GameEvents.COMBAT_DEAL_DAMAGE]: { amount: number; damageType: 'physical' | 'magic'; targetName: string; actorType?: 'player' | 'enemy' };
-  [GameEvents.COMBAT_CAST_HEAL]: { amount: number; healType: 'health' | 'mana'; targetName: string };
+  [GameEvents.COMBAT_CAST_HEAL]: { amount: number; healType: 'health' | 'mana' | 'buff' | 'debuff'; targetName: string };
   [GameEvents.COMBAT_CRITICAL_HIT]: { amount: number; damageType: 'physical' | 'magic'; targetName: string; actorType: 'player' | 'enemy' };
   [GameEvents.COMBAT_DODGE]: { attackerName: string; dodgerName: string; dodgerType: 'player' | 'enemy' };
   [GameEvents.EXPLORATION_START]: { characterId: string | null; areaId?: string };
@@ -133,6 +135,8 @@ export interface GameEventPayloadMap {
   [GameEvents.CONFIRM_CANCELED]: { action: string };
   [GameEvents.ITEM_DROPPED]: { itemId: string };
   [GameEvents.COMBAT_SKIP_TURN]: null;
+  [GameEvents.COMBAT_BOSS_INTRO]: { enemyId: string; enemyName: string; icon: string; effect: string; lines: string[]; duration: number };
+  [GameEvents.COMBAT_BOSS_PHASE]: { enemyId: string; enemyName: string; phaseName: string; effect: string };
   [GameEvents.DATA_EXPORTED]: null;
   [GameEvents.DATA_IMPORTED]: null;
   [GameEvents.UI_CLICK]: { source: string };

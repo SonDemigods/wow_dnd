@@ -9,7 +9,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { Skill, SkillBar, SkillType, SkillSlotIndex, SkillUseResult } from './types';
+import type { Skill, SkillBar, SkillType, SkillSlotIndex, SkillUseResult, AppliedEffectInfo } from './types';
 import { skillsDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
 import { useCharacterStore } from '../character/store';
@@ -17,6 +17,7 @@ import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
 import {
   calculateSkillDamage,
+  calculateBuffValue,
   checkManaCost,
   canLearnSkill,
   validateSkillBarSlot,
@@ -30,7 +31,9 @@ const SKILL_TYPE_NAMES: Record<SkillType, string> = {
   physical_damage: '物理伤害',
   magic_damage: '魔法伤害',
   health_restore: '治疗',
-  mana_restore: '法力回复'
+  mana_restore: '法力回复',
+  buff: '增益',
+  debuff: '减益'
 };
 
 /**
@@ -100,7 +103,9 @@ export const useSkillsStore = defineStore('skills', () => {
       physical_damage: 0,
       magic_damage: 0,
       health_restore: 0,
-      mana_restore: 0
+      mana_restore: 0,
+      buff: 0,
+      debuff: 0
     };
 
     skills.value.forEach(skill => {
@@ -247,6 +252,7 @@ export const useSkillsStore = defineStore('skills', () => {
     // 4. 应用技能效果
     let damage: number | undefined;
     let heal: number | undefined;
+    let appliedEffects: AppliedEffectInfo[] | undefined;
 
     switch (skill.type) {
       case 'physical_damage':
@@ -261,6 +267,18 @@ export const useSkillsStore = defineStore('skills', () => {
       case 'mana_restore':
         // 法力回复 → 直接调用 characterStore Action
         await characterStore.changeMp(damageValue);
+        break;
+      case 'buff':
+      case 'debuff':
+        // buff/debuff 效果由 combatStore.playerSkill 实际应用
+        // 这里只计算效果值，通过 appliedEffects 传回调用方
+        if (skill.buffs && skill.buffs.length > 0) {
+          appliedEffects = skill.buffs.map(be => ({
+            type: be.type,
+            value: calculateBuffValue(be, characterStore.effectiveStats),
+            turns: be.turns
+          }));
+        }
         break;
     }
 
@@ -289,6 +307,7 @@ export const useSkillsStore = defineStore('skills', () => {
       type: skill.type,
       damage,
       heal,
+      appliedEffects,
       message: `使用了 ${skill.name}`
     };
   }

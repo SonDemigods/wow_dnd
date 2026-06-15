@@ -4,7 +4,7 @@
  * 纯计算/校验函数，无状态、无副作用、无 DB 调用。
  * 所有状态管理由 Store 层负责。
  */
-import type { Skill, SkillBar } from './types';
+import type { Skill, SkillBar, SkillBuffEffect } from './types';
 import type { Stats } from '../character/types';
 
 /**
@@ -27,9 +27,37 @@ export function calculateSkillDamage(skill: Skill, stats: Stats): number {
     case 'mana_restore':
       // 法力回复 = 基础值 + 智力 * 系数
       return Math.floor(skill.effect.value + stats.int * (skill.effect.coefficient || 0.3));
+    case 'buff':
+    case 'debuff':
+      // buff/debuff 无伤害值，返回 0
+      return 0;
     default:
       return skill.effect.value;
   }
+}
+
+/**
+ * 计算 Buff/Debuff 技能的实际效果值（受属性加成）
+ * @param buffEffect - Buff/Debuff 效果配置
+ * @param stats - 角色核心属性
+ * @returns 计算后的效果值
+ */
+export function calculateBuffValue(buffEffect: SkillBuffEffect, stats: Stats): number {
+  // 攻击/防御类 buff 受智慧加成，每点智慧 +0.15 效果值
+  const offensiveTypes = ['attack_up', 'attack_down', 'defense_up', 'defense_down'];
+  if (offensiveTypes.includes(buffEffect.type)) {
+    return Math.floor(buffEffect.value + stats.wis * 0.15);
+  }
+  // 护盾受智慧加成
+  if (buffEffect.type === 'shield') {
+    return Math.floor(buffEffect.value + stats.wis * 0.4);
+  }
+  // DoT / HoT 受智慧轻微加成
+  if (['poison', 'burn', 'regen'].includes(buffEffect.type)) {
+    return Math.floor(buffEffect.value + stats.wis * 0.1);
+  }
+  // 其他类型（眩晕、沉默等）不接受加成
+  return buffEffect.value;
 }
 
 /**

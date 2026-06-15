@@ -144,8 +144,10 @@ const skillBarSlots = computed(() => {
 const skillTypeNames: Record<string, string> = {
   physical_damage: '物理伤害',
   magic_damage: '魔法伤害',
-  health_restore: '治疗',
-  mana_restore: '法力回复'
+  health_restore: '生命回复',
+  mana_restore: '法力回复',
+  buff: '增益',
+  debuff: '减益'
 };
 
 function getSkillTypeName(type: string) {
@@ -158,6 +160,27 @@ function getEffectText(skill: Skill): string {
   if (type === 'physical_damage' || type === 'magic_damage') return `造成 ${value} 点伤害`;
   if (type === 'health_restore') return `恢复 ${value} 点生命值`;
   if (type === 'mana_restore') return `恢复 ${value} 点法力值`;
+  if (type === 'buff' && skill.buffs) {
+    return skill.buffs.map(b => {
+      const names: Record<string, string> = {
+        shield: `护盾 +${b.value}`, attack_up: `攻击 +${b.value}`,
+        defense_up: `防御 +${b.value}`, speed_up: `速度 +${b.value}`,
+        regen: `每回合回复 ${b.value}`, thorn: `反弹 ${Math.round(b.value * 100)}% 伤害`
+      };
+      return `${names[b.type] || b.type} (${b.turns}回合)`;
+    }).join('，');
+  }
+  if (type === 'debuff' && skill.buffs) {
+    return skill.buffs.map(b => {
+      const names: Record<string, string> = {
+        poison: `每回合中毒伤害 ${b.value}`, burn: `每回合灼烧伤害 ${b.value}`,
+        stun: `眩晕`, attack_down: `攻击 -${b.value}`,
+        defense_down: `防御 -${b.value}`, speed_down: `速度 -${b.value}`,
+        silence: `沉默`
+      };
+      return `${names[b.type] || b.type} (${b.turns}回合)`;
+    }).join('，');
+  }
   return `${value}`;
 }
 

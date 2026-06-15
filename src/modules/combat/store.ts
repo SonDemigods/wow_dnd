@@ -19,7 +19,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { CombatState, CombatAction, CombatActionResult, CombatLog, CombatResult } from './types';
+import type { CombatState, CombatAction, CombatActionResult, CombatLog, CombatResult, AoeHitInfo } from './types';
 import type { Enemy } from '../enemy/types';
 import { useEnemiesStore } from '../enemy/store';
 import { combatDbService } from './db';
@@ -46,7 +46,10 @@ import {
   applyShield,
   getStatModifiers,
   getThornDamage,
+  isDisabled,
+  generateEffectId,
   type Effect,
+  type EffectType,
   type EffectContainer,
   type StatModifiers
 } from './effects';
@@ -54,7 +57,7 @@ import { AggressiveStrategy, DefensiveStrategy, BalancedStrategy, BossPhaseStrat
 import type { IAiStrategy, BattleContext } from './ai/types';
 import type { AiStrategyType } from '../enemy/types';
 import { BossPhaseManager, processBossPhaseMechanics, applyPhaseStats } from '../boss/engine';
-import type { BossIntro } from '../boss/types';
+import type { BossIntro, BossPhase, BossMechanicType } from '../boss/types';
 
 /**
  * 战斗状态存储
@@ -75,6 +78,8 @@ export const useCombatStore = defineStore('combat', () => {
   const bossPhaseManagers = new Map<string, BossPhaseManager>();
   /** Boss 出场演出数据（按敌人 ID 索引，战斗开始后立即清空） */
   const bossIntros = ref<Record<string, BossIntro>>({});
+  /** 敌人位置映射（enemyId -> { row: 'front'|'back', col: 0-2 }），3×2 网格布局 */
+  const enemyPositions = ref<Record<string, { row: 'front' | 'back'; col: number }>>({});
   
   /** 当前回合 */
   const turn = ref<'player' | 'enemy'>('player');
@@ -427,6 +432,54 @@ export const useCombatStore = defineStore('combat', () => {
 
     const characterStore = useCharacterStore();
 
+    // 检查 Boss AOE 攻击标记
+    const isAoeAttack = (e as any).aoeNextAttack === true;
+    if (isAoeAttack) {
+      (e as any).aoeNextAttack = false;
+      // AOE 攻击：对玩家造成额外伤害
+      const damage = enemiesStore.calculateDamage(e, characterStore.attributes.physicalDefense);
+      const aoeMultiplier = 1.3;
+      const aoeDamage = Math.round(damage * aoeMultiplier);
+
+      // 检查玩家闪避
+      const dodgeChance = characterStore.attributes.dodgeChance / 100;
+      const isDodge = rollDodge(dodgeChance);
+
+      if (isDodge) {
+        addCombatLog({
+          actorType: 'enemy', actorId: e.id, actorName: e.name,
+          eventType: 'combat_miss', targetType: 'player', targetId: 'player',
+          targetName: characterStore.name, isCrit: false, isDodge: true,
+          message: `${e.name} 的范围攻击被 ${characterStore.name} 闪避了！`
+        });
+        eventBus.emit(GameEvents.COMBAT_DODGE, {
+          attackerName: e.name, dodgerName: characterStore.name, dodgerType: 'player'
+        });
+        return { success: true, type: 'attack', isDodge: true, message: '你闪避了敌人的范围攻击！' };
+      }
+
+      const { actualDamage, absorbed } = applyShield(playerEffects.value, aoeDamage);
+      characterStore.takeDamage(actualDamage);
+
+      eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
+        amount: aoeDamage, damageType: 'physical', targetName: characterStore.name, actorType: 'enemy'
+      });
+
+      addCombatLog({
+        actorType: 'enemy', actorId: e.id, actorName: e.name,
+        eventType: 'combat_damage', targetType: 'player', targetId: 'player',
+        targetName: characterStore.name, damage: actualDamage, isCrit: false, isDodge: false,
+        message: absorbed > 0
+          ? `${e.name} 发动范围攻击，对 ${characterStore.name} 造成 ${actualDamage} 点伤害（护盾吸收 ${absorbed}）！`
+          : `${e.name} 发动范围攻击，对 ${characterStore.name} 造成 ${actualDamage} 点伤害！`
+      });
+
+      return {
+        success: true, type: 'attack', damage: actualDamage,
+        message: `${e.name} 发动了范围攻击！`
+      };
+    }
+
     // 获取敌人可用技能
     const availableSkills = enemiesStore.getAvailableSkills(e.id);
 
@@ -692,9 +745,16 @@ export const useCombatStore = defineStore('combat', () => {
         // AOE：对所有活着的敌人造成 70% 伤害
         const livingEnemies = aliveEnemies.value;
         const aoeDamage = Math.round(result.damage * 0.7);
+        const aoeHits: AoeHitInfo[] = [];
 
         for (const e of livingEnemies) {
           enemiesStore.takeDamage(e.id, aoeDamage);
+
+          aoeHits.push({
+            enemyId: e.id,
+            enemyName: e.name,
+            damage: aoeDamage
+          });
 
           // 伤害类型音效事件
           eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
@@ -727,6 +787,16 @@ export const useCombatStore = defineStore('combat', () => {
         } else {
           endPlayerTurn();
         }
+
+        saveLogs();
+
+        return {
+          success: true,
+          type: 'skill',
+          damage: result.damage,
+          aoeHits,
+          message: `${skill?.name || '技能'} 对所有敌人造成了 ${aoeDamage} 点伤害！`
+        };
       } else if (targetType === 'self') {
         // 对自身生效（自伤技能，实际上不太合理，按治疗逻辑处理）
         endPlayerTurn();
@@ -767,6 +837,76 @@ export const useCombatStore = defineStore('combat', () => {
         if (isDead || !updatedTarget || aliveEnemies.value.length === 0) {
           endCombat('victory');
         } else {
+          endPlayerTurn();
+        }
+      }
+
+      // 伤害技能可能附带 buff/debuff 效果（如雷霆一击带降防）
+      if (skill?.buffs && skill.buffs.length > 0 && result.damage) {
+        applySkillBuffs(skill, targetType);
+      }
+    } else if (result.appliedEffects && result.appliedEffects.length > 0) {
+      // buff/debuff 技能：将效果应用到目标
+      const effectSourceName = skill?.name || '技能';
+
+      if (result.type === 'buff') {
+        // 增益技能：对玩家自身施加效果
+        for (const be of result.appliedEffects) {
+          const effect: Effect = {
+            id: generateEffectId(),
+            type: be.type,
+            remainingTurns: be.turns,
+            value: be.value,
+            source: 'skill',
+            sourceName: effectSourceName
+          };
+          addEffectToContainer(playerEffects.value, effect);
+        }
+
+        eventBus.emit(GameEvents.COMBAT_CAST_HEAL, {
+          amount: result.appliedEffects[0]?.value || 0,
+          healType: 'buff',
+          targetName: characterStore.name
+        });
+
+        addCombatLog({
+          actorType: 'player', actorId: 'player', actorName: characterStore.name,
+          eventType: 'combat_skill_cast', skillId, skillName: effectSourceName,
+          isCrit: false, isDodge: false,
+          message: `${characterStore.name} 使用了 ${effectSourceName}，获得增益效果！`
+        });
+
+        endPlayerTurn();
+      } else if (result.type === 'debuff') {
+        // 减益技能：对敌人施加效果
+        if (targetType === 'all_enemies') {
+          // 对全体敌人施加
+          const livingEnemies = aliveEnemies.value;
+          for (const e of livingEnemies) {
+            applyDebuffToEnemy(e, result.appliedEffects, effectSourceName);
+          }
+          addCombatLog({
+            actorType: 'player', actorId: 'player', actorName: characterStore.name,
+            eventType: 'combat_skill_cast', skillId, skillName: effectSourceName,
+            isCrit: false, isDodge: false,
+            message: `${characterStore.name} 使用了 ${effectSourceName}，对所有敌人施加减益效果！`
+          });
+          endPlayerTurn();
+        } else {
+          // 单目标：对当前目标施加
+          const target = currentTarget.value;
+          if (!target) {
+            return { success: false, type: 'skill', message: '没有可攻击的目标！' };
+          }
+          applyDebuffToEnemy(target, result.appliedEffects, effectSourceName);
+          addCombatLog({
+            actorType: 'player', actorId: 'player', actorName: characterStore.name,
+            eventType: 'combat_skill_cast', targetType: 'enemy',
+            targetId: target.id, targetName: target.name,
+            skillId, skillName: effectSourceName,
+            isCrit: false, isDodge: false,
+            message: `${characterStore.name} 对 ${target.name} 使用了 ${effectSourceName}！`
+          });
           endPlayerTurn();
         }
       }
@@ -964,6 +1104,241 @@ export const useCombatStore = defineStore('combat', () => {
   }
 
   /**
+   * 分配敌人位置到 3×2 网格（前排 3 格 + 后排 3 格）
+   * Boss 优先放在后排中间，普通敌人优先填满前排
+   * @param enemiesData - 敌人数据数组
+   */
+  function assignEnemyPositions(enemiesData: Enemy[]): void {
+    const positions: Record<string, { row: 'front' | 'back'; col: number }> = {};
+    const frontSlots: number[] = [0, 1, 2]; // 前排 3 个位置
+    const backSlots: number[] = [0, 1, 2];  // 后排 3 个位置
+
+    // 分离 Boss 和普通敌人
+    const bosses = enemiesData.filter(e => e.isBoss);
+    const normals = enemiesData.filter(e => !e.isBoss);
+
+    // Boss 优先占后排中间位置
+    for (const boss of bosses) {
+      const col = backSlots.shift() ?? 0;
+      positions[boss.id] = { row: 'back', col };
+    }
+
+    // 普通敌人优先填满前排，再填后排
+    for (const enemy of normals) {
+      if (frontSlots.length > 0) {
+        const col = frontSlots.shift()!;
+        positions[enemy.id] = { row: 'front', col };
+      } else if (backSlots.length > 0) {
+        const col = backSlots.shift()!;
+        positions[enemy.id] = { row: 'back', col };
+      }
+    }
+
+    enemyPositions.value = positions;
+  }
+
+  /**
+   * 对单个敌人施加减益效果
+   * @param e - 敌人实例
+   * @param effects - 要施加的效果列表
+   * @param sourceName - 技能名称（来源）
+   */
+  function applyDebuffToEnemy(e: Enemy, effects: Array<{ type: string; value: number; turns: number }>, sourceName: string): void {
+    // 确保该敌人有效果容器
+    if (!enemyEffects.value.has(e.id)) {
+      enemyEffects.value.set(e.id, { effects: [] });
+    }
+    const container = enemyEffects.value.get(e.id)!;
+
+    for (const be of effects) {
+      const effect: Effect = {
+        id: generateEffectId(),
+        type: be.type as EffectType,
+        remainingTurns: be.turns,
+        value: be.value,
+        source: 'skill',
+        sourceName
+      };
+      addEffectToContainer(container, effect);
+    }
+  }
+
+  /**
+   * 根据技能 buffs 配置和目标类型施加效果（用于附带效果的伤害技能）
+   * @param skill - 技能数据
+   * @param targetType - 目标类型
+   */
+  function applySkillBuffs(
+    skill: import('../../modules/skill/types').Skill,
+    targetType: string
+  ): void {
+    if (!skill.buffs || skill.buffs.length === 0) return;
+
+    const sourceName = skill.name;
+    const isSelfBuff = skill.buffs.some(b =>
+      ['attack_up', 'defense_up', 'speed_up', 'regen', 'shield', 'thorn'].includes(b.type)
+    );
+
+    if (isSelfBuff || targetType === 'self') {
+      // 自身增益：应用到玩家
+      for (const be of skill.buffs) {
+        if (['attack_up', 'defense_up', 'speed_up', 'regen', 'shield', 'thorn'].includes(be.type)) {
+          const effect: Effect = {
+            id: generateEffectId(),
+            type: be.type as EffectType,
+            remainingTurns: be.turns,
+            value: be.value,
+            source: 'skill',
+            sourceName
+          };
+          addEffectToContainer(playerEffects.value, effect);
+        }
+      }
+      return;
+    }
+
+    // 敌人减益
+    if (targetType === 'all_enemies') {
+      const livingEnemies = aliveEnemies.value;
+      for (const e of livingEnemies) {
+        applyDebuffToEnemy(e, skill.buffs, sourceName);
+      }
+    } else {
+      // 单目标
+      const target = currentTarget.value;
+      if (target) {
+        applyDebuffToEnemy(target, skill.buffs, sourceName);
+      }
+    }
+  }
+
+  /**
+   * 应用 Boss 机制的实际效果到玩家或敌人
+   * @param e - Boss 敌人
+   * @param mechType - 机制类型
+   * @param phase - 当前阶段（用于获取参数）
+   */
+  function applyMechanicEffect(e: Enemy, mechType: BossMechanicType, phase: BossPhase): void {
+    const characterStore = useCharacterStore();
+    const mechanic = phase.mechanics.find(m => m.type === mechType);
+    const params = mechanic?.params || {};
+
+    switch (mechType) {
+      case 'stun_player': {
+        const stunEffect: Effect = {
+          id: generateEffectId(),
+          type: 'stun',
+          remainingTurns: params?.turns as number || 1,
+          value: 1,
+          source: 'enemy',
+          sourceName: e.name
+        };
+        addEffectToContainer(playerEffects.value, stunEffect);
+        addCombatLog({
+          actorType: 'system', actorId: 'system', actorName: '系统',
+          eventType: 'combat_event', targetType: 'player', targetId: 'player',
+          targetName: characterStore.name, isCrit: false, isDodge: false,
+          message: `${characterStore.name} 被 ${e.name} 眩晕了 ${stunEffect.remainingTurns} 回合！`
+        });
+        break;
+      }
+      case 'silence_player': {
+        const silenceEffect: Effect = {
+          id: generateEffectId(),
+          type: 'silence',
+          remainingTurns: params?.turns as number || 2,
+          value: 1,
+          source: 'enemy',
+          sourceName: e.name
+        };
+        addEffectToContainer(playerEffects.value, silenceEffect);
+        addCombatLog({
+          actorType: 'system', actorId: 'system', actorName: '系统',
+          eventType: 'combat_event', targetType: 'player', targetId: 'player',
+          targetName: characterStore.name, isCrit: false, isDodge: false,
+          message: `${characterStore.name} 被 ${e.name} 沉默了 ${silenceEffect.remainingTurns} 回合！`
+        });
+        break;
+      }
+      case 'debuff_aura': {
+        const debuffType = (params?.debuffType as string) || 'attack_down';
+        const debuffEffect: Effect = {
+          id: generateEffectId(),
+          type: debuffType as any,
+          remainingTurns: params?.turns as number || 3,
+          value: params?.value as number || 10,
+          source: 'enemy',
+          sourceName: e.name
+        };
+        addEffectToContainer(playerEffects.value, debuffEffect);
+        addCombatLog({
+          actorType: 'system', actorId: 'system', actorName: '系统',
+          eventType: 'combat_event', targetType: 'player', targetId: 'player',
+          targetName: characterStore.name, isCrit: false, isDodge: false,
+          message: `${characterStore.name} 受到 ${e.name} 的减益光环影响！`
+        });
+        break;
+      }
+      case 'aoe_attack': {
+        // aoe_attack 标记已由 engine 设置，在 enemyAction 中通过 (e as any).aoeNextAttack 读取
+        // 这里记录日志即可
+        break;
+      }
+      case 'summon_minions': {
+        // summon_minions 标记已由 engine 设置，需要实际创建小怪
+        const count = (e as any).pendingSummons || 0;
+        if (count > 0) {
+          // 异步创建小怪
+          (async () => {
+            for (let i = 0; i < count; i++) {
+              try {
+                const minion = await enemiesStore.createEnemy('slime', e.level);
+                if (minion) {
+                  // 分配前排位置
+                  const existingPos = Object.values(enemyPositions.value);
+                  const usedCols = existingPos.filter(p => p.row === 'front').map(p => p.col);
+                  const availableCol = [0, 1, 2].find(c => !usedCols.includes(c)) ?? 0;
+                  enemyPositions.value = {
+                    ...enemyPositions.value,
+                    [minion.id]: { row: 'front', col: availableCol }
+                  };
+                  enemyIds.value.push(minion.id);
+                  // 重新计算先攻顺序
+                  buildInitiativeOrder(characterStore);
+                  addCombatLog({
+                    actorType: 'system', actorId: 'system', actorName: '系统',
+                    eventType: 'combat_event', targetType: 'enemy', targetId: minion.id,
+                    targetName: minion.name, isCrit: false, isDodge: false,
+                    message: `${e.name} 召唤了 ${minion.name}！`
+                  });
+                }
+              } catch {
+                // 创建小怪失败，静默处理
+              }
+            }
+            (e as any).pendingSummons = 0;
+          })();
+        }
+        break;
+      }
+      case 'healing_zone': {
+        const healAmount = params?.healPerTurn as number || 5;
+        e.hp = Math.min(e.maxHp, e.hp + healAmount);
+        addCombatLog({
+          actorType: 'system', actorId: 'system', actorName: '系统',
+          eventType: 'combat_heal', targetType: 'enemy', targetId: e.id,
+          targetName: e.name, isCrit: false, isDodge: false,
+          message: `${e.name} 从治疗区域恢复了 ${healAmount} 点生命值！`
+        });
+        break;
+      }
+      default:
+        // 其他机制（enrage, damage_shield, reflect_damage 等）已在 engine 中处理
+        break;
+    }
+  }
+
+  /**
    * 构建先攻顺序（玩家 + 所有敌人按速度降序排列）
    * @param characterStore - 角色 Store 实例
    */
@@ -1101,6 +1476,13 @@ export const useCombatStore = defineStore('combat', () => {
             targetName: e.name, isCrit: false, isDodge: false,
             message: `【阶段转换】${e.name} 进入 "${transition.newPhase.name}" 阶段！`
           });
+          // 发射阶段转换事件（UI 特效）
+          eventBus.emit(GameEvents.COMBAT_BOSS_PHASE, {
+            enemyId: e.id,
+            enemyName: e.name,
+            phaseName: transition.newPhase.name,
+            effect: transition.newPhase.transitionEffect || 'darken'
+          });
           if (transition.newPhase.dialogue && transition.newPhase.dialogue.length > 0) {
             for (const line of transition.newPhase.dialogue) {
               addCombatLog({
@@ -1125,6 +1507,9 @@ export const useCombatStore = defineStore('combat', () => {
               targetName: e.name, isCrit: false, isDodge: false,
               message: `${e.name} 触发了【${mechNames[mechType] || mechType}】机制！`
             });
+
+            // 实际应用机制效果
+            applyMechanicEffect(e, mechType as BossMechanicType, currentPhase);
           }
         }
       }
@@ -1187,6 +1572,9 @@ export const useCombatStore = defineStore('combat', () => {
     // 初始化 Boss 功能（阶段管理器 + 出场演出）
     initBossFeatures(enemiesData);
 
+    // 分配敌人位置（3×2 网格，前排优先）
+    assignEnemyPositions(enemiesData);
+
     // 计算先攻顺序（玩家 + 所有敌人按速度排序）
     const characterStore = useCharacterStore();
     buildInitiativeOrder(characterStore);
@@ -1215,6 +1603,25 @@ export const useCombatStore = defineStore('combat', () => {
     // 触发战斗开始事件（UI 进入战斗界面 + 音效）
     eventBus.emit(GameEvents.COMBAT_START, { enemy: enemiesData[0] });
 
+    // 触发 Boss 出场演出事件（有 Boss 时延迟触发）
+    const bossIntroEntries = Object.entries(bossIntros.value);
+    if (bossIntroEntries.length > 0) {
+      const [bossId, intro] = bossIntroEntries[0];
+      const bossEnemy = enemiesData.find(e => e.id === bossId);
+      if (bossEnemy) {
+        setTimeout(() => {
+          eventBus.emit(GameEvents.COMBAT_BOSS_INTRO, {
+            enemyId: bossId,
+            enemyName: bossEnemy.name,
+            icon: bossEnemy.icon,
+            effect: intro.effect,
+            lines: intro.lines,
+            duration: intro.duration
+          });
+        }, 300);
+      }
+    }
+
     // 触发玩家回合事件
     eventBus.emit(GameEvents.COMBAT_PLAYER_TURN, null);
 
@@ -1236,6 +1643,21 @@ export const useCombatStore = defineStore('combat', () => {
         type: action.type,
         message: '不是你的回合！'
       };
+    }
+
+    // 检查控制效果（眩晕/冰冻则完全跳过回合，沉默则禁止技能）
+    const disableResult = isDisabled(playerEffects.value);
+    if (disableResult.skipTurn) {
+      addCombatLog({
+        actorType: 'player', actorId: 'player', actorName: useCharacterStore().name,
+        eventType: 'combat_event', isCrit: false, isDodge: false,
+        message: `${useCharacterStore().name} 无法行动！`
+      });
+      endPlayerTurn();
+      return { success: false, type: action.type, message: '你被控制了，无法行动！' };
+    }
+    if (action.type === 'skill' && disableResult.types.includes('skill')) {
+      return { success: false, type: 'skill', message: '你被沉默了，无法使用技能！' };
     }
 
     try {
@@ -1539,6 +1961,7 @@ export const useCombatStore = defineStore('combat', () => {
     combatLogs.value = [];
     bossPhaseManagers.clear();
     bossIntros.value = {};
+    enemyPositions.value = {};
   }
 
   // ==================== Action：重置 ====================
@@ -1567,6 +1990,7 @@ export const useCombatStore = defineStore('combat', () => {
     enemyEffects.value = new Map();
     bossPhaseManagers.clear();
     bossIntros.value = {};
+    enemyPositions.value = {};
   }
 
   // ==================== Action：效果操作 ====================
@@ -1615,6 +2039,7 @@ export const useCombatStore = defineStore('combat', () => {
     combatSpeed,
     playerEffects,
     enemyEffects,
+    enemyPositions,
 
     // 计算属性
     isInCombat,

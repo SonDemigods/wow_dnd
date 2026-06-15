@@ -143,13 +143,13 @@ const dragStartY = ref(0);
 const dragStartPanX = ref(0);
 const dragStartPanY = ref(0);
 
-// 当前区域ID
+// 当前区域ID（仅当玩家已通过"进入探索"明确选择区域后才不为空，避免首次进入时误高亮未选中的区域）
 const currentZoneId = computed(() => {
   const currentLocation = mapStore.getCurrentLocation;
   if (currentLocation) {
     return currentLocation.id;
   }
-  return zones.value.find(z => z.status !== 'locked')?.id || '';
+  return '';
 });
 
 const mapTransformStyle = computed(() => ({

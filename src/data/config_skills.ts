@@ -34,7 +34,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 18 },
       unlockLevel: 1,
-      targetType: 'all_enemies'
+      targetType: 'all_enemies',
+      buffs: [{ type: 'defense_down', value: 3, turns: 2 }]
     },
     {
       id: 'warrior_shield_bash',
@@ -91,11 +92,13 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       id: 'warrior_charge',
       name: '冲锋',
       icon: '💨',
-      description: '如出膛的炮弹般冲向目标，借冲锋之势挥出雷霆一击',
+      description: '如出膛的炮弹般冲向目标，借冲锋之势短时间内大幅提升攻击和移动速度',
       mpCost: 10,
-      type: 'physical_damage',
-      effect: { type: 'physical_damage', value: 20 },
-      unlockLevel: 7
+      type: 'buff',
+      effect: { type: 'buff', value: 0 },
+      unlockLevel: 7,
+      targetType: 'self',
+      buffs: [{ type: 'speed_up', value: 15, turns: 3 }, { type: 'attack_up', value: 8, turns: 3 }]
     },
     {
       id: 'warrior_overpower',
@@ -140,7 +143,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      targetType: 'all_enemies',
+      buffs: [{ type: 'speed_down', value: 8, turns: 2 }]
     },
     {
       id: 'mage_arcane_missiles',
@@ -198,11 +203,13 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       id: 'mage_mirror_image',
       name: '镜像',
       icon: '🪞',
-      description: '制造出三个魔法镜像迷惑敌人，镜像同时向目标发起奥术攻击',
+      description: '制造出三个魔法镜像环绕自身，镜像偏转攻击并吸收伤害',
       mpCost: 15,
-      type: 'magic_damage',
-      effect: { type: 'magic_damage', value: 10 },
-      unlockLevel: 7
+      type: 'buff',
+      effect: { type: 'buff', value: 0 },
+      unlockLevel: 7,
+      targetType: 'self',
+      buffs: [{ type: 'shield', value: 40, turns: 3 }]
     },
     {
       id: 'mage_blizzard',
@@ -279,7 +286,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 15 },
-      unlockLevel: 4
+      unlockLevel: 4,
+      targetType: 'all_enemies',
+      buffs: [{ type: 'burn', value: 8, turns: 3 }]
     },
     {
       id: 'paladin_divine_strike',
@@ -374,9 +383,10 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '🐍',
       description: '箭尖涂抹致命蛇毒，射入敌人体内后毒素持续侵蚀血肉',
       mpCost: 8,
-      type: 'physical_damage',
-      effect: { type: 'physical_damage', value: 15 },
-      unlockLevel: 3
+      type: 'debuff',
+      effect: { type: 'debuff', value: 0 },
+      unlockLevel: 3,
+      buffs: [{ type: 'poison', value: 12, turns: 4 }]
     },
     {
       id: 'hunter_volley',
@@ -470,9 +480,10 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '💢',
       description: '以迅雷之势猛击目标要害部位，令其短暂丧失战斗力',
       mpCost: 10,
-      type: 'physical_damage',
-      effect: { type: 'physical_damage', value: 17 },
-      unlockLevel: 2
+      type: 'debuff',
+      effect: { type: 'debuff', value: 0 },
+      unlockLevel: 2,
+      buffs: [{ type: 'stun', value: 1, turns: 1 }]
     },
     {
       id: 'rogue_mutilate',
@@ -488,11 +499,12 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       id: 'rogue_poisoned_strike',
       name: '毒刃',
       icon: '☠️',
-      description: '刀刃上涂满致命毒药，划过之处留下一道惨绿的腐蚀伤口',
+      description: '刀刃上涂满致命毒药，划过之处留下一道惨绿的腐蚀伤口，毒素持续发作',
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 20 },
-      unlockLevel: 4
+      unlockLevel: 4,
+      buffs: [{ type: 'poison', value: 10, turns: 4 }]
     },
     {
       id: 'rogue_slice',
@@ -565,19 +577,21 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '🖤',
       description: '以魔能诅咒腐化敌人的灵魂，暗影能量如蛆附骨般持续侵蚀',
       mpCost: 8,
-      type: 'magic_damage',
-      effect: { type: 'magic_damage', value: 17 },
-      unlockLevel: 1
+      type: 'debuff',
+      effect: { type: 'debuff', value: 0 },
+      unlockLevel: 1,
+      buffs: [{ type: 'poison', value: 14, turns: 4 }]
     },
     {
       id: 'warlock_agony',
       name: '痛苦打击',
       icon: '😈',
-      description: '施加无尽的折磨诅咒，黑暗魔力不断折磨目标的精神与肉体',
+      description: '施加无尽的折磨诅咒，黑暗魔力大幅削弱目标的精神与攻击力',
       mpCost: 10,
-      type: 'magic_damage',
-      effect: { type: 'magic_damage', value: 15 },
-      unlockLevel: 2
+      type: 'debuff',
+      effect: { type: 'debuff', value: 0 },
+      unlockLevel: 2,
+      buffs: [{ type: 'attack_down', value: 10, turns: 3 }]
     },
     {
       id: 'warlock_immolate',
@@ -679,7 +693,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       id: 'druid_moonfire',
       name: '月焰术',
       icon: '🌙',
-      description: '月神月之女神的怒火化作一道银白光束从天而降，灼烧敌人',
+      description: '呼唤银月之怒，一道璀璨的银白光束自天而降灼烧敌人',
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
@@ -699,21 +713,24 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       id: 'druid_regrowth',
       name: '愈合术',
       icon: '🌸',
-      description: '加速自然生长之力，瞬间催生新生的血肉覆盖伤口',
+      description: '加速自然生长之力，在体内植入持续愈合的生命之种',
       mpCost: 10,
-      type: 'health_restore',
-      effect: { type: 'health_restore', value: 15 },
-      unlockLevel: 4
+      type: 'buff',
+      effect: { type: 'buff', value: 0 },
+      unlockLevel: 4,
+      targetType: 'self',
+      buffs: [{ type: 'regen', value: 12, turns: 4 }]
     },
     {
       id: 'druid_thorns',
       name: '荆棘打击',
       icon: '🌵',
-      description: '召唤锋利的荆棘缠绕目标，尖锐的刺深深扎入敌人的皮肉',
+      description: '召唤锋利的荆棘缠绕自身，攻击者将受到荆棘的反伤',
       mpCost: 8,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 12 },
-      unlockLevel: 5
+      unlockLevel: 5,
+      buffs: [{ type: 'thorn', value: 0.3, turns: 3 }]
     },
     {
       id: 'druid_feral_charge',
@@ -815,11 +832,13 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       id: 'priest_renew',
       name: '愈合祷言',
       icon: '💚',
-      description: '在目标身上施加持续恢复的圣光祝福，伤口缓缓愈合',
+      description: '在自身施加持续恢复的圣光祝福，生命值缓缓回升',
       mpCost: 8,
-      type: 'health_restore',
-      effect: { type: 'health_restore', value: 13 },
-      unlockLevel: 5
+      type: 'buff',
+      effect: { type: 'buff', value: 0 },
+      unlockLevel: 5,
+      targetType: 'self',
+      buffs: [{ type: 'regen', value: 10, turns: 4 }]
     },
     {
       id: 'priest_mind_flay',
@@ -921,11 +940,12 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       id: 'shaman_frost_shock',
       name: '冰霜冲击',
       icon: '❄️',
-      description: '冰封元素的震击冻结目标的血液，寒气在体内爆发',
+      description: '冰封元素的震击冻结目标的血液，寒气在体内爆发并大幅减缓行动速度',
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 18 },
-      unlockLevel: 5
+      unlockLevel: 5,
+      buffs: [{ type: 'speed_down', value: 12, turns: 2 }]
     },
     {
       id: 'shaman_chain_lightning',
@@ -978,11 +998,12 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       id: 'death_knight_frost_touch',
       name: '冰冷触摸',
       icon: '❄️',
-      description: '以冰冷的手掌触碰目标，寒气瞬间冻结敌人的血肉',
+      description: '以冰冷的手掌触碰目标，寒气瞬间冻结敌人的血肉并减缓其行动',
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      buffs: [{ type: 'speed_down', value: 10, turns: 2 }]
     },
     {
       id: 'death_knight_shadow_strike',
@@ -1069,7 +1090,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       id: 'death_knight_sindragosas_breath',
       name: '冰霜龙息',
       icon: '🐉',
-      description: '召唤冰霜巨龙女王的灵魂，让彻骨的龙息冻结所有敌人',
+      description: '召唤远古冰霜巨龙之魂，让彻骨的龙息冻结所有敌人',
       mpCost: 30,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 55 },
@@ -1125,11 +1146,13 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       id: 'monk_tranquility_orb',
       name: '禅意珠',
       icon: '🔮',
-      description: '凝聚真气化为禅意之珠，放置在战场持续为队友提供治疗',
+      description: '凝聚真气化为禅意之珠，真气在体内流转持续治愈伤势',
       mpCost: 10,
-      type: 'health_restore',
-      effect: { type: 'health_restore', value: 18 },
-      unlockLevel: 4
+      type: 'buff',
+      effect: { type: 'buff', value: 0 },
+      unlockLevel: 4,
+      targetType: 'self',
+      buffs: [{ type: 'regen', value: 14, turns: 4 }]
     },
     {
       id: 'monk_fists_of_fury',
@@ -1265,7 +1288,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 17 },
       unlockLevel: 7,
-      targetType: 'all_enemies'
+      targetType: 'all_enemies',
+      buffs: [{ type: 'burn', value: 10, turns: 3 }]
     },
     {
       id: 'demon_hunter_chaos_nova',
@@ -1349,9 +1373,10 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       icon: '😴',
       description: '释放巨龙的催眠之息，令目标陷入短暂的沉睡并受到梦魇侵蚀',
       mpCost: 16,
-      type: 'magic_damage',
-      effect: { type: 'magic_damage', value: 22 },
-      unlockLevel: 5
+      type: 'debuff',
+      effect: { type: 'debuff', value: 0 },
+      unlockLevel: 5,
+      buffs: [{ type: 'stun', value: 1, turns: 1 }]
     },
     {
       id: 'evoker_azure_strike',
