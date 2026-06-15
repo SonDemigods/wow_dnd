@@ -161,3 +161,17 @@
     border-color: darken(@skill-blue, 10%);
   }
 }
+
+/* ===== 弹窗进出场动画（BasePopup Transition） ===== */
+.popup-enter-active {
+  animation: fadeIn 0.2s ease;
+}
+
+/* 遮罩淡入时，内容盒体做轻微缩放弹入 */
+.popup-enter-active .popup-content {
+  animation: scaleIn 0.25s ease;
+}
+
+.popup-leave-active {
+  animation: fadeIn 0.15s ease reverse;
+}

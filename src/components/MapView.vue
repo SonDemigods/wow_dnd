@@ -553,18 +553,6 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-/* 动画 */
-@keyframes panel-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* 移动端适配 */
 @media (max-width: 768px) {
   .map-container {

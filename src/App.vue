@@ -22,12 +22,14 @@
       </div>
     </template>
 
-    <div v-if="showCreateModal" class="modal-overlay">
-      <div class="modal-content">
-        <button class="modal-close" @click="showCreateModal = false">×</button>
-        <CharacterCreate @created="handleCharacterCreated" />
+    <Transition name="modal">
+      <div v-if="showCreateModal && !loading" class="modal-overlay">
+        <div class="modal-content">
+          <button class="modal-close" @click="showCreateModal = false">×</button>
+          <CharacterCreate @created="handleCharacterCreated" />
+        </div>
       </div>
-    </div>
+    </Transition>
 
     <ConfirmPopup 
       :visible="showExitConfirm"
@@ -282,6 +284,17 @@ function handleAdminExit() {
 .exit-btn:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: #ffd700;
+}
+
+/* ===== 角色创建弹窗进出场动画 ===== */
+.modal-enter-active {
+  animation: fadeIn 0.2s ease;
+}
+.modal-enter-active .modal-content {
+  animation: scaleIn 0.25s ease;
+}
+.modal-leave-active {
+  animation: fadeIn 0.15s ease reverse;
 }
 
 .admin-screen {

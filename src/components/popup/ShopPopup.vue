@@ -632,11 +632,6 @@ watch(currentTab, () => {
   animation: legendary-glow 2s infinite;
 }
 
-@keyframes legendary-glow {
-  0%, 100% { box-shadow: 0 0 5px #ff8000; }
-  50% { box-shadow: 0 0 15px #ff8000; }
-}
-
 .card-icon {
   font-size: 26px;
   flex-shrink: 0;

@@ -2,7 +2,7 @@
   <div class="game-main">
     <div class="game-header">
       <div class="player-info">
-        <div class="player-avatar">{{ characterStore.raceIcon }}</div>
+        <div class="player-avatar">{{ characterStore.raceIcon || '🧙' }}</div>
         <div class="player-details">
           <div class="player-name">{{ character.name }}</div>
           <div class="player-meta">
@@ -39,8 +39,8 @@
 
       <div class="content-view">
         <template v-if="!loading">
-          <MapView v-if="currentContentTab === 'map'" @enter-zone="currentContentTab = 'explore'" />
-          <ExplorationView v-else />
+          <MapView v-if="currentContentTab === 'map'" key="map-view" @enter-zone="currentContentTab = 'explore'" />
+          <ExplorationView v-else key="explore-view" />
         </template>
       </div>
     </div>
@@ -109,7 +109,7 @@
     />
 
     <CombatPopup
-      :visible="showCombat"
+      v-if="showCombat"
       @close="handleCombatClose"
     />
 
@@ -182,7 +182,7 @@ const showCombat = ref(false);
 const showAudioSettings = ref(false);
 const showSystem = ref(false);
 
-const character = computed(() => characterStore.character || {} as { icon?: string; name?: string; level?: number; });
+const character = computed(() => characterStore.character || { name: '...', level: 1 });
 const currentHp = computed(() => characterStore.hp);
 const maxHp = computed(() => characterStore.maxHp);
 const currentMp = computed(() => characterStore.mana);

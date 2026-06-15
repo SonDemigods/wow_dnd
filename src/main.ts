@@ -6,12 +6,14 @@
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import { MotionPlugin } from '@vueuse/motion'
 import App from './App.vue'
 import { db } from '@/modules/data/core'
 import { dataInitializer } from '@/modules/data/service'
 import { initConsole } from '@/modules/console'
 import { audioService } from '@/modules/audio/service'
 import './styles/popup.less'
+import './styles/animations.less'
 
 /**
  * 初始化并启动应用
@@ -30,6 +32,7 @@ async function initApp() {
   const pinia = createPinia()
 
   app.use(pinia)
+  app.use(MotionPlugin)
   app.mount('#app')
 
   // 挂载开发控制台命令到 window.cmd

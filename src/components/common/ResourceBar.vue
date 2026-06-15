@@ -141,14 +141,6 @@ withDefaults(defineProps<{
 .wave-fast.mp { background: rgba(180, 200, 255, 0.6); }
 .wave-fast.exp { background: rgba(255, 230, 180, 0.6); }
 
-@keyframes wave-drift {
-  0%   { transform: translateX(-10%) rotate(0deg); }
-  25%  { transform: translateX(5%) rotate(3deg); }
-  50%  { transform: translateX(10%) rotate(-1deg); }
-  75%  { transform: translateX(-5%) rotate(-3deg); }
-  100% { transform: translateX(-10%) rotate(0deg); }
-}
-
 /* ===== 粒子光点 ===== */
 .particles {
   position: absolute;
@@ -168,11 +160,6 @@ withDefaults(defineProps<{
 .p1 { top: 25%; left: 30%; animation-delay: 0s;    animation-duration: 2.2s; }
 .p2 { top: 55%; left: 55%; animation-delay: 0.6s;  animation-duration: 1.8s; }
 .p3 { top: 35%; left: 75%; animation-delay: 1.2s;  animation-duration: 2.5s; }
-
-@keyframes particle-float {
-  0%, 100% { transform: translateY(0) scale(1);   opacity: 0.5; }
-  50%      { transform: translateY(-5px) scale(1.4); opacity: 0.9; }
-}
 
 /* ===== 文字层 ===== */
 .resource-text {

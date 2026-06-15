@@ -1,0 +1,89 @@
+/**
+ * @fileoverview 全局共享动画关键帧
+ * @description 跨组件复用的 @keyframes 定义，统一管理避免重复
+ */
+
+/* ===== 通用入场动画 ===== */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* ===== 脉冲动画 ===== */
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ===== 物品品质发光 ===== */
+
+@keyframes legendary-glow {
+  0%, 100% { box-shadow: 0 0 5px #ff8000; }
+  50% { box-shadow: 0 0 15px #ff8000; }
+}
+
+/* ===== 探索视图 ===== */
+
+@keyframes boss-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* ===== 地图面板 ===== */
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== Toast 进出场 ===== */
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+}
+
+/* ===== ResourceBar 装饰动画 ===== */
+
+@keyframes wave-drift {
+  0%   { transform: translateX(-10%) rotate(0deg); }
+  25%  { transform: translateX(5%) rotate(3deg); }
+  50%  { transform: translateX(10%) rotate(-1deg); }
+  75%  { transform: translateX(-5%) rotate(-3deg); }
+  100% { transform: translateX(-10%) rotate(0deg); }
+}
+
+@keyframes particle-float {
+  0%, 100% { transform: translateY(0) scale(1);   opacity: 0.5; }
+  50%      { transform: translateY(-5px) scale(1.4); opacity: 0.9; }
+}

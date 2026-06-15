@@ -1,22 +1,24 @@
 <template>
-  <div v-if="visible" class="popup-overlay" @click.self="$emit('close')">
-    <div class="popup-content" :style="contentStyle">
-      <div class="popup-header">
-        <h2 class="popup-title">{{ title }}</h2>
-        <slot name="header-extra" />
-        <button v-if="showClose" class="popup-close-btn" @click="$emit('close')">×</button>
-      </div>
+  <Transition name="popup">
+    <div v-if="visible" class="popup-overlay" @click.self="$emit('close')">
+      <div class="popup-content" :style="contentStyle">
+        <div class="popup-header">
+          <h2 class="popup-title">{{ title }}</h2>
+          <slot name="header-extra" />
+          <button v-if="showClose" class="popup-close-btn" @click="$emit('close')">×</button>
+        </div>
 
-      <div class="popup-body" :class="bodyClass">
-        <slot />
-      </div>
+        <div class="popup-body" :class="bodyClass">
+          <slot />
+        </div>
 
-      <div v-if="$slots.footer || showFooterClose" class="popup-footer">
-        <slot name="footer" />
-        <button v-if="showFooterClose" class="popup-footer-btn" @click="$emit('close')">关闭</button>
+        <div v-if="$slots.footer || showFooterClose" class="popup-footer">
+          <slot name="footer" />
+          <button v-if="showFooterClose" class="popup-footer-btn" @click="$emit('close')">关闭</button>
+        </div>
       </div>
     </div>
-  </div>
+  </Transition>
 </template>
 
 <script setup lang="ts">

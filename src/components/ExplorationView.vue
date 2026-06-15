@@ -414,11 +414,6 @@ onMounted(async () => {
   font-size: 20px;
 }
 
-@keyframes boss-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
 /* 探索底部 */
 .exploration-footer {
   padding: 10px 16px;

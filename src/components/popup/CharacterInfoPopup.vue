@@ -109,11 +109,11 @@
             <div 
               v-for="slot in weaponSlots" 
               :key="slot.key"
-              :class="['equip-slot', { equipped: slot.equipment, selected: selectedSlot?.key === slot.key }, slot.equipment ? 'rarity-' + slot.equipment.rarity : '']"
+              :class="['equip-slot', { equipped: slot.equipment, selected: selectedSlot?.key === slot.key }, slot.equipment ? 'rarity-' + (slot.equipment?.rarity || 'common') : '']"
               @click="selectEquipment(slot)"
             >
               <template v-if="slot.equipment">
-                <div class="slot-icon">{{ slot.equipment.icon || '⚔️' }}</div>
+                <div class="slot-icon">{{ slot.equipment?.icon || '⚔️' }}</div>
                 <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>
@@ -126,11 +126,11 @@
             <div 
               v-for="slot in armorSlots" 
               :key="slot.key"
-              :class="['equip-slot', { equipped: slot.equipment, selected: selectedSlot?.key === slot.key }, slot.equipment ? 'rarity-' + slot.equipment.rarity : '']"
+              :class="['equip-slot', { equipped: slot.equipment, selected: selectedSlot?.key === slot.key }, slot.equipment ? 'rarity-' + (slot.equipment?.rarity || 'common') : '']"
               @click="selectEquipment(slot)"
             >
               <template v-if="slot.equipment">
-                <div class="slot-icon">{{ slot.equipment.icon || '🛡️' }}</div>
+                <div class="slot-icon">{{ slot.equipment?.icon || '🛡️' }}</div>
                 <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>

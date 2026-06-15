@@ -2,7 +2,7 @@
   <div class="character-select">
     <!-- 删除确认弹窗 -->
     <div v-if="showConfirmModal" class="confirm-modal-overlay" @click="cancelDelete">
-      <div class="confirm-modal" @click.stop>
+      <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
         <div class="confirm-icon">⚠️</div>
         <h3>确认删除</h3>
         <p>确定要删除这个角色吗？此操作无法撤销。</p>
@@ -15,7 +15,7 @@
 
     <!-- 导入确认弹窗 -->
     <div v-if="showImportModal" class="confirm-modal-overlay" @click="cancelImport">
-      <div class="confirm-modal" @click.stop>
+      <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
         <div class="confirm-icon">📥</div>
         <h3>确认导入存档</h3>
         <p>导入存档将覆盖当前所有游戏数据，此操作无法撤销。确定要继续吗？</p>
@@ -28,7 +28,7 @@
 
     <!-- 导入结果提示弹窗 -->
     <div v-if="showResultModal" class="confirm-modal-overlay" @click="closeResult">
-      <div class="confirm-modal" @click.stop>
+      <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
         <div class="confirm-icon">{{ importSuccess ? '✅' : '❌' }}</div>
         <h3>{{ importSuccess ? '导入成功' : '导入失败' }}</h3>
         <p>{{ importMessage }}</p>
@@ -578,12 +578,6 @@ defineExpose({
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 .confirm-modal {
@@ -594,12 +588,6 @@ defineExpose({
   max-width: 360px;
   width: 90%;
   text-align: center;
-  animation: scaleIn 0.2s ease;
-}
-
-@keyframes scaleIn {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
 }
 
 .confirm-icon {

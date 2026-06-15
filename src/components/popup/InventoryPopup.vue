@@ -22,10 +22,10 @@
 
         <div class="inventory-grid">
           <div 
-            v-for="(entry, index) in displayItems" 
-            :key="index"
-            :class="['item-slot', entry.info?.rarity, { equipped: isEquipped(entry.item.itemId), selected: selectedIndex === index }]"
-            @click="selectItem(entry, index)"
+            v-for="entry in displayItems" 
+            :key="entry.item.itemId"
+            :class="['item-slot', entry.info?.rarity, { equipped: isEquipped(entry.item.itemId), selected: selectedEntry?.item?.itemId === entry.item.itemId }]"
+            @click="selectItem(entry)"
           >
             <span class="item-icon">{{ entry.info?.icon || '📦' }}</span>
             <span v-if="entry.item.count > 1" class="item-count">{{ entry.item.count }}</span>
@@ -51,7 +51,7 @@
               <span v-if="selectedEntry.info?.levelRequirement">等级: {{ selectedEntry.info.levelRequirement }}</span>
             </div>
             <div v-if="selectedEntry.info?.bonus" class="bonus-info">
-              <div v-for="(value, stat) in selectedEntry.info.bonus" :key="stat" class="bonus-item">
+              <div v-for="(value, stat) in selectedEntry.info?.bonus" :key="stat" class="bonus-item">
                 <span class="bonus-name">{{ getStatName(stat) }}</span>
                 <span class="bonus-value">+{{ value }}</span>
               </div>
@@ -172,7 +172,6 @@ const gold = computed(() => characterStore.gold);
 
 const selectedCategory = ref<'all' | ItemType>('all');
 const selectedEntry = ref<ItemEntry | null>(null);
-const selectedIndex = ref<number>(-1);
 
 // 丢弃确认弹窗状态
 const showDropConfirm = ref(false);
@@ -315,14 +314,12 @@ async function doOrganize() {
   useInventoryStore().organizeInventory();
   await loadInventory();
   selectedEntry.value = null;
-  selectedIndex.value = -1;
   toast.show({ message: '背包已整理', type: 'success', icon: '📋' });
 }
 
-function selectItem(entry: ItemEntry, index: number) {
+function selectItem(entry: ItemEntry) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_select_item' });
   selectedEntry.value = entry;
-  selectedIndex.value = index;
 }
 
 /**
@@ -330,11 +327,10 @@ function selectItem(entry: ItemEntry, index: number) {
  * 当背包中存在多组相同 itemId 的物品时，优先返回当前选中的位置
  */
 function findSelectedOrFirstIndex(itemId: string): number {
-  if (selectedEntry.value && selectedEntry.value.item.itemId === itemId && selectedIndex.value >= 0) {
-    const item = inventoryItems.value[selectedIndex.value];
-    if (item && item.itemId === itemId) {
-      return selectedIndex.value;
-    }
+  // 优先查找当前选中物品的位置
+  if (selectedEntry.value && selectedEntry.value.item.itemId === itemId) {
+    const idx = inventoryItems.value.findIndex(i => i.itemId === itemId && selectedEntry.value && i === selectedEntry.value.item);
+    if (idx >= 0) return idx;
   }
   return inventoryItems.value.findIndex(i => i.itemId === itemId);
 }
@@ -359,7 +355,6 @@ async function useItem(itemId: string) {
   // 堆叠数归零时清除选中
   if (invItem.count <= 1) {
     selectedEntry.value = null;
-    selectedIndex.value = -1;
   }
 }
 
@@ -402,7 +397,6 @@ async function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
     toast.show({ message: `已装备 ${item.name} 到 ${SLOT_NAMES[slot]}`, type: 'success', icon: '🛡️' });
     loadInventory();
     selectedEntry.value = null;
-    selectedIndex.value = -1;
   } else {
     toast.show({ message: '装备失败，可能等级不足或槽位不匹配', type: 'warning' });
   }
@@ -442,7 +436,6 @@ function confirmDrop() {
     toast.show({ message: `已丢弃 ${info?.name || '物品'}`, type: 'info', icon: '🗑️' });
     loadInventory();
     selectedEntry.value = null;
-    selectedIndex.value = -1;
   }
   
   showDropConfirm.value = false;
@@ -607,11 +600,6 @@ onMounted(() => {
 
 .item-slot.selected {
   background: rgba(255, 215, 0, 0.25);
-}
-
-@keyframes legendary-glow {
-  0%, 100% { box-shadow: 0 0 5px #ff8000; }
-  50% { box-shadow: 0 0 20px #ff8000; }
 }
 
 .item-icon {

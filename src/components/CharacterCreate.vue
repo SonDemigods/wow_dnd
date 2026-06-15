@@ -2,7 +2,7 @@
   <div class="character-create">
     <!-- 校验/确认弹窗 -->
     <div v-if="showModal" class="modal-overlay" @click="cancelModal">
-      <div class="modal-box" @click.stop>
+      <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="modal-box" @click.stop>
         <div class="modal-icon">{{ modalIcon }}</div>
         <h3>{{ modalTitle }}</h3>
         <p>{{ modalMessage }}</p>
@@ -1080,12 +1080,6 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 .modal-box {
@@ -1096,12 +1090,6 @@ onMounted(async () => {
   max-width: 360px;
   width: 90%;
   text-align: center;
-  animation: scaleIn 0.2s ease;
-}
-
-@keyframes scaleIn {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
 }
 
 .modal-icon {
