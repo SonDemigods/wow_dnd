@@ -932,6 +932,16 @@ export const useCombatStore = defineStore('combat', () => {
           isDodge: false,
           message: `获得物品 ${drop.itemId} x${amount}！`
         });
+
+        // 记录战利品到冒险日志
+        const itemName = itemInfo?.name || drop.itemId;
+        logStore.addLogEntry({
+          id: generateLogId(),
+          timestamp: Date.now(),
+          type: 'item',
+          message: `从 ${e.name} 获得 ${itemName} x${amount}`,
+          icon: '🎒'
+        });
       }
     });
   }
@@ -1380,6 +1390,28 @@ export const useCombatStore = defineStore('combat', () => {
           message: `击败 ${enemyNames}！`,
           icon: '🏆'
         });
+
+        // 记录获得经验值到冒险日志
+        if (totalExp > 0) {
+          logStore.addLogEntry({
+            id: generateLogId(),
+            timestamp: Date.now(),
+            type: 'combat',
+            message: `获得 ${totalExp} 点经验值`,
+            icon: '⭐'
+          });
+        }
+
+        // 记录获得金币到冒险日志
+        if (totalGold > 0) {
+          logStore.addLogEntry({
+            id: generateLogId(),
+            timestamp: Date.now(),
+            type: 'combat',
+            message: `获得 ${totalGold} 金币`,
+            icon: '💰'
+          });
+        }
 
         // 内部战斗日志（战斗弹窗用）
         addCombatLog({
