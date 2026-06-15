@@ -4,8 +4,8 @@
       <!-- 屏幕闪白遮罩（暴击特效） -->
       <div v-if="screenFlash" :class="['screen-flash', screenFlashType]"></div>
 
-      <!-- Boss 出场演出遮罩 -->
-      <div v-if="showBossIntro" :class="['boss-intro-overlay', 'boss-intro-' + bossIntroEffect]">
+      <!-- Boss 出场演出遮罩（统一风格） -->
+      <div v-if="showBossIntro" class="boss-intro-overlay">
         <div class="boss-intro-content">
           <div class="boss-intro-icon">{{ bossIntroIcon }}</div>
           <div class="boss-intro-name">{{ bossIntroName }}</div>
@@ -17,7 +17,11 @@
 
       <!-- Boss 阶段转换特效 -->
       <div v-if="showPhaseTransition" :class="['phase-transition', 'phase-transition-' + phaseTransitionEffect]">
-        <div class="phase-transition-text">{{ phaseTransitionName }}</div>
+        <div class="phase-transition-backdrop"></div>
+        <div class="phase-transition-content">
+          <div class="phase-transition-label">阶段转换</div>
+          <div class="phase-transition-text">{{ phaseTransitionName }}</div>
+        </div>
       </div>
 
       <!-- 标题 -->
@@ -324,7 +328,6 @@ const screenFlashType = ref<'crit' | 'dodge'>('crit');
 
 // Boss 出场演出状态
 const showBossIntro = ref(false);
-const bossIntroEffect = ref('');
 const bossIntroIcon = ref('');
 const bossIntroName = ref('');
 const bossIntroLines = ref<string[]>([]);
@@ -604,16 +607,19 @@ function onDodge(data: { attackerName: string; dodgerName: string; dodgerType: '
 
 // Boss 出场演出事件处理
 function onBossIntro(data: { enemyId: string; enemyName: string; icon: string; effect: string; lines: string[]; duration: number }) {
-  bossIntroEffect.value = data.effect;
   bossIntroIcon.value = data.icon;
   bossIntroName.value = data.enemyName;
   bossIntroLines.value = data.lines;
   showBossIntro.value = true;
 
+  // 自动计算最短展示时长：确保每条台词有足够阅读时间
+  const minDuration = 1000 + data.lines.length * 900;
+  const actualDuration = Math.max(data.duration, minDuration);
+
   // 演出结束后自动关闭
   setTimeout(() => {
     showBossIntro.value = false;
-  }, data.duration);
+  }, actualDuration);
 }
 
 // Boss 阶段转换事件处理
@@ -622,10 +628,10 @@ function onBossPhase(data: { enemyId: string; enemyName: string; phaseName: stri
   phaseTransitionName.value = `${data.enemyName} 进入 "${data.phaseName}" 阶段！`;
   showPhaseTransition.value = true;
 
-  // 2 秒后自动关闭
+  // 2.5 秒后自动关闭（匹配动画时长）
   setTimeout(() => {
     showPhaseTransition.value = false;
-  }, 2000);
+  }, 2500);
 }
 
 // 选择攻击目标
@@ -1531,17 +1537,26 @@ watch(() => props.visible, async (val) => {
   align-items: center;
   justify-content: center;
   border-radius: 14px;
+  /* 统一暗色遮罩 + 虚化底层 */
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(4px);
   animation: bossIntroIn 0.5s ease-out;
 }
 
 .boss-intro-content {
   text-align: center;
   z-index: 2;
+  /* 半透明暗色背景增强文字对比度 */
+  background: rgba(0, 0, 0, 0.5);
+  padding: 32px 48px;
+  border-radius: 12px;
 }
 
 .boss-intro-icon {
   font-size: 72px;
   animation: bossIconBounce 0.8s ease 0.2s both;
+  /* 图标发光增强辨识度 */
+  filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.5));
 }
 
 .boss-intro-name {
@@ -1549,68 +1564,120 @@ watch(() => props.visible, async (val) => {
   font-weight: 900;
   color: #ffd700;
   margin-top: 12px;
-  text-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+  text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 24px rgba(255, 215, 0, 0.6);
   animation: bossNameIn 0.6s ease 0.4s both;
 }
 
 .boss-intro-line {
   font-size: 16px;
-  color: #ccc;
+  color: #fff;
   margin-top: 8px;
   opacity: 0;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.7), 0 1px 2px rgba(0, 0, 0, 0.5);
   animation: bossLineIn 0.5s ease forwards;
 }
 
 .boss-intro-line.line-0 { animation-delay: 0.8s; }
 .boss-intro-line.line-1 { animation-delay: 1.2s; }
 
-/* Boss 出场特效类型 */
-.boss-intro-darken {
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.85) 100%);
-}
-
-.boss-intro-flame {
-  background: radial-gradient(ellipse at center, rgba(255, 100, 0, 0.2) 0%, rgba(200, 0, 0, 0.6) 50%, rgba(0, 0, 0, 0.9) 100%);
-  animation: bossIntroIn 0.5s ease-out, bossFlamePulse 1.5s ease-in-out infinite 0.5s;
-}
-
-.boss-intro-freeze {
-  background: radial-gradient(ellipse at center, rgba(100, 200, 255, 0.2) 0%, rgba(0, 100, 200, 0.6) 50%, rgba(0, 0, 0, 0.9) 100%);
-}
-
-.boss-intro-lightning {
-  background: radial-gradient(ellipse at center, rgba(200, 200, 255, 0.2) 0%, rgba(100, 0, 200, 0.6) 50%, rgba(0, 0, 0, 0.9) 100%);
-}
-
-.boss-intro-shake {
-  background: radial-gradient(ellipse at center, rgba(255, 200, 100, 0.2) 0%, rgba(150, 100, 0, 0.6) 50%, rgba(0, 0, 0, 0.9) 100%);
-}
-
 /* ========== Boss 阶段转换特效 ========== */
 .phase-transition {
   position: absolute;
-  top: 40%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 55;
   pointer-events: none;
-  animation: phaseTransitionIn 2s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+/* 全屏闪过遮罩 */
+.phase-transition-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  animation: phaseBackdropFlash 2.5s ease-out;
+}
+
+/* 默认暗色遮罩 */
+.phase-transition-darken .phase-transition-backdrop {
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.85) 80%);
+}
+.phase-transition-flame .phase-transition-backdrop {
+  background: radial-gradient(ellipse at center, rgba(80, 0, 0, 0.5) 0%, rgba(40, 0, 0, 0.9) 80%);
+  animation: phaseBackdropFlash 2.5s ease-out, phaseFlameFlicker 0.15s ease-in-out 6 0.3s;
+}
+.phase-transition-freeze .phase-transition-backdrop {
+  background: radial-gradient(ellipse at center, rgba(0, 40, 80, 0.5) 0%, rgba(0, 0, 30, 0.9) 80%);
+}
+.phase-transition-lightning .phase-transition-backdrop {
+  background: radial-gradient(ellipse at center, rgba(30, 0, 60, 0.5) 0%, rgba(0, 0, 20, 0.9) 80%);
+}
+.phase-transition-shake .phase-transition-backdrop {
+  background: radial-gradient(ellipse at center, rgba(60, 20, 0, 0.5) 0%, rgba(20, 0, 0, 0.9) 80%);
+}
+
+/* 阶段转换文字内容 */
+.phase-transition-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  animation: phaseContentIn 2s ease-out;
+}
+
+.phase-transition-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin-bottom: 6px;
 }
 
 .phase-transition-text {
-  font-size: 22px;
+  font-size: 32px;
   font-weight: 900;
   color: #ffd700;
-  text-shadow: 0 0 24px rgba(255, 215, 0, 0.8), 0 0 48px rgba(255, 100, 0, 0.5);
+  text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 215, 0, 0.6), 0 0 64px rgba(255, 100, 0, 0.4);
   white-space: nowrap;
-  animation: phaseTextPulse 0.6s ease-in-out infinite alternate;
 }
 
-.phase-transition-darken .phase-transition-text { color: #ffd700; }
-.phase-transition-flame .phase-transition-text { color: #ff4500; text-shadow: 0 0 24px rgba(255, 69, 0, 0.8); }
-.phase-transition-freeze .phase-transition-text { color: #00bcd4; text-shadow: 0 0 24px rgba(0, 188, 212, 0.8); }
-.phase-transition-lightning .phase-transition-text { color: #a855f7; text-shadow: 0 0 24px rgba(168, 85, 247, 0.8); }
-.phase-transition-shake .phase-transition-text { color: #ff6347; text-shadow: 0 0 24px rgba(255, 99, 71, 0.8); }
+/* 各特效的文字颜色 */
+.phase-transition-darken .phase-transition-text { color: #ffd700; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 215, 0, 0.6); }
+.phase-transition-flame .phase-transition-text { color: #ff4500; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 69, 0, 0.7), 0 0 64px rgba(255, 0, 0, 0.5); }
+.phase-transition-freeze .phase-transition-text { color: #00bcd4; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(0, 188, 212, 0.7), 0 0 64px rgba(0, 255, 255, 0.4); }
+.phase-transition-lightning .phase-transition-text { color: #a855f7; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(168, 85, 247, 0.7), 0 0 64px rgba(200, 100, 255, 0.5); }
+.phase-transition-shake .phase-transition-text { color: #ff6347; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 99, 71, 0.7), 0 0 64px rgba(255, 50, 0, 0.5); }
+
+/* 遮罩闪光动画 */
+@keyframes phaseBackdropFlash {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* 文字内容动画 */
+@keyframes phaseContentIn {
+  0% { opacity: 0; transform: scale(0.7); }
+  15% { opacity: 1; transform: scale(1.08); }
+  25% { opacity: 1; transform: scale(1); }
+  80% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.02); }
+}
+
+/* 火焰闪烁 */
+@keyframes phaseFlameFlicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
 
 /* Boss 出场动画 */
 @keyframes bossIntroIn {
@@ -1635,20 +1702,10 @@ watch(() => props.visible, async (val) => {
 }
 
 @keyframes bossFlamePulse {
-  0%, 100% { background: radial-gradient(ellipse at center, rgba(255, 100, 0, 0.2) 0%, rgba(200, 0, 0, 0.6) 50%, rgba(0, 0, 0, 0.9) 100%); }
-  50% { background: radial-gradient(ellipse at center, rgba(255, 150, 50, 0.3) 0%, rgba(255, 50, 0, 0.7) 50%, rgba(0, 0, 0, 0.9) 100%); }
+  0%, 100% { background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.7) 0%, rgba(180, 40, 0, 0.5) 40%, rgba(0, 0, 0, 0.92) 100%); }
+  50% { background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.65) 0%, rgba(200, 60, 0, 0.55) 40%, rgba(0, 0, 0, 0.92) 100%); }
 }
 
 /* 阶段转换动画 */
-@keyframes phaseTransitionIn {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-  15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
-  30% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
-}
 
-@keyframes phaseTextPulse {
-  0% { opacity: 0.8; }
-  100% { opacity: 1; }
-}
 </style>

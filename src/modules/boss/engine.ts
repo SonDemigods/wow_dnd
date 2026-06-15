@@ -8,14 +8,15 @@ import type { Enemy } from '../enemy/types';
 
 /** Boss 阶段管理器 */
 export class BossPhaseManager {
-  private currentPhaseIndex = 0;
+  /** 当前阶段索引，-1 表示未初始化（战斗开始时自动定位到对应阶段） */
+  private currentPhaseIndex = -1;
 
   constructor(_boss: BossInstance) {}
 
   /** 获取当前阶段 */
   getCurrentPhase(phases: BossPhase[], currentHp: number, maxHp: number): BossPhase | null {
     const hpPercent = currentHp / maxHp;
-    // 找到满足 HP 阈值的第一个阶段（从低到高）
+    // 从高索引向低索引遍历，找到满足 HP 阈值的第一个阶段
     for (let i = phases.length - 1; i >= 0; i--) {
       if (hpPercent <= phases[i].hpThreshold) {
         if (i !== this.currentPhaseIndex) {
@@ -25,8 +26,11 @@ export class BossPhaseManager {
         return phases[i];
       }
     }
-    this.currentPhaseIndex = 0;
-    return phases[0] || null;
+    // HP 高于所有阈值时，处于基础阶段（数组最后一个阶段）
+    if (this.currentPhaseIndex !== phases.length - 1) {
+      this.currentPhaseIndex = phases.length - 1;
+    }
+    return phases[phases.length - 1] || null;
   }
 
   /** 检查阶段是否切换 */
@@ -42,7 +46,7 @@ export class BossPhaseManager {
   }
 
   reset(): void {
-    this.currentPhaseIndex = 0;
+    this.currentPhaseIndex = -1;
   }
 }
 
