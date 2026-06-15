@@ -12,7 +12,6 @@ import type { LocationData } from '../map/types';
 import { explorationDbService } from './db';
 import { mapDbService } from '../map/db';
 import { inventoryDbService } from '../inventory/db';
-import { bossDbService } from '../boss/db';
 import { questDbService } from '../quest/db';
 import { shopDbService } from '../shop/db';
 import { eventBus, GameEvents } from '../bus/core';
@@ -144,17 +143,9 @@ export const useExplorationStore = defineStore('exploration', () => {
     // 委托给 service 纯函数计算事件概率
     const eventProbability = computeEventProbability(avgLevel);
 
-    // 怪物池：直接使用地点数据中的敌人列表
+    // 怪物池和 Boss 池：直接使用地点数据，两者天然分离
     const monsterPool = location.enemies || [];
-
-    // Boss 池：从 Boss 表中查询该地点是否有 Boss
-    const bossPool: string[] = [];
-    for (const enemyId of monsterPool) {
-      const boss = await bossDbService.getBossTemplate(enemyId);
-      if (boss) {
-        bossPool.push(enemyId);
-      }
-    }
+    const bossPool = location.bosses || [];
 
     // 物品池：委托给 service 纯函数筛选
     const allItems = await inventoryDbService.getAllItemTemplates();

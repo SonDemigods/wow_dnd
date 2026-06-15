@@ -64,6 +64,7 @@ export interface LocationData {
   description: string;
   continent: string;
   enemies?: string[];
+  bosses?: string[];
   quests?: string[];
   levelRange: [number, number];
   color: string;
@@ -177,6 +178,7 @@ export interface LocationDataStorage {
   description: string;
   continent: string;
   enemies?: string[];
+  bosses?: string[];
   quests?: string[];
   levelRange: [number, number];
   color: string;
@@ -206,6 +208,7 @@ export interface LocationStorage {
   type: 'location' | 'continent';
   continent?: string;
   enemies?: string[];
+  bosses?: string[];
   quests?: string[];
   levelRange?: [number, number];
   mapX?: number;
