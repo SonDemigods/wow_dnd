@@ -31,7 +31,7 @@ export class SkillsDbService {
   }
 
   /**
-   * 获取技能数据（原生读取，不做 JSON 反序列化）
+   * 获取技能数据
    * @param characterId - 角色ID
    * @returns 技能数据
    */
@@ -42,29 +42,11 @@ export class SkillsDbService {
         return this.getDefaultSkillsData(characterId);
       }
 
-      // 兼容旧数据：如果 skills/skillBar 是 JSON 字符串（旧格式），尝试解析
-      let skills: Skill[] = [];
-      let skillBar: SkillBar = { slots: [null, null, null, null] };
-
-      if (Array.isArray(data.skills)) {
-        skills = data.skills;
-      } else if (typeof data.skills === 'string') {
-        try {
-          skills = JSON.parse(data.skills);
-        } catch {
-          skills = [];
-        }
-      }
-
-      if (data.skillBar && Array.isArray((data.skillBar as SkillBar).slots)) {
-        skillBar = data.skillBar as SkillBar;
-      } else if (typeof data.skillBar === 'string') {
-        try {
-          skillBar = JSON.parse(data.skillBar);
-        } catch {
-          skillBar = { slots: [null, null, null, null] };
-        }
-      }
+      // 原生数组/对象存储，直接读取
+      const skills: Skill[] = Array.isArray(data.skills) ? data.skills : [];
+      const skillBar: SkillBar = (data.skillBar && Array.isArray((data.skillBar as SkillBar).slots))
+        ? data.skillBar as SkillBar
+        : { slots: [null, null, null, null] };
 
       return {
         characterId: data.characterId,

@@ -33,7 +33,7 @@ export class EquipmentDbService {
   }
 
   /**
-   * 获取装备数据（原生读取，不做 JSON 反序列化）
+   * 获取装备数据
    * @param characterId - 角色ID
    * @returns 装备数据
    */
@@ -46,16 +46,7 @@ export class EquipmentDbService {
         return this.getDefaultEquipment();
       }
 
-      // 兼容旧数据：如果 equipment 是 JSON 字符串（旧格式），尝试解析
-      if (typeof data.equipment === 'string') {
-        try {
-          return JSON.parse(data.equipment);
-        } catch {
-          return this.getDefaultEquipment();
-        }
-      }
-
-      // 新格式：原生对象，直接返回
+      // 原生对象存储，直接返回
       if (data.equipment && typeof data.equipment === 'object') {
         return data.equipment;
       }

@@ -15,6 +15,8 @@ import type { ItemStorage, InventoryStorage } from '../inventory/types';
 import type { EquipmentItemStorage, EquipmentStorage } from '../equipment/types';
 import type { EnemyStorage } from '../enemy/types';
 import type { BossStorage } from '../boss/types';
+import { bossDbService } from '../boss/db';
+import type { BossTemplate } from '../boss/types';
 import type { LocationStorage, MapStateStorage } from '../map/types';
 import type { ShopConfigStorage, ShopItemsStorage } from '../shop/types';
 import type { SkillConfigStorage, CharSkillsStorage } from '../skill/types';
@@ -217,7 +219,7 @@ export class DataInitializer {
    */
   private async initBosses(): Promise<void> {
     for (const boss of BOSSES) {
-      await db.config_bosses.put(boss as unknown as BossStorage);
+      await bossDbService.saveBossTemplate(boss as unknown as BossTemplate);
     }
   }
 

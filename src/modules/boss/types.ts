@@ -7,6 +7,7 @@ import type { EnemyData, EnemyInstance, AiStrategyType } from '../enemy/types';
 
 /**
  * Boss 存储格式（IndexedDB config_bosses 表）
+ * 原生对象/数组存储，无需 JSON 序列化/反序列化
  */
 export interface BossStorage {
   id: string;
@@ -24,16 +25,16 @@ export interface BossStorage {
   magicDefense?: number | null;
   critChance?: number | null;
   dodgeChance?: number | null;
-  /** JSON 序列化的技能池 */
-  skillPool?: string;
+  /** 可用技能模板ID列表 */
+  skillPool?: string[];
   /** AI 策略类型 */
   aiStrategy?: string;
-  /** JSON 序列化的阶段配置 */
-  phases?: string;
-  /** JSON 序列化的出场演出 */
-  intro?: string;
-  /** JSON 序列化的台词 */
-  dialogues?: string;
+  /** 阶段配置 */
+  phases?: BossPhase[];
+  /** 出场演出配置 */
+  intro?: BossIntro;
+  /** 台词 */
+  dialogues?: BossDialogue[];
 }
 
 /**

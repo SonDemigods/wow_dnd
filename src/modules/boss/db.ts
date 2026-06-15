@@ -1,11 +1,11 @@
 /**
  * Boss 模块数据层
  * 
- * 封装 Boss 模板数据的 IndexedDB 操作，提供数据持久化能力
+ * 封装 Boss 模板数据的 IndexedDB 操作，提供数据持久化能力。
+ * 所有数据以原生对象/数组存储，无需 JSON 序列化/反序列化。
  */
 import { db as gameDb, dbService } from '../data/core';
 import type { BossStorage, BossTemplate } from './types';
-import type { BossPhase, BossIntro, BossDialogue } from './types';
 import type { AiStrategyType, DangerLevel } from '../enemy/types';
 
 /**
@@ -13,7 +13,7 @@ import type { AiStrategyType, DangerLevel } from '../enemy/types';
  */
 export class BossDbService {
   /**
-   * 保存 Boss 模板到数据库
+   * 保存 Boss 模板到数据库（原生存储，不做 JSON 序列化）
    * @param boss - Boss 数据
    */
   async saveBossTemplate(boss: BossTemplate): Promise<void> {
@@ -34,11 +34,11 @@ export class BossDbService {
         magicDefense: boss.magicDefense ?? null,
         critChance: boss.critChance ?? null,
         dodgeChance: boss.dodgeChance ?? null,
-        skillPool: boss.skillPool ? JSON.stringify(boss.skillPool) : undefined,
+        skillPool: boss.skillPool || undefined,
         aiStrategy: boss.aiStrategy || undefined,
-        phases: boss.phases ? JSON.stringify(boss.phases) : undefined,
-        intro: boss.intro ? JSON.stringify(boss.intro) : undefined,
-        dialogues: boss.dialogues ? JSON.stringify(boss.dialogues) : undefined
+        phases: boss.phases || undefined,
+        intro: boss.intro || undefined,
+        dialogues: boss.dialogues || undefined
       });
     });
   }
@@ -79,7 +79,7 @@ export class BossDbService {
   }
 
   /**
-   * 将数据库存储格式转换为 BossTemplate
+   * 将数据库存储格式转换为 BossTemplate（原生读取，不做 JSON 反序列化）
    */
   private fromStorage(data: BossStorage): BossTemplate {
     const rawDamage = data.damage;
@@ -103,21 +103,12 @@ export class BossDbService {
       magicDefense: data.magicDefense != null ? Number(data.magicDefense) : undefined,
       critChance: data.critChance != null ? Number(data.critChance) : undefined,
       dodgeChance: data.dodgeChance != null ? Number(data.dodgeChance) : undefined,
-      skillPool: data.skillPool ? safeJsonParse<string[]>(data.skillPool) : undefined,
+      skillPool: data.skillPool || undefined,
       aiStrategy: (data.aiStrategy as AiStrategyType) || undefined,
-      phases: data.phases ? safeJsonParse<BossPhase[]>(data.phases) : undefined,
-      intro: data.intro ? safeJsonParse<BossIntro>(data.intro) : undefined,
-      dialogues: data.dialogues ? safeJsonParse<BossDialogue[]>(data.dialogues) : undefined
+      phases: data.phases || undefined,
+      intro: data.intro || undefined,
+      dialogues: data.dialogues || undefined
     };
-  }
-}
-
-/** 安全的 JSON 解析 */
-function safeJsonParse<T>(raw: string): T | undefined {
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return undefined;
   }
 }
 

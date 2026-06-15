@@ -30,7 +30,7 @@ export class InventoryDbService {
   }
 
   /**
-   * 获取背包数据（原生读取，不做 JSON 反序列化）
+   * 获取背包数据
    * @param characterId - 角色ID
    * @returns 背包物品列表
    */
@@ -39,21 +39,8 @@ export class InventoryDbService {
       const data = await gameDb.char_inventory.get(characterId) as unknown as InventoryDataStorage | undefined;
       if (!data) return [];
 
-      // 兼容旧数据：如果 items 是 JSON 字符串（旧格式），尝试解析
-      if (typeof data.items === 'string') {
-        try {
-          return JSON.parse(data.items);
-        } catch {
-          return [];
-        }
-      }
-
-      // 新格式：原生数组，直接返回
-      if (Array.isArray(data.items)) {
-        return data.items;
-      }
-
-      return [];
+      // 原生数组存储，直接返回
+      return Array.isArray(data.items) ? data.items : [];
     });
   }
 
