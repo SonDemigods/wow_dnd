@@ -5,7 +5,7 @@
  */
 
 import type { Stats, FactionData, RaceData, ClassData } from '../character/types';
-import type { OperationResult, PaginatedResult } from '../data/types';
+import type { OperationResult as BaseOperationResult } from '../data/types';
 
 // 重新导出共享类型，保持向后兼容
 export type { OperationResult as BaseOperationResult, PaginatedResult } from '../data/types';

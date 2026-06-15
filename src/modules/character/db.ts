@@ -6,7 +6,7 @@
 import { db as gameDb, dbService } from '../data/core';
 import type { CharacterDataStorage } from './types';
 import { getGameState, saveGameState } from '../data/gameStateHelper';
-import type { Character, CharacterListItem, Stats } from './types';
+import type { Character, CharacterListItem, Stats, RaceType, ClassType, FactionType } from './types';
 import { toRawData } from '../../utils';
 
 /**
@@ -45,9 +45,9 @@ export class CharacterDbService {
       return items.map(item => ({
         id: item.characterId,
         name: item.name,
-        raceId: item.raceId,
-        classId: item.classId,
-        factionId: item.factionId,
+        raceId: item.raceId as RaceType,
+        classId: item.classId as ClassType,
+        factionId: item.factionId as FactionType,
         level: item.level,
         createdTime: item.createdTime,
         lastPlayedTime: item.lastPlayedTime
@@ -67,9 +67,9 @@ export class CharacterDbService {
       return {
         id: item.characterId,
         name: item.name,
-        raceId: item.raceId,
-        classId: item.classId,
-        factionId: item.factionId,
+        raceId: item.raceId as RaceType,
+        classId: item.classId as ClassType,
+        factionId: item.factionId as FactionType,
         level: item.level,
         createdTime: item.createdTime,
         lastPlayedTime: item.lastPlayedTime
@@ -158,7 +158,7 @@ export class CharacterDbService {
       exp: character.exp,
       expToNextLevel: character.expToNextLevel,
       gold: character.gold,
-      baseStats: character.stats,
+      baseStats: character.stats as unknown as Record<string, number>,
       currentHp: character.hp,
       maxHp: character.maxHp,
       currentMp: character.mana,
@@ -178,9 +178,9 @@ export class CharacterDbService {
   fromStorageFormat(storage: CharacterDataStorage): Character {
     return {
       name: storage.name,
-      factionId: storage.factionId,
-      raceId: storage.raceId,
-      classId: storage.classId,
+      factionId: storage.factionId as FactionType,
+      raceId: storage.raceId as RaceType,
+      classId: storage.classId as ClassType,
       level: storage.level,
       exp: storage.exp,
       expToNextLevel: storage.expToNextLevel,
@@ -188,7 +188,7 @@ export class CharacterDbService {
       maxHp: storage.maxHp,
       mana: storage.currentMp,
       maxMana: storage.maxMp,
-      stats: storage.baseStats,
+      stats: storage.baseStats as unknown as Stats,
       gold: storage.gold
     };
   }

@@ -9,7 +9,7 @@ import type { Enemy } from '@/modules/enemy/types';
 /** 激进型：优先使用技能攻击，HP低于30%也不治疗 */
 export class AggressiveStrategy implements IAiStrategy {
   readonly name = 'aggressive';
-  decideAction(enemy: Enemy, ctx: BattleContext): AiDecision {
+  decideAction(_enemy: Enemy, ctx: BattleContext): AiDecision {
     const attackSkills = ctx.availableSkills.filter(s => !s.isHeal);
     if (attackSkills.length > 0 && Math.random() < 0.5) {
       const skill = attackSkills[Math.floor(Math.random() * attackSkills.length)];
@@ -22,7 +22,7 @@ export class AggressiveStrategy implements IAiStrategy {
 /** 防御型：HP低于40%优先治疗，少用技能 */
 export class DefensiveStrategy implements IAiStrategy {
   readonly name = 'defensive';
-  decideAction(enemy: Enemy, ctx: BattleContext): AiDecision {
+  decideAction(_enemy: Enemy, ctx: BattleContext): AiDecision {
     const hpPercent = ctx.enemyHp / ctx.enemyMaxHp;
     const healSkills = ctx.availableSkills.filter(s => s.isHeal);
     if (hpPercent < 0.4 && healSkills.length > 0) {
@@ -42,7 +42,7 @@ export class DefensiveStrategy implements IAiStrategy {
 /** 均衡型：HP低于50%治疗，30%概率用技能 */
 export class BalancedStrategy implements IAiStrategy {
   readonly name = 'balanced';
-  decideAction(enemy: Enemy, ctx: BattleContext): AiDecision {
+  decideAction(_enemy: Enemy, ctx: BattleContext): AiDecision {
     const hpPercent = ctx.enemyHp / ctx.enemyMaxHp;
     const healSkills = ctx.availableSkills.filter(s => s.isHeal);
     if (hpPercent < 0.5 && healSkills.length > 0 && Math.random() < 0.6) {
@@ -60,7 +60,7 @@ export class BalancedStrategy implements IAiStrategy {
 /** Boss 阶段型：HP低于50%切换激进，HP低于20%狂暴 */
 export class BossPhaseStrategy implements IAiStrategy {
   readonly name = 'boss_phase';
-  decideAction(enemy: Enemy, ctx: BattleContext): AiDecision {
+  decideAction(_enemy: Enemy, ctx: BattleContext): AiDecision {
     const hpPercent = ctx.enemyHp / ctx.enemyMaxHp;
     if (hpPercent < 0.2) {
       // 狂暴：必定使用技能，不治疗

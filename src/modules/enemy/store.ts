@@ -133,7 +133,7 @@ export const useEnemiesStore = defineStore('enemies', () => {
     const isHeal = skill.type === 'health_restore' || skill.type === 'mana_restore';
 
     // 基于技能 effect 数据和敌人攻击属性计算实际效果
-    const attackStat = (enemy.physicalAttack || enemy.stats?.physicalAttack || 10);
+    const attackStat = (enemy.physicalAttack || (enemy.stats as any)?.physicalAttack || 10);
     const coefficient = skill.effect.coefficient || 1;
     const baseDamage = Math.round(attackStat * coefficient + skill.effect.value);
 

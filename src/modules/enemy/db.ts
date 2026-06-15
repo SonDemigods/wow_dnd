@@ -5,7 +5,7 @@
  * （Boss 数据已拆分至 ../boss/db.ts）
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { EnemyStorage, EnemyData } from './types';
+import type { EnemyStorage, EnemyData, DangerLevel } from './types';
 
 /**
  * 普通怪物数据层服务
@@ -88,7 +88,7 @@ export class EnemyDbService {
       damage,
       xp: Number(data.xp) || 0,
       gold: Number(data.gold) || 0,
-      dangerLevel: data.dangerLevel || '普通',
+      dangerLevel: (data.dangerLevel as DangerLevel) || '普通',
       physicalAttack: data.physicalAttack != null ? Number(data.physicalAttack) : undefined,
       physicalDefense: data.physicalDefense != null ? Number(data.physicalDefense) : undefined,
       magicAttack: data.magicAttack != null ? Number(data.magicAttack) : undefined,

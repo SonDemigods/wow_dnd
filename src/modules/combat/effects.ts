@@ -166,9 +166,6 @@ export function isDisabled(container: EffectContainer): { skipTurn: boolean; typ
     if (effect.type === 'silence') {
       types.push('skill');
     }
-    if (effect.type === 'freeze') {
-      types.push('flee');
-    }
   }
   return { skipTurn: false, types };
 }

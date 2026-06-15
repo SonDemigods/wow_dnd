@@ -136,7 +136,8 @@ export type CombatEventType =
   | 'combat_flee'
   | 'combat_miss'
   | 'combat_critical'
-  | 'combat_death';
+  | 'combat_death'
+  | 'combat_event';
 
 /**
  * 战斗日志接口

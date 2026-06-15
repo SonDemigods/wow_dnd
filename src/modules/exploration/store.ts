@@ -12,7 +12,6 @@ import type { LocationData } from '../map/types';
 import { explorationDbService } from './db';
 import { mapDbService } from '../map/db';
 import { inventoryDbService } from '../inventory/db';
-import { enemyDbService } from '../enemy/db';
 import { bossDbService } from '../boss/db';
 import { questDbService } from '../quest/db';
 import { shopDbService } from '../shop/db';

@@ -10,7 +10,7 @@ import type { Enemy } from '../enemy/types';
 export class BossPhaseManager {
   private currentPhaseIndex = 0;
 
-  constructor(private boss: BossInstance) {}
+  constructor(_boss: BossInstance) {}
 
   /** 获取当前阶段 */
   getCurrentPhase(phases: BossPhase[], currentHp: number, maxHp: number): BossPhase | null {
@@ -34,7 +34,6 @@ export class BossPhaseManager {
     const hpPercent = currentHp / maxHp;
     for (let i = phases.length - 1; i >= 0; i--) {
       if (hpPercent <= phases[i].hpThreshold && i !== this.currentPhaseIndex) {
-        const oldIndex = this.currentPhaseIndex;
         this.currentPhaseIndex = i;
         return { changed: true, newPhase: phases[i] };
       }
@@ -52,7 +51,7 @@ const mechanicExecutors: Record<BossMechanicType, (boss: Enemy, params?: Record<
   enrage: (boss, params) => {
     if (boss.stats) {
       const multiplier = params?.attackMultiplier || 1.5;
-      boss.stats.physicalAttack = Math.round((boss.stats.physicalAttack || boss.physicalAttack || 10) * multiplier);
+      (boss.stats as any).physicalAttack = Math.round(((boss.stats as any).physicalAttack || boss.physicalAttack || 10) * multiplier);
     }
   },
   damage_shield: (boss, params) => {
@@ -92,7 +91,7 @@ export function executeBossMechanic(boss: Enemy, mechanic: BossMechanic, turnCou
   }
   const executor = mechanicExecutors[mechanic.type];
   if (executor) {
-    executor(boss, mechanic.params);
+    executor(boss, mechanic.params as Record<string, number> | undefined);
     mechanic.lastTriggerTurn = turnCount;
     return true;
   }
@@ -114,8 +113,8 @@ export function processBossPhaseMechanics(boss: Enemy, phase: BossPhase, turnCou
 export function applyPhaseStats(boss: Enemy, phase: BossPhase): void {
   if (!phase.statMultipliers || !boss.stats) return;
   const m = phase.statMultipliers;
-  if (m.physicalAttack) boss.stats.physicalAttack = Math.round((boss.physicalAttack || boss.stats.physicalAttack || 10) * m.physicalAttack);
-  if (m.magicAttack) boss.stats.magicAttack = Math.round((boss.magicAttack || boss.stats.magicAttack || 10) * m.magicAttack);
-  if (m.physicalDefense) boss.stats.physicalDefense = Math.round((boss.physicalDefense || boss.stats.physicalDefense || 5) * m.physicalDefense);
-  if (m.magicDefense && boss.stats.magicDefense !== undefined) boss.stats.magicDefense = Math.round(boss.stats.magicDefense * m.magicDefense);
+  if (m.physicalAttack) (boss.stats as any).physicalAttack = Math.round((boss.physicalAttack || (boss.stats as any).physicalAttack || 10) * m.physicalAttack);
+  if (m.magicAttack) (boss.stats as any).magicAttack = Math.round((boss.magicAttack || (boss.stats as any).magicAttack || 10) * m.magicAttack);
+  if (m.physicalDefense) (boss.stats as any).physicalDefense = Math.round((boss.physicalDefense || (boss.stats as any).physicalDefense || 5) * m.physicalDefense);
+  if (m.magicDefense && (boss.stats as any).magicDefense !== undefined) (boss.stats as any).magicDefense = Math.round((boss.stats as any).magicDefense * m.magicDefense);
 }

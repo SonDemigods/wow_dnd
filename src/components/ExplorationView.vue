@@ -76,9 +76,6 @@ const grid = computed(() => {
   return explorationStore.state.grid;
 });
 
-/** 探索是否完成，直接从 Store 响应式数据派生 */
-const explorationComplete = computed(() => explorationStore.state.explorationComplete);
-
 const hasCurrentLocation = computed(() => !!mapStore.getCurrentLocation);
 
 // 拖动相关状态

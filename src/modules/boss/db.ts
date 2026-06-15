@@ -6,7 +6,7 @@
 import { db as gameDb, dbService } from '../data/core';
 import type { BossStorage, BossTemplate } from './types';
 import type { BossPhase, BossIntro, BossDialogue } from './types';
-import type { AiStrategyType } from '../enemy/types';
+import type { AiStrategyType, DangerLevel } from '../enemy/types';
 
 /**
  * Boss 数据层服务
@@ -95,7 +95,7 @@ export class BossDbService {
       damage,
       xp: Number(data.xp) || 0,
       gold: Number(data.gold) || 0,
-      dangerLevel: data.dangerLevel || '普通',
+      dangerLevel: (data.dangerLevel as DangerLevel) || '普通',
       isBoss: true,
       physicalAttack: data.physicalAttack != null ? Number(data.physicalAttack) : undefined,
       physicalDefense: data.physicalDefense != null ? Number(data.physicalDefense) : undefined,

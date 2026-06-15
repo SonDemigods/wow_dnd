@@ -4,8 +4,6 @@
  * 定义管理后台通用的类型、接口和枚举
  */
 
-import type { OperationResult, PaginatedResult } from '../data/types';
-
 // 重新导出共享类型，保持向后兼容
 export type { OperationResult as AdminOperationResult, PaginatedResult } from '../data/types';
 

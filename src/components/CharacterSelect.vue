@@ -108,7 +108,6 @@ import { useCharacterStore } from '@/modules/character';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import Tag from './common/Tag.vue';
 import { useBaseStore } from '@/modules/base';
-import type { CharacterListItem } from '@/modules/character';
 import type { ImportResult } from '@/modules/data';
 
 const emit = defineEmits<{

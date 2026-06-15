@@ -45,9 +45,7 @@ import {
   tickEffects,
   applyShield,
   getStatModifiers,
-  isDisabled,
   getThornDamage,
-  generateEffectId,
   type Effect,
   type EffectContainer,
   type StatModifiers
@@ -55,7 +53,7 @@ import {
 import { AggressiveStrategy, DefensiveStrategy, BalancedStrategy, BossPhaseStrategy } from './ai/strategies';
 import type { IAiStrategy, BattleContext } from './ai/types';
 import type { AiStrategyType } from '../enemy/types';
-import { BossPhaseManager, processBossPhaseMechanics, applyPhaseStats, type BossPhase } from '../boss/engine';
+import { BossPhaseManager, processBossPhaseMechanics, applyPhaseStats } from '../boss/engine';
 import type { BossIntro } from '../boss/types';
 
 /**
@@ -956,7 +954,7 @@ export const useCombatStore = defineStore('combat', () => {
     const intros: Record<string, BossIntro> = {};
     for (const e of enemiesData) {
       if (e.isBoss && e.phases && e.phases.length > 0) {
-        bossPhaseManagers.set(e.id, new BossPhaseManager());
+        bossPhaseManagers.set(e.id, new BossPhaseManager(e as any));
       }
       if (e.isBoss && e.intro) {
         intros[e.id] = e.intro;
@@ -973,12 +971,12 @@ export const useCombatStore = defineStore('combat', () => {
     const units: { id: string; speed: number }[] = [];
 
     // 玩家速度
-    const playerSpeed = characterStore.effectiveStats?.dex || characterStore.attributes?.dexterity || 10;
+    const playerSpeed = characterStore.effectiveStats?.dex || 10;
     units.push({ id: 'player', speed: playerSpeed });
 
     // 所有敌人速度
     for (const e of enemies.value) {
-      const enemySpeed = e.stats?.dexterity || e.dodgeChance || 5;
+      const enemySpeed = (e.stats as any)?.dex || e.dodgeChance || 5;
       units.push({ id: e.id, speed: enemySpeed });
     }
 
@@ -1215,7 +1213,7 @@ export const useCombatStore = defineStore('combat', () => {
     });
 
     // 触发战斗开始事件（UI 进入战斗界面 + 音效）
-    eventBus.emit(GameEvents.COMBAT_START, { enemies: enemiesData });
+    eventBus.emit(GameEvents.COMBAT_START, { enemy: enemiesData[0] });
 
     // 触发玩家回合事件
     eventBus.emit(GameEvents.COMBAT_PLAYER_TURN, null);
@@ -1326,7 +1324,7 @@ export const useCombatStore = defineStore('combat', () => {
           message: `${e.name} 的回合`
         });
 
-        const actionResult = enemyAction(e);
+        enemyAction(e);
 
         // 检查玩家是否死亡（characterStore.hp 是 computed，默认 0）
         if (characterStore.hp <= 0) {
@@ -1499,7 +1497,7 @@ export const useCombatStore = defineStore('combat', () => {
       // 触发战斗结束事件（包含战斗结果信息，供探索等模块监听）
       eventBus.emit(GameEvents.COMBAT_END, {
         result,
-        enemies: enemies.value,
+        enemy: enemies.value[0] || null,
         expGained: result === 'victory' ? totalExp : 0,
         goldGained: result === 'victory' ? totalGold : 0
       });

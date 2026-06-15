@@ -38,12 +38,12 @@ class AudioDbService {
       if (!saved) return null;
 
       return {
-        masterVolume: (saved as Record<string, unknown>).masterVolume as number | undefined,
-        sfxVolume: (saved as Record<string, unknown>).sfxVolume as number | undefined,
-        bgmVolume: (saved as Record<string, unknown>).bgmVolume as number | undefined,
-        muted: (saved as Record<string, unknown>).muted as boolean | undefined,
-        sfxEnabled: (saved as Record<string, unknown>).sfxEnabled as boolean | undefined,
-        bgmEnabled: (saved as Record<string, unknown>).bgmEnabled as boolean | undefined,
+        masterVolume: ((saved as Record<string, unknown>).masterVolume as number) ?? 0.8,
+        sfxVolume: ((saved as Record<string, unknown>).sfxVolume as number) ?? 0.8,
+        bgmVolume: ((saved as Record<string, unknown>).bgmVolume as number) ?? 0.8,
+        muted: ((saved as Record<string, unknown>).muted as boolean) ?? false,
+        sfxEnabled: ((saved as Record<string, unknown>).sfxEnabled as boolean) ?? true,
+        bgmEnabled: ((saved as Record<string, unknown>).bgmEnabled as boolean) ?? true,
       };
     } catch (e) {
       console.warn('[AudioDb] 加载音频设置失败:', e);

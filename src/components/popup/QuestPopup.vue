@@ -72,7 +72,7 @@
  * @description 展示玩家当前进行中的任务列表，支持查看目标进度、领取已完成任务奖励和放弃任务
  */
 
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { reactive, computed, onMounted, watch } from 'vue';
 import { useQuestStore } from '@/modules/quest';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import { useToast } from '@/composables/useToast';
