@@ -109,15 +109,16 @@
             <div 
               v-for="slot in weaponSlots" 
               :key="slot.key"
+              :data-equip-slot="slot.key"
               :class="['equip-slot', { equipped: slot.equipment, selected: selectedSlot?.key === slot.key }, slot.equipment ? 'rarity-' + (slot.equipment?.rarity || 'common') : '']"
               @click="selectEquipment(slot)"
             >
               <template v-if="slot.equipment">
-                <div class="slot-icon">{{ slot.equipment?.icon || '⚔️' }}</div>
+                <ItemIcon :icon="slot.equipment?.icon" fallback="⚔️" size="md" />
                 <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>
-                <div class="slot-icon empty">⚔️</div>
+                <ItemIcon icon="" fallback="⚔️" size="md" />
                 <div class="slot-name empty">{{ slot.name }}</div>
               </template>
             </div>
@@ -126,15 +127,16 @@
             <div 
               v-for="slot in armorSlots" 
               :key="slot.key"
+              :data-equip-slot="slot.key"
               :class="['equip-slot', { equipped: slot.equipment, selected: selectedSlot?.key === slot.key }, slot.equipment ? 'rarity-' + (slot.equipment?.rarity || 'common') : '']"
               @click="selectEquipment(slot)"
             >
               <template v-if="slot.equipment">
-                <div class="slot-icon">{{ slot.equipment?.icon || '🛡️' }}</div>
+                <ItemIcon :icon="slot.equipment?.icon" fallback="🛡️" size="md" />
                 <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>
-                <div class="slot-icon empty">🛡️</div>
+                <ItemIcon icon="" fallback="🛡️" size="md" />
                 <div class="slot-name empty">{{ slot.name }}</div>
               </template>
             </div>
@@ -144,7 +146,7 @@
           <div v-if="selectedSlot" class="equipment-detail">
             <template v-if="selectedSlot.equipment">
               <div class="detail-header">
-                <div class="detail-icon">{{ selectedSlot.equipment.icon || '📦' }}</div>
+                <ItemIcon :icon="selectedSlot.equipment.icon" size="xl" />
                 <div class="detail-info">
                   <h4 :class="selectedSlot.equipment.rarity">{{ selectedSlot.equipment.name }}</h4>
                   <span :class="['detail-rarity', selectedSlot.equipment.rarity]">{{ getRarityName(selectedSlot.equipment.rarity) }}</span>
@@ -199,6 +201,7 @@ import type { EquipmentSlot } from '@/modules/equipment/types';
 import Tag from '../common/Tag.vue';
 import BasePopup from '../common/BasePopup.vue';
 import ResourceBar from '../common/ResourceBar.vue';
+import ItemIcon from '../common/ItemIcon.vue';
 
 defineProps<{
   visible: boolean;
@@ -338,6 +341,14 @@ async function unequipItem(slotKey: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'unequip_btn' });
   const result = await equipmentStore.unequipItem(slotKey as EquipmentSlot);
   if (result) {
+    // 装备槽卸下动画
+    const slotEl = document.querySelector(`[data-equip-slot="${slotKey}"]`) as HTMLElement;
+    if (slotEl) {
+      slotEl.classList.add('equip-anim-empty');
+      slotEl.addEventListener('animationend', () => {
+        slotEl.classList.remove('equip-anim-empty');
+      }, { once: true });
+    }
     selectedSlot.value = null;
   }
 }
@@ -595,6 +606,14 @@ onUnmounted(() => {
   min-height: 80px;
 }
 
+.equip-slot.equip-anim-fill {
+  animation: equip-slot-fill 0.6s ease;
+}
+
+.equip-slot.equip-anim-empty {
+  animation: equip-slot-empty 0.6s ease;
+}
+
 .equip-slot:hover {
   border-color: #666;
   background: rgba(255, 255, 255, 0.1);
@@ -619,14 +638,6 @@ onUnmounted(() => {
 .equip-slot.rarity-legendary { 
   border-color: #ff8000;
   box-shadow: 0 0 8px rgba(255, 128, 0, 0.4);
-}
-
-.slot-icon {
-  font-size: 24px;
-}
-
-.slot-icon.empty {
-  opacity: 0.5;
 }
 
 .slot-name {
@@ -656,17 +667,6 @@ onUnmounted(() => {
   gap: 12px;
   align-items: center;
   margin-bottom: 10px;
-}
-
-.detail-icon {
-  font-size: 36px;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
 }
 
 .detail-info {

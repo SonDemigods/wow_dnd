@@ -22,12 +22,13 @@
 
         <div class="inventory-grid">
           <div 
-            v-for="entry in displayItems" 
-            :key="entry.item.itemId"
-            :class="['item-slot', entry.info?.rarity, { equipped: isEquipped(entry.item.itemId), selected: selectedEntry?.item?.itemId === entry.item.itemId }]"
+            v-for="(entry, idx) in displayItems" 
+            :key="idx"
+            :data-item-id="entry.item.itemId"
+            :class="['item-slot', entry.info?.rarity, { equipped: isEquipped(entry.item.itemId), selected: selectedEntry?.item === entry.item }]"
             @click="selectItem(entry)"
           >
-            <span class="item-icon">{{ entry.info?.icon || '📦' }}</span>
+            <ItemIcon :icon="entry.info?.icon" size="sm" />
             <span v-if="entry.item.count > 1" class="item-count">{{ entry.item.count }}</span>
           </div>
           <div 
@@ -134,6 +135,7 @@
 import { ref, computed, onMounted } from 'vue';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
+import ItemIcon from '../common/ItemIcon.vue';
 import { useInventoryStore } from '@/modules/inventory';
 import { useCharacterStore } from '@/modules/character';
 import { useEquipmentStore } from '@/modules/equipment';
@@ -349,6 +351,15 @@ async function useItem(itemId: string) {
   const success = await useInventoryStore().useItemByIndex(index);
   if (!success) return;
 
+  // 物品使用弹跳动画
+  const slotEl = document.querySelector(`[data-item-id="${itemId}"]`) as HTMLElement;
+  if (slotEl) {
+    slotEl.style.animation = 'item-bounce 0.4s ease';
+    slotEl.addEventListener('animationend', () => {
+      slotEl.style.animation = '';
+    }, { once: true });
+  }
+
   toast.show({ message: getEffectToast(info), type: 'success', icon: '💊' });
   
   loadInventory();
@@ -389,6 +400,14 @@ function equipItem(itemId: string) {
 async function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
   const success = await equipmentStore.equipItem(slot, item);
   if (success) {
+    // 装备槽填充动画（如果角色面板打开）
+    const slotEl = document.querySelector(`[data-equip-slot="${slot}"]`) as HTMLElement;
+    if (slotEl) {
+      slotEl.classList.add('equip-anim-fill');
+      slotEl.addEventListener('animationend', () => {
+        slotEl.classList.remove('equip-anim-fill');
+      }, { once: true });
+    }
     // 从背包中移除该物品（优先移除选中的那一组）
     const index = findSelectedOrFirstIndex(item.id);
     if (index !== -1) {
@@ -572,6 +591,8 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.3s;
   position: relative;
+  /* 物品入场动画 */
+  animation: scaleIn 0.25s ease;
 }
 
 .item-slot:hover {
@@ -602,9 +623,6 @@ onMounted(() => {
   background: rgba(255, 215, 0, 0.25);
 }
 
-.item-icon {
-  font-size: 22px;
-}
 
 .item-count {
   position: absolute;

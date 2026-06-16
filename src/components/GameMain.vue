@@ -6,7 +6,7 @@
         <div class="player-details">
           <div class="player-name">{{ character.name }}</div>
           <div class="player-meta">
-            <span class="player-level">Lv.{{ character.level }}</span>
+            <span :class="['player-level', { 'level-up': levelUpTriggered }]">Lv.{{ character.level }}</span>
             <span class="player-gold">💰 {{ gold }}</span>
           </div>
         </div>
@@ -181,6 +181,8 @@ const showQuestBoard = ref(false);
 const showCombat = ref(false);
 const showAudioSettings = ref(false);
 const showSystem = ref(false);
+/** 是否触发升级动画 */
+const levelUpTriggered = ref(false);
 
 const character = computed(() => characterStore.character || { name: '...', level: 1 });
 const currentHp = computed(() => characterStore.hp);
@@ -333,6 +335,15 @@ onMounted(async () => {
   }
   // 初始化完成，解除加载状态
   loading.value = false;
+
+  // 监听角色升级事件，触发升级动画
+  eventBus.on(GameEvents.CHARACTER_LEVEL_UP, () => {
+    levelUpTriggered.value = true;
+    showNotif('升级了！', 'success');
+    setTimeout(() => {
+      levelUpTriggered.value = false;
+    }, 1500);
+  });
 });
 
 onUnmounted(() => {
@@ -409,6 +420,10 @@ defineExpose({ showNotif });
   background: rgba(255, 215, 0, 0.1);
   padding: 2px 8px;
   border-radius: 4px;
+}
+
+.player-level.level-up {
+  animation: level-up-text 0.6s ease, level-up-glow 1.5s ease;
 }
 
 .player-meta {

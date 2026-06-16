@@ -2,7 +2,7 @@
   <BasePopup :visible="visible" :title="shopName || '商店'" @close="$emit('close')">
     <template #header-extra>
       <div class="header-info">
-        <span class="gold-display">💰 {{ gold }}</span>
+        <span :class="['gold-display', { flash: goldFlash }]">💰 {{ gold }}</span>
       </div>
     </template>
 
@@ -44,7 +44,7 @@
             :class="['item-card', entry.quality, { selected: buySelectedIndex === index }]"
             @click="selectBuyItem(entry, index)"
           >
-            <div class="card-icon">{{ getItemIcon(entry.icon) }}</div>
+            <ItemIcon :icon="entry.icon" size="lg" />
             <div class="card-info">
               <div class="card-name">{{ entry.name }}</div>
               <div class="card-desc">{{ entry.description }}</div>
@@ -62,7 +62,7 @@
             :class="['item-card', entry.info?.rarity, { selected: sellSelectedIndex === index }]"
             @click="selectSellItem(entry, index)"
           >
-            <div class="card-icon">{{ getItemIcon(entry.info?.icon || '') }}</div>
+            <ItemIcon :icon="entry.info?.icon" size="lg" />
             <div class="card-info">
               <div class="card-name">{{ entry.info?.name }}</div>
               <div class="card-desc">{{ entry.info?.description }}</div>
@@ -173,6 +173,7 @@ import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { ShopDisplayItem, ItemQuality, ItemCategory } from '@/modules/shop';
 import type { InventoryItem, Item, ItemType, ItemRarity, ItemEffect } from '@/modules/inventory';
 import BasePopup from '../common/BasePopup.vue';
+import ItemIcon from '../common/ItemIcon.vue';
 
 /** 出售标签的物品条目（关联背包数据和物品模板） */
 interface SellItemEntry {
@@ -213,6 +214,8 @@ const sellSelectedIndex = ref<number>(-1);
 // 数量选择
 const buyQuantity = ref(1);
 const sellQuantity = ref(1);
+/** 金币闪烁动画状态 */
+const goldFlash = ref(false);
 
 const currentShopId = computed(() => shopStore.currentShopId || '');
 
@@ -261,11 +264,6 @@ const typeNames: Record<ItemType, string> = {
 };
 
 // ==================== 工具函数 ====================
-
-/** 物品模板中 icon 字段已直接存储 emoji（如 ❤️、🍞），直接返回即可 */
-function getItemIcon(icon: string) {
-  return icon || '📦';
-}
 
 function getRarityName(rarity: ItemRarity | ItemQuality) {
   return rarityNames[rarity] || rarity;
@@ -423,6 +421,7 @@ async function handleBuy(itemId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_buy' });
   const result = await shopStore.buyItem(itemId, buyQuantity.value);
   if (result) {
+    triggerGoldFlash();
     selectedBuyEntry.value = null;
     buySelectedIndex.value = -1;
     buyQuantity.value = 1;
@@ -433,10 +432,19 @@ async function handleSell(itemId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_sell' });
   const result = await shopStore.sellItem(itemId, sellQuantity.value);
   if (result) {
+    triggerGoldFlash();
     selectedSellEntry.value = null;
     sellSelectedIndex.value = -1;
     sellQuantity.value = 1;
   }
+}
+
+/** 触发金币闪烁动画 */
+function triggerGoldFlash() {
+  goldFlash.value = true;
+  setTimeout(() => {
+    goldFlash.value = false;
+  }, 500);
 }
 
 // ==================== 数据加载 ====================
@@ -519,6 +527,11 @@ watch(currentTab, () => {
   font-size: 14px;
   font-weight: bold;
   color: #ffd700;
+  transition: color 0.3s;
+}
+
+.gold-display.flash {
+  animation: gold-flash 0.5s ease;
 }
 
 /* 买卖标签栏 */
@@ -630,11 +643,6 @@ watch(currentTab, () => {
 .item-card.legendary {
   border-color: #ff8000;
   animation: legendary-glow 2s infinite;
-}
-
-.card-icon {
-  font-size: 26px;
-  flex-shrink: 0;
 }
 
 .card-info {

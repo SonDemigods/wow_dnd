@@ -300,6 +300,8 @@ onMounted(() => {
   gap: 4px;
   min-height: 60px;
   justify-content: center;
+  /* 技能记忆/遗忘动画 */
+  animation: scaleIn 0.3s ease;
 }
 
 .bar-slot:hover {

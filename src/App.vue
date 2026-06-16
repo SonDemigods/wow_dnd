@@ -1,25 +1,27 @@
 <template>
   <div id="app" class="app-container">
     <template v-if="!loading">
-      <div v-if="gameState === 'character-select'" class="character-select-screen">
-        <div class="screen-header">
-          <h1>战争艺术：地下城</h1>
-          <p class="subtitle">Art of War: Dungeons</p>
+      <Transition :name="transitionName" mode="out-in">
+        <div v-if="gameState === 'character-select'" key="select" class="character-select-screen">
+          <div class="screen-header">
+            <h1>战争艺术：地下城</h1>
+            <p class="subtitle">Art of War: Dungeons</p>
+          </div>
+          <CharacterSelect 
+            ref="characterSelectRef"
+            @select="handleCharacterSelect" 
+            @create="showCreateModal = true"
+          />
         </div>
-        <CharacterSelect 
-          ref="characterSelectRef"
-          @select="handleCharacterSelect" 
-          @create="showCreateModal = true"
-        />
-      </div>
 
-      <div v-else-if="gameState === 'game'" class="game-screen">
-        <GameMain ref="gameMainRef" @exit="handleExit" />
-      </div>
+        <div v-else-if="gameState === 'game'" key="game" class="game-screen">
+          <GameMain ref="gameMainRef" @exit="handleExit" />
+        </div>
 
-      <div v-else-if="gameState === 'admin'" class="admin-screen">
-        <AdminLayout @exit="handleAdminExit" />
-      </div>
+        <div v-else-if="gameState === 'admin'" key="admin" class="admin-screen">
+          <AdminLayout @exit="handleAdminExit" />
+        </div>
+      </Transition>
     </template>
 
     <Transition name="modal">
@@ -77,6 +79,8 @@ const loading = ref(true);
 const showCreateModal = ref(false);
 /** 是否显示退出确认弹窗 */
 const showExitConfirm = ref(false);
+/** 页面切换动画方向：进入游戏用 'view-forward'，退出用 'view-back' */
+const transitionName = ref('view-forward');
 /** 角色选择组件引用 */
 const characterSelectRef = ref<InstanceType<typeof CharacterSelect>>();
 
@@ -107,6 +111,7 @@ onMounted(async () => {
  */
 async function handleCharacterSelect(characterId: string) {
   console.log('选择角色:', characterId);
+  transitionName.value = 'view-forward';
   await characterStore.selectCharacter(characterId);
   gameState.value = 'game';
 }
@@ -127,6 +132,7 @@ function handleExit() {
 /** 确认退出，登出并返回角色选择界面 */
 async function confirmExit() {
   showExitConfirm.value = false;
+  transitionName.value = 'view-back';
   await characterStore.logout();
   gameState.value = 'character-select';
 }
@@ -138,6 +144,7 @@ function cancelExit() {
 
 /** 退出后台管理，返回角色选择界面 */
 function handleAdminExit() {
+  transitionName.value = 'view-back';
   gameState.value = 'character-select';
 }
 </script>
@@ -295,6 +302,20 @@ function handleAdminExit() {
 }
 .modal-leave-active {
   animation: fadeIn 0.15s ease reverse;
+}
+
+/* ===== 页面切换动画 ===== */
+.view-forward-enter-active {
+  animation: view-enter 0.3s ease;
+}
+.view-forward-leave-active {
+  animation: view-leave 0.25s ease;
+}
+.view-back-enter-active {
+  animation: view-enter 0.3s ease;
+}
+.view-back-leave-active {
+  animation: view-leave 0.25s ease;
 }
 
 .admin-screen {

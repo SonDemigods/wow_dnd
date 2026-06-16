@@ -249,7 +249,7 @@
             class="item-option"
             @click="useItem(item.itemId, item.index)"
           >
-            <span class="item-icon">{{ item.icon }}</span>
+            <ItemIcon :icon="item.icon" size="md" />
             <div class="item-info">
               <span class="item-name">{{ item.name }}</span>
               <span class="item-desc">{{ item.description }}</span>
@@ -278,6 +278,7 @@ import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { CombatLog, CombatResult, CombatActionType } from '@/modules/combat/types';
 import type { Skill } from '@/modules/skill/types';
 import ResourceBar from '@/components/common/ResourceBar.vue';
+import ItemIcon from '@/components/common/ItemIcon.vue';
 import {
   animateShake,
   animateCritShake,
@@ -1435,7 +1436,6 @@ onUnmounted(() => {
 }
 
 .item-option:hover { background: rgba(255, 255, 255, 0.08); }
-.item-option .item-icon { font-size: 24px; flex-shrink: 0; }
 .item-option .item-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .item-option .item-name { font-size: 14px; color: #f0f0f0; font-weight: 600; }
 .item-option .item-desc { font-size: 11px; color: #888; }

@@ -202,6 +202,8 @@ onMounted(() => {
   padding: 14px;
   display: flex;
   gap: 10px;
+  /* 任务卡片入场动画 */
+  animation: card-slide-in 0.35s ease;
 }
 
 .quest-icon {
