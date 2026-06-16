@@ -154,9 +154,9 @@
             @click="doSkill(skill.id)"
             :disabled="!canAct || playerMp < skill.mpCost || skillsStore.isOnCooldown(skill.id)"
           >
-            <span class="skill-icon">{{ getSkillTypeIcon(skill.type) }}</span>
+            <span class="skill-icon">{{ skill.icon }}</span>
             <span class="skill-name">{{ skill.name }}</span>
-            <span class="skill-effect">{{ getSkillEffectText(skill) }}</span>
+            <span :class="['skill-effect', `skill-effect-${skill.type}`]">{{ getSkillEffectText(skill) }}</span>
             <span class="skill-cost">{{ skill.mpCost }} MP</span>
             <span v-if="getTargetTypeText(skill.targetType)" class="skill-target">{{ getTargetTypeText(skill.targetType) }}</span>
             <span v-if="skillsStore.isOnCooldown(skill.id)" class="skill-cooldown">
@@ -228,6 +228,7 @@ import { useCombatStore } from '@/modules/combat/store';
 import { useCharacterStore } from '@/modules/character';
 import { useSkillsStore } from '@/modules/skill/store';
 import { useInventoryStore } from '@/modules/inventory/store';
+import { useSkillDisplay } from '@/composables/useSkillDisplay';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { CombatLog, CombatResult, CombatActionType } from '@/modules/combat/types';
 import type { Skill } from '@/modules/skill/types';
@@ -405,17 +406,16 @@ function buildItemDescription(info: { effect?: { type: string; value: unknown };
   return parts.length > 0 ? parts.join(' ') : (description || '');
 }
 
-const skillTypeIcons: Record<string, string> = {
-  physical_damage: '⚔️',
-  magic_damage: '🔮',
-  health_restore: '💚',
-  mana_restore: '💙',
-  buff: '⬆️',
-  debuff: '⬇️'
-};
+const { getSkillEffectBrief, getTargetTypeName } = useSkillDisplay();
 
-function getSkillTypeIcon(type: string): string {
-  return skillTypeIcons[type] || '✨';
+function getSkillEffectText(skill: Skill): string {
+  return getSkillEffectBrief(skill);
+}
+
+/** 获取技能目标类型文本 */
+function getTargetTypeText(targetType?: string): string {
+  if (!targetType || targetType === 'single') return '';
+  return getTargetTypeName(targetType);
 }
 
 // 根据日志事件类型获取伤害类型样式类
@@ -430,54 +430,6 @@ function getDamageTypeIcon(log: CombatLog): string {
   if (log.eventType === 'combat_skill_cast') return '🔮';
   if (log.eventType === 'combat_critical') return '⚔️';
   return '🗡️';
-}
-
-function getSkillEffectText(skill: Skill): string {
-  const effect = skill.effect;
-  if (!effect) return '';
-  const value = effect.value || 0;
-  const coeff = effect.coefficient ? `x${effect.coefficient}` : '';
-  switch (effect.type) {
-    case 'physical_damage': return `物伤${value}${coeff}`;
-    case 'magic_damage': return `魔伤${value}${coeff}`;
-    case 'health_restore': return `生命恢复${value}${coeff}`;
-    case 'mana_restore': return `法力恢复${value}${coeff}`;
-    case 'buff': {
-      if (skill.buffs && skill.buffs.length > 0) {
-        const names = skill.buffs.map(b => getEffectTypeName(b.type));
-        return `增益:${names.join('/')}`;
-      }
-      return '增益';
-    }
-    case 'debuff': {
-      if (skill.buffs && skill.buffs.length > 0) {
-        const names = skill.buffs.map(b => getEffectTypeName(b.type));
-        return `减益:${names.join('/')}`;
-      }
-      return '减益';
-    }
-    default: return '';
-  }
-}
-
-function getEffectTypeName(type: string): string {
-  const names: Record<string, string> = {
-    poison: '中毒', burn: '灼烧', stun: '眩晕', freeze: '冰冻',
-    silence: '沉默', shield: '护盾', attack_up: '加攻', attack_down: '降攻',
-    defense_up: '加防', defense_down: '降防', speed_up: '加速', speed_down: '减速',
-    regen: '回复', thorn: '荆棘', vulnerable: '易伤'
-  };
-  return names[type] || type;
-}
-
-/** 获取技能目标类型文本 */
-function getTargetTypeText(targetType?: string): string {
-  switch (targetType) {
-    case 'all_enemies': return 'AOE';
-    case 'self': return '自身';
-    case 'ally': return '友方';
-    default: return '';
-  }
 }
 
 /** 效果图标映射 */
@@ -722,7 +674,7 @@ function triggerVsFlash() {
   setTimeout(() => { vsFlash.value = false; }, 450);
 }
 
-/** 应用战斗伤害视觉特效（AOE / 单体伤害），doAction / doSkill 共用 */
+/** 应用战斗伤害视觉特效（多目标伤害 / 单体伤害），doAction / doSkill 共用 */
 function applyCombatDamageEffects(result: { aoeHits?: { enemyId: string; damage: number }[]; damage?: number; isCrit?: boolean }) {
   if (result.aoeHits && result.aoeHits.length > 0) {
     for (const hit of result.aoeHits) {
@@ -1226,12 +1178,24 @@ onUnmounted(() => {
 .skill-btn.no-mp { border-color: #555; }
 .skill-icon { font-size: 18px; }
 .skill-name { font-size: 12px; font-weight: 600; }
-.skill-effect { font-size: 10px; color: #fbbf24; }
-.skill-cost { font-size: 10px; color: #60a5fa; }
+.skill-effect { font-size: 10px; }
+.skill-effect-physical_damage { color: #ff6b6b; }
+.skill-effect-magic_damage { color: #a29bfe; }
+.skill-effect-health_restore,
+.skill-effect-mana_restore { color: #4ecdc4; }
+.skill-effect-buff { color: #4CAF50; }
+.skill-effect-debuff { color: #ff9800; }
+.skill-cost {
+  font-size: 10px;
+  color: #6e9bff;
+  background: rgba(110, 155, 255, 0.15);
+  border-radius: 3px;
+  padding: 0 4px;
+}
 .skill-target {
   font-size: 10px;
-  color: #ffd700;
-  background: rgba(255, 215, 0, 0.15);
+  color: #a064ff;
+  background: rgba(160, 100, 255, 0.15);
   border-radius: 3px;
   padding: 0 4px;
 }
@@ -1418,8 +1382,11 @@ onUnmounted(() => {
 }
 .skill-cooldown {
   font-size: 10px;
-  color: #ff6b6b;
-  display: block;
+  color: #ffa500;
+  background: rgba(255, 165, 0, 0.15);
+  border-radius: 3px;
+  padding: 0 4px;
+  display: inline-block;
   margin-top: 2px;
 }
 

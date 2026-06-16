@@ -41,10 +41,7 @@
                 <div class="detail-icon">{{ selectedSkill.icon }}</div>
                 <div class="detail-info">
                   <h3>{{ selectedSkill.name }}</h3>
-                  <div class="detail-tags">
-                    <span class="detail-type" :class="selectedSkill.type">{{ getSkillTypeName(selectedSkill.type) }}</span>
-                    <span class="detail-cost">{{ selectedSkill.mpCost }} MP</span>
-                  </div>
+                  <SkillTags :skill="selectedSkill" />
                 </div>
               </div>
               <div class="detail-actions">
@@ -102,8 +99,10 @@ import { ref, computed, onMounted } from 'vue';
 import { useSkillsStore } from '@/modules/skill';
 import { useCharacterStore } from '@/modules/character';
 import { eventBus, GameEvents } from '@/modules/bus/core';
+import { useSkillDisplay } from '@/composables/useSkillDisplay';
 import type { Skill, SkillSlotIndex } from '@/modules/skill';
 import BasePopup from '../common/BasePopup.vue';
+import SkillTags from '../common/SkillTags.vue';
 
 defineProps<{
   visible: boolean;
@@ -141,47 +140,10 @@ const skillBarSlots = computed(() => {
   });
 });
 
-const skillTypeNames: Record<string, string> = {
-  physical_damage: '物理伤害',
-  magic_damage: '魔法伤害',
-  health_restore: '生命恢复',
-  mana_restore: '法力恢复',
-  buff: '增益',
-  debuff: '减益'
-};
-
-function getSkillTypeName(type: string) {
-  return skillTypeNames[type] || type;
-}
+const { getSkillEffectText } = useSkillDisplay();
 
 function getEffectText(skill: Skill): string {
-  if (!skill.effect) return '';
-  const { type, value } = skill.effect;
-  if (type === 'physical_damage' || type === 'magic_damage') return `造成 ${value} 点伤害`;
-  if (type === 'health_restore') return `恢复 ${value} 点生命值`;
-  if (type === 'mana_restore') return `恢复 ${value} 点法力值`;
-  if (type === 'buff' && skill.buffs) {
-    return skill.buffs.map(b => {
-      const names: Record<string, string> = {
-        shield: `护盾 +${b.value}`, attack_up: `攻击 +${b.value}`,
-        defense_up: `防御 +${b.value}`, speed_up: `速度 +${b.value}`,
-        regen: `每回合回复 ${b.value}`, thorn: `反弹 ${Math.round(b.value * 100)}% 伤害`
-      };
-      return `${names[b.type] || b.type} (${b.turns}回合)`;
-    }).join('，');
-  }
-  if (type === 'debuff' && skill.buffs) {
-    return skill.buffs.map(b => {
-      const names: Record<string, string> = {
-        poison: `每回合中毒伤害 ${b.value}`, burn: `每回合灼烧伤害 ${b.value}`,
-        stun: `眩晕`, attack_down: `攻击 -${b.value}`,
-        defense_down: `防御 -${b.value}`, speed_down: `速度 -${b.value}`,
-        silence: `沉默`
-      };
-      return `${names[b.type] || b.type} (${b.turns}回合)`;
-    }).join('，');
-  }
-  return `${value}`;
+  return getSkillEffectText(skill);
 }
 
 function isSkillEquipped(skillId: string): boolean {
@@ -395,7 +357,12 @@ onMounted(() => {
 }
 
 .skill-slot.selected {
-  box-shadow: 0 0 0 2px #ffd700, 0 0 10px rgba(255, 215, 0, 0.4);
+  background: rgba(255, 215, 0, 0.2);
+  border-color: transparent;
+}
+
+.skill-slot.equipped.selected {
+  border-color: #4CAF50;
 }
 
 .skill-icon {
@@ -476,51 +443,6 @@ onMounted(() => {
 
 .skill-detail.locked .detail-info h3 {
   color: #999;
-}
-
-.detail-tags {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.detail-type {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: bold;
-}
-
-.detail-type.physical_damage {
-  background: rgba(255, 107, 107, 0.2);
-  color: #ff6b6b;
-}
-
-.detail-type.magic_damage {
-  background: rgba(162, 155, 254, 0.2);
-  color: #a29bfe;
-}
-
-.detail-type.heal {
-  background: rgba(78, 205, 196, 0.2);
-  color: #4ecdc4;
-}
-
-.skill-detail.locked .detail-type {
-  opacity: 0.6;
-}
-
-.detail-cost {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: rgba(110, 155, 255, 0.15);
-  color: #6e9bff;
-  font-weight: bold;
-}
-
-.skill-detail.locked .detail-cost {
-  opacity: 0.6;
 }
 
 .detail-actions {
