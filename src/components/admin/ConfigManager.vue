@@ -93,6 +93,7 @@ const QUEST_TYPE_NAMES: Record<string, string> = {
 
 const SKILL_TYPE_NAMES: Record<string, string> = {
   physical_damage: '物理伤害', magic_damage: '魔法伤害', health_restore: '生命恢复', mana_restore: '法力恢复',
+  buff: '增益', debuff: '减益',
 };
 
 const SHOP_TYPE_NAMES: Record<string, string> = {
@@ -163,6 +164,7 @@ const tableColumns: Record<ConfigTableName, TableColumn[]> = {
     { key: 'name', label: '名称' },
     { key: 'dangerLevel', label: '危险等级' },
     { key: 'maxHp', label: '生命值' },
+    { key: 'damage', label: '伤害范围' },
     { key: 'xp', label: '经验值' },
   ],
   bosses: [
@@ -170,6 +172,7 @@ const tableColumns: Record<ConfigTableName, TableColumn[]> = {
     { key: 'name', label: '名称' },
     { key: 'dangerLevel', label: '危险等级' },
     { key: 'maxHp', label: '生命值' },
+    { key: 'damage', label: '伤害范围' },
     { key: 'xp', label: '经验值' },
   ],
   quests: [
@@ -185,18 +188,21 @@ const tableColumns: Record<ConfigTableName, TableColumn[]> = {
     { key: 'type', label: '类型' },
     { key: 'mpCost', label: '法力消耗' },
     { key: 'unlockLevel', label: '解锁等级' },
+    { key: 'classRestriction', label: '职业限制' },
   ],
   locations: [
     { key: 'id', label: 'ID', width: '180px' },
     { key: 'name', label: '名称' },
     { key: 'type', label: '类型' },
     { key: 'continent', label: '大陆' },
+    { key: 'levelRange', label: '等级范围' },
   ],
   shops: [
     { key: 'id', label: 'ID', width: '180px' },
     { key: 'name', label: '名称' },
     { key: 'type', label: '类型' },
     { key: 'refreshInterval', label: '刷新间隔' },
+    { key: 'priceVariation', label: '价格浮动' },
   ],
 };
 
@@ -254,6 +260,8 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'value', label: '价值', type: 'number' },
     { key: 'stackable', label: '可堆叠', type: 'switch' },
     { key: 'consumable', label: '消耗品', type: 'switch' },
+    { key: 'level', label: '物品等级', type: 'number' },
+    { key: 'levelRequirement', label: '等级需求', type: 'number' },
   ],
   equipmentItems: [
     { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
@@ -269,6 +277,7 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'effect', label: '效果', type: 'json', placeholder: '{"type": "damage", "value": 5}' },
     { key: 'value', label: '价值', type: 'number' },
     { key: 'slots', label: '适用槽位', type: 'multiselect' },
+    { key: 'level', label: '物品等级', type: 'number' },
     { key: 'levelRequirement', label: '等级需求', type: 'number' },
   ],
   mobs: [
@@ -279,7 +288,26 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'damage', label: '伤害范围', type: 'json', placeholder: '[5, 15]' },
     { key: 'xp', label: '经验值', type: 'number' },
     { key: 'gold', label: '金币', type: 'number' },
-    { key: 'dangerLevel', label: '危险等级', type: 'text', placeholder: '危险等级' },
+    { key: 'dangerLevel', label: '危险等级', type: 'select', options: [
+      { value: '普通', label: '普通' },
+      { value: '困难', label: '困难' },
+      { value: '危险', label: '危险' },
+      { value: '极危险', label: '极危险' },
+      { value: '致命', label: '致命' },
+    ] },
+    { key: 'physicalAttack', label: '物理攻击力', type: 'number' },
+    { key: 'physicalDefense', label: '物理防御力', type: 'number' },
+    { key: 'magicAttack', label: '魔法攻击力', type: 'number' },
+    { key: 'magicDefense', label: '魔法防御力', type: 'number' },
+    { key: 'critChance', label: '暴击率', type: 'number' },
+    { key: 'dodgeChance', label: '闪避率', type: 'number' },
+    { key: 'skillPool', label: '技能池', type: 'json', placeholder: '["skill_id_1", "skill_id_2"]' },
+    { key: 'aiStrategy', label: 'AI策略', type: 'select', options: [
+      { value: 'aggressive', label: '激进 (aggressive)' },
+      { value: 'defensive', label: '防御 (defensive)' },
+      { value: 'balanced', label: '均衡 (balanced)' },
+      { value: 'boss_phase', label: 'Boss阶段 (boss_phase)' },
+    ] },
   ],
   bosses: [
     { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
@@ -289,7 +317,26 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'damage', label: '伤害范围', type: 'json', placeholder: '[5, 15]' },
     { key: 'xp', label: '经验值', type: 'number' },
     { key: 'gold', label: '金币', type: 'number' },
-    { key: 'dangerLevel', label: '危险等级', type: 'text', placeholder: '危险等级' },
+    { key: 'dangerLevel', label: '危险等级', type: 'select', options: [
+      { value: '普通', label: '普通' },
+      { value: '困难', label: '困难' },
+      { value: '危险', label: '危险' },
+      { value: '极危险', label: '极危险' },
+      { value: '致命', label: '致命' },
+    ] },
+    { key: 'physicalAttack', label: '物理攻击力', type: 'number' },
+    { key: 'physicalDefense', label: '物理防御力', type: 'number' },
+    { key: 'magicAttack', label: '魔法攻击力', type: 'number' },
+    { key: 'magicDefense', label: '魔法防御力', type: 'number' },
+    { key: 'critChance', label: '暴击率', type: 'number' },
+    { key: 'dodgeChance', label: '闪避率', type: 'number' },
+    { key: 'skillPool', label: '技能池', type: 'json', placeholder: '["skill_id_1", "skill_id_2"]' },
+    { key: 'aiStrategy', label: 'AI策略', type: 'select', options: [
+      { value: 'aggressive', label: '激进 (aggressive)' },
+      { value: 'defensive', label: '防御 (defensive)' },
+      { value: 'balanced', label: '均衡 (balanced)' },
+      { value: 'boss_phase', label: 'Boss阶段 (boss_phase)' },
+    ] },
   ],
   quests: [
     { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
@@ -300,6 +347,7 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'levelRequirement', label: '等级需求', type: 'number' },
     { key: 'xpReward', label: '经验奖励', type: 'number' },
     { key: 'goldReward', label: '金币奖励', type: 'number' },
+    { key: 'itemRewards', label: '物品奖励', type: 'json', placeholder: '[{"itemId":"potion_health","count":3}]' },
     { key: 'boardId', label: '区域ID', type: 'select' },
   ],
   skills: [
@@ -313,10 +361,24 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
       { value: 'magic_damage', label: '魔法伤害 (magic_damage)' },
       { value: 'health_restore', label: '生命恢复 (health_restore)' },
       { value: 'mana_restore', label: '法力恢复 (mana_restore)' },
+      { value: 'buff', label: '增益 (buff)' },
+      { value: 'debuff', label: '减益 (debuff)' },
     ] },
     { key: 'effect', label: '效果', type: 'json', placeholder: '{"type":"damage","value":20}' },
     { key: 'unlockLevel', label: '解锁等级', type: 'number' },
     { key: 'classRestriction', label: '职业限制', type: 'text', placeholder: 'warrior/mage 等，空为无限制' },
+    { key: 'cooldown', label: '冷却回合', type: 'number', placeholder: '冷却回合数，0=无冷却' },
+    { key: 'targetType', label: '目标类型', type: 'select', options: [
+      { value: 'single', label: '单体 (single)' },
+      { value: 'all_enemies', label: '全体敌人 (all_enemies)' },
+      { value: 'self', label: '自身 (self)' },
+      { value: 'ally', label: '友方 (ally)' },
+    ] },
+    { key: 'usableBy', label: '可用角色', type: 'select', options: [
+      { value: 'player', label: '仅玩家 (player)' },
+      { value: 'enemy', label: '仅敌人 (enemy)' },
+      { value: 'both', label: '玩家和敌人 (both)' },
+    ] },
   ],
   locations: [
     { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
@@ -373,6 +435,16 @@ const currentColumns = computed<TableColumn[]>(() => {
     if (col.key === 'primaryStat') return { ...col, format: (v: any) => t(STAT_NAMES, v) };
     if (col.key === 'rarity') return { ...col, format: (v: any) => t(RARITY_NAMES, v) };
     if (col.key === 'dangerLevel') return { ...col, format: (v: any) => String(v ?? '-') };
+    if (col.key === 'damage') return { ...col, format: (v: any) => Array.isArray(v) ? `${v[0]} ~ ${v[1]}` : String(v ?? '-') };
+    if (col.key === 'levelRange') return { ...col, format: (v: any) => Array.isArray(v) ? `${v[0]} ~ ${v[1]}` : String(v ?? '-') };
+    if (col.key === 'priceVariation') return { ...col, format: (v: any) => v && typeof v === 'object' ? `${v.min}x ~ ${v.max}x` : String(v ?? '-') };
+    if (col.key === 'classRestriction') {
+      if (classOptions.value.length > 0) {
+        const map = Object.fromEntries(classOptions.value.map(o => [o.value, o.label]));
+        return { ...col, format: (v: any) => v ? (map[String(v)] ?? String(v)) : '无限制' };
+      }
+      return { ...col, format: (v: any) => v ? String(v) : '无限制' };
+    }
     if (col.key === 'continent') {
       if (continentOptions.value.length > 0) {
         const map = Object.fromEntries(continentOptions.value.map(o => [o.value, o.label]));
