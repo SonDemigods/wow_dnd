@@ -23,7 +23,6 @@ import {
   validateSkillBarSlot,
   canCastSkill
 } from './service';
-import { MONSTER_SKILLS } from '../../data/config_monster_skills';
 
 /**
  * 技能类型名称映射
@@ -166,7 +165,7 @@ export const useSkillsStore = defineStore('skills', () => {
     await loadTemplatesForClass(characterStore.classId);
 
     // 3. 加载怪物/首领技能模板（供敌人 AI 使用）
-    loadMonsterSkillTemplates();
+    await loadMonsterSkillTemplates();
 
     // 4. 初始化时不自动装备新技能（仅添加技能到已学列表），避免覆盖用户手动卸下的技能
     checkLevelUnlocks(false);
@@ -475,13 +474,14 @@ export const useSkillsStore = defineStore('skills', () => {
   }
 
   /**
-   * 加载怪物/首领技能模板到缓存
+   * 加载怪物/首领技能模板到缓存（从数据库查询 usableBy = 'enemy' 或 'both'）
    * 这些技能仅供敌人 AI 使用，不会被玩家学习
    */
-  function loadMonsterSkillTemplates(): void {
+  async function loadMonsterSkillTemplates(): Promise<void> {
     monsterSkillTemplates.value.clear();
+    const templates = await skillsDbService.getMonsterSkillTemplates();
     const newMap = new Map<string, Skill>();
-    MONSTER_SKILLS.forEach(skill => {
+    templates.forEach(skill => {
       newMap.set(skill.id, skill);
     });
     monsterSkillTemplates.value = newMap;

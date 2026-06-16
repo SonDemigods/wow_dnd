@@ -331,10 +331,16 @@ export interface SkillTemplateStorage {
   description: string;
   mpCost: number;
   type: string;
-  effect: { type: string; value: number };
+  effect: { type: string; value: number; coefficient?: number };
   unlockLevel: number;
   classRestriction: string | null;
   targetType?: string;
+  /** 可使用此技能的角色类型 */
+  usableBy?: 'player' | 'enemy' | 'both';
+  /** 冷却回合数 */
+  cooldown?: number;
+  /** Buff/Debuff 效果列表 */
+  buffs?: SkillBuffEffect[];
 }
 
 /**

@@ -46,6 +46,7 @@ import {
   LOOT_ITEMS,
   CLASSES,
   CLASS_ABILITIES,
+  MONSTER_ABILITIES,
   RACES,
   FACTIONS,
   MAX_LEVEL
@@ -264,16 +265,26 @@ export class DataInitializer {
   }
 
   /**
-   * 初始化技能模板数据
+   * 初始化技能模板数据（含职业技能与怪物技能）
    */
   private async initSkillTemplates(): Promise<void> {
+    // 1. 写入职业技能模板（usableBy 默认为 'player'）
     for (const entry of CLASS_ABILITIES) {
       for (const skill of entry.skills) {
         await db.config_skills.put({
           ...skill,
-          classRestriction: entry.class_id
+          classRestriction: entry.class_id,
+          usableBy: 'player'
         } as unknown as SkillConfigStorage);
       }
+    }
+    // 2. 写入怪物/首领技能模板（usableBy = 'enemy'）
+    for (const skill of MONSTER_ABILITIES) {
+      await db.config_skills.put({
+        ...skill,
+        classRestriction: null,
+        usableBy: 'enemy'
+      } as unknown as SkillConfigStorage);
     }
   }
 

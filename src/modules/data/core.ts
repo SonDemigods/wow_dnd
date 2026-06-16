@@ -120,7 +120,7 @@ export class GameDatabase extends Dexie {
       config_mobs: 'id, name, dangerLevel',
       config_bosses: 'id, name, dangerLevel',
       config_quests: 'id, boardId, type',
-      config_skills: 'id, classRestriction, type',
+      config_skills: 'id, classRestriction, type, usableBy',
       config_locations: 'id, type, continent',
       config_shops: 'id',
       

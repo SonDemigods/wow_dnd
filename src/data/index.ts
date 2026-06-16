@@ -16,6 +16,9 @@ export { CLASSES } from './config_classes';
 // 导出职业技能数据
 export { CLASS_ABILITIES } from './config_skills';
 
+// 导出怪物/首领技能数据
+export { MONSTER_ABILITIES } from './config_skills';
+
 // 导出物品和战利品数据
 export { LOOT_ITEMS } from './config_items';
 

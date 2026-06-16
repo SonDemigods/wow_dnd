@@ -98,9 +98,32 @@ export class SkillsDbService {
         effect: skill.effect,
         unlockLevel: skill.unlockLevel,
         classRestriction: classRestriction || null,
-        targetType: skill.targetType || null
+        targetType: skill.targetType || null,
+        usableBy: skill.usableBy || 'player',
+        cooldown: skill.cooldown ?? 0,
+        buffs: skill.buffs || null
       });
     });
+  }
+
+  /**
+   * 将数据库存储格式转换为 Skill 对象
+   */
+  private toSkill(data: SkillTemplateStorage): Skill {
+    return {
+      id: data.id,
+      name: data.name,
+      icon: data.icon,
+      description: data.description,
+      mpCost: data.mpCost,
+      type: data.type as SkillType,
+      effect: (data.effect || { type: 'physical_damage', value: 0 }) as Skill['effect'],
+      unlockLevel: data.unlockLevel,
+      targetType: (data.targetType as Skill['targetType']) || undefined,
+      usableBy: (data.usableBy as Skill['usableBy']) || 'player',
+      cooldown: data.cooldown ?? 0,
+      buffs: data.buffs ? data.buffs.map(b => ({ type: b.type, value: b.value, turns: b.turns })) : undefined
+    };
   }
 
   /**
@@ -112,18 +135,7 @@ export class SkillsDbService {
     return dbService.withRetry(async () => {
       const data = await gameDb.config_skills.get(skillId) as unknown as SkillTemplateStorage | undefined;
       if (!data) return null;
-
-      return {
-        id: data.id,
-        name: data.name,
-        icon: data.icon,
-        description: data.description,
-        mpCost: data.mpCost,
-        type: data.type as SkillType,
-        effect: (data.effect || { type: 'physical_damage', value: 0 }) as Skill['effect'],
-        unlockLevel: data.unlockLevel,
-        targetType: (data.targetType as Skill['targetType']) || undefined
-      };
+      return this.toSkill(data);
     });
   }
 
@@ -134,17 +146,7 @@ export class SkillsDbService {
   async getAllSkillTemplates(): Promise<Skill[]> {
     return dbService.withRetry(async () => {
       const items = await gameDb.config_skills.toArray() as unknown as SkillTemplateStorage[];
-      return items.map(data => ({
-        id: data.id,
-        name: data.name,
-        icon: data.icon,
-        description: data.description,
-        mpCost: data.mpCost,
-        type: data.type as SkillType,
-        effect: (data.effect || { type: 'physical_damage', value: 0 }) as Skill['effect'],
-        unlockLevel: data.unlockLevel,
-        targetType: (data.targetType as Skill['targetType']) || undefined
-      }));
+      return items.map(data => this.toSkill(data));
     });
   }
 
@@ -156,17 +158,21 @@ export class SkillsDbService {
   async getSkillTemplatesByClass(classId: string): Promise<Skill[]> {
     return dbService.withRetry(async () => {
       const items = await gameDb.config_skills.where('classRestriction').equals(classId).toArray() as unknown as SkillTemplateStorage[];
-      return items.map(data => ({
-        id: data.id,
-        name: data.name,
-        icon: data.icon,
-        description: data.description,
-        mpCost: data.mpCost,
-        type: data.type as SkillType,
-        effect: (data.effect || { type: 'physical_damage', value: 0 }) as Skill['effect'],
-        unlockLevel: data.unlockLevel,
-        targetType: (data.targetType as Skill['targetType']) || undefined
-      }));
+      return items.map(data => this.toSkill(data));
+    });
+  }
+
+  /**
+   * 获取怪物/首领技能模板（usableBy = 'enemy' 或 'both'）
+   * @returns 怪物技能模板列表
+   */
+  async getMonsterSkillTemplates(): Promise<Skill[]> {
+    return dbService.withRetry(async () => {
+      const items = await gameDb.config_skills
+        .where('usableBy')
+        .anyOf('enemy', 'both')
+        .toArray() as unknown as SkillTemplateStorage[];
+      return items.map(data => this.toSkill(data));
     });
   }
 
