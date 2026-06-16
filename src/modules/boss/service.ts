@@ -44,6 +44,12 @@ export function createBossInstance(template: BossTemplate, level: number): BossI
     stats: derived.stats,
     expReward: derived.expReward,
     goldReward: derived.goldReward,
+    // 覆盖模板原始值，使用等级缩放后的战斗属性
+    physicalAttack: derived.physicalAttack,
+    physicalDefense: derived.physicalDefense,
+    magicAttack: derived.magicAttack,
+    magicDefense: derived.magicDefense,
+    damage: derived.damage,
     drops,
     isBoss: true
   };

@@ -227,7 +227,7 @@ export interface GridGenerationConfig {
  */
 export interface ExplorationUICallbacks {
   onCellExplored?: (data: { cellType?: string; interactionId?: string }) => void;
-  onBattleTriggered?: (data: { eventData: { monsterId: string } }) => void;
+  onBattleTriggered?: (data: { eventData: { monsterId: string; areaLevel: number } }) => void;
   onItemFound?: (data: { itemId: string; count: number; itemName: string }) => void;
   onTrapTriggered?: (data: { damage: number; trapType: string }) => void;
   onRandomEvent?: (data: { message: string; icon: string }) => void;

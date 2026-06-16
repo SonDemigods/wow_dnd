@@ -112,7 +112,7 @@ export interface GameEventPayloadMap {
   [GameEvents.EXPLORATION_START]: { characterId: string | null; areaId?: string };
   [GameEvents.EXPLORATION_END]: { characterId: string | null };
   [GameEvents.EXPLORATION_CELL_EXPLORED]: { characterId: string | null; x: number; y: number; cellType?: string; interactionId?: string };
-  [GameEvents.EXPLORATION_BATTLE_TRIGGERED]: { characterId: string | null; eventData: { monsterId: string } };
+  [GameEvents.EXPLORATION_BATTLE_TRIGGERED]: { characterId: string | null; eventData: { monsterId: string; areaLevel: number } };
   [GameEvents.EXPLORATION_CAMP_USED]: { characterId: string | null };
   [GameEvents.EXPLORATION_ITEM_FOUND]: { characterId: string | null; itemId: string; count: number; itemName?: string };
   [GameEvents.EXPLORATION_TRAP_TRIGGERED]: { characterId: string | null; damage: number; trapType?: string };

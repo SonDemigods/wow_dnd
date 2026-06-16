@@ -508,13 +508,16 @@ export const useExplorationStore = defineStore('exploration', () => {
 
   /** 触发战斗事件（通过 EventBus 通知战斗模块） */
   function triggerBattle(monsterId: string): void {
+    const areaConfig = getAreaConfig();
+    const areaLevel = areaConfig.level;
+
     eventBus.emit(GameEvents.EXPLORATION_BATTLE_TRIGGERED, {
       characterId: currentCharacterId.value,
-      eventData: { monsterId }
+      eventData: { monsterId, areaLevel }
     });
 
     // 同步通知已注册的 UI 回调（替代 EventBus 跨模块监听）
-    uiCallbacks?.onBattleTriggered?.({ eventData: { monsterId } });
+    uiCallbacks?.onBattleTriggered?.({ eventData: { monsterId, areaLevel } });
   }
 
   // ==================== Action：结束探索 ====================

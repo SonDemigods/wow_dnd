@@ -261,13 +261,14 @@ async function handleCellExplored(data: { cellType?: string; interactionId?: str
 }
 
 // 监听探索战斗事件
-async function handleBattleTriggered(data: { eventData?: { monsterId?: string } }) {
+async function handleBattleTriggered(data: { eventData?: { monsterId?: string; areaLevel?: number } }) {
   if (!data?.eventData?.monsterId) return;
   
   const monsterId = data.eventData.monsterId;
+  const areaLevel = data.eventData.areaLevel || 1;
   
-  // 从数据库获取敌人模板数据
-  const enemy = await useEnemiesStore().createEnemy(monsterId);
+  // 从数据库获取敌人模板数据，传入地图等级
+  const enemy = await useEnemiesStore().createEnemy(monsterId, areaLevel);
   
   if (enemy) {
     useCombatStore().startCombat([enemy]);
