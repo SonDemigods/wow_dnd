@@ -1,0 +1,164 @@
+/**
+ * @fileoverview 全局共享动画关键帧
+ * @description 跨组件复用的 @keyframes 定义，统一管理避免重复
+ */
+
+/* ===== 通用入场动画 ===== */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* ===== 脉冲动画 ===== */
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ===== 物品品质发光 ===== */
+
+@keyframes legendary-glow {
+  0%, 100% { box-shadow: 0 0 5px #ff8000; }
+  50% { box-shadow: 0 0 15px #ff8000; }
+}
+
+/* ===== 探索视图 ===== */
+
+@keyframes boss-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* ===== 地图面板 ===== */
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== Toast 进出场 ===== */
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+}
+
+/* ===== ResourceBar 装饰动画 ===== */
+
+@keyframes wave-drift {
+  0%   { transform: translateX(-10%) rotate(0deg); }
+  25%  { transform: translateX(5%) rotate(3deg); }
+  50%  { transform: translateX(10%) rotate(-1deg); }
+  75%  { transform: translateX(-5%) rotate(-3deg); }
+  100% { transform: translateX(-10%) rotate(0deg); }
+}
+
+@keyframes particle-float {
+  0%, 100% { transform: translateY(0) scale(1);   opacity: 0.5; }
+  50%      { transform: translateY(-5px) scale(1.4); opacity: 0.9; }
+}
+
+/* ===== 角色升级 ===== */
+
+@keyframes level-up-glow {
+  0%   { box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); transform: scale(1); }
+  50%  { box-shadow: 0 0 40px rgba(255, 215, 0, 0.8), 0 0 80px rgba(255, 150, 0, 0.4); transform: scale(1.05); }
+  100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); transform: scale(1); }
+}
+
+@keyframes level-up-text {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.4); }
+  60%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+/* ===== 物品获得/使用 ===== */
+
+@keyframes item-bounce {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.2); }
+  70%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+@keyframes item-fade-out {
+  from { transform: scale(1); opacity: 1; }
+  to   { transform: scale(0.8); opacity: 0; }
+}
+
+/* ===== 任务卡片滑入 ===== */
+
+@keyframes card-slide-in {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+/* ===== 商店购买 ===== */
+
+@keyframes gold-flash {
+  0%, 100% { color: #ffd700; }
+  50%      { color: #fff; }
+}
+
+@keyframes buy-success {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.05); box-shadow: 0 0 15px rgba(255, 215, 0, 0.6); }
+  100% { transform: scale(0.9); opacity: 0.5; }
+}
+
+/* ===== 装备槽位 ===== */
+
+@keyframes equip-slot-fill {
+  0%   { border-color: #4a4a4a; background: rgba(255, 255, 255, 0.05); }
+  50%  { border-color: #ffd700; background: rgba(255, 215, 0, 0.15); }
+  100% { border-color: #4a4a4a; background: rgba(255, 255, 255, 0.05); }
+}
+
+@keyframes equip-slot-empty {
+  0%   { border-color: #4a4a4a; background: rgba(255, 255, 255, 0.05); }
+  50%  { border-color: #ff5722; background: rgba(255, 87, 34, 0.1); }
+  100% { border-color: #4a4a4a; background: rgba(255, 255, 255, 0.05); }
+}
+
+/* ===== 页面切换 ===== */
+
+@keyframes view-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes view-leave {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-12px); }
+}
