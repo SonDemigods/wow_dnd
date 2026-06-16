@@ -23,7 +23,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 8,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'warrior_thunder_clap',
@@ -34,6 +36,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 18 },
       unlockLevel: 1,
+      cooldown: 0,
       targetType: 'all_enemies',
       buffs: [{ type: 'defense_down', value: 12, turns: 2 }]
     },
@@ -45,7 +48,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 8,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 15 },
-      unlockLevel: 2
+      unlockLevel: 2,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'warrior_execute',
@@ -55,7 +60,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 32 },
-      unlockLevel: 3
+      unlockLevel: 3,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'warrior_sweeping_strike',
@@ -66,6 +73,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 17 },
       unlockLevel: 4,
+      cooldown: 2,
       targetType: 'all_enemies'
     },
     {
@@ -76,7 +84,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 15,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 26 },
-      unlockLevel: 5
+      unlockLevel: 5,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'warrior_mighty_blow',
@@ -86,7 +96,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 29 },
-      unlockLevel: 6
+      unlockLevel: 6,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'warrior_charge',
@@ -97,6 +109,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'buff',
       effect: { type: 'buff', value: 0 },
       unlockLevel: 7,
+      cooldown: 3,
       targetType: 'self',
       buffs: [{ type: 'speed_up', value: 15, turns: 3 }, { type: 'attack_up', value: 15, turns: 3 }]
     },
@@ -108,7 +121,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 8
+      unlockLevel: 8,
+      cooldown: 3,
+      targetType: 'single',
     },
     {
       id: 'warrior_blade_storm',
@@ -118,7 +133,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 25,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 45 },
-      unlockLevel: 10
+      unlockLevel: 10,
+      cooldown: 5,
+      targetType: 'single',
     }
     ]
   },
@@ -133,7 +150,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 25 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'mage_frost_nova',
@@ -144,6 +163,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
       unlockLevel: 1,
+      cooldown: 0,
       targetType: 'all_enemies',
       buffs: [{ type: 'speed_down', value: 12, turns: 2 }]
     },
@@ -155,7 +175,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 6,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 13 },
-      unlockLevel: 2
+      unlockLevel: 2,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'mage_frost_bolt',
@@ -165,7 +187,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 3
+      unlockLevel: 3,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'mage_fire_storm',
@@ -176,6 +200,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 31 },
       unlockLevel: 4,
+      cooldown: 2,
       targetType: 'all_enemies'
     },
     {
@@ -187,6 +212,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
       unlockLevel: 5,
+      cooldown: 3,
       targetType: 'all_enemies'
     },
     {
@@ -197,7 +223,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 8,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
-      unlockLevel: 6
+      unlockLevel: 6,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'mage_mirror_image',
@@ -208,6 +236,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'buff',
       effect: { type: 'buff', value: 0 },
       unlockLevel: 7,
+      cooldown: 3,
       targetType: 'self',
       buffs: [{ type: 'shield', value: 35, turns: 3 }]
     },
@@ -220,6 +249,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 37 },
       unlockLevel: 8,
+      cooldown: 4,
       targetType: 'all_enemies'
     },
     {
@@ -230,7 +260,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 25,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 55 },
-      unlockLevel: 10
+      unlockLevel: 10,
+      cooldown: 5,
+      targetType: 'single',
     }
     ]
   },
@@ -245,7 +277,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 31 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'paladin_divine_judgment',
@@ -255,7 +289,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 21 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'paladin_avengers_shield',
@@ -266,6 +302,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 18 },
       unlockLevel: 2,
+      cooldown: 1,
       targetType: 'all_enemies'
     },
     {
@@ -276,7 +313,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 8,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 18 },
-      unlockLevel: 3
+      unlockLevel: 3,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'paladin_consecration',
@@ -287,6 +326,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 15 },
       unlockLevel: 4,
+      cooldown: 2,
       targetType: 'all_enemies',
       buffs: [{ type: 'burn', value: 10, turns: 3 }]
     },
@@ -298,7 +338,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 5
+      unlockLevel: 5,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'paladin_divine_shock',
@@ -308,7 +350,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 6
+      unlockLevel: 6,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'paladin_greater_heal',
@@ -318,7 +362,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 20,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 42 },
-      unlockLevel: 7
+      unlockLevel: 7,
+      cooldown: 3,
+      targetType: 'single',
     },
     {
       id: 'paladin_judgment',
@@ -328,7 +374,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 16,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 29 },
-      unlockLevel: 8
+      unlockLevel: 8,
+      cooldown: 3,
+      targetType: 'single',
     },
     {
       id: 'paladin_divine_storm',
@@ -339,6 +387,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 43 },
       unlockLevel: 10,
+      cooldown: 5,
       targetType: 'all_enemies'
     }
     ]
@@ -354,7 +403,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 8,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 20 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'hunter_arcane_shot',
@@ -364,7 +415,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 18 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'hunter_multi_shot',
@@ -375,6 +428,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
       unlockLevel: 2,
+      cooldown: 1,
       targetType: 'all_enemies'
     },
     {
@@ -386,6 +440,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'debuff',
       effect: { type: 'debuff', value: 0 },
       unlockLevel: 3,
+      cooldown: 1,
+      targetType: 'single',
       buffs: [{ type: 'poison', value: 12, turns: 4 }]
     },
     {
@@ -397,6 +453,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 19 },
       unlockLevel: 4,
+      cooldown: 2,
       targetType: 'all_enemies'
     },
     {
@@ -407,7 +464,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 19 },
-      unlockLevel: 5
+      unlockLevel: 5,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'hunter_concussive_shot',
@@ -417,7 +476,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 6
+      unlockLevel: 6,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'hunter_aimed_shot',
@@ -427,7 +488,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 16,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 31 },
-      unlockLevel: 7
+      unlockLevel: 7,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'hunter_chimera_shot',
@@ -437,7 +500,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 18,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 28 },
-      unlockLevel: 8
+      unlockLevel: 8,
+      cooldown: 3,
+      targetType: 'single',
     },
     {
       id: 'hunter_kill_command',
@@ -447,7 +512,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 25,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 48 },
-      unlockLevel: 10
+      unlockLevel: 10,
+      cooldown: 5,
+      targetType: 'single',
     }
     ]
   },
@@ -462,7 +529,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 8,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 20 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'rogue_backstab',
@@ -472,7 +541,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 30 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'rogue_gouge',
@@ -483,6 +554,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'debuff',
       effect: { type: 'debuff', value: 0 },
       unlockLevel: 2,
+      cooldown: 1,
+      targetType: 'single',
       buffs: [{ type: 'stun', value: 1, turns: 1 }]
     },
     {
@@ -493,7 +566,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 28 },
-      unlockLevel: 3
+      unlockLevel: 3,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'rogue_poisoned_strike',
@@ -504,6 +579,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 20 },
       unlockLevel: 4,
+      cooldown: 1,
+      targetType: 'single',
       buffs: [{ type: 'poison', value: 10, turns: 4 }]
     },
     {
@@ -514,7 +591,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 5
+      unlockLevel: 5,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'rogue_eviscerate',
@@ -524,7 +603,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 26 },
-      unlockLevel: 6
+      unlockLevel: 6,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'rogue_rupture',
@@ -534,7 +615,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 22 },
-      unlockLevel: 7
+      unlockLevel: 7,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'rogue_vital_strike',
@@ -544,7 +627,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 28 },
-      unlockLevel: 8
+      unlockLevel: 8,
+      cooldown: 3,
+      targetType: 'single',
     },
     {
       id: 'rogue_ambush',
@@ -554,7 +639,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 22,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 50 },
-      unlockLevel: 10
+      unlockLevel: 10,
+      cooldown: 5,
+      targetType: 'single',
     }
     ]
   },
@@ -569,7 +656,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'warlock_corruption',
@@ -580,6 +669,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'debuff',
       effect: { type: 'debuff', value: 0 },
       unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
       buffs: [{ type: 'poison', value: 14, turns: 4 }]
     },
     {
@@ -591,6 +682,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'debuff',
       effect: { type: 'debuff', value: 0 },
       unlockLevel: 2,
+      cooldown: 1,
+      targetType: 'single',
       buffs: [{ type: 'attack_down', value: 15, turns: 3 }]
     },
     {
@@ -601,7 +694,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
-      unlockLevel: 3
+      unlockLevel: 3,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'warlock_shadow_burn',
@@ -611,7 +706,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 26 },
-      unlockLevel: 4
+      unlockLevel: 4,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'warlock_seed_of_corruption',
@@ -622,6 +719,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 28 },
       unlockLevel: 5,
+      cooldown: 3,
       targetType: 'all_enemies'
     },
     {
@@ -632,7 +730,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 15 },
-      unlockLevel: 6
+      unlockLevel: 6,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'warlock_soul_fire',
@@ -642,7 +742,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 20,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 35 },
-      unlockLevel: 7
+      unlockLevel: 7,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'warlock_demon_bolt',
@@ -652,7 +754,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 16,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 26 },
-      unlockLevel: 8
+      unlockLevel: 8,
+      cooldown: 3,
+      targetType: 'single',
     },
     {
       id: 'warlock_chaos_bolt',
@@ -662,7 +766,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 25,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 55 },
-      unlockLevel: 10
+      unlockLevel: 10,
+      cooldown: 5,
+      targetType: 'single',
     }
     ]
   },
@@ -677,7 +783,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 22 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'druid_wrath',
@@ -687,7 +795,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 8,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 17 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'druid_moonfire',
@@ -697,7 +807,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
-      unlockLevel: 2
+      unlockLevel: 2,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'druid_rejuvenation',
@@ -707,7 +819,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 26 },
-      unlockLevel: 3
+      unlockLevel: 3,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'druid_regrowth',
@@ -718,6 +832,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'buff',
       effect: { type: 'buff', value: 0 },
       unlockLevel: 4,
+      cooldown: 2,
       targetType: 'self',
       buffs: [{ type: 'regen', value: 12, turns: 4 }]
     },
@@ -730,6 +845,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 12 },
       unlockLevel: 5,
+      cooldown: 2,
+      targetType: 'single',
       buffs: [{ type: 'thorn', value: 0.25, turns: 3 }]
     },
     {
@@ -740,7 +857,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 6
+      unlockLevel: 6,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'druid_berserking_regeneration',
@@ -750,7 +869,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 16,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 31 },
-      unlockLevel: 7
+      unlockLevel: 7,
+      cooldown: 3,
+      targetType: 'single',
     },
     {
       id: 'druid_shred',
@@ -760,7 +881,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 26 },
-      unlockLevel: 8
+      unlockLevel: 8,
+      cooldown: 3,
+      targetType: 'single',
     },
     {
       id: 'druid_stars_fall',
@@ -771,6 +894,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 52 },
       unlockLevel: 10,
+      cooldown: 5,
       targetType: 'all_enemies'
     }
     ]
@@ -786,7 +910,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 28 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'priest_fast_heal',
@@ -796,7 +922,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 22 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'priest_smite',
@@ -806,7 +934,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
-      unlockLevel: 2
+      unlockLevel: 2,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'priest_holy_fire',
@@ -816,7 +946,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 3
+      unlockLevel: 3,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'priest_lightwell',
@@ -826,7 +958,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 18 },
-      unlockLevel: 4
+      unlockLevel: 4,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'priest_renew',
@@ -837,6 +971,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'buff',
       effect: { type: 'buff', value: 0 },
       unlockLevel: 5,
+      cooldown: 3,
       targetType: 'self',
       buffs: [{ type: 'regen', value: 10, turns: 4 }]
     },
@@ -848,7 +983,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 18 },
-      unlockLevel: 6
+      unlockLevel: 6,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'priest_prayer_of_healing',
@@ -858,7 +995,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 18,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 35 },
-      unlockLevel: 7
+      unlockLevel: 7,
+      cooldown: 3,
+      targetType: 'single',
     },
     {
       id: 'priest_holy_nova',
@@ -869,6 +1008,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
       unlockLevel: 8,
+      cooldown: 4,
       targetType: 'all_enemies'
     },
     {
@@ -879,7 +1019,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 25,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 55 },
-      unlockLevel: 10
+      unlockLevel: 10,
+      cooldown: 5,
+      targetType: 'single',
     }
     ]
   },
@@ -894,7 +1036,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'shaman_lava_burst',
@@ -904,7 +1048,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 28 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'shaman_healing_wave',
@@ -914,7 +1060,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 30 },
-      unlockLevel: 2
+      unlockLevel: 2,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'shaman_chain_heal',
@@ -924,7 +1072,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 16,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 25 },
-      unlockLevel: 3
+      unlockLevel: 3,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'shaman_flame_shock',
@@ -934,7 +1084,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
-      unlockLevel: 4
+      unlockLevel: 4,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'shaman_frost_shock',
@@ -945,6 +1097,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 18 },
       unlockLevel: 5,
+      cooldown: 2,
+      targetType: 'single',
       buffs: [{ type: 'speed_down', value: 15, turns: 2 }]
     },
     {
@@ -956,6 +1110,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 25 },
       unlockLevel: 6,
+      cooldown: 3,
       targetType: 'all_enemies'
     },
     {
@@ -966,7 +1121,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 26 },
-      unlockLevel: 7
+      unlockLevel: 7,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'shaman_elemental_strike',
@@ -976,7 +1133,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 16,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 28 },
-      unlockLevel: 8
+      unlockLevel: 8,
+      cooldown: 3,
+      targetType: 'single',
     },
     {
       id: 'shaman_earthquake',
@@ -987,6 +1146,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 50 },
       unlockLevel: 10,
+      cooldown: 5,
       targetType: 'all_enemies'
     }
     ]
@@ -1003,6 +1163,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
       unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
       buffs: [{ type: 'speed_down', value: 12, turns: 2 }]
     },
     {
@@ -1013,7 +1175,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'death_knight_death_grip',
@@ -1023,7 +1187,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 18 },
-      unlockLevel: 2
+      unlockLevel: 2,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'death_knight_heart_strike',
@@ -1033,7 +1199,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 26 },
-      unlockLevel: 3
+      unlockLevel: 3,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'death_knight_death_strike',
@@ -1043,7 +1211,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 4
+      unlockLevel: 4,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'death_knight_frost_strike',
@@ -1053,7 +1223,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 26 },
-      unlockLevel: 5
+      unlockLevel: 5,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'death_knight_death_and_decay',
@@ -1064,6 +1236,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 28 },
       unlockLevel: 6,
+      cooldown: 3,
       targetType: 'all_enemies'
     },
     {
@@ -1074,7 +1247,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 20,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 30 },
-      unlockLevel: 7
+      unlockLevel: 7,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'death_knight_scourge_strike',
@@ -1084,7 +1259,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 18,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 33 },
-      unlockLevel: 8
+      unlockLevel: 8,
+      cooldown: 3,
+      targetType: 'single',
     },
     {
       id: 'death_knight_sindragosas_breath',
@@ -1095,6 +1272,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 55 },
       unlockLevel: 10,
+      cooldown: 5,
       targetType: 'all_enemies'
     }
     ]
@@ -1110,7 +1288,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 8,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 20 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'monk_tiger_palm',
@@ -1120,7 +1300,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'monk_rise_of_the_sun',
@@ -1130,7 +1312,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 28 },
-      unlockLevel: 2
+      unlockLevel: 2,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'monk_crane_kick',
@@ -1140,7 +1324,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 25 },
-      unlockLevel: 3
+      unlockLevel: 3,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'monk_tranquility_orb',
@@ -1151,6 +1337,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'buff',
       effect: { type: 'buff', value: 0 },
       unlockLevel: 4,
+      cooldown: 2,
       targetType: 'self',
       buffs: [{ type: 'regen', value: 14, turns: 4 }]
     },
@@ -1162,7 +1349,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 23 },
-      unlockLevel: 5
+      unlockLevel: 5,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'monk_sweep',
@@ -1172,7 +1361,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 8,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 18 },
-      unlockLevel: 6
+      unlockLevel: 6,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'monk_transference',
@@ -1182,7 +1373,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 28 },
-      unlockLevel: 7
+      unlockLevel: 7,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'monk_iron_mountain',
@@ -1192,7 +1385,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 16,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 28 },
-      unlockLevel: 8
+      unlockLevel: 8,
+      cooldown: 3,
+      targetType: 'single',
     },
     {
       id: 'monk_thunder_fist',
@@ -1202,7 +1397,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 26,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 52 },
-      unlockLevel: 10
+      unlockLevel: 10,
+      cooldown: 5,
+      targetType: 'single',
     }
     ]
   },
@@ -1217,7 +1414,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'demon_hunter_blade_dance',
@@ -1227,7 +1426,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 8,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 20 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'demon_hunter_fel_rush',
@@ -1237,7 +1438,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 26 },
-      unlockLevel: 2
+      unlockLevel: 2,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'demon_hunter_fel_strike',
@@ -1247,7 +1450,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 23 },
-      unlockLevel: 3
+      unlockLevel: 3,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'demon_hunter_throw_glaive',
@@ -1257,7 +1462,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'physical_damage',
       effect: { type: 'physical_damage', value: 22 },
-      unlockLevel: 4
+      unlockLevel: 4,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'demon_hunter_eye_beam',
@@ -1267,7 +1474,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 18,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 35 },
-      unlockLevel: 5
+      unlockLevel: 5,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'demon_hunter_metamorphosis',
@@ -1277,7 +1486,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 16,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 30 },
-      unlockLevel: 6
+      unlockLevel: 6,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'demon_hunter_immolation_aura',
@@ -1288,6 +1499,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 17 },
       unlockLevel: 7,
+      cooldown: 3,
       targetType: 'all_enemies',
       buffs: [{ type: 'burn', value: 10, turns: 3 }]
     },
@@ -1299,7 +1511,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 16,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 27 },
-      unlockLevel: 8
+      unlockLevel: 8,
+      cooldown: 3,
+      targetType: 'single',
     },
     {
       id: 'demon_hunter_cataclysm',
@@ -1310,6 +1524,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 59 },
       unlockLevel: 10,
+      cooldown: 5,
       targetType: 'all_enemies'
     }
     ]
@@ -1325,7 +1540,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 22 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'evoker_emerald_blossom',
@@ -1335,7 +1552,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 26 },
-      unlockLevel: 1
+      unlockLevel: 1,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'evoker_disintegrate',
@@ -1345,7 +1564,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 28 },
-      unlockLevel: 2
+      unlockLevel: 2,
+      cooldown: 0,
+      targetType: 'single',
     },
     {
       id: 'evoker_essence_burst',
@@ -1355,7 +1576,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 10,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
-      unlockLevel: 3
+      unlockLevel: 3,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'evoker_shifting_embers',
@@ -1365,7 +1588,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 12,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 24 },
-      unlockLevel: 4
+      unlockLevel: 4,
+      cooldown: 1,
+      targetType: 'single',
     },
     {
       id: 'evoker_sleep_walk',
@@ -1376,6 +1601,8 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'debuff',
       effect: { type: 'debuff', value: 0 },
       unlockLevel: 5,
+      cooldown: 3,
+      targetType: 'single',
       buffs: [{ type: 'stun', value: 1, turns: 1 }]
     },
     {
@@ -1386,7 +1613,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 14,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 26 },
-      unlockLevel: 6
+      unlockLevel: 6,
+      cooldown: 2,
+      targetType: 'single',
     },
     {
       id: 'evoker_emerald_winds',
@@ -1396,7 +1625,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 18,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 32 },
-      unlockLevel: 7
+      unlockLevel: 7,
+      cooldown: 3,
+      targetType: 'single',
     },
     {
       id: 'evoker_spiritbloom',
@@ -1406,7 +1637,9 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       mpCost: 20,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 38 },
-      unlockLevel: 8
+      unlockLevel: 8,
+      cooldown: 3,
+      targetType: 'single',
     },
     {
       id: 'evoker_emerald_destruction',
@@ -1417,6 +1650,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 58 },
       unlockLevel: 10,
+      cooldown: 5,
       targetType: 'all_enemies'
     }
     ]

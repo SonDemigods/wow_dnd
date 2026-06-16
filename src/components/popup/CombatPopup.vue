@@ -487,8 +487,8 @@ function getSkillEffectText(skill: Skill): string {
   switch (effect.type) {
     case 'physical_damage': return `物伤${value}${coeff}`;
     case 'magic_damage': return `魔伤${value}${coeff}`;
-    case 'health_restore': return `治疗${value}${coeff}`;
-    case 'mana_restore': return `回蓝${value}${coeff}`;
+    case 'health_restore': return `生命恢复${value}${coeff}`;
+    case 'mana_restore': return `法力恢复${value}${coeff}`;
     case 'buff': {
       if (skill.buffs && skill.buffs.length > 0) {
         const names = skill.buffs.map(b => getEffectTypeName(b.type));
@@ -585,7 +585,7 @@ function scrollToTop() {
   }
 }
 
-// 浮动伤害/治疗数字
+// 浮动伤害/生命恢复数字
 function showFloating(target: 'enemy' | 'player', text: string, type: string, enemyId?: string) {
   if (target === 'enemy' && enemyId) {
     enemyFloatings.value[enemyId] = { text, type };
@@ -683,6 +683,17 @@ function onCritHit(data: { amount: number; damageType: string; targetName: strin
   showFloating(shakeTarget, `暴击! -${data.amount}`, 'crit', data.enemyId);
   // 屏幕闪白
   triggerScreenFlash('crit');
+}
+
+// 敌人造成伤害事件处理（敌人攻击玩家时的视觉反馈）
+function onEnemyDealDamage(data: { amount: number; damageType: string; targetName: string; actorType?: 'player' | 'enemy' }) {
+  if (isUnmounted.value) return;
+  // 仅处理敌人对玩家造成的伤害
+  if (data.actorType !== 'enemy') return;
+  // 玩家受击震动
+  triggerShake('player');
+  // 玩家受击浮动伤害文字
+  showFloating('player', `-${data.amount}`, 'damage');
 }
 
 // 闪避事件处理
@@ -956,6 +967,7 @@ onMounted(() => {
   // 确保技能 Store 已初始化
   skillsStore.initialize();
   eventBus.on(GameEvents.COMBAT_CRITICAL_HIT, onCritHit);
+  eventBus.on(GameEvents.COMBAT_DEAL_DAMAGE, onEnemyDealDamage);
   eventBus.on(GameEvents.COMBAT_DODGE, onDodge);
   eventBus.on(GameEvents.COMBAT_BOSS_INTRO, onBossIntro);
   eventBus.on(GameEvents.COMBAT_BOSS_PHASE, onBossPhase);
@@ -964,6 +976,7 @@ onMounted(() => {
 onUnmounted(() => {
   isUnmounted.value = true;
   eventBus.off(GameEvents.COMBAT_CRITICAL_HIT, onCritHit);
+  eventBus.off(GameEvents.COMBAT_DEAL_DAMAGE, onEnemyDealDamage);
   eventBus.off(GameEvents.COMBAT_DODGE, onDodge);
   eventBus.off(GameEvents.COMBAT_BOSS_INTRO, onBossIntro);
   eventBus.off(GameEvents.COMBAT_BOSS_PHASE, onBossPhase);

@@ -23,6 +23,7 @@ import {
   validateSkillBarSlot,
   canCastSkill
 } from './service';
+import { MONSTER_SKILLS } from '../../data/config_monster_skills';
 
 /**
  * 技能类型名称映射
@@ -30,8 +31,8 @@ import {
 const SKILL_TYPE_NAMES: Record<SkillType, string> = {
   physical_damage: '物理伤害',
   magic_damage: '魔法伤害',
-  health_restore: '治疗',
-  mana_restore: '法力回复',
+  health_restore: '生命恢复',
+  mana_restore: '法力恢复',
   buff: '增益',
   debuff: '减益'
 };
@@ -50,6 +51,9 @@ export const useSkillsStore = defineStore('skills', () => {
 
   /** 技能模板缓存（key: skillId） */
   const skillTemplates = ref<Map<string, Skill>>(new Map());
+
+  /** 怪物/首领技能模板缓存（key: skillId） */
+  const monsterSkillTemplates = ref<Map<string, Skill>>(new Map());
 
   /** 当前角色 ID */
   const currentCharacterId = ref<string | null>(null);
@@ -161,7 +165,10 @@ export const useSkillsStore = defineStore('skills', () => {
     // 2. 加载技能模板
     await loadTemplatesForClass(characterStore.classId);
 
-    // 3. 初始化时不自动装备新技能（仅添加技能到已学列表），避免覆盖用户手动卸下的技能
+    // 3. 加载怪物/首领技能模板（供敌人 AI 使用）
+    loadMonsterSkillTemplates();
+
+    // 4. 初始化时不自动装备新技能（仅添加技能到已学列表），避免覆盖用户手动卸下的技能
     checkLevelUnlocks(false);
 
     isLoading.value = false;
@@ -261,11 +268,11 @@ export const useSkillsStore = defineStore('skills', () => {
         break;
       case 'health_restore':
         heal = damageValue;
-        // 治疗 → 直接调用 characterStore Action
+        // 生命恢复 → 直接调用 characterStore Action
         await characterStore.receiveHeal(damageValue);
         break;
       case 'mana_restore':
-        // 法力回复 → 直接调用 characterStore Action
+        // 法力恢复 → 直接调用 characterStore Action
         await characterStore.changeMp(damageValue);
         break;
       case 'buff':
@@ -407,6 +414,7 @@ export const useSkillsStore = defineStore('skills', () => {
   function getSkill(skillId: string): Skill | null {
     return skills.value.find(s => s.id === skillId)
       || skillTemplates.value.get(skillId)
+      || monsterSkillTemplates.value.get(skillId)
       || null;
   }
 
@@ -464,6 +472,19 @@ export const useSkillsStore = defineStore('skills', () => {
       newMap.set(skill.id, skill);
     });
     skillTemplates.value = newMap;
+  }
+
+  /**
+   * 加载怪物/首领技能模板到缓存
+   * 这些技能仅供敌人 AI 使用，不会被玩家学习
+   */
+  function loadMonsterSkillTemplates(): void {
+    monsterSkillTemplates.value.clear();
+    const newMap = new Map<string, Skill>();
+    MONSTER_SKILLS.forEach(skill => {
+      newMap.set(skill.id, skill);
+    });
+    monsterSkillTemplates.value = newMap;
   }
 
   // ==================== Action：获取职业技能模板 ====================
@@ -589,6 +610,7 @@ export const useSkillsStore = defineStore('skills', () => {
     skills.value = [];
     skillBar.value = { slots: [null, null, null, null] };
     skillTemplates.value.clear();
+    monsterSkillTemplates.value.clear();
     cooldowns.value = {};
     currentCharacterId.value = null;
     await persist();
@@ -611,6 +633,7 @@ export const useSkillsStore = defineStore('skills', () => {
     skills,
     skillBar,
     skillTemplates,
+    monsterSkillTemplates,
     currentCharacterId,
     isLoading,
     cooldowns,
@@ -634,6 +657,7 @@ export const useSkillsStore = defineStore('skills', () => {
     getSkillsByType,
     canUseSkill,
     loadTemplatesForClass,
+    loadMonsterSkillTemplates,
     getSkillTemplatesByClass,
     checkLevelUnlocks,
     addSkillTemplate,
