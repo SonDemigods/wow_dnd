@@ -183,7 +183,7 @@ export interface ClassBonus {
  * @property {number} dex - 敏捷：影响闪避率和暴击率
  * @property {number} con - 体质：影响生命值上限和韧性
  * @property {number} int - 智力：影响魔法攻击伤害和法力值
- * @property {number} wis - 感知：影响治疗效果和察觉能力
+ * @property {number} wis - 感知：影响生命恢复效果和察觉能力
  * @property {number} cha - 魅力：影响对话选项和交易折扣
  */
 export interface Stats {
@@ -208,7 +208,7 @@ export interface Stats {
  * @property {number} dodgeChance - 闪避率（百分比）
  * @property {number} hpBonus - 生命值加成
  * @property {number} mpBonus - 法力值加成
- * @property {number} healBonus - 治疗加成
+ * @property {number} healBonus - 生命恢复加成
  */
 export interface Attributes {
   maxHp: number;

@@ -92,7 +92,7 @@ const QUEST_TYPE_NAMES: Record<string, string> = {
 };
 
 const SKILL_TYPE_NAMES: Record<string, string> = {
-  physical_damage: '物理伤害', magic_damage: '魔法伤害', health_restore: '治疗', mana_restore: '法力回复',
+  physical_damage: '物理伤害', magic_damage: '魔法伤害', health_restore: '生命恢复', mana_restore: '法力恢复',
 };
 
 const SHOP_TYPE_NAMES: Record<string, string> = {
@@ -311,8 +311,8 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'type', label: '类型', type: 'select', options: [
       { value: 'physical_damage', label: '物理伤害 (physical_damage)' },
       { value: 'magic_damage', label: '魔法伤害 (magic_damage)' },
-      { value: 'health_restore', label: '生命回复 (health_restore)' },
-      { value: 'mana_restore', label: '法力回复 (mana_restore)' },
+      { value: 'health_restore', label: '生命恢复 (health_restore)' },
+      { value: 'mana_restore', label: '法力恢复 (mana_restore)' },
     ] },
     { key: 'effect', label: '效果', type: 'json', placeholder: '{"type":"damage","value":20}' },
     { key: 'unlockLevel', label: '解锁等级', type: 'number' },

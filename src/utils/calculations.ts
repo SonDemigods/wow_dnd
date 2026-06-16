@@ -118,9 +118,9 @@ export function calculateMpBonus(stats: Stats): number {
 }
 
 /**
- * 计算治疗加成
+ * 计算生命恢复加成
  * @param {Stats} stats - 角色主属性对象
- * @returns {number} 治疗加成
+ * @returns {number} 生命恢复加成
  */
 export function calculateHealBonus(stats: Stats): number {
   const wis = stats.wis || 10;
@@ -140,7 +140,7 @@ export function calculateHealBonus(stats: Stats): number {
  * @returns {number} .dodgeChance - 闪避概率
  * @returns {number} .maxHp - 最大生命值
  * @returns {number} .maxMana - 最大法力值
- * @returns {number} .healBonus - 治疗加成
+ * @returns {number} .healBonus - 生命恢复加成
  * @returns {number} .hpBonus - 每级HP加成
  * @returns {number} .mpBonus - 每级MP加成
  */

@@ -144,8 +144,8 @@ const skillBarSlots = computed(() => {
 const skillTypeNames: Record<string, string> = {
   physical_damage: '物理伤害',
   magic_damage: '魔法伤害',
-  health_restore: '生命回复',
-  mana_restore: '法力回复',
+  health_restore: '生命恢复',
+  mana_restore: '法力恢复',
   buff: '增益',
   debuff: '减益'
 };

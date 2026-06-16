@@ -69,7 +69,7 @@ export interface EffectContext {
 export interface TickResult {
   /** 持续伤害量 */
   dotDamage: number;
-  /** 持续治疗量 */
+  /** 持续生命恢复量 */
   regenAmount: number;
 }
 

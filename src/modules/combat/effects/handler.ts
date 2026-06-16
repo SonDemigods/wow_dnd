@@ -15,7 +15,7 @@ export interface EffectHandler {
   /** 效果被施加到目标时调用 */
   onApply?(effect: Effect, ctx: EffectContext): void;
 
-  /** 每回合推进时调用，返回持续伤害/治疗 */
+  /** 每回合推进时调用，返回持续伤害/生命恢复 */
   onTick?(effect: Effect, ctx: EffectContext): TickResult;
 
   /** 效果被移除时调用 */
@@ -131,7 +131,7 @@ export class EffectHandlerRegistry {
 
   /**
    * 推进容器中所有效果（每回合结束时调用）
-   * 返回过期效果 ID 和持续伤害/治疗总量
+   * 返回过期效果 ID 和持续伤害/生命恢复总量
    */
   tickAll(container: EffectContainer, ctx: EffectContext): { expiredIds: string[]; dotDamage: number; regenAmount: number } {
     const expiredIds: string[] = [];

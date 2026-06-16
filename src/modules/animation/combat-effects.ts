@@ -65,7 +65,7 @@ export function animateDodgeBlink(target: HTMLElement): void {
 
 // ==================== 浮动伤害数字 ====================
 
-/** 浮动伤害/治疗数字 */
+/** 浮动伤害/生命恢复/数字 */
 export function animateFloating(
   target: HTMLElement,
   type: 'damage' | 'crit' | 'heal' | 'dodge'

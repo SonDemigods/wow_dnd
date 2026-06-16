@@ -52,7 +52,7 @@ export interface CombatAction {
  * @property {boolean} success - 是否成功
  * @property {CombatActionType} type - 动作类型
  * @property {number} [damage] - 伤害值
- * @property {number} [heal] - 治疗值
+ * @property {number} [heal] - 生命恢复值
  * @property {boolean} [isCrit] - 是否暴击
  * @property {boolean} [isDodge] - 是否闪避
  * @property {string} message - 结果消息
@@ -126,7 +126,7 @@ export interface CombatEndEvent {
  * - combat_player_action: 玩家动作
  * - combat_enemy_action: 敌人动作
  * - combat_damage: 伤害
- * - combat_heal: 治疗
+ * - combat_heal: 生命恢复
  * - combat_skill_cast: 技能施法
  * - combat_item: 物品使用
  * - combat_flee: 逃跑
@@ -167,7 +167,7 @@ export type CombatEventType =
  * @property {string} [skillId] - 技能ID
  * @property {string} [skillName] - 技能名称
  * @property {number} [damage] - 伤害值
- * @property {number} [heal] - 治疗值
+ * @property {number} [heal] - 生命恢复值
  * @property {boolean} isCrit - 是否暴击
  * @property {boolean} isDodge - 是否闪避
  * @property {string} message - 消息
@@ -200,7 +200,7 @@ export interface CombatLog {
  * @property {SkillType} effectType - 效果类型
  * @property {'self' | 'enemy'} targetType - 目标类型
  * @property {{base: number, minMultiplier: number, maxMultiplier: number, type: 'physical' | 'magic' | 'true'}} [damage] - 伤害配置
- * @property {{base: number, multiplier: number}} [heal] - 治疗配置
+ * @property {{base: number, multiplier: number}} [heal] - 生命恢复配置
  * @property {number} manaCost - 法力消耗
  */
 export interface SkillCombatEffect {
@@ -227,7 +227,7 @@ export interface SkillCombatEffect {
  * @property {string} skillId - 技能ID
  * @property {string} skillName - 技能名称
  * @property {number} [damage] - 伤害值
- * @property {number} [heal] - 治疗值
+ * @property {number} [heal] - 生命恢复值
  * @property {string} message - 结果消息
  */
 export interface SkillCastResult {

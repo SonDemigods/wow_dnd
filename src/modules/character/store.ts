@@ -297,7 +297,7 @@ export const useCharacterStore = defineStore('character', () => {
     }
   }
 
-  /** 获得治疗（供其他模块直接调用） */
+  /** 获得生命恢复（供其他模块直接调用） */
   async function receiveHeal(amount: number): Promise<void> {
     if (!character.value || amount <= 0) return;
     character.value = applyHpChange(character.value, amount);

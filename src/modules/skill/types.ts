@@ -9,7 +9,7 @@ import type { EffectType } from '../combat/effects';
  * 技能类型枚举
  * - physical_damage: 物理伤害技能
  * - magic_damage: 魔法伤害技能
- * - health_restore: 治疗技能
+ * - health_restore: 生命恢复技能
  * - mana_restore: 法力恢复技能
  * - buff: 增益技能（对自身/友方施加正面效果）
  * - debuff: 减益技能（对敌人施加负面效果）
@@ -104,7 +104,7 @@ export interface AppliedEffectInfo {
  * @property {string} skillId - 技能ID
  * @property {SkillType} type - 技能类型
  * @property {number} [damage] - 造成的伤害
- * @property {number} [heal] - 治疗量
+ * @property {number} [heal] - 生命恢复量
  * @property {string} message - 结果消息
  * @property {AppliedEffectInfo[]} [appliedEffects] - 施加的效果列表（buff/debuff 技能时返回）
  */

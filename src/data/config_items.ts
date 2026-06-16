@@ -10,16 +10,16 @@ import type { Item } from '../modules/inventory/types';
 // 药水类物品
 // ============================================================================
 
-/** 治疗药水 - 恢复生命值 */
+/** 生命药水 - 恢复生命值 */
 const HEALTH_POTIONS: Item[] = [
   {
     id: 'small_health_potion',
-    name: '初级治疗药水',
+    name: '初级生命药水',
     icon: '❤️',
     type: 'potion',
     rarity: 'common',
     level: 1,
-    description: '一瓶散发着草药清香的治疗药水，能快速愈合轻微伤口',
+    description: '一瓶散发着草药清香的生命药水，能快速愈合轻微伤口',
     value: 10,
     stackable: true,
     effect: { type: 'health_restore', value: 30 },
@@ -28,7 +28,7 @@ const HEALTH_POTIONS: Item[] = [
   },
   {
     id: 'medium_health_potion',
-    name: '次级治疗药水',
+    name: '次级生命药水',
     icon: '❤️',
     type: 'potion',
     rarity: 'uncommon',
@@ -42,12 +42,12 @@ const HEALTH_POTIONS: Item[] = [
   },
   {
     id: 'large_health_potion',
-    name: '特效治疗药水',
+    name: '特效生命药水',
     icon: '❤️',
     type: 'potion',
     rarity: 'rare',
     level: 5,
-    description: '泛着金色光泽的特效治疗药水，即使重伤也能迅速恢复',
+    description: '泛着金色光泽的特效生命药水，即使重伤也能迅速恢复',
     value: 50,
     stackable: true,
     effect: { type: 'health_restore', value: 100 },
@@ -56,7 +56,7 @@ const HEALTH_POTIONS: Item[] = [
   },
   {
     id: 'super_health_potion',
-    name: '超级治疗药水',
+    name: '超级生命药水',
     icon: '❤️',
     type: 'potion',
     rarity: 'epic',

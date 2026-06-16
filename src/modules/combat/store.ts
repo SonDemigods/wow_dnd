@@ -553,7 +553,7 @@ export const useCombatStore = defineStore('combat', () => {
         const result = enemiesStore.useSkill(e.id, decision.skillId);
         if (result.success) {
           if (result.isHeal) {
-            // 敌人治疗自己
+            // 敌人恢复生命值
             const updatedEnemy = enemiesStore.getEnemyById(e.id);
             if (!updatedEnemy) {
               return { success: false, type: 'skill', message: '找不到敌人数据' };
@@ -874,7 +874,7 @@ export const useCombatStore = defineStore('combat', () => {
           message: `${skill?.name || '技能'} 对所有敌人造成了 ${aoeDamage} 点伤害！`
         };
       } else if (targetType === 'self') {
-        // 对自身生效（自伤技能，实际上不太合理，按治疗逻辑处理）
+        // 对自身生效（自伤技能，实际上不太合理，按生命恢复逻辑处理）
         endPlayerTurn();
       } else {
         // 单目标（默认）：使用伤害管线计算
@@ -1002,7 +1002,7 @@ export const useCombatStore = defineStore('combat', () => {
         }
       }
     } else if (result.heal) {
-      // 治疗技能音效事件（skillsStore.castSkill 已通过 characterStore.receiveHeal 应用治疗）
+      // 生命恢复技能音效事件（skillsStore.castSkill 已通过 characterStore.receiveHeal 应用生命恢复）
       eventBus.emit(GameEvents.COMBAT_CAST_HEAL, {
         amount: result.heal,
         healType: result.type === 'mana_restore' ? 'mana' : 'health',
@@ -1047,7 +1047,7 @@ export const useCombatStore = defineStore('combat', () => {
     const inventoryStore = useInventoryStore();
     await inventoryStore.useItem(itemId);
 
-    // 根据物品类型发出对应的治疗音效事件
+    // 根据物品类型发出对应的生命恢复音效事件
     const itemInfo = inventoryStore.getItemInfo(itemId);
     if (itemInfo?.effect) {
       const { type, value } = itemInfo.effect;
@@ -1438,7 +1438,7 @@ export const useCombatStore = defineStore('combat', () => {
           actorType: 'system', actorId: 'system', actorName: '系统',
           eventType: 'combat_heal', targetType: 'enemy', targetId: e.id,
           targetName: e.name, isCrit: false, isDodge: false,
-          message: `${e.name} 从治疗区域恢复了 ${healAmount} 点生命值！`
+          message: `${e.name} 从生命恢复区域恢复了 ${healAmount} 点生命值！`
         });
         break;
       }
@@ -1567,7 +1567,7 @@ export const useCombatStore = defineStore('combat', () => {
             message: `持续伤害对 ${enemy.name} 造成 ${enemyTickResult.dotDamage} 点伤害！`
           });
         }
-        // 应用 HoT 治疗到敌人
+        // 应用 HoT 生命恢复到敌人
         if (enemyTickResult.regenAmount > 0) {
           const updatedEnemy = enemiesStore.getEnemyById(enemyId);
           if (updatedEnemy) {

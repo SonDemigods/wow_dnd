@@ -112,10 +112,10 @@ export const useEnemiesStore = defineStore('enemies', () => {
   }
 
   /**
-   * 敌人使用技能（通过 skillsStore 获取真实技能数据，基于敌人属性计算伤害/治疗量）
+   * 敌人使用技能（通过 skillsStore 获取真实技能数据，基于敌人属性计算伤害/生命恢复量）
    * @param id - 敌人实例 ID
    * @param skillId - 技能 ID
-   * @returns 技能使用结果（成功状态、伤害/治疗值、是否为治疗）
+   * @returns 技能使用结果（成功状态、伤害/生命恢复值、是否为生命恢复）
    */
   function useSkill(id: string, skillId: string): { success: boolean; damage: number; isHeal: boolean } {
     const enemy = enemiesCache.value[id];
@@ -138,7 +138,7 @@ export const useEnemiesStore = defineStore('enemies', () => {
     const baseDamage = Math.round(attackStat * coefficient + skill.effect.value);
 
     if (isHeal) {
-      // 治疗技能：恢复敌人生命值
+      // 生命恢复技能：恢复敌人生命值
       const healAmount = Math.min(baseDamage, enemy.maxHp - enemy.hp);
       enemy.hp += healAmount;
       enemiesCache.value[id] = { ...enemy };

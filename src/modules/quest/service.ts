@@ -147,7 +147,7 @@ export function getDefaultQuests(): QuestDefinition[] {
     {
       id: 'quest_collect_herbs',
       title: '采集草药',
-      description: '药剂师需要一些草药来制作治疗药水。请前往草药田采集15株草药。',
+      description: '药剂师需要一些草药来制作生命药水。请前往草药田采集15株草药。',
       type: 'collect',
       objectives: [
         {

@@ -180,8 +180,8 @@ export interface EventChoiceResult {
 
 /**
  * 随机事件效果类型
- * - heal: 治疗
- * - mana: 回蓝
+ * - heal: 生命恢复
+ * - mana: 法力恢复
  * - exp: 经验
  * - damage: 伤害
  * - mpLoss: 法力损失

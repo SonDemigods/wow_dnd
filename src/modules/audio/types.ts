@@ -14,8 +14,8 @@ export type SfxType =
   | 'spell_cast'      // 技能/法术施放
   | 'physical_damage' // 物理伤害（通用，无攻击方区分时）
   | 'magic_damage'    // 魔法伤害（通用，无攻击方区分时）
-  | 'health_restore'  // 生命回复
-  | 'mana_restore'    // 法力回复
+  | 'health_restore'  // 生命恢复
+  | 'mana_restore'    // 法力恢复
   | 'combat_start'    // 战斗开始
   | 'combat_victory'  // 战斗胜利
   | 'combat_defeat'   // 战斗失败
@@ -32,11 +32,11 @@ export type SfxType =
   | 'level_up'        // 升级
   | 'death'           // 死亡
   | 'coin'            // 获得金币
-  | 'heal'            // 治疗
+  | 'heal'            // 生命恢复
   | 'character_create'// 创建角色
   | 'resurrect'       // 复活
   | 'gain_exp'        // 获得经验
-  | 'mana_recover'    // 法力回复（与 mana_restore 区分使用场景）
+  | 'mana_recover'    // 法力恢复（与 mana_restore 区分使用场景）
   // 装备 & 物品
   | 'equip'           // 装备物品
   | 'unequip'         // 卸下装备

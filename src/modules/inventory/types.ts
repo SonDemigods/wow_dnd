@@ -66,7 +66,7 @@ export interface RarityConfig {
  * 技能效果类型枚举
  * - physical_damage: 物理伤害
  * - magic_damage: 法术伤害
- * - health_restore: 治疗
+ * - health_restore: 生命恢复
  * - stat: 属性加成
  */
 export type ItemEffectType = SkillType | 'stat';
@@ -90,7 +90,7 @@ export interface ItemEffect {
  * @property {string} icon - 物品图标
  * @property {string} description - 物品描述
  * @property {Partial<Stats>} [bonus] - 属性加成
- * @property {ItemEffect} [effect] - 物品效果（伤害/治疗/法力回复/属性加成）
+ * @property {ItemEffect} [effect] - 物品效果（伤害/生命恢复/法力恢复/属性加成）
  * @property {number} value - 物品价值
  * @property {boolean} stackable - 是否可堆叠
  * @property {boolean} [consumable] - 是否为消耗品

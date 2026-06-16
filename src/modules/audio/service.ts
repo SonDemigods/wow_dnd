@@ -361,7 +361,7 @@ class AudioService implements IAudioService {
         break;
 
       case 'health_restore':
-        // 生命回复：温暖上行琶音 + 柔和铺底
+        // 生命恢复：温暖上行琶音 + 柔和铺底
         this.tSynth('C4', '16n', now, 0.45);
         this.tSynth('E4', '16n', now + 0.08, 0.45);
         this.tSynth('G4', '16n', now + 0.16, 0.45);
@@ -369,7 +369,7 @@ class AudioService implements IAudioService {
         break;
 
       case 'mana_restore':
-        // 法力回复：清脆高音 星辰闪烁感
+        // 法力恢复：清脆高音 星辰闪烁感
         this.tMetal('C6', '32n', now, 0.35);
         this.tMetal('E6', '64n', now + 0.06, 0.25);
         this.tMetal('G6', '64n', now + 0.10, 0.2);
@@ -482,7 +482,7 @@ class AudioService implements IAudioService {
         break;
 
       case 'heal':
-        // 治疗：温暖上行纯五度 —— 简洁温暖的治愈感（与 health_restore 琶音铺底区分）
+        // 生命恢复：温暖上行纯五度 —— 简洁温暖的治愈感（与 health_restore 琶音铺底区分）
         this.tSynth('G4', '8n', now, 0.4);
         this.tBGM(['C3', 'G4'], '8n', now, 0.1);
         break;
@@ -505,7 +505,7 @@ class AudioService implements IAudioService {
         break;
 
       case 'mana_recover':
-        // 法力回复：清澈星辰闪烁 —— 比 mana_restore 更轻盈
+        // 法力恢复：清澈星辰闪烁 —— 比 mana_restore 更轻盈
         this.tMetal('C6', '64n', now, 0.2);
         this.tMetal('E6', '64n', now + 0.05, 0.18);
         this.tSynth('C7', '128n', now + 0.10, 0.12);
