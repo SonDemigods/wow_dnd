@@ -44,7 +44,7 @@
             :class="['item-card', entry.quality, { selected: buySelectedIndex === index }]"
             @click="selectBuyItem(entry, index)"
           >
-            <ItemIcon :icon="entry.icon" size="lg" />
+            <ItemIcon :icon="entry.icon" :rarity="entry.quality" size="lg" />
             <div class="card-info">
               <div class="card-name">{{ entry.name }}</div>
               <div class="card-desc">{{ entry.description }}</div>
@@ -62,7 +62,7 @@
             :class="['item-card', entry.info?.rarity, { selected: sellSelectedIndex === index }]"
             @click="selectSellItem(entry, index)"
           >
-            <ItemIcon :icon="entry.info?.icon" size="lg" />
+            <ItemIcon :icon="entry.info?.icon" :rarity="entry.info?.rarity" size="lg" />
             <div class="card-info">
               <div class="card-name">{{ entry.info?.name }}</div>
               <div class="card-desc">{{ entry.info?.description }}</div>

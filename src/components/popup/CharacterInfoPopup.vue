@@ -114,7 +114,7 @@
               @click="selectEquipment(slot)"
             >
               <template v-if="slot.equipment">
-                <ItemIcon :icon="slot.equipment?.icon" fallback="⚔️" size="md" />
+                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="⚔️" size="md" />
                 <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>
@@ -132,7 +132,7 @@
               @click="selectEquipment(slot)"
             >
               <template v-if="slot.equipment">
-                <ItemIcon :icon="slot.equipment?.icon" fallback="🛡️" size="md" />
+                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="🛡️" size="md" />
                 <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>
@@ -146,7 +146,7 @@
           <div v-if="selectedSlot" class="equipment-detail">
             <template v-if="selectedSlot.equipment">
               <div class="detail-header">
-                <ItemIcon :icon="selectedSlot.equipment.icon" size="xl" />
+                <ItemIcon :icon="selectedSlot.equipment.icon" :rarity="selectedSlot.equipment.rarity" size="xl" />
                 <div class="detail-info">
                   <h4 :class="selectedSlot.equipment.rarity">{{ selectedSlot.equipment.name }}</h4>
                   <span :class="['detail-rarity', selectedSlot.equipment.rarity]">{{ getRarityName(selectedSlot.equipment.rarity) }}</span>
@@ -637,7 +637,7 @@ onUnmounted(() => {
 .equip-slot.rarity-epic { border-color: #a335ee; }
 .equip-slot.rarity-legendary { 
   border-color: #ff8000;
-  box-shadow: 0 0 8px rgba(255, 128, 0, 0.4);
+  animation: legendary-glow 2s infinite;
 }
 
 .slot-name {

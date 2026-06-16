@@ -28,7 +28,7 @@
             :class="['item-slot', entry.info?.rarity, { equipped: isEquipped(entry.item.itemId), selected: selectedEntry?.item === entry.item }]"
             @click="selectItem(entry)"
           >
-            <ItemIcon :icon="entry.info?.icon" size="sm" />
+            <ItemIcon :icon="entry.info?.icon" :rarity="entry.info?.rarity" size="sm" />
             <span v-if="entry.item.count > 1" class="item-count">{{ entry.item.count }}</span>
           </div>
           <div 

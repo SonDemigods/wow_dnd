@@ -203,7 +203,7 @@
             class="item-option"
             @click="useItem(item.itemId, item.index)"
           >
-            <ItemIcon :icon="item.icon" size="md" />
+            <ItemIcon :icon="item.icon" :rarity="item.rarity" size="md" />
             <div class="item-info">
               <span class="item-name">{{ item.name }}</span>
               <span class="item-desc">{{ item.description }}</span>
@@ -232,6 +232,7 @@ import { useSkillDisplay } from '@/composables/useSkillDisplay';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import type { CombatLog, CombatResult, CombatActionType } from '@/modules/combat/types';
 import type { Skill } from '@/modules/skill/types';
+import type { ItemRarity } from '@/modules/inventory/types';
 import ResourceBar from '@/components/common/ResourceBar.vue';
 import ItemIcon from '@/components/common/ItemIcon.vue';
 import {
@@ -387,10 +388,11 @@ const consumableItems = computed(() => {
           count: invItem.count,
           name: info.name,
           icon: info.icon || '📦',
-          description: buildItemDescription(info)
+          description: buildItemDescription(info),
+          rarity: info.rarity
         };
       })
-      .filter(Boolean) as { index: number; itemId: string; count: number; name: string; icon: string; description: string }[];
+      .filter(Boolean) as { index: number; itemId: string; count: number; name: string; icon: string; description: string; rarity: ItemRarity }[];
   } catch {
     return [];
   }
