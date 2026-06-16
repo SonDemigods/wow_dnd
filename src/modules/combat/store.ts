@@ -1627,6 +1627,10 @@ export const useCombatStore = defineStore('combat', () => {
         const transition = phaseManager.checkPhaseTransition(e.phases, e.hp, e.maxHp);
         if (transition.changed && transition.newPhase) {
           applyPhaseStats(e, transition.newPhase);
+          // 同步更新 AI 策略为当前阶段的策略
+          if (transition.newPhase.aiStrategy) {
+            e.aiStrategy = transition.newPhase.aiStrategy;
+          }
           addCombatLog({
             actorType: 'system', actorId: 'system', actorName: '系统',
             eventType: 'combat_event', targetType: 'enemy', targetId: e.id,
