@@ -5,9 +5,9 @@
 | 项目   | 内容               |
 | ---- | ---------------- |
 | 标题   | 技能模块设计文档         |
-| 版本   | v2.2             |
-| 生成日期 | 2026年5月20日       |
-| 所属模块 | `modules/skills` |
+| 版本   | v3.0             |
+| 生成日期 | 2026年6月16日       |
+| 所属模块 | `modules/skill` |
 
 ***
 
@@ -22,18 +22,28 @@
 | 职责      | 描述             |
 | ------- | -------------- |
 | 技能学习    | 根据等级解锁新技能      |
-| 技能遗忘    | 遗忘已学技能         |
+| 技能遗忘    | 遗忘已学技能（通过卸下技能栏间接实现）      |
 | 技能使用    | 使用技能并消耗MP      |
 | 技能栏管理   | 管理当前可使用的4个技能槽位 |
-| 职业技能初始化 | 根据职业加载技能树      |
+| 职业技能初始化 | 根据职业加载技能模板      |
+| 冷却管理    | 管理技能的冷却回合数     |
 
 ### 模块边界
 
 **技能模块**与以下模块交互:
 
-- 角色模块:消耗MP、获取等级和职业
-- 战斗模块:技能伤害计算、战斗状态判断
-- 事件总线:发布技能事件
+- 角色模块：消耗MP、获取等级和职业（通过直接调用 `useCharacterStore()` Action）
+- 战斗模块：技能伤害/效果计算、冷却推进（通过直接调 `useCombatStore() Action`）
+- 背包模块：技能物品掉落
+- 事件总线：仅发布 UI 动画/音效事件（`SKILL_CAST`、`SKILL_LEARNED`）
+
+### 跨模块通信机制
+
+技能模块遵循"直接 Store Action 调用"模式：
+
+- **技能模块 → 角色模块**：`castSkill()` 中直接调用 `characterStore.changeMp(-skill.mpCost)`、`characterStore.receiveHeal()`
+- **其他模块 → 技能模块**：战斗模块通过 `useSkillsStore().tickCooldowns()` 推进冷却
+- **事件总线**：仅保留 `SKILL_CAST`、`SKILL_LEARNED` 用于 UI 动画/音效通知
 
 ***
 
@@ -46,11 +56,14 @@
 | FR-SKILL-001 | 支持技能学习与等级解锁，只能查看解锁本职业的技能 | 核心功能 |
 | FR-SKILL-002 | 支持技能遗忘                   | 核心功能 |
 | FR-SKILL-003 | 支持技能使用（最大4个可使用技能）        | 核心功能 |
-| FR-SKILL-004 | 支持技能栏配置（非战斗时可调）          | 核心功能 |
-| FR-SKILL-005 | 支持职业技能初始化                | 职业系统 |
+| FR-SKILL-004 | 支持技能栏配置（4个槽位，可装备/卸下/交换）          | 核心功能 |
+| FR-SKILL-005 | 支持职业技能模板加载                | 职业系统 |
 | FR-SKILL-006 | 数据持久化存储                  | 存档系统 |
-| FR-SKILL-007 | 支持技能类型区分（物理伤害、魔法伤害、治疗）   | 技能系统 |
-| FR-SKILL-008 | 非战斗期间不能使用技能              | 战斗限制 |
+| FR-SKILL-007 | 支持6种技能类型区分（物理伤害、魔法伤害、生命恢复、法力恢复、增益、减益）   | 技能系统 |
+| FR-SKILL-008 | 支持技能冷却机制                  | 战斗限制 |
+| FR-SKILL-009 | 支持技能目标类型（单体/全体敌人/自身/友方）    | 目标系统 |
+| FR-SKILL-010 | 支持怪物/首领技能模板（usableBy = 'enemy' | 'both'） | AI 系统 |
+| FR-SKILL-011 | 支持 Buff/Debuff 效果（attack_up、poison、shield 等） | 效果系统 |
 
 ### 非功能需求
 
@@ -58,7 +71,7 @@
 | ------------- | ------------- | --- |
 | NFR-SKILL-001 | MP消耗验证        | 高   |
 | NFR-SKILL-002 | 技能栏容量限制（最大4个） | 高   |
-| NFR-SKILL-003 | 战斗状态校验        | 高   |
+| NFR-SKILL-003 | 冷却状态校验        | 高   |
 
 ***
 
@@ -87,7 +100,7 @@ export interface ISkillsService {
   calculateSkillEffect(skillId: string): SkillEffect;
   
   // === 系统操作 ===
-  checkLevelUnlocks(): void;
+  checkLevelUnlocks(shouldAutoEquip?: boolean): void;
   reset(): void;
 }
 ```
@@ -95,16 +108,37 @@ export interface ISkillsService {
 ### 数据类型定义
 
 ```typescript
-export type SkillType = 'physical_damage' | 'magic_damage' | 'heal';
+/** 技能类型（6种） */
+export type SkillType =
+  | 'physical_damage'   // 物理伤害
+  | 'magic_damage'      // 魔法伤害
+  | 'health_restore'    // 生命恢复
+  | 'mana_restore'      // 法力恢复
+  | 'buff'              // 增益
+  | 'debuff';           // 减益
 
+/** 技能槽位索引 */
 export type SkillSlotIndex = 0 | 1 | 2 | 3;
 
+/** 技能效果 */
 export interface SkillEffect {
   type: SkillType;
   value: number;
+  /** 系数（用于计算实际效果，优先级高于等级推算系数） */
   coefficient?: number;
 }
 
+/** Buff/Debuff 效果配置（type 引用 combat/effects 的 EffectType） */
+export interface SkillBuffEffect {
+  /** 效果类型（如 attack_up、poison、shield、stun、freeze 等） */
+  type: EffectType;
+  /** 效果基础值 */
+  value: number;
+  /** 持续回合数 */
+  turns: number;
+}
+
+/** 技能数据 */
 export interface Skill {
   id: string;
   name: string;
@@ -114,8 +148,24 @@ export interface Skill {
   type: SkillType;
   effect: SkillEffect;
   unlockLevel: number;
+  /** 冷却回合数，0 = 无冷却 */
+  cooldown?: number;
+  /** 可使用此技能的角色类型 */
+  usableBy?: 'player' | 'enemy' | 'both';
+  /** 技能目标类型 */
+  targetType?: 'single' | 'all_enemies' | 'self' | 'ally';
+  /** Buff/Debuff 效果列表（仅 buff/debuff 类型技能使用） */
+  buffs?: SkillBuffEffect[];
 }
 
+/** 技能施放应用的效果记录 */
+export interface AppliedEffectInfo {
+  type: EffectType;
+  value: number;
+  turns: number;
+}
+
+/** 技能使用结果 */
 export interface SkillUseResult {
   success: boolean;
   skillId: string;
@@ -123,12 +173,16 @@ export interface SkillUseResult {
   damage?: number;
   heal?: number;
   message: string;
+  /** 施加的效果列表（buff/debuff 技能时返回） */
+  appliedEffects?: AppliedEffectInfo[];
 }
 
+/** 技能栏配置（固定4槽位） */
 export interface SkillBar {
   slots: [string | null, string | null, string | null, string | null];
 }
 
+/** 技能模块存储数据 */
 export interface SkillsData {
   characterId: string;
   skills: Skill[];
@@ -137,6 +191,7 @@ export interface SkillsData {
   updatedAt: number;
 }
 
+/** 技能查询条件 */
 export interface SkillQuery {
   type?: SkillType;
   isUnlocked?: boolean;
@@ -144,6 +199,7 @@ export interface SkillQuery {
   maxUnlockLevel?: number;
 }
 
+/** 技能施放验证结果 */
 export interface SkillValidationResult {
   canUse: boolean;
   failureReason?:
@@ -161,9 +217,9 @@ export interface SkillValidationResult {
 | 事件名称                | 触发时机      | 事件数据                     |
 | ------------------- | --------- | ------------------------ |
 | `SKILL_CAST`        | 技能使用时     | `{ skill, success }`     |
-| `SKILL_EQUIPPED`    | 技能装备到技能栏时 | `{ skillId, slotIndex }` |
-| `SKILL_UNLOCKED`    | 技能解锁时     | `{ skill }`              |
-| `SKILL_BAR_CHANGED` | 技能栏变化时    | `{ slots }`              |
+| `SKILL_LEARNED`    | 技能学会时 | `{ skill }` |
+
+> 注意：`SKILL_EQUIPPED`、`SKILL_UNLOCKED`、`SKILL_BAR_CHANGED` 在新架构中不再作为独立的 EventBus 事件发出，而是由 Store 的 computed 属性（如 `equippedSkills`、`unlockedSkills`）通过 Vue 响应式系统驱动 UI 更新。
 
 ***
 
@@ -171,32 +227,42 @@ export interface SkillValidationResult {
 
 ### 技能使用流程
 
-1. 检查是否处于战斗状态，如果非战斗则返回失败
-2. 检查技能是否在技能栏中
-3. 检查MP是否充足
-4. 如果满足条件:
-   - 消耗MP
-   - 执行技能效果（根据技能类型计算伤害/治疗）
-   - 触发 `SKILL_CAST` 事件
-5. 如果不满足条件,返回失败
+1. 校验技能是否可施放：调用 `canCastSkill(skill, currentMana)` 检查法力是否充足
+2. 消耗法力值：直接调用 `characterStore.changeMp(-skill.mpCost)`
+3. 根据技能类型计算效果值：
+   - `physical_damage`：`calculateSkillDamage(skill, stats)` → 基础值 + str × 系数
+   - `magic_damage`：基础值 + int × 系数
+   - `health_restore`：基础值 + wis × 系数 → 调用 `characterStore.receiveHeal()`
+   - `mana_restore`：基础值 + int × 系数 → 调用 `characterStore.changeMp()`
+   - `buff` / `debuff`：调用 `calculateBuffValue()` 计算效果值，通过 `appliedEffects` 返回
+4. 如果技能有冷却，记录冷却回合数：`cooldowns[skillId] = skill.cooldown`
+5. 触发 `SKILL_CAST` 事件（UI 动画/音效）
+6. 记录冒险日志
 
 ### 技能栏配置流程
 
-1. 检查是否处于战斗状态
-2. 如果非战斗:
-   - 验证技能是否已解锁
-   - 验证槽位索引有效(0-3)
-   - 将技能装备到指定槽位
-   - 触发 `SKILL_EQUIPPED` 事件
-3. 如果战斗中,返回失败
+1. 验证槽位索引有效（0-3）：`validateSkillBarSlot()`
+2. 验证技能已解锁（`skill.unlockLevel <= characterLevel`）
+3. 如果技能不在已学列表中，自动添加
+4. 如果槽位已有技能，先卸下
+5. 装备新技能到指定槽位
+6. 持久化到 IndexedDB
 
 ### 技能解锁流程
 
-1. 检查玩家当前等级
-2. 遍历所有技能,检查解锁等级条件
-3. 如果技能未解锁且等级满足:
-   - 标记技能为已解锁
-   - 触发 `SKILL_UNLOCKED` 事件
+1. 遍历技能模板缓存中的技能
+2. 对于未存在于 `skills` 列表且 `unlockLevel <= characterLevel` 的技能：
+   - 添加到已学技能列表
+   - 如果 `shouldAutoEquip === true`，自动装备到空槽位
+   - 触发 `SKILL_LEARNED` 事件
+   - 记录冒险日志
+3. 初始化时 `shouldAutoEquip = false`，避免覆盖用户手动卸下的技能
+
+### 冷却管理流程
+
+1. 每回合结束时，战斗模块调用 `tickCooldowns()` 减少所有冷却回合数
+2. 冷却为 0 时自动清除
+3. 通过 `isOnCooldown(skillId)` 检查技能是否在冷却中
 
 ***
 
@@ -204,23 +270,24 @@ export interface SkillValidationResult {
 
 ### IndexedDB 存储结构
 
-| 数据库 Store | Key           | 数据结构       | 说明            |
-| --------- | ------------- | ---------- | ------------- |
-| skills    | `characterId` | SkillsData | 技能完整数据（按角色隔离） |
+| 数据库 Store    | Key           | 数据结构       | 说明            |
+| ----------- | ------------- | ---------- | ------------- |
+| char_skills | `characterId` | SkillsData | 技能完整数据（按角色隔离） |
+| config_skills | `id`        | SkillTemplateStorage | 技能模板（按职业隔离） |
 
 ### SkillsData 存储内容
 
 | 字段             | 类型       | 默认值                                  | 说明             |
 | -------------- | -------- | ------------------------------------ | -------------- |
 | `characterId`  | string   | -                                    | 角色唯一标识         |
-| `skills`       | Skill\[] | \[]                                  | 职业技能列表（包含解锁状态） |
+| `skills`       | Skill\[] | \[]                                  | 已学技能列表（包含锁定/解锁状态） |
 | `skillBar`     | SkillBar | { slots: \[null, null, null, null] } | 技能栏配置（4个槽位）    |
 | `currentClass` | string   | null                                 | 当前职业           |
 | `updatedAt`    | number   | Date.now()                           | 最后更新时间         |
 
 ### 多角色支持说明
 
-技能数据通过 `characterId` 字段实现角色隔离，每个角色拥有独立的技能解锁状态和技能栏配置。切换角色时，系统自动加载对应角色的技能数据，并根据角色职业重新初始化技能列表。删除角色时，级联删除该角色的技能数据。
+技能数据通过 `characterId` 字段实现角色隔离，每个角色拥有独立的技能解锁状态和技能栏配置。切换角色时，系统自动加载对应角色的技能数据，并根据角色职业重新初始化技能模板。删除角色时，级联删除该角色的技能数据。
 
 ### 技能栏槽位说明
 
@@ -231,27 +298,25 @@ export interface SkillValidationResult {
 | 2    | 技能槽3 |
 | 3    | 技能槽4 |
 
-### 等级解锁规则
-
-| 等级 | 解锁技能数   |
-| -- | ------- |
-| 1  | 2个基础技能  |
-| 2  | 解锁第3个技能 |
-| 3  | 解锁第4个技能 |
-| 4  | 解锁第5个技能 |
-| 5  | 解锁第6个技能 |
-| 6  | 解锁第7个技能 |
-| 7  | 解锁第8个技能 |
-| 8  | 解锁第9个技能 |
-| 10 | 解锁所有技能  |
-
 ### 同步机制
 
 | 同步类型 | 触发条件         | 延迟       |
 | ---- | ------------ | -------- |
-| 自动同步 | 状态变更         | 500ms 防抖 |
-| 立即同步 | 关键操作         | 即时       |
+| 自动同步 | Action 完成后     | 即时持久化 |
 | 页面卸载 | beforeunload | 即时       |
+
+### Service 层纯函数
+
+| 函数名                    | 功能                         |
+| ------------------------ | ---------------------------- |
+| `calculateSkillDamage()` | 计算技能伤害/效果值（按技能类型和属性系数） |
+| `getSkillCoefficient()`  | 按解锁等级获取技能系数（分层缩放） |
+| `calculateBuffValue()`   | 计算 Buff/Debuff 效果值（按效果类型和属性加成） |
+| `checkManaCost()`        | 检查法力值是否足够施放技能   |
+| `canLearnSkill()`        | 判断角色是否可以学习某个技能模板 |
+| `validateSkillBarSlot()` | 验证技能栏槽位索引是否有效   |
+| `isSkillEquipped()`      | 检查技能是否已装备在技能栏中 |
+| `canCastSkill()`         | 校验技能是否可施放           |
 
 ***
 
@@ -259,18 +324,17 @@ export interface SkillValidationResult {
 
 ### 依赖关系
 
-- **角色模块**:消耗MP、获取等级和职业属性
-- **战斗模块**:技能伤害计算、战斗状态判断
-- **事件总线**:发布技能事件
+- **角色模块**：通过 `useCharacterStore()` 直接调用消耗 MP、获取等级和职业属性
+- **战斗模块**：通过 Store 获取技能数据用于伤害计算，调用 `tickCooldowns()` 推进冷却
+- **事件总线**：仅发布 `SKILL_CAST`、`SKILL_LEARNED` UI 事件
 
 ### 交互模块
 
 | 模块   | 交互方式 | 说明                                     |
 | ---- | ---- | -------------------------------------- |
-| 角色模块 | 调用   | `addMp(-cost)` 消耗MP, `getLevel()` 获取等级 |
-| 战斗模块 | 调用   | `isInCombat()` 判断战斗状态                  |
-| 战斗模块 | 事件订阅 | 技能效果影响战斗                               |
-| 角色模块 | 事件订阅 | 技能事件影响角色状态                             |
+| 角色模块 | 直接 Action 调用 | `changeMp(-cost)` 消耗法力，`receiveHeal()` 恢复生命，`getCharacterData()` 获取角色数据 |
+| 战斗模块 | 直接 Action 调用 | `castSkill()` 返回伤害值供战斗计算，`tickCooldowns()` 推进冷却 |
+| 日志模块 | 直接 Action 调用 | 记录技能学习/使用的冒险日志 |
 
 ***
 
@@ -280,14 +344,10 @@ export interface SkillValidationResult {
 
 | 异常类型    | 触发条件           | 处理策略              |
 | ------- | -------------- | ----------------- |
-| 技能不存在   | 使用未解锁的技能       | 返回 false          |
-| MP不足    | MP < 技能消耗      | 返回 false          |
-| 技能不在技能栏 | 技能未装备到技能栏      | 返回 false          |
-| 战斗中不可调整 | 战斗状态下尝试调整技能栏   | 返回 false          |
-| 技能栏已满   | 尝试装备超过4个技能     | 返回 false          |
-| 槽位索引无效  | 索引不在0-3范围内     | 返回 false          |
-| 存储读取失败  | IndexedDB 解析错误 | 使用默认值初始化          |
-| 存储写入失败  | IndexedDB 写入异常 | 进入重试队列，指数退避重试 3 次 |
+| 技能不存在   | 使用未解锁或未知的技能       | 返回 `{ success: false }`          |
+| 法力不足    | MP < 技能消耗      | 返回 `{ success: false }`          |
+| 存储读取失败  | IndexedDB 解析错误 | 使用默认值初始化（空技能列表、空技能栏）          |
+| 存储写入失败  | IndexedDB 写入异常 | `dbService.withRetry` 自动重试 |
 
 ***
 
@@ -297,38 +357,42 @@ export interface SkillValidationResult {
 
 | 优化点    | 实现方式                       | 预期效果     |
 | ------ | -------------------------- | -------- |
-| 技能缓存   | 内存缓存技能列表                   | 快速访问     |
-| 技能栏预计算 | 缓存已装备技能列表                  | 减少查找时间   |
-| 防抖同步   | 500ms 延迟合并写入               | 减少 IO 操作 |
-| 批量写入   | SyncEngine 批量处理            | 提升性能     |
-| 异步加载   | Store 初始化时异步从 IndexedDB 读取 | 不阻塞主线程   |
+| 技能缓存   | 内存缓存技能列表、技能模板（`skillTemplates`、`monsterSkillTemplates`）   | 快速访问     |
+| 技能栏预计算 | `computed` 缓存 `equippedSkills`、`skillBarSlots`                  | 减少查找时间   |
+| 即时持久化 | Action 完成后异步写 DB                            | 减少 IO 操作 |
+| 异步加载   | Store `initialize` 时异步从 IndexedDB 读取 | 不阻塞主线程   |
 
 ### 数据安全
 
 | 安全措施 | 实现方式             |
 | ---- | ---------------- |
-| 输入验证 | 检查技能ID有效性和槽位索引范围 |
-| 状态检查 | 操作前验证战斗状态        |
-| 异常捕获 | 防止程序崩溃           |
-| 重试机制 | 失败时自动重试 3 次      |
-| 数据校验 | 写入前验证数据结构        |
+| 输入验证 | `validateSkillBarSlot` 检查槽位索引范围，`canCastSkill` 检查法力值 |
+| 类型校验 | 技能类型使用 TypeScript 联合类型确保编译期安全        |
+| 异常捕获 | `dbService.withRetry` 含重试机制           |
+| 数据校验 | 写入前通过 `toRawData()` 处理数据       |
 
 ***
 
 ## 模块文件结构
 
 ```
-src/modules/skills/
-  - index.ts          # 核心实现（Store + Service）
+src/modules/skill/
+  - index.ts          # 模块入口，统一导出接口
   - types.ts          # 类型定义
+  - db.ts             # 数据库操作层（SkillsDbService 类）
+  - store.ts          # Pinia Store 状态管理（useSkillsStore）
+  - service.ts        # 纯函数服务层（无状态、无副作用）
 ```
 
 ### 文件职责说明
 
-| 文件         | 职责                         |
-| ---------- | -------------------------- |
-| `index.ts` | Pinia Store 实现、服务接口实现、技能逻辑 |
-| `types.ts` | TypeScript 类型定义、接口定义       |
+| 文件           | 职责                                  |
+| ------------- | ----------------------------------- |
+| `index.ts`    | 模块入口，统一导出 types、db、service 和 useSkillsStore |
+| `types.ts`    | TypeScript 类型定义、接口定义（Skill、SkillBar、SkillType 等）                 |
+| `db.ts`       | IndexedDB 数据库操作层，封装 `char_skills` 和 `config_skills` 表读写（SkillsDbService 类）             |
+| `store.ts`    | Pinia Store 状态管理，响应式数据维护。管理技能学习、技能栏装备、技能施放、等级解锁检测、冷却管理            |
+| `service.ts`  | 纯函数服务层，包含伤害计算、Buff 效果计算、成本校验、学习判定等无状态逻辑                     |
 
 ***
 
@@ -336,12 +400,14 @@ src/modules/skills/
 
 | 版本   | 日期         | 修改内容                                 | 作者     |
 | ---- | ---------- | ------------------------------------ | ------ |
-| v1.0 | 2026-05-15 | 初始版本,包含基础技能功能                        | System |
+| v1.0 | 2026-05-15 | 初始版本，包含基础技能功能                        | System |
 | v1.1 | 2026-05-15 | 移除冷却时间设定                             | System |
 | v1.2 | 2026-05-15 | 添加技能栏系统(4槽位)和等级解锁机制                  | System |
 | v2.0 | 2026-05-19 | 迁移到 Pinia + IndexedDB 架构，实现自动同步持久化   | System |
 | v2.1 | 2026-05-20 | 简化技能类型，仅保留伤害和治疗两种类型，移除物理/魔法伤害区分及防御类型 | System |
 | v2.2 | 2026-05-20 | 伤害类技能区分物理伤害和魔法伤害两种类型                 | System |
+| v2.3 | 2026-06-16 | 模块路径重命名为 modules/skill，重构文件结构为 index.ts + types.ts + db.ts + store.ts + service.ts | System |
+| v3.0 | 2026-06-16 | 全面更新与代码对齐：技能类型扩展为 6 种（+health_restore/mana_restore/buff/debuff）；新增 SkillBuffEffect 定义；Skill 新增 cooldown/usableBy/targetType/buffs 字段；SkillUseResult 新增 appliedEffects；跨模块通信改为直接 Store Action 调用；新增冷却管理（tickCooldowns/isOnCooldown）；新增怪物技能模板支持（loadMonsterSkillTemplates） | System |
 
 ***
 

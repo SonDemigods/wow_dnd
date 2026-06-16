@@ -5,8 +5,8 @@
 | 项目   | 内容                  |
 | ---- | ------------------- |
 | 标题   | 角色模块设计文档            |
-| 版本   | v2.0                |
-| 生成日期 | 2026年5月19日          |
+| 版本   | v4.0                |
+| 生成日期 | 2026年6月16日          |
 | 所属模块 | `modules/character` |
 
 ***
@@ -24,7 +24,7 @@
 | 角色创建   | 管理角色名称、阵营、种族、职业的选择与存储                     |
 | 多角色管理  | 支持创建、选择、删除多个独立角色                          |
 | 核心属性管理 | 维护六大核心属性（力量、敏捷、体质、智力、感知、魅力），仅允许修改核心属性     |
-| 次级属性计算 | 根据核心属性自动计算次级属性（物理攻击、物理防御、魔法攻击、魔法防御、暴击、闪避） |
+| 次级属性计算 | 根据核心属性自动计算衍生属性（物理攻击、物理防御、魔法攻击、魔法防御、暴击、闪避、HP加成、MP加成、治疗加成） |
 | 成长系统   | 处理等级提升、经验积累、属性增长                          |
 | 状态管理   | 管理生命值、魔法值的恢复与消耗                           |
 | 金币管理   | 处理金币的获取与消耗                                |
@@ -35,11 +35,19 @@
 
 **角色模块**与以下模块交互：
 
-- 装备模块：提供属性加成
+- 装备模块：应用/移除装备属性加成
 - 战斗模块：消耗HP/MP
 - 商店模块：消耗金币
 - 技能模块：消耗MP
 - 任务模块：获取经验和金币奖励
+- 背包模块：物品使用效果触发角色属性变更
+
+### 跨模块通信机制
+
+**角色模块**的跨模块通信遵循"直接 Store Action 调用"模式：
+
+- **其他模块 → 角色模块**：其他模块直接调用 `useCharacterStore()` 的 Action（如 `takeDamage`、`receiveHeal`、`changeMp`、`gainExp`、`gainGold`、`applyBonus`、`removeBonus` 等）
+- **角色模块 → 其他模块**：角色模块仅通过 `eventBus.emit()` 发布角色生命周期事件（`CHARACTER_LEVEL_UP`、`CHARACTER_DEATH`、`CHARACTER_RESURRECTED`、`CHARACTER_CREATED`、`CHARACTER_DELETED`、`CHARACTER_LOGOUT`）供 UI 组件监听动画/音效
 
 ***
 
@@ -54,16 +62,16 @@
 | FR-CHAR-003 | 支持种族选择（根据阵营）                                   | 角色创建流程  |
 | FR-CHAR-004 | 支持职业选择（根据种族）                                   | 角色创建流程  |
 | FR-CHAR-005 | 经验值累加与升级检测                                     | 战斗/任务奖励 |
-| FR-CHAR-006 | 等级提升时自动增加属性                                    | 成长系统    |
+| FR-CHAR-006 | 等级提升时自动增加属性（每级全属性+1）                          | 成长系统    |
 | FR-CHAR-007 | 生命值增减与边界控制                                     | 战斗/药水   |
 | FR-CHAR-008 | 魔法值增减与边界控制                                     | 战斗/技能   |
 | FR-CHAR-009 | 金币增减与边界控制                                      | 任务奖励/商店 |
 | FR-CHAR-010 | 属性加成的应用与移除                                     | 装备系统    |
 | FR-CHAR-011 | 数据持久化存储                                        | 存档系统    |
 | FR-CHAR-012 | 数据加载恢复                                         | 读档系统    |
-| FR-CHAR-013 | 玩家死亡后损失本级所有经验值                                 | 死亡惩罚    |
-| FR-CHAR-014 | 玩家死亡后复活，生命法力恢复至最大值的一半                          | 复活机制    |
-| FR-CHAR-015 | 等级上限为20级，达到上限后经验值不再累加                          | 成长系统    |
+| FR-CHAR-013 | 玩家死亡后损失本级所有经验值（exp 归零）                        | 死亡惩罚    |
+| FR-CHAR-014 | 玩家死亡后复活，生命法力恢复至最大值的 50%                       | 复活机制    |
+| FR-CHAR-015 | 等级上限为 MAX_LEVEL（配置常量），达到上限后经验值不再累加             | 成长系统    |
 | FR-CHAR-016 | 种族选择后应用对应的属性调整值                                | 角色创建    |
 | FR-CHAR-017 | 职业选择后应用对应的属性调整值                                | 角色创建    |
 | FR-CHAR-018 | 属性加成按优先级顺序计算，优先级从高到低：基础属性 < 种族调整 < 职业调整 < 装备加成 | 属性系统    |
@@ -72,6 +80,7 @@
 | FR-CHAR-021 | 支持删除已创建的角色（需二次确认）                              | 多角色系统   |
 | FR-CHAR-022 | 每个角色数据完全独立，包括属性、进度、物品、任务等                      | 多角色系统   |
 | FR-CHAR-023 | 支持退出当前角色返回角色选择界面                               | 多角色系统   |
+| FR-CHAR-024 | 支持 characterList 缓存所有角色概要信息                     | 多角色系统   |
 
 ### 非功能需求
 
@@ -91,12 +100,12 @@
 ```typescript
 export interface ICharacterService {
   // === 多角色管理 ===
-  createCharacter(name: string, factionId: FactionType, raceId: RaceType, classId: ClassType): string;
-  selectCharacter(characterId: string): boolean;
-  deleteCharacter(characterId: string): boolean;
-  getAllCharacters(): CharacterListItem[];
+  createCharacter(name: string, factionId: FactionType, raceId: RaceType, classId: ClassType): Promise<string>;
+  selectCharacter(characterId: string): Promise<boolean>;
+  deleteCharacter(characterId: string): Promise<boolean>;
+  getAllCharacters(): Promise<CharacterListItem[]>;
   getCurrentCharacterId(): string | null;
-  logout(): void;
+  logout(): Promise<void>;
   
   // === 状态查询 ===
   getStats(): Stats;
@@ -112,28 +121,28 @@ export interface ICharacterService {
   getCharacterInfo(): Character;
   
   // === 数据修改 ===
-  addExp(amount: number): void;
-  addHp(amount: number): void;
-  addMp(amount: number): void;
-  setHp(value: number): void;
-  setMp(value: number): void;
-  applyBonus(bonus: Partial<Stats>): void;
-  removeBonus(bonus: Partial<Stats>): void;
-  addGold(amount: number): void;
-  spendGold(amount: number): boolean;
+  addExp(amount: number): Promise<void>;
+  addHp(amount: number): Promise<void>;
+  addMp(amount: number): Promise<void>;
+  setHp(value: number): Promise<void>;
+  setMp(value: number): Promise<void>;
+  applyBonus(bonus: Partial<Stats>): Promise<void>;
+  removeBonus(bonus: Partial<Stats>): Promise<void>;
+  addGold(amount: number): Promise<void>;
+  spendGold(amount: number): Promise<boolean>;
   
   // === 角色信息设置 ===
-  setName(name: string): void;
-  setFactionId(factionId: FactionType): void;
-  setRace(race: RaceType): void;
-  setClass(classId: ClassType): void;
+  setName(name: string): Promise<void>;
+  setRace(race: RaceType): Promise<void>;
+  setClass(classId: ClassType): Promise<void>;
+  setFactionId(factionId: FactionType): Promise<void>;
   
   // === 系统操作 ===
-  reset(): void;
+  reset(): Promise<void>;
   
   // === 死亡处理 ===
-  handleDeath(): void;
-  resurrect(): void;
+  handleDeath(): Promise<void>;
+  resurrect(): Promise<void>;
 }
 ```
 
@@ -150,16 +159,19 @@ export interface Stats {
   cha: number;  // 魅力 - 影响对话和交易
 }
 
-/** 次级属性 - 根据核心属性自动计算，不可直接修改 */
+/** 衍生属性 - 根据核心属性自动计算，不可直接修改 */
 export interface Attributes {
-  maxHp: number;              // 最大生命值 = 100 + con * 10
-  maxMana: number;            // 最大魔法值 = 50 + int * 5 + wis * 3 + cha * 2
-  physicalAttack: number;     // 物理攻击力 = str * 2 + dex * 0.5
-  physicalDefense: number;    // 物理防御力 = con * 1.5 + dex * 0.3
-  magicAttack: number;        // 魔法攻击力 = int * 2 + wis * 0.5 + cha * 0.3
-  magicDefense: number;       // 魔法防御力 = wis * 1.5 + int * 0.5 + cha * 0.3
-  critChance: number;         // 暴击率 (%) = dex * 0.5
-  dodgeChance: number;        // 闪避率 (%) = dex * 0.3
+  maxHp: number;              // 最大生命值
+  maxMana: number;            // 最大魔法值
+  physicalAttack: number;     // 物理攻击力
+  physicalDefense: number;    // 物理防御力
+  magicAttack: number;        // 魔法攻击力
+  magicDefense: number;       // 魔法防御力
+  critChance: number;         // 暴击率 (%)
+  dodgeChance: number;        // 闪避率 (%)
+  hpBonus: number;            // 生命值加成
+  mpBonus: number;            // 魔法值加成
+  healBonus: number;          // 治疗加成
 }
 
 /** 阵营数据 */
@@ -179,6 +191,19 @@ export interface RaceData {
   factionId: FactionType;
   bonus?: Partial<Stats>;
   description: string;
+}
+
+/** 职业数据 */
+export interface ClassData {
+  id: ClassType;
+  name: string;
+  icon: string;
+  primaryStat: keyof Stats;
+  factionsIds: FactionType[];
+  raceIds: RaceType[];
+  description: string;
+  color: string;
+  bonus?: Partial<Stats>;
 }
 
 /** 角色信息 */
@@ -203,16 +228,16 @@ export type FactionType = 'alliance' | 'horde' | 'neutral';
 
 /** 种族类型枚举 */
 export type RaceType = 
-  | 'human' | 'dwarf' | 'gnome' | 'nightelf' | 'draenei' | 'worgen'
-  | 'voidelf' | 'lightforgeddraenei' | 'darkirondwarf' | 'kul_tiran' | 'mechagnome'
-  | 'pandaren' | 'orc' | 'undead' | 'tauren' | 'troll' | 'bloodelves' | 'goblin'
-  | 'nightborne' | 'highmountaintauren' | 'magharorc' | 'zandalari' | 'vulpera'
+  | 'human' | 'dwarf' | 'gnome' | 'night_elf' | 'draenei' | 'worgen'
+  | 'void_elf' | 'lightforged_draenei' | 'dark_iron_dwarf' | 'kul_tiran' | 'mecha_gnome'
+  | 'pandaren' | 'orc' | 'undead' | 'tauren' | 'troll' | 'blood_elves' | 'goblin'
+  | 'nightborne' | 'highmountain_tauren' | 'maghar_orc' | 'zandalari' | 'vulpera'
   | 'dracthyr' | 'earthen' | 'harenei';
 
 /** 职业类型枚举 */
 export type ClassType = 
   | 'warrior' | 'mage' | 'paladin' | 'hunter' | 'rogue' | 'warlock'
-  | 'druid' | 'priest' | 'shaman' | 'deathknight' | 'monk' | 'demonhunter' | 'evoker';
+  | 'druid' | 'priest' | 'shaman' | 'death_knight' | 'monk' | 'demon_hunter' | 'evoker';
 
 /** 种族属性调整值 */
 export interface RaceBonus {
@@ -238,20 +263,61 @@ export interface CharacterListItem {
   createdTime: number;
   lastPlayedTime: number;
 }
+
+/** 创建角色参数 */
+export interface CreateCharacterParams {
+  name: string;
+  factionId: FactionType;
+  raceId: RaceType;
+  classId: ClassType;
+}
+
+/** 经验值增益结果 */
+export interface ExpGainResult {
+  character: Character;
+  leveledUp: boolean;
+  levelsGained: number;
+  newLevel: number;
+}
+
+/** 角色数据存储结构（IndexedDB char_data 表） */
+export interface CharacterDataStorage {
+  characterId: string;
+  name: string;
+  factionId: string;
+  raceId: string;
+  classId: string;
+  level: number;
+  exp: number;
+  expToNextLevel: number;
+  gold: number;
+  baseStats: Record<string, number>;
+  currentHp: number;
+  maxHp: number;
+  currentMp: number;
+  maxMp: number;
+  bonusStats: Partial<Record<string, number>>;
+  createdTime: number;
+  lastPlayedTime: number;
+  updatedAt: number;
+}
 ```
 
-### 次级属性计算公式
+### 衍生属性计算公式
 
-| 次级属性    | 计算公式                                             | 依赖核心属性   |
-| ------- | ------------------------------------------------ | -------- |
-| 最大生命值   | maxHp = 100 + con × 10                           | 体质       |
-| 最大魔法值   | maxMana = 50 + int × 5 + wis × 3 + cha × 2       | 智力、感知、魅力 |
-| 物理攻击力   | physicalAttack = str × 2 + dex × 0.5             | 力量、敏捷    |
-| 物理防御力   | physicalDefense = con × 1.5 + dex × 0.3          | 体质、敏捷    |
-| 魔法攻击力   | magicAttack = int × 2 + wis × 0.5 + cha × 0.3    | 智力、感知、魅力 |
-| 魔法防御力   | magicDefense = wis × 1.5 + int × 0.5 + cha × 0.3 | 感知、智力、魅力 |
-| 暴击率 (%) | critChance = dex × 0.5                           | 敏捷       |
-| 闪避率 (%) | dodgeChance = dex × 0.3                          | 敏捷       |
+| 衍生属性    | 计算函数（来自 `@/utils/calculations`）             | 依赖核心属性   |
+| ------- | ----------------------------------------------- | -------- |
+| 最大生命值   | `calculateMaxHp(stats)`                          | 体质       |
+| 最大魔法值   | `calculateMaxMana(stats)`                        | 智力、感知、魅力 |
+| 物理攻击力   | `calculatePhysicalAttack(stats)`                  | 力量、敏捷    |
+| 物理防御力   | `calculatePhysicalDefense(stats)`                 | 体质、敏捷    |
+| 魔法攻击力   | `calculateMagicAttack(stats)`                     | 智力、感知、魅力 |
+| 魔法防御力   | `calculateMagicDefense(stats)`                    | 感知、智力、魅力 |
+| 暴击率 (%) | `calculateCritChance(stats)`                      | 敏捷       |
+| 闪避率 (%) | `calculateDodgeChance(stats)`                     | 敏捷       |
+| HP 加成   | `calculateHpBonus(stats)`                         | 体质       |
+| MP 加成   | `calculateMpBonus(stats)`                         | 智力       |
+| 治疗加成    | `calculateHealBonus(stats)`                       | 感知       |
 
 ### 种族属性调整值
 
@@ -358,84 +424,69 @@ export interface CharacterListItem {
 **属性计算公式：**
 
 ```
-最终属性 = 基础属性(10) + 种族调整 + 职业调整 + Σ装备加成
-```
-
-**优先级示例：**
-
-一个人类法师角色的智力属性计算：
-
-```
-基础智力 = 10
-种族调整（人类）= +0
-职业调整（法师）= +3
-装备加成（智力项链+2，智力戒指+1）= +3
-最终智力 = 10 + 0 + 3 + 3 = 16
+最终属性 = computeEffectiveStats(baseStats, bonusStats)
+其中 baseStats 已包含基础(10) + 种族调整 + 职业调整
 ```
 
 ### 事件定义
 
-| 事件名称                          | 触发时机      | 事件数据                                              |
-| ----------------------------- | --------- | ------------------------------------------------- |
-| `CHARACTER_LEVEL_UP`          | 角色升级时     | `{ oldLevel: number, newLevel: number }`          |
-| `CHARACTER_CORE_STATS_CHANGE` | 核心属性发生变化时 | `{ oldStats: CoreStats, newStats: CoreStats }`    |
-| `CHARACTER_HP_CHANGE`         | 生命值变化时    | `{ oldHp: number, newHp: number, maxHp: number }` |
-| `CHARACTER_MP_CHANGE`         | 魔法值变化时    | `{ oldMp: number, newMp: number, maxMp: number }` |
-| `CHARACTER_DEATH`             | 角色死亡时     | `{ cause: string }`                               |
-| `CHARACTER_RESURRECTED`       | 角色复活时     | `{ newHp: number, newMp: number }`                |
-| `CHARACTER_CREATED`           | 角色创建成功时   | `{ characterId: string, name: string }`           |
-| `CHARACTER_SELECTED`          | 角色选择成功时   | `{ characterId: string }`                         |
-| `CHARACTER_DELETED`           | 角色删除成功时   | `{ characterId: string }`                         |
-| `CHARACTER_LOGOUT`            | 角色退出时     | -                                                 |
+| 事件名称                     | 触发时机      | 事件数据                                              |
+| ------------------------ | --------- | ------------------------------------------------- |
+| `CHARACTER_LEVEL_UP`     | 角色升级时     | `{ oldLevel: number, newLevel: number }`          |
+| `CHARACTER_DEATH`        | 角色死亡时     | `{ cause: string }`                               |
+| `CHARACTER_RESURRECTED`  | 角色复活时     | `{ newHp: number, newMp: number }`                |
+| `CHARACTER_CREATED`      | 角色创建成功时   | `{ characterId: string, name: string }`           |
+| `CHARACTER_DELETED`      | 角色删除成功时   | `{ characterId: string }`                         |
+| `CHARACTER_LOGOUT`       | 角色退出时     | -                                                 |
 
 ***
 
 ## 业务逻辑流程
 
+### 角色创建流程
+
+1. 调用 `generateCharacterId()` 生成唯一角色 ID
+2. 调用 `createInitialCharacter(params, raceData, classData)` 纯函数创建角色数据（计算基础属性、HP/MP 上限等）
+3. 更新 Store 状态（`character`、`currentCharacterId`、`raceBonus`、`classBonus`）
+4. 初始化技能数据：从 `skillsDbService.getSkillTemplatesByClass()` 获取 1 级可用技能，自动装备前 4 个到技能栏
+5. 持久化：保存 `CharacterListItem`、`CharacterDataStorage`、`SkillsData` 到 IndexedDB
+6. 触发 `CHARACTER_CREATED` 事件（UI 动画）
+7. 刷新 `characterList`
+
 ### 经验值添加与升级流程
 
-1. 调用 `addExp(amount)` 方法添加经验值
-2. 检查当前经验值是否达到升级所需经验
-3. 如果达到升级条件：
-   - 增加等级
-   - 扣除升级所需经验
-   - 提升基础属性
-   - 计算新的HP/MP上限
-   - 恢复满HP/MP
-   - 触发 `CHARACTER_LEVEL_UP` 事件
-4. 如果经验值仍然达到升级条件，循环处理
-5. 保存数据到本地存储
+1. 调用 `gainExp(amount)` 方法添加经验值
+2. 调用 `applyExpGain(character, amount)` 纯函数计算经验值和升级
+3. 升级逻辑（`applyLevelUp`）：每级全属性 +1（受 `MAX_STAT` 上限约束），HP/MP 重新计算并回满，`expToNextLevel` 从 `getExpForLevel(newLevel + 1)` 获取
+4. 等级上限由 `MAX_LEVEL`（`@/config/character`）控制
+5. 触发 `CHARACTER_LEVEL_UP` 事件
+6. 升级经验表从 `src/utils/calculations.ts` 的 `getExpForLevel` 函数获取
 
 ### 属性加成应用流程
 
-1. 调用 `applyBonus(bonus)` 方法应用属性加成
-2. 记录当前属性状态
-3. 遍历bonus的所有键，累加到bonusStats
-4. 触发 `CHARACTER_STATS_CHANGE` 事件
-5. 保存数据到本地存储
+1. 其他模块调用 `applyBonus(delta)` 应用属性加成
+2. 调用 `computeBonusChange()` 纯函数计算新的 bonusStats
+3. 如果体质/智力/感知/魅力变化，自动重新计算 HP/MP 上限（`recalculateHpMp`）
+4. `effectiveStats` 通过 `computed` 缓存：`computeEffectiveStats(baseStats, bonusStats)`
+5. 持久化到 IndexedDB
 
-### 金币消费流程
+### 装备属性同步
 
-1. 调用 `spendGold(amount)` 方法消费金币
-2. 检查当前金币是否充足
-3. 如果充足，扣除金币并保存数据，返回 true
-4. 如果不足，返回 false
+装备模块调用 `applyBonus(delta)` 和 `removeBonus(delta)` 来同步装备属性变化，角色模块通过 `bonusStats` 累积所有装备加成。
 
 ### 死亡处理流程
 
-1. 调用 `handleDeath()` 方法
-2. 计算当前等级已获得的经验值
-3. 扣除本级所有经验值（将exp设为0）
-4. 触发 `CHARACTER_DEATH` 事件
-5. 自动调用 `resurrect()` 方法
+1. 外部模块（如战斗模块）检测到 HP <= 0 后调用 `handleDeath()`
+2. 将当前级经验值清零（`exp = 0`）
+3. 触发 `CHARACTER_DEATH` 事件
+4. 自动调用 `resurrect()`
 
 ### 复活流程
 
 1. 调用 `resurrect()` 方法
-2. 将生命值恢复至最大值的50%
-3. 将魔法值恢复至最大值的50%
-4. 触发 `CHARACTER_RESURRECTED` 事件
-5. 保存数据到本地存储
+2. 调用 `computeResurrection(character)` 纯函数：`exp = 0`，`hp = floor(maxHp * 0.5)`，`mana = floor(maxMana * 0.5)`
+3. 触发 `CHARACTER_RESURRECTED` 事件
+4. 持久化数据
 
 ***
 
@@ -443,42 +494,33 @@ export interface CharacterListItem {
 
 ### IndexedDB 存储结构
 
-| 数据库 Store     | Key           | 数据结构                 | 说明              |
-| ------------- | ------------- | -------------------- | --------------- |
-| characters    | `id`          | CharacterListItem\[] | 角色列表（所有角色的基础信息） |
-| characterData | `characterId` | CharacterData        | 角色详细数据（按角色隔离）   |
+| 数据库 Store | Key           | 数据结构                 | 说明              |
+| ----------- | ------------- | -------------------- | --------------- |
+| char_data   | `characterId` | CharacterDataStorage | 角色完整数据（列表项 + 详细属性统一存储） |
+| game_state  | -             | GameState            | 当前选中角色ID       |
 
-### CharacterData 存储内容
+### CharacterDataStorage 存储内容
 
-| 字段            | 类型                            | 默认值        | 说明     |
-| ------------- | ----------------------------- | ---------- | ------ |
-| `characterId` | string                        | -          | 角色唯一标识 |
-| `name`        | string                        | '冒险者'      | 角色名称   |
-| `faction`     | 'alliance' \| 'horde' \| null | null       | 阵营     |
-| `race`        | string \| null                | null       | 种族     |
-| `class`       | string \| null                | null       | 职业     |
-| `level`       | number                        | 1          | 当前等级   |
-| `exp`         | number                        | 0          | 当前经验值  |
-| `gold`        | number                        | 50         | 金币数量   |
-| `baseStats`   | Stats                         | 见下方        | 基础属性   |
-| `currentHp`   | number                        | 100        | 当前生命值  |
-| `maxHp`       | number                        | 100        | 最大生命值  |
-| `currentMp`   | number                        | 50         | 当前魔法值  |
-| `maxMp`       | number                        | 50         | 最大魔法值  |
-| `bonusStats`  | Partial<Stats>                | {}         | 属性加成   |
-| `updatedAt`   | number                        | Date.now() | 最后更新时间 |
-
-### 多角色支持说明
-
-角色数据通过以下机制实现多角色隔离：
-
-1. **角色列表存储**：所有角色的基础信息（ID、名称、种族、职业、等级等）存储在 `characters` Store 中，支持快速列出所有角色。
-2. **角色详细数据存储**：每个角色的详细属性和状态数据存储在 `characterData` Store 中，以 `characterId` 作为唯一标识。
-3. **数据加载流程**：
-   - 选择角色时，通过 `characterId` 加载该角色的所有关联数据（背包、任务、装备、技能等）
-   - 切换角色时，卸载当前角色数据，加载新角色数据
-   - 删除角色时，级联删除该角色的所有关联数据
-4. **角色数据隔离**：每个角色拥有独立的属性、背包、任务进度、装备配置、技能状态、探索进度等数据，完全隔离。
+| 字段               | 类型                            | 默认值        | 说明       |
+| ---------------- | ----------------------------- | ---------- | -------- |
+| `characterId`    | string                        | -          | 角色唯一标识   |
+| `name`           | string                        | '冒险者'      | 角色名称     |
+| `factionId`      | string                        | null       | 阵营       |
+| `raceId`         | string                        | null       | 种族       |
+| `classId`        | string                        | null       | 职业       |
+| `level`          | number                        | 1          | 当前等级     |
+| `exp`            | number                        | 0          | 当前经验值    |
+| `expToNextLevel` | number                        | 100        | 升级所需经验值  |
+| `gold`           | number                        | 50         | 金币数量     |
+| `baseStats`      | Record<string, number>        | 见下方        | 基础属性     |
+| `currentHp`      | number                        | 100        | 当前生命值    |
+| `maxHp`          | number                        | 100        | 最大生命值    |
+| `currentMp`      | number                        | 50         | 当前魔法值    |
+| `maxMp`          | number                        | 50         | 最大魔法值    |
+| `bonusStats`     | Partial<Record<string, number>> | {}         | 属性加成     |
+| `createdTime`    | number                        | Date.now() | 创建时间戳    |
+| `lastPlayedTime` | number                        | Date.now() | 最后游玩时间   |
+| `updatedAt`      | number                        | Date.now() | 最后更新时间   |
 
 **基础属性默认值：**
 
@@ -493,13 +535,45 @@ baseStats: {
 }
 ```
 
+### 多角色支持说明
+
+角色数据通过以下机制实现多角色隔离：
+
+1. **角色列表缓存**：Store 中 `characterList` (reactive) 缓存所有角色的 `CharacterListItem`，支持快速列出所有角色。
+2. **角色详细数据存储**：每个角色的详细属性和状态数据以 `characterId` 为主键存储在 `char_data` 表中。
+3. **数据加载流程**：
+   - 选择角色时，通过 `characterDbService.getCharacterListItem()` 和 `getCharacterData()` 加载数据
+   - Store 中通过 `fromStorageFormat()` 将存储格式转为 `Character` 接口
+   - 切换角色时先发送 `CHARACTER_LOGOUT` 事件，再更新 Store 状态
+   - 删除角色时，级联删除：角色数据、技能数据、背包数据、装备数据、探索数据、冒险日志、任务数据
+4. **角色数据隔离**：每个角色拥有独立的属性、背包、任务进度、装备配置、技能状态、探索进度等数据，完全隔离。
+
 ### 同步机制
 
 | 同步类型 | 触发条件         | 延迟       |
 | ---- | ------------ | -------- |
-| 自动同步 | 状态变更         | 500ms 防抖 |
-| 立即同步 | 关键操作         | 即时       |
+| 自动同步 | Action 完成后     | 即时持久化    |
 | 页面卸载 | beforeunload | 即时       |
+
+### Service 层纯函数
+
+| 函数名                     | 功能                       |
+| ------------------------- | -------------------------- |
+| `generateCharacterId()`   | 生成唯一角色ID               |
+| `createInitialCharacter()` | 创建初始角色数据（纯函数）      |
+| `computeEffectiveStats()` | 计算含装备加成的有效属性        |
+| `computeAttributes()`     | 计算衍生属性（委托给 calculations 函数） |
+| `applyHpChange()`         | 计算 HP 变更               |
+| `applyMpChange()`         | 计算 MP 变更               |
+| `isDead()`                | 判断角色是否死亡              |
+| `applyExpGain()`          | 计算经验值增益（含升级判定）     |
+| `applyLevelUp()`          | 计算升级后角色数据            |
+| `applyGoldChange()`       | 计算金币变更                |
+| `canAffordGold()`         | 检查金币是否足够              |
+| `computeBonusChange()`    | 计算加成变更                |
+| `recalculateBaseStats()`  | 重新计算基础属性              |
+| `recalculateHpMp()`       | 重新计算 HP/MP 上限并修正     |
+| `computeResurrection()`   | 计算复活后角色数据            |
 
 ***
 
@@ -507,30 +581,32 @@ baseStats: {
 
 ### 依赖关系
 
-- **事件总线 (eventBus)**：发布属性变化事件，供UI组件监听
-- **常量配置 (constants)**：获取经验曲线等配置
+- **事件总线 (eventBus)**：发布角色生命周期事件（升级、死亡、复活等），供 UI 组件监听
+- **常量配置 (`@/config/character`)**：`MAX_LEVEL`、`MAX_STAT`
+- **工具函数 (`@/utils/calculations`)**：提供 `getExpForLevel`、`calculateMaxHp`、`calculateMaxMana` 等所有属性计算公式
 
 ### 交互模块
 
-| 模块   | 交互方式    | 说明                                                 |
-| ---- | ------- | -------------------------------------------------- |
-| 装备模块 | 事件订阅/调用 | 装备穿戴时调用 `applyBonus`，卸下时调用 `removeBonus`           |
-| 战斗模块 | 事件订阅/调用 | 战斗中调用 `addHp`、`addMp`、`setHp`、`setMp`、`addExp`     |
-| 技能模块 | 事件订阅    | 技能使用时消耗MP，通过事件通知                                   |
-| 任务模块 | 调用      | 任务完成时调用 `addGold`、`addExp`                         |
-| 商店模块 | 调用      | 购买时调用 `spendGold`，出售时调用 `addGold`                  |
-| 探索模块 | 事件订阅    | 订阅 `EXPLORATION_PLAYER_DIED` 事件，调用 `handleDeath()` |
+| 模块   | 交互方式     | 说明                                                 |
+| ---- | -------- | -------------------------------------------------- |
+| 装备模块 | 直接 Action 调用 | 装备存储调用 `applyBonus`/`removeBonus` 同步装备属性        |
+| 战斗模块 | 直接 Action 调用 | 战斗中调用 `takeDamage`、`receiveHeal`、`changeMp`、`gainExp` |
+| 技能模块 | 直接 Action 调用 | 技能使用时调用 `changeMp(-cost)`、`receiveHeal(amount)`    |
+| 背包模块 | 直接 Action 调用 | 物品使用时调用 `receiveHeal`、`changeMp`、`applyBonus`     |
+| 任务模块 | 直接 Action 调用 | 任务完成时调用 `gainGold`、`gainExp`                     |
+| 商店模块 | 直接 Action 调用 | 购买时调用 `spendGold`，出售时调用 `gainGold`               |
+| 探索模块 | 直接 Action 调用 | 玩家死亡时调用 `handleDeath()`                           |
 
-### 事件订阅清单
+### 事件发布清单
 
-| 事件                       | 订阅模块 | 处理动作             |
-| ------------------------ | ---- | ---------------- |
-| `CHARACTER_LEVEL_UP`     | UI组件 | 更新等级显示           |
-| `CHARACTER_HP_CHANGE`    | UI组件 | 更新HP条显示          |
-| `CHARACTER_MP_CHANGE`    | UI组件 | 更新MP条显示          |
-| `CHARACTER_STATS_CHANGE` | 装备模块 | 重新计算装备加成         |
-| `CHARACTER_DEATH`        | UI组件 | 显示死亡提示           |
-| `CHARACTER_RESURRECTED`  | UI组件 | 显示复活提示，更新HP/MP显示 |
+| 事件                       | 发布时机         | 受众        |
+| ------------------------ | ------------ | --------- |
+| `CHARACTER_LEVEL_UP`     | 角色升级时        | UI组件（动画）  |
+| `CHARACTER_DEATH`        | 角色死亡时        | UI组件（提示）  |
+| `CHARACTER_RESURRECTED`  | 角色复活时        | UI组件（提示）  |
+| `CHARACTER_CREATED`      | 角色创建完成时      | UI组件（导航）  |
+| `CHARACTER_DELETED`      | 角色删除完成时      | UI组件（刷新）  |
+| `CHARACTER_LOGOUT`       | 角色登出时        | UI组件（清屏）  |
 
 ***
 
@@ -540,40 +616,12 @@ baseStats: {
 
 | 异常类型   | 触发条件               | 处理策略        | 错误提示       |
 | ------ | ------------------ | ----------- | ---------- |
-| 存储读取失败 | localStorage 解析错误  | 使用默认值初始化    | 控制台输出错误日志  |
-| 存储写入失败 | localStorage 写入异常  | 静默失败，保留内存数据 | 控制台输出错误日志  |
-| 负数值输入  | `addExp` 传入负数      | 忽略操作        | 无提示        |
+| 存储读取失败 | IndexedDB 解析错误      | 使用默认值初始化    | 控制台输出错误日志  |
+| 存储写入失败 | IndexedDB 写入异常      | 静默失败，保留内存数据（dbService.withRetry 重试机制） | 控制台输出错误日志  |
+| 负数值输入  | `gainExp` 传入负数      | 忽略操作        | 无提示        |
 | 金币不足   | `spendGold` 金额超过余额 | 返回 false    | UI提示"金币不足" |
 | HP溢出   | 超出最大HP             | 自动截断到最大值    | 无提示        |
 | MP溢出   | 超出最大MP             | 自动截断到最大值    | 无提示        |
-
-### 错误处理代码示例
-
-```typescript
-// 存储加载错误处理
-function loadFromStorage() {
-  try {
-    const data = localStorage.getItem(CHARACTER_STORAGE_KEY);
-    if (data) {
-      const saved = JSON.parse(data);
-      // 恢复数据...
-    }
-  } catch (e) {
-    console.error('Failed to load character:', e);
-    // 使用默认值，不中断程序
-  }
-}
-
-// 金币消费验证
-function spendGold(amount: number): boolean {
-  if (gold.value >= amount) {
-    gold.value -= amount;
-    saveToStorage();
-    return true;
-  }
-  return false; // 返回false让调用方处理
-}
-```
 
 ***
 
@@ -583,25 +631,25 @@ function spendGold(amount: number): boolean {
 
 | 优化点    | 实现方式                                    | 预期效果   |
 | ------ | --------------------------------------- | ------ |
-| 计算属性缓存 | 使用 `computed` 缓存 `stats` 和 `attributes` | 避免重复计算 |
-| 批量存储   | 仅在数据变更时保存                               | 减少IO操作 |
-| 懒加载    | 初始化时才读取存储                               | 加快启动速度 |
+| 计算属性缓存 | 使用 `computed` 缓存 `effectiveStats`、`attributes` | 避免重复计算 |
+| 批量存储   | 仅在数据变更时异步持久化                            | 减少IO操作 |
+| 懒加载    | Store 初始化时才加载基础数据和角色数据                   | 加快启动速度 |
 
 ### 数据安全
 
 | 安全措施 | 实现方式               | 说明     |
 | ---- | ------------------ | ------ |
 | 输入验证 | 所有数值操作进行边界检查       | 防止非法数据 |
-| 数据隔离 | 使用独立存储键            | 避免数据污染 |
-| 异常捕获 | 所有IO操作包裹 try-catch | 防止程序崩溃 |
-| 数据备份 | 保留旧数据直到新数据写入成功     | 防止数据丢失 |
+| 数据隔离 | `char_data` 按 characterId 隔离 | 避免数据污染 |
+| 异常捕获 | 数据库 IO 通过 `dbService.withRetry` 包裹，含重试机制 | 防止程序崩溃 |
+| 数据清理 | 使用 `toRawData()` 去除 Vue Proxy 包装 | 避免 DataCloneError |
 
 ### 边界情况处理
 
 | 边界情况   | 处理方式                |
 | ------ | ------------------- |
-| HP降到0  | 战斗模块处理死亡逻辑          |
-| 等级达到上限 | 经验值不再累加（由常量控制）      |
+| HP降到0  | 战斗模块检测后调用 `handleDeath()` |
+| 等级达到上限 | 经验值不再累加（`MAX_LEVEL` 控制） |
 | 金币数量过大 | 使用 number 类型（支持极大值） |
 | 存储被清空  | 使用默认值初始化            |
 
@@ -611,16 +659,22 @@ function spendGold(amount: number): boolean {
 
 ```
 src/modules/character/
-  - index.ts          # 核心实现（Store + Service）
-  - types.ts          # 类型定义
+  - index.ts          # 模块入口，统一导出接口
+  - types.ts          # 类型定义（Character, Stats, Attributes, FactionType, RaceType, ClassType 等）
+  - db.ts             # 数据库操作层（CharacterDbService）
+  - store.ts          # Pinia Store 状态管理（useCharacterStore）
+  - service.ts        # 纯逻辑函数（无状态、无副作用）
 ```
 
 ### 文件职责说明
 
-| 文件         | 职责                            |
-| ---------- | ----------------------------- |
-| `index.ts` | Pinia Store 实现、服务接口实现、数据持久化逻辑 |
-| `types.ts` | TypeScript 类型定义、接口定义、事件类型定义   |
+| 文件           | 职责                                  |
+| ------------- | ----------------------------------- |
+| `index.ts`    | 模块入口，统一导出 types、db、service 和 useCharacterStore |
+| `types.ts`    | TypeScript 类型定义、接口定义、事件类型定义         |
+| `db.ts`       | IndexedDB 数据库操作层，封装 `char_data` 表读写（CharacterDbService 类） |
+| `store.ts`    | Pinia Store 状态管理，响应式数据维护，通过 `characterDbService` 做 CRUD，通过 `eventBus.emit()` 发布角色事件 |
+| `service.ts`  | 纯函数服务层，包含所有角色属性计算逻辑（委托给 `@/utils/calculations`） |
 
 ***
 
@@ -629,11 +683,13 @@ src/modules/character/
 | 版本   | 日期         | 修改内容                            | 作者     |
 | ---- | ---------- | ------------------------------- | ------ |
 | v1.0 | 2026-05-15 | 初始版本，包含基础功能                     | System |
-| v1.1 | 2026-05-18 | 添加死亡处理功能：损失本级经验值，复活后生命法力恢复至50%  | System |
+| v1.1 | 2026-05-18 | 添加死亡处理功能：损失本级经验值，复活后生命法力恢复至 50%  | System |
 | v2.0 | 2026-05-19 | 添加种族和职业属性调整值，添加属性加成优先级设计        | System |
 | v2.1 | 2026-05-19 | 添加多角色创建与管理系统，支持多角色独立数据存储        | System |
 | v2.2 | 2026-05-19 | 重构存储架构，实现完整的多角色数据隔离机制           | System |
 | v2.3 | 2026-05-22 | 根据职业种族对应关系更新种族和职业表格，添加新种族和唤魔师职业 | System |
+| v3.0 | 2026-06-16 | 重构模块文件结构，拆分为 index.ts + types.ts + db.ts + store.ts + service.ts | System |
+| v4.0 | 2026-06-16 | 全面更新与代码对齐：跨模块通信改为直接 Store Action 调用；新增 hpBonus/mpBonus/healBonus 衍生属性；char_data 统一存储；新增 characterList 缓存；死亡/复活逻辑修正；补充 CharacterDataStorage 完整字段 | System |
 
 ***
 

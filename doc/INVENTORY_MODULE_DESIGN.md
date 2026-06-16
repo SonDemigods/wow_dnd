@@ -5,8 +5,8 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 背包模块设计文档 |
-| 版本 | v2.0 |
-| 生成日期 | 2026年5月19日 |
+| 版本 | v3.0 |
+| 生成日期 | 2026年6月16日 |
 | 所属模块 | `modules/inventory` |
 
 ---
@@ -15,29 +15,39 @@
 
 ### 模块定位
 
-背包模块负责管理玩家的物品存储和使用。它提供物品的添加、移除、使用等核心功能,是游戏中物品系统的基础模块。
+背包模块负责管理玩家的物品存储和使用。它提供物品的添加、移除、使用等核心功能，是游戏中物品系统的基础模块。
 
 ### 核心职责
 
 | 职责 | 描述 |
 |------|------|
 | 物品管理 | 添加、移除、查找物品 |
-| 物品使用 | 消耗品使用、效果触发 |
-| 物品堆叠管理 | 支持可堆叠物品叠加，最大堆叠数量固定为10 |
-| 物品丢弃 | 支持单次和批量丢弃，含确认提示 |
-| 物品排序 | 支持多维度排序（类型、品质、等级、时间） |
-| 背包整理 | 一键整理，优化空间利用率 |
+| 物品使用 | 消耗品使用、效果触发（直接调用 characterStore Action） |
+| 物品堆叠管理 | 支持可堆叠物品叠加，最大堆叠数由各类型的 `ITEM_TYPES` 配置决定（通用 MAX_STACK=10） |
+| 物品丢弃 | 支持单次和批量丢弃 |
+| 物品排序 | 支持多维度排序（类型、品质、等级、获取时间、名称） |
+| 背包整理 | 一键整理，合并同类物品，按品质降序分类排序 |
 | 物品搜索 | 支持关键词快速查找 |
-| 物品筛选 | 支持多条件组合筛选 |
-| 容量管理 | 背包大小控制,空槽位管理 |
+| 物品筛选 | 支持多条件组合筛选（类型、品质、可堆叠） |
+| 容量管理 | 背包大小控制（INVENTORY_SIZE=50），空槽位管理 |
 | 数据持久化 | 背包数据的本地存储与加载 |
 
 ### 模块边界
 
 **背包模块**与以下模块交互:
-- 战斗模块:战利品掉落
-- 商店模块:购买物品、出售物品
-- 任务模块:任务奖励物品
+- 战斗模块：战利品掉落（通过直接调用 `addItem()`）
+- 商店模块：购买物品、出售物品（通过直接调用 `addItem()`/`removeItem()`）
+- 任务模块：任务奖励物品（通过直接调用 `addItem()`）
+- 角色模块：物品效果触发（通过直接调用 `characterStore.applyBonus()`、`receiveHeal()`、`changeMp()`）
+- 装备模块：装备物品来源
+
+### 跨模块通信机制
+
+背包模块遵循"直接 Store Action 调用"模式：
+
+- **其他模块 → 背包模块**：直接调用 `useInventoryStore().addItem(itemId, quantity)` / `removeItem(itemId, quantity)`
+- **背包模块 → 角色模块**：`useItem()` 中直接调用 `characterStore.receiveHeal()`、`characterStore.changeMp()`、`characterStore.applyBonus()`
+- **事件总线**：不再通过 EventBus 发布数据变更事件
 
 ---
 
@@ -47,21 +57,21 @@
 
 | 需求编号 | 需求描述 | 来源 |
 |----------|----------|------|
-| FR-INV-001 | 支持物品添加 | 核心功能 |
-| FR-INV-002 | 支持物品移除 | 核心功能 |
-| FR-INV-003 | 支持物品使用 | 消耗品系统 |
-| FR-INV-004 | 支持物品查找 | 查询功能 |
-| FR-INV-005 | 支持背包容量管理 | 背包系统 |
+| FR-INV-001 | 支持物品添加（`addItem(itemId, quantity)`） | 核心功能 |
+| FR-INV-002 | 支持物品移除（`removeItem(itemId, quantity)`） | 核心功能 |
+| FR-INV-003 | 支持物品使用（`useItem(itemId)`），消耗品效果直接调用 characterStore | 消耗品系统 |
+| FR-INV-004 | 支持物品查找（`getItemInfo(itemId)`） | 查询功能 |
+| FR-INV-005 | 支持背包容量管理（容量50，`INVENTORY_SIZE=50`） | 背包系统 |
 | FR-INV-006 | 支持物品叠加 | 物品管理 |
 | FR-INV-006-1 | 可堆叠物品判断：检查物品的 `stackable` 属性是否为 `true` | 堆叠系统 |
-| FR-INV-006-2 | 最大堆叠数量固定为10，超过则放入新槽位 | 堆叠系统 |
-| FR-INV-006-3 | 不可堆叠物品始终独占一个槽位 | 堆叠系统 |
+| FR-INV-006-2 | 可堆叠物品最大堆叠数：由 `MAX_STACK=10` 服务常量控制，各类型具体上限由 `@/config/inventory` 的 `ITEM_TYPES` 配置 | 堆叠系统 |
+| FR-INV-006-3 | 不可堆叠物品始终独占一个槽位（count=1） | 堆叠系统 |
 | FR-INV-007 | 数据持久化存储 | 存档系统 |
-| FR-INV-008 | 支持物品丢弃（单次/批量），含确认提示 | 物品管理 |
-| FR-INV-009 | 支持物品排序（按类型、品质、等级、获取时间） | 物品管理 |
+| FR-INV-008 | 支持物品丢弃（单次/批量） | 物品管理 |
+| FR-INV-009 | 支持物品排序（按类型、品质、等级、获取时间、名称） | 物品管理 |
 | FR-INV-010 | 支持背包一键整理功能 | 物品管理 |
-| FR-INV-011 | 支持物品搜索（按名称关键词） | 查询功能 |
-| FR-INV-012 | 支持物品筛选（按类型、品质、可堆叠、绑定） | 查询功能 |
+| FR-INV-011 | 支持物品搜索（按名称关键词模糊匹配） | 查询功能 |
+| FR-INV-012 | 支持物品筛选（按类型、品质、可堆叠） | 查询功能 |
 
 ### 非功能需求
 
@@ -79,15 +89,14 @@
 ### 服务接口 IInventoryService
 
 ```typescript
-/** 物品最大堆叠数量 */
-export const MAX_STACK_SIZE = 10;
-
 export interface IInventoryService {
   getInventory(): InventoryItem[];
   getItem(index: number): InventoryItem | null;
+  getItemInfo(itemId: string): Item | null;
+  getAllItems(): Item[];
   addItem(item: Item): boolean;
   removeItem(index: number): boolean;
-  useItem(index: number): boolean;
+  useItem(index: number): Promise<boolean>;
   getEmptySlots(): number;
   isFull(): boolean;
   reset(): void;
@@ -117,24 +126,49 @@ export interface IInventoryService {
 ### 数据类型定义
 
 ```typescript
-export interface InventoryItem {
-  itemId: string;
-  count: number;
-}
+import type { Stats } from '../character/types';
+import type { SkillType } from '../skill/types';
 
-export type ItemType = 
-  | 'gold' | 'potion' | 'scroll' | 'food' | 'material' 
-  | 'quest' | 'weapon' | 'armor' | 'misc';
+/** 物品类型枚举（9种） */
+export type ItemType =
+  | 'gold'      // 货币
+  | 'potion'    // 药水
+  | 'scroll'    // 卷轴
+  | 'food'      // 食物
+  | 'material'  // 材料
+  | 'quest'     // 任务物品
+  | 'weapon'    // 武器
+  | 'armor'     // 护甲
+  | 'misc';     // 杂项
 
+/** 物品稀有度枚举（5种） */
 export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
+/** 稀有度配置 */
+export interface RarityConfig {
+  name: string;
+  color: string;
+}
+
+/** 物品类型配置 */
+export interface ItemTypeData {
+  id: ItemType;
+  name: string;
+  stackable: boolean;
+  maxStack: number;
+  usable?: boolean;
+}
+
+/** 物品效果类型：技能类型 | 'stat'（属性加成） */
 export type ItemEffectType = SkillType | 'stat';
 
+/** 物品效果 */
 export interface ItemEffect {
   type: ItemEffectType;
   value: number | Partial<Stats>;
 }
 
+/** 物品基础类型 */
 export interface Item {
   id: string;
   name: string;
@@ -142,13 +176,26 @@ export interface Item {
   rarity: ItemRarity;
   icon: string;
   description: string;
+  /** 物品效果（伤害/生命恢复/法力恢复/属性加成） */
+  effect?: ItemEffect;
+  /** 属性加成（如 +5 str） */
   bonus?: Partial<Stats>;
   value: number;
   stackable: boolean;
-  hpRestore?: number;
-  mpRestore?: number;
+  /** 是否为消耗品（可使用的物品） */
   consumable?: boolean;
+  /** 物品模板ID */
   template?: string;
+  /** 等级要求 */
+  levelRequirement?: number;
+  /** 物品等级 */
+  level?: number;
+}
+
+/** 背包物品（仅存储物品ID和数量，详情通过 getItemInfo 查询） */
+export interface InventoryItem {
+  itemId: string;
+  count: number;
 }
 
 // 排序相关类型
@@ -161,56 +208,11 @@ export interface ItemFilters {
   rarities?: ItemRarity[];
   stackable?: boolean;
 }
-
-/** 技能类型 */
-export type SkillType = 'physical_damage' | 'magic_damage' | 'heal';
-
-/** 六大核心属性 */
-export interface Stats {
-  str: number;
-  dex: number;
-  con: number;
-  int: number;
-  wis: number;
-  cha: number;
-}
-
-/**
- * 物品堆叠机制说明
- * 
- * 1. 堆叠判断：
- *    - 检查物品的 `stackable` 属性
- *    - `stackable === true`：可堆叠
- *    - `stackable === false`：不可堆叠
- * 
- * 2. 堆叠限制：
- *    - 最大堆叠数量固定为 10
- *    - 不可堆叠物品始终独占一个槽位
- * 
- * 3. 堆叠逻辑：
- *    - 添加物品时，先查找可堆叠的相同物品槽位
- *    - 如果槽位未满，叠加到该槽位
- *    - 如果槽位已满，放入新的空槽位
- *    - 如果没有空槽位，返回添加失败
- * 
- * 4. 示例：
- *    - 假设背包中有 5 个生命药水（stackable=true, count=8）
- *    - 添加 3 个生命药水：8 + 3 = 11 > 10，所以 8 + 2 = 10（满），剩余 1 个放入新槽位
- *    - 最终：1个槽位有10个药水，1个槽位有1个药水
- */
 ```
 
 ### 事件定义
 
-| 事件名称 | 触发时机 | 事件数据 |
-|----------|----------|----------|
-| `INVENTORY_ITEM_ADDED` | 物品添加时 | `{ item }` |
-| `INVENTORY_ITEM_REMOVED` | 物品移除时 | `{ item, index }` |
-| `INVENTORY_ITEM_USED` | 物品使用时 | `{ item, index }` |
-| `INVENTORY_UPDATED` | 背包更新时 | - |
-| `INVENTORY_ITEM_DROPPED` | 物品丢弃时 | `{ item, index, count }` |
-| `INVENTORY_SEARCH_RESULT` | 搜索完成时 | `{ results: InventoryItem[], keyword: string }` |
-| `INVENTORY_FILTER_RESULT` | 筛选完成时 | `{ results: InventoryItem[], filters: ItemFilters }` |
+背包模块在新架构中不再通过 EventBus 发布数据变更事件。UI 更新通过 Vue 响应式系统（`inventory`、`filteredInventory` 等 computed 属性）驱动。
 
 ---
 
@@ -218,94 +220,56 @@ export interface Stats {
 
 ### 物品添加流程
 
-1. 检查背包是否已满
-2. 如果物品可叠加（`stackable === true`）：
-   - 查找背包中相同物品ID且未达到最大堆叠数量（10）的槽位
-   - 计算该槽位可叠加数量：`MAX_STACK_SIZE - currentCount`
-   - 如果待添加数量 <= 可叠加数量，增加该槽位数量，返回成功
-   - 如果待添加数量 > 可叠加数量，先叠加到该槽位满，剩余数量继续查找下一个可叠加槽位
-   - 如果所有可叠加槽位都已满，查找空槽位
-3. 如果物品不可叠加（`stackable === false`），查找空槽位
-4. 如果有空槽位，将物品添加到空槽位
-5. 如果无空槽位且还有剩余物品，返回失败
-6. 触发 `INVENTORY_ITEM_ADDED` 事件
+1. 检查 `itemId` 对应的物品模板是否存在
+2. 如果物品可堆叠（`itemTemplate.stackable === true`）：
+   - 遍历背包查找相同 `itemId` 且未满（`count < MAX_STACK`）的槽位
+   - 调用 `computeStackResult()` 计算堆叠结果和溢出量
+   - 将溢出量继续尝试添加到下一个槽位
+3. 如果物品不可堆叠（`stackable === false`），每个放入新槽位（`count=1`）
+4. 如果背包已满且无法堆叠，返回 0
+5. 更新背包数组，异步持久化
+6. 记录冒险日志
 
 ### 物品使用流程
 
-1. 获取指定槽位的物品
-2. 检查物品是否存在
-3. 检查物品是否可使用
-4. 应用物品效果
-5. 减少物品数量
-6. 如果数量为0,清空该槽位
-7. 触发 `INVENTORY_ITEM_USED` 事件
+1. 获取物品模板（`itemTemplates.get(itemId)`）
+2. 检查物品是否存在且为消耗品（`consumable === true`）
+3. 计算物品效果（`computeUseEffect(itemTemplate)`）：
+   - `health_restore`：直接调用 `characterStore.receiveHeal(value)`
+   - `mana_restore`：直接调用 `characterStore.changeMp(value)`
+   - `stat`：直接调用 `characterStore.applyBonus(value)`
+4. 如果 `itemTemplate.bonus` 存在，调用 `characterStore.applyBonus(bonus)`
+5. 减少物品数量（count-1），数量为0时移除槽位
+6. 持久化，记录冒险日志
 
 ### 物品丢弃流程
 
 **单次丢弃：**
-1. 获取指定槽位的物品
-2. 检查物品是否存在
-3. 检查物品是否绑定（绑定物品不可丢弃）
-4. 弹出确认提示框
-5. 用户确认后，减少物品数量或清空槽位
-6. 触发 `INVENTORY_ITEM_REMOVED` 事件
-7. 同步数据到本地存储
+1. 检查索引有效性
+2. 如果丢弃数量 >= 当前数量，移除整个槽位
+3. 否则减少数量
+4. 异步持久化
+5. 记录冒险日志
 
 **批量丢弃：**
-1. 获取选中的物品索引列表
-2. 过滤掉绑定物品
-3. 弹出确认提示框（显示将丢弃的物品数量）
-4. 用户确认后，依次移除选中的物品
-5. 触发 `INVENTORY_UPDATED` 事件
-6. 同步数据到本地存储
+1. 按索引降序排列（避免删除时索引偏移）
+2. 依次移除各索引对应的物品
+3. 异步持久化
 
-### 物品排序流程
+### 物品排序和筛选
 
-1. 接收排序字段和排序顺序参数
-2. 创建排序比较函数
-3. 根据排序字段进行比较：
-   - type: 按物品类型排序（武器 > 护甲 > 消耗品 > 任务物品 > 杂物）
-   - rarity: 按品质排序（传说 > 史诗 > 稀有 > 优秀 > 普通）
-   - level: 按物品等级排序
-   - acquiredAt: 按获取时间排序
-   - name: 按名称字母顺序排序
-4. 执行排序
-5. 触发 `INVENTORY_UPDATED` 事件
+- **排序**：`sortItems()` 纯函数，支持按 type/rarity/level/acquiredAt/name 排序，可指定 asc/desc
+- **筛选**：`filterItems()` 纯函数，支持按 types/rarities/stackable 组合筛选，同时可传入关键词模糊搜索
+- **组合**：`sortAndFilterInventory()` 纯函数，先筛选再排序
+- Store 中的 `filteredInventory` computed 属性自动调用 `sortAndFilterInventory` 实时返回结果
 
 ### 背包整理流程
 
-1. 将所有物品按类型分组
-2. 每组内按品质排序
-3. 合并空槽位到背包末尾
-4. 可堆叠物品合并到同一槽位：
-   - 遍历可堆叠物品
-   - 将相同物品ID的物品合并到同一槽位
-   - 每个槽位最大堆叠数量为10
-   - 超出10的物品放入新的槽位
-5. 不可堆叠物品独占一个槽位
-6. 触发 `INVENTORY_UPDATED` 事件
-7. 同步数据到本地存储
-
-### 物品搜索流程
-
-1. 接收搜索关键词
-2. 遍历背包物品
-3. 模糊匹配物品名称（不区分大小写）
-4. 返回匹配的物品列表
-5. 触发 `INVENTORY_SEARCH_RESULT` 事件
-
-### 物品筛选流程
-
-1. 接收筛选条件对象
-2. 遍历背包物品
-3. 按条件过滤：
-   - types: 匹配物品类型
-   - rarities: 匹配物品品质
-   - stackable: 是否可堆叠
-   - bindOnPickup: 是否绑定
-   - minLevel/maxLevel: 等级范围
-4. 返回符合条件的物品列表
-5. 触发 `INVENTORY_FILTER_RESULT` 事件
+1. 合并所有相同 `itemId` 的物品到 Map 中累计数量
+2. 不可堆叠物品每个独占一个槽位（count=1）
+3. 可堆叠物品按 `MAX_STACK` 拆分到多个槽位
+4. 按品质降序再按分类升序排列
+5. 异步持久化
 
 ---
 
@@ -315,28 +279,52 @@ export interface Stats {
 
 | 数据库 Store | Key | 数据结构 | 说明 |
 |--------------|-----|----------|------|
-| inventory | `characterId` | InventoryData | 背包完整数据（按角色隔离） |
+| char_inventory | `characterId` | InventoryItem[] | 背包物品列表（按角色隔离） |
+| config_items | `id` | ItemDataStorage | 物品模板数据 |
 
-### InventoryData 存储内容
+### InventoryItem 存储内容
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `characterId` | string | - | 角色唯一标识 |
-| `inventorySize` | number | 8 | 背包容量 |
-| `items` | (Item \| null)[] | [] | 物品列表 |
-| `updatedAt` | number | Date.now() | 最后更新时间 |
+| `itemId` | string | - | 物品ID（关联物品模板） |
+| `count` | number | 1 | 物品数量 |
 
 ### 多角色支持说明
 
 背包数据通过 `characterId` 字段实现角色隔离，每个角色拥有独立的背包物品。切换角色时，系统自动加载对应角色的背包数据。删除角色时，级联删除该角色的背包数据。
 
+### 物品堆叠机制
+
+| 配置项 | 值 | 说明 |
+|--------|-----|------|
+| `INVENTORY_SIZE` | 50 | 背包容量（最大槽位数） |
+| `MAX_STACK` | 10 | 通用最大堆叠数（service.ts 常量） |
+| `ITEM_TYPES[type].maxStack` | 按类型配置 | 各物品类型的最大堆叠数（来自 `@/config/inventory`） |
+
+**堆叠逻辑：**
+- `stackable === true` 的物品按 `MAX_STACK` 堆叠，相同 `itemId` 优先填满已有槽位
+- `stackable === false` 的物品每个独占一个槽位（count=1）
+- `gold` 类型 `maxStack=999999`，支持巨额堆叠
+
 ### 同步机制
 
 | 同步类型 | 触发条件 | 延迟 |
 |----------|----------|------|
-| 自动同步 | 状态变更 | 500ms 防抖 |
-| 立即同步 | 关键操作 | 即时 |
+| 自动同步 | Action 完成后 | 即时异步持久化 |
 | 页面卸载 | beforeunload | 即时 |
+
+### Service 层纯函数
+
+| 函数名 | 功能 |
+|--------|------|
+| `canStackItem()` | 判断物品是否可堆叠到已有物品槽位 |
+| `computeStackResult()` | 计算堆叠结果（堆叠后数量和溢出量） |
+| `findItemIndex()` | 在背包中查找物品索引 |
+| `sortItems()` | 排序物品列表（返回新数组） |
+| `filterItems()` | 筛选物品列表 |
+| `sortAndFilterInventory()` | 组合筛选与排序（纯函数，供 Store computed 使用） |
+| `computeUseEffect()` | 计算使用物品的效果 |
+| `isUsableInCombat()` | 判断物品是否可在战斗中使用 |
 
 ---
 
@@ -344,16 +332,18 @@ export interface Stats {
 
 ### 依赖关系
 
-- **事件总线**:发布背包变化事件
+- **角色模块**：物品使用时直接调用 `useCharacterStore()` 的 `receiveHeal()`、`changeMp()`、`applyBonus()`
+- **装备数据层**：模板加载时从 `equipmentDbService` 获取装备模板
 
 ### 交互模块
 
 | 模块 | 交互方式 | 说明 |
 |------|----------|------|
-| 战斗模块 | 调用 | 添加战利品 |
-| 商店模块 | 调用 | 购买物品、出售物品 |
-| 任务模块 | 调用 | 任务奖励物品 |
-| 角色模块 | 事件订阅 | 物品效果影响角色属性 |
+| 角色模块 | 直接 Action 调用 | `useItem()` 中调用 `receiveHeal()`、`changeMp()`、`applyBonus()` 应用物品效果 |
+| 战斗模块 | 直接 Action 调用 | 调用 `addItem(itemId, quantity)` 添加战利品 |
+| 商店模块 | 直接 Action 调用 | 购买时调用 `addItem()`，出售时调用 `removeItem()` |
+| 任务模块 | 直接 Action 调用 | 任务奖励时调用 `addItem()` |
+| 日志模块 | 直接 Action 调用 | 记录物品获得/使用/丢弃的冒险日志 |
 
 ---
 
@@ -363,12 +353,12 @@ export interface Stats {
 
 | 异常类型 | 触发条件 | 处理策略 |
 |----------|----------|----------|
-| 背包已满 | 添加物品时背包已满且无法堆叠 | 返回 false |
-| 物品不存在 | 使用不存在的物品 | 返回 false |
-| 物品不可使用 | 使用不可消耗的物品 | 返回 false |
-| 堆叠超出限制 | 尝试将物品堆叠超过10个 | 自动拆分到新槽位 |
-| 存储读取失败 | IndexedDB 解析错误 | 使用默认值初始化 |
-| 存储写入失败 | IndexedDB 写入异常 | 进入重试队列，指数退避重试 3 次 |
+| 背包已满 | 添加物品时背包已满且无法堆叠 | 返回 0（未添加） |
+| 物品不存在 | 模板缓存中找不到物品ID | 返回 0/false |
+| 物品不可使用 | `consumable !== true` | 返回 false |
+| 堆叠超出限制 | 尝试将物品堆叠超过 MAX_STACK | 自动拆分到新槽位（`computeStackResult`） |
+| 存储读取失败 | IndexedDB 解析错误 | 使用空数组初始化 |
+| 存储写入失败 | IndexedDB 写入异常 | `dbService.withRetry` 自动重试 |
 
 ---
 
@@ -378,21 +368,20 @@ export interface Stats {
 
 | 优化点 | 实现方式 | 预期效果 |
 |--------|----------|----------|
-| 物品查找优化 | 索引访问 | O(1) 时间复杂度 |
-| 防抖同步 | 500ms 延迟合并写入 | 减少 IO 操作 |
-| 批量写入 | SyncEngine 批量处理 | 提升性能 |
-| 异步加载 | Store 初始化时异步从 IndexedDB 读取 | 不阻塞主线程 |
+| 物品模板缓存 | 内存 Map<string, Item> 缓存 | O(1) 查找 |
+| 筛选排序 | `sortAndFilterInventory` 纯函数，Store computed 自动响应 | 实时响应 |
+| 即时持久化 | Action 完成后异步写 DB | 数据安全 |
+| 异步加载 | Store `initialize` 时异步从 IndexedDB 读取 | 不阻塞主线程 |
 
 ### 数据安全
 
 | 安全措施 | 实现方式 |
 |----------|----------|
-| 输入验证 | 检查物品数据有效性 |
-| 边界检查 | 防止越界访问 |
-| 数据隔离 | 使用独立对象存储 |
-| 异常捕获 | 防止程序崩溃 |
-| 重试机制 | 失败时自动重试 3 次 |
-| 数据校验 | 写入前验证数据结构 |
+| 输入验证 | 检查 itemId 有效性、quantity > 0 |
+| 边界检查 | `removeItemByIndex` 检查索引范围 |
+| 数据隔离 | 按 `characterId` 隔离存储 |
+| 异常捕获 | `dbService.withRetry` 含重试机制 |
+| 数据校验 | 写入前通过 `toRawData()` 处理数据 |
 
 ---
 
@@ -400,16 +389,22 @@ export interface Stats {
 
 ```
 src/modules/inventory/
-  - index.ts          # 核心实现（Store + Service）
+  - index.ts          # 模块入口，统一导出接口
   - types.ts          # 类型定义
+  - db.ts             # 数据库操作层（InventoryDbService）
+  - store.ts          # Pinia Store 状态管理（useInventoryStore）
+  - service.ts        # 纯函数服务层 + 向后兼容代理对象
 ```
 
 ### 文件职责说明
 
 | 文件 | 职责 |
 |------|------|
-| `index.ts` | Pinia Store 实现、服务接口实现、数据持久化逻辑 |
-| `types.ts` | TypeScript 类型定义、接口定义 |
+| `index.ts` | 模块入口，统一导出 types、db、service 和 useInventoryStore |
+| `types.ts` | TypeScript 类型定义（Item、InventoryItem、ItemType、ItemRarity、ItemEffect 等） |
+| `db.ts` | IndexedDB 数据库操作层，封装 `char_inventory` 和 `config_items` 表读写（InventoryDbService 类） |
+| `store.ts` | Pinia Store 状态管理，响应式数据维护。提供 `addItem(itemId, quantity)`、`removeItem(itemId, quantity)`、`useItem(itemId)` 等完整背包操作 |
+| `service.ts` | 纯函数服务层 + `inventoryService` 兼容代理对象（供未迁移的外部模块调用） |
 
 ---
 
@@ -417,10 +412,12 @@ src/modules/inventory/
 
 | 版本 | 日期 | 修改内容 | 作者 |
 |------|------|----------|------|
-| v1.0 | 2026-05-15 | 初始版本,包含基础背包功能 | System |
+| v1.0 | 2026-05-15 | 初始版本，包含基础背包功能 | System |
 | v2.0 | 2026-05-19 | 迁移到 Pinia + IndexedDB 架构，实现自动同步持久化 | System |
 | v2.1 | 2026-05-19 | 添加物品丢弃、排序、整理、搜索、筛选功能 | System |
 | v2.2 | 2026-05-19 | 添加物品堆叠机制：最大堆叠数量固定为10，支持堆叠判断和计算 | System |
+| v2.3 | 2026-06-16 | 文件结构拆分为db/store/service三层架构 | System |
+| v3.0 | 2026-06-16 | 全面更新与代码对齐：背包容量更新为50（INVENTORY_SIZE=50）；Item 新增 effect/levelRequirement/level 字段，移除 hpRestore/mpRestore；ItemEffect 类型更新为 ItemEffectType（SkillType | 'stat'）；跨模块通信改为直接 Store Action 调用；物品使用直接调用 characterStore.receiveHeal/changeMp/applyBonus；新增 service 层纯函数（canStackItem/computeStackResult/findItemIndex/sortItems/filterItems/sortAndFilterInventory/computeUseEffect）；稀有度配置从 @/config/inventory 引用 | System |
 
 ---
 

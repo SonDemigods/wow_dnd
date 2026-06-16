@@ -2,65 +2,151 @@
 
 ## 文档信息
 
-| 项目   | 内容            |
-| ---- | ------------- |
-| 标题   | 地图模块设计文档      |
-| 版本   | v2.1          |
-| 生成日期 | 2026年5月20日    |
+| 项目 | 内容 |
+|------|------|
+| 标题 | 地图模块设计文档 |
+| 版本 | v3.0 |
+| 生成日期 | 2026年6月16日 |
 | 所属模块 | `modules/map` |
 
-***
+---
 
 ## 模块概述与定位
 
 ### 模块定位
 
-地图模块是游戏世界的探索核心，负责管理地图显示、区域标记、等级解锁和探索入口。该模块为玩家提供探索游戏世界的基础功能。
+地图模块是游戏世界的探索核心，负责管理地图视图状态、区域标记、等级解锁和探索入口。该模块为玩家提供探索游戏世界的基础功能。
 
 ### 核心职责
 
-| 职责     | 描述                              |
-| ------ | ------------------------------- |
-| 地图视图管理 | 管理地图的缩放、平移等视图状态                 |
-| 区域标记   | 在地图上显示各个区域的标记                   |
-| 等级解锁   | 根据玩家等级解锁可进入的地点                  |
-| 探索入口   | 点击区域标记显示区域信息弹窗，点击探索按钮进入该区域的探索界面 |
-| 数据持久化  | 实现地图数据的本地存储与加载                  |
+| 职责 | 描述 |
+|------|------|
+| 地图视图管理 | 管理地图的缩放、平移、当前大陆等视图状态 |
+| 地点数据管理 | 从 `config_locations` 表加载和维护地点数据 |
+| 区域状态判定 | 根据玩家等级判断区域解锁状态（locked/unlocked/completed） |
+| 探索入口 | 进入区域时发射 `ZONE_ENTERED` 事件，通知探索模块 |
+| 标签页持久化 | 按角色隔离保存当前标签页（地图/探索） |
+| 数据持久化 | 实现地图视图状态的本地存储与加载 |
 
 ### 模块边界
 
 **地图模块**与以下模块交互:
+- 探索模块: 进入区域时发射 `ZONE_ENTERED` 事件
+- 角色模块: 获取玩家等级用于解锁判断
+- 事件总线: 发布 `ZONE_ENTERED` 事件
 
-- 探索模块:进入探索区域
-- 角色模块:获取玩家等级
-- 游戏数据:大陆/地点数据
-
-***
+---
 
 ## 功能需求
 
 ### 功能需求列表
 
-| 需求编号       | 需求描述                   | 来源   |
-| ---------- | ---------------------- | ---- |
-| FR-MAP-001 | 支持世界地图模式(背景图上显示区域标记) | 游戏设计 |
-| FR-MAP-002 | 支持地图缩放                 | 用户体验 |
-| FR-MAP-003 | 支持地图平移                 | 用户体验 |
-| FR-MAP-004 | 在地图上标记各个区域的标记           | 探索功能 |
-| FR-MAP-005 | 随等级解锁地点显示               | 等级系统 |
-| FR-MAP-006 | 点击区域标记进入探索区域           | 探索功能 |
-| FR-MAP-007 | 数据持久化存储                | 存档系统 |
+| 需求编号 | 需求描述 | 来源 |
+|----------|----------|------|
+| FR-MAP-001 | 支持世界地图模式，按大陆分组显示区域标记 | 游戏设计 |
+| FR-MAP-002 | 支持地图缩放（1-5级） | 用户体验 |
+| FR-MAP-003 | 支持地图平移（-50 到 50） | 用户体验 |
+| FR-MAP-004 | 根据玩家等级判定区域解锁状态 | 等级系统 |
+| FR-MAP-005 | 进入区域时通知探索模块 | 探索功能 |
+| FR-MAP-006 | 支持按大陆筛选地点 | 地图导航 |
+| FR-MAP-007 | 数据持久化存储（地图视图按角色隔离） | 存档系统 |
 
 ### 非功能需求
 
-| 需求编号        | 需求描述            | 优先级 |
-| ----------- | --------------- | --- |
-| NFR-MAP-001 | 操作失败时回滚数据       | 高   |
-| NFR-MAP-002 | 单次操作响应时间 < 10ms | 高   |
+| 需求编号 | 需求描述 | 优先级 |
+|----------|----------|--------|
+| NFR-MAP-001 | 操作失败时回滚数据 | 高 |
+| NFR-MAP-002 | 单次操作响应时间 < 10ms | 高 |
 
-***
+---
 
 ## 接口定义
+
+### Store Action 方法（对外暴露接口）
+
+| 方法 | 说明 |
+|------|------|
+| `initialize(characterId)` | 初始化地图模块（加载状态和地点数据） |
+| `getState()` | 获取当前地图状态 |
+| `getLocationData(locationId)` | 获取指定地点数据 |
+| `getLocationsByContinent(continentId)` | 获取指定大陆下的所有地点 |
+| `getZones(playerLevel)` | 获取所有区域（含解锁状态），返回 MapZone[] |
+| `isLocationUnlocked(locationId, playerLevel)` | 检查地点是否解锁 |
+| `enterZone(zoneId)` | 进入区域（持久化当前区域ID → 发射 ZONE_ENTERED 事件） |
+| `zoomTo(level)` | 缩放到指定级别（1-5） |
+| `panTo(x, y)` | 平移到指定位置 |
+| `resetView()` | 重置视图到默认状态 |
+| `setCurrentContinent(continentId)` | 设置当前大陆 |
+| `saveCurrentTab(tab)` | 保存当前标签页（按角色隔离） |
+| `getCurrentTab()` | 获取当前标签页 |
+| `clearUIState()` | 清除 UI 状态（不删除数据库数据） |
+
+### 数据类型定义
+
+```typescript
+/** 大陆数据接口 */
+export interface ContinentData {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  position: string;
+  color: string;
+  type: 'continent';
+}
+
+/** 地图视图接口 */
+export interface MapView {
+  zoomLevel: number;
+  panX: number;
+  panY: number;
+  currentContinentId?: string;
+}
+
+/** 地图状态接口 */
+export interface MapState {
+  view: MapView;
+}
+
+/** 地点数据接口 */
+export interface LocationData {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  continent: string;
+  enemies?: string[];
+  bosses?: string[];
+  quests?: string[];
+  levelRange: [number, number];
+  color: string;
+  mapX: number;
+  mapY: number;
+  type: 'location';
+}
+
+/** 区域状态类型 */
+export type ZoneStatus = 'locked' | 'unlocked' | 'completed';
+
+/** 区域奖励接口 */
+export interface ZoneRewards {
+  gold: number;
+  exp: number;
+}
+
+/** 地图区域接口（用于大地图 UI 展示） */
+export interface MapZone {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  coordinates: { x: number; y: number };
+  requiredLevel: number;
+  requiredGold: number;
+  status: ZoneStatus;
+  rewards: ZoneRewards;
+}
+```
 
 ### 服务接口 IMapService
 
@@ -69,7 +155,6 @@ export interface IMapService {
   getState(): MapState;
   getLocationData(locationId: string): LocationData | null;
   getLocationsByContinent(continentId: string): LocationData[];
-  getLocationMarkers(continentId: string): LocationMarker[];
   getUnlockedLocations(playerLevel: number): string[];
   isLocationUnlocked(locationId: string, playerLevel: number): boolean;
   enterLocation(locationId: string): boolean;
@@ -80,88 +165,58 @@ export interface IMapService {
 }
 ```
 
-### 数据类型定义
-
-```typescript
-export interface ContinentData {
-  name: string;
-  icon: string;
-  description: string;
-  position: string;
-  color: string;
-}
-
-export interface MapView {
-  zoomLevel: number;
-  panX: number;
-  panY: number;
-  currentContinentId?: string;
-  showMarkers: boolean;
-  activeMarkerId?: string;
-}
-
-export interface MapState {
-  view: MapView;
-}
-
-export interface LocationData {
-  name: string;
-  displayName: string;
-  icon: string;
-  description: string;
-  continent: string;
-  region: string;
-  enemies?: string[];
-  quests?: string[];
-  levelRange: [number, number];
-  color: string;
-  mapX: number;
-  mapY: number;
-}
-
-export interface LocationMarker {
-  id: string;
-  x: number;
-  y: number;
-  icon: string;
-  name: string;
-  locationId: string;
-  requiredLevel: number;
-  difficulty?: 'normal' | 'heroic' | 'mythic';
-  parentMarkerId?: string;
-}
-```
-
-### 事件定义
-
-| 事件名称                       | 触发时机      | 事件数据                       |
-| -------------------------- | --------- | -------------------------- |
-| `MAP_LOCATION_ENTERED`      | 进入探索区域时    | `{ locationId, location }` |
-| `MAP_MARKERS_UPDATED`       | 标记列表变化时    | `{ markers }`              |
-| `MAP_MODE_CHANGED`          | 地图模式变化时    | `{ mode }`                 |
-| `MAP_UNLOCKED_LOCATIONS_CHANGED` | 解锁地点变化时 | `{ locations }`            |
-
-***
+---
 
 ## 业务逻辑流程
 
-### 进入探索区域流程
+### 初始化流程
 
-1. 调用 `enterLocation(locationId)` 方法
-2. 检查地点是否存在
-3. 获取玩家等级，检查是否满足等级要求
-4. 如果满足，触发 `MAP_LOCATION_ENTERED` 事件
-5. 跳转到探索界面
+1. 调用 `mapStore.initialize(characterId)`
+2. 从 `runtime_mapState` 表加载该角色的地图视图状态
+3. 从 `config_locations` 表加载所有地点数据（仅 type='location'），写入 `locations` Map
+4. 恢复上次选中的区域ID（若存在）
+5. 标记 `initialized = true`
+
+### 进入区域流程
+
+1. 调用 `mapStore.enterZone(zoneId)`
+2. 从 `locations` Map 查找地点数据
+3. 设置 `currentLocation`
+4. 持久化当前区域ID到 `runtime_mapState`（按角色隔离）
+5. 发射 `ZONE_ENTERED` 事件（携带 locationId 和 location 数据）
+6. 探索模块监听此事件后调用 `enterArea`
+
+### 区域状态判定流程
+
+`getZones(playerLevel)` 遍历所有地点，调用纯函数 `getZoneStatus()` 判定状态：
+
+| 状态 | 条件 |
+|------|------|
+| `completed` | 区域在 `completedZones` 列表中 |
+| `unlocked` | 角色等级 >= 最低要求等级 |
+| `locked` | 以上都不满足 |
 
 ### 地点解锁检查流程
 
-1. 调用 `getUnlockedLocations(playerLevel)` 方法
-2. 获取所有地点列表
-3. 筛选出 requiredLevel <= playerLevel 的地点
-4. 返回已解锁的地点列表
-5. 触发 `MAP_UNLOCKED_LOCATIONS_CHANGED` 事件
+1. 调用 `isLocationUnlocked(locationId, playerLevel)`
+2. 从 `locations` Map 查找地点数据
+3. 调用纯函数 `isLocationAccessible(location, playerLevel)`
+4. 比较 `characterLevel >= levelRange[0]`
 
-***
+---
+
+## 纯函数层 (service.ts)
+
+| 函数 | 说明 |
+|------|------|
+| `getLocationById(locations, id)` | 根据 ID 从 Map 中查找地点 |
+| `getCurrentLocation(locations, currentLocationId)` | 获取当前选中地点 |
+| `isLocationAccessible(location, characterLevel)` | 检查等级是否满足最低要求 |
+| `isZoneExplored(state, zoneId)` | 检查区域是否已探索 |
+| `getZoneStatus(state, zoneId, location, characterLevel)` | 获取区域锁定/解锁/完成状态 |
+| `getLocationsByContinent(locations, continentId)` | 筛选指定大陆的地点列表 |
+
+---
 
 ## 数据模型与存储设计
 
@@ -169,133 +224,137 @@ export interface LocationMarker {
 
 | 数据库 Store | Key | 数据结构 | 说明 |
 |--------------|-----|----------|------|
-| map | 'map' | MapConfigData | 地图配置（全局共享） |
-| characterData | `characterId` | MapViewData | 地图视图状态（按角色隔离） |
+| `config_locations` | `locationId` | LocationDataStorage | 地点数据（全局共享，通过 type='location' 筛选） |
+| `runtime_mapState` | `map_${characterId}` | MapStateStorage | 地图视图状态（按角色隔离） |
 
-### MapConfigData 存储内容（全局共享）
+### LocationDataStorage 存储内容 (config_locations)
 
-| 字段   | 类型     | 默认值 | 说明       |
-| ---- | ------ | --- | -------- |
-| `id` | string | 'map' | 唯一标识 |
-| `updatedAt` | number | Date.now() | 最后更新时间 |
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | string | 地点唯一标识 |
+| `name` | string | 地点名称 |
+| `icon` | string | 地点图标 |
+| `description` | string | 地点描述 |
+| `continent` | string | 所属大陆ID |
+| `enemies?` | string[] | 敌人列表 |
+| `bosses?` | string[] | Boss列表 |
+| `quests?` | string[] | 任务列表 |
+| `levelRange` | [number, number] | 等级范围 |
+| `color` | string | 主色调 |
+| `mapX` | number | 地图X坐标 |
+| `mapY` | number | 地图Y坐标 |
+| `type` | 'location' \| 'continent' | 类型标识 |
 
-### MapViewData 存储内容（按角色隔离）
+### MapStateStorage 存储内容 (runtime_mapState)
 
-| 字段   | 类型     | 默认值 | 说明       |
-| ---- | ------ | --- | -------- |
-| `characterId` | string | - | 角色唯一标识 |
-| `view` | MapView | 见下方 | 当前视图状态   |
-| `updatedAt` | number | Date.now() | 最后更新时间 |
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | string | `map_${characterId}` |
+| `view?` | MapView | 地图视图（zoomLevel, panX, panY, currentContinentId） |
+| `currentLocationId?` | string | 当前选中的区域ID |
+| `currentTab?` | string | 当前标签页（'map' \| 'explore'） |
 
 ### 多角色支持说明
 
-地图配置数据为全局共享数据，不随角色变化。地图视图状态（缩放、平移等）通过 `characterId` 字段实现角色隔离，每个角色拥有独立的视图设置。切换角色时，系统自动加载对应角色的视图状态。删除角色时，级联删除该角色的视图数据。
+地点数据（`config_locations`）为全局共享。地图视图状态通过 `map_${characterId}` 键实现角色隔离，每个角色拥有独立的缩放、平移、当前大陆和标签页设置。
 
-### MapView 默认值
+### 默认视图状态
 
 ```typescript
 {
-  mode: 'world',
   zoomLevel: 1,
   panX: 0,
-  panY: 0,
-  currentContinentId: undefined,
-  showMarkers: true,
-  activeMarkerId: undefined
+  panY: 0
 }
 ```
 
-### 同步机制
-
-| 同步类型 | 触发条件 | 延迟 |
-|----------|----------|------|
-| 自动同步 | 状态变更 | 500ms 防抖 |
-| 立即同步 | 关键操作 | 即时 |
-| 页面卸载 | beforeunload | 即时 |
-
-***
+---
 
 ## 与其他模块的交互关系
 
 ### 依赖关系
 
-- **事件总线**:发布地图事件
-- **配置管理**:configManager
-- **游戏数据**:CONTINENTS/WORLD_LOCATIONS
+- **事件总线**: 发布 `ZONE_ENTERED` 事件
+- **数据表**: `config_locations`、`runtime_mapState`
 
 ### 交互模块
 
-| 模块    | 交互方式  | 说明             |
-| ----- | ----- | -------------- |
-| 探索模块  | 事件发布  | 触发进入探索区域事件     |
-| 角色模块  | 数据获取  | 获取玩家等级用于解锁判断   |
-| 事件总线  | 发布/订阅 | 发布地图事件,供UI组件监听 |
+| 模块 | 交互方式 | 说明 |
+|------|----------|------|
+| 探索模块 | 事件 | 发射 `ZONE_ENTERED` 事件，探索模块监听后进入区域 |
+| 角色模块 | 调用 | 获取玩家等级用于解锁判断 |
+| 事件总线 | 发布 | 发布 `ZONE_ENTERED` 事件 |
 
-***
+---
 
 ## 异常处理机制
 
 ### 异常类型与处理策略
 
-| 异常类型   | 触发条件              | 处理策略          |
-| ------ | ----------------- | ----------- |
-| 存储读取失败 | IndexedDB 解析错误 | 使用默认值初始化    |
+| 异常类型 | 触发条件 | 处理策略 |
+|----------|----------|----------|
+| 存储读取失败 | IndexedDB 解析错误 | 使用默认值初始化 |
 | 存储写入失败 | IndexedDB 写入异常 | 进入重试队列，指数退避重试 3 次 |
-| 地点不存在  | 进入不存在的地点         | 返回 false      |
-| 等级不足   | 进入等级要求未满足的地点    | 返回 false,提示等级要求 |
+| 地点不存在 | 操作不存在的地点 | 返回 null / false |
+| 等级不足 | 进入等级要求未满足的地点 | 不阻止，由调用方判断 |
 
-***
+---
 
 ## 性能与安全考量
 
 ### 性能优化
 
-| 优化点   | 实现方式           | 预期效果     |
-| ---- | -------------- | -------- |
-| 懒加载   | 仅在需要时加载数据    | 加快启动速度    |
-| 标记聚合  | 大缩放级别聚合显示标记  | 减少渲染数量    |
-| 防抖同步 | 500ms 延迟合并写入 | 减少 IO 操作 |
-| 批量写入 | SyncEngine 批量处理 | 提升性能 |
+| 优化点 | 实现方式 | 预期效果 |
+|--------|----------|----------|
+| 内存缓存 | Map 结构缓存地点数据 | 快速查找 |
+| 纯函数计算 | 状态判定均为无副作用纯函数 | 可测试、可复用 |
 | 异步加载 | Store 初始化时异步从 IndexedDB 读取 | 不阻塞主线程 |
 
 ### 数据安全
 
-| 安全措施 | 实现方式               |
-| ---- | ------------------ |
-| 输入验证 | 所有操作进行参数检查         |
-| 数据隔离 | 使用独立对象存储            |
-| 异常捕获 | 防止程序崩溃             |
-| 重试机制 | 失败时自动重试 3 次       |
-| 数据校验 | 写入前验证数据结构           |
+| 安全措施 | 实现方式 |
+|----------|----------|
+| 输入验证 | 缩放和平移操作进行边界限制 |
+| 数据隔离 | 使用 `map_${characterId}` 前缀隔离角色数据 |
+| 异常捕获 | 所有 IO 操作包裹 try-catch |
+| 重试机制 | 失败时自动重试 3 次 |
 
-***
+---
 
 ## 模块文件结构
 
 ```
 src/modules/map/
-  - index.ts          # 核心实现（Store + Service）
-  - types.ts          # 类型定义
+  - index.ts          # 模块入口，统一导出
+  - types.ts          # 类型定义（ContinentData、LocationData、MapView 等）
+  - db.ts             # IndexedDB 数据库操作层（config_locations、runtime_mapState）
+  - store.ts          # Pinia Store 状态管理（useMapStore）
+  - service.ts        # 纯函数层（getLocationById、isLocationAccessible、getZoneStatus 等）
 ```
 
 ### 文件职责说明
 
-| 文件         | 职责                            |
-| ---------- | ----------------------------- |
-| `index.ts` | Pinia Store 实现、服务接口实现、数据持久化逻辑 |
-| `types.ts` | TypeScript 类型定义、接口定义          |
+| 文件 | 职责 |
+|------|------|
+| `index.ts` | 模块入口、统一导出 |
+| `types.ts` | TypeScript 类型定义：`ContinentData`、`LocationData`、`MapView`、`MapState`、`MapZone`、`ZoneStatus` 等 |
+| `db.ts` | IndexedDB 数据库操作：`saveMapState`、`getMapState`、`saveLocationData`、`getAllLocationData`、`saveCurrentTab` 等 |
+| `store.ts` | Pinia Store 状态管理（useMapStore），编排业务逻辑 |
+| `service.ts` | 纯函数层：`getLocationById`、`isLocationAccessible`、`getZoneStatus`、`getLocationsByContinent` |
 
-***
+---
 
 ## 版本历史
 
-| 版本   | 日期         | 修改内容                              | 作者     |
-| ---- | ---------- | --------------------------------- | ------ |
-| v1.0 | 2026-05-15 | 初始版本,包含基础地图功能                   | System |
+| 版本 | 日期 | 修改内容 | 作者 |
+|------|------|----------|------|
+| v1.0 | 2026-05-15 | 初始版本,包含基础地图功能 | System |
 | v1.1 | 2026-05-18 | 精简功能:移除导航、收藏、自定义标记；添加等级解锁和探索入口 | System |
 | v2.0 | 2026-05-19 | 迁移到 Pinia + IndexedDB 架构，实现自动同步持久化 | System |
 | v2.1 | 2026-05-20 | 拆分地图配置到独立存储（map），数据库版本升级至3 | System |
+| v2.2 | 2026-06-16 | 文件结构拆分为 db/store/service 三层架构 | System |
+| v3.0 | 2026-06-16 | 全面对齐实际代码：ContinentData 添加 id/type 字段、LocationData 添加 id/bosses/type 字段（移除 displayName/region）、MapView 移除 showMarkers/activeMarkerId 字段、移除 LocationMarker 类型、添加 getZones/setCurrentContinent/saveCurrentTab/getCurrentTab/clearUIState 方法、enterLocation 改为 enterZone、数据表从 characterData 改为 runtime_mapState | System |
 
-***
+---
 
 **文档结束**

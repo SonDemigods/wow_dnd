@@ -5,8 +5,8 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 商店模块设计文档 |
-| 版本 | v2.1 |
-| 生成日期 | 2026年5月20日 |
+| 版本 | v3.0 |
+| 生成日期 | 2026年6月16日 |
 | 所属模块 | `modules/shop` |
 
 ---
@@ -15,25 +15,26 @@
 
 ### 模块定位
 
-商店模块是游戏经济系统的核心组件,负责管理商品的随机刷新、购买和出售功能。探索中的【商店】买卖货品，为玩家提供完整的交易体验。
+商店模块是游戏经济系统的核心组件，负责管理商品的随机刷新、购买和出售功能。采用"当前商店"模式（同一时间只打开一个商店），商品列表按 shopId 隔离存储。
 
 ### 核心职责
 
 | 职责 | 描述 |
 |------|------|
-| 商店配置管理 | 管理不同类型商店的配置参数 |
-| 商品随机刷新 | 根据配置随机生成商品列表 |
-| 商品购买 | 处理购买流程,包括货币验证、库存检查、背包添加 |
-| 商品出售 | 处理出售流程,包括物品识别、价值评估、货币增加 |
-| 交易记录 | 记录购买和出售历史 |
-| 数据持久化 | 实现商店数据的本地存储与加载 |
+| 商店配置管理 | 管理不同类型商店的配置参数（从 `config_shops` 加载） |
+| 商品随机刷新 | 根据商店类型从物品模板池中随机生成商品列表 |
+| 商品购买 | 处理购买流程，包括金币验证、背包添加、库存扣减 |
+| 商品出售 | 处理出售流程，包括物品移除、金币增加、回购列表追踪 |
+| 商店刷新定时 | 支持按 refreshInterval 定时刷新商品 |
+| 数据持久化 | 实现商店数据的本地存储与加载（`runtime_shopItems`） |
 
 ### 模块边界
 
-**商店模块**与以下模块交互:
-- 角色模块:金币管理
-- 背包模块:物品管理
-- 探索模块:商店入口（探索中的【商店】买卖货品）
+**商店模块**与以下模块直接交互（全部通过 Store Action 调用）:
+- 角色模块: 金币管理（`characterStore.spendGold/gainGold`）
+- 背包模块: 物品管理（`inventoryStore.addItem/removeItem/getItemInfo`）
+- 探索模块: 探索中的【商店】买卖货品（探索调用 `shopStore.openShop`）
+- 冒险日志模块: 记录交易事件日志
 
 ---
 
@@ -43,17 +44,16 @@
 
 | 需求编号 | 需求描述 | 来源 |
 |----------|----------|------|
-| FR-SHOP-001 | 支持多种商店类型(武器、护甲、药水、材料等) | 游戏设计 |
-| FR-SHOP-002 | 商品每次访问随机刷新可购买物品列表 | 魔兽世界机制 |
-| FR-SHOP-003 | 商品价格固定,来源于物品数据 | 经济平衡 |
-| FR-SHOP-004 | 商品库存管理,购买后减少库存 | 交易逻辑 |
+| FR-SHOP-001 | 支持多种商店类型(general, potion, scroll, food, material) | 游戏设计 |
+| FR-SHOP-002 | 商品每次打开商店时加载已保存商品，支持定时刷新 | 游戏机制 |
+| FR-SHOP-003 | 商品价格基于物品基础价值和稀有度倍数计算 | 经济平衡 |
+| FR-SHOP-004 | 商品库存管理，购买后减少对应库存 | 交易逻辑 |
 | FR-SHOP-005 | 购买时验证金币是否充足 | 交易安全 |
 | FR-SHOP-006 | 购买时检查背包容量 | 背包管理 |
-| FR-SHOP-007 | 出售时计算物品价值(低于购买价) | 经济平衡 |
+| FR-SHOP-007 | 出售时计算物品回收价（买入价 × 稀有度折扣率） | 经济平衡 |
 | FR-SHOP-008 | 出售时从背包移除物品 | 背包管理 |
-| FR-SHOP-009 | 商店每次访问自动刷新商品 | 游戏体验 |
-| FR-SHOP-010 | 交易记录保存 | 审计追踪 |
-| FR-SHOP-011 | 数据持久化存储 | 存档系统 |
+| FR-SHOP-009 | 支持回购机制（玩家出售的物品可回购） | 游戏体验 |
+| FR-SHOP-010 | 数据持久化存储 | 存档系统 |
 
 ### 非功能需求
 
@@ -61,112 +61,38 @@
 |----------|----------|--------|
 | NFR-SHOP-001 | 交易操作失败时回滚数据 | 高 |
 | NFR-SHOP-002 | 单次交易响应时间 < 50ms | 高 |
-| NFR-SHOP-003 | 支持并发交易操作 | 中 |
 
 ---
 
 ## 接口定义
 
-### 服务接口 IShopService
+### Store Action 方法（对外暴露接口）
 
-```typescript
-export interface IShopService {
-  /**
-   * 获取商店配置
-   * @param {string} shopId - 商店ID
-   * @returns {ShopConfig | null} 商店配置
-   */
-  getShopConfig(shopId: string): ShopConfig | null;
+| 方法 | 说明 |
+|------|------|
+| `init()` | 初始化商店模块，加载商店配置 |
+| `openShop(shopId)` | 打开指定商店（加载商品、检查刷新） |
+| `buyItem(itemId, quantity?)` | 购买当前商店中的物品 |
+| `sellItem(itemId, quantity?)` | 向当前商店出售物品 |
+| `closeShop()` | 关闭当前商店 |
+| `refreshShop()` | 刷新当前商店商品 |
+| `getShopConfig(shopId)` | 获取商店配置 |
+| `calculateSellPrice(itemId)` | 计算物品卖出价格（供 UI 预览） |
+| `getSoldItemCount(itemId)` | 获取回购数量 |
+| `reset()` | 重置所有商店数据 |
 
-  /**
-   * 获取商店库存
-   * @param {string} shopId - 商店ID
-   * @returns {ShopInventory | null} 商店库存
-   */
-  getShopInventory(shopId: string): ShopInventory | null;
+### 兼容旧接口别名
 
-  /**
-   * 刷新商店库存
-   * @param {string} shopId - 商店ID
-   */
-  refreshShopInventory(shopId: string): void;
-
-  /**
-   * 购买物品
-   * @param {string} shopId - 商店ID
-   * @param {string} itemId - 物品ID
-   * @param {number} [quantity] - 购买数量，默认为1
-   * @returns {boolean} 是否购买成功
-   */
-  buyItem(shopId: string, itemId: string, quantity?: number): boolean;
-
-  /**
-   * 出售物品
-   * @param {string} itemId - 物品ID
-   * @param {number} [quantity] - 出售数量，默认为1
-   * @returns {boolean} 是否出售成功
-   */
-  sellItem(itemId: string, quantity?: number): boolean;
-
-  /**
-   * 计算物品售价
-   * @param {string} itemId - 物品ID
-   * @param {ItemRarity} rarity - 物品稀有度
-   * @param {number} [priceMultiplier] - 价格倍数，默认为1
-   * @returns {number} 售价
-   */
-  calculateBuyPrice(
-    itemId: string,
-    rarity: ItemRarity,
-    priceMultiplier?: number
-  ): number;
-
-  /**
-   * 计算物品回收价
-   * @param {string} itemId - 物品ID
-   * @param {ItemRarity} rarity - 物品稀有度
-   * @returns {number} 回收价
-   */
-  calculateSellPrice(itemId: string, rarity: ItemRarity): number;
-
-  /**
-   * 获取所有商店列表
-   * @returns {ShopConfig[]} 商店配置列表
-   */
-  getAllShops(): ShopConfig[];
-
-  /**
-   * 获取指定地点的商店列表
-   * @param {string} locationId - 地点ID
-   * @returns {ShopConfig[]} 商店配置列表
-   */
-  getShopsByLocation(locationId: string): ShopConfig[];
-
-  /**
-   * 检查商店是否需要刷新
-   * @param {string} shopId - 商店ID
-   * @returns {boolean} 是否需要刷新
-   */
-  needsRefresh(shopId: string): boolean;
-
-  /** 重置所有商店数据 */
-  reset(): void;
-}
-```
+| 别名 | 实际方法 |
+|------|----------|
+| `selectShop(shopId)` | → `openShop(shopId)` |
+| `refreshItems()` | → `refreshShop()` |
 
 ### 数据类型定义
 
 ```typescript
-export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-
 /** 价格变化范围 */
 export interface PriceVariation {
-  min: number;
-  max: number;
-}
-
-/** 库存变化范围 */
-export interface StockVariation {
   min: number;
   max: number;
 }
@@ -177,80 +103,115 @@ export interface ShopConfig {
   name: string;
   type: string;
   icon: string;
-  locationId: string;
-  npcId: string;
   refreshInterval: number;
-  minItems: number;
-  maxItems: number;
   priceVariation: PriceVariation;
-  stockVariation: StockVariation;
 }
 
 /** 商店商品 */
 export interface ShopItem {
   itemId: string;
   price: number;
-  stock: number;
-  maxStock: number;
+  quantity: number;
 }
 
-/** 商店库存 */
-export interface ShopInventory {
-  shopId: string;
-  items: ShopItem[];
-  lastRefresh: number;
+/** 出售物品的回购跟踪条目 */
+export interface SoldItemEntry {
+  itemId: string;
+  price: number;
+  count: number;
+}
+
+/** 物品分类类型 */
+export type ItemCategory = 'consumable' | 'weapon' | 'armor' | 'accessory' | 'material' | 'misc';
+
+/** 物品品质类型（复用 ItemRarity） */
+export type ItemQuality = ItemRarity;
+
+/** 商店展示商品（合并 ShopItem 和物品详情） */
+export interface ShopDisplayItem {
+  id: string;
+  itemId: string;
+  name: string;
+  type: ItemCategory;
+  quality: ItemQuality;
+  icon: string;
+  description: string;
+  price: number;
+  quantity: number;
+  category: ItemCategory;
+  effect?: { type: string; value: number | Partial<Record<string, number>> };
 }
 ```
 
-### 事件定义
+### 商店类型与可售物品映射
 
-| 事件名称 | 触发时机 | 事件数据 |
-|----------|----------|----------|
-| `SHOP_PURCHASED` | 购买商品成功时 | `ShopItemPurchasedEvent` |
-| `SHOP_SOLD` | 出售商品成功时 | `ShopItemSoldEvent` |
-| `SHOP_REFRESHED` | 商店刷新完成时 | `ShopRefreshedEvent` |
-| `SHOP_NOTIFICATION` | 交易状态变化时 | 提示消息 |
+| 商店类型 | 可售物品类型 |
+|----------|-------------|
+| `general` | potion, scroll, food, material |
+| `potion` | potion |
+| `scroll` | scroll |
+| `food` | food |
+| `material` | material |
 
 ---
 
 ## 业务逻辑流程
 
-### 商品购买流程
+### 打开商店流程
 
-1. 调用 `purchaseItem(itemId, quantity)` 方法
-2. 检查商店是否已打开
-3. 检查商品是否存在
-4. 检查库存是否充足
-5. 检查金币是否充足
-6. 检查背包是否有空间
-7. 添加物品到背包
-8. 扣除金币
-9. 减少商品库存
-10. 记录交易
-11. 触发购买事件
+1. 调用 `shopStore.openShop(shopId)`
+2. 如果切换商店，清空旧商品列表
+3. 确保商店配置已加载（DB 为空时回退到硬编码 `SHOPS` 种子数据）
+4. 查找商店配置，不存在则返回
+5. 调用 `loadOrGenerateItems()` 从 DB 加载已保存商品
+6. 检查上次刷新时间，若超过 `refreshInterval` 则重新生成
+7. 持久化当前商店ID到 `gameState`
+8. 合并生成商品和回购物品列表 → 设置 `currentItems`
+9. 发射 `SHOP_OPENED` 事件
 
-### 商品出售流程
+### 购买物品流程
 
-1. 调用 `sellItem(itemId, slot, quantity)` 方法
-2. 检查商店是否已打开
-3. 检查物品是否存在
-4. 检查物品是否可出售
-5. 计算出售价格
-6. 从背包移除物品
-7. 增加金币
-8. 记录交易
-9. 触发出售事件
+1. 调用 `shopStore.buyItem(itemId, quantity)`
+2. 验证当前商店已打开、商品存在、库存充足
+3. 计算总价 = 单价 × 数量
+4. 检查角色金币是否充足（纯函数 `canAffordItem`）
+5. 调用 `characterStore.spendGold(totalPrice)` 扣除金币
+6. 调用 `inventoryStore.addItem(itemId, quantity)` 添加物品
+7. 如果背包空间不足，返还金币并返回 false
+8. 更新库存（回购列表或生成商品中扣减）
+9. 发射 `SHOP_TRANSACTION` 事件 → 记录冒险日志
 
-### 商店刷新流程
+### 出售物品流程
 
-1. 调用 `refreshShop(shopId)` 方法
-2. 获取商店配置
-3. 从商品池随机选择商品
-4. 从物品数据获取固定价格
-5. 计算随机库存
-6. 保存商品列表
-7. 记录刷新时间
-8. 触发刷新事件
+1. 调用 `shopStore.sellItem(itemId, quantity)`
+2. 验证当前商店已打开、物品模板存在
+3. 调用纯函数 `calculatePrice(item, config, false)` 计算回收价
+4. 调用 `inventoryStore.removeItem(itemId, quantity)` 从背包移除
+5. 调用 `characterStore.gainGold(actualSellPrice)` 增加金币
+6. 将出售物品加入回购列表 `soldItems`（按 shopId → itemId 组织）
+7. 发射 `SHOP_TRANSACTION` 事件 → 记录冒险日志
+
+### 商品刷新流程
+
+1. 调用 `shopStore.refreshShop()` 或定时刷新
+2. 调用纯函数 `generateShopItems(config, allTemplates)`：
+   - 按商店类型过滤物品池
+   - 随机选取最多 10 种物品
+   - 计算购买价（`baseValue × rarityMultiplier`）
+   - 生成随机库存（1-10）
+3. 持久化到 `runtime_shopItems` 表
+4. 合并回购列表，更新 `currentItems`
+
+### 回购机制
+
+玩家出售的物品存放在 `soldItems` Map 中（按 `shopId → itemId → SoldItemEntry` 组织），下次打开同一商店时合并到商品列表最前面。购买回购物品时从该 Map 中扣减，扣完自动移除。
+
+### 价格体系
+
+| 价格类型 | 计算公式 |
+|----------|----------|
+| 买入价 | `Math.floor(item.value × RARITY_PRICE_MULTIPLIER[rarity])` |
+| 卖出价 | `Math.floor(买入价 × RARITY_SELL_DISCOUNT[rarity])` |
 
 ---
 
@@ -260,37 +221,32 @@ export interface ShopInventory {
 
 | 数据库 Store | Key | 数据结构 | 说明 |
 |--------------|-----|----------|------|
-| shop | 'shop' | ShopConfigData | 商店配置（全局共享） |
-| characterData | `characterId` | ShopTransactionData | 交易历史（按角色隔离） |
+| `config_shops` | `shopId` | ShopConfigStorage | 商店配置（全局共享） |
+| `runtime_shopItems` | `shopId` | ShopItemsStorage | 商店商品（全局共享） |
+| `gameState` | - | `{ currentShopId }` | 当前打开的商店ID |
 
-### ShopConfigData 存储内容（全局共享）
+### ShopConfigStorage 存储内容
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `id` | string | 'shop' | 唯一标识 |
-| `shopItems` | Record<string, ShopItem[]> | {} | 各商店的商品列表 |
-| `lastRefresh` | Record<string, number> | {} | 各商店最后刷新时间戳 |
-| `updatedAt` | number | Date.now() | 最后更新时间 |
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | string | 商店唯一标识 |
+| `name` | string | 商店名称 |
+| `type` | string | 商店类型 |
+| `icon` | string | 商店图标 |
+| `refreshInterval` | number | 商品刷新间隔（毫秒） |
+| `priceVariation` | { min, max } | 价格变化范围 |
 
-### ShopTransactionData 存储内容（按角色隔离）
+### ShopItemsStorage 存储内容
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `characterId` | string | - | 角色唯一标识 |
-| `purchaseHistory` | ShopTransaction[] | [] | 交易历史记录(最多50条) |
-| `updatedAt` | number | Date.now() | 最后更新时间 |
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `shopId` | string | 商店ID |
+| `items` | { itemId, price, quantity }[] | 商品列表 |
+| `lastRefresh` | number | 最后刷新时间戳 |
 
 ### 多角色支持说明
 
-商店配置数据（商品列表、刷新时间等）为全局共享数据，不随角色变化。交易历史数据通过 `characterId` 字段实现角色隔离，每个角色拥有独立的交易记录。切换角色时，系统自动加载对应角色的交易历史。删除角色时，级联删除该角色的交易历史。
-
-### 同步机制
-
-| 同步类型 | 触发条件 | 延迟 |
-|----------|----------|------|
-| 自动同步 | 状态变更 | 500ms 防抖 |
-| 立即同步 | 关键操作 | 即时 |
-| 页面卸载 | beforeunload | 即时 |
+商店配置（`config_shops`）和商品数据（`runtime_shopItems`）为全局共享数据。回购列表 `soldItems` 在内存中维护，按商店ID组织。
 
 ---
 
@@ -298,18 +254,17 @@ export interface ShopInventory {
 
 ### 依赖关系
 
-- **事件总线**:发布交易事件
-- **角色模块**:金币管理
-- **背包模块**:物品管理
+- **配置数据**: `SHOPS` 常量（硬编码回退）、`RARITY_PRICE_MULTIPLIER`、`RARITY_SELL_DISCOUNT`
+- **物品模板**: 从 `inventoryStore.getAllItems()` 获取物品池
 
 ### 交互模块
 
 | 模块 | 交互方式 | 说明 |
 |------|----------|------|
-| 角色模块 | 调用 | 购买时调用 `spendGold`,出售时调用 `addGold` |
-| 背包模块 | 调用 | 购买时调用 `addItem`,出售时调用 `removeItem` |
-| 探索模块 | 调用 | 探索中的【商店】买卖货品 |
-| 事件总线 | 发布/订阅 | 发布交易事件,供UI组件监听 |
+| 角色模块 | 调用 | 购买时 `spendGold`、出售时 `gainGold` |
+| 背包模块 | 调用 | 购买时 `addItem`、出售时 `removeItem`、查询物品信息 `getItemInfo/getAllItems` |
+| 探索模块 | 调用 | 探索中的【商店】打开商店（`openShop`） |
+| 冒险日志模块 | 调用 | 记录交易事件 |
 
 ---
 
@@ -317,16 +272,15 @@ export interface ShopInventory {
 
 ### 异常类型与处理策略
 
-| 异常类型 | 触发条件 | 处理策略 | 错误提示 |
-|----------|----------|----------|----------|
+| 异常类型 | 触发条件 | 处理策略 | 提示 |
+|----------|----------|----------|------|
 | 存储读取失败 | IndexedDB 解析错误 | 使用默认值初始化 | 控制台输出错误日志 |
-| 商店未打开 | 交易时商店未打开 | 返回 false | "商店未打开" |
-| 商品不存在 | 购买不存在的商品 | 返回 false | "商品不存在" |
-| 库存不足 | 购买数量超过库存 | 返回 false | "库存不足" |
-| 金币不足 | 购买金额超过余额 | 返回 false | "金币不足" |
-| 背包已满 | 背包空间不足 | 返回 false | "背包已满" |
-| 物品无法出售 | 出售不可交易物品 | 返回 false | "该物品无法出售" |
-| 存储写入失败 | IndexedDB 写入异常 | 进入重试队列，指数退避重试 3 次 | "数据同步失败" |
+| 商品不存在 | 购买不存在的商品 | 返回 false | - |
+| 库存不足 | 购买数量超过库存 | 返回 false | - |
+| 金币不足 | 购买金额超过余额 | 返回 false，金币不被扣除 | - |
+| 背包已满 | 背包空间不足 | 返回 false，金币返还 | - |
+| 物品无法出售 | 物品模板不存在 | 返回 false | - |
+| 存储写入失败 | IndexedDB 写入异常 | 进入重试队列，指数退避重试 3 次 | - |
 
 ---
 
@@ -336,24 +290,19 @@ export interface ShopInventory {
 
 | 优化点 | 实现方式 | 预期效果 |
 |--------|----------|----------|
-| 商品数据缓存 | 内存缓存商品列表 | 减少重复计算 |
-| 防抖同步 | 500ms 延迟合并写入 | 减少 IO 操作 |
-| 批量写入 | SyncEngine 批量处理 | 提升性能 |
-| 历史记录限制 | 交易记录最多保存50条 | 控制存储大小 |
-| 定时刷新检查 | 每分钟检查一次是否需要刷新 | 避免频繁刷新 |
+| 商品缓存 | 商品数据持久化到 DB，打开时加载 | 减少重复生成 |
+| 纯函数计算 | 价格计算、商品生成均为无副作用纯函数 | 可测试、可复用 |
 | 异步加载 | Store 初始化时异步从 IndexedDB 读取 | 不阻塞主线程 |
 
 ### 数据安全
 
 | 安全措施 | 实现方式 |
 |----------|----------|
-| 输入验证 | 所有数值操作进行边界检查 |
-| 数据隔离 | 使用独立对象存储 |
-| 异常捕获 | 所有IO操作包裹 try-catch |
-| 原子操作 | 交易过程中先验证后执行 |
-| 防重复购买 | 每次购买前重新验证库存和金币 |
+| 输入验证 | 所有操作进行边界检查和类型验证 |
+| 交易原子性 | 先验证再扣金币，失败时回滚金币 |
+| 数据序列化 | `toRawData()` 去除 Vue/Proxy 包装 |
+| 异常捕获 | 所有 IO 操作包裹 try-catch |
 | 重试机制 | 失败时自动重试 3 次 |
-| 数据校验 | 写入前验证数据结构 |
 
 ---
 
@@ -361,16 +310,22 @@ export interface ShopInventory {
 
 ```
 src/modules/shop/
-  - index.ts          # 核心实现（Store + Service）
-  - types.ts          # 类型定义
+  - index.ts          # 模块入口，统一导出
+  - types.ts          # 类型定义（ShopConfig、ShopItem、SoldItemEntry 等）
+  - db.ts             # IndexedDB 数据库操作层（config_shops、runtime_shopItems）
+  - store.ts          # Pinia Store 状态管理（useShopStore）
+  - service.ts        # 纯函数层（calculatePrice、canAffordItem、generateShopItems、getAvailableShops）
 ```
 
 ### 文件职责说明
 
 | 文件 | 职责 |
 |------|------|
-| `index.ts` | Pinia Store 实现、服务接口实现、数据持久化逻辑、随机算法 |
-| `types.ts` | TypeScript 类型定义、接口定义、事件类型定义 |
+| `index.ts` | 模块入口、统一导出 |
+| `types.ts` | TypeScript 类型定义：`ShopConfig`、`ShopItem`、`ShopDisplayItem`、`SoldItemEntry` 等 |
+| `db.ts` | IndexedDB 数据库操作，封装 `config_shops` 和 `runtime_shopItems` 的读写 |
+| `store.ts` | Pinia Store 状态管理（useShopStore），编排业务逻辑 |
+| `service.ts` | 纯函数层：`calculatePrice`、`canAffordItem`、`generateShopItems`、`getAvailableShops` |
 
 ---
 
@@ -382,7 +337,9 @@ src/modules/shop/
 | v1.1 | 2026-05-15 | 移除加密处理相关需求 | System |
 | v1.2 | 2026-05-15 | 调整业务逻辑:商品每次访问随机刷新,价格固定来源于物品数据 | System |
 | v2.0 | 2026-05-19 | 迁移到 Pinia + IndexedDB 架构，实现自动同步持久化 | System |
-| v2.1 | 2026-05-20 | 拆分商店配置到独立存储（shop），数据库版本升级至3 | System |
+| v2.1 | 2026-05-20 | 拆分商店配置到独立存储（config_shops），数据库版本升级至3 | System |
+| v2.2 | 2026-06-16 | 文件结构拆分为 db/store/service 三层架构 | System |
+| v3.0 | 2026-06-16 | 全面对齐实际代码：更新 ShopConfig 字段（移除 locationId/npcId 等未实现字段）、添加 SoldItemEntry/ShopDisplayItem 定义、回购机制说明、ShopConfig 存储格式修正、纯函数层架构说明 | System |
 
 ---
 

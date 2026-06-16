@@ -5,579 +5,348 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 数据持久化架构设计文档 |
-| 版本 | v1.1 |
-| 生成日期 | 2026年5月20日 |
+| 版本 | v2.0 |
+| 生成日期 | 2026年6月16日 |
+| 更新说明 | 根据项目实际代码结构全面修订 |
 
 ---
 
-## 架构概述
+## 1. 技术栈概述
 
-### 1.1 设计目标
+### 1.1 核心技术
 
-本架构采用 **Pinia** 作为首要数据存储方案，实现以下核心目标：
+| 技术 | 用途 | 版本 |
+|------|------|------|
+| Vue 3 | 前端框架，Composition API + `<script setup>` 语法 | ^3.4.0 |
+| TypeScript | 类型安全开发语言 | ^5.3.0 |
+| Vite | 构建工具 | ^5.0.0 |
+| Pinia | 状态管理 | ^2.1.7 |
+| Dexie.js | IndexedDB 封装库，游戏数据持久化存储 | ^4.4.2 |
+| Less | CSS 预处理器 | ^4.2.0 |
+| anime.js | 动画引擎 | ^4.4.1 |
+| Tone.js | Web Audio 音频引擎 | ^15.1.22 |
+
+### 1.2 设计目标
 
 1. **统一的数据管理**：所有核心业务数据通过 Pinia 进行状态管理与操作
-2. **自动持久化**：Pinia 状态变更时自动同步到 IndexedDB
-3. **高性能**：使用 IndexedDB 替代 localStorage，提升存储容量和性能
-4. **可靠性**：实现错误处理、重试机制和数据校验
-5. **一致性**：确保内存状态与持久化状态的一致性
+2. **持久化存储**：使用 Dexie.js 封装的 IndexedDB 作为本地持久化方案
+3. **高性能**：异步 IO，不阻塞主线程，支持批量操作
+4. **可靠性**：内置重试机制和数据校验
+5. **一致性**：每个模块独立管理自身的 Pinia Store 和数据库表
 
-### 1.2 核心组件
+---
 
-| 组件 | 职责 | 优先级 |
-|------|------|----------|
-| DatabaseManager | 数据库初始化、版本管理 | P0 |
-| IndexedDBService | CRUD 操作封装 | P0 |
-| SyncEngine | 状态变更监听与自动同步 | P0 |
-| ErrorHandler | 异常处理与重试机制 | P1 |
-| StorePlugin | Pinia 插件，自动注入持久化能力 | P0 |
+## 2. 架构设计
 
-### 1.3 数据流向
+### 2.1 核心组件
+
+| 组件 | 文件位置 | 职责 |
+|------|----------|------|
+| GameDatabase | `src/modules/data/core.ts` | 数据库初始化、表结构定义、版本管理（继承 Dexie） |
+| DBService | `src/modules/data/core.ts` | 带重试机制的数据库操作封装 |
+| dataInitializer | `src/modules/data/service.ts` | 游戏初始数据加载到 IndexedDB |
+| gameStateHelper | `src/modules/data/gameStateHelper.ts` | 全局游戏状态读写辅助 |
+| 各模块 Store | `src/modules/*/store.ts` | Pinia Store，各模块独立管理自身状态 |
+| 各模块 DB | `src/modules/*/db.ts` | 各模块独立的数据库 CRUD 操作 |
+| 各模块 Service | `src/modules/*/service.ts` | 各模块业务逻辑层 |
+
+### 2.2 分层架构
 
 ```
-用户操作 → Vue 组件 → Pinia Store → SyncEngine → IndexedDB
-                                    ↓
-                              自动同步（防抖 500ms）
-                                    ↓
-                              批量写入数据库
+┌─────────────────────────────────────────────────┐
+│                   Vue 组件层                     │
+│        src/components/ （视图组件）               │
+├─────────────────────────────────────────────────┤
+│                    业务逻辑层                     │
+│   src/modules/*/service.ts （业务服务）          │
+├─────────────────────────────────────────────────┤
+│                    状态管理层                     │
+│   src/modules/*/store.ts （Pinia Store）         │
+├─────────────────────────────────────────────────┤
+│                    数据持久层                     │
+│   src/modules/*/db.ts （IndexedDB CRUD 操作）    │
+├─────────────────────────────────────────────────┤
+│                    数据库核心                     │
+│   src/modules/data/core.ts （GameDatabase）      │
+│   src/config/database.ts （数据库配置）           │
+└─────────────────────────────────────────────────┘
+```
+
+### 2.3 数据流向
+
+```
+用户操作 → Vue 组件 → Service → Pinia Store → DB 层 → IndexedDB
+                         ↓
+                  自动触发响应式更新
+                         ↓
+                    Vue 组件重渲染
 ```
 
 ---
 
-## 核心机制
-
-### 2.1 自动同步机制
-
-**触发条件**：
-- Pinia store 状态发生变更时
-- 使用防抖机制，500ms 内的多次变更合并为一次同步
-- 页面卸载前（beforeunload 事件）强制同步
-
-**同步策略**：
-- 自动同步：状态变更后自动写入 IndexedDB
-- 批量写入：合并 500ms 内的所有变更
-- 重试机制：失败时自动重试 3 次，指数退避
-
-### 2.2 错误处理机制
-
-**异常类型**：
-- 数据库连接失败
-- 写入失败
-- 数据校验失败
-- 版本冲突
-
-**处理策略**：
-- 立即重试：最多 3 次，指数退避
-- 队列重试：失败的操作进入重试队列
-- 日志记录：所有错误记录到控制台
-- 数据校验：写入前验证数据结构
-
-### 2.3 数据加载机制
-
-**加载时机**：
-- Store 初始化时异步加载
-- 页面刷新后自动恢复
-
-**加载流程**：
-1. 创建 Store 实例
-2. 异步从 IndexedDB 读取数据
-3. 使用 $patch 更新 Store 状态
-4. 触发响应式更新
-
----
-
-## 存储结构
+## 3. 数据库设计
 
 ### 3.1 数据库配置
 
 ```typescript
-DB_CONFIG = {
+// src/config/database.ts
+DATABASE_CONFIG = {
   name: 'wow_dnd_game',
-  version: 3,
-  stores: {
-    characters: { keyPath: 'id' },
-    characterData: { keyPath: 'characterId' },
-    inventory: { keyPath: 'characterId' },
-    quests: { keyPath: 'characterId' },
-    equipment: { keyPath: 'characterId' },
-    skills: { keyPath: 'characterId' },
-    exploration: { keyPath: 'characterId' },
-    combat: { keyPath: 'characterId' },
-    adventureLog: { keyPath: 'characterId' },
-    gameState: { keyPath: 'id' },
-    map: { keyPath: 'id' },
-    shop: { keyPath: 'id' }
-  }
+  version: 1
 }
 ```
 
-### 3.2 Store 到数据库的映射
+### 3.2 数据表分类
 
-| Store | 数据库 Store | Key | 说明 |
-|-------|--------------|-----|------|
-| useCharacterStore | characters | `characterId` | 角色列表（多角色管理） |
-| useCharacterStore | characterData | `characterId` | 角色属性和状态 |
-| useInventoryStore | inventory | `characterId` | 背包物品（按角色隔离） |
-| useQuestStore | quests | `characterId` | 任务进度（按角色隔离） |
-| useEquipmentStore | equipment | `characterId` | 装备数据（按角色隔离） |
-| useSkillsStore | skills | `characterId` | 技能数据（按角色隔离） |
-| useExplorationStore | exploration | `characterId` | 探索数据（按角色隔离） |
-| useCombatStore | combat | `characterId` | 战斗数据（按角色隔离） |
-| useAdventureLogStore | adventureLog | `characterId` | 冒险日志（按角色隔离） |
-| useGameStore | gameState | 'gameState' | 全局游戏状态 |
-| useMapStore | map | 'map' | 地图配置（全局共享） |
-| useShopStore | shop | 'shop' | 商店配置（全局共享） |
+数据库表按类型分为三类，使用统一的命名前缀：
+
+#### 3.2.1 配置表（config_*）— 游戏定义数据，所有角色共享
+
+| 表名 | 索引字段 | 说明 |
+|------|----------|------|
+| `config_factions` | `id, name` | 阵营配置数据 |
+| `config_races` | `id, name, factionId` | 种族配置数据 |
+| `config_classes` | `id, name, primaryStat` | 职业配置数据 |
+| `config_items` | `id, name, type, rarity` | 物品模板数据 |
+| `config_equipmentItems` | `id, name, type, rarity` | 装备物品模板数据 |
+| `config_mobs` | `id, name, dangerLevel` | 普通怪物数据 |
+| `config_bosses` | `id, name, dangerLevel` | Boss 怪物数据 |
+| `config_quests` | `id, boardId, type` | 任务定义数据 |
+| `config_skills` | `id, classRestriction, type, usableBy` | 技能定义数据 |
+| `config_locations` | `id, type, continent` | 地图地点配置数据 |
+| `config_shops` | `id` | 商店配置数据 |
+
+#### 3.2.2 角色表（char_*）— 绑定角色ID，每个角色独立
+
+| 表名 | Key | 索引 | 说明 |
+|------|-----|------|------|
+| `char_data` | `characterId` | `characterId` | 角色属性和状态 |
+| `char_inventory` | `characterId` | `characterId` | 背包物品 |
+| `char_equipment` | `characterId` | `characterId` | 装备数据 |
+| `char_skills` | `characterId` | `characterId` | 技能数据 |
+| `char_quests` | `[characterId+questId]` | `characterId, status` | 任务进度 |
+| `char_exploration` | `characterId` | `characterId, currentAreaId` | 探索进度 |
+
+#### 3.2.3 运行时表（runtime_*）— 日志和临时状态
+
+| 表名 | Key | 说明 |
+|------|-----|------|
+| `runtime_gameState` | `'gameState'` | 全局游戏状态（当前角色、设置等） |
+| `runtime_combatLogs` | `combatId` | 战斗日志 |
+| `runtime_adventureLogs` | `characterId` | 冒险日志 |
+| `runtime_mapState` | `id` | 地图视图状态 |
+| `runtime_shopItems` | `shopId` | 商店商品数据 |
 
 ### 3.3 多角色数据隔离机制
 
-**核心原则：** 除全局游戏状态外，所有角色相关数据均以 `characterId` 作为唯一标识，实现角色间数据完全隔离。
+**核心原则**：除全局游戏状态外，所有角色相关数据均以 `characterId` 作为唯一标识，实现角色间数据完全隔离。
 
-**存储模式说明：**
+**存储模式说明**：
 
 | 存储类型 | Key 策略 | 说明 |
 |----------|----------|------|
-| 角色列表 | `id` | 存储所有角色的基础信息（ID、名称、种族、职业、等级等） |
-| 角色数据 | `characterId` | 存储当前选中角色的详细属性和状态 |
-| 角色关联数据 | `characterId` | 背包、任务、装备、技能等角色专属数据 |
-| 全局状态 | 固定 `id` | 游戏设置、全局配置等跨角色共享数据 |
+| 配置表（config_*） | `id` | 游戏定义数据，全局共享 |
+| 角色表（char_*） | `characterId` | 角色专属数据，完全隔离 |
+| 运行时表（runtime_*） | 按需 | 全局状态或按角色隔离 |
 
-**数据加载流程：**
-1. 选择角色时，通过 `characterId` 加载该角色的所有关联数据
+**数据加载流程**：
+1. 选择角色时，通过 `characterId` 加载该角色的所有关联数据（char_* 表）
 2. 切换角色时，卸载当前角色数据，加载新角色数据
 3. 删除角色时，级联删除该角色的所有关联数据
 
 ---
 
-## 使用指南
+## 4. 模块架构
 
-### 4.1 基本使用
+### 4.1 模块目录结构
 
-```typescript
-import { useCharacterStore } from '@/modules/character';
+每个模块遵循统一的标准结构：
 
-// 直接使用 Store，数据变更会自动同步
-const characterStore = useCharacterStore();
-characterStore.addGold(100); // 自动同步到 IndexedDB
+```
+src/modules/{moduleName}/
+  ├── index.ts          # 模块统一导出入口
+  ├── types.ts          # TypeScript 类型定义和接口
+  ├── db.ts             # IndexedDB CRUD 操作封装
+  ├── store.ts          # Pinia 状态管理
+  └── service.ts        # 业务逻辑服务
 ```
 
-### 4.2 手动同步
+### 4.2 模块列表
 
-```typescript
-import { syncEngine } from '@/services/database';
+| 模块目录 | 模块名称 | 说明 |
+|----------|----------|------|
+| `modules/data/` | 数据核心 | 数据库初始化、游戏状态管理、备份导入 |
+| `modules/bus/` | 事件总线 | 模块间解耦通信 |
+| `modules/character/` | 角色 | 角色创建、属性管理、成长系统 |
+| `modules/inventory/` | 背包 | 物品存储、使用、堆叠、排序 |
+| `modules/equipment/` | 装备 | 装备穿戴、属性加成、稀有度系统 |
+| `modules/skill/` | 技能 | 技能学习、技能栏配置、技能使用 |
+| `modules/combat/` | 战斗 | 回合制战斗、AI、效果系统 |
+| `modules/quest/` | 任务 | 任务接受、进度追踪、交付奖励 |
+| `modules/shop/` | 商店 | 商品刷新、购买/出售、交易记录 |
+| `modules/map/` | 地图 | 地图视图、地点解锁、探索入口 |
+| `modules/exploration/` | 探索 | 10x10 探索网格、营地、事件触发 |
+| `modules/log/` | 冒险日志 | 游戏事件记录、日志查询 |
+| `modules/enemy/` | 敌人 | 敌人实例管理和数据 |
+| `modules/boss/` | Boss | Boss 战斗引擎和入场逻辑 |
+| `modules/base/` | 基础数据 | 阵营、种族、职业等基础数据管理 |
+| `modules/audio/` | 音频 | 基于 Tone.js 的音频管理 |
+| `modules/animation/` | 动画 | 战斗效果动画 |
+| `modules/admin/` | 后台管理 | 配置管理和数据管理 |
 
-// 立即同步（用于关键操作）
-await syncEngine.immediateSync('character', 'character', data);
+### 4.3 模块间依赖
 
-// 刷新所有待处理的同步
-await syncEngine.flush();
 ```
-
-### 4.3 数据加载
-
-```typescript
-import { syncEngine } from '@/services/database';
-
-// 加载特定 Store 的数据
-const data = await syncEngine.loadFromStore('character', 'character');
-```
-
-### 4.4 清空数据
-
-```typescript
-import { syncEngine } from '@/services/database';
-
-// 清空特定 Store
-await syncEngine.clearStore('character');
-
-// 清空所有数据（游戏重置）
-for (const storeName of Object.values(STORE_NAMES)) {
-  await syncEngine.clearStore(storeName);
-}
+data (数据库核心) ──── 被所有模块依赖
+bus (事件总线) ────── 被所有模块依赖
+base (基础数据) ───── 被 character 依赖
+character ────────── 被 combat、quest、shop、skill、equipment 等依赖
+enemy ────────────── 被 combat 依赖
+boss ─────────────── 被 combat、exploration 依赖
+exploration ──────── 触发 combat、shop、quest 模块交互
 ```
 
 ---
 
-## 性能优化
+## 5. 数据库操作模式
 
-### 5.1 防抖策略
+### 5.1 标准 CRUD 操作
 
-- 默认防抖时间：500ms
-- 可通过 SyncEngine.setOptions 调整
-- 适用于频繁变更的场景（如战斗中的 HP 变化）
-
-### 5.2 批量写入
-
-- 合并 500ms 内的所有变更
-- 减少数据库写入次数
-- 提升整体性能
-
-### 5.3 索引优化
-
-- 常用查询字段建立索引
-- character: name 索引
-- quests: status 索引
-- adventureLog: timestamp 索引
-
----
-
-## 错误处理
-
-### 6.1 重试策略
+每个模块的 `db.ts` 提供标准化的数据库操作：
 
 ```typescript
-{
-  maxRetries: 3,      // 最大重试次数
-  delay: 1000,         // 初始延迟（ms）
+// 示例：modules/character/db.ts
+export function loadCharacterData(characterId: string): Promise<CharacterStorage | undefined>
+export function saveCharacterData(data: CharacterStorage): Promise<void>
+export function deleteCharacterData(characterId: string): Promise<void>
+```
+
+### 5.2 重试机制
+
+通过 `DBService` 类提供带指数退避的重试机制：
+
+```typescript
+// src/config/database.ts
+DB_SERVICE_CONFIG = {
+  maxRetries: 3,
+  delay: 1000,           // 初始延迟 1 秒
   backoff: 'exponential' // 指数退避
 }
 ```
 
-### 6.2 数据校验
+### 5.3 数据初始化
 
-写入前验证：
-- 必填字段检查
-- 类型检查
-- 数据完整性检查
-
-### 6.3 日志记录
-
-- 所有错误记录到控制台
-- 包含上下文信息
-- 便于调试和监控
+`src/modules/data/service.ts` 中的 `initializeGameData()` 在首次运行时将静态配置文件（`src/data/` 目录）中的数据导入到 IndexedDB 的 `config_*` 表中。
 
 ---
 
-## 版本管理
+## 6. 数据备份与导入
 
-### 7.1 数据库版本升级
+### 6.1 功能概述
 
-当需要升级数据库结构时：
+数据备份与导入模块（`modules/data/`）允许用户在更换设备或重新安装应用时进行存档迁移。
 
-1. 增加 DB_CONFIG.version
-2. 在 DatabaseManager.onupgradeneeded 中处理迁移逻辑
-3. 保持向后兼容
+### 6.2 备份机制
 
-### 7.2 数据迁移
+- **手动触发**：用户主动点击备份按钮
+- **自动备份**：游戏存档变更后定期自动备份（保留最近 5 份）
+- **文件格式**：`.json` 格式，UTF-8 编码
+- **文件命名**：`wow_dnd_backup_{yyyyMMdd}_{HHmmss}.json`
 
-```typescript
-// 在 DatabaseManager 中处理
-request.onupgradeneeded = (event) => {
-  const db = (event.target as IDBOpenDBRequest).result;
-  const oldVersion = event.oldVersion;
+### 6.3 导入校验
 
-  if (oldVersion < 2) {
-    // 迁移到版本 2
-    migrateV1toV2(db);
-  }
-  
-  if (oldVersion < 3) {
-    // 迁移到版本 3：拆分地图和商店配置到独立存储
-    migrateV2toV3(db);
-  }
-};
-```
+导入时依次进行：文件格式校验 → 版本兼容性校验 → checksum 校验 → 数据结构完整性校验 → 数据类型校验
 
----
+### 6.4 备份文件结构
 
-## 最佳实践
-
-### 8.1 Store 设计原则
-
-1. **单一职责**：每个 Store 管理一个领域的数据
-2. **响应式**：使用 ref 和 computed 管理状态
-3. **不可变性**：通过方法修改状态，避免直接赋值
-4. **自动同步**：不手动调用保存方法，依赖 SyncEngine
-
-### 8.2 数据结构设计
-
-1. **版本字段**：每个记录包含 updatedAt 字段
-2. **唯一标识**：使用有意义的 ID 作为 keyPath
-3. **规范化**：避免冗余数据，使用引用
-
-### 8.3 错误处理
-
-1. **防御性编程**：所有 IO 操作包裹 try-catch
-2. **降级处理**：IndexedDB 不可用时降级到内存
-3. **用户反馈**：关键错误显示通知
-
----
-
-## 与 localStorage 架构的对比
-
-| 特性 | localStorage（旧架构） | IndexedDB（新架构） |
-|------|------------------------|---------------------|
-| 存储容量 | 约 5MB | 无硬性限制（由浏览器配置） |
-| 性能 | 同步 IO，阻塞主线程 | 异步 IO，不阻塞 |
-| 查询能力 | 仅支持键值对 | 支持索引、范围查询 |
-| 数据类型 | 仅支持字符串 | 支持任意可序列化数据 |
-| 事务支持 | 无 | 完整事务支持 |
-| 存储方式 | 各 Store 独立键 | 统一数据库，多对象存储 |
-
----
-
-## 迁移指南
-
-### 旧 localStorage 键到新 IndexedDB 存储的映射
-
-| 旧 localStorage 键 | 新 IndexedDB Store | 新 Key |
-|-------------------|---------------------|--------|
-| wow_character | characters | `characterId` |
-| wow_character_info | characterData | `characterId` |
-| wow_inventory | inventory | `characterId` |
-| wow_quests_* | quests | `characterId` |
-| wow_equipment | equipment | `characterId` |
-| wow_skills | skills | `characterId` |
-| wow_exploration | exploration | `characterId` |
-| wow_board | gameState | 'gameState' |
-| wow_combat | combat | `characterId` |
-| wow_adventureLog | adventureLog | `characterId` |
-| wow_map | map | 'map' |
-| wow_shop | shop | 'shop' |
-
----
-
-## 数据备份与导入模块
-
-### 9.1 功能概述
-
-数据备份与导入模块允许用户在更换设备或重新安装应用时进行存档迁移。该模块提供完整的备份导出、数据导入和存档迁移功能，确保用户数据的安全性和可移植性。
-
-### 9.2 数据备份功能
-
-#### 9.2.1 实现机制
-
-**备份触发方式：**
-- 手动触发：用户主动点击备份按钮
-- 自动触发：游戏存档变更后定期自动备份（每日一次）
-- 关键节点触发：角色升级、任务完成等重要事件后
-
-**备份流程：**
-```
-用户触发备份 → 遍历所有 Store → 收集数据 → 序列化 → 加密 → 生成备份文件 → 触发下载
-```
-
-#### 9.2.2 文件格式规范
-
-**文件格式：** `.json` 格式，UTF-8 编码
-
-**文件命名规则：**
-```
-wow_dnd_backup_{yyyyMMdd}_{HHmmss}.json
-示例：wow_dnd_backup_20260519_143022.json
-```
-
-**文件结构：**
 ```typescript
 interface BackupFile {
   version: string;           // 备份格式版本
   timestamp: number;         // 备份时间戳
-  checksum: string;          // 数据校验和
+  checksum: string;          // SHA-256 校验和
   gameVersion: string;       // 游戏版本号
-  data: {
-    character: CharacterData;
-    inventory: InventoryData;
-    quests: QuestData[];
-    equipment: EquipmentData;
-    skills: SkillsData;
-    exploration: ExplorationData;
-    board: BoardData;
-    combat: CombatData;
-    adventureLog: AdventureLogData;
-    map: MapConfigData;
-    shop: ShopConfigData;
-    gameState: GameStateData;
-  };
+  data: BackupData;          // 完整游戏数据
 }
 ```
 
-#### 9.2.3 存储位置设计
+---
 
-**本地存储：**
-- 浏览器下载目录（用户手动备份）
-- 浏览器 IndexedDB（自动备份，保留最近5份）
+## 7. 性能优化
 
-**备份保留策略：**
-| 备份类型 | 保留数量 | 说明 |
-|----------|----------|------|
-| 自动备份 | 最近5份 | 超过自动删除最旧的 |
-| 手动备份 | 无限制 | 用户自行管理 |
+### 7.1 异步加载
 
-### 9.3 数据导入功能
+- Store 初始化时异步从 IndexedDB 读取数据
+- 不阻塞主线程
+- 使用 await/async 模式
 
-#### 9.3.1 兼容性要求
+### 7.2 计算缓存
 
-**版本兼容策略：**
-- 向后兼容：新版本可以导入旧版本备份
-- 版本转换：自动处理数据结构差异
-- 版本提示：导入不兼容版本时给出明确提示
+- 角色属性通过 `computed` 缓存次级属性计算结果
+- 装备总属性通过 computed 避免重复计算
+- 技能栏预缓存已装备技能列表
 
-**兼容版本范围：**
-- 当前版本：完全兼容
-- 前1个大版本：自动迁移
-- 更早版本：提示用户更新游戏
+### 7.3 索引优化
 
-#### 9.3.2 校验机制
+- 常用查询字段建立索引（`name`, `characterId`, `status`, `type`）
+- 多键索引支持复杂查询（如 `[characterId+questId]`）
 
-**校验流程：**
-1. **文件格式校验**：验证 JSON 格式是否正确
-2. **版本兼容性校验**：检查备份文件版本
-3. **数据完整性校验**：验证 checksum 是否匹配
-4. **结构完整性校验**：验证必需字段是否存在
-5. **数据类型校验**：验证数据类型是否正确
+---
 
-**校验失败处理：**
-| 校验类型 | 失败处理 | 用户提示 |
-|----------|----------|----------|
-| 文件格式错误 | 拒绝导入 | "备份文件格式错误" |
-| 版本不兼容 | 拒绝导入 | "备份文件版本过旧，请更新游戏" |
-| 数据损坏 | 拒绝导入 | "备份文件已损坏" |
-| 结构不完整 | 尝试部分导入 | "部分数据缺失，是否继续导入" |
+## 8. 错误处理
 
-#### 9.3.3 异常处理流程
+### 8.1 重试策略
 
-```
-选择文件 → 文件格式校验 → 版本校验 → checksum校验 → 数据结构校验 → 数据导入 → 同步到IndexedDB → 完成提示
-              ↓                ↓              ↓               ↓
-           [格式错误]      [版本不兼容]    [数据损坏]      [结构不完整]
-              ↓                ↓              ↓               ↓
-           提示错误         提示错误         提示错误      提示确认继续
-```
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| maxRetries | 3 | 最大重试次数 |
+| delay | 1000ms | 初始延迟 |
+| backoff | exponential | 指数退避（1s → 2s → 4s） |
 
-### 9.4 存档迁移操作步骤
+### 8.2 异常处理
 
-#### 9.4.1 导出存档（旧设备）
+- 所有数据库 IO 操作包裹 try-catch
+- 读取失败时使用默认值初始化（不中断程序）
+- 写入失败时进入重试队列
+- 关键错误记录到控制台
 
-1. 打开游戏设置界面
-2. 点击"导出存档"按钮
-3. 确认导出操作
-4. 浏览器自动下载备份文件
-5. 通过邮件、云盘等方式传输到新设备
+---
 
-#### 9.4.2 导入存档（新设备）
+## 9. 配置与数据文件
 
-1. 打开游戏设置界面
-2. 点击"导入存档"按钮
-3. 选择备份文件
-4. 系统自动校验文件
-5. 确认覆盖现有存档（如有）
-6. 等待导入完成
-7. 重新加载游戏
+### 9.1 运行时配置（src/config/）
 
-#### 9.4.3 迁移注意事项
+| 文件 | 内容 |
+|------|------|
+| `config/character.ts` | 最大等级(20)、属性名映射、升级经验表 |
+| `config/database.ts` | 数据库连接、重试策略、备份配置 |
+| `config/inventory.ts` | 物品类型表、稀有度配置、价格倍率 |
 
-| 注意事项 | 说明 |
-|----------|------|
-| 数据覆盖 | 导入会覆盖当前所有游戏数据 |
-| 网络要求 | 无需网络，纯本地操作 |
-| 文件大小 | 备份文件通常 < 100KB |
-| 兼容性 | 确保新旧设备游戏版本一致 |
+### 9.2 静态游戏数据（src/data/）
 
-### 9.5 安全保障措施
+| 文件 | 内容 |
+|------|------|
+| `data/config_factions.ts` | 阵营数据（联盟/部落/中立） |
+| `data/config_races.ts` | 种族数据 |
+| `data/config_classes.ts` | 职业数据 |
+| `data/config_skills.ts` | 技能数据（职业技能 + 怪物技能） |
+| `data/config_items.ts` | 物品/战利品数据 |
+| `data/config_equipmentItems.ts` | 装备物品数据 |
+| `data/config_mobs.ts` | 普通怪物数据 |
+| `data/config_bosses.ts` | Boss 怪物数据 |
+| `data/config_locations.ts` | 世界地图数据（大陆 + 地点） |
+| `data/config_quests.ts` | 任务数据 |
+| `data/config_shops.ts` | 商店数据 |
+| `data/index.ts` | 统一导出入口 |
 
-#### 9.5.1 数据加密
+---
 
-**加密方式：** AES-256-GCM
-
-**加密内容：**
-- 用户角色名称
-- 角色属性数据
-- 游戏进度数据
-
-**加密密钥：**
-- 使用用户设备唯一标识生成
-- 不存储在服务器端
-- 用户自行负责备份文件安全
-
-#### 9.5.2 数据校验
-
-**校验和算法：** SHA-256
-
-**校验时机：**
-- 导出时生成校验和
-- 导入时验证校验和
-- 确保数据完整性
-
-#### 9.5.3 权限控制
-
-**访问限制：**
-- 仅游戏内部可访问备份文件
-- 不向第三方分享数据
-- 用户完全控制数据
-
-**隐私保护：**
-- 不收集用户个人信息
-- 不上传备份文件到服务器
-- 所有操作均在本地完成
-
-### 9.6 API 接口设计
-
-#### 9.6.1 备份服务接口
-
-```typescript
-export interface IBackupService {
-  // 创建备份
-  createBackup(): Promise<BackupFile>;
-  
-  // 导出备份文件（触发下载）
-  exportBackup(): Promise<void>;
-  
-  // 获取自动备份列表
-  getAutoBackups(): Promise<BackupFile[]>;
-  
-  // 删除指定备份
-  deleteBackup(timestamp: number): Promise<void>;
-  
-  // 清空所有自动备份
-  clearAutoBackups(): Promise<void>;
-}
-```
-
-#### 9.6.2 导入服务接口
-
-```typescript
-export interface IImportService {
-  // 校验备份文件
-  validateBackup(file: File): Promise<ValidationResult>;
-  
-  // 导入备份文件
-  importBackup(file: File): Promise<ImportResult>;
-  
-  // 检查版本兼容性
-  checkVersionCompatibility(backupVersion: string): CompatibilityResult;
-}
-```
-
-#### 9.6.3 类型定义
-
-```typescript
-interface ValidationResult {
-  success: boolean;
-  error?: string;
-  version?: string;
-  timestamp?: number;
-  gameVersion?: string;
-}
-
-interface ImportResult {
-  success: boolean;
-  error?: string;
-  importedStores: string[];
-  skippedStores: string[];
-}
-
-interface CompatibilityResult {
-  compatible: boolean;
-  message: string;
-  requiresMigration: boolean;
-}
-```
-
-### 9.7 版本历史
+## 10. 版本历史
 
 | 版本 | 日期 | 修改内容 | 作者 |
 |------|------|----------|------|
 | v1.0 | 2026-05-19 | 初始版本，支持基础备份导入功能 | System |
-| v1.1 | 2026-05-20 | 拆分地图和商店配置到独立存储（map、shop），数据库版本升级至3 | System |
+| v1.1 | 2026-05-20 | 拆分地图和商店配置到独立存储 | System |
+| v2.0 | 2026-06-16 | 根据项目实际代码全面修订：修正技术栈、数据库结构、模块列表、文件结构 | System |
 
 ---
 
