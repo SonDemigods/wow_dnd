@@ -579,10 +579,49 @@ export const useCombatStore = defineStore('combat', () => {
               message: `${e.name} 恢复了生命值！`
             };
           } else if (result.isBuff && result.buffs) {
-            // 敌人使用增益技能（如护盾），将效果施加到敌人自身
+            // 敌人使用 buff/debuff 技能：区分自身增益（buff）和对玩家减益（debuff）
             const skillData = availableSkills.find(s => s.id === decision.skillId);
             const skillName = skillData?.name || decision.skillId;
+            // 通过完整技能数据判断是否为减益技能
+            const fullSkill = useSkillsStore().getSkill(decision.skillId);
+            const isDebuff = fullSkill?.type === 'debuff';
 
+            if (isDebuff) {
+              // 减益技能：效果施加到玩家身上
+              const playerCtx = createPlayerEffectContext(characterStore);
+              for (const b of result.buffs) {
+                const debuffEffect: Effect = {
+                  id: generateEffectId(),
+                  type: b.type as EffectType,
+                  remainingTurns: b.turns,
+                  value: b.value,
+                  source: 'enemy',
+                  sourceName: e.name
+                };
+                addEffectToContainer(playerEffects.value, debuffEffect);
+                effectRegistry.get(debuffEffect.type as EffectType)?.onApply?.(debuffEffect, playerCtx);
+              }
+
+              addCombatLog({
+                actorType: 'enemy',
+                actorId: e.id,
+                actorName: e.name,
+                eventType: 'combat_skill_cast',
+                skillId: decision.skillId,
+                skillName,
+                isCrit: false,
+                isDodge: false,
+                message: `${e.name} 使用了 ${skillName}，对 ${characterStore.name} 施加了减益效果！`
+              });
+
+              return {
+                success: true,
+                type: 'skill',
+                message: `${e.name} 使用了 ${skillName}！`
+              };
+            }
+
+            // 增益技能：效果施加到敌人自身
             if (!enemyEffects.value.has(e.id)) {
               enemyEffects.value.set(e.id, createEmptyContainer());
             }
