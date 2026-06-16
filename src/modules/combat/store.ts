@@ -483,11 +483,11 @@ export const useCombatStore = defineStore('combat', () => {
 
     const characterStore = useCharacterStore();
 
-    // 检查 Boss AOE 攻击标记
+    // 检查 Boss 多目标攻击标记
     const isAoeAttack = (e as any).aoeNextAttack === true;
     if (isAoeAttack) {
       (e as any).aoeNextAttack = false;
-      // AOE 攻击：对玩家造成额外伤害
+      // 多目标攻击标记：对玩家造成额外伤害
       const damage = enemiesStore.calculateDamage(e, characterStore.attributes.physicalDefense);
       const aoeMultiplier = 1.3;
       const aoeDamage = Math.round(damage * aoeMultiplier);
@@ -577,6 +577,47 @@ export const useCombatStore = defineStore('combat', () => {
               type: 'skill',
               heal: -result.damage,
               message: `${e.name} 恢复了生命值！`
+            };
+          } else if (result.isBuff && result.buffs) {
+            // 敌人使用增益技能（如护盾），将效果施加到敌人自身
+            const skillData = availableSkills.find(s => s.id === decision.skillId);
+            const skillName = skillData?.name || decision.skillId;
+
+            if (!enemyEffects.value.has(e.id)) {
+              enemyEffects.value.set(e.id, createEmptyContainer());
+            }
+            const container = enemyEffects.value.get(e.id)!;
+            const ctx = createEnemyEffectContext(e);
+
+            for (const b of result.buffs) {
+              const effect: Effect = {
+                id: generateEffectId(),
+                type: b.type as EffectType,
+                remainingTurns: b.turns,
+                value: b.value,
+                source: 'enemy',
+                sourceName: e.name
+              };
+              addEffectToContainer(container, effect);
+              effectRegistry.get(effect.type as EffectType)?.onApply?.(effect, ctx);
+            }
+
+            addCombatLog({
+              actorType: 'enemy',
+              actorId: e.id,
+              actorName: e.name,
+              eventType: 'combat_skill_cast',
+              skillId: decision.skillId,
+              skillName,
+              isCrit: false,
+              isDodge: false,
+              message: `${e.name} 使用了 ${skillName}，获得增益效果！`
+            });
+
+            return {
+              success: true,
+              type: 'skill',
+              message: `${e.name} 使用了 ${skillName}！`
             };
           } else {
             // 敌人使用攻击技能
@@ -1470,7 +1511,9 @@ export const useCombatStore = defineStore('combat', () => {
     // 按速度降序排列
     units.sort((a, b) => b.speed - a.speed);
     initiativeOrder.value = units.map(u => u.id);
-    currentInitiativeIndex.value = 0;
+    // 找到玩家在排序后的实际位置，确保 advanceTurn 能正确推进到下一个单位
+    const playerIndex = initiativeOrder.value.indexOf('player');
+    currentInitiativeIndex.value = playerIndex >= 0 ? playerIndex : 0;
   }
 
   /**
@@ -1675,6 +1718,9 @@ export const useCombatStore = defineStore('combat', () => {
         }
       }
     }
+
+    // 推进该敌人的技能冷却
+    enemiesStore.tickCooldowns(e.id);
 
     // 执行敌人行动
     enemyAction(e);

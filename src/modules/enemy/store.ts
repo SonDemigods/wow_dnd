@@ -25,6 +25,9 @@ export const useEnemiesStore = defineStore('enemies', () => {
   /** 敌人实例缓存（key 为敌人 ID） */
   const enemiesCache = ref<Record<string, Enemy>>({});
 
+  /** 敌人技能冷却追踪（enemyId → { skillId: 剩余冷却回合数 }） */
+  const skillCooldowns = ref<Record<string, Record<string, number>>>({});
+
   // ==================== 计算属性 ====================
   /** 所有活跃敌人 */
   const enemies = computed(() => Object.values(enemiesCache.value));
@@ -94,19 +97,21 @@ export const useEnemiesStore = defineStore('enemies', () => {
    * @param id - 敌人实例 ID
    * @returns 可用技能列表
    */
-  function getAvailableSkills(id: string): { id: string; name: string; isHeal?: boolean; damageMultiplier?: number }[] {
+  function getAvailableSkills(id: string): { id: string; name: string; isHeal?: boolean; isBuff?: boolean; damageMultiplier?: number }[] {
     const enemy = enemiesCache.value[id];
     if (!enemy || !enemy.skillPool || enemy.skillPool.length === 0) return [];
 
     const skillsStore = useSkillsStore();
 
     return enemy.skillPool
+      .filter(skillId => !skillCooldowns.value[id]?.[skillId])
       .map(skillId => skillsStore.getSkill(skillId))
       .filter((s): s is Skill => s !== null)
       .map(s => ({
         id: s.id,
         name: s.name,
         isHeal: s.type === 'health_restore' || s.type === 'mana_restore',
+        isBuff: s.type === 'buff' || s.type === 'debuff',
         damageMultiplier: s.effect.coefficient || 1
       }));
   }
@@ -117,7 +122,7 @@ export const useEnemiesStore = defineStore('enemies', () => {
    * @param skillId - 技能 ID
    * @returns 技能使用结果（成功状态、伤害/生命恢复值、是否为生命恢复）
    */
-  function useSkill(id: string, skillId: string): { success: boolean; damage: number; isHeal: boolean } {
+  function useSkill(id: string, skillId: string): { success: boolean; damage: number; isHeal: boolean; isBuff?: boolean; buffs?: Array<{ type: string; value: number; turns: number }> } {
     const enemy = enemiesCache.value[id];
     if (!enemy) {
       return { success: false, damage: 0, isHeal: false };
@@ -131,9 +136,31 @@ export const useEnemiesStore = defineStore('enemies', () => {
     }
 
     const isHeal = skill.type === 'health_restore' || skill.type === 'mana_restore';
+    const isBuff = skill.type === 'buff' || skill.type === 'debuff';
 
-    // 基于技能 effect 数据和敌人攻击属性计算实际效果
-    const attackStat = (enemy.physicalAttack || (enemy.stats as any)?.physicalAttack || 10);
+    // buff/debuff 技能：不造成伤害，将 buff 数据传回调用方处理
+    if (isBuff) {
+      // 记录技能冷却
+      if (skill.cooldown && skill.cooldown > 0) {
+        if (!skillCooldowns.value[id]) skillCooldowns.value[id] = {};
+        skillCooldowns.value[id][skillId] = skill.cooldown;
+      }
+      if (skill.buffs && skill.buffs.length > 0) {
+        return {
+          success: true, damage: 0, isHeal: false, isBuff: true,
+          buffs: skill.buffs.map(b => ({ type: b.type, value: b.value, turns: b.turns }))
+        };
+      }
+      return { success: true, damage: 0, isHeal: false, isBuff: true, buffs: [] };
+    }
+
+    // 根据技能伤害类型选择对应的攻击属性
+    const attackStat = (() => {
+      if (skill.type === 'magic_damage') {
+        return (enemy.magicAttack || (enemy.stats as any)?.magicAttack || 10);
+      }
+      return (enemy.physicalAttack || (enemy.stats as any)?.physicalAttack || 10);
+    })();
     const coefficient = skill.effect.coefficient || 1;
     const baseDamage = Math.round(attackStat * coefficient + skill.effect.value);
 
@@ -146,7 +173,47 @@ export const useEnemiesStore = defineStore('enemies', () => {
     }
 
     // 攻击技能：对玩家造成伤害（伤害值由 combat 模块的防御计算进一步处理）
+    // 记录技能冷却（敌人也需要遵循冷却机制）
+    if (skill.cooldown && skill.cooldown > 0) {
+      if (!skillCooldowns.value[id]) skillCooldowns.value[id] = {};
+      skillCooldowns.value[id][skillId] = skill.cooldown;
+    }
     return { success: true, damage: baseDamage, isHeal: false };
+  }
+
+  /**
+   * 推进敌人技能冷却（每回合调用）
+   * @param enemyId - 可选，指定敌人 ID；不传则推进所有敌人的冷却
+   */
+  function tickCooldowns(enemyId?: string): void {
+    if (enemyId) {
+      const cd = skillCooldowns.value[enemyId];
+      if (!cd) return;
+      for (const sid of Object.keys(cd)) {
+        cd[sid]--;
+        if (cd[sid] <= 0) delete cd[sid];
+      }
+      if (Object.keys(cd).length === 0) delete skillCooldowns.value[enemyId];
+    } else {
+      for (const eid of Object.keys(skillCooldowns.value)) {
+        const cd = skillCooldowns.value[eid];
+        for (const sid of Object.keys(cd)) {
+          cd[sid]--;
+          if (cd[sid] <= 0) delete cd[sid];
+        }
+        if (Object.keys(cd).length === 0) delete skillCooldowns.value[eid];
+      }
+    }
+  }
+
+  /**
+   * 获取敌人技能剩余冷却回合数
+   * @param enemyId - 敌人 ID
+   * @param skillId - 技能 ID
+   * @returns 剩余冷却回合数
+   */
+  function getCooldownRemaining(enemyId: string, skillId: string): number {
+    return skillCooldowns.value[enemyId]?.[skillId] || 0;
   }
 
   /**
@@ -171,6 +238,7 @@ export const useEnemiesStore = defineStore('enemies', () => {
   function clearAll(): void {
     activeEnemyIds.value = [];
     enemiesCache.value = {};
+    skillCooldowns.value = {};
   }
 
   return {
@@ -188,6 +256,8 @@ export const useEnemiesStore = defineStore('enemies', () => {
     getEnemyById,
     getAvailableSkills,
     useSkill,
+    tickCooldowns,
+    getCooldownRemaining,
     calculateDamage,
     deleteEnemy,
     clearAll

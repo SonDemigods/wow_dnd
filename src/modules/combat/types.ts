@@ -56,7 +56,7 @@ export interface CombatAction {
  * @property {boolean} [isCrit] - 是否暴击
  * @property {boolean} [isDodge] - 是否闪避
  * @property {string} message - 结果消息
- * @property {AoeHitInfo[]} [aoeHits] - AOE 技能的多目标命中信息
+ * @property {AoeHitInfo[]} [aoeHits] - 多目标技能命中信息
  */
 export interface CombatActionResult {
   success: boolean;
@@ -66,11 +66,11 @@ export interface CombatActionResult {
   isCrit?: boolean;
   isDodge?: boolean;
   message: string;
-  /** AOE 技能多目标命中列表（仅技能为 all_enemies 时返回） */
+  /** 多目标技能命中列表（仅技能为 all_enemies 时返回） */
   aoeHits?: AoeHitInfo[];
 }
 
-/** AOE 技能单目标命中信息 */
+/** 多目标技能命中信息 */
 export interface AoeHitInfo {
   enemyId: string;
   enemyName: string;

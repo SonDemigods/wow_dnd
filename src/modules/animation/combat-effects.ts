@@ -245,6 +245,7 @@ export function animatePhaseTransition(
 export function animateResultPopup(
   popup: HTMLElement,
   icon: HTMLElement,
+  resultText: HTMLElement,
   rewards: HTMLElement[],
   speed: number = 1
 ): void {
@@ -262,6 +263,13 @@ export function animateResultPopup(
     scale: [0, 1.3, 1],
     duration: s(600, speed),
   }, `-=${s(400, speed)}`);
+
+  // 结果文字淡入 + 上滑
+  tl.add(resultText, {
+    translateY: [16, 0],
+    opacity: [0, 1],
+    duration: s(400, speed),
+  }, `-=${s(200, speed)}`);
 
   // 奖励项逐个滑入
   for (let i = 0; i < rewards.length; i++) {

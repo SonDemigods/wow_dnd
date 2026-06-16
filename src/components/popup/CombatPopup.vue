@@ -175,7 +175,7 @@
     <div v-if="combatStore.combatResult" class="result-overlay">
       <div ref="resultPopupRef" class="result-popup">
         <div ref="resultIconRef" class="result-icon">{{ combatStore.combatResult === 'victory' ? '🏆' : combatStore.combatResult === 'defeat' ? '💀' : '🏃' }}</div>
-        <div :class="['result-text', 'result-' + combatStore.combatResult]">
+        <div ref="resultTextRef" :class="['result-text', 'result-' + combatStore.combatResult]">
           {{ resultText }}
         </div>
         <div class="result-rewards" v-if="combatStore.combatResult === 'victory'">
@@ -317,6 +317,7 @@ const phaseContentRef = ref<HTMLElement | null>(null);
 const vsDividerRef = ref<HTMLElement | null>(null);
 const resultPopupRef = ref<HTMLElement | null>(null);
 const resultIconRef = ref<HTMLElement | null>(null);
+const resultTextRef = ref<HTMLElement | null>(null);
 
 // 玩家数据（从 characterStore 读取，与主界面一致）
 const playerName = computed(() => characterStore.name);
@@ -813,11 +814,11 @@ watch(() => combatStore.combatResult, (result) => {
     scheduleAutoClose();
     // 使用 anime.js 播放结果弹窗动画
     nextTick(() => {
-      if (resultPopupRef.value && resultIconRef.value) {
+      if (resultPopupRef.value && resultIconRef.value && resultTextRef.value) {
         const rewardEls = Array.from(
           resultPopupRef.value.querySelectorAll('.reward-item')
         ) as HTMLElement[];
-        animateResultPopup(resultPopupRef.value, resultIconRef.value, rewardEls, combatSpeed.value);
+        animateResultPopup(resultPopupRef.value, resultIconRef.value, resultTextRef.value, rewardEls, combatSpeed.value);
       }
     });
   }
@@ -1255,7 +1256,7 @@ onUnmounted(() => {
   /* 弹跳动画由 anime.js animateResultPopup 处理 */
 }
 
-.result-text { font-size: 28px; font-weight: 700; margin-bottom: 16px; }
+.result-text { font-size: 28px; font-weight: 700; margin-bottom: 16px; /* 动画初始状态：隐藏 + 下移 16px，由 anime.js animateResultPopup 驱动 */ opacity: 0; transform: translateY(16px); }
 .result-victory { color: #ffd700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
 .result-defeat { color: #e94560; text-shadow: 0 0 20px rgba(233, 69, 96, 0.3); }
 .result-fled { color: #888; }
