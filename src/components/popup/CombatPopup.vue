@@ -1,6 +1,6 @@
 <template>
   <div class="combat-overlay">
-    <div :class="['combat-container', speedClass]">
+    <div class="combat-container">
       <!-- 屏幕闪白遮罩（暴击特效） -->
       <div ref="screenFlashRef" v-show="screenFlash" :class="['screen-flash', screenFlashType]"></div>
 
@@ -37,13 +37,13 @@
       <div class="combat-arena">
         <!-- 敌人区域（3×2 网格，程序区分前后排） -->
         <div class="enemy-grid">
-          <div class="enemy-row">
+          <div v-for="row in (['back', 'front'] as const)" :key="row" class="enemy-row">
             <div
               v-for="col in 3"
-              :key="'back-' + col"
+              :key="`${row}-${col}`"
               class="enemy-slot"
             >
-              <template v-for="e in getEnemiesInSlot('back', col - 1)" :key="e.id">
+              <template v-for="e in getEnemiesInSlot(row, col - 1)" :key="e.id">
                 <div
                   :class="['combatant', 'enemy-side', {
                     'shake': enemyShakes[e.id],
@@ -77,53 +77,7 @@
                 </div>
               </template>
               <!-- 空槽位占位符 -->
-              <div v-if="getEnemiesInSlot('back', col - 1).length === 0" class="combatant enemy-side enemy-empty">
-                <div class="empty-avatar">⬛</div>
-                <div class="empty-text">空位</div>
-              </div>
-            </div>
-          </div>
-          <div class="enemy-row">
-            <div
-              v-for="col in 3"
-              :key="'front-' + col"
-              class="enemy-slot"
-            >
-              <template v-for="e in getEnemiesInSlot('front', col - 1)" :key="e.id">
-                <div
-                  :class="['combatant', 'enemy-side', {
-                    'shake': enemyShakes[e.id],
-                    'crit-shake': enemyCritShakes[e.id],
-                    'dodge-blink': enemyDodgeBlinks[e.id],
-                    'defeated': e.hp <= 0,
-                    'targeted': combatStore.targetEnemyId === e.id && e.hp > 0
-                  }]"
-                  :data-enemy-shake="e.id"
-                  @click="selectTarget(e.id)"
-                >
-                  <div class="combatant-avatar">{{ e.icon || '👹' }}</div>
-                  <div class="combatant-info">
-                    <div class="combatant-name">{{ e.name }}</div>
-                    <div class="combatant-level">Lv.{{ e.level || 1 }}</div>
-                    <div v-if="e.isBoss" class="boss-badge">👑 首领</div>
-                  </div>
-                  <div class="combatant-bars">
-                    <ResourceBar icon="❤️" name="HP" :current="e.hp" :max="e.maxHp" :percent="getHpPercent(e)" type="hp" />
-                  </div>
-                  <!-- Buff/Debuff 效果指示器 -->
-                  <div v-if="getEnemyEffectCount(e.id) > 0" class="effects-indicator enemy-effects">
-                    <span v-for="eff in getEnemyEffects(e.id)" :key="eff.id" :class="['effect-badge', 'effect-' + eff.type, isBuffEffect(eff.type) ? 'effect-buff' : 'effect-debuff']">
-                      {{ getEffectIcon(eff.type) }} {{ effectLabels[eff.type] || eff.type }} {{ formatEffectValue(eff.type, eff.value) }} {{ eff.remainingTurns }}回合
-                    </span>
-                  </div>
-                  <!-- 浮动伤害数字（每个敌人独立） -->
-                  <div v-show="enemyFloatings[e.id]" :data-enemy-float="e.id" :class="['floating-damage', enemyFloatings[e.id]?.type || '']">
-                    {{ enemyFloatings[e.id]?.text || '' }}
-                  </div>
-                </div>
-              </template>
-              <!-- 空槽位占位符 -->
-              <div v-if="getEnemiesInSlot('front', col - 1).length === 0" class="combatant enemy-side enemy-empty">
+              <div v-if="getEnemiesInSlot(row, col - 1).length === 0" class="combatant enemy-side enemy-empty">
                 <div class="empty-avatar">⬛</div>
                 <div class="empty-text">空位</div>
               </div>
@@ -315,7 +269,6 @@ function toggleSpeed() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_speed_toggle' });
 }
 
-const speedClass = computed(() => combatSpeed.value === 2 ? 'speed-x2' : '');
 let autoCloseTimer: ReturnType<typeof setInterval> | null = null;
 let autoCloseTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -591,14 +544,14 @@ function showFloating(target: 'enemy' | 'player', text: string, type: string, en
     enemyFloatings.value[enemyId] = { text, type };
     nextTick(() => {
       const el = document.querySelector(`[data-enemy-float="${enemyId}"]`) as HTMLElement;
-      if (el) animateFloating(el, type as 'damage' | 'crit' | 'heal' | 'dodge');
+      if (el) animateFloating(el, type as 'damage' | 'crit' | 'heal' | 'dodge', combatSpeed.value);
     });
     setTimeout(() => { if (enemyFloatings.value[enemyId]) enemyFloatings.value[enemyId] = null; }, 1800);
   } else {
     playerFloating.value = { text, type };
     nextTick(() => {
       const el = document.querySelector('.player-side .floating-damage') as HTMLElement;
-      if (el) animateFloating(el, type as 'damage' | 'crit' | 'heal' | 'dodge');
+      if (el) animateFloating(el, type as 'damage' | 'crit' | 'heal' | 'dodge', combatSpeed.value);
     });
     setTimeout(() => { playerFloating.value = null; }, 1800);
   }
@@ -610,14 +563,14 @@ function triggerShake(target: 'enemy' | 'player', enemyId?: string) {
     enemyShakes.value[enemyId] = true;
     nextTick(() => {
       const el = document.querySelector(`[data-enemy-shake="${enemyId}"]`) as HTMLElement;
-      if (el) animateShake(el);
+      if (el) animateShake(el, combatSpeed.value);
     });
     setTimeout(() => { enemyShakes.value[enemyId] = false; }, 600);
   } else {
     playerShake.value = true;
     nextTick(() => {
       const el = document.querySelector('.player-side') as HTMLElement;
-      if (el) animateShake(el);
+      if (el) animateShake(el, combatSpeed.value);
     });
     setTimeout(() => { playerShake.value = false; }, 600);
   }
@@ -629,14 +582,14 @@ function triggerCritShake(target: 'enemy' | 'player', enemyId?: string) {
     enemyCritShakes.value[enemyId] = true;
     nextTick(() => {
       const el = document.querySelector(`[data-enemy-shake="${enemyId}"]`) as HTMLElement;
-      if (el) animateCritShake(el);
+      if (el) animateCritShake(el, combatSpeed.value);
     });
     setTimeout(() => { enemyCritShakes.value[enemyId] = false; }, 900);
   } else {
     playerCritShake.value = true;
     nextTick(() => {
       const el = document.querySelector('.player-side') as HTMLElement;
-      if (el) animateCritShake(el);
+      if (el) animateCritShake(el, combatSpeed.value);
     });
     setTimeout(() => { playerCritShake.value = false; }, 900);
   }
@@ -648,14 +601,14 @@ function triggerDodgeBlink(target: 'enemy' | 'player', enemyId?: string) {
     enemyDodgeBlinks.value[enemyId] = true;
     nextTick(() => {
       const el = document.querySelector(`[data-enemy-shake="${enemyId}"]`) as HTMLElement;
-      if (el) animateDodgeBlink(el);
+      if (el) animateDodgeBlink(el, combatSpeed.value);
     });
     setTimeout(() => { enemyDodgeBlinks.value[enemyId] = false; }, 800);
   } else {
     playerDodgeBlink.value = true;
     nextTick(() => {
       const el = document.querySelector('.player-side') as HTMLElement;
-      if (el) animateDodgeBlink(el);
+      if (el) animateDodgeBlink(el, combatSpeed.value);
     });
     setTimeout(() => { playerDodgeBlink.value = false; }, 800);
   }
@@ -667,7 +620,7 @@ function triggerScreenFlash(type: 'crit' | 'dodge') {
   screenFlash.value = true;
   nextTick(() => {
     if (screenFlashRef.value) {
-      animateScreenFlash(screenFlashRef.value, type);
+      animateScreenFlash(screenFlashRef.value, type, combatSpeed.value);
     }
   });
   setTimeout(() => { screenFlash.value = false; }, 600);
@@ -676,13 +629,15 @@ function triggerScreenFlash(type: 'crit' | 'dodge') {
 // 暴击事件处理
 function onCritHit(data: { amount: number; damageType: string; targetName: string; actorType: 'player' | 'enemy'; enemyId?: string }) {
   if (isUnmounted.value) return;
-  // 暴击震动目标（对敌人暴击震敌人，敌人暴击震玩家）
+  // 震动目标：玩家暴击震敌人，敌人暴击震玩家
   const shakeTarget = data.actorType === 'player' ? 'enemy' : 'player';
+  // 暴击震动 + 屏幕闪白
   triggerCritShake(shakeTarget, data.enemyId);
-  // 暴击浮动文字（金色 + "暴击!" 前缀）
-  showFloating(shakeTarget, `暴击! -${data.amount}`, 'crit', data.enemyId);
-  // 屏幕闪白
   triggerScreenFlash('crit');
+  // 玩家暴击时浮动文字由 applyCombatDamageEffects 处理，此处仅处理敌人暴击
+  if (data.actorType === 'enemy') {
+    showFloating(shakeTarget, `暴击! -${data.amount}`, 'crit', data.enemyId);
+  }
 }
 
 // 敌人造成伤害事件处理（敌人攻击玩家时的视觉反馈）
@@ -724,7 +679,8 @@ function onBossIntro(data: { enemyId: string; enemyName: string; icon: string; e
         bossIntroIconRef.value,
         bossIntroNameRef.value,
         lineEls,
-        data.duration
+        data.duration,
+        combatSpeed.value
       );
     }
   });
@@ -747,7 +703,7 @@ function onBossPhase(data: { enemyId: string; enemyName: string; phaseName: stri
   // 使用 anime.js 播放阶段转换
   nextTick(() => {
     if (phaseBackdropRef.value && phaseContentRef.value) {
-      animatePhaseTransition(phaseBackdropRef.value, phaseContentRef.value);
+      animatePhaseTransition(phaseBackdropRef.value, phaseContentRef.value, combatSpeed.value);
     }
   });
 
@@ -755,6 +711,28 @@ function onBossPhase(data: { enemyId: string; enemyName: string; phaseName: stri
   setTimeout(() => {
     showPhaseTransition.value = false;
   }, 2500);
+}
+
+// VS 分隔线闪光动画（doAction / doSkill 共用）
+function triggerVsFlash() {
+  vsFlash.value = true;
+  nextTick(() => {
+    if (vsDividerRef.value) animateVsFlash(vsDividerRef.value, combatSpeed.value);
+  });
+  setTimeout(() => { vsFlash.value = false; }, 450);
+}
+
+/** 应用战斗伤害视觉特效（AOE / 单体伤害），doAction / doSkill 共用 */
+function applyCombatDamageEffects(result: { aoeHits?: { enemyId: string; damage: number }[]; damage?: number; isCrit?: boolean }) {
+  if (result.aoeHits && result.aoeHits.length > 0) {
+    for (const hit of result.aoeHits) {
+      triggerShake('enemy', hit.enemyId);
+      showFloating('enemy', `-${hit.damage}`, 'damage', hit.enemyId);
+    }
+  } else if (result.damage && result.damage > 0) {
+    triggerShake('enemy', currentTarget.value?.id);
+    showFloating('enemy', `-${result.damage}`, result.isCrit ? 'crit' : 'damage', currentTarget.value?.id);
+  }
 }
 
 // 选择攻击目标
@@ -771,11 +749,7 @@ async function doAction(type: CombatActionType) {
   if (!canAct.value) return;
   eventBus.emit(GameEvents.UI_CLICK, { source: `combat_${type}` });
   isAnimating.value = true;
-  vsFlash.value = true;
-  nextTick(() => {
-    if (vsDividerRef.value) animateVsFlash(vsDividerRef.value);
-  });
-  setTimeout(() => { vsFlash.value = false; }, 450);
+  triggerVsFlash();
 
   const result = await combatStore.playerAction({ type });
 
@@ -786,24 +760,10 @@ async function doAction(type: CombatActionType) {
     return;
   }
 
-  // 视觉特效：基于 ActionResult 播放，不再自行编排流程
-  if (result.aoeHits && result.aoeHits.length > 0) {
-    // AOE 技能多目标浮动伤害
-    for (const hit of result.aoeHits) {
-      triggerShake('enemy', hit.enemyId);
-      showFloating('enemy', `-${hit.damage}`, 'damage', hit.enemyId);
-    }
-  } else if (result.damage && result.damage > 0) {
-    triggerShake('enemy', currentTarget.value?.id);
-    showFloating('enemy', `-${result.damage}`, result.isCrit ? 'crit' : 'damage', currentTarget.value?.id);
-  }
-  if (result.isCrit) {
-    triggerCritShake('enemy', currentTarget.value?.id);
-    triggerScreenFlash('crit');
-  }
-  if (result.isDodge) {
-    // 闪避特效由 COMBAT_DODGE EventBus 事件驱动
-  }
+  // 视觉特效：伤害效果提取为 applyCombatDamageEffects
+  // 暴击特效（critShake / screenFlash）由 COMBAT_CRITICAL_HIT EventBus 事件驱动，避免双重触发
+  // 闪避特效由 COMBAT_DODGE EventBus 事件驱动
+  applyCombatDamageEffects(result);
 
   if (combatStore.combatResult) {
     // 战斗结束（击败/逃跑失败等）
@@ -817,11 +777,7 @@ async function doSkill(skillId: string) {
   if (!canAct.value) return;
   eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_skill' });
   isAnimating.value = true;
-  vsFlash.value = true;
-  nextTick(() => {
-    if (vsDividerRef.value) animateVsFlash(vsDividerRef.value);
-  });
-  setTimeout(() => { vsFlash.value = false; }, 450);
+  triggerVsFlash();
 
   const result = await combatStore.playerAction({ type: 'skill', skillId });
 
@@ -832,17 +788,8 @@ async function doSkill(skillId: string) {
     return;
   }
 
-  // 视觉特效
-  if (result.aoeHits && result.aoeHits.length > 0) {
-    // AOE 技能多目标浮动伤害
-    for (const hit of result.aoeHits) {
-      triggerShake('enemy', hit.enemyId);
-      showFloating('enemy', `-${hit.damage}`, 'damage', hit.enemyId);
-    }
-  } else if (result.damage && result.damage > 0) {
-    triggerShake('enemy', currentTarget.value?.id);
-    showFloating('enemy', `-${result.damage}`, 'damage', currentTarget.value?.id);
-  }
+  // 视觉特效：伤害效果使用公共函数
+  applyCombatDamageEffects(result);
   if (result.heal && result.heal > 0) {
     showFloating('player', `+${result.heal}`, 'heal');
   }
@@ -918,7 +865,7 @@ watch(() => combatStore.combatResult, (result) => {
         const rewardEls = Array.from(
           resultPopupRef.value.querySelectorAll('.reward-item')
         ) as HTMLElement[];
-        animateResultPopup(resultPopupRef.value, resultIconRef.value, rewardEls);
+        animateResultPopup(resultPopupRef.value, resultIconRef.value, rewardEls, combatSpeed.value);
       }
     });
   }
@@ -1144,21 +1091,6 @@ onUnmounted(() => {
   color: #ff6b5a;
   margin-top: 2px;
   font-weight: 700;
-}
-
-/* 震动效果 */
-.combatant.shake {
-  /* 由 anime.js animateShake 处理 */
-}
-
-/* 暴击震动效果（更强） */
-.combatant.crit-shake {
-  /* 由 anime.js animateCritShake 处理 */
-}
-
-/* 闪避闪烁 */
-.combatant.dodge-blink {
-  /* 由 anime.js animateDodgeBlink 处理 */
 }
 
 .combatant.defeated {
