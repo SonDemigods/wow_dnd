@@ -15,25 +15,45 @@ import type { Stats } from '../character/types';
  */
 export function calculateSkillDamage(skill: Skill, stats: Stats): number {
   switch (skill.type) {
-    case 'physical_damage':
-      // 物理伤害 = 基础值 + 力量 * 系数
-      return Math.floor(skill.effect.value + stats.str * (skill.effect.coefficient || 0.5));
-    case 'magic_damage':
-      // 魔法伤害 = 基础值 + 智力 * 系数
-      return Math.floor(skill.effect.value + stats.int * (skill.effect.coefficient || 0.5));
-    case 'health_restore':
-      // 治疗量 = 基础值 + 智慧 * 系数
-      return Math.floor(skill.effect.value + stats.wis * (skill.effect.coefficient || 0.3));
-    case 'mana_restore':
-      // 法力回复 = 基础值 + 智力 * 系数
-      return Math.floor(skill.effect.value + stats.int * (skill.effect.coefficient || 0.3));
+    case 'physical_damage': {
+      const coef = skill.effect.coefficient ?? getSkillCoefficient(skill.unlockLevel, 'damage');
+      return Math.floor(skill.effect.value + stats.str * coef);
+    }
+    case 'magic_damage': {
+      const coef = skill.effect.coefficient ?? getSkillCoefficient(skill.unlockLevel, 'damage');
+      return Math.floor(skill.effect.value + stats.int * coef);
+    }
+    case 'health_restore': {
+      const coef = skill.effect.coefficient ?? getSkillCoefficient(skill.unlockLevel, 'heal');
+      return Math.floor(skill.effect.value + stats.wis * coef);
+    }
+    case 'mana_restore': {
+      const coef = skill.effect.coefficient ?? getSkillCoefficient(skill.unlockLevel, 'heal');
+      return Math.floor(skill.effect.value + stats.int * coef);
+    }
     case 'buff':
     case 'debuff':
-      // buff/debuff 无伤害值，返回 0
       return 0;
     default:
       return skill.effect.value;
   }
+}
+
+/**
+ * 按解锁等级获取技能系数（分层缩放）
+ * @param unlockLevel - 技能解锁等级
+ * @param type - 技能类型
+ * @returns 系数值
+ */
+export function getSkillCoefficient(unlockLevel: number, type: 'damage' | 'heal' | 'buff'): number {
+  if (type === 'buff') return 0;
+
+  const baseCoef = type === 'heal' ? 0.30 : 0.50;
+  const tierBonus = type === 'heal' ? 0.035 : 0.040;
+
+  // Lv 1-2: 基础系数 / Lv 3-5: +1 档 / Lv 6-8: +2 档 / Lv 9-10: +3 档
+  const tier = unlockLevel <= 2 ? 0 : unlockLevel <= 5 ? 1 : unlockLevel <= 8 ? 2 : 3;
+  return baseCoef + tier * tierBonus;
 }
 
 /**
@@ -43,21 +63,52 @@ export function calculateSkillDamage(skill: Skill, stats: Stats): number {
  * @returns 计算后的效果值
  */
 export function calculateBuffValue(buffEffect: SkillBuffEffect, stats: Stats): number {
-  // 攻击/防御类 buff 受智慧加成，每点智慧 +0.15 效果值
-  const offensiveTypes = ['attack_up', 'attack_down', 'defense_up', 'defense_down'];
-  if (offensiveTypes.includes(buffEffect.type)) {
-    return Math.floor(buffEffect.value + stats.wis * 0.15);
+  const { type, value } = buffEffect;
+
+  switch (type) {
+    // ===== 百分比类：value 即百分比点数 =====
+    case 'attack_up':
+    case 'attack_down':
+      return Math.floor(value + stats.wis * 0.30);
+
+    case 'defense_up':
+    case 'defense_down':
+      return Math.floor(value + stats.wis * 0.25);
+
+    case 'vulnerable':
+      return Math.floor(value + stats.wis * 0.20);
+
+    // ===== 固定值类：缩放匹配 HP 成长 =====
+    case 'poison':
+      return Math.floor(value + stats.wis * 0.50);
+
+    case 'burn':
+      return Math.floor(value + stats.wis * 0.60);
+
+    case 'regen':
+      return Math.floor(value + stats.wis * 0.50);
+
+    case 'shield':
+      return Math.floor(value + stats.wis * 0.80);
+
+    // ===== 倍率类：轻微缩放 =====
+    case 'thorn':
+      return Math.min(0.60, value + stats.wis * 0.005);
+
+    // ===== 控制类：不缩放 =====
+    case 'stun':
+    case 'freeze':
+    case 'silence':
+      return value;
+
+    // ===== 速度类：平坦值缩放 =====
+    case 'speed_up':
+    case 'speed_down':
+      return Math.floor(value + stats.dex * 0.30);
+
+    default:
+      return value;
   }
-  // 护盾受智慧加成
-  if (buffEffect.type === 'shield') {
-    return Math.floor(buffEffect.value + stats.wis * 0.4);
-  }
-  // DoT / HoT 受智慧轻微加成
-  if (['poison', 'burn', 'regen'].includes(buffEffect.type)) {
-    return Math.floor(buffEffect.value + stats.wis * 0.1);
-  }
-  // 其他类型（眩晕、沉默等）不接受加成
-  return buffEffect.value;
 }
 
 /**

@@ -31,7 +31,6 @@ import { useSkillsStore } from '../skill/store';
 import { useInventoryStore } from '../inventory/store';
 import { useQuestStore } from '../quest/store';
 import {
-  calculatePlayerDamage,
   rollCritical,
   rollDodge,
   calculateFleeChance,
@@ -41,7 +40,13 @@ import {
   isBossCombat
 } from './service';
 import {
-  addEffect as addEffectToContainer,
+  // 新效果系统
+  EffectHandlerRegistry,
+  processDamagePipeline,
+  createEmptyContainer,
+  addEffectToContainer,
+  createDefaultRegistry,
+  // 旧兼容（逐步迁移）
   tickEffects,
   applyShield,
   getStatModifiers,
@@ -51,6 +56,8 @@ import {
   type Effect,
   type EffectType,
   type EffectContainer,
+  type EffectContext,
+  type DamageType,
   type StatModifiers
 } from './effects';
 import { AggressiveStrategy, DefensiveStrategy, BalancedStrategy, BossPhaseStrategy } from './ai/strategies';
@@ -112,10 +119,14 @@ export const useCombatStore = defineStore('combat', () => {
   const combatSpeed = ref<1 | 2>(1);
 
   /** 玩家当前效果容器（Buff/Debuff） */
-  const playerEffects = ref<EffectContainer>({ effects: [] });
+  const playerEffects = ref<EffectContainer>(createEmptyContainer());
 
   /** 敌人效果容器映射（敌人ID -> 效果容器，用于护盾等临时效果） */
   const enemyEffects = ref<Map<string, EffectContainer>>(new Map());
+
+  /** 效果系统注册表（单例，注册全部 15 种处理器） */
+  const effectRegistry = new EffectHandlerRegistry();
+  createDefaultRegistry(effectRegistry);
 
   /** 敌人回合延迟定时器 ID（非响应式，用于战斗提前结束时取消） */
   let turnTimerId: ReturnType<typeof setTimeout> | null = null;
@@ -173,6 +184,46 @@ export const useCombatStore = defineStore('combat', () => {
     } catch (e) {
       console.error('[CombatStore] 保存战斗日志失败:', e);
     }
+  }
+
+  /**
+   * 创建玩家效果上下文
+   * @param characterStore - 角色 Store 实例
+   */
+  function createPlayerEffectContext(characterStore: ReturnType<typeof useCharacterStore>): EffectContext {
+    return {
+      ownerId: 'player',
+      ownerType: 'player',
+      baseStats: {
+        physicalAttack: characterStore.attributes.physicalAttack,
+        physicalDefense: characterStore.attributes.physicalDefense,
+        magicAttack: characterStore.attributes.magicAttack,
+        magicDefense: characterStore.attributes.magicDefense,
+        speed: 0,
+      },
+      currentHp: characterStore.hp,
+      maxHp: characterStore.maxHp,
+    };
+  }
+
+  /**
+   * 创建敌人效果上下文
+   * @param enemy - 敌人实例
+   */
+  function createEnemyEffectContext(enemy: Enemy): EffectContext {
+    return {
+      ownerId: enemy.id,
+      ownerType: 'enemy',
+      baseStats: {
+        physicalAttack: enemy.physicalAttack || 0,
+        physicalDefense: enemy.physicalDefense || 0,
+        magicAttack: enemy.magicAttack || 0,
+        magicDefense: enemy.magicDefense || 0,
+        speed: 0,
+      },
+      currentHp: enemy.hp,
+      maxHp: enemy.maxHp,
+    };
   }
 
   /**
@@ -623,32 +674,57 @@ export const useCombatStore = defineStore('combat', () => {
       };
     }
 
-    // 使用纯函数计算伤害
-    const { rawDamage } = calculatePlayerDamage(
-      characterStore.attributes.physicalAttack,
-      target.physicalDefense || 0
+    // 构建效果上下文
+    const attackerCtx: EffectContext = {
+      ownerId: 'player',
+      ownerType: 'player',
+      baseStats: {
+        physicalAttack: characterStore.attributes.physicalAttack,
+        physicalDefense: characterStore.attributes.physicalDefense,
+        magicAttack: characterStore.attributes.magicAttack,
+        magicDefense: characterStore.attributes.magicDefense,
+        speed: characterStore.attributes.dodgeChance,
+      },
+      currentHp: characterStore.hp,
+      maxHp: characterStore.maxHp,
+    };
+
+    const defenderCtx: EffectContext = {
+      ownerId: target.id,
+      ownerType: 'enemy',
+      baseStats: {
+        physicalAttack: target.physicalAttack || 0,
+        physicalDefense: target.physicalDefense || 0,
+        magicAttack: target.magicAttack || 0,
+        magicDefense: target.magicDefense || 0,
+        speed: 0,
+      },
+      currentHp: target.hp,
+      maxHp: target.maxHp,
+    };
+
+    // 使用新管线计算伤害
+    const pipeResult = processDamagePipeline(
+      effectRegistry,
+      playerEffects.value,
+      enemyEffects.value.get(target.id) || createEmptyContainer(),
+      attackerCtx,
+      defenderCtx,
+      'physical'
     );
 
-    // 暴击判定
+    // 暴击判定（在管线之后应用）
     const critChance = characterStore.attributes.critChance / 100;
     const isCrit = rollCritical(critChance);
     const critMultiplier = isCrit ? 1.5 : 1;
-    const damage = Math.floor(rawDamage * critMultiplier);
-
-    // 应用敌人护盾（临时处理）
-    const enemyEff = enemyEffects.value.get(target.id);
-    let finalDamage = damage;
-    if (enemyEff) {
-      const shieldResult = applyShield(enemyEff, damage);
-      finalDamage = shieldResult.actualDamage;
-    }
+    const finalDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
 
     // 造成伤害
     const isDead = enemiesStore.takeDamage(target.id, finalDamage);
 
     // 物理伤害音效事件
     eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
-      amount: damage,
+      amount: finalDamage,
       damageType: 'physical',
       targetName: target.name || '敌人',
       actorType: 'player'
@@ -657,7 +733,7 @@ export const useCombatStore = defineStore('combat', () => {
     // 暴击事件（视觉特效 + 暴击音效）
     if (isCrit) {
       eventBus.emit(GameEvents.COMBAT_CRITICAL_HIT, {
-        amount: damage,
+        amount: finalDamage,
         damageType: 'physical',
         targetName: target.name || '敌人',
         actorType: 'player'
@@ -801,19 +877,31 @@ export const useCombatStore = defineStore('combat', () => {
         // 对自身生效（自伤技能，实际上不太合理，按治疗逻辑处理）
         endPlayerTurn();
       } else {
-        // 单目标（默认）：现有逻辑
+        // 单目标（默认）：使用伤害管线计算
         const target = currentTarget.value;
         if (!target) {
           return { success: false, type: 'skill', message: '没有可攻击的目标！' };
         }
 
-        const isDead = enemiesStore.takeDamage(target.id, result.damage);
+        const damageType: DamageType = result.type === 'magic_damage' ? 'magical' : 'physical';
+
+        const pipeResult = processDamagePipeline(
+          effectRegistry,
+          playerEffects.value,
+          enemyEffects.value.get(target.id) || createEmptyContainer(),
+          createPlayerEffectContext(characterStore),
+          createEnemyEffectContext(target),
+          damageType,
+          result.damage  // baseDamageOverride：技能基础伤害直接传入
+        );
+
+        const isDead = enemiesStore.takeDamage(target.id, pipeResult.finalDamage);
         const updatedTarget = enemiesStore.getEnemyById(target.id);
 
         // 伤害类型音效事件
         eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
-          amount: result.damage,
-          damageType: result.type === 'magic_damage' ? 'magic' : 'physical',
+          amount: pipeResult.finalDamage,
+          damageType: damageType === 'magical' ? 'magic' : 'physical',
           targetName: updatedTarget?.name || '敌人',
           actorType: 'player'
         });
@@ -828,10 +916,10 @@ export const useCombatStore = defineStore('combat', () => {
           targetName: updatedTarget?.name || '',
           skillId,
           skillName: skill?.name || '',
-          damage: result.damage,
+          damage: pipeResult.finalDamage,
           isCrit: false,
           isDodge: false,
-          message: `${skill?.name || '技能'} 对 ${updatedTarget?.name} 造成 ${result.damage} 点${result.type === 'magic_damage' ? '魔法' : '物理'}伤害！`
+          message: `${skill?.name || '技能'} 对 ${updatedTarget?.name} 造成 ${pipeResult.finalDamage} 点${result.type === 'magic_damage' ? '魔法' : '物理'}伤害！`
         });
 
         if (isDead || !updatedTarget || aliveEnemies.value.length === 0) {
@@ -851,6 +939,7 @@ export const useCombatStore = defineStore('combat', () => {
 
       if (result.type === 'buff') {
         // 增益技能：对玩家自身施加效果
+        const playerCtx = createPlayerEffectContext(characterStore);
         for (const be of result.appliedEffects) {
           const effect: Effect = {
             id: generateEffectId(),
@@ -861,6 +950,8 @@ export const useCombatStore = defineStore('combat', () => {
             sourceName: effectSourceName
           };
           addEffectToContainer(playerEffects.value, effect);
+          // 调用 handler.onApply 触发效果施加回调
+          effectRegistry.get(effect.type as EffectType)?.onApply?.(effect, playerCtx);
         }
 
         eventBus.emit(GameEvents.COMBAT_CAST_HEAL, {
@@ -1146,9 +1237,10 @@ export const useCombatStore = defineStore('combat', () => {
   function applyDebuffToEnemy(e: Enemy, effects: Array<{ type: string; value: number; turns: number }>, sourceName: string): void {
     // 确保该敌人有效果容器
     if (!enemyEffects.value.has(e.id)) {
-      enemyEffects.value.set(e.id, { effects: [] });
+      enemyEffects.value.set(e.id, createEmptyContainer());
     }
     const container = enemyEffects.value.get(e.id)!;
+    const ctx = createEnemyEffectContext(e);
 
     for (const be of effects) {
       const effect: Effect = {
@@ -1160,6 +1252,8 @@ export const useCombatStore = defineStore('combat', () => {
         sourceName
       };
       addEffectToContainer(container, effect);
+      // 调用 handler.onApply 触发效果施加回调
+      effectRegistry.get(effect.type)?.onApply?.(effect, ctx);
     }
   }
 
@@ -1181,6 +1275,8 @@ export const useCombatStore = defineStore('combat', () => {
 
     if (isSelfBuff || targetType === 'self') {
       // 自身增益：应用到玩家
+      const characterStore = useCharacterStore();
+      const playerCtx = createPlayerEffectContext(characterStore);
       for (const be of skill.buffs) {
         if (['attack_up', 'defense_up', 'speed_up', 'regen', 'shield', 'thorn'].includes(be.type)) {
           const effect: Effect = {
@@ -1192,6 +1288,8 @@ export const useCombatStore = defineStore('combat', () => {
             sourceName
           };
           addEffectToContainer(playerEffects.value, effect);
+          // 调用 handler.onApply 触发效果施加回调
+          effectRegistry.get(effect.type)?.onApply?.(effect, playerCtx);
         }
       }
       return;
@@ -1210,6 +1308,16 @@ export const useCombatStore = defineStore('combat', () => {
         applyDebuffToEnemy(target, skill.buffs, sourceName);
       }
     }
+  }
+
+  /**
+   * 按 Boss 等级缩放效果值（线性增长，公式：baseValue × (1 + (level-1) × 0.08)）
+   * @param baseValue - 配置中的基础效果值
+   * @param bossLevel - Boss 等级
+   * @returns 缩放后的效果值
+   */
+  function scaleBossEffectValue(baseValue: number, bossLevel: number): number {
+    return Math.floor(baseValue * (1 + (bossLevel - 1) * 0.08));
   }
 
   /**
@@ -1262,11 +1370,13 @@ export const useCombatStore = defineStore('combat', () => {
       }
       case 'debuff_aura': {
         const debuffType = (params?.debuffType as string) || 'attack_down';
+        const baseValue = params?.value as number || 10;
+        const scaledValue = scaleBossEffectValue(baseValue, e.level);
         const debuffEffect: Effect = {
           id: generateEffectId(),
           type: debuffType as any,
           remainingTurns: params?.turns as number || 3,
-          value: params?.value as number || 10,
+          value: scaledValue,
           source: 'enemy',
           sourceName: e.name
         };
@@ -1345,8 +1455,10 @@ export const useCombatStore = defineStore('combat', () => {
   function buildInitiativeOrder(characterStore: ReturnType<typeof useCharacterStore>): void {
     const units: { id: string; speed: number }[] = [];
 
-    // 玩家速度
-    const playerSpeed = characterStore.effectiveStats?.dex || 10;
+    // 玩家速度（含效果修正）
+    const playerCtx = createPlayerEffectContext(characterStore);
+    const speedMod = effectRegistry.reduceSum(playerEffects.value, 'getSpeedMod', playerCtx);
+    const playerSpeed = (characterStore.attributes.dodgeChance || 0) + speedMod;
     units.push({ id: 'player', speed: playerSpeed });
 
     // 所有敌人速度
@@ -1431,6 +1543,51 @@ export const useCombatStore = defineStore('combat', () => {
       endCombat('defeat');
       saveLogs();
       return;
+    }
+
+    // 推进所有敌方效果（持续伤害、恢复等）
+    for (const [enemyId, container] of enemyEffects.value) {
+      const enemy = enemiesStore.getEnemyById(enemyId);
+      if (enemy) {
+        const enemyTickResult = effectRegistry.tickAll(container, createEnemyEffectContext(enemy));
+        // 应用 DoT 伤害到敌人
+        if (enemyTickResult.dotDamage > 0) {
+          enemiesStore.takeDamage(enemyId, enemyTickResult.dotDamage);
+          addCombatLog({
+            actorType: 'system',
+            actorId: 'system',
+            actorName: '系统',
+            eventType: 'combat_damage',
+            targetType: 'enemy',
+            targetId: enemyId,
+            targetName: enemy.name,
+            damage: enemyTickResult.dotDamage,
+            isCrit: false,
+            isDodge: false,
+            message: `持续伤害对 ${enemy.name} 造成 ${enemyTickResult.dotDamage} 点伤害！`
+          });
+        }
+        // 应用 HoT 治疗到敌人
+        if (enemyTickResult.regenAmount > 0) {
+          const updatedEnemy = enemiesStore.getEnemyById(enemyId);
+          if (updatedEnemy) {
+            updatedEnemy.hp = Math.min(updatedEnemy.maxHp, updatedEnemy.hp + enemyTickResult.regenAmount);
+            addCombatLog({
+              actorType: 'system',
+              actorId: 'system',
+              actorName: '系统',
+              eventType: 'combat_heal',
+              targetType: 'enemy',
+              targetId: enemyId,
+              targetName: updatedEnemy.name,
+              heal: enemyTickResult.regenAmount,
+              isCrit: false,
+              isDodge: false,
+              message: `生命恢复为 ${updatedEnemy.name} 恢复了 ${enemyTickResult.regenAmount} 点生命值！`
+            });
+          }
+        }
+      }
     }
 
     const e = enemies.value.find(en => en.id === enemyId);
@@ -1566,7 +1723,7 @@ export const useCombatStore = defineStore('combat', () => {
     goldGained.value = 0;
 
     // 重置效果容器
-    playerEffects.value = { effects: [] };
+    playerEffects.value = createEmptyContainer();
     enemyEffects.value = new Map();
 
     // 初始化 Boss 功能（阶段管理器 + 出场演出）
@@ -1962,6 +2119,9 @@ export const useCombatStore = defineStore('combat', () => {
     bossPhaseManagers.clear();
     bossIntros.value = {};
     enemyPositions.value = {};
+    // 清空效果容器
+    playerEffects.value = createEmptyContainer();
+    enemyEffects.value = new Map();
   }
 
   // ==================== Action：重置 ====================
@@ -1986,7 +2146,7 @@ export const useCombatStore = defineStore('combat', () => {
     combatResult.value = null;
     expGained.value = 0;
     goldGained.value = 0;
-    playerEffects.value = { effects: [] };
+    playerEffects.value = createEmptyContainer();
     enemyEffects.value = new Map();
     bossPhaseManagers.clear();
     bossIntros.value = {};
@@ -2000,11 +2160,17 @@ export const useCombatStore = defineStore('combat', () => {
    * @param effect - 效果实例
    */
   function addEffectToPlayer(effect: Effect): void {
+    // 战斗作用域约束：效果仅在战斗期间生效
+    if (state.value !== 'fighting') {
+      console.warn('[Combat] 非战斗状态，忽略效果施加');
+      return;
+    }
     addEffectToContainer(playerEffects.value, effect);
   }
 
   /**
    * 获取玩家当前属性修正
+   * @deprecated 已被 processDamagePipeline 管线替代，请使用效果系统注册表获取修饰值
    */
   function getPlayerStatModifiers(): StatModifiers {
     return getStatModifiers(playerEffects.value);

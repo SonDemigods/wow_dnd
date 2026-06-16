@@ -35,7 +35,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       effect: { type: 'physical_damage', value: 18 },
       unlockLevel: 1,
       targetType: 'all_enemies',
-      buffs: [{ type: 'defense_down', value: 3, turns: 2 }]
+      buffs: [{ type: 'defense_down', value: 12, turns: 2 }]
     },
     {
       id: 'warrior_shield_bash',
@@ -98,7 +98,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       effect: { type: 'buff', value: 0 },
       unlockLevel: 7,
       targetType: 'self',
-      buffs: [{ type: 'speed_up', value: 15, turns: 3 }, { type: 'attack_up', value: 8, turns: 3 }]
+      buffs: [{ type: 'speed_up', value: 15, turns: 3 }, { type: 'attack_up', value: 15, turns: 3 }]
     },
     {
       id: 'warrior_overpower',
@@ -145,7 +145,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       effect: { type: 'magic_damage', value: 20 },
       unlockLevel: 1,
       targetType: 'all_enemies',
-      buffs: [{ type: 'speed_down', value: 8, turns: 2 }]
+      buffs: [{ type: 'speed_down', value: 12, turns: 2 }]
     },
     {
       id: 'mage_arcane_missiles',
@@ -209,7 +209,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       effect: { type: 'buff', value: 0 },
       unlockLevel: 7,
       targetType: 'self',
-      buffs: [{ type: 'shield', value: 40, turns: 3 }]
+      buffs: [{ type: 'shield', value: 35, turns: 3 }]
     },
     {
       id: 'mage_blizzard',
@@ -227,7 +227,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       name: '烈焰爆',
       icon: '💥',
       description: '吟唱古老的火系禁咒，一颗巨大的烈焰陨石从天而降，将目标化为灰烬',
-      mpCost: 30,
+      mpCost: 25,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 55 },
       unlockLevel: 10
@@ -288,7 +288,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       effect: { type: 'magic_damage', value: 15 },
       unlockLevel: 4,
       targetType: 'all_enemies',
-      buffs: [{ type: 'burn', value: 8, turns: 3 }]
+      buffs: [{ type: 'burn', value: 10, turns: 3 }]
     },
     {
       id: 'paladin_divine_strike',
@@ -591,7 +591,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'debuff',
       effect: { type: 'debuff', value: 0 },
       unlockLevel: 2,
-      buffs: [{ type: 'attack_down', value: 10, turns: 3 }]
+      buffs: [{ type: 'attack_down', value: 15, turns: 3 }]
     },
     {
       id: 'warlock_immolate',
@@ -659,7 +659,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       name: '混乱之箭',
       icon: '💥',
       description: '引导混乱之力凝为一箭，这发混沌箭无视一切防御直击灵魂本源',
-      mpCost: 30,
+      mpCost: 25,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 55 },
       unlockLevel: 10
@@ -730,7 +730,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 12 },
       unlockLevel: 5,
-      buffs: [{ type: 'thorn', value: 0.3, turns: 3 }]
+      buffs: [{ type: 'thorn', value: 0.25, turns: 3 }]
     },
     {
       id: 'druid_feral_charge',
@@ -876,7 +876,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       name: '神圣赞美诗',
       icon: '🎵',
       description: '吟唱古老的神圣赞美诗，圣光如瀑布般倾泻而下，治愈全队重伤',
-      mpCost: 32,
+      mpCost: 25,
       type: 'health_restore',
       effect: { type: 'health_restore', value: 55 },
       unlockLevel: 10
@@ -945,7 +945,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 18 },
       unlockLevel: 5,
-      buffs: [{ type: 'speed_down', value: 12, turns: 2 }]
+      buffs: [{ type: 'speed_down', value: 15, turns: 2 }]
     },
     {
       id: 'shaman_chain_lightning',
@@ -1003,7 +1003,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 20 },
       unlockLevel: 1,
-      buffs: [{ type: 'speed_down', value: 10, turns: 2 }]
+      buffs: [{ type: 'speed_down', value: 12, turns: 2 }]
     },
     {
       id: 'death_knight_shadow_strike',
@@ -1306,7 +1306,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       name: '浩劫',
       icon: '💥',
       description: '释放积蓄的全部魔能，毁灭性的魔能冲击波席卷整个战场',
-      mpCost: 32,
+      mpCost: 26,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 59 },
       unlockLevel: 10,
@@ -1413,7 +1413,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       name: '翡翠毁灭',
       icon: '💥',
       description: '唤醒龙裔血脉中最原始的毁灭本能，翡翠之力化作毁灭风暴吞噬一切',
-      mpCost: 32,
+      mpCost: 26,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 58 },
       unlockLevel: 10,

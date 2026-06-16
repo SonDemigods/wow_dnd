@@ -209,11 +209,6 @@ export interface Stats {
  * @property {number} hpBonus - 生命值加成
  * @property {number} mpBonus - 法力值加成
  * @property {number} healBonus - 治疗加成
- * @property {number} [attackBonus] - 攻击加成
- * @property {number} [critBonus] - 暴击加成
- * @property {number} [dodgeBonus] - 闪避加成
- * @property {number} [armor] - 护甲值
- * @property {number} [initiative] - 先手值
  */
 export interface Attributes {
   maxHp: number;
@@ -227,11 +222,6 @@ export interface Attributes {
   hpBonus: number;
   mpBonus: number;
   healBonus: number;
-  attackBonus?: number;
-  critBonus?: number;
-  dodgeBonus?: number;
-  armor?: number;
-  initiative?: number;
 }
 
 /**
