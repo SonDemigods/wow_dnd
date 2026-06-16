@@ -1,0 +1,177 @@
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: @popup-overlay-bg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.popup-content {
+  background: @popup-bg;
+  border-radius: 12px;
+  border: 2px solid @popup-border-color;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  min-height: 48px;
+  border-bottom: 1px solid @popup-border-color;
+  flex-shrink: 0;
+  gap: 10px;
+}
+
+.popup-title {
+  font-size: 16px;
+  color: @accent-color;
+  margin: 0;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.popup-close-btn {
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  color: @text-primary;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.popup-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.popup-footer {
+  padding: 12px 16px;
+  border-top: 1px solid @popup-border-color;
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 10px;
+  min-height: 52px;
+  box-sizing: border-box;
+
+  & > * {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.popup-footer-btn {
+  padding: 10px 16px;
+  border: 2px solid @popup-border-color;
+  border-radius: 8px;
+  color: @text-primary;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    border-color: #666;
+    background: rgba(255, 255, 255, 0.15);
+  }
+}
+
+.popup-footer-btn.cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: @text-primary;
+  border: 2px solid @popup-border-color;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #666;
+  }
+}
+
+.popup-footer-btn.confirm {
+  background: @accent-color;
+  border-color: @accent-color;
+  color: #000;
+
+  &:hover {
+    background: darken(@accent-color, 10%);
+    border-color: darken(@accent-color, 10%);
+  }
+}
+
+.popup-footer-btn.danger {
+  background: @danger-color;
+  border-color: @danger-color;
+  color: @text-primary;
+
+  &:hover {
+    background: darken(@danger-color, 10%);
+    border-color: darken(@danger-color, 10%);
+  }
+}
+
+.popup-footer-btn.warn {
+  background: @warning-color;
+  border-color: @warning-color;
+  color: @text-primary;
+
+  &:hover {
+    background: darken(@warning-color, 10%);
+    border-color: darken(@warning-color, 10%);
+  }
+}
+
+.popup-footer-btn.organize {
+  background: @skill-blue;
+  border-color: @skill-blue;
+  color: @text-primary;
+
+  &:hover {
+    background: darken(@skill-blue, 10%);
+    border-color: darken(@skill-blue, 10%);
+  }
+}
+
+/* ===== 弹窗进出场动画（BasePopup Transition） ===== */
+.popup-enter-active {
+  animation: fadeIn 0.2s ease;
+}
+
+/* 遮罩淡入时，内容盒体做轻微缩放弹入 */
+.popup-enter-active .popup-content {
+  animation: scaleIn 0.25s ease;
+}
+
+.popup-leave-active {
+  animation: fadeIn 0.15s ease reverse;
+}
