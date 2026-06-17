@@ -38,6 +38,31 @@
       </div>
     </div>
 
+    <!-- 修复基础数据确认弹窗 -->
+    <div v-if="showRepairModal" class="confirm-modal-overlay" @click="cancelRepair">
+      <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
+        <div class="confirm-icon">🔧</div>
+        <h3>确认修复基础数据</h3>
+        <p>此操作将清空所有基础配置数据（阵营、种族、职业、物品、怪物、地点、商店、任务、技能等）并重新导入默认数据。角色数据不受影响。确定要继续吗？</p>
+        <div class="confirm-buttons">
+          <button class="confirm-btn-cancel" @click="cancelRepair">取消</button>
+          <button class="confirm-btn-delete" @click="confirmRepair">修复</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 修复基础数据结果弹窗 -->
+    <div v-if="showRepairResultModal" class="confirm-modal-overlay" @click="closeRepairResult">
+      <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
+        <div class="confirm-icon">{{ repairSuccess ? '✅' : '❌' }}</div>
+        <h3>{{ repairSuccess ? '修复成功' : '修复失败' }}</h3>
+        <p>{{ repairMessage }}</p>
+        <div class="confirm-buttons">
+          <button class="confirm-btn-cancel" @click="closeRepairResult">确定</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 隐藏的文件选择输入 -->
     <input
       ref="fileInputRef"
@@ -92,6 +117,9 @@
         <button class="action-btn action-btn-import" @click="triggerImport">
           📥 导入存档
         </button>
+        <button class="action-btn action-btn-repair" @click="triggerRepair">
+          🔧 修复基础数据
+        </button>
       </div>
     </div>
   </div>
@@ -133,6 +161,12 @@ const selectedFile = ref<File | null>(null);
 const showResultModal = ref(false);
 const importSuccess = ref(false);
 const importMessage = ref('');
+
+// 修复基础数据相关状态
+const showRepairModal = ref(false);
+const showRepairResultModal = ref(false);
+const repairSuccess = ref(false);
+const repairMessage = ref('');
 
 async function loadData() {
   await baseStore.loadAllData();
@@ -288,6 +322,45 @@ function showResult(success: boolean, _title: string, message: string) {
   importSuccess.value = success;
   importMessage.value = message;
   showResultModal.value = true;
+}
+
+// ==================== 修复基础数据功能 ====================
+
+/** 触发修复基础数据：弹出确认弹窗 */
+function triggerRepair() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'repair_base_data_btn' });
+  showRepairModal.value = true;
+}
+
+/** 取消修复 */
+function cancelRepair() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'cancel_repair' });
+  showRepairModal.value = false;
+}
+
+/** 确认修复：执行数据修复并刷新 */
+async function confirmRepair() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'confirm_repair' });
+  showRepairModal.value = false;
+
+  try {
+    await characterStore.repairBaseData();
+    // 刷新数据和角色列表
+    await loadData();
+    await loadCharacters();
+    repairSuccess.value = true;
+    repairMessage.value = '基础数据已成功修复，所有配置表已重置为默认值。';
+  } catch (error) {
+    repairSuccess.value = false;
+    repairMessage.value = (error as Error).message || '修复过程中发生未知错误';
+  }
+  showRepairResultModal.value = true;
+}
+
+/** 关闭修复结果弹窗 */
+function closeRepairResult() {
+  showRepairResultModal.value = false;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'repair_result_close' });
 }
 
 onMounted(async () => {
@@ -564,6 +637,20 @@ defineExpose({
   border-color: #0096ff;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 150, 255, 0.3);
+}
+
+/* 修复基础数据 - 橙色 */
+.action-btn-repair {
+  background: rgba(255, 165, 0, 0.15);
+  border-color: rgba(255, 165, 0, 0.4);
+  color: #ffa500;
+}
+
+.action-btn-repair:hover {
+  background: rgba(255, 165, 0, 0.25);
+  border-color: #ffa500;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
 }
 
 /* 确认弹窗 */
