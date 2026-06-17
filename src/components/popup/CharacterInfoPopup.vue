@@ -114,12 +114,12 @@
               @click="selectEquipment(slot)"
             >
               <template v-if="slot.equipment">
-                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="⚔️" size="md" />
+                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="⚔️" size="lg" />
                 <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>
-                <ItemIcon icon="" fallback="⚔️" size="md" />
-                <div class="slot-name empty">{{ slot.name }}</div>
+                <ItemIcon icon="" fallback="⚔️" size="lg" />
+                <!-- <div class="slot-name empty">{{ slot.name }}</div> -->
               </template>
             </div>
 
@@ -132,12 +132,12 @@
               @click="selectEquipment(slot)"
             >
               <template v-if="slot.equipment">
-                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="🛡️" size="md" />
+                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="🛡️" size="lg" />
                 <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>
-                <ItemIcon icon="" fallback="🛡️" size="md" />
-                <div class="slot-name empty">{{ slot.name }}</div>
+                <ItemIcon icon="" fallback="🛡️" size="lg" />
+                <!-- <div class="slot-name empty">{{ slot.name }}</div> -->
               </template>
             </div>
           </div>
@@ -597,13 +597,13 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 12px 8px;
+  padding: 8px 8px;
   background: rgba(255, 255, 255, 0.05);
-  border: 2px solid #4a4a4a;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
   min-height: 80px;
+  aspect-ratio: 1;
 }
 
 .equip-slot.equip-anim-fill {
@@ -615,7 +615,6 @@ onUnmounted(() => {
 }
 
 .equip-slot:hover {
-  border-color: #666;
   background: rgba(255, 255, 255, 0.1);
 }
 
@@ -629,15 +628,6 @@ onUnmounted(() => {
 
 .equip-slot.equipped.selected {
   background: rgba(255, 215, 0, 0.25);
-}
-
-.equip-slot.rarity-common { border-color: #9d9d9d; }
-.equip-slot.rarity-uncommon { border-color: #1eff00; }
-.equip-slot.rarity-rare { border-color: #0070dd; }
-.equip-slot.rarity-epic { border-color: #a335ee; }
-.equip-slot.rarity-legendary { 
-  border-color: #ff8000;
-  animation: legendary-glow 2s infinite;
 }
 
 .slot-name {

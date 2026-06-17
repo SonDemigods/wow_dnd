@@ -290,12 +290,13 @@ export const useExplorationStore = defineStore('exploration', () => {
     // 2. 随机选取商店
     await pickRandomShop();
 
-    // 3. 获取任务所需的怪物列表（从配置表已确定，Boss 由固定事件放置）
+    // 3. 获取任务所需的怪物列表，并过滤掉 Boss（Boss 由固定事件放置，不应出现在普通怪物格子中）
     const questMonsters = await getQuestRequiredMonsters(areaId);
-    const questNormalMonsters: string[] = [...questMonsters];
+    const areaConfig = getAreaConfig();
+    const bossPool = areaConfig.bossPool;
+    const questNormalMonsters: string[] = questMonsters.filter(id => !bossPool.includes(id));
 
     // 4. 调用纯函数生成网格
-    const areaConfig = getAreaConfig();
     const newGrid = generateGrid({
       size: GRID_SIZE,
       eventProbability: areaConfig.eventProbability,

@@ -261,7 +261,7 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'stackable', label: '可堆叠', type: 'switch' },
     { key: 'consumable', label: '消耗品', type: 'switch' },
     { key: 'level', label: '物品等级', type: 'number' },
-    { key: 'levelRequirement', label: '等级需求', type: 'number' },
+    { key: 'template', label: '模板', type: 'text', placeholder: '物品模板标识' },
   ],
   equipmentItems: [
     { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
@@ -274,11 +274,11 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标' },
     { key: 'description', label: '描述', type: 'textarea', placeholder: '装备描述' },
     { key: 'bonus', label: '属性加成', type: 'json', placeholder: '{"str": 3}' },
-    { key: 'effect', label: '效果', type: 'json', placeholder: '{"type": "damage", "value": 5}' },
     { key: 'value', label: '价值', type: 'number' },
     { key: 'slots', label: '适用槽位', type: 'multiselect' },
-    { key: 'level', label: '物品等级', type: 'number' },
+    { key: 'stackable', label: '可堆叠', type: 'switch' },
     { key: 'levelRequirement', label: '等级需求', type: 'number' },
+    { key: 'template', label: '模板', type: 'text', placeholder: '装备模板标识' },
   ],
   mobs: [
     { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
@@ -301,13 +301,6 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'magicDefense', label: '魔法防御力', type: 'number' },
     { key: 'critChance', label: '暴击率', type: 'number' },
     { key: 'dodgeChance', label: '闪避率', type: 'number' },
-    { key: 'skillPool', label: '技能池', type: 'json', placeholder: '["skill_id_1", "skill_id_2"]' },
-    { key: 'aiStrategy', label: 'AI策略', type: 'select', options: [
-      { value: 'aggressive', label: '激进 (aggressive)' },
-      { value: 'defensive', label: '防御 (defensive)' },
-      { value: 'balanced', label: '均衡 (balanced)' },
-      { value: 'boss_phase', label: 'Boss阶段 (boss_phase)' },
-    ] },
   ],
   bosses: [
     { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
@@ -337,6 +330,9 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
       { value: 'balanced', label: '均衡 (balanced)' },
       { value: 'boss_phase', label: 'Boss阶段 (boss_phase)' },
     ] },
+    { key: 'isBoss', label: 'Boss标记', type: 'switch' },
+    { key: 'phases', label: '阶段配置', type: 'json', placeholder: '[{"name":"阶段一","hpThreshold":0.5,"skills":["skill_id"]}]' },
+    { key: 'intro', label: '出场演出', type: 'json', placeholder: '{"text":"Boss出现了！","animation":"shake"}' },
   ],
   quests: [
     { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
@@ -347,7 +343,6 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'levelRequirement', label: '等级需求', type: 'number' },
     { key: 'xpReward', label: '经验奖励', type: 'number' },
     { key: 'goldReward', label: '金币奖励', type: 'number' },
-    { key: 'itemRewards', label: '物品奖励', type: 'json', placeholder: '[{"itemId":"potion_health","count":3}]' },
     { key: 'boardId', label: '区域ID', type: 'select' },
   ],
   skills: [
@@ -379,6 +374,7 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
       { value: 'enemy', label: '仅敌人 (enemy)' },
       { value: 'both', label: '玩家和敌人 (both)' },
     ] },
+    { key: 'buffs', label: '增益/减益', type: 'json', placeholder: '[{"stat":"str","value":5,"duration":3}]' },
   ],
   locations: [
     { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
@@ -395,6 +391,8 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'mapX', label: '地图坐标X', type: 'number' },
     { key: 'mapY', label: '地图坐标Y', type: 'number' },
     { key: 'position', label: '大陆方位', type: 'text', placeholder: 'north/south/east/west' },
+    { key: 'enemies', label: '怪物分布', type: 'json', placeholder: '[{"id":"wolf","weight":5}]' },
+    { key: 'bosses', label: 'Boss分布', type: 'json', placeholder: '[{"id":"dragon_boss","weight":1}]' },
   ],
   shops: [
     { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },

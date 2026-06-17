@@ -44,7 +44,7 @@
             :class="['item-card', entry.quality, { selected: buySelectedIndex === index }]"
             @click="selectBuyItem(entry, index)"
           >
-            <ItemIcon :icon="entry.icon" :rarity="entry.quality" size="lg" />
+            <ItemIcon :icon="entry.icon" :rarity="entry.quality" size="md" />
             <div class="card-info">
               <div class="card-name">{{ entry.name }}</div>
               <div class="card-desc">{{ entry.description }}</div>
@@ -62,7 +62,7 @@
             :class="['item-card', entry.info?.rarity, { selected: sellSelectedIndex === index }]"
             @click="selectSellItem(entry, index)"
           >
-            <ItemIcon :icon="entry.info?.icon" :rarity="entry.info?.rarity" size="lg" />
+            <ItemIcon :icon="entry.info?.icon" :rarity="entry.info?.rarity" size="md" />
             <div class="card-info">
               <div class="card-name">{{ entry.info?.name }}</div>
               <div class="card-desc">{{ entry.info?.description }}</div>
@@ -616,7 +616,6 @@ watch(currentTab, () => {
 /* 物品列表卡片 */
 .item-card {
   background: rgba(255, 255, 255, 0.05);
-  border: 2px solid #4a4a4a;
   border-radius: 8px;
   padding: 10px 14px;
   display: flex;
@@ -631,18 +630,9 @@ watch(currentTab, () => {
 }
 
 .item-card.selected {
-  border-color: #ffd700;
+  outline: 2px solid #ffd700;
+  outline-offset: -2px;
   background: rgba(255, 215, 0, 0.1);
-}
-
-/* 稀有度边框色 */
-.item-card.common { border-color: #9d9d9d; }
-.item-card.uncommon { border-color: #1eff00; }
-.item-card.rare { border-color: #0070dd; }
-.item-card.epic { border-color: #a335ee; }
-.item-card.legendary {
-  border-color: #ff8000;
-  animation: legendary-glow 2s infinite;
 }
 
 .card-info {

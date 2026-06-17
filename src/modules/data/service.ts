@@ -307,6 +307,80 @@ export class DataInitializer {
     await db.runtime_gameState.delete(this.initFlagKey);
     console.log('数据初始化标志已重置');
   }
+
+  /**
+   * 修复基础数据：清空所有 config_ 开头的表，然后重新导入默认数据
+   *
+   * 用于用户手动触发的基础数据修复操作。
+   * 注意：此操作不会影响角色数据（char_* 表）。
+   */
+  async reinitializeData(): Promise<void> {
+    console.log('开始修复基础数据...');
+
+    try {
+      await db.transaction(
+        'rw',
+        [
+          db.config_factions,
+          db.config_races,
+          db.config_classes,
+          db.config_items,
+          db.config_equipmentItems,
+          db.config_mobs,
+          db.config_bosses,
+          db.config_locations,
+          db.config_shops,
+          db.config_quests,
+          db.config_skills,
+          db.runtime_gameState,
+          db.runtime_mapState,
+        ],
+        async () => {
+          // 清空所有 config 表
+          await db.config_factions.clear();
+          await db.config_races.clear();
+          await db.config_classes.clear();
+          await db.config_items.clear();
+          await db.config_equipmentItems.clear();
+          await db.config_mobs.clear();
+          await db.config_bosses.clear();
+          await db.config_locations.clear();
+          await db.config_shops.clear();
+          await db.config_quests.clear();
+          await db.config_skills.clear();
+
+          // 重新导入所有基础数据
+          await this.initFactions();
+          await this.initRaces();
+          await this.initClasses();
+          await this.initItems();
+          await this.initEquipment();
+          await this.initMobs();
+          await this.initBosses();
+          await this.initLocations();
+          await this.initContinents();
+          await this.initShops();
+          await this.initQuests();
+          await this.initSkillTemplates();
+          await this.initGameConstants();
+
+          // 更新初始化标志
+          await db.runtime_gameState.put({
+            id: this.initFlagKey,
+            initializedAt: new Date().toISOString()
+          } as GameStateStorage);
+        }
+      );
+
+      console.log('基础数据修复完成');
+
+      // 通知 baseStore 重新加载最新数据
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: 'repair', action: 'bulk', id: '*' });
+    } catch (error) {
+      console.error('修复基础数据失败:', error);
+      throw error;
+    }
+  }
 }
 
 /**

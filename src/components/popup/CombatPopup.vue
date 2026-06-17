@@ -323,7 +323,7 @@ const resultTextRef = ref<HTMLElement | null>(null);
 // 玩家数据（从 characterStore 读取，与主界面一致）
 const playerName = computed(() => characterStore.name);
 const playerLevel = computed(() => characterStore.level);
-const playerIcon = computed(() => '🧑');
+const playerIcon = computed(() => characterStore.raceIcon || '🧑');
 const playerHp = computed(() => characterStore.hp);
 const playerMaxHp = computed(() => characterStore.maxHp);
 const playerMp = computed(() => characterStore.mana);
@@ -406,6 +406,8 @@ function buildItemDescription(info: { effect?: { type: string; value: unknown };
   const parts: string[] = [];
   if (effect.type === 'health_restore' && effect.value > 0) parts.push(`HP+${effect.value}`);
   if (effect.type === 'mana_restore' && effect.value > 0) parts.push(`MP+${effect.value}`);
+  if (effect.type === 'physical_damage' && effect.value > 0) parts.push(`物理伤害 ${effect.value}`);
+  if (effect.type === 'magic_damage' && effect.value > 0) parts.push(`法术伤害 ${effect.value}`);
   return parts.length > 0 ? parts.join(' ') : (description || '');
 }
 
@@ -781,12 +783,19 @@ async function useItem(_itemId: string, _index: number) {
   const prevPlayerHp = playerHp.value;
   const prevPlayerMp = playerMp.value;
 
-  await combatStore.playerAction({ type: 'item', itemId: _itemId });
+  const result = await combatStore.playerAction({ type: 'item', itemId: _itemId });
 
   if (isUnmounted.value) return;
 
   if (!combatStore.combatResult) {
-    // 物品恢复效果（通过 HP/MP 差值计算，因为 useItem action 不返回 heal 值）
+    // 伤害型物品的视觉特效（卷轴等）
+    if (result.damage && result.damage > 0) {
+      triggerVsFlash();
+      triggerShake('enemy', currentTarget.value?.id);
+      showFloating('enemy', `-${result.damage}`, result.isCrit ? 'crit' : 'damage', currentTarget.value?.id);
+    }
+
+    // 物品恢复效果（通过 HP/MP 差值计算）
     const hpHeal = playerHp.value - prevPlayerHp;
     if (hpHeal > 0) {
       showFloating('player', `+${hpHeal}`, 'heal');
@@ -1335,23 +1344,24 @@ onUnmounted(() => {
 .item-modal-close { background: none; border: none; color: #888; font-size: 18px; cursor: pointer; padding: 4px 8px; }
 .item-modal-close:hover { color: #fff; }
 
-.item-modal-body { flex: 1; overflow-y: auto; padding: 8px; }
+.item-modal-body { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
 
 .item-option {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
-.item-option:hover { background: rgba(255, 255, 255, 0.08); }
-.item-option .item-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.item-option .item-name { font-size: 14px; color: #f0f0f0; font-weight: 600; }
-.item-option .item-desc { font-size: 11px; color: #888; }
-.item-option .item-count { font-size: 13px; color: #aaa; flex-shrink: 0; }
+.item-option:hover { background: rgba(255, 255, 255, 0.1); }
+.item-option .item-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.item-option .item-name { font-size: 14px; color: #fff; font-weight: bold; }
+.item-option .item-desc { font-size: 12px; color: #888; }
+.item-option .item-count { font-size: 13px; color: #ffd700; font-weight: bold; flex-shrink: 0; }
 .item-empty { text-align: center; padding: 24px; color: #555; font-style: italic; }
 
 /* 动画 —— 战斗动画已迁移至 @/modules/animation/combat-effects.ts (anime.js) */

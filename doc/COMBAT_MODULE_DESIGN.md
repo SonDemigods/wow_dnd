@@ -5,10 +5,10 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 战斗模块设计文档 |
-| 版本 | v4.0 |
-| 生成日期 | 2026年6月16日 |
+| 版本 | v4.1 |
+| 生成日期 | 2026年6月17日 |
 | 所属模块 | `modules/combat` |
-| 更新说明 | 全面重写：基于实际代码修正所有类型定义、事件引用、数据模型、架构描述 |
+| 更新说明 | 逐文件比对修正：DefensiveStrategy HP阈值从30%修正为40%；移除AI策略描述中不存在的"护盾/buff技能优先"逻辑 |
 
 ---
 
@@ -466,10 +466,10 @@ export type AiDecision =
 
 | 策略名 | 类名 | 行为描述 |
 |--------|------|----------|
-| `aggressive` | AggressiveStrategy | 强攻型：优先使用最高伤害技能，HP低时仍攻击 |
-| `defensive` | DefensiveStrategy | 防守型：HP低于 30% 时优先治疗，有护盾技能优先使用 |
-| `balanced` | BalancedStrategy | 均衡型：HP低于 50% 时考虑治疗，有 buff 技能时优先使用 |
-| `boss_phase` | BossPhaseStrategy | Boss 阶段型：根据 Boss 阶段参数调整行为，优先使用阶段指定技能 |
+| `aggressive` | AggressiveStrategy | 强攻型：50%概率使用攻击技能，HP 低时不治疗 |
+| `defensive` | DefensiveStrategy | 防守型：HP 低于 40% 时优先治疗，少用攻击技能（20%概率） |
+| `balanced` | BalancedStrategy | 均衡型：HP 低于 50% 时 60%概率治疗，30%概率使用攻击技能 |
+| `boss_phase` | BossPhaseStrategy | Boss 阶段型：HP 低于 20%狂暴（必定用技能），HP 低于 50%高概率用技能 |
 
 ---
 
@@ -646,6 +646,7 @@ export interface DamagePipelineResult {
 | v2.2 | 2026-05-20 | 移除buff、debuff及被动技能相关内容，简化技能效果类型 | System |
 | v3.0 | 2026-06-16 | 修正文件结构（新增 db/store/service.ts），新增AI子系统、效果子系统文档 | System |
 | v4.0 | 2026-06-16 | 全面重写：修正所有类型定义、事件名、数据模型；新增多敌人系统、3×2网格、速度制先攻、Boss阶段、伤害管线、15种效果类型、AI策略详情、Store操作导出表 | System |
+| v4.1 | 2026-06-17 | 逐文件比对修正：DefensiveStrategy HP阈值 30%→40%；修正AI策略描述使其与代码行为一致 | System |
 
 ---
 

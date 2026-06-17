@@ -5,8 +5,8 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 冒险日志模块设计文档 |
-| 版本 | v3.0 |
-| 生成日期 | 2026年6月16日 |
+| 版本 | v4.0 |
+| 生成日期 | 2026年6月17日 |
 | 所属模块 | `modules/log` |
 
 ---
@@ -303,6 +303,7 @@ src/modules/log/
 | v2.0 | 2026-05-19 | 迁移到 Pinia + IndexedDB 架构，实现自动同步持久化 | System |
 | v2.1 | 2026-06-16 | 模块路径从 adventureLog 改为 log，文件结构拆分为 db/store/service 三层架构 | System |
 | v3.0 | 2026-06-16 | 全面对齐实际代码：LogType 从 5 种扩展为 11 种（添加 death/resurrect/shop/skill/exploration/zone）、更新为 useLogStore 架构（addLogEntry/addLogByType）、添加 watch/subscribe 通知机制、添加 formatLogMessage 纯函数、更新图标映射表、存储表从 adventureLog 改为 runtime_adventureLogs、DB 层更新为 AdventureLogDbService 类 | System |
+| v4.0 | 2026-06-17 | 逐文件比对验证：核心类型与代码一致 | System |
 
 ---
 

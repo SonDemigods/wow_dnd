@@ -5,9 +5,9 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 数据持久化架构设计文档 |
-| 版本 | v2.0 |
-| 生成日期 | 2026年6月16日 |
-| 更新说明 | 根据项目实际代码结构全面修订 |
+| 版本 | v3.0 |
+| 生成日期 | 2026年6月17日 |
+| 更新说明 | 逐文件比对代码修正：运行时表索引、备份命名格式、自动备份存储方式、校验和算法 |
 
 ---
 
@@ -129,11 +129,11 @@ DATABASE_CONFIG = {
 
 #### 3.2.3 运行时表（runtime_*）— 日志和临时状态
 
-| 表名 | Key | 说明 |
-|------|-----|------|
-| `runtime_gameState` | `'gameState'` | 全局游戏状态（当前角色、设置等） |
-| `runtime_combatLogs` | `combatId` | 战斗日志 |
-| `runtime_adventureLogs` | `characterId` | 冒险日志 |
+| 表名 | 索引字段 | 说明 |
+|------|----------|------|
+| `runtime_gameState` | `id` | 全局游戏状态表，通过不同 `id` 值承载多类数据（`gameState` / `data_initialized` / `shop_config` / `game_constants`），读写操作使用事务保证原子性 |
+| `runtime_combatLogs` | `combatId, timestamp` | 战斗日志 |
+| `runtime_adventureLogs` | `characterId, timestamp` | 冒险日志 |
 | `runtime_mapState` | `id` | 地图视图状态 |
 | `runtime_shopItems` | `shopId` | 商店商品数据 |
 
@@ -236,7 +236,7 @@ DB_SERVICE_CONFIG = {
 
 ### 5.3 数据初始化
 
-`src/modules/data/service.ts` 中的 `initializeGameData()` 在首次运行时将静态配置文件（`src/data/` 目录）中的数据导入到 IndexedDB 的 `config_*` 表中。
+[DataInitializer](file:///d:/workspace/HTML/wow_dnd/src/modules/data/service.ts) 类的 `initializeData()` 方法在首次运行时检查 `data_initialized` 标志，若未初始化则在事务中将静态配置文件（`src/data/` 目录）中的数据导入到 IndexedDB 对应表中。初始化完成后通过 `GameEvents.GAME_DATA_UPDATED` 事件通知相关 Store 重新加载数据。
 
 ---
 
@@ -248,10 +248,10 @@ DB_SERVICE_CONFIG = {
 
 ### 6.2 备份机制
 
-- **手动触发**：用户主动点击备份按钮
-- **自动备份**：游戏存档变更后定期自动备份（保留最近 5 份）
+- **手动触发**：用户主动点击备份按钮，导出 JSON 文件下载
+- **自动备份**：游戏存档变更后自动备份，存储在 `localStorage` 中（键名 `wow_dnd_auto_backups`），保留最近 5 份
 - **文件格式**：`.json` 格式，UTF-8 编码
-- **文件命名**：`wow_dnd_backup_{yyyyMMdd}_{HHmmss}.json`
+- **文件命名**：`wow_dnd_backup_{ISO时间戳}.json`（如 `wow_dnd_backup_2026-06-17T08-30-00-000Z.json`）
 
 ### 6.3 导入校验
 
@@ -263,7 +263,7 @@ DB_SERVICE_CONFIG = {
 interface BackupFile {
   version: string;           // 备份格式版本
   timestamp: number;         // 备份时间戳
-  checksum: string;          // SHA-256 校验和
+  checksum: string;          // 简单哈希校验和
   gameVersion: string;       // 游戏版本号
   data: BackupData;          // 完整游戏数据
 }
@@ -325,7 +325,7 @@ interface BackupFile {
 
 | 文件 | 内容 |
 |------|------|
-| `data/config_factions.ts` | 阵营数据（联盟/部落/中立） |
+| `data/config_factions.ts` | 阵营数据（光辉盟约/铁血盟约/中立） |
 | `data/config_races.ts` | 种族数据 |
 | `data/config_classes.ts` | 职业数据 |
 | `data/config_skills.ts` | 技能数据（职业技能 + 怪物技能） |
@@ -347,6 +347,7 @@ interface BackupFile {
 | v1.0 | 2026-05-19 | 初始版本，支持基础备份导入功能 | System |
 | v1.1 | 2026-05-20 | 拆分地图和商店配置到独立存储 | System |
 | v2.0 | 2026-06-16 | 根据项目实际代码全面修订：修正技术栈、数据库结构、模块列表、文件结构 | System |
+| v3.0 | 2026-06-17 | 逐文件比对代码修正：运行时表索引字段、备份文件ISO命名格式、自动备份localStorage存储、校验和算法(简单哈希非SHA-256)、数据初始化流程描述 | System |
 
 ---
 

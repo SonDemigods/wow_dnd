@@ -33,7 +33,7 @@ import {
   isDead
 } from './service';
 import { getExpForLevel } from '@/utils/calculations';
-import { backupService, importService } from '../data';
+import { backupService, importService, dataInitializer } from '../data';
 import type { ImportResult, ValidationResult } from '../data';
 import type { Skill, SkillBar } from '../skill/types';
 
@@ -502,6 +502,11 @@ export const useCharacterStore = defineStore('character', () => {
     return importService.importBackup(file);
   }
 
+  /** 修复基础数据：清空所有 config 表并重新导入默认数据 */
+  async function repairBaseData(): Promise<void> {
+    await dataInitializer.reinitializeData();
+  }
+
   // ==================== 跨模块事件监听（仅保留 UI/音效事件） ====================
 
   function setupCrossModuleListeners(): void {
@@ -567,6 +572,7 @@ export const useCharacterStore = defineStore('character', () => {
     exportBackup,
     validateImportBackup,
     importBackup,
+    repairBaseData,
 
     // 生命周期
     setupCrossModuleListeners,

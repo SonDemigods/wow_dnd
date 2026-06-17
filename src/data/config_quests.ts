@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @fileoverview 游戏任务数据模块
  * @description 包含所有可接任务的详细信息，包括任务目标和奖励
  * @module data/quest
@@ -168,7 +168,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'bandit'
       }
     ],
-    levelRequirement: 3,
+    levelRequirement: 5,
     xpReward: 80,
     goldReward: 40,
     boardId: 'westfall'
@@ -186,7 +186,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'skeleton'
       }
     ],
-    levelRequirement: 3,
+    levelRequirement: 5,
     xpReward: 70,
     goldReward: 35,
     boardId: 'westfall'
@@ -204,7 +204,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'orc'
       }
     ],
-    levelRequirement: 5,
+    levelRequirement: 8,
     xpReward: 100,
     goldReward: 50,
     boardId: 'redridge'
@@ -222,7 +222,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'spider'
       }
     ],
-    levelRequirement: 5,
+    levelRequirement: 8,
     xpReward: 90,
     goldReward: 45,
     boardId: 'redridge'
@@ -360,10 +360,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_undead',
         type: 'kill',
         target: 3,
-        enemyId: 'demon'
+        enemyId: 'undead'
       }
     ],
     levelRequirement: 15,
@@ -504,10 +504,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_dragon',
+        key: 'kill_troll',
         type: 'kill',
         target: 2,
-        enemyId: 'dragon_whelp'
+        enemyId: 'troll'
       }
     ],
     levelRequirement: 14,
@@ -528,7 +528,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'troll'
       }
     ],
-    levelRequirement: 18,
+    levelRequirement: 12,
     xpReward: 300,
     goldReward: 150,
     boardId: 'borean_tundra'
@@ -546,7 +546,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'nerubian'
       }
     ],
-    levelRequirement: 18,
+    levelRequirement: 12,
     xpReward: 320,
     goldReward: 160,
     boardId: 'borean_tundra'
@@ -594,10 +594,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_undead',
         type: 'kill',
         target: 6,
-        enemyId: 'demon'
+        enemyId: 'undead'
       }
     ],
     levelRequirement: 20,
@@ -636,7 +636,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'murloc'
       }
     ],
-    levelRequirement: 2,
+    levelRequirement: 5,
     xpReward: 70,
     goldReward: 35,
     boardId: 'darkshore'
@@ -654,7 +654,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'bear'
       }
     ],
-    levelRequirement: 2,
+    levelRequirement: 5,
     xpReward: 80,
     goldReward: 40,
     boardId: 'darkshore'
@@ -672,7 +672,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'gnoll'
       }
     ],
-    levelRequirement: 2,
+    levelRequirement: 5,
     xpReward: 75,
     goldReward: 38,
     boardId: 'darkshore'
@@ -690,7 +690,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'elemental'
       }
     ],
-    levelRequirement: 3,
+    levelRequirement: 5,
     xpReward: 90,
     goldReward: 45,
     boardId: 'bloodmyst'
@@ -702,13 +702,13 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_elemental',
         type: 'kill',
         target: 2,
-        enemyId: 'demon'
+        enemyId: 'elemental'
       }
     ],
-    levelRequirement: 3,
+    levelRequirement: 5,
     xpReward: 100,
     goldReward: 50,
     boardId: 'bloodmyst'
@@ -738,10 +738,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_elemental',
         type: 'kill',
         target: 3,
-        enemyId: 'demon'
+        enemyId: 'elemental'
       }
     ],
     levelRequirement: 14,
@@ -756,10 +756,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_dragon',
+        key: 'kill_elemental',
         type: 'kill',
         target: 2,
-        enemyId: 'dragon_whelp'
+        enemyId: 'elemental'
       }
     ],
     levelRequirement: 14,
@@ -774,13 +774,13 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_elemental',
         type: 'kill',
         target: 4,
-        enemyId: 'demon'
+        enemyId: 'elemental'
       }
     ],
-    levelRequirement: 16,
+    levelRequirement: 17,
     xpReward: 280,
     goldReward: 140,
     boardId: 'hyjal'
@@ -792,13 +792,13 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_dragon',
+        key: 'kill_elemental',
         type: 'kill',
         target: 3,
-        enemyId: 'dragon_whelp'
+        enemyId: 'elemental'
       }
     ],
-    levelRequirement: 16,
+    levelRequirement: 17,
     xpReward: 300,
     goldReward: 150,
     boardId: 'hyjal'
@@ -810,10 +810,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_troll',
         type: 'kill',
         target: 4,
-        enemyId: 'demon'
+        enemyId: 'troll'
       }
     ],
     levelRequirement: 12,
@@ -852,7 +852,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'centaur'
       }
     ],
-    levelRequirement: 10,
+    levelRequirement: 12,
     xpReward: 190,
     goldReward: 95,
     boardId: 'desolace'
@@ -870,7 +870,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'skeleton'
       }
     ],
-    levelRequirement: 10,
+    levelRequirement: 12,
     xpReward: 180,
     goldReward: 90,
     boardId: 'desolace'
@@ -1044,10 +1044,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_silithid',
         type: 'kill',
         target: 3,
-        enemyId: 'demon'
+        enemyId: 'silithid'
       }
     ],
     levelRequirement: 18,
@@ -1068,7 +1068,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'undead'
       }
     ],
-    levelRequirement: 12,
+    levelRequirement: 13,
     xpReward: 220,
     goldReward: 110,
     boardId: 'western_plaguelands'
@@ -1086,7 +1086,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'ghoul'
       }
     ],
-    levelRequirement: 12,
+    levelRequirement: 13,
     xpReward: 210,
     goldReward: 105,
     boardId: 'western_plaguelands'
@@ -1104,7 +1104,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'kobold'
       }
     ],
-    levelRequirement: 3,
+    levelRequirement: 5,
     xpReward: 80,
     goldReward: 40,
     boardId: 'loch_modan'
@@ -1122,7 +1122,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'spider'
       }
     ],
-    levelRequirement: 3,
+    levelRequirement: 5,
     xpReward: 90,
     goldReward: 45,
     boardId: 'loch_modan'
@@ -1140,7 +1140,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'murloc'
       }
     ],
-    levelRequirement: 6,
+    levelRequirement: 7,
     xpReward: 110,
     goldReward: 55,
     boardId: 'wetlands'
@@ -1158,7 +1158,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'troll'
       }
     ],
-    levelRequirement: 6,
+    levelRequirement: 7,
     xpReward: 130,
     goldReward: 65,
     boardId: 'wetlands'
@@ -1242,10 +1242,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_undead',
         type: 'kill',
         target: 4,
-        enemyId: 'demon'
+        enemyId: 'undead'
       }
     ],
     levelRequirement: 16,
@@ -1296,10 +1296,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_dragon',
+        key: 'kill_orc',
         type: 'kill',
         target: 3,
-        enemyId: 'dragon_whelp'
+        enemyId: 'orc'
       }
     ],
     levelRequirement: 15,
@@ -1356,7 +1356,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'elemental'
       }
     ],
-    levelRequirement: 10,
+    levelRequirement: 11,
     xpReward: 200,
     goldReward: 100,
     boardId: 'badlands'
@@ -1374,7 +1374,7 @@ export const QUESTS: QuestDefinition[] = [
         enemyId: 'ogre'
       }
     ],
-    levelRequirement: 10,
+    levelRequirement: 11,
     xpReward: 210,
     goldReward: 105,
     boardId: 'badlands'
@@ -1422,10 +1422,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_orc',
         type: 'kill',
         target: 4,
-        enemyId: 'demon'
+        enemyId: 'orc'
       }
     ],
     levelRequirement: 18,
@@ -1440,10 +1440,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_dragon',
+        key: 'kill_orc',
         type: 'kill',
         target: 3,
-        enemyId: 'dragon_whelp'
+        enemyId: 'orc'
       }
     ],
     levelRequirement: 18,
@@ -1566,10 +1566,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_dragon',
+        key: 'kill_undead',
         type: 'kill',
         target: 3,
-        enemyId: 'dragon_whelp'
+        enemyId: 'undead'
       }
     ],
     levelRequirement: 18,
@@ -1692,10 +1692,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_dragon',
+        key: 'kill_elemental',
         type: 'kill',
         target: 3,
-        enemyId: 'dragon_whelp'
+        enemyId: 'elemental'
       }
     ],
     levelRequirement: 20,

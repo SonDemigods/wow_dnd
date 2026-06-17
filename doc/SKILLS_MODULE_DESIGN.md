@@ -5,8 +5,8 @@
 | 项目   | 内容               |
 | ---- | ---------------- |
 | 标题   | 技能模块设计文档         |
-| 版本   | v3.0             |
-| 生成日期 | 2026年6月16日       |
+| 版本   | v4.0             |
+| 生成日期 | 2026年6月17日       |
 | 所属模块 | `modules/skill` |
 
 ***
@@ -408,6 +408,7 @@ src/modules/skill/
 | v2.2 | 2026-05-20 | 伤害类技能区分物理伤害和魔法伤害两种类型                 | System |
 | v2.3 | 2026-06-16 | 模块路径重命名为 modules/skill，重构文件结构为 index.ts + types.ts + db.ts + store.ts + service.ts | System |
 | v3.0 | 2026-06-16 | 全面更新与代码对齐：技能类型扩展为 6 种（+health_restore/mana_restore/buff/debuff）；新增 SkillBuffEffect 定义；Skill 新增 cooldown/usableBy/targetType/buffs 字段；SkillUseResult 新增 appliedEffects；跨模块通信改为直接 Store Action 调用；新增冷却管理（tickCooldowns/isOnCooldown）；新增怪物技能模板支持（loadMonsterSkillTemplates） | System |
+| v4.0 | 2026-06-17 | 逐文件比对验证：核心类型与代码一致 | System |
 
 ***
 

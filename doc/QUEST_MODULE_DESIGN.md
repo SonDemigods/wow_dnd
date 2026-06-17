@@ -5,8 +5,8 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 任务模块设计文档 |
-| 版本 | v3.0 |
-| 生成日期 | 2026年6月16日 |
+| 版本 | v4.0 |
+| 生成日期 | 2026年6月17日 |
 | 所属模块 | `modules/quest` |
 
 ---
@@ -276,7 +276,7 @@ export interface QuestInstance {
 ### 默认任务模板
 
 当 `config_quests` 表为空时，系统回退使用 `getDefaultQuests()` 提供的4个默认任务：
-1. "消灭哥布林"（击杀型，目标：goblin × 10，boardId: village）
+1. "消灭豺狼人"（击杀型，目标：gnoll × 10，boardId: village）
 2. "采集草药"（收集型，目标：item_herb × 15，boardId: village）
 3. "狼群威胁"（击杀型，目标：wolf × 5，boardId: village）
 4. "兽人首领"（复合击杀型，目标：orc × 3 + ogre × 1，boardId: village）
@@ -387,6 +387,7 @@ src/modules/quest/
 | v2.1 | 2026-05-19 | 整合NPC模块任务相关功能：添加任务看板字段、任务看板交互方法、任务看板查询方法 | System |
 | v2.2 | 2026-06-16 | 模块路径重命名为 modules/quest，重构文件结构为 index.ts + types.ts + db.ts + store.ts + service.ts + objective_utils.ts | System |
 | v3.0 | 2026-06-16 | 第四次全面修订：对齐实际代码，更新 Store 架构（纯函数层分离）、奖励自动发放机制、objective_utils 工具说明、默认任务模板详情 | System |
+| v4.0 | 2026-06-17 | 逐文件比对验证：类型定义与代码完全一致 | System |
 
 ---
 

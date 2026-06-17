@@ -5,8 +5,8 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 探索模块设计文档 |
-| 版本 | v3.0 |
-| 生成日期 | 2026年6月16日 |
+| 版本 | v4.0 |
+| 生成日期 | 2026年6月17日 |
 | 所属模块 | `modules/exploration` |
 
 ---
@@ -201,6 +201,48 @@ export interface GridGenerationConfig {
 
 /** 随机事件效果类型（6种） */
 export type RandomEventEffectType = 'heal' | 'mana' | 'exp' | 'damage' | 'mpLoss' | 'gold';
+
+/** 探索事件选项 */
+export interface ExplorationEventChoice {
+  id: string;
+  text: string;
+}
+
+/** 探索事件 */
+export interface ExplorationEvent {
+  title: string;
+  description: string;
+  choices?: ExplorationEventChoice[];
+}
+
+/** 移动结果 */
+export interface MoveResult {
+  success: boolean;
+  message?: string;
+  rewards?: { gold: number; exp: number };
+}
+
+/** 事件选项结果 */
+export interface EventChoiceResult {
+  success: boolean;
+  message: string;
+}
+
+/** 随机事件结果 */
+export interface RandomEventResult {
+  message: string;
+  icon: string;
+  effect: { type: RandomEventEffectType; amount: number };
+}
+
+/** 探索 UI 回调接口 —— 供 GameMain 等 UI 组件注册 */
+export interface ExplorationUICallbacks {
+  onCellExplored?: (data: { cellType?: string; interactionId?: string }) => void;
+  onBattleTriggered?: (data: { eventData: { monsterId: string; areaLevel: number } }) => void;
+  onItemFound?: (data: { itemId: string; count: number; itemName: string }) => void;
+  onTrapTriggered?: (data: { damage: number; trapType: string }) => void;
+  onRandomEvent?: (data: { message: string; icon: string }) => void;
+}
 ```
 
 ### 格子类型与处理方式
@@ -363,7 +405,8 @@ export type RandomEventEffectType = 'heal' | 'mana' | 'exp' | 'damage' | 'mpLoss
 |------|------|------|
 | `characterId` | string | 角色唯一标识 |
 | `currentAreaId` | string \| null | 当前探索区域ID |
-| `assignedShopId` | string | 本次探索分配的商店ID |
+| `assignedShopId` | string? | 本次探索分配的商店ID（可选） |
+| `currentShopId` | string? | 旧版本兼容字段-商店ID（可选） |
 | `grid` | ExplorationCell[][] | 10×10 探索网格 |
 | `playerPosition` | { x, y } | 玩家位置 |
 | `visitedCells` | number | 已访问格子数 |
@@ -371,7 +414,7 @@ export type RandomEventEffectType = 'heal' | 'mana' | 'exp' | 'damage' | 'mpLoss
 | `bossDefeated` | boolean | Boss 是否被击败 |
 | `explorationComplete` | boolean | 探索是否完成 |
 | `campUsed` | boolean | 营地是否已使用 |
-| `updatedAt` | number | 最后更新时间 |
+| `updatedAt` | number? | 最后更新时间（可选） |
 
 ### 多角色支持说明
 
@@ -481,6 +524,7 @@ src/modules/exploration/
 | v2.3 | 2026-05-19 | 重构模块交互方式：商店和任务模块调用改为事件驱动方式，通过事件总线触发交互 | System |
 | v2.4 | 2026-06-16 | 文件结构拆分为 db/store/service 三层架构 | System |
 | v3.0 | 2026-06-16 | 全面对齐实际代码：更新网格类型为 ExplorationCell 体系、添加起点/营地(rest)/宝物(treasure)等格子类型、更新 IExplorationService 接口（添加 generateGrid/movePlayer/canMove/handleEventChoice/onBattleResult）、添加 GridGenerationConfig（含 questNormalMonsters）、添加 UI 回调机制（registerUICallbacks）、更新存储结构（char_exploration）、更新固定事件放置规则（起点+商店+任务板+营地+Boss）、添加 completeQuest/remainingMoves 功能、更新纯函数列表 | System |
+| v4.0 | 2026-06-17 | 补充 ExplorationEventChoice/ExplorationEvent/MoveResult/EventChoiceResult/RandomEventResult/ExplorationUICallbacks 类型定义，修正 ExplorationStorage 字段可选性（assignedShopId/updatedAt 标记为可选）、添加 currentShopId 旧版本兼容字段 | System |
 
 ---
 

@@ -5,9 +5,10 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 装备模块设计文档 |
-| 版本 | v3.0 |
-| 生成日期 | 2026年6月16日 |
+| 版本 | v4.0 |
+| 生成日期 | 2026年6月17日 |
 | 所属模块 | `modules/equipment` |
+| 更新说明 | 逐文件比对修正：移除错误重新定义的 `ItemRarity` 和无关 `RARITY_CONFIG` 常量；修正导入语句以匹配实际代码 |
 
 ---
 
@@ -108,25 +109,8 @@ export interface IEquipmentService {
 
 ```typescript
 import type { Item, ItemRarity, RarityConfig } from '../inventory/types';
+export type { RarityConfig };
 import type { Stats } from '../character/types';
-
-/** 物品稀有度类型（从 inventory 模块导入） */
-export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-
-/** 稀有度配置（从 @/config/inventory 的 RARITY_CONFIG 获取） */
-export interface RarityConfig {
-  name: string;
-  color: string;
-}
-
-/** 稀有度配置表 */
-export const RARITY_CONFIG: Record<ItemRarity, RarityConfig> = {
-  common: { name: '普通', color: '#ffffff' },
-  uncommon: { name: '优秀', color: '#1eff00' },
-  rare: { name: '稀有', color: '#0070dd' },
-  epic: { name: '史诗', color: '#a335ee' },
-  legendary: { name: '传说', color: '#ff8000' }
-};
 
 export type EquipmentSlot = 'weapon1' | 'weapon2' | 'armor1' | 'armor2' | 'armor3' | 'armor4';
 

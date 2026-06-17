@@ -5,8 +5,8 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 商店模块设计文档 |
-| 版本 | v3.0 |
-| 生成日期 | 2026年6月16日 |
+| 版本 | v4.0 |
+| 生成日期 | 2026年6月17日 |
 | 所属模块 | `modules/shop` |
 
 ---
@@ -140,6 +140,37 @@ export interface ShopDisplayItem {
   quantity: number;
   category: ItemCategory;
   effect?: { type: string; value: number | Partial<Record<string, number>> };
+}
+
+/** 商店服务接口 */
+export interface IShopService {
+  getShopConfig(shopId: string): ShopConfig | null;
+  getShopItems(shopId: string): ShopItem[];
+  refreshShopItems(shopId: string): void;
+  buyItem(shopId: string, itemId: string, quantity?: number): boolean;
+  sellItem(itemId: string, quantity?: number, shopId?: string): boolean;
+  calculateBuyPrice(itemId: string, rarity: ItemRarity, priceMultiplier?: number): number;
+  calculateSellPrice(itemId: string, rarity: ItemRarity): number;
+  getAllShops(): ShopConfig[];
+  needsRefresh(shopId: string): boolean;
+  reset(): Promise<void>;
+}
+
+/** 商店商品存储格式 */
+export interface ShopItemsStorage {
+  shopId: string;
+  items: Array<{ itemId: string; price: number; quantity: number }>;
+  lastRefresh: number;
+}
+
+/** 商店配置存储格式（IndexedDB config_shops 表） */
+export interface ShopConfigStorage {
+  id: string;
+  name: string;
+  type: string;
+  icon: string;
+  refreshInterval: number;
+  priceVariation: { min: number; max: number };
 }
 ```
 
@@ -340,6 +371,7 @@ src/modules/shop/
 | v2.1 | 2026-05-20 | 拆分商店配置到独立存储（config_shops），数据库版本升级至3 | System |
 | v2.2 | 2026-06-16 | 文件结构拆分为 db/store/service 三层架构 | System |
 | v3.0 | 2026-06-16 | 全面对齐实际代码：更新 ShopConfig 字段（移除 locationId/npcId 等未实现字段）、添加 SoldItemEntry/ShopDisplayItem 定义、回购机制说明、ShopConfig 存储格式修正、纯函数层架构说明 | System |
+| v4.0 | 2026-06-17 | 补充 IShopService 接口定义、ShopItemsStorage/ShopConfigStorage 存储类型，确保文档类型定义与代码 types.ts 完全一致 | System |
 
 ---
 

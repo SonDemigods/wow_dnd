@@ -20,7 +20,7 @@ const props = withDefaults(defineProps<{
   icon?: string;
   /** 图标为空时的回退 emoji */
   fallback?: string;
-  /** 预设尺寸：sm=22px, md=24px, lg=26px, xl=36px */
+  /** 预设尺寸：sm=背包格子, md=装备槽/战斗, lg=商店卡片, xl=详情展示 */
   size?: 'sm' | 'md' | 'lg' | 'xl';
   /** 自定义像素尺寸，传入后优先于 size 预设 */
   px?: number;
@@ -46,26 +46,25 @@ const rarityClass = computed(() => props.rarity ? `item-icon--${props.rarity}` :
 </script>
 
 <style scoped>
-/* 基础样式：统一 flex 居中 + 等比例缩放 */
+/* 基础样式：统一 flex 居中 + 正方形 */
 .item-icon-base {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   line-height: 1;
-  /* 关键：让 emoji 按父容器等比缩放，而不是按系统字体大小 */
-  width: 1em;
-  height: 1em;
+  aspect-ratio: 1;
   border-radius: 4px;
   border: 2px solid transparent;
   transition: border-color 0.2s ease;
+  box-sizing: border-box;
 }
 
-/* 预设尺寸 */
-.item-icon--sm  { font-size: 22px; }
-.item-icon--md  { font-size: 24px; }
-.item-icon--lg  { font-size: 26px; }
-.item-icon--xl  { font-size: 36px; }
+/* 预设尺寸：字体大小 + 内边距 + 边框宽度，各场景差异化 */
+.item-icon--sm  { font-size: 22px; padding: 8px; border-width: 2px; }   /* 背包格子 */
+.item-icon--md  { font-size: 24px; padding: 10px; border-width: 2px; }  /* 商店卡片 / 战斗 */
+.item-icon--lg  { font-size: 26px; padding: 16px; border-width: 2px; }  /* 装备槽 */
+.item-icon--xl  { font-size: 28px; padding: 14px; border-width: 2px; }  /* 详情展示 */
 
 /* ===== 稀有度边框颜色 ===== */
 .item-icon--common    { border-color: #9d9d9d; }

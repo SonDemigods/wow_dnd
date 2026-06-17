@@ -58,7 +58,8 @@
               </div>
             </div>
             <div v-if="selectedEntry.info?.effect" class="effect-info">
-              <span>{{ getEffectText(selectedEntry.info.effect) }}</span>
+              <EffectTag :type="selectedEntry.info.effect.type" />
+              <span class="effect-value">{{ getEffectValueText(selectedEntry.info.effect) }}</span>
             </div>
             <div class="detail-actions">
               <button 
@@ -136,6 +137,7 @@ import { ref, computed, onMounted } from 'vue';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
 import ItemIcon from '../common/ItemIcon.vue';
+import EffectTag from '../common/EffectTag.vue';
 import { useInventoryStore } from '@/modules/inventory';
 import { useCharacterStore } from '@/modules/character';
 import { useEquipmentStore } from '@/modules/equipment';
@@ -248,15 +250,16 @@ function getStatName(stat: string) {
   return statMap[stat] || stat;
 }
 
-function getEffectText(effect: ItemEffect): string {
+/** 获取效果数值文本（用于 EffectTag 标签旁显示） */
+function getEffectValueText(effect: ItemEffect): string {
   const { type, value } = effect;
+  if (typeof value !== 'number') return '';
   switch (type) {
-    case 'health_restore': return `恢复 ${value} 点生命值`;
-    case 'mana_restore': return `恢复 ${value} 点法力值`;
-    case 'physical_damage': return `造成 ${value} 点物理伤害`;
-    case 'magic_damage': return `造成 ${value} 点魔法伤害`;
-    case 'stat': return '提升属性';
-    default: return '';
+    case 'health_restore': return `恢复 ${value} 点`;
+    case 'mana_restore': return `恢复 ${value} 点`;
+    case 'physical_damage': return `伤害 ${value}`;
+    case 'magic_damage': return `伤害 ${value}`;
+    default: return `${value}`;
   }
 }
 
@@ -583,7 +586,6 @@ onMounted(() => {
 .item-slot {
   aspect-ratio: 1;
   background: rgba(255, 255, 255, 0.05);
-  border: 2px solid #4a4a4a;
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -601,21 +603,13 @@ onMounted(() => {
 }
 
 .item-slot.empty {
-  border-style: dashed;
+  border: 2px dashed #4a4a4a;
   opacity: 0.3;
 }
 
-.item-slot.common { border-color: #ffffff; }
-.item-slot.uncommon { border-color: #1eff00; }
-.item-slot.rare { border-color: #0070dd; }
-.item-slot.epic { border-color: #a335ee; }
-.item-slot.legendary { 
-  border-color: #ff8000;
-  animation: legendary-glow 2s infinite;
-}
-
 .item-slot.equipped {
-  border-color: #4CAF50;
+  outline: 2px solid #4CAF50;
+  outline-offset: -2px;
   background: rgba(76, 175, 80, 0.2);
 }
 
@@ -735,9 +729,17 @@ onMounted(() => {
   font-weight: bold;
 }
 
-.effect-info span {
-  color: #4CAF50;
+.effect-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.effect-info .effect-value {
+  color: #ffd700;
   font-size: 13px;
+  font-weight: bold;
 }
 
 .detail-actions {
