@@ -323,7 +323,7 @@ const resultTextRef = ref<HTMLElement | null>(null);
 // 玩家数据（从 characterStore 读取，与主界面一致）
 const playerName = computed(() => characterStore.name);
 const playerLevel = computed(() => characterStore.level);
-const playerIcon = computed(() => '🧑');
+const playerIcon = computed(() => characterStore.raceIcon || '🧑');
 const playerHp = computed(() => characterStore.hp);
 const playerMaxHp = computed(() => characterStore.maxHp);
 const playerMp = computed(() => characterStore.mana);
