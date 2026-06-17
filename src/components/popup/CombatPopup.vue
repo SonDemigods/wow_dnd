@@ -245,7 +245,13 @@ import {
   animateBossIntro,
   animatePhaseTransition,
   animateResultPopup,
+  animateMagicPulse,
+  animateHealGlow,
+  animateManaGlow,
+  animateCritBorderFlash,
+  createParticleBurst,
 } from '@/modules/animation/combat-effects';
+import type { FloatingType, ParticleConfig } from '@/modules/animation/combat-effects';
 
 const emit = defineEmits<{
   (e: 'close', result?: CombatResult): void;
@@ -286,13 +292,13 @@ const logsReversed = computed(() => [...logs.value].reverse());
 const enemyShakes = ref<Record<string, boolean>>({});
 const enemyCritShakes = ref<Record<string, boolean>>({});
 const enemyDodgeBlinks = ref<Record<string, boolean>>({});
-const enemyFloatings = ref<Record<string, { text: string; type: string } | null>>({});
+const enemyFloatings = ref<Record<string, { text: string; type: FloatingType } | null>>({});
 // 保留这些全局动画
 const playerShake = ref(false);
 const playerCritShake = ref(false);
 const playerDodgeBlink = ref(false);
 const vsFlash = ref(false);
-const playerFloating = ref<{ text: string; type: string } | null>(null);
+const playerFloating = ref<{ text: string; type: FloatingType } | null>(null);
 const screenFlash = ref(false);
 const screenFlashType = ref<'crit' | 'dodge'>('crit');
 
@@ -496,21 +502,21 @@ function scrollToTop() {
 }
 
 // 浮动伤害/生命恢复数字
-function showFloating(target: 'enemy' | 'player', text: string, type: string, enemyId?: string) {
+function showFloating(target: 'enemy' | 'player', text: string, type: FloatingType, enemyId?: string) {
   if (target === 'enemy' && enemyId) {
     enemyFloatings.value[enemyId] = { text, type };
     nextTick(() => {
       const el = document.querySelector(`[data-enemy-float="${enemyId}"]`) as HTMLElement;
-      if (el) animateFloating(el, type as 'damage' | 'crit' | 'heal' | 'dodge', combatSpeed.value);
+      if (el) animateFloating(el, type, combatSpeed.value);
     });
-    setTimeout(() => { if (enemyFloatings.value[enemyId]) enemyFloatings.value[enemyId] = null; }, 1800);
+    setTimeout(() => { if (enemyFloatings.value[enemyId]) enemyFloatings.value[enemyId] = null; }, 2200);
   } else {
     playerFloating.value = { text, type };
     nextTick(() => {
       const el = document.querySelector('.player-side .floating-damage') as HTMLElement;
-      if (el) animateFloating(el, type as 'damage' | 'crit' | 'heal' | 'dodge', combatSpeed.value);
+      if (el) animateFloating(el, type, combatSpeed.value);
     });
-    setTimeout(() => { playerFloating.value = null; }, 1800);
+    setTimeout(() => { playerFloating.value = null; }, 2200);
   }
 }
 
@@ -583,6 +589,116 @@ function triggerScreenFlash(type: 'crit' | 'dodge') {
   setTimeout(() => { screenFlash.value = false; }, 600);
 }
 
+// 法术伤害：缩放脉冲（T1 新增）
+function triggerMagicPulse(target: 'enemy' | 'player', enemyId?: string) {
+  nextTick(() => {
+    const selector = target === 'enemy' && enemyId
+      ? `[data-enemy-shake="${enemyId}"]`
+      : '.player-side';
+    const el = document.querySelector(selector) as HTMLElement;
+    if (el) animateMagicPulse(el, combatSpeed.value);
+  });
+}
+
+// 生命恢复：绿色光晕（T1 新增）
+function triggerHealGlow() {
+  nextTick(() => {
+    const el = document.querySelector('.player-side') as HTMLElement;
+    if (el) animateHealGlow(el, combatSpeed.value);
+  });
+}
+
+// 法力恢复：蓝色光晕（T1 新增）
+function triggerManaGlow() {
+  nextTick(() => {
+    const el = document.querySelector('.player-side') as HTMLElement;
+    if (el) animateManaGlow(el, combatSpeed.value);
+  });
+}
+
+// 暴击：金色边框爆闪（T1 新增）
+function triggerCritBorderFlash(target: 'enemy' | 'player', enemyId?: string) {
+  nextTick(() => {
+    const selector = target === 'enemy' && enemyId
+      ? `[data-enemy-shake="${enemyId}"]`
+      : '.player-side';
+    const el = document.querySelector(selector) as HTMLElement;
+    if (el) animateCritBorderFlash(el, combatSpeed.value);
+  });
+}
+
+// 粒子爆发（T2 新增）
+function triggerParticles(target: 'enemy' | 'player', config: ParticleConfig, enemyId?: string) {
+  nextTick(() => {
+    const selector = target === 'enemy' && enemyId
+      ? `[data-enemy-shake="${enemyId}"]`
+      : '.player-side';
+    const element = document.querySelector(selector) as HTMLElement;
+    if (!element) return;
+    const rect = element.getBoundingClientRect();
+    // 使用 combat-container 作为容器，确保粒子正确叠加在战斗界面上
+    const container = document.querySelector('.combat-container') as HTMLElement;
+    if (!container) return;
+    const containerRect = container.getBoundingClientRect();
+    createParticleBurst(container, {
+      left: rect.left - containerRect.left,
+      top: rect.top - containerRect.top,
+      width: rect.width,
+      height: rect.height,
+    }, config, combatSpeed.value);
+  });
+}
+
+/** 物理伤害粒子配置 */
+const PHYSICAL_PARTICLES: ParticleConfig = {
+  count: 7,
+  colors: ['#ff6b6b', '#ff4444', '#ff8c00', '#ff9999'],
+  shape: 'slash',
+  radius: 40,
+  sizeRange: [3, 6],
+  duration: 800,
+};
+
+/** 法术伤害粒子配置 */
+const MAGIC_PARTICLES: ParticleConfig = {
+  count: 11,
+  colors: ['#a855f7', '#c084fc', '#9333ea', '#d8b4fe'],
+  shape: 'circle',
+  radius: 50,
+  sizeRange: [4, 8],
+  duration: 900,
+};
+
+/** 生命恢复粒子配置 */
+const HEAL_PARTICLES: ParticleConfig = {
+  count: 9,
+  colors: ['#4CAF50', '#81c784', '#a5d6a7', '#66bb6a'],
+  shape: 'spark',
+  radius: 35,
+  sizeRange: [4, 7],
+  duration: 1000,
+};
+
+/** 法力恢复粒子配置 */
+const MANA_PARTICLES: ParticleConfig = {
+  count: 9,
+  colors: ['#6e9bff', '#93acff', '#4d7cff', '#b3c8ff'],
+  shape: 'star',
+  radius: 35,
+  sizeRange: [4, 7],
+  duration: 1000,
+};
+
+/** 暴击粒子配置 */
+const CRIT_PARTICLES: ParticleConfig = {
+  count: 16,
+  colors: ['#ffd700', '#ffec8b', '#ffa500', '#ffe4b5', '#ffb90f'],
+  shape: 'slash',
+  radius: 60,
+  sizeRange: [4, 9],
+  duration: 1000,
+};
+
 // 暴击事件处理
 function onCritHit(data: { amount: number; damageType: string; targetName: string; actorType: 'player' | 'enemy'; enemyId?: string }) {
   if (isUnmounted.value) return;
@@ -605,7 +721,7 @@ function onEnemyDealDamage(data: { amount: number; damageType: string; targetNam
   // 玩家受击震动
   triggerShake('player');
   // 玩家受击浮动伤害文字
-  showFloating('player', `-${data.amount}`, 'damage');
+  showFloating('player', `-${data.amount}`, 'physical');
 }
 
 // 闪避事件处理
@@ -680,15 +796,26 @@ function triggerVsFlash() {
 }
 
 /** 应用战斗伤害视觉特效（多目标伤害 / 单体伤害），doAction / doSkill 共用 */
-function applyCombatDamageEffects(result: { aoeHits?: { enemyId: string; damage: number }[]; damage?: number; isCrit?: boolean }) {
+function applyCombatDamageEffects(result: { aoeHits?: { enemyId: string; damage: number }[]; damage?: number; isCrit?: boolean }, damageType: 'physical' | 'magic' = 'physical') {
   if (result.aoeHits && result.aoeHits.length > 0) {
     for (const hit of result.aoeHits) {
       triggerShake('enemy', hit.enemyId);
-      showFloating('enemy', `-${hit.damage}`, 'damage', hit.enemyId);
+      showFloating('enemy', `-${hit.damage}`, damageType, hit.enemyId);
+      triggerParticles('enemy', damageType === 'magic' ? MAGIC_PARTICLES : PHYSICAL_PARTICLES, hit.enemyId);
     }
   } else if (result.damage && result.damage > 0) {
-    triggerShake('enemy', currentTarget.value?.id);
-    showFloating('enemy', `-${result.damage}`, result.isCrit ? 'crit' : 'damage', currentTarget.value?.id);
+    const type: FloatingType = result.isCrit ? 'crit' : damageType;
+    if (result.isCrit) {
+      triggerCritShake('enemy', currentTarget.value?.id);
+      triggerCritBorderFlash('enemy', currentTarget.value?.id);
+    } else {
+      triggerShake('enemy', currentTarget.value?.id);
+      if (damageType === 'magic') {
+        triggerMagicPulse('enemy', currentTarget.value?.id);
+      }
+    }
+    showFloating('enemy', `-${result.damage}`, type, currentTarget.value?.id);
+    triggerParticles('enemy', result.isCrit ? CRIT_PARTICLES : (damageType === 'magic' ? MAGIC_PARTICLES : PHYSICAL_PARTICLES), currentTarget.value?.id);
   }
 }
 
@@ -745,10 +872,20 @@ async function doSkill(skillId: string) {
     return;
   }
 
+  // 根据技能类型判断伤害类型
+  const unlockeds = skillsStore.unlockedSkills;
+  const equippeds = skillsStore.equippedSkills;
+  const allSkills = [...(unlockeds ?? []), ...((equippeds ?? []).filter(s => s != null) as NonNullable<typeof unlockeds>)];
+  const skill = allSkills.find(s => s.id === skillId);
+  const skillType = skill?.type || 'physical_damage';
+  const dmgType: 'physical' | 'magic' = skillType === 'magic_damage' ? 'magic' : 'physical';
+
   // 视觉特效：伤害效果使用公共函数
-  applyCombatDamageEffects(result);
+  applyCombatDamageEffects(result, dmgType);
   if (result.heal && result.heal > 0) {
-    showFloating('player', `+${result.heal}`, 'heal');
+    showFloating('player', `+${result.heal}`, 'heal-hp');
+    triggerHealGlow();
+    triggerParticles('player', HEAL_PARTICLES);
   }
 
   if (combatStore.combatResult) {
@@ -791,18 +928,28 @@ async function useItem(_itemId: string, _index: number) {
     // 伤害型物品的视觉特效（卷轴等）
     if (result.damage && result.damage > 0) {
       triggerVsFlash();
-      triggerShake('enemy', currentTarget.value?.id);
-      showFloating('enemy', `-${result.damage}`, result.isCrit ? 'crit' : 'damage', currentTarget.value?.id);
+      if (result.isCrit) {
+        triggerCritShake('enemy', currentTarget.value?.id);
+        triggerCritBorderFlash('enemy', currentTarget.value?.id);
+      } else {
+        triggerShake('enemy', currentTarget.value?.id);
+      }
+      showFloating('enemy', `-${result.damage}`, result.isCrit ? 'crit' : 'physical', currentTarget.value?.id);
+      triggerParticles('enemy', result.isCrit ? CRIT_PARTICLES : PHYSICAL_PARTICLES, currentTarget.value?.id);
     }
 
     // 物品恢复效果（通过 HP/MP 差值计算）
     const hpHeal = playerHp.value - prevPlayerHp;
     if (hpHeal > 0) {
-      showFloating('player', `+${hpHeal}`, 'heal');
+      showFloating('player', `+${hpHeal}`, 'heal-hp');
+      triggerHealGlow();
+      triggerParticles('player', HEAL_PARTICLES);
     }
     const mpHeal = playerMp.value - prevPlayerMp;
     if (mpHeal > 0) {
-      showFloating('player', `MP+${mpHeal}`, 'heal');
+      showFloating('player', `MP+${mpHeal}`, 'heal-mp');
+      triggerManaGlow();
+      triggerParticles('player', MANA_PARTICLES);
     }
   }
   // isAnimating 由 watch(turn) 在敌人回合结束后恢复
@@ -896,7 +1043,7 @@ onUnmounted(() => {
 
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .combat-overlay {
   position: fixed;
   top: 0;
@@ -1076,15 +1223,17 @@ onUnmounted(() => {
   /* 动画由 anime.js animateFloating 处理 */
 }
 
-.floating-damage.damage { color: #ff4444; }
-.floating-damage.heal { color: #4CAF50; }
+.floating-damage.physical { color: @damage-physical; }
+.floating-damage.magic { color: @damage-magic; }
+.floating-damage.heal-hp { color: @heal-hp; }
+.floating-damage.heal-mp { color: @heal-mp; }
 .floating-damage.crit {
-  color: #ffd700;
+  color: @damage-crit;
   font-size: 30px;
   text-shadow: 0 0 12px rgba(255, 215, 0, 0.8), 0 2px 6px rgba(0, 0, 0, 0.6);
 }
 .floating-damage.dodge {
-  color: #888;
+  color: @color-dodge;
   font-size: 22px;
   font-style: italic;
 }
@@ -1134,12 +1283,12 @@ onUnmounted(() => {
 
 .log-turn { color: #666; font-size: 11px; }
 .log-damage { font-weight: 700; font-size: 14px; }
-.log-damage.physical-damage { color: #ff8c00; }
-.log-damage.magic-damage { color: #a855f7; }
-.log-damage.crit-damage { color: #ffd700; }
-.log-heal { color: #4CAF50; font-weight: 700; font-size: 14px; }
-.log-crit { color: #ffd700; font-weight: 700; font-size: 12px; }
-.log-dodge { color: #888; font-weight: 700; font-size: 12px; }
+.log-damage.physical-damage { color: @damage-physical; }
+.log-damage.magic-damage { color: @damage-magic; }
+.log-damage.crit-damage { color: @damage-crit; }
+.log-heal { color: @heal-hp; font-weight: 700; font-size: 14px; }
+.log-crit { color: @damage-crit; font-weight: 700; font-size: 12px; }
+.log-dodge { color: @color-dodge; font-weight: 700; font-size: 12px; }
 .log-empty { color: #555; text-align: center; padding: 20px 0; font-style: italic; }
 
 /* 行动按钮区域 */
@@ -1191,12 +1340,12 @@ onUnmounted(() => {
 .skill-icon { font-size: 18px; }
 .skill-name { font-size: 12px; font-weight: 600; }
 .skill-effect { font-size: 10px; }
-.skill-effect-physical_damage { color: #ff6b6b; }
-.skill-effect-magic_damage { color: #a29bfe; }
-.skill-effect-health_restore,
-.skill-effect-mana_restore { color: #4ecdc4; }
-.skill-effect-buff { color: #4CAF50; }
-.skill-effect-debuff { color: #ff9800; }
+.skill-effect-physical_damage { color: @damage-physical; }
+.skill-effect-magic_damage { color: @damage-magic; }
+.skill-effect-health_restore { color: @heal-hp; }
+.skill-effect-mana_restore { color: @heal-mp; }
+.skill-effect-buff { color: @buff-color; }
+.skill-effect-debuff { color: @debuff-color; }
 .skill-cost {
   font-size: 10px;
   color: #6e9bff;
@@ -1446,9 +1595,9 @@ onUnmounted(() => {
 .effect-badge.effect-speed_up,
 .effect-badge.effect-regen,
 .effect-badge.effect-thorn {
-  background: rgba(39, 174, 96, 0.18);
-  border: 1px solid rgba(39, 174, 96, 0.5);
-  color: #2ecc71;
+  background: @buff-bg;
+  border: 1px solid @buff-border;
+  color: @buff-color;
 }
 
 /* 减益（Debuff）- 红色系 */
@@ -1461,18 +1610,18 @@ onUnmounted(() => {
 .effect-badge.effect-defense_down,
 .effect-badge.effect-speed_down,
 .effect-badge.effect-vulnerable {
-  background: rgba(231, 76, 60, 0.18);
-  border: 1px solid rgba(231, 76, 60, 0.5);
-  color: #e74c3c;
+  background: @debuff-bg;
+  border: 1px solid @debuff-border;
+  color: @debuff-color;
 }
 
 /* 各效果细分配色（保持辨识度） */
-.effect-badge.effect-poison { background: rgba(139, 195, 74, 0.18); border-color: rgba(139, 195, 74, 0.5); color: #8bc34a; }
-.effect-badge.effect-burn { background: rgba(255, 152, 0, 0.18); border-color: rgba(255, 152, 0, 0.5); color: #ff9800; }
-.effect-badge.effect-stun { background: rgba(255, 235, 59, 0.15); border-color: rgba(255, 235, 59, 0.5); color: #ffeb3b; }
-.effect-badge.effect-freeze { background: rgba(0, 188, 212, 0.18); border-color: rgba(0, 188, 212, 0.5); color: #00bcd4; }
-.effect-badge.effect-silence { background: rgba(156, 39, 176, 0.18); border-color: rgba(156, 39, 176, 0.5); color: #ce93d8; }
-.effect-badge.effect-vulnerable { background: rgba(255, 87, 34, 0.18); border-color: rgba(255, 87, 34, 0.5); color: #ff5722; }
+.effect-badge.effect-poison { background: @poison-bg; border-color: @poison-border; color: @poison-color; }
+.effect-badge.effect-burn { background: @burn-bg; border-color: @burn-border; color: @burn-color; }
+.effect-badge.effect-stun { background: @stun-bg; border-color: @stun-border; color: @stun-color; }
+.effect-badge.effect-freeze { background: @freeze-bg; border-color: @freeze-border; color: @freeze-color; }
+.effect-badge.effect-silence { background: @silence-bg; border-color: @silence-border; color: @silence-color; }
+.effect-badge.effect-vulnerable { background: @vulnerable-bg; border-color: @vulnerable-border; color: @vulnerable-color; }
 
 /* ========== Boss 出场演出遮罩 ========== */
 .boss-intro-overlay {

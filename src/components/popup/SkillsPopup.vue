@@ -222,7 +222,7 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .skills-content {
   display: flex;
   flex-direction: column;
@@ -512,15 +512,15 @@ onMounted(() => {
 }
 
 .effect-value.physical_damage {
-  color: #ff6b6b;
+  color: @damage-physical;
 }
 
 .effect-value.magic_damage {
-  color: #a29bfe;
+  color: @damage-magic;
 }
 
 .effect-value.heal {
-  color: #4CAF50;
+  color: @heal-hp;
 }
 
 .skill-detail.locked .effect-value {

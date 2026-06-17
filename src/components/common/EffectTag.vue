@@ -23,7 +23,7 @@ const { getSkillTypeName } = useSkillDisplay();
 const typeName = computed(() => getSkillTypeName(props.type));
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .effect-tag {
   font-size: 11px;
   padding: 2px 8px;
@@ -35,37 +35,37 @@ const typeName = computed(() => getSkillTypeName(props.type));
 
 /* 物理伤害 */
 .effect-tag-physical_damage {
-  background: rgba(255, 107, 107, 0.2);
-  color: #ff6b6b;
+  background: @damage-physical-bg;
+  color: @damage-physical;
 }
 
 /* 魔法伤害 */
 .effect-tag-magic_damage {
-  background: rgba(162, 155, 254, 0.2);
-  color: #a29bfe;
+  background: @damage-magic-bg;
+  color: @damage-magic;
 }
 
 /* 生命恢复 */
 .effect-tag-health_restore {
-  background: rgba(78, 205, 196, 0.2);
-  color: #4ecdc4;
+  background: @heal-hp-bg;
+  color: @heal-hp;
 }
 
 /* 法力恢复 */
 .effect-tag-mana_restore {
-  background: rgba(110, 155, 255, 0.15);
-  color: #6e9bff;
+  background: @heal-mp-bg;
+  color: @heal-mp;
 }
 
 /* 增益 */
 .effect-tag-buff {
-  background: rgba(76, 175, 80, 0.2);
-  color: #4CAF50;
+  background: @buff-bg;
+  color: @buff-color;
 }
 
 /* 减益 */
 .effect-tag-debuff {
-  background: rgba(255, 152, 0, 0.2);
-  color: #ff9800;
+  background: @debuff-bg;
+  color: @debuff-color;
 }
 </style>
