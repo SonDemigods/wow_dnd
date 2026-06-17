@@ -5,9 +5,10 @@
 | 项目   | 内容                  |
 | ---- | ------------------- |
 | 标题   | 角色模块设计文档            |
-| 版本   | v4.0                |
-| 生成日期 | 2026年6月16日          |
+| 版本   | v4.1                |
+| 生成日期 | 2026年6月17日          |
 | 所属模块 | `modules/character` |
+| 更新说明 | 逐文件比对修正：存储结构表名 `game_state` 修正为 `runtime_gameState` |
 
 ***
 
@@ -497,7 +498,7 @@ export interface CharacterDataStorage {
 | 数据库 Store | Key           | 数据结构                 | 说明              |
 | ----------- | ------------- | -------------------- | --------------- |
 | char_data   | `characterId` | CharacterDataStorage | 角色完整数据（列表项 + 详细属性统一存储） |
-| game_state  | -             | GameState            | 当前选中角色ID       |
+| runtime_gameState  | `id` | GameStateStorage | 当前选中角色ID（通过 `characterDbService.getGameState()` 读写） |
 
 ### CharacterDataStorage 存储内容
 
@@ -690,6 +691,7 @@ src/modules/character/
 | v2.3 | 2026-05-22 | 根据职业种族对应关系更新种族和职业表格，添加新种族和龙脉术士职业 | System |
 | v3.0 | 2026-06-16 | 重构模块文件结构，拆分为 index.ts + types.ts + db.ts + store.ts + service.ts | System |
 | v4.0 | 2026-06-16 | 全面更新与代码对齐：跨模块通信改为直接 Store Action 调用；新增 hpBonus/mpBonus/healBonus 衍生属性；char_data 统一存储；新增 characterList 缓存；死亡/复活逻辑修正；补充 CharacterDataStorage 完整字段 | System |
+| v4.1 | 2026-06-17 | 逐文件比对修正：IndexedDB 存储表名 `game_state` → `runtime_gameState` | System |
 
 ***
 

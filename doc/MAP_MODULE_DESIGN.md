@@ -5,8 +5,8 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 地图模块设计文档 |
-| 版本 | v3.0 |
-| 生成日期 | 2026年6月16日 |
+| 版本 | v4.0 |
+| 生成日期 | 2026年6月17日 |
 | 所属模块 | `modules/map` |
 
 ---
@@ -354,6 +354,7 @@ src/modules/map/
 | v2.1 | 2026-05-20 | 拆分地图配置到独立存储（map），数据库版本升级至3 | System |
 | v2.2 | 2026-06-16 | 文件结构拆分为 db/store/service 三层架构 | System |
 | v3.0 | 2026-06-16 | 全面对齐实际代码：ContinentData 添加 id/type 字段、LocationData 添加 id/bosses/type 字段（移除 displayName/region）、MapView 移除 showMarkers/activeMarkerId 字段、移除 LocationMarker 类型、添加 getZones/setCurrentContinent/saveCurrentTab/getCurrentTab/clearUIState 方法、enterLocation 改为 enterZone、数据表从 characterData 改为 runtime_mapState | System |
+| v4.0 | 2026-06-17 | 逐文件比对验证：类型定义与代码完全一致 | System |
 
 ---
 

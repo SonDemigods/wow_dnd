@@ -5,10 +5,10 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 事件总线设计文档 |
-| 版本 | v4.0 |
-| 生成日期 | 2026年6月16日 |
+| 版本 | v4.1 |
+| 生成日期 | 2026年6月17日 |
 | 所属模块 | `modules/bus` |
-| 更新说明 | 全面重写：基于实际 EventBus 代码，修正事件列表、接口定义、移除不存在的优先级/防抖/节流功能描述 |
+| 更新说明 | 逐文件比对修正：探索事件 characterId 类型标注为 `string \| null` |
 
 ---
 
@@ -146,14 +146,14 @@ eventBus.emit(GameEvents.CHARACTER_LEVEL_UP, { oldLevel: 5, newLevel: 6 });
 
 | 事件名称 | 触发时机 | Payload |
 |----------|----------|---------|
-| `EXPLORATION_START` | 探索开始 | `{ characterId, areaId? }` |
-| `EXPLORATION_END` | 探索结束 | `{ characterId }` |
-| `EXPLORATION_CELL_EXPLORED` | 格子翻开 | `{ characterId, x, y, cellType?, interactionId? }` |
-| `EXPLORATION_BATTLE_TRIGGERED` | 触发战斗 | `{ characterId, eventData: { monsterId, areaLevel } }` |
-| `EXPLORATION_CAMP_USED` | 营地使用 | `{ characterId }` |
-| `EXPLORATION_ITEM_FOUND` | 发现物品 | `{ characterId, itemId, count, itemName? }` |
-| `EXPLORATION_TRAP_TRIGGERED` | 触发陷阱 | `{ characterId, damage, trapType? }` |
-| `EXPLORATION_RANDOM_EVENT` | 随机事件 | `{ characterId, message, icon }` |
+| `EXPLORATION_START` | 探索开始 | `{ characterId: string \| null, areaId? }` |
+| `EXPLORATION_END` | 探索结束 | `{ characterId: string \| null }` |
+| `EXPLORATION_CELL_EXPLORED` | 格子翻开 | `{ characterId: string \| null, x, y, cellType?, interactionId? }` |
+| `EXPLORATION_BATTLE_TRIGGERED` | 触发战斗 | `{ characterId: string \| null, eventData: { monsterId, areaLevel } }` |
+| `EXPLORATION_CAMP_USED` | 营地使用 | `{ characterId: string \| null }` |
+| `EXPLORATION_ITEM_FOUND` | 发现物品 | `{ characterId: string \| null, itemId, count, itemName? }` |
+| `EXPLORATION_TRAP_TRIGGERED` | 触发陷阱 | `{ characterId: string \| null, damage, trapType? }` |
+| `EXPLORATION_RANDOM_EVENT` | 随机事件 | `{ characterId: string \| null, message, icon }` |
 
 ### 商店模块事件
 
@@ -278,6 +278,7 @@ export interface GameEventPayloadMap {
 | v2.3 | 2026-05-19 | 添加节流（Throttle）功能文档 | System |
 | v3.0 | 2026-06-16 | 修正模块路径为 `modules/bus`，更新文件结构为 `index.ts`/`core.ts`/`types.ts` | System |
 | v4.0 | 2026-06-16 | 全面重写：移除不存在的优先级/防抖/节流功能；修正事件列表为实际 GameEvents 枚举；修正 API 签名；新增 onGroup/clearGroup/removeEvent；修正交互矩阵 | System |
+| v4.1 | 2026-06-17 | 逐文件比对修正：探索事件 characterId 类型标注为 `string \| null` | System |
 
 ---
 
