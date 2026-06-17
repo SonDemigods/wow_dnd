@@ -349,6 +349,7 @@ const OFFENSIVE_SCROLLS: Item[] = [
     description: '一张泛黄的羊皮卷轴，上面用火焰墨水书写着古老的火球术咒语',
     value: 40,
     stackable: true,
+    effect: { type: 'magic_damage', value: 40 },
     consumable: true,
     template: 'scroll_fireball'
   },
@@ -362,6 +363,7 @@ const OFFENSIVE_SCROLLS: Item[] = [
     description: '一张寒气逼人的古老卷轴，边缘凝结着永不融化的冰霜',
     value: 60,
     stackable: true,
+    effect: { type: 'magic_damage', value: 70 },
     consumable: true,
     template: 'scroll_blizzard'
   },
@@ -375,6 +377,7 @@ const OFFENSIVE_SCROLLS: Item[] = [
     description: '一张封印着风暴之力的魔法卷轴，触摸时指尖能感受到微弱的电击',
     value: 55,
     stackable: true,
+    effect: { type: 'magic_damage', value: 65 },
     consumable: true,
     template: 'scroll_chain_lightning'
   }

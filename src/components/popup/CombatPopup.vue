@@ -406,6 +406,8 @@ function buildItemDescription(info: { effect?: { type: string; value: unknown };
   const parts: string[] = [];
   if (effect.type === 'health_restore' && effect.value > 0) parts.push(`HP+${effect.value}`);
   if (effect.type === 'mana_restore' && effect.value > 0) parts.push(`MP+${effect.value}`);
+  if (effect.type === 'physical_damage' && effect.value > 0) parts.push(`物理伤害 ${effect.value}`);
+  if (effect.type === 'magic_damage' && effect.value > 0) parts.push(`法术伤害 ${effect.value}`);
   return parts.length > 0 ? parts.join(' ') : (description || '');
 }
 
@@ -781,12 +783,19 @@ async function useItem(_itemId: string, _index: number) {
   const prevPlayerHp = playerHp.value;
   const prevPlayerMp = playerMp.value;
 
-  await combatStore.playerAction({ type: 'item', itemId: _itemId });
+  const result = await combatStore.playerAction({ type: 'item', itemId: _itemId });
 
   if (isUnmounted.value) return;
 
   if (!combatStore.combatResult) {
-    // 物品恢复效果（通过 HP/MP 差值计算，因为 useItem action 不返回 heal 值）
+    // 伤害型物品的视觉特效（卷轴等）
+    if (result.damage && result.damage > 0) {
+      triggerVsFlash();
+      triggerShake('enemy', currentTarget.value?.id);
+      showFloating('enemy', `-${result.damage}`, result.isCrit ? 'crit' : 'damage', currentTarget.value?.id);
+    }
+
+    // 物品恢复效果（通过 HP/MP 差值计算）
     const hpHeal = playerHp.value - prevPlayerHp;
     if (hpHeal > 0) {
       showFloating('player', `+${hpHeal}`, 'heal');

@@ -1122,13 +1122,69 @@ export const useCombatStore = defineStore('combat', () => {
    */
   async function playerUseItem(itemId: string): Promise<CombatActionResult> {
     const characterStore = useCharacterStore();
-
-    // 直接调用 inventoryStore 使用物品
     const inventoryStore = useInventoryStore();
+
+    // 先获取物品信息，判断是否为伤害型物品
+    const itemInfo = inventoryStore.getItemInfo(itemId);
+    let damageResult: { damage: number; isCrit: boolean } | null = null;
+
+    if (itemInfo?.effect) {
+      const { type, value } = itemInfo.effect;
+
+      if ((type === 'magic_damage' || type === 'physical_damage') && typeof value === 'number' && value > 0) {
+        // 伤害型物品：对当前目标造成伤害
+        const target = currentTarget.value;
+        if (!target) {
+          return { success: false, type: 'item', message: '没有可攻击的目标！' };
+        }
+
+        const damageType: DamageType = type === 'magic_damage' ? 'magical' : 'physical';
+
+        const pipeResult = processDamagePipeline(
+          effectRegistry,
+          playerEffects.value,
+          enemyEffects.value.get(target.id) || createEmptyContainer(),
+          createPlayerEffectContext(characterStore),
+          createEnemyEffectContext(target),
+          damageType,
+          value  // baseDamageOverride：物品基础伤害直接传入
+        );
+
+        // 暴击判定
+        const critChance = characterStore.attributes.critChance / 100;
+        const isCrit = rollCritical(critChance);
+        const critMultiplier = isCrit ? 1.5 : 1;
+        const finalDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
+
+        // 造成伤害
+        enemiesStore.takeDamage(target.id, finalDamage);
+
+        damageResult = { damage: finalDamage, isCrit };
+
+        // 伤害音效事件
+        eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
+          amount: finalDamage,
+          damageType: type === 'magic_damage' ? 'magic' : 'physical',
+          targetName: target.name || '敌人',
+          actorType: 'player'
+        });
+
+        // 暴击事件
+        if (isCrit) {
+          eventBus.emit(GameEvents.COMBAT_CRITICAL_HIT, {
+            amount: finalDamage,
+            damageType: type === 'magic_damage' ? 'magic' : 'physical',
+            targetName: target.name || '敌人',
+            actorType: 'player'
+          });
+        }
+      }
+    }
+
+    // 调用 inventoryStore 使用物品（扣减数量 + 应用恢复/属性效果）
     await inventoryStore.useItem(itemId);
 
-    // 根据物品类型发出对应的生命恢复音效事件
-    const itemInfo = inventoryStore.getItemInfo(itemId);
+    // 生命/法力恢复音效事件
     if (itemInfo?.effect) {
       const { type, value } = itemInfo.effect;
       if ((type === 'health_restore' || type === 'mana_restore') && typeof value === 'number' && value > 0) {
@@ -1140,23 +1196,54 @@ export const useCombatStore = defineStore('combat', () => {
       }
     }
 
-    addCombatLog({
-      actorType: 'player',
-      actorId: 'player',
-      actorName: characterStore.name,
-      eventType: 'combat_item',
-      isCrit: false,
-      isDodge: false,
-      message: `${characterStore.name} 使用了物品！`
-    });
+    // 战斗日志
+    if (damageResult) {
+      const target = currentTarget.value;
+      const updatedTarget = target ? enemiesStore.getEnemyById(target.id) : null;
+      addCombatLog({
+        actorType: 'player',
+        actorId: 'player',
+        actorName: characterStore.name,
+        eventType: damageResult.isCrit ? 'combat_critical' : 'combat_skill_cast',
+        targetType: 'enemy',
+        targetId: updatedTarget?.id || '',
+        targetName: updatedTarget?.name || '',
+        damage: damageResult.damage,
+        isCrit: damageResult.isCrit,
+        isDodge: false,
+        message: damageResult.isCrit
+          ? `${characterStore.name} 使用 ${itemInfo?.name || '卷轴'}，暴击！对 ${updatedTarget?.name} 造成 ${damageResult.damage} 点伤害！`
+          : `${characterStore.name} 使用 ${itemInfo?.name || '卷轴'}，对 ${updatedTarget?.name} 造成 ${damageResult.damage} 点伤害！`
+      });
+    } else {
+      addCombatLog({
+        actorType: 'player',
+        actorId: 'player',
+        actorName: characterStore.name,
+        eventType: 'combat_item',
+        isCrit: false,
+        isDodge: false,
+        message: `${characterStore.name} 使用了 ${itemInfo?.name || '物品'}！`
+      });
+    }
 
-    endPlayerTurn();
+    // 检查敌人是否全部死亡
+    if (damageResult && aliveEnemies.value.length === 0) {
+      endCombat('victory');
+    } else {
+      endPlayerTurn();
+    }
+
     saveLogs();
 
     return {
       success: true,
       type: 'item',
-      message: '使用了物品！'
+      damage: damageResult?.damage,
+      isCrit: damageResult?.isCrit,
+      message: damageResult
+        ? `使用 ${itemInfo?.name || '卷轴'} 造成 ${damageResult.damage} 点伤害！`
+        : '使用了物品！'
     };
   }
 
