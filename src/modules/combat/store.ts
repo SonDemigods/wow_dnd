@@ -2111,6 +2111,10 @@ export const useCombatStore = defineStore('combat', () => {
    * @param result - 战斗结果
    */
   function endCombat(result: CombatResult): void {
+    // 先清空效果容器，防止守卫提前返回导致效果残留，影响角色数据显示
+    playerEffects.value = createEmptyContainer();
+    enemyEffects.value = new Map();
+
     if (enemies.value.length === 0) return;
 
     try {
