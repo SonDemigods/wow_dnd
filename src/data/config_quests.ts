@@ -360,10 +360,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_undead',
         type: 'kill',
         target: 3,
-        enemyId: 'demon'
+        enemyId: 'undead'
       }
     ],
     levelRequirement: 15,
@@ -504,10 +504,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_dragon',
+        key: 'kill_troll',
         type: 'kill',
         target: 2,
-        enemyId: 'dragon_whelp'
+        enemyId: 'troll'
       }
     ],
     levelRequirement: 14,
@@ -594,10 +594,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_undead',
         type: 'kill',
         target: 6,
-        enemyId: 'demon'
+        enemyId: 'undead'
       }
     ],
     levelRequirement: 20,
@@ -702,10 +702,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_elemental',
         type: 'kill',
         target: 2,
-        enemyId: 'demon'
+        enemyId: 'elemental'
       }
     ],
     levelRequirement: 5,
@@ -738,10 +738,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_elemental',
         type: 'kill',
         target: 3,
-        enemyId: 'demon'
+        enemyId: 'elemental'
       }
     ],
     levelRequirement: 14,
@@ -756,10 +756,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_dragon',
+        key: 'kill_elemental',
         type: 'kill',
         target: 2,
-        enemyId: 'dragon_whelp'
+        enemyId: 'elemental'
       }
     ],
     levelRequirement: 14,
@@ -774,10 +774,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_elemental',
         type: 'kill',
         target: 4,
-        enemyId: 'demon'
+        enemyId: 'elemental'
       }
     ],
     levelRequirement: 17,
@@ -792,10 +792,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_dragon',
+        key: 'kill_elemental',
         type: 'kill',
         target: 3,
-        enemyId: 'dragon_whelp'
+        enemyId: 'elemental'
       }
     ],
     levelRequirement: 17,
@@ -810,10 +810,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_troll',
         type: 'kill',
         target: 4,
-        enemyId: 'demon'
+        enemyId: 'troll'
       }
     ],
     levelRequirement: 12,
@@ -1044,10 +1044,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_silithid',
         type: 'kill',
         target: 3,
-        enemyId: 'demon'
+        enemyId: 'silithid'
       }
     ],
     levelRequirement: 18,
@@ -1242,10 +1242,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_undead',
         type: 'kill',
         target: 4,
-        enemyId: 'demon'
+        enemyId: 'undead'
       }
     ],
     levelRequirement: 16,
@@ -1296,10 +1296,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_dragon',
+        key: 'kill_orc',
         type: 'kill',
         target: 3,
-        enemyId: 'dragon_whelp'
+        enemyId: 'orc'
       }
     ],
     levelRequirement: 15,
@@ -1422,10 +1422,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_demon',
+        key: 'kill_orc',
         type: 'kill',
         target: 4,
-        enemyId: 'demon'
+        enemyId: 'orc'
       }
     ],
     levelRequirement: 18,
@@ -1440,10 +1440,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_dragon',
+        key: 'kill_orc',
         type: 'kill',
         target: 3,
-        enemyId: 'dragon_whelp'
+        enemyId: 'orc'
       }
     ],
     levelRequirement: 18,
@@ -1566,10 +1566,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_dragon',
+        key: 'kill_undead',
         type: 'kill',
         target: 3,
-        enemyId: 'dragon_whelp'
+        enemyId: 'undead'
       }
     ],
     levelRequirement: 18,
@@ -1692,10 +1692,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_dragon',
+        key: 'kill_elemental',
         type: 'kill',
         target: 3,
-        enemyId: 'dragon_whelp'
+        enemyId: 'elemental'
       }
     ],
     levelRequirement: 20,
