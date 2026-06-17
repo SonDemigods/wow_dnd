@@ -45,7 +45,7 @@ const customSize = computed(() => {
 const rarityClass = computed(() => props.rarity ? `item-icon--${props.rarity}` : '');
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 /* 基础样式：统一 flex 居中 + 正方形 */
 .item-icon-base {
   display: inline-flex;

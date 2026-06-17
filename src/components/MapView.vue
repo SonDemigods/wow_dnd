@@ -313,7 +313,7 @@ onUnmounted(() => {
 });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .map-view {
   width: 100%;
   flex: 1;

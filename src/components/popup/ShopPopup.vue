@@ -504,7 +504,7 @@ watch(currentTab, () => {
 });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .shop-content {
   display: flex;
   flex-direction: column;

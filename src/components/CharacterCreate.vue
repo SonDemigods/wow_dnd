@@ -547,7 +547,7 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .character-create {
   display: flex;
   flex-direction: column;

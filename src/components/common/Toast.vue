@@ -24,7 +24,7 @@ withDefaults(defineProps<{
 });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .toast {
   position: fixed;
   top: 120px;

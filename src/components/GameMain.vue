@@ -353,7 +353,7 @@ onUnmounted(() => {
 defineExpose({ showNotif });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .game-main {
   height: 100vh;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);

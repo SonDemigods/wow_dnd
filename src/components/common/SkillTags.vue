@@ -28,7 +28,7 @@ defineProps<{
 const { getTargetTypeName } = useSkillDisplay();
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .skill-tags {
   display: flex;
   gap: 6px;

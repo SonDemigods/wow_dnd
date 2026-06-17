@@ -59,7 +59,7 @@ function handleClose() {
 }
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .system-body {
   display: flex;
   flex-direction: column;

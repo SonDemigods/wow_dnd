@@ -148,7 +148,7 @@ function toggleBgm() {
 }
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .audio-body {
   display: flex;
   flex-direction: column;

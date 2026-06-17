@@ -48,7 +48,7 @@ function onCancel() {
 }
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .confirm-message {
   margin: 0;
   color: #aaa;

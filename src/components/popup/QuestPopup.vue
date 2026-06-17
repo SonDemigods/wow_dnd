@@ -188,7 +188,7 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .quest-list {
   display: flex;
   flex-direction: column;

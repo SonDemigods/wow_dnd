@@ -199,7 +199,7 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .quest-tabs {
   display: flex;
   gap: 10px;

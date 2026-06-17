@@ -24,7 +24,7 @@ const customStyle = {
 };
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .tag {
   display: inline-flex;
   align-items: center;

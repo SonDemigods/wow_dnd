@@ -43,7 +43,7 @@ withDefaults(defineProps<{
 });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 /* ===== 容器 ===== */
 .resource-bar-wrapper {
   display: flex;

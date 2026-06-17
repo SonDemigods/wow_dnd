@@ -27,7 +27,7 @@ defineEmits<{
 }>();
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .alert-message {
   margin: 0;
   color: #aaa;

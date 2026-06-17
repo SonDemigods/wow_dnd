@@ -247,7 +247,7 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .exploration-view {
   display: flex;
   flex-direction: column;

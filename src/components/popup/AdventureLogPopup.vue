@@ -115,7 +115,7 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .log-header {
   color: #a0a0c0;
   font-size: 13px;

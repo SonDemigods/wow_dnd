@@ -482,7 +482,7 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .inventory-content {
   display: flex;
   flex-direction: column;

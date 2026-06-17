@@ -378,7 +378,7 @@ defineExpose({
 });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .character-select {
   max-width: 800px;
   margin: 0 auto;
