@@ -417,7 +417,7 @@ src/modules/inventory/
 | v2.1 | 2026-05-19 | 添加物品丢弃、排序、整理、搜索、筛选功能 | System |
 | v2.2 | 2026-05-19 | 添加物品堆叠机制：最大堆叠数量固定为10，支持堆叠判断和计算 | System |
 | v2.3 | 2026-06-16 | 文件结构拆分为db/store/service三层架构 | System |
-| v3.0 | 2026-06-16 | 全面更新与代码对齐：背包容量更新为50（INVENTORY_SIZE=50）；Item 新增 effect/levelRequirement/level 字段，移除 hpRestore/mpRestore；ItemEffect 类型更新为 ItemEffectType（SkillType | 'stat'）；跨模块通信改为直接 Store Action 调用；物品使用直接调用 characterStore.receiveHeal/changeMp/applyBonus；新增 service 层纯函数（canStackItem/computeStackResult/findItemIndex/sortItems/filterItems/sortAndFilterInventory/computeUseEffect）；稀有度配置从 @/config/inventory 引用 | System |
+| v3.0 | 2026-06-16 | 全面更新与代码对齐：背包容量更新为50（INVENTORY_SIZE=50）；Item 新增 effect/levelRequirement/level 字段，移除 hpRestore/mpRestore；ItemEffect 类型更新为 ItemEffectType（SkillType: 'stat'）；跨模块通信改为直接 Store Action 调用；物品使用直接调用 characterStore.receiveHeal/changeMp/applyBonus；新增 service 层纯函数（canStackItem/computeStackResult/findItemIndex/sortItems/filterItems/sortAndFilterInventory/computeUseEffect）；稀有度配置从 @/config/inventory 引用 | System |
 
 ---
 

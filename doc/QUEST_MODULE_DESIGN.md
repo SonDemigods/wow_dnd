@@ -276,7 +276,7 @@ export interface QuestInstance {
 ### 默认任务模板
 
 当 `config_quests` 表为空时，系统回退使用 `getDefaultQuests()` 提供的4个默认任务：
-1. "消灭哥布林"（击杀型，目标：goblin × 10，boardId: village）
+1. "消灭豺狼人"（击杀型，目标：gnoll × 10，boardId: village）
 2. "采集草药"（收集型，目标：item_herb × 15，boardId: village）
 3. "狼群威胁"（击杀型，目标：wolf × 5，boardId: village）
 4. "兽人首领"（复合击杀型，目标：orc × 3 + ogre × 1，boardId: village）

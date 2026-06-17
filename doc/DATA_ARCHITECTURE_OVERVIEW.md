@@ -325,7 +325,7 @@ interface BackupFile {
 
 | 文件 | 内容 |
 |------|------|
-| `data/config_factions.ts` | 阵营数据（联盟/部落/中立） |
+| `data/config_factions.ts` | 阵营数据（光辉盟约/铁血盟约/中立） |
 | `data/config_races.ts` | 种族数据 |
 | `data/config_classes.ts` | 职业数据 |
 | `data/config_skills.ts` | 技能数据（职业技能 + 怪物技能） |
