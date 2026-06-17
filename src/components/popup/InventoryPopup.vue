@@ -583,7 +583,6 @@ onMounted(() => {
 .item-slot {
   aspect-ratio: 1;
   background: rgba(255, 255, 255, 0.05);
-  border: 2px solid #4a4a4a;
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -601,21 +600,13 @@ onMounted(() => {
 }
 
 .item-slot.empty {
-  border-style: dashed;
+  border: 2px dashed #4a4a4a;
   opacity: 0.3;
 }
 
-.item-slot.common { border-color: #ffffff; }
-.item-slot.uncommon { border-color: #1eff00; }
-.item-slot.rare { border-color: #0070dd; }
-.item-slot.epic { border-color: #a335ee; }
-.item-slot.legendary { 
-  border-color: #ff8000;
-  animation: legendary-glow 2s infinite;
-}
-
 .item-slot.equipped {
-  border-color: #4CAF50;
+  outline: 2px solid #4CAF50;
+  outline-offset: -2px;
   background: rgba(76, 175, 80, 0.2);
 }
 

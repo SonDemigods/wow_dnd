@@ -1335,23 +1335,24 @@ onUnmounted(() => {
 .item-modal-close { background: none; border: none; color: #888; font-size: 18px; cursor: pointer; padding: 4px 8px; }
 .item-modal-close:hover { color: #fff; }
 
-.item-modal-body { flex: 1; overflow-y: auto; padding: 8px; }
+.item-modal-body { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
 
 .item-option {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
-.item-option:hover { background: rgba(255, 255, 255, 0.08); }
-.item-option .item-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.item-option .item-name { font-size: 14px; color: #f0f0f0; font-weight: 600; }
-.item-option .item-desc { font-size: 11px; color: #888; }
-.item-option .item-count { font-size: 13px; color: #aaa; flex-shrink: 0; }
+.item-option:hover { background: rgba(255, 255, 255, 0.1); }
+.item-option .item-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.item-option .item-name { font-size: 14px; color: #fff; font-weight: bold; }
+.item-option .item-desc { font-size: 12px; color: #888; }
+.item-option .item-count { font-size: 13px; color: #ffd700; font-weight: bold; flex-shrink: 0; }
 .item-empty { text-align: center; padding: 24px; color: #555; font-style: italic; }
 
 /* 动画 —— 战斗动画已迁移至 @/modules/animation/combat-effects.ts (anime.js) */
