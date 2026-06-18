@@ -36,7 +36,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'hunter',
     name: '猎人',
-    icon: '🏹',
+    icon: 'game-icons:high-shot',
     primaryStat: 'dex',
     factionsIds: ['alliance', 'horde', 'neutral'],
     raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
@@ -69,7 +69,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'shaman',
     name: '萨满祭司',
-    icon: '⚡',
+    icon: 'game-icons:lightning-storm',
     primaryStat: 'wis',
     factionsIds: ['alliance', 'horde', 'neutral'],
     raceIds: ['dwarf', 'draenei', 'dark_iron_dwarf', 'kul_tiran', 'orc', 'tauren', 'troll', 'goblin', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'earthen', 'harenei'],
@@ -113,7 +113,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'druid',
     name: '德鲁伊',
-    icon: '🌿',
+    icon: 'game-icons:oak-leaf',
     primaryStat: 'wis',
     factionsIds: ['alliance', 'horde', 'neutral'],
     raceIds: ['night_elf', 'worgen', 'kul_tiran', 'tauren', 'troll', 'highmountain_tauren', 'zandalari', 'harenei'],
@@ -124,7 +124,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'death_knight',
     name: '亡灵骑士',
-    icon: '💀',
+    icon: 'game-icons:death-zone',
     primaryStat: 'str',
     factionsIds: ['alliance', 'horde'],
     raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren'],
@@ -135,7 +135,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'demon_hunter',
     name: '影刃猎手',
-    icon: '👿',
+    icon: 'game-icons:sharp-halberd',
     primaryStat: 'dex',
     factionsIds: ['alliance', 'horde'],
     raceIds: ['night_elf', 'blood_elves'],
@@ -146,7 +146,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'evoker',
     name: '龙脉术士',
-    icon: '🐉',
+    icon: 'game-icons:spiked-dragon-head',
     primaryStat: 'int',
     factionsIds: ['neutral'],
     raceIds: ['dracthyr'],

@@ -365,7 +365,7 @@ export const useInventoryStore = defineStore('inventory', () => {
         timestamp: Date.now(),
         type: 'item',
         message: `丢弃了：${droppedItem.name}${countText}`,
-        icon: '🗑️'
+        icon: 'game-icons:trash-can'
       });
     }
 

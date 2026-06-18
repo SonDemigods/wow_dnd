@@ -14,7 +14,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'gnoll',
     name: '豺狼人',
-    icon: '👺',
+    icon: 'game-icons:gnoll-head',
     maxHp: 25,
     damage: [4, 8],
     xp: 15,
@@ -30,7 +30,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'kobold',
     name: '狗头人',
-    icon: '🐀',
+    icon: 'game-icons:rat',
     maxHp: 20,
     damage: [3, 6],
     xp: 12,
@@ -46,7 +46,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'murloc',
     name: '蛙人',
-    icon: '🐟',
+    icon: 'game-icons:fish-monster',
     maxHp: 22,
     damage: [4, 7],
     xp: 14,
@@ -62,7 +62,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'skeleton',
     name: '骷髅',
-    icon: '💀',
+    icon: 'game-icons:skull-sign',
     maxHp: 30,
     damage: [5, 10],
     xp: 20,
@@ -142,7 +142,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'wolf',
     name: '灰狼',
-    icon: '🐺',
+    icon: 'game-icons:wolf-head',
     maxHp: 28,
     damage: [5, 9],
     xp: 18,
@@ -174,7 +174,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'iron_dwarf',
     name: '铁矮人',
-    icon: '⚒️',
+    icon: 'game-icons:dwarf-face',
     maxHp: 70,
     damage: [10, 18],
     xp: 55,
@@ -206,7 +206,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'nerubian',
     name: '虫族战士',
-    icon: '🕸️',
+    icon: 'game-icons:spider-web',
     maxHp: 75,
     damage: [11, 19],
     xp: 58,
@@ -254,7 +254,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'bear',
     name: '棕熊',
-    icon: '🐻',
+    icon: 'game-icons:bear-head',
     maxHp: 50,
     damage: [8, 14],
     xp: 32,
@@ -270,7 +270,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'boar',
     name: '野猪',
-    icon: '🐗',
+    icon: 'game-icons:boar-tusks',
     maxHp: 38,
     damage: [6, 12],
     xp: 26,
@@ -286,7 +286,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'centaur',
     name: '半人马',
-    icon: '🏇',
+    icon: 'game-icons:centaur',
     maxHp: 60,
     damage: [9, 16],
     xp: 45,
@@ -318,7 +318,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'naga',
     name: '蛇身海妖',
-    icon: '🐍',
+    icon: 'game-icons:sea-serpent',
     maxHp: 85,
     damage: [11, 19],
     xp: 65,
@@ -334,7 +334,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'ogre',
     name: '食人魔',
-    icon: '👹',
+    icon: 'game-icons:orc-head',
     maxHp: 90,
     damage: [13, 22],
     xp: 70,
@@ -366,7 +366,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'scorpid',
     name: '蝎子',
-    icon: '🦂',
+    icon: 'game-icons:scorpion',
     maxHp: 36,
     damage: [7, 12],
     xp: 27,

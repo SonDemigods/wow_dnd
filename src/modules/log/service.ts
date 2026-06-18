@@ -7,17 +7,17 @@ import type { LogEntry, LogType } from './types';
 
 /** 日志类型默认图标映射 */
 const LOG_TYPE_ICONS: Record<LogType, string> = {
-  info: '📜',
-  combat: '⚔️',
-  quest: '📋',
-  item: '📦',
-  level: '⬆️',
-  death: '💀',
-  resurrect: '✨',
-  shop: '🛒',
-  skill: '✨',
-  exploration: '🗺️',
-  zone: '📍'
+  info: 'game-icons:info',
+  combat: 'game-icons:crossed-swords',
+  quest: 'game-icons:notebook',
+  item: 'game-icons:chest',
+  level: 'game-icons:level-up',
+  death: 'game-icons:death-skull',
+  resurrect: 'game-icons:resurrection',
+  shop: 'game-icons:shopping-cart',
+  skill: 'game-icons:sparkles',
+  exploration: 'game-icons:treasure-map',
+  zone: 'game-icons:map-pin'
 };
 
 /**

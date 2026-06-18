@@ -2166,7 +2166,7 @@ export const useCombatStore = defineStore('combat', () => {
             timestamp: Date.now(),
             type: 'combat',
             message: `获得 ${totalGold} 金币`,
-            icon: '💰'
+            icon: 'game-icons:coins'
           });
         }
 
@@ -2220,7 +2220,7 @@ export const useCombatStore = defineStore('combat', () => {
           timestamp: Date.now(),
           type: 'combat',
           message: `被 ${enemyNames} 击败！`,
-          icon: '💀'
+          icon: 'game-icons:death-skull'
         });
 
         // 直接调用 characterStore Action 处理死亡

@@ -22,12 +22,12 @@ import { validateSlot, computeEquipBonus, canEquipItem, getEquipmentBySlot } fro
  * 槽位配置（UI 展示用）
  */
 const SLOT_CONFIG: Record<EquipmentSlot, { name: string; icon: string }> = {
-  weapon1: { name: '主手', icon: '⚔️' },
-  weapon2: { name: '副手', icon: '🛡️' },
-  armor1: { name: '头部', icon: '🪖' },
-  armor2: { name: '胸部', icon: '🦺' },
-  armor3: { name: '腿部', icon: '👖' },
-  armor4: { name: '鞋子', icon: '👢' }
+  weapon1: { name: '主手', icon: 'game-icons:broadsword' },
+  weapon2: { name: '副手', icon: 'game-icons:checked-shield' },
+  armor1: { name: '头部', icon: 'game-icons:visored-helm' },
+  armor2: { name: '胸部', icon: 'game-icons:chest-armor' },
+  armor3: { name: '腿部', icon: 'game-icons:leg-armor' },
+  armor4: { name: '鞋子', icon: 'game-icons:leather-boot' }
 };
 
 /**
@@ -228,7 +228,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
       timestamp: Date.now(),
       type: 'item',
       message: `卸下了：${equippedItem.item.name}`,
-      icon: '🔽'
+      icon: 'game-icons:downgrade'
     });
 
     return equippedItem;

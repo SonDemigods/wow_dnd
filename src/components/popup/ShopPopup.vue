@@ -2,7 +2,7 @@
   <BasePopup :visible="visible" :title="shopName || '商店'" @close="$emit('close')">
     <template #header-extra>
       <div class="header-info">
-        <span :class="['gold-display', { flash: goldFlash }]">💰 {{ gold }}</span>
+        <span :class="['gold-display', { flash: goldFlash }]"><BaseIcon name="coins" gradient="gold" :size="16" /> {{ gold }}</span>
       </div>
     </template>
 
@@ -174,6 +174,7 @@ import type { ShopDisplayItem, ItemQuality, ItemCategory } from '@/modules/shop'
 import type { InventoryItem, Item, ItemType, ItemRarity, ItemEffect } from '@/modules/inventory';
 import BasePopup from '../common/BasePopup.vue';
 import ItemIcon from '../common/ItemIcon.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 
 /** 出售标签的物品条目（关联背包数据和物品模板） */
 interface SellItemEntry {

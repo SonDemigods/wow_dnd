@@ -92,9 +92,9 @@ export const useCharacterStore = defineStore('character', () => {
   const factionName = computed(() => factionsData.value[factionId.value]?.name || '未知阵营');
   const raceName = computed(() => racesData.value[raceId.value]?.name || '未知种族');
   const className = computed(() => classesData.value[classId.value]?.name || '未知职业');
-  const raceIcon = computed(() => racesData.value[raceId.value]?.icon || '👤');
-  const factionIcon = computed(() => factionsData.value[factionId.value]?.icon || '🏳️');
-  const classIcon = computed(() => classesData.value[classId.value]?.icon || '⚔️');
+  const raceIcon = computed(() => racesData.value[raceId.value]?.icon || 'game-icons:person');
+  const factionIcon = computed(() => factionsData.value[factionId.value]?.icon || 'game-icons:checked-shield');
+  const classIcon = computed(() => classesData.value[classId.value]?.icon || 'game-icons:broadsword');
   const factionColor = computed(() => factionsData.value[factionId.value]?.color || '#9d9d9d');
   const classColor = computed(() => classesData.value[classId.value]?.color || '#9d9d9d');
 

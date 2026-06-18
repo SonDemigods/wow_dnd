@@ -15,7 +15,7 @@ const HEALTH_POTIONS: Item[] = [
   {
     id: 'small_health_potion',
     name: '初级生命药水',
-    icon: '❤️',
+    icon: 'game-icons:health-potion',
     type: 'potion',
     rarity: 'common',
     level: 1,
@@ -29,7 +29,7 @@ const HEALTH_POTIONS: Item[] = [
   {
     id: 'medium_health_potion',
     name: '次级生命药水',
-    icon: '❤️',
+    icon: 'game-icons:health-potion',
     type: 'potion',
     rarity: 'uncommon',
     level: 3,
@@ -43,7 +43,7 @@ const HEALTH_POTIONS: Item[] = [
   {
     id: 'large_health_potion',
     name: '特效生命药水',
-    icon: '❤️',
+    icon: 'game-icons:health-potion',
     type: 'potion',
     rarity: 'rare',
     level: 5,
@@ -57,7 +57,7 @@ const HEALTH_POTIONS: Item[] = [
   {
     id: 'super_health_potion',
     name: '超级生命药水',
-    icon: '❤️',
+    icon: 'game-icons:health-potion',
     type: 'potion',
     rarity: 'epic',
     level: 7,
@@ -75,7 +75,7 @@ const MANA_POTIONS: Item[] = [
   {
     id: 'small_mana_potion',
     name: '初级法力药水',
-    icon: '💙',
+    icon: 'game-icons:magic-potion',
     type: 'potion',
     rarity: 'common',
     level: 1,
@@ -89,7 +89,7 @@ const MANA_POTIONS: Item[] = [
   {
     id: 'medium_mana_potion',
     name: '次级法力药水',
-    icon: '💙',
+    icon: 'game-icons:magic-potion',
     type: 'potion',
     rarity: 'uncommon',
     level: 3,
@@ -103,7 +103,7 @@ const MANA_POTIONS: Item[] = [
   {
     id: 'large_mana_potion',
     name: '特效法力药水',
-    icon: '💙',
+    icon: 'game-icons:magic-potion',
     type: 'potion',
     rarity: 'rare',
     level: 5,
@@ -117,7 +117,7 @@ const MANA_POTIONS: Item[] = [
   {
     id: 'super_mana_potion',
     name: '超级法力药水',
-    icon: '💙',
+    icon: 'game-icons:magic-potion',
     type: 'potion',
     rarity: 'epic',
     level: 7,
@@ -135,7 +135,7 @@ const ATTRIBUTE_POTIONS: Item[] = [
   {
     id: 'strength_potion',
     name: '巨人之力药剂',
-    icon: '🧪',
+    icon: 'game-icons:round-bottom-flask',
     type: 'potion',
     rarity: 'uncommon',
     level: 3,
@@ -149,7 +149,7 @@ const ATTRIBUTE_POTIONS: Item[] = [
   {
     id: 'agility_potion',
     name: '猫鼬药剂',
-    icon: '🧪',
+    icon: 'game-icons:round-bottom-flask',
     type: 'potion',
     rarity: 'uncommon',
     level: 3,
@@ -163,7 +163,7 @@ const ATTRIBUTE_POTIONS: Item[] = [
   {
     id: 'constitution_potion',
     name: '坚韧药剂',
-    icon: '🧪',
+    icon: 'game-icons:round-bottom-flask',
     type: 'potion',
     rarity: 'uncommon',
     level: 3,
@@ -177,7 +177,7 @@ const ATTRIBUTE_POTIONS: Item[] = [
   {
     id: 'intelligence_potion',
     name: '智慧药剂',
-    icon: '🧪',
+    icon: 'game-icons:round-bottom-flask',
     type: 'potion',
     rarity: 'uncommon',
     level: 3,
@@ -191,7 +191,7 @@ const ATTRIBUTE_POTIONS: Item[] = [
   {
     id: 'wisdom_potion',
     name: '洞察药剂',
-    icon: '🧪',
+    icon: 'game-icons:round-bottom-flask',
     type: 'potion',
     rarity: 'uncommon',
     level: 3,
@@ -205,7 +205,7 @@ const ATTRIBUTE_POTIONS: Item[] = [
   {
     id: 'charisma_potion',
     name: '魅力药剂',
-    icon: '🧪',
+    icon: 'game-icons:round-bottom-flask',
     type: 'potion',
     rarity: 'uncommon',
     level: 3,
@@ -227,7 +227,7 @@ const COMMON_FOOD: Item[] = [
   {
     id: 'bread',
     name: '黑面包',
-    icon: '🍞',
+    icon: 'game-icons:bread',
     type: 'food',
     rarity: 'common',
     level: 1,
@@ -241,7 +241,7 @@ const COMMON_FOOD: Item[] = [
   {
     id: 'roast_quail',
     name: '烤鹌鹑',
-    icon: '🍗',
+    icon: 'game-icons:drumstick',
     type: 'food',
     rarity: 'common',
     level: 1,
@@ -259,7 +259,7 @@ const PREMIUM_FOOD: Item[] = [
   {
     id: 'roasted_meat',
     name: '烤野猪肉',
-    icon: '🍖',
+    icon: 'game-icons:meat',
     type: 'food',
     rarity: 'uncommon',
     level: 3,
@@ -273,7 +273,7 @@ const PREMIUM_FOOD: Item[] = [
   {
     id: 'murloc_fin_soup',
     name: '蛙人鳍汤',
-    icon: '🥣',
+    icon: 'game-icons:bowl-of-rice',
     type: 'food',
     rarity: 'uncommon',
     level: 3,
@@ -287,7 +287,7 @@ const PREMIUM_FOOD: Item[] = [
   {
     id: 'stormwind_stew',
     name: '辉石城炖肉',
-    icon: '🍲',
+    icon: 'game-icons:hot-meal',
     type: 'food',
     rarity: 'uncommon',
     level: 3,
@@ -305,7 +305,7 @@ const RARE_FOOD: Item[] = [
   {
     id: 'magic_bread',
     name: '魔法蛋糕',
-    icon: '✨',
+    icon: 'game-icons:cupcake',
     type: 'food',
     rarity: 'rare',
     level: 5,
@@ -319,7 +319,7 @@ const RARE_FOOD: Item[] = [
   {
     id: 'dragon_breath_chili',
     name: '龙息辣椒',
-    icon: '🌶️',
+    icon: 'game-icons:chili-pepper',
     type: 'food',
     rarity: 'rare',
     level: 5,
@@ -342,7 +342,7 @@ const OFFENSIVE_SCROLLS: Item[] = [
   {
     id: 'scroll_fireball',
     name: '卷轴：火球术',
-    icon: '📜',
+    icon: 'game-icons:scroll-unfurled',
     type: 'scroll',
     rarity: 'uncommon',
     level: 3,
@@ -356,7 +356,7 @@ const OFFENSIVE_SCROLLS: Item[] = [
   {
     id: 'scroll_blizzard',
     name: '卷轴：寒冰风暴',
-    icon: '📜',
+    icon: 'game-icons:scroll-unfurled',
     type: 'scroll',
     rarity: 'rare',
     level: 5,
@@ -370,7 +370,7 @@ const OFFENSIVE_SCROLLS: Item[] = [
   {
     id: 'scroll_chain_lightning',
     name: '卷轴：连锁雷击',
-    icon: '📜',
+    icon: 'game-icons:scroll-unfurled',
     type: 'scroll',
     rarity: 'rare',
     level: 5,
@@ -388,7 +388,7 @@ const HEALING_SCROLLS: Item[] = [
   {
     id: 'scroll_heal',
     name: '卷轴：治疗术',
-    icon: '📜',
+    icon: 'game-icons:scroll-unfurled',
     type: 'scroll',
     rarity: 'uncommon',
     level: 3,
@@ -402,7 +402,7 @@ const HEALING_SCROLLS: Item[] = [
   {
     id: 'scroll_mass_heal',
     name: '卷轴：群体治疗',
-    icon: '📜',
+    icon: 'game-icons:scroll-unfurled',
     type: 'scroll',
     rarity: 'epic',
     level: 7,
@@ -424,7 +424,7 @@ const BASIC_MATERIALS: Item[] = [
   {
     id: 'magic_dust',
     name: '奥术粉尘',
-    icon: '✨',
+    icon: 'game-icons:cupcake',
     type: 'material',
     rarity: 'common',
     level: 1,
@@ -440,7 +440,7 @@ const RARE_MATERIALS: Item[] = [
   {
     id: 'dragon_scale',
     name: '赤红龙鳞',
-    icon: '🐉',
+    icon: 'game-icons:dragon-scales',
     type: 'material',
     rarity: 'rare',
     level: 5,
@@ -452,7 +452,7 @@ const RARE_MATERIALS: Item[] = [
   {
     id: 'dream_fragment',
     name: '翠绿碎片',
-    icon: '💎',
+    icon: 'game-icons:emerald',
     type: 'material',
     rarity: 'rare',
     level: 5,
@@ -468,7 +468,7 @@ const PRIMAL_MATERIALS: Item[] = [
   {
     id: 'primal_life',
     name: '精粹生命',
-    icon: '🌱',
+    icon: 'game-icons:sprout',
     type: 'material',
     rarity: 'rare',
     level: 5,
@@ -480,7 +480,7 @@ const PRIMAL_MATERIALS: Item[] = [
   {
     id: 'primal_fire',
     name: '精粹火焰',
-    icon: '🔥',
+    icon: 'game-icons:flame',
     type: 'material',
     rarity: 'rare',
     level: 5,
@@ -492,7 +492,7 @@ const PRIMAL_MATERIALS: Item[] = [
   {
     id: 'primal_water',
     name: '精粹之水',
-    icon: '💧',
+    icon: 'game-icons:water-flask',
     type: 'material',
     rarity: 'rare',
     level: 5,
@@ -504,7 +504,7 @@ const PRIMAL_MATERIALS: Item[] = [
   {
     id: 'primal_air',
     name: '精粹空气',
-    icon: '💨',
+    icon: 'game-icons:wind-hole',
     type: 'material',
     rarity: 'rare',
     level: 5,
@@ -516,7 +516,7 @@ const PRIMAL_MATERIALS: Item[] = [
   {
     id: 'primal_earth',
     name: '精粹大地',
-    icon: '🪨',
+    icon: 'game-icons:stone-block',
     type: 'material',
     rarity: 'rare',
     level: 5,
@@ -532,7 +532,7 @@ const EPIC_MATERIALS: Item[] = [
   {
     id: 'void_crystal',
     name: '暗影水晶',
-    icon: '🔮',
+    icon: 'game-icons:crystal-ball',
     type: 'material',
     rarity: 'epic',
     level: 7,
@@ -544,7 +544,7 @@ const EPIC_MATERIALS: Item[] = [
   {
     id: 'sunmote',
     name: '光辉之尘',
-    icon: '☀️',
+    icon: 'game-icons:sun',
     type: 'material',
     rarity: 'epic',
     level: 7,

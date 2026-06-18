@@ -18,7 +18,7 @@ export const CONTINENTS: ContinentData[] = [
   {
     id: 'kalimdor',
     name: '暮光大陆',
-    icon: '🌳',
+    icon: 'game-icons:forest',
     description: '古老而神秘的大陆，暮精灵与牛角族的先祖家园。广袤的森林与荒漠交织，远古的遗迹中隐藏着远古造物者遗留的秘密，每一片土地都回荡着远古圣战的余音。',
     position: 'west',
     color: '#2d5a3d',
@@ -27,7 +27,7 @@ export const CONTINENTS: ContinentData[] = [
   {
     id: 'eastern_kingdoms',
     name: '辉石大陆',
-    icon: '🏰',
+    icon: 'game-icons:castle',
     description: '人类王国、矮人堡垒与亡者疫土并存的东方大陆。光辉盟约的荣耀与亡者军团的阴影在此激烈碰撞，每一寸土地都浸染着战火与不朽的传说。',
     position: 'east',
     color: '#5a3d2d',
@@ -36,7 +36,7 @@ export const CONTINENTS: ContinentData[] = [
   {
     id: 'northrend',
     name: '寒霜废土',
-    icon: '❄️',
+    icon: 'game-icons:snowflake-2',
     description: '冰封万里的极北死亡大陆，堕落之王的寒冰领域。凛冽的北风裹挟着亡者的低语，寒冰王座的阴影如末日般笼罩着整片冻土，唯有最无畏的勇士敢于踏足。',
     position: 'north',
     color: '#3d4a5a',
@@ -56,7 +56,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'teldrassil',
     name: '苍穹之冠',
-    icon: '🌳',
+    icon: 'game-icons:forest',
     description: '暮精灵亲手种下的第二棵世界之树，月歌之都便坐落于其枝干之上。繁茂的树冠遮蔽了天日，然而树根深处却潜藏着古老的腐化之力，暗夜的哨兵们日夜警惕着来自深渊的威胁。',
     continent: 'kalimdor',
     enemies: ['spider', 'wolf', 'gnoll'],
@@ -70,7 +70,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'darkshore',
     name: '暗礁海岸',
-    icon: '🌊',
+    icon: 'game-icons:waves',
     description: '暮精灵的古老海岸，狂风卷起破碎的浪花拍打着遍布遗迹的荒滩。远古邪神的低语从深渊传来，扭曲的海洋生物在暗礁间游弋，沉船残骸诉说着无尽岁月中的悲歌。',
     continent: 'kalimdor',
     enemies: ['murloc', 'bear', 'gnoll'],
@@ -84,7 +84,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'azuremyst',
     name: '蓝晶岛',
-    icon: '🏝️',
+    icon: 'game-icons:island',
     description: '星裔迫降凡间世界后最初的流亡避难所，遍地生长着散发圣光能量的神秘水晶。然而飞船的残骸引来了银辉精灵与娜迦的觊觎，危机从未远离这片伤痕累累的岛岸。',
     continent: 'kalimdor',
     enemies: ['murloc', 'spider', 'elemental', 'gnoll'],
@@ -98,7 +98,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'bloodmyst',
     name: '红月岛',
-    icon: '🩸',
+    icon: 'game-icons:drop',
     description: '被诡异血雾终年笼罩的诅咒之岛，空气中弥漫着飞船坠毁时泄漏的魔能。变异的生物在猩红的密林中横行，星裔仍在这片战场上与圣光之泉的余毒顽强抗争。',
     continent: 'kalimdor',
     enemies: ['elemental', 'spider'],
@@ -112,7 +112,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'winterspring',
     name: '冰泉谷',
-    icon: '❄️',
+    icon: 'game-icons:snowflake-2',
     description: '暮光大陆极北的永冻冰川，峡谷间回荡着冰蓝龙族悠远的龙吟。温泉在冰雪中蒸腾起迷离的雾气，雪豹与雪怪在暴风雪中潜行，唯有最坚韧的冒险者方能在这种极端之地存活。',
     continent: 'kalimdor',
     enemies: ['elemental'],
@@ -126,7 +126,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'hyjal',
     name: '圣山之巅',
-    icon: '🔥',
+    icon: 'game-icons:volcano',
     description: '世界之树苍穹之冠的扎根之地，凡间最神圣的圣山。远古圣战中，半神与深渊军团在此惨烈决战，大地的伤痕至今未愈，时光之龙的时间之力仍在此守护着整个世界的命运。',
     continent: 'kalimdor',
     enemies: ['elemental'],
@@ -140,7 +140,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'ashenvale',
     name: '苍翠之谷',
-    icon: '🌿',
+    icon: 'game-icons:forest-camp',
     description: '暮精灵世代守护的远古林地，月光透过层层树冠洒下斑驳银辉。光辉盟约斥候与铁血盟约先锋在此频繁遭遇，林地间每一声暗影猎豹的低吼都可能预示着下一场血战。',
     continent: 'kalimdor',
     enemies: ['orc', 'spider', 'harpy', 'wolf'],
@@ -154,7 +154,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'felwood',
     name: '腐林',
-    icon: '💜',
+    icon: 'game-icons:desolate-lands',
     description: '被深渊军团的魔能彻底扭曲的死亡林地，树木流淌着荧绿色的毒汁，空气中弥漫着硫磺的恶臭。恶魔与半魔在此横行无忌，曾经的生命圣地已沦为魔能肆虐的绝望焦土。',
     continent: 'kalimdor',
     enemies: ['troll', 'elemental', 'spider'],
@@ -168,7 +168,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'stonetalon',
     name: '石脊山脉',
-    icon: '⛰️',
+    icon: 'game-icons:mountains',
     description: '荒凉险峻的古老山脉，狂风在石峰间呼啸如鬼哭。半人马部落在此割据厮杀百年不休，而山峰深处的矿井中隐藏着失落的暮精灵遗迹与失落的上古科技。',
     continent: 'kalimdor',
     enemies: ['centaur', 'orc', 'spider', 'quilboar'],
@@ -182,7 +182,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'desolace',
     name: '荒瘠废土',
-    icon: '🏜️',
+    icon: 'game-icons:desert',
     description: '曾经繁茂的绿洲如今已是满目苍凉的废土，半人马氏族在这片焦土上无休止地争斗。幽深洞窟深处，大地公主的繁衍之力仍在腐蚀着这片哀伤之地。',
     continent: 'kalimdor',
     enemies: ['centaur', 'skeleton', 'elemental', 'scorpid'],
@@ -196,7 +196,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'durotar',
     name: '赤岩谷',
-    icon: '🏜️',
+    icon: 'game-icons:desert',
     description: '兽人部落在暮光大陆的新生之地，赭红色的岩壁间雄踞着坚不可摧的铁牙堡。烈日炙烤着荒芜的红土地，雷蜥与蝎子在峡谷中伺机而动，铁血盟约的荣耀便从这片粗粝的土地上崛起。',
     continent: 'kalimdor',
     enemies: ['boar', 'scorpid', 'quilboar'],
@@ -210,7 +210,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'mulgore',
     name: '苍风高地',
-    icon: '🐂',
+    icon: 'game-icons:bull',
     description: '牛角族世代栖居的苍翠草原，雷崖的尖塔在辽阔的牧场上空耸入云端。温驯的巨角兽漫步于金色草海，然而鹰身女妖的尖啸时常打破这片草原的宁静。',
     continent: 'kalimdor',
     enemies: ['boar', 'wolf', 'bear', 'quilboar'],
@@ -224,7 +224,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'barrens',
     name: '荒芜平原',
-    icon: '🌵',
+    icon: 'game-icons:cactus',
     description: '横亘暮光大陆腹地的广袤荒原，烈日下的十字路是铁血盟约商旅的生命枢纽。狮群在金色草丛中无声潜行，半人马掠夺者的战鼓声在远方回响不息。',
     continent: 'kalimdor',
     enemies: ['quilboar', 'centaur', 'boar', 'orc'],
@@ -238,7 +238,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'thousand_needles',
     name: '尖峰石林',
-    icon: '🏔️',
+    icon: 'game-icons:mountain-climbing',
     description: '千百根陡峭石柱刺破云霄的奇异地貌，牛角族部族在孤立的高地上用悬索桥梁连接家园。鹰身女妖盘旋于石林之间，远古的翼龙巢穴隐藏在峭壁之上。',
     continent: 'kalimdor',
     enemies: ['centaur', 'spider', 'harpy'],
@@ -252,7 +252,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'deserts',
     name: '沙海',
-    icon: '🏜️',
+    icon: 'game-icons:desert',
     description: '无边沙海炙烤着每一寸土地，地精之城金沙城在热浪中蒸腾出贪婪与喧闹。时光龙族守护的时光洞窟静卧于沙漠东隅，无数时间线在此交汇与分岔。',
     continent: 'kalimdor',
     enemies: ['troll', 'skeleton', 'ogre', 'scorpid'],
@@ -266,7 +266,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'feralas',
     name: '幽林',
-    icon: '🌴',
+    icon: 'game-icons:palm-tree',
     description: '未被驯服的原始丛林，参天古木的枝叶织成不透光的翠色穹顶。失落的上层精灵古城古槌要塞隐于密林深处，食人魔与幽魂在藤蔓覆盖的回廊中守护着古老的秘密。',
     continent: 'kalimdor',
     enemies: ['troll', 'ogre', 'naga'],
@@ -280,7 +280,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'silithus',
     name: '虫巢荒漠',
-    icon: '💎',
+    icon: 'game-icons:crystal-cluster',
     description: '其拉虫人的古老巢穴，地面上耸立着诡异的虫巢塔，黄沙之下传来万千虫翼的嗡鸣。虫巢废墟的封印虽已破碎，但远古邪神疯狂之神仍盘踞深渊，以其疯狂的低语诱人堕落。',
     continent: 'kalimdor',
     enemies: ['silithid', 'elemental'],
@@ -294,7 +294,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'plaguelands',
     name: '东腐地',
-    icon: '☠️',
+    icon: 'game-icons:poison',
     description: '亡者军团肆虐后遗下的死亡之地，土地被瘟疫染成病态的紫褐色。亡者堡垒如死神的斗篷般笼罩大地，亡者的哀嚎在腐化的空气中日夜不绝。',
     continent: 'eastern_kingdoms',
     enemies: ['undead', 'skeleton'],
@@ -308,7 +308,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'western_plaguelands',
     name: '西腐地',
-    icon: '💀',
+    icon: 'game-icons:skull-sign',
     description: '亡者军团东进的前沿战线，枯萎的农田与焦黑的村庄诉说着昔日的惨剧。死灵学院的黑暗法师仍在凯尔达隆岛的废墟深处钻研禁忌的通灵术，亡者的合唱在湖面上盘旋不散。',
     continent: 'eastern_kingdoms',
     enemies: ['undead', 'ghoul', 'skeleton'],
@@ -322,7 +322,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'silverpine',
     name: '灰松森林',
-    icon: '🌲',
+    icon: 'game-icons:pine-tree',
     description: '灰松密布的海岸森林，扭曲的枝干在浓雾中如鬼影般森然。亡者的势力在此向灰狼领扩张，暗牙城堡的塔楼间仍回荡着狼人的嚎叫与狼王的疯狂幻梦。',
     continent: 'eastern_kingdoms',
     enemies: ['undead', 'wolf', 'skeleton', 'ghoul'],
@@ -336,7 +336,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'tirisfal',
     name: '幽冥林地',
-    icon: '🌲',
+    icon: 'game-icons:pine-tree',
     description: '北境王国覆灭后的焦土遗骸，坍塌的钟塔与残破的王座厅无声诉说着昔日的辉煌。亡者在地下深处建造了亡者之城，瘟疫蝙蝠在昏暗的夜空中盘旋不去。',
     continent: 'eastern_kingdoms',
     enemies: ['skeleton', 'ghoul', 'undead', 'wolf'],
@@ -350,7 +350,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'loch_modan',
     name: '镜湖谷',
-    icon: '💧',
+    icon: 'game-icons:water-drop',
     description: '群山环抱的高原湖区，明镜湖如明镜般映照着熔炉堡的雪峰。矮人猎手在湖畔巡逻，豺狼人与熊人在岩洞中蠢蠢欲动，古老的远古遗迹在水底沉睡了无数个千年。',
     continent: 'eastern_kingdoms',
     enemies: ['kobold', 'bear', 'spider', 'ogre'],
@@ -364,7 +364,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'wetlands',
     name: '沼泽湿地',
-    icon: '🐸',
+    icon: 'game-icons:toad',
     description: '无边的沼泽湿地蒸腾着令人窒息的水汽，蚊虫如乌云般成群飞舞。米奈希尔港是通往北方大陆的门户，但沼泽深处的疾风蜥与蛙人时刻威胁着过往旅人的性命。',
     continent: 'eastern_kingdoms',
     enemies: ['murloc', 'spider', 'troll', 'ogre'],
@@ -378,7 +378,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'arathi',
     name: '铁刃高地',
-    icon: '⚔️',
+    icon: 'game-icons:crossed-swords',
     description: '风蚀的高原上屹立着远古帝国最后的遗迹——古王要塞的断壁残垣。光辉盟约与铁血盟约在远古帝国盆地中为资源而血战不休，古老的誓言石见证着一场又一场无休止的厮杀。',
     continent: 'eastern_kingdoms',
     enemies: ['orc', 'troll', 'ogre', 'elemental'],
@@ -392,7 +392,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'hillsbrad',
     name: '翠绿丘陵',
-    icon: '🏕️',
+    icon: 'game-icons:village',
     description: '起伏的丘陵与翠绿的牧场曾是古王国最富庶的粮仓，如今却沦为光辉盟约与铁血盟约争夺的前线。翠绿农场在战火中化为焦土，南港镇的灯塔仍孤独地守望远方的大海。',
     continent: 'eastern_kingdoms',
     enemies: ['orc', 'wolf', 'bear', 'bandit'],
@@ -406,7 +406,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'elwynn',
     name: '翠叶森林',
-    icon: '🌲',
+    icon: 'game-icons:pine-tree',
     description: '辉石王国腹地的宁静林地，金色的阳光穿过橡树冠洒在繁花小径上。辉石城巍峨的白石城墙矗立于森林中央，然而豺狼人与暗影盗贼仍在暗处窥伺着这片富饶的土地。',
     continent: 'eastern_kingdoms',
     enemies: ['kobold', 'gnoll', 'wolf', 'boar', 'bandit'],
@@ -420,7 +420,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'westfall',
     name: '西风荒野',
-    icon: '🏜️',
+    icon: 'game-icons:desert',
     description: '曾经富饶的西部粮仓如今只剩下枯黄的麦茬与废弃的风车。暗影公会从暗影镇的地下矿井中策划着复仇，饥饿的稻草傀儡在无人的荒野中漫无目的地游荡。',
     continent: 'eastern_kingdoms',
     enemies: ['bandit', 'skeleton', 'gnoll'],
@@ -434,7 +434,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'redridge',
     name: '赤岩山脉',
-    icon: '⛰️',
+    icon: 'game-icons:mountains',
     description: '赤色砂岩构成的崎岖山脉，止水湖在山谷间如蓝宝石般闪耀。残存的黑崖兽人从熔火平原南下骚扰，而石堡要塞的守军日夜警惕着峡谷中的异动。',
     continent: 'eastern_kingdoms',
     enemies: ['orc', 'spider', 'ogre', 'kobold'],
@@ -448,7 +448,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'duskwood',
     name: '幽木森林',
-    icon: '🌙',
+    icon: 'game-icons:moon',
     description: '被黑暗魔法永久笼罩的恐怖森林，阳光永远无法穿透那层不祥的穹幕。亡者从乌鸦岭的墓园中不断爬出，暗夜镇的守夜人举着火炬在绝望中坚守最后的据点。',
     continent: 'eastern_kingdoms',
     enemies: ['skeleton', 'undead', 'spider', 'ghoul'],
@@ -462,7 +462,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'deadwind',
     name: '迷踪谷',
-    icon: '🌫️',
+    icon: 'game-icons:fog',
     description: '终年笼罩在紫色迷雾中的荒芜山谷，风声如亡者的叹息般在岩壁间回响。星界守护者的高塔——观星之塔矗立于谷心，塔中残留的奥术能量仍在扭曲着现实的面貌。',
     continent: 'eastern_kingdoms',
     enemies: ['undead', 'elemental'],
@@ -476,7 +476,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'stranglethorn',
     name: '棘藤谷',
-    icon: '🌴',
+    icon: 'game-icons:palm-tree',
     description: '茂密无边的热带雨林，古林部族巨魔的废墟被藤蔓与青苔吞没。宝藏湾的地精商人在码头上叫卖着奇珍异宝，而丛林深处的斗兽场中回荡着角斗士的怒吼与观众的狂呼。',
     continent: 'eastern_kingdoms',
     enemies: ['troll', 'ogre', 'naga', 'tiger', 'orc'],
@@ -490,7 +490,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'burning_steppes',
     name: '熔火平原',
-    icon: '🔥',
+    icon: 'game-icons:volcano',
     description: '暗炉矮人与暗黑龙族肆虐后的熔岩焦土，大地裂开狰狞的缝隙喷涌着灼热的岩浆。黑岩之塔的暗影如末日巨兽般匍匐在平原之上，暗翼之龙的龙吼从山顶传来。',
     continent: 'eastern_kingdoms',
     enemies: ['orc', 'elemental'],
@@ -504,7 +504,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'searing_gorge',
     name: '炎灼峡谷',
-    icon: '🌋',
+    icon: 'game-icons:lava',
     description: '熔岩河流切割出的炎灼峡谷，连接着熔火平原的烈焰与镜湖谷的宁静。暗炉矮人的挖掘场日夜不息，蒸汽与火星在暗红色的天幕下冲天而起。',
     continent: 'eastern_kingdoms',
     enemies: ['elemental', 'orc', 'spider'],
@@ -518,7 +518,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'badlands',
     name: '碎石荒野',
-    icon: '🏜️',
+    icon: 'game-icons:desert',
     description: '被时间与烈火共同雕刻的荒芜台地，嶙峋的火山岩如巨兽遗骨般散落大地。矮人的先祖之地先祖殿堂深埋于红色岩层之下，大地之子与穴居人在黑暗的隧道中争夺着远古的秘密。',
     continent: 'eastern_kingdoms',
     enemies: ['elemental', 'ogre', 'dwarf', 'spider'],
@@ -532,7 +532,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'swamp_of_sorrows',
     name: '哀伤沼泽',
-    icon: '🐊',
+    icon: 'game-icons:crocodile',
     description: '阴冷潮湿的失落沼泽，扭曲的红树林根系没入墨绿色的泥水。失落神庙被遗忘在沼泽深处，翠绿龙族的堕落阴影仍笼罩着这片哀伤之地。',
     continent: 'eastern_kingdoms',
     enemies: ['murloc', 'spider', 'troll', 'elemental'],
@@ -546,7 +546,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'blasted_lands',
     name: '焦黑荒原',
-    icon: '☠️',
+    icon: 'game-icons:poison',
     description: '世界之门开启时的狂暴能量将这片土地灼烧为不毛之地，赤红的焦土上寸草不生。恶魔与魔能兽人从裂痕中不断涌出，通往破碎虚空的巨门如永恒的伤疤矗立在地平线上。',
     continent: 'eastern_kingdoms',
     enemies: ['orc', 'elemental'],
@@ -560,7 +560,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'hinterlands',
     name: '丘陵高地',
-    icon: '🏔️',
+    icon: 'game-icons:mountains',
     description: '鹰巢矮人所在的崎岖高地，寒风吹过青翠的松林与古老的巨魔金字塔。崖顶城的邪恶巨魔部落从山巅俯视着大地，狮鹫骑士在云雾间警觉地巡逻。',
     continent: 'eastern_kingdoms',
     enemies: ['troll', 'wolf', 'bear', 'ogre'],
@@ -574,7 +574,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'zuldrak',
     name: '亡谷',
-    icon: '🦴',
+    icon: 'game-icons:bone-knife',
     description: '北境蛮族的古老领地，暴风雪在陡峭的峡壁间咆哮不息。冰谷要塞扼守着通往寒冰荒原的咽喉要道，古代的血祭仪式仍在要塞深处秘密进行。',
     continent: 'northrend',
     enemies: ['vrykul', 'undead', 'troll'],
@@ -588,7 +588,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'storm_peaks',
     name: '雷暴山巅',
-    icon: '⛈️',
+    icon: 'game-icons:thunderstorm',
     description: '寒霜废土最巍峨的冰封山脉，狂风裹挟着闪电在万仞峰巅永不停歇地咆哮。远古殿堂深藏于雷暴山巅的腹地，疯狂之神的牢笼虽已破裂，远古的守护者仍在与疯狂做最后的抗争。',
     continent: 'northrend',
     enemies: ['iron_dwarf', 'elemental'],
@@ -602,7 +602,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'icecrown',
     name: '寒冰荒原',
-    icon: '❄️',
+    icon: 'game-icons:snowflake-2',
     description: '亡灵骑士与亡者军团的终极堡垒，寒冰荒原的寒风如亡者的指甲刮过钢铁。寒冰王座的尖塔刺破黑暗的苍穹，亡者君主端坐于寒冰王座之上，寒冰王冠中冰冷的蓝光俯视着整个凡间世界。',
     continent: 'northrend',
     enemies: ['undead'],
@@ -616,7 +616,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'borean_tundra',
     name: '北境苔原',
-    icon: '🦕',
+    icon: 'game-icons:brontosaurus',
     description: '寒霜废土西部的苍茫冻土，温泉在冰原上蒸腾出温暖的生命绿洲。冰蓝龙族在龙族圣殿中守护着凡间的魔网，而地下虫族从地下巢穴中无声涌出。',
     continent: 'northrend',
     enemies: ['nerubian', 'troll', 'elemental'],
@@ -630,7 +630,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'howling_fjord',
     name: '咆哮湾',
-    icon: '🌊',
+    icon: 'game-icons:waves',
     description: '陡峭的峡湾峭壁从灰暗的海水中拔地而起，狂风吹过峡谷发出亡魂般的嚎哭。北境蛮族的北境要塞高踞崖顶，古老的符文巨像守卫着通往寒霜废土深处的致命入口。',
     continent: 'northrend',
     enemies: ['vrykul', 'troll', 'wolf', 'bear'],
@@ -644,7 +644,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'dragonblight',
     name: '龙骸荒原',
-    icon: '💀',
+    icon: 'game-icons:skull-sign',
     description: '亿万年巨龙骸骨铺就的苍白荒原，凛冽的寒风在巨兽般的骨堆间呜咽哀鸣。龙息神殿如利剑般刺入云霄，五色远古龙族在此守护着凡间最后的希望。',
     continent: 'northrend',
     enemies: ['undead'],
@@ -658,7 +658,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'grizzly_hills',
     name: '熊岭',
-    icon: '🐻',
+    icon: 'game-icons:bear-head',
     description: '松林密布的丘陵地带，溪流与瀑布在山谷间欢快奔涌。灰熊在溪边捕食鲑鱼，然而狼人的诅咒正在森林中悄然蔓延，熊人的图腾柱上沾染着不祥的血迹。',
     continent: 'northrend',
     enemies: ['bear', 'wolf', 'orc', 'elemental'],
@@ -672,7 +672,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'sholazar',
     name: '翡翠盆地',
-    icon: '🌿',
+    icon: 'game-icons:forest-camp',
     description: '远古造物守护下的热带仙境，温泉与瀑布在翠绿的丛林中蒸腾出生机盎然的雾气。然而亡者军团的腐化之力正从边界不断渗透，两个狂野诸神的后裔部落为生存而殊死搏斗。',
     continent: 'northrend',
     enemies: ['tiger', 'spider', 'elemental'],
@@ -686,7 +686,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'crystal_song',
     name: '水晶森林',
-    icon: '💎',
+    icon: 'game-icons:crystal-cluster',
     description: '冰蓝巨龙魔法失控后凝结成的瑰丽水晶森林，每一棵树都被永恒封冻在闪耀的晶石之中。奥法学院悬浮于森林上空的魔法穹顶之下，奥术能量在水晶间流淌出彩虹般的绚烂光晕。',
     continent: 'northrend',
     enemies: ['elemental', 'spider'],

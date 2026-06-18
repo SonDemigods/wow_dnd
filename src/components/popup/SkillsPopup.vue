@@ -11,7 +11,7 @@
               :class="['bar-slot', { empty: !slot.skill, selected: selectedSlotIndex === index }]"
               @click="selectBarSlot(index)"
             >
-              <span v-if="slot.skill" class="bar-icon">{{ slot.skill.icon }}</span>
+              <BaseIcon v-if="slot.skill" :name="slot.skill.icon" gradient="warrior" :size="24" />
               <span v-if="slot.skill" class="bar-name">{{ slot.skill.name }}</span>
               <span v-if="!slot.skill" class="bar-empty">+</span>
             </div>
@@ -27,7 +27,7 @@
               :class="['skill-slot', { equipped: isSkillEquipped(skill.id), locked: !canUnlock(skill), selected: selectedSkill?.id === skill.id }]"
               @click="selectSkill(skill)"
             >
-              <span class="skill-icon">{{ skill.icon }}</span>
+              <BaseIcon :name="skill.icon" gradient="warrior" :size="24" />
               <span v-if="!canUnlock(skill)" class="lock-badge">🔒</span>
               <span v-if="isSkillEquipped(skill.id)" class="equipped-badge">✓</span>
             </div>
@@ -38,7 +38,7 @@
           <template v-if="selectedSkill">
             <div class="detail-top">
               <div class="detail-header">
-                <div class="detail-icon">{{ selectedSkill.icon }}</div>
+                <BaseIcon :name="selectedSkill.icon" gradient="warrior" :size="36" />
                 <div class="detail-info">
                   <h3>{{ selectedSkill.name }}</h3>
                   <SkillTags :skill="selectedSkill" />
@@ -80,7 +80,7 @@
             </div>
           </template>
           <div v-else class="detail-placeholder">
-            <span class="placeholder-icon">⚔️</span>
+            <BaseIcon name="sword-clash" gradient="physical" :size="24" />
             <span class="placeholder-text">点击技能查看详情</span>
           </div>
         </div>
@@ -103,6 +103,7 @@ import { useSkillDisplay } from '@/composables/useSkillDisplay';
 import type { Skill, SkillSlotIndex } from '@/modules/skill';
 import BasePopup from '../common/BasePopup.vue';
 import SkillTags from '../common/SkillTags.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 
 defineProps<{
   visible: boolean;

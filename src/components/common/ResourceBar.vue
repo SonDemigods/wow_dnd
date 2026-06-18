@@ -1,6 +1,6 @@
 <template>
   <div class="resource-bar-wrapper">
-    <span class="resource-icon" :class="type">{{ icon }}</span>
+    <BaseIcon :name="iconName || icon" :gradient="iconGradient" :size="16" />
     <div class="resource-track">
       <!-- 填充层 -->
       <div class="resource-fill" :class="type" :style="{ width: percent + '%' }">
@@ -31,8 +31,12 @@
  *              包含液态波浪、粒子光效、外发光等华丽视觉效果
  */
 
+import BaseIcon from '@/components/common/BaseIcon.vue';
+
 withDefaults(defineProps<{
   icon: string;
+  iconName?: string;
+  iconGradient?: string;
   name: string;
   current: number;
   max: number;

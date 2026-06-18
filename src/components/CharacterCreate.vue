@@ -3,7 +3,7 @@
     <!-- 校验/确认弹窗 -->
     <div v-if="showModal" class="modal-overlay" @click="cancelModal">
       <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="modal-box" @click.stop>
-        <div class="modal-icon">{{ modalIcon }}</div>
+        <div class="modal-icon"><BaseIcon :name="modalIcon.name" :gradient="modalIcon.gradient" :size="48" /></div>
         <h3>{{ modalTitle }}</h3>
         <p>{{ modalMessage }}</p>
         <div class="modal-buttons">
@@ -36,7 +36,7 @@
             :style="{ '--faction-color': faction.color }"
             @click="selectFaction(faction.id)"
           >
-            <div class="faction-icon">{{ faction.icon }}</div>
+            <div class="faction-icon"><BaseIcon :name="faction.icon" gradient="alliance" :size="32" /></div>
             <div class="faction-name">{{ faction.name }}</div>
             <div class="faction-desc">
               {{ getFactionRaceNames(faction.id) }}
@@ -54,7 +54,7 @@
             :style="{ '--faction-color': '#4CAF50' }"
             @click="selectFaction('neutral')"
           >
-            <div class="faction-icon">{{ neutralFaction.icon }}</div>
+            <div class="faction-icon"><BaseIcon :name="neutralFaction.icon" gradient="neutral" :size="32" /></div>
             <div class="faction-name">{{ neutralFaction.name }}</div>
             <div class="faction-desc">{{ getFactionRaceNames('neutral') }}</div>
           </button>
@@ -91,7 +91,7 @@
             :style="{ '--class-color': cls.color }"
             @click="selectClass(cls.id)"
           >
-            <div class="class-icon">{{ cls.icon }}</div>
+            <div class="class-icon"><BaseIcon :name="cls.icon" :size="28" /></div>
             <div class="class-name">{{ cls.name }}</div>
             <div class="class-bonus" v-if="cls.bonus">
               <span
@@ -154,7 +154,7 @@
             :key="stat"
             class="attr-item"
           >
-            <span class="attr-icon">{{ getStatIcon(stat) }}</span>
+            <BaseIcon :name="getStatIcon(stat).name" :gradient="getStatIcon(stat).gradient" :size="16" />
             <span class="attr-name">{{ getStatName(stat) }}</span>
             <span class="attr-value">{{ value }}</span>
           </div>
@@ -170,7 +170,7 @@
             :key="stat"
             class="attr-box"
           >
-            <div class="attr-icon">{{ getStatIcon(stat) }}</div>
+            <BaseIcon :name="getStatIcon(stat).name" :gradient="getStatIcon(stat).gradient" :size="14" />
             <div class="attr-label">{{ getStatName(stat) }}</div>
             <div class="attr-value">{{ value }}</div>
           </div>
@@ -180,42 +180,42 @@
           <div class="secondary-title">次级属性</div>
           <div class="secondary-attrs">
             <div class="sec-attr">
-              <span class="sec-icon">⚔️</span>
+              <BaseIcon name="sword-clash" gradient="physical" :size="14" />
               <span>物理攻击</span>
               <strong>{{ derivedAttributes.physicalAttack }}</strong>
             </div>
             <div class="sec-attr">
-              <span class="sec-icon">🛡️</span>
+              <BaseIcon name="shield" gradient="earth" :size="14" />
               <span>物理防御</span>
               <strong>{{ derivedAttributes.physicalDefense }}</strong>
             </div>
             <div class="sec-attr">
-              <span class="sec-icon">🌀</span>
+              <BaseIcon name="magic-swirl" gradient="magic" :size="14" />
               <span>魔法攻击</span>
               <strong>{{ derivedAttributes.magicAttack }}</strong>
             </div>
             <div class="sec-attr">
-              <span class="sec-icon">🔮</span>
+              <BaseIcon name="magic-shield" gradient="magic" :size="14" />
               <span>魔法防御</span>
               <strong>{{ derivedAttributes.magicDefense }}</strong>
             </div>
             <div class="sec-attr">
-              <span class="sec-icon">💥</span>
+              <BaseIcon name="explosion-rays" gradient="crit" :size="14" />
               <span>暴击率</span>
               <strong>{{ derivedAttributes.critChance }}%</strong>
             </div>
             <div class="sec-attr">
-              <span class="sec-icon">💨</span>
+              <BaseIcon name="dodge" gradient="dodge" :size="14" />
               <span>闪避率</span>
               <strong>{{ derivedAttributes.dodgeChance }}%</strong>
             </div>
             <div class="sec-attr">
-              <span class="sec-icon">❤️</span>
+              <BaseIcon name="health-normal" gradient="blood" :size="14" />
               <span>最大HP</span>
               <strong>{{ derivedAttributes.maxHp }}</strong>
             </div>
             <div class="sec-attr">
-              <span class="sec-icon">💧</span>
+              <BaseIcon name="magic-palm" gradient="mana" :size="14" />
               <span>最大MP</span>
               <strong>{{ derivedAttributes.maxMana }}</strong>
             </div>
@@ -261,6 +261,7 @@ import { useCharacterStore } from '@/modules/character';
 import { useBaseStore } from '@/modules/base';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import Tag from './common/Tag.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 import type {
   FactionType,
   RaceType,
@@ -294,7 +295,7 @@ const selectedClass = ref<string | null>(null);
 /** 弹窗状态 */
 const showModal = ref(false);
 const modalType = ref<'error' | 'confirm'>('error');
-const modalIcon = ref('');
+const modalIcon = ref<{ name: string; gradient: string }>({ name: '', gradient: '' });
 const modalTitle = ref('');
 const modalMessage = ref('');
 const modalConfirmText = ref('');
@@ -430,16 +431,16 @@ function getStatName(stat: string) {
   return STAT_NAMES[stat as keyof typeof STAT_NAMES] || stat;
 }
 
-function getStatIcon(stat: string): string {
-  const icons: Record<string, string> = {
-    str: '💪',
-    dex: '⚡',
-    con: '❤️',
-    int: '🧠',
-    wis: '👁️',
-    cha: '✨'
+function getStatIcon(stat: string): { name: string; gradient: string } {
+  const icons: Record<string, { name: string; gradient: string }> = {
+    str: { name: 'biceps', gradient: 'physical' },
+    dex: { name: 'boot-kick', gradient: 'lightning' },
+    con: { name: 'heart-organ', gradient: 'blood' },
+    int: { name: 'brain', gradient: 'magic' },
+    wis: { name: 'eye-target', gradient: 'nature' },
+    cha: { name: 'charm', gradient: 'gold' }
   };
-  return icons[stat] || '📊';
+  return icons[stat] || { name: 'uncertainty', gradient: 'shadow' };
 }
 
 function nextStep() {
@@ -484,7 +485,7 @@ function validateName(input: string): string | null {
 /** 显示错误弹窗 */
 function showErrorModal(msg: string) {
   modalType.value = 'error';
-  modalIcon.value = '⚠️';
+  modalIcon.value = { name: 'caltrops', gradient: 'warning' };
   modalTitle.value = '角色名不符合要求';
   modalMessage.value = msg;
   modalConfirmText.value = '返回修改';
@@ -494,7 +495,7 @@ function showErrorModal(msg: string) {
 /** 显示确认弹窗 */
 function showConfirmModal() {
   modalType.value = 'confirm';
-  modalIcon.value = '✅';
+  modalIcon.value = { name: 'check-mark', gradient: 'success' };
   modalTitle.value = '确认创建角色';
   modalMessage.value = `确认创建角色「${name.value.trim()}」吗？`;
   modalConfirmText.value = '确认创建';

@@ -7,7 +7,7 @@
           :key="quest.questId"
           class="quest-card"
         >
-          <div class="quest-icon">{{ getQuestIcon(quest.definition.type) }}</div>
+          <BaseIcon :name="getQuestIcon(quest.definition.type).name" :gradient="getQuestIcon(quest.definition.type).gradient" :size="16" />
           <div class="quest-content">
             <div class="quest-header-row">
               <h3>{{ quest.definition.title }}</h3>
@@ -80,6 +80,7 @@ import type { QuestDefinition, QuestInstance, QuestStatus } from '@/modules/ques
 import { getObjectiveText } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 
 interface ActiveQuest {
   questId: string;
@@ -120,9 +121,9 @@ const confirmState = reactive({
   questId: ''
 });
 
-const questIcons: Record<string, string> = {
-  kill: '⚔️',
-  collect: '📦'
+const questIcons: Record<string, { name: string; gradient: string }> = {
+  kill: { name: 'sword-clash', gradient: 'physical' },
+  collect: { name: 'treasure-map', gradient: 'gold' }
 };
 
 const statusTexts: Record<string, string> = {
@@ -131,7 +132,7 @@ const statusTexts: Record<string, string> = {
 };
 
 function getQuestIcon(type: string) {
-  return questIcons[type] || '📋';
+  return questIcons[type] || { name: 'scroll-unfurled', gradient: 'gold' };
 }
 
 function getStatusText(status: QuestStatus) {

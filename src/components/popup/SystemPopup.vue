@@ -8,11 +8,11 @@
   >
     <div class="system-body">
       <button class="system-btn audio-btn" @click="openAudioSettings">
-        <span class="system-btn-icon">🔊</span>
+        <BaseIcon name="sound-on" gradient="metal" :size="20" />
         <span class="system-btn-label">音量设置</span>
       </button>
       <button class="system-btn exit-btn" @click="handleExit">
-        <span class="system-btn-icon">🚪</span>
+        <BaseIcon name="exit-door" gradient="shadow" :size="20" />
         <span class="system-btn-label">退出游戏</span>
       </button>
     </div>
@@ -31,6 +31,7 @@
 
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import BasePopup from '../common/BasePopup.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 
 defineProps<{
   visible: boolean;

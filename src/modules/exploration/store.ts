@@ -338,7 +338,7 @@ export const useExplorationStore = defineStore('exploration', () => {
       timestamp: Date.now(),
       type: 'exploration',
       message: `开始探索：${areaName}`,
-      icon: '🗺️'
+      icon: 'game-icons:treasure-map'
     });
   }
 
@@ -549,7 +549,7 @@ export const useExplorationStore = defineStore('exploration', () => {
         timestamp: Date.now(),
         type: 'exploration',
         message: '探索结束',
-        icon: '🏁'
+        icon: 'game-icons:entry-door'
       });
     }
   }
@@ -574,7 +574,7 @@ export const useExplorationStore = defineStore('exploration', () => {
         timestamp: Date.now(),
         type: 'item',
         message: `发现物品: ${item.name}`,
-        icon: '📦'
+        icon: 'game-icons:chest'
       });
 
       // 直接调用 Inventory Store Action 添加物品
@@ -604,7 +604,7 @@ export const useExplorationStore = defineStore('exploration', () => {
         timestamp: Date.now(),
         type: 'item',
         message: `发现宝箱，获得 ${gold} 金币、${exp} 经验`,
-        icon: '📦'
+        icon: 'game-icons:chest'
       });
 
       eventBus.emit(GameEvents.EXPLORATION_ITEM_FOUND, {
@@ -715,7 +715,7 @@ export const useExplorationStore = defineStore('exploration', () => {
       timestamp: Date.now(),
       type: 'exploration',
       message: '在营地休息，恢复了全部生命值和法力值',
-      icon: '🏕️'
+      icon: 'game-icons:campfire'
     });
   }
 

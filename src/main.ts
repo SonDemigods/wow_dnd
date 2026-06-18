@@ -14,6 +14,7 @@ import { initConsole } from '@/modules/console'
 import { audioService } from '@/modules/audio/service'
 import './styles/popup.less'
 import './styles/animations.less'
+import './styles/icon-gradients.less'
 
 /**
  * 初始化并启动应用

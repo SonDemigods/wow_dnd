@@ -216,7 +216,7 @@ export const useQuestStore = defineStore('quest', () => {
       timestamp: Date.now(),
       type: 'quest',
       message: `接受了任务：${definition.title}`,
-      icon: '📋'
+      icon: 'game-icons:notebook'
     });
 
     return true;
@@ -266,7 +266,7 @@ export const useQuestStore = defineStore('quest', () => {
           timestamp: Date.now(),
           type: 'quest',
           message: `完成了任务：${definition.title}！`,
-          icon: '✅'
+          icon: 'game-icons:check-mark'
         });
       } else {
         // 仅更新进度
@@ -311,7 +311,7 @@ export const useQuestStore = defineStore('quest', () => {
           timestamp: Date.now(),
           type: 'quest',
           message: `完成了任务：${definition.title}！`,
-          icon: '✅'
+          icon: 'game-icons:check-mark'
         });
       } else {
         await _updateAndPersistInstance(questId, updatedInstance);
@@ -359,7 +359,7 @@ export const useQuestStore = defineStore('quest', () => {
       timestamp: Date.now(),
       type: 'quest',
       message: `完成了任务：${definition.title}！`,
-      icon: '✅'
+      icon: 'game-icons:check-mark'
     });
 
     return true;
@@ -401,7 +401,7 @@ export const useQuestStore = defineStore('quest', () => {
       timestamp: Date.now(),
       type: 'quest',
       message: `提交了任务：${definition.title}${rewardText}`,
-      icon: '🏆'
+      icon: 'game-icons:laurel-crown'
     });
 
     return true;
@@ -434,7 +434,7 @@ export const useQuestStore = defineStore('quest', () => {
         timestamp: Date.now(),
         type: 'quest',
         message: `放弃了任务：${definition.title}`,
-        icon: '❌'
+        icon: 'game-icons:cancel'
       });
     }
 

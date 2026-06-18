@@ -13,7 +13,7 @@
           :class="`log-type-${log.type}`"
         >
           <span class="log-time">{{ formatTimestamp(log.timestamp) }}</span>
-          <span class="log-icon">{{ log.icon || getDefaultIcon(log.type) }}</span>
+          <span class="log-icon"><BaseIcon :name="(log.icon || getDefaultIcon(log.type).name)" :gradient="getDefaultIcon(log.type).gradient" :size="16" /></span>
           <span class="log-message">{{ log.message }}</span>
         </div>
 
@@ -49,6 +49,7 @@ import { useLogStore } from '../../modules/log';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 
 interface Props {
   visible: boolean;
@@ -70,21 +71,21 @@ const showClearConfirm = ref(false);
 const logs = computed(() => logStore.logs);
 const currentArea = computed(() => props.currentArea || '未知区域');
 
-const getDefaultIcon = (type: string): string => {
-  const iconMap: Record<string, string> = {
-    'info': '📜',
-    'combat': '⚔️',
-    'quest': '📋',
-    'item': '📦',
-    'level': '⬆️',
-    'death': '💀',
-    'resurrect': '✨',
-    'shop': '🛒',
-    'skill': '✨',
-    'exploration': '🗺️',
-    'zone': '📍'
+const getDefaultIcon = (type: string): { name: string; gradient: string } => {
+  const iconMap: Record<string, { name: string; gradient: string }> = {
+    'info': { name: 'scroll-unfurled', gradient: 'earth' },
+    'combat': { name: 'crossed-swords', gradient: 'physical' },
+    'quest': { name: 'notebook', gradient: 'gold' },
+    'item': { name: 'chest', gradient: 'gold' },
+    'level': { name: 'level-up', gradient: 'gold' },
+    'death': { name: 'death-skull', gradient: 'debuff' },
+    'resurrect': { name: 'resurrection', gradient: 'gold' },
+    'shop': { name: 'shop', gradient: 'gold' },
+    'skill': { name: 'resurrection', gradient: 'gold' },
+    'exploration': { name: 'treasure-map', gradient: 'nature' },
+    'zone': { name: 'uncertainty', gradient: 'shadow' }
   };
-  return iconMap[type] || '📜';
+  return iconMap[type] || { name: 'scroll-unfurled', gradient: 'earth' };
 };
 
 const formatTimestamp = (timestamp: number): string => {

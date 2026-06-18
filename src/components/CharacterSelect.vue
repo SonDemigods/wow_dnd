@@ -81,7 +81,9 @@
         :style="{ '--class-color': baseStore.getClassColor(char.classId), '--faction-color': baseStore.getFactionColor(char.factionId) }"
         @click="selectCharacter(char.id)"
       >
-        <div class="char-icon">{{ baseStore.getRaceIcon(char.raceId) }}</div>
+        <div class="char-icon">
+          <BaseIcon :name="baseStore.getRaceIcon(char.raceId)" gradient="gold" :size="40" />
+        </div>
         <div class="char-info">
           <div class="char-header">
             <span class="char-name">{{ char.name }}</span>
@@ -135,6 +137,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import Tag from './common/Tag.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 import { useBaseStore } from '@/modules/base';
 import type { ImportResult } from '@/modules/data';
 

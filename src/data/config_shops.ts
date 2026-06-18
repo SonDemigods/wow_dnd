@@ -15,7 +15,7 @@ export const SHOPS: ShopConfig[] = [
     id: 'general_goods',
     name: '杂货铺',
     type: 'general',
-    icon: '🏪',
+    icon: 'game-icons:shop',
     refreshInterval: 300000,
     priceVariation: {
       min: 0.8,
@@ -37,7 +37,7 @@ export const SHOPS: ShopConfig[] = [
     id: 'scroll_shop',
     name: '奥术商店',
     type: 'scroll',
-    icon: '📜',
+    icon: 'game-icons:spell-book',
     refreshInterval: 900000,
     priceVariation: {
       min: 0.9,
@@ -59,7 +59,7 @@ export const SHOPS: ShopConfig[] = [
     id: 'alchemy_shop',
     name: '药剂商行',
     type: 'potion',
-    icon: '🍶',
+    icon: 'game-icons:potion-ball',
     refreshInterval: 600000,
     priceVariation: {
       min: 0.8,
@@ -70,7 +70,7 @@ export const SHOPS: ShopConfig[] = [
     id: 'mysterious_trader',
     name: '旅行商人',
     type: 'general',
-    icon: '🎭',
+    icon: 'game-icons:hooded-figure',
     refreshInterval: 1800000,
     priceVariation: {
       min: 0.7,

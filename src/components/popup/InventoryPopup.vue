@@ -67,7 +67,7 @@
                 class="action-btn use"
                 @click="useItem(selectedEntry.item.itemId)"
               >
-                💊 使用
+                <BaseIcon name="potion-ball" gradient="heal" :size="16" /> 使用
               </button>
               <button 
                 v-if="isEquipment(selectedEntry.info?.type)"
@@ -80,12 +80,12 @@
                 class="action-btn drop"
                 @click="dropItem(selectedEntry.item.itemId)"
               >
-                🗑️ 丢弃
+                <BaseIcon name="trash-can" gradient="blood" :size="16" /> 丢弃
               </button>
             </div>
           </template>
           <div v-else class="detail-placeholder">
-            <span class="placeholder-icon">📦</span>
+            <BaseIcon name="backpack" gradient="earth" :size="48" />
             <span class="placeholder-text">点击物品查看详情</span>
           </div>
         </div>
@@ -138,6 +138,7 @@ import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
 import ItemIcon from '../common/ItemIcon.vue';
 import EffectTag from '../common/EffectTag.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 import { useInventoryStore } from '@/modules/inventory';
 import { useCharacterStore } from '@/modules/character';
 import { useEquipmentStore } from '@/modules/equipment';

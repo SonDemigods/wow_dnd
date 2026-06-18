@@ -26,7 +26,7 @@
           :style="getMarkerStyle(zone.coordinates)"
           @click.stop="selectZone(zone)"
         >
-          <div class="marker-icon">{{ zone.icon }}</div>
+          <div class="marker-icon"><BaseIcon :name="zone.icon" gradient="metal" :size="20" /></div>
         </div>
       </div>
 
@@ -103,6 +103,7 @@
  */
 
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 import { useMapStore } from '@/modules/map';
 import { useCharacterStore } from '@/modules/character';
 import { eventBus, GameEvents } from '@/modules/bus/core';

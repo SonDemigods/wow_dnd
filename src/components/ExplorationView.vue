@@ -2,7 +2,7 @@
   <div class="exploration-view">
     <!-- 未选择区域时的提示 -->
     <div v-if="!hasCurrentLocation" class="no-location-hint">
-      <div class="hint-icon">🗺️</div>
+      <BaseIcon name="treasure-map" gradient="nature" :size="20" />
       <div class="hint-text">请先在地图上选择一个区域</div>
       <div class="hint-sub">点击地图标签，选择想要探索的区域后开始冒险</div>
     </div>
@@ -37,8 +37,8 @@
                 :data-x="x"
                 :data-y="y"
               >
-                <span v-if="cell.explored" class="cell-icon">{{ getCellIcon(cell.type) }}</span>
-                <span v-else class="cell-icon cell-hidden">?</span>
+                <BaseIcon v-if="cell.explored" :name="getCellIcon(cell.type).name" :gradient="getCellIcon(cell.type).gradient" :size="20" />
+                <BaseIcon v-else name="uncertainty" gradient="shadow" :size="20" />
               </div>
             </div>
           </div>
@@ -63,6 +63,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useExplorationStore } from '@/modules/exploration';
 import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 import type { ExplorationCell } from '@/modules/exploration';
 
 const explorationStore = useExplorationStore();
@@ -100,21 +101,21 @@ const explorationProgress = computed(() => {
   return Math.round((explored / total) * 100);
 });
 
-const cellIcons: Record<string, string> = {
-  empty: '○',
-  monster: '⚔️',
-  treasure: '📦',
-  shop: '🏪',
-  rest: '🏕️',
-  boss: '👹',
-  event: '🎲',
-  trap: '⚠️',
-  start: '🏁',
-  board: '📜'
+const cellIcons: Record<string, { name: string; gradient: string }> = {
+  empty: { name: 'plain-circle', gradient: 'metal' },
+  monster: { name: 'sword-clash', gradient: 'physical' },
+  treasure: { name: 'treasure-map', gradient: 'gold' },
+  shop: { name: 'shop', gradient: 'gold' },
+  rest: { name: 'campfire', gradient: 'heal' },
+  boss: { name: 'dragon-head', gradient: 'dragon' },
+  event: { name: 'perspective-dice-six', gradient: 'magic' },
+  trap: { name: 'caltrops', gradient: 'debuff' },
+  start: { name: 'entry-door', gradient: 'heal' },
+  board: { name: 'notebook', gradient: 'gold' }
 };
 
 function getCellIcon(type: string) {
-  return cellIcons[type] || '○';
+  return cellIcons[type] || { name: 'plain-circle', gradient: 'metal' };
 }
 
 function getCellClasses(cell: ExplorationCell) {

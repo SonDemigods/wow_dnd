@@ -17,12 +17,12 @@ const skillTypeNames: Record<string, string> = {
 
 /** 技能类型图标映射 */
 const skillTypeIcons: Record<string, string> = {
-  physical_damage: '⚔️',
-  magic_damage: '🔮',
-  health_restore: '💚',
-  mana_restore: '💙',
-  buff: '⬆️',
-  debuff: '⬇️'
+  physical_damage: 'game-icons:sword-clash',
+  magic_damage: 'game-icons:magic-swirl',
+  health_restore: 'game-icons:health-increase',
+  mana_restore: 'game-icons:magic-palm',
+  buff: 'game-icons:upgrade',
+  debuff: 'game-icons:downgrade'
 };
 
 /** 目标类型中文名映射 */
@@ -49,7 +49,7 @@ export function useSkillDisplay() {
 
   /** 获取技能类型图标 */
   function getSkillTypeIcon(type: string): string {
-    return skillTypeIcons[type] || '✨';
+    return skillTypeIcons[type] || 'game-icons:sparkles';
   }
 
   /** 获取目标类型中文名 */

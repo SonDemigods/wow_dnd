@@ -210,7 +210,7 @@ export const useSkillsStore = defineStore('skills', () => {
       timestamp: Date.now(),
       type: 'skill',
       message: `学会了新技能：${template.name}！`,
-      icon: '📖'
+      icon: 'game-icons:spell-book'
     });
 
     return true;
@@ -298,7 +298,7 @@ export const useSkillsStore = defineStore('skills', () => {
         timestamp: Date.now(),
         type: 'skill',
         message: `施放了技能：${skill.name}`,
-        icon: '⚡'
+        icon: 'game-icons:lightning-storm'
       });
     }
 
@@ -536,7 +536,7 @@ export const useSkillsStore = defineStore('skills', () => {
           timestamp: Date.now(),
           type: 'skill',
           message: `学会了新技能：${template.name}！`,
-          icon: '📖'
+          icon: 'game-icons:spell-book'
         });
       }
     });

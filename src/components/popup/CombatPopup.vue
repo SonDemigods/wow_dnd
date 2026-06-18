@@ -7,7 +7,7 @@
       <!-- Boss 出场演出遮罩（统一风格） -->
       <div v-if="showBossIntro" ref="bossIntroOverlayRef" class="boss-intro-overlay">
         <div class="boss-intro-content">
-          <div ref="bossIntroIconRef" class="boss-intro-icon">{{ bossIntroIcon }}</div>
+          <div ref="bossIntroIconRef" class="boss-intro-icon"><BaseIcon :name="bossIntroIcon" gradient="dragon" :size="48" /></div>
           <div ref="bossIntroNameRef" class="boss-intro-name">{{ bossIntroName }}</div>
           <div v-for="(line, i) in bossIntroLines" :key="i" :ref="(el) => { if (el) bossIntroLineRefs[i] = el as HTMLElement }" :class="['boss-intro-line', 'line-' + i]">
             {{ line }}
@@ -28,7 +28,8 @@
       <div class="combat-header">
         <span class="combat-title">{{ combatStore.hasBossEnemy ? '首领战斗！' : '遭遇战斗！' }}</span>
         <button class="speed-toggle" @click="toggleSpeed" :title="combatSpeed === 1 ? '切换2倍速' : '切换1倍速'">
-          {{ combatSpeed === 1 ? '⚡1x' : '⚡⚡2x' }}
+          <BaseIcon :name="combatSpeed === 1 ? 'single-arrow' : 'double-arrow'" gradient="lightning" :size="16" />
+          {{ combatSpeed === 1 ? '1x' : '2x' }}
         </button>
         <span class="combat-turn">第 {{ turnCount }} 回合</span>
       </div>
@@ -55,14 +56,14 @@
                   :data-enemy-shake="e.id"
                   @click="selectTarget(e.id)"
                 >
-                  <div class="combatant-avatar">{{ e.icon || '👹' }}</div>
+                  <div class="combatant-avatar"><BaseIcon :name="e.icon || 'dragon-head'" :size="28" /></div>
                   <div class="combatant-info">
                     <div class="combatant-name">{{ e.name }}</div>
                     <div class="combatant-level">Lv.{{ e.level || 1 }}</div>
                     <div v-if="e.isBoss" class="boss-badge">👑 首领</div>
                   </div>
                   <div class="combatant-bars">
-                    <ResourceBar icon="❤️" name="HP" :current="e.hp" :max="e.maxHp" :percent="getHpPercent(e)" type="hp" />
+                    <ResourceBar icon="health-normal" name="HP" :current="e.hp" :max="e.maxHp" :percent="getHpPercent(e)" type="hp" />
                   </div>
                   <!-- Buff/Debuff 效果指示器 -->
                   <div v-if="getEnemyEffectCount(e.id) > 0" class="effects-indicator enemy-effects">
@@ -86,7 +87,7 @@
         </div>
 
         <!-- VS 分隔 -->
-        <div ref="vsDividerRef" class="vs-divider" :class="{ 'flash': vsFlash }">⚔️</div>
+        <div ref="vsDividerRef" class="vs-divider" :class="{ 'flash': vsFlash }"><BaseIcon name="crossed-swords" gradient="physical" :size="20" /></div>
 
         <!-- 玩家区域 -->
         <div class="combatant player-side" :class="{ 'shake': playerShake, 'crit-shake': playerCritShake, 'dodge-blink': playerDodgeBlink }">
@@ -96,8 +97,8 @@
             <div class="combatant-level">Lv.{{ playerLevel }}</div>
           </div>
           <div class="combatant-bars">
-            <ResourceBar icon="❤️" name="HP" :current="playerHp" :max="playerMaxHp" :percent="playerHpPercent" type="hp" />
-            <ResourceBar icon="💧" name="MP" :current="playerMp" :max="playerMaxMp" :percent="playerMpPercent" type="mp" />
+            <ResourceBar icon="health-normal" name="HP" :current="playerHp" :max="playerMaxHp" :percent="playerHpPercent" type="hp" />
+            <ResourceBar icon="magic-palm" name="MP" :current="playerMp" :max="playerMaxMp" :percent="playerMpPercent" type="mp" />
             <!-- Buff/Debuff 效果指示器 -->
             <template v-if="combatStore.playerEffects.effects.length > 0">
               <div class="effects-indicator">
@@ -122,7 +123,7 @@
           <span v-if="log.damage && log.damage > 0" :class="['log-damage', getDamageTypeClass(log)]">
             {{ getDamageTypeIcon(log) }} -{{ log.damage }}
           </span>
-          <span v-if="log.heal && log.heal > 0" class="log-heal">💚 +{{ log.heal }}</span>
+          <span v-if="log.heal && log.heal > 0" class="log-heal"><BaseIcon name="health-increase" gradient="heal" :size="12" /> +{{ log.heal }}</span>
           <span v-if="log.isCrit" class="log-crit">暴击！</span>
           <span v-if="log.isDodge" class="log-dodge">闪避！</span>
         </div>
@@ -133,16 +134,16 @@
       <div class="combat-actions">
         <div class="action-row primary-actions">
           <button class="action-btn attack-btn" @click="doAction('attack')" :disabled="!canAct">
-            ⚔️ 普通攻击
+            <BaseIcon name="sword-clash" gradient="physical" :size="16" /> 普通攻击
           </button>
           <button class="action-btn item-btn" @click="openItemModal" :disabled="!canAct || !hasConsumables">
-            💊 物品
+            <BaseIcon name="potion-ball" gradient="heal" :size="16" /> 物品
           </button>
           <button class="action-btn skip-btn" @click="doSkip" :disabled="!canAct">
-            ⏭️ 跳过
+            <BaseIcon name="next-button" gradient="metal" :size="16" /> 跳过
           </button>
           <button class="action-btn flee-btn" @click="doAction('flee')" :disabled="!canAct || combatStore.hasBossEnemy">
-            🏃 逃跑
+            <BaseIcon name="run" gradient="dodge" :size="16" /> 逃跑
           </button>
         </div>
         <div class="action-row skill-actions" v-if="equippedSkills.length > 0">
@@ -154,7 +155,7 @@
             @click="doSkill(skill.id)"
             :disabled="!canAct || playerMp < skill.mpCost || skillsStore.isOnCooldown(skill.id)"
           >
-            <span class="skill-icon">{{ skill.icon }}</span>
+            <span class="skill-icon"><BaseIcon :name="skill.icon" :size="14" /></span>
             <span class="skill-name">{{ skill.name }}</span>
             <span :class="['skill-effect', `skill-effect-${skill.type}`]">{{ getSkillEffectText(skill) }}</span>
             <span class="skill-cost">{{ skill.mpCost }} MP</span>
@@ -166,7 +167,7 @@
         </div>
         <!-- 敌人回合遮罩 -->
         <div v-if="!isPlayerTurn && isFighting" class="enemy-turn-overlay">
-          <span class="enemy-turn-text">⏳ 敌人行动中...</span>
+          <span class="enemy-turn-text"><BaseIcon name="uncertainty" gradient="shadow" :size="16" /> 敌人行动中...</span>
         </div>
       </div>
     </div>
@@ -235,6 +236,7 @@ import type { Skill } from '@/modules/skill/types';
 import type { ItemRarity } from '@/modules/inventory/types';
 import ResourceBar from '@/components/common/ResourceBar.vue';
 import ItemIcon from '@/components/common/ItemIcon.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 import {
   animateShake,
   animateCritShake,
@@ -329,7 +331,7 @@ const resultTextRef = ref<HTMLElement | null>(null);
 // 玩家数据（从 characterStore 读取，与主界面一致）
 const playerName = computed(() => characterStore.name);
 const playerLevel = computed(() => characterStore.level);
-const playerIcon = computed(() => characterStore.raceIcon || '🧑');
+const playerIcon = computed(() => characterStore.raceIcon || 'person');
 const playerHp = computed(() => characterStore.hp);
 const playerMaxHp = computed(() => characterStore.maxHp);
 const playerMp = computed(() => characterStore.mana);
@@ -393,7 +395,7 @@ const consumableItems = computed(() => {
           itemId: invItem.itemId,
           count: invItem.count,
           name: info.name,
-          icon: info.icon || '📦',
+          icon: info.icon || 'backpack',
           description: buildItemDescription(info),
           rarity: info.rarity
         };
@@ -438,17 +440,17 @@ function getDamageTypeClass(log: CombatLog): string {
 
 // 根据日志事件类型获取伤害类型图标
 function getDamageTypeIcon(log: CombatLog): string {
-  if (log.eventType === 'combat_skill_cast') return '🔮';
-  if (log.eventType === 'combat_critical') return '⚔️';
-  return '🗡️';
+  if (log.eventType === 'combat_skill_cast') return 'magic-swirl';
+  if (log.eventType === 'combat_critical') return 'sword-clash';
+  return 'pointy-sword';
 }
 
 /** 效果图标映射 */
 const effectIcons: Record<string, string> = {
-  poison: '☠️', burn: '🔥', stun: '💫', freeze: '❄️', silence: '🔇',
-  shield: '🛡️', attack_up: '⚔️', attack_down: '⚔️', defense_up: '🛡️',
-  defense_down: '🛡️', speed_up: '💨', speed_down: '🐢', regen: '💚',
-  thorn: '🌵', vulnerable: '💔',
+  poison: 'skull-poison', burn: 'flame', stun: 'stun-glow', freeze: 'snowflake', silence: 'silenced',
+  shield: 'shield', attack_up: 'sword-clash', attack_down: 'sword-clash', defense_up: 'shield',
+  defense_down: 'shield', speed_up: 'dodge', speed_down: 'turtle', regen: 'regeneration',
+  thorn: 'cactus', vulnerable: 'heart-organ',
 };
 
 /** 效果类型标签 */

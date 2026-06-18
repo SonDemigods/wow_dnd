@@ -14,7 +14,7 @@ export const BOSSES: EnemyData[] = [
   {
     id: 'dragon_whelp',
     name: '幼龙',
-    icon: '🐉',
+    icon: 'game-icons:wyvern',
     maxHp: 120,
     damage: [15, 30],
     xp: 100,
@@ -38,7 +38,7 @@ export const BOSSES: EnemyData[] = [
   {
     id: 'demon',
     name: '深渊卫士',
-    icon: '👿',
+    icon: 'game-icons:demon',
     maxHp: 150,
     damage: [20, 35],
     xp: 150,
@@ -62,7 +62,7 @@ export const BOSSES: EnemyData[] = [
   {
     id: 'frost_wyrm',
     name: '冰霜巨龙',
-    icon: '🐲',
+    icon: 'game-icons:ice-dragon',
     maxHp: 130,
     damage: [16, 32],
     xp: 110,
@@ -110,7 +110,7 @@ export const BOSSES: EnemyData[] = [
   {
     id: 'lich',
     name: '亡灵大法师',
-    icon: '💀',
+    icon: 'game-icons:lich',
     maxHp: 140,
     damage: [18, 32],
     xp: 120,

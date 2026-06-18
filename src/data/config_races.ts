@@ -22,7 +22,7 @@ export const RACES: RaceData[] = [
   {
     id: 'dwarf',
     name: '矮人',
-    icon: '🧔',
+    icon: 'game-icons:dwarf-helmet',
     factionId: 'alliance',
     bonus: { con: 2, wis: 1 },
     description: '熔炉堡的钢铁之子，矮人一族世代居住在熔炉山脉的雪山深处，以无与伦比的锻造技艺、对矿石与麦酒的狂热挚爱以及坚不可摧的意志闻名于世'
@@ -54,7 +54,7 @@ export const RACES: RaceData[] = [
   {
     id: 'worgen',
     name: '狼人',
-    icon: '🐺',
+    icon: 'game-icons:werewolf',
     factionId: 'alliance',
     bonus: { dex: 2, str: 1 },
     description: '灰狼王国的子民身负古老狼人诅咒，能在人形与狼形之间自由转换。他们以野兽般的嗅觉追踪敌人，以利爪撕碎一切阻挡者，同时依然保留着维多利亚时代的高贵风骨与不屈斗志'
@@ -70,7 +70,7 @@ export const RACES: RaceData[] = [
   {
     id: 'orc',
     name: '兽人',
-    icon: '👹',
+    icon: 'game-icons:orc-head',
     factionId: 'horde',
     bonus: { str: 2, con: 1 },
     description: '这些来自破碎世界的绿皮勇士是天生的战斗民族，信奉"不胜利，毋宁死"的信条。兽人拥有钢铁般的肌肉和狂暴的战斗意志，在部族酋长的旗帜下用鲜血与荣耀书写着属于他们的史诗'
@@ -86,7 +86,7 @@ export const RACES: RaceData[] = [
   {
     id: 'tauren',
     name: '牛角族',
-    icon: '🐂',
+    icon: 'game-icons:minotaur',
     factionId: 'horde',
     bonus: { con: 2, wis: 1 },
     description: '苍风高地平原上的高岭之子，牛角族世代遵循大地母亲的神圣教义，用图腾与歌谣守护着自然的平衡。他们身躯如山岳般巍峨，却怀抱一颗敬畏生命、崇尚和平的赤诚之心'
@@ -110,7 +110,7 @@ export const RACES: RaceData[] = [
   {
     id: 'goblin',
     name: '地精',
-    icon: '👺',
+    icon: 'game-icons:goblin-head',
     factionId: 'horde',
     bonus: { dex: 1, cha: 2 },
     description: '来自蒸汽之岛的绿皮小个子是凡间最狡黠的商人与发明家，地精以"时间就是金钱"为座右铭，用火箭科技和爆破工程征服一切敢于挡路的家伙，在他们的字典里没有什么是金钱搞不定的'
@@ -134,7 +134,7 @@ export const RACES: RaceData[] = [
   {
     id: 'dark_iron_dwarf',
     name: '铁炉矮人',
-    icon: '🔥',
+    icon: 'game-icons:dwarf-king',
     factionId: 'alliance',
     bonus: { str: 1, con: 2, int: 1 },
     description: '黑岩山脉深处熔岩之城的铁炉矮人，将烈焰领主的怒火与秘银砧的技艺熔铸于血脉之中。他们曾臣服于烈焰领主的灼热意志，如今在茉艾拉女王的引领下重拾铁砧，用熔岩深渊锻出不灭的铁卫之魂'
@@ -150,7 +150,7 @@ export const RACES: RaceData[] = [
   {
     id: 'mecha_gnome',
     name: '机关侏儒',
-    icon: '⚙️',
+    icon: 'game-icons:gears',
     factionId: 'alliance',
     bonus: { dex: 1, int: 2 },
     description: '为了对抗血肉诅咒而主动将身体替换为机械义体的侏儒，在麦卡贡岛重获新生。机关侏儒将逻辑计算与工程创造发挥到了极致，每一个齿轮与活塞都是他们理性的延伸'
@@ -182,7 +182,7 @@ export const RACES: RaceData[] = [
   {
     id: 'zandalari',
     name: '远古巨魔',
-    icon: '🦎',
+    icon: 'game-icons:lizardman',
     factionId: 'horde',
     bonus: { str: 1, con: 2, wis: 1 },
     description: '巨魔帝国中最辉煌的黄金巨魔族的精英，他们的黄金之城太阳之城闪烁着远古诸王的光辉。远古巨魔供奉着古灵，身披最华丽的黄金甲胄，誓以巨魔帝国之名重铸往昔的荣光'
@@ -214,7 +214,7 @@ export const RACES: RaceData[] = [
   {
     id: 'harenei',
     name: '林荫精灵',
-    icon: '🌿',
+    icon: 'game-icons:tree-branch',
     factionId: 'neutral',
     bonus: { dex: 1, int: 1, wis: 1 },
     description: '翠绿梦境中最古老的守护者之一，这些与自然共生的半羊人长角精灵以牧歌般的方式守护着森林的和谐。林荫精灵轻盈灵动，能用自然之力治愈生灵，亦能将荆棘与藤蔓化为致命武器'

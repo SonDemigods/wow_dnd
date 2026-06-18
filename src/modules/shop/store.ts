@@ -290,7 +290,7 @@ export const useShopStore = defineStore('shop', () => {
         timestamp: Date.now(),
         type: 'shop',
         message: `购买了：${itemTemplate.name}${qtyText}，花费 ${totalPrice} 金币`,
-        icon: '🛒'
+        icon: 'game-icons:shopping-cart'
       });
     }
 

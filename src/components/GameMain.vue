@@ -7,14 +7,14 @@
           <div class="player-name">{{ character.name }}</div>
           <div class="player-meta">
             <span :class="['player-level', { 'level-up': levelUpTriggered }]">Lv.{{ character.level }}</span>
-            <span class="player-gold">💰 {{ gold }}</span>
+            <span class="player-gold"><BaseIcon name="coins" gradient="gold" :size="14" /> {{ gold }}</span>
           </div>
         </div>
       </div>
       <div class="player-resources">
-        <ResourceBar icon="❤️" name="HP" :current="currentHp" :max="maxHp" :percent="hpPercent" type="hp" />
-        <ResourceBar icon="💧" name="MP" :current="currentMp" :max="maxMp" :percent="mpPercent" type="mp" />
-        <ResourceBar icon="⭐" name="EXP" :current="exp" :max="expToNext" :percent="expPercent" type="exp" />
+        <ResourceBar icon="health-normal" name="HP" :current="currentHp" :max="maxHp" :percent="hpPercent" type="hp" />
+        <ResourceBar icon="magic-palm" name="MP" :current="currentMp" :max="maxMp" :percent="mpPercent" type="mp" />
+        <ResourceBar icon="star-formation" name="EXP" :current="exp" :max="expToNext" :percent="expPercent" type="exp" />
       </div>
     </div>
 
@@ -47,27 +47,27 @@
 
     <div class="game-footer">
       <button class="footer-btn" @click="showCharacterInfo = true; onClickPanel('character_info')" title="角色">
-        <span class="footer-icon">👤</span>
+        <BaseIcon name="person" gradient="gold" :size="16" />
         <span class="footer-text">角色</span>
       </button>
       <button class="footer-btn" @click="showInventory = true; onClickPanel('inventory')" title="背包">
-        <span class="footer-icon">🎒</span>
+        <BaseIcon name="backpack" gradient="earth" :size="16" />
         <span class="footer-text">背包</span>
       </button>
       <button class="footer-btn" @click="showSkills = true; onClickPanel('skills')" title="技能">
-        <span class="footer-icon">⚔️</span>
+        <BaseIcon name="sword-spin" gradient="warrior" :size="16" />
         <span class="footer-text">技能</span>
       </button>
       <button class="footer-btn" @click="showQuests = true; onClickPanel('quests')" title="任务">
-        <span class="footer-icon">📋</span>
+        <BaseIcon name="notebook" gradient="gold" :size="16" />
         <span class="footer-text">任务</span>
       </button>
       <button class="footer-btn" @click="showAdventureLog = true; onClickPanel('adventure_log')" title="日志">
-        <span class="footer-icon">📜</span>
+        <BaseIcon name="scroll-unfurled" gradient="earth" :size="16" />
         <span class="footer-text">日志</span>
       </button>
       <button class="footer-btn" @click="showSystem = true; onClickPanel('system')" title="系统">
-        <span class="footer-icon">⚙️</span>
+        <BaseIcon name="cog" gradient="metal" :size="16" />
         <span class="footer-text">系统</span>
       </button>
     </div>
@@ -157,6 +157,7 @@ import CombatPopup from './popup/CombatPopup.vue';
 import AudioSettingsPopup from './popup/AudioSettingsPopup.vue';
 import SystemPopup from './popup/SystemPopup.vue';
 import ResourceBar from './common/ResourceBar.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 
 const emit = defineEmits<{
   (e: 'exit'): void;

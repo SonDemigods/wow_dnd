@@ -6,7 +6,7 @@
         <div class="character-overview">
           <div class="character-basic">
             <div class="char-row">
-              <div class="char-avatar">{{ getRaceIcon(character.raceId) }}</div>
+              <BaseIcon :name="getRaceIcon(character.raceId)" gradient="gold" :size="24" />
               <div class="char-main-info">
                 <div class="char-name">{{ character.name }}</div>
                 <div class="char-level">Lv.{{ character.level }}</div>
@@ -19,9 +19,9 @@
             </div>
           </div>
           <div class="resource-bars">
-            <ResourceBar icon="❤️" name="HP" :current="currentHp" :max="maxHp" :percent="hpPercent" type="hp" />
-            <ResourceBar icon="💧" name="MP" :current="currentMp" :max="maxMp" :percent="mpPercent" type="mp" />
-            <ResourceBar icon="⭐" name="EXP" :current="currentExp" :max="maxExp" :percent="expPercent" type="exp" />
+            <ResourceBar icon="" iconName="health-normal" iconGradient="blood" name="HP" :current="currentHp" :max="maxHp" :percent="hpPercent" type="hp" />
+            <ResourceBar icon="" iconName="magic-palm" iconGradient="mana" name="MP" :current="currentMp" :max="maxMp" :percent="mpPercent" type="mp" />
+            <ResourceBar icon="" iconName="star-formation" iconGradient="gold" name="EXP" :current="currentExp" :max="maxExp" :percent="expPercent" type="exp" />
           </div>
         </div>
 
@@ -30,7 +30,7 @@
           <h3>核心属性</h3>
           <div class="core-attributes">
             <div class="core-attr-item" v-for="(value, key) in stats" :key="key">
-              <span class="core-attr-icon">{{ getAttrIcon(key) }}</span>
+              <BaseIcon :name="getAttrIcon(key).name" :gradient="getAttrIcon(key).gradient" :size="14" />
               <div class="core-attr-content">
                 <span class="core-attr-name">{{ getAttrName(key) }}</span>
                 <span class="core-attr-value">{{ value }}</span>
@@ -44,42 +44,42 @@
           <h3>次级属性</h3>
           <div class="secondary-grid">
             <div class="secondary-item attack">
-              <div class="secondary-icon">⚔️</div>
+              <BaseIcon name="sword-clash" gradient="physical" :size="14" />
               <div class="secondary-info">
                 <div class="secondary-label">物理攻击</div>
                 <div class="secondary-value">{{ attributes.physicalAttack }}</div>
               </div>
             </div>
             <div class="secondary-item defense">
-              <div class="secondary-icon">🛡️</div>
+              <BaseIcon name="shield" gradient="earth" :size="14" />
               <div class="secondary-info">
                 <div class="secondary-label">物理防御</div>
                 <div class="secondary-value">{{ attributes.physicalDefense }}</div>
               </div>
             </div>
             <div class="secondary-item magic-attack">
-              <div class="secondary-icon">🌀</div>
+              <BaseIcon name="magic-swirl" gradient="magic" :size="14" />
               <div class="secondary-info">
                 <div class="secondary-label">魔法攻击</div>
                 <div class="secondary-value">{{ attributes.magicAttack }}</div>
               </div>
             </div>
             <div class="secondary-item magic-defense">
-              <div class="secondary-icon">🔮</div>
+              <BaseIcon name="magic-shield" gradient="magic" :size="14" />
               <div class="secondary-info">
                 <div class="secondary-label">魔法防御</div>
                 <div class="secondary-value">{{ attributes.magicDefense }}</div>
               </div>
             </div>
             <div class="secondary-item crit">
-              <div class="secondary-icon">💥</div>
+              <BaseIcon name="explosion-rays" gradient="crit" :size="14" />
               <div class="secondary-info">
                 <div class="secondary-label">暴击率</div>
                 <div class="secondary-value">{{ attributes.critChance }}%</div>
               </div>
             </div>
             <div class="secondary-item dodge">
-              <div class="secondary-icon">💨</div>
+              <BaseIcon name="dodge" gradient="dodge" :size="14" />
               <div class="secondary-info">
                 <div class="secondary-label">闪避率</div>
                 <div class="secondary-value">{{ attributes.dodgeChance }}%</div>
@@ -88,12 +88,12 @@
           </div>
           <div class="resource-stats">
             <div class="resource-item">
-              <span class="resource-icon">❤️</span>
+              <BaseIcon name="health-normal" gradient="blood" :size="16" />
               <span class="resource-label">最大HP</span>
               <span class="resource-value">{{ attributes.maxHp }}</span>
             </div>
             <div class="resource-item">
-              <span class="resource-icon">💧</span>
+              <BaseIcon name="magic-palm" gradient="mana" :size="16" />
               <span class="resource-label">最大MP</span>
               <span class="resource-value">{{ attributes.maxMana }}</span>
             </div>
@@ -114,11 +114,11 @@
               @click="selectEquipment(slot)"
             >
               <template v-if="slot.equipment">
-                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="⚔️" size="lg" />
+                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="broadsword" gradient="metal" size="lg" />
                 <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>
-                <ItemIcon icon="" fallback="⚔️" size="lg" />
+                <ItemIcon icon="" fallback="broadsword" gradient="metal" size="lg" />
                 <!-- <div class="slot-name empty">{{ slot.name }}</div> -->
               </template>
             </div>
@@ -132,11 +132,11 @@
               @click="selectEquipment(slot)"
             >
               <template v-if="slot.equipment">
-                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="🛡️" size="lg" />
+                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="checked-shield" gradient="metal" size="lg" />
                 <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>
-                <ItemIcon icon="" fallback="🛡️" size="lg" />
+                <ItemIcon icon="" fallback="checked-shield" gradient="metal" size="lg" />
                 <!-- <div class="slot-name empty">{{ slot.name }}</div> -->
               </template>
             </div>
@@ -168,14 +168,14 @@
             </template>
             <template v-else>
               <div class="detail-placeholder">
-                <span class="placeholder-icon">📦</span>
+                <BaseIcon name="empty-box" gradient="metal" :size="20" />
                 <span class="placeholder-text">槽位为空</span>
               </div>
             </template>
           </div>
           <div v-else class="equipment-detail">
             <div class="detail-placeholder">
-              <span class="placeholder-icon">🛡️</span>
+              <BaseIcon name="shield" gradient="earth" :size="20" />
               <span class="placeholder-text">点击装备槽位查看详情</span>
             </div>
           </div>
@@ -202,6 +202,7 @@ import Tag from '../common/Tag.vue';
 import BasePopup from '../common/BasePopup.vue';
 import ResourceBar from '../common/ResourceBar.vue';
 import ItemIcon from '../common/ItemIcon.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 
 defineProps<{
   visible: boolean;
@@ -254,13 +255,13 @@ const armorSlots = computed<SlotInfo[]>(() => [
 
 const selectedSlot = ref<SlotInfo | null>(null);
 
-const attrIcons: Record<string, string> = {
-  str: '⚔️',
-  dex: '💨',
-  con: '❤️',
-  int: '🧠',
-  wis: '🔍',
-  cha: '💫'
+const attrIcons: Record<string, { name: string; gradient: string }> = {
+  str: { name: 'sword-clash', gradient: 'physical' },
+  dex: { name: 'dodge', gradient: 'dodge' },
+  con: { name: 'health-normal', gradient: 'blood' },
+  int: { name: 'brain', gradient: 'magic' },
+  wis: { name: 'eye-target', gradient: 'nature' },
+  cha: { name: 'charm', gradient: 'gold' }
 };
 
 const attrNames: Record<string, string> = {
@@ -285,7 +286,8 @@ async function loadData() {
 }
 
 function getRaceIcon(raceId: string) {
-  return races.value.find(r => r.id === raceId)?.icon || '👤';
+  const icon = races.value.find(r => r.id === raceId)?.icon;
+  return icon || 'person';
 }
 
 function getRaceName(raceId: string) {
@@ -309,7 +311,7 @@ function getClassColor(classId: string) {
 }
 
 function getAttrIcon(key: string) {
-  return attrIcons[key] || '📊';
+  return attrIcons[key] || { name: 'uncertainty', gradient: 'shadow' };
 }
 
 function getAttrName(key: string) {
@@ -394,6 +396,17 @@ onUnmounted(() => {
 }
 
 .char-avatar {
+  font-size: 40px;
+  width: 52px;
+  height: 52px;
+  .flex-center();
+  background: @gold-bg-hover;
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.char-avatar-text {
   font-size: 40px;
   width: 52px;
   height: 52px;

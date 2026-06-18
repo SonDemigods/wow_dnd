@@ -14,7 +14,7 @@ export const FACTIONS: FactionData[] = [
   {
     id: 'alliance',
     name: '光辉盟约',
-    icon: '🛡️',
+    icon: 'game-icons:checked-shield',
     color: '#0078ff',
     description: '由辉石城的人类、熔炉堡的矮人、齿轮之城的侏儒、月歌之都的暮精灵以及星舟废墟的星裔共同缔结的古老盟约，为了凡间世界的和平与秩序并肩作战'
   },
