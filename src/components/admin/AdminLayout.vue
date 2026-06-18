@@ -113,42 +113,41 @@ function navigateToConfig(tableName: ConfigTableName) {
   min-width: 260px;
   background: @secondary-bg;
   border-right: 1px solid @border-color;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   overflow-y: auto;
 }
 
 .sidebar-header {
-  padding: 20px;
+  padding: @spacing-4xl;
   border-bottom: 1px solid @border-color;
 
   h2 {
     color: @accent-color;
-    font-size: 20px;
+    font-size: @font-2xl;
     margin: 0;
   }
 }
 
 .sidebar-nav {
   flex: 1;
-  padding: 10px 0;
+  padding: @spacing-lg 0;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  padding: 10px 20px;
+  padding: @spacing-lg @spacing-4xl;
   cursor: pointer;
   color: @text-secondary;
-  transition: all 0.2s;
+  transition: all @transition-quick;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: @white-05;
     color: @text-primary;
   }
 
   &.active {
-    background: rgba(255, 215, 0, 0.1);
+    background: @gold-bg;
     color: @accent-color;
     border-right: 3px solid @accent-color;
   }
@@ -161,37 +160,37 @@ function navigateToConfig(tableName: ConfigTableName) {
   gap: 2px;
 
   .nav-desc {
-    font-size: 11px;
+    font-size: @font-xs;
     color: @text-secondary;
     opacity: 0.7;
   }
 }
 
 .nav-group-title {
-  padding: 16px 20px 6px;
-  font-size: 11px;
+  padding: @spacing-3xl @spacing-4xl @spacing-sm;
+  font-size: @font-xs;
   color: @text-secondary;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
 .sidebar-footer {
-  padding: 16px 20px;
+  padding: @spacing-3xl @spacing-4xl;
   border-top: 1px solid @border-color;
 }
 
 .exit-btn {
   width: 100%;
-  padding: 10px;
+  padding: @spacing-lg;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid @border-color;
-  border-radius: 6px;
+  border-radius: @radius-md;
   color: @text-primary;
-  font-size: 14px;
+  font-size: @font-md;
   cursor: pointer;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: @white-15;
   }
 }
 
@@ -199,14 +198,13 @@ function navigateToConfig(tableName: ConfigTableName) {
 .admin-main {
   flex: 1;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   padding: 24px;
 }
 
 .page-title {
   color: @accent-color;
-  font-size: 24px;
+  font-size: @font-4xl;
   margin: 0 0 24px;
 }
 
@@ -224,29 +222,29 @@ function navigateToConfig(tableName: ConfigTableName) {
 .stat-card {
   background: @secondary-bg;
   border: 1px solid @border-color;
-  border-radius: 8px;
-  padding: 20px;
+  border-radius: @radius-lg;
+  padding: @spacing-4xl;
   text-align: center;
   cursor: default;
 
   .stat-value {
-    font-size: 32px;
-    font-weight: 700;
+    font-size: @font-6xl;
+    font-weight: @font-weight-bold;
     color: @accent-color;
   }
 
   .stat-label {
-    font-size: 13px;
+    font-size: @font-base;
     color: @text-secondary;
     margin-top: 6px;
   }
 
   &-small {
     cursor: pointer;
-    transition: border-color 0.2s;
+    transition: border-color @transition-quick;
 
     .stat-value {
-      font-size: 24px;
+      font-size: @font-4xl;
     }
 
     &:hover {
@@ -259,7 +257,6 @@ function navigateToConfig(tableName: ConfigTableName) {
 .config-view {
   flex: 1;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
 }
 </style>

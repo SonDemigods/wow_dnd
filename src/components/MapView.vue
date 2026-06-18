@@ -317,12 +317,11 @@ onUnmounted(() => {
 .map-view {
   width: 100%;
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   min-height: 0;
-  border-radius: 12px;
-  border: 2px solid #4a4a4a;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-radius: @radius-xl;
+  border: @border-card;
+  box-shadow: @shadow-card;
   overflow: hidden;
 }
 
@@ -330,14 +329,12 @@ onUnmounted(() => {
   position: relative;
   flex: 1;
   min-height: 400px;
-  background: #1a1a2e;
+  background: @primary-bg;
   border: none;
   overflow: hidden;
   cursor: grab;
   user-select: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  .flex-center();
 }
 
 .map-container:active {
@@ -364,39 +361,37 @@ onUnmounted(() => {
 .marker-icon {
   width: 36px;
   height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
+  .flex-center();
+  font-size: @font-2xl;
   border-radius: 50%;
   border: 2px solid;
-  transition: transform 0.15s;
+  transition: transform @transition-fast;
 }
 
 /* 未解锁 - 灰色边框，半透明 */
 .zone-marker.locked .marker-icon {
-  border-color: #666;
+  border-color: @color-dim-gray;
   background: rgba(0, 0, 0, 0.5);
-  opacity: 0.5;
+  opacity: @opacity-dimmed;
 }
 
 /* 已解锁 - 绿色边框 */
 .zone-marker.unlocked .marker-icon {
-  border-color: #00d2d3;
+  border-color: @color-ally;
   background: rgba(0, 0, 0, 0.6);
   box-shadow: 0 0 8px rgba(0, 210, 211, 0.3);
 }
 
 /* 高风险 - 红色边框 */
 .zone-marker.high-risk .marker-icon {
-  border-color: #e94560;
+  border-color: @color-danger-accent;
   background: rgba(0, 0, 0, 0.6);
   box-shadow: 0 0 8px rgba(233, 69, 96, 0.3);
 }
 
 /* 当前位置 - 金色边框 */
 .zone-marker.is-current .marker-icon {
-  border-color: #ffd700;
+  border-color: @accent-color;
   background: rgba(0, 0, 0, 0.6);
   box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
 }
@@ -406,13 +401,11 @@ onUnmounted(() => {
   position: absolute;
   top: 16px;
   right: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
+  .flex-col-center();
+  gap: @spacing-2xs;
   background: rgba(0, 0, 0, 0.6);
-  border-radius: 8px;
-  padding: 4px;
+  border-radius: @radius-lg;
+  padding: @spacing-xs;
   z-index: 20;
 }
 
@@ -421,14 +414,12 @@ onUnmounted(() => {
   height: 36px;
   background: rgba(255, 255, 255, 0.08);
   border: none;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 20px;
+  border-radius: @radius-md;
+  color: @popup-text-color;
+  font-size: @font-2xl;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s;
+  .flex-center();
+  transition: background @transition-fast;
 }
 
 .zoom-btn:hover {
@@ -440,7 +431,7 @@ onUnmounted(() => {
 }
 
 .zoom-level {
-  font-size: 11px;
+  font-size: @font-xs;
   color: rgba(255, 255, 255, 0.5);
   padding: 2px 0;
 }
@@ -459,39 +450,38 @@ onUnmounted(() => {
 }
 
 .panel-header {
-  padding: 16px 20px 12px;
+  padding: @spacing-3xl 20px @spacing-xl;
 }
 
 .panel-name {
-  font-size: 18px;
-  font-weight: 700;
-  color: #fff;
+  font-size: @font-xl;
+  font-weight: @font-weight-bold;
+  color: @popup-text-color;
 }
 
 .panel-body {
-  padding: 0 20px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  padding: 0 20px @spacing-3xl;
+  .flex-col();
+  gap: @spacing-lg;
 }
 
 .panel-row {
   display: flex;
   align-items: baseline;
-  gap: 12px;
+  gap: @spacing-xl;
 }
 
 .panel-label {
-  font-size: 14px;
+  font-size: @font-md;
   color: rgba(255, 255, 255, 0.45);
   flex-shrink: 0;
   min-width: 36px;
 }
 
 .panel-value {
-  font-size: 15px;
-  color: #fff;
-  font-weight: 500;
+  font-size: @font-base;
+  color: @popup-text-color;
+  font-weight: @font-weight-normal;
 }
 
 .panel-value.status-locked {
@@ -507,36 +497,36 @@ onUnmounted(() => {
 }
 
 .panel-desc {
-  font-size: 14px;
+  font-size: @font-md;
   color: rgba(255, 255, 255, 0.55);
   line-height: 1.5;
 }
 
 .panel-empty {
-  font-size: 14px;
+  font-size: @font-md;
   color: rgba(255, 255, 255, 0.35);
   text-align: center;
-  padding: 16px 0;
+  padding: @spacing-3xl 0;
 }
 
 .panel-actions {
-  padding: 0 20px 16px;
+  padding: 0 20px @spacing-3xl;
 }
 
 .panel-btn {
   width: 100%;
-  padding: 12px 20px;
+  padding: @spacing-xl 20px;
   border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  border-radius: @radius-lg;
+  font-size: @font-base;
+  font-weight: @font-weight-semibold;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all @transition-fast ease;
 }
 
 .panel-btn.enter {
-  background: #ffd700;
-  color: #1a1a2e;
+  background: @accent-color;
+  color: @primary-bg;
 }
 
 .panel-btn.enter:hover {
@@ -548,8 +538,8 @@ onUnmounted(() => {
 }
 
 .panel-btn.locked {
-  background: rgba(255, 255, 255, 0.1);
-  color: #8b8b8b;
+  background: @white-10;
+  color: @text-secondary;
   cursor: not-allowed;
 }
 

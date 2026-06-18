@@ -429,30 +429,27 @@ defineExpose({
 .character-card {
   width: 100%;
   height: 140px;
-  padding: 14px 10px;
+  padding: @spacing-2xl @spacing-lg;
   background: rgba(13, 17, 23, 0.95);
-  border: 2px solid #666666;
-  border-radius: 8px;
+  border: @border-hover;
+  border-radius: @radius-lg;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+  .flex-col-center();
+  gap: @spacing-sm;
   box-sizing: border-box;
   overflow: hidden;
 }
 
 .character-card:hover {
-  border-color: #888888;
+  border-color: @color-dodge;
   transform: translateY(-2px);
 }
 
 .character-card.selected {
   border-color: var(--class-color);
-  background: rgba(255, 215, 0, 0.1);
+  background: @gold-bg;
   box-shadow: 0 0 20px var(--class-color);
 }
 
@@ -468,30 +465,30 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: @spacing-md;
+  margin-bottom: @spacing-xs;
 }
 
 .char-name {
-  font-size: 14px;
-  color: #f0f0f0;
-  font-weight: bold;
+  font-size: @font-md;
+  color: @text-primary;
+  font-weight: @font-weight-bold;
 }
 
 .char-level {
   padding: 1px 6px;
-  background: rgba(255, 215, 0, 0.2);
+  background: @gold-bg-active;
   border: 1px solid rgba(255, 215, 0, 0.3);
-  border-radius: 4px;
-  font-size: 11px;
-  color: #ffd700;
-  font-weight: bold;
+  border-radius: @radius-sm;
+  font-size: @font-xs;
+  color: @accent-color;
+  font-weight: @font-weight-bold;
 }
 
 .char-details {
   display: flex;
-  gap: 4px;
-  font-size: 11px;
+  gap: @spacing-xs;
+  font-size: @font-xs;
   justify-content: center;
   white-space: nowrap;
   width: 100%;
@@ -504,22 +501,20 @@ defineExpose({
   right: 4px;
   width: 24px;
   height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  .flex-center();
   background: rgba(255, 68, 0, 0.2);
   border: 1px solid rgba(255, 68, 0, 0.3);
   border-radius: 50%;
   cursor: pointer;
   opacity: 0.6;
-  transition: all 0.3s;
-  font-size: 12px;
+  transition: all @transition-normal;
+  font-size: @font-sm;
 }
 
 .char-delete:hover {
   opacity: 1;
   background: rgba(255, 68, 0, 0.4);
-  border-color: #ff4400;
+  border-color: @color-delete;
   transform: scale(1.1);
 }
 
@@ -527,33 +522,30 @@ defineExpose({
   width: 100%;
   min-width: 130px;
   height: 140px;
-  padding: 16px;
+  padding: @spacing-3xl;
   background: rgba(255, 255, 255, 0.03);
-  border: 2px dashed #4a4a4a;
-  border-radius: 8px;
+  border: @border-dashed;
+  border-radius: @radius-lg;
   cursor: pointer;
-  transition: all 0.3s;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  transition: all @transition-normal;
+  .flex-col-center();
+  gap: @spacing-md;
 }
 
 .add-character:hover {
-  border-color: #ffd700;
-  background: rgba(255, 215, 0, 0.1);
+  border-color: @accent-color;
+  background: @gold-bg;
   transform: translateY(-2px);
 }
 
 .add-icon {
-  font-size: 32px;
-  color: #ffd700;
+  font-size: @font-6xl;
+  color: @accent-color;
 }
 
 .add-text {
-  color: #f0f0f0;
-  font-size: 14px;
+  color: @text-primary;
+  font-size: @font-md;
 }
 
 .action-bar {
@@ -582,20 +574,20 @@ defineExpose({
 
 /* 统一的操作按钮基础样式 */
 .action-btn {
-  padding: 16px 64px;
-  border-radius: 8px;
-  font-size: 18px;
-  font-weight: bold;
+  padding: @spacing-3xl 64px;
+  border-radius: @radius-lg;
+  font-size: @font-xl;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
   border: 2px solid;
 }
 
 /* 进入游戏 - 金色 */
 .action-btn-primary {
-  background: linear-gradient(135deg, #ffd700, #daa520);
-  border-color: #ffd700;
-  color: #1a1a2e;
+  background: linear-gradient(135deg, @accent-color, #daa520);
+  border-color: @accent-color;
+  color: @primary-bg;
 }
 
 .action-btn-primary:hover:not(:disabled) {
@@ -604,11 +596,11 @@ defineExpose({
 }
 
 .action-btn-primary:disabled {
-  background: #4a4a4a;
-  border-color: #4a4a4a;
-  color: #888;
+  background: @popup-border-color;
+  border-color: @popup-border-color;
+  color: @color-dodge;
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: @opacity-dimmed;
 }
 
 /* 导出存档 - 绿色 */
@@ -660,17 +652,15 @@ defineExpose({
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  background: @overlay-deep;
+  .flex-center();
+  z-index: @z-popup;
 }
 
 .confirm-modal {
   background: rgba(20, 25, 35, 0.98);
-  border: 2px solid #ff4400;
-  border-radius: 12px;
+  border: 2px solid @color-delete;
+  border-radius: @radius-xl;
   padding: 24px;
   max-width: 360px;
   width: 90%;
@@ -679,53 +669,53 @@ defineExpose({
 
 .confirm-icon {
   font-size: 48px;
-  margin-bottom: 16px;
+  margin-bottom: @spacing-3xl;
 }
 
 .confirm-modal h3 {
-  color: #ff4400;
-  font-size: 20px;
-  margin-bottom: 12px;
+  color: @color-delete;
+  font-size: @font-2xl;
+  margin-bottom: @spacing-xl;
 }
 
 .confirm-modal p {
   color: #b0b0b0;
-  font-size: 14px;
+  font-size: @font-md;
   margin-bottom: 20px;
 }
 
 .confirm-buttons {
   display: flex;
-  gap: 12px;
+  gap: @spacing-xl;
   justify-content: center;
 }
 
 .confirm-btn-cancel {
-  padding: 10px 24px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid #666;
-  border-radius: 6px;
-  color: #f0f0f0;
-  font-size: 14px;
+  padding: @spacing-lg 24px;
+  background: @white-10;
+  border: 1px solid @color-dim-gray;
+  border-radius: @radius-md;
+  color: @text-primary;
+  font-size: @font-md;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
 }
 
 .confirm-btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: #888;
+  background: @white-20;
+  border-color: @color-dodge;
 }
 
 .confirm-btn-delete {
-  padding: 10px 24px;
-  background: linear-gradient(135deg, #ff4400, #cc3300);
+  padding: @spacing-lg 24px;
+  background: linear-gradient(135deg, @color-delete, #cc3300);
   border: none;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: bold;
+  border-radius: @radius-md;
+  color: @popup-text-color;
+  font-size: @font-md;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
 }
 
 .confirm-btn-delete:hover {

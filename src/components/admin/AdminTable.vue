@@ -121,17 +121,14 @@ function formatCellValue(value: any, col: TableColumn): string {
 @import '@/styles/variables.less';
 
 .admin-table-container {
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   height: calc(100vh - 100px);
 }
 
 .table-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  gap: 12px;
+  .flex-between();
+  padding: @spacing-xl 0;
+  gap: @spacing-xl;
 
   .toolbar-left {
     flex: 1;
@@ -140,18 +137,18 @@ function formatCellValue(value: any, col: TableColumn): string {
 
   .toolbar-right {
     display: flex;
-    gap: 8px;
+    gap: @spacing-md;
   }
 }
 
 .search-input {
   width: 100%;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
+  padding: @spacing-md @spacing-xl;
+  background: @white-05;
   border: 1px solid @border-color;
-  border-radius: 6px;
+  border-radius: @radius-md;
   color: @text-primary;
-  font-size: 14px;
+  font-size: @font-md;
   outline: none;
 
   &:focus {
@@ -160,16 +157,16 @@ function formatCellValue(value: any, col: TableColumn): string {
 }
 
 .btn {
-  padding: 8px 16px;
+  padding: @spacing-md @spacing-3xl;
   border: 1px solid @border-color;
-  border-radius: 6px;
+  border-radius: @radius-md;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
+  font-size: @font-md;
+  transition: all @transition-quick;
 
   &-primary {
     background: @accent-color;
-    color: #1a1a2e;
+    color: @primary-bg;
     border-color: @accent-color;
   }
 
@@ -179,8 +176,8 @@ function formatCellValue(value: any, col: TableColumn): string {
   }
 
   &-small {
-    padding: 4px 10px;
-    font-size: 12px;
+    padding: @spacing-xs @spacing-lg;
+    font-size: @font-sm;
   }
 
   &-edit {
@@ -204,7 +201,7 @@ function formatCellValue(value: any, col: TableColumn): string {
   flex: 1;
   overflow-y: auto;
   border: 1px solid @border-color;
-  border-radius: 8px;
+  border-radius: @radius-lg;
 }
 
 .data-table {
@@ -212,17 +209,17 @@ function formatCellValue(value: any, col: TableColumn): string {
   border-collapse: collapse;
 
   th, td {
-    padding: 10px 12px;
+    padding: @spacing-lg @spacing-xl;
     text-align: left;
     border-bottom: 1px solid @border-color;
     color: @text-primary;
-    font-size: 13px;
+    font-size: @font-base;
     white-space: nowrap;
   }
 
   th {
     background: @secondary-bg;
-    font-weight: 600;
+    font-weight: @font-weight-semibold;
     color: @text-secondary;
     position: sticky;
     top: 0;
@@ -230,7 +227,7 @@ function formatCellValue(value: any, col: TableColumn): string {
   }
 
   tr:hover td {
-    background: rgba(255, 255, 255, 0.03);
+    background: @white-03;
   }
 
   .actions-col {
@@ -242,7 +239,7 @@ function formatCellValue(value: any, col: TableColumn): string {
 
     .actions-col-inner {
       display: flex;
-      gap: 4px;
+      gap: @spacing-xs;
       justify-content: center;
     }
   }
@@ -257,7 +254,7 @@ function formatCellValue(value: any, col: TableColumn): string {
   }
 
   tr:hover td.actions-col {
-    background: rgba(255, 255, 255, 0.03);
+    background: @white-03;
   }
 
   .empty-cell {
@@ -268,9 +265,9 @@ function formatCellValue(value: any, col: TableColumn): string {
 }
 
 .table-footer {
-  padding: 10px 0;
+  padding: @spacing-lg 0;
   text-align: right;
   color: @text-secondary;
-  font-size: 13px;
+  font-size: @font-base;
 }
 </style>

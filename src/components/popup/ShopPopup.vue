@@ -506,8 +506,7 @@ watch(currentTab, () => {
 
 <style lang="less" scoped>
 .shop-content {
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   height: 100%;
   gap: 14px;
 }
@@ -515,19 +514,19 @@ watch(currentTab, () => {
 .header-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: @spacing-xl;
 }
 
 .shop-name {
-  font-size: 13px;
+  font-size: @font-base;
   color: #aaa;
 }
 
 .gold-display {
-  font-size: 14px;
-  font-weight: bold;
-  color: #ffd700;
-  transition: color 0.3s;
+  font-size: @font-md;
+  font-weight: @font-weight-bold;
+  color: @accent-color;
+  transition: color @transition-normal;
 }
 
 .gold-display.flash {
@@ -537,102 +536,88 @@ watch(currentTab, () => {
 /* 买卖标签栏 */
 .shop-tabs {
   display: flex;
-  gap: 12px;
+  gap: @spacing-xl;
 }
 
 .tab-btn {
-  padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid #4a4a4a;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 14px;
+  padding: @spacing-lg @spacing-4xl;
+  background: @white-10;
+  border: @border-card;
+  border-radius: @radius-md;
+  color: @popup-text-color;
+  font-size: @font-md;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
 }
 
 .tab-btn:hover {
-  border-color: #666;
+  border-color: @color-dim-gray;
 }
 
 .tab-btn.active {
-  background: rgba(255, 215, 0, 0.2);
-  border-color: #ffd700;
-  color: #ffd700;
+  background: @gold-bg-active;
+  border-color: @accent-color;
+  color: @accent-color;
 }
 
 /* 分类筛选栏 */
 .category-tabs {
   display: flex;
-  gap: 8px;
+  gap: @spacing-md;
   flex-wrap: wrap;
 }
 
 .cat-btn {
-  padding: 6px 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid #4a4a4a;
-  border-radius: 4px;
-  color: #888;
-  font-size: 13px;
+  padding: @spacing-sm 14px;
+  background: @white-05;
+  border: @border-sm;
+  border-radius: @radius-sm;
+  color: @color-dodge;
+  font-size: @font-base;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
 }
 
 .cat-btn:hover {
-  border-color: #666;
+  border-color: @color-dim-gray;
 }
 
 .cat-btn.active {
   background: rgba(0, 153, 255, 0.2);
-  border-color: #0099ff;
-  color: #0099ff;
+  border-color: @skill-blue;
+  color: @skill-blue;
 }
 
 /* 物品列表 */
 .item-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  .flex-col();
+  gap: @spacing-md;
   max-height: 320px;
   overflow-y: auto;
   padding: 2px;
-}
-
-.item-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.item-list::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 3px;
-}
-
-.item-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
+  .custom-scrollbar();
 }
 
 /* 物品列表卡片 */
 .item-card {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  padding: 10px 14px;
+  background: @white-05;
+  border-radius: @radius-lg;
+  padding: @spacing-lg 14px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: @spacing-xl;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all @transition-quick;
 }
 
 .item-card:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: @white-10;
 }
 
 .item-card.selected {
-  outline: 2px solid #ffd700;
+  outline: 2px solid @accent-color;
   outline-offset: -2px;
-  background: rgba(255, 215, 0, 0.1);
+  background: @gold-bg;
 }
 
 .card-info {
@@ -641,33 +626,33 @@ watch(currentTab, () => {
 }
 
 .card-name {
-  font-size: 14px;
-  color: #fff;
-  font-weight: bold;
+  font-size: @font-md;
+  color: @popup-text-color;
+  font-weight: @font-weight-bold;
   margin-bottom: 2px;
 }
 
 .card-desc {
-  font-size: 12px;
-  color: #888;
+  font-size: @font-sm;
+  color: @color-dodge;
 }
 
 .card-count {
-  font-size: 12px;
-  color: #ffd700;
+  font-size: @font-sm;
+  color: @accent-color;
   margin-top: 2px;
 }
 
 .card-price {
-  font-size: 13px;
-  color: #ffd700;
-  font-weight: bold;
+  font-size: @font-base;
+  color: @accent-color;
+  font-weight: @font-weight-bold;
   flex-shrink: 0;
 }
 
 .card-quantity {
-  font-size: 12px;
-  color: #4CAF50;
+  font-size: @font-sm;
+  color: @heal-hp;
   margin-top: 2px;
 }
 
@@ -675,27 +660,25 @@ watch(currentTab, () => {
 .quantity-selector {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: @spacing-xs;
   margin-right: 12px;
 }
 
 .qty-btn {
   width: 28px;
   height: 28px;
-  border: 1px solid #4a4a4a;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  font-size: 16px;
+  border: @border-sm;
+  border-radius: @radius-sm;
+  background: @white-10;
+  color: @popup-text-color;
+  font-size: @font-lg;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
+  .flex-center();
+  transition: all @transition-quick;
 }
 
 .qty-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.2);
+  background: @white-20;
 }
 
 .qty-btn:disabled {
@@ -706,12 +689,12 @@ watch(currentTab, () => {
 .qty-input {
   width: 52px;
   height: 28px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid #4a4a4a;
-  border-radius: 4px;
-  color: #ffd700;
-  font-size: 14px;
-  font-weight: bold;
+  background: @overlay-dim;
+  border: @border-sm;
+  border-radius: @radius-sm;
+  color: @accent-color;
+  font-size: @font-md;
+  font-weight: @font-weight-bold;
   text-align: center;
   -moz-appearance: textfield;
 }
@@ -724,84 +707,82 @@ watch(currentTab, () => {
 
 /* 物品详情面板 */
 .item-detail {
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 6px;
+  background: @overlay-dark;
+  border-radius: @radius-md;
   padding: 14px;
-  border: 1px solid #4a4a4a;
+  border: @border-sm;
 }
 
 .detail-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+  .flex-between();
+  margin-bottom: @spacing-md;
 }
 
 .detail-header h3 {
-  font-size: 16px;
+  font-size: @font-lg;
   margin: 0;
 }
 
-.detail-header h3.common { color: #ffffff; }
+.detail-header h3.common { color: @popup-text-color; }
 .detail-header h3.uncommon { color: #1eff00; }
 .detail-header h3.rare { color: #0070dd; }
 .detail-header h3.epic { color: #a335ee; }
 .detail-header h3.legendary { color: #ff8000; }
 
 .quality-badge {
-  padding: 3px 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #888;
-  font-size: 12px;
+  padding: 3px @spacing-md;
+  background: @white-10;
+  border-radius: @radius-sm;
+  color: @color-dodge;
+  font-size: @font-sm;
 }
 
 .detail-desc {
   color: #aaa;
-  font-size: 13px;
-  margin: 0 0 8px 0;
+  font-size: @font-base;
+  margin: 0 0 @spacing-md 0;
 }
 
 .detail-info {
   display: flex;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: @spacing-xl;
+  margin-bottom: @spacing-md;
   flex-wrap: wrap;
 }
 
 .detail-info span {
-  padding: 4px 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #888;
-  font-size: 13px;
+  padding: @spacing-xs @spacing-md;
+  background: @white-10;
+  border-radius: @radius-sm;
+  color: @color-dodge;
+  font-size: @font-base;
 }
 
 .effect-info {
-  margin-bottom: 10px;
+  margin-bottom: @spacing-lg;
 }
 
 .effect-info span {
-  color: #4CAF50;
-  font-size: 13px;
+  color: @heal-hp;
+  font-size: @font-base;
 }
 
 .detail-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 10px;
+  gap: @spacing-lg;
+  margin-top: @spacing-lg;
 }
 
 .action-btn {
-  padding: 8px 18px;
+  padding: @spacing-md 18px;
   border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: bold;
+  border-radius: @radius-sm;
+  font-size: @font-md;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.3s;
-  color: #fff;
+  transition: all @transition-normal;
+  color: @popup-text-color;
 }
 
 .action-btn:hover:not(:disabled) {
@@ -809,12 +790,12 @@ watch(currentTab, () => {
 }
 
 .action-btn:disabled {
-  opacity: 0.5;
+  opacity: @opacity-dimmed;
   cursor: not-allowed;
 }
 
 .action-btn.buy {
-  background: linear-gradient(135deg, #4CAF50, #45a049);
+  background: linear-gradient(135deg, @heal-hp, #45a049);
 }
 
 .action-btn.sell {
@@ -823,19 +804,18 @@ watch(currentTab, () => {
 
 /* 占位符 */
 .detail-placeholder {
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   align-items: center;
-  padding: 20px 0;
-  color: #555;
-  gap: 8px;
+  padding: @spacing-4xl 0;
+  color: @color-mid-gray;
+  gap: @spacing-md;
 }
 
 .placeholder-icon {
-  font-size: 32px;
+  font-size: @font-6xl;
 }
 
 .placeholder-text {
-  font-size: 14px;
+  font-size: @font-md;
 }
 </style>

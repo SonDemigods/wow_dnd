@@ -1,0 +1,89 @@
+// ============================================================
+// 全局 Less Mixin
+// 提供跨组件复用的样式片段，在 variables.less 之后引入
+// ============================================================
+
+// ========== Flex 布局 ==========
+
+.flex-center() {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-col() {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-col-center() {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.flex-between() {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+// ========== 文本处理 ==========
+
+.text-ellipsis() {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ========== 自定义滚动条 ==========
+
+.custom-scrollbar() {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: @white-15;
+    border-radius: @radius-xs;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+// ========== 标签基础样式（EffectTag / SkillTags 共用） ==========
+
+.tag-base() {
+  font-size: @font-xs;
+  padding: @spacing-2xs @spacing-md;
+  border-radius: @radius-sm;
+  font-weight: @font-weight-bold;
+  white-space: nowrap;
+}
+
+// ========== 弹窗消息文本（ConfirmPopup / AlertPopup 共用） ==========
+
+.popup-message-text() {
+  margin: 0;
+  color: #aaa;
+  font-size: @font-md;
+  text-align: center;
+}
+
+// ========== 弹窗容器通用样式 ==========
+
+.popup-container-base() {
+  background: @popup-bg;
+  border-radius: @radius-xl;
+  border: @border-card;
+}
+
+// ========== 动态阴影（颜色动态变化） ==========
+
+.shadow-glow(@color) {
+  box-shadow: 0 0 8px @color;
+}
+
+.shadow-bright(@color) {
+  box-shadow: 0 0 15px @color;
+}

@@ -1051,10 +1051,8 @@ onUnmounted(() => {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.92);
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  z-index: @z-combat-overlay;
+  .flex-center();
   animation: fadeIn 0.3s ease;
 }
 
@@ -1063,13 +1061,12 @@ onUnmounted(() => {
   width: 95%;
   max-width: 700px;
   max-height: 95vh;
-  background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
-  border: 2px solid #4a4a4a;
+  background: @gradient-panel;
+  border: @border-card;
   border-radius: 16px;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 32px @overlay-dark;
   position: relative;
 }
 
@@ -1088,53 +1085,49 @@ onUnmounted(() => {
 
 /* 标题 */
 .combat-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  .flex-between();
   padding: 14px 20px;
-  background: rgba(0, 0, 0, 0.4);
-  border-bottom: 1px solid #333;
+  background: @overlay-dim;
+  border-bottom: 1px solid @color-dark-line;
 }
 
-.combat-title { font-size: 18px; font-weight: 700; color: #e94560; }
-.combat-turn { font-size: 13px; color: #888; }
+.combat-title { font-size: @font-xl; font-weight: @font-weight-bold; color: @color-danger-accent; }
+.combat-turn { font-size: 13px; color: @color-dodge; }
 
 /* 战斗区域 */
 .combat-arena {
   display: flex;
   align-items: stretch;
   padding: 16px;
-  gap: 12px;
+  gap: @spacing-xl;
 }
 
 .combatant {
   flex: 1;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 12px;
+  background: @overlay-light;
+  border-radius: @radius-xl;
   padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  border: 1px solid #333;
+  .flex-col();
+  gap: @spacing-lg;
+  border: 1px solid @color-dark-line;
   position: relative;
   transition: transform 0.1s;
 }
 
-.enemy-side { border-color: #e94560; }
-.player-side { border-color: #00d2d3; }
+.enemy-side { border-color: @color-danger-accent; }
+.player-side { border-color: @color-ally; }
 
 /* 敌人 3×2 网格容器 */
 .enemy-grid {
   flex: 1.5;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  .flex-col();
+  gap: @spacing-sm;
 }
 
 .enemy-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: @spacing-sm;
 }
 
 /* 敌人槽位 */
@@ -1147,61 +1140,59 @@ onUnmounted(() => {
 .enemy-slot .combatant {
   flex: 1;
   min-width: 100px;
-  padding: 10px;
-  gap: 6px;
+  padding: @spacing-lg;
+  gap: @spacing-sm;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
 }
 
 .enemy-slot .combatant:hover {
-  border-color: #ff6b6b;
+  border-color: @damage-physical;
 }
 
 /* 空槽位占位符 */
 .enemy-slot .combatant.enemy-empty {
   cursor: default;
-  opacity: 0.3;
+  opacity: @opacity-disabled;
   border-style: dashed;
-  border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.03);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  border-color: @white-18;
+  background: @white-03;
+  .flex-col-center();
   justify-content: center;
-  gap: 4px;
+  gap: @spacing-xs;
 }
 
 .enemy-slot .combatant.enemy-empty:hover {
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: @white-18;
 }
 
 .enemy-slot .combatant.enemy-empty .empty-avatar {
-  font-size: 32px;
-  opacity: 0.6;
+  font-size: @font-6xl;
+  opacity: @opacity-subtle;
 }
 
 .enemy-slot .combatant.enemy-empty .empty-text {
   font-size: 13px;
-  opacity: 0.6;
+  opacity: @opacity-subtle;
   color: rgba(255, 255, 255, 0.5);
 }
 
 /* 选中目标高亮 */
 .combatant.targeted {
-  border-color: #ffd700 !important;
+  border-color: @accent-color !important;
   box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
 }
 
 .enemy-slot .combatant.targeted:hover {
-  border-color: #ffd700 !important;
+  border-color: @accent-color !important;
 }
 
 /* Boss 徽章 */
 .boss-badge {
-  font-size: 11px;
+  font-size: @font-xs;
   color: #ff6b5a;
   margin-top: 2px;
-  font-weight: 700;
+  font-weight: @font-weight-bold;
 }
 
 .combatant.defeated {
@@ -1215,8 +1206,8 @@ onUnmounted(() => {
   top: 10%;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 22px;
-  font-weight: 900;
+  font-size: @font-3xl;
+  font-weight: @font-weight-heavy;
   pointer-events: none;
   z-index: 10;
   text-shadow: 0 2px 4px rgba(0,0,0,0.5);
@@ -1234,22 +1225,22 @@ onUnmounted(() => {
 }
 .floating-damage.dodge {
   color: @color-dodge;
-  font-size: 22px;
+  font-size: @font-3xl;
   font-style: italic;
 }
 
 .combatant-avatar { font-size: 36px; text-align: center; }
 .combatant-info { text-align: center; }
-.combatant-name { font-size: 16px; font-weight: 700; color: #f0f0f0; }
-.combatant-level { font-size: 12px; color: #ffd700; margin-top: 2px; }
+.combatant-name { font-size: @font-lg; font-weight: @font-weight-bold; color: @text-primary; }
+.combatant-level { font-size: @font-sm; color: @accent-color; margin-top: 2px; }
 
-.combatant-bars { display: flex; flex-direction: column; gap: 8px; }
+.combatant-bars { .flex-col(); gap: @spacing-md; }
 
 .vs-divider {
   display: flex;
   align-items: center;
-  font-size: 24px;
-  color: #ffd700;
+  font-size: @font-4xl;
+  color: @accent-color;
   transition: transform 0.2s;
 }
 
@@ -1261,9 +1252,9 @@ onUnmounted(() => {
   margin: 0 16px;
   padding: 10px 12px;
   background: rgba(0, 0, 0, 0.4);
-  border-radius: 8px;
+  border-radius: @radius-lg;
   overflow-y: auto;
-  border: 1px solid #2a2a3e;
+  border: 1px solid @bg-mid-dark;
 }
 
 .log-entry {
@@ -1273,73 +1264,70 @@ onUnmounted(() => {
   color: #ccc;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: @spacing-sm;
   flex-wrap: wrap;
 }
 
-.log-player .log-msg { color: #60a5fa; }
-.log-enemy .log-msg { color: #f87171; }
-.log-system .log-msg { color: #fbbf24; }
+.log-player .log-msg { color: @log-player; }
+.log-enemy .log-msg { color: @log-enemy; }
+.log-system .log-msg { color: @log-system; }
 
-.log-turn { color: #666; font-size: 11px; }
-.log-damage { font-weight: 700; font-size: 14px; }
+.log-turn { color: @color-dim-gray; font-size: @font-xs; }
+.log-damage { font-weight: @font-weight-bold; font-size: @font-md; }
 .log-damage.physical-damage { color: @damage-physical; }
 .log-damage.magic-damage { color: @damage-magic; }
 .log-damage.crit-damage { color: @damage-crit; }
-.log-heal { color: @heal-hp; font-weight: 700; font-size: 14px; }
-.log-crit { color: @damage-crit; font-weight: 700; font-size: 12px; }
-.log-dodge { color: @color-dodge; font-weight: 700; font-size: 12px; }
-.log-empty { color: #555; text-align: center; padding: 20px 0; font-style: italic; }
+.log-heal { color: @heal-hp; font-weight: @font-weight-bold; font-size: @font-md; }
+.log-crit { color: @damage-crit; font-weight: @font-weight-bold; font-size: @font-sm; }
+.log-dodge { color: @color-dodge; font-weight: @font-weight-bold; font-size: @font-sm; }
+.log-empty { color: @color-mid-gray; text-align: center; padding: @spacing-4xl 0; font-style: italic; }
 
 /* 行动按钮区域 */
 .combat-actions {
   padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  .flex-col();
+  gap: @spacing-md;
   position: relative;
 }
 
 .action-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: @spacing-md;
 }
 
 .action-btn {
-  padding: 10px 8px;
-  border: 2px solid #4a4a4a;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
+  padding: @spacing-lg @spacing-md;
+  border: @border-card;
+  border-radius: @radius-lg;
+  background: @white-05;
+  color: @popup-text-color;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: @font-weight-semibold;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all @transition-quick;
   text-align: center;
 }
 
-.action-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); border-color: #666; }
-.action-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-.attack-btn:hover:not(:disabled) { border-color: #e94560; background: rgba(233, 69, 96, 0.15); }
-.item-btn:hover:not(:disabled) { border-color: #4CAF50; background: rgba(76, 175, 80, 0.15); }
-.skip-btn:hover:not(:disabled) { border-color: #fbbf24; background: rgba(251, 191, 36, 0.15); }
-.flee-btn:hover:not(:disabled) { border-color: #888; background: rgba(136, 136, 136, 0.15); }
+.action-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); border-color: @color-dim-gray; }
+.action-btn:disabled { opacity: @opacity-disabled; cursor: not-allowed; }
+.attack-btn:hover:not(:disabled) { border-color: @color-danger-accent; background: rgba(233, 69, 96, 0.15); }
+.item-btn:hover:not(:disabled) { border-color: @heal-hp; background: rgba(76, 175, 80, 0.15); }
+.skip-btn:hover:not(:disabled) { border-color: @log-system; background: rgba(251, 191, 36, 0.15); }
+.flee-btn:hover:not(:disabled) { border-color: @color-dodge; background: rgba(136, 136, 136, 0.15); }
 
 .skill-btn {
-  border-color: #8b5cf6;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  border-color: @skill-purple;
+  .flex-col-center();
   gap: 2px;
   padding: 8px 6px;
 }
 
 .skill-btn:hover:not(:disabled) { background: rgba(139, 92, 246, 0.15); border-color: #a78bfa; }
-.skill-btn.no-mp { border-color: #555; }
-.skill-icon { font-size: 18px; }
-.skill-name { font-size: 12px; font-weight: 600; }
-.skill-effect { font-size: 10px; }
+.skill-btn.no-mp { border-color: @color-mid-gray; }
+.skill-icon { font-size: @font-xl; }
+.skill-name { font-size: @font-sm; font-weight: @font-weight-semibold; }
+.skill-effect { font-size: @font-2xs; }
 .skill-effect-physical_damage { color: @damage-physical; }
 .skill-effect-magic_damage { color: @damage-magic; }
 .skill-effect-health_restore { color: @heal-hp; }
@@ -1347,17 +1335,17 @@ onUnmounted(() => {
 .skill-effect-buff { color: @buff-color; }
 .skill-effect-debuff { color: @debuff-color; }
 .skill-cost {
-  font-size: 10px;
-  color: #6e9bff;
+  font-size: @font-2xs;
+  color: @heal-mp;
   background: rgba(110, 155, 255, 0.15);
-  border-radius: 3px;
+  border-radius: @radius-xs;
   padding: 0 4px;
 }
 .skill-target {
-  font-size: 10px;
+  font-size: @font-2xs;
   color: #a064ff;
   background: rgba(160, 100, 255, 0.15);
-  border-radius: 3px;
+  border-radius: @radius-xs;
   padding: 0 4px;
 }
 
@@ -1369,18 +1357,16 @@ onUnmounted(() => {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.75);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: @radius-lg;
+  .flex-center();
   z-index: 5;
   animation: fadeIn 0.3s ease;
 }
 
 .enemy-turn-text {
-  color: #fbbf24;
-  font-size: 18px;
-  font-weight: 700;
+  color: @log-system;
+  font-size: @font-xl;
+  font-weight: @font-weight-bold;
   animation: pulse 1.2s infinite;
 }
 
@@ -1391,22 +1377,20 @@ onUnmounted(() => {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2200;
+  background: @overlay-heavy;
+  .flex-center();
+  z-index: @z-item-modal;
   animation: fadeIn 0.3s ease;
 }
 
 .result-popup {
-  background: linear-gradient(145deg, #1a1a2e, #16213e);
-  border: 2px solid #4a4a4a;
+  background: @gradient-panel;
+  border: @border-card;
   border-radius: 20px;
   padding: 40px 50px;
   text-align: center;
   min-width: 300px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 12px 40px @overlay-dark;
   /* 入场动画由 anime.js animateResultPopup 处理 */
 }
 
@@ -1416,40 +1400,39 @@ onUnmounted(() => {
   /* 弹跳动画由 anime.js animateResultPopup 处理 */
 }
 
-.result-text { font-size: 28px; font-weight: 700; margin-bottom: 16px; /* 动画初始状态：隐藏 + 下移 16px，由 anime.js animateResultPopup 驱动 */ opacity: 0; transform: translateY(16px); }
-.result-victory { color: #ffd700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
-.result-defeat { color: #e94560; text-shadow: 0 0 20px rgba(233, 69, 96, 0.3); }
-.result-fled { color: #888; }
+.result-text { font-size: @font-5xl; font-weight: @font-weight-bold; margin-bottom: 16px; /* 动画初始状态：隐藏 + 下移 16px，由 anime.js animateResultPopup 驱动 */ opacity: 0; transform: translateY(16px); }
+.result-victory { color: @accent-color; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
+.result-defeat { color: @color-danger-accent; text-shadow: 0 0 20px rgba(233, 69, 96, 0.3); }
+.result-fled { color: @color-dodge; }
 
 .result-rewards {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  .flex-col();
+  gap: @spacing-md;
   margin-bottom: 20px;
 }
 
 .reward-item {
-  font-size: 18px;
-  color: #ffd700;
+  font-size: @font-xl;
+  color: @accent-color;
   /* 滑入动画由 anime.js animateResultPopup 处理 */
 }
 
-.result-countdown { font-size: 13px; color: #888; margin-bottom: 16px; }
+.result-countdown { font-size: 13px; color: @color-dodge; margin-bottom: 16px; }
 
 .result-close-btn {
   padding: 10px 36px;
-  background: rgba(255, 215, 0, 0.15);
-  border: 2px solid #ffd700;
-  border-radius: 8px;
-  color: #ffd700;
+  background: @gold-bg-hover;
+  border: 2px solid @accent-color;
+  border-radius: @radius-lg;
+  color: @accent-color;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: @font-weight-semibold;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all @transition-quick;
 }
 
 .result-close-btn:hover {
-  background: rgba(255, 215, 0, 0.25);
+  background: @gold-bg-strong;
 }
 
 /* 物品选择弹窗 */
@@ -1459,59 +1442,54 @@ onUnmounted(() => {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.7);
-  z-index: 2100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: @overlay-deep;
+  z-index: @z-combat-result;
+  .flex-center();
 }
 
 .item-modal {
   width: 90%;
   max-width: 400px;
   max-height: 60vh;
-  background: linear-gradient(145deg, #1a1a2e, #16213e);
-  border: 2px solid #4a4a4a;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
+  background: @gradient-panel;
+  border: @border-card;
+  border-radius: @radius-xl;
+  .flex-col();
   overflow: hidden;
 }
 
 .item-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  .flex-between();
   padding: 14px 16px;
-  background: rgba(0, 0, 0, 0.4);
-  border-bottom: 1px solid #333;
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffd700;
+  background: @overlay-dim;
+  border-bottom: 1px solid @color-dark-line;
+  font-size: @font-lg;
+  font-weight: @font-weight-bold;
+  color: @accent-color;
 }
 
-.item-modal-close { background: none; border: none; color: #888; font-size: 18px; cursor: pointer; padding: 4px 8px; }
-.item-modal-close:hover { color: #fff; }
+.item-modal-close { background: none; border: none; color: @color-dodge; font-size: @font-xl; cursor: pointer; padding: @spacing-xs @spacing-md; }
+.item-modal-close:hover { color: @popup-text-color; }
 
-.item-modal-body { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.item-modal-body { flex: 1; overflow-y: auto; padding: 8px; .flex-col(); gap: @spacing-md; }
 
 .item-option {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: @spacing-xl;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  background: @white-05;
+  border-radius: @radius-lg;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all @transition-quick;
 }
 
-.item-option:hover { background: rgba(255, 255, 255, 0.1); }
-.item-option .item-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.item-option .item-name { font-size: 14px; color: #fff; font-weight: bold; }
-.item-option .item-desc { font-size: 12px; color: #888; }
-.item-option .item-count { font-size: 13px; color: #ffd700; font-weight: bold; flex-shrink: 0; }
-.item-empty { text-align: center; padding: 24px; color: #555; font-style: italic; }
+.item-option:hover { background: @white-10; }
+.item-option .item-info { flex: 1; min-width: 0; .flex-col(); gap: 2px; }
+.item-option .item-name { font-size: @font-md; color: @popup-text-color; font-weight: @font-weight-bold; }
+.item-option .item-desc { font-size: @font-sm; color: @color-dodge; }
+.item-option .item-count { font-size: 13px; color: @accent-color; font-weight: @font-weight-bold; flex-shrink: 0; }
+.item-empty { text-align: center; padding: 24px; color: @color-mid-gray; font-style: italic; }
 
 /* 动画 —— 战斗动画已迁移至 @/modules/animation/combat-effects.ts (anime.js) */
 
@@ -1539,14 +1517,14 @@ onUnmounted(() => {
 
 /* 技能冷却 */
 .skill-btn.on-cooldown {
-  opacity: 0.5;
+  opacity: @opacity-dimmed;
   position: relative;
 }
 .skill-cooldown {
-  font-size: 10px;
+  font-size: @font-2xs;
   color: #ffa500;
   background: rgba(255, 165, 0, 0.15);
-  border-radius: 3px;
+  border-radius: @radius-xs;
   padding: 0 4px;
   display: inline-block;
   margin-top: 2px;
@@ -1554,15 +1532,15 @@ onUnmounted(() => {
 
 /* 速度切换按钮 */
 .speed-toggle {
-  background: rgba(255, 215, 0, 0.15);
-  border: 1px solid #ffd700;
-  color: #ffd700;
-  border-radius: 6px;
+  background: @gold-bg-hover;
+  border: 1px solid @accent-color;
+  color: @accent-color;
+  border-radius: @radius-md;
   padding: 2px 10px;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: @font-sm;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all @transition-quick;
 }
 .speed-toggle:hover {
   background: rgba(255, 215, 0, 0.3);
@@ -1578,8 +1556,8 @@ onUnmounted(() => {
 }
 
 .effect-badge {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: @font-xs;
+  font-weight: @font-weight-semibold;
   border-radius: 5px;
   padding: 2px 8px;
   white-space: nowrap;
@@ -1631,9 +1609,7 @@ onUnmounted(() => {
   right: 0;
   bottom: 0;
   z-index: 60;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  .flex-center();
   border-radius: 14px;
   /* 统一暗色遮罩 + 虚化底层 */
   background: rgba(0, 0, 0, 0.82);
@@ -1646,9 +1622,9 @@ onUnmounted(() => {
   text-align: center;
   z-index: 2;
   /* 半透明暗色背景增强文字对比度 */
-  background: rgba(0, 0, 0, 0.5);
+  background: @overlay-mid;
   padding: 32px 48px;
-  border-radius: 12px;
+  border-radius: @radius-xl;
 }
 
 .boss-intro-icon {
@@ -1661,19 +1637,19 @@ onUnmounted(() => {
 }
 
 .boss-intro-name {
-  font-size: 28px;
-  font-weight: 900;
-  color: #ffd700;
+  font-size: @font-5xl;
+  font-weight: @font-weight-heavy;
+  color: @accent-color;
   margin-top: 12px;
-  text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 24px rgba(255, 215, 0, 0.6);
+  text-shadow: @text-glow-gold, 0 0 24px rgba(255, 215, 0, 0.6);
   /* 动画初始状态：隐藏 + 下移 20px，由 anime.js 驱动滑入 */
   opacity: 0;
   transform: translateY(20px);
 }
 
 .boss-intro-line {
-  font-size: 16px;
-  color: #fff;
+  font-size: @font-lg;
+  color: @popup-text-color;
   margin-top: 8px;
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.7), 0 1px 2px rgba(0, 0, 0, 0.5);
   /* 动画初始状态：隐藏 + 下移 10px，由 anime.js 驱动滑入 */
@@ -1690,9 +1666,7 @@ onUnmounted(() => {
   bottom: 0;
   z-index: 55;
   pointer-events: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  .flex-center();
   border-radius: 14px;
   overflow: hidden;
 }
@@ -1736,8 +1710,8 @@ onUnmounted(() => {
 }
 
 .phase-transition-label {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: @font-md;
+  font-weight: @font-weight-semibold;
   color: rgba(255, 255, 255, 0.6);
   text-transform: uppercase;
   letter-spacing: 3px;
@@ -1745,18 +1719,18 @@ onUnmounted(() => {
 }
 
 .phase-transition-text {
-  font-size: 32px;
-  font-weight: 900;
-  color: #ffd700;
-  text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 215, 0, 0.6), 0 0 64px rgba(255, 100, 0, 0.4);
+  font-size: @font-6xl;
+  font-weight: @font-weight-heavy;
+  color: @accent-color;
+  text-shadow: @text-glow-gold, 0 0 64px rgba(255, 100, 0, 0.4);
   white-space: nowrap;
 }
 
 /* 各特效的文字颜色 */
-.phase-transition-darken .phase-transition-text { color: #ffd700; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 215, 0, 0.6); }
+.phase-transition-darken .phase-transition-text { color: @accent-color; text-shadow: @text-glow-gold; }
 .phase-transition-flame .phase-transition-text { color: #ff4500; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 69, 0, 0.7), 0 0 64px rgba(255, 0, 0, 0.5); }
 .phase-transition-freeze .phase-transition-text { color: #00bcd4; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(0, 188, 212, 0.7), 0 0 64px rgba(0, 255, 255, 0.4); }
-.phase-transition-lightning .phase-transition-text { color: #a855f7; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(168, 85, 247, 0.7), 0 0 64px rgba(200, 100, 255, 0.5); }
+.phase-transition-lightning .phase-transition-text { color: @damage-magic; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(168, 85, 247, 0.7), 0 0 64px rgba(200, 100, 255, 0.5); }
 .phase-transition-shake .phase-transition-text { color: #ff6347; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 99, 71, 0.7), 0 0 64px rgba(255, 50, 0, 0.5); }
 
 /* Boss 出场和阶段转换动画已迁移至 @/modules/animation/combat-effects.ts (anime.js) */

@@ -5,79 +5,74 @@
   width: 100%;
   height: 100%;
   background: @popup-overlay-bg;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
+  .flex-center();
+  z-index: @z-popup;
+  padding: @spacing-4xl;
   box-sizing: border-box;
 }
 
 .popup-content {
   background: @popup-bg;
-  border-radius: 12px;
-  border: 2px solid @popup-border-color;
+  border-radius: @radius-xl;
+  border: @border-card;
   max-width: 600px;
   width: 100%;
   max-height: 90vh;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   position: relative;
 }
 
 .popup-header {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: @spacing-xl @spacing-3xl;
   min-height: 48px;
-  border-bottom: 1px solid @popup-border-color;
+  border-bottom: @border-sm;
   flex-shrink: 0;
-  gap: 10px;
+  gap: @spacing-lg;
 }
 
 .popup-title {
-  font-size: 16px;
+  font-size: @font-lg;
   color: @accent-color;
   margin: 0;
-  font-weight: bold;
+  font-weight: @font-weight-bold;
   flex-shrink: 0;
 }
 
 .popup-close-btn {
   width: 28px;
   height: 28px;
-  background: rgba(255, 255, 255, 0.1);
+  background: @white-10;
   border: none;
   border-radius: 50%;
   color: @text-primary;
-  font-size: 18px;
+  font-size: @font-xl;
   cursor: pointer;
-  transition: background 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition: background @transition-normal;
+  .flex-center();
   margin-left: auto;
   flex-shrink: 0;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: @white-20;
   }
 }
 
 .popup-body {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: @spacing-3xl;
 }
 
 .popup-footer {
-  padding: 12px 16px;
-  border-top: 1px solid @popup-border-color;
+  padding: @spacing-xl @spacing-3xl;
+  border-top: @border-sm;
   flex-shrink: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
-  gap: 10px;
+  gap: @spacing-lg;
   min-height: 52px;
   box-sizing: border-box;
 
@@ -88,40 +83,38 @@
 }
 
 .popup-footer-btn {
-  padding: 10px 16px;
-  border: 2px solid @popup-border-color;
-  border-radius: 8px;
+  padding: @spacing-lg @spacing-3xl;
+  border: @border-card;
+  border-radius: @radius-lg;
   color: @text-primary;
-  font-size: 14px;
-  font-weight: bold;
+  font-size: @font-md;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.3s;
-  background: rgba(255, 255, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition: all @transition-normal;
+  background: @white-10;
+  .flex-center();
 
   &:hover {
-    border-color: #666;
-    background: rgba(255, 255, 255, 0.15);
+    border-color: @color-dim-gray;
+    background: @white-15;
   }
 }
 
 .popup-footer-btn.cancel {
-  background: rgba(255, 255, 255, 0.1);
+  background: @white-10;
   color: @text-primary;
-  border: 2px solid @popup-border-color;
+  border: @border-card;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: #666;
+    background: @white-20;
+    border-color: @color-dim-gray;
   }
 }
 
 .popup-footer-btn.confirm {
   background: @accent-color;
   border-color: @accent-color;
-  color: #000;
+  color: @color-text-dark;
 
   &:hover {
     background: darken(@accent-color, 10%);
@@ -164,7 +157,7 @@
 
 /* ===== 弹窗进出场动画（BasePopup Transition） ===== */
 .popup-enter-active {
-  animation: fadeIn 0.2s ease;
+  animation: fadeIn @transition-quick ease;
 }
 
 /* 遮罩淡入时，内容盒体做轻微缩放弹入 */
@@ -173,5 +166,5 @@
 }
 
 .popup-leave-active {
-  animation: fadeIn 0.15s ease reverse;
+  animation: fadeIn @transition-fast ease reverse;
 }

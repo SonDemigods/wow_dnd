@@ -249,12 +249,11 @@ onMounted(async () => {
 
 <style lang="less" scoped>
 .exploration-view {
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   height: 100%;
-  background: #1a1a2e;
-  border-radius: 12px;
-  border: 2px solid #4a4a4a;
+  background: @primary-bg;
+  border-radius: @radius-xl;
+  border: @border-card;
   overflow: hidden;
 }
 
@@ -264,7 +263,7 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 12px;
+  padding: @spacing-xl;
   overflow: hidden;
   cursor: grab;
   user-select: none;
@@ -276,16 +275,15 @@ onMounted(async () => {
 
 .grid-wrapper {
   background: rgba(0, 0, 0, 0.5);
-  padding: 12px;
+  padding: @spacing-xl;
   border-radius: 10px;
-  border: 2px solid #555;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 2px solid @color-mid-gray;
+  box-shadow: @shadow-card;
   transition: transform 0.1s ease-out;
 }
 
 .grid {
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   gap: 3px;
 }
 
@@ -297,58 +295,56 @@ onMounted(async () => {
 .cell {
   width: 52px;
   height: 52px;
-  background: #2a2a3e;
-  border: 1px solid #333;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: @bg-mid-dark;
+  border: 1px solid @color-dark-line;
+  border-radius: @radius-md;
+  .flex-center();
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all @transition-quick;
   flex-shrink: 0;
 }
 
 .cell:hover {
-  border-color: #555;
+  border-color: @color-mid-gray;
   transform: scale(1.05);
 }
 
 /* 未探索格子 */
 .cell.hidden {
-  background: #1a1a2e;
-  border-color: #2a2a3e;
+  background: @primary-bg;
+  border-color: @bg-mid-dark;
   cursor: default;
 }
 
 .cell.hidden:hover {
-  background: #1a1a2e;
-  border-color: #2a2a3e;
+  background: @primary-bg;
+  border-color: @bg-mid-dark;
   transform: none;
 }
 
 /* 可访问的未探索格子 */
 .cell.accessible {
-  background: #1a1a2e;
-  border-color: #4a4a4a;
+  background: @primary-bg;
+  border-color: @popup-border-color;
   cursor: pointer;
 }
 
 .cell.accessible:hover {
-  background: #2a2a3e;
-  border-color: #00d2d3;
+  background: @bg-mid-dark;
+  border-color: @color-ally;
   box-shadow: 0 0 8px rgba(0, 210, 211, 0.3);
 }
 
 /* 已揭示格子 */
 .cell.revealed {
-  background: #2a2a3e;
-  border-color: #4a4a4a;
+  background: @bg-mid-dark;
+  border-color: @popup-border-color;
 }
 
 /* 营地 - 绿色高亮 */
 .cell.rest {
   background: rgba(76, 175, 80, 0.3);
-  border-color: #4CAF50;
+  border-color: @heal-hp;
 }
 
 /* 商店 - 蓝色高亮 */
@@ -396,36 +392,36 @@ onMounted(async () => {
 
 /* 空地 */
 .cell.empty {
-  background: #1a1a2e;
+  background: @primary-bg;
 }
 
 /* 起点 */
 .cell.start {
   background: rgba(0, 210, 211, 0.2);
-  border-color: #00d2d3;
+  border-color: @color-ally;
 }
 
 .cell-icon {
-  font-size: 24px;
+  font-size: @font-4xl;
 }
 
 .cell-hidden {
   color: #444;
-  font-size: 20px;
+  font-size: @font-2xl;
 }
 
 /* 探索底部 */
 .exploration-footer {
-  padding: 10px 16px;
+  padding: @spacing-lg @spacing-3xl;
   text-align: center;
   background: rgba(0, 0, 0, 0.3);
-  border-top: 1px solid #333;
+  border-top: 1px solid @color-dark-line;
 }
 
 .exploration-progress {
-  color: #00d2d3;
-  font-size: 14px;
-  font-weight: 500;
+  color: @color-ally;
+  font-size: @font-md;
+  font-weight: @font-weight-normal;
 }
 
 /* 响应式 - 移动端 */
@@ -447,10 +443,7 @@ onMounted(async () => {
 /* 未选择区域时的提示 */
 .no-location-hint {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  .flex-col-center();
   gap: 16px;
   padding: 40px 20px;
   text-align: center;
@@ -462,14 +455,14 @@ onMounted(async () => {
 }
 
 .hint-text {
-  font-size: 20px;
-  color: #8b8b8b;
-  font-weight: 600;
+  font-size: @font-2xl;
+  color: @text-secondary;
+  font-weight: @font-weight-semibold;
 }
 
 .hint-sub {
-  font-size: 14px;
-  color: #555;
+  font-size: @font-md;
+  color: @color-mid-gray;
   max-width: 280px;
   line-height: 1.6;
 }

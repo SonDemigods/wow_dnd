@@ -25,11 +25,7 @@ const typeName = computed(() => getSkillTypeName(props.type));
 
 <style lang="less" scoped>
 .effect-tag {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: bold;
-  white-space: nowrap;
+  .tag-base();
   display: inline-block;
 }
 

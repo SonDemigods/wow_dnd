@@ -29,20 +29,20 @@ const customStyle = {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 3px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 3px @spacing-lg;
+  border-radius: @radius-sm;
+  font-size: @font-sm;
+  font-weight: @font-weight-semibold;
   white-space: nowrap;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #ffffff;
+  color: @popup-text-color;
   min-width: 40px;
   max-width: 80px;
 }
 
 .tag-race {
-  background: rgba(255, 255, 255, 0.2);
+  background: @white-20;
 }
 
 .tag-class {

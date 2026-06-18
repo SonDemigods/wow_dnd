@@ -356,7 +356,7 @@ defineExpose({ showNotif });
 <style lang="less" scoped>
 .game-main {
   height: 100vh;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: linear-gradient(135deg, @primary-bg 0%, #16213e 50%, #0f3460 100%);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -366,60 +366,57 @@ defineExpose({ showNotif });
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 24px;
+  padding: @spacing-xl 24px;
   background: rgba(0, 0, 0, 0.5);
-  border-bottom: 2px solid #4a4a4a;
+  border-bottom: 2px solid @popup-border-color;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: @spacing-xl;
 }
 
 .player-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: @spacing-xl;
   cursor: pointer;
-  padding: 8px 12px;
+  padding: @spacing-md @spacing-xl;
   border-radius: 10px;
-  transition: background 0.2s;
+  transition: background @transition-quick;
 }
 
 .player-info:hover {
-  background: rgba(255, 215, 0, 0.1);
+  background: @gold-bg;
 }
 
 .player-avatar {
   font-size: 32px;
   width: 48px;
   height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 215, 0, 0.15);
+  .flex-center();
+  background: @gold-bg-hover;
   border: 2px solid rgba(255, 215, 0, 0.3);
   border-radius: 10px;
   flex-shrink: 0;
 }
 
 .player-details {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  .flex-col();
+  gap: @spacing-xs;
 }
 
 .player-name {
-  font-size: 18px;
-  color: #f0f0f0;
-  font-weight: bold;
+  font-size: @font-xl;
+  color: @text-primary;
+  font-weight: @font-weight-bold;
   line-height: 1.2;
 }
 
 .player-level {
-  font-size: 12px;
-  color: #ffd700;
-  font-weight: bold;
-  background: rgba(255, 215, 0, 0.1);
-  padding: 2px 8px;
-  border-radius: 4px;
+  font-size: @font-sm;
+  color: @accent-color;
+  font-weight: @font-weight-bold;
+  background: @gold-bg;
+  padding: @spacing-2xs @spacing-md;
+  border-radius: @radius-sm;
 }
 
 .player-level.level-up {
@@ -429,27 +426,25 @@ defineExpose({ showNotif });
 .player-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: @spacing-md;
 }
 
 .player-gold {
-  font-size: 12px;
-  font-weight: bold;
-  color: #ffd700;
+  font-size: @font-sm;
+  font-weight: @font-weight-bold;
+  color: @accent-color;
 }
 
 .player-resources {
   flex: 1;
   max-width: 400px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  .flex-col();
+  gap: @spacing-sm;
 }
 
 .game-content {
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   overflow: hidden;
 }
 
@@ -457,31 +452,31 @@ defineExpose({ showNotif });
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 12px 24px;
+  padding: @spacing-xl 24px;
   background: rgba(0, 0, 0, 0.3);
-  border-bottom: 1px solid #4a4a4a;
+  border-bottom: @border-sm;
 }
 
 .content-tab {
-  padding: 8px 24px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid #4a4a4a;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 14px;
+  padding: @spacing-md 24px;
+  background: @white-05;
+  border: @border-card;
+  border-radius: @radius-md;
+  color: @popup-text-color;
+  font-size: @font-md;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
 }
 
 .content-tab:hover {
-  border-color: #666;
-  background: rgba(255, 255, 255, 0.1);
+  border-color: @color-dim-gray;
+  background: @white-10;
 }
 
 .content-tab.active {
-  border-color: #ffd700;
-  background: rgba(255, 215, 0, 0.1);
-  color: #ffd700;
+  border-color: @accent-color;
+  background: @gold-bg;
+  color: @accent-color;
 }
 
 .content-tab.disabled {
@@ -492,23 +487,22 @@ defineExpose({ showNotif });
 
 .area-info {
   margin-left: auto;
-  color: #8b8b8b;
-  font-size: 14px;
+  color: @text-secondary;
+  font-size: @font-md;
 }
 
 .content-view {
   flex: 1;
-  padding: 16px;
+  padding: @spacing-3xl;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
 }
 
 .game-footer {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding: 10px 12px 14px;
+  padding: @spacing-lg @spacing-xl @spacing-2xl;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.7) 100%);
   border-top: 1px solid rgba(255, 215, 0, 0.2);
   position: relative;
@@ -525,11 +519,9 @@ defineExpose({ showNotif });
 }
 
 .footer-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  .flex-col-center();
   gap: 5px;
-  padding: 8px 4px 6px;
+  padding: @spacing-md @spacing-xs @spacing-sm;
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.7);
@@ -548,14 +540,14 @@ defineExpose({ showNotif });
   transform: translateX(-50%);
   width: 0;
   height: 2px;
-  background: #ffd700;
+  background: @accent-color;
   border-radius: 1px;
   transition: width 0.3s ease;
   box-shadow: 0 0 6px rgba(255, 215, 0, 0.5);
 }
 
 .footer-btn:hover {
-  color: #ffd700;
+  color: @accent-color;
   background: rgba(255, 215, 0, 0.08);
   transform: translateY(-2px);
 }
@@ -569,14 +561,14 @@ defineExpose({ showNotif });
 }
 
 .footer-icon {
-  font-size: 24px;
+  font-size: @font-4xl;
   line-height: 1;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
 .footer-text {
-  font-size: 10px;
-  font-weight: 500;
+  font-size: @font-2xs;
+  font-weight: @font-weight-normal;
   letter-spacing: 0.5px;
 }
 

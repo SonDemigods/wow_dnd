@@ -150,36 +150,34 @@ function toggleBgm() {
 
 <style lang="less" scoped>
 .audio-body {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 8px 0;
+  .flex-col();
+  gap: @spacing-4xl;
+  padding: @spacing-md 0;
 }
 
 .slider-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  .flex-col();
+  gap: @spacing-md;
 }
 
 .slider-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: @spacing-md;
   color: #ccc;
-  font-size: 14px;
+  font-size: @font-md;
 }
 
 .slider-icon {
-  font-size: 16px;
+  font-size: @font-lg;
   width: 24px;
 }
 
 .slider-value {
   margin-left: auto;
-  color: #ffd700;
-  font-size: 13px;
-  font-weight: bold;
+  color: @accent-color;
+  font-size: @font-base;
+  font-weight: @font-weight-bold;
   min-width: 36px;
   text-align: right;
 }
@@ -187,7 +185,7 @@ function toggleBgm() {
 .slider-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: @spacing-lg;
 }
 
 .audio-slider {
@@ -195,8 +193,8 @@ function toggleBgm() {
   -webkit-appearance: none;
   appearance: none;
   height: 6px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
+  background: @white-15;
+  border-radius: @radius-xs;
   outline: none;
   cursor: pointer;
 }
@@ -212,7 +210,7 @@ function toggleBgm() {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #ffd700;
+  background: @accent-color;
   cursor: pointer;
   border: 2px solid #b8960f;
   transition: transform 0.15s;
@@ -223,71 +221,71 @@ function toggleBgm() {
 }
 
 .audio-slider:disabled::-webkit-slider-thumb {
-  background: #666;
+  background: @color-dim-gray;
   border-color: #444;
   cursor: not-allowed;
 }
 
 .toggle-btn {
-  padding: 4px 14px;
+  padding: @spacing-xs 14px;
   min-width: 48px;
-  border: 1px solid #4a4a4a;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #888;
-  font-size: 12px;
-  font-weight: bold;
+  border: @border-sm;
+  border-radius: @radius-sm;
+  background: @white-05;
+  color: @color-dodge;
+  font-size: @font-sm;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all @transition-quick;
 }
 
 .toggle-btn.active {
-  border-color: #ffd700;
-  background: rgba(255, 215, 0, 0.1);
-  color: #ffd700;
+  border-color: @accent-color;
+  background: @gold-bg;
+  color: @accent-color;
 }
 
 .toggle-btn:hover {
-  border-color: #888;
+  border-color: @color-dodge;
 }
 
 .toggle-btn.active:hover {
-  border-color: #ffd700;
+  border-color: @accent-color;
 }
 
 .mute-row {
   display: flex;
   justify-content: center;
-  padding-top: 4px;
+  padding-top: @spacing-xs;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .mute-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 24px;
-  border: 2px solid #4a4a4a;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  gap: @spacing-md;
+  padding: @spacing-md 24px;
+  border: @border-card;
+  border-radius: @radius-lg;
+  background: @white-05;
   color: #ccc;
-  font-size: 14px;
+  font-size: @font-md;
   cursor: pointer;
   transition: all 0.25s;
 }
 
 .mute-btn:hover {
-  border-color: #888;
-  background: rgba(255, 255, 255, 0.1);
+  border-color: @color-dodge;
+  background: @white-10;
 }
 
 .mute-btn.muted {
-  border-color: #ff4444;
+  border-color: @danger-color;
   background: rgba(255, 68, 68, 0.1);
   color: #ff6b6b;
 }
 
 .mute-icon {
-  font-size: 18px;
+  font-size: @font-xl;
 }
 </style>

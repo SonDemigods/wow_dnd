@@ -1,5 +1,13 @@
+// ============================================================
+// 全局设计变量
+// 涵盖颜色、间距、圆角、字体、动画、层级等所有设计 Token
+// ============================================================
+
+// ========== 主题主色 ==========
 @primary-bg: #1a1a2e;
 @secondary-bg: #0d1117;
+@bg-deep-blue: #16213e;
+@bg-mid-dark: #2a2a3e;
 @accent-color: #ffd700;
 @success-color: #00ff88;
 @warning-color: #ff9d00;
@@ -9,16 +17,39 @@
 @border-color: #2d2d2d;
 @skill-blue: #0099ff;
 
+// ========== 通用灰色系 ==========
+@color-dim-gray: #666666;
+@color-dark-line: #333333;
+@color-mid-gray: #555555;
+@color-fallback: #9d9d9d;
+@color-text-dark: #000000;
+
+// ========== 功能色 ==========
+@color-danger-accent: #e94560;
+@color-ally: #00d2d3;
+@color-flame: #ff4500;
+@color-delete: #ff4400;
+@color-skip: #fbbf24;
+@skill-purple: #8b5cf6;
+
+// ========== 战斗日志角色色 ==========
+@log-player: #60a5fa;
+@log-enemy: #f87171;
+@log-system: #fbbf24;
+
+// ========== 物品品质色 ==========
 @quality-common: #ffffff;
 @quality-uncommon: #1eff00;
 @quality-rare: #0070dd;
 @quality-epic: #a335ee;
 @quality-legendary: #ff8000;
 
+// ========== 阵营色 ==========
 @faction-alliance: #0078ff;
 @faction-horde: #b40000;
 @faction-neutral: #4caf50;
 
+// ========== 职业色 ==========
 @class-warrior: #C79C6E;
 @class-mage: #69CCF0;
 @class-paladin: #F58CBA;
@@ -32,6 +63,7 @@
 @class-monk: #00FF96;
 @class-demonhunter: #A330C9;
 
+// ========== 弹窗色 ==========
 @popup-bg: rgba(13, 17, 23, 0.98);
 @popup-border-color: #4a4a4a;
 @popup-title-color: #ffd700;
@@ -86,3 +118,120 @@
 @flash-crit-fade: rgba(255, 215, 0, 0.15);
 @flash-dodge: rgba(255, 255, 255, 0.2);
 @flash-dodge-fade: rgba(255, 255, 255, 0.05);
+
+// ========== 遮罩系列 ==========
+@overlay-light: rgba(0, 0, 0, 0.3);
+@overlay-dim: rgba(0, 0, 0, 0.4);
+@overlay-mid: rgba(0, 0, 0, 0.5);
+@overlay-dark: rgba(0, 0, 0, 0.6);
+@overlay-deep: rgba(0, 0, 0, 0.7);
+@overlay-heavy: rgba(0, 0, 0, 0.8);
+
+// ========== 白色半透明系列 ==========
+@white-03: rgba(255, 255, 255, 0.03);
+@white-05: rgba(255, 255, 255, 0.05);
+@white-08: rgba(255, 255, 255, 0.08);
+@white-10: rgba(255, 255, 255, 0.1);
+@white-15: rgba(255, 255, 255, 0.15);
+@white-18: rgba(255, 255, 255, 0.18);
+@white-20: rgba(255, 255, 255, 0.2);
+
+// ========== 金色半透明系列 ==========
+@gold-bg: rgba(255, 215, 0, 0.1);
+@gold-bg-hover: rgba(255, 215, 0, 0.15);
+@gold-bg-active: rgba(255, 215, 0, 0.2);
+@gold-bg-strong: rgba(255, 215, 0, 0.25);
+@gold-border: rgba(255, 215, 0, 0.3);
+
+// ========== 绿色半透明系列 ==========
+@green-bg: rgba(76, 175, 80, 0.1);
+@green-bg-hover: rgba(76, 175, 80, 0.15);
+
+// ========== 间距系统 ==========
+@spacing-2xs: 2px;
+@spacing-xs: 4px;
+@spacing-sm: 6px;
+@spacing-md: 8px;
+@spacing-lg: 10px;
+@spacing-xl: 12px;
+@spacing-2xl: 14px;
+@spacing-3xl: 16px;
+@spacing-4xl: 20px;
+@spacing-5xl: 24px;
+
+// ========== 圆角系统 ==========
+@radius-xs: 3px;
+@radius-sm: 4px;
+@radius-md: 6px;
+@radius-lg: 8px;
+@radius-xl: 12px;
+
+// ========== 字体大小系统 ==========
+@font-3xs: 9px;
+@font-2xs: 10px;
+@font-xs: 11px;
+@font-sm: 12px;
+@font-base: 13px;
+@font-md: 14px;
+@font-lg: 16px;
+@font-xl: 18px;
+@font-2xl: 20px;
+@font-3xl: 22px;
+@font-4xl: 24px;
+@font-5xl: 28px;
+@font-6xl: 32px;
+
+// ========== 字重系统 ==========
+@font-weight-normal: 500;
+@font-weight-semibold: 600;
+@font-weight-bold: 700;
+@font-weight-heavy: 900;
+
+// ========== 行高 ==========
+@line-height-body: 1.5;
+
+// ========== 透明度系统 ==========
+@opacity-disabled: 0.3;
+@opacity-dimmed: 0.5;
+@opacity-subtle: 0.6;
+@opacity-faded: 0.4;
+@opacity-high: 0.85;
+
+// ========== 过渡动画时长 ==========
+@transition-fast: 0.15s;
+@transition-quick: 0.2s;
+@transition-normal: 0.3s;
+@transition-card: 0.35s;
+@transition-glow: 0.5s;
+@transition-equip: 0.6s;
+
+// ========== Z-Index 分层 ==========
+@z-base: 1;
+@z-dropdown: 10;
+@z-overlay: 100;
+@z-popup: 1000;
+@z-toast: 1100;
+@z-combat-overlay: 2000;
+@z-combat-result: 2100;
+@z-item-modal: 2200;
+
+// ========== 渐变 ==========
+@gradient-panel: linear-gradient(145deg, @primary-bg 0%, @bg-deep-blue 100%);
+@gradient-attr-panel: linear-gradient(135deg, rgba(13, 17, 23, 0.98) 0%, rgba(20, 25, 35, 0.98) 100%);
+@gradient-gold-btn: linear-gradient(135deg, #ffd700, #ff8c00);
+
+// ========== 边框变量 ==========
+@border-card: 2px solid @popup-border-color;
+@border-sm: 1px solid @popup-border-color;
+@border-dashed: 2px dashed @popup-border-color;
+@border-hover: 2px solid @color-dim-gray;
+@border-gold: 1px solid @gold-border;
+
+// ========== 阴影变量 ==========
+@shadow-card: 0 4px 12px @overlay-light;
+@shadow-gold: 0 4px 12px @gold-bg-strong;
+
+// ========== 文字阴影 ==========
+@text-glow-gold: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 215, 0, 0.6);
+@text-shadow-label: 0 1px 2px rgba(0, 0, 0, 0.7);
+@text-shadow-title: 2px 2px 4px rgba(0, 0, 0, 0.5);

@@ -369,25 +369,22 @@ onUnmounted(() => {
 
 <style lang="less" scoped>
 .character-content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  .flex-col();
+  gap: @spacing-3xl;
 }
 
 /* 角色信息和资源条概览 */
 .character-overview {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  .flex-col();
+  gap: @spacing-xl;
+  padding: @spacing-xl;
+  background: @white-05;
+  border-radius: @radius-lg;
 }
 
 .character-basic {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  .flex-col();
+  gap: @spacing-lg;
 }
 
 .char-row {
@@ -400,77 +397,73 @@ onUnmounted(() => {
   font-size: 40px;
   width: 52px;
   height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 215, 0, 0.15);
+  .flex-center();
+  background: @gold-bg-hover;
   border: 2px solid rgba(255, 215, 0, 0.3);
   border-radius: 10px;
   flex-shrink: 0;
 }
 
 .char-main-info {
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   gap: 2px;
 }
 
 .char-name {
   font-size: 22px;
-  color: #f0f0f0;
-  font-weight: bold;
+  color: @text-primary;
+  font-weight: @font-weight-bold;
   line-height: 1.2;
 }
 
 .char-level {
-  font-size: 14px;
-  color: #ffd700;
-  font-weight: bold;
-  background: rgba(255, 215, 0, 0.1);
-  padding: 2px 8px;
-  border-radius: 4px;
+  font-size: @font-md;
+  color: @accent-color;
+  font-weight: @font-weight-bold;
+  background: @gold-bg;
+  padding: @spacing-2xs @spacing-md;
+  border-radius: @radius-sm;
   display: inline-block;
   width: fit-content;
 }
 
 .char-details {
   display: flex;
-  gap: 4px;
+  gap: @spacing-xs;
   flex-wrap: wrap;
 }
 
 .resource-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  .flex-col();
+  gap: @spacing-sm;
 }
 
 /* 核心属性 */
 .attributes-section h3 {
-  font-size: 14px;
-  color: #ffd700;
-  margin-bottom: 10px;
-  font-weight: bold;
+  font-size: @font-md;
+  color: @accent-color;
+  margin-bottom: @spacing-lg;
+  font-weight: @font-weight-bold;
 }
 
 .core-attributes {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: @spacing-md;
 }
 
 .core-attr-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
+  gap: @spacing-lg;
+  padding: @spacing-md @spacing-xl;
+  background: @white-05;
+  border-radius: @radius-md;
   border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
 .core-attr-icon {
-  font-size: 20px;
+  font-size: @font-2xl;
 }
 
 .core-attr-content {
@@ -481,43 +474,43 @@ onUnmounted(() => {
 }
 
 .core-attr-name {
-  font-size: 13px;
-  color: #ffd700;
+  font-size: @font-base;
+  color: @accent-color;
   font-weight: 500;
 }
 
 .core-attr-value {
-  font-size: 16px;
-  color: #ffffff;
-  font-weight: bold;
+  font-size: @font-lg;
+  color: @popup-text-color;
+  font-weight: @font-weight-bold;
 }
 
 /* 次级属性 */
 .secondary-section h3 {
-  font-size: 14px;
-  color: #ffd700;
-  margin-bottom: 10px;
-  font-weight: bold;
+  font-size: @font-md;
+  color: @accent-color;
+  margin-bottom: @spacing-lg;
+  font-weight: @font-weight-bold;
 }
 
 .secondary-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: @spacing-md;
+  margin-bottom: @spacing-xl;
 }
 
 .secondary-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
+  gap: @spacing-lg;
+  padding: @spacing-lg @spacing-xl;
+  background: @white-05;
+  border-radius: @radius-md;
   border-left: 3px solid transparent;
 }
 
-.secondary-item.attack { border-left-color: #ff6b6b; }
+.secondary-item.attack { border-left-color: @damage-physical; }
 .secondary-item.defense { border-left-color: #4ecdc4; }
 .secondary-item.magic-attack { border-left-color: #a29bfe; }
 .secondary-item.magic-defense { border-left-color: #fd79a8; }
@@ -525,7 +518,7 @@ onUnmounted(() => {
 .secondary-item.dodge { border-left-color: #74b9ff; }
 
 .secondary-icon {
-  font-size: 18px;
+  font-size: @font-xl;
   flex-shrink: 0;
 }
 
@@ -534,74 +527,72 @@ onUnmounted(() => {
 }
 
 .secondary-label {
-  font-size: 12px;
-  color: #8b8b8b;
+  font-size: @font-sm;
+  color: @text-secondary;
   margin-bottom: 2px;
 }
 
 .secondary-value {
-  font-size: 14px;
-  color: #f0f0f0;
-  font-weight: bold;
+  font-size: @font-md;
+  color: @text-primary;
+  font-weight: @font-weight-bold;
 }
 
 .resource-stats {
   display: flex;
-  gap: 8px;
+  gap: @spacing-md;
 }
 
 .resource-stats .resource-item {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
+  gap: @spacing-sm;
+  padding: @spacing-sm @spacing-lg;
+  background: @white-05;
+  border-radius: @radius-md;
 }
 
 .resource-stats .resource-icon {
-  font-size: 12px;
+  font-size: @font-sm;
 }
 
 .resource-stats .resource-label {
-  font-size: 11px;
-  color: #8b8b8b;
+  font-size: @font-xs;
+  color: @text-secondary;
   flex: 1;
 }
 
 .resource-stats .resource-value {
-  font-size: 12px;
-  color: #f0f0f0;
-  font-weight: bold;
+  font-size: @font-sm;
+  color: @text-primary;
+  font-weight: @font-weight-bold;
 }
 
 /* 装备区域 */
 .equipment-section h3 {
-  font-size: 14px;
-  color: #ffd700;
-  margin-bottom: 10px;
-  font-weight: bold;
+  font-size: @font-md;
+  color: @accent-color;
+  margin-bottom: @spacing-lg;
+  font-weight: @font-weight-bold;
 }
 
 .equipment-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: @spacing-md;
+  margin-bottom: @spacing-xl;
 }
 
 .equip-slot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  .flex-col-center();
   justify-content: center;
-  gap: 4px;
-  padding: 8px 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  gap: @spacing-xs;
+  padding: @spacing-md @spacing-md;
+  background: @white-05;
+  border-radius: @radius-lg;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
   min-height: 80px;
   aspect-ratio: 1;
 }
@@ -615,11 +606,11 @@ onUnmounted(() => {
 }
 
 .equip-slot:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: @white-10;
 }
 
 .equip-slot.selected {
-  background: rgba(255, 215, 0, 0.25);
+  background: @gold-bg-strong;
 }
 
 .equip-slot.equipped {
@@ -627,12 +618,12 @@ onUnmounted(() => {
 }
 
 .equip-slot.equipped.selected {
-  background: rgba(255, 215, 0, 0.25);
+  background: @gold-bg-strong;
 }
 
 .slot-name {
-  font-size: 10px;
-  color: #f0f0f0;
+  font-size: @font-2xs;
+  color: @text-primary;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -641,22 +632,22 @@ onUnmounted(() => {
 }
 
 .slot-name.empty {
-  color: #666;
+  color: @color-dim-gray;
 }
 
 /* 装备详情 */
 .equipment-detail {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #4a4a4a;
-  border-radius: 8px;
+  background: @overlay-light;
+  border: @border-sm;
+  border-radius: @radius-lg;
   padding: 14px;
 }
 
 .detail-header {
   display: flex;
-  gap: 12px;
+  gap: @spacing-xl;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: @spacing-lg;
 }
 
 .detail-info {
@@ -664,20 +655,20 @@ onUnmounted(() => {
 }
 
 .detail-info h4 {
-  font-size: 16px;
-  color: #f0f0f0;
-  font-weight: bold;
-  margin: 0 0 4px 0;
+  font-size: @font-lg;
+  color: @text-primary;
+  font-weight: @font-weight-bold;
+  margin: 0 0 @spacing-xs 0;
 }
 
-.detail-info h4.common { color: #ffffff; }
+.detail-info h4.common { color: @popup-text-color; }
 .detail-info h4.uncommon { color: #1eff00; }
 .detail-info h4.rare { color: #0070dd; }
 .detail-info h4.epic { color: #a335ee; }
 .detail-info h4.legendary { color: #ff8000; }
 
 .detail-rarity {
-  font-size: 12px;
+  font-size: @font-sm;
 }
 
 .detail-rarity.common { color: #9d9d9d; }
@@ -688,61 +679,60 @@ onUnmounted(() => {
 
 .detail-desc {
   color: #aaa;
-  font-size: 13px;
-  margin: 8px 0;
+  font-size: @font-base;
+  margin: @spacing-md 0;
 }
 
 .detail-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 10px;
+  .flex-col();
+  gap: @spacing-xs;
+  margin-bottom: @spacing-lg;
 }
 
 .stat-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 8px;
-  background: rgba(76, 175, 80, 0.1);
-  border-radius: 4px;
+  padding: @spacing-xs @spacing-md;
+  background: @green-bg;
+  border-radius: @radius-sm;
 }
 
 .stat-name {
-  color: #8b8b8b;
-  font-size: 13px;
+  color: @text-secondary;
+  font-size: @font-base;
 }
 
 .stat-value {
-  color: #4CAF50;
-  font-size: 13px;
-  font-weight: bold;
+  color: @heal-hp;
+  font-size: @font-base;
+  font-weight: @font-weight-bold;
 }
 
 .detail-requirement {
-  color: #ffd700;
-  font-size: 12px;
-  margin-bottom: 10px;
-  padding: 4px 8px;
-  background: rgba(255, 215, 0, 0.1);
-  border-radius: 4px;
+  color: @accent-color;
+  font-size: @font-sm;
+  margin-bottom: @spacing-lg;
+  padding: @spacing-xs @spacing-md;
+  background: @gold-bg;
+  border-radius: @radius-sm;
   display: inline-block;
 }
 
 .detail-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 10px;
+  gap: @spacing-md;
+  margin-top: @spacing-lg;
 }
 
 .action-btn {
-  padding: 8px 16px;
+  padding: @spacing-md @spacing-3xl;
   border: none;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: bold;
+  border-radius: @radius-sm;
+  font-size: @font-base;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all @transition-quick;
 }
 
 .action-btn:hover {
@@ -751,25 +741,23 @@ onUnmounted(() => {
 
 .unequip {
   background: linear-gradient(135deg, #ff9800, #f57c00);
-  color: #fff;
+  color: @popup-text-color;
 }
 
 .detail-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  .flex-col-center();
   justify-content: center;
-  gap: 8px;
-  padding: 20px;
+  gap: @spacing-md;
+  padding: @spacing-4xl;
 }
 
 .placeholder-icon {
-  font-size: 32px;
-  opacity: 0.5;
+  font-size: @font-6xl;
+  opacity: @opacity-dimmed;
 }
 
 .placeholder-text {
-  color: #666;
-  font-size: 13px;
+  color: @color-dim-gray;
+  font-size: @font-base;
 }
 </style>

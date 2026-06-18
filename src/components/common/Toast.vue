@@ -30,17 +30,17 @@ withDefaults(defineProps<{
   top: 120px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 12px 24px;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: bold;
-  z-index: 1100;
+  padding: @spacing-xl 24px;
+  border-radius: @radius-lg;
+  color: @popup-text-color;
+  font-size: @font-md;
+  font-weight: @font-weight-bold;
+  z-index: @z-toast;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: @spacing-md;
   pointer-events: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: @shadow-card;
 }
 
 .toast.info {
@@ -60,7 +60,7 @@ withDefaults(defineProps<{
 }
 
 .toast-icon {
-  font-size: 16px;
+  font-size: @font-lg;
 }
 
 .toast-enter-active {

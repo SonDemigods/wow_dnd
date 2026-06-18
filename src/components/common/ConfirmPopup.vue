@@ -50,9 +50,6 @@ function onCancel() {
 
 <style lang="less" scoped>
 .confirm-message {
-  margin: 0;
-  color: #aaa;
-  font-size: 14px;
-  text-align: center;
+  .popup-message-text();
 }
 </style>

@@ -226,40 +226,39 @@ onMounted(() => {
 .skills-content {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: @spacing-2xl;
 }
 
 .skill-bar-section h3,
 .skills-grid-section h3 {
-  font-size: 13px;
-  color: #ffd700;
-  margin-bottom: 8px;
-  font-weight: bold;
+  font-size: @font-base;
+  color: @accent-color;
+  margin-bottom: @spacing-md;
+  font-weight: @font-weight-bold;
 }
 
 .skill-bar {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  background: rgba(0, 0, 0, 0.4);
-  padding: 10px;
-  border-radius: 6px;
-  border: 2px solid #4a4a4a;
+  gap: @spacing-md;
+  background: @overlay-dim;
+  padding: @spacing-lg;
+  border-radius: @radius-md;
+  border: @border-card;
 }
 
 .bar-slot {
   position: relative;
-  padding: 10px 6px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid #4a4a4a;
-  border-radius: 6px;
+  padding: @spacing-lg @spacing-sm;
+  background: @white-05;
+  border: @border-card;
+  border-radius: @radius-md;
   text-align: center;
   cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
+  transition: all @transition-quick;
+  .flex-col();
   align-items: center;
-  gap: 4px;
+  gap: @spacing-xs;
   min-height: 60px;
   justify-content: center;
   /* 技能记忆/遗忘动画 */
@@ -267,44 +266,44 @@ onMounted(() => {
 }
 
 .bar-slot:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: #666;
+  background: @white-10;
+  border-color: @color-dodge;
 }
 
 .bar-slot.selected {
-  border-color: #ffd700;
-  background: rgba(255, 215, 0, 0.15);
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+  border-color: @accent-color;
+  background: @gold-bg-hover;
+  box-shadow: 0 0 10px @gold-border;
 }
 
 .bar-slot.empty {
   border-style: dashed;
-  border-color: #555;
+  border-color: @color-dark-line;
 }
 
 .bar-icon {
-  font-size: 22px;
+  font-size: @font-3xl;
 }
 
 .bar-name {
-  font-size: 10px;
-  color: #fff;
-  font-weight: bold;
+  font-size: @font-2xs;
+  color: @popup-text-color;
+  font-weight: @font-weight-bold;
 }
 
 .bar-empty {
-  font-size: 24px;
-  color: #555;
+  font-size: @font-4xl;
+  color: @color-dark-line;
 }
 
 .skills-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
-  gap: 6px;
-  background: rgba(0, 0, 0, 0.4);
-  padding: 10px;
-  border-radius: 6px;
-  border: 2px solid #4a4a4a;
+  gap: @spacing-sm;
+  background: @overlay-dim;
+  padding: @spacing-lg;
+  border-radius: @radius-md;
+  border: @border-card;
   max-height: 200px;
   overflow-y: auto;
   align-content: start;
@@ -315,40 +314,38 @@ onMounted(() => {
 }
 
 .skills-grid::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 3px;
+  background: @overlay-light;
+  border-radius: @radius-xs;
 }
 
 .skills-grid::-webkit-scrollbar-thumb {
-  background: #4a4a4a;
-  border-radius: 3px;
+  background: @popup-border-color;
+  border-radius: @radius-xs;
 }
 
 .skill-slot {
   aspect-ratio: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid #4a4a4a;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: @white-05;
+  border: @border-card;
+  border-radius: @radius-sm;
+  .flex-center();
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all @transition-quick;
   position: relative;
 }
 
 .skill-slot:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: @white-10;
   transform: translateY(-2px);
 }
 
 .skill-slot.equipped {
-  border-color: #4CAF50;
-  background: rgba(76, 175, 80, 0.15);
+  border-color: @heal-hp;
+  background: @green-bg-hover;
 }
 
 .skill-slot.locked {
-  opacity: 0.4;
+  opacity: @opacity-faded;
   cursor: not-allowed;
 }
 
@@ -357,67 +354,65 @@ onMounted(() => {
 }
 
 .skill-slot.selected {
-  background: rgba(255, 215, 0, 0.2);
+  background: @gold-bg-active;
   border-color: transparent;
 }
 
 .skill-slot.equipped.selected {
-  border-color: #4CAF50;
+  border-color: @heal-hp;
 }
 
 .skill-icon {
-  font-size: 22px;
+  font-size: @font-3xl;
 }
 
 .lock-badge {
   position: absolute;
   top: -2px;
   right: -2px;
-  font-size: 10px;
+  font-size: @font-2xs;
 }
 
 .equipped-badge {
   position: absolute;
   bottom: -2px;
   right: -2px;
-  font-size: 10px;
-  color: #4CAF50;
-  background: rgba(0, 0, 0, 0.8);
+  font-size: @font-2xs;
+  color: @heal-hp;
+  background: @overlay-heavy;
   border-radius: 50%;
-  width: 14px;
-  height: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: @spacing-2xl;
+  height: @spacing-2xl;
+  .flex-center();
 }
 
 .skill-detail {
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 6px;
-  padding: 14px;
-  border: 1px solid #4a4a4a;
+  background: @overlay-mid;
+  border-radius: @radius-md;
+  padding: @spacing-2xl;
+  border: @border-sm;
   flex-shrink: 0;
   min-height: 80px;
-  transition: all 0.3s ease;
+  transition: all @transition-normal;
 }
 
 .skill-detail.locked {
-  border-color: #666;
-  opacity: 0.85;
+  border-color: @color-dodge;
+  opacity: @opacity-high;
 }
 
 .detail-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: @spacing-xl;
+  margin-bottom: @spacing-lg;
 }
 
 .detail-header {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: @spacing-xl;
   flex: 1;
 }
 
@@ -435,10 +430,10 @@ onMounted(() => {
 }
 
 .detail-info h3 {
-  font-size: 16px;
-  color: #fff;
-  font-weight: bold;
-  margin: 0 0 6px 0;
+  font-size: @font-lg;
+  color: @popup-text-color;
+  font-weight: @font-weight-bold;
+  margin: 0 0 @spacing-sm 0;
 }
 
 .skill-detail.locked .detail-info h3 {
@@ -450,13 +445,13 @@ onMounted(() => {
 }
 
 .action-btn {
-  padding: 8px 16px;
+  padding: @spacing-md @spacing-3xl;
   border: none;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: bold;
+  border-radius: @radius-sm;
+  font-size: @font-base;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all @transition-quick;
 }
 
 .action-btn:hover {
@@ -469,19 +464,19 @@ onMounted(() => {
 }
 
 .action-btn.memorize {
-  background: linear-gradient(135deg, #4CAF50, #45a049);
-  color: #fff;
+  background: linear-gradient(135deg, @heal-hp, #45a049);
+  color: @popup-text-color;
 }
 
 .action-btn.forget {
-  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
-  color: #fff;
+  background: linear-gradient(135deg, @damage-physical, #ee5a24);
+  color: @popup-text-color;
 }
 
 .detail-desc {
   color: #aaa;
-  font-size: 13px;
-  margin: 0 0 10px 0;
+  font-size: @font-base;
+  margin: 0 0 @spacing-lg 0;
   line-height: 1.4;
 }
 
@@ -498,17 +493,17 @@ onMounted(() => {
 .detail-effect {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: @spacing-sm;
 }
 
 .effect-label {
-  font-size: 12px;
-  color: #888;
+  font-size: @font-sm;
+  color: @color-dodge;
 }
 
 .effect-value {
-  font-size: 13px;
-  font-weight: bold;
+  font-size: @font-base;
+  font-weight: @font-weight-bold;
 }
 
 .effect-value.physical_damage {
@@ -524,25 +519,25 @@ onMounted(() => {
 }
 
 .skill-detail.locked .effect-value {
-  color: #666;
+  color: @color-dodge;
 }
 
 .detail-level-req {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
+  gap: @spacing-xs;
+  padding: @spacing-xs @spacing-lg;
+  border-radius: @radius-sm;
+  font-size: @font-sm;
+  font-weight: @font-weight-bold;
 }
 
 .level-lock-icon {
-  font-size: 12px;
+  font-size: @font-sm;
 }
 
 .level-lock-text {
-  color: #ff6b6b;
+  color: @damage-physical;
 }
 
 .detail-level-req:has(.level-lock-icon) {
@@ -551,49 +546,47 @@ onMounted(() => {
 }
 
 .level-unlock-icon {
-  font-size: 12px;
+  font-size: @font-sm;
 }
 
 .level-unlock-text {
-  color: #4CAF50;
+  color: @heal-hp;
 }
 
 .detail-level-req:has(.level-unlock-icon) {
-  background: rgba(76, 175, 80, 0.1);
+  background: @green-bg;
   border: 1px solid rgba(76, 175, 80, 0.2);
 }
 
 .detail-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 20px;
+  .flex-center();
+  gap: @spacing-lg;
+  padding: @spacing-4xl;
 }
 
 .placeholder-icon {
-  font-size: 28px;
-  opacity: 0.5;
+  font-size: @font-5xl;
+  opacity: @opacity-dimmed;
 }
 
 .placeholder-text {
-  color: #666;
-  font-size: 14px;
+  color: @color-dodge;
+  font-size: @font-md;
 }
 
 @media (max-width: 600px) {
   .skill-bar {
-    gap: 6px;
-    padding: 8px;
+    gap: @spacing-sm;
+    padding: @spacing-md;
   }
 
   .bar-slot {
-    padding: 8px 4px;
+    padding: @spacing-md @spacing-xs;
     min-height: 50px;
   }
 
   .bar-icon {
-    font-size: 18px;
+    font-size: @font-xl;
   }
 
   .bar-name {

@@ -190,24 +190,23 @@ onMounted(() => {
 
 <style lang="less" scoped>
 .quest-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  .flex-col();
+  gap: @spacing-lg;
 }
 
 .quest-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid #4a4a4a;
-  border-radius: 6px;
+  background: @white-05;
+  border: @border-card;
+  border-radius: @radius-md;
   padding: 14px;
   display: flex;
-  gap: 10px;
+  gap: @spacing-lg;
   /* 任务卡片入场动画 */
   animation: card-slide-in 0.35s ease;
 }
 
 .quest-icon {
-  font-size: 28px;
+  font-size: @font-5xl;
   flex-shrink: 0;
 }
 
@@ -216,55 +215,52 @@ onMounted(() => {
 }
 
 .quest-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
+  .flex-between();
+  margin-bottom: @spacing-sm;
 }
 
 .quest-content h3 {
-  font-size: 16px;
-  color: #fff;
-  font-weight: bold;
+  font-size: @font-lg;
+  color: @popup-text-color;
+  font-weight: @font-weight-bold;
   margin: 0;
 }
 
 .quest-status {
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 12px;
+  padding: 3px @spacing-md;
+  border-radius: @radius-sm;
+  font-size: @font-sm;
 }
 
 .quest-status.in_progress {
   background: rgba(0, 153, 255, 0.2);
-  color: #0099ff;
+  color: @skill-blue;
 }
 
 .quest-status.completed {
   background: rgba(76, 175, 80, 0.2);
-  color: #4CAF50;
+  color: @heal-hp;
 }
 
 .quest-desc {
   color: #aaa;
-  font-size: 13px;
+  font-size: @font-base;
   margin: 6px 0;
 }
 
 .objectives {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 10px;
+  .flex-col();
+  gap: @spacing-sm;
+  margin-bottom: @spacing-lg;
 }
 
 .objective {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
+  gap: @spacing-md;
+  padding: @spacing-sm @spacing-lg;
+  background: @white-05;
+  border-radius: @radius-sm;
 }
 
 .objective.completed {
@@ -272,61 +268,61 @@ onMounted(() => {
 }
 
 .objective-checkbox {
-  font-size: 12px;
-  color: #888;
+  font-size: @font-sm;
+  color: @color-dodge;
 }
 
 .objective.completed .objective-checkbox {
-  color: #4CAF50;
+  color: @heal-hp;
 }
 
 .objective-text {
   flex: 1;
   color: #ccc;
-  font-size: 13px;
+  font-size: @font-base;
 }
 
 .objective-progress {
-  color: #ffd700;
-  font-size: 13px;
+  color: @accent-color;
+  font-size: @font-base;
 }
 
 .quest-rewards {
   display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: @spacing-lg;
+  margin-bottom: @spacing-lg;
 }
 
 .quest-rewards span {
-  padding: 3px 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  font-size: 13px;
+  padding: 3px @spacing-md;
+  background: @white-10;
+  border-radius: @radius-sm;
+  font-size: @font-base;
 }
 
 .quest-actions {
   display: flex;
-  gap: 10px;
+  gap: @spacing-lg;
 }
 
 .claim-btn, .abandon-btn {
-  padding: 6px 14px;
+  padding: @spacing-sm 14px;
   border: none;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: bold;
+  border-radius: @radius-sm;
+  font-size: @font-base;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
 }
 
 .claim-btn {
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
-  color: #000;
+  background: linear-gradient(135deg, @accent-color, #ff8c00);
+  color: @color-text-dark;
 }
 
 .abandon-btn {
-  background: linear-gradient(135deg, #ff4444, #cc0000);
-  color: #fff;
+  background: linear-gradient(135deg, @danger-color, #cc0000);
+  color: @popup-text-color;
 }
 
 .claim-btn:hover, .abandon-btn:hover {
@@ -336,18 +332,18 @@ onMounted(() => {
 .empty-state {
   text-align: center;
   padding: 32px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 6px;
-  border: 2px dashed #4a4a4a;
+  background: @overlay-mid;
+  border-radius: @radius-md;
+  border: 2px dashed @popup-border-color;
 }
 
 .empty-icon {
   font-size: 40px;
-  margin-bottom: 12px;
+  margin-bottom: @spacing-xl;
 }
 
 .empty-state p {
-  color: #888;
-  font-size: 14px;
+  color: @color-dodge;
+  font-size: @font-md;
 }
 </style>

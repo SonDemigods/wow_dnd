@@ -118,11 +118,11 @@ onMounted(() => {
 <style lang="less" scoped>
 .log-header {
   color: #a0a0c0;
-  font-size: 13px;
-  margin-bottom: 10px;
-  padding: 6px 10px;
+  font-size: @font-base;
+  margin-bottom: @spacing-lg;
+  padding: @spacing-sm @spacing-lg;
   background: #252540;
-  border-radius: 4px;
+  border-radius: @radius-sm;
 }
 
 .log-container {
@@ -130,44 +130,32 @@ onMounted(() => {
   overflow-y: auto;
   background: #0f0f1a;
   border: 1px solid #3a3a5a;
-  border-radius: 6px;
-  padding: 10px;
-}
-
-.log-container::-webkit-scrollbar {
-  width: 6px;
-}
-
-.log-container::-webkit-scrollbar-track {
-  background: #1a1a2e;
-}
-
-.log-container::-webkit-scrollbar-thumb {
-  background: #4a4a6a;
-  border-radius: 3px;
+  border-radius: @radius-md;
+  padding: @spacing-lg;
+  .custom-scrollbar();
 }
 
 .log-entry {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 8px;
+  gap: @spacing-sm;
+  padding: 5px @spacing-md;
   margin-bottom: 3px;
-  border-radius: 4px;
-  font-size: 13px;
+  border-radius: @radius-sm;
+  font-size: @font-base;
   line-height: 1.5;
 }
 
 .log-time {
   color: #8a8aaa;
   font-family: monospace;
-  font-size: 12px;
+  font-size: @font-sm;
   min-width: 110px;
   flex-shrink: 0;
 }
 
 .log-icon {
-  font-size: 14px;
+  font-size: @font-md;
 }
 
 .log-message {
@@ -223,7 +211,7 @@ onMounted(() => {
   color: #6a6a8a;
   text-align: center;
   padding: 32px;
-  font-size: 13px;
+  font-size: @font-base;
 }
 
 

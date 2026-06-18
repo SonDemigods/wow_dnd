@@ -48,19 +48,17 @@ withDefaults(defineProps<{
 .resource-bar-wrapper {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: @spacing-md;
   width: 100%;
 }
 
 /* ===== 图标 ===== */
 .resource-icon {
-  font-size: 15px;
+  font-size: @font-base;
   flex-shrink: 0;
   width: 22px;
   height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  .flex-center();
 }
 
 .resource-icon.hp { color: #ff5252; }
@@ -72,7 +70,7 @@ withDefaults(defineProps<{
   flex: 1;
   height: 20px;
   background: rgba(0, 0, 0, 0.45);
-  border-radius: 4px;
+  border-radius: @radius-sm;
   overflow: hidden;
   position: relative;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -82,7 +80,7 @@ withDefaults(defineProps<{
 .resource-fill {
   height: 100%;
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 3px;
+  border-radius: @radius-xs;
   position: absolute;
   top: 0;
   left: 0;
@@ -116,7 +114,7 @@ withDefaults(defineProps<{
   width: 200%;
   height: 10px;
   border-radius: 40%;
-  opacity: 0.3;
+  opacity: @opacity-disabled;
   pointer-events: none;
 }
 
@@ -168,21 +166,21 @@ withDefaults(defineProps<{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 8px;
+  padding: 0 @spacing-md;
   z-index: 3;
 }
 
 .resource-label {
-  font-size: 10px;
+  font-size: @font-2xs;
   color: #e0e0e0;
-  font-weight: 600;
+  font-weight: @font-weight-semibold;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 .resource-value {
-  font-size: 10px;
+  font-size: @font-2xs;
   color: #e0e0e0;
-  font-weight: 600;
+  font-weight: @font-weight-semibold;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 </style>

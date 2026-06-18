@@ -336,54 +336,49 @@ function handleSubmit() {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: @overlay-heavy;
+  .flex-center();
   z-index: 2000;
 }
 
 .form-dialog {
   background: #0d1117;
   border: 2px solid @border-color;
-  border-radius: 12px;
+  border-radius: @radius-xl;
   width: 500px;
   max-height: 80vh;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
 }
 
 .form-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
+  .flex-between();
+  padding: @spacing-3xl @spacing-4xl;
   border-bottom: 1px solid @border-color;
 
   h3 {
     color: @accent-color;
     margin: 0;
-    font-size: 18px;
+    font-size: @font-xl;
   }
 
   .close-btn {
     width: 28px;
     height: 28px;
-    background: rgba(255, 255, 255, 0.1);
+    background: @white-10;
     border: none;
     border-radius: 50%;
     color: @text-primary;
-    font-size: 18px;
+    font-size: @font-xl;
     cursor: pointer;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.2);
+      background: @white-20;
     }
   }
 }
 
 .form-body {
-  padding: 20px;
+  padding: @spacing-4xl;
   overflow-y: auto;
   flex: 1;
 }
@@ -394,7 +389,7 @@ function handleSubmit() {
   label {
     display: block;
     color: @text-secondary;
-    font-size: 13px;
+    font-size: @font-base;
     margin-bottom: 5px;
   }
 }
@@ -403,12 +398,12 @@ function handleSubmit() {
 .form-textarea,
 .form-select {
   width: 100%;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
+  padding: @spacing-md @spacing-xl;
+  background: @white-05;
   border: 1px solid @border-color;
-  border-radius: 6px;
+  border-radius: @radius-md;
   color: @text-primary;
-  font-size: 14px;
+  font-size: @font-md;
   outline: none;
   box-sizing: border-box;
 
@@ -417,7 +412,7 @@ function handleSubmit() {
   }
 
   &:disabled {
-    opacity: 0.5;
+    opacity: @opacity-dimmed;
     cursor: not-allowed;
     background: rgba(255, 255, 255, 0.02);
   }
@@ -434,7 +429,7 @@ function handleSubmit() {
   width: 50px;
   height: 36px;
   border: 1px solid @border-color;
-  border-radius: 6px;
+  border-radius: @radius-md;
   cursor: pointer;
   background: transparent;
 }
@@ -443,7 +438,7 @@ function handleSubmit() {
 .switch-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: @spacing-lg;
 }
 
 .switch {
@@ -467,7 +462,7 @@ function handleSubmit() {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.1);
+  background: @white-10;
   border-radius: 24px;
   transition: 0.2s;
   border: 1px solid @border-color;
@@ -490,7 +485,7 @@ function handleSubmit() {
   border-color: @accent-color;
 
   &::before {
-    background: #fff;
+    background: @popup-text-color;
     transform: translateX(20px);
   }
 }
@@ -501,41 +496,41 @@ function handleSubmit() {
 }
 
 .switch-label-text {
-  font-size: 13px;
+  font-size: @font-base;
   color: @text-secondary;
 }
 
 .form-json {
   font-family: 'Courier New', monospace;
-  font-size: 12px;
+  font-size: @font-sm;
 }
 
 // ==================== 多选 ====================
 .multiselect-group {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
+  gap: @spacing-sm;
   max-height: 240px;
   overflow-y: auto;
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  padding: @spacing-md;
+  background: @white-03;
   border: 1px solid @border-color;
-  border-radius: 6px;
+  border-radius: @radius-md;
 }
 
 .multiselect-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: @spacing-sm;
   color: @text-secondary;
-  font-size: 13px;
+  font-size: @font-base;
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 4px;
+  padding: @spacing-xs @spacing-sm;
+  border-radius: @radius-sm;
   transition: background 0.15s;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: @white-05;
   }
 
   &.checked {
@@ -558,29 +553,28 @@ function handleSubmit() {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 6px;
-    .json-label { color: @text-secondary; font-size: 13px; }
+    .json-label { color: @text-secondary; font-size: @font-base; }
   }
   .btn-json-mode {
-    font-size: 11px;
+    font-size: @font-xs;
     padding: 2px 8px;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid @border-color;
-    border-radius: 4px;
+    border-radius: @radius-sm;
     color: @text-secondary;
     cursor: pointer;
-    &:hover { background: rgba(255, 255, 255, 0.15); }
+    &:hover { background: @white-15; }
   }
 }
 
 .json-kv-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  .flex-col();
+  gap: @spacing-sm;
 }
 
 .json-kv-row {
   display: flex;
-  gap: 6px;
+  gap: @spacing-sm;
   align-items: center;
 }
 
@@ -599,49 +593,49 @@ function handleSubmit() {
   height: 24px;
   background: rgba(255, 68, 68, 0.2);
   border: none;
-  border-radius: 4px;
+  border-radius: @radius-sm;
   color: @danger-color;
   cursor: pointer;
-  font-size: 14px;
+  font-size: @font-md;
   line-height: 1;
   &:hover { background: rgba(255, 68, 68, 0.4); }
 }
 
 .btn-kv-add {
-  font-size: 12px;
-  padding: 4px 12px;
-  background: rgba(255, 255, 255, 0.05);
+  font-size: @font-sm;
+  padding: @spacing-xs @spacing-xl;
+  background: @white-05;
   border: 1px dashed @border-color;
-  border-radius: 4px;
+  border-radius: @radius-sm;
   color: @text-secondary;
   cursor: pointer;
-  &:hover { background: rgba(255, 255, 255, 0.1); }
+  &:hover { background: @white-10; }
 }
 
 .json-error {
   color: @danger-color;
-  font-size: 12px;
+  font-size: @font-sm;
   margin: 4px 0 0;
 }
 
 .form-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 16px 20px;
+  gap: @spacing-lg;
+  padding: @spacing-3xl @spacing-4xl;
   border-top: 1px solid @border-color;
 }
 
 .btn {
-  padding: 8px 20px;
-  border-radius: 6px;
+  padding: @spacing-md @spacing-4xl;
+  border-radius: @radius-md;
   cursor: pointer;
-  font-size: 14px;
+  font-size: @font-md;
   border: 1px solid @border-color;
 
   &-primary {
     background: @accent-color;
-    color: #1a1a2e;
+    color: @primary-bg;
     border-color: @accent-color;
   }
 

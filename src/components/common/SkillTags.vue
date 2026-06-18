@@ -31,16 +31,12 @@ const { getTargetTypeName } = useSkillDisplay();
 <style lang="less" scoped>
 .skill-tags {
   display: flex;
-  gap: 6px;
+  gap: @spacing-sm;
   flex-wrap: wrap;
 }
 
 .skill-tag {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: bold;
-  white-space: nowrap;
+  .tag-base();
 }
 
 /* MP 消耗标签 */

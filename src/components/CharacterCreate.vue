@@ -552,7 +552,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 16px;
+  padding: @spacing-3xl;
   overflow: hidden;
 }
 
@@ -560,21 +560,21 @@ onMounted(async () => {
 .create-header {
   flex: 0 0 auto;
   text-align: center;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #4a4a4a;
-  margin-bottom: 16px;
+  padding-bottom: @spacing-3xl;
+  border-bottom: @border-sm;
+  margin-bottom: @spacing-3xl;
 }
 
 .create-header h2 {
-  font-size: 22px;
-  color: #ffd700;
+  font-size: @font-3xl;
+  color: @accent-color;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  margin: 0 0 10px 0;
+  margin: 0 0 @spacing-lg 0;
 }
 
 .step-title {
-  font-size: 18px;
-  color: #f0f0f0;
+  font-size: @font-xl;
+  color: @text-primary;
   margin: 0;
 }
 
@@ -584,7 +584,7 @@ onMounted(async () => {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px 0;
+  padding: @spacing-md 0;
 }
 
 .step-grid {
@@ -595,8 +595,8 @@ onMounted(async () => {
 .faction-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: @spacing-xl;
+  margin-bottom: @spacing-xl;
 }
 
 .neutral-faction-row {
@@ -605,12 +605,12 @@ onMounted(async () => {
 }
 
 .faction-card {
-  padding: 20px 12px;
+  padding: @spacing-4xl @spacing-xl;
   background: rgba(13, 17, 23, 0.95);
-  border: 2px solid #666666;
-  border-radius: 12px;
+  border: @border-hover;
+  border-radius: @radius-xl;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
   text-align: center;
 }
 
@@ -624,32 +624,32 @@ onMounted(async () => {
 }
 
 .faction-card:hover {
-  border-color: #888888;
-  background: rgba(255, 255, 255, 0.05);
+  border-color: @color-dodge;
+  background: @white-05;
   transform: translateY(-2px);
 }
 
 .faction-card.active {
   border-color: var(--faction-color);
-  background: rgba(255, 215, 0, 0.1);
+  background: @gold-bg;
   box-shadow: 0 0 15px var(--faction-color);
 }
 
 .faction-icon {
   font-size: 40px;
-  margin-bottom: 10px;
+  margin-bottom: @spacing-lg;
 }
 
 .faction-name {
-  font-size: 18px;
-  color: #f0f0f0;
-  font-weight: bold;
-  margin-bottom: 6px;
+  font-size: @font-xl;
+  color: @text-primary;
+  font-weight: @font-weight-bold;
+  margin-bottom: @spacing-sm;
 }
 
 .faction-desc {
-  font-size: 12px;
-  color: #8b8b8b;
+  font-size: @font-sm;
+  color: @text-secondary;
   line-height: 1.4;
 }
 
@@ -657,111 +657,109 @@ onMounted(async () => {
 .race-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 10px;
+  gap: @spacing-lg;
 }
 
 .race-card {
-  padding: 14px 8px;
+  padding: @spacing-2xl @spacing-md;
   background: rgba(13, 17, 23, 0.95);
-  border: 2px solid #666666;
-  border-radius: 8px;
+  border: @border-hover;
+  border-radius: @radius-lg;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
   text-align: center;
 }
 
 .race-card:hover {
   transform: translateY(-2px);
-  border-color: #888888;
+  border-color: @color-dodge;
 }
 
 .race-grid.alliance .race-card.active {
   border-color: #0078ff;
-  background: rgba(255, 215, 0, 0.1);
+  background: @gold-bg;
   box-shadow: 0 0 15px #0078ff;
 }
 
 .race-grid.horde .race-card.active {
   border-color: #ff4400;
-  background: rgba(255, 215, 0, 0.1);
+  background: @gold-bg;
   box-shadow: 0 0 15px #ff4400;
 }
 
 .race-grid.neutral .race-card.active {
   border-color: #4caf50;
-  background: rgba(255, 215, 0, 0.1);
+  background: @gold-bg;
   box-shadow: 0 0 15px #4caf50;
 }
 
 .race-icon {
   font-size: 32px;
-  margin-bottom: 6px;
+  margin-bottom: @spacing-sm;
 }
 
 .race-name {
-  font-size: 13px;
-  color: #f0f0f0;
-  font-weight: bold;
-  margin-bottom: 4px;
+  font-size: @font-base;
+  color: @text-primary;
+  font-weight: @font-weight-bold;
+  margin-bottom: @spacing-xs;
 }
 
 .race-bonus {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 12px;
-  color: #4caf50;
+  .flex-col();
+  gap: @spacing-2xs;
+  font-size: @font-sm;
+  color: @heal-hp;
 }
 
 /* 职业选择 */
 .class-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 10px;
+  gap: @spacing-lg;
 }
 
 .class-card {
-  padding: 14px 8px;
+  padding: @spacing-2xl @spacing-md;
   background: rgba(13, 17, 23, 0.95);
-  border: 2px solid #666666;
-  border-radius: 8px;
+  border: @border-hover;
+  border-radius: @radius-lg;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
   text-align: center;
 }
 
 .class-card:hover {
   transform: translateY(-2px);
-  border-color: #888888;
+  border-color: @color-dodge;
 }
 
 .class-card.active {
   border-color: var(--class-color);
-  background: rgba(255, 215, 0, 0.1);
+  background: @gold-bg;
   box-shadow: 0 0 15px var(--class-color);
 }
 
 .class-icon {
   font-size: 32px;
-  margin-bottom: 6px;
+  margin-bottom: @spacing-sm;
 }
 
 .class-name {
-  font-size: 13px;
-  color: #f0f0f0;
-  font-weight: bold;
-  margin-bottom: 4px;
+  font-size: @font-base;
+  color: @text-primary;
+  font-weight: @font-weight-bold;
+  margin-bottom: @spacing-xs;
 }
 
 .class-bonus {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 12px;
+  .flex-col();
+  gap: @spacing-2xs;
+  font-size: @font-sm;
 }
 
 .class-bonus span {
-  color: #4caf50;
+  color: @heal-hp;
 }
 
 .class-bonus span.negative {
@@ -771,15 +769,15 @@ onMounted(async () => {
 /* 角色预览（步骤4） */
 .character-preview {
   background: rgba(13, 17, 23, 0.95);
-  border-radius: 12px;
-  padding: 20px;
-  border: 2px solid #4a4a4a;
+  border-radius: @radius-xl;
+  padding: @spacing-4xl;
+  border: @border-card;
 }
 
 .preview-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: @spacing-xl;
 }
 
 .preview-avatar {
@@ -794,30 +792,30 @@ onMounted(async () => {
 
 .name-input {
   width: 100%;
-  padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid #4a4a4a;
-  border-radius: 8px;
-  color: #f0f0f0;
-  font-size: 16px;
-  font-weight: bold;
+  padding: @spacing-xl @spacing-2xl;
+  background: @white-10;
+  border: @border-card;
+  border-radius: @radius-lg;
+  color: @text-primary;
+  font-size: @font-lg;
+  font-weight: @font-weight-bold;
   outline: none;
-  transition: border-color 0.3s;
+  transition: border-color @transition-normal;
   box-sizing: border-box;
 }
 
 .name-input:focus {
-  border-color: #ffd700;
+  border-color: @accent-color;
 }
 
 .name-input::placeholder {
-  color: #666;
+  color: @color-dim-gray;
 }
 
 .preview-details {
   display: flex;
-  gap: 4px;
-  margin-top: 10px;
+  gap: @spacing-xs;
+  margin-top: @spacing-lg;
   flex-wrap: nowrap;
   justify-content: center;
 }
@@ -826,128 +824,118 @@ onMounted(async () => {
 .fixed-footer {
   flex: 0 0 auto;
   padding-top: 16px;
-  border-top: 1px solid #4a4a4a;
+  border-top: @border-sm;
   background: inherit;
 }
 
 /* 属性预览 */
 .attribute-preview {
-  background: linear-gradient(
-    135deg,
-    rgba(13, 17, 23, 0.98) 0%,
-    rgba(20, 25, 35, 0.98) 100%
-  );
-  border-radius: 8px;
-  padding: 8px;
+  background: @gradient-attr-panel;
+  border-radius: @radius-lg;
+  padding: @spacing-md;
   border: 1px solid rgba(255, 215, 0.15);
-  margin-bottom: 8px;
+  margin-bottom: @spacing-md;
 }
 
 .preview-title {
-  font-size: 12px;
-  color: #ffd700;
-  margin-bottom: 6px;
-  font-weight: bold;
+  font-size: @font-sm;
+  color: @accent-color;
+  margin-bottom: @spacing-sm;
+  font-weight: @font-weight-bold;
   text-align: center;
-  padding-bottom: 4px;
+  padding-bottom: @spacing-xs;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .attr-list {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
+  gap: @spacing-xs;
 }
 
 .attr-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
+  gap: @spacing-sm;
+  padding: @spacing-xs @spacing-sm;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 4px;
+  border-radius: @radius-sm;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .attr-item .attr-icon {
-  font-size: 16px;
+  font-size: @font-lg;
   width: 22px;
   height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 215, 0, 0.1);
-  border-radius: 4px;
-  color: #ffd700;
+  .flex-center();
+  background: @gold-bg;
+  border-radius: @radius-sm;
+  color: @accent-color;
 }
 
 .attr-item .attr-name {
   flex: 1;
   color: #b0b0b0;
-  font-size: 12px;
+  font-size: @font-sm;
 }
 
 .attr-item .attr-value {
-  font-size: 14px;
-  font-weight: bold;
-  color: #f0f0f0;
+  font-size: @font-md;
+  font-weight: @font-weight-bold;
+  color: @text-primary;
   min-width: 28px;
   text-align: right;
 }
 
 /* 最终属性 */
 .final-attributes {
-  background: linear-gradient(
-    135deg,
-    rgba(13, 17, 23, 0.98) 0%,
-    rgba(20, 25, 35, 0.98) 100%
-  );
-  border-radius: 8px;
-  padding: 8px;
-  border: 1px solid rgba(255, 215, 0, 0.15);
-  margin-bottom: 8px;
+  background: @gradient-attr-panel;
+  border-radius: @radius-lg;
+  padding: @spacing-md;
+  border: 1px solid rgba(255, 215, 0.15);
+  margin-bottom: @spacing-md;
 }
 
 .final-title {
-  font-size: 12px;
-  color: #ffd700;
-  margin-bottom: 6px;
-  font-weight: bold;
+  font-size: @font-sm;
+  color: @accent-color;
+  margin-bottom: @spacing-sm;
+  font-weight: @font-weight-bold;
   text-align: center;
-  padding-bottom: 4px;
+  padding-bottom: @spacing-xs;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .attr-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  margin-bottom: 6px;
+  gap: @spacing-xs;
+  margin-bottom: @spacing-sm;
 }
 
 .attr-box {
   padding: 4px 4px;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 4px;
+  border-radius: @radius-sm;
   text-align: center;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .attr-box .attr-icon {
-  font-size: 14px;
-  margin-bottom: 2px;
+  font-size: @font-md;
+  margin-bottom: @spacing-2xs;
 }
 
 .attr-box .attr-label {
-  font-size: 12px;
+  font-size: @font-sm;
   color: #a0a0a0;
-  margin-bottom: 2px;
+  margin-bottom: @spacing-2xs;
 }
 
 .attr-box .attr-value {
-  font-size: 14px;
-  color: #f0f0f0;
-  font-weight: bold;
+  font-size: @font-md;
+  color: @text-primary;
+  font-weight: @font-weight-bold;
 }
 
 .divider {
@@ -961,51 +949,49 @@ onMounted(async () => {
 }
 
 .secondary-title {
-  font-size: 12px;
-  color: #ffd700;
-  margin-bottom: 6px;
-  font-weight: bold;
+  font-size: @font-sm;
+  color: @accent-color;
+  margin-bottom: @spacing-sm;
+  font-weight: @font-weight-bold;
   text-align: center;
 }
 
 .secondary-attrs {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 4px;
+  gap: @spacing-xs;
 }
 
 .sec-attr {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
+  gap: @spacing-sm;
+  padding: @spacing-xs @spacing-sm;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 4px;
+  border-radius: @radius-sm;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .sec-attr .sec-icon {
-  font-size: 12px;
+  font-size: @font-sm;
   width: 18px;
   height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 215, 0, 0.1);
-  border-radius: 4px;
-  color: #ffd700;
+  .flex-center();
+  background: @gold-bg;
+  border-radius: @radius-sm;
+  color: @accent-color;
 }
 
 .sec-attr span {
   flex: 1;
   color: #b0b0b0;
-  font-size: 12px;
+  font-size: @font-sm;
 }
 
 .sec-attr strong {
-  color: #f0f0f0;
-  font-size: 13px;
-  font-weight: bold;
+  color: @text-primary;
+  font-size: @font-base;
+  font-weight: @font-weight-bold;
   min-width: 40px;
   text-align: right;
 }
@@ -1014,7 +1000,7 @@ onMounted(async () => {
 .navigation-buttons {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: @spacing-xl;
 }
 
 .spacer {
@@ -1022,29 +1008,29 @@ onMounted(async () => {
 }
 
 .nav-btn {
-  padding: 12px 24px;
+  padding: @spacing-xl 24px;
   border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: bold;
+  border-radius: @radius-lg;
+  font-size: @font-base;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
   flex-shrink: 0;
 }
 
 .nav-btn.prev {
-  background: #4a4a4a;
-  color: #f0f0f0;
+  background: @popup-border-color;
+  color: @text-primary;
 }
 
 .nav-btn.next {
   background: linear-gradient(135deg, #0078ff, #0056cc);
-  color: #fff;
+  color: @popup-text-color;
 }
 
 .nav-btn.create {
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
-  color: #000;
+  background: @gradient-gold-btn;
+  color: @color-text-dark;
 }
 
 .nav-btn:hover:not(:disabled) {
@@ -1052,7 +1038,7 @@ onMounted(async () => {
 }
 
 .nav-btn.prev:hover:not(:disabled) {
-  background: #666;
+  background: @color-dim-gray;
 }
 
 .nav-btn.next:hover:not(:disabled) {
@@ -1064,7 +1050,7 @@ onMounted(async () => {
 }
 
 .nav-btn:disabled {
-  opacity: 0.5;
+  opacity: @opacity-dimmed;
   cursor: not-allowed;
 }
 
@@ -1075,17 +1061,15 @@ onMounted(async () => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  background: @overlay-deep;
+  .flex-center();
+  z-index: @z-popup;
 }
 
 .modal-box {
   background: rgba(20, 25, 35, 0.98);
-  border: 2px solid #ffd700;
-  border-radius: 12px;
+  border: 2px solid @accent-color;
+  border-radius: @radius-xl;
   padding: 24px;
   max-width: 360px;
   width: 90%;
@@ -1094,54 +1078,54 @@ onMounted(async () => {
 
 .modal-icon {
   font-size: 48px;
-  margin-bottom: 16px;
+  margin-bottom: @spacing-3xl;
 }
 
 .modal-box h3 {
-  color: #ffd700;
-  font-size: 20px;
-  margin-bottom: 12px;
+  color: @accent-color;
+  font-size: @font-2xl;
+  margin-bottom: @spacing-xl;
 }
 
 .modal-box p {
   color: #b0b0b0;
-  font-size: 14px;
+  font-size: @font-md;
   margin-bottom: 20px;
   line-height: 1.5;
 }
 
 .modal-buttons {
   display: flex;
-  gap: 12px;
+  gap: @spacing-xl;
   justify-content: center;
 }
 
 .modal-btn-cancel {
-  padding: 10px 24px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid #666;
-  border-radius: 6px;
-  color: #f0f0f0;
-  font-size: 14px;
+  padding: @spacing-lg 24px;
+  background: @white-10;
+  border: 1px solid @color-dim-gray;
+  border-radius: @radius-md;
+  color: @text-primary;
+  font-size: @font-md;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
 }
 
 .modal-btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: #888;
+  background: @white-20;
+  border-color: @color-dodge;
 }
 
 .modal-btn-confirm {
-  padding: 10px 24px;
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  padding: @spacing-lg 24px;
+  background: @gradient-gold-btn;
   border: none;
-  border-radius: 6px;
-  color: #000;
-  font-size: 14px;
-  font-weight: bold;
+  border-radius: @radius-md;
+  color: @color-text-dark;
+  font-size: @font-md;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
 }
 
 .modal-btn-confirm:hover {

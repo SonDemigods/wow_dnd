@@ -45,7 +45,7 @@ export default defineConfig({
        * 自动导入全局样式变量，使每个组件都可以直接使用
        */
       less: {
-        additionalData: `@import "@/styles/variables.less";`
+        additionalData: `@import "@/styles/variables.less";\n@import "@/styles/mixins.less";`
       }
     }
   }

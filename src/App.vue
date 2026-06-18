@@ -152,7 +152,7 @@ function handleAdminExit() {
 <style lang="less" scoped>
 .app-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: linear-gradient(135deg, @primary-bg 0%, #16213e 50%, #0f3460 100%);
 }
 
 .character-select-screen {
@@ -167,14 +167,14 @@ function handleAdminExit() {
 
 .screen-header h1 {
   font-size: 36px;
-  color: #ffd700;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  margin-bottom: 8px;
+  color: @accent-color;
+  text-shadow: @text-shadow-title;
+  margin-bottom: @spacing-md;
 }
 
 .subtitle {
-  color: #888;
-  font-size: 14px;
+  color: @color-dodge;
+  font-size: @font-md;
 }
 
 .modal-overlay {
@@ -183,17 +183,15 @@ function handleAdminExit() {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  background: @overlay-heavy;
+  .flex-center();
+  z-index: @z-popup;
 }
 
 .modal-content {
   background: rgba(0, 0, 0, 0.95);
-  border-radius: 12px;
-  border: 2px solid #4a4a4a;
+  border-radius: @radius-xl;
+  border: @border-card;
   max-width: 600px;
   width: 90%;
   height: 90vh;
@@ -208,64 +206,17 @@ function handleAdminExit() {
   right: 16px;
   width: 32px;
   height: 32px;
-  background: rgba(255, 255, 255, 0.1);
+  background: @white-10;
   border: none;
   border-radius: 50%;
-  color: #fff;
-  font-size: 24px;
+  color: @popup-text-color;
+  font-size: @font-4xl;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  .flex-center();
 }
 
 .modal-close:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.close-btn {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 32px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  border-radius: 50%;
-  color: #fff;
-  font-size: 24px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.popup-content {
-  background: rgba(13, 17, 23, 0.98);
-  border-radius: 12px;
-  border: 2px solid #4a4a4a;
-  max-width: 600px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  position: relative;
+  background: @white-20;
 }
 
 .game-screen {
@@ -275,22 +226,22 @@ function handleAdminExit() {
 
 .exit-btn {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
-  padding: 12px 24px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid #4a4a4a;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 16px;
+  bottom: @spacing-4xl;
+  right: @spacing-4xl;
+  padding: @spacing-xl @spacing-5xl;
+  background: @white-10;
+  border: @border-card;
+  border-radius: @radius-lg;
+  color: @popup-text-color;
+  font-size: @font-lg;
   cursor: pointer;
-  transition: all 0.3s;
-  z-index: 100;
+  transition: all @transition-normal;
+  z-index: @z-overlay;
 }
 
 .exit-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: #ffd700;
+  background: @white-20;
+  border-color: @accent-color;
 }
 
 /* ===== 角色创建弹窗进出场动画 ===== */

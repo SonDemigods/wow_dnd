@@ -587,8 +587,7 @@ async function handleFormSubmit(data: Record<string, any>) {
 
 .config-manager {
   height: 100%;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
 }
 
 .page-title {
@@ -598,10 +597,10 @@ async function handleFormSubmit(data: Record<string, any>) {
 }
 
 .btn {
-  padding: 8px 20px;
-  border-radius: 6px;
+  padding: @spacing-md @spacing-4xl;
+  border-radius: @radius-md;
   cursor: pointer;
-  font-size: 14px;
+  font-size: @font-md;
   border: 1px solid @border-color;
 
   &-secondary {
@@ -611,7 +610,7 @@ async function handleFormSubmit(data: Record<string, any>) {
 
   &-danger {
     background: @danger-color;
-    color: #fff;
+    color: @popup-text-color;
     border-color: @danger-color;
   }
 
@@ -626,22 +625,20 @@ async function handleFormSubmit(data: Record<string, any>) {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: @overlay-deep;
+  .flex-center();
   z-index: 2000;
 }
 
 .confirm-dialog {
   background: @secondary-bg;
   border: 2px solid @border-color;
-  border-radius: 12px;
+  border-radius: @radius-xl;
   width: 400px;
 }
 
 .confirm-header {
-  padding: 16px 20px;
+  padding: @spacing-3xl @spacing-4xl;
   border-bottom: 1px solid @border-color;
 
   h3 {
@@ -651,15 +648,15 @@ async function handleFormSubmit(data: Record<string, any>) {
 }
 
 .confirm-body {
-  padding: 20px;
+  padding: @spacing-4xl;
   color: @text-primary;
 }
 
 .confirm-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 16px 20px;
+  gap: @spacing-lg;
+  padding: @spacing-3xl @spacing-4xl;
   border-top: 1px solid @border-color;
 }
 </style>

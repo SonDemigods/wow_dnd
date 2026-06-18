@@ -54,20 +54,20 @@ const rarityClass = computed(() => props.rarity ? `item-icon--${props.rarity}` :
   flex-shrink: 0;
   line-height: 1;
   aspect-ratio: 1;
-  border-radius: 4px;
+  border-radius: @radius-sm;
   border: 2px solid transparent;
   transition: border-color 0.2s ease;
   box-sizing: border-box;
 }
 
 /* 预设尺寸：字体大小 + 内边距 + 边框宽度，各场景差异化 */
-.item-icon--sm  { font-size: 22px; padding: 8px; border-width: 2px; }   /* 背包格子 */
-.item-icon--md  { font-size: 24px; padding: 10px; border-width: 2px; }  /* 商店卡片 / 战斗 */
-.item-icon--lg  { font-size: 26px; padding: 16px; border-width: 2px; }  /* 装备槽 */
-.item-icon--xl  { font-size: 28px; padding: 14px; border-width: 2px; }  /* 详情展示 */
+.item-icon--sm  { font-size: @font-3xl; padding: @spacing-md; border-width: 2px; }   /* 背包格子 */
+.item-icon--md  { font-size: @font-4xl; padding: @spacing-lg; border-width: 2px; }  /* 商店卡片 / 战斗 */
+.item-icon--lg  { font-size: 26px; padding: @spacing-3xl; border-width: 2px; }  /* 装备槽 */
+.item-icon--xl  { font-size: @font-5xl; padding: @spacing-2xl; border-width: 2px; }  /* 详情展示 */
 
 /* ===== 稀有度边框颜色 ===== */
-.item-icon--common    { border-color: #9d9d9d; }
+.item-icon--common    { border-color: @color-fallback; }
 .item-icon--uncommon  { border-color: #1eff00; }
 .item-icon--rare      { border-color: #0070dd; }
 .item-icon--epic      { border-color: #a335ee; }

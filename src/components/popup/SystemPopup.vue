@@ -61,24 +61,23 @@ function handleClose() {
 
 <style lang="less" scoped>
 .system-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 8px 4px;
+  .flex-col();
+  gap: @spacing-3xl;
+  padding: @spacing-md @spacing-xs;
 }
 
 .system-btn {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 20px 24px;
-  border: 2px solid #4a4a4a;
+  gap: @spacing-3xl;
+  padding: @spacing-4xl 24px;
+  border: @border-card;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.04);
   color: #ccc;
   cursor: pointer;
   transition: all 0.25s;
-  font-size: 16px;
+  font-size: @font-lg;
 }
 
 .system-btn:hover {
@@ -90,7 +89,7 @@ function handleClose() {
 }
 
 .system-btn-icon {
-  font-size: 28px;
+  font-size: @font-5xl;
   line-height: 1;
 }
 
@@ -100,10 +99,10 @@ function handleClose() {
 
 /* 音量按钮 */
 .system-btn.audio-btn:hover {
-  border-color: #ffd700;
+  border-color: @accent-color;
   background: rgba(255, 215, 0, 0.08);
-  color: #ffd700;
-  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.1);
+  color: @accent-color;
+  box-shadow: 0 4px 16px @gold-bg;
 }
 
 /* 退出按钮 */
@@ -112,7 +111,7 @@ function handleClose() {
 }
 
 .system-btn.exit-btn:hover {
-  border-color: #ff4444;
+  border-color: @danger-color;
   background: rgba(255, 68, 68, 0.1);
   color: #ff6b6b;
   box-shadow: 0 4px 16px rgba(255, 68, 68, 0.1);
