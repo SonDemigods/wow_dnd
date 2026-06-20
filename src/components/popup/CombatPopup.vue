@@ -91,7 +91,7 @@
 
         <!-- 玩家区域 -->
         <div class="combatant player-side" :class="{ 'shake': playerShake, 'crit-shake': playerCritShake, 'dodge-blink': playerDodgeBlink }">
-          <div class="combatant-avatar">{{ playerIcon }}</div>
+          <div class="combatant-avatar"><BaseIcon :name="playerIcon" :size="28" /></div>
           <div class="combatant-info">
             <div class="combatant-name">{{ playerName }}</div>
             <div class="combatant-level">Lv.{{ playerLevel }}</div>
@@ -155,7 +155,7 @@
             @click="doSkill(skill.id)"
             :disabled="!canAct || playerMp < skill.mpCost || skillsStore.isOnCooldown(skill.id)"
           >
-            <span class="skill-icon"><BaseIcon :name="skill.icon" :size="14" /></span>
+            <span class="skill-icon"><BaseIcon :name="skill.icon" :size="18" /></span>
             <span class="skill-name">{{ skill.name }}</span>
             <span :class="['skill-effect', `skill-effect-${skill.type}`]">{{ getSkillEffectText(skill) }}</span>
             <span class="skill-cost">{{ skill.mpCost }} MP</span>
@@ -1313,6 +1313,10 @@ onUnmounted(() => {
 }
 
 .action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   padding: @spacing-lg @spacing-md;
   border: @border-card;
   border-radius: @radius-lg;
@@ -1322,7 +1326,6 @@ onUnmounted(() => {
   font-weight: @font-weight-semibold;
   cursor: pointer;
   transition: all @transition-quick;
-  text-align: center;
 }
 
 .action-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); border-color: @color-dim-gray; }
