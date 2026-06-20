@@ -7,7 +7,7 @@
           :key="quest.questId"
           class="quest-card"
         >
-          <BaseIcon :name="getQuestIcon(quest.definition.type).name" :gradient="getQuestIcon(quest.definition.type).gradient" :size="16" />
+          <BaseIcon :name="getQuestIcon(quest.definition.type).name" :gradient="getQuestIcon(quest.definition.type).gradient" :size="34" />
           <div class="quest-content">
             <div class="quest-header-row">
               <h3>{{ quest.definition.title }}</h3>
@@ -29,20 +29,12 @@
               <span v-if="quest.definition.goldReward"><BaseIcon name="coins" gradient="gold" :size="14" /> {{ quest.definition.goldReward }}</span>
               <span v-if="quest.definition.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.definition.xpReward }}</span>
             </div>
-            <div class="quest-actions">
+            <div class="quest-actions" v-if="quest.instance.status !== 'completed'">
               <button 
-                v-if="quest.instance.status === 'completed'"
-                class="claim-btn"
-                @click="claimReward(quest.questId)"
-              >
-                领取奖励
-              </button>
-              <button 
-                v-else
                 class="abandon-btn"
                 @click="abandonQuest(quest.questId)"
               >
-                放弃任务
+                放弃
               </button>
             </div>
           </div>
@@ -66,7 +58,7 @@
 <script setup lang="ts">
 /**
  * @fileoverview 任务日志弹窗组件
- * @description 展示玩家当前进行中的任务列表，支持查看目标进度、领取已完成任务奖励和放弃任务
+ * @description 展示玩家当前进行中的任务列表，支持查看目标进度和放弃任务
  */
 
 import { reactive, computed, onMounted, watch } from 'vue';
@@ -147,18 +139,6 @@ function getObjectiveProgress(instance: QuestInstance, index: number): number {
 
 function getObjectiveIconName(instance: QuestInstance, index: number) {
   return isObjectiveCompleted(instance, index) ? 'check-mark' : 'empty-box';
-}
-
-async function claimReward(questId: string) {
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'quest_claim_reward' });
-  const success = await questStore.turnInQuest(questId);
-  if (success) {
-    const quest = questStore.getQuestDefinition(questId);
-    toast.show({ message: `已领取奖励: ${quest?.title || questId}`, type: 'success', icon: '🏆' });
-    loadQuests();
-  } else {
-    toast.show({ message: '无法领取奖励', type: 'danger', icon: '❌' });
-  }
 }
 
 function abandonQuest(questId: string) {
@@ -308,7 +288,7 @@ onMounted(() => {
   gap: @spacing-lg;
 }
 
-.claim-btn, .abandon-btn {
+.abandon-btn {
   padding: @spacing-sm 14px;
   border: none;
   border-radius: @radius-sm;
@@ -316,19 +296,11 @@ onMounted(() => {
   font-weight: @font-weight-bold;
   cursor: pointer;
   transition: all @transition-normal;
-}
-
-.claim-btn {
-  background: linear-gradient(135deg, @accent-color, #ff8c00);
-  color: @color-text-dark;
-}
-
-.abandon-btn {
   background: linear-gradient(135deg, @danger-color, #cc0000);
   color: @popup-text-color;
 }
 
-.claim-btn:hover, .abandon-btn:hover {
+.abandon-btn:hover {
   transform: translateY(-2px);
 }
 

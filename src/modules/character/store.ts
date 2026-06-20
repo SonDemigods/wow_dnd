@@ -192,7 +192,7 @@ export const useCharacterStore = defineStore('character', () => {
     await persistCharacter();
     await skillsDbService.saveSkillsData({
       characterId: id,
-      skills,
+      skills: skills.map(s => s.id),
       skillBar,
       currentClass: classIdParam,
       updatedAt: Date.now()

@@ -121,7 +121,7 @@ export const useSkillsStore = defineStore('skills', () => {
   // ==================== 内部辅助：持久化 ====================
 
   /**
-   * 保存技能数据到数据库
+   * 保存技能数据到数据库（skills 仅存 ID 数组）
    */
   async function persist(): Promise<void> {
     const characterStore = useCharacterStore();
@@ -130,7 +130,7 @@ export const useSkillsStore = defineStore('skills', () => {
 
     await skillsDbService.saveSkillsData({
       characterId: charId,
-      skills: skills.value,
+      skills: skills.value.map(s => s.id),
       skillBar: skillBar.value,
       currentClass: characterStore.classId,
       updatedAt: Date.now()
@@ -141,7 +141,7 @@ export const useSkillsStore = defineStore('skills', () => {
 
   /**
    * 初始化技能模块
-   * 从 DB 加载技能和技能栏，加载职业模板
+   * 从 DB 加载技能 ID 列表和技能栏，从模板解析完整技能对象
    * @param characterId - 角色 ID（可选，不传时自动从 characterStore 获取）
    */
   async function initialize(characterId?: string): Promise<void> {
@@ -156,18 +156,22 @@ export const useSkillsStore = defineStore('skills', () => {
 
     currentCharacterId.value = charId;
 
-    // 1. 从 DB 加载技能数据
-    const data = await skillsDbService.getSkillsData(charId);
-    skills.value = data.skills;
-    skillBar.value = data.skillBar;
-
-    // 2. 加载技能模板
+    // 1. 先加载技能模板（后续解析 ID 需要）
     await loadTemplatesForClass(characterStore.classId);
 
-    // 3. 加载怪物/首领技能模板（供敌人 AI 使用）
+    // 2. 加载怪物/首领技能模板（供敌人 AI 使用）
     await loadMonsterSkillTemplates();
 
-    // 4. 初始化时不自动装备新技能（仅添加技能到已学列表），避免覆盖用户手动卸下的技能
+    // 3. 从 DB 加载技能数据（skills 为 ID 数组）
+    const data = await skillsDbService.getSkillsData(charId);
+    skillBar.value = data.skillBar;
+
+    // 4. 从模板解析 ID 为完整 Skill 对象
+    skills.value = data.skills
+      .map(id => skillTemplates.value.get(id))
+      .filter((s): s is Skill => s !== undefined);
+
+    // 5. 初始化时不自动装备新技能（仅添加技能到已学列表），避免覆盖用户手动卸下的技能
     checkLevelUnlocks(false);
 
     isLoading.value = false;

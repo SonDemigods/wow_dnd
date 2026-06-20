@@ -155,6 +155,8 @@ onMounted(() => {
 }
 
 .log-icon {
+  display: flex;
+  align-items: center;
   font-size: @font-md;
 }
 

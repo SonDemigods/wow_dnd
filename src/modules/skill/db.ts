@@ -2,7 +2,7 @@
  * 技能模块数据层
  * 
  * 封装技能数据的 IndexedDB 操作，提供数据持久化能力。
- * 技能和技能栏以原生数组/对象存储，无需 JSON 序列化/反序列化。
+ * skills 字段仅存储技能 ID 数组，完整技能数据从 config_skills 模板表获取。
  */
 import { db as gameDb, dbService } from '../data/core';
 import type { Skill, SkillBar, SkillsData, SkillType, SkillDataStorage, SkillTemplateStorage } from './types';
@@ -42,8 +42,8 @@ export class SkillsDbService {
         return this.getDefaultSkillsData(characterId);
       }
 
-      // 原生数组/对象存储，直接读取
-      const skills: Skill[] = Array.isArray(data.skills) ? data.skills : [];
+      // skills 仅存 ID 数组，直接读取
+      const skills: string[] = Array.isArray(data.skills) ? data.skills : [];
       const skillBar: SkillBar = (data.skillBar && Array.isArray((data.skillBar as SkillBar).slots))
         ? data.skillBar as SkillBar
         : { slots: [null, null, null, null] };

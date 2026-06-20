@@ -22,7 +22,7 @@
           :key="quest.id"
           class="quest-card available"
         >
-          <div class="quest-icon"><BaseIcon :name="getQuestIcon(quest.type)" gradient="gold" :size="28" /></div>
+          <div class="quest-icon"><BaseIcon :name="getQuestIcon(quest.type)" gradient="gold" :size="34" /></div>
           <div class="quest-content">
             <div class="quest-header-row">
               <h3>{{ quest.title }}</h3>
@@ -49,7 +49,7 @@
               :disabled="characterLevel < quest.levelRequirement"
               @click="acceptQuest(quest.id)"
             >
-              接取任务
+              接取
             </button>
           </div>
         </div>
@@ -63,7 +63,7 @@
           :key="quest.id"
           class="quest-card turnin"
         >
-          <div class="quest-icon"><BaseIcon name="laurel-crown" gradient="gold" :size="28" /></div>
+          <div class="quest-icon"><BaseIcon name="laurel-crown" gradient="gold" :size="34" /></div>
           <div class="quest-content">
             <div class="quest-header-row">
               <h3>{{ quest.title }}</h3>
@@ -78,7 +78,7 @@
               class="claim-btn"
               @click="turnInQuest(quest.id)"
             >
-              交付任务
+              交付
             </button>
           </div>
         </div>

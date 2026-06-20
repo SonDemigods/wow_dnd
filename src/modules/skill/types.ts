@@ -131,14 +131,14 @@ export interface SkillBar {
 /**
  * 技能模块存储数据接口
  * @property {string} characterId - 角色ID
- * @property {Skill[]} skills - 技能列表
+ * @property {string[]} skills - 已学技能 ID 列表（仅存 ID，完整数据从 config_skills 模板获取）
  * @property {SkillBar} skillBar - 技能栏配置
  * @property {string | null} currentClass - 当前职业
  * @property {number} updatedAt - 更新时间戳
  */
 export interface SkillsData {
   characterId: string;
-  skills: Skill[];
+  skills: string[];
   skillBar: SkillBar;
   currentClass: string | null;
   updatedAt: number;
@@ -313,8 +313,8 @@ export interface SkillValidationResult {
  */
 export interface SkillDataStorage {
   characterId: string;
-  /** 已学技能列表（原生数组，非 JSON 字符串） */
-  skills: Skill[];
+  /** 已学技能 ID 列表（仅存 ID，完整数据从 config_skills 模板获取） */
+  skills: string[];
   /** 技能栏装备状态（原生对象，非 JSON 字符串） */
   skillBar: SkillBar;
   currentClass: string | null;
@@ -364,7 +364,7 @@ export interface SkillConfigStorage {
  */
 export interface CharSkillsStorage {
   characterId: string;
-  skills: Array<{ id: string; name: string; [key: string]: unknown }>;
+  skills: string[];
   skillBar: { slots: [string | null, string | null, string | null, string | null] };
   currentClass: string | null;
   updatedAt: number;

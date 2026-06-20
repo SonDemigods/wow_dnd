@@ -6,22 +6,61 @@
         <div class="character-overview">
           <div class="character-basic">
             <div class="char-row">
-              <BaseIcon :name="getRaceIcon(character.raceId)" gradient="gold" :size="24" />
+              <BaseIcon
+                :name="getRaceIcon(character.raceId)"
+                gradient="gold"
+                :size="24"
+              />
               <div class="char-main-info">
                 <div class="char-name">{{ character.name }}</div>
                 <div class="char-level">Lv.{{ character.level }}</div>
               </div>
             </div>
             <div class="char-details">
-              <Tag type="faction" :text="getFactionName(character.factionId)" :color="getFactionColor(character.factionId)" />
+              <Tag
+                type="faction"
+                :text="getFactionName(character.factionId)"
+                :color="getFactionColor(character.factionId)"
+              />
               <Tag type="race" :text="getRaceName(character.raceId)" />
-              <Tag type="class" :text="getClassName(character.classId)" :color="getClassColor(character.classId)" />
+              <Tag
+                type="class"
+                :text="getClassName(character.classId)"
+                :color="getClassColor(character.classId)"
+              />
             </div>
           </div>
           <div class="resource-bars">
-            <ResourceBar icon="" iconName="health-normal" iconGradient="blood" name="HP" :current="currentHp" :max="maxHp" :percent="hpPercent" type="hp" />
-            <ResourceBar icon="" iconName="magic-palm" iconGradient="mana" name="MP" :current="currentMp" :max="maxMp" :percent="mpPercent" type="mp" />
-            <ResourceBar icon="" iconName="star-formation" iconGradient="gold" name="EXP" :current="currentExp" :max="maxExp" :percent="expPercent" type="exp" />
+            <ResourceBar
+              icon=""
+              iconName="health-normal"
+              iconGradient="blood"
+              name="HP"
+              :current="currentHp"
+              :max="maxHp"
+              :percent="hpPercent"
+              type="hp"
+            />
+            <ResourceBar
+              icon=""
+              iconName="magic-palm"
+              iconGradient="mana"
+              name="MP"
+              :current="currentMp"
+              :max="maxMp"
+              :percent="mpPercent"
+              type="mp"
+            />
+            <ResourceBar
+              icon=""
+              iconName="star-formation"
+              iconGradient="gold"
+              name="EXP"
+              :current="currentExp"
+              :max="maxExp"
+              :percent="expPercent"
+              type="exp"
+            />
           </div>
         </div>
 
@@ -29,8 +68,16 @@
         <div class="attributes-section">
           <h3>核心属性</h3>
           <div class="core-attributes">
-            <div class="core-attr-item" v-for="(value, key) in stats" :key="key">
-              <BaseIcon :name="getAttrIcon(key).name" :gradient="getAttrIcon(key).gradient" :size="14" />
+            <div
+              class="core-attr-item"
+              v-for="(value, key) in stats"
+              :key="key"
+            >
+              <BaseIcon
+                :name="getAttrIcon(key).name"
+                :gradient="getAttrIcon(key).gradient"
+                :size="14"
+              />
               <div class="core-attr-content">
                 <span class="core-attr-name">{{ getAttrName(key) }}</span>
                 <span class="core-attr-value">{{ value }}</span>
@@ -47,14 +94,18 @@
               <BaseIcon name="sword-clash" gradient="physical" :size="14" />
               <div class="secondary-info">
                 <div class="secondary-label">物理攻击</div>
-                <div class="secondary-value">{{ attributes.physicalAttack }}</div>
+                <div class="secondary-value">
+                  {{ attributes.physicalAttack }}
+                </div>
               </div>
             </div>
             <div class="secondary-item defense">
               <BaseIcon name="shield" gradient="earth" :size="14" />
               <div class="secondary-info">
                 <div class="secondary-label">物理防御</div>
-                <div class="secondary-value">{{ attributes.physicalDefense }}</div>
+                <div class="secondary-value">
+                  {{ attributes.physicalDefense }}
+                </div>
               </div>
             </div>
             <div class="secondary-item magic-attack">
@@ -103,18 +154,32 @@
         <!-- 装备区域 -->
         <div class="equipment-section">
           <h3>装备</h3>
-          
+
           <div class="equipment-grid">
             <!-- 武器槽 -->
-            <div 
-              v-for="slot in weaponSlots" 
+            <div
+              v-for="slot in weaponSlots"
               :key="slot.key"
               :data-equip-slot="slot.key"
-              :class="['equip-slot', { equipped: slot.equipment, selected: selectedSlot?.key === slot.key }, slot.equipment ? 'rarity-' + (slot.equipment?.rarity || 'common') : '']"
+              :class="[
+                'equip-slot',
+                {
+                  equipped: slot.equipment,
+                  selected: selectedSlot?.key === slot.key
+                },
+                slot.equipment
+                  ? 'rarity-' + (slot.equipment?.rarity || 'common')
+                  : ''
+              ]"
               @click="selectEquipment(slot)"
             >
               <template v-if="slot.equipment">
-                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="broadsword" size="lg" />
+                <ItemIcon
+                  :icon="slot.equipment?.icon"
+                  :rarity="slot.equipment?.rarity"
+                  fallback="broadsword"
+                  size="lg"
+                />
                 <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>
@@ -124,15 +189,29 @@
             </div>
 
             <!-- 防具槽 -->
-            <div 
-              v-for="slot in armorSlots" 
+            <div
+              v-for="slot in armorSlots"
               :key="slot.key"
               :data-equip-slot="slot.key"
-              :class="['equip-slot', { equipped: slot.equipment, selected: selectedSlot?.key === slot.key }, slot.equipment ? 'rarity-' + (slot.equipment?.rarity || 'common') : '']"
+              :class="[
+                'equip-slot',
+                {
+                  equipped: slot.equipment,
+                  selected: selectedSlot?.key === slot.key
+                },
+                slot.equipment
+                  ? 'rarity-' + (slot.equipment?.rarity || 'common')
+                  : ''
+              ]"
               @click="selectEquipment(slot)"
             >
               <template v-if="slot.equipment">
-                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="checked-shield" size="lg" />
+                <ItemIcon
+                  :icon="slot.equipment?.icon"
+                  :rarity="slot.equipment?.rarity"
+                  fallback="checked-shield"
+                  size="lg"
+                />
                 <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>
@@ -146,24 +225,47 @@
           <div v-if="selectedSlot" class="equipment-detail">
             <template v-if="selectedSlot.equipment">
               <div class="detail-header">
-                <ItemIcon :icon="selectedSlot.equipment.icon" :rarity="selectedSlot.equipment.rarity" size="xl" />
+                <ItemIcon
+                  :icon="selectedSlot.equipment.icon"
+                  :rarity="selectedSlot.equipment.rarity"
+                  size="xl"
+                />
                 <div class="detail-info">
-                  <h4 :class="selectedSlot.equipment.rarity">{{ selectedSlot.equipment.name }}</h4>
-                  <span :class="['detail-rarity', selectedSlot.equipment.rarity]">{{ getRarityName(selectedSlot.equipment.rarity) }}</span>
+                  <h4 :class="selectedSlot.equipment.rarity">
+                    {{ selectedSlot.equipment.name }}
+                  </h4>
+                  <span
+                    :class="['detail-rarity', selectedSlot.equipment.rarity]"
+                    >{{ getRarityName(selectedSlot.equipment.rarity) }}</span
+                  >
                 </div>
               </div>
-              <p class="detail-desc">{{ selectedSlot.equipment.description }}</p>
+              <p class="detail-desc">
+                {{ selectedSlot.equipment.description }}
+              </p>
               <div v-if="selectedSlot.equipment.bonus" class="detail-stats">
-                <div v-for="(value, stat) in selectedSlot.equipment.bonus" :key="stat" class="stat-item">
+                <div
+                  v-for="(value, stat) in selectedSlot.equipment.bonus"
+                  :key="stat"
+                  class="stat-item"
+                >
                   <span class="stat-name">{{ getStatName(String(stat)) }}</span>
                   <span class="stat-value">+{{ value }}</span>
                 </div>
               </div>
-              <div v-if="selectedSlot.equipment.levelRequirement" class="detail-requirement">
+              <div
+                v-if="selectedSlot.equipment.levelRequirement"
+                class="detail-requirement"
+              >
                 需要等级: {{ selectedSlot.equipment.levelRequirement }}
               </div>
               <div class="detail-actions">
-                <button class="action-btn unequip" @click="unequipItem(selectedSlot.key)">卸下装备</button>
+                <button
+                  class="action-btn unequip"
+                  @click="unequipItem(selectedSlot.key)"
+                >
+                  卸下
+                </button>
               </div>
             </template>
             <template v-else>
@@ -237,15 +339,39 @@ interface SlotInfo {
 }
 
 const weaponSlots = computed<SlotInfo[]>(() => [
-  { key: 'weapon1', name: '主手武器', equipment: equipmentStore.equipment.weapon1?.item || null },
-  { key: 'weapon2', name: '副手武器', equipment: equipmentStore.equipment.weapon2?.item || null }
+  {
+    key: 'weapon1',
+    name: '主手武器',
+    equipment: equipmentStore.equipment.weapon1?.item || null
+  },
+  {
+    key: 'weapon2',
+    name: '副手武器',
+    equipment: equipmentStore.equipment.weapon2?.item || null
+  }
 ]);
 
 const armorSlots = computed<SlotInfo[]>(() => [
-  { key: 'armor1', name: '护甲槽1', equipment: equipmentStore.equipment.armor1?.item || null },
-  { key: 'armor2', name: '护甲槽2', equipment: equipmentStore.equipment.armor2?.item || null },
-  { key: 'armor3', name: '护甲槽3', equipment: equipmentStore.equipment.armor3?.item || null },
-  { key: 'armor4', name: '护甲槽4', equipment: equipmentStore.equipment.armor4?.item || null }
+  {
+    key: 'armor1',
+    name: '护甲槽1',
+    equipment: equipmentStore.equipment.armor1?.item || null
+  },
+  {
+    key: 'armor2',
+    name: '护甲槽2',
+    equipment: equipmentStore.equipment.armor2?.item || null
+  },
+  {
+    key: 'armor3',
+    name: '护甲槽3',
+    equipment: equipmentStore.equipment.armor3?.item || null
+  },
+  {
+    key: 'armor4',
+    name: '护甲槽4',
+    equipment: equipmentStore.equipment.armor4?.item || null
+  }
 ]);
 
 const selectedSlot = ref<SlotInfo | null>(null);
@@ -281,28 +407,28 @@ async function loadData() {
 }
 
 function getRaceIcon(raceId: string) {
-  const icon = races.value.find(r => r.id === raceId)?.icon;
+  const icon = races.value.find((r) => r.id === raceId)?.icon;
   return icon || 'person';
 }
 
 function getRaceName(raceId: string) {
-  return races.value.find(r => r.id === raceId)?.name || '';
+  return races.value.find((r) => r.id === raceId)?.name || '';
 }
 
 function getFactionName(factionId: string) {
-  return factions.value.find(f => f.id === factionId)?.name || '';
+  return factions.value.find((f) => f.id === factionId)?.name || '';
 }
 
 function getFactionColor(factionId: string) {
-  return factions.value.find(f => f.id === factionId)?.color || '#9d9d9d';
+  return factions.value.find((f) => f.id === factionId)?.color || '#9d9d9d';
 }
 
 function getClassName(classId: string) {
-  return classes.value.find(c => c.id === classId)?.name || '';
+  return classes.value.find((c) => c.id === classId)?.name || '';
 }
 
 function getClassColor(classId: string) {
-  return classes.value.find(c => c.id === classId)?.color || '#9d9d9d';
+  return classes.value.find((c) => c.id === classId)?.color || '#9d9d9d';
 }
 
 function getAttrIcon(key: string) {
@@ -339,18 +465,22 @@ async function unequipItem(slotKey: string) {
   const result = await equipmentStore.unequipItem(slotKey as EquipmentSlot);
   if (result) {
     // 装备槽卸下动画
-    const slotEl = document.querySelector(`[data-equip-slot="${slotKey}"]`) as HTMLElement;
+    const slotEl = document.querySelector(
+      `[data-equip-slot="${slotKey}"]`
+    ) as HTMLElement;
     if (slotEl) {
       slotEl.classList.add('equip-anim-empty');
-      slotEl.addEventListener('animationend', () => {
-        slotEl.classList.remove('equip-anim-empty');
-      }, { once: true });
+      slotEl.addEventListener(
+        'animationend',
+        () => {
+          slotEl.classList.remove('equip-anim-empty');
+        },
+        { once: true }
+      );
     }
     selectedSlot.value = null;
   }
 }
-
-
 
 onMounted(async () => {
   await loadData();
@@ -518,12 +648,24 @@ onUnmounted(() => {
   border-left: 3px solid transparent;
 }
 
-.secondary-item.attack { border-left-color: @damage-physical; }
-.secondary-item.defense { border-left-color: #4ecdc4; }
-.secondary-item.magic-attack { border-left-color: #a29bfe; }
-.secondary-item.magic-defense { border-left-color: #fd79a8; }
-.secondary-item.crit { border-left-color: #fdcb6e; }
-.secondary-item.dodge { border-left-color: #74b9ff; }
+.secondary-item.attack {
+  border-left-color: @damage-physical;
+}
+.secondary-item.defense {
+  border-left-color: #4ecdc4;
+}
+.secondary-item.magic-attack {
+  border-left-color: #a29bfe;
+}
+.secondary-item.magic-defense {
+  border-left-color: #fd79a8;
+}
+.secondary-item.crit {
+  border-left-color: #fdcb6e;
+}
+.secondary-item.dodge {
+  border-left-color: #74b9ff;
+}
 
 .secondary-icon {
   font-size: @font-xl;
@@ -669,21 +811,41 @@ onUnmounted(() => {
   margin: 0 0 @spacing-xs 0;
 }
 
-.detail-info h4.common { color: @popup-text-color; }
-.detail-info h4.uncommon { color: #1eff00; }
-.detail-info h4.rare { color: #0070dd; }
-.detail-info h4.epic { color: #a335ee; }
-.detail-info h4.legendary { color: #ff8000; }
+.detail-info h4.common {
+  color: @popup-text-color;
+}
+.detail-info h4.uncommon {
+  color: #1eff00;
+}
+.detail-info h4.rare {
+  color: #0070dd;
+}
+.detail-info h4.epic {
+  color: #a335ee;
+}
+.detail-info h4.legendary {
+  color: #ff8000;
+}
 
 .detail-rarity {
   font-size: @font-sm;
 }
 
-.detail-rarity.common { color: #9d9d9d; }
-.detail-rarity.uncommon { color: #1eff00; }
-.detail-rarity.rare { color: #0070dd; }
-.detail-rarity.epic { color: #a335ee; }
-.detail-rarity.legendary { color: #ff8000; }
+.detail-rarity.common {
+  color: #9d9d9d;
+}
+.detail-rarity.uncommon {
+  color: #1eff00;
+}
+.detail-rarity.rare {
+  color: #0070dd;
+}
+.detail-rarity.epic {
+  color: #a335ee;
+}
+.detail-rarity.legendary {
+  color: #ff8000;
+}
 
 .detail-desc {
   color: #aaa;
@@ -751,6 +913,4 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #ff9800, #f57c00);
   color: @popup-text-color;
 }
-
-
 </style>

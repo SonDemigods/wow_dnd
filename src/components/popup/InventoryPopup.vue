@@ -2,16 +2,20 @@
   <BasePopup :visible="visible" title="背包" @close="$emit('close')">
     <template #header-extra>
       <div class="header-info">
-        <div class="gold-display"><BaseIcon name="coins" gradient="gold" :size="16" /> {{ gold }}</div>
-        <div class="inventory-count">{{ inventoryItems.length }} / {{ maxSlots }}</div>
+        <div class="gold-display">
+          <BaseIcon name="coins" gradient="gold" :size="16" /> {{ gold }}
+        </div>
+        <div class="inventory-count">
+          {{ inventoryItems.length }} / {{ maxSlots }}
+        </div>
       </div>
     </template>
 
     <template #default>
       <div class="inventory-content">
         <div class="category-tabs">
-          <button 
-            v-for="cat in categories" 
+          <button
+            v-for="cat in categories"
             :key="cat.id"
             :class="['tab-btn', { active: selectedCategory === cat.id }]"
             @click="selectCategory(cat.id)"
@@ -21,66 +25,93 @@
         </div>
 
         <div class="inventory-grid">
-          <div 
-            v-for="(entry, idx) in displayItems" 
+          <div
+            v-for="(entry, idx) in displayItems"
             :key="idx"
             :data-item-id="entry.item.itemId"
-            :class="['item-slot', entry.info?.rarity, { equipped: isEquipped(entry.item.itemId), selected: selectedEntry?.item === entry.item }]"
+            :class="[
+              'item-slot',
+              entry.info?.rarity,
+              {
+                equipped: isEquipped(entry.item.itemId),
+                selected: selectedEntry?.item === entry.item
+              }
+            ]"
             @click="selectItem(entry)"
           >
-            <ItemIcon :icon="entry.info?.icon" :rarity="entry.info?.rarity" size="sm" />
-            <span v-if="entry.item.count > 1" class="item-count">{{ entry.item.count }}</span>
+            <ItemIcon
+              :icon="entry.info?.icon"
+              :rarity="entry.info?.rarity"
+              size="sm"
+            />
+            <span v-if="entry.item.count > 1" class="item-count">{{
+              entry.item.count
+            }}</span>
           </div>
-          <div 
-            v-for="i in emptySlots" 
+          <div
+            v-for="i in emptySlots"
             :key="'empty-' + i"
             class="item-slot empty"
-          >
-          </div>
+          ></div>
         </div>
 
         <div class="item-detail">
           <template v-if="selectedEntry">
             <div class="detail-header">
-              <h3 :class="selectedEntry.info?.rarity">{{ selectedEntry.info?.name }}</h3>
-              <span class="quality-badge">{{ getRarityName(selectedEntry.info?.rarity || 'common') }}</span>
+              <h3 :class="selectedEntry.info?.rarity">
+                {{ selectedEntry.info?.name }}
+              </h3>
+              <span class="quality-badge">{{
+                getRarityName(selectedEntry.info?.rarity || 'common')
+              }}</span>
             </div>
             <p class="detail-desc">{{ selectedEntry.info?.description }}</p>
             <div class="detail-info">
-              <span>类型: {{ getTypeName(selectedEntry.info?.type || 'misc') }}</span>
+              <span
+                >类型:
+                {{ getTypeName(selectedEntry.info?.type || 'misc') }}</span
+              >
               <span>数量: {{ selectedEntry.item.count }}</span>
-              <span v-if="selectedEntry.info?.levelRequirement">等级: {{ selectedEntry.info.levelRequirement }}</span>
+              <span v-if="selectedEntry.info?.levelRequirement"
+                >等级: {{ selectedEntry.info.levelRequirement }}</span
+              >
             </div>
             <div v-if="selectedEntry.info?.bonus" class="bonus-info">
-              <div v-for="(value, stat) in selectedEntry.info?.bonus" :key="stat" class="bonus-item">
+              <div
+                v-for="(value, stat) in selectedEntry.info?.bonus"
+                :key="stat"
+                class="bonus-item"
+              >
                 <span class="bonus-name">{{ getStatName(stat) }}</span>
                 <span class="bonus-value">+{{ value }}</span>
               </div>
             </div>
             <div v-if="selectedEntry.info?.effect" class="effect-info">
               <EffectTag :type="selectedEntry.info.effect.type" />
-              <span class="effect-value">{{ getEffectValueText(selectedEntry.info.effect) }}</span>
+              <span class="effect-value">{{
+                getEffectValueText(selectedEntry.info.effect)
+              }}</span>
             </div>
             <div class="detail-actions">
-              <button 
+              <button
                 v-if="selectedEntry.info?.consumable"
                 class="action-btn use"
                 @click="useItem(selectedEntry.item.itemId)"
               >
-                <BaseIcon name="potion-ball" gradient="heal" :size="16" /> 使用
+                使用
               </button>
-              <button 
+              <button
                 v-if="isEquipment(selectedEntry.info?.type)"
                 class="action-btn equip"
                 @click="equipItem(selectedEntry.item.itemId)"
               >
-                <BaseIcon name="checked-shield" gradient="metal" :size="14" /> {{ isEquipped(selectedEntry.item.itemId) ? '卸下' : '装备' }}
+                {{ isEquipped(selectedEntry.item.itemId) ? '卸下' : '装备' }}
               </button>
-              <button 
+              <button
                 class="action-btn drop"
                 @click="dropItem(selectedEntry.item.itemId)"
               >
-                <BaseIcon name="trash-can" gradient="blood" :size="16" /> 丢弃
+                丢弃
               </button>
             </div>
           </template>
@@ -106,9 +137,16 @@
   />
 
   <!-- 装备槽位选择弹窗 -->
-  <BasePopup :visible="showSlotSelect" title="选择装备位置" max-width="360px" @close="cancelSlotSelect">
+  <BasePopup
+    :visible="showSlotSelect"
+    title="选择装备位置"
+    max-width="360px"
+    @close="cancelSlotSelect"
+  >
     <div class="slot-select-content">
-      <p class="slot-select-hint">为 {{ pendingEquipItem?.name }} 选择装备位置：</p>
+      <p class="slot-select-hint">
+        为 {{ pendingEquipItem?.name }} 选择装备位置：
+      </p>
       <div class="slot-options">
         <button
           v-for="slot in availableSlots"
@@ -116,7 +154,9 @@
           class="slot-option-btn"
           @click="selectEquipSlot(slot)"
         >
-          <span class="slot-icon"><BaseIcon :name="getSlotIcon(slot)" gradient="metal" :size="18" /></span>
+          <span class="slot-icon"
+            ><BaseIcon :name="getSlotIcon(slot)" gradient="metal" :size="18"
+          /></span>
           <span class="slot-name">{{ SLOT_NAMES[slot] }}</span>
         </button>
       </div>
@@ -142,7 +182,13 @@ import { useCharacterStore } from '@/modules/character';
 import { useEquipmentStore } from '@/modules/equipment';
 import { eventBus, GameEvents } from '@/modules/bus/core';
 import { useToast } from '@/composables/useToast';
-import type { InventoryItem, Item, ItemType, ItemRarity, ItemEffect } from '@/modules/inventory';
+import type {
+  InventoryItem,
+  Item,
+  ItemType,
+  ItemRarity,
+  ItemEffect
+} from '@/modules/inventory';
 import type { EquipmentSlot, EquipmentItem } from '@/modules/equipment/types';
 
 interface ItemEntry {
@@ -191,7 +237,7 @@ const inventoryItems = computed(() => useInventoryStore().inventory);
 /** 已装备物品ID集合，直接从装备 Store 响应式数据派生 */
 const equippedItemIds = computed(() => {
   const ids = new Set<string>();
-  Object.values(equipmentStore.equipment).forEach(e => {
+  Object.values(equipmentStore.equipment).forEach((e) => {
     if (e) ids.add(e.item.id);
   });
   return ids;
@@ -254,11 +300,16 @@ function getEffectValueText(effect: ItemEffect): string {
   const { type, value } = effect;
   if (typeof value !== 'number') return '';
   switch (type) {
-    case 'health_restore': return `恢复 ${value} 点`;
-    case 'mana_restore': return `恢复 ${value} 点`;
-    case 'physical_damage': return `伤害 ${value}`;
-    case 'magic_damage': return `伤害 ${value}`;
-    default: return `${value}`;
+    case 'health_restore':
+      return `恢复 ${value} 点`;
+    case 'mana_restore':
+      return `恢复 ${value} 点`;
+    case 'physical_damage':
+      return `伤害 ${value}`;
+    case 'magic_damage':
+      return `伤害 ${value}`;
+    default:
+      return `${value}`;
   }
 }
 
@@ -266,11 +317,15 @@ function getEffectToast(info: Item): string {
   if (!info.effect) return `使用了 ${info.name}`;
   const { type, value } = info.effect;
   switch (type) {
-    case 'health_restore': return `恢复了 ${value} 点生命值`;
-    case 'mana_restore': return `恢复了 ${value} 点法力值`;
+    case 'health_restore':
+      return `恢复了 ${value} 点生命值`;
+    case 'mana_restore':
+      return `恢复了 ${value} 点法力值`;
     case 'physical_damage':
-    case 'magic_damage': return `造成了 ${value} 点伤害`;
-    default: return `使用了 ${info.name}`;
+    case 'magic_damage':
+      return `造成了 ${value} 点伤害`;
+    default:
+      return `使用了 ${info.name}`;
   }
 }
 
@@ -282,7 +337,9 @@ function isEquipped(itemId: string): boolean {
   if (!equippedItemIds.value.has(itemId)) return false;
   // 如果背包中仍有该物品的副本，说明存在未被装备的实例，不应显示为"已装备"
   // （所有副本都已装备时，物品不会出现在背包网格中，equipped 样式不会误显示）
-  const stillInInventory = inventoryItems.value.some(i => i.itemId === itemId);
+  const stillInInventory = inventoryItems.value.some(
+    (i) => i.itemId === itemId
+  );
   return !stillInInventory;
 }
 
@@ -293,14 +350,14 @@ function getSlotIcon(slot: string) {
 
 const filteredItems = computed(() => {
   if (selectedCategory.value === 'all') return inventoryItems.value;
-  return inventoryItems.value.filter(item => {
+  return inventoryItems.value.filter((item) => {
     const info = useInventoryStore().getItemInfo(item.itemId);
     return info?.type === selectedCategory.value;
   });
 });
 
 const displayItems = computed<ItemEntry[]>(() => {
-  return filteredItems.value.map(item => ({
+  return filteredItems.value.map((item) => ({
     item,
     info: useInventoryStore().getItemInfo(item.itemId)
   }));
@@ -338,10 +395,15 @@ function selectItem(entry: ItemEntry) {
 function findSelectedOrFirstIndex(itemId: string): number {
   // 优先查找当前选中物品的位置
   if (selectedEntry.value && selectedEntry.value.item.itemId === itemId) {
-    const idx = inventoryItems.value.findIndex(i => i.itemId === itemId && selectedEntry.value && i === selectedEntry.value.item);
+    const idx = inventoryItems.value.findIndex(
+      (i) =>
+        i.itemId === itemId &&
+        selectedEntry.value &&
+        i === selectedEntry.value.item
+    );
     if (idx >= 0) return idx;
   }
-  return inventoryItems.value.findIndex(i => i.itemId === itemId);
+  return inventoryItems.value.findIndex((i) => i.itemId === itemId);
 }
 
 async function useItem(itemId: string) {
@@ -359,16 +421,22 @@ async function useItem(itemId: string) {
   if (!success) return;
 
   // 物品使用弹跳动画
-  const slotEl = document.querySelector(`[data-item-id="${itemId}"]`) as HTMLElement;
+  const slotEl = document.querySelector(
+    `[data-item-id="${itemId}"]`
+  ) as HTMLElement;
   if (slotEl) {
     slotEl.style.animation = 'item-bounce 0.4s ease';
-    slotEl.addEventListener('animationend', () => {
-      slotEl.style.animation = '';
-    }, { once: true });
+    slotEl.addEventListener(
+      'animationend',
+      () => {
+        slotEl.style.animation = '';
+      },
+      { once: true }
+    );
   }
 
   toast.show({ message: getEffectToast(info), type: 'success', icon: '💊' });
-  
+
   loadInventory();
   // 堆叠数归零时清除选中
   if (invItem.count <= 1) {
@@ -408,23 +476,36 @@ async function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
   const success = await equipmentStore.equipItem(slot, item);
   if (success) {
     // 装备槽填充动画（如果角色面板打开）
-    const slotEl = document.querySelector(`[data-equip-slot="${slot}"]`) as HTMLElement;
+    const slotEl = document.querySelector(
+      `[data-equip-slot="${slot}"]`
+    ) as HTMLElement;
     if (slotEl) {
       slotEl.classList.add('equip-anim-fill');
-      slotEl.addEventListener('animationend', () => {
-        slotEl.classList.remove('equip-anim-fill');
-      }, { once: true });
+      slotEl.addEventListener(
+        'animationend',
+        () => {
+          slotEl.classList.remove('equip-anim-fill');
+        },
+        { once: true }
+      );
     }
     // 从背包中移除该物品（优先移除选中的那一组）
     const index = findSelectedOrFirstIndex(item.id);
     if (index !== -1) {
       useInventoryStore().removeItemByIndex(index);
     }
-    toast.show({ message: `已装备 ${item.name} 到 ${SLOT_NAMES[slot]}`, type: 'success', icon: '🛡️' });
+    toast.show({
+      message: `已装备 ${item.name} 到 ${SLOT_NAMES[slot]}`,
+      type: 'success',
+      icon: '🛡️'
+    });
     loadInventory();
     selectedEntry.value = null;
   } else {
-    toast.show({ message: '装备失败，可能等级不足或槽位不匹配', type: 'warning' });
+    toast.show({
+      message: '装备失败，可能等级不足或槽位不匹配',
+      type: 'warning'
+    });
   }
   showSlotSelect.value = false;
   pendingEquipItem.value = null;
@@ -452,18 +533,22 @@ function dropItem(itemId: string) {
 function confirmDrop() {
   const itemId = pendingDropItemId.value;
   if (!itemId) return;
-  
+
   const info = useInventoryStore().getItemInfo(itemId);
   // 优先丢弃选中的那一组
   const index = findSelectedOrFirstIndex(itemId);
   if (index !== -1) {
     useInventoryStore().removeItemByIndex(index);
     eventBus.emit(GameEvents.ITEM_DROPPED, { itemId });
-    toast.show({ message: `已丢弃 ${info?.name || '物品'}`, type: 'info', icon: '🗑️' });
+    toast.show({
+      message: `已丢弃 ${info?.name || '物品'}`,
+      type: 'info',
+      icon: '🗑️'
+    });
     loadInventory();
     selectedEntry.value = null;
   }
-  
+
   showDropConfirm.value = false;
   pendingDropItemId.value = null;
 }
@@ -617,7 +702,6 @@ onMounted(() => {
   background: @gold-bg-strong;
 }
 
-
 .item-count {
   position: absolute;
   bottom: 2px;
@@ -648,11 +732,21 @@ onMounted(() => {
   margin: 0;
 }
 
-.item-detail h3.common { color: @popup-text-color; }
-.item-detail h3.uncommon { color: #1eff00; }
-.item-detail h3.rare { color: #0070dd; }
-.item-detail h3.epic { color: #a335ee; }
-.item-detail h3.legendary { color: #ff8000; }
+.item-detail h3.common {
+  color: @popup-text-color;
+}
+.item-detail h3.uncommon {
+  color: #1eff00;
+}
+.item-detail h3.rare {
+  color: #0070dd;
+}
+.item-detail h3.epic {
+  color: #a335ee;
+}
+.item-detail h3.legendary {
+  color: #ff8000;
+}
 
 .quality-badge {
   padding: 3px @spacing-md;
@@ -667,8 +761,6 @@ onMounted(() => {
   font-size: @font-base;
   margin: @spacing-md 0;
 }
-
-
 
 .detail-info {
   display: flex;

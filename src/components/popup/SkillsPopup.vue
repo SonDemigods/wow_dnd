@@ -11,7 +11,7 @@
               :class="['bar-slot', { empty: !slot.skill, selected: selectedSlotIndex === index }]"
               @click="selectBarSlot(index)"
             >
-              <BaseIcon v-if="slot.skill" :name="slot.skill.icon" gradient="warrior" :size="24" />
+              <BaseIcon v-if="slot.skill" :name="slot.skill.icon" :gradient="characterStore.classId" :size="24" />
               <span v-if="slot.skill" class="bar-name">{{ slot.skill.name }}</span>
               <span v-if="!slot.skill" class="bar-empty">+</span>
             </div>
@@ -27,7 +27,7 @@
               :class="['skill-slot', { equipped: isSkillEquipped(skill.id), locked: !canUnlock(skill), selected: selectedSkill?.id === skill.id }]"
               @click="selectSkill(skill)"
             >
-              <BaseIcon :name="skill.icon" gradient="warrior" :size="24" />
+              <BaseIcon :name="skill.icon" :gradient="characterStore.classId" :size="24" />
               <span v-if="!canUnlock(skill)" class="lock-badge"><BaseIcon name="padlock" :size="14" /></span>
               <span v-if="isSkillEquipped(skill.id)" class="equipped-badge"><BaseIcon name="check-mark" gradient="heal" :size="14" /></span>
             </div>
@@ -38,7 +38,7 @@
           <template v-if="selectedSkill">
             <div class="detail-top">
               <div class="detail-header">
-                <BaseIcon :name="selectedSkill.icon" gradient="warrior" :size="36" />
+                <BaseIcon :name="selectedSkill.icon" :gradient="characterStore.classId" :size="36" />
                 <div class="detail-info">
                   <h3>{{ selectedSkill.name }}</h3>
                   <SkillTags :skill="selectedSkill" />
@@ -119,24 +119,10 @@ const selectedSlotIndex = ref<number | null>(null);
 const classSkills = ref<Skill[]>([]);
 const barRenderKey = ref(0);
 
-const allSkillsMap = computed(() => {
-  const map = new Map<string, Skill>();
-  skillsStore.skills.forEach(s => map.set(s.id, s));
-  classSkills.value.forEach(s => {
-    if (!map.has(s.id)) map.set(s.id, s);
-  });
-  return map;
-});
-
 const skillBarSlots = computed(() => {
+  // 依赖 barRenderKey 以在记忆/遗忘后强制重新计算
   void barRenderKey.value;
-  return skillsStore.skillBar.slots.map((skillId, index) => {
-    let skill: Skill | null = null;
-    if (skillId) {
-      skill = allSkillsMap.value.get(skillId) || null;
-    }
-    return { index: index as SkillSlotIndex, skillId, skill };
-  });
+  return skillsStore.skillBarSlots;
 });
 
 const { getSkillEffectText } = useSkillDisplay();

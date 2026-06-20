@@ -495,7 +495,7 @@ function showErrorModal(msg: string) {
 /** 显示确认弹窗 */
 function showConfirmModal() {
   modalType.value = 'confirm';
-  modalIcon.value = { name: 'check-mark', gradient: 'success' };
+  modalIcon.value = { name: 'check-mark', gradient: 'heal' };
   modalTitle.value = '确认创建角色';
   modalMessage.value = `确认创建角色「${name.value.trim()}」吗？`;
   modalConfirmText.value = '确认创建';
