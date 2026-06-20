@@ -104,11 +104,11 @@ const explorationProgress = computed(() => {
 const cellIcons: Record<string, { name: string; gradient: string }> = {
   empty: { name: 'plain-circle', gradient: 'metal' },
   monster: { name: 'sword-clash', gradient: 'physical' },
-  treasure: { name: 'treasure-map', gradient: 'gold' },
+  treasure: { name: 'treasure-map', gradient: 'magic' },
   shop: { name: 'shop', gradient: 'gold' },
   rest: { name: 'campfire', gradient: 'heal' },
   boss: { name: 'dragon-head', gradient: 'dragon' },
-  event: { name: 'perspective-dice-six', gradient: 'magic' },
+  event: { name: 'perspective-dice-six', gradient: 'gold' },
   trap: { name: 'caltrops', gradient: 'debuff' },
   start: { name: 'entry-door', gradient: 'heal' },
   board: { name: 'notebook', gradient: 'gold' }
