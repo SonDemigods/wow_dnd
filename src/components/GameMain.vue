@@ -12,9 +12,9 @@
         </div>
       </div>
       <div class="player-resources">
-        <ResourceBar icon="health-normal" name="HP" :current="currentHp" :max="maxHp" :percent="hpPercent" type="hp" />
-        <ResourceBar icon="magic-palm" name="MP" :current="currentMp" :max="maxMp" :percent="mpPercent" type="mp" />
-        <ResourceBar icon="star-formation" name="EXP" :current="exp" :max="expToNext" :percent="expPercent" type="exp" />
+        <ResourceBar icon="health-normal" iconGradient="blood" name="HP" :current="currentHp" :max="maxHp" :percent="hpPercent" type="hp" />
+        <ResourceBar icon="magic-palm" iconGradient="mana" name="MP" :current="currentMp" :max="maxMp" :percent="mpPercent" type="mp" />
+        <ResourceBar icon="star-formation" iconGradient="gold" name="EXP" :current="exp" :max="expToNext" :percent="expPercent" type="exp" />
       </div>
     </div>
 

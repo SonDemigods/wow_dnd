@@ -63,7 +63,7 @@
                     <div v-if="e.isBoss" class="boss-badge"><BaseIcon name="crowned-skull" gradient="gold" :size="12" /> 首领</div>
                   </div>
                   <div class="combatant-bars">
-                    <ResourceBar icon="health-normal" name="HP" :current="e.hp" :max="e.maxHp" :percent="getHpPercent(e)" type="hp" />
+                    <ResourceBar icon="health-normal" iconGradient="blood" name="HP" :current="e.hp" :max="e.maxHp" :percent="getHpPercent(e)" type="hp" />
                   </div>
                   <!-- Buff/Debuff 效果指示器 -->
                   <div v-if="getEnemyEffectCount(e.id) > 0" class="effects-indicator enemy-effects">
@@ -97,8 +97,8 @@
             <div class="combatant-level">Lv.{{ playerLevel }}</div>
           </div>
           <div class="combatant-bars">
-            <ResourceBar icon="health-normal" name="HP" :current="playerHp" :max="playerMaxHp" :percent="playerHpPercent" type="hp" />
-            <ResourceBar icon="magic-palm" name="MP" :current="playerMp" :max="playerMaxMp" :percent="playerMpPercent" type="mp" />
+            <ResourceBar icon="health-normal" iconGradient="blood" name="HP" :current="playerHp" :max="playerMaxHp" :percent="playerHpPercent" type="hp" />
+            <ResourceBar icon="magic-palm" iconGradient="mana" name="MP" :current="playerMp" :max="playerMaxMp" :percent="playerMpPercent" type="mp" />
             <!-- Buff/Debuff 效果指示器 -->
             <template v-if="combatStore.playerEffects.effects.length > 0">
               <div class="effects-indicator">
