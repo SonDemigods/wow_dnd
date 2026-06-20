@@ -38,8 +38,12 @@ const props = withDefaults(defineProps<{
 /** 最终展示的图标：icon 有值用 icon，否则用 fallback */
 const displayIcon = computed(() => props.icon || props.fallback);
 
-/** 图标渐变（默认 metal） */
-const iconGradient = computed(() => props.gradient || 'metal');
+/** 图标渐变：优先使用传入的 gradient，否则使用品质色渐变（与 icon-gradients.less 品质色对齐） */
+const iconGradient = computed(() => {
+  if (props.gradient) return props.gradient;
+  if (props.rarity) return props.rarity;
+  return 'common';
+});
 
 /** BaseIcon 尺寸映射 */
 const gameIconSize = computed(() => {

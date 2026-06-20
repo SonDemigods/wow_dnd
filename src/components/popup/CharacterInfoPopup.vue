@@ -114,11 +114,11 @@
               @click="selectEquipment(slot)"
             >
               <template v-if="slot.equipment">
-                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="broadsword" gradient="metal" size="lg" />
+                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="broadsword" size="lg" />
                 <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>
-                <ItemIcon icon="" fallback="broadsword" gradient="metal" size="lg" />
+                <ItemIcon icon="" fallback="broadsword" size="lg" />
                 <!-- <div class="slot-name empty">{{ slot.name }}</div> -->
               </template>
             </div>
@@ -132,11 +132,11 @@
               @click="selectEquipment(slot)"
             >
               <template v-if="slot.equipment">
-                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="checked-shield" gradient="metal" size="lg" />
+                <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="checked-shield" size="lg" />
                 <!-- <div class="slot-name">{{ slot.equipment.name }}</div> -->
               </template>
               <template v-else>
-                <ItemIcon icon="" fallback="checked-shield" gradient="metal" size="lg" />
+                <ItemIcon icon="" fallback="checked-shield" size="lg" />
                 <!-- <div class="slot-name empty">{{ slot.name }}</div> -->
               </template>
             </div>
