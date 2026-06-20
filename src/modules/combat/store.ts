@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 战斗模块状态管理层（Store 核心架构）
  * 
  * Store 是战斗数据的唯一持有者，所有响应式状态集中管理。
@@ -2220,7 +2220,7 @@ export const useCombatStore = defineStore('combat', () => {
           timestamp: Date.now(),
           type: 'combat',
           message: `被 ${enemyNames} 击败！`,
-          icon: 'game-icons:death-skull'
+          icon: 'game-icons:death-zone'
         });
 
         // 直接调用 characterStore Action 处理死亡

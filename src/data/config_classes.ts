@@ -36,7 +36,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'hunter',
     name: '猎人',
-    icon: 'game-icons:high-shot',
+    icon: 'game-icons:arrow-dunk',
     primaryStat: 'dex',
     factionsIds: ['alliance', 'horde', 'neutral'],
     raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
@@ -102,7 +102,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'monk',
     name: '武僧',
-    icon: 'game-icons:martial-arts',
+    icon: 'game-icons:fist',
     primaryStat: 'dex',
     factionsIds: ['alliance', 'horde', 'neutral'],
     raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'earthen', 'harenei'],
@@ -124,7 +124,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'death_knight',
     name: '亡灵骑士',
-    icon: 'game-icons:death-zone',
+    icon: 'game-icons:rune-sword',
     primaryStat: 'str',
     factionsIds: ['alliance', 'horde'],
     raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren'],

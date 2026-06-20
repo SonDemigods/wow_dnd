@@ -30,7 +30,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'kobold',
     name: '狗头人',
-    icon: 'game-icons:rat',
+    icon: 'game-icons:candle-holder',
     maxHp: 20,
     damage: [3, 6],
     xp: 12,
@@ -190,7 +190,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'elemental',
     name: '元素生物',
-    icon: 'game-icons:fire-gem',
+    icon: 'game-icons:spark-spirit',
     maxHp: 65,
     damage: [9, 16],
     xp: 50,
@@ -238,7 +238,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'undead',
     name: '亡灵',
-    icon: 'game-icons:skull-sign',
+    icon: 'game-icons:death-zone',
     maxHp: 35,
     damage: [7, 13],
     xp: 28,
@@ -318,7 +318,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'naga',
     name: '蛇身海妖',
-    icon: 'game-icons:sea-serpent',
+    icon: 'game-icons:mermaid',
     maxHp: 85,
     damage: [11, 19],
     xp: 65,
@@ -334,7 +334,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'ogre',
     name: '食人魔',
-    icon: 'game-icons:orc-head',
+    icon: 'game-icons:giant',
     maxHp: 90,
     damage: [13, 22],
     xp: 70,
@@ -350,7 +350,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'quilboar',
     name: '猪面人',
-    icon: 'game-icons:boar-tusks',
+    icon: 'game-icons:pig-face',
     maxHp: 48,
     damage: [8, 15],
     xp: 38,
@@ -398,7 +398,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'gnoll_raider',
     name: '豺狼人劫掠者',
-    icon: 'game-icons:wolf-head',
+    icon: 'game-icons:hyena-head',
     maxHp: 33,
     damage: [6, 11],
     xp: 24,

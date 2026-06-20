@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @fileoverview 种族数据定义文件
  * @description 包含所有可选择的种族信息，包括属性加成、图标和描述
  * @module data/race
@@ -30,7 +30,7 @@ export const RACES: RaceData[] = [
   {
     id: 'gnome',
     name: '侏儒',
-    icon: 'game-icons:robot-golem',
+    icon: 'game-icons:wrench',
     factionId: 'alliance',
     bonus: { int: 2, dex: 1 },
     description: '来自齿轮之城的侏儒是凡间最聪明的发明家，他们的奇思妙想推动着机械工程与魔法科技的边界，从铁羽陆行鸟到空间传送装置，没有什么是侏儒工程师搞不定的'
@@ -46,7 +46,7 @@ export const RACES: RaceData[] = [
   {
     id: 'draenei',
     name: '星裔',
-    icon: 'game-icons:star-gate',
+    icon: 'game-icons:star-prominences',
     factionId: 'alliance',
     bonus: { wis: 2, cha: 1 },
     description: '来自破碎之源的高贵流亡者，在圣光之灵的指引下横跨星海追寻圣光之道。星裔人以虔诚的信仰与深邃的智慧著称，他们的蹄声回荡着千年逃亡的悲歌，却从未熄灭眼中燃烧的圣光之火'
@@ -62,7 +62,7 @@ export const RACES: RaceData[] = [
   {
     id: 'pandaren',
     name: '兽灵族',
-    icon: 'game-icons:monk-face',
+    icon: 'game-icons:bear-head',
     factionId: 'neutral',
     bonus: { con: 1, wis: 1, dex: 1 },
     description: '古老而神秘的中立种族，传承着古老的武学之道'
@@ -78,7 +78,7 @@ export const RACES: RaceData[] = [
   {
     id: 'undead',
     name: '亡者',
-    icon: 'game-icons:half-dead',
+    icon: 'game-icons:raise-zombie',
     factionId: 'horde',
     bonus: { int: 2, dex: 1 },
     description: '挣脱亡者君主意志的亡者，在亡者之城深处以不死之躯续写自由意志的篇章。亡者女王率领这支亡者军团向亡者军团复仇，用黑暗魔法与炼金药剂涂抹着属于亡者的灰色未来'
@@ -102,7 +102,7 @@ export const RACES: RaceData[] = [
   {
     id: 'blood_elves',
     name: '银辉精灵',
-    icon: 'game-icons:fairy-wand',
+    icon: 'game-icons:crystal-wand',
     factionId: 'horde',
     bonus: { int: 2, cha: 1 },
     description: '曾是银辉精灵的遗民，在圣光之泉被亡者军团摧毁后经历了法力饥渴的折磨与屈辱，浴血重生的银辉精灵掌握了从一切源头汲取奥术能量的能力，凭借精湛的魔法技艺和与生俱来的高贵气质重新屹立于银辉圣地'
@@ -118,7 +118,7 @@ export const RACES: RaceData[] = [
   {
     id: 'void_elf',
     name: '暗影精灵',
-    icon: 'game-icons:dark-squad',
+    icon: 'game-icons:dark-blade',
     factionId: 'alliance',
     bonus: { dex: 1, int: 2 },
     description: '一群敢于触碰暗影帷幕的精灵学者，被暗影之力转化后获得了穿梭空间裂缝、召唤暗影触手的能力。暗影精灵在疯狂的边缘徘徊，却成功地驯服了宇宙中最危险的力量为己所用'
@@ -126,7 +126,7 @@ export const RACES: RaceData[] = [
   {
     id: 'lightforged_draenei',
     name: '圣光星裔',
-    icon: 'game-icons:star-gate',
+    icon: 'game-icons:star-prominences',
     factionId: 'alliance',
     bonus: { con: 1, wis: 2 },
     description: '经过圣光远征军千锤百炼的星裔战士，每一寸躯体都被圣光之灵的圣光所灌注，眼中燃烧着永不熄灭的神圣火焰。他们是深渊军团最畏惧的天敌，也是凡间最坚定的光明守护者'
@@ -158,7 +158,7 @@ export const RACES: RaceData[] = [
   {
     id: 'nightborne',
     name: '暮光后裔',
-    icon: 'game-icons:night-sky',
+    icon: 'game-icons:night-sleep',
     factionId: 'horde',
     bonus: { int: 2, cha: 1 },
     description: '苏拉玛城的古老居民，依靠暗夜井的魔力在护罩下生活了上万年。暮光后裔兼修优雅的奥术法术与致命的剑舞，他们走出护罩后的每一步，都散发着如星辰般高贵而危险的光芒'

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @fileoverview 阵营数据定义文件
  * @description 包含游戏中所有可选择的阵营信息
  * @module data/faction
@@ -21,7 +21,7 @@ export const FACTIONS: FactionData[] = [
   {
     id: 'horde',
     name: '铁血盟约',
-    icon: 'game-icons:porcupine',
+    icon: 'game-icons:crossed-axes',
     color: '#ff4400',
     description: '由铁牙堡的兽人、雷崖的牛角族、暗风氏族、银辉城的银辉精灵以及亡者之城的亡者组成的松散同盟，在暮光大陆和辉石大陆为生存而殊死搏斗'
   },
