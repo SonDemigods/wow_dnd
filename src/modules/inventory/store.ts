@@ -207,7 +207,7 @@ export const useInventoryStore = defineStore('inventory', () => {
         timestamp: Date.now(),
         type: 'item',
         message: `获得了物品：${itemTemplate.name}${countText}`,
-        icon: '📦'
+        icon: 'game-icons:chest'
       });
     }
 
@@ -316,7 +316,7 @@ export const useInventoryStore = defineStore('inventory', () => {
       timestamp: Date.now(),
       type: 'item',
       message: `使用了：${itemTemplate.name}`,
-      icon: '🧪'
+      icon: 'game-icons:potion-ball'
     });
 
     return true;

@@ -96,7 +96,7 @@ export const useBaseStore = defineStore('base', () => {
     return races.value.find(r => r.id === id)?.name || '';
   });
   const getFactionIcon = computed(() => (id: string) => {
-    return factions.value.find(f => f.id === id)?.icon || '🏳️';
+    return factions.value.find(f => f.id === id)?.icon || 'game-icons:checked-shield';
   });
   const getFactionName = computed(() => (id: string) => {
     return factions.value.find(f => f.id === id)?.name || '';
@@ -105,7 +105,7 @@ export const useBaseStore = defineStore('base', () => {
     return factions.value.find(f => f.id === id)?.color || '#9d9d9d';
   });
   const getClassIcon = computed(() => (id: string) => {
-    return classes.value.find(c => c.id === id)?.icon || '⚔️';
+    return classes.value.find(c => c.id === id)?.icon || 'game-icons:broadsword';
   });
   const getClassName = computed(() => (id: string) => {
     return classes.value.find(c => c.id === id)?.name || '';

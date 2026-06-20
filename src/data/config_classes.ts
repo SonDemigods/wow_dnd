@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @fileoverview 地下城职业数据模块
  * @description 包含所有可选职业的基础信息和技能详情
  * @module data/class
@@ -14,7 +14,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'warrior',
     name: '战士',
-    icon: '⚔️',
+    icon: 'game-icons:broadsword',
     primaryStat: 'str',
     factionsIds: ['alliance', 'horde', 'neutral'],
     raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
@@ -25,7 +25,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'paladin',
     name: '圣骑士',
-    icon: '🔨',
+    icon: 'game-icons:templar-shield',
     primaryStat: 'cha',
     factionsIds: ['alliance', 'horde', 'neutral'],
     raceIds: ['human', 'dwarf', 'draenei', 'lightforged_draenei', 'dark_iron_dwarf', 'tauren', 'blood_elves', 'zandalari', 'earthen'],
@@ -47,7 +47,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'rogue',
     name: '潜行者',
-    icon: '🗡️',
+    icon: 'game-icons:hooded-assassin',
     primaryStat: 'dex',
     factionsIds: ['alliance', 'horde', 'neutral'],
     raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
@@ -58,7 +58,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'priest',
     name: '牧师',
-    icon: '✝️',
+    icon: 'game-icons:holy-grail',
     primaryStat: 'wis',
     factionsIds: ['alliance', 'horde', 'neutral'],
     raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
@@ -80,7 +80,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'mage',
     name: '法师',
-    icon: '🧙',
+    icon: 'game-icons:magic-swirl',
     primaryStat: 'int',
     factionsIds: ['alliance', 'horde', 'neutral'],
     raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
@@ -91,7 +91,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'warlock',
     name: '术士',
-    icon: '💜',
+    icon: 'game-icons:evil-book',
     primaryStat: 'int',
     factionsIds: ['alliance', 'horde', 'neutral'],
     raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'dracthyr', 'earthen', 'harenei'],
@@ -102,7 +102,7 @@ export const CLASSES: ClassData[] = [
   {
     id: 'monk',
     name: '武僧',
-    icon: '🥋',
+    icon: 'game-icons:martial-arts',
     primaryStat: 'dex',
     factionsIds: ['alliance', 'horde', 'neutral'],
     raceIds: ['human', 'dwarf', 'gnome', 'night_elf', 'draenei', 'worgen', 'void_elf', 'lightforged_draenei', 'dark_iron_dwarf', 'kul_tiran', 'mecha_gnome', 'orc', 'undead', 'tauren', 'troll', 'blood_elves', 'goblin', 'nightborne', 'highmountain_tauren', 'maghar_orc', 'zandalari', 'vulpera', 'pandaren', 'earthen', 'harenei'],

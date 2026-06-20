@@ -2,7 +2,7 @@
   <BasePopup :visible="visible" title="背包" @close="$emit('close')">
     <template #header-extra>
       <div class="header-info">
-        <div class="gold-display">💰 {{ gold }}</div>
+        <div class="gold-display"><BaseIcon name="coins" gradient="gold" :size="16" /> {{ gold }}</div>
         <div class="inventory-count">{{ inventoryItems.length }} / {{ maxSlots }}</div>
       </div>
     </template>
@@ -74,7 +74,7 @@
                 class="action-btn equip"
                 @click="equipItem(selectedEntry.item.itemId)"
               >
-                🛡️ {{ isEquipped(selectedEntry.item.itemId) ? '卸下' : '装备' }}
+                <BaseIcon name="checked-shield" gradient="metal" :size="14" /> {{ isEquipped(selectedEntry.item.itemId) ? '卸下' : '装备' }}
               </button>
               <button 
                 class="action-btn drop"
@@ -119,7 +119,7 @@
           class="slot-option-btn"
           @click="selectEquipSlot(slot)"
         >
-          <span class="slot-icon">{{ slot.startsWith('weapon') ? '⚔️' : '🛡️' }}</span>
+          <span class="slot-icon"><BaseIcon :name="getSlotIcon(slot)" gradient="metal" :size="18" /></span>
           <span class="slot-name">{{ SLOT_NAMES[slot] }}</span>
         </button>
       </div>
@@ -286,6 +286,11 @@ function isEquipped(itemId: string): boolean {
   // （所有副本都已装备时，物品不会出现在背包网格中，equipped 样式不会误显示）
   const stillInInventory = inventoryItems.value.some(i => i.itemId === itemId);
   return !stillInInventory;
+}
+
+/** 根据槽位名称返回对应的图标名称 */
+function getSlotIcon(slot: string) {
+  return slot.startsWith('weapon') ? 'broadsword' : 'checked-shield';
 }
 
 const filteredItems = computed(() => {

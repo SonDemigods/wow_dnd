@@ -28,8 +28,8 @@
               @click="selectSkill(skill)"
             >
               <BaseIcon :name="skill.icon" gradient="warrior" :size="24" />
-              <span v-if="!canUnlock(skill)" class="lock-badge">🔒</span>
-              <span v-if="isSkillEquipped(skill.id)" class="equipped-badge">✓</span>
+              <span v-if="!canUnlock(skill)" class="lock-badge"><BaseIcon name="padlock" :size="14" /></span>
+              <span v-if="isSkillEquipped(skill.id)" class="equipped-badge"><BaseIcon name="check-mark" gradient="heal" :size="14" /></span>
             </div>
           </div>
         </div>
@@ -69,11 +69,11 @@
               </div>
               <div class="detail-level-req">
                 <template v-if="!canUnlock(selectedSkill)">
-                  <span class="level-lock-icon">🔒</span>
+                  <span class="level-lock-icon"><BaseIcon name="padlock" :size="14" /></span>
                   <span class="level-lock-text">需要等级 {{ selectedSkill.unlockLevel }}</span>
                 </template>
                 <template v-else>
-                  <span class="level-unlock-icon">✅</span>
+                  <span class="level-unlock-icon"><BaseIcon name="check-mark" gradient="heal" :size="14" /></span>
                   <span class="level-unlock-text">解锁等级 {{ selectedSkill.unlockLevel }}</span>
                 </template>
               </div>

@@ -186,7 +186,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
       timestamp: Date.now(),
       type: 'item',
       message: `装备了：${item.name}`,
-      icon: '⚔️'
+      icon: 'game-icons:crossed-swords'
     });
 
     return true;

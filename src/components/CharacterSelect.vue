@@ -3,7 +3,7 @@
     <!-- 删除确认弹窗 -->
     <div v-if="showConfirmModal" class="confirm-modal-overlay" @click="cancelDelete">
       <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
-        <div class="confirm-icon">⚠️</div>
+        <div class="confirm-icon"><BaseIcon name="caltrops" gradient="fire" :size="32" /></div>
         <h3>确认删除</h3>
         <p>确定要删除这个角色吗？此操作无法撤销。</p>
         <div class="confirm-buttons">
@@ -16,7 +16,7 @@
     <!-- 导入确认弹窗 -->
     <div v-if="showImportModal" class="confirm-modal-overlay" @click="cancelImport">
       <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
-        <div class="confirm-icon">📥</div>
+        <div class="confirm-icon"><BaseIcon name="download" gradient="gold" :size="32" /></div>
         <h3>确认导入存档</h3>
         <p>导入存档将覆盖当前所有游戏数据，此操作无法撤销。确定要继续吗？</p>
         <div class="confirm-buttons">
@@ -29,7 +29,7 @@
     <!-- 导入结果提示弹窗 -->
     <div v-if="showResultModal" class="confirm-modal-overlay" @click="closeResult">
       <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
-        <div class="confirm-icon">{{ importSuccess ? '✅' : '❌' }}</div>
+        <div class="confirm-icon"><BaseIcon :name="importSuccess ? 'check-mark' : 'cancel'" :gradient="importSuccess ? 'heal' : 'debuff'" :size="32" /></div>
         <h3>{{ importSuccess ? '导入成功' : '导入失败' }}</h3>
         <p>{{ importMessage }}</p>
         <div class="confirm-buttons">
@@ -54,7 +54,7 @@
     <!-- 修复基础数据结果弹窗 -->
     <div v-if="showRepairResultModal" class="confirm-modal-overlay" @click="closeRepairResult">
       <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
-        <div class="confirm-icon">{{ repairSuccess ? '✅' : '❌' }}</div>
+        <div class="confirm-icon"><BaseIcon :name="repairSuccess ? 'check-mark' : 'cancel'" :gradient="repairSuccess ? 'heal' : 'debuff'" :size="32" /></div>
         <h3>{{ repairSuccess ? '修复成功' : '修复失败' }}</h3>
         <p>{{ repairMessage }}</p>
         <div class="confirm-buttons">
@@ -95,7 +95,7 @@
             <Tag type="class" :text="baseStore.getClassName(char.classId)" :color="baseStore.getClassColor(char.classId)" />
           </div>
         </div>
-        <div class="char-delete" @click.stop="deleteCharacter(char.id)">🗑️</div>
+        <div class="char-delete" @click.stop="deleteCharacter(char.id)"><BaseIcon name="trash-can" gradient="blood" :size="18" /></div>
       </div>
 
       <button v-if="characters.length < 10" class="add-character" @click="onCreateClick">
@@ -114,10 +114,10 @@
           进入游戏
         </button>
         <button class="action-btn action-btn-export" @click="handleExport">
-          📤 导出存档
+          <BaseIcon name="upload" gradient="gold" :size="16" /> 导出存档
         </button>
         <button class="action-btn action-btn-import" @click="triggerImport">
-          📥 导入存档
+          <BaseIcon name="download" gradient="gold" :size="16" /> 导入存档
         </button>
         <button class="action-btn action-btn-repair" @click="triggerRepair">
           🔧 修复基础数据

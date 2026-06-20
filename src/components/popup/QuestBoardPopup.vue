@@ -22,7 +22,7 @@
           :key="quest.id"
           class="quest-card available"
         >
-          <div class="quest-icon">{{ getQuestIcon(quest.type) }}</div>
+          <div class="quest-icon"><BaseIcon :name="getQuestIcon(quest.type)" gradient="gold" :size="28" /></div>
           <div class="quest-content">
             <div class="quest-header-row">
               <h3>{{ quest.title }}</h3>
@@ -40,9 +40,9 @@
               </div>
             </div>
             <div class="quest-rewards">
-              <span v-if="quest.goldReward">💰 {{ quest.goldReward }}</span>
-              <span v-if="quest.xpReward">✨ {{ quest.xpReward }}</span>
-              <span v-if="quest.itemRewards?.length">📦 {{ quest.itemRewards.length }}</span>
+              <span v-if="quest.goldReward"><BaseIcon name="coins" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
+              <span v-if="quest.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.xpReward }}</span>
+              <span v-if="quest.itemRewards?.length"><BaseIcon name="chest" gradient="gold" :size="14" /> {{ quest.itemRewards.length }}</span>
             </div>
             <button 
               class="accept-btn"
@@ -55,7 +55,7 @@
         </div>
 
         <div v-if="!availableQuests.length" class="empty-state">
-          <div class="empty-icon">📋</div>
+          <div class="empty-icon"><BaseIcon name="notebook" :size="32" /></div>
           <p>暂无可接取的任务</p>
         </div>
       </div>
@@ -66,7 +66,7 @@
           :key="quest.id"
           class="quest-card turnin"
         >
-          <div class="quest-icon">🏆</div>
+          <div class="quest-icon"><BaseIcon name="laurel-crown" gradient="gold" :size="28" /></div>
           <div class="quest-content">
             <div class="quest-header-row">
               <h3>{{ quest.title }}</h3>
@@ -74,8 +74,8 @@
             </div>
             <p class="quest-desc">{{ quest.description }}</p>
             <div class="quest-rewards">
-              <span v-if="quest.goldReward">💰 {{ quest.goldReward }}</span>
-              <span v-if="quest.xpReward">✨ {{ quest.xpReward }}</span>
+              <span v-if="quest.goldReward"><BaseIcon name="coins" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
+              <span v-if="quest.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.xpReward }}</span>
             </div>
             <button 
               class="claim-btn"
@@ -87,7 +87,7 @@
         </div>
 
         <div v-if="!turnInQuests.length" class="empty-state">
-          <div class="empty-icon">🏆</div>
+          <div class="empty-icon"><BaseIcon name="laurel-crown" gradient="gold" :size="32" /></div>
           <p>暂无可交付的任务</p>
         </div>
       </div>
@@ -109,6 +109,7 @@ import { eventBus, GameEvents } from '@/modules/bus/core';
 import { useToast } from '@/composables/useToast';
 import { getObjectiveText } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 
 const props = defineProps<{
   visible: boolean;
@@ -146,12 +147,12 @@ const turnInQuests = computed(() => {
 const characterLevel = computed(() => characterStore.level);
 
 const questIcons: Record<string, string> = {
-  kill: '⚔️',
-  collect: '📦'
+  kill: 'crossed-swords',
+  collect: 'chest'
 };
 
 function getQuestIcon(type: string) {
-  return questIcons[type] || '📋';
+  return questIcons[type] || 'notebook';
 }
 
 // 获取当前区域的任务板ID

@@ -86,7 +86,7 @@ export const BOSSES: EnemyData[] = [
   {
     id: 'undead_knight',
     name: '亡灵骑士',
-    icon: '⚔️',
+    icon: 'game-icons:death-knight',
     maxHp: 110,
     damage: [14, 26],
     xp: 90,
@@ -135,7 +135,7 @@ export const BOSSES: EnemyData[] = [
   {
     id: 'frost_giant',
     name: '冰霜巨人',
-    icon: '🧊',
+    icon: 'game-icons:frost-giant',
     maxHp: 160,
     damage: [20, 38],
     xp: 160,

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @fileoverview 普通怪物数据模块
  * @description 对应 config_mobs 表，包含所有普通可遭遇怪物的属性和掉落信息
  * @module data/mobs
@@ -78,7 +78,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'orc',
     name: '兽人战士',
-    icon: '👹',
+    icon: 'game-icons:orc-head',
     maxHp: 45,
     damage: [8, 15],
     xp: 35,
@@ -94,7 +94,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'spider',
     name: '剧毒蜘蛛',
-    icon: '🕷️',
+    icon: 'game-icons:spider-face',
     maxHp: 35,
     damage: [6, 12],
     xp: 25,
@@ -110,7 +110,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'bandit',
     name: '暗影强盗',
-    icon: '🗡️',
+    icon: 'game-icons:thief',
     maxHp: 40,
     damage: [7, 14],
     xp: 30,
@@ -126,7 +126,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'troll',
     name: '丛林巨魔',
-    icon: '🧌',
+    icon: 'game-icons:troll',
     maxHp: 80,
     damage: [12, 20],
     xp: 60,
@@ -158,7 +158,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'ghoul',
     name: '食尸鬼',
-    icon: '🧟',
+    icon: 'game-icons:shambling-zombie',
     maxHp: 32,
     damage: [6, 11],
     xp: 22,
@@ -190,7 +190,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'elemental',
     name: '元素生物',
-    icon: '🔮',
+    icon: 'game-icons:fire-gem',
     maxHp: 65,
     damage: [9, 16],
     xp: 50,
@@ -222,7 +222,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'vrykul',
     name: '北境蛮族',
-    icon: '⚔️',
+    icon: 'game-icons:viking-head',
     maxHp: 78,
     damage: [11, 18],
     xp: 56,
@@ -238,7 +238,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'undead',
     name: '亡灵',
-    icon: '💀',
+    icon: 'game-icons:skull-sign',
     maxHp: 35,
     damage: [7, 13],
     xp: 28,
@@ -302,7 +302,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'harpy',
     name: '鹰身人',
-    icon: '🦅',
+    icon: 'game-icons:harpy',
     maxHp: 42,
     damage: [7, 13],
     xp: 33,
@@ -350,7 +350,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'quilboar',
     name: '猪面人',
-    icon: '🐗',
+    icon: 'game-icons:boar-tusks',
     maxHp: 48,
     damage: [8, 15],
     xp: 38,
@@ -382,7 +382,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'silithid',
     name: '异种虫',
-    icon: '🦗',
+    icon: 'game-icons:insect-jaws',
     maxHp: 95,
     damage: [14, 24],
     xp: 75,
@@ -398,7 +398,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'gnoll_raider',
     name: '豺狼人劫掠者',
-    icon: '🐺',
+    icon: 'game-icons:wolf-head',
     maxHp: 33,
     damage: [6, 11],
     xp: 24,
@@ -430,7 +430,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'dwarf',
     name: '暗炉矮人',
-    icon: '⚒️',
+    icon: 'game-icons:dwarf-face',
     maxHp: 65,
     damage: [10, 18],
     xp: 48,

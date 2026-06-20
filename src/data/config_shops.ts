@@ -26,7 +26,7 @@ export const SHOPS: ShopConfig[] = [
     id: 'potion_shop',
     name: '炼金术士小屋',
     type: 'potion',
-    icon: '⚗️',
+    icon: 'game-icons:alembic',
     refreshInterval: 600000,
     priceVariation: {
       min: 0.85,
@@ -48,7 +48,7 @@ export const SHOPS: ShopConfig[] = [
     id: 'supply_shop',
     name: '旅行者补给站',
     type: 'general',
-    icon: '🎒',
+    icon: 'game-icons:backpack',
     refreshInterval: 300000,
     priceVariation: {
       min: 0.8,

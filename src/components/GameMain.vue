@@ -2,7 +2,7 @@
   <div class="game-main">
     <div class="game-header">
       <div class="player-info">
-        <div class="player-avatar">{{ characterStore.raceIcon || '🧙' }}</div>
+        <div class="player-avatar"><BaseIcon :name="characterStore.raceIcon || undefined" :size="28" /></div>
         <div class="player-details">
           <div class="player-name">{{ character.name }}</div>
           <div class="player-meta">
@@ -24,13 +24,13 @@
           :class="['content-tab', { active: currentContentTab === 'map' }]"
           @click="handleMapTabClick"
         >
-          🗺 地图
+          <BaseIcon name="treasure-map" gradient="nature" :size="16" /> 地图
         </button>
         <button 
           :class="['content-tab', { active: currentContentTab === 'explore', disabled: !hasCurrentLocation }]"
           @click="handleExploreTabClick"
         >
-          🏕 探索
+          <BaseIcon name="campfire" gradient="heal" :size="16" /> 探索
         </button>
         <div class="area-info">
           区域: {{ currentArea }}

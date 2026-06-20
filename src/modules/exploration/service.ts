@@ -142,7 +142,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
     const healAmount = Math.floor(areaLevel * 3 + Math.random() * 10);
     return {
       message: `发现神秘泉水，恢复了 ${healAmount} 点生命值`,
-      icon: '💧',
+      icon: 'game-icons:water-drop',
       effect: { type: 'heal', amount: healAmount }
     };
   }
@@ -151,7 +151,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
     const mpAmount = Math.floor(areaLevel * 2 + Math.random() * 8);
     return {
       message: `发现魔法水晶，恢复了 ${mpAmount} 点魔法值`,
-      icon: '💎',
+      icon: 'game-icons:emerald',
       effect: { type: 'mana', amount: mpAmount }
     };
   }
@@ -160,7 +160,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
     const expAmount = Math.floor(areaLevel * 10 + Math.random() * 20);
     return {
       message: `发现古代石碑，获得了 ${expAmount} 点经验值`,
-      icon: '📚',
+      icon: 'game-icons:spell-book',
       effect: { type: 'exp', amount: expAmount }
     };
   }
@@ -169,7 +169,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
     const trapDamage = Math.floor(areaLevel * 2 + Math.random() * 5);
     return {
       message: `触发了隐藏陷阱，受到 ${trapDamage} 点伤害`,
-      icon: '⚠️',
+      icon: 'game-icons:caltrops',
       effect: { type: 'damage', amount: trapDamage }
     };
   }
@@ -178,7 +178,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
     const mpLoss = Math.floor(areaLevel * 1.5 + Math.random() * 5);
     return {
       message: `遭遇魔法干扰，损失了 ${mpLoss} 点魔法值`,
-      icon: '🌀',
+      icon: 'game-icons:magic-swirl',
       effect: { type: 'mpLoss', amount: mpLoss }
     };
   }
@@ -186,7 +186,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
   const goldAmount = Math.floor(areaLevel * 5 + Math.random() * 15);
   return {
     message: `发现宝箱，获得了 ${goldAmount} 金币`,
-    icon: '💰',
+    icon: 'game-icons:coins',
     effect: { type: 'gold', amount: goldAmount }
   };
 }

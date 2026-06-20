@@ -2145,7 +2145,7 @@ export const useCombatStore = defineStore('combat', () => {
           timestamp: Date.now(),
           type: 'combat',
           message: `击败 ${enemyNames}！`,
-          icon: '🏆'
+          icon: 'game-icons:laurel-crown'
         });
 
         // 记录获得经验值到冒险日志
@@ -2155,7 +2155,7 @@ export const useCombatStore = defineStore('combat', () => {
             timestamp: Date.now(),
             type: 'combat',
             message: `获得 ${totalExp} 点经验值`,
-            icon: '⭐'
+            icon: 'game-icons:star-formation'
           });
         }
 
@@ -2246,7 +2246,7 @@ export const useCombatStore = defineStore('combat', () => {
           timestamp: Date.now(),
           type: 'combat',
           message: `从 ${enemyNames} 面前逃跑`,
-          icon: '🏃'
+          icon: 'game-icons:run'
         });
       }
 

@@ -60,7 +60,7 @@
                   <div class="combatant-info">
                     <div class="combatant-name">{{ e.name }}</div>
                     <div class="combatant-level">Lv.{{ e.level || 1 }}</div>
-                    <div v-if="e.isBoss" class="boss-badge">👑 首领</div>
+                    <div v-if="e.isBoss" class="boss-badge"><BaseIcon name="crowned-skull" gradient="gold" :size="12" /> 首领</div>
                   </div>
                   <div class="combatant-bars">
                     <ResourceBar icon="health-normal" name="HP" :current="e.hp" :max="e.maxHp" :percent="getHpPercent(e)" type="hp" />
@@ -68,7 +68,7 @@
                   <!-- Buff/Debuff 效果指示器 -->
                   <div v-if="getEnemyEffectCount(e.id) > 0" class="effects-indicator enemy-effects">
                     <span v-for="eff in getEnemyEffects(e.id)" :key="eff.id" :class="['effect-badge', 'effect-' + eff.type, isBuffEffect(eff.type) ? 'effect-buff' : 'effect-debuff']">
-                      {{ getEffectIcon(eff.type) }} {{ effectLabels[eff.type] || eff.type }} {{ formatEffectValue(eff.type, eff.value) }} {{ eff.remainingTurns }}回合
+                      <BaseIcon :name="getEffectIcon(eff.type)" :gradient="isBuffEffect(eff.type) ? 'buff' : 'debuff'" :size="12" /> {{ effectLabels[eff.type] || eff.type }} {{ formatEffectValue(eff.type, eff.value) }} {{ eff.remainingTurns }}回合
                     </span>
                   </div>
                   <!-- 浮动伤害数字（每个敌人独立） -->
@@ -103,7 +103,7 @@
             <template v-if="combatStore.playerEffects.effects.length > 0">
               <div class="effects-indicator">
                 <span v-for="eff in combatStore.playerEffects.effects" :key="eff.id" :class="['effect-badge', 'effect-' + eff.type, isBuffEffect(eff.type) ? 'effect-buff' : 'effect-debuff']">
-                  {{ getEffectIcon(eff.type) }} {{ effectLabels[eff.type] || eff.type }} {{ formatEffectValue(eff.type, eff.value) }} {{ eff.remainingTurns }}回合
+                  <BaseIcon :name="getEffectIcon(eff.type)" :gradient="isBuffEffect(eff.type) ? 'buff' : 'debuff'" :size="12" /> {{ effectLabels[eff.type] || eff.type }} {{ formatEffectValue(eff.type, eff.value) }} {{ eff.remainingTurns }}回合
                 </span>
               </div>
             </template>
@@ -175,13 +175,13 @@
     <!-- 战斗结果弹窗 -->
     <div v-if="combatStore.combatResult" class="result-overlay">
       <div ref="resultPopupRef" class="result-popup">
-        <div ref="resultIconRef" class="result-icon">{{ combatStore.combatResult === 'victory' ? '🏆' : combatStore.combatResult === 'defeat' ? '💀' : '🏃' }}</div>
+        <div ref="resultIconRef" class="result-icon"><BaseIcon :name="resultIconName" :gradient="resultIconGradient" :size="24" /></div>
         <div ref="resultTextRef" :class="['result-text', 'result-' + combatStore.combatResult]">
           {{ resultText }}
         </div>
         <div class="result-rewards" v-if="combatStore.combatResult === 'victory'">
-          <div v-if="combatStore.expGained > 0" class="reward-item">⭐ +{{ combatStore.expGained }} 经验</div>
-          <div v-if="combatStore.goldGained > 0" class="reward-item">💰 +{{ combatStore.goldGained }} 金币</div>
+          <div v-if="combatStore.expGained > 0" class="reward-item"><BaseIcon name="star-formation" gradient="gold" :size="14" /> +{{ combatStore.expGained }} 经验</div>
+          <div v-if="combatStore.goldGained > 0" class="reward-item"><BaseIcon name="coins" gradient="gold" :size="14" /> +{{ combatStore.goldGained }} 金币</div>
         </div>
         <div class="result-countdown" v-if="autoCloseCountdown > 0">
           {{ autoCloseCountdown }} 秒后自动关闭
@@ -195,7 +195,7 @@
       <div class="item-modal">
         <div class="item-modal-header">
           <span>选择物品</span>
-          <button class="item-modal-close" @click="showItemModal = false; eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_item_modal_close' })">✕</button>
+          <button class="item-modal-close" @click="showItemModal = false; eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_item_modal_close' })"><BaseIcon name="cancel" :size="16" /></button>
         </div>
         <div class="item-modal-body">
           <div
@@ -480,7 +480,7 @@ function formatEffectValue(type: string, value: number): string {
 
 /** 获取效果对应的图标 */
 function getEffectIcon(type: string): string {
-  return effectIcons[type] || '✨';
+  return effectIcons[type] || 'game-icons:sparkles';
 }
 
 const resultText = computed(() => {
@@ -490,6 +490,20 @@ const resultText = computed(() => {
     case 'fled': return '成功逃跑！';
     default: return '';
   }
+});
+
+/** 战斗结果图标名称 */
+const resultIconName = computed(() => {
+  if (combatStore.combatResult === 'victory') return 'laurel-crown';
+  if (combatStore.combatResult === 'defeat') return 'death-skull';
+  return 'run';
+});
+
+/** 战斗结果图标渐变 */
+const resultIconGradient = computed(() => {
+  if (combatStore.combatResult === 'victory') return 'gold';
+  if (combatStore.combatResult === 'defeat') return 'debuff';
+  return 'dodge';
 });
 
 /** 战斗日志变化时自动滚动到顶部（倒序显示，最新在最上面） */

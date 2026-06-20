@@ -641,7 +641,7 @@ export const useExplorationStore = defineStore('exploration', () => {
       timestamp: Date.now(),
       type: 'combat',
       message: `触发陷阱，受到 ${damage} 点伤害`,
-      icon: '⚠️'
+      icon: 'game-icons:caltrops'
     });
   }
 

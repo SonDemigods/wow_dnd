@@ -38,7 +38,7 @@ export const RACES: RaceData[] = [
   {
     id: 'night_elf',
     name: '暮精灵',
-    icon: '🧝',
+    icon: 'game-icons:elf-ear',
     factionId: 'alliance',
     bonus: { dex: 2, wis: 1 },
     description: '古老的暮精灵后裔，敏捷且与自然有深厚联系'
@@ -46,7 +46,7 @@ export const RACES: RaceData[] = [
   {
     id: 'draenei',
     name: '星裔',
-    icon: '✨',
+    icon: 'game-icons:star-gate',
     factionId: 'alliance',
     bonus: { wis: 2, cha: 1 },
     description: '来自破碎之源的高贵流亡者，在圣光之灵的指引下横跨星海追寻圣光之道。星裔人以虔诚的信仰与深邃的智慧著称，他们的蹄声回荡着千年逃亡的悲歌，却从未熄灭眼中燃烧的圣光之火'
@@ -78,7 +78,7 @@ export const RACES: RaceData[] = [
   {
     id: 'undead',
     name: '亡者',
-    icon: '💀',
+    icon: 'game-icons:half-dead',
     factionId: 'horde',
     bonus: { int: 2, dex: 1 },
     description: '挣脱亡者君主意志的亡者，在亡者之城深处以不死之躯续写自由意志的篇章。亡者女王率领这支亡者军团向亡者军团复仇，用黑暗魔法与炼金药剂涂抹着属于亡者的灰色未来'
@@ -94,7 +94,7 @@ export const RACES: RaceData[] = [
   {
     id: 'troll',
     name: '巨魔',
-    icon: '🧌',
+    icon: 'game-icons:troll',
     factionId: 'horde',
     bonus: { dex: 2, str: 1 },
     description: '来自棘藤谷的暗风氏族丛林巨魔，凭借惊人的再生之躯与神秘的巫毒仪式在危机四伏的丛林中繁衍生息。暗风酋长之子以长矛与暗影猎手的诡计为部族献上最狡黠的忠诚'
@@ -118,7 +118,7 @@ export const RACES: RaceData[] = [
   {
     id: 'void_elf',
     name: '暗影精灵',
-    icon: '🌑',
+    icon: 'game-icons:dark-squad',
     factionId: 'alliance',
     bonus: { dex: 1, int: 2 },
     description: '一群敢于触碰暗影帷幕的精灵学者，被暗影之力转化后获得了穿梭空间裂缝、召唤暗影触手的能力。暗影精灵在疯狂的边缘徘徊，却成功地驯服了宇宙中最危险的力量为己所用'
@@ -126,7 +126,7 @@ export const RACES: RaceData[] = [
   {
     id: 'lightforged_draenei',
     name: '圣光星裔',
-    icon: '✨',
+    icon: 'game-icons:star-gate',
     factionId: 'alliance',
     bonus: { con: 1, wis: 2 },
     description: '经过圣光远征军千锤百炼的星裔战士，每一寸躯体都被圣光之灵的圣光所灌注，眼中燃烧着永不熄灭的神圣火焰。他们是深渊军团最畏惧的天敌，也是凡间最坚定的光明守护者'
@@ -142,7 +142,7 @@ export const RACES: RaceData[] = [
   {
     id: 'kul_tiran',
     name: '海民',
-    icon: '⚓',
+    icon: 'game-icons:anchor',
     factionId: 'alliance',
     bonus: { con: 2, wis: 1 },
     description: '海民，数代人以海洋为家、以舰队为剑，用最坚固的龙骨战舰巡航整片无垠之海。他们体格壮硕如船首像，拥有征服惊涛骇浪的胆魄与航海者的永不言弃'
@@ -158,7 +158,7 @@ export const RACES: RaceData[] = [
   {
     id: 'nightborne',
     name: '暮光后裔',
-    icon: '🌙',
+    icon: 'game-icons:night-sky',
     factionId: 'horde',
     bonus: { int: 2, cha: 1 },
     description: '苏拉玛城的古老居民，依靠暗夜井的魔力在护罩下生活了上万年。暮光后裔兼修优雅的奥术法术与致命的剑舞，他们走出护罩后的每一步，都散发着如星辰般高贵而危险的光芒'
@@ -174,7 +174,7 @@ export const RACES: RaceData[] = [
   {
     id: 'maghar_orc',
     name: '棕皮兽人',
-    icon: '👹',
+    icon: 'game-icons:orc-head',
     factionId: 'horde',
     bonus: { str: 2, con: 1 },
     description: '未被魔能污染的棕皮兽人。棕皮兽人继承了先祖最纯粹的战士血脉，拒绝一切腐化与妥协，用钢铁部族的铁血呐喊向敌人昭示何为真正的荣耀'
@@ -198,7 +198,7 @@ export const RACES: RaceData[] = [
   {
     id: 'dracthyr',
     name: '龙裔',
-    icon: '🐉',
+    icon: 'game-icons:dragon-head',
     factionId: 'neutral',
     bonus: { dex: 1, int: 2 },
     description: '由灭世之龙亲手创造的龙裔战士，结合了五色巨龙之力和凡人的灵活形态。他们是最后的龙裔军团，他们继承了巨龙的元素吐息与翱翔天际的能力，誓以新生之躯守卫龙族古老的誓言'

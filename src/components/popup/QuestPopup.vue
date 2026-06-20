@@ -20,14 +20,14 @@
                 :key="obj.key"
                 :class="['objective', { completed: isObjectiveCompleted(quest.instance, idx) }]"
               >
-                <span class="objective-checkbox">{{ isObjectiveCompleted(quest.instance, idx) ? '☑️' : '⬜' }}</span>
+                <span class="objective-checkbox"><BaseIcon :name="getObjectiveIconName(quest.instance, idx)" gradient="heal" :size="14" /></span>
                 <span class="objective-text">{{ getObjectiveText(obj) }}</span>
                 <span class="objective-progress">{{ getObjectiveProgress(quest.instance, idx) }}/{{ obj.target }}</span>
               </div>
             </div>
             <div class="quest-rewards">
-              <span v-if="quest.definition.goldReward">💰 {{ quest.definition.goldReward }}</span>
-              <span v-if="quest.definition.xpReward">✨ {{ quest.definition.xpReward }}</span>
+              <span v-if="quest.definition.goldReward"><BaseIcon name="coins" gradient="gold" :size="14" /> {{ quest.definition.goldReward }}</span>
+              <span v-if="quest.definition.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.definition.xpReward }}</span>
             </div>
             <div class="quest-actions">
               <button 
@@ -50,7 +50,7 @@
       </div>
 
       <div v-if="!activeQuests.length" class="empty-state">
-        <div class="empty-icon">📝</div>
+        <div class="empty-icon"><BaseIcon name="notebook" :size="32" /></div>
         <p>暂无进行中的任务</p>
       </div>
     </template>
@@ -145,6 +145,10 @@ function isObjectiveCompleted(instance: QuestInstance, index: number): boolean {
 
 function getObjectiveProgress(instance: QuestInstance, index: number): number {
   return instance.progress[index]?.current || 0;
+}
+
+function getObjectiveIconName(instance: QuestInstance, index: number) {
+  return isObjectiveCompleted(instance, index) ? 'check-mark' : 'empty-box';
 }
 
 async function claimReward(questId: string) {
