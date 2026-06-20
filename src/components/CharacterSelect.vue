@@ -120,7 +120,7 @@
           <BaseIcon name="download" gradient="gold" :size="16" /> 导入存档
         </button>
         <button class="action-btn action-btn-repair" @click="triggerRepair">
-          🔧 修复基础数据
+          <BaseIcon name="toolbox" :size="16" /> 修复基础数据
         </button>
       </div>
     </div>
