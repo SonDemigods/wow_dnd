@@ -163,7 +163,7 @@ const HAMMERS: EquipmentItem[] = [
   {
     id: 'war_hammer',
     name: '战锤',
-    icon: 'game-icons:war-hammer',
+    icon: 'game-icons:flat-hammer',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { str: 10, con: 5 },
@@ -177,7 +177,7 @@ const HAMMERS: EquipmentItem[] = [
   {
     id: 'steel_mace',
     name: '精钢铁锤',
-    icon: 'game-icons:war-hammer',
+    icon: 'game-icons:flat-hammer',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { str: 14, con: 8 },
@@ -191,7 +191,7 @@ const HAMMERS: EquipmentItem[] = [
   {
     id: 'storm_hammer',
     name: '风暴战锤',
-    icon: 'game-icons:war-hammer',
+    icon: 'game-icons:flat-hammer',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { str: 25, con: 10 },
@@ -205,7 +205,7 @@ const HAMMERS: EquipmentItem[] = [
   {
     id: 'ironforge_smasher',
     name: '熔炉堡粉碎者',
-    icon: 'game-icons:war-hammer',
+    icon: 'game-icons:flat-hammer',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { str: 32, con: 15 },
@@ -219,7 +219,7 @@ const HAMMERS: EquipmentItem[] = [
   {
     id: 'sulfuras',
     name: '熔岩之锤·烈焰领主之手',
-    icon: 'game-icons:war-hammer',
+    icon: 'game-icons:flat-hammer',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { str: 65, con: 40, int: 20 },
@@ -237,7 +237,7 @@ const DAGGERS: EquipmentItem[] = [
   {
     id: 'dagger',
     name: '钢制匕首',
-    icon: 'game-icons:stiletto',
+    icon: 'game-icons:plain-dagger',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { dex: 10 },
@@ -251,7 +251,7 @@ const DAGGERS: EquipmentItem[] = [
   {
     id: 'poison_dagger',
     name: '毒蛇之牙',
-    icon: 'game-icons:stiletto',
+    icon: 'game-icons:plain-dagger',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { dex: 15 },
@@ -265,7 +265,7 @@ const DAGGERS: EquipmentItem[] = [
   {
     id: 'shadow_dagger',
     name: '暗影匕首',
-    icon: 'game-icons:stiletto',
+    icon: 'game-icons:plain-dagger',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { dex: 22, int: 8 },
@@ -279,7 +279,7 @@ const DAGGERS: EquipmentItem[] = [
   {
     id: 'void_blade',
     name: '虚空撕裂者',
-    icon: 'game-icons:stiletto',
+    icon: 'game-icons:plain-dagger',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { dex: 35, int: 20 },
@@ -293,7 +293,7 @@ const DAGGERS: EquipmentItem[] = [
   {
     id: 'kingsfall',
     name: '王者陨落',
-    icon: 'game-icons:stiletto',
+    icon: 'game-icons:plain-dagger',
     type: 'weapon',
     slots: ['weapon1', 'weapon2'],
     bonus: { dex: 55, str: 25, int: 20 },
@@ -611,7 +611,7 @@ const LEG_ARMOR: EquipmentItem[] = [
   {
     id: 'leather_pants',
     name: '皮制护腿',
-    icon: 'game-icons:leg-armor',
+    icon: 'game-icons:armor-cuisses',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { con: 4, dex: 6 },
@@ -625,7 +625,7 @@ const LEG_ARMOR: EquipmentItem[] = [
   {
     id: 'iron_leggings',
     name: '铁纹护腿',
-    icon: 'game-icons:leg-armor',
+    icon: 'game-icons:armor-cuisses',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { con: 8, str: 5 },
@@ -639,7 +639,7 @@ const LEG_ARMOR: EquipmentItem[] = [
   {
     id: 'steel_leggings',
     name: '精钢腿甲',
-    icon: 'game-icons:leg-armor',
+    icon: 'game-icons:armor-cuisses',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { con: 15, str: 10, dex: 5 },
@@ -653,7 +653,7 @@ const LEG_ARMOR: EquipmentItem[] = [
   {
     id: 'shadow_leggings',
     name: '暗影护腿',
-    icon: 'game-icons:leg-armor',
+    icon: 'game-icons:armor-cuisses',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { con: 25, str: 15, int: 10 },
@@ -667,7 +667,7 @@ const LEG_ARMOR: EquipmentItem[] = [
   {
     id: 'frost_leggings',
     name: '冰霜巨人护腿',
-    icon: 'game-icons:leg-armor',
+    icon: 'game-icons:armor-cuisses',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { con: 38, str: 25, int: 20 },
@@ -685,7 +685,7 @@ const BOOTS: EquipmentItem[] = [
   {
     id: 'leather_boots',
     name: '旅行者之靴',
-    icon: 'game-icons:leather-boot',
+    icon: 'game-icons:leg-armor',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { dex: 5 },
@@ -699,7 +699,7 @@ const BOOTS: EquipmentItem[] = [
   {
     id: 'iron_boots',
     name: '铁履',
-    icon: 'game-icons:leather-boot',
+    icon: 'game-icons:leg-armor',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { con: 5, dex: 5 },
@@ -713,7 +713,7 @@ const BOOTS: EquipmentItem[] = [
   {
     id: 'windwalker_boots',
     name: '疾风步靴',
-    icon: 'game-icons:leather-boot',
+    icon: 'game-icons:leg-armor',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { dex: 15, con: 8 },
@@ -727,7 +727,7 @@ const BOOTS: EquipmentItem[] = [
   {
     id: 'shadowstep_boots',
     name: '暗影疾行之靴',
-    icon: 'game-icons:leather-boot',
+    icon: 'game-icons:leg-armor',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { dex: 25, int: 10 },
@@ -741,7 +741,7 @@ const BOOTS: EquipmentItem[] = [
   {
     id: 'boots_of_the_winged_serpent',
     name: '飞蛇之靴',
-    icon: 'game-icons:leather-boot',
+    icon: 'game-icons:leg-armor',
     type: 'armor',
     slots: ['armor1', 'armor2', 'armor3', 'armor4'],
     bonus: { dex: 35, int: 20, wis: 15 },
