@@ -79,10 +79,7 @@
               </div>
             </div>
           </template>
-          <div v-else class="detail-placeholder">
-            <BaseIcon name="sword-clash" gradient="physical" :size="24" />
-            <span class="placeholder-text">点击技能查看详情</span>
-          </div>
+          <EmptyState v-else icon="sword-clash" text="点击技能查看详情" />
         </div>
       </div>
     </template>
@@ -104,6 +101,7 @@ import type { Skill, SkillSlotIndex } from '@/modules/skill';
 import BasePopup from '../common/BasePopup.vue';
 import SkillTags from '../common/SkillTags.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import EmptyState from '@/components/common/EmptyState.vue';
 
 defineProps<{
   visible: boolean;
@@ -559,21 +557,7 @@ onMounted(() => {
   border: 1px solid rgba(76, 175, 80, 0.2);
 }
 
-.detail-placeholder {
-  .flex-center();
-  gap: @spacing-lg;
-  padding: @spacing-4xl;
-}
 
-.placeholder-icon {
-  font-size: @font-5xl;
-  opacity: @opacity-dimmed;
-}
-
-.placeholder-text {
-  color: @color-dodge;
-  font-size: @font-md;
-}
 
 @media (max-width: 600px) {
   .skill-bar {

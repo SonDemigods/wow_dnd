@@ -10,7 +10,7 @@
       <!-- 主音量 -->
       <div class="slider-group">
         <div class="slider-label">
-          <BaseIcon name="sound-low" gradient="metal" :size="20" />
+          <BaseIcon name="musical-notes" gradient="gold" :size="20" />
           <span>主音量</span>
           <span class="slider-value">{{ Math.round(store.settings.masterVolume * 100) }}%</span>
         </div>
@@ -28,7 +28,7 @@
       <!-- 音效音量 -->
       <div class="slider-group">
         <div class="slider-label">
-          <BaseIcon name="sound-high" gradient="metal" :size="20" />
+          <BaseIcon name="musical-notes" gradient="gold" :size="20" />
           <span>音效音量</span>
           <span class="slider-value">{{ Math.round(store.settings.sfxVolume * 100) }}%</span>
         </div>
@@ -54,7 +54,7 @@
       <!-- 背景音乐音量 -->
       <div class="slider-group">
         <div class="slider-label">
-          <BaseIcon name="musical-notes" gradient="magic" :size="20" />
+          <BaseIcon name="musical-notes" gradient="gold" :size="20" />
           <span>背景音乐</span>
           <span class="slider-value">{{ Math.round(store.settings.bgmVolume * 100) }}%</span>
         </div>
@@ -80,7 +80,7 @@
       <!-- 全局静音 -->
       <div class="mute-row">
         <button :class="['mute-btn', { muted: store.settings.muted }]" @click="onMuteClick">
-          <BaseIcon :name="store.settings.muted ? 'mute' : 'sound-on'" gradient="metal" :size="20" />
+          <BaseIcon :name="store.settings.muted ? 'sound-off' : 'sound-on'" gradient="gold" :size="20" />
           <span>{{ store.settings.muted ? '已静音' : '正常' }}</span>
         </button>
       </div>

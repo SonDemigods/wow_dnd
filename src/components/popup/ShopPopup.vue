@@ -149,10 +149,7 @@
             </div>
           </template>
 
-          <div v-else class="detail-placeholder">
-            <span class="placeholder-icon"><BaseIcon name="chest" gradient="metal" :size="32" /></span>
-            <span class="placeholder-text">点击物品查看详情</span>
-          </div>
+          <EmptyState v-else icon="chest" text="点击物品查看详情" />
         </div>
       </div>
     </template>
@@ -175,6 +172,7 @@ import type { InventoryItem, Item, ItemType, ItemRarity, ItemEffect } from '@/mo
 import BasePopup from '../common/BasePopup.vue';
 import ItemIcon from '../common/ItemIcon.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import EmptyState from '@/components/common/EmptyState.vue';
 
 /** 出售标签的物品条目（关联背包数据和物品模板） */
 interface SellItemEntry {
@@ -803,20 +801,5 @@ watch(currentTab, () => {
   background: linear-gradient(135deg, #ff9800, #f57c00);
 }
 
-/* 占位符 */
-.detail-placeholder {
-  .flex-col();
-  align-items: center;
-  padding: @spacing-4xl 0;
-  color: @color-mid-gray;
-  gap: @spacing-md;
-}
 
-.placeholder-icon {
-  font-size: @font-6xl;
-}
-
-.placeholder-text {
-  font-size: @font-md;
-}
 </style>

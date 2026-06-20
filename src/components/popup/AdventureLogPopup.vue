@@ -17,9 +17,7 @@
           <span class="log-message">{{ log.message }}</span>
         </div>
 
-        <div v-if="logs.length === 0" class="empty-logs">
-          暂无冒险记录
-        </div>
+        <EmptyState v-if="logs.length === 0" icon="scroll-unfurled" text="暂无冒险记录" />
       </div>
     </template>
 
@@ -50,6 +48,7 @@ import { eventBus, GameEvents } from '@/modules/bus/core';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import EmptyState from '@/components/common/EmptyState.vue';
 
 interface Props {
   visible: boolean;
@@ -208,12 +207,7 @@ onMounted(() => {
   background: rgba(150, 100, 200, 0.1);
 }
 
-.empty-logs {
-  color: #6a6a8a;
-  text-align: center;
-  padding: 32px;
-  font-size: @font-base;
-}
+
 
 
 

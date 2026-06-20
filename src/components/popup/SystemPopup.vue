@@ -8,11 +8,11 @@
   >
     <div class="system-body">
       <button class="system-btn audio-btn" @click="openAudioSettings">
-        <BaseIcon name="sound-on" gradient="metal" :size="20" />
+        <BaseIcon name="sound-on" gradient="gold" :size="20" />
         <span class="system-btn-label">音量设置</span>
       </button>
       <button class="system-btn exit-btn" @click="handleExit">
-        <BaseIcon name="exit-door" gradient="shadow" :size="20" />
+        <BaseIcon name="exit-door" gradient="blood" :size="20" />
         <span class="system-btn-label">退出游戏</span>
       </button>
     </div>

@@ -54,10 +54,7 @@
           </div>
         </div>
 
-        <div v-if="!availableQuests.length" class="empty-state">
-          <div class="empty-icon"><BaseIcon name="notebook" :size="32" /></div>
-          <p>暂无可接取的任务</p>
-        </div>
+        <EmptyState v-if="!availableQuests.length" icon="notebook" text="暂无可接取的任务" />
       </div>
 
       <div v-else class="quest-list">
@@ -86,10 +83,7 @@
           </div>
         </div>
 
-        <div v-if="!turnInQuests.length" class="empty-state">
-          <div class="empty-icon"><BaseIcon name="laurel-crown" gradient="gold" :size="32" /></div>
-          <p>暂无可交付的任务</p>
-        </div>
+        <EmptyState v-if="!turnInQuests.length" icon="laurel-crown" text="暂无可交付的任务" />
       </div>
     </template>
   </BasePopup>
@@ -110,6 +104,7 @@ import { useToast } from '@/composables/useToast';
 import { getObjectiveText } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import EmptyState from '@/components/common/EmptyState.vue';
 
 const props = defineProps<{
   visible: boolean;
@@ -366,21 +361,5 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 32px;
-  background: @overlay-mid;
-  border-radius: @radius-md;
-  border: 2px dashed @popup-border-color;
-}
 
-.empty-icon {
-  font-size: 40px;
-  margin-bottom: @spacing-xl;
-}
-
-.empty-state p {
-  color: @color-dodge;
-  font-size: @font-md;
-}
 </style>

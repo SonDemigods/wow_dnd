@@ -49,10 +49,7 @@
         </div>
       </div>
 
-      <div v-if="!activeQuests.length" class="empty-state">
-        <div class="empty-icon"><BaseIcon name="notebook" :size="32" /></div>
-        <p>暂无进行中的任务</p>
-      </div>
+      <EmptyState v-if="!activeQuests.length" icon="notebook" text="暂无进行中的任务" />
     </template>
   </BasePopup>
 
@@ -81,6 +78,7 @@ import { getObjectiveText } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import EmptyState from '@/components/common/EmptyState.vue';
 
 interface ActiveQuest {
   questId: string;
@@ -334,21 +332,5 @@ onMounted(() => {
   transform: translateY(-2px);
 }
 
-.empty-state {
-  text-align: center;
-  padding: 32px;
-  background: @overlay-mid;
-  border-radius: @radius-md;
-  border: 2px dashed @popup-border-color;
-}
 
-.empty-icon {
-  font-size: 40px;
-  margin-bottom: @spacing-xl;
-}
-
-.empty-state p {
-  color: @color-dodge;
-  font-size: @font-md;
-}
 </style>

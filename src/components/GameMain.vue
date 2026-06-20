@@ -51,11 +51,11 @@
         <span class="footer-text">角色</span>
       </button>
       <button class="footer-btn" @click="showInventory = true; onClickPanel('inventory')" title="背包">
-        <BaseIcon name="backpack" gradient="earth" :size="16" />
+        <BaseIcon name="backpack" gradient="gold" :size="16" />
         <span class="footer-text">背包</span>
       </button>
       <button class="footer-btn" @click="showSkills = true; onClickPanel('skills')" title="技能">
-        <BaseIcon name="sword-spin" gradient="warrior" :size="16" />
+        <BaseIcon name="sword-spin" gradient="gold" :size="16" />
         <span class="footer-text">技能</span>
       </button>
       <button class="footer-btn" @click="showQuests = true; onClickPanel('quests')" title="任务">
@@ -63,11 +63,11 @@
         <span class="footer-text">任务</span>
       </button>
       <button class="footer-btn" @click="showAdventureLog = true; onClickPanel('adventure_log')" title="日志">
-        <BaseIcon name="scroll-unfurled" gradient="earth" :size="16" />
+        <BaseIcon name="scroll-unfurled" gradient="gold" :size="16" />
         <span class="footer-text">日志</span>
       </button>
       <button class="footer-btn" @click="showSystem = true; onClickPanel('system')" title="系统">
-        <BaseIcon name="cog" gradient="metal" :size="16" />
+        <BaseIcon name="cog" gradient="gold" :size="16" />
         <span class="footer-text">系统</span>
       </button>
     </div>

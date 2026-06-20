@@ -84,10 +84,7 @@
               </button>
             </div>
           </template>
-          <div v-else class="detail-placeholder">
-            <BaseIcon name="backpack" gradient="earth" :size="48" />
-            <span class="placeholder-text">点击物品查看详情</span>
-          </div>
+          <EmptyState v-else icon="backpack" text="点击物品查看详情" />
         </div>
       </div>
     </template>
@@ -138,6 +135,7 @@ import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
 import ItemIcon from '../common/ItemIcon.vue';
 import EffectTag from '../common/EffectTag.vue';
+import EmptyState from '@/components/common/EmptyState.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import { useInventoryStore } from '@/modules/inventory';
 import { useCharacterStore } from '@/modules/character';
@@ -670,21 +668,7 @@ onMounted(() => {
   margin: @spacing-md 0;
 }
 
-.detail-placeholder {
-  .flex-center();
-  gap: @spacing-lg;
-  padding: @spacing-4xl;
-}
 
-.placeholder-icon {
-  font-size: @font-5xl;
-  opacity: @opacity-dimmed;
-}
-
-.placeholder-text {
-  color: @color-dim-gray;
-  font-size: @font-md;
-}
 
 .detail-info {
   display: flex;

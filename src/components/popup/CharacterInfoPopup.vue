@@ -167,17 +167,11 @@
               </div>
             </template>
             <template v-else>
-              <div class="detail-placeholder">
-                <BaseIcon name="empty-box" gradient="metal" :size="20" />
-                <span class="placeholder-text">槽位为空</span>
-              </div>
+              <EmptyState icon="empty-box" gradient="metal" text="槽位为空" />
             </template>
           </div>
           <div v-else class="equipment-detail">
-            <div class="detail-placeholder">
-              <BaseIcon name="shield" gradient="earth" :size="20" />
-              <span class="placeholder-text">点击装备槽位查看详情</span>
-            </div>
+            <EmptyState icon="shield" text="点击装备槽位查看详情" />
           </div>
         </div>
       </div>
@@ -203,6 +197,7 @@ import BasePopup from '../common/BasePopup.vue';
 import ResourceBar from '../common/ResourceBar.vue';
 import ItemIcon from '../common/ItemIcon.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import EmptyState from '@/components/common/EmptyState.vue';
 
 defineProps<{
   visible: boolean;
@@ -757,20 +752,5 @@ onUnmounted(() => {
   color: @popup-text-color;
 }
 
-.detail-placeholder {
-  .flex-col-center();
-  justify-content: center;
-  gap: @spacing-md;
-  padding: @spacing-4xl;
-}
 
-.placeholder-icon {
-  font-size: @font-6xl;
-  opacity: @opacity-dimmed;
-}
-
-.placeholder-text {
-  color: @color-dim-gray;
-  font-size: @font-base;
-}
 </style>
