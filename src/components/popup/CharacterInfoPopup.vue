@@ -6,11 +6,12 @@
         <div class="character-overview">
           <div class="character-basic">
             <div class="char-row">
-              <BaseIcon
-                :name="getRaceIcon(character.raceId)"
-                gradient="gold"
-                :size="24"
-              />
+              <div class="char-avatar">
+                <BaseIcon
+                  :name="getRaceIcon(character.raceId)"
+                  :size="28"
+                />
+              </div>
               <div class="char-main-info">
                 <div class="char-name">{{ character.name }}</div>
                 <div class="char-level">Lv.{{ character.level }}</div>

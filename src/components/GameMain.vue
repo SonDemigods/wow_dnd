@@ -459,6 +459,9 @@ defineExpose({ showNotif });
 }
 
 .content-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   padding: @spacing-md 24px;
   background: @white-05;
   border: @border-card;

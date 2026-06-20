@@ -16,7 +16,7 @@
     <!-- 导入确认弹窗 -->
     <div v-if="showImportModal" class="confirm-modal-overlay" @click="cancelImport">
       <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
-        <div class="confirm-icon"><BaseIcon name="download" gradient="gold" :size="32" /></div>
+        <div class="confirm-icon"><BaseIcon name="cloud-download" gradient="fire" :size="32" /></div>
         <h3>确认导入存档</h3>
         <p>导入存档将覆盖当前所有游戏数据，此操作无法撤销。确定要继续吗？</p>
         <div class="confirm-buttons">
@@ -82,7 +82,7 @@
         @click="selectCharacter(char.id)"
       >
         <div class="char-icon">
-          <BaseIcon :name="baseStore.getRaceIcon(char.raceId)" gradient="gold" :size="40" />
+          <BaseIcon :name="baseStore.getRaceIcon(char.raceId)" :size="40" />
         </div>
         <div class="char-info">
           <div class="char-header">
@@ -95,7 +95,7 @@
             <Tag type="class" :text="baseStore.getClassName(char.classId)" :color="baseStore.getClassColor(char.classId)" />
           </div>
         </div>
-        <div class="char-delete" @click.stop="deleteCharacter(char.id)"><BaseIcon name="trash-can" gradient="blood" :size="18" /></div>
+        <div class="char-delete" @click.stop="deleteCharacter(char.id)"><BaseIcon name="trash-can" :size="18" /></div>
       </div>
 
       <button v-if="characters.length < 10" class="add-character" @click="onCreateClick">
@@ -114,10 +114,10 @@
           进入游戏
         </button>
         <button class="action-btn action-btn-export" @click="handleExport">
-          <BaseIcon name="upload" gradient="gold" :size="16" /> 导出存档
+          <BaseIcon name="cloud-upload" :size="16" /> 导出存档
         </button>
         <button class="action-btn action-btn-import" @click="triggerImport">
-          <BaseIcon name="download" gradient="gold" :size="16" /> 导入存档
+          <BaseIcon name="cloud-download" :size="16" /> 导入存档
         </button>
         <button class="action-btn action-btn-repair" @click="triggerRepair">
           <BaseIcon name="toolbox" :size="16" /> 修复基础数据
