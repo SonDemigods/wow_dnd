@@ -41,7 +41,7 @@
     <!-- 修复基础数据确认弹窗 -->
     <div v-if="showRepairModal" class="confirm-modal-overlay" @click="cancelRepair">
       <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
-        <div class="confirm-icon">🔧</div>
+        <div class="confirm-icon"><BaseIcon name="toolbox" :size="32" /></div>
         <h3>确认修复基础数据</h3>
         <p>此操作将清空所有基础配置数据（阵营、种族、职业、物品、怪物、地点、商店、任务、技能等）并重新导入默认数据。角色数据不受影响。确定要继续吗？</p>
         <div class="confirm-buttons">

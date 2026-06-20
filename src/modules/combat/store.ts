@@ -1336,7 +1336,7 @@ export const useCombatStore = defineStore('combat', () => {
           timestamp: Date.now(),
           type: 'item',
           message: `从 ${e.name} 获得 ${itemName} x${amount}`,
-          icon: '🎒'
+          icon: 'game-icons:backpack'
         });
       }
     });
@@ -1930,7 +1930,7 @@ export const useCombatStore = defineStore('combat', () => {
       timestamp: Date.now(),
       type: 'combat',
       message: `遭遇 ${enemyNames}！`,
-      icon: '⚔️'
+      icon: 'game-icons:crossed-swords'
     });
 
     // 触发战斗开始事件（UI 进入战斗界面 + 音效）

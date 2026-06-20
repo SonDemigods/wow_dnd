@@ -23,6 +23,14 @@
   />
 </template>
 
+<!-- 模块级脚本：全局唯一计数器，不受 <script setup> 实例作用域限制 -->
+<script lang="ts">
+let globalIdCounter = 0;
+export function nextGradId() {
+  return `grad-${++globalIdCounter}`;
+}
+</script>
+
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { Icon, loadIcon } from '@iconify/vue';
@@ -50,6 +58,9 @@ const finalIcon = computed(() => {
   return `game-icons:${props.name}`;
 });
 
+/** 每个实例分配全局唯一渐变 ID */
+const gradId = nextGradId();
+
 /** 渐变模式缓存的 SVG body */
 const gradientSvgBody = ref('');
 const lastLoadedIcon = ref('');
@@ -70,11 +81,11 @@ watch(
         gradientSvgBody.value = '';
         return;
       }
-      // 将 currentColor 填充替换为 SVG 渐变引用，并注入 <defs>
-      const defs = `<defs><linearGradient id="grad-current" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--icon-grad-${grad}-start)"/><stop offset="100%" stop-color="var(--icon-grad-${grad}-end)"/></linearGradient></defs>`;
+      // 使用唯一 gradId 避免多实例 SVG ID 冲突导致渐变被覆盖
+      const defs = `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--icon-grad-${grad}-start)"/><stop offset="100%" stop-color="var(--icon-grad-${grad}-end)"/></linearGradient></defs>`;
       const body = data.body.replace(
         /fill="currentColor"/g,
-        'fill="url(#grad-current)"'
+        `fill="url(#${gradId})"`
       );
       gradientSvgBody.value = defs + body;
     } catch {

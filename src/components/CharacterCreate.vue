@@ -36,7 +36,7 @@
             :style="{ '--faction-color': faction.color }"
             @click="selectFaction(faction.id)"
           >
-            <div class="faction-icon"><BaseIcon :name="faction.icon" gradient="alliance" :size="32" /></div>
+            <div class="faction-icon"><BaseIcon :name="faction.icon" :gradient="faction.id === 'alliance' ? 'alliance' : 'horde'" :size="32" /></div>
             <div class="faction-name">{{ faction.name }}</div>
             <div class="faction-desc">
               {{ getFactionRaceNames(faction.id) }}
@@ -70,7 +70,7 @@
             :class="['race-card', { active: selectedRace === race.id }]"
             @click="selectRace(race.id)"
           >
-            <div class="race-icon">{{ race.icon }}</div>
+            <div class="race-icon"><BaseIcon :name="race.icon" :gradient="race.factionId === 'alliance' ? 'alliance' : race.factionId === 'horde' ? 'horde' : 'neutral'" :size="32" /></div>
             <div class="race-name">{{ race.name }}</div>
             <div class="race-bonus" v-if="race.bonus">
               <span v-for="(value, stat) in race.bonus" :key="stat"
@@ -91,7 +91,7 @@
             :style="{ '--class-color': cls.color }"
             @click="selectClass(cls.id)"
           >
-            <div class="class-icon"><BaseIcon :name="cls.icon" :size="28" /></div>
+            <div class="class-icon"><BaseIcon :name="cls.icon" :gradient="cls.id" :size="28" /></div>
             <div class="class-name">{{ cls.name }}</div>
             <div class="class-bonus" v-if="cls.bonus">
               <span
@@ -112,7 +112,7 @@
         <div class="character-preview">
           <div class="preview-row">
             <div class="preview-avatar">
-              {{ baseStore.getRaceIcon(selectedRace || '') }}
+              <BaseIcon :name="baseStore.getRaceIcon(selectedRace || '')" :gradient="selectedFaction === 'alliance' ? 'alliance' : selectedFaction === 'horde' ? 'horde' : 'neutral'" :size="40" />
             </div>
             <div class="name-input-wrapper">
               <input
