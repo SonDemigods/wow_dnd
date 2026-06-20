@@ -482,8 +482,17 @@ export const useInventoryStore = defineStore('inventory', () => {
   async function getEquipment(): Promise<EquippedItem[]> {
     const characterId = currentCharacterId.value;
     if (!characterId) return [];
-    const equipmentRecord = await equipmentDbService.getEquipment(characterId);
-    return Object.values(equipmentRecord).filter((e): e is EquippedItem => e !== null);
+    const idMap = await equipmentDbService.getEquipment(characterId);
+    const result: EquippedItem[] = [];
+    for (const itemId of Object.values(idMap)) {
+      if (itemId) {
+        const template = await equipmentDbService.getEquipmentTemplate(itemId);
+        if (template) {
+          result.push({ item: template, equippedAt: Date.now() });
+        }
+      }
+    }
+    return result;
   }
 
   // ==================== Action：排序与筛选设置 ====================

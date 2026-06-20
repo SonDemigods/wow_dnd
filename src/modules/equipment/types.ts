@@ -146,8 +146,8 @@ export interface IEquipmentService {
  */
 export interface EquipmentDataStorage {
   characterId: string;
-  /** 装备槽位数据（原生对象，非 JSON 字符串） */
-  equipment: Record<EquipmentSlot, EquippedItem | null>;
+  /** 装备槽位数据，仅存装备 ID（完整数据从 config_equipmentItems 模板获取） */
+  equipment: Record<EquipmentSlot, string | null>;
   updatedAt: number;
 }
 
@@ -190,10 +190,10 @@ export interface EquipmentItemStorage {
 }
 
 /**
- * 装备存储格式
+ * 装备存储格式（导入/导出用）
  */
 export interface EquipmentStorage {
   characterId: string;
-  equipment: Record<string, { item: Record<string, unknown>; equippedAt: number } | null>;
+  equipment: Record<string, string | null>;
   updatedAt?: number;
 }

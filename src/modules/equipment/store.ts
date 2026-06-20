@@ -99,31 +99,56 @@ export const useEquipmentStore = defineStore('equipment', () => {
 
   // ==================== 辅助方法 ====================
 
-  /** 持久化装备数据到数据库 */
+  /** 持久化装备数据到数据库（仅存装备 ID） */
   async function persist(): Promise<void> {
     if (currentCharacterId.value) {
-      await equipmentDbService.saveEquipment(currentCharacterId.value, equipment.value);
+      // 提取装备 ID 映射
+      const idMap: Record<EquipmentSlot, string | null> = {
+        weapon1: null,
+        weapon2: null,
+        armor1: null,
+        armor2: null,
+        armor3: null,
+        armor4: null
+      };
+      for (const slot of Object.keys(equipment.value) as EquipmentSlot[]) {
+        idMap[slot] = equipment.value[slot]?.item.id ?? null;
+      }
+      await equipmentDbService.saveEquipment(currentCharacterId.value, idMap);
     }
   }
 
   // ==================== Action：初始化 ====================
 
   /**
-   * 初始化装备模块：从 DB 加载装备数据和模板
+   * 初始化装备模块：从 DB 加载装备 ID 映射和模板，解析为完整装备对象
    * @param characterId - 角色ID
    */
   async function initialize(characterId: string): Promise<void> {
     isLoading.value = true;
     currentCharacterId.value = characterId;
 
-    // 从 DB 加载装备数据
-    equipment.value = await equipmentDbService.getEquipment(characterId);
-
-    // 加载装备模板
+    // 1. 先加载装备模板（后续解析 ID 需要）
     const templates = await equipmentDbService.getAllEquipmentTemplates();
     const map = new Map<string, EquipmentItem>();
     templates.forEach(item => map.set(item.id, item));
     equipmentTemplates.value = map;
+
+    // 2. 从 DB 加载装备 ID 映射
+    const idMap = await equipmentDbService.getEquipment(characterId);
+
+    // 3. 从模板解析 ID 为完整 EquippedItem 对象
+    const resolved: Record<EquipmentSlot, EquippedItem | null> = getDefaultEquipment();
+    for (const slot of Object.keys(idMap) as EquipmentSlot[]) {
+      const itemId = idMap[slot];
+      if (itemId) {
+        const template = map.get(itemId);
+        if (template) {
+          resolved[slot] = { item: template, equippedAt: Date.now() };
+        }
+      }
+    }
+    equipment.value = resolved;
 
     isLoading.value = false;
   }
@@ -323,7 +348,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     // 持久化清空后的装备状态
     equipment.value = getDefaultEquipment();
     if (charId) {
-      await equipmentDbService.saveEquipment(charId, equipment.value);
+      await equipmentDbService.saveEquipment(charId, getDefaultEquipment());
     }
 
     // 清空 Store 状态

@@ -2,51 +2,47 @@
  * 装备模块数据层
  * 
  * 封装装备数据的 IndexedDB 操作，提供数据持久化能力。
- * 装备数据以原生对象存储，无需 JSON 序列化/反序列化。
+ * equipment 字段仅存储装备 ID 映射，完整装备数据从 config_equipmentItems 模板表获取。
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { EquipmentDataStorage, EquipmentTemplateStorage, EquipmentItem, EquipmentSlot, EquippedItem } from './types';
-import { toRawData } from '../../utils';
+import type { EquipmentDataStorage, EquipmentTemplateStorage, EquipmentItem, EquipmentSlot } from './types';
 
 /**
  * 装备数据层服务
  */
 export class EquipmentDbService {
   /**
-   * 保存装备数据到数据库（原生存储，不做 JSON 序列化）
+   * 保存装备数据到数据库（仅存装备 ID）
    * @param characterId - 角色ID
-   * @param equipment - 装备数据
+   * @param equipment - 装备 ID 映射
    */
   async saveEquipment(
     characterId: string,
-    equipment: Record<EquipmentSlot, EquippedItem | null>
+    equipment: Record<EquipmentSlot, string | null>
   ): Promise<void> {
     await dbService.withRetry(async () => {
-      // JSON 序列化往返：去除 undefined 值，确保所有数据可被结构化克隆
-      const clean = toRawData(equipment);
       await gameDb.char_equipment.put({
         characterId,
-        equipment: clean,
+        equipment,
         updatedAt: Date.now()
       });
     });
   }
 
   /**
-   * 获取装备数据
+   * 获取装备数据（返回装备 ID 映射）
    * @param characterId - 角色ID
-   * @returns 装备数据
+   * @returns 装备 ID 映射
    */
   async getEquipment(
     characterId: string
-  ): Promise<Record<EquipmentSlot, EquippedItem | null>> {
+  ): Promise<Record<EquipmentSlot, string | null>> {
     return dbService.withRetry(async () => {
       const data = await gameDb.char_equipment.get(characterId) as unknown as EquipmentDataStorage | undefined;
       if (!data) {
         return this.getDefaultEquipment();
       }
 
-      // 原生对象存储，直接返回
       if (data.equipment && typeof data.equipment === 'object') {
         return data.equipment;
       }
@@ -56,9 +52,9 @@ export class EquipmentDbService {
   }
 
   /**
-   * 获取默认装备状态
+   * 获取默认装备状态（全部为空）
    */
-  private getDefaultEquipment(): Record<EquipmentSlot, EquippedItem | null> {
+  private getDefaultEquipment(): Record<EquipmentSlot, string | null> {
     return {
       weapon1: null,
       weapon2: null,
