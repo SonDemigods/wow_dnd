@@ -14,7 +14,7 @@ export const RACES: RaceData[] = [
   {
     id: 'human',
     name: '人类',
-    icon: '🧑',
+    icon: 'game-icons:human-pyramid',
     factionId: 'alliance',
     bonus: { str: 1, cha: 1 },
     description: '凡间分布最广、数量最多的种族，曾是古王国盟约的核心力量，如今在辉石王国的旗帜下，以坚韧的意志、出色的外交手腕和无与伦比的适应能力守护着王国的荣耀'
@@ -30,7 +30,7 @@ export const RACES: RaceData[] = [
   {
     id: 'gnome',
     name: '侏儒',
-    icon: '🤖',
+    icon: 'game-icons:robot-golem',
     factionId: 'alliance',
     bonus: { int: 2, dex: 1 },
     description: '来自齿轮之城的侏儒是凡间最聪明的发明家，他们的奇思妙想推动着机械工程与魔法科技的边界，从铁羽陆行鸟到空间传送装置，没有什么是侏儒工程师搞不定的'
@@ -62,7 +62,7 @@ export const RACES: RaceData[] = [
   {
     id: 'pandaren',
     name: '兽灵族',
-    icon: '🐼',
+    icon: 'game-icons:monk-face',
     factionId: 'neutral',
     bonus: { con: 1, wis: 1, dex: 1 },
     description: '古老而神秘的中立种族，传承着古老的武学之道'
@@ -102,7 +102,7 @@ export const RACES: RaceData[] = [
   {
     id: 'blood_elves',
     name: '银辉精灵',
-    icon: '🧜',
+    icon: 'game-icons:fairy-wand',
     factionId: 'horde',
     bonus: { int: 2, cha: 1 },
     description: '曾是银辉精灵的遗民，在圣光之泉被亡者军团摧毁后经历了法力饥渴的折磨与屈辱，浴血重生的银辉精灵掌握了从一切源头汲取奥术能量的能力，凭借精湛的魔法技艺和与生俱来的高贵气质重新屹立于银辉圣地'
@@ -166,7 +166,7 @@ export const RACES: RaceData[] = [
   {
     id: 'highmountain_tauren',
     name: '高岭牛角族',
-    icon: '🏔️',
+    icon: 'game-icons:mountain-climbing',
     factionId: 'horde',
     bonus: { con: 2, wis: 1 },
     description: '栖息在破碎群岛至高山巅的牛角族分支，以胡恩·高岭的血脉为荣，头顶雄壮的麋鹿角是大地母亲赐予他们的神圣印记。他们与高山雄鹰为伴，用长矛与图腾守卫着苍穹之下的家园'
@@ -190,7 +190,7 @@ export const RACES: RaceData[] = [
   {
     id: 'vulpera',
     name: '狐族',
-    icon: '🦊',
+    icon: 'game-icons:fox-tail',
     factionId: 'horde',
     bonus: { dex: 2, wis: 1 },
     description: '来自黄沙荒漠的小巧狐族，凭借无比灵敏的身手和狡猾的头脑在严酷环境中世代繁衍。狐族携带着神秘的图腾魔法和精巧的机械装置，是绝佳的寻路者、探险家和生存专家'
@@ -206,7 +206,7 @@ export const RACES: RaceData[] = [
   {
     id: 'earthen',
     name: '大地之子',
-    icon: '🪨',
+    icon: 'game-icons:stone-golem',
     factionId: 'neutral',
     bonus: { con: 2, wis: 1 },
     description: '由远古造物者从大地基岩中雕琢而成的人形生物，沉睡于地底深渊之下千万年。大地之子是大地意志的化身，他们的血脉中流淌着最纯净的矿石，每一拳都承载着远古造物者的原始力量'

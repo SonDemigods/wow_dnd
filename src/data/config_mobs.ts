@@ -414,7 +414,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'tiger',
     name: '猛虎',
-    icon: '🐅',
+    icon: 'game-icons:tiger-head',
     maxHp: 75,
     damage: [12, 22],
     xp: 55,
