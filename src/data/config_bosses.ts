@@ -38,7 +38,7 @@ export const BOSSES: EnemyData[] = [
   {
     id: 'demon',
     name: '深渊卫士',
-    icon: 'game-icons:demon',
+    icon: 'game-icons:daemon-skull',
     maxHp: 150,
     damage: [20, 35],
     xp: 150,
@@ -62,7 +62,7 @@ export const BOSSES: EnemyData[] = [
   {
     id: 'frost_wyrm',
     name: '冰霜巨龙',
-    icon: 'game-icons:ice-dragon',
+    icon: 'game-icons:frozen-orb',
     maxHp: 130,
     damage: [16, 32],
     xp: 110,
@@ -86,7 +86,7 @@ export const BOSSES: EnemyData[] = [
   {
     id: 'undead_knight',
     name: '亡灵骑士',
-    icon: 'game-icons:death-knight',
+    icon: 'game-icons:black-knight-helm',
     maxHp: 110,
     damage: [14, 26],
     xp: 90,
@@ -110,7 +110,7 @@ export const BOSSES: EnemyData[] = [
   {
     id: 'lich',
     name: '亡灵大法师',
-    icon: 'game-icons:lich',
+    icon: 'game-icons:skull-mask',
     maxHp: 140,
     damage: [18, 32],
     xp: 120,
@@ -135,7 +135,7 @@ export const BOSSES: EnemyData[] = [
   {
     id: 'frost_giant',
     name: '冰霜巨人',
-    icon: 'game-icons:frost-giant',
+    icon: 'game-icons:giant',
     maxHp: 160,
     damage: [20, 38],
     xp: 160,

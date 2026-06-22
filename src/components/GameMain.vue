@@ -7,7 +7,7 @@
           <div class="player-name">{{ character.name }}</div>
           <div class="player-meta">
             <span :class="['player-level', { 'level-up': levelUpTriggered }]">Lv.{{ character.level }}</span>
-            <span class="player-gold"><BaseIcon name="coins" gradient="gold" :size="14" /> {{ gold }}</span>
+            <span class="player-gold"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ gold }}</span>
           </div>
         </div>
       </div>

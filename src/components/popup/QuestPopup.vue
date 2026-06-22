@@ -26,7 +26,7 @@
               </div>
             </div>
             <div class="quest-rewards">
-              <span v-if="quest.definition.goldReward"><BaseIcon name="coins" gradient="gold" :size="14" /> {{ quest.definition.goldReward }}</span>
+              <span v-if="quest.definition.goldReward"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ quest.definition.goldReward }}</span>
               <span v-if="quest.definition.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.definition.xpReward }}</span>
             </div>
             <div class="quest-actions" v-if="quest.instance.status !== 'completed'">

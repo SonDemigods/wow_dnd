@@ -186,7 +186,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
   const goldAmount = Math.floor(areaLevel * 5 + Math.random() * 15);
   return {
     message: `发现宝箱，获得了 ${goldAmount} 金币`,
-    icon: 'game-icons:coins',
+    icon: 'game-icons:two-coins',
     effect: { type: 'gold', amount: goldAmount }
   };
 }

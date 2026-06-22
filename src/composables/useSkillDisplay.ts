@@ -22,7 +22,7 @@ const skillTypeIcons: Record<string, string> = {
   health_restore: 'game-icons:health-increase',
   mana_restore: 'game-icons:magic-palm',
   buff: 'game-icons:upgrade',
-  debuff: 'game-icons:downgrade'
+  debuff: 'game-icons:armor-downgrade'
 };
 
 /** 目标类型中文名映射 */

@@ -3,7 +3,7 @@
     <template #header-extra>
       <div class="header-info">
         <div class="gold-display">
-          <BaseIcon name="coins" gradient="gold" :size="16" /> {{ gold }}
+          <BaseIcon name="two-coins" gradient="gold" :size="16" /> {{ gold }}
         </div>
         <div class="inventory-count">
           {{ inventoryItems.length }} / {{ maxSlots }}

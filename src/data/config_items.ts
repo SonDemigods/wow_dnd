@@ -241,7 +241,7 @@ const COMMON_FOOD: Item[] = [
   {
     id: 'roast_quail',
     name: '烤鹌鹑',
-    icon: 'game-icons:drumstick',
+    icon: 'game-icons:chicken-leg',
     type: 'food',
     rarity: 'common',
     level: 1,
@@ -440,7 +440,7 @@ const RARE_MATERIALS: Item[] = [
   {
     id: 'dragon_scale',
     name: '赤红龙鳞',
-    icon: 'game-icons:dragon-scales',
+    icon: 'game-icons:dragon-shield',
     type: 'material',
     rarity: 'rare',
     level: 5,

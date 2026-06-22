@@ -11,13 +11,13 @@ const LOG_TYPE_ICONS: Record<LogType, string> = {
   combat: 'game-icons:crossed-swords',
   quest: 'game-icons:notebook',
   item: 'game-icons:chest',
-  level: 'game-icons:level-up',
+  level: 'game-icons:upgrade',
   death: 'game-icons:death-skull',
-  resurrect: 'game-icons:resurrection',
+  resurrect: 'game-icons:regeneration',
   shop: 'game-icons:shopping-cart',
   skill: 'game-icons:sparkles',
   exploration: 'game-icons:treasure-map',
-  zone: 'game-icons:map-pin'
+  zone: 'game-icons:treasure-map'
 };
 
 /**

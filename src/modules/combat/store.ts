@@ -2166,7 +2166,7 @@ export const useCombatStore = defineStore('combat', () => {
             timestamp: Date.now(),
             type: 'combat',
             message: `获得 ${totalGold} 金币`,
-            icon: 'game-icons:coins'
+            icon: 'game-icons:two-coins'
           });
         }
 

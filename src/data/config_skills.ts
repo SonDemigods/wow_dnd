@@ -128,7 +128,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'warrior_blade_storm',
       name: '剑刃风暴',
-      icon: 'game-icons:blade',
+      icon: 'game-icons:sword-brandish',
       description: '释放全部怒火，化身无情的剑刃风暴，在战场上掀起一片腥风血雨',
       mpCost: 25,
       type: 'physical_damage',
@@ -170,7 +170,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'mage_arcane_missiles',
       name: '奥术弹幕',
-      icon: 'game-icons:arcane-mask',
+      icon: 'game-icons:magic-hat',
       description: '召唤数枚奥术能量凝聚的飞弹，如流星般精准射向目标',
       mpCost: 6,
       type: 'magic_damage',
@@ -194,7 +194,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'mage_fire_storm',
       name: '火焰风暴',
-      icon: 'game-icons:ring-of-flames',
+      icon: 'game-icons:fire-ring',
       description: '在目标区域召唤毁灭性的火焰风暴，烈焰从天而降吞噬战场上的所有敌人',
       mpCost: 18,
       type: 'magic_damage',
@@ -206,7 +206,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'mage_cone_of_cold',
       name: '寒冰锥',
-      icon: 'game-icons:frost-shield',
+      icon: 'game-icons:ice-shield',
       description: '喷吐出一道锥形的极寒冰息，前方的敌人无一能逃脱冰霜的席卷',
       mpCost: 14,
       type: 'magic_damage',
@@ -230,7 +230,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'mage_mirror_image',
       name: '镜像',
-      icon: 'game-icons:mirror-orb',
+      icon: 'game-icons:crystal-ball',
       description: '制造出三个魔法镜像环绕自身，镜像偏转攻击并吸收伤害',
       mpCost: 15,
       type: 'buff',
@@ -243,7 +243,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'mage_blizzard',
       name: '寒冰风暴',
-      icon: 'game-icons:blizzard',
+      icon: 'game-icons:snowing',
       description: '在广袤的区域降下寒冰风暴，呼啸的冰雪无情地撕扯范围内的一切生命',
       mpCost: 22,
       type: 'magic_damage',
@@ -308,7 +308,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'paladin_flash_of_light',
       name: '圣光闪现',
-      icon: 'game-icons:sparkling',
+      icon: 'game-icons:sparkles',
       description: '瞬间凝聚圣光的力量，以极快的速度为目标施放治愈之光',
       mpCost: 8,
       type: 'health_restore',
@@ -369,7 +369,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'paladin_judgment',
       name: '审判',
-      icon: 'game-icons:justice',
+      icon: 'game-icons:justice-star',
       description: '召唤天界的神圣审判之力，金色圣光化作裁决之锤砸向敌人',
       mpCost: 16,
       type: 'magic_damage',
@@ -381,7 +381,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'paladin_divine_storm',
       name: '圣光风暴',
-      icon: 'game-icons:divine-wind',
+      icon: 'game-icons:tornado',
       description: '释放体内所有的圣光，圣光风暴席卷整个战场，涤荡一切黑暗',
       mpCost: 28,
       type: 'magic_damage',
@@ -410,7 +410,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'hunter_arcane_shot',
       name: '奥术射击',
-      icon: 'game-icons:magic-arrow',
+      icon: 'game-icons:magic-swirl',
       description: '将奥术魔法灌注箭尖，射出的箭矢携带撕裂魔法护盾的能量',
       mpCost: 10,
       type: 'magic_damage',
@@ -447,7 +447,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'hunter_volley',
       name: '乱射',
-      icon: 'game-icons:arrow-rain',
+      icon: 'game-icons:arrow-flights',
       description: '向天空射出密集箭雨，锋利的箭矢如暴雨般倾盆覆盖整个战场',
       mpCost: 12,
       type: 'physical_damage',
@@ -586,7 +586,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'rogue_slice',
       name: '撕裂切割',
-      icon: 'game-icons:slice',
+      icon: 'game-icons:slicing-arrow',
       description: '匕首在空气中划出凌厉的弧光，快速撕裂切割目标的肌腱',
       mpCost: 10,
       type: 'physical_damage',
@@ -622,7 +622,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'rogue_vital_strike',
       name: '要害打击',
-      icon: 'game-icons:vital-strike',
+      icon: 'game-icons:deadly-strike',
       description: '精准锁定目标的致命要害，一击即可逆转战局',
       mpCost: 14,
       type: 'physical_damage',
@@ -634,7 +634,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'rogue_ambush',
       name: '伏击',
-      icon: 'game-icons:ambush',
+      icon: 'game-icons:hidden',
       description: '隐匿于暗影之中伺机而动，在最致命的时机发起一击必杀的伏击',
       mpCost: 22,
       type: 'physical_damage',
@@ -651,7 +651,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'warlock_shadow_bolt',
       name: '暗影弹',
-      icon: 'game-icons:magic-missile',
+      icon: 'game-icons:magic-portal',
       description: '将混沌的暗影能量凝聚成球，向目标投射致命的黑暗魔法',
       mpCost: 10,
       type: 'magic_damage',
@@ -676,7 +676,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'warlock_agony',
       name: '痛苦打击',
-      icon: 'game-icons:face-of-pain',
+      icon: 'game-icons:angry-eyes',
       description: '施加无尽的折磨诅咒，黑暗魔力大幅削弱目标的精神与攻击力',
       mpCost: 10,
       type: 'debuff',
@@ -749,7 +749,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'warlock_demon_bolt',
       name: '恶魔箭',
-      icon: 'game-icons:demonic-arrow',
+      icon: 'game-icons:arrow-wings',
       description: '召唤恶魔之力凝聚于掌心，向目标射出一枚充满魔能的毁灭之箭',
       mpCost: 16,
       type: 'magic_damage',
@@ -761,7 +761,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'warlock_chaos_bolt',
       name: '混乱之箭',
-      icon: 'game-icons:chaos-star',
+      icon: 'game-icons:cursed-star',
       description: '引导混乱之力凝为一箭，这发混沌箭无视一切防御直击灵魂本源',
       mpCost: 25,
       type: 'magic_damage',
@@ -790,7 +790,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'druid_wrath',
       name: '愤怒',
-      icon: 'game-icons:wrath',
+      icon: 'game-icons:angry-eyes',
       description: '凝聚自然的愤怒，向目标射出一发迅猛的自然能量弹',
       mpCost: 8,
       type: 'magic_damage',
@@ -826,7 +826,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'druid_regrowth',
       name: '愈合术',
-      icon: 'game-icons:flower',
+      icon: 'game-icons:flower-star',
       description: '加速自然生长之力，在体内植入持续愈合的生命之种',
       mpCost: 10,
       type: 'buff',
@@ -839,7 +839,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'druid_thorns',
       name: '荆棘打击',
-      icon: 'game-icons:thorn-arrow',
+      icon: 'game-icons:thorned-arrow',
       description: '召唤锋利的荆棘缠绕自身，攻击者将受到荆棘的反伤',
       mpCost: 8,
       type: 'magic_damage',
@@ -888,7 +888,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'druid_stars_fall',
       name: '星辰坠落',
-      icon: 'game-icons:falling-stars',
+      icon: 'game-icons:falling-star',
       description: '呼唤群星坠落战场，漫天星光化为致命的流星雨覆盖整个区域',
       mpCost: 28,
       type: 'magic_damage',
@@ -917,7 +917,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'priest_fast_heal',
       name: '速愈',
-      icon: 'game-icons:rapid-share-arrow',
+      icon: 'game-icons:rapidshare-arrow',
       description: '以最快的速度凝聚圣光能量，瞬间为目标施放救命之光',
       mpCost: 10,
       type: 'health_restore',
@@ -978,7 +978,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'priest_mind_flay',
       name: '精神鞭笞',
-      icon: 'game-icons:mind-control',
+      icon: 'game-icons:brain',
       description: '以强大的精神力量鞭笞敌人的意识，暗影能量撕裂心智',
       mpCost: 10,
       type: 'magic_damage',
@@ -990,7 +990,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'priest_prayer_of_healing',
       name: '神圣祷文',
-      icon: 'game-icons:acolyte',
+      icon: 'game-icons:meditation',
       description: '低声吟诵神圣的祷文，圣光波动笼罩全体队友治疗伤势',
       mpCost: 18,
       type: 'health_restore',
@@ -1002,7 +1002,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'priest_holy_nova',
       name: '神圣新星',
-      icon: 'game-icons:holy-star',
+      icon: 'game-icons:star-formation',
       description: '体内圣光轰然爆发，向外扩散的神圣冲击波灼烧所有靠近的敌人',
       mpCost: 16,
       type: 'magic_damage',
@@ -1031,7 +1031,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'shaman_lightning_bolt',
       name: '雷击',
-      icon: 'game-icons:lightning-bolt',
+      icon: 'game-icons:lightning-storm',
       description: '呼唤天空的雷电之力，一道刺目的闪电从指尖射向目标',
       mpCost: 10,
       type: 'magic_damage',
@@ -1043,7 +1043,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'shaman_lava_burst',
       name: '熔岩爆发',
-      icon: 'game-icons:lava-fall',
+      icon: 'game-icons:lava',
       description: '引导大地深处的熔岩之力，向目标抛出一颗沸腾的熔岩火球',
       mpCost: 14,
       type: 'magic_damage',
@@ -1055,7 +1055,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'shaman_healing_wave',
       name: '治疗波',
-      icon: 'game-icons:waterspout',
+      icon: 'game-icons:water-splash',
       description: '召唤水之精魂，一道温和的治愈水流包裹目标的身体',
       mpCost: 14,
       type: 'health_restore',
@@ -1170,7 +1170,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'death_knight_shadow_strike',
       name: '暗影侵袭',
-      icon: 'game-icons:dark-blade',
+      icon: 'game-icons:sword-clash',
       description: '咒文剑缠绕暗影能量，挥出带有凋零之力的黑暗斩击',
       mpCost: 12,
       type: 'physical_damage',
@@ -1182,7 +1182,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'death_knight_death_grip',
       name: '冥界之握',
-      icon: 'game-icons:death-grip',
+      icon: 'game-icons:grab',
       description: '以死亡之力化为无形之手，将远处的目标强行拖至面前',
       mpCost: 12,
       type: 'physical_damage',
@@ -1206,7 +1206,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'death_knight_death_strike',
       name: '灵魂收割',
-      icon: 'game-icons:soul-steal',
+      icon: 'game-icons:life-tap',
       description: '以灵界之力侵蚀敌人的生命，同时将窃取的生命精华反哺自身',
       mpCost: 12,
       type: 'physical_damage',
@@ -1218,7 +1218,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'death_knight_frost_strike',
       name: '冰霜打击',
-      icon: 'game-icons:frost-helmet',
+      icon: 'game-icons:frozen-orb',
       description: '激活冰霜符文，武器附着一层刺骨的寒冰狠狠砸向目标',
       mpCost: 14,
       type: 'magic_damage',
@@ -1331,7 +1331,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'monk_tranquility_orb',
       name: '禅意珠',
-      icon: 'game-icons:zen-walk',
+      icon: 'game-icons:meditation',
       description: '凝聚真气化为禅意之珠，真气在体内流转持续治愈伤势',
       mpCost: 10,
       type: 'buff',
@@ -1392,7 +1392,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'monk_thunder_fist',
       name: '怒雷破',
-      icon: 'game-icons:lightning-fist',
+      icon: 'game-icons:lightning-flame',
       description: '引天雷入体，双拳缠绕万钧雷霆轰向目标，释放毁灭性的雷电之力',
       mpCost: 26,
       type: 'physical_damage',
@@ -1409,7 +1409,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'demon_hunter_chaos_strike',
       name: '混乱打击',
-      icon: 'game-icons:chaos-blade',
+      icon: 'game-icons:crossed-swords',
       description: '将体内的混乱能量注入战刃，以燃烧的魔能之刃斩向目标',
       mpCost: 10,
       type: 'magic_damage',
@@ -1445,7 +1445,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'demon_hunter_fel_strike',
       name: '魔能打击',
-      icon: 'game-icons:fel-blade',
+      icon: 'game-icons:sword-spin',
       description: '魔能灌注战刃，挥出一道灼热的绿色能量斩',
       mpCost: 12,
       type: 'magic_damage',
@@ -1457,7 +1457,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'demon_hunter_throw_glaive',
       name: '投掷利刃',
-      icon: 'game-icons:throw-knife',
+      icon: 'game-icons:thrown-knife',
       description: '飞速旋转的魔能战刃脱手而出，在空中划出杀戮弧线后回到手中',
       mpCost: 10,
       type: 'physical_damage',
@@ -1493,7 +1493,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'demon_hunter_immolation_aura',
       name: '献祭光环',
-      icon: 'game-icons:burning-blaze',
+      icon: 'game-icons:burning-meteor',
       description: '体内魔能爆发形成烈焰光环，持续灼烧周围所有敌人',
       mpCost: 12,
       type: 'magic_damage',
@@ -1571,7 +1571,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'evoker_essence_burst',
       name: '精华爆发',
-      icon: 'game-icons:essence',
+      icon: 'game-icons:magic-lamp',
       description: '引爆体内积蓄的巨龙精华，一道能量冲击波轰向目标',
       mpCost: 10,
       type: 'magic_damage',
@@ -1583,7 +1583,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'evoker_shifting_embers',
       name: '涌动余烬',
-      icon: 'game-icons:embers',
+      icon: 'game-icons:burning-embers',
       description: '操控迸射的炽热余烬，燃烧的火星精准飞向目标',
       mpCost: 12,
       type: 'magic_damage',
@@ -1608,7 +1608,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'evoker_azure_strike',
       name: '碧蓝打击',
-      icon: 'game-icons:azure-strike',
+      icon: 'game-icons:ice-bolt',
       description: '以碧蓝巨龙之力凝聚一道极寒冰霜，冻结并击碎目标',
       mpCost: 14,
       type: 'magic_damage',
@@ -1620,7 +1620,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'evoker_emerald_winds',
       name: '翡翠之风',
-      icon: 'game-icons:green-wind',
+      icon: 'game-icons:leaf-swirl',
       description: '挥动翡翠龙翼刮起治愈之风，范围内所有队友沐浴在治疗气流中',
       mpCost: 18,
       type: 'health_restore',
@@ -1632,7 +1632,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'evoker_spiritbloom',
       name: '灵魂绽放',
-      icon: 'game-icons:bloom',
+      icon: 'game-icons:flower-twirl',
       description: '让灵魂之花在目标体内绽放，释放强力的龙族治愈之力',
       mpCost: 20,
       type: 'health_restore',
@@ -1644,7 +1644,7 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
     {
       id: 'evoker_emerald_destruction',
       name: '翡翠毁灭',
-      icon: 'game-icons:dragon-shot',
+      icon: 'game-icons:dragon-breath',
       description: '唤醒龙裔血脉中最原始的毁灭本能，翡翠之力化作毁灭风暴吞噬一切',
       mpCost: 26,
       type: 'magic_damage',
@@ -1680,7 +1680,7 @@ export const MONSTER_ABILITIES: Skill[] = [
   {
     id: 'tail_swipe',
     name: '尾击',
-    icon: 'game-icons:dragon-tail',
+    icon: 'game-icons:reptile-tail',
     description: '挥动巨大的尾巴横扫对手',
     mpCost: 0,
     type: 'physical_damage',
@@ -1723,7 +1723,7 @@ export const MONSTER_ABILITIES: Skill[] = [
   {
     id: 'frost_breath',
     name: '冰霜吐息',
-    icon: 'game-icons:ice-dragon',
+    icon: 'game-icons:frozen-orb',
     description: '喷吐刺骨的寒冰气息，冻结一切生机',
     mpCost: 0,
     type: 'magic_damage',
@@ -1736,8 +1736,8 @@ export const MONSTER_ABILITIES: Skill[] = [
   {
     id: 'blizzard',
     name: '暴风雪',
-    icon: 'game-icons:blizzard',
-    description: '召唤毁灭性的暴风雪覆盖战场',
+    icon: 'game-icons:snowing',
+      description: '召唤毁灭性的暴风雪覆盖战场',
     mpCost: 0,
     type: 'magic_damage',
     effect: { type: 'magic_damage', value: 24, coefficient: 1.1 },
@@ -1749,7 +1749,7 @@ export const MONSTER_ABILITIES: Skill[] = [
   {
     id: 'ice_shield',
     name: '冰霜护盾',
-    icon: 'game-icons:crystal-shield',
+    icon: 'game-icons:ice-shield',
     description: '凝聚寒冰形成厚重的防护屏障',
     mpCost: 0,
     type: 'buff',
@@ -1765,7 +1765,7 @@ export const MONSTER_ABILITIES: Skill[] = [
   {
     id: 'death_grip',
     name: '死亡之握',
-    icon: 'game-icons:death-grip',
+    icon: 'game-icons:grab',
     description: '用死亡能量拖拽目标的灵魂',
     mpCost: 0,
     type: 'magic_damage',
@@ -1778,7 +1778,7 @@ export const MONSTER_ABILITIES: Skill[] = [
   {
     id: 'soul_drain',
     name: '灵魂汲取',
-    icon: 'game-icons:soul-steal',
+    icon: 'game-icons:life-tap',
     description: '吸取目标生命力并转化为自身生命',
     mpCost: 0,
     type: 'health_restore',
@@ -1793,7 +1793,7 @@ export const MONSTER_ABILITIES: Skill[] = [
   {
     id: 'shadow_bolt',
     name: '暗影弹',
-    icon: 'game-icons:magic-missile',
+    icon: 'game-icons:magic-portal',
     description: '发射高密度的暗影能量弹',
     mpCost: 0,
     type: 'magic_damage',

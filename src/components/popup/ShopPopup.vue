@@ -2,7 +2,7 @@
   <BasePopup :visible="visible" :title="shopName || '商店'" @close="$emit('close')">
     <template #header-extra>
       <div class="header-info">
-        <span :class="['gold-display', { flash: goldFlash }]"><BaseIcon name="coins" gradient="gold" :size="16" /> {{ gold }}</span>
+        <span :class="['gold-display', { flash: goldFlash }]"><BaseIcon name="two-coins" gradient="gold" :size="16" /> {{ gold }}</span>
       </div>
     </template>
 
@@ -50,7 +50,7 @@
               <div class="card-desc">{{ entry.description }}</div>
               <div v-if="entry.quantity > 0" class="card-quantity">库存: {{ entry.quantity }}</div>
             </div>
-            <div class="card-price"><BaseIcon name="coins" gradient="gold" :size="14" /> {{ entry.price }}</div>
+            <div class="card-price"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ entry.price }}</div>
           </div>
         </div>
 
@@ -68,7 +68,7 @@
               <div class="card-desc">{{ entry.info?.description }}</div>
               <div class="card-count">数量: {{ entry.item.count }}</div>
             </div>
-            <div class="card-price"><BaseIcon name="coins" gradient="gold" :size="14" /> {{ getSellPrice(entry.item.itemId) }}</div>
+            <div class="card-price"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ getSellPrice(entry.item.itemId) }}</div>
           </div>
         </div>
 
@@ -83,7 +83,7 @@
             <p class="detail-desc">{{ selectedBuyEntry.description }}</p>
             <div class="detail-info">
               <span>类型: {{ getTypeName(selectedBuyEntry.type) }}</span>
-              <span>单价: <BaseIcon name="coins" gradient="gold" :size="14" /> {{ selectedBuyEntry.price }}</span>
+              <span>单价: <BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ selectedBuyEntry.price }}</span>
             </div>
             <div v-if="selectedBuyEntry.effect" class="effect-info">
               <span>{{ getEffectText(selectedBuyEntry.effect) }}</span>
@@ -106,7 +106,7 @@
                 :disabled="!canAffordBuy()"
                 @click="handleBuy(selectedBuyEntry.itemId)"
               >
-                <BaseIcon name="coins" gradient="gold" :size="14" /> 购买 ×{{ buyQuantity }}（{{ totalBuyPrice }}）
+                <BaseIcon name="two-coins" gradient="gold" :size="14" /> 购买 ×{{ buyQuantity }}（{{ totalBuyPrice }}）
               </button>
             </div>
           </template>
@@ -121,7 +121,7 @@
             <div class="detail-info">
               <span>类型: {{ getTypeName(selectedSellEntry.info?.type || 'misc') }}</span>
               <span>持有: {{ selectedSellEntry.item.count }}</span>
-              <span>单价: <BaseIcon name="coins" gradient="gold" :size="14" /> {{ getSellPrice(selectedSellEntry.item.itemId) }}</span>
+              <span>单价: <BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ getSellPrice(selectedSellEntry.item.itemId) }}</span>
             </div>
             <div v-if="selectedSellEntry.info?.effect" class="effect-info">
               <span>{{ getEffectText(selectedSellEntry.info.effect) }}</span>
@@ -144,7 +144,7 @@
                 :disabled="selectedSellEntry.item.count <= 0"
                 @click="handleSell(selectedSellEntry.item.itemId)"
               >
-                <BaseIcon name="coins" gradient="gold" :size="14" /> 出售 ×{{ sellQuantity }}（{{ totalSellPrice }}）
+                <BaseIcon name="two-coins" gradient="gold" :size="14" /> 出售 ×{{ sellQuantity }}（{{ totalSellPrice }}）
               </button>
             </div>
           </template>

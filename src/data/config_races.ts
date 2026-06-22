@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @fileoverview 种族数据定义文件
  * @description 包含所有可选择的种族信息，包括属性加成、图标和描述
  * @module data/race
@@ -118,7 +118,7 @@ export const RACES: RaceData[] = [
   {
     id: 'void_elf',
     name: '暗影精灵',
-    icon: 'game-icons:dark-blade',
+    icon: 'game-icons:sword-clash',
     factionId: 'alliance',
     bonus: { dex: 1, int: 2 },
     description: '一群敢于触碰暗影帷幕的精灵学者，被暗影之力转化后获得了穿梭空间裂缝、召唤暗影触手的能力。暗影精灵在疯狂的边缘徘徊，却成功地驯服了宇宙中最危险的力量为己所用'
@@ -206,7 +206,7 @@ export const RACES: RaceData[] = [
   {
     id: 'earthen',
     name: '大地之子',
-    icon: 'game-icons:stone-golem',
+    icon: 'game-icons:golem-head',
     factionId: 'neutral',
     bonus: { con: 2, wis: 1 },
     description: '由远古造物者从大地基岩中雕琢而成的人形生物，沉睡于地底深渊之下千万年。大地之子是大地意志的化身，他们的血脉中流淌着最纯净的矿石，每一拳都承载着远古造物者的原始力量'

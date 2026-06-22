@@ -154,7 +154,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'felwood',
     name: '腐林',
-    icon: 'game-icons:desolate-lands',
+    icon: 'game-icons:dead-wood',
     description: '被深渊军团的魔能彻底扭曲的死亡林地，树木流淌着荧绿色的毒汁，空气中弥漫着硫磺的恶臭。恶魔与半魔在此横行无忌，曾经的生命圣地已沦为魔能肆虐的绝望焦土。',
     continent: 'kalimdor',
     enemies: ['troll', 'elemental', 'spider'],
@@ -308,7 +308,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'western_plaguelands',
     name: '西腐地',
-    icon: 'game-icons:skull-sign',
+    icon: 'game-icons:death-skull',
     description: '亡者军团东进的前沿战线，枯萎的农田与焦黑的村庄诉说着昔日的惨剧。死灵学院的黑暗法师仍在凯尔达隆岛的废墟深处钻研禁忌的通灵术，亡者的合唱在湖面上盘旋不散。',
     continent: 'eastern_kingdoms',
     enemies: ['undead', 'ghoul', 'skeleton'],
@@ -364,7 +364,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'wetlands',
     name: '沼泽湿地',
-    icon: 'game-icons:toad',
+    icon: 'game-icons:frog',
     description: '无边的沼泽湿地蒸腾着令人窒息的水汽，蚊虫如乌云般成群飞舞。米奈希尔港是通往北方大陆的门户，但沼泽深处的疾风蜥与蛙人时刻威胁着过往旅人的性命。',
     continent: 'eastern_kingdoms',
     enemies: ['murloc', 'spider', 'troll', 'ogre'],
@@ -532,7 +532,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'swamp_of_sorrows',
     name: '哀伤沼泽',
-    icon: 'game-icons:crocodile',
+    icon: 'game-icons:croc-jaws',
     description: '阴冷潮湿的失落沼泽，扭曲的红树林根系没入墨绿色的泥水。失落神庙被遗忘在沼泽深处，翠绿龙族的堕落阴影仍笼罩着这片哀伤之地。',
     continent: 'eastern_kingdoms',
     enemies: ['murloc', 'spider', 'troll', 'elemental'],
@@ -588,7 +588,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'storm_peaks',
     name: '雷暴山巅',
-    icon: 'game-icons:thunderstorm',
+    icon: 'game-icons:lightning-storm',
     description: '寒霜废土最巍峨的冰封山脉，狂风裹挟着闪电在万仞峰巅永不停歇地咆哮。远古殿堂深藏于雷暴山巅的腹地，疯狂之神的牢笼虽已破裂，远古的守护者仍在与疯狂做最后的抗争。',
     continent: 'northrend',
     enemies: ['iron_dwarf', 'elemental'],
@@ -616,7 +616,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'borean_tundra',
     name: '北境苔原',
-    icon: 'game-icons:brontosaurus',
+    icon: 'game-icons:sauropod-head',
     description: '寒霜废土西部的苍茫冻土，温泉在冰原上蒸腾出温暖的生命绿洲。冰蓝龙族在龙族圣殿中守护着凡间的魔网，而地下虫族从地下巢穴中无声涌出。',
     continent: 'northrend',
     enemies: ['nerubian', 'troll', 'elemental'],
@@ -644,7 +644,7 @@ export const LOCATIONS: LocationData[] = [
   {
     id: 'dragonblight',
     name: '龙骸荒原',
-    icon: 'game-icons:skull-sign',
+    icon: 'game-icons:death-skull',
     description: '亿万年巨龙骸骨铺就的苍白荒原，凛冽的寒风在巨兽般的骨堆间呜咽哀鸣。龙息神殿如利剑般刺入云霄，五色远古龙族在此守护着凡间最后的希望。',
     continent: 'northrend',
     enemies: ['undead'],

@@ -181,7 +181,7 @@
         </div>
         <div class="result-rewards" v-if="combatStore.combatResult === 'victory'">
           <div v-if="combatStore.expGained > 0" class="reward-item"><BaseIcon name="star-formation" gradient="gold" :size="14" /> +{{ combatStore.expGained }} 经验</div>
-          <div v-if="combatStore.goldGained > 0" class="reward-item"><BaseIcon name="coins" gradient="gold" :size="14" /> +{{ combatStore.goldGained }} 金币</div>
+          <div v-if="combatStore.goldGained > 0" class="reward-item"><BaseIcon name="two-coins" gradient="gold" :size="14" /> +{{ combatStore.goldGained }} 金币</div>
         </div>
         <div class="result-countdown" v-if="autoCloseCountdown > 0">
           {{ autoCloseCountdown }} 秒后自动关闭

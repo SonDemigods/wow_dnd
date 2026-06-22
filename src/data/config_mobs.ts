@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @fileoverview 普通怪物数据模块
  * @description 对应 config_mobs 表，包含所有普通可遭遇怪物的属性和掉落信息
  * @module data/mobs
@@ -14,7 +14,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'gnoll',
     name: '豺狼人',
-    icon: 'game-icons:gnoll-head',
+    icon: 'game-icons:hyena-head',
     maxHp: 25,
     damage: [4, 8],
     xp: 15,
@@ -62,7 +62,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'skeleton',
     name: '骷髅',
-    icon: 'game-icons:skull-sign',
+    icon: 'game-icons:death-skull',
     maxHp: 30,
     damage: [5, 10],
     xp: 20,
@@ -110,7 +110,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'bandit',
     name: '暗影强盗',
-    icon: 'game-icons:thief',
+    icon: 'game-icons:robber',
     maxHp: 40,
     damage: [7, 14],
     xp: 30,

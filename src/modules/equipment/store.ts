@@ -253,7 +253,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
       timestamp: Date.now(),
       type: 'item',
       message: `卸下了：${equippedItem.item.name}`,
-      icon: 'game-icons:downgrade'
+      icon: 'game-icons:armor-downgrade'
     });
 
     return equippedItem;

@@ -40,7 +40,7 @@
               </div>
             </div>
             <div class="quest-rewards">
-              <span v-if="quest.goldReward"><BaseIcon name="coins" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
+              <span v-if="quest.goldReward"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
               <span v-if="quest.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.xpReward }}</span>
               <span v-if="quest.itemRewards?.length"><BaseIcon name="chest" gradient="gold" :size="14" /> {{ quest.itemRewards.length }}</span>
             </div>
@@ -71,7 +71,7 @@
             </div>
             <p class="quest-desc">{{ quest.description }}</p>
             <div class="quest-rewards">
-              <span v-if="quest.goldReward"><BaseIcon name="coins" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
+              <span v-if="quest.goldReward"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
               <span v-if="quest.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.xpReward }}</span>
             </div>
             <button 

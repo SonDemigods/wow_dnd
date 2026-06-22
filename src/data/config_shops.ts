@@ -26,7 +26,7 @@ export const SHOPS: ShopConfig[] = [
     id: 'potion_shop',
     name: '炼金术士小屋',
     type: 'potion',
-    icon: 'game-icons:alembic',
+    icon: 'game-icons:potion-ball',
     refreshInterval: 600000,
     priceVariation: {
       min: 0.85,
