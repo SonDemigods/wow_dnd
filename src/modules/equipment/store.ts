@@ -348,7 +348,15 @@ export const useEquipmentStore = defineStore('equipment', () => {
     // 持久化清空后的装备状态
     equipment.value = getDefaultEquipment();
     if (charId) {
-      await equipmentDbService.saveEquipment(charId, getDefaultEquipment());
+      const emptyIdMap: Record<EquipmentSlot, string | null> = {
+        weapon1: null,
+        weapon2: null,
+        armor1: null,
+        armor2: null,
+        armor3: null,
+        armor4: null
+      };
+      await equipmentDbService.saveEquipment(charId, emptyIdMap);
     }
 
     // 清空 Store 状态
