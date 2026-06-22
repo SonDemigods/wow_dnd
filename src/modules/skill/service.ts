@@ -112,16 +112,6 @@ export function calculateBuffValue(buffEffect: SkillBuffEffect, stats: Stats): n
 }
 
 /**
- * 检查法力值是否足够施放技能
- * @param skill - 技能数据
- * @param currentMana - 当前法力值
- * @returns 是否足够
- */
-export function checkManaCost(skill: Skill, currentMana: number): boolean {
-  return currentMana >= skill.mpCost;
-}
-
-/**
  * 判断角色是否可以学习某个技能模板
  * @param skillTemplate - 技能模板
  * @param characterLevel - 角色等级
@@ -139,11 +129,10 @@ export function canLearnSkill(
 
 /**
  * 验证技能栏槽位索引是否有效
- * @param skillBar - 技能栏
  * @param slotIndex - 槽位索引
  * @returns 是否有效
  */
-export function validateSkillBarSlot(_skillBar: SkillBar, slotIndex: number): boolean {
+export function validateSkillBarSlot(slotIndex: number): boolean {
   return slotIndex >= 0 && slotIndex <= 3;
 }
 

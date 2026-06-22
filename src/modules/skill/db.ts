@@ -5,7 +5,7 @@
  * skills 字段仅存储技能 ID 数组，完整技能数据从 config_skills 模板表获取。
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { Skill, SkillBar, SkillsData, SkillType, SkillDataStorage, SkillTemplateStorage } from './types';
+import type { Skill, SkillBar, SkillsData, SkillType, SkillTemplateStorage } from './types';
 import { toRawData } from '../../utils';
 
 /**
@@ -37,15 +37,15 @@ export class SkillsDbService {
    */
   async getSkillsData(characterId: string): Promise<SkillsData> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.char_skills.get(characterId) as unknown as SkillDataStorage | undefined;
+      const data = await gameDb.char_skills.get(characterId) as SkillsData | undefined;
       if (!data) {
         return this.getDefaultSkillsData(characterId);
       }
 
       // skills 仅存 ID 数组，直接读取
       const skills: string[] = Array.isArray(data.skills) ? data.skills : [];
-      const skillBar: SkillBar = (data.skillBar && Array.isArray((data.skillBar as SkillBar).slots))
-        ? data.skillBar as SkillBar
+      const skillBar: SkillBar = (data.skillBar && Array.isArray(data.skillBar.slots))
+        ? data.skillBar
         : { slots: [null, null, null, null] };
 
       return {
@@ -116,11 +116,11 @@ export class SkillsDbService {
       icon: data.icon,
       description: data.description,
       mpCost: data.mpCost,
-      type: data.type as SkillType,
-      effect: (data.effect || { type: 'physical_damage', value: 0 }) as Skill['effect'],
+      type: data.type,
+      effect: data.effect || { type: 'physical_damage' as SkillType, value: 0 },
       unlockLevel: data.unlockLevel,
-      targetType: (data.targetType as Skill['targetType']) || undefined,
-      usableBy: (data.usableBy as Skill['usableBy']) || 'player',
+      targetType: data.targetType as Skill['targetType'] || undefined,
+      usableBy: data.usableBy || 'player',
       cooldown: data.cooldown ?? 0,
       buffs: data.buffs ? data.buffs.map(b => ({ type: b.type, value: b.value, turns: b.turns })) : undefined
     };
@@ -133,7 +133,7 @@ export class SkillsDbService {
    */
   async getSkillTemplate(skillId: string): Promise<Skill | null> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.config_skills.get(skillId) as unknown as SkillTemplateStorage | undefined;
+      const data = await gameDb.config_skills.get(skillId) as SkillTemplateStorage | undefined;
       if (!data) return null;
       return this.toSkill(data);
     });
@@ -145,7 +145,7 @@ export class SkillsDbService {
    */
   async getAllSkillTemplates(): Promise<Skill[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.config_skills.toArray() as unknown as SkillTemplateStorage[];
+      const items = await gameDb.config_skills.toArray() as SkillTemplateStorage[];
       return items.map(data => this.toSkill(data));
     });
   }
@@ -157,7 +157,7 @@ export class SkillsDbService {
    */
   async getSkillTemplatesByClass(classId: string): Promise<Skill[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.config_skills.where('classRestriction').equals(classId).toArray() as unknown as SkillTemplateStorage[];
+      const items = await gameDb.config_skills.where('classRestriction').equals(classId).toArray() as SkillTemplateStorage[];
       return items.map(data => this.toSkill(data));
     });
   }
@@ -171,7 +171,7 @@ export class SkillsDbService {
       const items = await gameDb.config_skills
         .where('usableBy')
         .anyOf('enemy', 'both')
-        .toArray() as unknown as SkillTemplateStorage[];
+        .toArray() as SkillTemplateStorage[];
       return items.map(data => this.toSkill(data));
     });
   }

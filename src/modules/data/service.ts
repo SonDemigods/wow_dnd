@@ -19,7 +19,7 @@ import { bossDbService } from '../boss/db';
 import type { BossTemplate } from '../boss/types';
 import type { LocationStorage, MapStateStorage } from '../map/types';
 import type { ShopConfigStorage, ShopItemsStorage } from '../shop/types';
-import type { SkillConfigStorage, CharSkillsStorage } from '../skill/types';
+import type { SkillTemplateStorage, SkillsData } from '../skill/types';
 import type { QuestConfigStorage, CharQuestStorage } from '../quest/types';
 import type { ExplorationStorage } from '../exploration/types';
 import type { CombatLogStorage } from '../combat/types';
@@ -275,7 +275,7 @@ export class DataInitializer {
           ...skill,
           classRestriction: entry.class_id,
           usableBy: 'player'
-        } as unknown as SkillConfigStorage);
+        } as unknown as SkillTemplateStorage);
       }
     }
     // 2. 写入怪物/首领技能模板（usableBy = 'enemy'）
@@ -284,7 +284,7 @@ export class DataInitializer {
         ...skill,
         classRestriction: null,
         usableBy: 'enemy'
-      } as unknown as SkillConfigStorage);
+      } as unknown as SkillTemplateStorage);
     }
   }
 
@@ -800,7 +800,7 @@ export class ImportService implements IImportService {
           }
 
           if (data.skills && Object.keys(data.skills).length > 0) {
-            await db.char_skills.bulkPut(Object.values(data.skills) as unknown as CharSkillsStorage[]);
+            await db.char_skills.bulkPut(Object.values(data.skills) as unknown as SkillsData[]);
             importedStores.push('char_skills');
           } else {
             skippedStores.push('char_skills');
@@ -877,7 +877,7 @@ export class ImportService implements IImportService {
             importedStores.push('config_bosses');
           }
           if (data.skillTemplates && data.skillTemplates.length > 0) {
-            await db.config_skills.bulkPut(data.skillTemplates as unknown as SkillConfigStorage[]);
+            await db.config_skills.bulkPut(data.skillTemplates as unknown as SkillTemplateStorage[]);
             importedStores.push('config_skills');
           }
 

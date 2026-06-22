@@ -18,7 +18,6 @@ import { generateLogId } from '../log/service';
 import {
   calculateSkillDamage,
   calculateBuffValue,
-  checkManaCost,
   canLearnSkill,
   validateSkillBarSlot,
   canCastSkill
@@ -137,6 +136,20 @@ export const useSkillsStore = defineStore('skills', () => {
     });
   }
 
+  /**
+   * 记录技能学习日志和事件
+   */
+  function logSkillLearned(skill: Skill): void {
+    eventBus.emit(GameEvents.SKILL_LEARNED, { skill });
+    useLogStore().addLogEntry({
+      id: generateLogId(),
+      timestamp: Date.now(),
+      type: 'skill',
+      message: `学会了新技能：${skill.name}！`,
+      icon: 'game-icons:spell-book'
+    });
+  }
+
   // ==================== Action：初始化 ====================
 
   /**
@@ -205,17 +218,8 @@ export const useSkillsStore = defineStore('skills', () => {
     // 持久化
     await persist();
 
-    // 通知 UI（动画 + 音效）
-    eventBus.emit(GameEvents.SKILL_LEARNED, { skill: template });
-
-    // 记录冒险日志
-    useLogStore().addLogEntry({
-      id: generateLogId(),
-      timestamp: Date.now(),
-      type: 'skill',
-      message: `学会了新技能：${template.name}！`,
-      icon: 'game-icons:spell-book'
-    });
+    // 通知 UI（动画 + 音效）并记录冒险日志
+    logSkillLearned(template);
 
     return true;
   }
@@ -227,7 +231,7 @@ export const useSkillsStore = defineStore('skills', () => {
    * @param skillId - 技能 ID
    * @returns 使用结果
    */
-  async function castSkill(skillId: string, skipAdventureLog = false): Promise<SkillUseResult> {
+  async function castSkill(skillId: string, skipAdventureLog: boolean = false): Promise<SkillUseResult> {
     const characterStore = useCharacterStore();
     const charData = characterStore.getCharacterData();
     const skill = skills.value.find(s => s.id === skillId)
@@ -307,7 +311,7 @@ export const useSkillsStore = defineStore('skills', () => {
     }
 
     // 7. 记录冷却（如果技能有冷却）
-    if (skill && skill.cooldown && skill.cooldown > 0) {
+    if (skill.cooldown && skill.cooldown > 0) {
       cooldowns.value[skillId] = skill.cooldown;
     }
 
@@ -332,7 +336,7 @@ export const useSkillsStore = defineStore('skills', () => {
    */
   async function equipSkill(skillId: string, slotIndex: SkillSlotIndex): Promise<boolean> {
     // 校验槽位有效性
-    if (!validateSkillBarSlot(skillBar.value, slotIndex)) {
+    if (!validateSkillBarSlot(slotIndex)) {
       return false;
     }
 
@@ -352,13 +356,7 @@ export const useSkillsStore = defineStore('skills', () => {
       skills.value.push({ ...skill });
     }
 
-    // 如果该槽位已有技能，先卸下
-    const existingSkillId = skillBar.value.slots[slotIndex];
-    if (existingSkillId) {
-      skillBar.value.slots[slotIndex] = null;
-    }
-
-    // 装备新技能
+    // 装备新技能（直接覆盖，无需先设为 null）
     skillBar.value.slots[slotIndex] = skillId;
 
     // 持久化
@@ -426,9 +424,7 @@ export const useSkillsStore = defineStore('skills', () => {
    * @returns 可用技能列表
    */
   function getAvailableSkills(): Skill[] {
-    const characterStore = useCharacterStore();
-    const characterLevel = characterStore.level;
-    return skills.value.filter(s => s.unlockLevel <= characterLevel);
+    return unlockedSkills.value;
   }
 
   /**
@@ -454,27 +450,35 @@ export const useSkillsStore = defineStore('skills', () => {
     if (skill.unlockLevel > characterLevel) return false;
 
     const charData = characterStore.getCharacterData();
-    return checkManaCost(skill, charData?.mana || 0);
+    return canCastSkill(skill, charData?.mana || 0).canCast;
   }
 
   // ==================== Action：加载模板 ====================
+
+  /**
+   * 通用模板加载：清空缓存 → 查询 → 填充 Map
+   */
+  async function loadTemplatesTo(
+    templateMap: typeof skillTemplates,
+    fetcher: () => Promise<Skill[]>
+  ): Promise<void> {
+    templateMap.value.clear();
+    const templates = await fetcher();
+    const newMap = new Map<string, Skill>();
+    templates.forEach(skill => newMap.set(skill.id, skill));
+    templateMap.value = newMap;
+  }
 
   /**
    * 加载指定职业的技能模板到缓存
    * @param classId - 职业 ID
    */
   async function loadTemplatesForClass(classId: string): Promise<void> {
-    // 清除旧缓存
-    skillTemplates.value.clear();
-
-    if (!classId) return;
-
-    const templates = await skillsDbService.getSkillTemplatesByClass(classId);
-    const newMap = new Map<string, Skill>();
-    templates.forEach(skill => {
-      newMap.set(skill.id, skill);
-    });
-    skillTemplates.value = newMap;
+    if (!classId) {
+      skillTemplates.value.clear();
+      return;
+    }
+    await loadTemplatesTo(skillTemplates, () => skillsDbService.getSkillTemplatesByClass(classId));
   }
 
   /**
@@ -482,13 +486,7 @@ export const useSkillsStore = defineStore('skills', () => {
    * 这些技能仅供敌人 AI 使用，不会被玩家学习
    */
   async function loadMonsterSkillTemplates(): Promise<void> {
-    monsterSkillTemplates.value.clear();
-    const templates = await skillsDbService.getMonsterSkillTemplates();
-    const newMap = new Map<string, Skill>();
-    templates.forEach(skill => {
-      newMap.set(skill.id, skill);
-    });
-    monsterSkillTemplates.value = newMap;
+    await loadTemplatesTo(monsterSkillTemplates, () => skillsDbService.getMonsterSkillTemplates());
   }
 
   // ==================== Action：获取职业技能模板 ====================
@@ -531,17 +529,8 @@ export const useSkillsStore = defineStore('skills', () => {
           }
         }
 
-        // 通知 UI（动画 + 音效）
-        eventBus.emit(GameEvents.SKILL_LEARNED, { skill: template });
-
-        // 记录冒险日志
-        useLogStore().addLogEntry({
-          id: generateLogId(),
-          timestamp: Date.now(),
-          type: 'skill',
-          message: `学会了新技能：${template.name}！`,
-          icon: 'game-icons:spell-book'
-        });
+        // 通知 UI（动画 + 音效）并记录冒险日志
+        logSkillLearned(template);
       }
     });
 
@@ -620,16 +609,6 @@ export const useSkillsStore = defineStore('skills', () => {
     await persist();
   }
 
-  // ==================== 生命周期 ====================
-
-  /**
-   * 清理资源
-   */
-  function dispose(): void {
-    // 在新架构下，Store 之间通过直接调用 Action 通信，
-    // 不再通过 EventBus 监听数据变更事件，无需清理事件监听器。
-  }
-
   // ==================== 导出 ====================
 
   return {
@@ -667,7 +646,6 @@ export const useSkillsStore = defineStore('skills', () => {
     addSkillTemplate,
     removeSkillTemplate,
     reset,
-    dispose,
 
     // 冷却管理
     tickCooldowns,
