@@ -5,11 +5,6 @@
 
 /**
  * 大陆数据接口
- * @property {string} name - 大陆名称
- * @property {string} icon - 大陆图标
- * @property {string} description - 大陆描述
- * @property {string} position - 大陆位置
- * @property {string} color - 主色调
  */
 export interface ContinentData {
   id: string;
@@ -23,10 +18,6 @@ export interface ContinentData {
 
 /**
  * 地图视图接口
- * @property {number} zoomLevel - 缩放级别
- * @property {number} panX - X平移量
- * @property {number} panY - Y平移量
- * @property {string} [currentContinentId] - 当前大陆ID
  */
 export interface MapView {
   zoomLevel: number;
@@ -37,25 +28,15 @@ export interface MapView {
 
 /**
  * 地图状态接口
- * @property {MapView} view - 地图视图
  */
 export interface MapState {
   view: MapView;
+  unlockedZones?: string[];
+  completedZones?: string[];
 }
 
 /**
  * 地点数据接口
- * @property {string} name - 地点名称
- * @property {string} icon - 地点图标
- * @property {string} description - 地点描述
- * @property {string} continent - 所属大陆
- * @property {string} region - 所属区域
- * @property {string[]} enemies - 敌人列表
- * @property {string[]} quests - 任务列表
- * @property {[number, number]} levelRange - 等级范围
- * @property {string} color - 主色调
- * @property {number} mapX - 地图X坐标
- * @property {number} mapY - 地图Y坐标
  */
 export interface LocationData {
   id: string;
@@ -79,7 +60,7 @@ export interface LocationData {
 export type ZoneStatus = 'locked' | 'unlocked' | 'completed';
 
 /**
- * 区域奖励接口
+ * 区域奖励接口（预留，待后续从配置数据填充真实值）
  */
 export interface ZoneRewards {
   gold: number;
@@ -96,95 +77,9 @@ export interface MapZone {
   description: string;
   coordinates: { x: number; y: number };
   requiredLevel: number;
-  requiredGold: number;
+  requiredGold?: number;
   status: ZoneStatus;
-  rewards: ZoneRewards;
-}
-
-/**
- * 地图服务接口
- * 提供地图管理的核心功能
- */
-export interface IMapService {
-  /**
-   * 获取地图状态
-   * @returns {MapState} 地图状态
-   */
-  getState(): MapState;
-
-  /**
-   * 获取地点数据
-   * @param {string} locationId - 地点ID
-   * @returns {LocationData | null} 地点数据
-   */
-  getLocationData(locationId: string): LocationData | null;
-
-  /**
-   * 获取大陆下的地点
-   * @param {string} continentId - 大陆ID
-   * @returns {LocationData[]} 地点列表
-   */
-  getLocationsByContinent(continentId: string): LocationData[];
-
-  /**
-   * 获取已解锁的地点
-   * @param {number} playerLevel - 玩家等级
-   * @returns {string[]} 地点ID列表
-   */
-  getUnlockedLocations(playerLevel: number): string[];
-
-  /**
-   * 检查地点是否解锁
-   * @param {string} locationId - 地点ID
-   * @param {number} playerLevel - 玩家等级
-   * @returns {boolean} 是否解锁
-   */
-  isLocationUnlocked(locationId: string, playerLevel: number): boolean;
-
-  /**
-   * 进入地点
-   * @param {string} locationId - 地点ID
-   * @returns {boolean} 是否成功进入
-   */
-  enterLocation(locationId: string): boolean;
-
-  /**
-   * 缩放到指定级别
-   * @param {number} level - 缩放级别
-   */
-  zoomTo(level: number): void;
-
-  /**
-   * 平移到指定位置
-   * @param {number} x - X坐标
-   * @param {number} y - Y坐标
-   */
-  panTo(x: number, y: number): void;
-
-  /** 重置视图 */
-  resetView(): void;
-
-  /** 重置地图数据 */
-  reset(): void;
-}
-
-/**
- * 地点数据存储接口
- */
-export interface LocationDataStorage {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-  continent: string;
-  enemies?: string[];
-  bosses?: string[];
-  quests?: string[];
-  levelRange: [number, number];
-  color: string;
-  mapX: number;
-  mapY: number;
-  type: 'location' | 'continent';
+  rewards?: ZoneRewards;
 }
 
 /**
@@ -192,13 +87,16 @@ export interface LocationDataStorage {
  */
 export interface MapStateStorage {
   id: string;
-  view?: { zoomLevel: number; panX: number; panY: number; currentContinentId?: string };
+  view?: MapView;
   currentLocationId?: string;
   currentTab?: string;
+  unlockedZones?: string[];
+  completedZones?: string[];
 }
 
 /**
  * 地点/大陆存储格式（通过 type 字段区分）
+ * 统一的地点与大陆持久化存储类型，同时供 map/db.ts 和 data/service.ts 使用
  */
 export interface LocationStorage {
   id: string;

@@ -11,12 +11,25 @@ import { getLocationById, isLocationAccessible, getLocationsByContinent, getZone
 import { mapDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
 
+/** 缩放边界常量 */
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 5;
+
+/** 平移边界常量 */
+const PAN_MIN = -50;
+const PAN_MAX = 50;
+
 /** 默认地图视图 */
 const DEFAULT_MAP_VIEW = {
   zoomLevel: 1,
   panX: 0,
   panY: 0
 };
+
+/** 数值钳制到 [min, max] 区间 */
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
 
 /**
  * 地图状态存储
@@ -45,10 +58,13 @@ export const useMapStore = defineStore('map', () => {
   const getCurrentLocation = computed(() => currentLocation.value);
 
   // ==================== 持久化 ====================
-  /** 保存地图状态（按角色隔离） */
-  async function saveState(): Promise<void> {
-    if (currentCharacterId.value) {
+  /** 安全保存地图状态，捕获并记录错误，避免影响到调用方 */
+  async function safeSaveState(): Promise<void> {
+    if (!currentCharacterId.value) return;
+    try {
       await mapDbService.saveMapState(currentCharacterId.value, state.value);
+    } catch (err) {
+      console.error('[map] 保存地图状态失败:', err);
     }
   }
 
@@ -60,6 +76,8 @@ export const useMapStore = defineStore('map', () => {
     locationList.forEach(location => {
       if (location.mapX != null && location.mapY != null) {
         map.set(location.id, location);
+      } else {
+        console.warn(`[map] 地点 "${location.name}" (${location.id}) 缺少坐标数据，已跳过`);
       }
     });
     locations.value = map;
@@ -69,7 +87,6 @@ export const useMapStore = defineStore('map', () => {
 
   /**
    * 初始化地图模块 —— 加载地图状态和地点数据
-   * @param characterId - 角色 ID
    */
   async function initialize(characterId: string): Promise<void> {
     currentCharacterId.value = characterId;
@@ -77,7 +94,11 @@ export const useMapStore = defineStore('map', () => {
     // 加载地图状态
     const savedState = await mapDbService.getMapState(characterId);
     if (savedState?.view) {
-      state.value = { view: savedState.view };
+      state.value = {
+        view: savedState.view,
+        unlockedZones: savedState.unlockedZones ?? [],
+        completedZones: savedState.completedZones ?? []
+      };
     } else {
       state.value = { view: { ...DEFAULT_MAP_VIEW } };
     }
@@ -97,36 +118,28 @@ export const useMapStore = defineStore('map', () => {
     initialized.value = true;
   }
 
-  /** 获取地图状态 */
+  /** 获取地图状态（深拷贝，防止外部修改污染 Store） */
   function getState(): MapState {
-    return { ...state.value };
+    return {
+      view: { ...state.value.view },
+      unlockedZones: state.value.unlockedZones ? [...state.value.unlockedZones] : undefined,
+      completedZones: state.value.completedZones ? [...state.value.completedZones] : undefined
+    };
   }
 
-  /**
-   * 获取地点数据
-   */
-  function getLocationData(locationId: string): LocationData | null {
-    return getLocationById(locations.value, locationId) || null;
-  }
-
-  /**
-   * 获取大陆下的地点
-   */
-  function getLocationsByContinentAction(continentId: string): LocationData[] {
-    return getLocationsByContinent(locations.value, continentId);
+  /** 获取地点数据 */
+  function getLocationData(locationId: string): LocationData | undefined {
+    return getLocationById(locations.value, locationId);
   }
 
   /**
    * 获取所有区域（转换为 MapZone 格式，用于大地图 UI 展示）
-   * @param playerLevel - 玩家等级，用于计算区域解锁状态
-   * @returns 区域列表
    */
   function getZones(playerLevel: number): MapZone[] {
     const result: MapZone[] = [];
-    const stateData = state.value as MapState & { unlockedZones?: string[]; completedZones?: string[] };
 
     locations.value.forEach(location => {
-      const status = getZoneStatus(stateData, location.id, location, playerLevel);
+      const status = getZoneStatus(state.value, location.id, location, playerLevel);
       result.push({
         id: location.id,
         name: location.name,
@@ -134,18 +147,14 @@ export const useMapStore = defineStore('map', () => {
         description: location.description,
         coordinates: { x: location.mapX, y: location.mapY },
         requiredLevel: location.levelRange[0],
-        requiredGold: 0,
-        status,
-        rewards: { gold: 0, exp: 0 }
+        status
       });
     });
 
     return result;
   }
 
-  /**
-   * 检查地点是否解锁
-   */
+  /** 检查地点是否解锁 */
   function isLocationUnlocked(locationId: string, playerLevel: number): boolean {
     const location = getLocationById(locations.value, locationId);
     if (!location) return false;
@@ -154,8 +163,6 @@ export const useMapStore = defineStore('map', () => {
 
   /**
    * 进入区域
-   * @param zoneId - 区域/地点 ID
-   * @returns 是否成功进入
    */
   function enterZone(zoneId: string): boolean {
     const location = getLocationById(locations.value, zoneId);
@@ -163,56 +170,49 @@ export const useMapStore = defineStore('map', () => {
 
     currentLocation.value = location;
 
-    // 持久化当前区域 ID
+    // 持久化当前区域 ID（fire and forget，捕获错误避免影响调用方）
     if (currentCharacterId.value) {
-      mapDbService.saveCurrentLocationId(currentCharacterId.value, zoneId);
+      mapDbService.saveCurrentLocationId(currentCharacterId.value, zoneId)
+        .catch(err => console.error('[map] 保存当前区域失败:', err));
     }
 
-    // emit 事件通知其他模块
     eventBus.emit(GameEvents.ZONE_ENTERED, { locationId: zoneId, location });
-
     return true;
   }
 
   /** 缩放到指定级别 */
   function zoomTo(level: number): void {
-    state.value.view.zoomLevel = Math.max(1, Math.min(5, level));
-    saveState();
+    state.value.view.zoomLevel = clamp(level, ZOOM_MIN, ZOOM_MAX);
+    safeSaveState();
   }
 
   /** 平移到指定位置 */
   function panTo(x: number, y: number): void {
-    state.value.view.panX = Math.max(-50, Math.min(50, x));
-    state.value.view.panY = Math.max(-50, Math.min(50, y));
-    saveState();
+    state.value.view.panX = clamp(x, PAN_MIN, PAN_MAX);
+    state.value.view.panY = clamp(y, PAN_MIN, PAN_MAX);
+    safeSaveState();
   }
 
   /** 重置视图 */
   function resetView(): void {
     state.value.view = { ...DEFAULT_MAP_VIEW };
-    saveState();
+    safeSaveState();
   }
 
   /** 设置当前大陆 */
   function setCurrentContinent(continentId: string): void {
     state.value.view.currentContinentId = continentId;
-    saveState();
+    safeSaveState();
   }
 
-  /**
-   * 保存当前标签页（按角色隔离持久化）
-   * @param tab - 标签名（'map' | 'explore'）
-   */
+  /** 保存当前标签页（按角色隔离持久化） */
   async function saveCurrentTab(tab: string): Promise<void> {
     if (currentCharacterId.value) {
       await mapDbService.saveCurrentTab(currentCharacterId.value, tab);
     }
   }
 
-  /**
-   * 获取当前标签页（按角色隔离读取）
-   * @returns 标签名，无记录时返回 null
-   */
+  /** 获取当前标签页（按角色隔离读取） */
   async function getCurrentTab(): Promise<string | null> {
     if (currentCharacterId.value) {
       return mapDbService.getCurrentTab(currentCharacterId.value);
@@ -220,10 +220,17 @@ export const useMapStore = defineStore('map', () => {
     return null;
   }
 
+  /** 获取指定大陆下的所有地点 */
+  function getContinentLocations(continentId: string): LocationData[] {
+    return getLocationsByContinent(locations.value, continentId);
+  }
+
   /** 清除 UI 状态（不删除数据库数据） */
   function clearUIState(): void {
     state.value = { view: { ...DEFAULT_MAP_VIEW } };
     currentLocation.value = null;
+    locations.value = new Map();
+    initialized.value = false;
   }
 
   return {
@@ -240,7 +247,7 @@ export const useMapStore = defineStore('map', () => {
     initialize,
     getState,
     getLocationData,
-    getLocationsByContinent: getLocationsByContinentAction,
+    getLocationsByContinent: getContinentLocations,
     getZones,
     isLocationUnlocked,
     enterZone,
