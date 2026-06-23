@@ -254,7 +254,7 @@ async function handleCellExplored(data: { cellType?: string; interactionId?: str
       console.warn('[GameMain] 商店交互ID为空，无法打开商店');
       return;
     }
-    await shopStore.selectShop(shopId);
+    await shopStore.openShop(shopId);
     showShop.value = true;
     onPanelOpen('shop');
   } else if (cellType === 'board') {

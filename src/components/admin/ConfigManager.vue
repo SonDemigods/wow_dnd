@@ -202,7 +202,6 @@ const tableColumns: Record<ConfigTableName, TableColumn[]> = {
     { key: 'name', label: '名称' },
     { key: 'type', label: '类型' },
     { key: 'refreshInterval', label: '刷新间隔' },
-    { key: 'priceVariation', label: '价格浮动' },
   ],
 };
 
@@ -400,7 +399,6 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'type', label: '类型', type: 'text', placeholder: 'general/potion/equipment 等' },
     { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标' },
     { key: 'refreshInterval', label: '刷新间隔', type: 'number', placeholder: '刷新间隔（秒）' },
-    { key: 'priceVariation', label: '价格浮动', type: 'json', placeholder: '{"min": 0.8, "max": 1.2}' },
   ],
 };
 
@@ -435,7 +433,6 @@ const currentColumns = computed<TableColumn[]>(() => {
     if (col.key === 'dangerLevel') return { ...col, format: (v: any) => String(v ?? '-') };
     if (col.key === 'damage') return { ...col, format: (v: any) => Array.isArray(v) ? `${v[0]} ~ ${v[1]}` : String(v ?? '-') };
     if (col.key === 'levelRange') return { ...col, format: (v: any) => Array.isArray(v) ? `${v[0]} ~ ${v[1]}` : String(v ?? '-') };
-    if (col.key === 'priceVariation') return { ...col, format: (v: any) => v && typeof v === 'object' ? `${v.min}x ~ ${v.max}x` : String(v ?? '-') };
     if (col.key === 'classRestriction') {
       if (classOptions.value.length > 0) {
         const map = Object.fromEntries(classOptions.value.map(o => [o.value, o.label]));

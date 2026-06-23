@@ -167,7 +167,7 @@ import { useShopStore } from '@/modules/shop';
 import { useCharacterStore } from '@/modules/character';
 import { useInventoryStore } from '@/modules/inventory';
 import { eventBus, GameEvents } from '@/modules/bus/core';
-import type { ShopDisplayItem, ItemQuality, ItemCategory } from '@/modules/shop';
+import type { ShopDisplayItem } from '@/modules/shop';
 import type { InventoryItem, Item, ItemType, ItemRarity, ItemEffect } from '@/modules/inventory';
 import BasePopup from '../common/BasePopup.vue';
 import ItemIcon from '../common/ItemIcon.vue';
@@ -264,7 +264,7 @@ const typeNames: Record<ItemType, string> = {
 
 // ==================== 工具函数 ====================
 
-function getRarityName(rarity: ItemRarity | ItemQuality) {
+function getRarityName(rarity: ItemRarity) {
   return rarityNames[rarity] || rarity;
 }
 
@@ -360,13 +360,12 @@ const displayShopItems = computed<ShopDisplayItem[]>(() => {
       id: itemInfo.id,
       itemId: shopItem.itemId,
       name: itemInfo.name,
-      type: itemInfo.type as ItemCategory,
-      quality: itemInfo.rarity as ItemQuality,
+      type: itemInfo.type,
+      quality: itemInfo.rarity,
       icon: itemInfo.icon,
       description: itemInfo.description,
       price: shopItem.price,
       quantity: shopItem.quantity,
-      category: itemInfo.type as ItemCategory,
       effect: itemInfo.effect
     } as ShopDisplayItem;
   }).filter(Boolean) as ShopDisplayItem[];
@@ -462,7 +461,7 @@ async function loadShopItems() {
     await inventoryStore.loadInventory();
 
     // 切换商店时强制刷新（await 确保 DB 写入完成）
-    await shopStore.refreshItems();
+    await shopStore.refreshShop();
   } catch (err) {
     console.error('[ShopPopup] 加载商店数据失败:', err);
   } finally {

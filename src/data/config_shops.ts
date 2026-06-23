@@ -17,10 +17,6 @@ export const SHOPS: ShopConfig[] = [
     type: 'general',
     icon: 'game-icons:shop',
     refreshInterval: 300000,
-    priceVariation: {
-      min: 0.8,
-      max: 1.2
-    }
   },
   {
     id: 'potion_shop',
@@ -28,10 +24,6 @@ export const SHOPS: ShopConfig[] = [
     type: 'potion',
     icon: 'game-icons:potion-ball',
     refreshInterval: 600000,
-    priceVariation: {
-      min: 0.85,
-      max: 1.15
-    }
   },
   {
     id: 'scroll_shop',
@@ -39,10 +31,6 @@ export const SHOPS: ShopConfig[] = [
     type: 'scroll',
     icon: 'game-icons:spell-book',
     refreshInterval: 900000,
-    priceVariation: {
-      min: 0.9,
-      max: 1.1
-    }
   },
   {
     id: 'supply_shop',
@@ -50,10 +38,6 @@ export const SHOPS: ShopConfig[] = [
     type: 'general',
     icon: 'game-icons:backpack',
     refreshInterval: 300000,
-    priceVariation: {
-      min: 0.8,
-      max: 1.25
-    }
   },
   {
     id: 'alchemy_shop',
@@ -61,10 +45,6 @@ export const SHOPS: ShopConfig[] = [
     type: 'potion',
     icon: 'game-icons:potion-ball',
     refreshInterval: 600000,
-    priceVariation: {
-      min: 0.8,
-      max: 1.2
-    }
   },
   {
     id: 'mysterious_trader',
@@ -72,9 +52,5 @@ export const SHOPS: ShopConfig[] = [
     type: 'general',
     icon: 'game-icons:hooded-figure',
     refreshInterval: 1800000,
-    priceVariation: {
-      min: 0.7,
-      max: 1.3
-    }
   }
 ];

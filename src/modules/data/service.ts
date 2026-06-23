@@ -18,7 +18,7 @@ import type { BossStorage } from '../boss/types';
 import { bossDbService } from '../boss/db';
 import type { BossTemplate } from '../boss/types';
 import type { LocationStorage, MapStateStorage } from '../map/types';
-import type { ShopConfigStorage, ShopItemsStorage } from '../shop/types';
+import type { ShopConfig, ShopItemsStorage } from '../shop/types';
 import type { SkillTemplateStorage, SkillsData } from '../skill/types';
 import type { QuestConfigStorage, CharQuestStorage } from '../quest/types';
 import type { ExplorationStorage } from '../exploration/types';
@@ -247,7 +247,7 @@ export class DataInitializer {
    */
   private async initShops(): Promise<void> {
     for (const shop of SHOPS) {
-      await db.config_shops.put(shop as unknown as ShopConfigStorage);
+      await db.config_shops.put(shop as unknown as ShopConfig);
     }
 
     await db.runtime_gameState.put({
@@ -841,7 +841,7 @@ export class ImportService implements IImportService {
           }
 
           if (data.shop && data.shop.length > 0) {
-            await db.config_shops.bulkPut(data.shop as unknown as ShopConfigStorage[]);
+            await db.config_shops.bulkPut(data.shop as unknown as ShopConfig[]);
             importedStores.push('config_shops');
           } else {
             skippedStores.push('config_shops');
