@@ -67,6 +67,76 @@ export type SfxType =
   // 系统
   | 'exit_menu';      // 退出到主菜单
 
+/** 音效效果路由分类 —— 决定音效走哪条效果链 */
+export type SfxRoute =
+  | 'magic'       // 魔法类 → Shimmer 混响 + Phaser
+  | 'combat'      // 战斗类 → 压缩器 + 短混响
+  | 'ui'          // UI 类 → Chorus 合唱
+  | 'exploration' // 探索类 → 标准混响
+  | 'character'   // 角色类 → Shimmer + 合唱
+  | 'standard';   // 默认 → 标准混响
+
+/** 音效到效果路由的映射表 */
+export const SFX_ROUTE_MAP: Record<SfxType, SfxRoute> = {
+  // 魔法类
+  spell_cast: 'magic',
+  magic_damage: 'magic',
+  mana_restore: 'magic',
+  mana_recover: 'magic',
+  resurrect: 'magic',
+  skill_memorize: 'magic',
+  skill_forget: 'magic',
+  // 战斗类
+  attack_hit: 'combat',
+  attack_crit: 'combat',
+  physical_damage: 'combat',
+  player_hurt: 'combat',
+  enemy_hurt: 'combat',
+  combat_start: 'combat',
+  combat_flee: 'combat',
+  combat_skip: 'combat',
+  // UI 类
+  ui_click: 'ui',
+  ui_open: 'ui',
+  ui_close: 'ui',
+  confirm: 'ui',
+  cancel: 'ui',
+  // 探索类
+  step: 'exploration',
+  door_open: 'exploration',
+  trap_trigger: 'exploration',
+  camp_rest: 'exploration',
+  random_event: 'exploration',
+  // 角色类
+  level_up: 'character',
+  character_create: 'character',
+  death: 'character',
+  combat_victory: 'character',
+  combat_defeat: 'character',
+  quest_complete: 'character',
+  quest_reward: 'character',
+  // 标准
+  attack_miss: 'standard',
+  health_restore: 'standard',
+  heal: 'standard',
+  gain_exp: 'standard',
+  coin: 'standard',
+  equip: 'standard',
+  unequip: 'standard',
+  item_pickup: 'standard',
+  item_use: 'standard',
+  item_drop: 'standard',
+  shop_open: 'standard',
+  shop_buy: 'standard',
+  shop_sell: 'standard',
+  shop_refresh: 'standard',
+  quest_accept: 'standard',
+  quest_abandon: 'standard',
+  data_export: 'standard',
+  data_import: 'standard',
+  exit_menu: 'standard',
+};
+
 /** BGM 场景类型 */
 export type BgmScene =
   | 'main_menu'       // 主菜单/角色选择
