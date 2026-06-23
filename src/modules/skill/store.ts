@@ -595,6 +595,7 @@ export const useSkillsStore = defineStore('skills', () => {
    * 1. 技能存在（三处缓存中任意一处）
    * 2. 角色等级 >= 解锁等级
    * 3. 法力值足够
+   * 4. 不在冷却中
    *
    * @param skillId - 技能 ID
    * @returns `true` = 满足所有条件可以施放
@@ -608,7 +609,10 @@ export const useSkillsStore = defineStore('skills', () => {
     if (skill.unlockLevel > characterLevel) return false;
 
     const charData = characterStore.getCharacterData();
-    return canCastSkill(skill, charData?.mana || 0).canCast;
+    if (!canCastSkill(skill, charData?.mana || 0).canCast) return false;
+
+    // 冷却检查
+    return !isOnCooldown(skillId);
   }
 
   // ========================================================================
