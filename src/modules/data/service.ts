@@ -23,7 +23,7 @@ import type { SkillTemplateStorage, SkillsData } from '../skill/types';
 import type { QuestDefinitionStorage, CharQuestStorage } from '../quest/types';
 import type { ExplorationStorage } from '../exploration/types';
 import type { CombatLogStorage } from '../combat/types';
-import type { AdventureLogStorage } from '../log/types';
+import type { AdventureLogData } from '../log/types';
 import { BACKUP_CONFIG } from '@/config/database';
 
 import type {
@@ -826,7 +826,7 @@ export class ImportService implements IImportService {
                 characterId,
                 entries
               })
-            ) as unknown as AdventureLogStorage[];
+            ) as AdventureLogData[];
             await db.runtime_adventureLogs.bulkPut(logEntries);
             importedStores.push('runtime_adventureLogs');
           } else {

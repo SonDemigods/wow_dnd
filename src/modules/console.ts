@@ -836,7 +836,7 @@ registerCommand({
       const time = new Date(entry.timestamp || '').toLocaleTimeString();
       console.log(`  %c[${time}]%c ${entry.icon || ''} ${entry.message}`, STYLE.hint, STYLE.value);
     }
-    return { success: true, message: `共 ${useLogStore().getLogCount()} 条日志` };
+    return { success: true, message: `共 ${useLogStore().logCount} 条日志` };
   }
 });
 

@@ -5,5 +5,5 @@
  */
 export * from './types';
 export * from './db';
-export * from './service';
+export { generateLogId, LOG_TYPE_ICONS } from './service';
 export { useLogStore } from './store';

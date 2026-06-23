@@ -5,9 +5,9 @@
  * @module log
  */
 import { defineStore } from 'pinia';
-import { ref, computed, watch } from 'vue';
-import type { LogEntry, LogType, LogChangeCallback } from './types';
-import { generateLogId, formatLogMessage } from './service';
+import { ref, computed } from 'vue';
+import type { LogEntry, LogType } from './types';
+import { formatLogMessage } from './service';
 import { adventureLogDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
 
@@ -26,20 +26,6 @@ export const useLogStore = defineStore('log', () => {
     }
   }
 
-  // ==================== 订阅者（向后兼容旧 subscribe 模式） ====================
-  const subscribers = new Set<LogChangeCallback>();
-
-  /** 基于 watch 实现的 subscribe —— 向后兼容旧 API */
-  function subscribe(callback: LogChangeCallback): () => void {
-    subscribers.add(callback);
-    return () => { subscribers.delete(callback); };
-  }
-
-  // 日志变更时通知所有订阅者
-  watch(logs, () => {
-    subscribers.forEach(cb => cb());
-  }, { deep: true });
-
   // ==================== 动作 ====================
 
   /**
@@ -55,26 +41,18 @@ export const useLogStore = defineStore('log', () => {
    * 添加日志条目
    * 步骤：格式化 → 插入头部 → 持久化 → emit 事件通知 UI
    */
-  function addLogEntry(entry: LogEntry): void {
+  async function addLogEntry(entry: LogEntry): Promise<void> {
     const formatted = formatLogMessage(entry);
     logs.value = [formatted, ...logs.value];
-    saveToDb();
+    try {
+      await saveToDb();
+    } catch (e) {
+      console.error('[LogStore] 持久化日志失败:', e);
+    }
     eventBus.emit(GameEvents.LOG_ENTRY_ADDED, {
       type: formatted.type,
       message: formatted.message,
       icon: formatted.icon
-    });
-  }
-
-  /**
-   * 便捷方法：按类型和消息创建日志条目
-   */
-  function addLogByType(message: string, type: LogType): void {
-    addLogEntry({
-      id: generateLogId(),
-      timestamp: Date.now(),
-      type,
-      message
     });
   }
 
@@ -88,15 +66,14 @@ export const useLogStore = defineStore('log', () => {
     return logs.value.filter(log => log.type === type);
   }
 
-  /** 获取日志数量 */
-  function getLogCount(): number {
-    return logs.value.length;
-  }
-
   /** 清空日志并持久化 */
   async function clearLogs(): Promise<void> {
     logs.value = [];
-    await saveToDb();
+    try {
+      await saveToDb();
+    } catch (e) {
+      console.error('[LogStore] 清空日志持久化失败:', e);
+    }
   }
 
   return {
@@ -107,13 +84,8 @@ export const useLogStore = defineStore('log', () => {
     // 动作
     initialize,
     addLogEntry,
-    addLogByType,
     getLogs,
     getLogsByType,
-    getLogCount,
-    clearLogs,
-
-    // 向后兼容
-    subscribe
+    clearLogs
   };
 });

@@ -6,7 +6,7 @@
 import type { LogEntry, LogType } from './types';
 
 /** 日志类型默认图标映射 */
-const LOG_TYPE_ICONS: Record<LogType, string> = {
+export const LOG_TYPE_ICONS: Record<LogType, string> = {
   info: 'game-icons:info',
   combat: 'game-icons:crossed-swords',
   quest: 'game-icons:notebook',
@@ -17,7 +17,7 @@ const LOG_TYPE_ICONS: Record<LogType, string> = {
   shop: 'game-icons:shopping-cart',
   skill: 'game-icons:sparkles',
   exploration: 'game-icons:treasure-map',
-  zone: 'game-icons:treasure-map'
+  zone: 'game-icons:entry-door'
 };
 
 /**
@@ -25,7 +25,7 @@ const LOG_TYPE_ICONS: Record<LogType, string> = {
  * @returns 基于时间戳和随机字符串的唯一ID
  */
 export function generateLogId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
 /**
