@@ -20,7 +20,7 @@ import type { BossTemplate } from '../boss/types';
 import type { LocationStorage, MapStateStorage } from '../map/types';
 import type { ShopConfig, ShopItemsStorage } from '../shop/types';
 import type { SkillTemplateStorage, SkillsData } from '../skill/types';
-import type { QuestConfigStorage, CharQuestStorage } from '../quest/types';
+import type { QuestDefinitionStorage, CharQuestStorage } from '../quest/types';
 import type { ExplorationStorage } from '../exploration/types';
 import type { CombatLogStorage } from '../combat/types';
 import type { AdventureLogStorage } from '../log/types';
@@ -260,7 +260,7 @@ export class DataInitializer {
    */
   private async initQuests(): Promise<void> {
     for (const quest of QUESTS) {
-      await db.config_quests.put(quest as unknown as QuestConfigStorage);
+      await db.config_quests.put(quest as unknown as QuestDefinitionStorage);
     }
   }
 
