@@ -489,11 +489,6 @@ async function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
         { once: true }
       );
     }
-    // 从背包中移除该物品（优先移除选中的那一组）
-    const index = findSelectedOrFirstIndex(item.id);
-    if (index !== -1) {
-      useInventoryStore().removeItemByIndex(index);
-    }
     toast.show({
       message: `已装备 ${item.name} 到 ${SLOT_NAMES[slot]}`,
       type: 'success',

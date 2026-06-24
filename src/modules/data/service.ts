@@ -12,7 +12,7 @@ import type { GameStateStorage } from './core';
 import { eventBus, GameEvents } from '../bus/core';
 import type { FactionStorage, RaceStorage, ClassStorage, CharacterDataStorage } from '../character/types';
 import type { ItemStorage, InventoryStorage } from '../inventory/types';
-import type { EquipmentItemStorage, EquipmentStorage } from '../equipment/types';
+import type { EquipmentTemplateStorage, EquipmentStorage } from '../equipment/types';
 import type { EnemyStorage } from '../enemy/types';
 import type { BossStorage } from '../boss/types';
 import { bossDbService } from '../boss/db';
@@ -202,7 +202,7 @@ export class DataInitializer {
    */
   private async initEquipment(): Promise<void> {
     for (const equipment of EQUIPMENT_ITEMS) {
-      await db.config_equipmentItems.put(equipment as unknown as EquipmentItemStorage);
+      await db.config_equipmentItems.put(equipment as unknown as EquipmentTemplateStorage);
     }
   }
 
@@ -865,7 +865,7 @@ export class ImportService implements IImportService {
             importedStores.push('config_items');
           }
           if (data.equipmentItems && data.equipmentItems.length > 0) {
-            await db.config_equipmentItems.bulkPut(data.equipmentItems as unknown as EquipmentItemStorage[]);
+            await db.config_equipmentItems.bulkPut(data.equipmentItems as unknown as EquipmentTemplateStorage[]);
             importedStores.push('config_equipmentItems');
           }
           if (data.mobs && data.mobs.length > 0) {
