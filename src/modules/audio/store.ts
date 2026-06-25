@@ -8,21 +8,11 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { audioDbService } from './db';
 import type { AudioSettings } from './types';
-
-/** 默认音频设置 */
-const defaultSettings: AudioSettings = {
-  masterVolume: 0.7,
-  sfxVolume: 0.8,
-  bgmVolume: 0.5,
-  muted: false,
-  sfxEnabled: true,
-  bgmEnabled: true,
-};
+import { DEFAULT_AUDIO_SETTINGS } from './types';
 
 export const useAudioStore = defineStore('audio', () => {
   // ==================== 状态 ====================
-  const settings = ref<AudioSettings>({ ...defaultSettings });
-  const loaded = ref(false);
+  const settings = ref<AudioSettings>({ ...DEFAULT_AUDIO_SETTINGS });
 
   // ==================== 计算属性 ====================
   /** 实际生效的音效音量（考虑静音与主音量） */
@@ -41,7 +31,7 @@ export const useAudioStore = defineStore('audio', () => {
 
   // ==================== 持久化 ====================
   /** DB 写入去抖定时器 */
-  let saveTimer: ReturnType<typeof setTimeout> | null = null;
+  const saveTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 
   /** 将当前设置写入数据库 */
   async function saveToDb(): Promise<void> {
@@ -53,15 +43,14 @@ export const useAudioStore = defineStore('audio', () => {
     const saved = await audioDbService.loadSettings();
     if (saved) {
       settings.value = {
-        masterVolume: saved.masterVolume ?? defaultSettings.masterVolume,
-        sfxVolume: saved.sfxVolume ?? defaultSettings.sfxVolume,
-        bgmVolume: saved.bgmVolume ?? defaultSettings.bgmVolume,
-        muted: saved.muted ?? defaultSettings.muted,
-        sfxEnabled: saved.sfxEnabled ?? defaultSettings.sfxEnabled,
-        bgmEnabled: saved.bgmEnabled ?? defaultSettings.bgmEnabled,
+        masterVolume: saved.masterVolume ?? DEFAULT_AUDIO_SETTINGS.masterVolume,
+        sfxVolume: saved.sfxVolume ?? DEFAULT_AUDIO_SETTINGS.sfxVolume,
+        bgmVolume: saved.bgmVolume ?? DEFAULT_AUDIO_SETTINGS.bgmVolume,
+        muted: saved.muted ?? DEFAULT_AUDIO_SETTINGS.muted,
+        sfxEnabled: saved.sfxEnabled ?? DEFAULT_AUDIO_SETTINGS.sfxEnabled,
+        bgmEnabled: saved.bgmEnabled ?? DEFAULT_AUDIO_SETTINGS.bgmEnabled,
       };
     }
-    loaded.value = true;
   }
 
   // ==================== 动作 ====================
@@ -72,8 +61,8 @@ export const useAudioStore = defineStore('audio', () => {
   function updateSettings(patch: Partial<AudioSettings>): void {
     settings.value = { ...settings.value, ...patch };
 
-    if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
+    if (saveTimer.value) clearTimeout(saveTimer.value);
+    saveTimer.value = setTimeout(() => {
       saveToDb();
     }, 300);
   }
@@ -88,24 +77,35 @@ export const useAudioStore = defineStore('audio', () => {
     updateSettings({ masterVolume: Math.max(0, Math.min(1, volume)) });
   }
 
+  /** 设置音效音量 */
+  function setSfxVolume(volume: number): void {
+    updateSettings({ sfxVolume: Math.max(0, Math.min(1, volume)) });
+  }
+
+  /** 设置背景音乐音量 */
+  function setBgmVolume(volume: number): void {
+    updateSettings({ bgmVolume: Math.max(0, Math.min(1, volume)) });
+  }
+
   /** 强制立即保存到 DB（用于组件卸载前） */
   async function flushSave(): Promise<void> {
-    if (saveTimer) {
-      clearTimeout(saveTimer);
-      saveTimer = null;
+    if (saveTimer.value) {
+      clearTimeout(saveTimer.value);
+      saveTimer.value = null;
     }
     await saveToDb();
   }
 
   return {
     settings,
-    loaded,
     effectiveSfxVolume,
     effectiveBgmVolume,
     loadFromDb,
     updateSettings,
     toggleMute,
     setMasterVolume,
+    setSfxVolume,
+    setBgmVolume,
     flushSave,
   };
 });

@@ -4,12 +4,22 @@
  * 将设置存储在 runtime_gameState 表中，以特定键标识
  */
 
-import type { GameStateStorage } from '../data/core';
 import { getGameState, saveGameState } from '../data/gameStateHelper';
 import type { AudioSettings } from './types';
+import { DEFAULT_AUDIO_SETTINGS } from './types';
 
 /** runtime_gameState 中存储音频设置的键名 */
 const DB_KEY = 'audio_settings';
+
+/** 音频设置存储结构 —— 与 IndexedDB 交互的字段类型 */
+interface AudioSettingsStorage {
+  masterVolume: number;
+  sfxVolume: number;
+  bgmVolume: number;
+  muted: boolean;
+  sfxEnabled: boolean;
+  bgmEnabled: boolean;
+}
 
 /**
  * 音频数据层服务
@@ -22,7 +32,7 @@ class AudioDbService {
    */
   async saveSettings(settings: AudioSettings): Promise<void> {
     try {
-      await saveGameState(settings as unknown as Partial<GameStateStorage>, DB_KEY);
+      await saveGameState(settings as AudioSettingsStorage, DB_KEY);
     } catch (e) {
       console.warn('[AudioDb] 保存音频设置失败:', e);
     }
@@ -34,16 +44,16 @@ class AudioDbService {
    */
   async loadSettings(): Promise<AudioSettings | null> {
     try {
-      const saved = await getGameState(DB_KEY);
+      const saved = await getGameState(DB_KEY) as AudioSettingsStorage | null;
       if (!saved) return null;
 
       return {
-        masterVolume: ((saved as Record<string, unknown>).masterVolume as number) ?? 0.8,
-        sfxVolume: ((saved as Record<string, unknown>).sfxVolume as number) ?? 0.8,
-        bgmVolume: ((saved as Record<string, unknown>).bgmVolume as number) ?? 0.8,
-        muted: ((saved as Record<string, unknown>).muted as boolean) ?? false,
-        sfxEnabled: ((saved as Record<string, unknown>).sfxEnabled as boolean) ?? true,
-        bgmEnabled: ((saved as Record<string, unknown>).bgmEnabled as boolean) ?? true,
+        masterVolume: saved.masterVolume ?? DEFAULT_AUDIO_SETTINGS.masterVolume,
+        sfxVolume: saved.sfxVolume ?? DEFAULT_AUDIO_SETTINGS.sfxVolume,
+        bgmVolume: saved.bgmVolume ?? DEFAULT_AUDIO_SETTINGS.bgmVolume,
+        muted: saved.muted ?? DEFAULT_AUDIO_SETTINGS.muted,
+        sfxEnabled: saved.sfxEnabled ?? DEFAULT_AUDIO_SETTINGS.sfxEnabled,
+        bgmEnabled: saved.bgmEnabled ?? DEFAULT_AUDIO_SETTINGS.bgmEnabled,
       };
     } catch (e) {
       console.warn('[AudioDb] 加载音频设置失败:', e);

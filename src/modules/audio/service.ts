@@ -153,6 +153,15 @@ class AudioService implements IAudioService {
   /** 各合成器的最后调度时间（按合成器 key 分别追踪） */
   private synthScheduleTimes = new Map<string, number>();
 
+  /** BGM 场景延迟切换定时器（胜利/失败后 3 秒切回探索） */
+  private bgmTransitionTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Store 订阅取消函数 */
+  private unsubscribeStore: (() => void) | null = null;
+
+  /** 事件总线监听器记录（用于销毁时取消订阅） */
+  private eventHandlers: { event: string; handler: (...args: any[]) => void }[] = [];
+
   /**
    * 安全调度合成器，确保传入的时间始终 >= 该合成器上次调度时间，
    * 避免 Tone.js 内部振荡器时间冲突。
@@ -205,7 +214,7 @@ class AudioService implements IAudioService {
     this.applyVolume();
 
     // 监听内部状态变化，同步音量
-    store.$subscribe(() => {
+    this.unsubscribeStore = store.$subscribe(() => {
       this.applyVolume();
     });
 
@@ -228,19 +237,8 @@ class AudioService implements IAudioService {
         await Tone.start();
         this.contextReady = true;
 
-        // 生成混响脉冲响应（需要在 AudioContext 运行后）
-        if (!this.reverbReady) {
-          await Promise.all([
-            this.sfxReverb.generate(),
-            this.cathedralReverb.generate(),
-            this.combatReverb.generate(),
-            this.bgmReverb.generate(),
-          ]);
-          this.reverbReady = true;
-
-          // 建立效果链连接
-          this.connectEffectChains();
-        }
+        // 生成混响脉冲响应并建立效果链（需要在 AudioContext 运行后）
+        await this.ensureReverbReady();
 
         console.log('[AudioService] AudioContext 已启动，效果链已连接');
       } catch (e) {
@@ -277,12 +275,16 @@ class AudioService implements IAudioService {
     this.uiChannel.connect(this.masterVolume);
 
     // ===== 探索通道：合成器 → sfxReverb → explorationChannel =====
+    this.sfxReverb.connect(this.explorationChannel);
     this.explorationChannel.connect(this.masterVolume);
 
     // ===== 角色通道：合成器 → chorus → cathedralReverb → characterChannel =====
+    this.chorus.connect(this.cathedralReverb);
+    this.cathedralReverb.connect(this.characterChannel);
     this.characterChannel.connect(this.masterVolume);
 
     // ===== 标准通道：合成器 → sfxReverb → standardChannel =====
+    this.sfxReverb.connect(this.standardChannel);
     this.standardChannel.connect(this.masterVolume);
 
     // ===== BGM 通道：organVoice → bgmDelay → bgmReverb → bgmChannel =====
@@ -307,19 +309,23 @@ class AudioService implements IAudioService {
     try {
       await Tone.start();
       this.contextReady = true;
-      if (!this.reverbReady) {
-        await Promise.all([
-          this.sfxReverb.generate(),
-          this.cathedralReverb.generate(),
-          this.combatReverb.generate(),
-          this.bgmReverb.generate(),
-        ]);
-        this.reverbReady = true;
-        this.connectEffectChains();
-      }
+      await this.ensureReverbReady();
     } catch {
       // 静默忽略
     }
+  }
+
+  /** 生成混响脉冲响应并建立效果链（需在 AudioContext 运行后调用） */
+  private async ensureReverbReady(): Promise<void> {
+    if (this.reverbReady) return;
+    await Promise.all([
+      this.sfxReverb.generate(),
+      this.cathedralReverb.generate(),
+      this.combatReverb.generate(),
+      this.bgmReverb.generate(),
+    ]);
+    this.reverbReady = true;
+    this.connectEffectChains();
   }
 
   /** 检查音频服务是否已初始化并可用 */
@@ -338,11 +344,11 @@ class AudioService implements IAudioService {
     this.masterVolume.volume.value = masterDb;
 
     // BGM 通道额外衰减
-    const bgmDb = this.dbFromLinear(store.effectiveBgmVolume) + this.dbFromLinear(store.settings.bgmVolume);
+    const bgmDb = this.dbFromLinear(store.settings.bgmVolume);
     this.bgmChannel.volume.value = bgmDb;
 
     // SFX 各通道
-    const sfxDb = this.dbFromLinear(store.effectiveSfxVolume) + this.dbFromLinear(store.settings.sfxVolume);
+    const sfxDb = this.dbFromLinear(store.settings.sfxVolume);
     this.magicChannel.volume.value = sfxDb;
     this.combatChannel.volume.value = sfxDb;
     this.uiChannel.volume.value = sfxDb;
@@ -929,6 +935,10 @@ class AudioService implements IAudioService {
 
   /** 停止 BGM */
   stopBgm(): void {
+    if (this.bgmTransitionTimer) {
+      clearTimeout(this.bgmTransitionTimer);
+      this.bgmTransitionTimer = null;
+    }
     if (this.bgmPattern) {
       this.bgmPattern.stop();
       this.bgmPattern.dispose();
@@ -942,6 +952,7 @@ class AudioService implements IAudioService {
     this.organVoice.releaseAll();
     this.stopBgmOscillator();
     this.stopFilterLfo();
+    Tone.getTransport().stop();
   }
 
   /**
@@ -1114,7 +1125,8 @@ class AudioService implements IAudioService {
     this.tOrgan(['D3', 'A3', 'D4', 'F#4'], '4n', now + 0.9, 0.3);
 
     // 3 秒后切回探索
-    setTimeout(() => {
+    this.bgmTransitionTimer = setTimeout(() => {
+      this.bgmTransitionTimer = null;
       if (this.currentBgmScene === 'victory') {
         this.setBgmScene('exploration');
       }
@@ -1136,7 +1148,8 @@ class AudioService implements IAudioService {
     this.tOrgan(['G3', 'D4', 'G4', 'B4'], '4n', now + 1.0, 0.28);
 
     // 3 秒后切回探索
-    setTimeout(() => {
+    this.bgmTransitionTimer = setTimeout(() => {
+      this.bgmTransitionTimer = null;
       if (this.currentBgmScene === 'defeat') {
         this.setBgmScene('exploration');
       }
@@ -1203,13 +1216,19 @@ class AudioService implements IAudioService {
 
   /** 绑定游戏事件到音效 */
   private bindEvents(): void {
+    // 辅助方法：注册事件并记录，以便销毁时取消订阅
+    const onEvent = (event: string, handler: (...args: any[]) => void) => {
+      eventBus.on(event, handler);
+      this.eventHandlers.push({ event, handler });
+    };
+
     // -- 战斗事件 --
-    eventBus.on(GameEvents.COMBAT_START, () => {
+    onEvent(GameEvents.COMBAT_START, () => {
       this.playSfx('combat_start');
       this.setBgmScene('combat');
     });
 
-    eventBus.on(GameEvents.COMBAT_END, (data) => {
+    onEvent(GameEvents.COMBAT_END, (data) => {
       switch (data.result) {
         case 'victory':
           this.playSfx('combat_victory');
@@ -1226,15 +1245,7 @@ class AudioService implements IAudioService {
       }
     });
 
-    eventBus.on(GameEvents.COMBAT_PLAYER_TURN, () => {
-      // 玩家回合开始，无额外音效
-    });
-
-    eventBus.on(GameEvents.COMBAT_ENEMY_TURN, () => {
-      // 敌人回合开始
-    });
-
-    eventBus.on(GameEvents.COMBAT_DEAL_DAMAGE, (data) => {
+    onEvent(GameEvents.COMBAT_DEAL_DAMAGE, (data) => {
       if (data.damageType === 'magic') {
         this.playSfx('magic_damage');
       } else if (data.actorType === 'player') {
@@ -1246,156 +1257,172 @@ class AudioService implements IAudioService {
       }
     });
 
-    eventBus.on(GameEvents.COMBAT_CAST_HEAL, (data) => {
+    onEvent(GameEvents.COMBAT_CAST_HEAL, (data) => {
       this.playSfx(data.healType === 'mana' ? 'mana_restore' : 'health_restore');
     });
 
-    eventBus.on(GameEvents.COMBAT_CRITICAL_HIT, () => {
+    onEvent(GameEvents.COMBAT_CRITICAL_HIT, () => {
       this.playSfx('attack_crit');
     });
 
-    eventBus.on(GameEvents.COMBAT_DODGE, () => {
+    onEvent(GameEvents.COMBAT_DODGE, () => {
       this.playSfx('attack_miss');
     });
 
     // -- 角色事件 --
-    eventBus.on(GameEvents.CHARACTER_LEVEL_UP, () => {
+    onEvent(GameEvents.CHARACTER_LEVEL_UP, () => {
       this.playSfx('level_up');
     });
 
-    eventBus.on(GameEvents.CHARACTER_DEATH, () => {
+    onEvent(GameEvents.CHARACTER_DEATH, () => {
       this.playSfx('death');
     });
 
-    eventBus.on(GameEvents.CHARACTER_RESURRECTED, () => {
+    onEvent(GameEvents.CHARACTER_RESURRECTED, () => {
       this.playSfx('resurrect');
     });
 
     // -- 探索事件 --
-    eventBus.on(GameEvents.EXPLORATION_CELL_EXPLORED, () => {
+    onEvent(GameEvents.EXPLORATION_CELL_EXPLORED, () => {
       this.playSfx('step');
     });
 
-    eventBus.on(GameEvents.EXPLORATION_ITEM_FOUND, () => {
+    onEvent(GameEvents.EXPLORATION_ITEM_FOUND, () => {
       this.playSfx('item_pickup');
     });
 
-    eventBus.on(GameEvents.EXPLORATION_TRAP_TRIGGERED, () => {
+    onEvent(GameEvents.EXPLORATION_TRAP_TRIGGERED, () => {
       this.playSfx('trap_trigger');
     });
 
-    eventBus.on(GameEvents.EXPLORATION_BATTLE_TRIGGERED, () => {
+    onEvent(GameEvents.EXPLORATION_BATTLE_TRIGGERED, () => {
       this.setBgmScene('combat');
     });
 
-    eventBus.on(GameEvents.ZONE_ENTERED, () => {
+    onEvent(GameEvents.ZONE_ENTERED, () => {
       this.playSfx('door_open');
     });
 
-    eventBus.on(GameEvents.EXPLORATION_CAMP_USED, () => {
+    onEvent(GameEvents.EXPLORATION_CAMP_USED, () => {
       this.playSfx('camp_rest');
     });
 
-    eventBus.on(GameEvents.EXPLORATION_RANDOM_EVENT, () => {
+    onEvent(GameEvents.EXPLORATION_RANDOM_EVENT, () => {
       this.playSfx('random_event');
     });
 
     // -- 商店事件 --
-    eventBus.on(GameEvents.SHOP_OPENED, () => {
+    onEvent(GameEvents.SHOP_OPENED, () => {
       this.playSfx('shop_open');
       this.setBgmScene('shop');
     });
 
-    eventBus.on(GameEvents.SHOP_TRANSACTION, () => {
+    onEvent(GameEvents.SHOP_TRANSACTION, () => {
       this.playSfx('shop_buy');
     });
 
-    eventBus.on(GameEvents.SHOP_CLOSED, () => {
+    onEvent(GameEvents.SHOP_CLOSED, () => {
       this.setBgmScene('exploration');
     });
 
     // -- 任务事件 --
-    eventBus.on(GameEvents.QUEST_ACCEPTED, () => {
+    onEvent(GameEvents.QUEST_ACCEPTED, () => {
       this.playSfx('quest_accept');
     });
 
-    eventBus.on(GameEvents.QUEST_COMPLETED, () => {
+    onEvent(GameEvents.QUEST_COMPLETED, () => {
       this.playSfx('quest_complete');
     });
 
-    eventBus.on(GameEvents.QUEST_REWARDED, () => {
+    onEvent(GameEvents.QUEST_REWARDED, () => {
       this.playSfx('quest_reward');
     });
 
     // -- 技能事件 --
-    eventBus.on(GameEvents.SKILL_CAST, () => {
+    onEvent(GameEvents.SKILL_CAST, () => {
       this.playSfx('spell_cast');
     });
 
-    eventBus.on(GameEvents.SKILL_LEARNED, () => {
+    onEvent(GameEvents.SKILL_LEARNED, () => {
       this.playSfx('level_up');
     });
 
     // -- 探索开始/结束时控制 BGM --
-    eventBus.on(GameEvents.EXPLORATION_START, () => {
+    onEvent(GameEvents.EXPLORATION_START, () => {
       this.setBgmScene('exploration');
     });
 
-    eventBus.on(GameEvents.EXPLORATION_END, () => {
+    onEvent(GameEvents.EXPLORATION_END, () => {
       this.stopBgm();
     });
 
     // -- UI 面板事件 --
-    eventBus.on(GameEvents.UI_PANEL_OPENED, () => {
+    onEvent(GameEvents.UI_PANEL_OPENED, () => {
       this.playSfx('ui_open');
     });
 
-    eventBus.on(GameEvents.UI_PANEL_CLOSED, () => {
+    onEvent(GameEvents.UI_PANEL_CLOSED, () => {
       this.playSfx('ui_close');
     });
 
-    eventBus.on(GameEvents.UI_CLICK, () => {
+    onEvent(GameEvents.UI_CLICK, () => {
       this.playSfx('ui_click');
     });
 
     // -- 确认/取消事件 --
-    eventBus.on(GameEvents.CONFIRM_CONFIRMED, () => {
+    onEvent(GameEvents.CONFIRM_CONFIRMED, () => {
       this.playSfx('confirm');
     });
 
-    eventBus.on(GameEvents.CONFIRM_CANCELED, () => {
+    onEvent(GameEvents.CONFIRM_CANCELED, () => {
       this.playSfx('cancel');
     });
 
     // -- 物品丢弃事件 --
-    eventBus.on(GameEvents.ITEM_DROPPED, () => {
+    onEvent(GameEvents.ITEM_DROPPED, () => {
       this.playSfx('item_drop');
     });
 
     // -- 角色创建事件 --
-    eventBus.on(GameEvents.CHARACTER_CREATED, () => {
+    onEvent(GameEvents.CHARACTER_CREATED, () => {
       this.playSfx('character_create');
     });
 
     // -- 跳过回合事件 --
-    eventBus.on(GameEvents.COMBAT_SKIP_TURN, () => {
+    onEvent(GameEvents.COMBAT_SKIP_TURN, () => {
       this.playSfx('combat_skip');
     });
 
     // -- 存档事件 --
-    eventBus.on(GameEvents.DATA_EXPORTED, () => {
+    onEvent(GameEvents.DATA_EXPORTED, () => {
       this.playSfx('data_export');
     });
 
-    eventBus.on(GameEvents.DATA_IMPORTED, () => {
+    onEvent(GameEvents.DATA_IMPORTED, () => {
       this.playSfx('data_import');
     });
 
     // -- 退出事件 --
-    eventBus.on(GameEvents.CHARACTER_LOGOUT, () => {
+    onEvent(GameEvents.CHARACTER_LOGOUT, () => {
       this.playSfx('exit_menu');
       this.setBgmScene('main_menu');
     });
+  }
+
+  /** 销毁音频服务，清理所有资源和事件订阅 */
+  destroy(): void {
+    this.stopBgm();
+    if (this.bgmTransitionTimer) {
+      clearTimeout(this.bgmTransitionTimer);
+      this.bgmTransitionTimer = null;
+    }
+    this.unsubscribeStore?.();
+    this.unsubscribeStore = null;
+    // 取消所有事件总线监听
+    for (const { event, handler } of this.eventHandlers) {
+      eventBus.off(event, handler);
+    }
+    this.eventHandlers = [];
   }
 }
 

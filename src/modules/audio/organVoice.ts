@@ -173,7 +173,7 @@ export class OrganVoice {
         oscillator: {
           type: 'custom',
           partials: config.partials,
-        } as Tone.SynthOptions['oscillator'],
+        } as Tone.SynthOptions['oscillator'], // 'custom' 类型不被 Tone.js 标准类型接受，需断言
         envelope: { ...this.envelope },
         volume: Tone.gainToDb(config.gain),
       }).connect(this.output);
@@ -192,7 +192,7 @@ export class OrganVoice {
   setEnvelope(env: { attack?: number; decay?: number; sustain?: number; release?: number }): void {
     this.envelope = { ...this.envelope, ...env };
     for (const { synth } of this.stopSynths) {
-      synth.set({ envelope: this.envelope as Tone.SynthOptions['envelope'] });
+      synth.set({ envelope: this.envelope as Tone.SynthOptions['envelope'] }); // envelope 对象形式需断言
     }
   }
 
@@ -215,7 +215,6 @@ export class OrganVoice {
     velocity: number = 0.7,
   ): void {
     const notes = Array.isArray(note) ? note : [note];
-    const velDb = velocity > 0 ? Tone.gainToDb(velocity) : -Infinity;
 
     // 每个合成器实例需要严格递增的调度时间，避免 Tone.js 报错
     for (const { synth, config } of this.stopSynths) {
@@ -224,11 +223,12 @@ export class OrganVoice {
         for (const interval of config.intervals) {
           const transposed = Tone.Frequency(n).transpose(interval).toNote();
           // 每个音栓层独立触发，叠加出丰富谐波
+          // velocity 保持 0-1 线性值，synth 的音量已在构造时通过 volume 参数设置
           synth.triggerAttackRelease(
             transposed,
             duration,
             synthTime,
-            velDb + Tone.gainToDb(config.gain),
+            velocity * config.gain,
           );
           // 微调时间确保同一合成器的每次调用时间严格递增
           synthTime += 0.001;

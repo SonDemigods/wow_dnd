@@ -6,5 +6,5 @@
 export * from './types';
 export * from './db';
 export * from './service';
-export * from './organVoice';
+export type { OrganPreset } from './organVoice';
 export { useAudioStore } from './store';
