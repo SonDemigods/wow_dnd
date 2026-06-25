@@ -275,7 +275,6 @@ export function createParticleBurst(
 ): void {
   const centerX = originRect.left + originRect.width / 2;
   const centerY = originRect.top + originRect.height / 2;
-  const fragments: HTMLElement[] = [];
 
   for (let i = 0; i < config.count; i++) {
     const particle = document.createElement('span');
@@ -296,42 +295,41 @@ export function createParticleBurst(
 
     switch (config.shape) {
       case 'circle':
-        particle.style.cssText += `
-          border-radius: 50%;
-          background: ${color};
-        `;
+        Object.assign(particle.style, {
+          borderRadius: '50%',
+          background: color,
+        });
         break;
       case 'slash':
-        particle.style.cssText += `
-          width: ${size * 3}px;
-          height: ${size * 0.4}px;
-          background: ${color};
-          transform: rotate(${Math.random() * 360}deg) scale(0);
-        `;
+        Object.assign(particle.style, {
+          width: `${size * 3}px`,
+          height: `${size * 0.4}px`,
+          background: color,
+          transform: `rotate(${Math.random() * 360}deg) scale(0)`,
+        });
         break;
       case 'star':
         particle.textContent = '✦';
-        particle.style.cssText += `
-          color: ${color};
-          font-size: ${size * 2}px;
-          line-height: 1;
-          text-align: center;
-        `;
+        Object.assign(particle.style, {
+          color,
+          fontSize: `${size * 2}px`,
+          lineHeight: '1',
+          textAlign: 'center',
+        });
         break;
       case 'spark':
         particle.textContent = '+';
-        particle.style.cssText += `
-          color: ${color};
-          font-size: ${size * 2}px;
-          line-height: 1;
-          text-align: center;
-          font-weight: bold;
-        `;
+        Object.assign(particle.style, {
+          color,
+          fontSize: `${size * 2}px`,
+          lineHeight: '1',
+          textAlign: 'center',
+          fontWeight: 'bold',
+        });
         break;
     }
 
     container.appendChild(particle);
-    fragments.push(particle);
 
     // 随机飞散方向
     const angle = (Math.PI * 2 * i) / config.count + (Math.random() - 0.5) * 0.6;
