@@ -252,8 +252,8 @@ import {
   animateManaGlow,
   animateCritBorderFlash,
   createParticleBurst,
-} from '@/modules/animation/combat-effects';
-import type { FloatingType, ParticleConfig } from '@/modules/animation/combat-effects';
+} from '@/modules/animation';
+import type { FloatingType, ParticleConfig } from '@/modules/animation';
 
 const emit = defineEmits<{
   (e: 'close', result?: CombatResult): void;

@@ -4,6 +4,7 @@
  * @module modules
  */
 export * from './data';
+export * from './animation';
 export * from './bus';
 export * from './character';
 export * from './inventory';

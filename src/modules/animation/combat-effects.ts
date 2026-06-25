@@ -6,31 +6,10 @@
 
 import { animate, createTimeline } from 'animejs';
 import { CombatColors } from '@/config/combat-colors';
+import type { FloatingType, ParticleConfig } from './types';
 
-/** 浮动数字类型 */
-export type FloatingType = 'physical' | 'magic' | 'heal-hp' | 'heal-mp' | 'crit' | 'dodge';
-
-/** 粒子形状 */
-export type ParticleShape = 'circle' | 'slash' | 'star' | 'spark';
-
-/** 粒子配置 */
-export interface ParticleConfig {
-  /** 粒子数量 */
-  count: number;
-  /** 粒子颜色列表 */
-  colors: string[];
-  /** 粒子形状 */
-  shape: ParticleShape;
-  /** 飞散半径（px） */
-  radius: number;
-  /** 粒子大小范围 [min, max]（px） */
-  sizeRange: [number, number];
-  /** 动画持续时间（ms） */
-  duration: number;
-}
-
-/** 缩放 duration 的辅助函数 */
-function s(duration: number, speed: number): number {
+/** 根据速度倍率缩放动画 duration */
+function scaleDuration(duration: number, speed: number): number {
   return Math.round(duration / speed);
 }
 
@@ -40,14 +19,14 @@ function s(duration: number, speed: number): number {
 export function animateShake(target: HTMLElement, speed: number = 1): void {
   animate(target, {
     translateX: [
-      { to: -8, duration: s(120, speed) },
-      { to: 8, duration: s(120, speed) },
-      { to: -4, duration: s(120, speed) },
-      { to: 4, duration: s(120, speed) },
-      { to: 0, duration: s(120, speed) },
+      { to: -8, duration: scaleDuration(120, speed) },
+      { to: 8, duration: scaleDuration(120, speed) },
+      { to: -4, duration: scaleDuration(120, speed) },
+      { to: 4, duration: scaleDuration(120, speed) },
+      { to: 0, duration: scaleDuration(120, speed) },
     ],
     ease: 'easeInOutSine',
-    duration: s(600, speed),
+    duration: scaleDuration(600, speed),
   });
 }
 
@@ -55,23 +34,23 @@ export function animateShake(target: HTMLElement, speed: number = 1): void {
 export function animateCritShake(target: HTMLElement, speed: number = 1): void {
   animate(target, {
     translateX: [
-      { to: -14, duration: s(90, speed) },
-      { to: 14, duration: s(180, speed) },
-      { to: -10, duration: s(180, speed) },
-      { to: 10, duration: s(180, speed) },
-      { to: -4, duration: s(135, speed) },
-      { to: 0, duration: s(135, speed) },
+      { to: -14, duration: scaleDuration(90, speed) },
+      { to: 14, duration: scaleDuration(180, speed) },
+      { to: -10, duration: scaleDuration(180, speed) },
+      { to: 10, duration: scaleDuration(180, speed) },
+      { to: -4, duration: scaleDuration(135, speed) },
+      { to: 0, duration: scaleDuration(135, speed) },
     ],
     scale: [
-      { to: 1.05, duration: s(90, speed) },
-      { to: 0.95, duration: s(180, speed) },
-      { to: 1.03, duration: s(180, speed) },
-      { to: 0.97, duration: s(180, speed) },
-      { to: 1.01, duration: s(135, speed) },
-      { to: 1, duration: s(135, speed) },
+      { to: 1.05, duration: scaleDuration(90, speed) },
+      { to: 0.95, duration: scaleDuration(180, speed) },
+      { to: 1.03, duration: scaleDuration(180, speed) },
+      { to: 0.97, duration: scaleDuration(180, speed) },
+      { to: 1.01, duration: scaleDuration(135, speed) },
+      { to: 1, duration: scaleDuration(135, speed) },
     ],
     ease: 'easeInOutSine',
-    duration: s(900, speed),
+    duration: scaleDuration(900, speed),
   });
 }
 
@@ -81,57 +60,53 @@ export function animateCritShake(target: HTMLElement, speed: number = 1): void {
 export function animateMagicPulse(target: HTMLElement, speed: number = 1): void {
   animate(target, {
     scale: [
-      { to: 0.92, duration: s(250, speed) },
-      { to: 1.02, duration: s(250, speed) },
-      { to: 1, duration: s(300, speed) },
+      { to: 0.92, duration: scaleDuration(250, speed) },
+      { to: 1.02, duration: scaleDuration(250, speed) },
+      { to: 1, duration: scaleDuration(300, speed) },
     ],
     boxShadow: [
-      { to: `0 0 16px ${CombatColors.damageMagicBg}`, duration: s(250, speed) },
-      { to: '0 0 0px transparent', duration: s(550, speed) },
+      { to: `0 0 16px ${CombatColors.damageMagicBg}`, duration: scaleDuration(250, speed) },
+      { to: '0 0 0px transparent', duration: scaleDuration(550, speed) },
     ],
     ease: 'easeInOutSine',
-    duration: s(800, speed),
+    duration: scaleDuration(800, speed),
+  });
+}
+
+/** 光晕扩散（HP/MP 共用） */
+export function animateGlow(target: HTMLElement, baseColor: string, speed: number = 1): void {
+  animate(target, {
+    boxShadow: [
+      { to: `0 0 8px ${baseColor}, 0 0 24px ${baseColor}88`, duration: scaleDuration(400, speed) },
+      { to: '0 0 0px transparent', duration: scaleDuration(600, speed) },
+    ],
+    ease: 'easeOutQuad',
+    duration: scaleDuration(1000, speed),
   });
 }
 
 /** 生命恢复：绿色光晕从内向外扩散 */
-export function animateHealGlow(target: HTMLElement, speed: number = 1): void {
-  animate(target, {
-    boxShadow: [
-      { to: `0 0 8px ${CombatColors.healHp}, 0 0 24px ${CombatColors.healHp}88`, duration: s(400, speed) },
-      { to: '0 0 0px transparent', duration: s(600, speed) },
-    ],
-    ease: 'easeOutQuad',
-    duration: s(1000, speed),
-  });
-}
+export const animateHealGlow = (target: HTMLElement, speed?: number) =>
+  animateGlow(target, CombatColors.healHp, speed);
 
 /** 法力恢复：蓝色光晕从内向外扩散 */
-export function animateManaGlow(target: HTMLElement, speed: number = 1): void {
-  animate(target, {
-    boxShadow: [
-      { to: `0 0 8px ${CombatColors.healMp}, 0 0 24px ${CombatColors.healMp}88`, duration: s(400, speed) },
-      { to: '0 0 0px transparent', duration: s(600, speed) },
-    ],
-    ease: 'easeOutQuad',
-    duration: s(1000, speed),
-  });
-}
+export const animateManaGlow = (target: HTMLElement, speed?: number) =>
+  animateGlow(target, CombatColors.healMp, speed);
 
 /** 暴击：金色边框爆闪 */
 export function animateCritBorderFlash(target: HTMLElement, speed: number = 1): void {
   animate(target, {
     borderColor: [
-      { to: CombatColors.damageCrit, duration: s(150, speed) },
-      { to: CombatColors.damageCrit, duration: s(200, speed) },
-      { to: '', duration: s(350, speed) },
+      { to: CombatColors.damageCrit, duration: scaleDuration(150, speed) },
+      { to: CombatColors.damageCrit, duration: scaleDuration(200, speed) },
+      { to: '', duration: scaleDuration(350, speed) },
     ],
     boxShadow: [
-      { to: `0 0 20px ${CombatColors.flashCrit}`, duration: s(150, speed) },
-      { to: '0 0 0px transparent', duration: s(550, speed) },
+      { to: `0 0 20px ${CombatColors.flashCrit}`, duration: scaleDuration(150, speed) },
+      { to: '0 0 0px transparent', duration: scaleDuration(550, speed) },
     ],
     ease: 'easeOutExpo',
-    duration: s(700, speed),
+    duration: scaleDuration(700, speed),
     onComplete: () => {
       target.style.borderColor = '';
     },
@@ -144,13 +119,13 @@ export function animateCritBorderFlash(target: HTMLElement, speed: number = 1): 
 export function animateDodgeBlink(target: HTMLElement, speed: number = 1): void {
   animate(target, {
     opacity: [
-      { to: 0.2, duration: s(200, speed) },
-      { to: 1, duration: s(200, speed) },
-      { to: 0.3, duration: s(200, speed) },
-      { to: 1, duration: s(200, speed) },
+      { to: 0.2, duration: scaleDuration(200, speed) },
+      { to: 1, duration: scaleDuration(200, speed) },
+      { to: 0.3, duration: scaleDuration(200, speed) },
+      { to: 1, duration: scaleDuration(200, speed) },
     ],
     ease: 'easeInOutSine',
-    duration: s(800, speed),
+    duration: scaleDuration(800, speed),
   });
 }
 
@@ -182,53 +157,57 @@ export function animateFloating(
   const p = FLOATING_PARAMS[type];
   const isCrit = type === 'crit';
 
-  const keyframes: Record<string, unknown> = {
+  // 条件构建水平摆动关键帧
+  let translateX: { to: number; duration: number }[] | undefined;
+  if (p.swayX > 5) {
+    // 闪避：快速侧移
+    translateX = [
+      { to: p.swayX, duration: scaleDuration(250, speed) },
+      { to: -4, duration: scaleDuration(500, speed) },
+      { to: 0, duration: scaleDuration(450, speed) },
+    ];
+  } else if (p.swayX !== 0) {
+    // 法术伤害：正弦波水平摆动
+    translateX = [
+      { to: -p.swayX, duration: scaleDuration(300, speed) },
+      { to: p.swayX, duration: scaleDuration(600, speed) },
+      { to: 0, duration: scaleDuration(p.duration - 900, speed) },
+    ];
+  }
+
+  // 条件构建旋转关键帧
+  let rotate: { to: string; duration: number }[] | undefined;
+  if (p.rotate !== 0) {
+    // 法力恢复：轻微旋转
+    rotate = [
+      { to: `${p.rotate}deg`, duration: scaleDuration(p.duration * 0.5, speed) },
+      { to: `-${p.rotate * 0.5}deg`, duration: scaleDuration(p.duration * 0.5, speed) },
+    ];
+  }
+
+  const keyframes = {
     translateY: [
-      { to: isCrit ? -15 : -p.riseDistance * 0.4, duration: s(isCrit ? 360 : 480, speed) },
-      { to: p.riseDistance * 0.6, duration: s(isCrit ? 360 : 480, speed) },
-      { to: p.riseDistance, duration: s(isCrit ? 1080 : 640, speed) },
+      { to: isCrit ? -15 : -p.riseDistance * 0.4, duration: scaleDuration(isCrit ? 360 : 480, speed) },
+      { to: p.riseDistance * 0.6, duration: scaleDuration(isCrit ? 360 : 480, speed) },
+      { to: p.riseDistance, duration: scaleDuration(isCrit ? 1080 : 640, speed) },
     ],
     scale: [
-      { to: p.scalePeak, duration: s(isCrit ? 360 : 480, speed) },
-      { to: p.scalePeak * (isCrit ? 0.73 : 0.67), duration: s(isCrit ? 1080 : 640, speed) },
+      { to: p.scalePeak, duration: scaleDuration(isCrit ? 360 : 480, speed) },
+      { to: p.scalePeak * (isCrit ? 0.73 : 0.67), duration: scaleDuration(isCrit ? 1080 : 640, speed) },
     ],
     opacity: [
-      { to: 1, duration: s(isCrit ? 720 : 960, speed) },
-      { to: 0, duration: s(isCrit ? 1080 : 640, speed) },
+      { to: 1, duration: scaleDuration(isCrit ? 720 : 960, speed) },
+      { to: 0, duration: scaleDuration(isCrit ? 1080 : 640, speed) },
     ],
+    ...(translateX ? { translateX } : {}),
+    ...(rotate ? { rotate } : {}),
     ease: p.ease,
-    duration: s(p.duration, speed),
+    duration: scaleDuration(p.duration, speed),
     onComplete: () => {
       target.style.opacity = '0';
       target.style.transform = '';
     },
   };
-
-  // 法术伤害：正弦波水平摆动
-  if (p.swayX !== 0) {
-    keyframes.translateX = [
-      { to: -p.swayX, duration: s(300, speed) },
-      { to: p.swayX, duration: s(600, speed) },
-      { to: 0, duration: s(p.duration - 900, speed) },
-    ];
-  }
-
-  // 法力恢复：轻微旋转
-  if (p.rotate !== 0) {
-    keyframes.rotate = [
-      { to: `${p.rotate}deg`, duration: s(p.duration * 0.5, speed) },
-      { to: `-${p.rotate * 0.5}deg`, duration: s(p.duration * 0.5, speed) },
-    ];
-  }
-
-  // 闪避：快速侧移
-  if (p.swayX > 5) {
-    keyframes.translateX = [
-      { to: p.swayX, duration: s(250, speed) },
-      { to: -4, duration: s(500, speed) },
-      { to: 0, duration: s(450, speed) },
-    ];
-  }
 
   animate(target, keyframes);
 }
@@ -245,16 +224,16 @@ export function animateScreenFlash(
   animate(target, {
     backgroundColor: isCrit
       ? [
-          { to: CombatColors.flashCrit, duration: s(180, speed) },
-          { to: CombatColors.flashCritFade, duration: s(240, speed) },
-          { to: CombatColors.flashDodgeFade, duration: s(180, speed) },
+          { to: CombatColors.flashCrit, duration: scaleDuration(180, speed) },
+          { to: CombatColors.flashCritFade, duration: scaleDuration(240, speed) },
+          { to: CombatColors.flashDodgeFade, duration: scaleDuration(180, speed) },
         ]
       : [
-          { to: CombatColors.flashDodge, duration: s(300, speed) },
-          { to: CombatColors.flashDodgeFade, duration: s(300, speed) },
+          { to: CombatColors.flashDodge, duration: scaleDuration(300, speed) },
+          { to: CombatColors.flashDodgeFade, duration: scaleDuration(300, speed) },
         ],
     ease: 'easeOutQuad',
-    duration: s(600, speed),
+    duration: scaleDuration(600, speed),
     onComplete: () => {
       target.style.backgroundColor = 'transparent';
     },
@@ -267,15 +246,15 @@ export function animateScreenFlash(
 export function animateVsFlash(target: HTMLElement, speed: number = 1): void {
   animate(target, {
     scale: [
-      { to: 1.4, duration: s(225, speed) },
-      { to: 1, duration: s(225, speed) },
+      { to: 1.4, duration: scaleDuration(225, speed) },
+      { to: 1, duration: scaleDuration(225, speed) },
     ],
     color: [
-      { to: '#fff', duration: s(225, speed) },
-      { to: CombatColors.damageCrit, duration: s(225, speed) },
+      { to: '#fff', duration: scaleDuration(225, speed) },
+      { to: CombatColors.damageCrit, duration: scaleDuration(225, speed) },
     ],
     ease: 'easeInOutSine',
-    duration: s(450, speed),
+    duration: scaleDuration(450, speed),
   });
 }
 
@@ -369,7 +348,7 @@ export function createParticleBurst(
       scale: config.shape === 'slash' ? [0, 1, 0.3] : [1, 0],
       opacity: [1, 0],
       rotate: config.shape === 'slash' ? `${(Math.random() - 0.5) * 360}deg` : undefined,
-      duration: s(config.duration, speed),
+      duration: scaleDuration(config.duration, speed),
       ease: 'easeOutExpo',
       onComplete: () => {
         particle.remove();
@@ -394,39 +373,39 @@ export function animateBossIntro(
   // 遮罩淡入
   tl.add(overlay, {
     opacity: [0, 1],
-    duration: s(500, speed),
+    duration: scaleDuration(500, speed),
   });
 
   // 图标弹入
   tl.add(icon, {
     scale: [0, 1.3, 1],
     opacity: [0, 1],
-    duration: s(800, speed),
-  }, `-=${s(300, speed)}`);
+    duration: scaleDuration(800, speed),
+  }, `-=${scaleDuration(300, speed)}`);
 
   // 名称滑入
   tl.add(name, {
     translateY: [20, 0],
     opacity: [0, 1],
-    duration: s(600, speed),
-  }, `-=${s(400, speed)}`);
+    duration: scaleDuration(600, speed),
+  }, `-=${scaleDuration(400, speed)}`);
 
   // 台词逐行滑入
   for (let i = 0; i < lines.length; i++) {
     tl.add(lines[i], {
       translateY: [10, 0],
       opacity: [0, 1],
-      duration: s(500, speed),
-    }, `-=${s(i === 0 ? 200 : 100, speed)}`);
+      duration: scaleDuration(500, speed),
+    }, `-=${scaleDuration(i === 0 ? 200 : 100, speed)}`);
   }
 
   // 自动关闭
-  const minDuration = s(1000 + lines.length * 900, speed);
-  const actualDuration = Math.max(s(duration, speed), minDuration);
+  const minDuration = scaleDuration(1000 + lines.length * 900, speed);
+  const actualDuration = Math.max(scaleDuration(duration, speed), minDuration);
   setTimeout(() => {
     animate(overlay, {
       opacity: 0,
-      duration: s(300, speed),
+      duration: scaleDuration(300, speed),
       ease: 'easeInQuad',
     });
   }, actualDuration);
@@ -445,26 +424,26 @@ export function animatePhaseTransition(
   // 遮罩闪现
   tl.add(backdrop, {
     opacity: [0, 1],
-    duration: s(250, speed),
+    duration: scaleDuration(250, speed),
   });
 
   // 内容缩放进入
   tl.add(content, {
     scale: [0.7, 1.08, 1],
     opacity: [0, 1],
-    duration: s(500, speed),
-  }, `-=${s(100, speed)}`);
+    duration: scaleDuration(500, speed),
+  }, `-=${scaleDuration(100, speed)}`);
 
   // 保持显示
   tl.add([backdrop, content], {
     opacity: 1,
-    duration: s(1250, speed),
+    duration: scaleDuration(1250, speed),
   });
 
   // 淡出
   tl.add([backdrop, content], {
     opacity: 0,
-    duration: s(500, speed),
+    duration: scaleDuration(500, speed),
   });
 }
 
@@ -484,40 +463,30 @@ export function animateResultPopup(
   tl.add(popup, {
     scale: [0.5, 1],
     opacity: [0, 1],
-    duration: s(500, speed),
+    duration: scaleDuration(500, speed),
   });
 
   // 图标弹跳
   tl.add(icon, {
     scale: [0, 1.3, 1],
-    duration: s(600, speed),
-  }, `-=${s(400, speed)}`);
+    duration: scaleDuration(600, speed),
+  }, `-=${scaleDuration(400, speed)}`);
 
   // 结果文字淡入 + 上滑
   tl.add(resultText, {
     translateY: [16, 0],
     opacity: [0, 1],
-    duration: s(400, speed),
-  }, `-=${s(200, speed)}`);
+    duration: scaleDuration(400, speed),
+  }, `-=${scaleDuration(200, speed)}`);
 
   // 奖励项逐个滑入
   for (let i = 0; i < rewards.length; i++) {
     tl.add(rewards[i], {
       translateY: [10, 0],
       opacity: [0, 1],
-      duration: s(400, speed),
-    }, `-=${s(i === 0 ? 200 : 200, speed)}`);
+      duration: scaleDuration(400, speed),
+    }, `-=${scaleDuration(i === 0 ? 200 : 200, speed)}`);
   }
 }
 
-// ==================== 战斗日志滑入 ====================
 
-/** 战斗日志条目滑入 */
-export function animateLogSlideIn(target: HTMLElement, speed: number = 1): void {
-  animate(target, {
-    translateY: [-10, 0],
-    opacity: [0, 1],
-    duration: s(300, speed),
-    ease: 'easeOutQuad',
-  });
-}
