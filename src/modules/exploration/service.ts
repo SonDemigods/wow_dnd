@@ -3,19 +3,42 @@
  * @description 提供探索相关的纯计算函数，不持有状态、不调用 DB、不 emit 事件
  * @module exploration
  */
-import type { GridEventType, GridEventProbability, ExplorationCell, RandomEventResult, GridGenerationConfig } from './types';
+import type { GridEventType, GridEventProbability, ExplorationCell, RandomEventResult, GridGenerationConfig, CellType } from './types';
 
 /** 默认网格尺寸 */
-const GRID_SIZE = 10;
+export const GRID_SIZE = 10;
+
+/** GridEventType → CellType 映射表 */
+export const EVENT_TO_CELL_TYPE: Record<GridEventType, CellType> = {
+  monster: 'monster',
+  item: 'treasure',
+  trap: 'trap',
+  event: 'event',
+  empty: 'empty',
+  camp: 'rest',
+  shop: 'shop',
+  board: 'board',
+  boss: 'boss',
+};
+
+/** 从数组中随机选取一个元素 */
+export function pickRandomFromArray<T>(arr: T[]): T | undefined {
+  if (arr.length === 0) return undefined;
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
 // ============================================================
 // 导出：区域配置构建纯函数
 // ============================================================
 
 /**
- * 根据地点等级动态生成事件概率分布
+ * 根据地点等级动态生成事件概率分布。
+ *
+ * 设计意图：高等级区域怪物/陷阱概率更高，低等级区域物品/空地概率更高，
+ * 从而自然地调节难度曲线。
+ *
  * @param avgLevel - 区域平均等级
- * @returns 归一化后的事件概率分布
+ * @returns 归一化后的事件概率分布（五项之和恒为 100）
  */
 export function computeEventProbability(avgLevel: number): GridEventProbability {
   const raw: GridEventProbability = {
@@ -25,12 +48,13 @@ export function computeEventProbability(avgLevel: number): GridEventProbability 
     event: 15,
     empty: Math.max(15, 30 - avgLevel)
   };
-  // 归一化确保总和为 100
+  // 归一化：因各项独立 clamp，原始总和可能偏离 100，此处重新调整为百分比
   const total = raw.monster + raw.item + raw.trap + raw.event + raw.empty;
   raw.monster = Math.round(raw.monster / total * 100);
   raw.item = Math.round(raw.item / total * 100);
   raw.trap = Math.round(raw.trap / total * 100);
   raw.event = Math.round(raw.event / total * 100);
+  // 最后一项用减法消除舍入误差，确保总和恰好为 100
   raw.empty = 100 - raw.monster - raw.item - raw.trap - raw.event;
   return raw;
 }
@@ -69,14 +93,19 @@ export function buildItemPool(
 // ============================================================
 
 /**
- * 根据概率分布随机选择探索事件类型
- * @param probability - 事件概率配置
+ * 根据概率分布随机选择探索事件类型。
+ *
+ * 使用累积概率区间法：将 [0, total) 区间按各项概率切分为连续的桶，
+ * 随机值落在哪个桶就返回对应事件类型。相比轮盘赌算法更简洁。
+ *
+ * @param probability - 事件概率配置（五项之和为 100）
  * @returns 选中的事件类型
  */
 export function determineCellEvent(probability: GridEventProbability): GridEventType {
   const total = probability.monster + probability.item + probability.trap + probability.event + probability.empty;
   let random = Math.random() * total;
 
+  // 按顺序检查累积概率区间
   if (random < probability.monster) return 'monster';
   random -= probability.monster;
   if (random < probability.item) return 'item';
@@ -84,6 +113,7 @@ export function determineCellEvent(probability: GridEventProbability): GridEvent
   if (random < probability.trap) return 'trap';
   random -= probability.trap;
   if (random < probability.event) return 'event';
+  // 剩余部分全部归为 empty
   return 'empty';
 }
 
@@ -108,36 +138,39 @@ export function generateCampHeal(_areaLevel: number): { hp: number; mana: number
 }
 
 /**
- * 从物品池中随机选取一个物品
+ * 从物品池中随机选取一个物品（委托给通用随机选取函数）
  * @param itemPool - 可用的物品 ID 列表
  * @returns 选中的物品 ID，池为空时返回空字符串
  */
 export function generateItemForCell(itemPool: string[]): string {
-  if (itemPool.length === 0) return '';
-  return itemPool[Math.floor(Math.random() * itemPool.length)];
+  return pickRandomFromArray(itemPool) ?? '';
 }
 
 /**
- * 从怪物池中随机选取一个怪物
+ * 从怪物池中随机选取一个怪物（委托给通用随机选取函数）
  * @param monsterPool - 可用的怪物 ID 列表
  * @returns 选中的怪物 ID，池为空时返回空字符串
  */
 export function generateEnemyForCell(monsterPool: string[]): string {
-  if (monsterPool.length === 0) return '';
-  return monsterPool[Math.floor(Math.random() * monsterPool.length)];
+  return pickRandomFromArray(monsterPool) ?? '';
 }
 
 
 
 /**
- * 生成随机事件（纯计算，不含副作用）
+ * 生成随机事件（纯计算，不含副作用）。
+ *
+ * 采用累进概率区间分布：每个分支检查 [0, 1) 中的特定区间，
+ * 区间大小即为该事件的触发概率。分支按概率从高到低排列，
+ * 最后一个分支作为兜底。
+ *
  * @param areaLevel - 区域等级
  * @returns 随机事件的结果，包含消息、图标和效果
  */
 export function generateRandomEvent(areaLevel: number): RandomEventResult {
   const random = Math.random();
 
-  // 30% 概率恢复生命值
+  // [0, 0.3) → 30% 概率恢复生命值
   if (random < 0.3) {
     const healAmount = Math.floor(areaLevel * 3 + Math.random() * 10);
     return {
@@ -146,7 +179,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
       effect: { type: 'heal', amount: healAmount }
     };
   }
-  // 20% 概率恢复魔法值
+  // [0.3, 0.5) → 20% 概率恢复魔法值
   if (random < 0.5) {
     const mpAmount = Math.floor(areaLevel * 2 + Math.random() * 8);
     return {
@@ -155,7 +188,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
       effect: { type: 'mana', amount: mpAmount }
     };
   }
-  // 15% 概率获得经验值
+  // [0.5, 0.65) → 15% 概率获得经验值
   if (random < 0.65) {
     const expAmount = Math.floor(areaLevel * 10 + Math.random() * 20);
     return {
@@ -164,7 +197,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
       effect: { type: 'exp', amount: expAmount }
     };
   }
-  // 15% 概率减少生命值（陷阱）
+  // [0.65, 0.8) → 15% 概率受到陷阱伤害
   if (random < 0.8) {
     const trapDamage = Math.floor(areaLevel * 2 + Math.random() * 5);
     return {
@@ -173,7 +206,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
       effect: { type: 'damage', amount: trapDamage }
     };
   }
-  // 10% 概率减少魔法值
+  // [0.8, 0.9) → 10% 概率损失魔法值
   if (random < 0.9) {
     const mpLoss = Math.floor(areaLevel * 1.5 + Math.random() * 5);
     return {
@@ -182,7 +215,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
       effect: { type: 'mpLoss', amount: mpLoss }
     };
   }
-  // 10% 概率获得金币
+  // [0.9, 1.0) → 10% 概率获得金币
   const goldAmount = Math.floor(areaLevel * 5 + Math.random() * 15);
   return {
     message: `发现宝箱，获得了 ${goldAmount} 金币`,
@@ -250,24 +283,10 @@ export function generateGrid(config: GridGenerationConfig): ExplorationCell[][] 
     const pos = emptyCells[i];
     const eventType = determineCellEvent(probability);
 
-    let cellType = 'empty';
+    const cellType: CellType = EVENT_TO_CELL_TYPE[eventType];
     let cellMonsterId: string | undefined;
-    switch (eventType) {
-      case 'monster':
-        cellType = 'monster';
-        if (monsterPool.length > 0) {
-          cellMonsterId = generateEnemyForCell(monsterPool);
-        }
-        break;
-      case 'item':
-        cellType = 'treasure';
-        break;
-      case 'trap':
-        cellType = 'trap';
-        break;
-      case 'event':
-        cellType = 'event';
-        break;
+    if (eventType === 'monster' && monsterPool.length > 0) {
+      cellMonsterId = generateEnemyForCell(monsterPool);
     }
 
     grid[pos.y][pos.x] = { x: pos.x, y: pos.y, type: cellType, explored: false, accessible: false, visited: false, completed: false, monsterId: cellMonsterId };
@@ -339,7 +358,10 @@ export function updateAccessibleCells(grid: ExplorationCell[][]): ExplorationCel
 // 内部辅助：网格生成工具函数
 // ============================================================
 
-/** 获取网格所有边缘坐标 */
+/**
+ * 获取网格所有边缘坐标（四条边的并集，不含重复角）。
+ * 用于随机放置起点——起点必须在网格边缘，玩家从边界进入地图。
+ */
 function getEdgePositions(size: number): { x: number; y: number }[] {
   const positions: { x: number; y: number }[] = [];
   for (let x = 0; x < size; x++) positions.push({ x, y: 0 });
@@ -364,7 +386,11 @@ function getDistance(pos1: { x: number; y: number }, pos2: { x: number; y: numbe
   return Math.max(Math.abs(pos1.x - pos2.x), Math.abs(pos1.y - pos2.y));
 }
 
-/** 查找一个不与任何已占用位置相邻的空位 */
+/**
+ * 查找一个不与任何已占用位置相邻的空位。
+ * 用于放置营地——营地应与其他固定事件保持一定距离，
+ * 避免起点/商店/任务板紧挨着营地。
+ */
 function findNonAdjacentPosition(grid: ExplorationCell[][], size: number, occupiedPositions: { x: number; y: number }[]): { x: number; y: number } {
   const candidates: { x: number; y: number }[] = [];
   for (let y = 0; y < size; y++) {
@@ -379,7 +405,11 @@ function findNonAdjacentPosition(grid: ExplorationCell[][], size: number, occupi
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
-/** 在中心区域查找适合放置 Boss 的位置（与其他位置保持至少2格距离） */
+/**
+ * 在中心区域查找适合放置 Boss 的位置。
+ * Boss 需与所有已有固定事件保持至少 2 格的切比雪夫距离，
+ * 且限定在网格中央 1/4～3/4 区域，确保玩家需要探索一定深度才能遭遇。
+ */
 function findBossPosition(grid: ExplorationCell[][], size: number, occupiedPositions: { x: number; y: number }[]): { x: number; y: number } {
   const candidates: { x: number; y: number }[] = [];
   const centerStart = Math.floor(size / 4);
@@ -406,7 +436,16 @@ function findAnyEmptyPosition(grid: ExplorationCell[][], size: number): { x: num
   return { x: 0, y: 0 };
 }
 
-/** 在网格上放置固定事件：起点、商店、任务板、营地、Boss */
+/**
+ * 在网格上放置固定事件：起点、商店、任务板、营地、Boss。
+ *
+ * 放置策略：
+ * 1. 起点 — 随机边缘位置（玩家从边界进入）
+ * 2. 商店 — 随机角落（方便随时访问）
+ * 3. 任务板 — 另一随机角落
+ * 4. 营地 — 不与上述三者相邻的空位
+ * 5. Boss — 中心区域，与其他事件保持距离
+ */
 function placeFixedEvents(grid: ExplorationCell[][], size: number, bossPool: string[]): void {
   // 起点：随机选一个边缘位置，已探索、已访问、可访问
   const edgePositions = getEdgePositions(size);

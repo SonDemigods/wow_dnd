@@ -28,20 +28,9 @@ import {
   generateCampHeal,
   generateItemForCell,
   computeEventProbability,
-  buildItemPool
+  buildItemPool,
+  GRID_SIZE
 } from './service';
-
-/** 默认网格尺寸 */
-const GRID_SIZE = 10;
-/** 初始移动步数 */
-const INITIAL_MOVES = 20;
-
-/**
- * 探索 UI 回调接口 —— 供 GameMain 等 UI 组件注册，替代 EventBus 跨模块监听。
- * 当探索 Store 内部触发格子探索、战斗、物品发现、陷阱、随机事件时，
- * 同步调用已注册的回调，避免 UI 组件直接依赖 EventBus 进行数据通信。
- * @deprecated 类型定义已迁移到 ./types.ts，此处保留注释供参考
- */
 
 export const useExplorationStore = defineStore('exploration', () => {
   // ==================== 响应式状态（Store 是唯一数据源） ====================
@@ -58,8 +47,6 @@ export const useExplorationStore = defineStore('exploration', () => {
   const playerPosition = ref({ x: 0, y: 0 });
   /** 已访问格子数 */
   const visitedCells = ref(0);
-  /** 剩余移动步数 */
-  const remainingMoves = ref(INITIAL_MOVES);
   /** Boss 是否已被击败 */
   const bossDefeated = ref(false);
   /** 探索是否完成 */
@@ -91,14 +78,13 @@ export const useExplorationStore = defineStore('exploration', () => {
 
   // ==================== 计算属性 ====================
 
-  /** 探索状态对象（兼容旧 API，供 ExplorationView 使用 */
+  /** 探索状态对象（兼容旧 API，供 ExplorationView 使用） */
   const state = computed<ExplorationState>(() => ({
     currentAreaId: currentAreaId.value,
     grid: grid.value,
     campUsed: campUsed.value,
     playerPosition: playerPosition.value,
     visitedCells: visitedCells.value,
-    remainingMoves: remainingMoves.value,
     bossDefeated: bossDefeated.value,
     explorationComplete: explorationComplete.value
   }));
@@ -133,7 +119,8 @@ export const useExplorationStore = defineStore('exploration', () => {
   }
 
   /**
-   * 根据地点数据构建区域配置（含 DB 查询）   * @param location - 地点数据
+   * 根据地点数据构建区域配置（含 DB 查询）
+   * @param location - 地点数据
    * @returns 区域配置对象
    */
   async function buildAreaConfig(location: LocationData): Promise<AreaConfig> {
@@ -247,11 +234,10 @@ export const useExplorationStore = defineStore('exploration', () => {
     if (stored && stored.currentAreaId && stored.grid && stored.grid.length > 0) {
       // 从数据库恢复完整的探索状态
       currentAreaId.value = stored.currentAreaId;
-      grid.value = stored.grid as unknown as ExplorationCell[][];
+      grid.value = stored.grid;
       campUsed.value = stored.campUsed;
       playerPosition.value = stored.playerPosition;
       visitedCells.value = stored.visitedCells;
-      remainingMoves.value = stored.remainingMoves;
       bossDefeated.value = stored.bossDefeated;
       explorationComplete.value = stored.explorationComplete;
       assignedShopId.value = stored.assignedShopId || '';
@@ -265,8 +251,7 @@ export const useExplorationStore = defineStore('exploration', () => {
       campUsed.value = false;
       isExploring.value = false;
       playerPosition.value = { x: 0, y: 0 };
-      visitedCells.value = 0;
-      remainingMoves.value = INITIAL_MOVES;
+      visitedCells.value = 1;
       bossDefeated.value = false;
       explorationComplete.value = false;
     }
@@ -279,7 +264,8 @@ export const useExplorationStore = defineStore('exploration', () => {
 
   /**
    * 进入指定区域进行探索（兼容旧 API，等同于 startExploration）
-   * 加载区域配置 → 生成网格 → 持久化 → 发射探索开始事件   * @param areaId - 区域 ID
+   * 加载区域配置 → 生成网格 → 持久化 → 发射探索开始事件
+   * @param areaId - 区域 ID
    */
   async function enterArea(areaId: string): Promise<void> {
     currentAreaId.value = areaId;
@@ -310,7 +296,6 @@ export const useExplorationStore = defineStore('exploration', () => {
     grid.value = newGrid;
     playerPosition.value = startPos;
     visitedCells.value = 3; // 起点、商店、任务板默认已访问
-    remainingMoves.value = INITIAL_MOVES;
     campUsed.value = false;
     bossDefeated.value = false;
     explorationComplete.value = false;
@@ -345,9 +330,13 @@ export const useExplorationStore = defineStore('exploration', () => {
   // ==================== Action：探索格子 ====================
 
   /**
-   * 揭示指定坐标的格子并触发对应事件（兼容旧 API）
-   * 根据格子类型：怪物/BOSS 触发战斗、商店/任务板打开交互。
-   * 宝箱发放物品、陷阱造成伤害、营地提供恢复、事件触发随机效果
+   * 揭示指定坐标的格子并触发对应事件。
+   *
+   * 处理逻辑分为三条路径：
+   * 1. 怪物/BOSS 格子 → 触发战斗，挂起等待 COMBAT_END 事件回调
+   * 2. 商店/任务板 → 可直接交互，发射探索事件通知 UI 打开对应面板
+   * 3. 宝箱/陷阱/事件/营地 → 立即结算效果（物品/伤害/随机事件/恢复）
+   *
    * @param x - X 坐标
    * @param y - Y 坐标
    * @returns 是否成功揭示
@@ -362,15 +351,16 @@ export const useExplorationStore = defineStore('exploration', () => {
     const characterStore = useCharacterStore();
     const inventoryStore = useInventoryStore();
 
-    // 怪物/BOSS 格子：未被击败时可触发战斗
+    // ===== 路径 1：怪物/BOSS 格子 → 触发战斗 =====
     if (cell.type === 'monster' || cell.type === 'boss') {
       const battleId = cell.monsterId || (cell.type === 'boss' ? 'dragon_whelp' : 'goblin');
       triggerBattle(battleId);
+      // 记录待处理的战斗格子，COMBAT_END 事件回调会消费此坐标
       pendingBattleCell.value = { x, y };
       return true;
     }
 
-    // 商店和任务看板：可多次交互，始终标记为已探索但保持可访问
+    // ===== 路径 2：商店/任务板 → 发射交互事件 =====
     if (cell.type === 'shop' || cell.type === 'board') {
       const isNewlyVisited = !cell.visited;
       cell.explored = true;
@@ -397,7 +387,8 @@ export const useExplorationStore = defineStore('exploration', () => {
       return true;
     }
 
-    // 其他格子：正常揭示逻辑（已探索且未完成则允许再次交互，如 revealAll 后点击宝箱/陷阱）
+    // ===== 路径 3：宝箱/陷阱/事件/营地 → 立即结算 =====
+    // 已探索且已完成的格子不允许再次交互
     if (cell.explored && cell.completed) {
       return false;
     }
@@ -432,7 +423,7 @@ export const useExplorationStore = defineStore('exploration', () => {
         break;
       }
       case 'rest': {
-        await useCampInternal(characterStore);
+        await useCamp();
         cell.completed = true;
         break;
       }
@@ -459,8 +450,12 @@ export const useExplorationStore = defineStore('exploration', () => {
   // ==================== Action：战斗结果 ====================
 
   /**
-   * 处理战斗结果（供 COMBAT_END 事件监听调用）
-   * 胜利时清空怪物/Boss 格子；失败或逃跑时揭示格子内容但保留怪物允许再次挑战
+   * 处理战斗结果（供 COMBAT_END 事件监听调用）。
+   *
+   * 两条分支：
+   * - 胜利 → 格子标记已完成/不可访问，Boss 格额外设置 bossDefeated 标志
+   * - 失败/逃跑 → 仅揭示格子内容，保留 monsterId 允许玩家再次挑战
+   *
    * @param victory - 是否胜利
    */
   async function onBattleResult(victory: boolean): Promise<void> {
@@ -532,8 +527,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     campUsed.value = false;
     isExploring.value = false;
     playerPosition.value = { x: 0, y: 0 };
-    visitedCells.value = 0;
-    remainingMoves.value = INITIAL_MOVES;
+    visitedCells.value = 1;
     bossDefeated.value = false;
     explorationComplete.value = false;
     pendingBattleCell.value = null;
@@ -554,7 +548,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     }
   }
 
-  /** 退出探索（兼容旧 exitExploration() API） */
+  /** 退出探索（reset 的别名，保留以兼容外部旧调用） */
   function exitExploration(): void {
     reset();
   }
@@ -562,8 +556,11 @@ export const useExplorationStore = defineStore('exploration', () => {
   // ==================== 内部处理：物品、陷阱、营地、随机事件 ====================
 
   /**
-   * 处理发现物品事件
-   * 检查物品模板是否存在，存在则添加到背包；不存在则发放金币/经验作为兜底补偿
+   * 处理发现物品事件。
+   *
+   * 正常路径：通过 Inventory Store 添加物品到背包。
+   * 兜底路径：如果物品模板在数据库中不存在（如配置被删除），
+   * 自动转换为金币 + 经验补偿，避免玩家探索收益为零。
    */
   async function handleItemFound(itemId: string, inventoryStore: ReturnType<typeof useInventoryStore>): Promise<void> {
     const item = inventoryStore.getItemInfo(itemId);
@@ -690,12 +687,13 @@ export const useExplorationStore = defineStore('exploration', () => {
     });
   }
 
-  /** 使用营地休息 */
-  async function useCampInternal(characterStore: ReturnType<typeof useCharacterStore>): Promise<void> {
+  /** 使用营地休息，恢复全部生命值和法力值 */
+  async function useCamp(): Promise<void> {
     if (campUsed.value) {
       return;
     }
 
+    const characterStore = useCharacterStore();
     const heal = generateCampHeal(0);
 
     // 直接调用 Character Store Action 恢复生命值和法力值
@@ -719,22 +717,16 @@ export const useExplorationStore = defineStore('exploration', () => {
     });
   }
 
-  /** 使用营地（兼容旧 API，探索格子触发的营地使用） */
-  function useCamp(): boolean {
-    if (campUsed.value) {
-      return false;
-    }
-    const characterStore = useCharacterStore();
-    useCampInternal(characterStore);
-    return true;
-  }
-
   // ==================== 跨模块监听（仅 COMBAT_END） ====================
 
   /** COMBAT_END 监听器注册标记 */
   let combatListenerRegistered = false;
 
-  /** 监听战斗结束事件，处理探索中的战斗结果 */
+  /** 监听战斗结束事件，处理探索中的战斗结果。
+   *
+   * 设计说明：COMBAT_END 使用简单的 eventBus.on 而非分组订阅，
+   * 因为战斗结果监听器只需要一个全局单例，不需要按模块分组清理。
+   */
   function setupCombatListener(): void {
     if (combatListenerRegistered) return;
     combatListenerRegistered = true;
@@ -775,10 +767,9 @@ export const useExplorationStore = defineStore('exploration', () => {
 
   // ==================== 清洁 ====================
 
-  /** 清理资源（在新架构下不再需要事件分组清理） */
+  /** 清理资源（当前 COMBAT_END 监听器使用简单 on，无需显式清理） */
   function dispose(): void {
-    // COMBAT_END 监听器使用简单的 on，不需要分组清理
-    // 如需完全清理，可调用 eventBus.off，但通常不需要
+    // 预留：如需完全清理，可调用 eventBus.off
   }
 
   // ==================== 导出 ====================
@@ -791,7 +782,6 @@ export const useExplorationStore = defineStore('exploration', () => {
     isExploring,
     playerPosition,
     visitedCells,
-    remainingMoves,
     bossDefeated,
     explorationComplete,
 

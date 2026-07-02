@@ -4,8 +4,7 @@
  * @module exploration
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { ExplorationStorage } from './types';
-import type { ExplorationState } from './types';
+import type { ExplorationStorage, ExplorationState } from './types';
 import { toRawData } from '../../utils';
 
 export class ExplorationDbService {
@@ -16,7 +15,7 @@ export class ExplorationDbService {
    */
   async saveExplorationData(characterId: string, state: ExplorationState, assignedShopId: string = ''): Promise<void> {
     await dbService.withRetry(async () => {
-      // JSON 序列化去除 Vue/Proxy 包装，避免 IndexedDB DataCloneError
+      // toRawData 剥离 Vue/Proxy 响应式包装，避免 IndexedDB 序列化时抛出 DataCloneError
       const cleanData = toRawData({
         characterId,
         currentAreaId: state.currentAreaId,
@@ -25,7 +24,6 @@ export class ExplorationDbService {
         campUsed: state.campUsed,
         playerPosition: state.playerPosition,
         visitedCells: state.visitedCells,
-        remainingMoves: state.remainingMoves,
         bossDefeated: state.bossDefeated,
         explorationComplete: state.explorationComplete,
         updatedAt: Date.now()
@@ -35,8 +33,11 @@ export class ExplorationDbService {
   }
 
   /**
-   * 从数据库获取指定角色的探索数据
-   * 兼容旧版本数据，缺失字段使用默认值
+   * 从数据库获取指定角色的探索数据。
+   *
+   * 兼容旧版本存档：缺失字段使用安全的默认值，
+   * 旧版 currentShopId 字段自动迁移到 assignedShopId。
+   *
    * @param characterId - 角色ID
    * @returns 探索存储数据，不存在时返回null
    */
@@ -47,12 +48,11 @@ export class ExplorationDbService {
       // 兼容旧数据：缺失字段使用默认值，旧版 currentShopId 兼容到 assignedShopId
       return {
         ...result,
-        assignedShopId: (result.assignedShopId || (result as unknown as Record<string, unknown>).currentShopId as string) || '',
+        assignedShopId: result.assignedShopId || result.currentShopId || '',
         grid: result.grid || [],
         playerPosition: result.playerPosition || { x: 0, y: 0 },
-        visitedCells: result.visitedCells || 0,
-        remainingMoves: result.remainingMoves ?? 20,
-        bossDefeated: result.bossDefeated || false,
+        visitedCells: result.visitedCells ?? 0,
+        bossDefeated: result.bossDefeated ?? false,
         explorationComplete: result.explorationComplete || false,
         campUsed: result.campUsed || false,
         updatedAt: result.updatedAt || Date.now()
