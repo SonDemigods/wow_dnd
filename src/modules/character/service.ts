@@ -24,14 +24,14 @@ import { MAX_LEVEL, MAX_STAT } from '@/config/character';
 
 // ==================== ID 生成 ====================
 
-/** 生成唯一角色ID */
+/** 生成唯一角色ID（格式：char_时间戳_随机串，如 char_1704067200000_a3b9f2c1d） */
 export function generateCharacterId(): string {
   return `char_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
 // ==================== 属性计算 ====================
 
-/** 根据种族和职业加成计算初始六大属性 */
+/** 根据种族和职业加成计算初始六大属性（基础值固定为 10，加成叠加后 clamp 到 [1, MAX_STAT]） */
 export function computeInitialStats(raceBonus: Partial<Stats>, classBonus: Partial<Stats>): Stats {
   return {
     str: clampStat(10 + (raceBonus.str || 0) + (classBonus.str || 0)),
@@ -48,7 +48,7 @@ function clampStat(value: number): number {
   return Math.min(MAX_STAT, Math.max(1, value));
 }
 
-/** 计算合併 bonus、种族加成、职业加成后的最终核心属性 */
+/** 计算合并 baseStats + bonusStats 后的最终核心属性（用于装备、buff 等外部加成生效） */
 export function computeEffectiveStats(baseStats: Stats, bonusStats: Partial<Stats>): Stats {
   return {
     str: clampStat(baseStats.str + (bonusStats.str || 0)),
@@ -102,18 +102,34 @@ export function createInitialCharacter(params: CreateCharacterParams, raceData: 
   };
 }
 
-// ==================== 生命值 / 法力值 ====================
+// ==================== HP / MP 通用资源变更 ====================
 
-/** 计算 HP 变更后的角色数据（返回新对象，不修改原对象） */
+/**
+ * 通用资源变更函数，统一处理 HP 和 MP 的增减
+ * 确保新值在 [0, maxValue] 范围内，返回新对象不修改原对象
+ * @param character - 当前角色数据
+ * @param amount - 变更量（正数为增加，负数为减少）
+ * @param resourceKey - 当前值字段名
+ * @param maxKey - 最大值字段名
+ */
+function applyResourceChange(
+  character: Character,
+  amount: number,
+  resourceKey: 'hp' | 'mana',
+  maxKey: 'maxHp' | 'maxMana'
+): Character {
+  const newValue = Math.min(character[maxKey], Math.max(0, character[resourceKey] + amount));
+  return { ...character, [resourceKey]: newValue };
+}
+
+/** 计算 HP 变更后的角色数据 */
 export function applyHpChange(character: Character, amount: number): Character {
-  const newHp = Math.min(character.maxHp, Math.max(0, character.hp + amount));
-  return { ...character, hp: newHp };
+  return applyResourceChange(character, amount, 'hp', 'maxHp');
 }
 
 /** 计算 MP 变更后的角色数据 */
 export function applyMpChange(character: Character, amount: number): Character {
-  const newMana = Math.min(character.maxMana, Math.max(0, character.mana + amount));
-  return { ...character, mana: newMana };
+  return applyResourceChange(character, amount, 'mana', 'maxMana');
 }
 
 /** 判断角色是否死亡 */
@@ -123,7 +139,8 @@ export function isDead(character: Character): boolean {
 
 // ==================== 经验值与升级 ====================
 
-/** 计算经验值增益后的角色数据（含升级判定） */
+/** 计算经验值增益后的角色数据（含升级判定）
+ * 升级逻辑：逐级消耗经验值，每级全属性+1 并回满 HP/MP，直到经验值不足以升级或达到 MAX_LEVEL */
 export function applyExpGain(character: Character, amount: number): ExpGainResult {
   if (amount <= 0) return { character, leveledUp: false, levelsGained: 0, newLevel: character.level };
 
@@ -132,6 +149,7 @@ export function applyExpGain(character: Character, amount: number): ExpGainResul
   let levelsGained = 0;
   let mutableChar = { ...character };
 
+  // 逐级升级循环：每次消耗一级经验值，连升多级时全属性叠加增长
   while (newLevel < MAX_LEVEL && newExp >= mutableChar.expToNextLevel) {
     newExp -= mutableChar.expToNextLevel;
     newLevel++;
@@ -139,6 +157,7 @@ export function applyExpGain(character: Character, amount: number): ExpGainResul
     mutableChar = applyLevelUp(mutableChar, newLevel);
   }
 
+  // 达到满级后不再累积经验值
   if (newLevel >= MAX_LEVEL) {
     newExp = 0;
   }
@@ -154,7 +173,7 @@ export function applyExpGain(character: Character, amount: number): ExpGainResul
   };
 }
 
-/** 计算升级后的角色数据（每级全属性+1，HP/MP 重新计算并回满） */
+/** 计算升级后的角色数据（每级全属性+1，HP/MP 重新计算并回满以体现体质/智力成长） */
 export function applyLevelUp(character: Character, newLevel: number): Character {
   const updatedStats: Stats = {
     str: clampStat(character.stats.str + 1),
@@ -194,7 +213,15 @@ export function canAffordGold(character: Character, amount: number): boolean {
 
 // ==================== 属性加成 ====================
 
-/** 计算加成变更后的 bonusStats */
+/** 将加成值限制在 [0, MAX_STAT] 范围内（加成的下界为 0，允许完全移除加成） */
+function clampBonus(value: number): number {
+  return Math.min(MAX_STAT, Math.max(0, value));
+}
+
+/** 计算加成变更后的 bonusStats
+ * isAdd=true 时下界为 1（clampStat），保证新加成至少为 1
+ * isAdd=false 时下界为 0（clampBonus），允许完全移除加成
+ */
 export function computeBonusChange(currentBonus: Partial<Stats>, delta: Partial<Stats>, isAdd: boolean): Partial<Stats> {
   const result = { ...currentBonus };
   const keys = Object.keys(delta) as (keyof Stats)[];
@@ -203,17 +230,12 @@ export function computeBonusChange(currentBonus: Partial<Stats>, delta: Partial<
     const change = delta[key] || 0;
     result[key] = isAdd
       ? clampStat(current + change)
-      : Math.max(0, current - change);
+      : clampBonus(current - change);
   }
   return result;
 }
 
-/** 重新计算基础属性（变更种族/职业时使用） */
-export function recalculateBaseStats(raceBonus: Partial<Stats>, classBonus: Partial<Stats>): Stats {
-  return computeInitialStats(raceBonus, classBonus);
-}
-
-/** 根据有效 stats 重新计算 HP/MP 上限并修正当前值 */
+/** 根据有效 stats 重新计算 HP/MP 上限并修正当前值（上限变化时，当前值不超新上限） */
 export function recalculateHpMp(character: Character, effectiveStats: Stats): Character {
   const newMaxHp = calculateMaxHp(effectiveStats);
   const newMaxMana = calculateMaxMana(effectiveStats);
@@ -228,33 +250,12 @@ export function recalculateHpMp(character: Character, effectiveStats: Stats): Ch
 
 // ==================== 死亡与复活 ====================
 
-/** 计算复活后的角色数据 */
+/** 计算复活后的角色数据（经验值清空，HP/MP 恢复至 50%） */
 export function computeResurrection(character: Character): Character {
   return {
     ...character,
     exp: 0,
     hp: Math.floor(character.maxHp * 0.5),
     mana: Math.floor(character.maxMana * 0.5)
-  };
-}
-
-// ==================== 默认值 ====================
-
-/** 获取默认角色数据（用于未登录时的占位显示） */
-export function getDefaultCharacter(): Character {
-  return {
-    name: '',
-    factionId: 'neutral',
-    raceId: 'human',
-    classId: 'warrior',
-    level: 1,
-    exp: 0,
-    expToNextLevel: 100,
-    hp: 100,
-    maxHp: 100,
-    mana: 50,
-    maxMana: 50,
-    stats: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
-    gold: 0
   };
 }

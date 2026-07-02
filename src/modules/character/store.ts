@@ -27,7 +27,7 @@ import {
   applyGoldChange,
   canAffordGold,
   computeBonusChange,
-  recalculateBaseStats,
+  computeInitialStats,
   recalculateHpMp,
   computeResurrection,
   isDead
@@ -52,6 +52,8 @@ export const useCharacterStore = defineStore('character', () => {
   const classesData = ref<Record<string, ClassData>>({});
 
   // ==================== 计算属性 ====================
+  // 所有百分比均为 [0, 100] 范围整数，用于 UI 进度条展示
+
   const isLoggedIn = computed(() => currentCharacterId.value !== null);
 
   const effectiveStats = computed<Stats>(() => {
@@ -100,20 +102,11 @@ export const useCharacterStore = defineStore('character', () => {
 
   // ==================== 持久化辅助方法 ====================
 
-  /** 保存角色数据到数据库 */
+  /** 保存角色数据到数据库（saveCharacterData 已包含列表字段，无需单独更新列表项） */
   async function persistCharacter(): Promise<void> {
     if (!currentCharacterId.value || !character.value) return;
     const storage = characterDbService.toStorageFormat(currentCharacterId.value, character.value, bonusStats.value);
     await characterDbService.saveCharacterData(storage);
-
-    // 同步更新角色列表项
-    const item = await characterDbService.getCharacterListItem(currentCharacterId.value);
-    if (item) {
-      item.level = character.value.level;
-      item.name = character.value.name;
-      item.lastPlayedTime = Date.now();
-      await characterDbService.saveCharacterListItem(item);
-    }
   }
 
   // ==================== Action：初始化 ====================
@@ -140,6 +133,7 @@ export const useCharacterStore = defineStore('character', () => {
   }
 
   // ==================== Action：创建角色 ====================
+  // 编排流程：Service 纯函数 → Store 状态更新 → 技能初始化 → DB 持久化 → 事件通知
 
   async function createCharacter(
     name: string,
@@ -207,6 +201,11 @@ export const useCharacterStore = defineStore('character', () => {
 
   // ==================== Action：选择角色 ====================
 
+  /**
+   * 选择角色并加载完整数据
+   * @param characterId - 角色ID
+   * @param emitEvent - 是否发送切换事件，initialize 中调用时传 false 避免无意义的 UI 重绘
+   */
   async function selectCharacter(characterId: string, emitEvent: boolean = true): Promise<boolean> {
     const listItem = await characterDbService.getCharacterListItem(characterId);
     const data = await characterDbService.getCharacterData(characterId);
@@ -230,7 +229,8 @@ export const useCharacterStore = defineStore('character', () => {
     // 持久化游戏状态
     await characterDbService.saveGameState(characterId);
 
-    // 通知 UI（角色切换时发送，直接 selectCharacter 内部调用时不发送）
+    // 通知 UI（角色切换时发送 CHARACTER_LOGOUT 用于清理旧角色的音频等模块状态）
+    // 注意：initialize 中直接调用时不发送事件，避免启动时多余的 UI 重绘
     if (emitEvent) {
       eventBus.emit(GameEvents.CHARACTER_LOGOUT, null); // 先登出旧角色 UI 状态
     }
@@ -245,7 +245,6 @@ export const useCharacterStore = defineStore('character', () => {
     if (!listItem) return false;
 
     // 删除所有相关数据
-    await characterDbService.deleteCharacterListItem(characterId);
     await characterDbService.deleteCharacterData(characterId);
     await skillsDbService.deleteSkillsData(characterId);
     await inventoryDbService.deleteInventory(characterId);
@@ -366,7 +365,8 @@ export const useCharacterStore = defineStore('character', () => {
   async function applyBonus(delta: Partial<Stats>): Promise<void> {
     if (!character.value) return;
     bonusStats.value = computeBonusChange(bonusStats.value, delta, true);
-    // 如果体质/智力/感知/魅力变化，重新计算 HP/MP 上限
+    // 仅当影响 HP/MP 的属性（体质/智力/感知/魅力）变化时，才重算上限
+    // 避免力量、敏捷、魅力变化引发不必要的 HP/MP 重算
     if (delta.con || delta.int || delta.wis || delta.cha) {
       const effStats = computeEffectiveStats(character.value.stats, bonusStats.value);
       character.value = recalculateHpMp(character.value, effStats);
@@ -384,6 +384,7 @@ export const useCharacterStore = defineStore('character', () => {
   }
 
   // ==================== Action：种族/职业变更 ====================
+  // setRace/setClass 共用模式：更新内部 bonus → 重算基础属性 → 重算衍生属性 → 持久化
 
   /** 设置种族 */
   async function setRace(race: RaceType): Promise<void> {
@@ -393,7 +394,7 @@ export const useCharacterStore = defineStore('character', () => {
     character.value = {
       ...character.value,
       raceId: race,
-      stats: recalculateBaseStats(raceBonus.value, classBonus.value)
+      stats: computeInitialStats(raceBonus.value, classBonus.value)
     };
     const effStats = computeEffectiveStats(character.value.stats, bonusStats.value);
     character.value = recalculateHpMp(character.value, effStats);
@@ -408,7 +409,7 @@ export const useCharacterStore = defineStore('character', () => {
     character.value = {
       ...character.value,
       classId: classIdParam,
-      stats: recalculateBaseStats(raceBonus.value, classBonus.value)
+      stats: computeInitialStats(raceBonus.value, classBonus.value)
     };
     const effStats = computeEffectiveStats(character.value.stats, bonusStats.value);
     character.value = recalculateHpMp(character.value, effStats);
@@ -419,9 +420,8 @@ export const useCharacterStore = defineStore('character', () => {
   async function setName(nameStr: string): Promise<void> {
     if (!character.value) return;
     character.value = { ...character.value, name: nameStr };
-    // 更新角色列表项
-    const items = await characterDbService.getAllCharacterListItems();
-    const item = items.find(i => i.id === currentCharacterId.value);
+    // 通过主键精确更新角色列表项
+    const item = await characterDbService.getCharacterListItem(currentCharacterId.value!);
     if (item) {
       item.name = nameStr;
       await characterDbService.saveCharacterListItem(item);
@@ -441,10 +441,11 @@ export const useCharacterStore = defineStore('character', () => {
       level: 1,
       exp: 0,
       expToNextLevel: getExpForLevel(2),
-      stats: recalculateBaseStats(raceBonus.value, classBonus.value),
+      stats: computeInitialStats(raceBonus.value, classBonus.value),
     };
     const effStats = computeEffectiveStats(character.value.stats, bonusStats.value);
     character.value = recalculateHpMp(character.value, effStats);
+    // 重置后回满 HP/MP（更新 maxHp/maxMpa 后同步当前值到上限）
     character.value = { ...character.value, hp: character.value.maxHp, mana: character.value.maxMana };
     await persistCharacter();
   }
@@ -486,6 +487,8 @@ export const useCharacterStore = defineStore('character', () => {
   }
 
   // ==================== Action：导出/导入存档 ====================
+  // 这些方法仅为薄委托，将调用转发给 data 模块的专业 Service
+  // 放在 character store 中是为了方便 UI 组件通过单一 Store 入口访问
 
   /** 导出存档：委托给 BackupService 导出 JSON 文件 */
   async function exportBackup(): Promise<void> {
@@ -505,18 +508,6 @@ export const useCharacterStore = defineStore('character', () => {
   /** 修复基础数据：清空所有 config 表并重新导入默认数据 */
   async function repairBaseData(): Promise<void> {
     await dataInitializer.reinitializeData();
-  }
-
-  // ==================== 跨模块事件监听（仅保留 UI/音效事件） ====================
-
-  function setupCrossModuleListeners(): void {
-    // 在新架构下，Store 之间通过直接调用 Action 通信，
-    // 不再通过 EventBus 监听数据变更事件。
-    // 此方法保留用于未来需要监听外部 UI 事件时使用。
-  }
-
-  function dispose(): void {
-    eventBus.clearGroup('characterStore');
   }
 
   return {
@@ -572,10 +563,6 @@ export const useCharacterStore = defineStore('character', () => {
     exportBackup,
     validateImportBackup,
     importBackup,
-    repairBaseData,
-
-    // 生命周期
-    setupCrossModuleListeners,
-    dispose
+    repairBaseData
   };
 });

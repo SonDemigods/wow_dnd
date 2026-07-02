@@ -15,13 +15,14 @@ import { toRawData } from '../../utils';
 export class CharacterDbService {
   /**
    * 保存角色列表项（写入 char_data，仅更新列表字段）
+   * 注：因 char_data 表同时存储完整角色数据，需要先读出已有数据以避免覆盖非列表字段
    * @param character - 角色列表项
    */
   async saveCharacterListItem(character: CharacterListItem): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.char_data.get(character.id);
+      const existing = await gameDb.char_data.get(character.id) as Partial<CharacterDataStorage> | undefined;
       await gameDb.char_data.put({
-        ...(existing || {} as CharacterDataStorage),
+        ...existing,
         characterId: character.id,
         name: character.name,
         factionId: character.factionId,
@@ -37,6 +38,7 @@ export class CharacterDbService {
 
   /**
    * 获取所有角色列表项
+   * 从 char_data 全表中提取列表展示字段，按需做类型转换（IndexedDB 存储为 string）
    * @returns 角色列表项数组
    */
   async getAllCharacterListItems(): Promise<CharacterListItem[]> {
@@ -78,14 +80,6 @@ export class CharacterDbService {
   }
 
   /**
-   * 删除角色列表项（即删除角色数据）
-   * @param characterId - 角色ID
-   */
-  async deleteCharacterListItem(characterId: string): Promise<void> {
-    await this.deleteCharacterData(characterId);
-  }
-
-  /**
    * 保存角色详细数据
    * @param data - 角色详细数据
    */
@@ -99,6 +93,7 @@ export class CharacterDbService {
 
   /**
    * 获取角色详细数据
+   * 返回 IndexedDB 原始存储格式，由调用方（store）通过 fromStorageFormat 转换为 Character
    * @param characterId - 角色ID
    * @returns 角色详细数据或null
    */
@@ -138,6 +133,7 @@ export class CharacterDbService {
 
   /**
    * 将角色数据转换为存储格式
+   * createdTime 在首次创建时可能为空（Character.createdTime 为可选），兜底使用当前时间
    * @param characterId - 角色ID
    * @param character - 角色数据
    * @param bonusStats - 属性加成
@@ -158,13 +154,13 @@ export class CharacterDbService {
       exp: character.exp,
       expToNextLevel: character.expToNextLevel,
       gold: character.gold,
-      baseStats: character.stats as unknown as Record<string, number>,
+      baseStats: character.stats,
       currentHp: character.hp,
       maxHp: character.maxHp,
       currentMp: character.mana,
       maxMp: character.maxMana,
       bonusStats,
-      createdTime: (character as any).createdTime ?? Date.now(),
+      createdTime: character.createdTime ?? Date.now(), // 兜底：createdTime 为可选字段
       lastPlayedTime: Date.now(),
       updatedAt: Date.now()
     };
@@ -172,6 +168,7 @@ export class CharacterDbService {
 
   /**
    * 将存储格式转换为角色数据
+   * 字段名映射：currentHp→hp、currentMp→mana、baseStats→stats（IndexedDB 命名 → UI 命名）
    * @param storage - 存储格式数据
    * @returns 角色数据
    */
@@ -188,7 +185,7 @@ export class CharacterDbService {
       maxHp: storage.maxHp,
       mana: storage.currentMp,
       maxMana: storage.maxMp,
-      stats: storage.baseStats as unknown as Stats,
+      stats: storage.baseStats,
       gold: storage.gold
     };
   }
