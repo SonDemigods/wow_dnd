@@ -8,3 +8,4 @@ export * from './db';
 export * from './service';
 export * from './engine';
 export * from './intro';
+export * from './phase-manager';

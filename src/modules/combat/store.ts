@@ -63,7 +63,8 @@ import {
 import { AggressiveStrategy, DefensiveStrategy, BalancedStrategy, BossPhaseStrategy } from './ai/strategies';
 import type { IAiStrategy, BattleContext } from './ai/types';
 import type { AiStrategyType } from '../enemy/types';
-import { BossPhaseManager, processBossPhaseMechanics, applyPhaseStats } from '../boss/engine';
+import { processBossPhaseMechanics, applyPhaseStats } from '../boss/engine';
+import { BossPhaseManager } from '../boss/phase-manager';
 import type { BossIntro, BossPhase, BossMechanicType } from '../boss/types';
 
 /**
@@ -1352,7 +1353,7 @@ export const useCombatStore = defineStore('combat', () => {
     const intros: Record<string, BossIntro> = {};
     for (const e of enemiesData) {
       if (e.isBoss && e.phases && e.phases.length > 0) {
-        bossPhaseManagers.set(e.id, new BossPhaseManager(e as any));
+        bossPhaseManagers.set(e.id, new BossPhaseManager());
       }
       if (e.isBoss && e.intro) {
         intros[e.id] = e.intro;
@@ -1792,19 +1793,19 @@ export const useCombatStore = defineStore('combat', () => {
     if (e.isBoss && e.phases && e.phases.length > 0) {
       const phaseManager = bossPhaseManagers.get(e.id);
       if (phaseManager) {
-        const currentPhase = phaseManager.getCurrentPhase(e.phases, e.hp, e.maxHp);
-        const transition = phaseManager.checkPhaseTransition(e.phases, e.hp, e.maxHp);
-        if (transition.changed && transition.newPhase) {
-          applyPhaseStats(e, transition.newPhase);
+        const result = phaseManager.getCurrentPhase(e.phases, e.hp, e.maxHp);
+        const currentPhase = result.phase;
+        if (result.changed && currentPhase) {
+          applyPhaseStats(e, currentPhase);
           // 同步更新 AI 策略为当前阶段的策略
-          if (transition.newPhase.aiStrategy) {
-            e.aiStrategy = transition.newPhase.aiStrategy;
+          if (currentPhase.aiStrategy) {
+            e.aiStrategy = currentPhase.aiStrategy;
           }
           addCombatLog({
             actorType: 'system', actorId: 'system', actorName: '系统',
             eventType: 'combat_event', targetType: 'enemy', targetId: e.id,
             targetName: e.name, isCrit: false, isDodge: false,
-            message: `【阶段转换】${e.name} 进入 "${transition.newPhase.name}" 阶段！`
+            message: `【阶段转换】${e.name} 进入 "${currentPhase.name}" 阶段！`
           });
           // 发射阶段转换事件（UI 特效）
           eventBus.emit(GameEvents.COMBAT_BOSS_PHASE, {
