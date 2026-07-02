@@ -3,7 +3,7 @@
  * 
  * 定义游戏事件系统的所有类型、接口和枚举
  */
-import type { Enemy } from '../enemy/types';
+import type { EnemyInstance } from '../enemy/types';
 import type { LocationData } from '../map/types';
 import type { QuestDefinition } from '../quest/types';
 import type { Skill } from '../skill/types';
@@ -101,8 +101,8 @@ export interface GameEventPayloadMap {
   [GameEvents.CHARACTER_LEVEL_UP]: { oldLevel: number; newLevel: number };
   [GameEvents.CHARACTER_DEATH]: { cause: string };
   [GameEvents.CHARACTER_RESURRECTED]: { newHp: number; newMp: number };
-  [GameEvents.COMBAT_START]: { enemy: Enemy };
-  [GameEvents.COMBAT_END]: { result: string; enemy: Enemy | null; expGained: number; goldGained?: number };
+  [GameEvents.COMBAT_START]: { enemy: EnemyInstance };
+  [GameEvents.COMBAT_END]: { result: string; enemy: EnemyInstance | null; expGained: number; goldGained?: number };
   [GameEvents.COMBAT_PLAYER_TURN]: null;
   [GameEvents.COMBAT_ENEMY_TURN]: null;
   [GameEvents.COMBAT_DEAL_DAMAGE]: { amount: number; damageType: 'physical' | 'magic'; targetName: string; actorType?: 'player' | 'enemy' };

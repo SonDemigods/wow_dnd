@@ -6,7 +6,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { Enemy } from './types';
+import type { EnemyInstance } from './types';
 import type { Skill } from '../skill/types';
 import { createEnemyInstance, calculateEnemyDamage } from './service';
 import { enemyDbService } from './db';
@@ -23,7 +23,7 @@ export const useEnemiesStore = defineStore('enemies', () => {
   const activeEnemyIds = ref<string[]>([]);
 
   /** 敌人实例缓存（key 为敌人 ID） */
-  const enemiesCache = ref<Record<string, Enemy>>({});
+  const enemiesCache = ref<Record<string, EnemyInstance>>({});
 
   /** 敌人技能冷却追踪（enemyId → { skillId: 剩余冷却回合数 }） */
   const skillCooldowns = ref<Record<string, Record<string, number>>>({});
@@ -39,11 +39,15 @@ export const useEnemiesStore = defineStore('enemies', () => {
 
   /**
    * 创建敌人实例
+   *
+   * 查找顺序：优先从普通怪物表（enemyDbService）查找，未命中时回退到 Boss 表（bossDbService）。
+   * 命中后将实例存入缓存并加入活跃列表；均未命中或创建失败时返回 null。
+   *
    * @param dataId - 敌人数据 ID
    * @param level - 敌人等级，默认 1
-   * @returns 创建的敌人实例
+   * @returns 创建的敌人实例，失败时返回 null
    */
-  async function createEnemy(dataId: string, level: number = 1): Promise<Enemy | null> {
+  async function createEnemy(dataId: string, level: number = 1): Promise<EnemyInstance | null> {
     try {
       // 优先从普通怪物表查找
       let template = await enemyDbService.getEnemyTemplate(dataId);
@@ -80,24 +84,33 @@ export const useEnemiesStore = defineStore('enemies', () => {
     const enemy = enemiesCache.value[id];
     if (!enemy) return false;
 
-    enemy.hp = Math.max(0, enemy.hp - damage);
-    enemiesCache.value[id] = { ...enemy };
-    return enemy.hp <= 0;
+    const newHp = Math.max(0, enemy.hp - damage);
+    enemiesCache.value[id] = { ...enemy, hp: newHp };
+    return newHp <= 0;
   }
 
   /**
    * 根据 ID 获取敌人
+   * @param id - 敌人实例 ID
+   * @returns 敌人实例，不存在时返回 null
    */
-  function getEnemyById(id: string): Enemy | null {
+  function getEnemyById(id: string): EnemyInstance | null {
     return enemiesCache.value[id] || null;
   }
 
   /**
    * 获取敌人可用技能列表（从 skillPool 读取技能ID，通过 skillsStore 获取真实技能数据）
+   *
+   * 过滤掉冷却中的技能，仅返回当前可施放的技能。
+   *
    * @param id - 敌人实例 ID
-   * @returns 可用技能列表
+   * @returns 可用技能列表：
+   *   - `id`：技能 ID
+   *   - `name`：技能名称
+   *   - `isHeal`：是否为治疗技能
+   *   - `isBuff`：是否为 buff/debuff 技能
    */
-  function getAvailableSkills(id: string): { id: string; name: string; isHeal?: boolean; isBuff?: boolean; damageMultiplier?: number }[] {
+  function getAvailableSkills(id: string): { id: string; name: string; isHeal?: boolean; isBuff?: boolean }[] {
     const enemy = enemiesCache.value[id];
     if (!enemy || !enemy.skillPool || enemy.skillPool.length === 0) return [];
 
@@ -111,16 +124,39 @@ export const useEnemiesStore = defineStore('enemies', () => {
         id: s.id,
         name: s.name,
         isHeal: s.type === 'health_restore' || s.type === 'mana_restore',
-        isBuff: s.type === 'buff' || s.type === 'debuff',
-        damageMultiplier: s.effect.coefficient || 1
+        isBuff: s.type === 'buff' || s.type === 'debuff'
       }));
   }
 
   /**
-   * 敌人使用技能（通过 skillsStore 获取真实技能数据，基于敌人属性计算伤害/生命恢复量）
+   * 记录技能冷却（统一冷却逻辑，避免分支遗漏）
    * @param id - 敌人实例 ID
    * @param skillId - 技能 ID
-   * @returns 技能使用结果（成功状态、伤害/生命恢复值、是否为生命恢复）
+   * @param cooldown - 冷却回合数
+   */
+  function recordCooldown(id: string, skillId: string, cooldown?: number): void {
+    if (cooldown && cooldown > 0) {
+      if (!skillCooldowns.value[id]) skillCooldowns.value[id] = {};
+      skillCooldowns.value[id][skillId] = cooldown;
+    }
+  }
+
+  /**
+   * 敌人使用技能（通过 skillsStore 获取真实技能数据，基于敌人属性计算伤害/生命恢复量）
+   *
+   * 根据技能类型分三条分支处理：
+   * - buff/debuff：记录冷却，返回 buff 数据供调用方处理
+   * - 治疗：记录冷却，恢复敌人 HP，damage 为负值表示恢复量
+   * - 攻击：记录冷却，返回伤害值，由 combat 模块进一步计算防御减免
+   *
+   * @param id - 敌人实例 ID
+   * @param skillId - 技能 ID
+   * @returns 技能使用结果：
+   *   - `success`：是否成功施放
+   *   - `damage`：伤害值（正值）或恢复量（负值）
+   *   - `isHeal`：是否为治疗技能
+   *   - `isBuff`：是否为 buff/debuff 技能
+   *   - `buffs`：buff 数据列表（仅 buff 分支返回）
    */
   function useSkill(id: string, skillId: string): { success: boolean; damage: number; isHeal: boolean; isBuff?: boolean; buffs?: Array<{ type: string; value: number; turns: number }> } {
     const enemy = enemiesCache.value[id];
@@ -141,10 +177,7 @@ export const useEnemiesStore = defineStore('enemies', () => {
     // buff/debuff 技能：不造成伤害，将 buff 数据传回调用方处理
     if (isBuff) {
       // 记录技能冷却
-      if (skill.cooldown && skill.cooldown > 0) {
-        if (!skillCooldowns.value[id]) skillCooldowns.value[id] = {};
-        skillCooldowns.value[id][skillId] = skill.cooldown;
-      }
+      recordCooldown(id, skillId, skill.cooldown);
       if (skill.buffs && skill.buffs.length > 0) {
         return {
           success: true, damage: 0, isHeal: false, isBuff: true,
@@ -155,30 +188,43 @@ export const useEnemiesStore = defineStore('enemies', () => {
     }
 
     // 根据技能伤害类型选择对应的攻击属性
-    const attackStat = (() => {
-      if (skill.type === 'magic_damage') {
-        return (enemy.magicAttack || (enemy.stats as any)?.magicAttack || 10);
-      }
-      return (enemy.physicalAttack || (enemy.stats as any)?.physicalAttack || 10);
-    })();
-    const coefficient = skill.effect.coefficient || 1;
+    const attackStat = (skill.type === 'magic_damage'
+      ? enemy.magicAttack
+      : enemy.physicalAttack) ?? 10;
+    const coefficient = skill.effect.coefficient ?? 1;
     const baseDamage = Math.round(attackStat * coefficient + skill.effect.value);
 
     if (isHeal) {
       // 生命恢复技能：恢复敌人生命值
+      // 记录技能冷却（修复：治疗技能也需要进入冷却）
+      recordCooldown(id, skillId, skill.cooldown);
       const healAmount = Math.min(baseDamage, enemy.maxHp - enemy.hp);
-      enemy.hp += healAmount;
-      enemiesCache.value[id] = { ...enemy };
+      enemiesCache.value[id] = { ...enemy, hp: enemy.hp + healAmount };
       return { success: true, damage: -healAmount, isHeal: true };
     }
 
     // 攻击技能：对玩家造成伤害（伤害值由 combat 模块的防御计算进一步处理）
     // 记录技能冷却（敌人也需要遵循冷却机制）
-    if (skill.cooldown && skill.cooldown > 0) {
-      if (!skillCooldowns.value[id]) skillCooldowns.value[id] = {};
-      skillCooldowns.value[id][skillId] = skill.cooldown;
-    }
+    recordCooldown(id, skillId, skill.cooldown);
     return { success: true, damage: baseDamage, isHeal: false };
+  }
+
+  /**
+   * 推进指定敌人的技能冷却
+   *
+   * 将该敌人所有技能的剩余冷却回合数减 1，冷却归零后移除记录；
+   * 若该敌人无任何冷却中的技能，则清理其冷却记录条目。
+   *
+   * @param eid - 敌人实例 ID
+   */
+  function tickSingleEnemyCooldowns(eid: string): void {
+    const cd = skillCooldowns.value[eid];
+    if (!cd) return;
+    for (const sid of Object.keys(cd)) {
+      cd[sid]--;
+      if (cd[sid] <= 0) delete cd[sid];
+    }
+    if (Object.keys(cd).length === 0) delete skillCooldowns.value[eid];
   }
 
   /**
@@ -187,21 +233,10 @@ export const useEnemiesStore = defineStore('enemies', () => {
    */
   function tickCooldowns(enemyId?: string): void {
     if (enemyId) {
-      const cd = skillCooldowns.value[enemyId];
-      if (!cd) return;
-      for (const sid of Object.keys(cd)) {
-        cd[sid]--;
-        if (cd[sid] <= 0) delete cd[sid];
-      }
-      if (Object.keys(cd).length === 0) delete skillCooldowns.value[enemyId];
+      tickSingleEnemyCooldowns(enemyId);
     } else {
       for (const eid of Object.keys(skillCooldowns.value)) {
-        const cd = skillCooldowns.value[eid];
-        for (const sid of Object.keys(cd)) {
-          cd[sid]--;
-          if (cd[sid] <= 0) delete cd[sid];
-        }
-        if (Object.keys(cd).length === 0) delete skillCooldowns.value[eid];
+        tickSingleEnemyCooldowns(eid);
       }
     }
   }
@@ -217,24 +252,32 @@ export const useEnemiesStore = defineStore('enemies', () => {
   }
 
   /**
-   * 计算敌人对玩家造成的伤害（委托纯函数）
+   * 计算敌人对玩家造成的伤害（委托纯函数 calculateEnemyDamage）
+   *
+   * 薄封装的目的：避免 combat 层直接依赖 enemy/service.ts，通过 Store 统一对外暴露。
+   *
    * @param enemy - 敌人实例
    * @param defense - 玩家防御值
    * @returns 计算后的伤害值
    */
-  function calculateDamage(enemy: Enemy, defense: number): number {
+  function calculateDamage(enemy: EnemyInstance, defense: number): number {
     return calculateEnemyDamage(enemy, defense);
   }
 
   /**
    * 删除敌人实例
+   *
+   * 同时清理活跃 ID 列表、实例缓存和技能冷却记录，避免内存泄漏。
+   *
+   * @param id - 敌人实例 ID
    */
   function deleteEnemy(id: string): void {
     activeEnemyIds.value = activeEnemyIds.value.filter(eid => eid !== id);
     delete enemiesCache.value[id];
+    delete skillCooldowns.value[id];
   }
 
-  /** 清除所有敌人 */
+  /** 清除所有敌人（活跃 ID 列表、实例缓存、技能冷却记录全部重置） */
   function clearAll(): void {
     activeEnemyIds.value = [];
     enemiesCache.value = {};

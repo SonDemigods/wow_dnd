@@ -5,7 +5,7 @@
  * （Boss 数据已拆分至 ../boss/db.ts）
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { EnemyStorage, EnemyData, DangerLevel } from './types';
+import type { EnemyStorage, EnemyData, AiStrategyType } from './types';
 
 /**
  * 普通怪物数据层服务
@@ -13,6 +13,9 @@ import type { EnemyStorage, EnemyData, DangerLevel } from './types';
 export class EnemyDbService {
   /**
    * 保存怪物模板到数据库
+   *
+   * 可选字段为 `undefined` 时写入 `null`，以适配 IndexedDB 的索引存储要求。
+   *
    * @param enemy - 怪物数据
    */
   async saveEnemyTemplate(enemy: EnemyData): Promise<void> {
@@ -31,7 +34,9 @@ export class EnemyDbService {
         magicAttack: enemy.magicAttack ?? null,
         magicDefense: enemy.magicDefense ?? null,
         critChance: enemy.critChance ?? null,
-        dodgeChance: enemy.dodgeChance ?? null
+        dodgeChance: enemy.dodgeChance ?? null,
+        skillPool: enemy.skillPool ?? null,
+        aiStrategy: enemy.aiStrategy ?? null
       });
     });
   }
@@ -73,6 +78,15 @@ export class EnemyDbService {
 
   /**
    * 将数据库存储格式转换为 EnemyData
+   *
+   * 转换规则：
+   * - `null` 还原为 `undefined`（与 EnemyData 的可选字段语义一致）
+   * - 数值字段通过 `Number()` 强制转换，转换失败时使用默认值
+   * - `damage` 校验数组长度，不合法时回退为 `[1, 3]`
+   * - `aiStrategy` 由 `string` 断言为 `AiStrategyType`（数据源受控）
+   *
+   * @param data - 数据库存储格式的怪物数据
+   * @returns 转换后的 EnemyData
    */
   private fromStorage(data: EnemyStorage): EnemyData {
     const rawDamage = data.damage;
@@ -88,13 +102,15 @@ export class EnemyDbService {
       damage,
       xp: Number(data.xp) || 0,
       gold: Number(data.gold) || 0,
-      dangerLevel: (data.dangerLevel as DangerLevel) || '普通',
+      dangerLevel: data.dangerLevel || '普通',
       physicalAttack: data.physicalAttack != null ? Number(data.physicalAttack) : undefined,
       physicalDefense: data.physicalDefense != null ? Number(data.physicalDefense) : undefined,
       magicAttack: data.magicAttack != null ? Number(data.magicAttack) : undefined,
       magicDefense: data.magicDefense != null ? Number(data.magicDefense) : undefined,
       critChance: data.critChance != null ? Number(data.critChance) : undefined,
-      dodgeChance: data.dodgeChance != null ? Number(data.dodgeChance) : undefined
+      dodgeChance: data.dodgeChance != null ? Number(data.dodgeChance) : undefined,
+      skillPool: data.skillPool,
+      aiStrategy: data.aiStrategy as AiStrategyType | undefined
     };
   }
 }

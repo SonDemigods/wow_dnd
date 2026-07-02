@@ -4,7 +4,7 @@
  * 提供战斗相关的纯计算函数，不持有任何状态，不产生任何副作用。
  * 所有状态管理和副作用（持久化、事件通知）由 Store 层负责。
  */
-import type { Enemy } from '../enemy/types';
+import type { EnemyInstance } from '../enemy/types';
 
 /**
  * 计算玩家物理伤害
@@ -77,6 +77,6 @@ export function generateBattleLogId(): string {
  * @param enemy - 敌人实例
  * @returns 是否为 Boss 战
  */
-export function isBossCombat(enemy: Enemy): boolean {
+export function isBossCombat(enemy: EnemyInstance): boolean {
   return Boolean(enemy.isBoss);
 }

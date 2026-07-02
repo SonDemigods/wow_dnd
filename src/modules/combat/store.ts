@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 战斗模块状态管理层（Store 核心架构）
  * 
  * Store 是战斗数据的唯一持有者，所有响应式状态集中管理。
@@ -20,7 +20,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { CombatState, CombatAction, CombatActionResult, CombatLog, CombatResult, AoeHitInfo } from './types';
-import type { Enemy } from '../enemy/types';
+import type { EnemyInstance } from '../enemy/types';
 import { useEnemiesStore } from '../enemy/store';
 import { combatDbService } from './db';
 import { eventBus, GameEvents } from '../bus/core';
@@ -144,8 +144,8 @@ export const useCombatStore = defineStore('combat', () => {
    * 敌人列表（从 enemiesStore 缓存实时读取，自动响应 HP 变化）
    * 不再维护本地副本，数据源唯一
    */
-  const enemies = computed<Enemy[]>(() =>
-    enemyIds.value.map(id => enemiesStore.getEnemyById(id)).filter((e): e is Enemy => e !== null && e !== undefined)
+  const enemies = computed<EnemyInstance[]>(() =>
+    enemyIds.value.map(id => enemiesStore.getEnemyById(id)).filter((e): e is EnemyInstance => e !== null && e !== undefined)
   );
 
   /** 存活敌人列表 */
@@ -210,7 +210,7 @@ export const useCombatStore = defineStore('combat', () => {
    * 创建敌人效果上下文
    * @param enemy - 敌人实例
    */
-  function createEnemyEffectContext(enemy: Enemy): EffectContext {
+  function createEnemyEffectContext(enemy: EnemyInstance): EffectContext {
     return {
       ownerId: enemy.id,
       ownerType: 'enemy',
@@ -269,7 +269,7 @@ export const useCombatStore = defineStore('combat', () => {
    * 敌人普通攻击（内部方法）
    * @param e - 执行攻击的敌人
    */
-  function enemyBasicAttack(e: Enemy): CombatActionResult {
+  function enemyBasicAttack(e: EnemyInstance): CombatActionResult {
     const characterStore = useCharacterStore();
 
     // 计算伤害
@@ -371,7 +371,7 @@ export const useCombatStore = defineStore('combat', () => {
    * @param skill - 技能信息
    * @param e - 执行攻击的敌人
    */
-  function enemyAttackWithSkill(damage: number, skill: { id: string; name: string }, e: Enemy): CombatActionResult {
+  function enemyAttackWithSkill(damage: number, skill: { id: string; name: string }, e: EnemyInstance): CombatActionResult {
     const characterStore = useCharacterStore();
 
     // 检查玩家闪避
@@ -476,7 +476,7 @@ export const useCombatStore = defineStore('combat', () => {
    * 敌人行动（内部方法，使用 AI 策略模式决定行动）
    * @param e - 执行行动的敌人
    */
-  function enemyAction(e: Enemy): CombatActionResult {
+  function enemyAction(e: EnemyInstance): CombatActionResult {
     if (state.value !== 'fighting') {
       return { success: false, type: 'attack', message: '战斗已结束' };
     }
@@ -1307,8 +1307,8 @@ export const useCombatStore = defineStore('combat', () => {
    * 处理掉落（内部方法，仅 Boss 掉落物品）
    * @param e - 敌人数据
    */
-  function handleLoot(e: Enemy): void {
-    e.drops.forEach(drop => {
+  function handleLoot(e: EnemyInstance): void {
+    e.drops?.forEach(drop => {
       if (Math.random() < drop.dropRate) {
         const amount = Math.floor(Math.random() * (drop.maxAmount - drop.minAmount + 1)) + drop.minAmount;
 
@@ -1347,7 +1347,7 @@ export const useCombatStore = defineStore('combat', () => {
   /**
    * 初始化 Boss 专属功能（阶段管理器、出场演出）
    */
-  function initBossFeatures(enemiesData: Enemy[]): void {
+  function initBossFeatures(enemiesData: EnemyInstance[]): void {
     bossPhaseManagers.clear();
     const intros: Record<string, BossIntro> = {};
     for (const e of enemiesData) {
@@ -1366,7 +1366,7 @@ export const useCombatStore = defineStore('combat', () => {
    * Boss 优先放在后排中间，普通敌人优先填满前排
    * @param enemiesData - 敌人数据数组
    */
-  function assignEnemyPositions(enemiesData: Enemy[]): void {
+  function assignEnemyPositions(enemiesData: EnemyInstance[]): void {
     const positions: Record<string, { row: 'front' | 'back'; col: number }> = {};
     const frontSlots: number[] = [0, 1, 2]; // 前排 3 个位置
     const backSlots: number[] = [0, 1, 2];  // 后排 3 个位置
@@ -1401,7 +1401,7 @@ export const useCombatStore = defineStore('combat', () => {
    * @param effects - 要施加的效果列表
    * @param sourceName - 技能名称（来源）
    */
-  function applyDebuffToEnemy(e: Enemy, effects: Array<{ type: string; value: number; turns: number }>, sourceName: string): void {
+  function applyDebuffToEnemy(e: EnemyInstance, effects: Array<{ type: string; value: number; turns: number }>, sourceName: string): void {
     // 确保该敌人有效果容器
     if (!enemyEffects.value.has(e.id)) {
       enemyEffects.value.set(e.id, createEmptyContainer());
@@ -1493,7 +1493,7 @@ export const useCombatStore = defineStore('combat', () => {
    * @param mechType - 机制类型
    * @param phase - 当前阶段（用于获取参数）
    */
-  function applyMechanicEffect(e: Enemy, mechType: BossMechanicType, phase: BossPhase): void {
+  function applyMechanicEffect(e: EnemyInstance, mechType: BossMechanicType, phase: BossPhase): void {
     const characterStore = useCharacterStore();
     const mechanic = phase.mechanics.find(m => m.type === mechType);
     const params = mechanic?.params || {};
@@ -1881,7 +1881,7 @@ export const useCombatStore = defineStore('combat', () => {
    * 开始战斗
    * @param enemiesData - 敌人数据数组
    */
-  function startCombat(enemiesData: Enemy[]): void {
+  function startCombat(enemiesData: EnemyInstance[]): void {
     // 创建战斗 ID
     combatId.value = generateCombatId();
 

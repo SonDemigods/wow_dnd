@@ -3,9 +3,8 @@
  *
  * 提供敌人属性推导、伤害计算、实例创建等纯函数，不含状态和副作用
  */
-import type { Enemy, EnemyInstance, EnemyDrop } from './types';
+import type { EnemyInstance, EnemyDrop, EnemyData } from './types';
 import type { Stats } from '../character/types';
-import type { EnemyData } from './types';
 
 /**
  * 根据模板和等级推导敌人属性统计（含等级缩放）
@@ -32,19 +31,25 @@ export function generateEnemyStats(
   const levelScale = 1 + (level - 1) * 0.1;
 
   // 战斗属性随等级缩放
-  const scaledPhysicalAttack = Math.floor((template.physicalAttack || 10) * levelScale);
-  const scaledPhysicalDefense = Math.floor((template.physicalDefense || 5) * levelScale);
-  const scaledMagicAttack = Math.floor((template.magicAttack || 5) * levelScale);
-  const scaledMagicDefense = Math.floor((template.magicDefense || 5) * levelScale);
+  const scaledPhysicalAttack = Math.floor((template.physicalAttack ?? 10) * levelScale);
+  const scaledPhysicalDefense = Math.floor((template.physicalDefense ?? 5) * levelScale);
+  const scaledMagicAttack = Math.floor((template.magicAttack ?? 5) * levelScale);
+  const scaledMagicDefense = Math.floor((template.magicDefense ?? 5) * levelScale);
   const scaledDamage: [number, number] = [
     Math.floor(template.damage[0] * levelScale),
     Math.floor(template.damage[1] * levelScale)
   ];
 
-  // 六维属性由缩放后的战斗属性推导
+  // 六维属性由缩放后的战斗属性推导：
+  // - str（力量）：物理攻击 × 0.8
+  // - dex（敏捷）：闪避率 × 1.5
+  // - con（体质）：最大生命 × 等级缩放 × 0.3
+  // - int（智力）：魔法攻击 × 0.8
+  // - wis（智慧）：魔法防御 × 1.2
+  // - cha（魅力）：固定为 5（敌人不使用魅力属性）
   const stats: Stats = {
     str: Math.floor(scaledPhysicalAttack * 0.8),
-    dex: Math.floor((template.dodgeChance || 5) * 1.5),
+    dex: Math.floor((template.dodgeChance ?? 5) * 1.5),
     con: Math.floor(template.maxHp * levelScale * 0.3),
     int: Math.floor(scaledMagicAttack * 0.8),
     wis: Math.floor(scaledMagicDefense * 1.2),
@@ -71,12 +76,20 @@ export function generateEnemyStats(
 
 /**
  * 计算敌人对玩家造成的伤害
+ *
+ * 伤害公式：
+ *   rawDamage = (物理攻击力 + 伤害范围随机值) × 0.5
+ *   mitigated = max(1, rawDamage - 玩家防御 × 0.3)
+ *   最终伤害 = floor(mitigated)
+ *
+ * 即物理攻击力与伤害范围各占 50% 权重，玩家防御按 30% 比例减免，最低造成 1 点伤害。
+ *
  * @param enemy - 敌人实例
  * @param playerDefense - 玩家防御值
- * @returns 计算后的伤害值
+ * @returns 计算后的伤害值（向下取整，最小为 1）
  */
-export function calculateEnemyDamage(enemy: Enemy, playerDefense: number): number {
-  const baseDamage = enemy.physicalAttack || enemy.stats.str;
+export function calculateEnemyDamage(enemy: EnemyInstance, playerDefense: number): number {
+  const baseDamage = enemy.physicalAttack ?? 10;
   const damageRange = enemy.damage;
   const randomFactor = damageRange[0] + Math.random() * (damageRange[1] - damageRange[0]);
   const rawDamage = (baseDamage + randomFactor) * 0.5;
@@ -90,26 +103,9 @@ export function calculateEnemyDamage(enemy: Enemy, playerDefense: number): numbe
  * @param level - 敌人等级
  * @returns 完整的敌人实例
  */
-export function createEnemyInstance(template: EnemyData, level: number): Enemy {
-  const id = `enemy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+export function createEnemyInstance(template: EnemyData, level: number): EnemyInstance {
+  const id = `enemy_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   const derived = generateEnemyStats(template, level);
-
-  const drops: EnemyDrop[] = [];
-
-  // Boss 额外掉落物品
-  if (template.isBoss) {
-    const bossDrops: EnemyDrop[] = [
-      { itemId: 'large_health_potion', minAmount: 1, maxAmount: 2, dropRate: 0.6 },
-      { itemId: 'large_mana_potion', minAmount: 1, maxAmount: 1, dropRate: 0.4 },
-      { itemId: 'strength_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
-      { itemId: 'agility_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
-      { itemId: 'constitution_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
-      { itemId: 'intelligence_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
-      { itemId: 'wisdom_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
-      { itemId: 'charisma_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 }
-    ];
-    drops.push(...bossDrops);
-  }
 
   const enemy: EnemyInstance = {
     ...template,
@@ -118,7 +114,6 @@ export function createEnemyInstance(template: EnemyData, level: number): Enemy {
     level,
     hp: derived.hp,
     maxHp: derived.maxHp,
-    loot: [],
     stats: derived.stats,
     expReward: derived.expReward,
     goldReward: derived.goldReward,
@@ -127,9 +122,22 @@ export function createEnemyInstance(template: EnemyData, level: number): Enemy {
     physicalDefense: derived.physicalDefense,
     magicAttack: derived.magicAttack,
     magicDefense: derived.magicDefense,
-    damage: derived.damage,
-    drops
+    damage: derived.damage
   };
 
   return enemy;
 }
+
+/**
+ * Boss 通用掉落表（由 boss/service.ts 引用，避免硬编码重复）
+ */
+export const BOSS_DROP_TABLE: EnemyDrop[] = [
+  { itemId: 'large_health_potion', minAmount: 1, maxAmount: 2, dropRate: 0.6 },
+  { itemId: 'large_mana_potion', minAmount: 1, maxAmount: 1, dropRate: 0.4 },
+  { itemId: 'strength_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+  { itemId: 'agility_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+  { itemId: 'constitution_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+  { itemId: 'intelligence_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+  { itemId: 'wisdom_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+  { itemId: 'charisma_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 }
+];
