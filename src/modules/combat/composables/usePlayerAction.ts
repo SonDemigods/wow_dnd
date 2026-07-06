@@ -8,8 +8,8 @@ import type { CombatActionResult, AoeHitInfo } from '../types';
 import type { EnemyInstance } from '../../enemy/types';
 import type { CombatResult } from '../types';
 import { useCharacterStore } from '../../character/store';
-import { useEnemiesStore } from '../../enemy/store';
-import { useSkillsStore } from '../../skill/store';
+import { useEnemyStore } from '../../enemy/store';
+import { useSkillStore } from '../../skill/store';
 import { useInventoryStore } from '../../inventory/store';
 import { eventBus, GameEvents } from '../../bus';
 import { useLogStore } from '../../log/store';
@@ -196,7 +196,7 @@ export function usePlayerAction(
     const finalDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
 
     // 造成伤害
-    const enemiesStore = useEnemiesStore();
+    const enemiesStore = useEnemyStore();
     const isDead = enemiesStore.takeDamage(target.id, finalDamage);
 
     // 荆棘反伤：对攻击者自身造成反弹伤害
@@ -280,7 +280,7 @@ export function usePlayerAction(
    * @param skillId - 技能 ID
    */
   async function playerSkill(skillId: string): Promise<CombatActionResult> {
-    const skillsStore = useSkillsStore();
+    const skillsStore = useSkillStore();
     const characterStore = useCharacterStore();
 
     const skill = skillsStore.getSkill(skillId);
@@ -317,7 +317,7 @@ export function usePlayerAction(
         const livingEnemies = aliveEnemies.value;
         const damageType: DamageType = result.type === 'magic_damage' ? 'magical' : 'physical';
         const aoeHits: AoeHitInfo[] = [];
-        const enemiesStore = useEnemiesStore();
+        const enemiesStore = useEnemyStore();
 
         for (const e of livingEnemies) {
           // AOE 惩罚在管线前应用，与攻防修正独立计算
@@ -419,7 +419,7 @@ export function usePlayerAction(
           result.damage  // baseDamageOverride：技能基础伤害直接传入
         );
 
-        const enemiesStore = useEnemiesStore();
+        const enemiesStore = useEnemyStore();
         const isDead = enemiesStore.takeDamage(target.id, pipeResult.finalDamage);
         const updatedTarget = enemiesStore.getEnemyById(target.id);
 
@@ -602,7 +602,7 @@ export function usePlayerAction(
         const finalDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
 
         // 造成伤害
-        const enemiesStore = useEnemiesStore();
+        const enemiesStore = useEnemyStore();
         enemiesStore.takeDamage(target.id, finalDamage);
 
         damageResult = { damage: finalDamage, isCrit };
@@ -645,7 +645,7 @@ export function usePlayerAction(
     // 战斗日志
     if (damageResult) {
       const target = currentTarget.value;
-      const enemiesStore = useEnemiesStore();
+      const enemiesStore = useEnemyStore();
       const updatedTarget = target ? enemiesStore.getEnemyById(target.id) : null;
       addCombatLog({
         actorType: 'player',

@@ -12,12 +12,12 @@ import { createEnemyInstance, calculateEnemyDamage } from './service';
 import { enemyDbService } from './db';
 import { bossDbService } from '../boss/db';
 import { createBossInstance } from '../boss/service';
-import { useSkillsStore } from '../skill/store';
+import { useSkillStore } from '../skill/store';
 
 /**
  * 敌人状态存储
  */
-export const useEnemiesStore = defineStore('enemies', () => {
+export const useEnemyStore = defineStore('enemies', () => {
   // ==================== 状态 ====================
   /** 当前活跃敌人 ID 列表 */
   const activeEnemyIds = ref<string[]>([]);
@@ -114,8 +114,7 @@ export const useEnemiesStore = defineStore('enemies', () => {
     const enemy = enemiesCache.value[id];
     if (!enemy || !enemy.skillPool || enemy.skillPool.length === 0) return [];
 
-    const skillsStore = useSkillsStore();
-
+    const skillsStore = useSkillStore();
     return enemy.skillPool
       .filter(skillId => !skillCooldowns.value[id]?.[skillId])
       .map(skillId => skillsStore.getSkill(skillId))
@@ -165,7 +164,7 @@ export const useEnemiesStore = defineStore('enemies', () => {
     }
 
     // 通过 skillsStore 获取真实技能数据
-    const skillsStore = useSkillsStore();
+    const skillsStore = useSkillStore();
     const skill = skillsStore.getSkill(skillId);
     if (!skill) {
       return { success: false, damage: 0, isHeal: false };

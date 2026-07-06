@@ -8,21 +8,21 @@
  *                cmd.help()             — 查看所有命令
  * @module console
  */
-import { useCharacterStore } from './character/store';
-import { useInventoryStore } from './inventory/store';
-import { useEnemiesStore } from './enemy/store';
-import { useCombatStore } from './combat/store';
-import { useExplorationStore } from './exploration/store';
-import { useMapStore } from './map/store';
-import { useSkillsStore } from './skill/store';
-import { useEquipmentStore } from './equipment/store';
-import { useShopStore } from './shop/store';
-import { useQuestStore } from './quest/store';
-import { useLogStore } from './log/store';
-import { enemyDbService } from './enemy/db';
-import { bossDbService } from './boss/db';
-import { inventoryDbService } from './inventory/db';
-import { equipmentDbService } from './equipment/db';
+import { useCharacterStore } from './character';
+import { useInventoryStore } from './inventory';
+import { useEnemyStore } from './enemy';
+import { useCombatStore } from './combat';
+import { useExplorationStore } from './exploration';
+import { useMapStore } from './map';
+import { useSkillStore } from './skill';
+import { useEquipmentStore } from './equipment';
+import { useShopStore } from './shop';
+import { useQuestStore } from './quest';
+import { useLogStore } from './log';
+import { enemyDbService } from './enemy';
+import { bossDbService } from './boss';
+import { inventoryDbService } from './inventory';
+import { equipmentDbService } from './equipment';
 import { MAX_LEVEL } from '../config/character';
 import { getExpForLevel } from '../utils/calculations';
 
@@ -177,7 +177,7 @@ function registerCommand(def: CommandDef): void {
  * @see game 命令
  */
 function switchGameState(target: string, msg: string): CommandResult {
-  const gs = (window as any).__gameState;
+  const gs = (window as Window & { __gameState?: { value: string } }).__gameState;
   if (!gs) {
     return { success: false, message: 'gameState 未初始化，请等待游戏加载完成' };
   }
@@ -710,7 +710,7 @@ registerCommand({
  *
  * @param {string[]} args - args[0] 为敌人 ID（空则列出可用列表）
  *
- * @see useEnemiesStore().createEnemy
+ * @see useEnemyStore().createEnemy
  * @see useCombatStore().startCombat
  */
 registerCommand({
@@ -735,7 +735,7 @@ registerCommand({
 
     const enemyId = args[0];
     try {
-      const enemy = await useEnemiesStore().createEnemy(enemyId);
+      const enemy = await useEnemyStore().createEnemy(enemyId);
       if (!enemy) {
         return { success: false, message: `未找到敌人: ${enemyId}，输入 spawn 查看可用列表` };
       }
@@ -808,7 +808,7 @@ registerCommand({
  * 优先使用 currentTarget（当前选中目标），无目标时返回失败。
  *
  * @see useCombatStore().currentTarget
- * @see useEnemiesStore().takeDamage
+ * @see useEnemyStore().takeDamage
  */
 registerCommand({
   name: 'kill',
@@ -823,7 +823,7 @@ registerCommand({
     if (!enemy) {
       return { success: false, message: '没有存活的敌人' };
     }
-    useEnemiesStore().takeDamage(enemy.id, 99999);
+    useEnemyStore().takeDamage(enemy.id, 99999);
     useCombatStore().endCombat('victory');
     return { success: true, message: `${enemy.name} 已被消灭（${enemy.id}）` };
   }
@@ -841,7 +841,7 @@ registerCommand({
  *
  * @param {string[]} args - args[0] 为技能 ID，args[1] 可选为槽位索引 0-3
  *
- * @see useSkillsStore().equipSkill
+ * @see useSkillStore().equipSkill
  */
 registerCommand({
   name: 'skills',
@@ -850,8 +850,8 @@ registerCommand({
   usage: 'skills [技能ID] [槽位0-3]  (不带参数列出技能，不指定槽位自动装入空位)',
   async handler(args) {
     if (args.length === 0) {
-      const allSkills = useSkillsStore().skills;
-      const bar = useSkillsStore().skillBar;
+      const allSkills = useSkillStore().skills;
+      const bar = useSkillStore().skillBar;
 
       logTag('skills', '═══ 技能栏 ═══');
       for (let i = 0; i < 4; i++) {
@@ -861,13 +861,13 @@ registerCommand({
       }
 
       logTag('skills', '═══ 已解锁技能 ═══');
-      const unlocked = useSkillsStore().unlockedSkills;
+      const unlocked = useSkillStore().unlockedSkills;
       for (const s of unlocked) {
         const mp = s.mpCost !== undefined ? ` MP:${s.mpCost}` : '';
         console.log(`  %c${s.id.padEnd(24)}%c ${s.name} %c[${s.type}]${mp}`, STYLE.label, STYLE.value, STYLE.hint);
       }
 
-      const locked = useSkillsStore().lockedSkills;
+      const locked = useSkillStore().lockedSkills;
       if (locked.length > 0) {
         logTag('skills', '═══ 未解锁技能 ═══');
         for (const s of locked) {
@@ -878,14 +878,14 @@ registerCommand({
     }
 
     const skillId = args[0];
-    const bar = useSkillsStore().skillBar;
+    const bar = useSkillStore().skillBar;
 
     if (args[1] !== undefined) {
       const slotIndex = parseInt(args[1], 10);
       if (![0, 1, 2, 3].includes(slotIndex)) {
         return { success: false, message: '槽位必须在 0-3 之间' };
       }
-      const success = await useSkillsStore().equipSkill(skillId, slotIndex as 0|1|2|3);
+      const success = await useSkillStore().equipSkill(skillId, slotIndex as 0|1|2|3);
       if (success) {
         return { success: true, message: `技能 ${skillId} 已装备到槽位 ${slotIndex}` };
       }
@@ -897,7 +897,7 @@ registerCommand({
     if (emptySlot === -1) {
       return { success: false, message: '所有槽位已满，请指定要覆盖的槽位 (0-3)' };
     }
-    const success = await useSkillsStore().equipSkill(skillId, emptySlot as 0|1|2|3);
+    const success = await useSkillStore().equipSkill(skillId, emptySlot as 0|1|2|3);
     if (success) {
       return { success: true, message: `技能 ${skillId} 已装备到槽位 ${emptySlot}` };
     }
@@ -1209,18 +1209,18 @@ export async function exec(input: string): Promise<CommandResult> {
  * @see commands 命令注册表
  */
 export function initConsole(): void {
-  const cmdObj: Record<string, (...args: any[]) => Promise<CommandResult> | CommandResult> = {};
+  const cmdObj: Record<string, (...args: unknown[]) => Promise<CommandResult> | CommandResult> = {};
 
   for (const [name] of commands) {
-    cmdObj[name] = (...args: any[]) => {
+    cmdObj[name] = (...args: unknown[]) => {
       const strArgs = args.map(a => String(a));
       return exec(`${name} ${strArgs.join(' ')}`.trim());
     };
   }
 
-  cmdObj.exec = (input: string) => exec(input);
+  (cmdObj as Record<string, unknown>).exec = exec;
 
-  (window as any).cmd = cmdObj;
+  (window as Window & { cmd?: typeof cmdObj }).cmd = cmdObj;
 
   console.log(
     '%c[cmd]%c 控制台命令已加载，输入 %ccmd.help()%c 查看所有命令',

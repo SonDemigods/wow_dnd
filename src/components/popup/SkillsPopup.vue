@@ -93,7 +93,7 @@
  */
 
 import { ref, computed, onMounted } from 'vue';
-import { useSkillsStore } from '@/modules/skill';
+import { useSkillStore } from '@/modules/skill';
 import { useCharacterStore } from '@/modules/character';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useSkillDisplay } from '@/composables/useSkillDisplay';
@@ -111,7 +111,7 @@ defineEmits<{
   (e: 'close'): void;
 }>();
 
-const skillsStore = useSkillsStore();
+const skillsStore = useSkillStore();
 const characterStore = useCharacterStore();
 
 const selectedSkill = ref<Skill | null>(null);

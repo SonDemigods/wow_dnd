@@ -9,8 +9,8 @@ import type { CombatResult } from '../types';
 import type { EnemyInstance } from '../../enemy/types';
 import type { BossMechanicType } from '../../boss/types';
 import { useCharacterStore } from '../../character/store';
-import { useSkillsStore } from '../../skill/store';
-import { useEnemiesStore } from '../../enemy/store';
+import { useSkillStore } from '../../skill/store';
+import { useEnemyStore } from '../../enemy/store';
 import { eventBus, GameEvents } from '../../bus';
 import { processBossPhaseMechanics, applyPhaseStats } from '../../boss/engine';
 import type { useCombatState } from './useCombatState';
@@ -124,7 +124,7 @@ export function useInitiative(
 
     if (next.isPlayer) {
       state.turn.value = 'player';
-      useSkillsStore().tickCooldowns();
+      useSkillStore().tickCooldowns();
       eventBus.emit(GameEvents.COMBAT_PLAYER_TURN, null);
     } else {
       state.turn.value = 'enemy';
@@ -141,7 +141,7 @@ export function useInitiative(
    */
   function tickAllEffects(): void {
     const characterStore = useCharacterStore();
-    const enemiesStore = useEnemiesStore();
+    const enemiesStore = useEnemyStore();
 
     // ===== 阶段 1：收集所有效果的 tick 结果 =====
     const playerTickResult = state.effectRegistry.tickAll(
@@ -235,7 +235,7 @@ export function useInitiative(
   function singleEnemyTurn(enemyId: string): void {
     if (state.state.value !== 'fighting') return;
 
-    const enemiesStore = useEnemiesStore();
+    const enemiesStore = useEnemyStore();
     const characterStore = useCharacterStore();
 
     const e = state.enemies.value.find(en => en.id === enemyId);

@@ -140,7 +140,7 @@ import { useShopStore } from '@/modules/shop';
 import { useLogStore } from '@/modules/log';
 import { useExplorationStore, type ExplorationUICallbacks } from '@/modules/exploration';
 import { eventBus, GameEvents } from '@/modules/bus';
-import { useEnemiesStore } from '@/modules/enemy';
+import { useEnemyStore } from '@/modules/enemy';
 import { useCombatStore } from '@/modules/combat/store';
 import { useToast } from '@/composables/useToast';
 import type { CombatResult } from '@/modules/combat/types';
@@ -271,7 +271,7 @@ async function handleBattleTriggered(data: { eventData?: { monsterId?: string; a
   const areaLevel = data.eventData.areaLevel || 1;
   
   // 从数据库获取敌人模板数据，传入地图等级
-  const enemy = await useEnemiesStore().createEnemy(monsterId, areaLevel);
+  const enemy = await useEnemyStore().createEnemy(monsterId, areaLevel);
   
   if (enemy) {
     useCombatStore().startCombat([enemy]);

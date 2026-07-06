@@ -8,7 +8,7 @@ import type { EnemyInstance } from '../../enemy/types';
 import type { BossIntro, BossPhase, BossMechanicType } from '../../boss/types';
 import { BossPhaseManager } from '../../boss/phase-manager';
 import { useCharacterStore } from '../../character/store';
-import { useEnemiesStore } from '../../enemy/store';
+import { useEnemyStore } from '../../enemy/store';
 import {
   generateEffectId,
   addEffectToContainer,
@@ -129,7 +129,7 @@ export function useBossMechanics(
       }
       case 'summon_minions': {
         // summon_minions 标记已由 engine 设置，需要实际创建小怪
-        const enemiesStore = useEnemiesStore();
+        const enemiesStore = useEnemyStore();
         const count = e.pendingSummons || 0;
         if (count > 0) {
           // 异步批量创建小怪，一次性重建先攻顺序

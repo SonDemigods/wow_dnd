@@ -227,7 +227,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useCombatStore } from '@/modules/combat/store';
 import { useCharacterStore } from '@/modules/character';
-import { useSkillsStore } from '@/modules/skill/store';
+import { useSkillStore } from '@/modules/skill/store';
 import { useInventoryStore } from '@/modules/inventory/store';
 import { useSkillDisplay } from '@/composables/useSkillDisplay';
 import { eventBus, GameEvents } from '@/modules/bus';
@@ -263,7 +263,7 @@ const emit = defineEmits<{
 const isUnmounted = ref(false);
 
 const characterStore = useCharacterStore();
-const skillsStore = useSkillsStore();
+const skillsStore = useSkillStore();
 const inventoryStore = useInventoryStore();
 const combatStore = useCombatStore();
 const logRef = ref<HTMLElement | null>(null);

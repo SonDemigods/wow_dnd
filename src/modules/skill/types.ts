@@ -94,7 +94,7 @@ export interface SkillBuffEffect {
  * 数据来源流程：
  * 1. 技能模板（`SkillTemplateStorage`）存储在 `config_skills` 表中
  * 2. `toSkill()` 将模板转换为 `Skill` 对象
- * 3. 玩家学习技能后，`Skill` 对象加入 `useSkillsStore().skills` 列表
+ * 3. 玩家学习技能后，`Skill` 对象加入 `useSkillStore().skills` 列表
  * 4. 装备到技能栏后，通过 `skillBar.slots` 中的 ID 索引对应的 `Skill` 对象
  *
  * @property {string} id - 技能唯一标识（格式：`{classId}_skill_{序号}`）

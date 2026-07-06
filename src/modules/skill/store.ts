@@ -58,10 +58,10 @@ const SKILL_TYPE_NAMES: Record<SkillType, string> = {
 /**
  * 技能状态存储（Pinia Store）
  *
- * 全局单例，通过 `useSkillsStore()` 获取。
+ * 全局单例，通过 `useSkillStore()` 获取。
  * 持有所有技能相关的响应式状态，并提供编排 Action 供外部调用。
  */
-export const useSkillsStore = defineStore('skills', () => {
+export const useSkillStore = defineStore('skills', () => {
   // ========================================================================
   // 响应式状态（Store 是唯一数据源，不可直接修改，必须通过 Action）
   // ========================================================================

@@ -9,8 +9,8 @@ import type { EnemyInstance } from '../../enemy/types';
 import type { BattleContext, IAiStrategy } from '../ai/types';
 import type { AiStrategyType } from '../../enemy/types';
 import { useCharacterStore } from '../../character/store';
-import { useEnemiesStore } from '../../enemy/store';
-import { useSkillsStore } from '../../skill/store';
+import { useEnemyStore } from '../../enemy/store';
+import { useSkillStore } from '../../skill/store';
 import { eventBus, GameEvents } from '../../bus';
 import { rollDodge } from '../service';
 import { AggressiveStrategy, DefensiveStrategy, BalancedStrategy, BossPhaseStrategy } from '../ai/strategies';
@@ -109,7 +109,7 @@ export function useEnemyAction(
 
     // 荆棘反伤（管线已计算）
     if (pipeResult.thorns > 0) {
-      const enemiesStore = useEnemiesStore();
+      const enemiesStore = useEnemyStore();
       enemiesStore.takeDamage(e.id, pipeResult.thorns);
       addCombatLog({
         actorType: 'player',
@@ -135,7 +135,7 @@ export function useEnemyAction(
    */
   function enemyBasicAttack(e: EnemyInstance): CombatActionResult {
     const characterStore = useCharacterStore();
-    const enemiesStore = useEnemiesStore();
+    const enemiesStore = useEnemyStore();
 
     // 计算伤害
     const damage = enemiesStore.calculateDamage(e, characterStore.attributes.physicalDefense);
@@ -246,7 +246,7 @@ export function useEnemyAction(
     }
 
     const characterStore = useCharacterStore();
-    const enemiesStore = useEnemiesStore();
+    const enemiesStore = useEnemyStore();
 
     // 检查 Boss 多目标攻击标记
     const isAoeAttack = e.aoeNextAttack === true;
@@ -342,7 +342,7 @@ export function useEnemyAction(
             const skillData = availableSkills.find(s => s.id === decision.skillId);
             const skillName = skillData?.name || decision.skillId;
             // 通过完整技能数据判断是否为减益技能
-            const fullSkill = useSkillsStore().getSkill(decision.skillId);
+            const fullSkill = useSkillStore().getSkill(decision.skillId);
             const isDebuff = fullSkill?.type === 'debuff';
 
             if (isDebuff) {

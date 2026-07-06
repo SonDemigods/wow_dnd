@@ -9,7 +9,7 @@ import type { CombatState, CombatResult, CombatLog } from '../types';
 import type { EnemyInstance } from '../../enemy/types';
 import type { BossIntro } from '../../boss/types';
 import type { Effect, EffectContainer } from '../effects';
-import { useEnemiesStore } from '../../enemy/store';
+import { useEnemyStore } from '../../enemy/store';
 import { isBossCombat } from '../service';
 import {
   createEmptyContainer,
@@ -82,7 +82,7 @@ export function useCombatState() {
   const turnTimerId = ref<number | null>(null);
 
   // ==================== 跨 Store 引用 ====================
-  const enemiesStore = useEnemiesStore();
+  const enemiesStore = useEnemyStore();
 
   // ==================== 计算属性 ====================
 
