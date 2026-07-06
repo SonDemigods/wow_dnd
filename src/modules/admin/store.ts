@@ -6,7 +6,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { adminService } from './service';
-import type { AdminView, ConfigTableName, FormConfig } from './types';
+import type { AdminView, ConfigTableName, FormConfig, ReferenceOption } from './types';
 import { CONFIG_TABLES } from './types';
 
 /**
@@ -22,7 +22,7 @@ export const useAdminStore = defineStore('admin', () => {
   const selectedConfigTable = ref<ConfigTableName>('mobs');
 
   /** 表格数据缓存 */
-  const tableData = ref<any[]>([]);
+  const tableData = ref<Record<string, unknown>[]>([]);
 
   /** 是否正在加载 */
   const isLoading = ref(false);
@@ -40,21 +40,21 @@ export const useAdminStore = defineStore('admin', () => {
   });
 
   /** 当前编辑的记录 */
-  const editingRecord = ref<any>(null);
+  const editingRecord = ref<Record<string, unknown> | null>(null);
 
   /** 搜索关键词 */
   const searchKeyword = ref('');
 
   /** 参考数据：阵营下拉选项 */
-  const referenceFactions = ref<Array<{ value: string; label: string }>>([]);
+  const referenceFactions = ref<ReferenceOption[]>([]);
   /** 参考数据：种族下拉选项 */
-  const referenceRaces = ref<Array<{ value: string; label: string }>>([]);
+  const referenceRaces = ref<ReferenceOption[]>([]);
   /** 参考数据：职业下拉选项 */
-  const referenceClasses = ref<Array<{ value: string; label: string }>>([]);
+  const referenceClasses = ref<ReferenceOption[]>([]);
   /** 参考数据：地点下拉选项 */
-  const referenceLocations = ref<Array<{ value: string; label: string }>>([]);
+  const referenceLocations = ref<ReferenceOption[]>([]);
   /** 参考数据：大陆下拉选项（从 locations 中筛选 type='continent'） */
-  const referenceContinents = ref<Array<{ value: string; label: string }>>([]);
+  const referenceContinents = ref<ReferenceOption[]>([]);
 
   // ==================== 计算属性 ====================
 
@@ -126,7 +126,7 @@ export const useAdminStore = defineStore('admin', () => {
   /**
    * 打开编辑表单
    */
-  function openEditForm(record: any, title: string) {
+  function openEditForm(record: Record<string, unknown>, title: string) {
     editingRecord.value = { ...record };
     formConfig.value = { mode: 'edit', visible: true, title };
   }
@@ -142,13 +142,13 @@ export const useAdminStore = defineStore('admin', () => {
   /**
    * 保存记录（创建或更新）
    */
-  async function saveRecord(tableName: string, data: any): Promise<boolean> {
+  async function saveRecord(tableName: string, data: Record<string, unknown>): Promise<boolean> {
     const isEdit = formConfig.value.mode === 'edit';
-    let result;
+    let result: { success: boolean; error?: string };
 
     if (isEdit) {
-      const id = editingRecord.value?.id;
-      result = await adminService.update(tableName, id, data);
+      const id = editingRecord.value?.id as string | undefined;
+      result = await adminService.update(tableName, id!, data);
     } else {
       result = await adminService.add(tableName, data);
     }
@@ -185,18 +185,18 @@ export const useAdminStore = defineStore('admin', () => {
    */
   async function loadReferenceData(): Promise<void> {
     const [factions, races, classes, locations] = await Promise.all([
-      adminService.getAll<any>('config_factions'),
-      adminService.getAll<any>('config_races'),
-      adminService.getAll<any>('config_classes'),
-      adminService.getAll<any>('config_locations'),
+      adminService.getAll<Record<string, unknown>>('config_factions'),
+      adminService.getAll<Record<string, unknown>>('config_races'),
+      adminService.getAll<Record<string, unknown>>('config_classes'),
+      adminService.getAll<Record<string, unknown>>('config_locations'),
     ]);
-    referenceFactions.value = factions.map((f: any) => ({ value: f.id, label: f.name }));
-    referenceRaces.value = races.map((r: any) => ({ value: r.id, label: r.name }));
-    referenceClasses.value = classes.map((c: any) => ({ value: c.id, label: c.name }));
-    referenceLocations.value = locations.map((l: any) => ({ value: l.id, label: l.name }));
+    referenceFactions.value = factions.map((f) => ({ value: f.id as string, label: f.name as string }));
+    referenceRaces.value = races.map((r) => ({ value: r.id as string, label: r.name as string }));
+    referenceClasses.value = classes.map((c) => ({ value: c.id as string, label: c.name as string }));
+    referenceLocations.value = locations.map((l) => ({ value: l.id as string, label: l.name as string }));
     referenceContinents.value = locations
-      .filter((l: any) => l.type === 'continent')
-      .map((l: any) => ({ value: l.id, label: l.name }));
+      .filter((l) => l.type === 'continent')
+      .map((l) => ({ value: l.id as string, label: l.name as string }));
   }
 
   return {

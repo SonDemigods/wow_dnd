@@ -12,8 +12,7 @@ export type {
   ConfigTableName,
   ConfigTableMeta,
   AdminOperationResult,
-  PaginationParams,
-  PaginatedResult,
+  ReferenceOption,
   FormMode,
   FormConfig,
 } from './types';

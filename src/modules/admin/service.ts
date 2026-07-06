@@ -5,7 +5,8 @@
  */
 import { adminDbService } from './db';
 import type { AdminOperationResult } from './types';
-import { db as gameDb } from '../data/core';
+import type { GameDatabaseSchema } from '../data/core';
+import { CONFIG_TABLES } from './types';
 
 /**
  * 管理后台服务类
@@ -14,16 +15,16 @@ export class AdminService {
   // ==================== 通用 CRUD 封装 ====================
 
   async getAll<T>(tableName: string): Promise<T[]> {
-    return await adminDbService.getAll<T>(tableName);
+    return await adminDbService.getAll<T>(tableName as keyof GameDatabaseSchema);
   }
 
   async getById<T>(tableName: string, id: string): Promise<T | null> {
-    return await adminDbService.getById<T>(tableName, id);
+    return await adminDbService.getById<T>(tableName as keyof GameDatabaseSchema, id);
   }
 
-  async add<T>(tableName: string, data: T): Promise<AdminOperationResult<string>> {
+  async add<T>(tableName: string, data: T, key?: string): Promise<AdminOperationResult<string>> {
     try {
-      const id = await adminDbService.add(tableName, data);
+      const id = await adminDbService.add(tableName as keyof GameDatabaseSchema, data, key);
       return { success: true, data: id };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : '添加失败' };
@@ -32,7 +33,7 @@ export class AdminService {
 
   async update<T>(tableName: string, id: string, data: Partial<T>): Promise<AdminOperationResult> {
     try {
-      await adminDbService.update(tableName, id, data);
+      await adminDbService.update(tableName as keyof GameDatabaseSchema, id, data);
       return { success: true };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : '更新失败' };
@@ -41,7 +42,7 @@ export class AdminService {
 
   async delete(tableName: string, id: string): Promise<AdminOperationResult> {
     try {
-      await adminDbService.delete(tableName, id);
+      await adminDbService.delete(tableName as keyof GameDatabaseSchema, id);
       return { success: true };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : '删除失败' };
@@ -50,7 +51,7 @@ export class AdminService {
 
   async clear(tableName: string): Promise<AdminOperationResult> {
     try {
-      await adminDbService.clear(tableName);
+      await adminDbService.clear(tableName as keyof GameDatabaseSchema);
       return { success: true };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : '清空失败' };
@@ -58,7 +59,7 @@ export class AdminService {
   }
 
   async count(tableName: string): Promise<number> {
-    return await adminDbService.count(tableName);
+    return await adminDbService.count(tableName as keyof GameDatabaseSchema);
   }
 
   // ==================== 搜索 ====================
@@ -66,28 +67,8 @@ export class AdminService {
   /**
    * 搜索数据表（使用 Dexie 索引查询 name/id 字段）
    */
-  async searchTable(tableName: string, keyword: string): Promise<any[]> {
-    const table = (gameDb as any)[tableName];
-    if (!table || !keyword.trim()) return [];
-    try {
-      let collection = table.where('name').startsWithIgnoreCase(keyword);
-      collection = collection.or(table.where('id').startsWithIgnoreCase(keyword));
-      return await collection.distinct().toArray();
-    } catch {
-      try {
-        const lowerKeyword = keyword.toLowerCase();
-        return await table.filter((item: any) => {
-          const searchableFields = ['name', 'title', 'id', 'type', 'rarity', 'factionId', 'raceId', 'classId'];
-          return searchableFields.some(field => {
-            const val = item[field];
-            if (val === null || val === undefined) return false;
-            return String(val).toLowerCase().includes(lowerKeyword);
-          });
-        }).toArray();
-      } catch {
-        return [];
-      }
-    }
+  async searchTable(tableName: string, keyword: string): Promise<Record<string, unknown>[]> {
+    return await adminDbService.search(tableName as keyof GameDatabaseSchema, keyword);
   }
 
   // ==================== 仪表盘 ====================
@@ -95,16 +76,12 @@ export class AdminService {
   async getDashboardStats(): Promise<{
     tableCounts: Record<string, number>;
   }> {
-    const tableNames = [
-      'config_factions', 'config_races', 'config_classes',
-      'config_items', 'config_equipmentItems', 'config_mobs', 'config_bosses',
-      'config_quests', 'config_skills', 'config_locations', 'config_shops',
-    ];
+    const tableNames = CONFIG_TABLES.map(t => t.dbTable);
 
     const counts: Record<string, number> = {};
     await Promise.all(
       tableNames.map(async (name) => {
-        counts[name] = await adminDbService.count(name);
+        counts[name] = await adminDbService.count(name as keyof GameDatabaseSchema);
       })
     );
 
