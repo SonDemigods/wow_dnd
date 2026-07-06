@@ -7,20 +7,6 @@
 import type { EnemyInstance } from '../enemy/types';
 
 /**
- * 计算玩家物理伤害
- * @param physicalAttack - 物理攻击力
- * @param enemyDefense - 敌人物理防御力
- * @returns 基础伤害和经过防御减免后的实际伤害
- */
-export function calculatePlayerDamage(physicalAttack: number, enemyDefense: number): { baseDamage: number; rawDamage: number } {
-  const baseDamage = Math.floor(physicalAttack * 0.4) + Math.floor(Math.random() * 10);
-  const defense = enemyDefense || 0;
-  const defenseReduction = Math.min(Math.floor(baseDamage * 0.3), defense);
-  const rawDamage = Math.max(1, baseDamage - defenseReduction);
-  return { baseDamage, rawDamage };
-}
-
-/**
  * 暴击判定
  * @param critChance - 暴击几率（0~1 之间的小数，如 0.05 表示 5%）
  * @returns 是否暴击

@@ -3,7 +3,7 @@
  * @description 4 阶段伤害计算：基础伤害 → 攻击方修正 → 防御方修正 → 护盾/反伤
  */
 
-import type { EffectContainer, EffectContext, DamageType, DamagePipelineResult } from './types';
+import type { EffectContainer, EffectContext, DamageType, DamagePipelineResult, Effect } from './types';
 import { EffectHandlerRegistry } from './handler';
 import { addEffectToContainer } from './container';
 
@@ -68,7 +68,7 @@ export function processDamagePipeline(
 export function applyEffect(
   registry: EffectHandlerRegistry,
   container: EffectContainer,
-  effect: import('./types').Effect,
+  effect: Effect,
   ctx: EffectContext
 ): void {
   addEffectToContainer(container, effect);

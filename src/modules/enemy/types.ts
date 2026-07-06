@@ -292,6 +292,10 @@ export interface EnemyInstance extends EnemyData {
   expReward: number;
   goldReward: number;
   drops?: EnemyDrop[];
+  /** Boss 范围攻击标记（运行时，由 Boss 引擎设置，下次行动时触发 AOE 并清除） */
+  aoeNextAttack?: boolean;
+  /** Boss 待召唤小怪数量（运行时，由 Boss 引擎设置，下次行动时触发召唤并清除） */
+  pendingSummons?: number;
 }
 
 // ============================================================================

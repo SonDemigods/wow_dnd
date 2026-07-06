@@ -29,13 +29,13 @@ export const defenseDownHandler: EffectHandler = {
 };
 
 /**
- * vulnerable — 易伤：受到的伤害倍率增加
- * value 是百分比点数（如 22 表示 +22% 承伤）
+ * vulnerable — 易伤：受到的伤害倍率大幅增加（比降防更严重）
+ * value 是百分比点数（如 22 表示 +33% 承伤，含 1.5 倍易伤系数）
  */
 export const vulnerableHandler: EffectHandler = {
   type: 'vulnerable',
 
   getDefenderDamageMod(effect) {
-    return 1 + effect.value / 100;
+    return 1 + effect.value * 1.5 / 100;
   },
 };

@@ -11,6 +11,32 @@ import type { CombatLog, CombatLogStorage } from './types';
  */
 export class CombatDbService {
   /**
+   * 将 IndexedDB 存储格式转换为运行时 CombatLog 格式
+   */
+  private mapStorageToLogs(logs: CombatLogStorage[]): CombatLog[] {
+    return logs.map(log => ({
+      combatId: log.combatId,
+      battleLogId: log.battleLogId,
+      timestamp: log.timestamp,
+      turn: log.turn,
+      actorType: log.actorType as CombatLog['actorType'],
+      actorId: log.actorId,
+      actorName: log.actorName,
+      eventType: log.eventType as CombatLog['eventType'],
+      targetType: log.targetType as CombatLog['targetType'],
+      targetId: log.targetId,
+      targetName: log.targetName,
+      skillId: log.skillId,
+      skillName: log.skillName,
+      damage: log.damage,
+      heal: log.heal,
+      isCrit: log.isCrit,
+      isDodge: log.isDodge,
+      message: log.message
+    }));
+  }
+
+  /**
    * 保存战斗日志
    * @param log - 战斗日志
    */
@@ -47,26 +73,7 @@ export class CombatDbService {
   async getCombatLogs(combatId: string): Promise<CombatLog[]> {
     return dbService.withRetry(async () => {
       const logs = await gameDb.runtime_combatLogs.where('combatId').equals(combatId).sortBy('timestamp') as unknown as CombatLogStorage[];
-      return logs.map(log => ({
-        combatId: log.combatId,
-        battleLogId: log.battleLogId,
-        timestamp: log.timestamp,
-        turn: log.turn,
-        actorType: log.actorType as CombatLog['actorType'],
-        actorId: log.actorId,
-        actorName: log.actorName,
-        eventType: log.eventType as CombatLog['eventType'],
-        targetType: log.targetType as CombatLog['targetType'],
-        targetId: log.targetId,
-        targetName: log.targetName,
-        skillId: log.skillId,
-        skillName: log.skillName,
-        damage: log.damage,
-        heal: log.heal,
-        isCrit: log.isCrit,
-        isDodge: log.isDodge,
-        message: log.message
-      }));
+      return this.mapStorageToLogs(logs);
     });
   }
 
@@ -77,26 +84,7 @@ export class CombatDbService {
   async getAllCombatLogs(): Promise<CombatLog[]> {
     return dbService.withRetry(async () => {
       const logs = await gameDb.runtime_combatLogs.toArray() as unknown as CombatLogStorage[];
-      return logs.map(log => ({
-        combatId: log.combatId,
-        battleLogId: log.battleLogId,
-        timestamp: log.timestamp,
-        turn: log.turn,
-        actorType: log.actorType as CombatLog['actorType'],
-        actorId: log.actorId,
-        actorName: log.actorName,
-        eventType: log.eventType as CombatLog['eventType'],
-        targetType: log.targetType as CombatLog['targetType'],
-        targetId: log.targetId,
-        targetName: log.targetName,
-        skillId: log.skillId,
-        skillName: log.skillName,
-        damage: log.damage,
-        heal: log.heal,
-        isCrit: log.isCrit,
-        isDodge: log.isDodge,
-        message: log.message
-      }));
+      return this.mapStorageToLogs(logs);
     });
   }
 
@@ -118,7 +106,7 @@ export class CombatDbService {
     await dbService.withRetry(async () => {
       const logs = await gameDb.runtime_combatLogs.where('combatId').equals(combatId).toArray() as unknown as CombatLogStorage[];
       for (const log of logs) {
-        await gameDb.runtime_combatLogs.delete(log.battleLogId as string);
+        await gameDb.runtime_combatLogs.delete(log.battleLogId);
       }
     });
   }

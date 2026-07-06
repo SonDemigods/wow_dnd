@@ -4,6 +4,15 @@
 
 import type { EffectHandlerRegistry } from '../handler';
 
+import { attackUpHandler, attackDownHandler } from './attackMod';
+import { defenseUpHandler, defenseDownHandler, vulnerableHandler } from './defenseMod';
+import { speedUpHandler, speedDownHandler } from './speedMod';
+import { regenHandler } from './regen';
+import { thornHandler } from './thorn';
+import { poisonHandler, burnHandler } from './dot';
+import { stunHandler, freezeHandler, silenceHandler } from './control';
+import { shieldHandler } from './shield';
+
 /** 所有内置效果处理器 */
 export { attackUpHandler, attackDownHandler } from './attackMod';
 export { defenseUpHandler, defenseDownHandler, vulnerableHandler } from './defenseMod';
@@ -13,15 +22,6 @@ export { thornHandler } from './thorn';
 export { poisonHandler, burnHandler } from './dot';
 export { stunHandler, freezeHandler, silenceHandler } from './control';
 export { shieldHandler } from './shield';
-
-import { attackUpHandler, attackDownHandler } from './attackMod';
-import { defenseUpHandler, defenseDownHandler, vulnerableHandler } from './defenseMod';
-import { speedUpHandler, speedDownHandler } from './speedMod';
-import { regenHandler } from './regen';
-import { thornHandler } from './thorn';
-import { poisonHandler, burnHandler } from './dot';
-import { stunHandler, freezeHandler, silenceHandler } from './control';
-import { shieldHandler } from './shield';
 
 /**
  * 创建默认注册表（预注册全部 15 种内置效果处理器）

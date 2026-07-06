@@ -1,20 +1,15 @@
 /**
  * @fileoverview 战斗模块类型定义
- * @description 包含战斗状态、战斗动作、战斗日志、战斗服务等相关类型定义
+ * @description 包含战斗状态、战斗动作、战斗日志等相关类型定义
  */
-
-import type { EnemyInstance } from '../enemy/types';
-import type { InventoryItem } from '../inventory/types';
-import type { SkillType } from '../skill/types';
 
 /**
  * 战斗状态枚举
  * - idle: 空闲状态
- * - preparing: 准备战斗
  * - fighting: 战斗中
  * - ended: 战斗结束
  */
-export type CombatState = 'idle' | 'preparing' | 'fighting' | 'ended';
+export type CombatState = 'idle' | 'fighting' | 'ended';
 
 /**
  * 战斗结果枚举
@@ -55,6 +50,7 @@ export interface CombatAction {
  * @property {number} [heal] - 生命恢复值
  * @property {boolean} [isCrit] - 是否暴击
  * @property {boolean} [isDodge] - 是否闪避
+ * @property {boolean} [isControlled] - 是否因控制效果被跳过
  * @property {string} message - 结果消息
  * @property {AoeHitInfo[]} [aoeHits] - 多目标技能命中信息
  */
@@ -65,6 +61,8 @@ export interface CombatActionResult {
   heal?: number;
   isCrit?: boolean;
   isDodge?: boolean;
+  /** 是否因眩晕/冰冻/沉默等控制效果导致回合被跳过 */
+  isControlled?: boolean;
   message: string;
   /** 多目标技能命中列表（仅技能为 all_enemies 时返回） */
   aoeHits?: AoeHitInfo[];
@@ -80,51 +78,11 @@ export interface AoeHitInfo {
 }
 
 /**
- * 战斗伤害事件接口
- * @property {CombatActionType} action - 动作类型
- * @property {'player' | 'enemy'} target - 目标
- * @property {number} amount - 伤害量
- * @property {boolean} isCrit - 是否暴击
- * @property {boolean} isDodge - 是否闪避
- */
-export interface CombatDamageEvent {
-  action: CombatActionType;
-  target: 'player' | 'enemy';
-  amount: number;
-  isCrit: boolean;
-  isDodge: boolean;
-}
-
-/**
- * 战斗开始事件接口
- * @property {EnemyInstance} enemy - 敌人
- */
-export interface CombatStartEvent {
-  enemy: EnemyInstance;
-}
-
-/**
- * 战斗结束事件接口
- * @property {CombatResult} result - 战斗结果
- * @property {EnemyInstance} enemy - 敌人
- * @property {number} expGained - 获得经验
- * @property {InventoryItem[]} [loot] - 掉落物品
- */
-export interface CombatEndEvent {
-  result: CombatResult;
-  enemy: EnemyInstance;
-  expGained: number;
-  loot?: InventoryItem[];
-}
-
-/**
  * 战斗事件类型枚举
  * - combat_start: 战斗开始
  * - combat_end: 战斗结束
  * - combat_turn_start: 回合开始
  * - combat_turn_end: 回合结束
- * - combat_player_action: 玩家动作
- * - combat_enemy_action: 敌人动作
  * - combat_damage: 伤害
  * - combat_heal: 生命恢复
  * - combat_skill_cast: 技能施法
@@ -132,15 +90,12 @@ export interface CombatEndEvent {
  * - combat_flee: 逃跑
  * - combat_miss: 未命中
  * - combat_critical: 暴击
- * - combat_death: 死亡
  */
 export type CombatEventType =
   | 'combat_start'
   | 'combat_end'
   | 'combat_turn_start'
   | 'combat_turn_end'
-  | 'combat_player_action'
-  | 'combat_enemy_action'
   | 'combat_damage'
   | 'combat_heal'
   | 'combat_skill_cast'
@@ -148,7 +103,6 @@ export type CombatEventType =
   | 'combat_flee'
   | 'combat_miss'
   | 'combat_critical'
-  | 'combat_death'
   | 'combat_event';
 
 /**
@@ -194,137 +148,10 @@ export interface CombatLog {
 }
 
 /**
- * 技能战斗效果接口
- * @property {string} skillId - 技能ID
- * @property {string} skillName - 技能名称
- * @property {SkillType} effectType - 效果类型
- * @property {'self' | 'enemy'} targetType - 目标类型
- * @property {{base: number, minMultiplier: number, maxMultiplier: number, type: 'physical' | 'magic' | 'true'}} [damage] - 伤害配置
- * @property {{base: number, multiplier: number}} [heal] - 生命恢复配置
- * @property {number} manaCost - 法力消耗
+ * 战斗日志存储格式（枚举字段放宽为 string 以兼容 IndexedDB）
  */
-export interface SkillCombatEffect {
-  skillId: string;
-  skillName: string;
-  effectType: SkillType;
-  targetType: 'self' | 'enemy';
-  damage?: {
-    base: number;
-    minMultiplier: number;
-    maxMultiplier: number;
-    type: 'physical' | 'magic' | 'true';
-  };
-  heal?: {
-    base: number;
-    multiplier: number;
-  };
-  manaCost: number;
-}
-
-/**
- * 技能施放结果接口
- * @property {boolean} success - 是否成功
- * @property {string} skillId - 技能ID
- * @property {string} skillName - 技能名称
- * @property {number} [damage] - 伤害值
- * @property {number} [heal] - 生命恢复值
- * @property {string} message - 结果消息
- */
-export interface SkillCastResult {
-  success: boolean;
-  skillId: string;
-  skillName: string;
-  damage?: number;
-  heal?: number;
-  message: string;
-}
-
-/**
- * 战斗服务接口
- * 提供战斗管理的核心功能
- */
-export interface ICombatService {
-  /**
-   * 获取战斗状态
-   * @returns {CombatState} 战斗状态
-   */
-  getState(): CombatState;
-
-  /**
-   * 获取敌人
-   * @returns {Enemy | null} 敌人
-   */
-  getEnemy(): EnemyInstance | null;
-
-  /**
-   * 获取当前回合
-   * @returns {'player' | 'enemy'} 当前回合
-   */
-  getTurn(): 'player' | 'enemy';
-
-  /**
-   * 开始战斗
-   * @param {Enemy[]} enemies - 敌人数组
-   */
-  startCombat(enemies: EnemyInstance[]): void;
-
-  /**
-   * 玩家行动
-   * @param {CombatAction} action - 行动
-   * @returns {CombatActionResult} 行动结果
-   */
-  playerAction(action: CombatAction): Promise<CombatActionResult>;
-
-  /** 敌人回合 */
-  enemyTurn(): void;
-
-  /**
-   * 结束战斗
-   * @param {CombatResult} result - 战斗结果
-   */
-  endCombat(result: CombatResult): void;
-
-  /**
-   * 检查是否在战斗中
-   * @returns {boolean} 是否在战斗中
-   */
-  isInCombat(): boolean;
-
-  /**
-   * 获取战斗日志
-   * @returns {CombatLog[]} 战斗日志
-   */
-  getCombatLog(): CombatLog[];
-
-  /**
-   * 施放技能
-   * @param {string} skillId - 技能ID
-   * @param {'self' | 'enemy'} targetType - 目标类型
-   * @returns {SkillCastResult} 技能施放结果
-   */
-  castSkill(skillId: string, targetType: 'self' | 'enemy'): SkillCastResult;
-}
-
-/**
- * 战斗日志存储接口
- */
-export interface CombatLogStorage {
-  combatId: string;
-  battleLogId: string;
-  timestamp: number;
-  turn: number;
+export type CombatLogStorage = Omit<CombatLog, 'actorType' | 'eventType' | 'targetType'> & {
   actorType: string;
-  actorId: string;
-  actorName: string;
   eventType: string;
   targetType?: string;
-  targetId?: string;
-  targetName?: string;
-  skillId?: string;
-  skillName?: string;
-  damage?: number;
-  heal?: number;
-  isCrit?: boolean;
-  isDodge?: boolean;
-  message: string;
-}
+};

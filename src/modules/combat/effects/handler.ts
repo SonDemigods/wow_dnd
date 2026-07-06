@@ -109,21 +109,42 @@ export class EffectHandlerRegistry {
   }
 
   /**
-   * 遍历容器中所有效果，调用指定方法，累加结果（用于护盾、反伤、速度）
+   * 遍历容器中所有效果，调用指定方法，累加结果（用于护盾、反伤）
    */
   reduceSum(
     container: EffectContainer,
-    method: 'getDamageAbsorb' | 'getThornDamage' | 'getSpeedMod',
+    method: 'getDamageAbsorb' | 'getThornDamage',
     ctx: EffectContext,
-    extra: number = 0
+    extra: number
+  ): number;
+  /**
+   * 遍历容器中所有效果，调用指定方法，累加结果（用于速度修正）
+   */
+  reduceSum(
+    container: EffectContainer,
+    method: 'getSpeedMod',
+    ctx: EffectContext
+  ): number;
+  reduceSum(
+    container: EffectContainer,
+    method: 'getDamageAbsorb' | 'getThornDamage' | 'getSpeedMod',
+    _ctx: EffectContext,
+    extra?: number
   ): number {
     let result = 0;
     for (const effect of container.effects) {
       const handler = this.handlers.get(effect.type);
       if (!handler) continue;
-      const fn = handler[method] as ((e: Effect, ...args: unknown[]) => number) | undefined;
-      if (fn) {
-        result += fn(effect, extra, ctx);
+      if (method === 'getSpeedMod') {
+        const fn = handler[method] as ((e: Effect) => number) | undefined;
+        if (fn) {
+          result += fn(effect);
+        }
+      } else {
+        const fn = handler[method] as ((e: Effect, incomingDamage: number) => number) | undefined;
+        if (fn && extra !== undefined) {
+          result += fn(effect, extra);
+        }
       }
     }
     return result;
@@ -174,11 +195,9 @@ export class EffectHandlerRegistry {
         }
       }
     }
-    // 眩晕/冰冻时强制跳过回合
-    const hasStunOrFreeze = container.effects.some(
-      e => e.type === 'stun' || e.type === 'freeze'
-    );
-    return { skipTurn: hasStunOrFreeze, types };
+    // 当所有行动类型都被禁用时（attack + skill + flee），强制跳过回合
+    const allDisabled = types.includes('attack') && types.includes('skill') && types.includes('flee');
+    return { skipTurn: allDisabled, types };
   }
 
   /** 检查是否注册了所有内置处理器 */
