@@ -7,6 +7,7 @@
  * - BackupService: 数据备份服务
  * - ImportService: 数据导入服务
  */
+import type { Table } from 'dexie';
 import { db } from './core';
 import type { GameStateStorage } from './core';
 import { eventBus, GameEvents } from '../bus';
@@ -20,7 +21,7 @@ import type { BossTemplate } from '../boss/types';
 import type { LocationStorage, MapStateStorage } from '../map/types';
 import type { ShopConfig, ShopItemsStorage } from '../shop/types';
 import type { SkillTemplateStorage, SkillsData } from '../skill/types';
-import type { QuestDefinitionStorage, CharQuestStorage } from '../quest/types';
+import type { CharQuestStorage } from '../quest/types';
 import type { ExplorationStorage } from '../exploration/types';
 import type { CombatLogStorage } from '../combat/types';
 import type { AdventureLogData } from '../log/types';
@@ -65,7 +66,6 @@ function calculateChecksum(data: unknown): string {
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
     hash = (hash << 5) - hash + char;
-    hash = hash & hash;
   }
   return Math.abs(hash).toString(16);
 }
@@ -162,61 +162,62 @@ export class DataInitializer {
   }
 
   /**
+   * 通用的表数据初始化方法
+   * 将数据数组逐条写入指定的数据库表
+   */
+  private async initTable(table: Table, data: readonly unknown[]): Promise<void> {
+    for (const item of data) {
+      await table.put(item);
+    }
+  }
+
+  /**
    * 初始化阵营数据
    */
   private async initFactions(): Promise<void> {
-    for (const faction of FACTIONS) {
-      await db.config_factions.put(faction as unknown as FactionStorage);
-    }
+    await this.initTable(db.config_factions, FACTIONS);
   }
 
   /**
    * 初始化种族数据
    */
   private async initRaces(): Promise<void> {
-    for (const race of RACES) {
-      await db.config_races.put(race as unknown as RaceStorage);
-    }
+    await this.initTable(db.config_races, RACES);
   }
 
   /**
    * 初始化职业数据
    */
   private async initClasses(): Promise<void> {
-    for (const cls of CLASSES) {
-      await db.config_classes.put(cls as unknown as ClassStorage);
-    }
+    await this.initTable(db.config_classes, CLASSES);
   }
 
   /**
    * 初始化物品数据
    */
   private async initItems(): Promise<void> {
-    for (const item of LOOT_ITEMS) {
-      await db.config_items.put(item as unknown as ItemStorage);
-    }
+    await this.initTable(db.config_items, LOOT_ITEMS);
   }
 
   /**
    * 初始化装备数据
    */
   private async initEquipment(): Promise<void> {
-    for (const equipment of EQUIPMENT_ITEMS) {
-      await db.config_equipmentItems.put(equipment as unknown as EquipmentTemplateStorage);
-    }
+    await this.initTable(db.config_equipmentItems, EQUIPMENT_ITEMS);
   }
 
   /**
    * 初始化普通怪物数据
    */
   private async initMobs(): Promise<void> {
-    for (const mob of MOBS) {
-      await db.config_mobs.put(mob as unknown as EnemyStorage);
-    }
+    await this.initTable(db.config_mobs, MOBS);
   }
 
   /**
    * 初始化 Boss 怪物数据
+   * 注意：使用 bossDbService.saveBossTemplate() 而非直接 put，
+   * 因为该方法会进行字段转换（如 undefined→null、isBoss 固定为 1 等），
+   * 确保数据格式与运行时保存逻辑一致。
    */
   private async initBosses(): Promise<void> {
     for (const boss of BOSSES) {
@@ -228,44 +229,37 @@ export class DataInitializer {
    * 初始化地点数据
    */
   private async initLocations(): Promise<void> {
-    for (const location of LOCATIONS) {
-      await db.config_locations.put(location as unknown as LocationStorage);
-    }
+    await this.initTable(db.config_locations, LOCATIONS);
   }
 
   /**
    * 初始化大陆数据
    */
   private async initContinents(): Promise<void> {
-    for (const continent of CONTINENTS) {
-      await db.config_locations.put(continent as unknown as LocationStorage);
-    }
+    await this.initTable(db.config_locations, CONTINENTS);
   }
 
   /**
    * 初始化商店数据
    */
   private async initShops(): Promise<void> {
-    for (const shop of SHOPS) {
-      await db.config_shops.put(shop as unknown as ShopConfig);
-    }
-
-    await db.runtime_gameState.put({
-      id: 'shop_config',
-    } as GameStateStorage);
+    await this.initTable(db.config_shops, SHOPS);
   }
 
   /**
    * 初始化任务数据
    */
   private async initQuests(): Promise<void> {
-    for (const quest of QUESTS) {
-      await db.config_quests.put(quest as unknown as QuestDefinitionStorage);
-    }
+    await this.initTable(db.config_quests, QUESTS);
   }
 
   /**
    * 初始化技能模板数据（含职业技能与怪物技能）
+   *
+   * 注意：此处仍需 as unknown as SkillTemplateStorage 断言，因为 @/data 中的
+   * CLASS_ABILITIES / MONSTER_ABILITIES 常量使用 typeof 推断类型，与 SkillTemplateStorage
+   * 存在微妙的类型不匹配（如 classRestriction 字段由外层追加）。待 @/data 常量添加显式类型
+   * 注解后可移除此断言。
    */
   private async initSkillTemplates(): Promise<void> {
     // 1. 写入职业技能模板（usableBy 默认为 'player'）
@@ -497,111 +491,98 @@ export class BackupService implements IBackupService {
    * @returns BackupData - 备份数据对象
    */
   private async collectAllData(): Promise<BackupData> {
-    const characterRecords = (await db.char_data.toArray()) as unknown[];
-    const inventoryRecords = (await db.char_inventory.toArray()) as unknown[];
-    const questsRecords = (await db.char_quests.toArray()) as unknown[];
-    const equipmentRecords = (await db.char_equipment.toArray()) as unknown[];
-    const skillsRecords = (await db.char_skills.toArray()) as unknown[];
-    const explorationRecords =
-      (await db.char_exploration.toArray()) as unknown[];
-    const combatRecords = (await db.runtime_combatLogs.toArray()) as unknown[];
-    const adventureLogRecords =
-      (await db.runtime_adventureLogs.toArray()) as unknown[];
-    const mapRecords = (await db.config_locations.toArray()) as unknown[];
-    const shopRecords = (await db.config_shops.toArray()) as unknown[];
-    const gameStateRecords = (await db.runtime_gameState.toArray()) as unknown[];
-    const mapStateRecords = (await db.runtime_mapState.toArray()) as unknown[];
-    const shopItemsRecords = (await db.runtime_shopItems.toArray()) as unknown[];
+    // 角色表
+    const characterRecords = await db.char_data.toArray();
+    const inventoryRecords = await db.char_inventory.toArray();
+    const questsRecords = await db.char_quests.toArray();
+    const equipmentRecords = await db.char_equipment.toArray();
+    const skillsRecords = await db.char_skills.toArray();
+    const explorationRecords = await db.char_exploration.toArray();
 
-    // 收集完整配置表数据
-    const factionsRecords = (await db.config_factions.toArray()) as unknown[];
-    const racesRecords = (await db.config_races.toArray()) as unknown[];
-    const classesRecords = (await db.config_classes.toArray()) as unknown[];
-    const itemsRecords = (await db.config_items.toArray()) as unknown[];
-    const equipmentItemsRecords = (await db.config_equipmentItems.toArray()) as unknown[];
-    const mobsRecords = (await db.config_mobs.toArray()) as unknown[];
-    const bossesRecords = (await db.config_bosses.toArray()) as unknown[];
-    const skillTemplatesRecords = (await db.config_skills.toArray()) as unknown[];
+    // 运行时表
+    const combatRecords = await db.runtime_combatLogs.toArray();
+    const adventureLogRecords = await db.runtime_adventureLogs.toArray();
+    const gameStateRecords = await db.runtime_gameState.toArray();
+    const mapStateRecords = await db.runtime_mapState.toArray();
+    const shopItemsRecords = await db.runtime_shopItems.toArray();
 
-    const characters: Record<string, unknown> = {};
-    characterRecords.forEach((item: any) => {
-      characters[item.characterId] = item;
+    // 配置表
+    const mapRecords = await db.config_locations.toArray();
+    const shopRecords = await db.config_shops.toArray();
+    const factionsRecords = await db.config_factions.toArray();
+    const racesRecords = await db.config_races.toArray();
+    const classesRecords = await db.config_classes.toArray();
+    const itemsRecords = await db.config_items.toArray();
+    const equipmentItemsRecords = await db.config_equipmentItems.toArray();
+    const mobsRecords = await db.config_mobs.toArray();
+    const bossesRecords = await db.config_bosses.toArray();
+    const skillTemplatesRecords = await db.config_skills.toArray();
+
+    // 构建角色数据 Record
+    const characters = this.toCharacterRecord(characterRecords);
+    const inventory = this.toCharacterRecord(inventoryRecords);
+    const quests = this.toCharacterRecord(questsRecords);
+    const equipment = this.toCharacterRecord(equipmentRecords);
+    const skills = this.toCharacterRecord(skillsRecords);
+    const exploration = this.toCharacterRecord(explorationRecords);
+
+    // combat 使用特殊键名（battleLogId 优先，缺失时降级为 combatId+timestamp 组合）
+    const combat: Record<string, CombatLogStorage> = {};
+    combatRecords.forEach((item) => {
+      const key = item.battleLogId || `${item.combatId}_${item.timestamp}`;
+      combat[key] = item;
     });
 
-    const inventory: Record<string, unknown> = {};
-    inventoryRecords.forEach((item: any) => {
-      inventory[item.characterId] = item;
-    });
-
-    const quests: Record<string, unknown> = {};
-    questsRecords.forEach((item: any) => {
-      quests[item.characterId] = item;
-    });
-
-    const equipment: Record<string, unknown> = {};
-    equipmentRecords.forEach((item: any) => {
-      equipment[item.characterId] = item;
-    });
-
-    const skills: Record<string, unknown> = {};
-    skillsRecords.forEach((item: any) => {
-      skills[item.characterId] = item;
-    });
-
-    const exploration: Record<string, unknown> = {};
-    explorationRecords.forEach((item: any) => {
-      exploration[item.characterId] = item;
-    });
-
-    const combat: Record<string, unknown> = {};
-    combatRecords.forEach((item: any) => {
-      combat[item.battleLogId || `${item.combatId}_${item.timestamp}`] = item;
-    });
-
-    const adventureLog: Record<string, unknown[]> = {};
-    adventureLogRecords.forEach((item: any) => {
+    // adventureLog 按 characterId 分组
+    const adventureLog: Record<string, LogEntry[]> = {};
+    adventureLogRecords.forEach((item) => {
       adventureLog[item.characterId] = item.entries || [];
     });
 
-    const mapState: Record<string, unknown> = {};
-    mapStateRecords.forEach((item: any) => {
-      mapState[item.id] = item;
-    });
+    // id-keyed Record
+    const gameState: Record<string, GameStateStorage> = {};
+    gameStateRecords.forEach((item) => { gameState[item.id] = item; });
 
-    const gameState: Record<string, unknown> = {};
-    gameStateRecords.forEach((item: any) => {
-      gameState[item.id] = item;
-    });
+    const mapState: Record<string, MapStateStorage> = {};
+    mapStateRecords.forEach((item) => { mapState[item.id] = item; });
 
-    const shopItems: Record<string, unknown> = {};
-    shopItemsRecords.forEach((item: any) => {
-      shopItems[item.shopId] = item;
-    });
+    const shopItems: Record<string, ShopItemsStorage> = {};
+    shopItemsRecords.forEach((item) => { shopItems[item.shopId] = item; });
 
     return {
-      characters: characters as BackupData['characters'],
-      inventory: inventory as BackupData['inventory'],
-      quests: quests as BackupData['quests'],
-      equipment: equipment as BackupData['equipment'],
-      skills: skills as BackupData['skills'],
-      exploration: exploration as BackupData['exploration'],
-      combat: combat as BackupData['combat'],
-      adventureLog: adventureLog as BackupData['adventureLog'],
+      characters,
+      inventory,
+      quests,
+      equipment,
+      skills,
+      exploration,
+      combat,
+      adventureLog,
       map: mapRecords as BackupData['map'],
       shop: shopRecords as BackupData['shop'],
-      gameState: gameState as BackupData['gameState'],
-      shopItems: shopItems as BackupData['shopItems'],
-      mapState: mapState as BackupData['mapState'],
-      // 配置表数据
-      factions: factionsRecords as Record<string, unknown>[],
-      races: racesRecords as Record<string, unknown>[],
-      classes: classesRecords as Record<string, unknown>[],
-      items: itemsRecords as Record<string, unknown>[],
-      equipmentItems: equipmentItemsRecords as Record<string, unknown>[],
-      mobs: mobsRecords as Record<string, unknown>[],
-      bosses: bossesRecords as Record<string, unknown>[],
-      skillTemplates: skillTemplatesRecords as Record<string, unknown>[]
+      gameState,
+      shopItems,
+      mapState,
+      factions: factionsRecords,
+      races: racesRecords,
+      classes: classesRecords,
+      items: itemsRecords,
+      equipmentItems: equipmentItemsRecords,
+      mobs: mobsRecords,
+      bosses: bossesRecords,
+      skillTemplates: skillTemplatesRecords,
     };
+  }
+
+  /**
+   * 将数组转换为以 characterId 为键的 Record
+   */
+  private toCharacterRecord<T extends { characterId: string }>(items: T[]): Record<string, T> {
+    const record: Record<string, T> = {};
+    for (const item of items) {
+      record[item.characterId] = item;
+    }
+    return record;
   }
 }
 
@@ -625,7 +606,7 @@ export class ImportService implements IImportService {
    * @returns ValidationResult - 验证结果
    */
   async validateBackup(file: File): Promise<ValidationResult> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const reader = new FileReader();
 
       reader.onload = () => {
@@ -662,7 +643,7 @@ export class ImportService implements IImportService {
       };
 
       reader.onerror = () => {
-        reject(new Error('读取文件失败'));
+        resolve({ success: false, error: '读取文件失败' });
       };
 
       reader.readAsText(file);
@@ -771,62 +752,38 @@ export class ImportService implements IImportService {
           db.runtime_shopItems,
         ],
         async () => {
-          if (data.characters && Object.keys(data.characters).length > 0) {
-            await db.char_data.bulkPut(Object.values(data.characters) as unknown as CharacterDataStorage[]);
-            importedStores.push('char_data');
-          } else {
-            skippedStores.push('char_data');
-          }
+          // 辅助函数：有数据则 bulkPut，否则计入 skipped
+          const bulkPutIfNotEmpty = async <T>(
+            table: Table,
+            record: Record<string, T> | undefined,
+            storeName: string
+          ) => {
+            if (record && Object.keys(record).length > 0) {
+              await table.bulkPut(Object.values(record));
+              importedStores.push(storeName);
+            } else {
+              skippedStores.push(storeName);
+            }
+          };
 
-          if (data.inventory && Object.keys(data.inventory).length > 0) {
-            await db.char_inventory.bulkPut(Object.values(data.inventory) as unknown as InventoryStorage[]);
-            importedStores.push('char_inventory');
-          } else {
-            skippedStores.push('char_inventory');
-          }
-
-          if (data.quests && Object.keys(data.quests).length > 0) {
-            await db.char_quests.bulkPut(Object.values(data.quests) as unknown as CharQuestStorage[]);
-            importedStores.push('char_quests');
-          } else {
-            skippedStores.push('char_quests');
-          }
-
-          if (data.equipment && Object.keys(data.equipment).length > 0) {
-            await db.char_equipment.bulkPut(Object.values(data.equipment) as unknown as EquipmentStorage[]);
-            importedStores.push('char_equipment');
-          } else {
-            skippedStores.push('char_equipment');
-          }
-
-          if (data.skills && Object.keys(data.skills).length > 0) {
-            await db.char_skills.bulkPut(Object.values(data.skills) as unknown as SkillsData[]);
-            importedStores.push('char_skills');
-          } else {
-            skippedStores.push('char_skills');
-          }
-
-          if (data.exploration && Object.keys(data.exploration).length > 0) {
-            await db.char_exploration.bulkPut(Object.values(data.exploration) as unknown as ExplorationStorage[]);
-            importedStores.push('char_exploration');
-          } else {
-            skippedStores.push('char_exploration');
-          }
-
-          if (data.combat && Object.keys(data.combat).length > 0) {
-            await db.runtime_combatLogs.bulkPut(Object.values(data.combat) as unknown as CombatLogStorage[]);
-            importedStores.push('runtime_combatLogs');
-          } else {
-            skippedStores.push('runtime_combatLogs');
-          }
+          await bulkPutIfNotEmpty(db.char_data, data.characters, 'char_data');
+          await bulkPutIfNotEmpty(db.char_inventory, data.inventory, 'char_inventory');
+          await bulkPutIfNotEmpty(db.char_quests, data.quests, 'char_quests');
+          await bulkPutIfNotEmpty(db.char_equipment, data.equipment, 'char_equipment');
+          await bulkPutIfNotEmpty(db.char_skills, data.skills, 'char_skills');
+          await bulkPutIfNotEmpty(db.char_exploration, data.exploration, 'char_exploration');
+          await bulkPutIfNotEmpty(db.runtime_combatLogs, data.combat, 'runtime_combatLogs');
+          await bulkPutIfNotEmpty(db.runtime_gameState, data.gameState, 'runtime_gameState');
+          await bulkPutIfNotEmpty(db.runtime_mapState, data.mapState, 'runtime_mapState');
+          await bulkPutIfNotEmpty(db.runtime_shopItems, data.shopItems, 'runtime_shopItems');
 
           if (data.adventureLog && Object.keys(data.adventureLog).length > 0) {
-            const logEntries = Object.entries(data.adventureLog).map(
+            const logEntries: AdventureLogData[] = Object.entries(data.adventureLog).map(
               ([characterId, entries]) => ({
                 characterId,
                 entries
               })
-            ) as AdventureLogData[];
+            );
             await db.runtime_adventureLogs.bulkPut(logEntries);
             importedStores.push('runtime_adventureLogs');
           } else {
@@ -841,7 +798,7 @@ export class ImportService implements IImportService {
           }
 
           if (data.shop && data.shop.length > 0) {
-            await db.config_shops.bulkPut(data.shop as unknown as ShopConfig[]);
+            await db.config_shops.bulkPut(data.shop);
             importedStores.push('config_shops');
           } else {
             skippedStores.push('config_shops');
@@ -849,55 +806,52 @@ export class ImportService implements IImportService {
 
           // 恢复配置表数据（v1.1 新增，兼容旧备份不含这些字段）
           if (data.factions && data.factions.length > 0) {
-            await db.config_factions.bulkPut(data.factions as unknown as FactionStorage[]);
+            await db.config_factions.bulkPut(data.factions);
             importedStores.push('config_factions');
+          } else {
+            skippedStores.push('config_factions');
           }
           if (data.races && data.races.length > 0) {
-            await db.config_races.bulkPut(data.races as unknown as RaceStorage[]);
+            await db.config_races.bulkPut(data.races);
             importedStores.push('config_races');
+          } else {
+            skippedStores.push('config_races');
           }
           if (data.classes && data.classes.length > 0) {
-            await db.config_classes.bulkPut(data.classes as unknown as ClassStorage[]);
+            await db.config_classes.bulkPut(data.classes);
             importedStores.push('config_classes');
+          } else {
+            skippedStores.push('config_classes');
           }
           if (data.items && data.items.length > 0) {
-            await db.config_items.bulkPut(data.items as unknown as ItemStorage[]);
+            await db.config_items.bulkPut(data.items);
             importedStores.push('config_items');
+          } else {
+            skippedStores.push('config_items');
           }
           if (data.equipmentItems && data.equipmentItems.length > 0) {
-            await db.config_equipmentItems.bulkPut(data.equipmentItems as unknown as EquipmentTemplateStorage[]);
+            await db.config_equipmentItems.bulkPut(data.equipmentItems);
             importedStores.push('config_equipmentItems');
+          } else {
+            skippedStores.push('config_equipmentItems');
           }
           if (data.mobs && data.mobs.length > 0) {
-            await db.config_mobs.bulkPut(data.mobs as unknown as EnemyStorage[]);
+            await db.config_mobs.bulkPut(data.mobs);
             importedStores.push('config_mobs');
+          } else {
+            skippedStores.push('config_mobs');
           }
           if (data.bosses && data.bosses.length > 0) {
-            await db.config_bosses.bulkPut(data.bosses as unknown as BossStorage[]);
+            await db.config_bosses.bulkPut(data.bosses);
             importedStores.push('config_bosses');
+          } else {
+            skippedStores.push('config_bosses');
           }
           if (data.skillTemplates && data.skillTemplates.length > 0) {
-            await db.config_skills.bulkPut(data.skillTemplates as unknown as SkillTemplateStorage[]);
+            await db.config_skills.bulkPut(data.skillTemplates);
             importedStores.push('config_skills');
-          }
-
-          if (data.gameState && Object.keys(data.gameState).length > 0) {
-            await db.runtime_gameState.bulkPut(Object.values(data.gameState) as unknown as GameStateStorage[]);
-            importedStores.push('runtime_gameState');
           } else {
-            skippedStores.push('runtime_gameState');
-          }
-
-          // 恢复地图运行时状态（含 currentLocationId、视图状态等）
-          if (data.mapState && Object.keys(data.mapState).length > 0) {
-            await db.runtime_mapState.bulkPut(Object.values(data.mapState) as unknown as MapStateStorage[]);
-            importedStores.push('runtime_mapState');
-          }
-
-          // 恢复商店商品数据
-          if (data.shopItems && Object.keys(data.shopItems).length > 0) {
-            await db.runtime_shopItems.bulkPut(Object.values(data.shopItems) as unknown as ShopItemsStorage[]);
-            importedStores.push('runtime_shopItems');
+            skippedStores.push('config_skills');
           }
         }
       );
@@ -930,17 +884,4 @@ export const backupService = new BackupService();
  */
 export const importService = new ImportService();
 
-/**
- * 获取游戏数据
- *
- * 从 runtime_gameState 表中获取指定键的数据
- * @param key - 数据键名
- * @returns T | null - 数据对象或 null
- */
-export async function getGameData<T>(key: string): Promise<T | null> {
-  const result = await db.runtime_gameState.get(key);
-  if (result) return result as unknown as T;
 
-  console.warn(`数据库中未找到游戏数据: ${key}`);
-  return null;
-}

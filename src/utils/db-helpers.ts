@@ -17,7 +17,7 @@
  * @param data - 需要清洗的数据（可以是 Proxy 包装对象）
  * @returns 纯 JS 对象/数组
  */
-export function toRawData(data: unknown): any {
+export function toRawData<T>(data: T): T {
   return JSON.parse(JSON.stringify(data));
 }
 

@@ -3,18 +3,21 @@
  * 
  * 定义备份、导入相关的数据结构和接口
  */
-import type { InventoryItem } from '../inventory/types';
-import type { QuestInstance } from '../quest/types';
-import type { EquipmentState } from '../equipment/types';
+import type { InventoryStorage, ItemStorage } from '../inventory/types';
+import type { CharQuestStorage } from '../quest/types';
+import type { EquipmentStorage, EquipmentTemplateStorage } from '../equipment/types';
 import type { SkillsData } from '../skill/types';
-import type { ExplorationState } from '../exploration/types';
-import type { CombatLog } from '../combat/types';
+import type { ExplorationStorage } from '../exploration/types';
+import type { CombatLogStorage } from '../combat/types';
 import type { LogEntry } from '../log/types';
 import type { LocationData } from '../map/types';
-import type { ShopConfig } from '../shop/types';
+import type { ShopConfig, ShopItemsStorage } from '../shop/types';
 import type { MapStateStorage } from '../map/types';
-import type { ShopItemsStorage } from '../shop/types';
 import type { GameStateStorage } from './core';
+import type { FactionStorage, RaceStorage, ClassStorage, CharacterDataStorage } from '../character/types';
+import type { EnemyStorage } from '../enemy/types';
+import type { BossStorage } from '../boss/types';
+import type { SkillTemplateStorage } from '../skill/types';
 import {
   CONTINENTS,
   LOCATIONS,
@@ -76,77 +79,25 @@ export interface BackupFile {
 }
 
 /**
- * 游戏状态数据接口
- * 
- * 对应 runtime_gameState 表中 id='gameState' 的记录，
- * 存储游戏运行时的全局状态。各模块通过此记录共享持久化状态。
- */
-export interface GameStateData {
-  /** 当前选中的角色ID（null 表示未选择角色） */
-  currentCharacterId: string | null;
-  /** 上次游玩时间（ISO 8601 格式） */
-  lastPlayedAt: string;
-  /** 游戏设置 */
-  settings: {
-    soundEnabled: boolean;
-    musicEnabled: boolean;
-    autoSave: boolean;
-    difficulty: string;
-  };
-  /** 当前打开的商店ID（null 表示未打开商店，由商店模块管理） */
-  currentShopId?: string | null;
-}
-
-/**
- * 角色详细数据接口
- * 
- * 定义单个角色的详细属性数据
- */
-export interface CharacterData {
-  /** 角色ID */
-  characterId: string;
-  /** 角色等级 */
-  level: number;
-  /** 经验值 */
-  exp: number;
-  /** 金币数量 */
-  gold: number;
-  /** 当前生命值 */
-  hp: number;
-  /** 最大生命值 */
-  maxHp: number;
-  /** 当前魔法值 */
-  mp: number;
-  /** 最大魔法值 */
-  maxMp: number;
-  /** 属性值映射 */
-  stats: Record<string, number>;
-  /** 创建时间 */
-  createdAt: string;
-  /** 更新时间 */
-  updatedAt: string;
-}
-
-/**
  * 备份数据接口
  * 
  * 定义备份包含的所有数据结构，涵盖运行时数据和完整配置表。
  */
 export interface BackupData {
   /** 角色数据（以角色ID为键） */
-  characters: Record<string, unknown>;
+  characters: Record<string, CharacterDataStorage>;
   /** 背包数据（以角色ID为键） */
-  inventory: Record<string, InventoryItem>;
+  inventory: Record<string, InventoryStorage>;
   /** 任务进度（以角色ID为键） */
-  quests: Record<string, QuestInstance>;
+  quests: Record<string, CharQuestStorage>;
   /** 装备状态（以角色ID为键） */
-  equipment: Record<string, EquipmentState>;
+  equipment: Record<string, EquipmentStorage>;
   /** 技能数据（以角色ID为键） */
   skills: Record<string, SkillsData>;
   /** 探索进度（以角色ID为键） */
-  exploration: Record<string, ExplorationState>;
-  /** 战斗记录（以 battleLogId 为键） */
-  combat: Record<string, CombatLog>;
+  exploration: Record<string, ExplorationStorage>;
+  /** 战斗记录（以 battleLogId 为键；若缺失则降级为 ${combatId}_${timestamp}） */
+  combat: Record<string, CombatLogStorage>;
   /** 冒险日志（以角色ID为键） */
   adventureLog: Record<string, LogEntry[]>;
   /** 地图数据（地点配置） */
@@ -161,21 +112,21 @@ export interface BackupData {
   mapState?: Record<string, MapStateStorage>;
   // ==================== 配置表备份（v1.1 新增） ====================
   /** 阵营配置 */
-  factions?: Record<string, unknown>[];
+  factions?: FactionStorage[];
   /** 种族配置 */
-  races?: Record<string, unknown>[];
+  races?: RaceStorage[];
   /** 职业配置 */
-  classes?: Record<string, unknown>[];
+  classes?: ClassStorage[];
   /** 物品模板 */
-  items?: Record<string, unknown>[];
+  items?: ItemStorage[];
   /** 装备模板 */
-  equipmentItems?: Record<string, unknown>[];
+  equipmentItems?: EquipmentTemplateStorage[];
   /** 敌人模板（普通怪物 + Boss 合并） */
-  mobs?: Record<string, unknown>[];
+  mobs?: EnemyStorage[];
   /** Boss 模板 */
-  bosses?: Record<string, unknown>[];
+  bosses?: BossStorage[];
   /** 技能模板 */
-  skillTemplates?: Record<string, unknown>[];
+  skillTemplates?: SkillTemplateStorage[];
 }
 
 /**

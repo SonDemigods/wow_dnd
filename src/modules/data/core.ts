@@ -10,6 +10,20 @@
 import Dexie, { Table } from 'dexie';
 import { DATABASE_CONFIG, DB_SERVICE_CONFIG, type DBServiceConfig } from '@/config/database';
 
+// ==================== 各模块 Storage 类型导入 ====================
+import type { FactionStorage, RaceStorage, ClassStorage, CharacterDataStorage } from '../character/types';
+import type { ItemStorage, InventoryStorage } from '../inventory/types';
+import type { EquipmentTemplateStorage, EquipmentStorage } from '../equipment/types';
+import type { EnemyStorage } from '../enemy/types';
+import type { BossStorage } from '../boss/types';
+import type { LocationStorage, MapStateStorage } from '../map/types';
+import type { ShopConfig, ShopItemsStorage } from '../shop/types';
+import type { SkillTemplateStorage, SkillsData } from '../skill/types';
+import type { QuestDefinitionStorage, CharQuestStorage } from '../quest/types';
+import type { ExplorationStorage } from '../exploration/types';
+import type { CombatLogStorage } from '../combat/types';
+import type { AdventureLogData } from '../log/types';
+
 /**
  * 全局游戏状态存储格式
  * 属于 data 模块自身的运行时状态，不归属任何业务模块
@@ -33,37 +47,37 @@ export interface GameStateStorage {
  * 2. 角色表（char_*）：绑定角色ID，每个角色独立
  * 3. 运行时表（runtime_*）：日志和临时状态
  * 
- * 表类型使用 `Table<any, string>` 作为通用类型，
+ * 表类型已从 `Table<any, string>` 升级为具体的 Storage 类型，
  * 具体的 Storage 类型定义在各模块的 types.ts 中。
  */
 export interface GameDatabaseSchema {
   // ==================== 配置表（config_*）====================
-  config_factions: Table<any, string>;
-  config_races: Table<any, string>;
-  config_classes: Table<any, string>;
-  config_items: Table<any, string>;
-  config_equipmentItems: Table<any, string>;
-  config_mobs: Table<any, string>;
-  config_bosses: Table<any, string>;
-  config_quests: Table<any, string>;
-  config_skills: Table<any, string>;
-  config_locations: Table<any, string>;
-  config_shops: Table<any, string>;
+  config_factions: Table<FactionStorage, string>;
+  config_races: Table<RaceStorage, string>;
+  config_classes: Table<ClassStorage, string>;
+  config_items: Table<ItemStorage, string>;
+  config_equipmentItems: Table<EquipmentTemplateStorage, string>;
+  config_mobs: Table<EnemyStorage, string>;
+  config_bosses: Table<BossStorage, string>;
+  config_quests: Table<QuestDefinitionStorage, string>;
+  config_skills: Table<SkillTemplateStorage, string>;
+  config_locations: Table<LocationStorage, string>;
+  config_shops: Table<ShopConfig, string>;
 
   // ==================== 角色表（char_*）====================
-  char_data: Table<any, string>;
-  char_inventory: Table<any, string>;
-  char_equipment: Table<any, string>;
-  char_skills: Table<any, string>;
-  char_quests: Table<any, string>;
-  char_exploration: Table<any, string>;
+  char_data: Table<CharacterDataStorage, string>;
+  char_inventory: Table<InventoryStorage, string>;
+  char_equipment: Table<EquipmentStorage, string>;
+  char_skills: Table<SkillsData, string>;
+  char_quests: Table<CharQuestStorage, string>;
+  char_exploration: Table<ExplorationStorage, string>;
 
   // ==================== 运行时表（runtime_*）====================
   runtime_gameState: Table<GameStateStorage, string>;
-  runtime_combatLogs: Table<any, string>;
-  runtime_adventureLogs: Table<any, string>;
-  runtime_mapState: Table<any, string>;
-  runtime_shopItems: Table<any, string>;
+  runtime_combatLogs: Table<CombatLogStorage, string>;
+  runtime_adventureLogs: Table<AdventureLogData, string>;
+  runtime_mapState: Table<MapStateStorage, string>;
+  runtime_shopItems: Table<ShopItemsStorage, string>;
 }
 
 /**
@@ -74,32 +88,32 @@ export interface GameDatabaseSchema {
  */
 export class GameDatabase extends Dexie {
   // ==================== 配置表（config_*）====================
-  config_factions!: Table<any, string>;
-  config_races!: Table<any, string>;
-  config_classes!: Table<any, string>;
-  config_items!: Table<any, string>;
-  config_equipmentItems!: Table<any, string>;
-  config_mobs!: Table<any, string>;
-  config_bosses!: Table<any, string>;
-  config_quests!: Table<any, string>;
-  config_skills!: Table<any, string>;
-  config_locations!: Table<any, string>;
-  config_shops!: Table<any, string>;
+  config_factions!: Table<FactionStorage, string>;
+  config_races!: Table<RaceStorage, string>;
+  config_classes!: Table<ClassStorage, string>;
+  config_items!: Table<ItemStorage, string>;
+  config_equipmentItems!: Table<EquipmentTemplateStorage, string>;
+  config_mobs!: Table<EnemyStorage, string>;
+  config_bosses!: Table<BossStorage, string>;
+  config_quests!: Table<QuestDefinitionStorage, string>;
+  config_skills!: Table<SkillTemplateStorage, string>;
+  config_locations!: Table<LocationStorage, string>;
+  config_shops!: Table<ShopConfig, string>;
 
   // ==================== 角色表（char_*）====================
-  char_data!: Table<any, string>;
-  char_inventory!: Table<any, string>;
-  char_equipment!: Table<any, string>;
-  char_skills!: Table<any, string>;
-  char_quests!: Table<any, string>;
-  char_exploration!: Table<any, string>;
+  char_data!: Table<CharacterDataStorage, string>;
+  char_inventory!: Table<InventoryStorage, string>;
+  char_equipment!: Table<EquipmentStorage, string>;
+  char_skills!: Table<SkillsData, string>;
+  char_quests!: Table<CharQuestStorage, string>;
+  char_exploration!: Table<ExplorationStorage, string>;
 
   // ==================== 运行时表（runtime_*）====================
   runtime_gameState!: Table<GameStateStorage, string>;
-  runtime_combatLogs!: Table<any, string>;
-  runtime_adventureLogs!: Table<any, string>;
-  runtime_mapState!: Table<any, string>;
-  runtime_shopItems!: Table<any, string>;
+  runtime_combatLogs!: Table<CombatLogStorage, string>;
+  runtime_adventureLogs!: Table<AdventureLogData, string>;
+  runtime_mapState!: Table<MapStateStorage, string>;
+  runtime_shopItems!: Table<ShopItemsStorage, string>;
 
   /**
    * 构造函数：初始化数据库连接和表结构
@@ -155,13 +169,15 @@ export class GameDatabase extends Dexie {
     await this.runtime_gameState.put({
       id: 'gameState',
       currentCharacterId: null,
+      currentShopId: null,
       lastPlayedAt: new Date().toISOString(),
       settings: {
         soundEnabled: true,
         musicEnabled: true,
         autoSave: true,
         difficulty: 'normal'
-      }
+      },
+      initializedAt: new Date().toISOString()
     });
   }
 }
@@ -198,15 +214,13 @@ export class DBService {
    * @returns Promise<T> - 函数执行结果
    */
   async withRetry<T>(fn: () => Promise<T>): Promise<T> {
-    let retries = 0;
     let delay = this.options.delay;
 
-    while (retries < this.options.maxRetries) {
+    for (let retries = 0; retries < this.options.maxRetries; retries++) {
       try {
         return await fn();
       } catch (error) {
-        retries++;
-        if (retries >= this.options.maxRetries) {
+        if (retries >= this.options.maxRetries - 1) {
           throw error;
         }
         await this.sleep(delay);
@@ -216,7 +230,8 @@ export class DBService {
       }
     }
 
-    throw new Error('Max retries exceeded');
+    // 所有重试均已耗尽，抛出最终错误
+    throw new Error('所有重试均已耗尽');
   }
 
   /**
