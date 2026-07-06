@@ -6,5 +6,5 @@
 
 export * from './types';
 export { baseDbService } from './db';
-export { generateBaseId, factionsArrayToRecord, racesArrayToRecord, classesArrayToRecord } from './service';
+export { generateId, arrayToRecord } from './service';
 export { useBaseStore } from './store';

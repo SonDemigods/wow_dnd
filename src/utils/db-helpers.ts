@@ -20,3 +20,13 @@
 export function toRawData(data: unknown): any {
   return JSON.parse(JSON.stringify(data));
 }
+
+/**
+ * 生成唯一 ID
+ * 
+ * @param prefix - ID 前缀，用于标识所属模块（如 'base'、'character'、'inventory'）
+ * @returns 格式为 `{prefix}_{timestamp}_{random}` 的唯一标识符
+ */
+export function generateId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}

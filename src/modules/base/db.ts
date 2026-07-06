@@ -5,9 +5,15 @@
  */
 
 import { db as gameDb, dbService } from '../data/core';
-import type { FactionData, RaceData, ClassData } from '../character/types';
+import type { FactionData, RaceData, ClassData, RaceType, FactionType } from '../character/types';
 import type { FactionCreateUpdateData, RaceCreateUpdateData, ClassCreateUpdateData } from './types';
-import { generateBaseId, filterRacesByFaction, filterClassesByRace, filterClassesByFaction } from './service';
+import { generateId } from '../../utils/db-helpers';
+import { filterClassesByRace, filterClassesByFaction } from './service';
+
+/** 类型安全转换辅助函数，消除 `as unknown as T` 双重断言 */
+function cast<T>(data: unknown): T {
+  return data as T;
+}
 
 /**
  * 基础数据数据库服务类
@@ -21,7 +27,7 @@ export class BaseDbService {
   async getAllFactions(): Promise<FactionData[]> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_factions.toArray();
-      return result as unknown as FactionData[];
+      return cast<FactionData[]>(result);
     });
   }
 
@@ -31,7 +37,7 @@ export class BaseDbService {
   async getFactionById(id: string): Promise<FactionData | null> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_factions.get(id);
-      return result as unknown as FactionData | null;
+      return cast<FactionData | null>(result);
     });
   }
 
@@ -39,7 +45,7 @@ export class BaseDbService {
    * 创建阵营
    */
   async createFaction(data: FactionCreateUpdateData): Promise<string> {
-    const id = generateBaseId();
+    const id = generateId('base');
     await dbService.withRetry(async () => {
       await gameDb.config_factions.add({
         id,
@@ -87,7 +93,7 @@ export class BaseDbService {
   async getAllRaces(): Promise<RaceData[]> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_races.toArray();
-      return result as unknown as RaceData[];
+      return cast<RaceData[]>(result);
     });
   }
 
@@ -97,17 +103,17 @@ export class BaseDbService {
   async getRaceById(id: string): Promise<RaceData | null> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_races.get(id);
-      return result as unknown as RaceData | null;
+      return cast<RaceData | null>(result);
     });
   }
 
   /**
-   * 根据阵营获取种族（委托给 service 纯函数做内存过滤）
+   * 根据阵营获取种族（Dexie 索引查询）
    */
-  async getRacesByFaction(factionId: string): Promise<RaceData[]> {
+  async getRacesByFaction(factionId: FactionType): Promise<RaceData[]> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.config_races.toArray();
-      return filterRacesByFaction(result as unknown as RaceData[], factionId);
+      const result = await gameDb.config_races.where('factionId').equals(factionId).toArray();
+      return cast<RaceData[]>(result);
     });
   }
 
@@ -115,7 +121,7 @@ export class BaseDbService {
    * 创建种族
    */
   async createRace(data: RaceCreateUpdateData): Promise<string> {
-    const id = generateBaseId();
+    const id = generateId('base');
     await dbService.withRetry(async () => {
       await gameDb.config_races.add({
         id,
@@ -163,7 +169,7 @@ export class BaseDbService {
   async getAllClasses(): Promise<ClassData[]> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_classes.toArray();
-      return result as unknown as ClassData[];
+      return cast<ClassData[]>(result);
     });
   }
 
@@ -173,27 +179,27 @@ export class BaseDbService {
   async getClassById(id: string): Promise<ClassData | null> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_classes.get(id);
-      return result as unknown as ClassData | null;
+      return cast<ClassData | null>(result);
     });
   }
 
   /**
    * 根据种族获取职业（委托给 service 纯函数做内存过滤）
    */
-  async getClassesByRace(raceId: string): Promise<ClassData[]> {
+  async getClassesByRace(raceId: RaceType): Promise<ClassData[]> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_classes.toArray();
-      return filterClassesByRace(result as unknown as ClassData[], raceId);
+      return filterClassesByRace(cast<ClassData[]>(result), raceId);
     });
   }
 
   /**
    * 根据阵营获取职业（委托给 service 纯函数做内存过滤）
    */
-  async getClassesByFaction(factionId: string): Promise<ClassData[]> {
+  async getClassesByFaction(factionId: FactionType): Promise<ClassData[]> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_classes.toArray();
-      return filterClassesByFaction(result as unknown as ClassData[], factionId);
+      return filterClassesByFaction(cast<ClassData[]>(result), factionId);
     });
   }
 
@@ -201,7 +207,7 @@ export class BaseDbService {
    * 创建职业
    */
   async createClass(data: ClassCreateUpdateData): Promise<string> {
-    const id = generateBaseId();
+    const id = generateId('base');
     await dbService.withRetry(async () => {
       await gameDb.config_classes.add({
         id,
