@@ -63,7 +63,7 @@
 
 import { reactive, computed, onMounted, watch } from 'vue';
 import { useQuestStore } from '@/modules/quest';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import { useToast } from '@/composables/useToast';
 import type { QuestDefinition, QuestInstance, QuestStatus } from '@/modules/quest';
 import { getObjectiveText } from '@/modules/quest';

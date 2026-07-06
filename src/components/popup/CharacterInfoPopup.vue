@@ -288,11 +288,11 @@
  * @description 展示角色的完整属性面板，包括核心属性、次级属性、装备槽位和卸装操作
  */
 
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { useEquipmentStore } from '@/modules/equipment';
 import { useBaseStore } from '@/modules/base';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import type { Stats, Attributes } from '@/modules/character/types';
 import type { EquipmentSlot } from '@/modules/equipment/types';
 import Tag from '../common/Tag.vue';
@@ -490,9 +490,7 @@ onMounted(async () => {
   }
 });
 
-onUnmounted(() => {
-  eventBus.clearGroup('characterInfoPopup');
-});
+
 </script>
 
 <style lang="less" scoped>

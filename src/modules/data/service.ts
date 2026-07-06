@@ -9,7 +9,7 @@
  */
 import { db } from './core';
 import type { GameStateStorage } from './core';
-import { eventBus, GameEvents } from '../bus/core';
+import { eventBus, GameEvents } from '../bus';
 import type { FactionStorage, RaceStorage, ClassStorage, CharacterDataStorage } from '../character/types';
 import type { ItemStorage, InventoryStorage } from '../inventory/types';
 import type { EquipmentTemplateStorage, EquipmentStorage } from '../equipment/types';

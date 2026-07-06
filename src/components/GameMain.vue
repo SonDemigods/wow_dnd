@@ -139,7 +139,7 @@ import { useMapStore } from '@/modules/map';
 import { useShopStore } from '@/modules/shop';
 import { useLogStore } from '@/modules/log';
 import { useExplorationStore, type ExplorationUICallbacks } from '@/modules/exploration';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import { useEnemiesStore } from '@/modules/enemy';
 import { useCombatStore } from '@/modules/combat/store';
 import { useToast } from '@/composables/useToast';

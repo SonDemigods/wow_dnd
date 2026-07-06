@@ -99,7 +99,7 @@
  */
 
 import { useAudioStore } from '@/modules/audio';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import BasePopup from '../common/BasePopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 

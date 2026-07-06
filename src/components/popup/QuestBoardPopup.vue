@@ -99,7 +99,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useQuestStore } from '@/modules/quest';
 import { useCharacterStore } from '@/modules/character';
 import { useExplorationStore } from '@/modules/exploration/store';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import { useToast } from '@/composables/useToast';
 import { getObjectiveText } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';

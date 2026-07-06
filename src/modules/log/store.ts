@@ -9,7 +9,7 @@ import { ref, computed } from 'vue';
 import type { LogEntry, LogType } from './types';
 import { formatLogMessage } from './service';
 import { adventureLogDbService } from './db';
-import { eventBus, GameEvents } from '../bus/core';
+import { eventBus, GameEvents } from '../bus';
 
 export const useLogStore = defineStore('log', () => {
   // ==================== 状态 ====================

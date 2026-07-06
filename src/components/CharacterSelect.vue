@@ -135,7 +135,7 @@
 
 import { ref, computed, onMounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import Tag from './common/Tag.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import { useBaseStore } from '@/modules/base';

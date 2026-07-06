@@ -1,20 +1,56 @@
 /**
- * 事件总线模块类型定义
- * 
- * 定义游戏事件系统的所有类型、接口和枚举
+ * @fileoverview 事件总线模块类型定义
+ * @description 定义游戏事件系统的所有类型、接口和枚举。
+ *              本文件是 bus 模块的类型基石，GameEvents 枚举和 GameEventPayloadMap 接口
+ *              共同构成事件总线的类型安全防线。
+ * @module bus
  */
+
 import type { EnemyInstance } from '../enemy/types';
 import type { LocationData } from '../map/types';
 import type { QuestDefinition } from '../quest/types';
 import type { Skill } from '../skill/types';
 
-/** 事件回调函数类型 */
+// ============================================================================
+// 基础类型
+// ============================================================================
+
+/**
+ * 事件回调函数类型
+ *
+ * 内部存储使用的通用回调签名，采用 `any[]` 以保证异构回调数组的灵活兼容。
+ * 公共 API 层（`on` / `off` / `once` 等）通过泛型提供更精确的类型约束，
+ * 此处仅作为内部容器的存储单元。
+ *
+ * @see EventBus.on 注册监听器时使用具体的事件载荷类型
+ * @see EventBus.emit 触发事件时通过 GameEventPayloadMap 确保类型匹配
+ */
 export type EventCallback = (...args: any[]) => void;
+
+// ============================================================================
+// 枚举类型
+// ============================================================================
 
 /**
  * 游戏事件枚举
- * 
+ *
  * 定义所有游戏事件名称常量，按功能模块分组管理。
+ * 每个枚举值均为 `keyof GameEventPayloadMap` 的必要组成部分，
+ * 确保 emit/on 双方使用同一套事件名。
+ *
+ * 分组说明：
+ * - 角色：角色创建、删除、登出、升级、死亡、复活
+ * - 战斗：战斗起止、回合切换、伤害/治疗/暴击/闪避
+ * - 探索：探索启停、格子触发、战斗/营地/物品/陷阱/随机事件
+ * - 商店：商店开关、交易记录
+ * - 任务：任务面板、接受、完成、奖励
+ * - 技能：技能学习、技能施放
+ * - UI：面板开关、点击事件、确认弹窗
+ * - 物品：物品掉落
+ * - 存档：数据导出、数据导入
+ *
+ * @see GameEventPayloadMap 每个事件的载荷类型定义
+ * @see EventBus.emit 触发事件时以此枚举值为 key 索引载荷类型
  */
 export enum GameEvents {
   // ==================== 角色 ====================
@@ -89,10 +125,24 @@ export enum GameEvents {
   DATA_IMPORTED = 'data_imported'
 }
 
+// ============================================================================
+// 核心映射接口
+// ============================================================================
+
 /**
- * 事件参数类型映射
- * 
- * 为每个 GameEvent 定义对应的 payload 类型，确保 emit/on 的类型安全。
+ * 事件参数类型映射接口
+ *
+ * 为每个 GameEvents 枚举值定义对应的 payload 类型，是事件总线类型安全的核心。
+ * emit/on 双方通过 `K extends keyof GameEventPayloadMap` 泛型约束，
+ * 确保事件名与载荷类型在编译期严格匹配。
+ *
+ * 约定：
+ * - 无需载荷的事件使用 `null`（如 COMBAT_PLAYER_TURN）
+ * - 复杂对象使用具体接口（如 `EnemyInstance`、`LocationData`）
+ * - 可选字段使用 `?` 标记（如 `goldGained?`）
+ *
+ * @see EventBus.emit 泛型参数 `K` 约束源
+ * @see EventBus.on 泛型参数 `K` 约束源
  */
 export interface GameEventPayloadMap {
   [GameEvents.CHARACTER_CREATED]: { characterId: string; name: string };
@@ -142,8 +192,65 @@ export interface GameEventPayloadMap {
   [GameEvents.UI_CLICK]: { source: string };
 }
 
+// ============================================================================
+// 事件总线接口
+// ============================================================================
+
+/**
+ * 事件总线接口
+ *
+ * 定义了事件总线的完整公共契约，所有订阅/发布操作均通过此接口约束。
+ * EventBus 类实现此接口，eventBus 单例以此接口类型对外暴露。
+ *
+ * 类型安全设计：
+ * - 所有事件操作（on / off / emit / once / onGroup）通过 `K extends keyof GameEventPayloadMap`
+ *   泛型约束，确保事件名与载荷类型在编译期严格匹配
+ * - `clearGroup` / `clearAll` / `removeEvent` 为无泛型的批量操作
+ *
+ * @see EventBus 实现类
+ * @see eventBus 全局单例实例
+ */
+export interface IEventBus {
+  /** 注册事件监听器 */
+  on<K extends keyof GameEventPayloadMap>(event: K, callback: (data: GameEventPayloadMap[K]) => void): void;
+
+  /** 取消事件监听器 */
+  off<K extends keyof GameEventPayloadMap>(event: K, callback: (data: GameEventPayloadMap[K]) => void): void;
+
+  /** 触发事件 */
+  emit<K extends keyof GameEventPayloadMap>(event: K, data: GameEventPayloadMap[K]): void;
+
+  /** 注册一次性事件监听器（触发后自动取消） */
+  once<K extends keyof GameEventPayloadMap>(event: K, callback: (data: GameEventPayloadMap[K]) => void): void;
+
+  /** 按分组注册事件监听器 */
+  onGroup<K extends keyof GameEventPayloadMap>(groupName: string, event: K, callback: (data: GameEventPayloadMap[K]) => void): void;
+
+  /** 清除指定分组的所有事件监听器 */
+  clearGroup(groupName: string): void;
+
+  /** 清除所有事件监听器 */
+  clearAll(): void;
+
+  /** 移除指定事件的所有监听器 */
+  removeEvent(event: string): void;
+}
+
+// ============================================================================
+// 内部存储接口
+// ============================================================================
+
 /**
  * 事件监听器映射接口
+ *
+ * EventBus 内部存储结构，以事件名为 key 索引回调函数数组。
+ * key 为 `string` 而非 `keyof GameEventPayloadMap`，是因为公共 API 层已提供编译期约束，
+ * 内部存储使用宽泛类型可保持代码简洁，避免大量类型断言。
+ *
+ * @property {string} event - 事件名称（对应 GameEvents 枚举值或其字符串形式）
+ * @property {EventCallback[]} callbacks - 该事件的所有回调函数数组
+ *
+ * @see EventBus.listeners 使用此接口存储运行时监听器
  */
 export interface EventListeners {
   [event: string]: EventCallback[];
@@ -151,6 +258,18 @@ export interface EventListeners {
 
 /**
  * 事件监听器分组记录接口
+ *
+ * EventBus 内部分组管理结构，以分组名为 key 索引该组内注册的所有 {事件, 回调} 对。
+ * 通过 `onGroup` 注册、`clearGroup` 批量清理，便于模块级的生命周期管理。
+ *
+ * @property {string} groupName - 分组名称（如 store 名称）
+ * @property {Array} entries - 该分组下的所有 {event, callback} 记录
+ * @property {string} entries.event - 事件名称
+ * @property {EventCallback} entries.callback - 回调函数引用（与 listeners 中的引用一致）
+ *
+ * @see EventBus.groups 使用此接口存储分组记录
+ * @see EventBus.onGroup 向分组注册监听器
+ * @see EventBus.clearGroup 批量清除分组监听器
  */
 export interface GroupListeners {
   [groupName: string]: Array<{ event: string; callback: EventCallback }>;

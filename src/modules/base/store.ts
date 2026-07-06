@@ -8,7 +8,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { FactionData, RaceData, ClassData, RaceType, FactionType } from '../character/types';
 import { baseDbService } from './db';
-import { eventBus, GameEvents } from '../bus/core';
+import { eventBus, GameEvents } from '../bus';
 
 /**
  * 基础数据状态存储
@@ -385,13 +385,6 @@ export const useBaseStore = defineStore('base', () => {
     eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: 'init', action: 'bulk', id: '*' });
   }
 
-  /**
-   * 清理事件监听
-   */
-  function dispose(): void {
-    eventBus.clearGroup('baseStore');
-  }
-
   return {
     // 状态
     factions,
@@ -441,7 +434,6 @@ export const useBaseStore = defineStore('base', () => {
     selectRace,
     selectClass,
     resetSelection,
-    initialize,
-    dispose
+    initialize
   };
 });

@@ -23,7 +23,7 @@ import type { EnemyInstance } from '../enemy/types';
 import { useCharacterStore } from '../character/store';
 // skillsStore / enemiesStore 调用已委托给各 composable
 import { useQuestStore } from '../quest/store';
-import { eventBus, GameEvents } from '../bus/core';
+import { eventBus, GameEvents } from '../bus';
 import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
 import { isBossCombat, generateCombatId } from './service';

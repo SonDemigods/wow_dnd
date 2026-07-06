@@ -166,7 +166,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useShopStore } from '@/modules/shop';
 import { useCharacterStore } from '@/modules/character';
 import { useInventoryStore } from '@/modules/inventory';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import type { ShopDisplayItem } from '@/modules/shop';
 import type { InventoryItem, Item, ItemType, ItemRarity, ItemEffect } from '@/modules/inventory';
 import BasePopup from '../common/BasePopup.vue';

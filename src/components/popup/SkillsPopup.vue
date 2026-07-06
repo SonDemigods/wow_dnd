@@ -95,7 +95,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useSkillsStore } from '@/modules/skill';
 import { useCharacterStore } from '@/modules/character';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import { useSkillDisplay } from '@/composables/useSkillDisplay';
 import type { Skill, SkillSlotIndex } from '@/modules/skill';
 import BasePopup from '../common/BasePopup.vue';

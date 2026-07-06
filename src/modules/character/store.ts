@@ -8,7 +8,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Character, CharacterListItem, Stats, Attributes, FactionType, RaceType, ClassType, FactionData, RaceData, ClassData, CreateCharacterParams } from './types';
 import { characterDbService } from './db';
-import { eventBus, GameEvents } from '../bus/core';
+import { eventBus, GameEvents } from '../bus';
 import { useBaseStore } from '../base/store';
 import { skillsDbService } from '../skill/db';
 import { inventoryDbService } from '../inventory/db';

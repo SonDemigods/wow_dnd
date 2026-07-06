@@ -106,7 +106,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import { useMapStore } from '@/modules/map';
 import { useCharacterStore } from '@/modules/character';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import type { MapZone, ZoneStatus } from '@/modules/map';
 import ConfirmPopup from './common/ConfirmPopup.vue';
 import worldBgImg from '@/images/worldBg.jpg';

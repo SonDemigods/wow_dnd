@@ -180,7 +180,7 @@ import BaseIcon from '@/components/common/BaseIcon.vue';
 import { useInventoryStore } from '@/modules/inventory';
 import { useCharacterStore } from '@/modules/character';
 import { useEquipmentStore } from '@/modules/equipment';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import { useToast } from '@/composables/useToast';
 import type {
   InventoryItem,

@@ -44,7 +44,7 @@
 
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { useLogStore } from '../../modules/log';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';

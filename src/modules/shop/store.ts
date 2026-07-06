@@ -23,7 +23,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { ShopConfig, ShopItem, SoldItemEntry } from './types';
 import { shopDbService } from './db';
-import { eventBus, GameEvents } from '../bus/core';
+import { eventBus, GameEvents } from '../bus';
 import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
 import { useCharacterStore } from '../character/store';

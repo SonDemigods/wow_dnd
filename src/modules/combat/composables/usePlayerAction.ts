@@ -11,7 +11,7 @@ import { useCharacterStore } from '../../character/store';
 import { useEnemiesStore } from '../../enemy/store';
 import { useSkillsStore } from '../../skill/store';
 import { useInventoryStore } from '../../inventory/store';
-import { eventBus, GameEvents } from '../../bus/core';
+import { eventBus, GameEvents } from '../../bus';
 import { useLogStore } from '../../log/store';
 import { generateLogId } from '../../log/service';
 import {

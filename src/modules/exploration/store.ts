@@ -14,7 +14,7 @@ import { mapDbService } from '../map/db';
 import { inventoryDbService } from '../inventory/db';
 import { questDbService } from '../quest/db';
 import { shopDbService } from '../shop/db';
-import { eventBus, GameEvents } from '../bus/core';
+import { eventBus, GameEvents } from '../bus';
 import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
 import { useCharacterStore } from '../character/store';

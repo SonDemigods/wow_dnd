@@ -11,7 +11,7 @@ import type { AiStrategyType } from '../../enemy/types';
 import { useCharacterStore } from '../../character/store';
 import { useEnemiesStore } from '../../enemy/store';
 import { useSkillsStore } from '../../skill/store';
-import { eventBus, GameEvents } from '../../bus/core';
+import { eventBus, GameEvents } from '../../bus';
 import { rollDodge } from '../service';
 import { AggressiveStrategy, DefensiveStrategy, BalancedStrategy, BossPhaseStrategy } from '../ai/strategies';
 import {

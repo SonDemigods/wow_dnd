@@ -11,7 +11,7 @@ import type { BossMechanicType } from '../../boss/types';
 import { useCharacterStore } from '../../character/store';
 import { useSkillsStore } from '../../skill/store';
 import { useEnemiesStore } from '../../enemy/store';
-import { eventBus, GameEvents } from '../../bus/core';
+import { eventBus, GameEvents } from '../../bus';
 import { processBossPhaseMechanics, applyPhaseStats } from '../../boss/engine';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';

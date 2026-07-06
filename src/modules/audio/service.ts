@@ -11,7 +11,8 @@
  */
 
 import * as Tone from 'tone';
-import { eventBus, GameEvents } from '../bus/core';
+import { eventBus, GameEvents } from '../bus';
+import type { EventCallback, GameEventPayloadMap } from '../bus/types';
 import { useAudioStore } from './store';
 import { OrganVoice } from './organVoice';
 import type { IAudioService, SfxType, BgmScene, AudioSettings, SfxRoute } from './types';
@@ -160,7 +161,7 @@ class AudioService implements IAudioService {
   private unsubscribeStore: (() => void) | null = null;
 
   /** 事件总线监听器记录（用于销毁时取消订阅） */
-  private eventHandlers: { event: string; handler: (...args: any[]) => void }[] = [];
+  private eventHandlers: { event: string; handler: EventCallback }[] = [];
 
   /**
    * 安全调度合成器，确保传入的时间始终 >= 该合成器上次调度时间，
@@ -1217,9 +1218,9 @@ class AudioService implements IAudioService {
   /** 绑定游戏事件到音效 */
   private bindEvents(): void {
     // 辅助方法：注册事件并记录，以便销毁时取消订阅
-    const onEvent = (event: string, handler: (...args: any[]) => void) => {
+    const onEvent = <K extends keyof GameEventPayloadMap>(event: K, handler: (data: GameEventPayloadMap[K]) => void) => {
       eventBus.on(event, handler);
-      this.eventHandlers.push({ event, handler });
+      this.eventHandlers.push({ event, handler: handler as EventCallback });
     };
 
     // -- 战斗事件 --
@@ -1420,7 +1421,7 @@ class AudioService implements IAudioService {
     this.unsubscribeStore = null;
     // 取消所有事件总线监听
     for (const { event, handler } of this.eventHandlers) {
-      eventBus.off(event, handler);
+      eventBus.off(event as keyof GameEventPayloadMap, handler as (data: any) => void);
     }
     this.eventHandlers = [];
   }

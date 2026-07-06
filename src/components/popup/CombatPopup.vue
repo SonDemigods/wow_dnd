@@ -230,7 +230,7 @@ import { useCharacterStore } from '@/modules/character';
 import { useSkillsStore } from '@/modules/skill/store';
 import { useInventoryStore } from '@/modules/inventory/store';
 import { useSkillDisplay } from '@/composables/useSkillDisplay';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import type { CombatLog, CombatResult, CombatActionType } from '@/modules/combat/types';
 import type { Skill } from '@/modules/skill/types';
 import type { ItemRarity } from '@/modules/inventory/types';

@@ -29,7 +29,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Skill, SkillBar, SkillType, SkillSlotIndex, SkillUseResult, AppliedEffectInfo } from './types';
 import { skillsDbService } from './db';
-import { eventBus, GameEvents } from '../bus/core';
+import { eventBus, GameEvents } from '../bus';
 import { useCharacterStore } from '../character/store';
 import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';

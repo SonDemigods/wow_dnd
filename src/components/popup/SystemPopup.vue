@@ -29,7 +29,7 @@
  * @description 提供音量设置入口和退出游戏功能，作为游戏主界面底部"系统"按钮的弹出面板
  */
 
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import BasePopup from '../common/BasePopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 

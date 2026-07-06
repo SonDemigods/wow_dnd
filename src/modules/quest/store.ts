@@ -49,7 +49,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { QuestDefinition, QuestInstance } from './types';
 import { questDbService } from './db';
-import { eventBus, GameEvents } from '../bus/core';
+import { eventBus, GameEvents } from '../bus';
 import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
 import { useCharacterStore } from '../character/store';
@@ -706,15 +706,6 @@ export const useQuestStore = defineStore('quest', () => {
     await questDbService.clearAllQuestInstances();
   }
 
-  /**
-   * 销毁 Store，清理事件监听
-   *
-   * 在模块卸载时调用，防止事件总线内存泄漏。
-   */
-  function dispose(): void {
-    eventBus.clearGroup('questStore');
-  }
-
   // ==================== 导出 ====================
 
   return {
@@ -756,9 +747,6 @@ export const useQuestStore = defineStore('quest', () => {
     turnInQuestToBoard,
 
     // —— Action：重置 ——
-    reset,
-
-    // —— 生命周期 ——
-    dispose
+    reset
   };
 });
