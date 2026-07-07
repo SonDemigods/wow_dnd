@@ -8,7 +8,7 @@
 | 版本 | v1.0 |
 | 生成日期 | 2026年7月6日 |
 | 所属目录 | `doc/project/` |
-| 关联文档 | 01_MODULE_FUNCTIONS.md、02_DEPENDENCY_GRAPH.md、DATA_ARCHITECTURE_OVERVIEW.md |
+| 关联文档 | MODULE_FUNCTIONS.md、DEPENDENCY_GRAPH.md、DATA_ARCHITECTURE_OVERVIEW.md |
 
 ---
 
@@ -42,6 +42,15 @@ graph TD
         direction LR
         L2A[useSkillDisplay 技能展示]
         L2B[useToast 全局提示]
+    end
+
+    %% ===== 第 2.5 层：服务层=====
+    subgraph L2S[服务层 Services]
+        direction LR
+        L2S1[CrossModuleQuery<br/>跨模块查询]
+        L2S2[GameBootstrap<br/>初始化编排]
+        L2S3[ItemTemplateCache<br/>物品模板缓存]
+        L2S4[ErrorHandler<br/>统一错误处理]
     end
 
     %% ===== 第三层：玩法核心层 =====
@@ -92,9 +101,13 @@ graph TD
 
     %% ===== 层间调用关系 =====
     L1 --> L2
+    L1 --> L2S
     L1 --> L3
     L1 --> L4
     L2 --> L4
+    L2S --> L3
+    L2S --> L4
+    L3 --> L2S
     L3 --> L4
     L3 --> L5
     L4 --> L5
@@ -107,6 +120,7 @@ graph TD
     %% ===== 样式定义 =====
     classDef uiLayer fill:#ffe0b2,stroke:#e65100,color:#000
     classDef compLayer fill:#fff9c4,stroke:#f57f17,color:#000
+    classDef svcLayer fill:#f8bbd0,stroke:#ad1457,color:#000
     classDef playLayer fill:#c5e1a5,stroke:#33691e,color:#000
     classDef dataLayer fill:#b3e5fc,stroke:#01579b,color:#000
     classDef auxLayer fill:#d1c4e9,stroke:#311b92,color:#000
@@ -115,6 +129,7 @@ graph TD
 
     class L1A,L1B,L1C,L1D,L1E,L1F,L1G,L1H uiLayer
     class L2A,L2B compLayer
+    class L2S1,L2S2,L2S3,L2S4 svcLayer
     class L3A,L3B,L3C,L3D playLayer
     class L4A,L4B,L4C,L4D,L4E dataLayer
     class L5A,L5B,L5C auxLayer
@@ -128,6 +143,7 @@ graph TD
 |------|------|----------|
 | UI 组件层 | 用户交互与视图渲染 | GameMain、CharacterCreate/Select、ExplorationView、MapView、popup/、common/、admin/ |
 | Composables 层 | 跨组件复用的组合式逻辑 | useSkillDisplay、useToast |
+| 服务层 | 跨模块查询、初始化编排、缓存与错误处理 | CrossModuleQuery、GameBootstrap、ItemTemplateCache、ErrorHandler |
 | 玩法核心层 | 游戏核心玩法编排 | combat、exploration、map、shop |
 | 核心数据层 | 角色相关业务数据管理 | character、inventory、equipment、skill、quest |
 | 辅助模块层 | 为玩法层提供辅助能力 | log、enemy、boss |
@@ -373,6 +389,80 @@ graph TD
     class aggressive,defensive,balanced,bossPhase strat
     class decision out
 ```
+
+### 3.4 战斗子模块架构图
+
+战斗模块内部包含 `resources / forms / pets` 三大子目录，配合既有的 `composables / effects / ai`，形成完整的职业差异化与战斗扩展能力。下图展示各子模块之间的协作关系。
+
+```mermaid
+graph TD
+    %% ===== 编排中心 =====
+    combat[useCombatStore<br/>战斗编排中心]
+
+    %% ===== 战斗内部子模块 =====
+    resources[resources/<br/>ResourceSystemFactory<br/>Rage/Energy/ComboPoint/<br/>SoulShard/Chi]
+    passive[composables/usePassiveSkills<br/>被动技能触发]
+    effects[effects/<br/>Buff/Debuff 系统]
+    forms[forms/useFormStore<br/>德鲁伊变形]
+    pets[pets/usePetStore<br/>术士召唤]
+    targetSel[ai/targetSelection<br/>ITargetSelector 接口]
+    strategies[ai/strategies<br/>4 种策略]
+
+    %% ===== composable 调用方 =====
+    useEnemyAction[useEnemyAction<br/>敌人行动层]
+    useInitiative[useInitiative<br/>先攻调度层]
+
+    %% ===== 外部数据源 =====
+    character[character<br/>职业/属性/天赋]
+    skill[skill<br/>技能模板]
+
+    %% ===== combat Store 组合关系 =====
+    combat -->|按职业创建资源| resources
+    combat -->|组合注入| passive
+    combat -->|组合| effects
+    combat -->|组合| strategies
+    combat -->|组合| useEnemyAction
+    combat -->|组合| useInitiative
+
+    %% ===== 被动技能注入 =====
+    passive -.->|注入| useEnemyAction
+    passive -.->|注入| useInitiative
+
+    %% ===== AI 目标选择 =====
+    strategies -->|选择目标| targetSel
+    useEnemyAction -->|驱动| strategies
+
+    %% ===== 职业差异化子模块对外 =====
+    resources -->|读取职业| character
+    forms -->|形态修正属性| character
+    forms -->|形态限制技能| skill
+    forms -.->|形态切换通知| combat
+    pets -->|召唤物属性| character
+    pets -.->|召唤物参战| combat
+    pets -->|消耗灵魂碎片| resources
+
+    %% ===== 样式 =====
+    classDef center fill:#fff9c4,stroke:#f57f17,color:#000
+    classDef sub fill:#c5e1a5,stroke:#33691e,color:#000
+    classDef ext fill:#eceff1,stroke:#607d8b,color:#000
+    classDef aiLayer fill:#b3e5fc,stroke:#01579b,color:#000
+
+    class combat center
+    class resources,passive,effects,forms,pets,useEnemyAction,useInitiative sub
+    class targetSel,strategies aiLayer
+    class character,skill ext
+```
+
+**子模块协作说明**：
+
+| 子模块 | 类型 | 协作方式 |
+|--------|------|----------|
+| `resources/` | 资源系统 | `ResourceSystemFactory` 按角色职业创建对应资源系统（怒气/能量/连击点/灵魂碎片/真气），由 combat Store 持有并在回合内消耗/回复 |
+| `composables/usePassiveSkills` | 被动技能 | 作为组合式函数被 combat Store 创建，再注入到 `useEnemyAction` 与 `useInitiative`，在敌人行动与先攻调度时触发被动效果 |
+| `forms/` | 德鲁伊变形 | 独立 `useFormStore`，形态切换时修正角色属性、限制可用技能，并通知 combat Store 重建先攻 |
+| `pets/` | 术士召唤 | 独立 `usePetStore`，召唤物属性基于角色计算，消耗灵魂碎片资源，参战行动由 combat Store 驱动 |
+| `ai/targetSelection` | 目标选择 | 实现 `ITargetSelector` 接口，被 4 种 AI 策略调用以选择攻击目标，为多角色队伍预留扩展点 |
+| `effects/` | 效果系统 | 既有三层结构（管线-容器-处理器），由 combat Store 与敌人行动层驱动 |
 
 ---
 
@@ -812,6 +902,97 @@ graph TD
 | 复杂载荷 | 使用具体接口（如 `EnemyInstance`、`LocationData`） |
 | 分组管理 | `onGroup` 注册、`clearGroup` 批量清理，便于模块级生命周期管理 |
 | 单例模式 | `eventBus` 全局唯一实例，所有模块共享 |
+
+---
+
+## 八、职业差异化系统架构图
+
+项目围绕「职业」建立了一套完整的差异化能力体系，涵盖资源系统、被动技能、天赋树、专属装备、变形与召唤六大子系统。下图展示各子系统如何由职业标识驱动，并与数据文件、角色模块及战斗模块联动。
+
+```mermaid
+graph TD
+    %% ===== 数据源 =====
+    configClasses[config_classes.ts<br/>职业定义]
+    classPassives[class_passives.ts<br/>职业被动数据]
+    classItems[class_items.ts<br/>职业专属装备]
+    classTalents[class_talents.ts<br/>职业天赋数据]
+    itemSets[item_sets.ts<br/>套装数据]
+
+    %% ===== 职业核心 =====
+    character[character 模块<br/>职业/属性]
+    classId[职业标识 classId]
+
+    %% ===== 六大差异化子系统 =====
+    resources[资源系统 resources/<br/>Rage/Energy/ComboPoint/<br/>SoulShard/Chi]
+    passive[被动技能 usePassiveSkills<br/>+ class_passives]
+    talents[天赋树 character/talents/<br/>+ class_talents]
+    equip[专属装备 + 套装<br/>equipment + class_items + item_sets]
+    forms[变形系统 forms/<br/>德鲁伊专属]
+    pets[召唤系统 pets/<br/>术士专属]
+
+    %% ===== 消费方 =====
+    combat[combat 战斗模块<br/>消费差异化能力]
+
+    %% ===== 数据加载 =====
+    configClasses -->|定义职业| character
+    classPassives -->|提供被动| passive
+    classItems -->|提供装备模板| equip
+    classTalents -->|提供天赋| talents
+    itemSets -->|提供套装| equip
+
+    %% ===== 职业驱动差异化 =====
+    character -->|classId 驱动| classId
+    classId -->|按职业创建| resources
+    classId -->|按职业加载| passive
+    classId -->|按职业加载| talents
+    classId -->|按职业限定| equip
+    classId -.->|德鲁伊专属| forms
+    classId -.->|术士专属| pets
+
+    %% ===== 子系统间联动 =====
+    pets -->|消耗灵魂碎片| resources
+    forms -->|形态影响技能| combat
+    talents -->|天赋修正属性| character
+    equip -->|装备加成| character
+    passive -->|触发被动效果| combat
+
+    %% ===== 战斗模块消费 =====
+    resources -->|回合消耗/回复| combat
+    forms -.->|形态切换| combat
+    pets -.->|召唤物参战| combat
+
+    %% ===== 样式 =====
+    classDef data fill:#cfd8dc,stroke:#37474f,color:#000
+    classDef core fill:#fff9c4,stroke:#f57f17,color:#000
+    classDef sub fill:#c5e1a5,stroke:#33691e,color:#000
+    classDef consumer fill:#ffe0b2,stroke:#e65100,color:#000
+
+    class configClasses,classPassives,classItems,classTalents,itemSets data
+    class character,classId core
+    class resources,passive,talents,equip,forms,pets sub
+    class combat consumer
+```
+
+**子系统与数据源对照**：
+
+| 子系统 | 实现位置 | 数据来源 | 适用职业 |
+|--------|----------|----------|----------|
+| 资源系统 | `combat/resources/` | `config_classes.ts`（职业资源类型） | 战士-怒气、盗贼-能量/连击点、术士-灵魂碎片、武僧-真气 |
+| 被动技能 | `combat/composables/usePassiveSkills.ts` | `class_passives.ts` | 全职业（按职业配置不同被动） |
+| 天赋树 | `character/talents/` | `class_talents.ts` | 全职业（按职业配置不同天赋树） |
+| 专属装备 | `equipment` + 数据层 | `class_items.ts`、`item_sets.ts` | 全职业（按职业限定装备与套装） |
+| 变形 | `combat/forms/` | `forms/druid_forms.ts` | 德鲁伊专属 |
+| 召唤 | `combat/pets/` | `pets/warlock_pets.ts` | 术士专属 |
+
+**联动关系说明**：
+
+| 联动 | 说明 |
+|------|------|
+| 职业 → 子系统 | `classId` 作为驱动因子，决定资源系统类型、可加载的被动/天赋/装备，以及是否启用变形或召唤 |
+| 召唤 → 资源 | 术士召唤宠物消耗灵魂碎片，`pets` 与 `resources/SoulShardSystem` 联动 |
+| 天赋/装备 → 角色 | 天赋修正角色属性、装备提供加成，最终汇入 `character` 模块作为战斗计算基准 |
+| 变形/召唤 → 战斗 | 形态切换通知战斗模块重建先攻；召唤物参战行动由战斗模块驱动 |
+| 被动技能 → 战斗 | `usePassiveSkills` 在敌人行动与先攻调度时触发被动效果 |
 
 ---
 

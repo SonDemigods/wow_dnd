@@ -5,10 +5,10 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 项目数据流梳理 |
-| 版本 | v1.0 |
-| 生成日期 | 2026年7月6日 |
+| 版本 | v2.0 |
+| 生成日期 | 2026年7月7日 |
 | 所属目录 | `doc/project/` |
-| 关联文档 | `01_MODULE_FUNCTIONS.md`、`02_DEPENDENCY_GRAPH.md`、`DATA_ARCHITECTURE_OVERVIEW.md`、`EVENT_BUS_DESIGN.md` |
+| 关联文档 | `MODULE_FUNCTIONS.md`、`DEPENDENCY_GRAPH.md`、`DATA_ARCHITECTURE_OVERVIEW.md`、`EVENT_BUS_DESIGN.md` |
 
 ---
 
@@ -22,7 +22,7 @@
 
 ## 一、全局数据流向
 
-下图展示项目所有业务流的统一数据流向。从用户在 Vue 组件中的交互开始，经过 Store 编排、Service 计算、状态更新、DB 持久化，最终通过 EventBus 触发 UI 重渲染。
+下图展示项目所有业务流的统一数据流向。从用户在 Vue 组件中的交互开始，经过 Store 编排、Service 计算、状态更新、DB 持久化，最终通过 EventBus 触发 UI 重渲染。`src/services/` 聚合层（CrossModuleQuery / GameBootstrap / ItemTemplateCache / ErrorHandler）将跨模块查询、初始化编排、缓存与错误处理从 Store 中收口。
 
 ```mermaid
 flowchart LR
@@ -31,13 +31,25 @@ flowchart LR
     Component -->|调用 Action| StoreAction[Store Action<br/>combatStore / explorationStore 等]
     StoreAction -->|纯函数计算| Service[Service 纯函数<br/>combatService / explorationService]
     Service -->|返回计算结果| StoreAction
+    StoreAction -->|跨模块查询 / 初始化编排| ServicesLayer[src/services 聚合层<br/>CrossModuleQuery / GameBootstrap<br/>ItemTemplateCache / ErrorHandler]
+    ServicesLayer -->|命中缓存或转发| DB
     StoreAction -->|更新 ref / reactive| State[Store 响应式状态<br/>character / equipment / grid 等]
     StoreAction -->|持久化| DB[(IndexedDB<br/>char_* / runtime_* / config_*)]
     StoreAction -->|发射 UI 事件| EventBus[(EventBus<br/>仅 UI/音效/通知)]
+    StoreAction -.->|异常上报| ErrorHandler[ErrorHandler<br/>统一错误处理]
     EventBus -->|订阅事件| Component
     State -->|computed 派生| Component
     Component -->|响应式重渲染| UI[UI 重渲染]
 ```
+
+**services 聚合层职责**：
+
+| 服务 | 职责 | 消费方 |
+|------|------|--------|
+| `CrossModuleQuery` | 收口探索模块对 map/inventory/quest/shop 的跨模块查询，避免 Store 直接依赖各模块 DbService | explorationStore |
+| `GameBootstrap` | 按依赖顺序统一编排各 Store 初始化与逆序清理 | App.vue / 角色切换入口 |
+| `ItemTemplateCache` | 物品模板懒加载内存缓存，首次查询后命中内存 | CrossModuleQuery / inventoryStore |
+| `ErrorHandler` | 统一错误处理入口，提供 `tryAsync`（Result 类型）/ `wrapAsync`（toast+日志）/ `report`（手动上报）三层 API | 全模块 Store |
 
 **关键约定**：
 
@@ -45,6 +57,7 @@ flowchart LR
 |----------|----------|------|
 | 组件 → Store | 直接调用 Action | 单向数据流，组件不直接修改状态 |
 | Store → Service | 直接调用纯函数 | Service 无副作用，只负责计算 |
+| Store → services 层 | 直接调用聚合服务 | 跨模块查询/缓存/编排/错误处理收口于此 |
 | Store → DB | 直接调用 db.ts | 异步持久化，不阻塞主线程 |
 | Store → Store | 直接调用 Action | 跨模块数据变更通过 Store Action（非 EventBus） |
 | Store → 组件 | EventBus + computed | UI 通知走 EventBus，状态变更走响应式 |
@@ -55,7 +68,7 @@ flowchart LR
 
 ### 2.1 战斗数据流
 
-下图展示一次玩家普通攻击的完整数据流向。攻击动作涉及战斗、角色、敌人、日志、数据库五大模块协同。
+下图展示一次玩家普通攻击的完整数据流向。攻击动作涉及战斗、角色、敌人、日志、数据库五大模块协同。攻击命中的关键节点接入了资源系统钩子（`onAttack`/`onDamaged`/`onKill`/`onTurnStart`）与被动技能触发（详见 2.6 / 2.7），德鲁伊变形与术士召唤作为可选子系统在 `startCombat` 阶段初始化。
 
 ```mermaid
 sequenceDiagram
@@ -66,6 +79,8 @@ sequenceDiagram
     participant CharS as characterStore
     participant ES as enemyStore
     participant ER as effectRegistry
+    participant RS as resourceSystems
+    participant PS as usePassiveSkills
     participant Bus as eventBus
     participant LS as logStore
     participant DB as combatDbService
@@ -82,11 +97,16 @@ sequenceDiagram
     Note over ES: 扣减敌人 HP，返回是否死亡
     ES-->>CS: 返回 isDead
     CS->>CharS: takeDamage(thorns)（荆棘反伤时）
+    Note over CS,RS: 攻击命中（非闪避）后触发钩子
+    CS->>RS: sys.onAttack?.()（怒气/连击点/灵魂碎片生成）
+    CS->>PS: passive.onAttack(damage)（如战士嗜血吸血、术士腐蚀术）
     CS->>Bus: emit(COMBAT_DEAL_DAMAGE, {amount, damageType, targetName, actorType:'player'})
     CS->>Bus: emit(COMBAT_CRITICAL_HIT, ...)（暴击时）
     CS->>LS: addCombatLog({actorType:'player', eventType, damage, isCrit, message})
-    CS->>DB: saveLogs()（持久化战斗日志）
+    CS->>DB: saveLogs()（持久化 combatLogs 详细回合数据）
     alt 击杀所有敌人
+        CS->>RS: sys.onKill?.()（击杀获取资源）
+        CS->>PS: passive.onKill()（如术士灵魂虹吸）
         CS->>CS: endCombat('victory')
         CS->>Bus: emit(COMBAT_END, {result, enemy, expGained, goldGained})
     else 仍有存活敌人
@@ -94,20 +114,34 @@ sequenceDiagram
         CS->>Bus: emit(COMBAT_ENEMY_TURN)
     end
     Bus-->>C: 订阅事件 → 显示伤害数字 / 暴击特效 / 音效
-    C-->>U: UI 重渲染（敌人血条、伤害飘字、回合切换）
+    C-->>U: UI 重渲染（敌人血条、伤害飘字、回合切换、资源条）
 ```
+
+**战斗子系统集成点**：
+
+| 触发时机 | 资源系统钩子 | 被动技能触发 | 说明 |
+|----------|-------------|-------------|------|
+| `startCombat` | `ResourceSystemFactory.create(classId)` + `reset()` | `loadPassives()` + `onCombatStart()` | 按职业创建资源系统实例（怒气/能量+连击点/灵魂碎片/真气），加载并触发战斗开始被动 |
+| 玩家攻击/技能命中 | `sys.onAttack?.()` | `passive.onAttack(damage)` | 生成资源 + 触发吸血/腐蚀等被动；技能施放前经 `canCastSkill`/`consumeSkillResource` 检查与消耗专属资源 |
+| 玩家受伤（`applyEnemyDamageToPlayer`） | `sys.onDamaged?.(amount)` | `passive.onDamaged(amount)` | 受伤获取怒气 + 触发复仇类被动；附带 `on_low_hp`（HP<30%）检查 |
+| 玩家回合开始（`advanceToNextUnit`） | `sys.onTurnStart?.()` | `passive.onTurnStart()` | 能量/真气被动回复 + 回合开始被动（含低血量检查） |
+| 战斗胜利（`endCombat('victory')`） | `sys.onKill?.()` | `passive.onKill()` | 击杀获取资源 + 击杀类被动 |
+| 德鲁伊变形（可选） | — | — | `useFormStore.switchTo` 消耗 1 回合切换形态，修改属性倍率、解锁/锁定技能、恢复 10% 生命 |
+| 术士召唤（可选） | `SoulShardSystem.consume(cost)` | — | `usePetStore.summon` 消耗灵魂碎片召唤恶魔，召唤物独立 AI 行动（`petTakeAction`） |
 
 **数据流关键点**：
 
 1. **效果管线**（`effectRegistry`）：在伤害结算前依次处理攻击修正、防御修正、护盾、荆棘、控制等效果，是战斗计算的核心。
 2. **多 Store 协同**：combatStore 同时调用 characterStore（属性/受伤）、enemyStore（敌人受伤）、logStore（日志）、combatDbService（持久化）。
 3. **事件分类**：`COMBAT_DEAL_DAMAGE`、`COMBAT_CRITICAL_HIT`、`COMBAT_DODGE` 等仅用于 UI 与音效，不承载状态变更。
+4. **日志职责分离**：`combatLogs`（combatStore 内存 + runtime_combatLogs 表）记录详细回合数据（伤害/暴击/被动触发等），`adventureLogs`（logStore + runtime_adventureLogs 表）记录战斗摘要条目，二者职责明确分离。
+5. **先攻回调注入**：Boss 机制层通过 `boss.setInitiativeCallback(initiative.buildInitiativeOrder)` 在 initiative 就位后注入先攻顺序重建回调。
 
 ---
 
 ### 2.2 探索数据流
 
-下图展示玩家翻开格子的数据流向。根据格子类型分为三条路径：战斗、商店/任务板、即时结算。
+下图展示玩家翻开格子的数据流向。根据格子类型分为三条路径：战斗、商店/任务板、即时结算。区域进入阶段对地点/物品/任务/商店的查询统一经 `crossModuleQuery` 收口，物品模板命中 `ItemTemplateCache` 内存缓存。
 
 ```mermaid
 sequenceDiagram
@@ -120,7 +154,20 @@ sequenceDiagram
     participant CS as combatStore
     participant Bus as eventBus
     participant LS as logStore
+    participant CMQ as crossModuleQuery
+    participant Cache as ItemTemplateCache
     participant DB as explorationDbService
+
+    Note over ES,CMQ: 区域进入阶段（enterArea / buildAreaConfig）
+    ES->>CMQ: getLocationData(areaId)
+    CMQ-->>ES: 返回 LocationData
+    ES->>CMQ: getAllItemTemplates()
+    CMQ->>Cache: getAll()（首次触发 load）
+    Cache->>Cache: 命中内存则直接返回<br/>否则 inventoryDbService 全量加载并建索引
+    Cache-->>CMQ: 返回 Item[]
+    CMQ-->>ES: 返回物品池
+    ES->>CMQ: getAllShopConfigs() / getQuestDefinitionsByBoard(areaId)
+    CMQ-->>ES: 返回商店配置 / 任务定义
 
     U->>V: 点击格子 (x, y)
     V->>ES: revealGrid(x, y)
@@ -172,10 +219,12 @@ sequenceDiagram
 
 **数据流关键点**：
 
-1. **三条路径互斥**：通过 `cell.type` 判断走战斗、面板或即时结算分支。
-2. **战斗回调机制**：`pendingBattleCell` 暂存战斗格坐标，`COMBAT_END` 事件触发 `onBattleResult` 完成格子状态收尾。
-3. **UI 回调替代 EventBus**：探索模块通过 `uiCallbacks` 同步通知 UI（如 `onItemFound`、`onTrapTriggered`），EventBus 仅用于跨模块音效/动画。
-4. **失败可重试**：战斗失败时仅揭示格子，不清除 `monsterId`，玩家可再次挑战。
+1. **跨模块查询收口**：区域进入阶段对地点、物品、任务、商店的查询一律经 `crossModuleQuery`，探索 Store 不再直接 import `mapDbService`/`questDbService`/`shopDbService`/`inventoryDbService`，仅保留对自身 `explorationDbService` 的持久化调用。
+2. **物品模板缓存**：`crossModuleQuery.getAllItemTemplates` 内部走 `itemTemplateCache`，首次加载后构建 `id → Item` 索引，后续查询命中内存；模板变更时调用 `invalidate()` 失效后下次自动重载。
+3. **三条路径互斥**：通过 `cell.type` 判断走战斗、面板或即时结算分支。
+4. **战斗回调机制**：`pendingBattleCell` 暂存战斗格坐标，`COMBAT_END` 事件触发 `onBattleResult` 完成格子状态收尾。
+5. **UI 回调替代 EventBus**：探索模块通过 `uiCallbacks` 同步通知 UI（如 `onItemFound`、`onTrapTriggered`），EventBus 仅用于跨模块音效/动画。
+6. **失败可重试**：战斗失败时仅揭示格子，不清除 `monsterId`，玩家可再次挑战。
 
 ---
 
@@ -362,6 +411,170 @@ sequenceDiagram
 
 ---
 
+### 2.6 职业资源系统数据流
+
+下图展示职业专属资源系统在战斗中的生成与消耗流程。资源系统由 `ResourceSystemFactory.create(classId)` 在战斗开始时按职业创建实例（战士怒气、潜行者能量+连击点、术士灵魂碎片、武僧真气；其他职业回退默认 MP 系统），通过战斗事件钩子被动生成资源，技能施放时检查并消耗。
+
+```mermaid
+flowchart TD
+    %% 资源系统：创建 → 钩子生成 → 技能消耗
+    Start[combatStore.startCombat] --> Create[ResourceSystemFactory.create<br/>classId]
+    Create --> Class{职业判断}
+    Class -- warrior --> Rage[RageSystem 怒气]
+    Class -- rogue --> Dual[EnergySystem 能量<br/>+ ComboPointSystem 连击点]
+    Class -- warlock --> Soul[SoulShardSystem 灵魂碎片]
+    Class -- monk --> Chi[ChiSystem 真气]
+    Class -- 其他 --> Empty[空数组<br/>回退 MP 系统]
+    Rage --> Reset[sys.reset 重置初始值]
+    Dual --> Reset
+    Soul --> Reset
+    Chi --> Reset
+    Empty --> Hooks
+    Reset --> Hooks[挂载到 state.resourceSystems]
+
+    subgraph 战斗事件钩子生成资源
+        Hooks --> OnAttack[onAttack<br/>攻击命中生成怒气/连击点]
+        Hooks --> OnDamaged[onDamaged<br/>受伤生成怒气]
+        Hooks --> OnTurnStart[onTurnStart<br/>回合开始回复能量/真气]
+        Hooks --> OnKill[onKill<br/>击杀获取灵魂碎片/怒气]
+    end
+
+    OnAttack --> Value[resourceSystems.value<br/>响应式资源值]
+    OnDamaged --> Value
+    OnTurnStart --> Value
+    OnKill --> Value
+    Value --> UI[UI 资源条<br/>valueRef / maxValueRef]
+
+    CastSkill[玩家施放技能] --> Check{canCastSkill<br/>检查 resourceType/resourceCost}
+    Check -- 资源不足 --> Block[阻止施放]
+    Check -- 资源充足 --> Consume[consumeSkillResource<br/>sys.consume cost]
+    Consume --> Value
+    End[combatStore.endCombat] --> ResetAll[资源系统随战斗结束销毁]
+
+    classDef create fill:#e3f2fd,stroke:#1976d2
+    classDef hook fill:#fff3e0,stroke:#f57c00
+    classDef consume fill:#ffebee,stroke:#c62828
+    class Create,Rage,Dual,Soul,Chi,Empty,Reset create
+    class OnAttack,OnDamaged,OnTurnStart,OnKill,Hooks,Value hook
+    class CastSkill,Check,Consume,Block consume
+```
+
+**数据流关键点**：
+
+1. **工厂模式创建**：`ResourceSystemFactory.create` 返回 `ResourceSystem[]`，潜行者等双资源职业返回多实例数组，未实现专属资源的职业返回空数组由战斗 Store 回退 MP 系统。
+2. **钩子驱动生成**：资源生成不主动调用，而是由 combatStore 在 `onAttack`/`onDamaged`/`onTurnStart`/`onKill` 等时机遍历 `resourceSystems.value` 调用对应钩子，各实现类按 `ResourceSource` 差异化处理获取量上限。
+3. **响应式资源条**：每个资源系统暴露 `valueRef`/`maxValueRef`，UI 直接绑定渲染资源条，无需 EventBus 中转。
+4. **技能消耗预留扩展**：`canCastSkill`/`consumeSkillResource` 通过 `skill.resourceType`/`resourceCost` 字段匹配资源系统类型并检查/扣减；当前 `Skill` 类型尚未包含这两个字段，接口扩展后自动生效。
+
+---
+
+### 2.7 被动技能数据流
+
+下图展示职业被动技能在战斗事件中的触发流程。被动数据来源于 `src/data/class_passives.ts`（12 职业各 3 个被动），由 `usePassiveSkills` Composable 在战斗开始时加载并按触发时机执行。
+
+```mermaid
+flowchart TD
+    Start[combatStore.startCombat] --> Load[passive.loadPassives<br/>getPassivesByClassId classId]
+    Load --> Cache[passives 数组缓存]
+    Cache --> OnCombatStart[onCombatStart<br/>触发 on_combat_start 被动]
+
+    subgraph 战斗事件触发
+        OnAttack[onAttack damage<br/>玩家攻击/技能命中后]
+        OnDamaged[onDamaged amount<br/>applyEnemyDamageToPlayer]
+        OnTurnStart[onTurnStart<br/>玩家回合开始 advanceToNextUnit]
+        OnKill[onKill<br/>endCombat victory]
+    end
+
+    OnCombatStart --> Filter
+    OnAttack --> Filter{按 trigger 过滤<br/>匹配触发时机的被动}
+    OnDamaged --> Filter
+    OnTurnStart --> LowHp{HP 小于 30%?}
+    OnKill --> Filter
+    LowHp -- 是 --> LowHpPass[触发 on_low_hp 被动]
+    LowHp -- 否 --> Filter
+
+    Filter --> Apply[applyPassive]
+    LowHpPass --> Apply
+    Apply --> Log[addCombatLog<br/>passive_trigger]
+
+    Apply --> Effect{effect.type 分发}
+    Effect -- resource_gen --> ResGen[resourceSystems.generate<br/>直接生成资源]
+    Effect -- heal --> Heal[receiveHeal<br/>on_attack 按伤害百分比吸血<br/>其他按 maxHp 百分比治疗]
+    Effect -- stat_modifier --> StatMod[记录日志<br/>预留扩展点待战斗计算管线支持]
+    Effect -- damage_reduction --> DmgRed[记录日志<br/>预留扩展点待伤害管线支持]
+    Effect -- buff --> Buff[记录日志<br/>预留扩展点待效果系统支持]
+
+    ResGen --> Value[resourceSystems.value 更新]
+    Heal --> CharS[characterStore HP 更新]
+    Value --> UI[UI 资源条]
+    CharS --> UI2[UI 血条]
+
+    classDef trigger fill:#e3f2fd,stroke:#1976d2
+    classDef effect fill:#fff3e0,stroke:#f57c00
+    classDef reserved fill:#f5f5f5,stroke:#9e9e9e,stroke-dasharray: 5 5
+    class OnCombatStart,OnAttack,OnDamaged,OnTurnStart,OnKill,LowHp,LowHpPass trigger
+    class ResGen,Heal,Value,CharS effect
+    class StatMod,DmgRed,Buff reserved
+```
+
+**数据流关键点**：
+
+1. **数据驱动**：被动定义集中在 `src/data/class_passives.ts`，`getPassivesByClassId(classId)` 返回当前职业的被动列表，战斗开始时加载一次缓存到 `passives` 数组。
+2. **触发时机映射**：每个被动通过 `trigger` 字段（`on_combat_start`/`on_turn_start`/`on_attack`/`on_damaged`/`on_low_hp`/`on_kill`）声明触发时机，`usePassiveSkills` 在对应战斗事件中过滤并执行。
+3. **效果分发**：`applyPassive` 按 `effect.type` 分发——`resource_gen` 直接调用资源系统生成、`heal` 调用 `characterStore.receiveHeal`（攻击吸血按伤害百分比、其他按 maxHp 百分比），其余三类（`stat_modifier`/`damage_reduction`/`buff`）当前仅记录日志，预留扩展点待战斗计算管线/效果系统支持后自动生效。
+4. **与资源系统协同**：`resource_gen` 类被动直接调用 `resourceSystems.generate`，是资源系统除战斗钩子外的另一资源来源（如术士灵魂虹吸在击杀时额外获取灵魂碎片）。
+5. **低血量检查**：`on_low_hp` 被动在 `onTurnStart` 与 `onDamaged` 后检查一次（HP < 30%），不在 `onAttack` 后触发（避免吸血后误触）。
+
+---
+
+### 2.8 天赋树数据流
+
+下图展示天赋点分配与效果应用流程。天赋系统由 `character/talents` 模块的 `useTalentStore` 管理，升级时获得天赋点，分配点数解锁天赋节点，效果通过计算属性回灌角色属性与战斗计算。
+
+```mermaid
+flowchart LR
+    %% 天赋树：升级获点 → 分配 → 效果回灌
+    LevelUp[characterStore.gainExp<br/>升级] --> UpdateLevel[talentStore.updateLevel<br/>更新 currentLevel]
+    UpdateLevel --> Total[totalPoints = floor level / 2]
+    Total --> Available[availablePoints<br/>= totalPoints - spentPoints]
+
+    Learn[用户选择天赋节点<br/>talentStore.learn talentId] --> CanLearn{canLearnTalent 校验}
+    CanLearn -- 职业不符/前置未满/点数不足 --> Fail[返回 false]
+    CanLearn -- 通过 --> Apply[learnTalent 纯函数<br/>allocations talentId + 1]
+    Apply --> Spent[spentPoints 重算]
+    Spent --> Available
+
+    Available --> EffectSummary[effectSummary 计算属性<br/>calculateTalentEffects]
+    EffectSummary --> StatBonus[statBonuses 计算属性<br/>getTalentStatBonuses]
+    StatBonus --> CharS[characterStore 属性消费]
+    EffectSummary --> Combat[combatStore 战斗计算消费<br/>damageMultiplier / damageReduction / critBonus]
+
+    subgraph 数据来源
+        Trees[class_talents.ts<br/>getTalentTreesByClassId]
+    end
+    Trees --> TalentTrees[talentTrees 计算属性]
+
+    Persist[调用方统一持久化<br/>characterStore 保存 allocations]
+    Apply --> Persist
+
+    classDef source fill:#e3f2fd,stroke:#1976d2
+    classDef alloc fill:#fff3e0,stroke:#f57c00
+    classDef effect fill:#e8f5e9,stroke:#2e7d32
+    class Trees,TalentTrees source
+    class Learn,CanLearn,Apply,Spent,Persist,Total,Available alloc
+    class EffectSummary,StatBonus,CharS,Combat effect
+```
+
+**数据流关键点**：
+
+1. **点数计算**：总天赋点 `totalPoints = floor(level / 2)`，每 2 级获得 1 点；`availablePoints = totalPoints - spentPoints`，`spentPoints` 由 `calculateSpentPoints(allocations)` 汇总各天赋当前等级。
+2. **纯函数校验与更新**：`learn` 调用 `canLearnTalent`（校验职业匹配、前置节点、可用点数）后由 `learnTalent` 纯函数返回新的 `allocations` 对象，Store 仅替换引用，不直接持久化（由调用方 `characterStore` 统一存档）。
+3. **效果回灌**：`effectSummary`（`calculateTalentEffects`）聚合所有已学天赋效果，输出 `statBonuses`/`damageMultiplier`/`damageReduction`/`critBonus`/`resourceBonuses`/`specialEffects`/`skillEnhancements`，供 `characterStore` 属性系统与 `combatStore` 战斗计算消费。
+4. **响应式驱动**：`allocations` 为响应式 `ref`，任何分配变更自动触发 `effectSummary`/`statBonuses`/`availablePoints` 重算，下游消费者自动更新。
+5. **生命周期**：`initialize(classId, level, savedAllocations)` 进入角色时加载，`reset()` 退出角色时清空，`updateLevel(level)` 升级时同步等级重算可用点数。
+
+---
+
 ## 三、数据持久化流
 
 ### 3.1 初始化数据流
@@ -426,8 +639,7 @@ sequenceDiagram
     participant DB as IndexedDB
     participant Bus as eventBus
     participant GM as GameMain.vue
-    participant MS as mapStore
-    participant LS as logStore
+    participant GBS as gameBootstrap
 
     U->>App: 选择新角色
     App->>CS: selectCharacter(characterId)
@@ -446,9 +658,9 @@ sequenceDiagram
 
     Note over GM: 3. GameMain.onMounted 加载新角色关联数据
     GM->>GM: registerUICallbacks（探索 UI 回调）
-    GM->>MS: initialize(characterId)（地图状态）
-    GM->>LS: initialize(characterId)（冒险日志）
-    Note over GM: 其余 Store（skills / inventory / equipment / exploration / quest）<br/>由各自的 initialize 或 selectCharacter 链式触发
+    GM->>GBS: gameBootstrap.initialize(characterId)
+    Note over GBS: 按依赖顺序初始化各业务 Store<br/>log → inventory → equipment → skill → map → exploration → quest<br/>各 Store init 仅加载自身状态，不再隐式初始化其他 Store
+    GBS-->>GM: 全部 Store 就绪
 
     GM-->>App: 加载完成，loading = false
     App-->>U: 进入游戏主界面
@@ -475,6 +687,7 @@ flowchart LR
 1. **数据隔离**：所有 `char_*` 表以 `characterId` 为索引，切换角色时按 ID 加载，互不干扰。
 2. **登出事件**：`CHARACTER_LOGOUT` 用于清理音频等模块状态，不直接清空数据（由新角色加载覆盖）。
 3. **级联删除**：删除角色时依次清理 7 张关联表，确保无残留数据。
+4. **统一初始化编排**：各业务 Store（log/inventory/equipment/skill/map/exploration/quest）的初始化由 `gameBootstrap.initialize(characterId)` 按依赖顺序统一编排，各 Store 的 `init` 仅加载自身状态，不再隐式初始化其他 Store；退出角色时 `gameBootstrap.dispose()` 按逆序清理。
 
 ---
 

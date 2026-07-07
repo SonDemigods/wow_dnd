@@ -79,6 +79,25 @@
 | 关键文件 | `combat-effects.ts`、`types.ts` |
 | 依赖模块 | bus（监听战斗视觉事件） |
 
+### 1.7 服务层（`services/`）
+
+服务层是跨模块协调层，位于 `src/services/` 目录，用于解耦模块间的直接依赖。
+
+| 服务 | 文件 | 职责 |
+|------|------|------|
+| 跨模块查询服务 | `CrossModuleQuery.ts` | 聚合探索模块对 map/inventory/quest/shop 的跨模块查询，避免 Store 直接依赖其他模块的 DbService |
+| 游戏初始化编排 | `GameBootstrap.ts` | 统一编排各 Store 的初始化顺序（character→log→inventory→equipment→skill→exploration→quest），避免隐式初始化 |
+| 物品模板缓存 | `ItemTemplateCache.ts` | 物品模板仅从 IndexedDB 加载一次，后续走内存缓存，提供按 ID 查询和按等级范围筛选 |
+| 统一错误处理 | `ErrorHandler.ts` | 集中处理错误，通过 EventBus 发布错误事件，支持 UI 层订阅显示 |
+
+| 项 | 内容 |
+|----|------|
+| 定位 | 跨模块协调与服务复用层 |
+| 核心职责 | 解耦模块间直接依赖、统一初始化编排、缓存共享数据、集中错误处理 |
+| 设计原则 | 服务层是"无状态"的协调者，不持有业务数据，仅聚合查询和编排调用 |
+| 依赖模块 | 各业务模块的 DbService（仅服务层可直接访问） |
+| 被依赖方 | exploration、GameMain.vue 等业务模块和 UI 组件 |
+
 ---
 
 ## 二、核心数据模块
@@ -95,6 +114,20 @@
 | 发布事件 | CHARACTER_CREATED/DELETED/LOGOUT/LEVEL_UP/DEATH/RESURRECTED |
 | 依赖模块 | bus、base、data、calculations 工具 |
 | 被依赖方 | combat、skill、inventory、equipment、quest、shop、exploration |
+
+#### 2.1.1 天赋树子模块（`modules/character/talents/`）
+
+职业技能分化系统，每个职业有 3 系天赋，支持天赋点数分配和终极天赋选择。
+
+| 项 | 内容 |
+|----|------|
+| 定位 | 职业差异化核心子系统 |
+| 核心职责 | 天赋点数管理、天赋节点解锁、天赋效果应用、三系分支选择 |
+| 关键文件 | `service.ts`（天赋逻辑）、`store.ts`（天赋状态）、`types.ts`（类型定义） |
+| 数据来源 | `src/data/class_talents.ts`（12 个职业的天赋树配置） |
+| 天赋结构 | 每职业 3 系（left/middle/right），每系 7 层，第 7 层为终极天赋（三选一） |
+| 点数机制 | 每升一级获得 1 天赋点，每层需投入 5 点才能解锁下一层 |
+| 依赖模块 | character（等级和职业）、combat（天赋效果应用） |
 
 ### 2.2 背包模块（`modules/inventory/`）
 
@@ -158,14 +191,77 @@
 |----|------|
 | 定位 | 回合制战斗核心玩法，处理战斗全流程 |
 | 核心职责 | 速度制先攻回合、多敌人战斗（3×2 网格，最多 6 个）、玩家单动作、伤害管线（攻击修正→防御修正→护盾→荆棘）、4 种 AI 策略、15 种效果类型、Boss 多阶段、战利品分配、战斗日志持久化、1x/2x 速度切换 |
-| 架构特色 | composables 拆分（useCombatState/useCombatLog/useBossMechanics/useEnemyAction/useInitiative/usePlayerAction）、effects 子系统（pipeline+container+handler）、ai 子系统（策略模式） |
-| 关键接口 | `startCombat(enemies)`、`playerAction(action)`、`enemyTurn()`、`endCombat(result)`、`skipTurn()`、`toggleCombatSpeed()` |
+| 架构特色 | composables 拆分（useCombatState/useCombatLog/useBossMechanics/useEnemyAction/useInitiative/usePlayerAction/usePassiveSkills）、effects 子系统（pipeline+container+handler）、ai 子系统（策略模式+目标选择器）、resources 子系统（职业资源）、forms 子系统（德鲁伊变形）、pets 子系统（术士召唤） |
+| 关键接口 | `startCombat(enemies)`、`playerAction(action)`、`enemyTurn()`、`endCombat(result)`、`skipTurn()`、`toggleCombatSpeed()`、`canCastSkill`、`consumeSkillResource` |
 | 存储表 | `runtime_combatLogs`（combatId） |
 | AI 策略 | aggressive（50% 技能）、defensive（HP<40% 治疗）、balanced（HP<50% 60% 治疗）、boss_phase（HP<20% 狂暴） |
 | 伤害公式 | `floor(physicalAttack × 0.4) + random(0-9)`，防御减免 `min(baseDamage × 0.3, defense)`，暴击 1.5x，逃跑 `0.5 + dex × 0.01` |
 | 发布事件 | COMBAT_START/END/PLAYER_TURN/ENEMY_TURN/DEAL_DAMAGE/CAST_HEAL/CRITICAL_HIT/DODGE/SKIP_TURN/BOSS_INTRO/BOSS_PHASE |
 | 依赖模块 | character、enemy、skill、inventory、quest、log、bus |
 | 被依赖方 | exploration（触发战斗） |
+
+#### 3.1.1 资源系统子模块（`modules/combat/resources/`）
+
+职业专属资源系统，替代统一的 MP 消耗模式，实现职业差异化。
+
+| 项 | 内容 |
+|----|------|
+| 定位 | 职业专属战斗资源管理 |
+| 核心职责 | 资源生成/消耗/查询、战斗事件钩子（onAttack/onDamaged/onKill/onTurnStart） |
+| 关键文件 | `BaseResourceSystem.ts`（抽象基类）、`ResourceSystemFactory.ts`（工厂）、`types.ts` |
+| 已实现资源 | 战士怒气（RageSystem）、潜行者能量（EnergySystem）+ 连击点（ComboPointSystem）、术士灵魂碎片（SoulShardSystem）、武僧真气（ChiSystem） |
+| 资源接口 | `generate(amount, source)`、`consume(amount)`、`hasEnough(amount)`、`reset()` |
+| 钩子机制 | `onTurnStart`（被动生成）、`onAttack`（攻击生成）、`onDamaged`（受伤生成）、`onKill`（击杀生成） |
+| 集成位置 | 战斗 Store 的 `startCombat` 初始化、`endCombat` 调用 `onKill`、`playerAction` 检查和消耗资源 |
+
+#### 3.1.2 被动技能子模块（`modules/combat/composables/usePassiveSkills.ts`）
+
+职业被动技能系统，在战斗中自动触发职业特色效果。
+
+| 项 | 内容 |
+|----|------|
+| 定位 | 职业专属被动技能触发 |
+| 核心职责 | 监听战斗事件、触发被动效果（资源生成/减伤/治疗/属性修改） |
+| 数据来源 | `src/data/class_passives.ts`（12 个职业各 3 个被动技能） |
+| 触发时机 | on_combat_start、on_turn_start、on_attack、on_damaged、on_low_hp、on_kill、passive（持续） |
+| 效果类型 | stat_modifier（属性修改）、resource_gen（资源生成）、damage_reduction（减伤）、heal（治疗）、buff（增益） |
+
+#### 3.1.3 德鲁伊变形子模块（`modules/combat/forms/`）
+
+德鲁伊形态切换系统，不同形态有不同的属性和技能。
+
+| 项 | 内容 |
+|----|------|
+| 定位 | 德鲁伊职业机制实现 |
+| 核心职责 | 形态切换、属性修改、技能解锁/锁定 |
+| 关键文件 | `druid_forms.ts`（形态配置）、`service.ts`（切换逻辑）、`store.ts`（形态状态）、`types.ts` |
+| 形态类型 | 人形（caster）、熊（bear，高生命高防御）、猎豹（cat，高敏捷高暴击）、枭兽（moonkin，智力加成） |
+| 切换机制 | 变形消耗 1 回合，变形时恢复 10% 生命 |
+
+#### 3.1.4 术士召唤子模块（`modules/combat/pets/`）
+
+术士召唤物系统，消耗灵魂碎片召唤恶魔协助战斗。
+
+| 项 | 内容 |
+|----|------|
+| 定位 | 术士职业机制实现 |
+| 核心职责 | 召唤物管理、召唤物 AI、召唤物行动 |
+| 关键文件 | `warlock_pets.ts`（召唤物配置）、`service.ts`（召唤逻辑）、`store.ts`（召唤物状态）、`types.ts` |
+| 召唤物类型 | 小鬼（远程火系）、虚空行者（坦克）、魅魔（控制）、地狱犬（反法师）、末日守卫（终极召唤） |
+| 消耗机制 | 召唤消耗 1-3 灵魂碎片，末日守卫消耗 5 灵魂碎片 |
+| AI 策略 | 召唤物有独立 AI，aggressive 类型使用 lowest_hp 目标选择器 |
+
+#### 3.1.5 AI 目标选择子模块（`modules/combat/ai/targetSelection.ts`）
+
+ AI 目标选择系统，替代简单的"攻击玩家"逻辑。
+
+| 项 | 内容 |
+|----|------|
+| 定位 | 战斗 AI 目标选择策略 |
+| 核心职责 | 根据策略选择攻击目标 |
+| 选择器 | ThreatBasedTargetSelector（基于威胁）、RandomTargetSelector（随机）、LowestHpTargetSelector（最低血量） |
+| 注册机制 | `selectorRegistry` Map 注册，`getTargetSelector(name)` 获取 |
+| 接口 | `ITargetSelector`（selectTarget 方法） |
 
 ### 3.2 探索模块（`modules/exploration/`）
 
@@ -300,7 +396,7 @@
 | combatListenerRegistered 全局标志 | exploration | 模块级变量，切换角色时不重置，可能导致监听器重复注册风险 |
 | Boss 模块与 combat 耦合 | boss ↔ combat | Boss 模块深度嵌入战斗 composables，独立性弱 |
 
-详见 [06_MODULE_ISSUES_AND_FIXES.md](./06_MODULE_ISSUES_AND_FIXES.md)。
+详见 [ISSUES.md](./ISSUES.md)。
 
 ---
 

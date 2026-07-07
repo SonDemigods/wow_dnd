@@ -5,10 +5,10 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 业务流程梳理 |
-| 版本 | v1.0 |
-| 生成日期 | 2026年7月6日 |
+| 版本 | v2.0 |
+| 生成日期 | 2026年7月7日 |
 | 所属目录 | `doc/project/` |
-| 关联文档 | 01_MODULE_FUNCTIONS.md、02_DEPENDENCY_GRAPH.md、各模块设计文档 |
+| 关联文档 | MODULE_FUNCTIONS.md、DEPENDENCY_GRAPH.md、各模块设计文档 |
 
 ---
 
@@ -147,7 +147,7 @@ flowchart TD
 
 ## 二、战斗全流程
 
-战斗流程由 `combatStore` 编排，拆分至 `useInitiative`、`usePlayerAction`、`useEnemyAction`、`useBossMechanics` 等 Composable。采用速度制先攻：玩家与所有敌人按速度降序交替行动。
+战斗流程由 `combatStore` 编排，拆分至 `useInitiative`、`usePlayerAction`、`useEnemyAction`、`useBossMechanics` 等 Composable。采用速度制先攻：玩家与所有敌人按速度降序交替行动。战斗关键节点接入资源系统钩子（`onAttack`/`onDamaged`/`onKill`/`onTurnStart`）与被动技能触发，德鲁伊变形与术士召唤作为可选子系统参与战斗。
 
 ```mermaid
 sequenceDiagram
@@ -159,17 +159,22 @@ sequenceDiagram
     participant Enemy as useEnemyAction
     participant Char as CharacterStore
     participant Quest as QuestStore
+    participant RS as resourceSystems
+    participant PS as usePassiveSkills
 
     Note over UI,CS: 阶段一 触发战斗
     UI->>CS: startCombat(enemiesData)
     CS->>CS: 生成 combatId 初始化状态
-    CS->>CS: initBossFeatures 装载 Boss 机制
+    CS->>CS: initBossFeatures 装载 Boss 机制（setInitiativeCallback 注入先攻回调）
     CS->>Init: assignEnemyPositions 分配 3x2 阵位
     CS->>Init: buildInitiativeOrder 按速度降序排序
+    CS->>RS: ResourceSystemFactory.create(classId) + reset()
+    CS->>PS: loadPassives() + onCombatStart()
     CS->>CS: 发射 COMBAT_START 事件
     CS->>UI: COMBAT_PLAYER_TURN 通知玩家回合
 
     Note over UI,Player: 阶段二 玩家回合循环
+    Note over RS,PS: 玩家回合开始时已触发 sys.onTurnStart + passive.onTurnStart（含 on_low_hp 检查）
     loop 玩家回合
         UI->>CS: playerAction(action)
         CS->>CS: 检查控制效果 getDisabledActions
@@ -183,11 +188,19 @@ sequenceDiagram
                 Player->>Player: 暴击判定 rollCritical
                 Player->>Char: takeDamage 荆棘反伤
                 Player->>CS: 敌人扣血 takeDamage
+                Note over CS,RS: 攻击命中（非闪避）后触发钩子
+                CS->>RS: sys.onAttack?.()（怒气/连击点生成）
+                CS->>PS: passive.onAttack(damage)（吸血/腐蚀等）
             else 使用技能
                 CS->>Player: playerSkill
+                CS->>CS: canCastSkill 检查专属资源
                 Player->>Player: castSkill 校验 MP/冷却
+                CS->>CS: consumeSkillResource 消耗专属资源
                 Player->>Player: 单体/AOE 伤害管线
                 Player->>Player: 施加 buff/debuff 效果
+                Note over CS,RS: 技能施放成功后触发钩子
+                CS->>RS: sys.onAttack?.()（技能也算攻击行为）
+                CS->>PS: passive.onAttack(damage)
             else 使用物品
                 CS->>Player: playerUseItem
                 Player->>Player: 伤害型物品走管线
@@ -198,6 +211,9 @@ sequenceDiagram
                 Player->>Player: rollFleeSuccess 判定
             end
             alt 全部敌人死亡
+                Note over CS,RS: 击杀钩子（在 endCombat victory 内）
+                CS->>RS: sys.onKill?.()（灵魂碎片/怒气获取）
+                CS->>PS: passive.onKill()（灵魂虹吸等）
                 CS->>CS: endCombat victory
             else 玩家死亡
                 CS->>CS: endCombat defeat
@@ -227,9 +243,14 @@ sequenceDiagram
             Enemy->>Enemy: enemyBasicAttack
             Enemy->>Player: 闪避判定 + 伤害管线
             Enemy->>Char: takeDamage 对玩家造成伤害
+            Note over Enemy,RS: 玩家受伤后触发钩子（applyEnemyDamageToPlayer）
+            Enemy->>RS: sys.onDamaged?.(amount)（怒气获取）
+            Enemy->>PS: passive.onDamaged(amount)（复仇类 + on_low_hp 检查）
         else 技能攻击
             Enemy->>Enemy: enemyAttackWithSkill
             Enemy->>Char: takeDamage
+            Enemy->>RS: sys.onDamaged?.(amount)
+            Enemy->>PS: passive.onDamaged(amount)
         else 治疗/增益/减益
             Enemy->>Enemy: useSkill
         end
@@ -246,7 +267,7 @@ sequenceDiagram
         CS->>Char: gainGold 累加金币
         CS->>Player: handleLoot Boss 掉落处理
         CS->>Quest: onEnemyKilled 更新击杀任务进度
-        CS->>CS: 记录冒险日志
+        CS->>CS: 记录冒险日志（adventureLogs 摘要）
     else 失败
         CS->>Char: handleDeath 触发死亡复活流程
     else 逃跑
@@ -254,31 +275,44 @@ sequenceDiagram
     end
     CS->>CS: 清空效果容器
     CS->>UI: COMBAT_END 通知 UI
-    CS->>CS: saveLogs 持久化战斗日志
+    CS->>CS: saveLogs 持久化 combatLogs（详细回合数据）
 ```
+
+**资源系统与被动技能触发点汇总**：
+
+| 触发时机 | 资源系统钩子 | 被动技能触发 | 实现位置 |
+|----------|-------------|-------------|----------|
+| `startCombat` | `ResourceSystemFactory.create` + `reset` | `loadPassives` + `onCombatStart` | `combat/store.ts` |
+| 玩家回合开始 | `sys.onTurnStart` | `passive.onTurnStart`（含 `on_low_hp`） | `useInitiative.advanceToNextUnit` |
+| 玩家攻击/技能命中 | `sys.onAttack` | `passive.onAttack(damage)` | `combat/store.ts` playerAction |
+| 玩家受伤 | `sys.onDamaged(amount)` | `passive.onDamaged(amount)`（含 `on_low_hp`） | `useEnemyAction.applyEnemyDamageToPlayer` |
+| 战斗胜利 | `sys.onKill` | `passive.onKill` | `combat/store.ts` endCombat |
 
 **关键实现**：
 - 编排入口：`src/modules/combat/store.ts` 的 `startCombat`、`playerAction`、`endCombat`
-- 先攻调度：`src/modules/combat/composables/useInitiative.ts`（`buildInitiativeOrder` 按速度降序，`advanceToNextUnit` 推进，`tickAllEffects` 在新一轮开始时统一结算）
+- 先攻调度：`src/modules/combat/composables/useInitiative.ts`（`buildInitiativeOrder` 按速度降序，`advanceToNextUnit` 推进并触发 `onTurnStart` 钩子，`tickAllEffects` 在新一轮开始时统一结算）
 - 玩家行动：`src/modules/combat/composables/usePlayerAction.ts`（攻击/技能/物品/逃跑四类分支）
-- 敌人 AI：`src/modules/combat/composables/useEnemyAction.ts`（策略模式 `AggressiveStrategy` / `DefensiveStrategy` / `BalancedStrategy` / `BossPhaseStrategy`）
+- 敌人 AI：`src/modules/combat/composables/useEnemyAction.ts`（策略模式 `AggressiveStrategy` / `DefensiveStrategy` / `BalancedStrategy` / `BossPhaseStrategy`，受伤时触发 `onDamaged` 钩子）
+- 资源系统：`src/modules/combat/resources/`（`ResourceSystemFactory` 工厂 + 各职业资源系统实现，钩子接口定义于 `types.ts`）
+- 被动技能：`src/modules/combat/composables/usePassiveSkills.ts`（数据源 `src/data/class_passives.ts`，按 `trigger` 过滤执行）
+- Boss 机制：`src/modules/combat/composables/useBossMechanics.ts`（`setInitiativeCallback` 注入先攻回调）
 
 ---
 
 ## 三、探索全流程
 
-探索流程由 `explorationStore` 编排，区域进入时生成 10×10 网格并放置固定事件，玩家翻格子触发对应分支处理。
+探索流程由 `explorationStore` 编排，区域进入时生成 10×10 网格并放置固定事件，玩家翻格子触发对应分支处理。区域进入阶段对地点/物品/任务/商店的查询统一经 `crossModuleQuery` 收口，物品模板命中 `itemTemplateCache` 内存缓存。
 
 ```mermaid
 flowchart TD
     A[用户选择地点] --> B[enterArea 进入区域]
     B --> C[loadAreaConfig 加载区域配置]
-    C --> C1[从 config_locations 读取地点数据]
+    C --> C1[crossModuleQuery.getLocationData<br/>读取 config_locations 地点数据]
     C1 --> C2[computeEventProbability 按等级生成概率]
-    C2 --> C3[buildItemPool 筛选物品池]
+    C2 --> C3[buildItemPool 筛选物品池<br/>crossModuleQuery.getAllItemTemplates 命中 ItemTemplateCache]
     C3 --> C4[读取怪物池与 Boss 池]
-    C4 --> D[pickRandomShop 随机选商店]
-    D --> E[getQuestRequiredMonsters 获取任务怪物]
+    C4 --> D[pickRandomShop 随机选商店<br/>crossModuleQuery.getAllShopConfigs]
+    D --> E[getQuestRequiredMonsters 获取任务怪物<br/>crossModuleQuery.getQuestDefinitionsByBoard]
     E --> F[过滤掉 Boss 怪物]
     F --> G[generateGrid 生成 10x10 网格]
     G --> G1[placeFixedEvents 放置固定事件]
@@ -711,6 +745,284 @@ flowchart TD
 
 ---
 
+## 八、游戏初始化流程
+
+角色进入或切换时各业务 Store 的初始化由 `gameBootstrap.initialize(characterId)` 统一编排，各 Store 的 `init` 仅负责加载自身状态，假设依赖已由本服务预先初始化。
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant App as App.vue / GameMain.vue
+    participant GBS as gameBootstrap
+    participant Log as logStore
+    participant Inv as inventoryStore
+    participant Eq as equipmentStore
+    participant Skill as skillStore
+    participant Map as mapStore
+    participant Exp as explorationStore
+    participant Quest as questStore
+
+    App->>GBS: initialize(characterId)
+    Note over GBS: 按依赖顺序初始化（前者被后者依赖）
+
+    GBS->>Log: initialize(characterId)
+    Note over Log: 1. 日志模块（基础数据，被探索/战斗依赖）
+    Log-->>GBS: 就绪
+
+    GBS->>Inv: initialize(characterId)
+    Note over Inv: 2. 背包模块（被探索/装备依赖）
+    Inv-->>GBS: 就绪
+
+    GBS->>Eq: initialize(characterId)
+    Note over Eq: 3. 装备模块（依赖背包）
+    Eq-->>GBS: 就绪
+
+    GBS->>Skill: initialize(characterId)
+    Note over Skill: 4. 技能模块（依赖角色）
+    Skill-->>GBS: 就绪
+
+    GBS->>Map: initialize(characterId)
+    Note over Map: 5. 地图模块（被探索依赖）
+    Map-->>GBS: 就绪
+
+    GBS->>Exp: init(characterId)
+    Note over Exp: 6. 探索模块（依赖上述所有，仅加载自身状态，不再隐式初始化其他 Store）
+    Exp-->>GBS: 就绪
+
+    GBS->>Quest: initialize(characterId)
+    Note over Quest: 7. 任务模块（依赖角色、探索）
+    Quest-->>GBS: 就绪
+
+    GBS-->>App: 全部 Store 初始化完成
+    Note over App: loading = false → 渲染游戏主界面
+```
+
+**逆序清理流程**：
+
+```mermaid
+flowchart LR
+    Exit[角色切换 / 退出] --> Dispose[gameBootstrap.dispose]
+    Dispose --> Q[questStore.dispose?]
+    Dispose --> E[explorationStore.dispose?]
+    Dispose --> M[mapStore.dispose?]
+    Dispose --> S[skillStore.dispose?]
+    Dispose --> Eq[equipmentStore.dispose?]
+    Dispose --> I[inventoryStore.dispose?]
+    Dispose --> L[logStore.dispose?]
+```
+
+**关键实现**：
+- 编排入口：`src/services/GameBootstrap.ts` 的 `initialize`（顺序：log → inventory → equipment → skill → map → exploration → quest）与 `dispose`（逆序清理）
+- 设计要点：各模块 `init` 仅加载自身状态，依赖关系由 `GameBootstrap` 的调用顺序保证；`dispose` 使用 `safeDispose` 运行时检测，未实现 `dispose` 的 Store 自动跳过（当前仅 explorationStore 实现）
+
+---
+
+## 九、天赋点分配流程
+
+天赋系统由 `character/talents` 模块的 `useTalentStore` 管理。角色每升 2 级获得 1 点天赋点，玩家选择天赋节点分配点数，效果通过计算属性回灌角色属性与战斗计算。
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 玩家
+    participant UI as 天赋面板 UI
+    participant TS as talentStore
+    participant CharS as characterStore
+    participant CS as combatStore
+    participant DB as IndexedDB
+
+    Note over CharS,TS: 阶段一 升级获点
+    CharS->>CharS: gainExp → applyLevelUp 升级
+    CharS->>TS: updateLevel(newLevel)
+    TS->>TS: totalPoints = floor(level / 2)
+    TS->>TS: availablePoints = totalPoints - spentPoints 重算
+
+    Note over U,TS: 阶段二 选择与分配
+    U->>UI: 选择天赋节点点击学习
+    UI->>TS: learn(talentId)
+    TS->>TS: canLearnTalent 校验
+    Note over TS: 校验项：职业匹配 / 前置节点已满 / availablePoints 大于 0
+    alt 校验失败
+        TS-->>UI: 返回 false（职业不符/前置未满/点数不足）
+        UI-->>U: 提示失败原因
+    else 校验通过
+        TS->>TS: learnTalent 纯函数<br/>allocations[talentId] += 1
+        TS->>TS: spentPoints 重算 / availablePoints 递减
+        TS-->>UI: 返回 true
+    end
+
+    Note over TS,CS: 阶段三 效果应用（响应式自动传播）
+    TS->>TS: effectSummary 重算<br/>calculateTalentEffects(classId, allocations)
+    TS->>TS: statBonuses 重算<br/>getTalentStatBonuses
+    TS->>CharS: statBonuses 应用到角色属性（响应式）
+    TS->>CS: effectSummary 供战斗计算消费<br/>damageMultiplier / damageReduction / critBonus
+    Note over CharS,CS: 下游消费者通过 computed 自动更新
+
+    Note over CharS,DB: 阶段四 持久化
+    CharS->>DB: 统一保存 allocations（由 characterStore 存档）
+    Note over TS: talentStore 不直接持久化，由调用方统一存档
+```
+
+**关键实现**：
+- 编排入口：`src/modules/character/talents/store.ts` 的 `learn`、`updateLevel`、`initialize`、`reset`
+- 纯函数层：`src/modules/character/talents/service.ts` 的 `canLearnTalent`（校验）、`learnTalent`（更新分配）、`calculateTalentEffects`（效果聚合）、`getTalentStatBonuses`（属性加成）
+- 数据来源：`src/data/class_talents.ts` 的 `getTalentTreesByClassId`（按职业返回天赋树）
+- 设计要点：天赋点 = `floor(level / 2)`；`learn` 仅替换 `allocations` 引用不直接持久化，由 `characterStore` 统一存档；效果通过 `effectSummary`/`statBonuses` 计算属性响应式回灌属性与战斗计算
+
+---
+
+## 十、德鲁伊变形流程
+
+德鲁伊形态系统由 `combat/forms` 模块的 `useFormStore` 管理。战斗中切换形态消耗 1 回合，修改属性倍率、解锁/锁定技能，并恢复 10% 最大生命。
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 玩家
+    participant UI as 战斗 UI
+    participant CS as combatStore
+    participant FS as formStore
+    participant CharS as characterStore
+    participant LS as logStore
+
+    Note over CS,FS: 战斗开始时初始化
+    CS->>FS: initialize()（默认人形形态，冷却清零）
+
+    Note over U,FS: 战斗中选择变形
+    U->>UI: 选择目标形态
+    UI->>CS: playerAction({type:'transform', form})
+    CS->>FS: switchTo(targetForm)
+
+    FS->>FS: canSwitchForm 校验
+    Note over FS: 校验项：目标形态有效 / 非当前形态 / 冷却已结束
+    alt 校验失败
+        FS-->>CS: 返回 false
+        CS-->>UI: 提示无法切换
+    else 校验通过
+        FS->>FS: calculateFormSwitchHeal(targetForm, maxHp)
+        Note over FS: 治疗量 = maxHp × 10%
+        FS->>CharS: receiveHeal(healAmount)（恢复 10% 生命）
+        FS->>FS: switchForm 纯函数更新形态状态
+        Note over FS: currentForm = targetForm<br/>属性倍率变更：hpMultiplier / damageMultiplier / defenseMultiplier / speedMultiplier
+        Note over FS: 技能解锁/锁定：getAvailableSkills / isSkillAvailableInForm
+        FS->>LS: addLogEntry（记录变形与治疗日志）
+        FS-->>CS: 返回 true
+    end
+
+    CS->>CS: 消耗 1 回合（endPlayerTurn）
+    Note over CharS: 属性倍率生效 → effectiveStats 重算 → 战斗计算更新
+    CS-->>UI: UI 重渲染（形态外观、属性面板、技能栏）
+```
+
+**形态效果应用链**：
+
+```mermaid
+flowchart LR
+    Switch[switchTo 更新 currentForm] --> Mod[statModifiers 计算属性<br/>getFormStatModifiers]
+    Mod --> HP[hpMultiplier 影响最大生命]
+    Mod --> Dmg[damageMultiplier 影响伤害]
+    Mod --> Def[defenseMultiplier 影响防御]
+    Mod --> Spd[speedMultiplier 影响速度]
+    Switch --> Skills[技能解锁/锁定<br/>getAvailableSkills / isSkillAvailableInForm]
+    Skills --> SkillBar[UI 技能栏更新]
+    Heal[calculateFormSwitchHeal] --> CharS[characterStore.receiveHeal<br/>恢复 10% maxHp]
+```
+
+**关键实现**：
+- 编排入口：`src/modules/combat/forms/store.ts` 的 `switchTo`、`initialize`、`reset`、`tickCooldownEnd`
+- 纯函数层：`src/modules/combat/forms/service.ts` 的 `canSwitchForm`（校验）、`switchForm`（状态更新）、`calculateFormSwitchHeal`（治疗计算）、`getFormStatModifiers`（属性倍率）、`getAvailableSkills`/`isSkillAvailableInForm`（技能解锁/锁定）
+- 数据来源：`src/modules/combat/forms/druid_forms.ts` 的 `getSwitchableForms`
+- 设计要点：变形消耗 1 回合；切换形态恢复 10% 最大生命；属性倍率通过计算属性响应式传播到战斗计算；技能按形态解锁/锁定
+
+---
+
+## 十一、术士召唤流程
+
+术士召唤系统由 `combat/pets` 模块的 `usePetStore` 管理。战斗中消耗灵魂碎片召唤恶魔，召唤物拥有独立 AI 与行动。共 5 种召唤物（小鬼/虚空行者/魅魔/地狱犬/末日守卫）。
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 玩家
+    participant UI as 战斗 UI
+    participant CS as combatStore
+    participant PS as petStore
+    participant RS as SoulShardSystem
+    participant LS as logStore
+
+    Note over CS,PS: 战斗开始时初始化
+    CS->>PS: initialize(level, logCallback)
+    Note over PS: 重置状态 / 设置日志回调
+
+    Note over U,PS: 战斗中选择召唤
+    U->>UI: 选择召唤物
+    UI->>CS: playerAction({type:'summon', petType})
+    CS->>PS: canSummon(petType, soulShards)
+
+    PS->>PS: canSummonPet 校验
+    Note over PS: 校验项：召唤物已解锁 / 当前无激活召唤物 / 灵魂碎片充足
+    alt 校验失败
+        PS-->>CS: 返回 false（碎片不足/已有召唤物/未解锁）
+        CS-->>UI: 提示失败原因
+    else 校验通过
+        CS->>RS: soulShardSystem.consume(cost)（消耗灵魂碎片）
+        RS-->>CS: 返回 true
+        CS->>PS: summon(petType, soulShards)
+        PS->>PS: summonPet 创建召唤物实例<br/>按 level 缩放属性
+        PS->>LS: log(`召唤了 X！消耗 N 个灵魂碎片`)
+        PS-->>CS: 返回 true
+    end
+
+    Note over PS,CS: 召唤物独立行动（每回合）
+    loop 召唤物回合
+        CS->>PS: petTakeAction()
+        PS->>PS: selectPetAction AI 决策<br/>按策略选择技能
+        alt 非默认攻击
+            PS->>PS: setSkillCooldown 设置技能冷却
+        end
+        PS-->>CS: 返回选择的技能
+        CS->>CS: 应用技能效果（造成伤害/施加减益等）
+    end
+
+    Note over PS,CS: 召唤物受伤与死亡
+    CS->>PS: takeDamage(damage)（敌人攻击召唤物时）
+    PS->>PS: damagePet 扣减 HP
+    alt HP 小于等于 0
+        PS->>LS: log(`召唤物死亡！`)
+        PS->>PS: 清除 activePet
+    end
+
+    Note over PS,CS: 回合结束推进
+    CS->>PS: tickTurn()
+    PS->>PS: 减少技能冷却 / 减少持续时间
+    alt 持续时间到期
+        PS->>LS: log(`召唤时间结束，返回扭曲虚空`)
+        PS->>PS: 清除 activePet
+    end
+
+    Note over CS,PS: 战斗结束
+    CS->>PS: reset()（清空召唤系统状态）
+```
+
+**5 种召唤物**：
+
+| 召唤物 | 定位 | 灵魂碎片消耗 | 来源 |
+|--------|------|-------------|------|
+| 小鬼 | 远程法术输出 | 较低 | `warlock_pets.ts` |
+| 虚空行者 | 坦克（高 HP） | 中 | `warlock_pets.ts` |
+| 魅魔 | 控制（减益） | 中 | `warlock_pets.ts` |
+| 地狱犬 | 近战输出 | 中高 | `warlock_pets.ts` |
+| 末日守卫 | 强力输出 | 高 | `warlock_pets.ts` |
+
+**关键实现**：
+- 编排入口：`src/modules/combat/pets/store.ts` 的 `summon`、`dismiss`、`petTakeAction`、`takeDamage`、`tickTurn`、`initialize`、`reset`
+- 纯函数层：`src/modules/combat/pets/service.ts` 的 `canSummonPet`（校验）、`summonPet`（创建实例）、`selectPetAction`（AI 决策）、`damagePet`（受伤）、`tickPetTurn`（回合推进）、`dismissPet`（解散）
+- 数据来源：`src/modules/combat/pets/warlock_pets.ts` 的 `WARLOCK_PETS`（5 种召唤物定义）、`getPetByType`、`getSummonablePets`
+- 资源联动：召唤消耗由调用方（combatStore）通过 `SoulShardSystem.consume(cost)` 扣除灵魂碎片，`petStore.summon` 仅校验与创建实例，不直接消耗资源
+- 设计要点：召唤物独立 AI（`selectPetAction` 按策略选择技能）；召唤物有独立 HP 与持续时间，受伤死亡或时间到期自动清除；战斗日志通过注入的 `logCallback` 回写 combatStore
+
+---
+
 ## 附录：跨模块通信约定
 
 | 通信方式 | 适用场景 | 示例 |
@@ -718,6 +1030,7 @@ flowchart TD
 | 直接 Store Action 调用 | 数据变更类跨模块操作 | `combatStore` 调用 `characterStore.gainExp`、`questStore.onEnemyKilled` |
 | EventBus 事件 | UI 刷新 / 音效触发 / 通知类 | `CHARACTER_LEVEL_UP`、`COMBAT_START`、`QUEST_COMPLETED` |
 | UI 回调注册 | 探索模块跨模块数据事件 | `explorationStore.registerUICallbacks` 替代 EventBus 传递数据 |
-| DB 层直接调用 | 持久化查询类跨模块 | `explorationStore` 调用 `questDbService.getQuestDefinitionsByBoard` |
+| services 聚合层调用 | 跨模块查询 / 初始化编排 / 缓存 / 错误处理 | `explorationStore` 经 `crossModuleQuery` 查询地图/物品/任务/商店；`GameBootstrap` 编排 Store 初始化 |
+| DB 层直接调用 | 仅限自身模块持久化 | `explorationStore` 调用 `explorationDbService.persistState`（跨模块查询已收口至 `crossModuleQuery`） |
 
 **设计原则**：数据变更走 Store Action，EventBus 不传递数据变更通知，仅用于 UI/音效类事件。
