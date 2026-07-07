@@ -99,6 +99,12 @@
           <div class="combatant-bars">
             <ResourceBar icon="health-normal" iconGradient="blood" name="HP" :current="playerHp" :max="playerMaxHp" :percent="playerHpPercent" type="hp" />
             <ResourceBar icon="magic-palm" iconGradient="mana" name="MP" :current="playerMp" :max="playerMaxMp" :percent="playerMpPercent" type="mp" />
+            <!-- 职业专属资源条（怒气/能量/连击点/灵魂碎片/真气等） -->
+            <ClassResourceBar
+              v-for="(sys, idx) in combatStore.resourceSystems"
+              :key="'class-res-' + idx"
+              :resource-system="sys"
+            />
             <!-- Buff/Debuff 效果指示器 -->
             <template v-if="combatStore.playerEffects.effects.length > 0">
               <div class="effects-indicator">
@@ -235,6 +241,7 @@ import type { CombatLog, CombatResult, CombatActionType } from '@/modules/combat
 import type { Skill } from '@/modules/skill/types';
 import type { ItemRarity } from '@/modules/inventory/types';
 import ResourceBar from '@/components/common/ResourceBar.vue';
+import ClassResourceBar from '@/components/common/ClassResourceBar.vue';
 import ItemIcon from '@/components/common/ItemIcon.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import {

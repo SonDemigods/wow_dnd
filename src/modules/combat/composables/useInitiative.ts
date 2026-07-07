@@ -17,6 +17,7 @@ import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
 import type { useEnemyAction } from './useEnemyAction';
 import type { useBossMechanics } from './useBossMechanics';
+import type { usePassiveSkills } from './usePassiveSkills';
 
 export function useInitiative(
   state: ReturnType<typeof useCombatState>,
@@ -24,6 +25,7 @@ export function useInitiative(
   enemyAction: ReturnType<typeof useEnemyAction>,
   boss: ReturnType<typeof useBossMechanics>,
   endCombat: (result: CombatResult) => void,
+  passive?: ReturnType<typeof usePassiveSkills>,
 ) {
   // ==================== 内部辅助：先攻排序 ====================
 
@@ -125,6 +127,10 @@ export function useInitiative(
     if (next.isPlayer) {
       state.turn.value = 'player';
       useSkillStore().tickCooldowns();
+      // 玩家回合开始时触发资源系统 onTurnStart 钩子（如怒气/能量回复）
+      state.resourceSystems.value.forEach(sys => sys.onTurnStart?.());
+      // 触发被动技能 onTurnStart 钩子（如法师法力涌动、德鲁伊自然治愈、牧师神圣冥想）
+      passive?.onTurnStart();
       eventBus.emit(GameEvents.COMBAT_PLAYER_TURN, null);
     } else {
       state.turn.value = 'enemy';

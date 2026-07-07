@@ -24,13 +24,15 @@ import {
 } from '../effects';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
+import type { usePassiveSkills } from './usePassiveSkills';
 
 export function useEnemyAction(
   state: ReturnType<typeof useCombatState>,
-  log: ReturnType<typeof useCombatLog>
+  log: ReturnType<typeof useCombatLog>,
+  passive?: ReturnType<typeof usePassiveSkills>
 ) {
   const { addCombatLog, createPlayerEffectContext, createEnemyEffectContext } = log;
-  const { playerEffects, enemyEffects, effectRegistry } = state;
+  const { playerEffects, enemyEffects, effectRegistry, resourceSystems } = state;
 
   // ==================== AI 策略 ====================
 
@@ -80,6 +82,13 @@ export function useEnemyAction(
 
     // 扣血
     characterStore.takeDamage(actualDamage);
+
+    // 玩家受伤时触发资源系统 onDamaged 钩子（如战士怒气获取）
+    if (actualDamage > 0) {
+      resourceSystems.value.forEach(sys => sys.onDamaged?.(actualDamage));
+      // 触发被动技能 onDamaged 钩子（如影刃猎手复仇：受伤恢复生命）
+      passive?.onDamaged(actualDamage);
+    }
 
     // 伤害事件
     eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {

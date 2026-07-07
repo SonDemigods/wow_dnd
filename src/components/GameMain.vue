@@ -137,8 +137,8 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
 import { useShopStore } from '@/modules/shop';
-import { useLogStore } from '@/modules/log';
 import { useExplorationStore, type ExplorationUICallbacks } from '@/modules/exploration';
+import { gameBootstrap } from '@/services/GameBootstrap';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useEnemyStore } from '@/modules/enemy';
 import { useCombatStore } from '@/modules/combat/store';
@@ -166,7 +166,6 @@ const emit = defineEmits<{
 const characterStore = useCharacterStore();
 const mapStore = useMapStore();
 const shopStore = useShopStore();
-const logStore = useLogStore();
 const toast = useToast();
 
 const currentContentTab = ref('map');
@@ -299,6 +298,17 @@ function handleRandomEvent(data: { message?: string; icon?: string }) {
   showNotif(message, 'info');
 }
 
+// 监听多选项事件：展示事件描述，由玩家在弹窗中选择后调用 applyEventChoice
+function handleMultiOptionEvent(data: { message: string; icon: string; choices: Array<{ label: string; icon?: string; effect: { type: string; amount: number } }> }) {
+  // 展示事件描述（完整选项弹窗可后续扩展，当前以通知形式提示并自动选择第一项）
+  showNotif(data.message, 'info');
+  const explorationStore = useExplorationStore();
+  // 自动应用第一个选项（后续可替换为交互式弹窗）
+  if (data.choices.length > 0) {
+    explorationStore.applyEventChoice(data.choices[0]);
+  }
+}
+
 function handleCombatClose(_result?: CombatResult) {
   showCombat.value = false;
   onPanelClose('combat');
@@ -319,15 +329,15 @@ onMounted(async () => {
     onBattleTriggered: handleBattleTriggered,
     onItemFound: handleItemFound,
     onTrapTriggered: handleTrapTriggered,
-    onRandomEvent: handleRandomEvent
+    onRandomEvent: handleRandomEvent,
+    onMultiOptionEvent: handleMultiOptionEvent
   } as ExplorationUICallbacks);
   
-  // 初始化地图模块（按角色ID从数据库恢复当前区域等状态）
+  // 初始化所有角色相关模块（EXP-5：统一由 GameBootstrap 编排，避免探索模块隐式初始化其他 Store）
   const cid = characterStore.currentCharacterId;
   if (cid) {
-    await mapStore.initialize(cid);
-    await logStore.initialize(cid);
-    
+    await gameBootstrap.initialize(cid);
+
     // 从数据库恢复上次的标签页状态（按角色隔离，通过 mapStore action 获取）
     const savedTab = await mapStore.getCurrentTab();
     if (savedTab === 'explore' && hasCurrentLocation.value) {
@@ -348,7 +358,8 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  useExplorationStore().unregisterUICallbacks();
+  // 统一清理所有模块（EXP-5：按初始化逆序 dispose，清理监听器与状态）
+  gameBootstrap.dispose();
 });
 
 defineExpose({ showNotif });

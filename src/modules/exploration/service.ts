@@ -3,7 +3,7 @@
  * @description 提供探索相关的纯计算函数，不持有状态、不调用 DB、不 emit 事件
  * @module exploration
  */
-import type { GridEventType, GridEventProbability, ExplorationCell, RandomEventResult, GridGenerationConfig, CellType } from './types';
+import type { GridEventType, GridEventProbability, ExplorationCell, RandomEventResult, MultiOptionEventResult, GridGenerationConfig, CellType } from './types';
 
 /** 默认网格尺寸 */
 export const GRID_SIZE = 10;
@@ -225,6 +225,69 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
 }
 
 // ============================================================
+// 多选项事件
+// ============================================================
+
+/**
+ * 多选项事件模板
+ *
+ * 每个模板为函数，接收 areaLevel 返回完整的事件描述与选项列表。
+ * 选项设计遵循风险/收益权衡原则：高收益选项附带风险，安全选项收益较低。
+ */
+const multiOptionEventTemplates: Array<(areaLevel: number) => MultiOptionEventResult> = [
+  // 神秘祭坛：献祭 HP 换取经验，或直接离开
+  (lv) => ({
+    message: '发现一座古老祭坛，表面泛着幽幽蓝光',
+    icon: 'game-icons:altar',
+    choices: [
+      { label: '触碰祭坛（献祭生命换取经验）', icon: 'game-icons:bleeding-heart', effect: { type: 'exp', amount: lv * 15 + 20 } },
+      { label: '安全离开', icon: 'game-icons:walk', effect: { type: 'heal', amount: lv * 2 } },
+    ],
+  }),
+  // 宝箱守卫：战斗风险 vs 高额金币
+  (lv) => ({
+    message: '路边宝箱散发着诱人光芒，但隐约听到守护兽的呼吸声',
+    icon: 'game-icons:treasure-map',
+    choices: [
+      { label: '强行开启（可能受伤但金币更多）', icon: 'game-icons:two-coins', effect: { type: 'gold', amount: lv * 12 + 25 } },
+      { label: '悄悄拿走少量金币', icon: 'game-icons:coin', effect: { type: 'gold', amount: lv * 4 + 5 } },
+    ],
+  }),
+  // 魔法卷轴：恢复 MP 或获得经验
+  (lv) => ({
+    message: '地上散落着几张魔法卷轴，墨迹未干',
+    icon: 'game-icons:scroll-unfurled',
+    choices: [
+      { label: '诵读卷轴恢复法力', icon: 'game-icons:emerald', effect: { type: 'mana', amount: lv * 3 + 10 } },
+      { label: '研究卷轴获取经验', icon: 'game-icons:spell-book', effect: { type: 'exp', amount: lv * 8 + 10 } },
+    ],
+  }),
+  // 黑色药水：未知效果
+  (lv) => ({
+    message: '发现一瓶冒着黑烟的神秘药水',
+    icon: 'game-icons:potion-ball',
+    choices: [
+      { label: '勇敢饮下（可能恢复或受伤）', icon: 'game-icons:drink-me', effect: { type: Math.random() < 0.5 ? 'heal' : 'damage', amount: lv * 4 + 8 } },
+      { label: '丢弃药水', icon: 'game-icons:trash', effect: { type: 'exp', amount: lv * 2 } },
+    ],
+  }),
+];
+
+/**
+ * 生成多选项事件（纯计算，不含副作用）
+ *
+ * 从模板池中随机选取一个模板，根据区域等级生成具体的事件数据。
+ * 多选项事件让玩家做出策略性选择，每个选项有不同的风险/收益。
+ *
+ * @param areaLevel - 区域等级
+ * @returns 多选项事件结果
+ */
+export function generateMultiOptionEvent(areaLevel: number): MultiOptionEventResult {
+  const template = multiOptionEventTemplates[Math.floor(Math.random() * multiOptionEventTemplates.length)];
+  return template(areaLevel);
+}
+
+// ============================================================
 // 导出：网格生成纯函数
 // ============================================================
 
@@ -292,7 +355,42 @@ export function generateGrid(config: GridGenerationConfig): ExplorationCell[][] 
     grid[pos.y][pos.x] = { x: pos.x, y: pos.y, type: cellType, explored: false, accessible: false, visited: false, completed: false, monsterId: cellMonsterId };
   }
 
+  // 第三步：随机选取 2~3 个宝箱格标记为隐藏房间（含更丰厚奖励，相邻格探索后揭示）
+  markHiddenRooms(grid, size);
+
   return grid;
+}
+
+/**
+ * 随机将 2~3 个宝箱格子标记为隐藏房间
+ *
+ * 隐藏房间在生成时不可见、不可访问，当任意相邻格被探索后自动揭示。
+ * 隐藏房间通常包含更高等级的物品奖励，鼓励玩家探索地图边缘。
+ */
+function markHiddenRooms(grid: ExplorationCell[][], size: number): void {
+  const treasureCells: { x: number; y: number }[] = [];
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (grid[y][x].type === 'treasure' && !grid[y][x].visited) {
+        treasureCells.push({ x, y });
+      }
+    }
+  }
+
+  // 打乱顺序
+  for (let i = treasureCells.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [treasureCells[i], treasureCells[j]] = [treasureCells[j], treasureCells[i]];
+  }
+
+  // 标记 2~3 个为隐藏（不超过宝箱总数）
+  const hiddenCount = Math.min(treasureCells.length, 2 + Math.floor(Math.random() * 2));
+  for (let i = 0; i < hiddenCount; i++) {
+    const { x, y } = treasureCells[i];
+    grid[y][x].hidden = true;
+    grid[y][x].explored = false;
+    grid[y][x].accessible = false;
+  }
 }
 
 /**
@@ -323,6 +421,28 @@ export function updateAccessibleCells(grid: ExplorationCell[][]): ExplorationCel
 
   // 深拷贝网格
   const newGrid: ExplorationCell[][] = grid.map(row => row.map(cell => ({ ...cell })));
+
+  // 揭示隐藏房间：当任意相邻格已被探索时，隐藏房间变为可见
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < colSize; x++) {
+      if (newGrid[y][x].hidden && !newGrid[y][x].explored) {
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx >= 0 && nx < colSize && ny >= 0 && ny < size && newGrid[ny][nx].explored) {
+              // 相邻格已探索，揭示隐藏房间
+              newGrid[y][x].hidden = false;
+              newGrid[y][x].explored = true;
+              break;
+            }
+          }
+          if (!newGrid[y][x].hidden) break;
+        }
+      }
+    }
+  }
 
   // 先将所有未探索格子标记为不可访问
   for (let y = 0; y < size; y++) {

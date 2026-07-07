@@ -31,7 +31,7 @@ import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
 import { useCharacterStore } from '../character/store';
 import { useInventoryStore } from '../inventory/store';
-import { validateSlot, computeEquipBonus, canEquipItem, getEquipmentBySlot, createEmptySlotMap } from './service';
+import { validateSlot, computeEquipBonus, canEquipItem, getEquipmentBySlot, createEmptySlotMap, checkClassRestriction, getActiveSetBonuses } from './service';
 
 /**
  * 槽位配置（UI 展示用）
@@ -145,6 +145,17 @@ export const useEquipmentStore = defineStore('equipment', () => {
   /** 护甲槽位列表（头部 + 胸部 + 腿部 + 鞋子） */
   const armorSlots = computed(() => {
     return slotList.value.filter(slot => !slot.isWeapon);
+  });
+
+  /**
+   * 当前已激活的套装奖励列表（Phase 5.3）
+   *
+   * 根据当前 equipment 状态计算所有已激活的套装奖励。
+   * 响应式依赖 equipment，装备变化时自动重新计算。
+   * UI 可据此展示套装进度和激活效果。
+   */
+  const activeSetBonuses = computed(() => {
+    return getActiveSetBonuses(equipment.value);
   });
 
   // ==================== 辅助方法 ====================
@@ -297,6 +308,11 @@ export const useEquipmentStore = defineStore('equipment', () => {
       return false;
     }
 
+    // 2.5 检查职业限制（Phase 5.3）
+    if (!checkClassRestriction(item, characterStore.classId)) {
+      return false;
+    }
+
     // 3. 从背包中移除要装备的物品
     const inventoryStore = useInventoryStore();
     const removed = inventoryStore.removeItem(item.id, 1);
@@ -405,11 +421,17 @@ export const useEquipmentStore = defineStore('equipment', () => {
    * @returns 是否可以装备
    */
   function canEquip(item: EquipmentItem, slot?: EquipmentSlot): boolean {
+    const characterStore = useCharacterStore();
+
     if (item.levelRequirement) {
-      const characterStore = useCharacterStore();
       if (characterStore.level < item.levelRequirement) {
         return false;
       }
+    }
+
+    // 检查职业限制（Phase 5.3）
+    if (!checkClassRestriction(item, characterStore.classId)) {
+      return false;
     }
 
     if (slot) {
@@ -500,6 +522,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     slotList,
     weaponSlots,
     armorSlots,
+    activeSetBonuses,
 
     // 生命周期
     initialize,

@@ -67,6 +67,8 @@ export type EquipmentType = 'weapon' | 'armor';
  * @property {EquipmentSlot[]} slots - 可装备的槽位列表。如仅限主手的武器填 `['weapon1']`，双持武器填 `['weapon1', 'weapon2']`
  * @property {Partial<Stats>} [bonus] - 属性加成，键为 Stats 的字段名（str/dex/con/int/wis/cha）。如 `{ str: 5, con: 3 }` 表示 +5 力量、+3 体质
  * @property {number} [levelRequirement] - 最低装备等级。不填或 undefined 表示无等级限制
+ * @property {string[]} [classRestriction] - 可装备的职业 ID 列表（Phase 5.3 新增）。未定义或空数组表示无职业限制
+ * @property {string} [setId] - 所属套装 ID（Phase 5.3 新增）。未定义表示不属于任何套装
  *
  * @see EquipmentTemplateStorage 数据库模板对应的存储类型
  * @see mapTemplateToEquipmentItem 模板 → 运行时对象的转换逻辑
@@ -76,6 +78,61 @@ export interface EquipmentItem extends Item {
   slots: EquipmentSlot[];
   bonus?: Partial<Stats>;
   levelRequirement?: number;
+  /** 可装备的职业 ID 列表，未定义或空数组表示无职业限制（Phase 5.3） */
+  classRestriction?: string[];
+  /** 所属套装 ID，未定义表示不属于任何套装（Phase 5.3） */
+  setId?: string;
+}
+
+// ============================================================================
+// 套装系统类型（Phase 5.3 新增）
+// ============================================================================
+
+/**
+ * 套装奖励接口
+ *
+ * 描述穿戴指定数量套装件数后激活的奖励效果。
+ *
+ * @property {number} requiredPieces - 激活所需件数（如 2、4、6）
+ * @property {SetBonusEffect} bonus - 奖励效果配置
+ */
+export interface SetBonus {
+  requiredPieces: number;
+  bonus: SetBonusEffect;
+}
+
+/**
+ * 套装奖励效果接口
+ *
+ * @property {string} [stat] - 受影响的属性键（如 'str'、'rage_max'）
+ * @property {number} [value] - 数值加成（stat 为基础属性时为整数，百分比效果时为小数）
+ * @property {string} [effect] - 特殊效果标识（如 'rage_on_crit_10'、'damage_bonus_30_when_full_rage'）
+ * @property {string} [description] - 效果描述（UI 展示用）
+ */
+export interface SetBonusEffect {
+  stat?: string;
+  value?: number;
+  effect?: string;
+  description?: string;
+}
+
+/**
+ * 套装定义接口
+ *
+ * 一个套装包含多个装备部件，穿戴达到指定件数时激活对应奖励。
+ *
+ * @property {string} id - 套装唯一标识（如 'warrior_might'）
+ * @property {string} name - 套装显示名称
+ * @property {number} pieces - 套装总件数
+ * @property {string} classRestriction - 套装所属职业（如 'warrior'），未定义表示无职业限制
+ * @property {SetBonus[]} setBonuses - 套装奖励列表，按 requiredPieces 升序
+ */
+export interface ItemSet {
+  id: string;
+  name: string;
+  pieces: number;
+  classRestriction?: string;
+  setBonuses: SetBonus[];
 }
 
 /**

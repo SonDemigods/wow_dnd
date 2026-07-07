@@ -4,11 +4,12 @@
  * 从 combat store 提取的响应式状态、计算属性和基础状态操作函数。
  * 作为战斗模块的单一状态持有者，供其他 composable 和 store 使用。
  */
-import { ref, computed } from 'vue';
+import { ref, computed, shallowRef } from 'vue';
 import type { CombatState, CombatResult, CombatLog } from '../types';
 import type { EnemyInstance } from '../../enemy/types';
 import type { BossIntro } from '../../boss/types';
 import type { Effect, EffectContainer } from '../effects';
+import type { ResourceSystem } from '../resources';
 import { useEnemyStore } from '../../enemy/store';
 import { isBossCombat } from '../service';
 import {
@@ -81,6 +82,12 @@ export function useCombatState() {
   /** 敌人回合延迟定时器 ID（ref，确保 resetState 和 useInitiative 操作同一引用） */
   const turnTimerId = ref<number | null>(null);
 
+  /**
+   * 玩家资源系统列表（按职业创建，空数组表示使用默认 MP 系统）
+   * 使用 shallowRef 避免对 ResourceSystem 实例做深度响应式追踪
+   */
+  const resourceSystems = shallowRef<ResourceSystem[]>([]);
+
   // ==================== 跨 Store 引用 ====================
   const enemiesStore = useEnemyStore();
 
@@ -132,6 +139,8 @@ export function useCombatState() {
     bossPhaseManagers.clear();
     bossIntros.value = {};
     enemyPositions.value = {};
+    // 清理资源系统（释放引用，便于 GC）
+    resourceSystems.value = [];
   }
 
   // ==================== Action：清理 & 重置 ====================
@@ -190,6 +199,7 @@ export function useCombatState() {
     combatSpeed,
     playerEffects,
     enemyEffects,
+    resourceSystems,
 
     // 普通变量
     bossPhaseManagers,

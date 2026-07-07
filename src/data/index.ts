@@ -19,6 +19,18 @@ export { CLASS_ABILITIES } from './config_skills';
 // 导出怪物/首领技能数据
 export { MONSTER_ABILITIES } from './config_skills';
 
+// 导出职业被动技能数据（Phase 5.2）
+export { CLASS_PASSIVES, getPassivesByClassId } from './class_passives';
+
+// 导出职业专属装备数据（Phase 5.3）
+export { CLASS_SPECIFIC_ITEMS, getClassSpecificItems } from './class_items';
+
+// 导出套装定义数据（Phase 5.3）
+export { ITEM_SETS, getItemSetById, getItemSetsByClassId } from './item_sets';
+
+// 导出职业天赋树数据（Phase 6.2）
+export { CLASS_TALENT_TREES, getTalentTreesByClassId, getTalentTreeById, getTalentById } from './class_talents';
+
 // 导出物品和战利品数据
 export { LOOT_ITEMS } from './config_items';
 

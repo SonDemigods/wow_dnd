@@ -107,6 +107,8 @@ export interface ExplorationCell {
   /** 事件是否已完成（战斗胜利、宝箱已开等），已完成则褪色显示 */
   completed?: boolean
   monsterId?: string
+  /** 是否为隐藏房间（相邻格被探索后自动揭示，含更丰厚的奖励） */
+  hidden?: boolean
 }
 
 /**
@@ -214,6 +216,37 @@ export interface RandomEventResult {
 }
 
 /**
+ * 事件选项接口
+ *
+ * 多选项事件中每个可选选项的完整描述。玩家选择后，对应的 effect 会被应用。
+ *
+ * @property {string} label - 选项文本（如 "饮下泉水"）
+ * @property {string} [icon] - 选项图标（Iconify 格式）
+ * @property {{ type: RandomEventEffectType; amount: number }} effect - 选择后产生的效果
+ */
+export interface EventChoice {
+  label: string;
+  icon?: string;
+  effect: { type: RandomEventEffectType; amount: number };
+}
+
+/**
+ * 多选项事件结果接口
+ *
+ * 含多个选项的事件，玩家需做出选择。每个选项有不同的奖励或风险，
+ * 增加探索的策略性和趣味性。
+ *
+ * @property {string} message - 事件描述文本
+ * @property {string} icon - 事件图标
+ * @property {EventChoice[]} choices - 可选选项列表（至少 2 个）
+ */
+export interface MultiOptionEventResult {
+  message: string;
+  icon: string;
+  choices: EventChoice[];
+}
+
+/**
  * 网格生成配置参数接口
  *
  * 聚合了生成探索网格所需的所有输入参数，由 `buildAreaConfig` 构建后传入 `generateGrid`。
@@ -264,6 +297,8 @@ export interface ExplorationUICallbacks {
   onItemFound?: (data: { itemId: string; count: number; itemName: string }) => void;
   onTrapTriggered?: (data: { damage: number; trapType: string }) => void;
   onRandomEvent?: (data: { message: string; icon: string }) => void;
+  /** 多选项事件触发时通知 UI 展示选项弹窗 */
+  onMultiOptionEvent?: (data: MultiOptionEventResult) => void;
 }
 
 // ============================================================================

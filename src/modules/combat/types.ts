@@ -78,7 +78,9 @@ export type CombatEventType =
   | 'combat_flee'
   | 'combat_miss'
   | 'combat_critical'
-  | 'combat_event';
+  | 'combat_event'
+  | 'passive_trigger'
+  | 'passive_effect';
 
 // ============================================================================
 // 核心数据接口

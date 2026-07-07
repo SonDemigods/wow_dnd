@@ -6,14 +6,11 @@
  * @module exploration
  */
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, shallowRef } from 'vue';
 import type { ExplorationCell, ExplorationState, AreaConfig, ExplorationUICallbacks } from './types';
 import type { LocationData } from '../map/types';
 import { explorationDbService } from './db';
-import { mapDbService } from '../map/db';
-import { inventoryDbService } from '../inventory/db';
-import { questDbService } from '../quest/db';
-import { shopDbService } from '../shop/db';
+import { crossModuleQuery } from '@/services/CrossModuleQuery';
 import { eventBus, GameEvents } from '../bus';
 import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
@@ -25,6 +22,7 @@ import {
   updateAccessibleCells,
   generateTrapDamage,
   generateRandomEvent,
+  generateMultiOptionEvent,
   generateCampHeal,
   generateItemForCell,
   computeEventProbability,
@@ -63,17 +61,17 @@ export const useExplorationStore = defineStore('exploration', () => {
 
   // ==================== UI 回调（替代 EventBus 跨模块数据事件） ====================
 
-  /** 注册的 UI 回调集（由 GameMain 等 UI 组件设置） */
-  let uiCallbacks: ExplorationUICallbacks | null = null;
+  /** 注册的 UI 回调集（由 GameMain 等 UI 组件设置，使用 shallowRef 确保响应式追踪，EXP-3/7 修复） */
+  const uiCallbacks = shallowRef<ExplorationUICallbacks | null>(null);
 
   /** 注册 UI 回调 */
   function registerUICallbacks(callbacks: ExplorationUICallbacks): void {
-    uiCallbacks = callbacks;
+    uiCallbacks.value = callbacks;
   }
 
   /** 取消注册 UI 回调 */
   function unregisterUICallbacks(): void {
-    uiCallbacks = null;
+    uiCallbacks.value = null;
   }
 
   // ==================== 计算属性 ====================
@@ -135,7 +133,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     const bossPool = location.bosses || [];
 
     // 物品池：委托给 service 纯函数筛选
-    const allItems = await inventoryDbService.getAllItemTemplates();
+    const allItems = await crossModuleQuery.getAllItemTemplates();
     const itemPool = buildItemPool(allItems, minLevel, maxLevel);
 
     return {
@@ -154,7 +152,7 @@ export const useExplorationStore = defineStore('exploration', () => {
    * @param areaId - 区域 ID
    */
   async function loadAreaConfig(areaId: string): Promise<void> {
-    const location = await mapDbService.getLocationData(areaId);
+    const location = await crossModuleQuery.getLocationData(areaId);
     if (location) {
       currentAreaConfig.value = await buildAreaConfig(location);
     } else {
@@ -186,7 +184,7 @@ export const useExplorationStore = defineStore('exploration', () => {
 
   /** 从数据库加载所有商店配置，随机选取一个作为本次探索的商店 */
   async function pickRandomShop(): Promise<void> {
-    const shops = await shopDbService.getAllShopConfigs();
+    const shops = await crossModuleQuery.getAllShopConfigs();
     if (shops && shops.length > 0) {
       const idx = Math.floor(Math.random() * shops.length);
       assignedShopId.value = shops[idx].id;
@@ -200,7 +198,7 @@ export const useExplorationStore = defineStore('exploration', () => {
    */
   async function getQuestRequiredMonsters(areaId: string): Promise<string[]> {
     const required: string[] = [];
-    const quests = await questDbService.getQuestDefinitionsByBoard(areaId);
+    const quests = await crossModuleQuery.getQuestDefinitionsByBoard(areaId);
     for (const quest of quests) {
       for (const obj of quest.objectives) {
         if (obj.type === 'kill' && obj.enemyId) {
@@ -222,13 +220,7 @@ export const useExplorationStore = defineStore('exploration', () => {
   async function init(characterId: string): Promise<void> {
     currentCharacterId.value = characterId;
 
-    // 确保日志 Store 已初始化
-    useLogStore().initialize(characterId);
-
-    // 确保背包 Store 已初始化
-    const inventoryStore = useInventoryStore();
-    await inventoryStore.initialize(characterId);
-
+    // 日志、背包等依赖 Store 已由 GameBootstrap 预先初始化（EXP-5 修复），此处仅加载自身状态
     const stored = await explorationDbService.getExplorationData(characterId);
 
     if (stored && stored.currentAreaId && stored.grid && stored.grid.length > 0) {
@@ -311,7 +303,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     eventBus.emit(GameEvents.EXPLORATION_START, { characterId: currentCharacterId.value, areaId });
 
     // 获取地点数据并发射区域进入事件
-    const location = await mapDbService.getLocationData(areaId);
+    const location = await crossModuleQuery.getLocationData(areaId);
     if (location) {
       eventBus.emit(GameEvents.ZONE_ENTERED, { locationId: areaId, location });
     }
@@ -381,7 +373,7 @@ export const useExplorationStore = defineStore('exploration', () => {
       });
 
       // 同步通知已注册的 UI 回调（替代 EventBus 跨模块监听）
-      uiCallbacks?.onCellExplored?.({ cellType: cell.type, interactionId });
+      uiCallbacks.value?.onCellExplored?.({ cellType: cell.type, interactionId });
 
       await persistState();
       return true;
@@ -440,7 +432,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     });
 
     // 同步通知已注册的 UI 回调（无 cellType 的普通格子探索）
-    uiCallbacks?.onCellExplored?.({});
+    uiCallbacks.value?.onCellExplored?.({});
 
     checkCompletion();
     await persistState();
@@ -513,7 +505,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     });
 
     // 同步通知已注册的 UI 回调（替代 EventBus 跨模块监听）
-    uiCallbacks?.onBattleTriggered?.({ eventData: { monsterId, areaLevel } });
+    uiCallbacks.value?.onBattleTriggered?.({ eventData: { monsterId, areaLevel } });
   }
 
   // ==================== Action：结束探索 ====================
@@ -585,7 +577,7 @@ export const useExplorationStore = defineStore('exploration', () => {
       });
 
       // 同步通知已注册的 UI 回调（替代 EventBus 跨模块监听）
-      uiCallbacks?.onItemFound?.({ itemId, count: 1, itemName: item.name });
+      uiCallbacks.value?.onItemFound?.({ itemId, count: 1, itemName: item.name });
     } else {
       // 兜底：物品模板不存在时，发放金币和经验作为补偿
       console.warn(`[探索] 物品模板 "${itemId}" 不存在，发放兜底奖励`);
@@ -612,7 +604,7 @@ export const useExplorationStore = defineStore('exploration', () => {
       });
 
       // 同步通知已注册的 UI 回调（替代 EventBus 跨模块监听）
-      uiCallbacks?.onItemFound?.({ itemId, count: 0, itemName: `未知物品（已转换为 ${gold} 金币 + ${exp} 经验）` });
+      uiCallbacks.value?.onItemFound?.({ itemId, count: 0, itemName: `未知物品（已转换为 ${gold} 金币 + ${exp} 经验）` });
     }
   }
 
@@ -631,7 +623,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     });
 
     // 同步通知已注册的 UI 回调（替代 EventBus 跨模块监听）
-    uiCallbacks?.onTrapTriggered?.({ damage, trapType: '普通陷阱' });
+    uiCallbacks.value?.onTrapTriggered?.({ damage, trapType: '普通陷阱' });
 
     useLogStore().addLogEntry({
       id: generateLogId(),
@@ -645,6 +637,23 @@ export const useExplorationStore = defineStore('exploration', () => {
   /** 处理随机事件触发 */
   async function handleRandomEventTriggered(characterStore: ReturnType<typeof useCharacterStore>): Promise<void> {
     const areaConfig = getAreaConfig();
+
+    // 30% 概率生成多选项事件（需要玩家做出选择）
+    if (Math.random() < 0.3) {
+      const multiEvent = generateMultiOptionEvent(areaConfig.level);
+      // 通知 UI 展示选项弹窗，效果由 applyEventChoice 在玩家选择后应用
+      uiCallbacks.value?.onMultiOptionEvent?.(multiEvent);
+      useLogStore().addLogEntry({
+        id: generateLogId(),
+        timestamp: Date.now(),
+        type: 'info',
+        message: multiEvent.message,
+        icon: multiEvent.icon
+      });
+      return;
+    }
+
+    // 70% 概率：普通随机事件（即时生效）
     const eventResult = generateRandomEvent(areaConfig.level);
 
     // 根据随机事件效果类型调用对应的 Character Store Action
@@ -676,7 +685,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     });
 
     // 同步通知已注册的 UI 回调（替代 EventBus 跨模块监听）
-    uiCallbacks?.onRandomEvent?.({ message: eventResult.message, icon: eventResult.icon });
+    uiCallbacks.value?.onRandomEvent?.({ message: eventResult.message, icon: eventResult.icon });
 
     useLogStore().addLogEntry({
       id: generateLogId(),
@@ -684,6 +693,47 @@ export const useExplorationStore = defineStore('exploration', () => {
       type: 'info',
       message: eventResult.message,
       icon: eventResult.icon
+    });
+  }
+
+  /**
+   * 应用多选项事件中玩家选择的选项效果
+   *
+   * 玩家在多选项事件弹窗中选择某个选项后，UI 调用此方法应用对应效果。
+   *
+   * @param choice - 玩家选择的事件选项
+   */
+  async function applyEventChoice(choice: { label: string; icon?: string; effect: { type: string; amount: number } }): Promise<void> {
+    const characterStore = useCharacterStore();
+    const { type, amount } = choice.effect;
+
+    switch (type) {
+      case 'heal':
+        await characterStore.receiveHeal(amount);
+        break;
+      case 'mana':
+        await characterStore.changeMp(amount);
+        break;
+      case 'exp':
+        await characterStore.gainExp(amount);
+        break;
+      case 'damage':
+        await characterStore.takeDamage(amount);
+        break;
+      case 'mpLoss':
+        await characterStore.changeMp(-amount);
+        break;
+      case 'gold':
+        await characterStore.gainGold(amount);
+        break;
+    }
+
+    useLogStore().addLogEntry({
+      id: generateLogId(),
+      timestamp: Date.now(),
+      type: 'info',
+      message: `选择：${choice.label}`,
+      icon: choice.icon || 'game-icons:choice'
     });
   }
 
@@ -719,19 +769,15 @@ export const useExplorationStore = defineStore('exploration', () => {
 
   // ==================== 跨模块监听（仅 COMBAT_END） ====================
 
-  /** COMBAT_END 监听器注册标记 */
-  let combatListenerRegistered = false;
-
   /** 监听战斗结束事件，处理探索中的战斗结果。
    *
-   * 设计说明：COMBAT_END 使用简单的 eventBus.on 而非分组订阅，
-   * 因为战斗结果监听器只需要一个全局单例，不需要按模块分组清理。
+   * 使用分组订阅（'exploration'），便于在 dispose() 中一次性清理所有监听器，
+   * 避免角色切换或组件重挂载时监听器累积导致的状态错乱（EXP-1 修复）。
    */
   function setupCombatListener(): void {
-    if (combatListenerRegistered) return;
-    combatListenerRegistered = true;
-
-    eventBus.on(GameEvents.COMBAT_END, (data: { result: string }) => {
+    // 先清理旧监听器，确保 init 多次调用时不会累积（EXP-1）
+    eventBus.clearGroup('exploration');
+    eventBus.onGroup('exploration', GameEvents.COMBAT_END, (data: { result: string }) => {
       const isVictory = data.result === 'victory';
       onBattleResult(isVictory);
     });
@@ -767,9 +813,16 @@ export const useExplorationStore = defineStore('exploration', () => {
 
   // ==================== 清洁 ====================
 
-  /** 清理资源（当前 COMBAT_END 监听器使用简单 on，无需显式清理） */
+  /** 清理资源：清除探索模块的所有 EventBus 监听器与 UI 回调，重置挂起状态（EXP-2 修复） */
   function dispose(): void {
-    // 预留：如需完全清理，可调用 eventBus.off
+    // 1. 清理 EventBus 监听器（分组订阅一次性移除，避免监听器累积）
+    eventBus.clearGroup('exploration');
+
+    // 2. 清理 UI 回调
+    uiCallbacks.value = null;
+
+    // 3. 重置挂起的战斗格子坐标
+    pendingBattleCell.value = null;
   }
 
   // ==================== 导出 ====================
@@ -800,6 +853,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     reset,
     exitExploration,
     useCamp,
+    applyEventChoice,
 
     // 生命周期
     dispose,

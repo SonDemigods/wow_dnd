@@ -21,8 +21,24 @@ import type { useCombatLog } from './useCombatLog';
 export function useBossMechanics(
   state: ReturnType<typeof useCombatState>,
   log: ReturnType<typeof useCombatLog>,
-  buildInitiativeOrder: (characterStore: ReturnType<typeof useCharacterStore>) => void,
 ) {
+  /**
+   * 先攻顺序重建回调
+   *
+   * 由 combat store 在 initiative 就位后通过 setInitiativeCallback 注入，
+   * 避免构造期循环依赖（useInitiative 依赖 useBossMechanics，反之亦然）。
+   * 仅在 summon_minions 召唤小怪后用于重建先攻顺序。
+   */
+  let initiativeCallback: ((characterStore: ReturnType<typeof useCharacterStore>) => void) | null = null;
+
+  /**
+   * 注入先攻顺序重建回调（CMB-1 修复：替代 orderBuilder 延迟绑定 hack）
+   * @param cb - buildInitiativeOrder 函数
+   */
+  function setInitiativeCallback(cb: (characterStore: ReturnType<typeof useCharacterStore>) => void): void {
+    initiativeCallback = cb;
+  }
+
   /**
    * 初始化 Boss 专属功能（阶段管理器、出场演出）
    */
@@ -153,7 +169,9 @@ export function useBossMechanics(
               }
               // 所有小怪创建完成后，一次性重建先攻顺序
               if (newMinions.length > 0) {
-                buildInitiativeOrder(characterStore);
+                if (initiativeCallback) {
+                  initiativeCallback(characterStore);
+                }
                 for (const m of newMinions) {
                   log.addCombatLog({
                     actorType: 'system', actorId: 'system', actorName: '系统',
@@ -189,5 +207,5 @@ export function useBossMechanics(
     }
   }
 
-  return { initBossFeatures, applyMechanicEffect, scaleBossEffectValue };
+  return { initBossFeatures, applyMechanicEffect, scaleBossEffectValue, setInitiativeCallback };
 }

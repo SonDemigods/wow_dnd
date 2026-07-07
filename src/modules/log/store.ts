@@ -19,6 +19,12 @@ export const useLogStore = defineStore('log', () => {
   // ==================== 计算属性 ====================
   const logCount = computed(() => logs.value.length);
 
+  /** 每页显示条数（PERF-3：日志分页） */
+  const PAGE_SIZE = 50;
+
+  /** 总页数（向上取整，空列表为 0 页） */
+  const totalPages = computed(() => Math.max(0, Math.ceil(logs.value.length / PAGE_SIZE)));
+
   // ==================== 持久化 ====================
   async function saveToDb(): Promise<void> {
     if (currentCharacterId.value) {
@@ -66,6 +72,18 @@ export const useLogStore = defineStore('log', () => {
     return logs.value.filter(log => log.type === type);
   }
 
+  /**
+   * 分页获取日志（PERF-3：避免大量日志一次性渲染导致性能下降）
+   *
+   * @param page - 页码，从 0 开始
+   * @param pageSize - 每页条数，默认 50
+   * @returns 指定页的日志条目数组
+   */
+  function getPaginatedLogs(page: number, pageSize: number = PAGE_SIZE): LogEntry[] {
+    const start = page * pageSize;
+    return logs.value.slice(start, start + pageSize);
+  }
+
   /** 清空日志并持久化 */
   async function clearLogs(): Promise<void> {
     logs.value = [];
@@ -80,12 +98,14 @@ export const useLogStore = defineStore('log', () => {
     // 状态
     logs,
     logCount,
+    totalPages,
 
     // 动作
     initialize,
     addLogEntry,
     getLogs,
     getLogsByType,
+    getPaginatedLogs,
     clearLogs
   };
 });

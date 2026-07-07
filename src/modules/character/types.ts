@@ -422,6 +422,93 @@ export interface ExpGainResult {
 }
 
 // ============================================================================
+// 职业被动技能接口（Phase 5.2 新增）
+// ============================================================================
+
+/**
+ * 被动技能触发时机枚举
+ *
+ * 决定被动技能在战斗的哪个环节生效，由 `usePassiveSkills` 在对应时机调用。
+ * - `on_combat_start`：战斗开始时触发（如战士怒气掌控获得初始怒气）
+ * - `on_turn_start`：玩家回合开始时触发
+ * - `on_attack`：玩家攻击命中后触发（如战士嗜血吸血）
+ * - `on_damaged`：玩家受伤后触发
+ * - `on_low_hp`：玩家生命值低于 30% 时触发（如战士钢铁意志减伤）
+ * - `on_kill`：击杀敌人后触发
+ * - `passive`：持续生效的属性修正（如潜行者暴击伤害+50%）
+ *
+ * @see PassiveSkill.trigger 被动技能的触发时机字段
+ */
+export type PassiveTrigger =
+  | 'on_combat_start'
+  | 'on_turn_start'
+  | 'on_attack'
+  | 'on_damaged'
+  | 'on_low_hp'
+  | 'on_kill'
+  | 'passive';
+
+/**
+ * 被动技能效果类型枚举
+ *
+ * 描述被动技能对角色产生的具体效果分类，由 `applyPassive` 内部 switch 分发处理。
+ * - `stat_modifier`：属性修正（如暴击伤害+50%、闪避率+10%）
+ * - `resource_gen`：资源生成（如战斗开始获得 30 怒气）
+ * - `damage_reduction`：减伤（如生命低于 30% 时受伤减少 20%）
+ * - `heal`：治疗（如攻击吸血 5%）
+ * - `buff`：附加 buff 效果
+ *
+ * @see PassiveSkill.effect.type 被动技能效果类型字段
+ */
+export type PassiveEffectType =
+  | 'stat_modifier'
+  | 'resource_gen'
+  | 'damage_reduction'
+  | 'heal'
+  | 'buff';
+
+/**
+ * 被动技能效果接口
+ *
+ * @property {PassiveEffectType} type - 效果类型（决定 applyPassive 的处理分支）
+ * @property {'self' | 'enemy'} target - 效果作用目标
+ * @property {string} [stat] - 受影响的属性键（stat_modifier/resource_gen 使用，如 'crit_damage_multiplier'、'rage'）
+ * @property {number} value - 效果数值（百分比时为小数，如 0.2 表示 20%）
+ * @property {string} [condition] - 触发条件表达式（如 'hp < 0.3'）
+ */
+export interface PassiveEffect {
+  type: PassiveEffectType;
+  target: 'self' | 'enemy';
+  stat?: string;
+  value: number;
+  condition?: string;
+}
+
+/**
+ * 职业被动技能接口
+ *
+ * 每个职业拥有 3 个专属被动技能，存储在 `src/data/class_passives.ts`，
+ * 战斗开始时由 `usePassiveSkills` 加载并按触发时机执行。
+ *
+ * @property {string} id - 被动技能唯一标识（如 'warrior_iron_will'）
+ * @property {string} name - 显示名称
+ * @property {string} description - 描述文本（UI 展示）
+ * @property {string} icon - 图标（Iconify 格式）
+ * @property {ClassType} classId - 所属职业 ID
+ * @property {PassiveTrigger} trigger - 触发时机
+ * @property {PassiveEffect} effect - 效果配置
+ */
+export interface PassiveSkill {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  classId: ClassType;
+  trigger: PassiveTrigger;
+  effect: PassiveEffect;
+}
+
+// ============================================================================
 // 存储/持久化接口
 // ============================================================================
 
