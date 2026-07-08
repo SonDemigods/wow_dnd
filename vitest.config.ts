@@ -1,48 +1,27 @@
 /**
- * @fileoverview Vitest 测试框架配置文件
- * @description 配置测试环境、路径别名、覆盖率收集等选项。
- *               复用 Vite 的 Vue 插件和路径别名，确保测试环境与开发环境一致。
- * @module vitest.config
+ * @fileoverview Vitest 测试框架配置
+ * @description 独立于 vite.config.ts 的测试配置，避免构建配置与测试配置相互干扰（CMB-5 修复）。
+ *              运行 `npm test` 时 vitest 自动读取本文件。
  */
 import { defineConfig } from 'vitest/config';
 import vue from '@vitejs/plugin-vue';
-import { fileURLToPath, URL } from 'node:url';
+import path from 'path';
 
 export default defineConfig({
-  /** Vue 3 单文件组件支持 */
   plugins: [vue()],
-
-  /** 模块解析配置：复用 Vite 的 @ 路径别名 */
+  test: {
+    /** jsdom 环境提供 DOM API，便于后续组件测试 */
+    environment: 'jsdom',
+    /** 启用全局 API（describe/it/expect），减少 import 样板代码 */
+    globals: true,
+    /** 测试文件匹配规则：src 下所有 .test.ts / .spec.ts */
+    include: ['src/**/*.{test,spec}.ts'],
+    /** 排除构建产物和 node_modules */
+    exclude: ['node_modules', 'dist', '**/*.vue']
+  },
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': path.resolve(__dirname, './src')
     }
-  },
-
-  /** 测试配置 */
-  test: {
-    /** 测试环境：jsdom 提供 DOM API，支持 Vue 组件挂载 */
-    environment: 'jsdom',
-
-    /** 全局 API：允许直接使用 describe/it/expect 无需导入 */
-    globals: true,
-
-    /** 测试 setup 文件：在每个测试文件执行前运行 */
-    setupFiles: ['./src/__tests__/setup.ts'],
-
-    /** 覆盖率配置 */
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      include: ['src/modules/**/*.ts'],
-      exclude: [
-        'src/modules/**/types.ts',
-        'src/modules/**/index.ts',
-        'src/modules/**/db.ts'
-      ]
-    },
-
-    /** 包含的测试文件路径 */
-    include: ['src/**/__tests__/**/*.test.ts']
   }
 });

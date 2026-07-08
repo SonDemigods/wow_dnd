@@ -48,5 +48,29 @@ export default defineConfig({
         additionalData: `@import "@/styles/variables.less";\n@import "@/styles/mixins.less";`
       }
     }
-  }
+  },
+
+  /**
+   * esbuild 顶层配置
+   *
+   * 生产构建通过 `pure` 选项标记 `console.log` / `console.debug` / `console.info`
+   * 为无副作用调用，esbuild minify 阶段会自动移除这些调用，
+   * 减少 88+ 处调试日志在生产环境的输出（见 DBG-1 修复）。
+   * 保留 `console.error` / `console.warn` 用于错误上报。
+   *
+   * 注意：Vite 在生产构建（`vite build`）时启用 minify，开发模式（`vite dev`）不生效，
+   * 因此开发环境仍保留所有日志输出。
+   */
+  esbuild: {
+    pure: ['console.log', 'console.debug', 'console.info'],
+    drop: ['debugger'],
+  },
+
+  /**
+   * 构建配置
+   */
+  build: {
+    minify: 'esbuild',
+    target: 'es2020',
+  },
 })
