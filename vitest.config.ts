@@ -27,5 +27,17 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src')
     }
+  },
+  /**
+   * CSS 预处理器配置（与 vite.config.ts 保持一致）
+   * 自动注入全局 less 变量与 mixin，使组件测试中 <style lang="less"> 可正确编译。
+   * 缺失此配置会导致所有含 less 变量的组件渲染失败。
+   */
+  css: {
+    preprocessorOptions: {
+      less: {
+        additionalData: `@import "@/styles/variables.less";\n@import "@/styles/mixins.less";`
+      }
+    }
   }
 });
