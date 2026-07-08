@@ -206,8 +206,9 @@ export const useCombatStore = defineStore('combat', () => {
   // initiative 已就位，注入先攻顺序重建回调（替代 orderBuilder 延迟绑定 hack，CMB-1 修复）
   boss.setInitiativeCallback(initiative.buildInitiativeOrder);
 
-  // 6. 玩家行动层（注入 endCombat，消除 (state as any) 依赖）
-  const player = usePlayerAction(state, log, initiative, endCombat);
+  // 6. 玩家行动层（注入 endCombat 和 passive，消除 (state as any) 依赖）
+  // BIZ-5：注入 passive 以便在伤害计算中应用 stat_modifier 和 buff 效果
+  const player = usePlayerAction(state, log, initiative, endCombat, passive);
 
   // ==================== Action：开始战斗 ====================
 
@@ -352,14 +353,12 @@ export const useCombatStore = defineStore('combat', () => {
 
   /**
    * 检查技能资源是否足够（MP 仍由 skillsStore.castSkill 内部检查，此方法仅检查专属资源）
-   * @param skill - 技能数据（预留 resourceType/resourceCost 字段扩展）
+   * @param skill - 技能数据（含可选 resourceType/resourceCost 字段）
    * @returns 是否有足够资源施放
    */
   function canCastSkill(skill: Skill): boolean {
-    // 当前 Skill 类型尚未包含 resourceType/resourceCost 字段，预留扩展点
-    // 一旦 Skill 接口扩展，此处自动生效
-    const resourceType = (skill as unknown as { resourceType?: string }).resourceType;
-    const resourceCost = (skill as unknown as { resourceCost?: number }).resourceCost;
+    const resourceType = skill.resourceType;
+    const resourceCost = skill.resourceCost;
     if (!resourceType || !resourceCost) return true;
     for (const sys of state.resourceSystems.value) {
       if (resourceType === sys.type) {
@@ -375,8 +374,8 @@ export const useCombatStore = defineStore('combat', () => {
    * @returns 是否消耗成功
    */
   function consumeSkillResource(skill: Skill): boolean {
-    const resourceType = (skill as unknown as { resourceType?: string }).resourceType;
-    const resourceCost = (skill as unknown as { resourceCost?: number }).resourceCost;
+    const resourceType = skill.resourceType;
+    const resourceCost = skill.resourceCost;
     if (!resourceType || !resourceCost) return true;
     for (const sys of state.resourceSystems.value) {
       if (resourceType === sys.type) {

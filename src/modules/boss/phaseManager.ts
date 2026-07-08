@@ -56,11 +56,14 @@ export class BossPhaseManager {
    * 根据 HP 百分比查找应处于的阶段索引
    *
    * 从高索引向低索引遍历（高阈值优先），找到第一个满足 hpPercent ≤ hpThreshold 的阶段。
+   * 跳过 hpThreshold === 0 的基础阶段（BIZ-23 修复：防止 BOSS 临死时切回基础阶段）。
    * 若 HP 高于所有阈值，返回最后一个阶段索引（基础阶段）。
    * 若 phases 为空，返回 null。
    */
   private findPhaseIndex(phases: BossPhase[], hpPercent: number): number | null {
     for (let i = phases.length - 1; i >= 0; i--) {
+      // 跳过基础阶段（hpThreshold === 0），防止 BOSS HP=0 时切回基础阶段而非濒死挣扎阶段
+      if (phases[i].hpThreshold === 0) continue;
       if (hpPercent <= phases[i].hpThreshold) {
         return i;
       }

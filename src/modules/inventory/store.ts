@@ -24,7 +24,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Item, InventoryItem, SortField, SortOrder, ItemFilters, ItemType, ItemRarity } from './types';
 import { inventoryDbService } from './db';
-import { equipmentDbService } from '../equipment/db';
+import { crossModuleQuery } from '@/services/CrossModuleQuery';
 import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
 import { useCharacterStore } from '../character/store';
@@ -147,8 +147,8 @@ export const useInventoryStore = defineStore('inventory', () => {
     const templates = await inventoryDbService.getAllItemTemplates();
     templates.forEach(item => map.set(item.id, item));
 
-    // 加载装备模板并转换为物品格式
-    const equipmentTemplates = await equipmentDbService.getAllEquipmentTemplates();
+    // 加载装备模板并转换为物品格式（ARCH-2 修复：通过 crossModuleQuery 聚合层访问）
+    const equipmentTemplates = await crossModuleQuery.getAllEquipmentTemplates();
     equipmentTemplates.forEach(equip => {
       if (!map.has(equip.id)) {
         // 装备模板字段映射到 Item 接口

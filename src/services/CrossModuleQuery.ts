@@ -7,11 +7,13 @@
 import { mapDbService } from '@/modules/map/db';
 import { questDbService } from '@/modules/quest/db';
 import { shopDbService } from '@/modules/shop/db';
+import { equipmentDbService } from '@/modules/equipment/db';
 import { itemTemplateCache } from '@/services/ItemTemplateCache';
 import type { LocationData } from '@/modules/map/types';
 import type { Item } from '@/modules/inventory/types';
 import type { QuestDefinition } from '@/modules/quest/types';
 import type { ShopConfig } from '@/modules/shop/types';
+import type { EquipmentItem } from '@/modules/equipment/types';
 
 /**
  * 跨模块查询服务
@@ -39,6 +41,11 @@ export class CrossModuleQueryService {
   /** 获取所有商店配置 */
   async getAllShopConfigs(): Promise<ShopConfig[]> {
     return await shopDbService.getAllShopConfigs();
+  }
+
+  /** 获取所有装备模板（ARCH-2 修复：通过聚合层隔离 inventory 对 equipment DbService 的直接依赖） */
+  async getAllEquipmentTemplates(): Promise<EquipmentItem[]> {
+    return await equipmentDbService.getAllEquipmentTemplates();
   }
 }
 

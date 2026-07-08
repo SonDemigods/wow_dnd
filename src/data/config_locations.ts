@@ -521,7 +521,7 @@ export const LOCATIONS: LocationData[] = [
     icon: 'game-icons:desert',
     description: '被时间与烈火共同雕刻的荒芜台地，嶙峋的火山岩如巨兽遗骨般散落大地。矮人的先祖之地先祖殿堂深埋于红色岩层之下，大地之子与穴居人在黑暗的隧道中争夺着远古的秘密。',
     continent: 'eastern_kingdoms',
-    enemies: ['elemental', 'ogre', 'dwarf', 'spider'],
+    enemies: ['elemental', 'ogre', 'dark_iron_dwarf', 'spider'],
     bosses: ['dragon_whelp'],
     levelRange: [11, 15],
     color: '#a0522d',

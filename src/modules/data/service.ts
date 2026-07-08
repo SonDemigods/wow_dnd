@@ -16,8 +16,6 @@ import type { ItemStorage } from '../inventory/types';
 import type { EquipmentTemplateStorage } from '../equipment/types';
 import type { EnemyStorage } from '../enemy/types';
 import type { BossStorage } from '../boss/types';
-import { bossDbService } from '../boss/db';
-import type { BossTemplate } from '../boss/types';
 import type { LocationData, MapStateStorage } from '../map/types';
 import type { ShopConfig, ShopItemsStorage } from '../shop/types';
 import type { SkillTemplateStorage } from '../skill/types';
@@ -279,14 +277,36 @@ export class DataInitializer {
 
   /**
    * 初始化 Boss 怪物数据
-   * 注意：使用 bossDbService.saveBossTemplate() 而非直接 put，
-   * 因为该方法会进行字段转换（如 undefined→null、isBoss 固定为 1 等），
-   * 确保数据格式与运行时保存逻辑一致。
+   * ARCH-1 修复：移除对 boss 模块 DbService 的运行时依赖，内联字段转换逻辑，
+   * 使用 bulkPut 批量写入（同时优化 PERF-1 的 N+1 写入问题）。
+   * 字段转换与 boss/db.ts 的 saveBossTemplate 保持一致。
    */
   private async initBosses(): Promise<void> {
-    for (const boss of BOSSES) {
-      await bossDbService.saveBossTemplate(boss as unknown as BossTemplate);
-    }
+    if (BOSSES.length === 0) return;
+    const bossData: BossStorage[] = BOSSES.map(boss => ({
+      id: boss.id,
+      name: boss.name,
+      icon: boss.icon,
+      maxHp: boss.maxHp,
+      damage: boss.damage,
+      xp: boss.xp,
+      gold: boss.gold,
+      dangerLevel: boss.dangerLevel,
+      isBoss: 1,
+      // undefined → null：确保 IndexedDB 索引字段存在
+      physicalAttack: boss.physicalAttack ?? null,
+      physicalDefense: boss.physicalDefense ?? null,
+      magicAttack: boss.magicAttack ?? null,
+      magicDefense: boss.magicDefense ?? null,
+      critChance: boss.critChance ?? null,
+      dodgeChance: boss.dodgeChance ?? null,
+      // undefined 直接保留（这些字段不参与索引）
+      skillPool: boss.skillPool || undefined,
+      aiStrategy: boss.aiStrategy || undefined,
+      phases: boss.phases || undefined,
+      intro: boss.intro || undefined
+    }));
+    await db.config_bosses.bulkPut(bossData);
   }
 
   /**

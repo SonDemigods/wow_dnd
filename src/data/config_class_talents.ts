@@ -1,6 +1,6 @@
 /**
  * @fileoverview 职业天赋树数据（Phase 6.2）
- * @description 为 12 个核心职业各定义 3 系天赋树，每系含 3 层天赋节点。
+ * @description 为 13 个核心职业各定义 3 系天赋树，每系含 3 层天赋节点。
  *              玩家通过分配天赋点数激活属性加成和特殊效果。
  *              天赋效果由 talents/service.ts 计算并应用到角色属性。
  * @module data
@@ -999,6 +999,88 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
         icon: 'game-icons:sword-spin', tier: 3, maxRank: 3,
         requires: ['dh_fel_t2'],
         effects: [{ type: 'crit_bonus', valuePerRank: 0.03 }]
+      }
+    ]
+  },
+
+  // ============================================================
+  // 唤魔者：毁灭 / 护佑 / 增辉
+  // ============================================================
+  {
+    id: 'evoker_devastation',
+    name: '毁灭',
+    classId: 'evoker',
+    icon: 'game-icons:dragon-head',
+    description: '驾驭龙族之力，释放毁灭性魔法',
+    talents: [
+      {
+        id: 'evoker_dev_t1', name: '龙族智慧', description: '每级提升 3 点智力',
+        icon: 'game-icons:brain', tier: 1, maxRank: 3,
+        effects: [{ type: 'stat_bonus', stat: 'int', valuePerRank: 3 }]
+      },
+      {
+        id: 'evoker_dev_t2', name: '毁灭吐息', description: '每级提升 5% 魔法伤害',
+        icon: 'game-icons:fire-breath', tier: 2, maxRank: 3,
+        requires: ['evoker_dev_t1'],
+        effects: [{ type: 'damage_multiplier', valuePerRank: 0.05, description: '魔法伤害提升' }]
+      },
+      {
+        id: 'evoker_dev_t3', name: '永恒之眼', description: '每级提升 3% 暴击率',
+        icon: 'game-icons:eye', tier: 3, maxRank: 3,
+        requires: ['evoker_dev_t2'],
+        effects: [{ type: 'crit_bonus', valuePerRank: 0.03, description: '暴击率提升' }]
+      }
+    ]
+  },
+  {
+    id: 'evoker_preservation',
+    name: '护佑',
+    classId: 'evoker',
+    icon: 'game-icons:shield',
+    description: '守护盟友，以龙族生命力为盾',
+    talents: [
+      {
+        id: 'evoker_pres_t1', name: '龙鳞护体', description: '每级提升 3 点感知',
+        icon: 'game-icons:dragon-shield', tier: 1, maxRank: 3,
+        effects: [{ type: 'stat_bonus', stat: 'wis', valuePerRank: 3 }]
+      },
+      {
+        id: 'evoker_pres_t2', name: '巨龙坚韧', description: '每级减免 3% 受到的伤害',
+        icon: 'game-icons:stone-shield', tier: 2, maxRank: 3,
+        requires: ['evoker_pres_t1'],
+        effects: [{ type: 'damage_reduction', valuePerRank: 0.03 }]
+      },
+      {
+        id: 'evoker_pres_t3', name: '生命赐福', description: '每级提升 5% 生命上限',
+        icon: 'game-icons:health-normal', tier: 3, maxRank: 3,
+        requires: ['evoker_pres_t2'],
+        effects: [{ type: 'stat_bonus', stat: 'hp_max', valuePerRank: 0.05 }]
+      }
+    ]
+  },
+  {
+    id: 'evoker_augmentation',
+    name: '增辉',
+    classId: 'evoker',
+    icon: 'game-icons:sparkles',
+    description: '增幅盟友之力，强化团队战力',
+    talents: [
+      {
+        id: 'evoker_aug_t1', name: '奥术共鸣', description: '每级提升 3 点智力',
+        icon: 'game-icons:crystal-wand', tier: 1, maxRank: 3,
+        effects: [{ type: 'stat_bonus', stat: 'int', valuePerRank: 3 }]
+      },
+      {
+        id: 'evoker_aug_t2', name: '能量灌注', description: '每级提升 5% 魔法伤害',
+        icon: 'game-icons:lightning', tier: 2, maxRank: 3,
+        requires: ['evoker_aug_t1'],
+        effects: [{ type: 'damage_multiplier', valuePerRank: 0.05, description: '魔法伤害提升' }]
+      },
+      {
+        id: 'evoker_aug_t3', name: '致命共鸣', description: '每级提升 5% 暴击伤害',
+        icon: 'game-icons:targeted', tier: 3, maxRank: 3,
+        requires: ['evoker_aug_t2'],
+        effects: [{ type: 'crit_bonus', valuePerRank: 0.05, description: '暴击伤害提升' }]
       }
     ]
   }

@@ -78,7 +78,7 @@ export function useInitiative(
 
     // 所有敌人速度
     for (const e of state.enemies.value) {
-      const enemySpeed = e.stats?.dex || e.dodgeChance || 5;
+      const enemySpeed = e.stats?.dex ?? 5;
       units.push({ id: e.id, speed: enemySpeed });
     }
 
@@ -226,6 +226,13 @@ export function useInitiative(
     // ===== 阶段 3：统一检查死亡 =====
     if (characterStore.hp <= 0) {
       endCombat('defeat');
+      log.saveLogs();
+      return;
+    }
+    // 检查敌人是否全部死亡（DOT 杀敌触发胜利判定，BIZ-4 修复）
+    const allEnemiesDead = state.enemies.value.every(e => e.hp <= 0);
+    if (allEnemiesDead && state.enemies.value.length > 0) {
+      endCombat('victory');
       log.saveLogs();
       return;
     }

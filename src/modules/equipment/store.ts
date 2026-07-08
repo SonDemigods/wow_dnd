@@ -158,7 +158,71 @@ export const useEquipmentStore = defineStore('equipment', () => {
     return getActiveSetBonuses(equipment.value);
   });
 
+  /**
+   * 已应用的套装奖励标记列表（BIZ-13）
+   *
+   * 跟踪当前已应用到角色属性上的套装奖励，用于装备变化时 diff 计算：
+   * 移除不再激活的加成，应用新激活的加成。
+   */
+  const appliedSetBonuses = ref<Array<{ setId: string; requiredPieces: number; stat: keyof Stats; value: number }>>([]);
+
   // ==================== 辅助方法 ====================
+
+  /**
+   * 重新应用套装奖励（BIZ-13）
+   *
+   * 对比当前激活的套装奖励与已应用的套装奖励：
+   * 1. 移除不再激活的套装属性加成（调用 characterStore.removeBonus）
+   * 2. 应用新激活的套装属性加成（调用 characterStore.applyBonus）
+   * 3. 更新 appliedSetBonuses 列表
+   *
+   * 在 equipItem / unequipItem / initialize / reset 中调用，
+   * 确保装备变化后套装奖励正确同步到角色属性。
+   */
+  async function reapplySetBonuses(): Promise<void> {
+    const characterStore = useCharacterStore();
+    const currentActive = getActiveSetBonuses(equipment.value);
+
+    // 唯一键：setId + requiredPieces + stat + value
+    const buildKey = (setId: string, pieces: number, stat: string, value: number) =>
+      `${setId}:${pieces}:${stat}:${value}`;
+
+    const currentKeys = new Set(
+      currentActive
+        .filter(b => b.bonus.bonus.stat && b.bonus.bonus.value)
+        .map(b => buildKey(b.setId, b.bonus.requiredPieces, b.bonus.bonus.stat!, b.bonus.bonus.value!))
+    );
+    const appliedKeys = new Set(
+      appliedSetBonuses.value.map(b => buildKey(b.setId, b.requiredPieces, b.stat, b.value))
+    );
+
+    // 移除不再激活的加成
+    for (const b of appliedSetBonuses.value) {
+      if (!currentKeys.has(buildKey(b.setId, b.requiredPieces, b.stat, b.value))) {
+        await characterStore.removeBonus({ [b.stat]: b.value } as Partial<Stats>);
+      }
+    }
+
+    // 应用新激活的加成
+    for (const b of currentActive) {
+      const bonus = b.bonus.bonus;
+      if (!bonus.stat || !bonus.value) continue;
+      const key = buildKey(b.setId, b.bonus.requiredPieces, bonus.stat, bonus.value);
+      if (!appliedKeys.has(key)) {
+        await characterStore.applyBonus({ [bonus.stat]: bonus.value } as Partial<Stats>);
+      }
+    }
+
+    // 更新已应用列表
+    appliedSetBonuses.value = currentActive
+      .filter(b => b.bonus.bonus.stat && b.bonus.bonus.value)
+      .map(b => ({
+        setId: b.setId,
+        requiredPieces: b.bonus.requiredPieces,
+        stat: b.bonus.bonus.stat as keyof Stats,
+        value: b.bonus.bonus.value!
+      }));
+  }
 
   /**
    * 持久化装备数据到数据库
@@ -217,6 +281,9 @@ export const useEquipmentStore = defineStore('equipment', () => {
       }
     }
     equipment.value = resolved;
+
+    // BIZ-13：初始化后应用套装效果
+    await reapplySetBonuses();
 
     isLoading.value = false;
   }
@@ -339,6 +406,9 @@ export const useEquipmentStore = defineStore('equipment', () => {
       await characterStore.applyBonus(newBonus);
     }
 
+    // 6.5 BIZ-13：重新应用套装效果（装备变化可能导致套装激活/失效）
+    await reapplySetBonuses();
+
     // 7. 持久化到数据库
     await persist();
 
@@ -370,6 +440,9 @@ export const useEquipmentStore = defineStore('equipment', () => {
 
     const equippedItem = await doUnequip(slot);
     if (!equippedItem) return null;
+
+    // BIZ-13：重新应用套装效果（卸下装备可能导致套装失效）
+    await reapplySetBonuses();
 
     // 持久化到数据库
     await persist();
@@ -499,6 +572,12 @@ export const useEquipmentStore = defineStore('equipment', () => {
 
     // 持久化清空后的装备状态
     equipment.value = getDefaultEquipment();
+
+    // BIZ-13：移除所有套装效果（equipment 已清空，所有套装不再激活）
+    if (charId) {
+      await reapplySetBonuses();
+    }
+
     if (charId) {
       const emptyIdMap = createEmptySlotMap<string | null>(null);
       await equipmentDbService.saveEquipment(charId, emptyIdMap);

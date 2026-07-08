@@ -21,10 +21,21 @@ import {
   processDamagePipeline,
   type Effect,
   type EffectType,
+  type DamageType,
 } from '../effects';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
 import type { usePassiveSkills } from './usePassiveSkills';
+
+/**
+ * 根据敌人技能 type 字段映射到伤害类型
+ * @param skillType - 技能类型（physical_damage/magic_damage 等），未提供时默认物理
+ * @returns 伤害类型：魔法技能返回 'magical'，其他返回 'physical'
+ */
+function mapSkillTypeToDamageType(skillType?: string): DamageType {
+  if (skillType === 'magic_damage') return 'magical';
+  return 'physical';
+}
 
 export function useEnemyAction(
   state: ReturnType<typeof useCombatState>,
@@ -56,12 +67,14 @@ export function useEnemyAction(
   /**
    * 对玩家造成敌人伤害（公共逻辑：管线计算 → 扣血 → 事件 → 日志 → 荆棘）
    * 使用 processDamagePipeline 统一处理伤害、护盾和荆棘反伤。
+   * @param damageType - 伤害类型（默认 'physical'，魔法技能应传入 'magical'）
    * @returns actualDamage 和 shieldAbsorbed，供调用方补充返回值
    */
   function applyEnemyDamageToPlayer(
     e: EnemyInstance,
     rawDamage: number,
-    skill?: { id: string; name: string }
+    skill?: { id: string; name: string },
+    damageType: DamageType = 'physical'
   ): { actualDamage: number; shieldAbsorbed: number } {
     const characterStore = useCharacterStore();
     const attackerCtx = createEnemyEffectContext(e);
@@ -73,15 +86,21 @@ export function useEnemyAction(
       playerEffects.value,
       attackerCtx,
       defenderCtx,
-      'physical',
+      damageType,
       rawDamage
     );
 
     const actualDamage = pipeResult.finalDamage;
     const shieldAbsorbed = pipeResult.absorbed;
 
+    // BIZ-5：应用被动减伤效果（如战士钢铁意志：低血减伤 20%）
+    const damageReduction = passive?.getDamageReduction() || 0;
+    const finalDamage = damageReduction > 0
+      ? Math.floor(actualDamage * (1 - damageReduction))
+      : actualDamage;
+
     // 扣血
-    characterStore.takeDamage(actualDamage);
+    characterStore.takeDamage(finalDamage);
 
     // 玩家受伤时触发资源系统 onDamaged 钩子（如战士怒气获取）
     if (actualDamage > 0) {
@@ -108,12 +127,12 @@ export function useEnemyAction(
       targetId: 'player',
       targetName: characterStore.name,
       ...(skill ? { skillId: skill.id, skillName: skill.name } : {}),
-      damage: actualDamage,
+      damage: finalDamage,
       isCrit: false,
       isDodge: false,
       message: shieldAbsorbed > 0
-        ? `${e.name}${skill ? ' 使用 ' + skill.name : ''}对 ${characterStore.name} 造成 ${actualDamage} 点伤害（护盾吸收 ${shieldAbsorbed}）！`
-        : `${e.name}${skill ? ' 使用 ' + skill.name : ''}对 ${characterStore.name} 造成 ${actualDamage} 点伤害！`
+        ? `${e.name}${skill ? ' 使用 ' + skill.name : ''}对 ${characterStore.name} 造成 ${finalDamage} 点伤害（护盾吸收 ${shieldAbsorbed}）！`
+        : `${e.name}${skill ? ' 使用 ' + skill.name : ''}对 ${characterStore.name} 造成 ${finalDamage} 点伤害！`
     });
 
     // 荆棘反伤（管线已计算）
@@ -135,7 +154,7 @@ export function useEnemyAction(
       });
     }
 
-    return { actualDamage, shieldAbsorbed };
+    return { actualDamage: finalDamage, shieldAbsorbed };
   }
 
   /**
@@ -194,10 +213,10 @@ export function useEnemyAction(
   /**
    * 敌人使用技能攻击（内部方法）
    * @param damage - 技能伤害值
-   * @param skill - 技能信息
+   * @param skill - 技能信息（含可选 type 字段，用于决定伤害类型）
    * @param e - 执行攻击的敌人
    */
-  function enemyAttackWithSkill(damage: number, skill: { id: string; name: string }, e: EnemyInstance): CombatActionResult {
+  function enemyAttackWithSkill(damage: number, skill: { id: string; name: string; type?: string }, e: EnemyInstance): CombatActionResult {
     const characterStore = useCharacterStore();
 
     // 检查玩家闪避
@@ -235,7 +254,9 @@ export function useEnemyAction(
     }
 
     // 通过管线计算实际伤害（管线统一处理攻防修正、护盾和荆棘）
-    const { actualDamage } = applyEnemyDamageToPlayer(e, damage, skill);
+    // 根据技能类型动态决定伤害类型（魔法技能走魔法防御减免）
+    const damageType = mapSkillTypeToDamageType(skill.type);
+    const { actualDamage } = applyEnemyDamageToPlayer(e, damage, skill, damageType);
 
     return {
       success: true,
@@ -429,7 +450,12 @@ export function useEnemyAction(
           } else {
             // 敌人使用攻击技能
             const skillData = availableSkills.find(s => s.id === decision.skillId);
-            return enemyAttackWithSkill(result.damage, { id: decision.skillId, name: skillData?.name || decision.skillId }, e);
+            const fullSkill = useSkillStore().getSkill(decision.skillId);
+            return enemyAttackWithSkill(
+              result.damage,
+              { id: decision.skillId, name: skillData?.name || decision.skillId, type: fullSkill?.type },
+              e
+            );
           }
         }
         break;

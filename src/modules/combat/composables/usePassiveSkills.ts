@@ -206,19 +206,12 @@ export function usePassiveSkills(
   }
 
   /**
-   * 应用属性修正效果（预留扩展点）
+   * 应用属性修正效果（BIZ-5）
    *
-   * 当前仅记录日志。实际属性修正需要战斗计算管线支持：
-   * - 在 calculatePhysicalAttack / calculateMagicAttack 等函数中
-   *   查询已激活的 stat_modifier 被动并叠加
-   * - 或在 EffectContext 中注入 passive_modifiers 字段
-   *
-   * 待扩展点：在 useCombatState 中添加 `activePassiveModifiers` 状态，
-   * 战斗计算函数读取该状态应用修正。
+   * stat_modifier 效果通过 getStatModifiers() 方法暴露给战斗计算管线，
+   * 在伤害计算和暴击判定时读取并应用。此处仅记录日志。
    */
   function applyStatModifier(effect: PassiveEffect): void {
-    // 预留扩展点：实际属性修正逻辑待战斗计算管线扩展后实现
-    // 当前通过日志记录被动已触发，便于调试和验证
     if (effect.stat) {
       addCombatLog({
         actorType: 'system',
@@ -233,14 +226,10 @@ export function usePassiveSkills(
   }
 
   /**
-   * 应用减伤效果（预留扩展点）
+   * 应用减伤效果（BIZ-5）
    *
-   * 当前仅记录日志。实际减伤需要 processDamagePipeline 扩展：
-   * - 在伤害管线中查询玩家已激活的 damage_reduction 被动
-   * - 满足条件（如 hp < 0.3）时按 value 百分比减少最终伤害
-   *
-   * 待扩展点：在 useEnemyAction.applyEnemyDamageToPlayer 中
-   * 调用 passive.getDamageReductionMultiplier() 获取减伤系数。
+   * damage_reduction 效果通过 getDamageReduction() 方法暴露给伤害管线，
+   * 在 applyEnemyDamageToPlayer 中读取并应用。此处仅记录日志。
    */
   function applyDamageReduction(effect: PassiveEffect): void {
     addCombatLog({
@@ -255,13 +244,10 @@ export function usePassiveSkills(
   }
 
   /**
-   * 应用 buff 效果（预留扩展点）
+   * 应用 buff 效果（BIZ-5）
    *
-   * 当前仅记录日志。实际 buff 需要效果系统扩展：
-   * - 在 EffectRegistry 中注册被动产生的 buff 效果
-   * - 战斗计算时查询玩家的 buff 列表
-   *
-   * 待扩展点：在 effectRegistry 中添加 addPassiveBuff 方法。
+   * buff 效果通过 applyBuffOnAttack() 方法在玩家攻击时对敌人施加 DOT，
+   * 此处仅记录日志。
    */
   function applyBuff(effect: PassiveEffect): void {
     addCombatLog({
@@ -275,6 +261,73 @@ export function usePassiveSkills(
     });
   }
 
+  // ==================== 战斗计算接入方法（BIZ-5） ====================
+
+  /**
+   * 评估条件表达式
+   *
+   * 支持简单格式如 'hp < 0.3'，比较角色当前 HP 百分比与阈值。
+   *
+   * @param condition - 条件表达式字符串
+   * @returns 是否满足条件
+   */
+  function evaluateCondition(condition: string): boolean {
+    const match = condition.match(/(\w+)\s*([<>=!]+)\s*([\d.]+)/);
+    if (!match) return true;
+    const [, stat, op, valueStr] = match;
+    const value = parseFloat(valueStr);
+    let currentValue = 0;
+    if (stat === 'hp') {
+      currentValue = characterStore.hp / characterStore.maxHp;
+    }
+    switch (op) {
+      case '<': return currentValue < value;
+      case '<=': return currentValue <= value;
+      case '>': return currentValue > value;
+      case '>=': return currentValue >= value;
+      case '==': return currentValue === value;
+      case '!=': return currentValue !== value;
+      default: return true;
+    }
+  }
+
+  /**
+   * 获取当前应激活的减伤比例（BIZ-5）
+   *
+   * 检查所有 damage_reduction 类型的被动，满足条件时返回减伤比例。
+   * 多个减伤效果取最大值（不叠加）。
+   *
+   * @returns 减伤比例（0-1，如 0.2 表示减伤 20%）
+   */
+  function getDamageReduction(): number {
+    let maxReduction = 0;
+    for (const p of passives) {
+      if (p.effect.type !== 'damage_reduction') continue;
+      if (p.effect.condition && !evaluateCondition(p.effect.condition)) continue;
+      maxReduction = Math.max(maxReduction, p.effect.value);
+    }
+    return maxReduction;
+  }
+
+  /**
+   * 获取当前激活的属性修正列表（BIZ-5）
+   *
+   * 返回所有满足条件的 stat_modifier 被动效果，供伤害计算和暴击判定使用。
+   *
+   * @returns 属性修正数组（含 stat 和 value）
+   */
+  function getStatModifiers(): Array<{ stat: string; value: number }> {
+    const result: Array<{ stat: string; value: number }> = [];
+    for (const p of passives) {
+      if (p.effect.type !== 'stat_modifier') continue;
+      if (p.effect.condition && !evaluateCondition(p.effect.condition)) continue;
+      if (p.effect.stat) {
+        result.push({ stat: p.effect.stat, value: p.effect.value });
+      }
+    }
+    return result;
+  }
+
   return {
     loadPassives,
     onCombatStart,
@@ -284,5 +337,9 @@ export function usePassiveSkills(
     onKill,
     /** 获取当前已加载的被动列表（供 UI 或调试使用） */
     getPassives: () => passives,
+    /** BIZ-5：获取当前减伤比例（供 applyEnemyDamageToPlayer 调用） */
+    getDamageReduction,
+    /** BIZ-5：获取当前激活的属性修正列表（供伤害计算和暴击判定使用） */
+    getStatModifiers,
   };
 }

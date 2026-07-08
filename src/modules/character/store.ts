@@ -30,7 +30,6 @@ import {
   computeInitialStats,
   recalculateHpMp,
   computeResurrection,
-  isDead,
   isClassFactionCompatible
 } from './service';
 import { getExpForLevel } from '@/utils/calculations';
@@ -290,16 +289,12 @@ export const useCharacterStore = defineStore('character', () => {
 
   // ==================== Action：生命值变更 ====================
 
-  /** 受到伤害（供其他模块直接调用） */
+  /** 受到伤害（供其他模块直接调用，BIZ-9：仅扣血，死亡处理由调用方触发） */
   async function takeDamage(amount: number): Promise<void> {
     if (!character.value || amount <= 0) return;
     const updated = applyHpChange(character.value, -amount);
     character.value = updated;
     await persistCharacter();
-
-    if (isDead(updated)) {
-      await handleDeath();
-    }
   }
 
   /** 获得生命恢复（供其他模块直接调用） */

@@ -428,7 +428,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 12
   },
   {
-    id: 'dwarf',
+    id: 'dark_iron_dwarf',
     name: '暗炉矮人',
     icon: 'game-icons:dwarf-face',
     maxHp: 65,
@@ -442,5 +442,37 @@ export const MOBS: EnemyData[] = [
     magicDefense: 8,
     critChance: 7,
     dodgeChance: 4
+  },
+  {
+    id: 'dragon',
+    name: '幼龙',
+    icon: 'game-icons:dragon-head',
+    maxHp: 80,
+    damage: [12, 20],
+    xp: 60,
+    gold: 30,
+    dangerLevel: '困难',
+    physicalAttack: 22,
+    physicalDefense: 10,
+    magicAttack: 15,
+    magicDefense: 10,
+    critChance: 8,
+    dodgeChance: 5
+  },
+  {
+    id: 'imp',
+    name: '小恶魔',
+    icon: 'game-icons:imp',
+    maxHp: 45,
+    damage: [8, 14],
+    xp: 40,
+    gold: 18,
+    dangerLevel: '普通',
+    physicalAttack: 10,
+    physicalDefense: 5,
+    magicAttack: 18,
+    magicDefense: 8,
+    critChance: 10,
+    dodgeChance: 8
   }
 ];

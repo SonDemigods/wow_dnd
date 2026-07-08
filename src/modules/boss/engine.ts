@@ -42,6 +42,8 @@ interface BossRuntimeState {
   canRevive?: boolean;
   /** 反击姿态标记（counter_stance 机制设置，被攻击时反击） */
   counterStance?: boolean;
+  /** 狂暴已激活标记（enrage 机制设置，防止多次触发无限叠加攻击力） */
+  enraged?: boolean;
 }
 
 /**
@@ -86,10 +88,12 @@ type StatAndDefenseMechanic =
   | 'invulnerable' | 'revive' | 'counter_stance';
 
 const statAndDefenseExecutors: Record<StatAndDefenseMechanic, MechanicExecutor> = {
-  /** 狂暴：按 attackMultiplier 倍率提升物理攻击力（默认 1.5 倍） */
+  /** 狂暴：按 attackMultiplier 倍率提升物理攻击力（默认 1.5 倍，仅触发一次） */
   enrage: (boss, params) => {
+    if (boss.enraged) return;
     const multiplier = params?.attackMultiplier || 1.5;
     boss.physicalAttack = Math.round((boss.physicalAttack || 10) * multiplier);
+    boss.enraged = true;
   },
   /** 伤害护盾：叠加 shieldAmount 数值的护盾（默认 30） */
   damage_shield: (boss, params) => {
