@@ -19,8 +19,8 @@ import {
   createEmptyContainer,
   clearContainer,
   generateEffectId
-} from './container';
-import type { Effect, EffectContainer, EffectType } from './types';
+} from '@/modules/combat/effects/container';
+import type { Effect, EffectContainer, EffectType } from '@/modules/combat/effects/types';
 
 /** 构造测试用 Effect 实例 */
 function makeEffect(
@@ -99,7 +99,7 @@ describe('EffectContainer 叠加策略', () => {
       expect(burns[0].remainingTurns).toBe(5);
     });
 
-    it('数值与持续时间各自独立取最大（数值取大的，持续时间也取大的）', () => {
+    it('数值与持续时间各自独立取最大', () => {
       addEffectToContainer(container, makeEffect('burn', 30, 2, 'max'));
       addEffectToContainer(container, makeEffect('burn', 10, 5, 'max'));
 
@@ -118,24 +118,22 @@ describe('EffectContainer 叠加策略', () => {
 
       const ups = container.effects.filter(e => e.type === 'attack_up');
       expect(ups).toHaveLength(3);
-      // 各实例保持独立数值
       expect(ups.map(e => e.value).sort((a, b) => a - b)).toEqual([5, 10, 15]);
     });
 
-    it('各实例持续时间独立衰减（不相互影响）', () => {
+    it('各实例持续时间独立衰减', () => {
       addEffectToContainer(container, makeEffect('regen', 10, 5, 'additive'));
       addEffectToContainer(container, makeEffect('regen', 8, 2, 'additive'));
 
       const regens = container.effects.filter(e => e.type === 'regen');
       expect(regens).toHaveLength(2);
-      // 持续时间保持各自原值，不取最大
       expect(regens.map(e => e.remainingTurns).sort((a, b) => a - b)).toEqual([2, 5]);
     });
   });
 
   // ==================== independent 策略 ====================
   describe('independent 策略', () => {
-    it('同类型效果完全独立存在（不参与任何合并）', () => {
+    it('同类型效果完全独立存在', () => {
       addEffectToContainer(container, makeEffect('shield', 50, 3, 'independent'));
       addEffectToContainer(container, makeEffect('shield', 30, 2, 'independent'));
       addEffectToContainer(container, makeEffect('shield', 100, 1, 'independent'));
@@ -144,13 +142,12 @@ describe('EffectContainer 叠加策略', () => {
       expect(shields).toHaveLength(3);
     });
 
-    it('独立效果保留原始数值与持续时间（不取最大也不替换）', () => {
+    it('独立效果保留原始数值与持续时间', () => {
       addEffectToContainer(container, makeEffect('shield', 50, 3, 'independent'));
       addEffectToContainer(container, makeEffect('shield', 30, 5, 'independent'));
 
       const shields = container.effects.filter(e => e.type === 'shield');
       expect(shields).toHaveLength(2);
-      // 第二个效果保持原值 30 和 5，未被第一个的 50 影响
       const second = shields[1];
       expect(second.value).toBe(30);
       expect(second.remainingTurns).toBe(5);
@@ -167,7 +164,6 @@ describe('EffectContainer 叠加策略', () => {
         value: 10,
         source: 'item',
         sourceName: 'test-item'
-        // 故意省略 stackStrategy
       };
       const e2: Effect = {
         id: generateEffectId(),
@@ -183,7 +179,6 @@ describe('EffectContainer 叠加策略', () => {
 
       const poisons = container.effects.filter(e => e.type === 'poison');
       expect(poisons).toHaveLength(1);
-      // 应取最大值 25，符合 max 策略行为
       expect(poisons[0].value).toBe(25);
     });
   });
@@ -191,13 +186,10 @@ describe('EffectContainer 叠加策略', () => {
   // ==================== 跨策略混合 ====================
   describe('跨策略混合', () => {
     it('同类型效果使用不同策略时，按新效果的策略处理', () => {
-      // 先添加一个 max 策略的攻击上升
       addEffectToContainer(container, makeEffect('attack_up', 10, 3, 'max'));
-      // 再添加一个 independent 策略的攻击上升
       addEffectToContainer(container, makeEffect('attack_up', 5, 2, 'independent'));
 
       const ups = container.effects.filter(e => e.type === 'attack_up');
-      // independent 不合并，应保留两个实例
       expect(ups).toHaveLength(2);
     });
 

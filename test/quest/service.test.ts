@@ -1,5 +1,5 @@
 /**
- * @fileoverview 任务模块 service 纯函数单元测试（CODE-61 修复）
+ * @fileoverview 任务模块 service 纯函数单元测试
  *
  * 覆盖范围：
  * 1. canAcceptQuest —— 接取条件判定（含 BIZ-19 前置任务检查）
@@ -7,6 +7,7 @@
  * 3. checkQuestProgress —— 击杀/收集事件进度更新
  * 4. calculateQuestRewards —— 奖励计算
  * 5. generateQuestInstance —— 任务实例生成
+ * 6. getDefaultQuests —— 默认任务模板
  */
 import { describe, it, expect } from 'vitest';
 import {
@@ -15,8 +16,9 @@ import {
   checkQuestProgress,
   calculateQuestRewards,
   generateQuestInstance,
-} from './service';
-import type { QuestDefinition, QuestInstance } from './types';
+  getDefaultQuests,
+} from '@/modules/quest/service';
+import type { QuestDefinition, QuestInstance } from '@/modules/quest/types';
 
 /** 构造测试用任务定义 */
 function makeDefinition(overrides: Partial<QuestDefinition> = {}): QuestDefinition {
@@ -48,7 +50,6 @@ function makeInstance(overrides: Partial<QuestInstance> = {}): QuestInstance {
 }
 
 describe('canAcceptQuest 接取条件判定', () => {
-  // ==================== 等级校验 ====================
   describe('等级校验', () => {
     it('等级不足时拒绝接取', () => {
       const def = makeDefinition({ levelRequirement: 10 });
@@ -66,7 +67,6 @@ describe('canAcceptQuest 接取条件判定', () => {
     });
   });
 
-  // ==================== 已存在实例 ====================
   describe('已存在实例检查', () => {
     it('已有 in_progress 实例时拒绝接取', () => {
       const def = makeDefinition();
@@ -93,7 +93,6 @@ describe('canAcceptQuest 接取条件判定', () => {
     });
   });
 
-  // ==================== 前置任务（BIZ-19） ====================
   describe('前置任务检查（BIZ-19）', () => {
     it('无前置任务时允许接取', () => {
       const def = makeDefinition();
@@ -205,6 +204,14 @@ describe('checkPrerequisiteQuests 前置任务校验', () => {
     const def = makeDefinition({ prerequisiteQuests: ['q1'] });
     expect(checkPrerequisiteQuests(def, [])).toBe(false);
   });
+
+  it('abandoned 状态视为未完成', () => {
+    const def = makeDefinition({ prerequisiteQuests: ['q1'] });
+    const active: QuestInstance[] = [
+      { questId: 'q1', status: 'abandoned', progress: [], acceptedAt: 1 },
+    ];
+    expect(checkPrerequisiteQuests(def, active)).toBe(false);
+  });
 });
 
 describe('checkQuestProgress 进度更新', () => {
@@ -294,6 +301,33 @@ describe('checkQuestProgress 进度更新', () => {
     checkQuestProgress(inst, def, { enemyId: 'goblin' });
     expect(inst.progress[0].current).toBe(1);
   });
+
+  it('默认 amount 为 1', () => {
+    const def = makeDefinition();
+    const inst = makeInstance({
+      progress: [{ objectiveKey: 'kill_goblin', current: 0, target: 5 }],
+    });
+    const result = checkQuestProgress(inst, def, { enemyId: 'goblin' });
+    expect(result!.progress[0].current).toBe(1);
+  });
+
+  it('同时传入 enemyId 和 itemId 时分别匹配各自目标', () => {
+    const def = makeDefinition({
+      objectives: [
+        { key: 'kill_goblin', type: 'kill', target: 5, enemyId: 'goblin' },
+        { key: 'collect_herb', type: 'collect', target: 3, itemId: 'herb' },
+      ],
+    });
+    const inst = makeInstance({
+      progress: [
+        { objectiveKey: 'kill_goblin', current: 0, target: 5 },
+        { objectiveKey: 'collect_herb', current: 0, target: 3 },
+      ],
+    });
+    const result = checkQuestProgress(inst, def, { enemyId: 'goblin', itemId: 'herb' });
+    expect(result!.progress[0].current).toBe(1);
+    expect(result!.progress[1].current).toBe(1);
+  });
 });
 
 describe('calculateQuestRewards 奖励计算', () => {
@@ -308,6 +342,19 @@ describe('calculateQuestRewards 奖励计算', () => {
     const def = makeDefinition();
     const rewards = calculateQuestRewards(def);
     expect(rewards.items).toEqual([]);
+  });
+
+  it('正确提取物品奖励', () => {
+    const def = makeDefinition({
+      itemRewards: [
+        { itemId: 'item_001', count: 2 },
+        { itemId: 'item_002', count: 1 },
+      ],
+    });
+    const rewards = calculateQuestRewards(def);
+    expect(rewards.items).toHaveLength(2);
+    expect(rewards.items[0]).toEqual({ itemId: 'item_001', count: 2 });
+    expect(rewards.items[1]).toEqual({ itemId: 'item_002', count: 1 });
   });
 });
 
@@ -339,5 +386,60 @@ describe('generateQuestInstance 任务实例生成', () => {
     const inst = generateQuestInstance(def);
     expect(typeof inst.acceptedAt).toBe('number');
     expect(inst.acceptedAt).toBeGreaterThan(0);
+  });
+
+  it('objectiveKey 与 definition 中的 key 对应', () => {
+    const def = makeDefinition({
+      objectives: [
+        { key: 'kill_a', type: 'kill', target: 1, enemyId: 'a' },
+        { key: 'kill_b', type: 'kill', target: 2, enemyId: 'b' },
+      ],
+    });
+    const inst = generateQuestInstance(def);
+    expect(inst.progress[0].objectiveKey).toBe('kill_a');
+    expect(inst.progress[1].objectiveKey).toBe('kill_b');
+  });
+});
+
+describe('getDefaultQuests 默认任务模板', () => {
+  it('返回 4 个默认任务', () => {
+    const quests = getDefaultQuests();
+    expect(quests).toHaveLength(4);
+  });
+
+  it('包含击杀哥布林任务', () => {
+    const quests = getDefaultQuests();
+    const goblinQuest = quests.find(q => q.id === 'quest_kill_goblin');
+    expect(goblinQuest).toBeDefined();
+    expect(goblinQuest!.type).toBe('kill');
+    expect(goblinQuest!.objectives[0].enemyId).toBe('goblin');
+    expect(goblinQuest!.objectives[0].target).toBe(10);
+  });
+
+  it('包含采集草药任务', () => {
+    const quests = getDefaultQuests();
+    const herbQuest = quests.find(q => q.id === 'quest_collect_herbs');
+    expect(herbQuest).toBeDefined();
+    expect(herbQuest!.type).toBe('collect');
+  });
+
+  it('包含多目标兽人任务', () => {
+    const quests = getDefaultQuests();
+    const orcQuest = quests.find(q => q.id === 'quest_kill_boss_orc');
+    expect(orcQuest).toBeDefined();
+    expect(orcQuest!.objectives).toHaveLength(2);
+  });
+
+  it('每个任务都有必要的字段', () => {
+    const quests = getDefaultQuests();
+    for (const q of quests) {
+      expect(q.id).toBeTruthy();
+      expect(q.title).toBeTruthy();
+      expect(q.description).toBeTruthy();
+      expect(q.objectives.length).toBeGreaterThan(0);
+      expect(q.levelRequirement).toBeGreaterThan(0);
+      expect(q.xpReward).toBeGreaterThan(0);
+      expect(q.boardId).toBeTruthy();
+    }
   });
 });

@@ -1,12 +1,14 @@
 /**
- * @fileoverview 属性计算函数单元测试（CODE-61 修复）
+ * @fileoverview 属性计算函数单元测试（迁移自 src/utils/calculations.test.ts）
  *
  * 覆盖 utils/calculations.ts 中的核心纯函数：
  * - calculateMaxHp / calculateMaxMana
  * - calculatePhysicalAttack / calculatePhysicalDefense
  * - calculateMagicAttack / calculateMagicDefense
  * - calculateCritChance / calculateDodgeChance（含上限校验）
+ * - calculateHpBonus / calculateMpBonus / calculateHealBonus
  * - calculateAllAttributes 聚合函数
+ * - getExpForLevel 等级经验查询（含边界）
  *
  * 这些函数是角色战斗力的基础，任何公式错误都会直接影响游戏平衡。
  */
@@ -24,20 +26,14 @@ import {
   calculateMpBonus,
   calculateHealBonus,
   calculateAllAttributes,
-} from './calculations';
+  getExpForLevel,
+} from '@/utils/calculations';
 import type { Stats } from '@/modules/character/types';
+import { MAX_LEVEL, LEVEL_EXP_REQUIREMENTS } from '@/config/character';
 
 /** 构造测试用 Stats（全 10 的中庸属性） */
 function makeStats(overrides: Partial<Stats> = {}): Stats {
-  return {
-    str: 10,
-    dex: 10,
-    con: 10,
-    int: 10,
-    wis: 10,
-    cha: 10,
-    ...overrides,
-  };
+  return { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10, ...overrides };
 }
 
 describe('calculateMaxHp 最大生命值', () => {
@@ -49,7 +45,7 @@ describe('calculateMaxHp 最大生命值', () => {
     expect(calculateMaxHp(makeStats({ con: 20 }))).toBe(300);
   });
 
-  it('体质为 0 时使用实际值（Stats 字段必填，不再回退默认值）', () => {
+  it('体质为 0 时使用实际值', () => {
     const stats = makeStats({ con: 0 });
     expect(calculateMaxHp(stats)).toBe(100);
   });
@@ -175,5 +171,27 @@ describe('calculateAllAttributes 聚合计算', () => {
     expect(all.magicDefense).toBe(calculateMagicDefense(stats));
     expect(all.critChance).toBe(calculateCritChance(stats));
     expect(all.dodgeChance).toBe(calculateDodgeChance(stats));
+  });
+});
+
+describe('getExpForLevel 等级经验查询', () => {
+  it('level <= 1 时返回 0', () => {
+    expect(getExpForLevel(1)).toBe(0);
+    expect(getExpForLevel(0)).toBe(0);
+    expect(getExpForLevel(-1)).toBe(0);
+  });
+
+  it('正常等级返回 LEVEL_EXP_REQUIREMENTS 中的值', () => {
+    expect(getExpForLevel(2)).toBe(LEVEL_EXP_REQUIREMENTS[2]);
+    expect(getExpForLevel(10)).toBe(LEVEL_EXP_REQUIREMENTS[10]);
+  });
+
+  it('超过 MAX_LEVEL 时返回 MAX_LEVEL 的经验值', () => {
+    expect(getExpForLevel(MAX_LEVEL + 1)).toBe(LEVEL_EXP_REQUIREMENTS[MAX_LEVEL]);
+    expect(getExpForLevel(9999)).toBe(LEVEL_EXP_REQUIREMENTS[MAX_LEVEL]);
+  });
+
+  it('刚好 MAX_LEVEL 返回对应值', () => {
+    expect(getExpForLevel(MAX_LEVEL)).toBe(LEVEL_EXP_REQUIREMENTS[MAX_LEVEL]);
   });
 });

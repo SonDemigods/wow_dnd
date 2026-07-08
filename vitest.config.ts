@@ -14,8 +14,12 @@ export default defineConfig({
     environment: 'jsdom',
     /** 启用全局 API（describe/it/expect），减少 import 样板代码 */
     globals: true,
-    /** 测试文件匹配规则：src 下所有 .test.ts / .spec.ts */
-    include: ['src/**/*.{test,spec}.ts'],
+    /**
+     * 测试文件匹配规则：
+     * - test/ 目录为统一测试入口（推荐）
+     * - 兼容 src 下遗留的 .test.ts / .spec.ts
+     */
+    include: ['test/**/*.test.ts', 'src/**/*.{test,spec}.ts'],
     /** 排除构建产物和 node_modules */
     exclude: ['node_modules', 'dist', '**/*.vue']
   },
