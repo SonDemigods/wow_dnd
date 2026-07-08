@@ -4,13 +4,11 @@
  */
 
 import type { Effect, EffectContainer, EffectType, StackStrategy } from './types';
+import { generateId } from '@/utils/db-helpers';
 
-/** 效果 ID 生成计数器 */
-let effectIdCounter = 0;
-
-/** 生成唯一效果 ID */
+/** 生成唯一效果 ID（格式：effect_时间戳_随机串） */
 export function generateEffectId(): string {
-  return `effect_${Date.now()}_${++effectIdCounter}`;
+  return generateId('effect');
 }
 
 /**

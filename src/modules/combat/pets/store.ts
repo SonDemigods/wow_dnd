@@ -22,7 +22,7 @@ import {
   tickPetTurn,
   unlockPet as unlockPetFn,
 } from './service';
-import { WARLOCK_PETS, getPetByType, getSummonablePets } from './warlock_pets';
+import { WARLOCK_PETS, getPetByType, getSummonablePets } from './warlockPets';
 
 /**
  * 术士召唤系统 Store

@@ -54,7 +54,7 @@ import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAdminStore } from '@/modules/admin';
 import { CONFIG_TABLES, type ConfigTableName } from '@/modules/admin/types';
-import type { TableColumn } from './AdminTable.vue';
+import type { TableColumn, CellValue } from './AdminTable.vue';
 import type { FormField } from './AdminForm.vue';
 import AdminTable from './AdminTable.vue';
 import AdminForm from './AdminForm.vue';
@@ -101,7 +101,7 @@ const SHOP_TYPE_NAMES: Record<string, string> = {
 };
 
 /** 获取字典翻译，若未匹配则原样返回 */
-function t(map: Record<string, string>, val: any): string {
+function t(map: Record<string, string>, val: CellValue): string {
   if (val === null || val === undefined) return '-';
   return map[String(val)] ?? String(val);
 }
@@ -122,7 +122,7 @@ onMounted(() => {
 /** 是否显示删除确认 */
 const showDeleteConfirm = ref(false);
 /** 待删除的记录 */
-const pendingDeleteRecord = ref<any>(null);
+const pendingDeleteRecord = ref<Record<string, unknown> | null>(null);
 
 /** 各配置表的列定义 */
 const tableColumns: Record<ConfigTableName, TableColumn[]> = {
@@ -130,7 +130,7 @@ const tableColumns: Record<ConfigTableName, TableColumn[]> = {
     { key: 'id', label: 'ID', width: '180px' },
     { key: 'name', label: '名称' },
     { key: 'icon', label: '图标' },
-    { key: 'color', label: '颜色', format: (v) => v },
+    { key: 'color', label: '颜色', format: (v) => v == null ? '' : String(v) },
   ],
   races: [
     { key: 'id', label: 'ID', width: '180px' },
@@ -416,46 +416,46 @@ const currentColumns = computed<TableColumn[]>(() => {
   return tableColumns[currentTable.value].map(col => {
     // factionId → 中文阵营名
     if (col.key === 'factionId' && factionOptions.value.length > 0) {
-      return { ...col, format: (v: any) => t(FACTION_NAMES, v) };
+      return { ...col, format: (v: CellValue) => t(FACTION_NAMES, v) };
     }
     // 种族/职业 ID → 中文名（从数据库加载的映射）
     if (col.key === 'raceId' && raceOptions.value.length > 0) {
       const map = Object.fromEntries(raceOptions.value.map(o => [o.value, o.label]));
-      return { ...col, format: (v: any) => map[String(v)] ?? String(v ?? '-') };
+      return { ...col, format: (v: CellValue) => map[String(v)] ?? String(v ?? '-') };
     }
     if (col.key === 'classId' && classOptions.value.length > 0) {
       const map = Object.fromEntries(classOptions.value.map(o => [o.value, o.label]));
-      return { ...col, format: (v: any) => map[String(v)] ?? String(v ?? '-') };
+      return { ...col, format: (v: CellValue) => map[String(v)] ?? String(v ?? '-') };
     }
     // 字典字段翻译
-    if (col.key === 'primaryStat') return { ...col, format: (v: any) => t(STAT_NAMES, v) };
-    if (col.key === 'rarity') return { ...col, format: (v: any) => t(RARITY_NAMES, v) };
-    if (col.key === 'dangerLevel') return { ...col, format: (v: any) => String(v ?? '-') };
-    if (col.key === 'damage') return { ...col, format: (v: any) => Array.isArray(v) ? `${v[0]} ~ ${v[1]}` : String(v ?? '-') };
-    if (col.key === 'levelRange') return { ...col, format: (v: any) => Array.isArray(v) ? `${v[0]} ~ ${v[1]}` : String(v ?? '-') };
+    if (col.key === 'primaryStat') return { ...col, format: (v: CellValue) => t(STAT_NAMES, v) };
+    if (col.key === 'rarity') return { ...col, format: (v: CellValue) => t(RARITY_NAMES, v) };
+    if (col.key === 'dangerLevel') return { ...col, format: (v: CellValue) => String(v ?? '-') };
+    if (col.key === 'damage') return { ...col, format: (v: CellValue) => Array.isArray(v) ? `${v[0]} ~ ${v[1]}` : String(v ?? '-') };
+    if (col.key === 'levelRange') return { ...col, format: (v: CellValue) => Array.isArray(v) ? `${v[0]} ~ ${v[1]}` : String(v ?? '-') };
     if (col.key === 'classRestriction') {
       if (classOptions.value.length > 0) {
         const map = Object.fromEntries(classOptions.value.map(o => [o.value, o.label]));
-        return { ...col, format: (v: any) => v ? (map[String(v)] ?? String(v)) : '无限制' };
+        return { ...col, format: (v: CellValue) => v ? (map[String(v)] ?? String(v)) : '无限制' };
       }
-      return { ...col, format: (v: any) => v ? String(v) : '无限制' };
+      return { ...col, format: (v: CellValue) => v ? String(v) : '无限制' };
     }
     if (col.key === 'continent') {
       if (continentOptions.value.length > 0) {
         const map = Object.fromEntries(continentOptions.value.map(o => [o.value, o.label]));
-        return { ...col, format: (v: any) => map[String(v)] ?? String(v ?? '-') };
+        return { ...col, format: (v: CellValue) => map[String(v)] ?? String(v ?? '-') };
       }
-      return { ...col, format: (v: any) => String(v ?? '-') };
+      return { ...col, format: (v: CellValue) => String(v ?? '-') };
     }
     // type 字段按表名区分翻译
     if (col.key === 'type') {
       const tn = currentTable.value;
-      if (tn === 'items') return { ...col, format: (v: any) => t(ITEM_TYPE_NAMES, v) };
-      if (tn === 'equipmentItems') return { ...col, format: (v: any) => t(EQUIP_TYPE_NAMES, v) };
-      if (tn === 'locations') return { ...col, format: (v: any) => t(LOCATION_TYPE_NAMES, v) };
-      if (tn === 'quests') return { ...col, format: (v: any) => t(QUEST_TYPE_NAMES, v) };
-      if (tn === 'skills') return { ...col, format: (v: any) => t(SKILL_TYPE_NAMES, v) };
-      if (tn === 'shops') return { ...col, format: (v: any) => t(SHOP_TYPE_NAMES, v) };
+      if (tn === 'items') return { ...col, format: (v: CellValue) => t(ITEM_TYPE_NAMES, v) };
+      if (tn === 'equipmentItems') return { ...col, format: (v: CellValue) => t(EQUIP_TYPE_NAMES, v) };
+      if (tn === 'locations') return { ...col, format: (v: CellValue) => t(LOCATION_TYPE_NAMES, v) };
+      if (tn === 'quests') return { ...col, format: (v: CellValue) => t(QUEST_TYPE_NAMES, v) };
+      if (tn === 'skills') return { ...col, format: (v: CellValue) => t(SKILL_TYPE_NAMES, v) };
+      if (tn === 'shops') return { ...col, format: (v: CellValue) => t(SHOP_TYPE_NAMES, v) };
     }
     return col;
   });
@@ -568,7 +568,7 @@ function handleDelete(row: any) {
 async function confirmDelete() {
   if (!pendingDeleteRecord.value) return;
   const id = pendingDeleteRecord.value.id ?? pendingDeleteRecord.value.characterId;
-  await store.deleteRecord(currentDbTable.value, id);
+  await store.deleteRecord(currentDbTable.value, String(id));
   showDeleteConfirm.value = false;
   pendingDeleteRecord.value = null;
 }

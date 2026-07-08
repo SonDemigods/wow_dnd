@@ -217,7 +217,8 @@ function toggleJsonMode(fieldKey: string) {
         }
       }
       jsonParseError[fieldKey] = true;
-    } catch {
+    } catch (e) {
+      console.error(e);
       jsonParseError[fieldKey] = true;
     }
   }
@@ -317,8 +318,9 @@ function handleSubmit() {
     if (field.type === 'json' && typeof value === 'string' && value.trim()) {
       try {
         value = JSON.parse(value);
-      } catch {
+      } catch (e) {
         // 解析失败则保持字符串
+        console.error(e);
       }
     }
     data[field.key] = value;

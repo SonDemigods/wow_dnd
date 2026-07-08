@@ -229,17 +229,19 @@ export function filterItems(
 
   // 类型筛选：物品类型必须在指定列表中
   if (filters.types && filters.types.length > 0) {
+    const types = filters.types;
     result = result.filter(invItem => {
       const item = itemTemplates.get(invItem.itemId);
-      return item && filters.types.includes(item.type);
+      return item && types.includes(item.type);
     });
   }
 
   // 稀有度筛选：稀有度必须在指定列表中
   if (filters.rarities && filters.rarities.length > 0) {
+    const rarities = filters.rarities;
     result = result.filter(invItem => {
       const item = itemTemplates.get(invItem.itemId);
-      return item && filters.rarities.includes(item.rarity);
+      return item && rarities.includes(item.rarity);
     });
   }
 

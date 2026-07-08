@@ -974,7 +974,8 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       }
     ]
   },
-  // 恶魔猎手只有 2 系，补充通用第三系
+  // 项目自定义：恶魔猎手第三系为通用补充系，非 WoW 正式服设定
+  // （WoW 正式服恶魔猎手仅有 Havoc/Vengeance 两系，此处补充第三系以保证天赋树结构统一）
   {
     id: 'dh_fel',
     name: '邪能',

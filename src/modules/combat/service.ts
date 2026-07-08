@@ -5,6 +5,7 @@
  * 所有状态管理和副作用（持久化、事件通知）由 Store 层负责。
  */
 import type { EnemyInstance } from '../enemy/types';
+import { generateId } from '@/utils/db-helpers';
 
 /**
  * 暴击判定
@@ -47,7 +48,7 @@ export function rollFleeSuccess(fleeChance: number): boolean {
  * @returns 战斗 ID 字符串
  */
 export function generateCombatId(): string {
-  return `combat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return generateId('combat');
 }
 
 /**
@@ -55,7 +56,7 @@ export function generateCombatId(): string {
  * @returns 战斗日志 ID 字符串
  */
 export function generateBattleLogId(): string {
-  return `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return generateId('log');
 }
 
 /**

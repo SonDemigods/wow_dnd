@@ -134,7 +134,7 @@ export function useInitiative(
       eventBus.emit(GameEvents.COMBAT_PLAYER_TURN, null);
     } else {
       state.turn.value = 'enemy';
-      state.turnTimerId.value = setTimeout(() => {
+      state.turnTimerId.value = window.setTimeout(() => {
         state.turnTimerId.value = null;
         singleEnemyTurn(next.unitId);
       }, Math.round(500 / state.combatSpeed.value));

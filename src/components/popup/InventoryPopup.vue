@@ -554,11 +554,11 @@ function cancelDrop() {
 }
 
 async function loadInventory() {
-  await useInventoryStore().initialize(characterStore.currentCharacterId!);
+  const id = characterStore.currentCharacterId;
+  if (!id) return;
+  await useInventoryStore().initialize(id);
   // 确保装备 Store 已初始化（装备模块需要从装备 Store 加载）
-  if (characterStore.currentCharacterId) {
-    await equipmentStore.initialize(characterStore.currentCharacterId);
-  }
+  await equipmentStore.initialize(id);
 }
 
 onMounted(() => {

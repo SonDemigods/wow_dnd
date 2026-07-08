@@ -5,10 +5,15 @@
  *              Service 纯函数 → Store 状态更新 → DB 持久化 → 事件总线通知。
  *
  * **核心设计决策**：
- * - **回购列表**：用 `ref<Map>` 而非 `reactive`，通过整体替换触发响应式（如 `soldItems.value.delete()`），
- *   避免 Map 内部变更不被追踪的问题。
+ * - **回购列表**：用 `ref<Map>` 而非 `reactive`，通过 `_replaceSoldItems` 辅助函数整体替换
+ *   触发响应式（ARCH-14 修复），避免 Map 内部变更不被追踪的问题。
+ *   BIZ-16：`soldItems` 持久化到 IndexedDB `runtime_shopSoldItems` 表，`init` 时恢复。
  * - **商品刷新**：配置加载与商品生成分离——`loadShopConfigs` 只加载商店元数据，
  *   `loadOrGenerateItems` 按需加载/生成商品，避免一次性加载所有数据。
+ *   BIZ-20：`lastRefresh` 随 `runtime_shopItems` 表持久化，`init`/`loadOrGenerateItems` 时恢复，
+ *   避免页面刷新后刷新检查被跳过。
+ * - **购买次数限制**：BIZ-21 — 生成商品可选携带 `maxPurchaseCount`，`buyItem` 累计 `purchasedCount`
+ *   并在达到上限时阻止购买（toast 提示），`purchasedCount` 随商品列表持久化。
  * - **种子数据回退**：DB 中无配置时自动从硬编码 {@link SHOPS} 播种并写回，确保首次运行不报错。
  * - **页面恢复**：关闭/刷新页面时通过 `saveCurrentShopId` 持久化当前商店ID，
  *   下次 `init` 时自动恢复。
@@ -29,6 +34,7 @@ import { generateLogId } from '../log/service';
 import { useCharacterStore } from '../character/store';
 import { useInventoryStore } from '../inventory/store';
 import { generateShopItems, canAffordItem, computeSellPrice } from './service';
+import { useToast } from '@/composables/useToast';
 import { SHOPS } from '@/data/config_shops';
 
 /**
@@ -58,8 +64,11 @@ export const useShopStore = defineStore('shop', () => {
    * 玩家出售给商店的物品（回购跟踪）
    *
    * 结构：`shopId → itemId → SoldItemEntry` 二级 Map。
-   * 注意：Vue 3 的 `ref<Map>` 对 Map 的 `.set()` / `.delete()` 不触发深层响应式，
-   * 因此修改后需通过整体操作（如 `soldItems.value.delete(shopId)` 等）触发更新。
+   *
+   * ARCH-14 修复：Vue 3 的 `ref<Map>` 对 Map 的 `.set()` / `.delete()` 不触发深层响应式，
+   * 因此修改后必须创建新 Map 实例整体替换。`_replaceSoldItems` 辅助函数封装该模式，
+   * 在副本上执行修改后整体赋值，避免遗漏。
+   * BIZ-16：修改后通过 {@link shopDbService.saveSoldItems} 持久化到 IndexedDB。
    */
   const soldItems = ref<Map<string, Map<string, SoldItemEntry>>>(new Map());
 
@@ -67,8 +76,28 @@ export const useShopStore = defineStore('shop', () => {
    * 各商店上次商品生成时间戳
    *
    * 用于判断打开商店时是否需要重新生成商品（超过 refreshInterval 则刷新）。
+   * BIZ-20：持久化到 IndexedDB（随 runtime_shopItems 表的 lastRefresh 字段），
+   * init 时从 DB 恢复，避免页面刷新后刷新检查被跳过。
    */
   const lastRefresh = ref<Map<string, number>>(new Map());
+
+  /**
+   * 整体替换 soldItems 触发响应式更新（ARCH-14 修复）
+   *
+   * Vue 3 的 `ref<Map>` 对 Map 的 `.set()` / `.delete()` 不触发深层响应式，
+   * 因此修改前先深拷贝二级 Map，在副本上执行修改，再整体赋值给 `soldItems.value`。
+   *
+   * @param mutator - 在副本上执行的修改函数
+   */
+  function _replaceSoldItems(mutator: (map: Map<string, Map<string, SoldItemEntry>>) => void): void {
+    // 深拷贝二级 Map，避免修改原引用
+    const newMap = new Map<string, Map<string, SoldItemEntry>>();
+    for (const [shopId, innerMap] of soldItems.value) {
+      newMap.set(shopId, new Map(innerMap));
+    }
+    mutator(newMap);
+    soldItems.value = newMap;
+  }
 
   // ==================== 计算属性 ====================
 
@@ -134,14 +163,21 @@ export const useShopStore = defineStore('shop', () => {
    * 优先从 DB 恢复已保存的商品；DB 为空时调用 regenerateItems 重新生成。
    * 此设计避免在 init 阶段一次性为所有商店生成商品，改为按需懒加载。
    *
+   * BIZ-20：从 DB 加载商品时同步恢复 `lastRefresh` 时间戳，避免页面刷新后
+   * 刷新检查被跳过（玩家通过刷新页面重置商店刷新计时器的漏洞）。
+   *
    * @param shopId - 商店ID
    * @returns 商品列表
    */
   async function loadOrGenerateItems(shopId: string): Promise<ShopItem[]> {
-    // 尝试从 DB 加载已保存的商品
-    const savedItems = await shopDbService.getShopItems(shopId);
-    if (savedItems && savedItems.length > 0) {
-      return savedItems;
+    // 读取完整 storage（包含 lastRefresh 元数据）
+    const storage = await shopDbService.getShopItemsStorage(shopId);
+    if (storage && storage.items && storage.items.length > 0) {
+      // BIZ-20: 恢复 lastRefresh 到内存 Map（与 init 中的恢复幂等，确保最新）
+      if (typeof storage.lastRefresh === 'number') {
+        lastRefresh.value.set(shopId, storage.lastRefresh);
+      }
+      return storage.items;
     }
 
     // 重新生成
@@ -152,6 +188,8 @@ export const useShopStore = defineStore('shop', () => {
    * 强制重新生成商店商品并持久化
    *
    * 调用 {@link generateShopItems} 生成新商品列表，写入 DB 并更新内存中的刷新时间戳。
+   *
+   * BIZ-20：内存与 DB 中的 `lastRefresh` 使用同一时间戳，避免不一致导致刷新计时器错乱。
    *
    * @param shopId - 商店ID
    * @returns 生成的商品列表（商店不存在时返回空数组）
@@ -164,8 +202,10 @@ export const useShopStore = defineStore('shop', () => {
     const allTemplates = inventoryStore.getAllItems();
     const items = generateShopItems(config, allTemplates);
 
-    lastRefresh.value.set(shopId, Date.now());
-    await shopDbService.saveShopItems(shopId, items);
+    // BIZ-20: 统一内存与 DB 中的 lastRefresh 时间戳
+    const now = Date.now();
+    lastRefresh.value.set(shopId, now);
+    await shopDbService.saveShopItems(shopId, items, now);
 
     return items;
   }
@@ -176,8 +216,11 @@ export const useShopStore = defineStore('shop', () => {
    * 初始化商店模块
    *
    * 调用时机：应用启动时由 bootstrap 调用。
-   * 流程：加载商店配置 → 恢复上次会话打开的商店ID（如有）。
-   * 注意：此处只恢复商店ID，商品数据在 openShop 时才按需加载。
+   * 流程：加载商店配置 → 恢复上次会话打开的商店ID（如有）→ 恢复回购列表与刷新时间戳。
+   * 注意：此处只恢复商店ID与运行时状态，商品数据在 openShop 时才按需加载。
+   *
+   * BIZ-16：从 IndexedDB 恢复回购列表（soldItems），避免页面刷新后回购列表清空。
+   * BIZ-20：从 IndexedDB 恢复各商店 lastRefresh 时间戳，避免刷新检查被跳过。
    */
   async function init(): Promise<void> {
     if (isLoading.value) return;
@@ -190,6 +233,26 @@ export const useShopStore = defineStore('shop', () => {
       const savedShopId = await shopDbService.getCurrentShopId();
       if (savedShopId && shops.value.some(s => s.id === savedShopId)) {
         currentShopId.value = savedShopId;
+      }
+
+      // BIZ-16: 恢复回购列表（持久化数据 → 内存 Map，通过 _replaceSoldItems 触发响应式）
+      const allSoldItems = await shopDbService.getAllSoldItems();
+      _replaceSoldItems(newMap => {
+        for (const record of allSoldItems) {
+          const innerMap = new Map<string, SoldItemEntry>();
+          for (const entry of record.soldItems) {
+            innerMap.set(entry.itemId, { ...entry });
+          }
+          newMap.set(record.shopId, innerMap);
+        }
+      });
+
+      // BIZ-20: 恢复各商店上次刷新时间戳，避免页面刷新后刷新检查被跳过
+      const allStorages = await shopDbService.getAllShopItemsStorage();
+      for (const storage of allStorages) {
+        if (typeof storage.lastRefresh === 'number') {
+          lastRefresh.value.set(storage.shopId, storage.lastRefresh);
+        }
       }
     } catch (err) {
       console.error('[ShopStore] 初始化失败:', err);
@@ -271,16 +334,17 @@ export const useShopStore = defineStore('shop', () => {
    *
    * 完整交易流程：
    * 1. 校验商店状态、物品库存
-   * 2. 检查金币 → 扣除金币（spendGold）
-   * 3. 添加物品到背包（addItem）→ 失败则返还金币
-   * 4. 更新商店库存（回购列表或生成商品）
-   * 5. 刷新当前商品列表
-   * 6. emit SHOP_TRANSACTION 通知 UI
-   * 7. 写入冒险日志
+   * 2. BIZ-21：校验购买次数上限（仅生成商品，回购物品不限制）
+   * 3. 检查金币 → 扣除金币（spendGold）
+   * 4. 添加物品到背包（addItem）→ 失败则返还金币
+   * 5. 更新商店库存（回购列表或生成商品）
+   * 6. 刷新当前商品列表
+   * 7. emit SHOP_TRANSACTION 通知 UI
+   * 8. 写入冒险日志
    *
    * 购买有两种路径：
-   * - **回购路径**：物品在 soldItems Map 中，直接扣减回购数量
-   * - **生成商品路径**：物品来自系统生成，从 DB 商品列表中扣减
+   * - **回购路径**：物品在 soldItems Map 中，直接扣减回购数量（BIZ-16：同步持久化）
+   * - **生成商品路径**：物品来自系统生成，从 DB 商品列表中扣减（BIZ-21：累计 purchasedCount）
    *
    * @param itemId   - 物品ID
    * @param quantity - 购买数量，默认 1
@@ -294,6 +358,33 @@ export const useShopStore = defineStore('shop', () => {
     // 查找商品（可能在回购列表或生成商品中）
     const shopItem = currentItems.value.find(item => item.itemId === itemId);
     if (!shopItem || shopItem.quantity < quantity) return false;
+
+    // 判断是否为回购物品（回购物品不限制购买次数，其可购买次数由 quantity 自然限制）
+    const soldMap = soldItems.value.get(shopId);
+    const isBuyback = soldMap?.has(itemId) ?? false;
+
+    // BIZ-21: 校验购买次数上限（仅对生成商品，回购物品不限制）
+    if (!isBuyback && shopItem.maxPurchaseCount !== undefined) {
+      const currentPurchased = shopItem.purchasedCount ?? 0;
+      if (currentPurchased + quantity > shopItem.maxPurchaseCount) {
+        const remaining = Math.max(0, shopItem.maxPurchaseCount - currentPurchased);
+        const toast = useToast();
+        if (remaining > 0) {
+          toast.show({
+            message: `该商品限购 ${shopItem.maxPurchaseCount} 次，当前还可购买 ${remaining} 次`,
+            type: 'warning',
+            duration: 2500
+          });
+        } else {
+          toast.show({
+            message: `该商品已达购买上限（${shopItem.maxPurchaseCount} 次）`,
+            type: 'warning',
+            duration: 2500
+          });
+        }
+        return false;
+      }
+    }
 
     const totalPrice = shopItem.price * quantity;
 
@@ -314,32 +405,45 @@ export const useShopStore = defineStore('shop', () => {
       return false;
     }
 
-    // 3. 更新商店库存
-    const soldMap = soldItems.value.get(shopId);
-    const isBuyback = soldMap?.has(itemId);
+    // 3. 更新商店库存（ARCH-14：通过 _replaceSoldItems 整体替换触发响应式）
     let generated: ShopItem[] | null = null;
 
     if (isBuyback && soldMap) {
       // 从回购列表中扣减（前置条件 isBuyback 已保证 soldMap 中存在该 itemId）
-      const entry = soldMap.get(itemId)!;
-      entry.quantity -= quantity;
-      if (entry.quantity <= 0) {
-        soldMap.delete(itemId);
-      }
-      if (soldMap.size === 0) {
-        soldItems.value.delete(shopId);
-      }
+      _replaceSoldItems(newMap => {
+        const innerMap = newMap.get(shopId);
+        if (!innerMap) return;
+        const entry = innerMap.get(itemId);
+        if (!entry) return;
+        entry.quantity -= quantity;
+        if (entry.quantity <= 0) {
+          innerMap.delete(itemId);
+        }
+        if (innerMap.size === 0) {
+          newMap.delete(shopId);
+        }
+      });
+
+      // BIZ-16: 持久化回购列表到 IndexedDB（整体替换后读取最新状态）
+      const updatedSoldMap = soldItems.value.get(shopId);
+      await shopDbService.saveSoldItems(shopId, updatedSoldMap ? Array.from(updatedSoldMap.values()) : []);
     } else {
-      // 从生成商品中扣减
-      generated = await shopDbService.getShopItems(shopId);
+      // 从生成商品中扣减（读取完整 storage 以保留原 lastRefresh，避免重置刷新计时器）
+      const storage = await shopDbService.getShopItemsStorage(shopId);
+      generated = storage?.items ?? null;
       if (generated) {
         const idx = generated.findIndex(i => i.itemId === itemId);
         if (idx !== -1) {
           generated[idx].quantity -= quantity;
+          // BIZ-21: 累计已购买次数（仅当商品携带 maxPurchaseCount 时）
+          if (generated[idx].maxPurchaseCount !== undefined) {
+            generated[idx].purchasedCount = (generated[idx].purchasedCount ?? 0) + quantity;
+          }
           if (generated[idx].quantity <= 0) {
             generated.splice(idx, 1);
           }
-          await shopDbService.saveShopItems(shopId, generated);
+          // BIZ-20: 保留原 lastRefresh，避免购买操作重置刷新计时器
+          await shopDbService.saveShopItems(shopId, generated, storage?.lastRefresh);
         }
       }
     }
@@ -410,18 +514,24 @@ export const useShopStore = defineStore('shop', () => {
     const characterStore = useCharacterStore();
     await characterStore.gainGold(actualSellPrice);
 
-    // 5. 加入回购列表
-    let soldMap = soldItems.value.get(shopId);
-    if (!soldMap) {
-      soldMap = new Map();
-      soldItems.value.set(shopId, soldMap);
-    }
-    const existing = soldMap.get(itemId);
-    if (existing) {
-      existing.quantity += actualQuantity;
-    } else {
-      soldMap.set(itemId, { itemId, price: unitPrice, quantity: actualQuantity });
-    }
+    // 5. 加入回购列表（ARCH-14：通过 _replaceSoldItems 整体替换触发响应式）
+    _replaceSoldItems(newMap => {
+      let innerMap = newMap.get(shopId);
+      if (!innerMap) {
+        innerMap = new Map();
+        newMap.set(shopId, innerMap);
+      }
+      const existing = innerMap.get(itemId);
+      if (existing) {
+        existing.quantity += actualQuantity;
+      } else {
+        innerMap.set(itemId, { itemId, price: unitPrice, quantity: actualQuantity });
+      }
+    });
+
+    // BIZ-16: 持久化回购列表到 IndexedDB（整体替换后读取最新状态）
+    const currentSoldMap = soldItems.value.get(shopId);
+    await shopDbService.saveSoldItems(shopId, currentSoldMap ? Array.from(currentSoldMap.values()) : []);
 
     // 6. 刷新当前商品列表（合并回购物品）
     const currentGenerated = await shopDbService.getShopItems(shopId);
@@ -529,9 +639,11 @@ export const useShopStore = defineStore('shop', () => {
    * 重置所有商店数据（清空 DB → 清空内存状态）
    *
    * 通常在"新游戏"或调试清档时调用。
+   * BIZ-16：同步清空回购列表持久化数据。
    */
   async function reset(): Promise<void> {
     await shopDbService.clearAllShopItems();
+    await shopDbService.clearAllSoldItems();
     shops.value = [];
     currentShopId.value = null;
     currentItems.value = [];

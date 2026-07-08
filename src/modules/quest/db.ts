@@ -73,7 +73,9 @@ function _mapToDefinition(storage: QuestDefinitionStorage): QuestDefinition {
     goldReward: storage.goldReward,
     // itemRewards 在存储层为 { itemId, count }，与领域模型 InventoryItem 兼容
     itemRewards: storage.itemRewards?.map(r => ({ itemId: r.itemId, count: r.count })),
-    boardId: storage.boardId
+    boardId: storage.boardId,
+    // BIZ-19: 前置任务 ID 列表原样传递
+    prerequisiteQuests: storage.prerequisiteQuests
   };
 }
 

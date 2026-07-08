@@ -6,7 +6,7 @@
  */
 import type { Talent, TalentTree, TalentAllocation, TalentEffect } from './types';
 import { TALENT_POINT_RULES } from './types';
-import { getTalentById, getTalentTreesByClassId } from '@/data/class_talents';
+import { getTalentById, getTalentTreesByClassId } from '@/data/config_class_talents';
 import type { Stats } from '../types';
 
 // ============================================================

@@ -198,7 +198,9 @@ async function loadClassSkills() {
 }
 
 async function loadData() {
-  await skillsStore.initialize(characterStore.currentCharacterId!);
+  const id = characterStore.currentCharacterId;
+  if (!id) return;
+  await skillsStore.initialize(id);
   await loadClassSkills();
 }
 

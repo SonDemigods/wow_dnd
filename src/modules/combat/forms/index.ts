@@ -18,7 +18,7 @@ export {
   getFormByType,
   getAllForms,
   getSwitchableForms
-} from './druid_forms';
+} from './druidForms';
 
 export {
   canSwitchForm,

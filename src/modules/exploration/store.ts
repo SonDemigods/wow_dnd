@@ -7,7 +7,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed, shallowRef } from 'vue';
-import type { ExplorationCell, ExplorationState, AreaConfig, ExplorationUICallbacks } from './types';
+import type { ExplorationCell, ExplorationState, AreaConfig, ExplorationUICallbacks, RandomEventEffectType } from './types';
 import type { LocationData } from '../map/types';
 import { explorationDbService } from './db';
 import { crossModuleQuery } from '@/services/CrossModuleQuery';
@@ -20,15 +20,11 @@ import {
   generateGrid,
   findStartPosition,
   updateAccessibleCells,
-  generateTrapDamage,
-  generateRandomEvent,
-  generateMultiOptionEvent,
-  generateCampHeal,
-  generateItemForCell,
   computeEventProbability,
   buildItemPool,
   GRID_SIZE
 } from './service';
+import { dispatchCellEvent, applyEventEffect } from './events';
 
 export const useExplorationStore = defineStore('exploration', () => {
   // ==================== 响应式状态（Store 是唯一数据源） ====================
@@ -392,33 +388,33 @@ export const useExplorationStore = defineStore('exploration', () => {
       visitedCells.value++;
     }
 
-    // 先处理格子事件（必须在 updateAccessibleCells 之前，
-    // 否则 completed 状态无法通过浅拷贝同步到新网格中）
-    switch (cell.type) {
-      case 'treasure': {
-        const areaConfig = getAreaConfig();
-        const randomItemId = generateItemForCell(areaConfig.itemPool);
-        if (randomItemId) {
-          await handleItemFound(randomItemId, inventoryStore);
-        }
-        cell.completed = true;
-        break;
-      }
-      case 'trap': {
-        await handleTrapTriggered(characterStore);
-        cell.completed = true;
-        break;
-      }
-      case 'event': {
-        await handleRandomEventTriggered(characterStore);
-        cell.completed = true;
-        break;
-      }
-      case 'rest': {
-        await useCamp();
-        cell.completed = true;
-        break;
-      }
+    // 通过事件处理器注册表分发格子事件（ARCH-11 修复）
+    // 处理逻辑迁移至 events.ts 的 cellEventHandlers，store.ts 不再硬编码每个 cell 类型。
+    // 必须在 updateAccessibleCells 之前完成，否则 completed 状态无法通过浅拷贝同步到新网格中。
+    const cellResult = await dispatchCellEvent(cell.type, {
+      cell,
+      characterStore,
+      inventoryStore,
+      areaConfig: getAreaConfig(),
+      uiCallbacks: uiCallbacks.value,
+      characterId: currentCharacterId.value,
+      campUsed: campUsed.value
+    });
+
+    if (cellResult.completed) {
+      cell.completed = true;
+    }
+    if (cellResult.campUsed) {
+      campUsed.value = true;
+      await persistState();
+    }
+    if (cellResult.shouldHandleDeath) {
+      // BIZ-9 修复：探索中死亡需手动触发 handleDeath（战斗中由 endCombat 统一处理）
+      // 先更新网格状态以反映 cell.completed，再触发死亡处理
+      grid.value = updateAccessibleCells(grid.value);
+      await persistState();
+      await characterStore.handleDeath();
+      return true;
     }
 
     // 更新可访问格子（浅拷贝会将上面设置的 completed 状态同步到新网格）
@@ -545,161 +541,13 @@ export const useExplorationStore = defineStore('exploration', () => {
     reset();
   }
 
-  // ==================== 内部处理：物品、陷阱、营地、随机事件 ====================
-
-  /**
-   * 处理发现物品事件。
-   *
-   * 正常路径：通过 Inventory Store 添加物品到背包。
-   * 兜底路径：如果物品模板在数据库中不存在（如配置被删除），
-   * 自动转换为金币 + 经验补偿，避免玩家探索收益为零。
-   */
-  async function handleItemFound(itemId: string, inventoryStore: ReturnType<typeof useInventoryStore>): Promise<void> {
-    const item = inventoryStore.getItemInfo(itemId);
-    if (item) {
-      // 先记录"发现"日志，再触发物品入包
-      useLogStore().addLogEntry({
-        id: generateLogId(),
-        timestamp: Date.now(),
-        type: 'item',
-        message: `发现物品: ${item.name}`,
-        icon: 'game-icons:chest'
-      });
-
-      // 直接调用 Inventory Store Action 添加物品
-      inventoryStore.addItem(itemId, 1);
-
-      eventBus.emit(GameEvents.EXPLORATION_ITEM_FOUND, {
-        characterId: currentCharacterId.value,
-        itemId,
-        count: 1,
-        itemName: item.name
-      });
-
-      // 同步通知已注册的 UI 回调（替代 EventBus 跨模块监听）
-      uiCallbacks.value?.onItemFound?.({ itemId, count: 1, itemName: item.name });
-    } else {
-      // 兜底：物品模板不存在时，发放金币和经验作为补偿
-      console.warn(`[探索] 物品模板 "${itemId}" 不存在，发放兜底奖励`);
-      const gold = Math.floor(Math.random() * 30) + 5;
-      const exp = Math.floor(Math.random() * 15) + 3;
-
-      const characterStore = useCharacterStore();
-      await characterStore.gainGold(gold);
-      await characterStore.gainExp(exp);
-
-      useLogStore().addLogEntry({
-        id: generateLogId(),
-        timestamp: Date.now(),
-        type: 'item',
-        message: `发现宝箱，获得 ${gold} 金币、${exp} 经验`,
-        icon: 'game-icons:chest'
-      });
-
-      eventBus.emit(GameEvents.EXPLORATION_ITEM_FOUND, {
-        characterId: currentCharacterId.value,
-        itemId,
-        count: 0,
-        itemName: `未知物品（已转换为 ${gold} 金币 + ${exp} 经验）`
-      });
-
-      // 同步通知已注册的 UI 回调（替代 EventBus 跨模块监听）
-      uiCallbacks.value?.onItemFound?.({ itemId, count: 0, itemName: `未知物品（已转换为 ${gold} 金币 + ${exp} 经验）` });
-    }
-  }
-
-  /** 处理陷阱触发事件 */
-  async function handleTrapTriggered(characterStore: ReturnType<typeof useCharacterStore>): Promise<void> {
-    const areaConfig = getAreaConfig();
-    const damage = generateTrapDamage(areaConfig.level);
-
-    // 直接调用 Character Store Action 扣除生命值
-    await characterStore.takeDamage(damage);
-
-    eventBus.emit(GameEvents.EXPLORATION_TRAP_TRIGGERED, {
-      characterId: currentCharacterId.value,
-      damage,
-      trapType: '普通陷阱'
-    });
-
-    // 同步通知已注册的 UI 回调（替代 EventBus 跨模块监听）
-    uiCallbacks.value?.onTrapTriggered?.({ damage, trapType: '普通陷阱' });
-
-    useLogStore().addLogEntry({
-      id: generateLogId(),
-      timestamp: Date.now(),
-      type: 'combat',
-      message: `触发陷阱，受到 ${damage} 点伤害`,
-      icon: 'game-icons:caltrops'
-    });
-  }
-
-  /** 处理随机事件触发 */
-  async function handleRandomEventTriggered(characterStore: ReturnType<typeof useCharacterStore>): Promise<void> {
-    const areaConfig = getAreaConfig();
-
-    // 30% 概率生成多选项事件（需要玩家做出选择）
-    if (Math.random() < 0.3) {
-      const multiEvent = generateMultiOptionEvent(areaConfig.level);
-      // 通知 UI 展示选项弹窗，效果由 applyEventChoice 在玩家选择后应用
-      uiCallbacks.value?.onMultiOptionEvent?.(multiEvent);
-      useLogStore().addLogEntry({
-        id: generateLogId(),
-        timestamp: Date.now(),
-        type: 'info',
-        message: multiEvent.message,
-        icon: multiEvent.icon
-      });
-      return;
-    }
-
-    // 70% 概率：普通随机事件（即时生效）
-    const eventResult = generateRandomEvent(areaConfig.level);
-
-    // 根据随机事件效果类型调用对应的 Character Store Action
-    switch (eventResult.effect.type) {
-      case 'heal':
-        await characterStore.receiveHeal(eventResult.effect.amount);
-        break;
-      case 'mana':
-        await characterStore.changeMp(eventResult.effect.amount);
-        break;
-      case 'exp':
-        await characterStore.gainExp(eventResult.effect.amount);
-        break;
-      case 'damage':
-        await characterStore.takeDamage(eventResult.effect.amount);
-        break;
-      case 'mpLoss':
-        await characterStore.changeMp(-eventResult.effect.amount);
-        break;
-      case 'gold':
-        await characterStore.gainGold(eventResult.effect.amount);
-        break;
-    }
-
-    eventBus.emit(GameEvents.EXPLORATION_RANDOM_EVENT, {
-      characterId: currentCharacterId.value,
-      message: eventResult.message,
-      icon: eventResult.icon
-    });
-
-    // 同步通知已注册的 UI 回调（替代 EventBus 跨模块监听）
-    uiCallbacks.value?.onRandomEvent?.({ message: eventResult.message, icon: eventResult.icon });
-
-    useLogStore().addLogEntry({
-      id: generateLogId(),
-      timestamp: Date.now(),
-      type: 'info',
-      message: eventResult.message,
-      icon: eventResult.icon
-    });
-  }
+  // ==================== 内部处理：营地、事件选择（ARCH-11 修复后物品/陷阱/随机事件逻辑迁移至 events.ts） ====================
 
   /**
    * 应用多选项事件中玩家选择的选项效果
    *
    * 玩家在多选项事件弹窗中选择某个选项后，UI 调用此方法应用对应效果。
+   * 通过 effectHandlers 注册表分发，避免硬编码每个效果类型的 switch。
    *
    * @param choice - 玩家选择的事件选项
    */
@@ -707,25 +555,23 @@ export const useExplorationStore = defineStore('exploration', () => {
     const characterStore = useCharacterStore();
     const { type, amount } = choice.effect;
 
-    switch (type) {
-      case 'heal':
-        await characterStore.receiveHeal(amount);
-        break;
-      case 'mana':
-        await characterStore.changeMp(amount);
-        break;
-      case 'exp':
-        await characterStore.gainExp(amount);
-        break;
-      case 'damage':
-        await characterStore.takeDamage(amount);
-        break;
-      case 'mpLoss':
-        await characterStore.changeMp(-amount);
-        break;
-      case 'gold':
-        await characterStore.gainGold(amount);
-        break;
+    // 通过效果处理器注册表分发（ARCH-11 修复）
+    const shouldHandleDeath = await applyEventEffect(
+      type as RandomEventEffectType,
+      {
+        characterStore,
+        inventoryStore: useInventoryStore(),
+        areaConfig: getAreaConfig(),
+        uiCallbacks: uiCallbacks.value,
+        characterId: currentCharacterId.value
+      },
+      amount
+    );
+
+    if (shouldHandleDeath) {
+      // BIZ-9 修复：探索中死亡需手动触发 handleDeath
+      await characterStore.handleDeath();
+      return;
     }
 
     useLogStore().addLogEntry({
@@ -737,34 +583,34 @@ export const useExplorationStore = defineStore('exploration', () => {
     });
   }
 
-  /** 使用营地休息，恢复全部生命值和法力值 */
+  /**
+   * 使用营地休息，恢复全部生命值和法力值
+   *
+   * 通过 cellEventHandlers.rest 注册表分发，复用与 revealGrid 路径 3 相同的恢复逻辑。
+   * 营地只能使用一次：campUsed 已为 true 时直接返回。
+   */
   async function useCamp(): Promise<void> {
     if (campUsed.value) {
       return;
     }
 
     const characterStore = useCharacterStore();
-    const heal = generateCampHeal(0);
-
-    // 直接调用 Character Store Action 恢复生命值和法力值
-    await characterStore.receiveHeal(heal.hp);
-    await characterStore.changeMp(heal.mana);
-
-    campUsed.value = true;
-
-    await persistState();
-
-    eventBus.emit(GameEvents.EXPLORATION_CAMP_USED, {
-      characterId: currentCharacterId.value
+    // 通过事件处理器注册表分发营地事件（ARCH-11 修复）
+    // 传入最小 cell 对象（rest handler 不依赖坐标等字段）
+    const result = await dispatchCellEvent('rest', {
+      cell: { x: 0, y: 0, type: 'rest', explored: true, accessible: false, visited: true },
+      characterStore,
+      inventoryStore: useInventoryStore(),
+      areaConfig: getAreaConfig(),
+      uiCallbacks: uiCallbacks.value,
+      characterId: currentCharacterId.value,
+      campUsed: campUsed.value
     });
 
-    useLogStore().addLogEntry({
-      id: generateLogId(),
-      timestamp: Date.now(),
-      type: 'exploration',
-      message: '在营地休息，恢复了全部生命值和法力值',
-      icon: 'game-icons:campfire'
-    });
+    if (result.campUsed) {
+      campUsed.value = true;
+      await persistState();
+    }
   }
 
   // ==================== 跨模块监听（仅 COMBAT_END） ====================

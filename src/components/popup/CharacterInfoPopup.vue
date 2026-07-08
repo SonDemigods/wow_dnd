@@ -294,7 +294,7 @@ import { useEquipmentStore } from '@/modules/equipment';
 import { useBaseStore } from '@/modules/base';
 import { eventBus, GameEvents } from '@/modules/bus';
 import type { Stats, Attributes } from '@/modules/character/types';
-import type { EquipmentSlot } from '@/modules/equipment/types';
+import type { EquipmentSlot, EquipmentItem } from '@/modules/equipment/types';
 import Tag from '../common/Tag.vue';
 import BasePopup from '../common/BasePopup.vue';
 import ResourceBar from '../common/ResourceBar.vue';
@@ -336,7 +336,7 @@ const expPercent = computed(() => characterStore.expPercentage);
 interface SlotInfo {
   key: EquipmentSlot;
   name: string;
-  equipment: any;
+  equipment: EquipmentItem | null;
 }
 
 const weaponSlots = computed<SlotInfo[]>(() => [

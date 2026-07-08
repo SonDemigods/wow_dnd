@@ -8,23 +8,21 @@
  * - ImportService: 数据导入服务
  */
 import type { Table } from 'dexie';
-import { db } from './core';
-import type { GameStateStorage } from './core';
+import { db, getTable } from './core';
+import type { GameStateStorage, GameDatabaseSchema } from './core';
 import { eventBus, GameEvents } from '../bus';
-import type { FactionStorage, RaceStorage, ClassStorage, CharacterDataStorage } from '../character/types';
-import type { ItemStorage, InventoryStorage } from '../inventory/types';
-import type { EquipmentTemplateStorage, EquipmentStorage } from '../equipment/types';
+import type { FactionStorage, RaceStorage, ClassStorage } from '../character/types';
+import type { ItemStorage } from '../inventory/types';
+import type { EquipmentTemplateStorage } from '../equipment/types';
 import type { EnemyStorage } from '../enemy/types';
 import type { BossStorage } from '../boss/types';
 import { bossDbService } from '../boss/db';
 import type { BossTemplate } from '../boss/types';
-import type { LocationStorage, MapStateStorage } from '../map/types';
+import type { LocationData, MapStateStorage } from '../map/types';
 import type { ShopConfig, ShopItemsStorage } from '../shop/types';
-import type { SkillTemplateStorage, SkillsData } from '../skill/types';
-import type { CharQuestStorage } from '../quest/types';
-import type { ExplorationStorage } from '../exploration/types';
+import type { SkillTemplateStorage } from '../skill/types';
 import type { CombatLogStorage } from '../combat/types';
-import type { AdventureLogData } from '../log/types';
+import type { AdventureLogData, LogEntry } from '../log/types';
 import { BACKUP_CONFIG } from '@/config/database';
 
 import type {
@@ -50,8 +48,55 @@ import {
   MONSTER_ABILITIES,
   RACES,
   FACTIONS,
-  MAX_LEVEL
+  MAX_LEVEL,
+  CLASS_SPECIFIC_ITEMS,
+  CLASS_PASSIVES,
+  CLASS_TALENT_TREES,
+  ITEM_SETS
 } from '@/data';
+
+/**
+ * 需要备份的数组形状表配置
+ *
+ * 定义备份中"直接以数组形式存储"的表（配置表 + map/shop）。
+ * collectAllData 读取与 importData 写入均基于此配置驱动，避免重复的 if/else
+ * 和散落的类型断言（CODE-34/CODE-38）。
+ *
+ * 注意：getTable<T> 内部收敛了 Table 类型断言（CODE-5），调用方无需再断言。
+ */
+
+/** 数组形状备份字段名集合（用于类型安全的字段访问） */
+type ArrayBackupField =
+  | 'map'
+  | 'shop'
+  | 'factions'
+  | 'races'
+  | 'classes'
+  | 'items'
+  | 'equipmentItems'
+  | 'mobs'
+  | 'bosses'
+  | 'skillTemplates';
+
+const TABLES_TO_BACKUP: ReadonlyArray<{
+  /** BackupData 中对应的字段名 */
+  field: ArrayBackupField;
+  /** GameDatabase 中对应的表名 */
+  table: keyof GameDatabaseSchema;
+  /** 导入结果中记录的存储表名 */
+  storeName: string;
+}> = [
+  { field: 'map', table: 'config_locations', storeName: 'config_locations' },
+  { field: 'shop', table: 'config_shops', storeName: 'config_shops' },
+  { field: 'factions', table: 'config_factions', storeName: 'config_factions' },
+  { field: 'races', table: 'config_races', storeName: 'config_races' },
+  { field: 'classes', table: 'config_classes', storeName: 'config_classes' },
+  { field: 'items', table: 'config_items', storeName: 'config_items' },
+  { field: 'equipmentItems', table: 'config_equipmentItems', storeName: 'config_equipmentItems' },
+  { field: 'mobs', table: 'config_mobs', storeName: 'config_mobs' },
+  { field: 'bosses', table: 'config_bosses', storeName: 'config_bosses' },
+  { field: 'skillTemplates', table: 'config_skills', storeName: 'config_skills' },
+];
 
 /**
  * 计算数据的校验和（简单哈希算法）
@@ -100,7 +145,7 @@ export class DataInitializer {
   async initializeData(): Promise<void> {
     const isInitialized = await this.isDataInitialized();
 
-    console.log('初始化游戏数据中...');
+    if (import.meta.env.DEV) console.log('初始化游戏数据中...');
 
     try {
       await db.transaction(
@@ -117,6 +162,10 @@ export class DataInitializer {
           db.config_shops,
           db.config_quests,
           db.config_skills,
+          db.config_class_items,
+          db.config_class_passives,
+          db.config_class_talents,
+          db.config_item_sets,
           db.runtime_gameState,
           db.runtime_mapState,
         ],
@@ -137,6 +186,11 @@ export class DataInitializer {
             await this.initQuests();
             await this.initSkillTemplates();
             await this.initGameConstants();
+            // DATA-4：职业专属数据持久化（供 admin 后台编辑）
+            await this.initClassItems();
+            await this.initClassPassives();
+            await this.initClassTalents();
+            await this.initItemSets();
 
             await db.runtime_gameState.put({
               id: this.initFlagKey,
@@ -146,16 +200,21 @@ export class DataInitializer {
         }
       );
 
-      console.log('游戏数据初始化完成');
-      
+      if (import.meta.env.DEV) console.log('游戏数据初始化完成');
+
       // 通知 baseStore 重新加载最新数据
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: 'init', action: 'bulk', id: '*' });
     } catch (error) {
       console.error('初始化游戏数据失败:', error);
+      // DBG-3：生产环境仅输出简短信息，避免泄露完整堆栈
       if (error instanceof Error) {
-        console.error('错误名称:', error.name);
-        console.error('错误信息:', error.message);
-        console.error('错误栈:', error.stack);
+        if (import.meta.env.DEV) {
+          console.error('错误名称:', error.name);
+          console.error('错误信息:', error.message);
+          console.error('错误栈:', error.stack);
+        } else {
+          console.error('错误:', error.message);
+        }
       }
       throw error;
     }
@@ -163,11 +222,16 @@ export class DataInitializer {
 
   /**
    * 通用的表数据初始化方法
-   * 将数据数组逐条写入指定的数据库表
+   *
+   * 将数据数组批量写入指定的数据库表。
+   * INIT-1：使用 bulkPut 替代逐条 await put，减少事务往返，加速冷启动。
+   *
+   * @param table - 目标数据库表
+   * @param data - 待写入的数据数组
    */
   private async initTable(table: Table, data: readonly unknown[]): Promise<void> {
-    for (const item of data) {
-      await table.put(item);
+    if (data.length > 0) {
+      await table.bulkPut(data as unknown[]);
     }
   }
 
@@ -293,13 +357,44 @@ export class DataInitializer {
   }
 
   /**
+   * 初始化职业专属装备数据（DATA-4）
+   *
+   * 将静态常量 CLASS_SPECIFIC_ITEMS 写入 config_class_items 表，
+   * 供 admin 后台编辑。业务模块仍直接 import 静态常量保持同步访问。
+   */
+  private async initClassItems(): Promise<void> {
+    await this.initTable(db.config_class_items, CLASS_SPECIFIC_ITEMS);
+  }
+
+  /**
+   * 初始化职业被动技能数据（DATA-4）
+   */
+  private async initClassPassives(): Promise<void> {
+    await this.initTable(db.config_class_passives, CLASS_PASSIVES);
+  }
+
+  /**
+   * 初始化职业天赋树数据（DATA-4）
+   */
+  private async initClassTalents(): Promise<void> {
+    await this.initTable(db.config_class_talents, CLASS_TALENT_TREES);
+  }
+
+  /**
+   * 初始化套装定义数据（DATA-4）
+   */
+  private async initItemSets(): Promise<void> {
+    await this.initTable(db.config_item_sets, ITEM_SETS);
+  }
+
+  /**
    * 重置数据初始化标志
    *
    * 调用此方法后，下次启动时会重新初始化数据
    */
   async resetData(): Promise<void> {
     await db.runtime_gameState.delete(this.initFlagKey);
-    console.log('数据初始化标志已重置');
+    if (import.meta.env.DEV) console.log('数据初始化标志已重置');
   }
 
   /**
@@ -309,7 +404,7 @@ export class DataInitializer {
    * 注意：此操作不会影响角色数据（char_* 表）。
    */
   async reinitializeData(): Promise<void> {
-    console.log('开始修复基础数据...');
+    if (import.meta.env.DEV) console.log('开始修复基础数据...');
 
     try {
       await db.transaction(
@@ -326,6 +421,10 @@ export class DataInitializer {
           db.config_shops,
           db.config_quests,
           db.config_skills,
+          db.config_class_items,
+          db.config_class_passives,
+          db.config_class_talents,
+          db.config_item_sets,
           db.runtime_gameState,
           db.runtime_mapState,
         ],
@@ -342,6 +441,10 @@ export class DataInitializer {
           await db.config_shops.clear();
           await db.config_quests.clear();
           await db.config_skills.clear();
+          await db.config_class_items.clear();
+          await db.config_class_passives.clear();
+          await db.config_class_talents.clear();
+          await db.config_item_sets.clear();
 
           // 重新导入所有基础数据
           await this.initFactions();
@@ -357,6 +460,11 @@ export class DataInitializer {
           await this.initQuests();
           await this.initSkillTemplates();
           await this.initGameConstants();
+          // DATA-4：职业专属数据持久化（供 admin 后台编辑）
+          await this.initClassItems();
+          await this.initClassPassives();
+          await this.initClassTalents();
+          await this.initItemSets();
 
           // 更新初始化标志
           await db.runtime_gameState.put({
@@ -366,7 +474,7 @@ export class DataInitializer {
         }
       );
 
-      console.log('基础数据修复完成');
+      if (import.meta.env.DEV) console.log('基础数据修复完成');
 
       // 通知 baseStore 重新加载最新数据
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: 'repair', action: 'bulk', id: '*' });
@@ -488,37 +596,53 @@ export class BackupService implements IBackupService {
    * 收集所有游戏数据
    *
    * 从数据库中读取所有需要备份的数据表，包括运行时数据和完整配置表。
+   *
+   * 性能与实现说明：
+   * - PERF-2：所有互不依赖的表通过 Promise.all 并行读取，避免串行阻塞主线程。
+   * - CODE-38：配置表清单与 TABLES_TO_BACKUP 保持一致，importData 写入时
+   *   通过该配置驱动遍历，避免读取/写入两侧表名散落。
+   * - CODE-5：配置表的 Table 类型断言收敛在 getTable<T> 内部，调用方无需
+   *   `as unknown as XXX` 双重断言。
+   *
    * @returns BackupData - 备份数据对象
    */
   private async collectAllData(): Promise<BackupData> {
-    // 角色表
-    const characterRecords = await db.char_data.toArray();
-    const inventoryRecords = await db.char_inventory.toArray();
-    const questsRecords = await db.char_quests.toArray();
-    const equipmentRecords = await db.char_equipment.toArray();
-    const skillsRecords = await db.char_skills.toArray();
-    const explorationRecords = await db.char_exploration.toArray();
+    // PERF-2：互不依赖的表用 Promise.all 并行读取，避免串行阻塞主线程
+    const [
+      characterRecords, inventoryRecords, questsRecords, equipmentRecords,
+      skillsRecords, explorationRecords, combatRecords, adventureLogRecords,
+      gameStateRecords, mapStateRecords, shopItemsRecords,
+      mapRecords, shopRecords, factionsRecords, racesRecords, classesRecords,
+      itemsRecords, equipmentItemsRecords, mobsRecords, bossesRecords, skillTemplatesRecords
+    ] = await Promise.all([
+      // 角色表（Record 形状，以 characterId 为键）
+      db.char_data.toArray(),
+      db.char_inventory.toArray(),
+      db.char_quests.toArray(),
+      db.char_equipment.toArray(),
+      db.char_skills.toArray(),
+      db.char_exploration.toArray(),
+      // 运行时表
+      db.runtime_combatLogs.toArray(),
+      db.runtime_adventureLogs.toArray(),
+      db.runtime_gameState.toArray(),
+      db.runtime_mapState.toArray(),
+      db.runtime_shopItems.toArray(),
+      // 配置表（数组形状）：通过 getTable<具体类型> 收敛 Table 类型断言（CODE-5）
+      // 表清单与 TABLES_TO_BACKUP 配置保持一致
+      getTable<LocationData>(db, 'config_locations').toArray(),
+      getTable<ShopConfig>(db, 'config_shops').toArray(),
+      getTable<FactionStorage>(db, 'config_factions').toArray(),
+      getTable<RaceStorage>(db, 'config_races').toArray(),
+      getTable<ClassStorage>(db, 'config_classes').toArray(),
+      getTable<ItemStorage>(db, 'config_items').toArray(),
+      getTable<EquipmentTemplateStorage>(db, 'config_equipmentItems').toArray(),
+      getTable<EnemyStorage>(db, 'config_mobs').toArray(),
+      getTable<BossStorage>(db, 'config_bosses').toArray(),
+      getTable<SkillTemplateStorage>(db, 'config_skills').toArray(),
+    ]);
 
-    // 运行时表
-    const combatRecords = await db.runtime_combatLogs.toArray();
-    const adventureLogRecords = await db.runtime_adventureLogs.toArray();
-    const gameStateRecords = await db.runtime_gameState.toArray();
-    const mapStateRecords = await db.runtime_mapState.toArray();
-    const shopItemsRecords = await db.runtime_shopItems.toArray();
-
-    // 配置表
-    const mapRecords = await db.config_locations.toArray();
-    const shopRecords = await db.config_shops.toArray();
-    const factionsRecords = await db.config_factions.toArray();
-    const racesRecords = await db.config_races.toArray();
-    const classesRecords = await db.config_classes.toArray();
-    const itemsRecords = await db.config_items.toArray();
-    const equipmentItemsRecords = await db.config_equipmentItems.toArray();
-    const mobsRecords = await db.config_mobs.toArray();
-    const bossesRecords = await db.config_bosses.toArray();
-    const skillTemplatesRecords = await db.config_skills.toArray();
-
-    // 构建角色数据 Record
+    // 构建角色数据 Record（以 characterId 为键）
     const characters = this.toCharacterRecord(characterRecords);
     const inventory = this.toCharacterRecord(inventoryRecords);
     const quests = this.toCharacterRecord(questsRecords);
@@ -558,8 +682,8 @@ export class BackupService implements IBackupService {
       exploration,
       combat,
       adventureLog,
-      map: mapRecords as BackupData['map'],
-      shop: shopRecords as BackupData['shop'],
+      map: mapRecords,
+      shop: shopRecords,
       gameState,
       shopItems,
       mapState,
@@ -752,7 +876,7 @@ export class ImportService implements IImportService {
           db.runtime_shopItems,
         ],
         async () => {
-          // 辅助函数：有数据则 bulkPut，否则计入 skipped
+          // 辅助函数：Record 形状数据有数据则 bulkPut，否则计入 skipped
           const bulkPutIfNotEmpty = async <T>(
             table: Table,
             record: Record<string, T> | undefined,
@@ -766,6 +890,21 @@ export class ImportService implements IImportService {
             }
           };
 
+          // 辅助函数：数组形状数据有数据则 bulkPut，否则计入 skipped（CODE-34）
+          const bulkPutArrayIfNotEmpty = async (
+            table: Table,
+            items: readonly unknown[] | undefined,
+            storeName: string
+          ) => {
+            if (items && items.length > 0) {
+              await table.bulkPut(items as unknown[]);
+              importedStores.push(storeName);
+            } else {
+              skippedStores.push(storeName);
+            }
+          };
+
+          // Record 形状的表（角色表 + 运行时表）
           await bulkPutIfNotEmpty(db.char_data, data.characters, 'char_data');
           await bulkPutIfNotEmpty(db.char_inventory, data.inventory, 'char_inventory');
           await bulkPutIfNotEmpty(db.char_quests, data.quests, 'char_quests');
@@ -777,81 +916,25 @@ export class ImportService implements IImportService {
           await bulkPutIfNotEmpty(db.runtime_mapState, data.mapState, 'runtime_mapState');
           await bulkPutIfNotEmpty(db.runtime_shopItems, data.shopItems, 'runtime_shopItems');
 
-          if (data.adventureLog && Object.keys(data.adventureLog).length > 0) {
-            const logEntries: AdventureLogData[] = Object.entries(data.adventureLog).map(
-              ([characterId, entries]) => ({
+          // adventureLog：转换为 AdventureLogData[] 后统一处理
+          // 注意：补全 updatedAt 字段（AdventureLogData 必填，旧实现缺失导致类型不匹配）
+          const adventureLogEntries: AdventureLogData[] = data.adventureLog
+            ? Object.entries(data.adventureLog).map(([characterId, entries]) => ({
                 characterId,
-                entries
-              })
-            );
-            await db.runtime_adventureLogs.bulkPut(logEntries);
-            importedStores.push('runtime_adventureLogs');
-          } else {
-            skippedStores.push('runtime_adventureLogs');
-          }
+                entries,
+                updatedAt: Date.now()
+              }))
+            : [];
+          await bulkPutArrayIfNotEmpty(
+            db.runtime_adventureLogs,
+            adventureLogEntries,
+            'runtime_adventureLogs'
+          );
 
-          if (data.map && data.map.length > 0) {
-            await db.config_locations.bulkPut(data.map as unknown as LocationStorage[]);
-            importedStores.push('config_locations');
-          } else {
-            skippedStores.push('config_locations');
-          }
-
-          if (data.shop && data.shop.length > 0) {
-            await db.config_shops.bulkPut(data.shop);
-            importedStores.push('config_shops');
-          } else {
-            skippedStores.push('config_shops');
-          }
-
-          // 恢复配置表数据（v1.1 新增，兼容旧备份不含这些字段）
-          if (data.factions && data.factions.length > 0) {
-            await db.config_factions.bulkPut(data.factions);
-            importedStores.push('config_factions');
-          } else {
-            skippedStores.push('config_factions');
-          }
-          if (data.races && data.races.length > 0) {
-            await db.config_races.bulkPut(data.races);
-            importedStores.push('config_races');
-          } else {
-            skippedStores.push('config_races');
-          }
-          if (data.classes && data.classes.length > 0) {
-            await db.config_classes.bulkPut(data.classes);
-            importedStores.push('config_classes');
-          } else {
-            skippedStores.push('config_classes');
-          }
-          if (data.items && data.items.length > 0) {
-            await db.config_items.bulkPut(data.items);
-            importedStores.push('config_items');
-          } else {
-            skippedStores.push('config_items');
-          }
-          if (data.equipmentItems && data.equipmentItems.length > 0) {
-            await db.config_equipmentItems.bulkPut(data.equipmentItems);
-            importedStores.push('config_equipmentItems');
-          } else {
-            skippedStores.push('config_equipmentItems');
-          }
-          if (data.mobs && data.mobs.length > 0) {
-            await db.config_mobs.bulkPut(data.mobs);
-            importedStores.push('config_mobs');
-          } else {
-            skippedStores.push('config_mobs');
-          }
-          if (data.bosses && data.bosses.length > 0) {
-            await db.config_bosses.bulkPut(data.bosses);
-            importedStores.push('config_bosses');
-          } else {
-            skippedStores.push('config_bosses');
-          }
-          if (data.skillTemplates && data.skillTemplates.length > 0) {
-            await db.config_skills.bulkPut(data.skillTemplates);
-            importedStores.push('config_skills');
-          } else {
-            skippedStores.push('config_skills');
+          // CODE-34：数组形状的配置表通过 TABLES_TO_BACKUP 配置驱动，
+          // 消除 11 处结构相同的 if/else；断言收敛在 getTable 内部（CODE-5）
+          for (const { field, table, storeName } of TABLES_TO_BACKUP) {
+            await bulkPutArrayIfNotEmpty(getTable<unknown>(db, table), data[field], storeName);
           }
         }
       );

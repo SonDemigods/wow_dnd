@@ -19,6 +19,9 @@ interface AudioSettingsStorage {
   muted: boolean;
   sfxEnabled: boolean;
   bgmEnabled: boolean;
+  // 索引签名：与 GameStateStorage 的 `[key: string]: unknown` 兼容，
+  // 允许通过 saveGameState 写入 runtime_gameState 表
+  [key: string]: unknown;
 }
 
 /**

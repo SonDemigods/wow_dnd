@@ -62,7 +62,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends Record<string, unknown>">
 /**
  * 通用数据表格组件
  *
@@ -70,19 +70,22 @@
  */
 import { ref } from 'vue';
 
+/** 单元格值类型 */
+export type CellValue = string | number | boolean | null | unknown[];
+
 /** 列定义 */
-export interface TableColumn {
+export interface TableColumn<T = Record<string, unknown>> {
   key: string;
   label: string;
   width?: string;
-  format?: (value: any, row: any) => string;
+  format?: (value: CellValue, row: T) => string;
 }
 
 defineProps<{
   /** 列定义 */
-  columns: TableColumn[];
+  columns: TableColumn<T>[];
   /** 表格数据 */
-  data: any[];
+  data: T[];
   /** 总记录数 */
   totalCount?: number;
   /** 隐藏新增按钮 */
@@ -93,8 +96,8 @@ defineProps<{
 
 defineEmits<{
   create: [];
-  edit: [row: any];
-  delete: [row: any];
+  edit: [row: T];
+  delete: [row: T];
   refresh: [];
   search: [keyword: string];
 }>();
@@ -102,13 +105,13 @@ defineEmits<{
 const searchValue = ref('');
 
 /** 获取行的唯一 key */
-function getRowKey(row: any, index: number): string {
-  return row.id ?? row.characterId ?? `row-${index}`;
+function getRowKey(row: T, index: number): string {
+  return (row.id ?? row.characterId ?? `row-${index}`) as string;
 }
 
 /** 格式化单元格值 */
-function formatCellValue(value: any, col: TableColumn): string {
-  if (col.format) return col.format(value, {});
+function formatCellValue(value: unknown, col: TableColumn<T>): string {
+  if (col.format) return col.format(value as CellValue, {} as T);
   if (value === null || value === undefined) return '-';
   if (typeof value === 'boolean') return value ? '是' : '否';
   if (Array.isArray(value)) return JSON.stringify(value);

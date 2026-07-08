@@ -8,7 +8,7 @@
 import type { BossInstance, BossTemplate } from './types';
 import type { EnemyDrop } from '../enemy/types';
 import { generateEnemyStats, BOSS_DROP_TABLE } from '../enemy/service';
-import { BossPhaseManager } from './phase-manager';
+import { BossPhaseManager } from './phaseManager';
 
 /**
  * 创建完整的 Boss 实例（纯函数，不涉及 DB 和状态存储）

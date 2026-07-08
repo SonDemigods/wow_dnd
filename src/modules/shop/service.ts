@@ -99,6 +99,7 @@ function getRarityMultiplier(rarity: string): number {
  * 3. 随机抽取 6~12 件物品（不足时全取）
  * 4. 每件物品调用 {@link calculatePrice} 计算购买价
  * 5. 随机生成 1~5 的库存数量
+ * 6. BIZ-21：稀有及以上商品携带 `maxPurchaseCount` 限制购买次数，`purchasedCount` 初始化为 0
  *
  * @param shopConfig - 商店配置
  * @param allItems   - 所有物品模板列表
@@ -116,9 +117,39 @@ export function generateShopItems(shopConfig: ShopConfig, allItems: Item[]): Sho
   const selected = shuffled.slice(0, count);
 
   // 生成商品列表
-  return selected.map(item => ({
-    itemId: item.id,
-    price: calculatePrice(item, true),
-    quantity: Math.max(1, Math.floor(Math.random() * 5) + 1),
-  }));
+  return selected.map(item => {
+    const shopItem: ShopItem = {
+      itemId: item.id,
+      price: calculatePrice(item, true),
+      quantity: Math.max(1, Math.floor(Math.random() * 5) + 1),
+    };
+    // BIZ-21：为稀有及以上商品设置购买次数上限，防止玩家囤积稀有物品
+    const maxPurchaseCount = getMaxPurchaseCount(item.rarity);
+    if (maxPurchaseCount !== undefined) {
+      shopItem.maxPurchaseCount = maxPurchaseCount;
+      shopItem.purchasedCount = 0;
+    }
+    return shopItem;
+  });
+}
+
+/**
+ * 根据稀有度返回购买次数上限（BIZ-21）
+ *
+ * 稀有及以上商品限制购买次数，防止玩家囤积稀有物品：
+ * - rare（稀有）     : 5 次
+ * - epic（史诗）     : 3 次
+ * - legendary（传说）: 1 次
+ * - 其他             : 不限制（返回 undefined）
+ *
+ * @param rarity - 物品稀有度
+ * @returns 购买次数上限，未定义表示不限制
+ */
+function getMaxPurchaseCount(rarity: string): number | undefined {
+  const limits: Record<string, number> = {
+    rare: 5,
+    epic: 3,
+    legendary: 1,
+  };
+  return limits[rarity];
 }

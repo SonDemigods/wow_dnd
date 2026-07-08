@@ -14,7 +14,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { BossPhase, BossMechanicType } from './types';
 import type { EnemyInstance } from '../enemy/types';
-import { BossPhaseManager } from './phase-manager';
+import { BossPhaseManager } from './phaseManager';
 import { processBossPhaseMechanics, applyPhaseStats } from './engine';
 
 /**
@@ -116,8 +116,10 @@ export const useBossStore = defineStore('boss', () => {
     // 创建阶段管理器并定位初始阶段
     phaseManager = new BossPhaseManager();
     const result = phaseManager.getCurrentPhase(bossWithPhases.phases, boss.hp, boss.maxHp);
+    // getCurrentPhase 在 phases 非空时理论上必返回 phase，但仍需防御 null（CODE-13 修复）
+    if (!result.phase) return;
     currentPhase.value = result.phase;
-    currentPhaseIndex.value = bossWithPhases.phases.indexOf(result.phase!);
+    currentPhaseIndex.value = bossWithPhases.phases.indexOf(result.phase);
   }
 
   // ==================== Action：回合流程 ====================

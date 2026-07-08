@@ -9,6 +9,7 @@
  * @module console
  */
 import { useCharacterStore } from './character';
+import type { Character } from './character';
 import { useInventoryStore } from './inventory';
 import { useEnemyStore } from './enemy';
 import { useCombatStore } from './combat';
@@ -25,6 +26,7 @@ import { inventoryDbService } from './inventory';
 import { equipmentDbService } from './equipment';
 import { MAX_LEVEL } from '../config/character';
 import { getExpForLevel } from '../utils/calculations';
+import { CONSOLE_STYLE as STYLE } from '../config/console-style';
 
 // ============================================================
 // 类型定义
@@ -48,9 +50,25 @@ export interface CommandResult {
  * 命令类别联合类型
  *
  * 用于 help 命令的分类展示和按类别筛选。
- * 中文值直接作为 help 输出的分类标题，无需额外翻译。
+ * 内部使用英文 key（更易维护、避免编码问题），UI 显示通过 COMMAND_CATEGORY_LABELS 映射为中文。
  */
-type CommandCategory = '角色' | '战斗' | '物品' | '探索' | '系统' | '技能' | '任务';
+type CommandCategory = 'character' | 'combat' | 'item' | 'exploration' | 'system' | 'skill' | 'quest';
+
+/**
+ * 命令类别中文显示映射表
+ *
+ * 将英文 CommandCategory key 映射为 help 输出中展示的中文标题。
+ * 新增类别时需同步在此映射表追加对应中文标签。
+ */
+const COMMAND_CATEGORY_LABELS: Record<CommandCategory, string> = {
+  character: '角色',
+  combat: '战斗',
+  item: '物品',
+  exploration: '探索',
+  system: '系统',
+  skill: '技能',
+  quest: '任务'
+};
 
 /**
  * 命令定义接口
@@ -79,28 +97,8 @@ interface CommandDef {
 // 展示辅助
 // ============================================================
 
-/**
- * 控制台输出样式常量
- *
- * 使用 CSS 内联样式字符串，配合 console.log 的 %c 占位符实现彩色输出。
- * tag: 橙色标签 [cmd]，ok: 绿色成功，err: 红色失败，label/hint: 信息展示
- */
-const STYLE = {
-  tag: 'color: #111; background: #f59e0b; padding: 1px 5px; border-radius: 3px; font-weight: bold',
-  ok: 'color: #4ade80',
-  err: 'color: #ef4444',
-  label: 'color: #a78bfa',
-  value: 'color: #e2e8f0',
-  hint: 'color: #94a3b8; font-style: italic',
-  section: 'color: #f59e0b; font-weight: bold',
-  rarity: {
-    common: 'color: #9d9d9d',
-    uncommon: 'color: #1eff00',
-    rare: 'color: #0070dd',
-    epic: 'color: #a335ee',
-    legendary: 'color: #ff8000'
-  }
-};
+// STYLE 常量已提取到 src/config/console-style.ts（CONSOLE_STYLE），
+// 此处通过 `import { CONSOLE_STYLE as STYLE }` 别名导入，保持现有引用不变。
 
 /**
  * 根据稀有度字符串返回对应的 CSS 颜色样式
@@ -159,6 +157,40 @@ function registerCommand(def: CommandDef): void {
   commands.set(def.name, def);
 }
 
+/**
+ * 解析用户输入的类别字符串为 CommandCategory
+ *
+ * help 命令按类别筛选时使用，兼容英文 key（'character'）和中文 label（'角色'）。
+ * 匹配失败时返回 undefined，调用方可据此给出错误提示。
+ *
+ * @param {string} input - 用户输入字符串
+ * @returns {CommandCategory | undefined} 匹配到的类别 key，无匹配时 undefined
+ */
+function resolveCategory(input: string): CommandCategory | undefined {
+  return (Object.keys(COMMAND_CATEGORY_LABELS) as CommandCategory[]).find(
+    k => k === input || COMMAND_CATEGORY_LABELS[k] === input
+  );
+}
+
+/**
+ * 获取当前角色数据的辅助函数
+ *
+ * 消除各命令中重复的 info! 非空断言（CODE-11/CODE-35）。
+ * 内部调用 useCharacterStore().getCharacterData() 并做 null 检查，
+ * 调用方根据返回值判别后即可获得类型已收窄的 Character。
+ *
+ * @returns 成功时 { ok: true, character }；角色不存在时 { ok: false, result }
+ */
+function requireCharacter():
+  | { ok: true; character: Character }
+  | { ok: false; result: CommandResult } {
+  const info = useCharacterStore().getCharacterData();
+  if (!info) {
+    return { ok: false, result: { success: false, message: '当前没有选中角色' } };
+  }
+  return { ok: true, character: info };
+}
+
 // ============================================================
 // 内置命令 —— 系统类
 // ============================================================
@@ -195,7 +227,7 @@ function switchGameState(target: string, msg: string): CommandResult {
  */
 registerCommand({
   name: 'admin',
-  category: '系统',
+  category: 'system',
   description: '进入游戏后台管理系统',
   usage: 'admin',
   handler() {
@@ -210,7 +242,7 @@ registerCommand({
  */
 registerCommand({
   name: 'game',
-  category: '系统',
+  category: 'system',
   description: '从后台返回游戏界面',
   usage: 'game',
   handler() {
@@ -231,7 +263,7 @@ registerCommand({
  */
 registerCommand({
   name: 'help',
-  category: '系统',
+  category: 'system',
   description: '显示所有可用命令（可按类别筛选）',
   usage: 'help [类别|命令名]',
   handler(args) {
@@ -240,28 +272,33 @@ registerCommand({
       if (cmd) {
         return {
           success: true,
-          message: `${cmd.name} [${cmd.category}] — ${cmd.description}\n用法: ${cmd.usage}`
+          message: `${cmd.name} [${COMMAND_CATEGORY_LABELS[cmd.category]}] — ${cmd.description}\n用法: ${cmd.usage}`
         };
       }
-      // 按类别筛选
-      const categoryCmds = [...commands.values()].filter(c => c.category === args[0]);
-      if (categoryCmds.length > 0) {
+      // 按类别筛选：兼容英文 key 和中文 label
+      const matchCategory = resolveCategory(args[0]);
+      if (matchCategory) {
+        const categoryCmds = [...commands.values()].filter(c => c.category === matchCategory);
         for (const c of categoryCmds) {
           console.log(`%c[help]%c  %c${c.usage.padEnd(32)}%c ${c.description}`, STYLE.tag, STYLE.label, STYLE.value, STYLE.hint);
         }
-        return { success: true, message: '已在上方列出该类别命令' };
+        return { success: true, message: `已在上方列出「${COMMAND_CATEGORY_LABELS[matchCategory]}」类别命令` };
       }
       return { success: false, message: `未知命令或类别: ${args[0]}` };
     }
 
     const categories = new Map<CommandCategory, CommandDef[]>();
     for (const cmd of commands.values()) {
-      if (!categories.has(cmd.category)) categories.set(cmd.category, []);
-      categories.get(cmd.category)!.push(cmd);
+      let list = categories.get(cmd.category);
+      if (!list) {
+        list = [];
+        categories.set(cmd.category, list);
+      }
+      list.push(cmd);
     }
 
     for (const [cat, cmds] of categories) {
-      logTag('help', `═══ ${cat} ═══`);
+      logTag('help', `═══ ${COMMAND_CATEGORY_LABELS[cat]} ═══`);
       for (const cmd of cmds) {
         console.log(`  %c${cmd.usage.padEnd(32)}%c ${cmd.description}`, STYLE.label, STYLE.hint);
       }
@@ -285,21 +322,19 @@ registerCommand({
  */
 registerCommand({
   name: 'stats',
-  category: '角色',
+  category: 'character',
   description: '显示当前角色完整属性',
   usage: 'stats',
   handler() {
-    if (!useCharacterStore().currentCharacterId) {
-      return { success: false, message: '当前没有选中角色' };
-    }
-
-    const info = useCharacterStore().character;
+    const req = requireCharacter();
+    if (!req.ok) return req.result;
+    const info = req.character;
     const stats = useCharacterStore().effectiveStats;
     const attrs = useCharacterStore().attributes;
 
-    logTag('stats', `${info!.name}  Lv.${info!.level}  ${info!.factionId}/${info!.raceId}/${info!.classId}`);
-    console.log(`  HP ${info!.hp}/${info!.maxHp}  |  MP ${info!.mana}/${info!.maxMana}  |  金币 ${info!.gold}`);
-    console.log(`  EXP ${info!.exp}/${info!.expToNextLevel}`);
+    logTag('stats', `${info.name}  Lv.${info.level}  ${info.factionId}/${info.raceId}/${info.classId}`);
+    console.log(`  HP ${info.hp}/${info.maxHp}  |  MP ${info.mana}/${info.maxMana}  |  金币 ${info.gold}`);
+    console.log(`  EXP ${info.exp}/${info.expToNextLevel}`);
     console.log(`  ── 基础 ──  力量 ${stats.str}  敏捷 ${stats.dex}  体质 ${stats.con}`);
     console.log(`             智力 ${stats.int}  感知 ${stats.wis}  魅力 ${stats.cha}`);
     console.log(`  ── 战斗 ──  物攻 ${attrs.physicalAttack}  物防 ${attrs.physicalDefense}`);
@@ -318,7 +353,7 @@ registerCommand({
  */
 registerCommand({
   name: 'gold',
-  category: '角色',
+  category: 'character',
   description: '添加金币',
   usage: 'gold <数量>',
   async handler(args) {
@@ -343,7 +378,7 @@ registerCommand({
  */
 registerCommand({
   name: 'exp',
-  category: '角色',
+  category: 'character',
   description: '添加经验值（自动处理升级）',
   usage: 'exp <数量>',
   async handler(args) {
@@ -371,7 +406,7 @@ registerCommand({
  */
 registerCommand({
   name: 'hp',
-  category: '角色',
+  category: 'character',
   description: '设置当前生命值',
   usage: 'hp <数值>',
   async handler(args) {
@@ -393,7 +428,7 @@ registerCommand({
  */
 registerCommand({
   name: 'mp',
-  category: '角色',
+  category: 'character',
   description: '设置当前法力值',
   usage: 'mp <数值>',
   async handler(args) {
@@ -415,14 +450,16 @@ registerCommand({
  */
 registerCommand({
   name: 'heal',
-  category: '角色',
+  category: 'character',
   description: '恢复满生命值和法力值',
   usage: 'heal',
   async handler() {
-    const info = useCharacterStore().character;
-    await useCharacterStore().setHp(info!.maxHp);
-    await useCharacterStore().setMp(info!.maxMana);
-    return { success: true, message: `已恢复满 HP(${info!.maxHp}) 和 MP(${info!.maxMana})` };
+    const req = requireCharacter();
+    if (!req.ok) return req.result;
+    const info = req.character;
+    await useCharacterStore().setHp(info.maxHp);
+    await useCharacterStore().setMp(info.maxMana);
+    return { success: true, message: `已恢复满 HP(${info.maxHp}) 和 MP(${info.maxMana})` };
   }
 });
 
@@ -439,7 +476,7 @@ registerCommand({
  */
 registerCommand({
   name: 'level',
-  category: '角色',
+  category: 'character',
   description: `设置角色等级（1-${MAX_LEVEL}）`,
   usage: 'level <等级>',
   async handler(args) {
@@ -484,7 +521,7 @@ registerCommand({
  */
 registerCommand({
   name: 'resurrect',
-  category: '角色',
+  category: 'character',
   description: '复活当前角色（恢复50%生命法力）',
   usage: 'resurrect',
   async handler() {
@@ -508,7 +545,7 @@ registerCommand({
  */
 registerCommand({
   name: 'buff',
-  category: '角色',
+  category: 'character',
   description: '应用临时属性加成',
   usage: 'buff <属性名> <数值>  (属性: str/dex/con/int/wis/cha)',
   async handler(args) {
@@ -541,7 +578,7 @@ registerCommand({
  */
 registerCommand({
   name: 'resetChar',
-  category: '角色',
+  category: 'character',
   description: '重置角色到初始状态（危险操作！）',
   usage: 'resetChar',
   async handler() {
@@ -570,7 +607,7 @@ registerCommand({
  */
 registerCommand({
   name: 'item',
-  category: '物品',
+  category: 'item',
   description: '添加物品到背包（消耗品和装备）',
   usage: 'item <物品ID> [数量]',
   async handler(args) {
@@ -627,7 +664,7 @@ registerCommand({
  */
 registerCommand({
   name: 'bag',
-  category: '物品',
+  category: 'item',
   description: '显示背包物品',
   usage: 'bag',
   handler() {
@@ -655,7 +692,7 @@ registerCommand({
  */
 registerCommand({
   name: 'clearBag',
-  category: '物品',
+  category: 'item',
   description: '清空背包',
   usage: 'clearBag',
   handler() {
@@ -672,7 +709,7 @@ registerCommand({
  */
 registerCommand({
   name: 'equips',
-  category: '物品',
+  category: 'item',
   description: '查看当前装备状态',
   usage: 'equips',
   handler() {
@@ -690,7 +727,8 @@ registerCommand({
     };
 
     logTag('equips', '═══ 当前装备 ═══');
-    for (const [slot, item] of occupied) {
+    for (const [slot, entry] of occupied) {
+      const item = entry.item;
       const rc = rarityColorKey(item.rarity || 'common');
       console.log(`  %c${(slotNames[slot] || slot).padEnd(10)}%c ${item.name.padEnd(20)}%c Lv.${item.level}`, STYLE.label, rc, STYLE.hint);
     }
@@ -715,7 +753,7 @@ registerCommand({
  */
 registerCommand({
   name: 'spawn',
-  category: '战斗',
+  category: 'combat',
   description: '生成敌人并进入战斗',
   usage: 'spawn <敌人ID>',
   async handler(args) {
@@ -778,7 +816,7 @@ function endCombatCmd(result: 'victory' | 'fled', msg: string): CommandResult {
  */
 registerCommand({
   name: 'win',
-  category: '战斗',
+  category: 'combat',
   description: '强制结束当前战斗（胜利）',
   usage: 'win',
   handler() {
@@ -793,7 +831,7 @@ registerCommand({
  */
 registerCommand({
   name: 'flee',
-  category: '战斗',
+  category: 'combat',
   description: '强制结束当前战斗（逃跑）',
   usage: 'flee',
   handler() {
@@ -812,7 +850,7 @@ registerCommand({
  */
 registerCommand({
   name: 'kill',
-  category: '战斗',
+  category: 'combat',
   description: '使当前敌人立即死亡',
   usage: 'kill',
   handler() {
@@ -845,7 +883,7 @@ registerCommand({
  */
 registerCommand({
   name: 'skills',
-  category: '技能',
+  category: 'skill',
   description: '查看技能列表或装备技能',
   usage: 'skills [技能ID] [槽位0-3]  (不带参数列出技能，不指定槽位自动装入空位)',
   async handler(args) {
@@ -918,7 +956,7 @@ registerCommand({
  */
 registerCommand({
   name: 'resetExplore',
-  category: '探索',
+  category: 'exploration',
   description: '重置当前区域的探索状态',
   usage: 'resetExplore',
   handler() {
@@ -939,7 +977,7 @@ registerCommand({
  */
 registerCommand({
   name: 'goto',
-  category: '探索',
+  category: 'exploration',
   description: '传送到指定地点',
   usage: 'goto <地点ID>',
   handler(args) {
@@ -975,7 +1013,7 @@ registerCommand({
  */
 registerCommand({
   name: 'revealAll',
-  category: '探索',
+  category: 'exploration',
   description: '揭示当前探索区域的所有格子',
   usage: 'revealAll',
   async handler() {
@@ -1005,7 +1043,7 @@ registerCommand({
  */
 registerCommand({
   name: 'quests',
-  category: '任务',
+  category: 'quest',
   description: '查看任务状态或操作任务',
   usage: 'quests [accept|complete|abandon <任务ID>]',
   async handler(args) {
@@ -1092,7 +1130,7 @@ registerCommand({
  */
 registerCommand({
   name: 'shops',
-  category: '系统',
+  category: 'system',
   description: '查看可用商店列表',
   usage: 'shops',
   async handler() {
@@ -1122,7 +1160,7 @@ registerCommand({
  */
 registerCommand({
   name: 'log',
-  category: '系统',
+  category: 'system',
   description: '查看最近冒险日志',
   usage: 'log [数量] [类型]  (类型: combat/quest/item/level/info)',
   handler(args) {

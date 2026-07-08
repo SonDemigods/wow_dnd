@@ -22,7 +22,7 @@
  */
 import type { PassiveSkill, PassiveEffect } from '@/modules/character/types';
 import type { ResourceSource } from '../resources/types';
-import { getPassivesByClassId } from '@/data/class_passives';
+import { getPassivesByClassId } from '@/data/config_class_passives';
 import { useCharacterStore } from '@/modules/character/store';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';

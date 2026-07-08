@@ -6,7 +6,7 @@
  */
 import type { DruidForm, DruidFormType, FormStatModifiers, FormState } from './types';
 import { FORM_SWITCH_CONFIG } from './types';
-import { DEFAULT_FORM, getFormByType } from './druid_forms';
+import { DEFAULT_FORM, getFormByType } from './druidForms';
 import type { Stats } from '@/modules/character/types';
 
 // ============================================================

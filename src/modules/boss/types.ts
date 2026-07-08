@@ -7,7 +7,7 @@
  */
 
 import type { EnemyData, EnemyInstance, DangerLevel } from '../enemy/types';
-import type { BossPhaseManager } from './phase-manager';
+import type { BossPhaseManager } from './phaseManager';
 import type {
   AiStrategyType,
   BossIntroEffect,

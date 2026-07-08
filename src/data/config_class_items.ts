@@ -2,7 +2,7 @@
  * @fileoverview 职业专属装备数据（Phase 5.3）
  * @description 为 6 个核心职业各定义 3-5 件专属装备，含职业限制和套装归属。
  *              装备时由 equipment/service.ts 的 checkClassRestriction 检查职业限制。
- *              套装效果由 item_sets.ts 定义，由 equipment/store.ts 的 getActiveSetBonuses 计算。
+ *              套装效果由 config_item_sets.ts 定义，由 equipment/store.ts 的 getActiveSetBonuses 计算。
  * @module data
  */
 import type { EquipmentItem } from '@/modules/equipment/types';

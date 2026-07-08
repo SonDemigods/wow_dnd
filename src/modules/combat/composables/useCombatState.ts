@@ -18,7 +18,7 @@ import {
   EffectHandlerRegistry,
   addEffectToContainer
 } from '../effects';
-import { BossPhaseManager } from '../../boss/phase-manager';
+import { BossPhaseManager } from '../../boss/phaseManager';
 
 export function useCombatState() {
   // ==================== 响应式状态 ====================

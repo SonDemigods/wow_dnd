@@ -30,7 +30,8 @@ import {
   computeInitialStats,
   recalculateHpMp,
   computeResurrection,
-  isDead
+  isDead,
+  isClassFactionCompatible
 } from './service';
 import { getExpForLevel } from '@/utils/calculations';
 import { backupService, importService, dataInitializer } from '../data';
@@ -144,6 +145,11 @@ export const useCharacterStore = defineStore('character', () => {
     const id = generateCharacterId();
     const race = racesData.value[raceIdParam];
     const cls = classesData.value[classIdParam];
+
+    // 校验职业与阵营兼容性（如 death_knight 不对 neutral 开放、evoker 仅对 neutral 开放）
+    if (cls && !isClassFactionCompatible(cls, factionIdParam)) {
+      throw new Error(`职业「${cls.name}」不支持阵营「${factionIdParam}」`);
+    }
 
     const params: CreateCharacterParams = {
       name,
@@ -419,12 +425,14 @@ export const useCharacterStore = defineStore('character', () => {
   /** 设置角色名称 */
   async function setName(nameStr: string): Promise<void> {
     if (!character.value) return;
+    const id = currentCharacterId.value;
+    if (!id) return;
     character.value = { ...character.value, name: nameStr };
-    // 通过主键精确更新角色列表项
-    const item = await characterDbService.getCharacterListItem(currentCharacterId.value!);
+    // 通过主键精确更新角色列表项（浅拷贝 DB 返回对象，避免直接 mutate 持久化层引用）
+    const item = await characterDbService.getCharacterListItem(id);
     if (item) {
-      item.name = nameStr;
-      await characterDbService.saveCharacterListItem(item);
+      const updatedItem = { ...item, name: nameStr };
+      await characterDbService.saveCharacterListItem(updatedItem);
     }
     await persistCharacter();
   }

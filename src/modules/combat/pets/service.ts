@@ -12,7 +12,7 @@ import type {
   WarlockPetType,
 } from './types';
 import { PET_SUMMON_CONFIG } from './types';
-import { DEFAULT_UNLOCKED_PETS, getPetByType } from './warlock_pets';
+import { DEFAULT_UNLOCKED_PETS, getPetByType } from './warlockPets';
 import type { Stats } from '@/modules/character/types';
 
 // ============================================================

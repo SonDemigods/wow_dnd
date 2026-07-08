@@ -131,6 +131,7 @@ const mapContainerRef = ref<HTMLElement | null>(null);
 const mapWidth = ref(0);
 const mapHeight = ref(0);
 let resizeObserver: ResizeObserver | null = null;
+let fitMapRafId: number | null = null;
 
 // 缩放和平移
 const zoomLevel = ref(1);
@@ -300,7 +301,7 @@ onMounted(() => {
     });
     resizeObserver.observe(mapContainerRef.value);
     // 兜底：rAF 后再次确保尺寸正确（处理部分浏览器 ResizeObserver 回调合并的情况）
-    requestAnimationFrame(() => {
+    fitMapRafId = requestAnimationFrame(() => {
       fitMapToContainer();
     });
   }
@@ -310,6 +311,10 @@ onUnmounted(() => {
   if (resizeObserver) {
     resizeObserver.disconnect();
     resizeObserver = null;
+  }
+  if (fitMapRafId !== null) {
+    cancelAnimationFrame(fitMapRafId);
+    fitMapRafId = null;
   }
 });
 </script>

@@ -25,7 +25,7 @@ export {
   getPetByType,
   getAllPets,
   getSummonablePets,
-} from './warlock_pets';
+} from './warlockPets';
 
 // 服务层纯函数
 export {

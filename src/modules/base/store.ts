@@ -10,11 +10,19 @@ import type { FactionData, RaceData, ClassData, RaceType, FactionType } from '..
 import type { FactionCreateUpdateData, RaceCreateUpdateData, ClassCreateUpdateData } from './types';
 import { baseDbService } from './db';
 import { eventBus, GameEvents } from '../bus';
+import { errorHandler } from '@/services/ErrorHandler';
 
 // ==================== 通用工厂函数 ====================
 
 /** 实体类型标识 */
 type EntityType = 'faction' | 'race' | 'class';
+
+/** 实体类型中文名称映射（用于错误提示文案） */
+const ENTITY_LABEL: Record<EntityType, string> = {
+  faction: '阵营',
+  race: '种族',
+  class: '职业'
+};
 
 /**
  * 创建通用快捷取值计算属性
@@ -50,7 +58,7 @@ function createCrudActions<T extends { id: string }, TCreateData = Omit<T, 'id'>
       await loadFn();
       return true;
     } catch (error) {
-      console.error(`[BaseStore] 创建${entityType}失败:`, error);
+      errorHandler.report(error, `创建${ENTITY_LABEL[entityType]}失败`);
       return false;
     }
   }
@@ -62,7 +70,7 @@ function createCrudActions<T extends { id: string }, TCreateData = Omit<T, 'id'>
       await loadFn();
       return true;
     } catch (error) {
-      console.error(`[BaseStore] 更新${entityType}失败:`, error);
+      errorHandler.report(error, `更新${ENTITY_LABEL[entityType]}失败`);
       return false;
     }
   }
@@ -77,7 +85,7 @@ function createCrudActions<T extends { id: string }, TCreateData = Omit<T, 'id'>
       }
       return true;
     } catch (error) {
-      console.error(`[BaseStore] 删除${entityType}失败:`, error);
+      errorHandler.report(error, `删除${ENTITY_LABEL[entityType]}失败`);
       return false;
     }
   }
@@ -204,7 +212,7 @@ export const useBaseStore = defineStore('base', () => {
     try {
       factions.value = await baseDbService.getAllFactions();
     } catch (error) {
-      console.error('[BaseStore] 加载阵营数据失败:', error);
+      errorHandler.report(error, '加载阵营数据失败');
       factions.value = [];
     }
   }
@@ -216,7 +224,7 @@ export const useBaseStore = defineStore('base', () => {
     try {
       races.value = await baseDbService.getAllRaces();
     } catch (error) {
-      console.error('[BaseStore] 加载种族数据失败:', error);
+      errorHandler.report(error, '加载种族数据失败');
       races.value = [];
     }
   }
@@ -228,7 +236,7 @@ export const useBaseStore = defineStore('base', () => {
     try {
       classes.value = await baseDbService.getAllClasses();
     } catch (error) {
-      console.error('[BaseStore] 加载职业数据失败:', error);
+      errorHandler.report(error, '加载职业数据失败');
       classes.value = [];
     }
   }

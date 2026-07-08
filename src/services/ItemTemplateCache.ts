@@ -31,9 +31,11 @@ class ItemTemplateCacheService {
   /**
    * 从数据库加载全量物品模板并构建索引
    *
-   * 使用 Promise 去重，确保并发调用时只触发一次 DB 查询。
+   * 采用 Promise 去重（in-flight dedup）策略：并发调用时复用同一个 loadingPromise，
+   * 确保只触发一次 DB 查询。加载失败时 Promise 会 reject，调用方需自行 try/catch；
+   * 失败后 loaded 保持 false、loadingPromise 重置为 null，下次调用将自动重试。
    *
-   * @returns 物品模板列表
+   * @returns 物品模板列表（加载失败时 reject，调用方需处理）
    */
   async load(): Promise<Item[]> {
     // 已加载，直接返回缓存
@@ -41,28 +43,36 @@ class ItemTemplateCacheService {
       return this.templates;
     }
 
-    // 正在加载，复用进行中的 Promise
+    // 正在加载，复用进行中的 Promise（去重：避免并发重复 DB 查询）
     if (this.loadingPromise) {
       return this.loadingPromise;
     }
 
-    // 发起加载
-    this.loadingPromise = inventoryDbService.getAllItemTemplates().then(items => {
+    // 发起加载，保存 Promise 供并发调用复用
+    this.loadingPromise = this.doLoad();
+    return this.loadingPromise;
+  }
+
+  /**
+   * 实际执行 DB 加载与索引构建
+   *
+   * 从 load() 拆出，使 load() 专注去重逻辑、本方法专注数据加载。
+   * 无论成功或失败，finally 都会重置 loadingPromise 以允许后续重试。
+   */
+  private async doLoad(): Promise<Item[]> {
+    try {
+      const items = await inventoryDbService.getAllItemTemplates();
       this.templates = items;
       this.templateMap.clear();
       for (const item of items) {
         this.templateMap.set(item.id, item);
       }
       this.loaded = true;
-      this.loadingPromise = null;
       return items;
-    }).catch(err => {
-      // 加载失败，重置状态允许重试
+    } finally {
+      // 无论成功或失败，都重置 loadingPromise 允许后续重试
       this.loadingPromise = null;
-      throw err;
-    });
-
-    return this.loadingPromise;
+    }
   }
 
   /**
@@ -87,7 +97,8 @@ class ItemTemplateCacheService {
     if (!this.loaded) {
       await this.load();
     }
-    return this.templates!;
+    // load 失败时 templates 仍为 null，返回空数组兜底（CODE-15 修复）
+    return this.templates ?? [];
   }
 
   /**

@@ -18,7 +18,7 @@ import {
   isSkillAvailableInForm,
   createInitialFormState
 } from './service';
-import { getSwitchableForms } from './druid_forms';
+import { getSwitchableForms } from './druidForms';
 import { useCharacterStore } from '@/modules/character/store';
 import { useLogStore } from '@/modules/log/store';
 import { generateLogId } from '@/modules/log/service';

@@ -25,7 +25,7 @@
  */
 import type { EquipmentItem, EquipmentSlot, EquippedItem, SetBonus, ItemSet } from './types';
 import type { Stats } from '../character/types';
-import { ITEM_SETS } from '@/data/item_sets';
+import { ITEM_SETS } from '@/data/config_item_sets';
 
 // ==================== 槽位基础设施 ====================
 

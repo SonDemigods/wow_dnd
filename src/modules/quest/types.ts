@@ -122,9 +122,11 @@ export interface QuestObjectiveProgress {
  * @property {number} goldReward - 金币奖励（通过 characterStore.gainGold 发放）
  * @property {InventoryItem[]} [itemRewards] - 物品奖励列表（可选，通过 inventoryStore.addItem 发放）
  * @property {string} boardId - 所属任务板，决定在哪个区域的任务面板中展示
+ * @property {string[]} [prerequisiteQuests] - 前置任务 ID 列表（BIZ-19：玩家须完成所有前置任务才能接取）
  *
  * @see getDefaultQuests DB 为空时的回退模板
  * @see canAcceptQuest 接取条件判定
+ * @see checkPrerequisiteQuests 前置任务完成状态校验
  */
 export interface QuestDefinition {
   id: string;
@@ -137,6 +139,7 @@ export interface QuestDefinition {
   goldReward: number;
   itemRewards?: InventoryItem[];
   boardId: string;
+  prerequisiteQuests?: string[];
 }
 
 /**
@@ -218,6 +221,7 @@ export interface QuestInstanceStorage {
  * @property {number} goldReward - 金币奖励
  * @property {object[]} [itemRewards] - 物品奖励（内联定义 { itemId, count }）
  * @property {string} boardId - 任务板ID
+ * @property {string[]} [prerequisiteQuests] - 前置任务 ID 列表（BIZ-19）
  *
  * @see _mapToDefinition 存储类型 → 领域模型的转换逻辑
  */
@@ -239,6 +243,7 @@ export interface QuestDefinitionStorage {
   goldReward: number;
   itemRewards?: { itemId: string; count: number }[];
   boardId: string;
+  prerequisiteQuests?: string[];
 }
 
 /**

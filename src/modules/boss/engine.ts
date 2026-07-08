@@ -57,16 +57,35 @@ type BossRuntime = EnemyInstance & BossRuntimeState;
 // ============================================================================
 
 /**
+ * 机制执行器函数类型
+ *
+ * 每个 Boss 机制对应一个执行器：从 params 提取参数（默认值兜底），
+ * 将运行时状态注入到 BossRuntime 实例上。
+ */
+type MechanicExecutor = (boss: BossRuntime, params?: Record<string, number>) => void;
+
+/**
  * 机制执行器注册表
  *
- * 将 BossMechanicType 映射为具体的执行函数。每个执行器负责：
+ * 将 BossMechanicType 映射为具体的执行函数。执行器按职责拆分为三组
+ *（属性与防御、召唤与攻击、玩家效果与场景），最终合并为完整注册表。
+ * 每个执行器负责：
  * 1. 从 params 中提取机制参数（使用默认值兜底）
  * 2. 将运行时状态注入到 BossRuntime 实例上
  *
  * 未在此处直接处理战斗效果的机制（如 stun_player、split 等），
  * 仅设置标记位，由 combat store 在后续流程中消费。
+ *
+ * 拆分说明（CODE-40 修复）：原为单一巨型 Record（17 个执行器集中声明），
+ * 现按职责分组以便维护与查找。合并后的 mechanicExecutors 行为与原实现完全一致。
  */
-const mechanicExecutors: Record<BossMechanicType, (boss: BossRuntime, params?: Record<string, number>) => void> = {
+
+// ---- 属性与防御类执行器：调整 Boss 自身属性或设置防御性状态 ----
+type StatAndDefenseMechanic =
+  | 'enrage' | 'damage_shield' | 'reflect_damage'
+  | 'invulnerable' | 'revive' | 'counter_stance';
+
+const statAndDefenseExecutors: Record<StatAndDefenseMechanic, MechanicExecutor> = {
   /** 狂暴：按 attackMultiplier 倍率提升物理攻击力（默认 1.5 倍） */
   enrage: (boss, params) => {
     const multiplier = params?.attackMultiplier || 1.5;
@@ -81,38 +100,68 @@ const mechanicExecutors: Record<BossMechanicType, (boss: BossRuntime, params?: R
   reflect_damage: (boss, params) => {
     boss.reflectDamage = params?.reflectPercent || 0.2;
   },
+  /** 无敌：设置免疫所有伤害标记 */
+  invulnerable: (boss) => { boss.invulnerable = true; },
+  /** 复活：标记可复活一次 */
+  revive: (boss) => { boss.canRevive = true; },
+  /** 反击姿态：标记进入反击状态 */
+  counter_stance: (boss) => { boss.counterStance = true; },
+};
+
+// ---- 召唤与攻击类执行器：召唤援军或改变攻击模式 ----
+type SummonAndAttackMechanic =
+  | 'summon_minions' | 'summon_elite' | 'aoe_attack' | 'charge_attack';
+
+const summonAndAttackExecutors: Record<SummonAndAttackMechanic, MechanicExecutor> = {
   /** 召唤小怪：累加待召唤数量（由 combat store 实际创建） */
   summon_minions: (boss, params) => {
     boss.pendingSummons = (boss.pendingSummons || 0) + (params?.count || 1);
   },
-  /** 范围攻击：标记下次攻击为 AOE */
-  aoe_attack: (boss, _params) => {
-    boss.aoeNextAttack = true;
-  },
   /** 召唤精英怪：标记待召唤（由 combat store 处理） */
   summon_elite: (boss) => { boss.pendingEliteSummons = true; },
-  /** 无敌：设置免疫所有伤害标记 */
-  invulnerable: (boss) => { boss.invulnerable = true; },
+  /** 范围攻击：标记下次攻击为 AOE */
+  aoe_attack: (boss) => { boss.aoeNextAttack = true; },
   /** 冲锋攻击：设置蓄力标记，下回合释放 */
   charge_attack: (boss) => { boss.charging = true; },
+};
+
+// ---- 玩家效果与场景类执行器：影响玩家或场地，多数仅设置标记由 combat store/UI 消费 ----
+type PlayerEffectAndSceneMechanic =
+  | 'stun_player' | 'silence_player' | 'debuff_aura'
+  | 'arena_hazard' | 'healing_zone' | 'split' | 'steal_buff';
+
+const playerEffectAndSceneExecutors: Record<PlayerEffectAndSceneMechanic, MechanicExecutor> = {
   /** 眩晕玩家：标记触发（由 combat store 处理玩家端效果） */
   stun_player: () => { /* 由 combat store 处理 */ },
   /** 沉默玩家：标记触发（由 combat store 处理玩家端效果） */
   silence_player: () => { /* 由 combat store 处理 */ },
   /** 减益光环：设置光环类型（默认 'attack_down'） */
-  debuff_aura: (boss, params) => { boss.debuffAura = params?.debuffType || 'attack_down'; },
+  debuff_aura: (boss, params) => {
+    // debuffType 运行时为字符串（如 'attack_down'），但 params 被统一窄化为 Record<string, number>，
+    // 此处显式按字符串处理以匹配 debuffAura: string 类型
+    const debuffType = params?.debuffType as string | undefined;
+    boss.debuffAura = debuffType || 'attack_down';
+  },
   /** 场地危险：标记触发（由 UI 层渲染特效） */
   arena_hazard: () => { /* UI 特效 */ },
   /** 治疗区域：设置每回合回复量（默认 5） */
   healing_zone: (boss, params) => { boss.healingZone = params?.healPerTurn || 5; },
   /** 分裂：标记触发（由 combat store 处理分裂逻辑） */
   split: () => { /* 由 combat store 处理 */ },
-  /** 复活：标记可复活一次 */
-  revive: (boss) => { boss.canRevive = true; },
   /** 偷取增益：标记触发（由 combat store 处理偷取逻辑） */
   steal_buff: () => { /* 由 combat store 处理 */ },
-  /** 反击姿态：标记进入反击状态 */
-  counter_stance: (boss) => { boss.counterStance = true; },
+};
+
+/**
+ * 机制执行器完整注册表
+ *
+ * 由上述三组分类执行器合并而来，覆盖所有 BossMechanicType。
+ * executeBossMechanic 通过此注册表查找并调用对应执行器。
+ */
+const mechanicExecutors: Record<BossMechanicType, MechanicExecutor> = {
+  ...statAndDefenseExecutors,
+  ...summonAndAttackExecutors,
+  ...playerEffectAndSceneExecutors
 };
 
 // ============================================================================

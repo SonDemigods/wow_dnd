@@ -109,6 +109,8 @@ export interface SkillBuffEffect {
  * @property {'player'|'enemy'|'both'} [usableBy] - 可用角色类型限制（默认仅玩家）
  * @property {'single'|'all_enemies'|'self'|'ally'} [targetType] - 目标选择策略
  * @property {SkillBuffEffect[]} [buffs] - Buff/Debuff 效果列表（仅 buff/debuff 类型技能有意义）
+ * @property {string} [resourceType] - 资源系统类型（BIZ-11：'rage'/'energy'/'combo_point' 等，扩展 mpCost 之外的消耗）
+ * @property {number} [resourceCost] - 资源消耗量（与 resourceType 配合使用）
  *
  * @see SkillTemplateStorage 数据库模板对应的存储类型
  * @see toSkill 模板 → 运行时对象的转换逻辑
@@ -126,6 +128,8 @@ export interface Skill {
   usableBy?: 'player' | 'enemy' | 'both';
   targetType?: 'single' | 'all_enemies' | 'self' | 'ally';
   buffs?: SkillBuffEffect[];
+  resourceType?: string;
+  resourceCost?: number;
 }
 
 // ============================================================================
@@ -252,6 +256,8 @@ export interface SkillsData {
  * @property {'player'|'enemy'|'both'} [usableBy] - 可用角色类型（默认仅玩家）
  * @property {number} [cooldown] - 冷却回合数
  * @property {SkillBuffEffect[]} [buffs] - Buff/Debuff 效果列表
+ * @property {string} [resourceType] - 资源系统类型（BIZ-11）
+ * @property {number} [resourceCost] - 资源消耗量（BIZ-11）
  *
  * @see toSkill 存储类型 → 运行时类型的转换逻辑
  */
@@ -269,4 +275,6 @@ export interface SkillTemplateStorage {
   usableBy?: 'player' | 'enemy' | 'both';
   cooldown?: number;
   buffs?: SkillBuffEffect[];
+  resourceType?: string;
+  resourceCost?: number;
 }

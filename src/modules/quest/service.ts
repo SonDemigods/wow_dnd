@@ -110,12 +110,46 @@ export function calculateQuestRewards(definition: QuestDefinition): {
 }
 
 /**
+ * 检查前置任务是否全部完成（BIZ-19）
+ *
+ * 校验规则：
+ * - `definition.prerequisiteQuests` 不存在或为空数组 → 视为无前置任务，返回 true
+ * - 否则要求 `activeQuests` 中存在每个前置任务的实例，且状态为 `completed` 或 `turned_in`
+ * - 任一前置任务缺失实例或未完成 → 返回 false
+ *
+ * 注意：`abandoned` 状态视为未完成（玩家放弃后须重新完成才能解锁后续任务）。
+ *
+ * @param definition   - 任务定义（读取 prerequisiteQuests 字段）
+ * @param activeQuests - 当前角色的所有任务实例
+ * @returns `true` = 所有前置任务均已完成（或无前置任务）
+ *
+ * @see canAcceptQuest 接取条件判定中调用本函数
+ */
+export function checkPrerequisiteQuests(
+  definition: QuestDefinition,
+  activeQuests: QuestInstance[]
+): boolean {
+  const prereqs = definition.prerequisiteQuests;
+  // 无前置任务字段或空数组 → 直接通过
+  if (!prereqs || prereqs.length === 0) return true;
+
+  // 逐个校验：必须存在实例且状态为 completed / turned_in
+  for (const prereqId of prereqs) {
+    const inst = activeQuests.find(q => q.questId === prereqId);
+    if (!inst) return false;
+    if (inst.status !== 'completed' && inst.status !== 'turned_in') return false;
+  }
+  return true;
+}
+
+/**
  * 检查是否可以接受任务
  *
  * 判定条件：
  * 1. 角色等级 ≥ 任务等级要求
  * 2. 该任务不存在活跃实例（in_progress / completed / turned_in）
- * 3. 例外：已放弃的任务可以重新接取
+ * 3. 例外：已放弃的任务可以重新接取（仍需满足前置任务）
+ * 4. 前置任务全部完成（BIZ-19）
  *
  * @param definition    - 任务定义
  * @param characterLevel - 当前角色等级
@@ -133,10 +167,12 @@ export function canAcceptQuest(
   // 检查是否已存在实例
   const existing = activeQuests.find(i => i.questId === definition.id);
   if (existing) {
-    // 只有已放弃的任务可以重新接取
-    if (existing.status === 'abandoned') return true;
-    return false;
+    // 只有已放弃的任务可以重新接取；其他状态均拒绝
+    if (existing.status !== 'abandoned') return false;
   }
+
+  // BIZ-19: 前置任务校验（已放弃任务重新接取时同样需要满足）
+  if (!checkPrerequisiteQuests(definition, activeQuests)) return false;
 
   return true;
 }

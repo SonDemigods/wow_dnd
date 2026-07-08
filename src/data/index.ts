@@ -20,16 +20,16 @@ export { CLASS_ABILITIES } from './config_skills';
 export { MONSTER_ABILITIES } from './config_skills';
 
 // 导出职业被动技能数据（Phase 5.2）
-export { CLASS_PASSIVES, getPassivesByClassId } from './class_passives';
+export { CLASS_PASSIVES, getPassivesByClassId } from './config_class_passives';
 
 // 导出职业专属装备数据（Phase 5.3）
-export { CLASS_SPECIFIC_ITEMS, getClassSpecificItems } from './class_items';
+export { CLASS_SPECIFIC_ITEMS, getClassSpecificItems } from './config_class_items';
 
 // 导出套装定义数据（Phase 5.3）
-export { ITEM_SETS, getItemSetById, getItemSetsByClassId } from './item_sets';
+export { ITEM_SETS, getItemSetById, getItemSetsByClassId } from './config_item_sets';
 
 // 导出职业天赋树数据（Phase 6.2）
-export { CLASS_TALENT_TREES, getTalentTreesByClassId, getTalentTreeById, getTalentById } from './class_talents';
+export { CLASS_TALENT_TREES, getTalentTreesByClassId, getTalentTreeById, getTalentById } from './config_class_talents';
 
 // 导出物品和战利品数据
 export { LOOT_ITEMS } from './config_items';
@@ -51,6 +51,10 @@ export { QUESTS } from './config_quests';
 
 // 导出商店数据
 export { SHOPS } from './config_shops';
+
+// 数据完整性校验（开发环境自动执行，生产环境无副作用）
+import './validate';
+export { validateLocationData } from './validate';
 
 // 导出配置常量
 export { MAX_LEVEL, STAT_NAMES, LEVEL_EXP_REQUIREMENTS } from '@/config/character';

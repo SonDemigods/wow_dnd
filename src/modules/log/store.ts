@@ -10,6 +10,8 @@ import type { LogEntry, LogType } from './types';
 import { formatLogMessage } from './service';
 import { adventureLogDbService } from './db';
 import { eventBus, GameEvents } from '../bus';
+import { errorHandler } from '@/services/ErrorHandler';
+import { PAGE_SIZE } from '@/config/log';
 
 export const useLogStore = defineStore('log', () => {
   // ==================== 状态 ====================
@@ -18,9 +20,6 @@ export const useLogStore = defineStore('log', () => {
 
   // ==================== 计算属性 ====================
   const logCount = computed(() => logs.value.length);
-
-  /** 每页显示条数（PERF-3：日志分页） */
-  const PAGE_SIZE = 50;
 
   /** 总页数（向上取整，空列表为 0 页） */
   const totalPages = computed(() => Math.max(0, Math.ceil(logs.value.length / PAGE_SIZE)));
@@ -53,7 +52,8 @@ export const useLogStore = defineStore('log', () => {
     try {
       await saveToDb();
     } catch (e) {
-      console.error('[LogStore] 持久化日志失败:', e);
+      // 持久化失败不阻断事件通知，仅记录错误（后台操作，不打扰用户）
+      errorHandler.report(e);
     }
     eventBus.emit(GameEvents.LOG_ENTRY_ADDED, {
       type: formatted.type,
@@ -90,7 +90,8 @@ export const useLogStore = defineStore('log', () => {
     try {
       await saveToDb();
     } catch (e) {
-      console.error('[LogStore] 清空日志持久化失败:', e);
+      // 清空持久化失败仅记录错误（日志已在内存清空，不打扰用户）
+      errorHandler.report(e);
     }
   }
 

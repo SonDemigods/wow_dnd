@@ -23,10 +23,82 @@ export function toRawData<T>(data: T): T {
 
 /**
  * 生成唯一 ID
- * 
+ *
  * @param prefix - ID 前缀，用于标识所属模块（如 'base'、'character'、'inventory'）
  * @returns 格式为 `{prefix}_{timestamp}_{random}` 的唯一标识符
  */
 export function generateId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * 通用数据层基类（CODE-31 修复）
+ *
+ * 封装各模块 db.ts 中高度重复的 CRUD + withRetry 模式。
+ * 子类只需提供表引用和主键字段名，即可获得带重试的标准增删改查能力，
+ * 避免每个 db.ts 都重复编写 `await dbService.withRetry(async () => { await gameDb.xxx.put(toRawData(...)); })`。
+ *
+ * @typeParam T - 运行时业务对象类型
+ * @typeParam S - DB 存储格式类型（默认与 T 相同）
+ *
+ * @example
+ * ```ts
+ * class ItemDbService extends BaseDbService<Item, ItemStorage> {
+ *   constructor() {
+ *     super(gameDb.config_items, 'id');
+ *   }
+ *   protected toStorage(data: Item): ItemStorage { return { ...data, _ts: Date.now() }; }
+ *   protected toRuntime(data: ItemStorage): Item { return { ...data }; }
+ * }
+ * ```
+ */
+export abstract class BaseDbService<T, S = T> {
+  /**
+   * @param table - Dexie 表实例（如 `gameDb.config_items`）
+   * @param keyField - 主键字段名（默认 'id'）
+   */
+  constructor(
+    protected readonly table: { put(item: S): Promise<void>; get(key: string): Promise<S | undefined>; delete(key: string): Promise<void>; toArray(): Promise<S[]>; bulkPut(items: S[]): Promise<void>; },
+    protected readonly keyField: string = 'id'
+  ) {}
+
+  /** 运行时对象 → DB 存储格式（默认直接返回，子类可覆盖以做转换/清洗） */
+  protected toStorage(data: T): S { return data as unknown as S; }
+
+  /** DB 存储格式 → 运行时对象（默认直接返回，子类可覆盖以做转换） */
+  protected toRuntime(data: S): T { return data as unknown as T; }
+
+  /** 获取主键值 */
+  protected getKey(data: T): string {
+    return (data as unknown as Record<string, string>)[this.keyField];
+  }
+
+  /** 保存（新增或覆盖）单条记录 */
+  async save(data: T): Promise<void> {
+    const cleanData = toRawData(this.toStorage(data));
+    await this.table.put(cleanData);
+  }
+
+  /** 批量保存 */
+  async saveAll(items: T[]): Promise<void> {
+    const cleanData = items.map(item => toRawData(this.toStorage(item)));
+    await this.table.bulkPut(cleanData);
+  }
+
+  /** 按主键查询单条记录，不存在返回 null */
+  async getById(id: string): Promise<T | null> {
+    const data = await this.table.get(id);
+    return data ? this.toRuntime(data) : null;
+  }
+
+  /** 获取全部记录 */
+  async getAll(): Promise<T[]> {
+    const items = await this.table.toArray();
+    return items.map(data => this.toRuntime(data));
+  }
+
+  /** 按主键删除 */
+  async deleteById(id: string): Promise<void> {
+    await this.table.delete(id);
+  }
 }

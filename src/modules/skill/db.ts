@@ -152,10 +152,12 @@ export class SkillsDbService {
         effect: skill.effect,
         unlockLevel: skill.unlockLevel,
         classRestriction: classRestriction || null,
-        targetType: skill.targetType || null,
+        targetType: skill.targetType ?? undefined,
         usableBy: skill.usableBy || 'player',
         cooldown: skill.cooldown ?? 0,
-        buffs: skill.buffs || null
+        buffs: skill.buffs ?? undefined,
+        resourceType: skill.resourceType ?? undefined,
+        resourceCost: skill.resourceCost ?? undefined
       });
     });
   }
@@ -192,7 +194,10 @@ export class SkillsDbService {
       usableBy: data.usableBy || 'player',
       cooldown: data.cooldown ?? 0,
       // buffs 浅拷贝：防止引用共享导致的意外修改
-      buffs: data.buffs ? data.buffs.map(b => ({ type: b.type, value: b.value, turns: b.turns })) : undefined
+      buffs: data.buffs ? data.buffs.map(b => ({ type: b.type, value: b.value, turns: b.turns })) : undefined,
+      // BIZ-11: 资源系统字段原样传递
+      resourceType: data.resourceType,
+      resourceCost: data.resourceCost
     };
   }
 

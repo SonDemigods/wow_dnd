@@ -17,7 +17,7 @@ import {
   getTalentStatBonuses,
   type TalentEffectSummary
 } from './service';
-import { getTalentTreesByClassId } from '@/data/class_talents';
+import { getTalentTreesByClassId } from '@/data/config_class_talents';
 
 /**
  * 天赋 Store

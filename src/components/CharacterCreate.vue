@@ -283,7 +283,7 @@ const characterStore = useCharacterStore();
 const baseStore = useBaseStore();
 
 const emit = defineEmits<{
-  (e: 'created'): void;
+  created: [];
 }>();
 
 const currentStep = ref(1);
@@ -327,9 +327,11 @@ const availableRaces = computed(() => {
 });
 
 const availableClasses = computed(() => {
-  if (!selectedRace.value) return [];
-  return baseStore.classes.filter((c) =>
-    c.raceIds.includes(selectedRace.value as RaceType)
+  if (!selectedRace.value || !selectedFaction.value) return [];
+  return baseStore.classes.filter(
+    (c) =>
+      c.raceIds.includes(selectedRace.value as RaceType) &&
+      c.factionsIds.includes(selectedFaction.value as FactionType)
   );
 });
 

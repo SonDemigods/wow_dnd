@@ -55,17 +55,27 @@ export interface ShopConfig {
  *
  * 购买操作（{@link buyItem}）会扣减 quantity，归零后从列表移除。
  *
+ * BIZ-21：生成商品可选携带 `maxPurchaseCount` 限制单商品购买次数，
+ * `purchasedCount` 在购买时累计并随商品列表持久化，达到上限后阻止继续购买。
+ * 回购物品不携带这两个字段（其可购买次数由 quantity 自然限制）。
+ *
  * @property {string} itemId - 物品ID，对应 inventory 模块中的 Item.id
  * @property {number} price - 当前售价（已根据稀有度倍率计算）
  * @property {number} quantity - 库存数量，回购物品为可回购累计数量
+ * @property {number} [maxPurchaseCount] - 购买次数上限（可选），用于限制稀有商品。未定义表示不限制
+ * @property {number} [purchasedCount] - 已购买次数（运行时维护），达到 maxPurchaseCount 时阻止购买
  *
  * @see generateShopItems 自动生成商品列表
- * @see buyItem 购买时扣减 quantity
+ * @see buyItem 购买时扣减 quantity 并累计 purchasedCount
  */
 export interface ShopItem {
   itemId: string;
   price: number;
   quantity: number;
+  /** 购买次数上限（可选），用于限制稀有商品的购买次数。未定义表示不限制。 */
+  maxPurchaseCount?: number;
+  /** 已购买次数（运行时维护），达到 maxPurchaseCount 时阻止购买。随商品列表持久化。 */
+  purchasedCount?: number;
 }
 
 /**
@@ -123,6 +133,24 @@ export interface ShopItemsStorage {
   shopId: string;
   items: ShopItem[];
   lastRefresh: number;
+}
+
+/**
+ * 商店回购列表持久化格式（BIZ-16）
+ *
+ * 存储在 IndexedDB `runtime_shopSoldItems` 表中，以 shopId 为主键。
+ * 每个商店一条记录，包含该商店的全部回购物品列表。
+ * 页面刷新后通过 {@link ShopDbService.getAllSoldItems} 恢复到内存 Map。
+ *
+ * @property {string} shopId - 商店ID，作为主键
+ * @property {SoldItemEntry[]} soldItems - 回购物品列表
+ *
+ * @see shopDbService.saveSoldItems 写入此格式到 DB
+ * @see shopDbService.getSoldItems 从 DB 读取此格式
+ */
+export interface ShopSoldItemsStorage {
+  shopId: string;
+  soldItems: SoldItemEntry[];
 }
 
 /**

@@ -35,8 +35,8 @@ export class EnemyDbService {
         magicDefense: enemy.magicDefense ?? null,
         critChance: enemy.critChance ?? null,
         dodgeChance: enemy.dodgeChance ?? null,
-        skillPool: enemy.skillPool ?? null,
-        aiStrategy: enemy.aiStrategy ?? null
+        skillPool: enemy.skillPool ?? undefined,
+        aiStrategy: enemy.aiStrategy ?? undefined
       });
     });
   }

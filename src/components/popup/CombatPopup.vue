@@ -364,7 +364,7 @@ function getEnemiesInSlot(row: 'front' | 'back', col: number) {
 
 /** 获取指定敌人的效果列表 */
 function getEnemyEffects(enemyId: string) {
-  return combatStore.enemyEffects.get(enemyId)?.effects || [];
+  return combatStore.enemyEffects[enemyId]?.effects || [];
 }
 
 /** 获取指定敌人的效果数量 */
@@ -384,7 +384,8 @@ const equippedSkills = computed<Skill[]>(() => {
     if (equipped && equipped.length > 0) return equipped.filter((s): s is Skill => s !== null).slice(0, 4);
     const unlocked = skillsStore.unlockedSkills;
     return (unlocked || []).slice(0, 4);
-  } catch {
+  } catch (e) {
+    console.error(e);
     return [];
   }
 });
@@ -408,7 +409,8 @@ const consumableItems = computed(() => {
         };
       })
       .filter(Boolean) as { index: number; itemId: string; count: number; name: string; icon: string; description: string; rarity: ItemRarity }[];
-  } catch {
+  } catch (e) {
+    console.error(e);
     return [];
   }
 });
@@ -1046,7 +1048,10 @@ function handleClose() {
 
 onMounted(() => {
   // 确保技能 Store 已初始化
-  skillsStore.initialize();
+  const id = characterStore.currentCharacterId;
+  if (id) {
+    skillsStore.initialize(id);
+  }
   eventBus.on(GameEvents.COMBAT_CRITICAL_HIT, onCritHit);
   eventBus.on(GameEvents.COMBAT_DEAL_DAMAGE, onEnemyDealDamage);
   eventBus.on(GameEvents.COMBAT_DODGE, onDodge);

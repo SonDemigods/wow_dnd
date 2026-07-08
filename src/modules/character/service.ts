@@ -5,7 +5,7 @@
  * 所有业务逻辑均为纯函数，数据通过参数传入、通过返回值输出。
  * Store 层负责调用这些纯函数并管理响应式状态与持久化。
  */
-import type { Character, Stats, Attributes, RaceData, ClassData, CreateCharacterParams, ExpGainResult } from './types';
+import type { Character, Stats, Attributes, RaceData, ClassData, CreateCharacterParams, ExpGainResult, FactionType } from './types';
 import {
   calculateMaxHp,
   calculateMaxMana,
@@ -21,12 +21,13 @@ import {
   getExpForLevel
 } from '@/utils/calculations';
 import { MAX_LEVEL, MAX_STAT } from '@/config/character';
+import { generateId } from '@/utils/db-helpers';
 
 // ==================== ID 生成 ====================
 
 /** 生成唯一角色ID（格式：char_时间戳_随机串，如 char_1704067200000_a3b9f2c1d） */
 export function generateCharacterId(): string {
-  return `char_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return generateId('char');
 }
 
 // ==================== 属性计算 ====================
@@ -78,6 +79,17 @@ export function computeAttributes(stats: Stats): Attributes {
 }
 
 // ==================== 角色创建 ====================
+
+/**
+ * 校验职业与阵营的兼容性
+ * 所选职业的 factionsIds 必须包含所选阵营 ID（如 death_knight 不对 neutral 开放、evoker 仅对 neutral 开放）
+ * @param classData - 职业数据
+ * @param factionId - 所选阵营 ID
+ * @returns true 表示兼容，false 表示不兼容
+ */
+export function isClassFactionCompatible(classData: ClassData, factionId: FactionType): boolean {
+  return classData.factionsIds.includes(factionId);
+}
 
 /** 创建初始角色（纯函数） */
 export function createInitialCharacter(params: CreateCharacterParams, raceData: RaceData, classData: ClassData): Character {

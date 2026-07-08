@@ -4,9 +4,10 @@
  *              所有方法通过 {@link dbService.withRetry} 包裹，确保并发写入安全。
  *
  * **存储表说明**：
- * - `config_shops`        — 商店配置（静态数据，种子 → DB 单向同步）
- * - `runtime_shopItems`   — 商店当前商品（动态数据，每次刷新/交易后更新）
- * - `gameState`           — 当前打开的商店ID（页面刷新后恢复）
+ * - `config_shops`            — 商店配置（静态数据，种子 → DB 单向同步）
+ * - `runtime_shopItems`       — 商店当前商品 + lastRefresh 时间戳（BIZ-20）
+ * - `runtime_shopSoldItems`   — 商店回购列表（BIZ-16，页面刷新后恢复）
+ * - `gameState`               — 当前打开的商店ID（页面刷新后恢复）
  *
  * **数据流向**：
  * ```
@@ -19,7 +20,7 @@
  */
 
 import { db as gameDb, dbService } from '../data/core';
-import type { ShopConfig, ShopItem, ShopItemsStorage } from './types';
+import type { ShopConfig, ShopItem, ShopItemsStorage, ShopSoldItemsStorage, SoldItemEntry } from './types';
 import { getGameState, saveGameState } from '../data/gameStateHelper';
 import { toRawData } from '../../utils';
 
@@ -108,16 +109,20 @@ export class ShopDbService {
    * 内部通过 {@link toRawData} 对数据做 JSON 序列化/反序列化，
    * 彻底剥离 Vue 响应式 Proxy 包装，避免 IndexedDB 写入失败。
    *
-   * @param shopId - 商店ID
-   * @param items  - 商品列表
+   * BIZ-20：新增可选 `lastRefresh` 参数，调用方可传入与内存中一致的时间戳，
+   * 确保刷新计时器在内存与 DB 间保持一致；未传入时回退到 `Date.now()`。
+   *
+   * @param shopId      - 商店ID
+   * @param items       - 商品列表
+   * @param lastRefresh - 上次刷新时间戳（可选），未传入则使用当前时间
    */
-  async saveShopItems(shopId: string, items: ShopItem[]): Promise<void> {
+  async saveShopItems(shopId: string, items: ShopItem[], lastRefresh?: number): Promise<void> {
     await dbService.withRetry(async () => {
       // JSON 序列化去除 Vue/Proxy 包装，避免 IndexedDB DataCloneError
       const cleanData = toRawData({
         shopId,
         items,
-        lastRefresh: Date.now()
+        lastRefresh: lastRefresh ?? Date.now()
       });
       await gameDb.runtime_shopItems.put(cleanData);
     });
@@ -138,6 +143,34 @@ export class ShopDbService {
   }
 
   /**
+   * 获取商店商品完整存储记录（包含 lastRefresh 元数据）
+   *
+   * BIZ-20：用于在加载商品时同步恢复刷新时间戳，避免页面刷新后刷新检查被跳过。
+   *
+   * @param shopId - 商店ID
+   * @returns 存储记录，不存在时返回 null
+   */
+  async getShopItemsStorage(shopId: string): Promise<ShopItemsStorage | null> {
+    return dbService.withRetry(async () => {
+      const result = await gameDb.runtime_shopItems.get(shopId) as ShopItemsStorage | undefined;
+      return result ?? null;
+    });
+  }
+
+  /**
+   * 获取全部商店商品存储记录（init 恢复用）
+   *
+   * BIZ-20：在应用启动时一次性恢复所有商店的 lastRefresh 时间戳。
+   *
+   * @returns 存储记录列表
+   */
+  async getAllShopItemsStorage(): Promise<ShopItemsStorage[]> {
+    return dbService.withRetry(async () => {
+      return await gameDb.runtime_shopItems.toArray() as ShopItemsStorage[];
+    });
+  }
+
+  /**
    * 删除指定商店的商品数据
    *
    * @param shopId - 商店ID
@@ -154,6 +187,61 @@ export class ShopDbService {
   async clearAllShopItems(): Promise<void> {
     await dbService.withRetry(async () => {
       await gameDb.runtime_shopItems.clear();
+    });
+  }
+
+  // ==================== 回购列表持久化（BIZ-16）====================
+
+  /**
+   * 保存指定商店的回购列表
+   *
+   * BIZ-16：将玩家出售给商店的物品持久化到 IndexedDB `runtime_shopSoldItems` 表，
+   * 页面刷新后可通过 {@link getSoldItems} / {@link getAllSoldItems} 恢复到内存 Map。
+   *
+   * @param shopId    - 商店ID
+   * @param soldItems - 回购物品列表（可为空数组，表示清空该商店的回购列表）
+   */
+  async saveSoldItems(shopId: string, soldItems: SoldItemEntry[]): Promise<void> {
+    await dbService.withRetry(async () => {
+      const cleanData = toRawData({ shopId, soldItems });
+      await gameDb.runtime_shopSoldItems.put(cleanData);
+    });
+  }
+
+  /**
+   * 获取指定商店的回购列表
+   *
+   * @param shopId - 商店ID
+   * @returns 回购物品列表，不存在时返回空数组
+   */
+  async getSoldItems(shopId: string): Promise<SoldItemEntry[]> {
+    return dbService.withRetry(async () => {
+      const result = await gameDb.runtime_shopSoldItems.get(shopId) as ShopSoldItemsStorage | undefined;
+      return result?.soldItems ?? [];
+    });
+  }
+
+  /**
+   * 获取全部商店的回购列表（init 恢复用）
+   *
+   * BIZ-16：在应用启动时一次性恢复所有商店的回购列表到内存 Map。
+   *
+   * @returns 回购列表存储记录数组
+   */
+  async getAllSoldItems(): Promise<ShopSoldItemsStorage[]> {
+    return dbService.withRetry(async () => {
+      return await gameDb.runtime_shopSoldItems.toArray() as ShopSoldItemsStorage[];
+    });
+  }
+
+  /**
+   * 清空全部商店回购列表数据
+   *
+   * 在 `reset`（新游戏/清档）时调用。
+   */
+  async clearAllSoldItems(): Promise<void> {
+    await dbService.withRetry(async () => {
+      await gameDb.runtime_shopSoldItems.clear();
     });
   }
 

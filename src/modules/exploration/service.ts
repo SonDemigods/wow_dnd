@@ -4,9 +4,58 @@
  * @module exploration
  */
 import type { GridEventType, GridEventProbability, ExplorationCell, RandomEventResult, MultiOptionEventResult, GridGenerationConfig, CellType } from './types';
+import {
+  GRID_SIZE,
+  MONSTER_PROBABILITY_BASE,
+  MONSTER_PROBABILITY_LEVEL_COEFFICIENT,
+  MONSTER_PROBABILITY_MAX,
+  ITEM_PROBABILITY_BASE,
+  ITEM_PROBABILITY_LEVEL_COEFFICIENT,
+  ITEM_PROBABILITY_MIN,
+  TRAP_PROBABILITY_BASE,
+  TRAP_PROBABILITY_LEVEL_COEFFICIENT,
+  TRAP_PROBABILITY_MAX,
+  EVENT_PROBABILITY,
+  EMPTY_PROBABILITY_BASE,
+  EMPTY_PROBABILITY_LEVEL_COEFFICIENT,
+  EMPTY_PROBABILITY_MIN,
+  PROBABILITY_NORMALIZATION_BASE,
+  CAMP_HEAL_HP,
+  CAMP_HEAL_MANA,
+  TRAP_DAMAGE_BASE,
+  TRAP_DAMAGE_VARIANCE,
+  TRAP_DAMAGE_MIN,
+  RANDOM_EVENT_HEAL_THRESHOLD,
+  RANDOM_EVENT_MANA_THRESHOLD,
+  RANDOM_EVENT_EXP_THRESHOLD,
+  RANDOM_EVENT_DAMAGE_THRESHOLD,
+  RANDOM_EVENT_MP_LOSS_THRESHOLD,
+  HEAL_AMOUNT_LEVEL_COEFFICIENT,
+  HEAL_AMOUNT_RANDOM_MAX,
+  MANA_AMOUNT_LEVEL_COEFFICIENT,
+  MANA_AMOUNT_RANDOM_MAX,
+  EXP_AMOUNT_LEVEL_COEFFICIENT,
+  EXP_AMOUNT_RANDOM_MAX,
+  DAMAGE_AMOUNT_LEVEL_COEFFICIENT,
+  DAMAGE_AMOUNT_RANDOM_MAX,
+  MP_LOSS_LEVEL_COEFFICIENT,
+  MP_LOSS_RANDOM_MAX,
+  GOLD_AMOUNT_LEVEL_COEFFICIENT,
+  GOLD_AMOUNT_RANDOM_MAX,
+  ITEM_POOL_DEFAULT_MAX_SIZE,
+  ITEM_POOL_FALLBACK_ID,
+  RARITY_LEVEL_MAP,
+  HIDDEN_ROOM_MIN_COUNT,
+  HIDDEN_ROOM_MAX_COUNT
+} from '@/config/exploration';
 
-/** 默认网格尺寸 */
-export const GRID_SIZE = 10;
+/**
+ * 默认网格尺寸（从 @/config/exploration 导入并 re-export，保持向后兼容）
+ *
+ * 原本在 service.ts 中硬编码，CODE-53 修复后迁移到 config 集中管理。
+ * 现有代码 `import { GRID_SIZE } from './service'` 无需修改。
+ */
+export { GRID_SIZE };
 
 /** GridEventType → CellType 映射表 */
 export const EVENT_TO_CELL_TYPE: Record<GridEventType, CellType> = {
@@ -42,20 +91,20 @@ export function pickRandomFromArray<T>(arr: T[]): T | undefined {
  */
 export function computeEventProbability(avgLevel: number): GridEventProbability {
   const raw: GridEventProbability = {
-    monster: Math.min(30, 20 + avgLevel),
-    item: Math.max(15, 25 - avgLevel),
-    trap: Math.min(22, 12 + avgLevel),
-    event: 15,
-    empty: Math.max(15, 30 - avgLevel)
+    monster: Math.min(MONSTER_PROBABILITY_MAX, MONSTER_PROBABILITY_BASE + MONSTER_PROBABILITY_LEVEL_COEFFICIENT * avgLevel),
+    item: Math.max(ITEM_PROBABILITY_MIN, ITEM_PROBABILITY_BASE - ITEM_PROBABILITY_LEVEL_COEFFICIENT * avgLevel),
+    trap: Math.min(TRAP_PROBABILITY_MAX, TRAP_PROBABILITY_BASE + TRAP_PROBABILITY_LEVEL_COEFFICIENT * avgLevel),
+    event: EVENT_PROBABILITY,
+    empty: Math.max(EMPTY_PROBABILITY_MIN, EMPTY_PROBABILITY_BASE - EMPTY_PROBABILITY_LEVEL_COEFFICIENT * avgLevel)
   };
   // 归一化：因各项独立 clamp，原始总和可能偏离 100，此处重新调整为百分比
   const total = raw.monster + raw.item + raw.trap + raw.event + raw.empty;
-  raw.monster = Math.round(raw.monster / total * 100);
-  raw.item = Math.round(raw.item / total * 100);
-  raw.trap = Math.round(raw.trap / total * 100);
-  raw.event = Math.round(raw.event / total * 100);
+  raw.monster = Math.round(raw.monster / total * PROBABILITY_NORMALIZATION_BASE);
+  raw.item = Math.round(raw.item / total * PROBABILITY_NORMALIZATION_BASE);
+  raw.trap = Math.round(raw.trap / total * PROBABILITY_NORMALIZATION_BASE);
+  raw.event = Math.round(raw.event / total * PROBABILITY_NORMALIZATION_BASE);
   // 最后一项用减法消除舍入误差，确保总和恰好为 100
-  raw.empty = 100 - raw.monster - raw.item - raw.trap - raw.event;
+  raw.empty = PROBABILITY_NORMALIZATION_BASE - raw.monster - raw.item - raw.trap - raw.event;
   return raw;
 }
 
@@ -71,11 +120,10 @@ export function buildItemPool(
   allItems: Array<{ id: string; level?: number; rarity: string }>,
   minLevel: number,
   maxLevel: number,
-  maxPoolSize: number = 5
+  maxPoolSize: number = ITEM_POOL_DEFAULT_MAX_SIZE
 ): string[] {
-  const rarityLevelMap: Record<string, number> = { common: 1, uncommon: 3, rare: 5, epic: 7 };
   const suitableItems = allItems.filter(item => {
-    const itemLevel = item.level ?? rarityLevelMap[item.rarity] ?? 0;
+    const itemLevel = item.level ?? RARITY_LEVEL_MAP[item.rarity] ?? 0;
     return itemLevel >= minLevel - 1 && itemLevel <= maxLevel + 2;
   });
   // 随机打乱后取指定数量
@@ -83,7 +131,7 @@ export function buildItemPool(
   const pool = shuffled.slice(0, maxPoolSize).map(item => item.id);
   // 如果没有合适的物品，至少提供基础药水
   if (pool.length === 0) {
-    pool.push('small_health_potion');
+    pool.push(ITEM_POOL_FALLBACK_ID);
   }
   return pool;
 }
@@ -123,9 +171,9 @@ export function determineCellEvent(probability: GridEventProbability): GridEvent
  * @returns 伤害值（最小为1）
  */
 export function generateTrapDamage(areaLevel: number): number {
-  const baseDamage = areaLevel * 5;
-  const variance = (Math.random() - 0.5) * 10;
-  return Math.max(1, Math.floor(baseDamage + variance));
+  const baseDamage = areaLevel * TRAP_DAMAGE_BASE;
+  const variance = (Math.random() - 0.5) * TRAP_DAMAGE_VARIANCE;
+  return Math.max(TRAP_DAMAGE_MIN, Math.floor(baseDamage + variance));
 }
 
 /**
@@ -134,7 +182,7 @@ export function generateTrapDamage(areaLevel: number): number {
  * @returns 恢复量（hp 和 mana 均为最大值，由调用方根据上限裁剪）
  */
 export function generateCampHeal(_areaLevel: number): { hp: number; mana: number } {
-  return { hp: 9999, mana: 9999 };
+  return { hp: CAMP_HEAL_HP, mana: CAMP_HEAL_MANA };
 }
 
 /**
@@ -171,8 +219,8 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
   const random = Math.random();
 
   // [0, 0.3) → 30% 概率恢复生命值
-  if (random < 0.3) {
-    const healAmount = Math.floor(areaLevel * 3 + Math.random() * 10);
+  if (random < RANDOM_EVENT_HEAL_THRESHOLD) {
+    const healAmount = Math.floor(areaLevel * HEAL_AMOUNT_LEVEL_COEFFICIENT + Math.random() * HEAL_AMOUNT_RANDOM_MAX);
     return {
       message: `发现神秘泉水，恢复了 ${healAmount} 点生命值`,
       icon: 'game-icons:water-drop',
@@ -180,8 +228,8 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
     };
   }
   // [0.3, 0.5) → 20% 概率恢复魔法值
-  if (random < 0.5) {
-    const mpAmount = Math.floor(areaLevel * 2 + Math.random() * 8);
+  if (random < RANDOM_EVENT_MANA_THRESHOLD) {
+    const mpAmount = Math.floor(areaLevel * MANA_AMOUNT_LEVEL_COEFFICIENT + Math.random() * MANA_AMOUNT_RANDOM_MAX);
     return {
       message: `发现魔法水晶，恢复了 ${mpAmount} 点魔法值`,
       icon: 'game-icons:emerald',
@@ -189,8 +237,8 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
     };
   }
   // [0.5, 0.65) → 15% 概率获得经验值
-  if (random < 0.65) {
-    const expAmount = Math.floor(areaLevel * 10 + Math.random() * 20);
+  if (random < RANDOM_EVENT_EXP_THRESHOLD) {
+    const expAmount = Math.floor(areaLevel * EXP_AMOUNT_LEVEL_COEFFICIENT + Math.random() * EXP_AMOUNT_RANDOM_MAX);
     return {
       message: `发现古代石碑，获得了 ${expAmount} 点经验值`,
       icon: 'game-icons:spell-book',
@@ -198,8 +246,8 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
     };
   }
   // [0.65, 0.8) → 15% 概率受到陷阱伤害
-  if (random < 0.8) {
-    const trapDamage = Math.floor(areaLevel * 2 + Math.random() * 5);
+  if (random < RANDOM_EVENT_DAMAGE_THRESHOLD) {
+    const trapDamage = Math.floor(areaLevel * DAMAGE_AMOUNT_LEVEL_COEFFICIENT + Math.random() * DAMAGE_AMOUNT_RANDOM_MAX);
     return {
       message: `触发了隐藏陷阱，受到 ${trapDamage} 点伤害`,
       icon: 'game-icons:caltrops',
@@ -207,8 +255,8 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
     };
   }
   // [0.8, 0.9) → 10% 概率损失魔法值
-  if (random < 0.9) {
-    const mpLoss = Math.floor(areaLevel * 1.5 + Math.random() * 5);
+  if (random < RANDOM_EVENT_MP_LOSS_THRESHOLD) {
+    const mpLoss = Math.floor(areaLevel * MP_LOSS_LEVEL_COEFFICIENT + Math.random() * MP_LOSS_RANDOM_MAX);
     return {
       message: `遭遇魔法干扰，损失了 ${mpLoss} 点魔法值`,
       icon: 'game-icons:magic-swirl',
@@ -216,7 +264,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
     };
   }
   // [0.9, 1.0) → 10% 概率获得金币
-  const goldAmount = Math.floor(areaLevel * 5 + Math.random() * 15);
+  const goldAmount = Math.floor(areaLevel * GOLD_AMOUNT_LEVEL_COEFFICIENT + Math.random() * GOLD_AMOUNT_RANDOM_MAX);
   return {
     message: `发现宝箱，获得了 ${goldAmount} 金币`,
     icon: 'game-icons:two-coins',
@@ -384,7 +432,10 @@ function markHiddenRooms(grid: ExplorationCell[][], size: number): void {
   }
 
   // 标记 2~3 个为隐藏（不超过宝箱总数）
-  const hiddenCount = Math.min(treasureCells.length, 2 + Math.floor(Math.random() * 2));
+  const hiddenCount = Math.min(
+    treasureCells.length,
+    HIDDEN_ROOM_MIN_COUNT + Math.floor(Math.random() * (HIDDEN_ROOM_MAX_COUNT - HIDDEN_ROOM_MIN_COUNT + 1))
+  );
   for (let i = 0; i < hiddenCount; i++) {
     const { x, y } = treasureCells[i];
     grid[y][x].hidden = true;

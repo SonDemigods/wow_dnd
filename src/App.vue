@@ -1,15 +1,18 @@
 <template>
   <div id="app" class="app-container">
-    <template v-if="!loading">
+    <div v-if="loading" class="app-loading-screen">
+      <div class="loading-text">加载中...</div>
+    </div>
+    <template v-else>
       <Transition :name="transitionName" mode="out-in">
         <div v-if="gameState === 'character-select'" key="select" class="character-select-screen">
           <div class="screen-header">
             <h1>战争艺术：地下城</h1>
             <p class="subtitle">Art of War: Dungeons</p>
           </div>
-          <CharacterSelect 
+          <CharacterSelect
             ref="characterSelectRef"
-            @select="handleCharacterSelect" 
+            @select="handleCharacterSelect"
             @create="showCreateModal = true"
           />
         </div>
@@ -67,6 +70,7 @@ import Toast from './components/common/Toast.vue';
 import { useCharacterStore } from './modules/character';
 import { useBaseStore } from './modules/base';
 import { useToast } from './composables/useToast';
+import { dataInitializer } from '@/modules/data/service';
 
 /** 游戏界面状态：角色选择 | 游戏中 | 后台管理 */
 type GameState = 'character-select' | 'game' | 'admin';
@@ -92,7 +96,16 @@ onMounted(async () => {
   // 暴露 gameState 到全局，供控制台命令切换视图
   (window as any).__gameState = gameState;
 
+  // 等待游戏数据初始化完成（main.ts 已启动 initializeData，此处幂等等待）
+  // dataInitializer.initializeData 内部有 isDataInitialized 检查，重复调用安全
+  try {
+    await dataInitializer.initializeData();
+  } catch {
+    // main.ts 已记录错误，此处忽略避免重复提示
+  }
+
   // 先初始化基础数据（阵营、种族、职业），再初始化角色模块
+  // 注意：characterStore.initialize 依赖 baseStore 的 factions/races/classes 数据，必须串行
   await baseStore.initialize();
   await characterStore.initialize();
   // 检查是否有当前角色
@@ -110,7 +123,7 @@ onMounted(async () => {
  * @param {string} characterId - 选中的角色ID
  */
 async function handleCharacterSelect(characterId: string) {
-  console.log('选择角色:', characterId);
+  if (import.meta.env.DEV) console.log('选择角色:', characterId);
   transitionName.value = 'view-forward';
   await characterStore.selectCharacter(characterId);
   gameState.value = 'game';
@@ -153,6 +166,18 @@ function handleAdminExit() {
 .app-container {
   min-height: 100vh;
   background: linear-gradient(135deg, @primary-bg 0%, #16213e 50%, #0f3460 100%);
+}
+
+.app-loading-screen {
+  min-height: 100vh;
+  .flex-center();
+  color: @accent-color;
+}
+
+.loading-text {
+  font-size: @font-xl;
+  letter-spacing: 2px;
+  animation: fadeIn 1s ease infinite alternate;
 }
 
 .character-select-screen {

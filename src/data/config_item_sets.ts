@@ -1,7 +1,7 @@
 /**
  * @fileoverview 套装定义数据（Phase 5.3）
  * @description 定义 6 个核心职业的专属套装，每个套装含 2 件装备，穿戴 2 件激活套装奖励。
- *              套装 ID 与 class_items.ts 中装备的 setId 字段对应。
+ *              套装 ID 与 config_class_items.ts 中装备的 setId 字段对应。
  *              套装奖励由 equipment/service.ts 的 getActiveSetBonuses 计算激活状态。
  * @module data
  */

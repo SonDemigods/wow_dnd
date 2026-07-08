@@ -247,12 +247,41 @@ export function isSkillEquipped(skillBar: SkillBar, skillId: string): boolean {
 }
 
 /**
- * 校验技能是否可施放（法力校验）
+ * canCastSkill 的扩展选项接口（BIZ-11）
  *
- * 当前仅检查法力值是否足够。未来可扩展：冷却检查、沉默状态检查等。
+ * 封装除技能本身和法力值之外的所有施放前校验输入。
+ * 通过对象形式提供，便于未来扩展（如施法材料、距离等）。
+ *
+ * @property {number} currentMana - 角色当前法力值（必填，对应旧签名第二个参数）
+ * @property {boolean} [isSilenced] - 是否处于沉默状态（true 时禁止施放任何技能）
+ * @property {number} [currentCooldown] - 当前剩余冷却回合数（>0 表示冷却中；未传入则跳过冷却校验）
+ * @property {(resourceType: string, cost: number) => boolean} [hasEnoughResource]
+ *           资源充足判定回调，由调用方根据角色实际资源状态实现。
+ *           仅当 skill 配置了 `resourceType` + `resourceCost` 且本回调被传入时才执行资源校验。
+ *
+ * @see canCastSkill 使用此接口进行扩展校验
+ */
+export interface CanCastSkillOptions {
+  currentMana: number;
+  isSilenced?: boolean;
+  currentCooldown?: number;
+  hasEnoughResource?: (resourceType: string, cost: number) => boolean;
+}
+
+/**
+ * 校验技能是否可施放（BIZ-11 四维校验）
+ *
+ * 校验顺序（短路求值，命中即返回失败原因）：
+ * 1. **沉默状态**：`isSilenced === true` → 禁止施放任何技能
+ * 2. **冷却时间**：`currentCooldown > 0` → 冷却中
+ * 3. **法力值**   ：`currentMana < skill.mpCost` → 法力不足
+ * 4. **资源系统** ：skill 配置了 `resourceType` + `resourceCost` 且 `hasEnoughResource` 回调
+ *                   返回 false → 资源不足
+ *
+ * 向后兼容：第二个参数为 `number` 时视为 `currentMana`，等价于 `{ currentMana }`。
  *
  * @param skill - 技能数据
- * @param currentMana - 角色当前法力值
+ * @param options - 校验选项对象（或旧签名的 currentMana 数字）
  * @returns 包含校验结果的对象：
  *   - `canCast: true`  → 可以施放（`reason` 为空字符串）
  *   - `canCast: false` → 不可施放（`reason` 为失败原因描述）
@@ -261,10 +290,38 @@ export function isSkillEquipped(skillBar: SkillBar, skillId: string): boolean {
  */
 export function canCastSkill(
   skill: Skill,
-  currentMana: number
+  options: CanCastSkillOptions | number
 ): { canCast: boolean; reason: string } {
-  if (currentMana < skill.mpCost) {
+  // 向后兼容：旧签名第二个参数为 number
+  const opts: CanCastSkillOptions = typeof options === 'number'
+    ? { currentMana: options }
+    : options;
+
+  // 1. 沉默校验
+  if (opts.isSilenced) {
+    return { canCast: false, reason: '被沉默，无法施放技能' };
+  }
+
+  // 2. 冷却校验（未传入 currentCooldown 时跳过）
+  if (opts.currentCooldown !== undefined && opts.currentCooldown > 0) {
+    return { canCast: false, reason: '技能冷却中' };
+  }
+
+  // 3. 法力值校验
+  if (opts.currentMana < skill.mpCost) {
     return { canCast: false, reason: '法力不足' };
   }
+
+  // 4. 资源系统校验（仅在 skill 配置了 resourceType + resourceCost 且传入回调时执行）
+  if (
+    skill.resourceType &&
+    skill.resourceCost !== undefined &&
+    opts.hasEnoughResource
+  ) {
+    if (!opts.hasEnoughResource(skill.resourceType, skill.resourceCost)) {
+      return { canCast: false, reason: '资源不足' };
+    }
+  }
+
   return { canCast: true, reason: '' };
 }

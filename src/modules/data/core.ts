@@ -11,13 +11,14 @@ import Dexie, { Table } from 'dexie';
 import { DATABASE_CONFIG, DB_SERVICE_CONFIG, type DBServiceConfig } from '@/config/database';
 
 // ==================== 各模块 Storage 类型导入 ====================
-import type { FactionStorage, RaceStorage, ClassStorage, CharacterDataStorage } from '../character/types';
+import type { FactionStorage, RaceStorage, ClassStorage, CharacterDataStorage, PassiveSkill } from '../character/types';
+import type { TalentTree } from '../character/talents/types';
 import type { ItemStorage, InventoryStorage } from '../inventory/types';
-import type { EquipmentTemplateStorage, EquipmentStorage } from '../equipment/types';
+import type { EquipmentTemplateStorage, EquipmentStorage, EquipmentItem, ItemSet } from '../equipment/types';
 import type { EnemyStorage } from '../enemy/types';
 import type { BossStorage } from '../boss/types';
 import type { LocationStorage, MapStateStorage } from '../map/types';
-import type { ShopConfig, ShopItemsStorage } from '../shop/types';
+import type { ShopConfig, ShopItemsStorage, ShopSoldItemsStorage } from '../shop/types';
 import type { SkillTemplateStorage, SkillsData } from '../skill/types';
 import type { QuestDefinitionStorage, CharQuestStorage } from '../quest/types';
 import type { ExplorationStorage } from '../exploration/types';
@@ -63,6 +64,11 @@ export interface GameDatabaseSchema {
   config_skills: Table<SkillTemplateStorage, string>;
   config_locations: Table<LocationStorage, string>;
   config_shops: Table<ShopConfig, string>;
+  // 以下为 DATA-4：职业专属数据持久化表（供 admin 后台编辑）
+  config_class_items: Table<EquipmentItem, string>;
+  config_class_passives: Table<PassiveSkill, string>;
+  config_class_talents: Table<TalentTree, string>;
+  config_item_sets: Table<ItemSet, string>;
 
   // ==================== 角色表（char_*）====================
   char_data: Table<CharacterDataStorage, string>;
@@ -78,6 +84,7 @@ export interface GameDatabaseSchema {
   runtime_adventureLogs: Table<AdventureLogData, string>;
   runtime_mapState: Table<MapStateStorage, string>;
   runtime_shopItems: Table<ShopItemsStorage, string>;
+  runtime_shopSoldItems: Table<ShopSoldItemsStorage, string>;
 }
 
 /**
@@ -99,6 +106,11 @@ export class GameDatabase extends Dexie {
   config_skills!: Table<SkillTemplateStorage, string>;
   config_locations!: Table<LocationStorage, string>;
   config_shops!: Table<ShopConfig, string>;
+  // DATA-4：职业专属数据持久化表（供 admin 后台编辑）
+  config_class_items!: Table<EquipmentItem, string>;
+  config_class_passives!: Table<PassiveSkill, string>;
+  config_class_talents!: Table<TalentTree, string>;
+  config_item_sets!: Table<ItemSet, string>;
 
   // ==================== 角色表（char_*）====================
   char_data!: Table<CharacterDataStorage, string>;
@@ -114,6 +126,7 @@ export class GameDatabase extends Dexie {
   runtime_adventureLogs!: Table<AdventureLogData, string>;
   runtime_mapState!: Table<MapStateStorage, string>;
   runtime_shopItems!: Table<ShopItemsStorage, string>;
+  runtime_shopSoldItems!: Table<ShopSoldItemsStorage, string>;
 
   /**
    * 构造函数：初始化数据库连接和表结构
@@ -155,6 +168,30 @@ export class GameDatabase extends Dexie {
     });
 
     /**
+     * 版本 2：新增商店回购列表持久化表（BIZ-16）
+     *
+     * 仅声明新增的表，现有表结构保持不变（Dexie 增量 schema 声明：
+     * 未在此声明的表会沿用上一版本的 schema，不会被删除）。
+     */
+    this.version(2).stores({
+      runtime_shopSoldItems: 'shopId'
+    });
+
+    /**
+     * 版本 3：新增职业专属配置数据表（DATA-4）
+     *
+     * 将原本仅以静态常量形式存在的职业专属装备/被动/天赋树/套装数据
+     * 持久化到 IndexedDB，供 admin 后台编辑。
+     * 业务模块仍直接 import 静态常量保持同步访问，DB 仅作为可编辑副本。
+     */
+    this.version(3).stores({
+      config_class_items: 'id, name, type, rarity',
+      config_class_passives: 'id, classId, trigger',
+      config_class_talents: 'id, classId',
+      config_item_sets: 'id, classRestriction'
+    });
+
+    /**
      * 数据库首次创建时触发，初始化默认游戏状态
      */
     this.on('populate', () => this.populateInitialData());
@@ -184,10 +221,30 @@ export class GameDatabase extends Dexie {
 
 /**
  * 数据库实例
- * 
+ *
  * 游戏全局唯一的数据库连接实例，所有数据库操作通过此实例进行
  */
 export const db = new GameDatabase();
+
+/**
+ * 获取指定表的强类型引用（收敛类型断言）
+ *
+ * Dexie 的 Table 类型声明与备份数据中的字段类型存在轻微差异
+ * （如 BackupData.map 为 LocationData[]，而 config_locations 表声明为
+ * Table<LocationStorage>；又如动态遍历配置表时无法静态推断记录类型）。
+ * 统一通过此函数做一次断言，避免在调用方散落 `as unknown as XXX` 双重断言（CODE-5）。
+ *
+ * @typeParam T - 期望的表记录类型
+ * @param dbInstance - 数据库实例
+ * @param name - 表名（GameDatabaseSchema 的键）
+ * @returns 强类型 Table 引用
+ */
+export function getTable<T>(
+  dbInstance: GameDatabase,
+  name: keyof GameDatabaseSchema
+): Table<T, string> {
+  return dbInstance[name] as unknown as Table<T, string>;
+}
 
 /**
  * 数据库服务类

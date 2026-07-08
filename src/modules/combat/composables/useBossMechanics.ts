@@ -6,7 +6,7 @@
  */
 import type { EnemyInstance } from '../../enemy/types';
 import type { BossIntro, BossPhase, BossMechanicType } from '../../boss/types';
-import { BossPhaseManager } from '../../boss/phase-manager';
+import { BossPhaseManager } from '../../boss/phaseManager';
 import { useCharacterStore } from '../../character/store';
 import { useEnemyStore } from '../../enemy/store';
 import {
