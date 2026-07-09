@@ -4,7 +4,7 @@
  *              首次查询时从 DB 加载并构建 Map 索引，后续查询直接命中内存（PERF-1 修复）。
  * @module services
  */
-import { inventoryDbService } from '@/modules/inventory/db';
+import { inventoryDbService } from '@/modules/inventory';
 import type { Item } from '@/modules/inventory/types';
 
 /**

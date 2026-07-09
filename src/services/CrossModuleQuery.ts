@@ -4,10 +4,10 @@
  *              通过聚合层隔离跨层调用，使探索模块仅依赖本服务而非具体数据层实现（EXP-4 修复）。
  * @module services
  */
-import { mapDbService } from '@/modules/map/db';
-import { questDbService } from '@/modules/quest/db';
-import { shopDbService } from '@/modules/shop/db';
-import { equipmentDbService } from '@/modules/equipment/db';
+import { mapDbService } from '@/modules/map';
+import { questDbService } from '@/modules/quest';
+import { shopDbService } from '@/modules/shop';
+import { equipmentDbService } from '@/modules/equipment';
 import { itemTemplateCache } from '@/services/ItemTemplateCache';
 import type { LocationData } from '@/modules/map/types';
 import type { Item } from '@/modules/inventory/types';

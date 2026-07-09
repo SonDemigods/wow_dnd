@@ -21,7 +21,22 @@ export default defineConfig({
      */
     include: ['test/**/*.test.ts', 'src/**/*.{test,spec}.ts'],
     /** 排除构建产物和 node_modules */
-    exclude: ['node_modules', 'dist', '**/*.vue']
+    exclude: ['node_modules', 'dist', '**/*.vue'],
+    /**
+     * 覆盖率配置（S5 修复）
+     * code_rule.md 规定核心逻辑 ≥ 90%、组件/Store ≥ 80%。
+     * 阈值设为 85% 作为缓冲，后续逐步提升至 90%。
+     */
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      thresholds: {
+        statements: 85,
+        branches: 80,
+        functions: 85,
+        lines: 85,
+      },
+    }
   },
   resolve: {
     alias: {

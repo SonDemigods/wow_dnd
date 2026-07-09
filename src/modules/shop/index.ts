@@ -4,4 +4,5 @@
  * @module shop
  */
 export type { ShopConfig, ShopItem, ShopDisplayItem, SoldItemEntry, ShopItemsStorage, ShopSoldItemsStorage } from './types';
+export { shopDbService } from './db';
 export { useShopStore } from './store';
