@@ -260,7 +260,10 @@ export const useCombatStore = defineStore('combat', () => {
       const [bossId, intro] = bossIntroEntries[0];
       const bossEnemy = enemiesData.find(e => e.id === bossId);
       if (bossEnemy) {
-        setTimeout(() => {
+        // 保存定时器 ID 到 state，战斗提前结束时由 resetState/cleanup 清理，
+        // 避免向已结束的战斗 UI 推送 Boss 介绍数据
+        state.bossIntroTimerId.value = window.setTimeout(() => {
+          state.bossIntroTimerId.value = null;
           eventBus.emit(GameEvents.COMBAT_BOSS_INTRO, {
             enemyId: bossId, enemyName: bossEnemy.name, icon: bossEnemy.icon,
             effect: intro.effect, lines: intro.lines, duration: intro.duration

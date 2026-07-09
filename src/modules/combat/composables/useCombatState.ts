@@ -83,6 +83,15 @@ export function useCombatState() {
   const turnTimerId = ref<number | null>(null);
 
   /**
+   * Boss 介绍延迟定时器 ID（ref，确保 startCombat 和 resetState/endCombat 操作同一引用）
+   *
+   * startCombat 中通过 setTimeout 延迟 300ms 触发 COMBAT_BOSS_INTRO 事件，
+   * 若战斗在 300ms 内结束（如玩家立即逃跑），需在 resetState 中清理该定时器，
+   * 否则会向已结束的战斗 UI 推送 Boss 介绍数据。
+   */
+  const bossIntroTimerId = ref<number | null>(null);
+
+  /**
    * 玩家资源系统列表（按职业创建，空数组表示使用默认 MP 系统）
    * 使用 shallowRef 避免对 ResourceSystem 实例做深度响应式追踪
    */
@@ -123,6 +132,10 @@ export function useCombatState() {
       clearTimeout(turnTimerId.value);
       turnTimerId.value = null;
     }
+    if (bossIntroTimerId.value !== null) {
+      clearTimeout(bossIntroTimerId.value);
+      bossIntroTimerId.value = null;
+    }
 
     state.value = 'idle';
     enemyIds.value = [];
@@ -134,6 +147,9 @@ export function useCombatState() {
     combatResult.value = null;
     expGained.value = 0;
     goldGained.value = 0;
+    // 重置先攻顺序与索引（修复：原 resetState 漏重置，导致 cleanup 后残留旧行动顺序）
+    initiativeOrder.value = [];
+    currentInitiativeIndex.value = 0;
     playerEffects.value = createEmptyContainer();
     enemyEffects.value = {};
     bossPhaseManagers.clear();
@@ -205,6 +221,7 @@ export function useCombatState() {
     bossPhaseManagers,
     effectRegistry,
     turnTimerId,
+    bossIntroTimerId,
 
     // 计算属性
     isInCombat,

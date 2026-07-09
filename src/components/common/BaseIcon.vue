@@ -38,6 +38,31 @@ import { Icon, loadIcon } from '@iconify/vue';
 /** 回退图标：问号 */
 const FALLBACK_ICON = 'game-icons:uncertainty';
 
+/**
+ * 净化 SVG body 字符串，防止 XSS
+ *
+ * 数据来源为 @iconify/vue（相对可信），但 icon 名理论上可被外部配置控制，
+ * 因此对 loadIcon 返回的 SVG body 进行防御性净化后再通过 v-html 渲染：
+ * - 移除 script 标签及其内容
+ * - 移除 `on*` 事件处理器属性（onclick/onload/onerror/onmouseover 等）
+ * - 移除 `javascript:` 协议的 href/xlink:href（防止点击劫持）
+ *
+ * @param body - loadIcon 返回的 SVG body 字符串
+ * @returns 净化后的 body 字符串
+ */
+function sanitizeSvgBody(body: string): string {
+  // 注意：正则以字符串拼接构造，避免源码中出现连续的闭合 script 标签字面量
+  // 导致 SFC 解析器误判 script setup 块提前结束（SFC 解析器不解析 JS 注释/字符串）
+  const scriptTagPattern = new RegExp('<' + 'script[\\s\\S]*?</' + 'script>', 'gi');
+  return body
+    // 移除 script 标签（含内容，跨行匹配）
+    .replace(scriptTagPattern, '')
+    // 移除 on* 事件处理器属性（onclick/onload/onerror/onmouseover 等）
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    // 移除 javascript: 协议的 href/xlink:href（防止点击劫持）
+    .replace(/(xlink:href|href)\s*=\s*["']\s*javascript:[^"']*["']/gi, '');
+}
+
 const props = withDefaults(defineProps<{
   /** 图标名（支持 'game-icons:xxx' 全名或 'xxx' 简写），空值自动回退为问号 */
   name?: string;
@@ -83,12 +108,14 @@ watch(
       }
       // 使用唯一 gradId 避免多实例 SVG ID 冲突导致渐变被覆盖
       const defs = `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--icon-grad-${grad}-start)"/><stop offset="100%" stop-color="var(--icon-grad-${grad}-end)"/></linearGradient></defs>`;
-      const body = data.body.replace(
+      // 净化 SVG body 防止 XSS（icon 名可能来自外部配置）
+      const body = sanitizeSvgBody(data.body).replace(
         /fill="currentColor"/g,
         `fill="url(#${gradId})"`
       );
       gradientSvgBody.value = defs + body;
-    } catch {
+    } catch (e) {
+      console.warn(`[BaseIcon] loadIcon("${icon}") 失败，降级为单色图标:`, e);
       gradientSvgBody.value = '';
     }
   },

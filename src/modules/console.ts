@@ -209,11 +209,13 @@ function requireCharacter():
  * @see game 命令
  */
 function switchGameState(target: string, msg: string): CommandResult {
-  const gs = (window as Window & { __gameState?: { value: string } }).__gameState;
+  // window.__gameState 类型由 App.vue 的 declare global 声明为 Ref<GameState>，
+  // 此处 target 来自命令参数，运行时 switch 命令已校验合法值，通过断言收窄到 GameState 联合类型
+  const gs = (window as Window & { __gameState?: { value: 'character-select' | 'game' | 'admin' } }).__gameState;
   if (!gs) {
     return { success: false, message: 'gameState 未初始化，请等待游戏加载完成' };
   }
-  gs.value = target;
+  gs.value = target as 'character-select' | 'game' | 'admin';
   return { success: true, message: msg };
 }
 

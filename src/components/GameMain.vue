@@ -183,6 +183,14 @@ const showAudioSettings = ref(false);
 const showSystem = ref(false);
 /** 是否触发升级动画 */
 const levelUpTriggered = ref(false);
+/**
+ * 升级动画定时器 ID（setup 作用域，onMounted/onUnmounted 闭包共享同一引用）
+ *
+ * CHARACTER_LEVEL_UP 事件回调中通过 setTimeout 延迟 1500ms 复位 levelUpTriggered，
+ * 若组件在动画期间卸载，需在 onUnmounted 中清理该定时器，
+ * 避免卸载后访问已卸载组件的响应式状态触发 Vue 警告。
+ */
+let levelUpTimerId: ReturnType<typeof setTimeout> | null = null;
 
 const character = computed(() => characterStore.character || { name: '...', level: 1 });
 const currentHp = computed(() => characterStore.hp);
@@ -348,16 +356,30 @@ onMounted(async () => {
   loading.value = false;
 
   // 监听角色升级事件，触发升级动画
-  eventBus.on(GameEvents.CHARACTER_LEVEL_UP, () => {
-    levelUpTriggered.value = true;
-    showNotif('升级了！', 'success');
-    setTimeout(() => {
-      levelUpTriggered.value = false;
-    }, 1500);
-  });
+  eventBus.on(GameEvents.CHARACTER_LEVEL_UP, onLevelUp);
 });
 
+/** 角色升级事件处理器：触发升级动画并延迟复位 */
+function onLevelUp(): void {
+  levelUpTriggered.value = true;
+  showNotif('升级了！', 'success');
+  // 清理上一次未触发的定时器，避免快速连续升级时定时器堆叠
+  if (levelUpTimerId !== null) {
+    clearTimeout(levelUpTimerId);
+  }
+  levelUpTimerId = setTimeout(() => {
+    levelUpTimerId = null;
+    levelUpTriggered.value = false;
+  }, 1500);
+}
+
 onUnmounted(() => {
+  // 移除升级事件监听并清理未触发的升级动画定时器，防止卸载后访问响应式状态
+  eventBus.off(GameEvents.CHARACTER_LEVEL_UP, onLevelUp);
+  if (levelUpTimerId !== null) {
+    clearTimeout(levelUpTimerId);
+    levelUpTimerId = null;
+  }
   // 统一清理所有模块（EXP-5：按初始化逆序 dispose，清理监听器与状态）
   gameBootstrap.dispose();
 });

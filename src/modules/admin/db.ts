@@ -7,10 +7,17 @@
 import { db as gameDb, dbService } from '../data/core';
 import type { GameDatabaseSchema } from '../data/core';
 import { toRawData } from '../../utils';
+import type { Table } from 'dexie';
 
-/** 内部辅助：安全获取 Dexie 表实例 */
-function getTable(tableName: keyof GameDatabaseSchema) {
-  return (gameDb as any)[tableName];
+/**
+ * 内部辅助：安全获取 Dexie 表实例
+ *
+ * 使用 Dexie 官方 `table()` API 动态访问表，并通过 `Table<Record<string, unknown>, string>`
+ * 类型断言收窄，避免 `as any` 绕过类型校验。tableName 参数受 `keyof GameDatabaseSchema`
+ * 约束，编译期即可拦截不存在的表名。
+ */
+function getTable(tableName: keyof GameDatabaseSchema): Table<Record<string, unknown>, string> {
+  return gameDb.table(tableName) as Table<Record<string, unknown>, string>;
 }
 
 /**
@@ -55,7 +62,7 @@ export class AdminDbService {
     return dbService.withRetry(async () => {
       const table = getTable(tableName);
       // JSON 序列化去除 Vue/Proxy 包装，避免 IndexedDB DataCloneError
-      const cleanData = toRawData(data);
+      const cleanData = toRawData(data) as Record<string, unknown>;
       if (key) {
         await table.add({ ...cleanData, id: key }, key);
         return key;
@@ -76,7 +83,7 @@ export class AdminDbService {
       const existing = await table.get(id);
       if (!existing) throw new Error('记录不存在');
       // JSON 序列化去除 Vue/Proxy 包装，避免 IndexedDB DataCloneError
-      const cleanData = toRawData({ ...existing, ...data, id: existing.id ?? id });
+      const cleanData = toRawData({ ...existing, ...data, id: existing.id ?? id }) as Record<string, unknown>;
       await table.put(cleanData);
     });
   }
@@ -124,9 +131,9 @@ export class AdminDbService {
       if (!keyword.trim()) return [];
 
       try {
-        // 优先尝试 name/id 索引搜索
+        // 优先尝试 name/id 索引搜索（Dexie 链式 or：or('index') 返回 WhereClause 再继续查询）
         let collection = table.where('name').startsWithIgnoreCase(keyword);
-        collection = collection.or(table.where('id').startsWithIgnoreCase(keyword));
+        collection = collection.or('id').startsWithIgnoreCase(keyword);
         return await collection.distinct().toArray() as T[];
       } catch (e) {
         // 索引不存在时回退到全字段过滤搜索

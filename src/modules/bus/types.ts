@@ -18,14 +18,14 @@ import type { Skill } from '../skill/types';
 /**
  * 事件回调函数类型
  *
- * 内部存储使用的通用回调签名，采用 `any[]` 以保证异构回调数组的灵活兼容。
- * 公共 API 层（`on` / `off` / `once` 等）通过泛型提供更精确的类型约束，
- * 此处仅作为内部容器的存储单元。
+ * 内部存储使用的通用回调签名，采用 `unknown[]` 以保证异构回调数组的灵活兼容，
+ * 同时保留类型安全（访问参数时需 typeof 收窄）。公共 API 层（`on` / `off` /
+ * `once` 等）通过泛型提供更精确的类型约束，此处仅作为内部容器的存储单元。
  *
  * @see EventBus.on 注册监听器时使用具体的事件载荷类型
  * @see EventBus.emit 触发事件时通过 GameEventPayloadMap 确保类型匹配
  */
-export type EventCallback = (...args: any[]) => void;
+export type EventCallback = (...args: unknown[]) => void;
 
 // ============================================================================
 // 枚举类型

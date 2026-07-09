@@ -269,6 +269,36 @@ const emit = defineEmits<{
 /** 组件是否已卸载，防止异步回调在卸载后修改状态触发 Vue DOM 错误 */
 const isUnmounted = ref(false);
 
+/**
+ * 动画定时器集合
+ *
+ * 收集所有短时动画 setTimeout（浮动数字、震动、闪避、屏幕闪白、Boss 介绍等），
+ * 在 onUnmounted 中统一清理，防止组件卸载后定时器仍触发并访问已卸载组件的响应式状态
+ * （触发 Vue "unmounted component" 警告或状态不一致）。
+ */
+const animationTimers = new Set<ReturnType<typeof setTimeout>>();
+
+/**
+ * 注册动画定时器
+ *
+ * 包装 setTimeout：定时器执行后自动从集合中移除；
+ * 组件卸载时通过 clearAllAnimationTimers 统一清理未触发的定时器。
+ */
+function setAnimTimer(fn: () => void, delay: number): ReturnType<typeof setTimeout> {
+  const timer = setTimeout(() => {
+    animationTimers.delete(timer);
+    fn();
+  }, delay);
+  animationTimers.add(timer);
+  return timer;
+}
+
+/** 清理所有未触发的动画定时器（onUnmounted 调用） */
+function clearAllAnimationTimers(): void {
+  animationTimers.forEach(t => clearTimeout(t));
+  animationTimers.clear();
+}
+
 const characterStore = useCharacterStore();
 const skillsStore = useSkillStore();
 const inventoryStore = useInventoryStore();
@@ -534,14 +564,14 @@ function showFloating(target: 'enemy' | 'player', text: string, type: FloatingTy
       const el = document.querySelector(`[data-enemy-float="${enemyId}"]`) as HTMLElement;
       if (el) animateFloating(el, type, combatSpeed.value);
     });
-    setTimeout(() => { if (enemyFloatings.value[enemyId]) enemyFloatings.value[enemyId] = null; }, 2200);
+    setAnimTimer(() => { if (enemyFloatings.value[enemyId]) enemyFloatings.value[enemyId] = null; }, 2200);
   } else {
     playerFloating.value = { text, type };
     nextTick(() => {
       const el = document.querySelector('.player-side .floating-damage') as HTMLElement;
       if (el) animateFloating(el, type, combatSpeed.value);
     });
-    setTimeout(() => { playerFloating.value = null; }, 2200);
+    setAnimTimer(() => { playerFloating.value = null; }, 2200);
   }
 }
 
@@ -553,14 +583,14 @@ function triggerShake(target: 'enemy' | 'player', enemyId?: string) {
       const el = document.querySelector(`[data-enemy-shake="${enemyId}"]`) as HTMLElement;
       if (el) animateShake(el, combatSpeed.value);
     });
-    setTimeout(() => { enemyShakes.value[enemyId] = false; }, 600);
+    setAnimTimer(() => { enemyShakes.value[enemyId] = false; }, 600);
   } else {
     playerShake.value = true;
     nextTick(() => {
       const el = document.querySelector('.player-side') as HTMLElement;
       if (el) animateShake(el, combatSpeed.value);
     });
-    setTimeout(() => { playerShake.value = false; }, 600);
+    setAnimTimer(() => { playerShake.value = false; }, 600);
   }
 }
 
@@ -572,14 +602,14 @@ function triggerCritShake(target: 'enemy' | 'player', enemyId?: string) {
       const el = document.querySelector(`[data-enemy-shake="${enemyId}"]`) as HTMLElement;
       if (el) animateCritShake(el, combatSpeed.value);
     });
-    setTimeout(() => { enemyCritShakes.value[enemyId] = false; }, 900);
+    setAnimTimer(() => { enemyCritShakes.value[enemyId] = false; }, 900);
   } else {
     playerCritShake.value = true;
     nextTick(() => {
       const el = document.querySelector('.player-side') as HTMLElement;
       if (el) animateCritShake(el, combatSpeed.value);
     });
-    setTimeout(() => { playerCritShake.value = false; }, 900);
+    setAnimTimer(() => { playerCritShake.value = false; }, 900);
   }
 }
 
@@ -591,14 +621,14 @@ function triggerDodgeBlink(target: 'enemy' | 'player', enemyId?: string) {
       const el = document.querySelector(`[data-enemy-shake="${enemyId}"]`) as HTMLElement;
       if (el) animateDodgeBlink(el, combatSpeed.value);
     });
-    setTimeout(() => { enemyDodgeBlinks.value[enemyId] = false; }, 800);
+    setAnimTimer(() => { enemyDodgeBlinks.value[enemyId] = false; }, 800);
   } else {
     playerDodgeBlink.value = true;
     nextTick(() => {
       const el = document.querySelector('.player-side') as HTMLElement;
       if (el) animateDodgeBlink(el, combatSpeed.value);
     });
-    setTimeout(() => { playerDodgeBlink.value = false; }, 800);
+    setAnimTimer(() => { playerDodgeBlink.value = false; }, 800);
   }
 }
 
@@ -611,7 +641,7 @@ function triggerScreenFlash(type: 'crit' | 'dodge') {
       animateScreenFlash(screenFlashRef.value, type, combatSpeed.value);
     }
   });
-  setTimeout(() => { screenFlash.value = false; }, 600);
+  setAnimTimer(() => { screenFlash.value = false; }, 600);
 }
 
 // 法术伤害：缩放脉冲（T1 新增）
@@ -786,7 +816,7 @@ function onBossIntro(data: { enemyId: string; enemyName: string; icon: string; e
   // 演出结束后自动关闭
   const minDuration = 1000 + data.lines.length * 900;
   const actualDuration = Math.max(data.duration, minDuration);
-  setTimeout(() => {
+  setAnimTimer(() => {
     showBossIntro.value = false;
   }, actualDuration + 300); // +300 给淡出动画留时间
 }
@@ -806,7 +836,7 @@ function onBossPhase(data: { enemyId: string; enemyName: string; phaseName: stri
   });
 
   // 2.5 秒后自动关闭（匹配动画时长）
-  setTimeout(() => {
+  setAnimTimer(() => {
     showPhaseTransition.value = false;
   }, 2500);
 }
@@ -817,7 +847,7 @@ function triggerVsFlash() {
   nextTick(() => {
     if (vsDividerRef.value) animateVsFlash(vsDividerRef.value, combatSpeed.value);
   });
-  setTimeout(() => { vsFlash.value = false; }, 450);
+  setAnimTimer(() => { vsFlash.value = false; }, 450);
 }
 
 /** 应用战斗伤害视觉特效（多目标伤害 / 单体伤害），doAction / doSkill 共用 */
@@ -1067,6 +1097,8 @@ onUnmounted(() => {
   eventBus.off(GameEvents.COMBAT_BOSS_INTRO, onBossIntro);
   eventBus.off(GameEvents.COMBAT_BOSS_PHASE, onBossPhase);
   clearAutoClose();
+  // 清理所有未触发的动画定时器，防止卸载后访问响应式状态
+  clearAllAnimationTimers();
 });
 
 </script>

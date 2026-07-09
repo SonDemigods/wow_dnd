@@ -10,12 +10,14 @@ import type { Character, CharacterListItem, Stats, Attributes, FactionType, Race
 import { characterDbService } from './db';
 import { eventBus, GameEvents } from '../bus';
 import { useBaseStore } from '../base/store';
-import { skillsDbService } from '../skill/db';
-import { inventoryDbService } from '../inventory/db';
-import { equipmentDbService } from '../equipment/db';
-import { explorationDbService } from '../exploration/db';
-import { adventureLogDbService } from '../log/db';
-import { questDbService } from '../quest/db';
+// 级联清理边界场景：角色创建/删除时需跨模块持久化/清理数据。
+// 通过各模块 index.ts 公共入口引用 db service，遵循模块边界（不深入对方 db.ts 内部文件）。
+import { skillsDbService } from '../skill';
+import { inventoryDbService } from '../inventory';
+import { equipmentDbService } from '../equipment';
+import { explorationDbService } from '../exploration';
+import { adventureLogDbService } from '../log';
+import { questDbService } from '../quest';
 import {
   generateCharacterId,
   createInitialCharacter,

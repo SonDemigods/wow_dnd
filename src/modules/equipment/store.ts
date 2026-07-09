@@ -388,8 +388,9 @@ export const useEquipmentStore = defineStore('equipment', () => {
     // 4. 如果有旧装备，先卸下
     try {
       await doUnequip(slot);
-    } catch {
+    } catch (e) {
       // 回滚：卸下失败时将已移除的装备放回背包
+      console.error('[EquipmentStore] equipItem 卸下旧装备失败，回滚已移除的物品:', e);
       inventoryStore.addItem(item.id, 1);
       return false;
     }

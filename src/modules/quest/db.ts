@@ -235,7 +235,9 @@ export class QuestDbService {
         xpReward: definition.xpReward,
         goldReward: definition.goldReward,
         itemRewards: definition.itemRewards,
-        boardId: definition.boardId
+        boardId: definition.boardId,
+        // BIZ-19: 前置任务 ID 列表需持久化，否则读取端 _mapToDefinition 拿不到此字段
+        prerequisiteQuests: definition.prerequisiteQuests
       });
     });
   }

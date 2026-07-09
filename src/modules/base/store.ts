@@ -28,7 +28,7 @@ const ENTITY_LABEL: Record<EntityType, string> = {
  * 创建通用快捷取值计算属性
  * 根据列表和字段名生成 `(id) => fieldValue` 形式的 getter
  */
-function createQuickGetter<T extends Record<string, any>>(
+function createQuickGetter<T extends Record<string, unknown>>(
   list: Ref<T[]>,
   field: keyof T,
   fallback: string

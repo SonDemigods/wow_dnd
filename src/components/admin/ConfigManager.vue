@@ -53,7 +53,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAdminStore } from '@/modules/admin';
-import { CONFIG_TABLES, type ConfigTableName } from '@/modules/admin/types';
+import { CONFIG_TABLES, type ConfigTableName, type AdminRecord } from '@/modules/admin/types';
 import type { TableColumn, CellValue } from './AdminTable.vue';
 import type { FormField } from './AdminForm.vue';
 import AdminTable from './AdminTable.vue';
@@ -122,7 +122,7 @@ onMounted(() => {
 /** 是否显示删除确认 */
 const showDeleteConfirm = ref(false);
 /** 待删除的记录 */
-const pendingDeleteRecord = ref<Record<string, unknown> | null>(null);
+const pendingDeleteRecord = ref<AdminRecord | null>(null);
 
 /** 各配置表的列定义 */
 const tableColumns: Record<ConfigTableName, TableColumn[]> = {
@@ -554,12 +554,12 @@ function handleCreate() {
 }
 
 /** 打开编辑表单 */
-function handleEdit(row: any) {
+function handleEdit(row: AdminRecord) {
   store.openEditForm(row, `编辑${store.currentTableMeta?.label || '记录'}`);
 }
 
 /** 打开删除确认 */
-function handleDelete(row: any) {
+function handleDelete(row: AdminRecord) {
   pendingDeleteRecord.value = row;
   showDeleteConfirm.value = true;
 }
@@ -574,7 +574,7 @@ async function confirmDelete() {
 }
 
 /** 提交表单 */
-async function handleFormSubmit(data: Record<string, any>) {
+async function handleFormSubmit(data: AdminRecord) {
   await store.saveRecord(currentDbTable.value, data);
 }
 </script>

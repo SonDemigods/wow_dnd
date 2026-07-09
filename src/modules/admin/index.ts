@@ -13,6 +13,7 @@ export type {
   ConfigTableMeta,
   AdminOperationResult,
   ReferenceOption,
+  AdminRecord,
   FormMode,
   FormConfig,
 } from './types';

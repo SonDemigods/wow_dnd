@@ -215,6 +215,14 @@ const buyQuantity = ref(1);
 const sellQuantity = ref(1);
 /** 金币闪烁动画状态 */
 const goldFlash = ref(false);
+/**
+ * 金币闪烁复位定时器 ID（setup 作用域，triggerGoldFlash/onUnmounted 闭包共享同一引用）
+ *
+ * triggerGoldFlash 中通过 setTimeout 延迟 500ms 复位 goldFlash，
+ * 若弹窗在闪烁期间关闭（卸载），需在 onUnmounted 中清理该定时器，
+ * 避免卸载后访问已卸载组件的响应式状态触发 Vue 警告。
+ */
+let goldFlashTimerId: ReturnType<typeof setTimeout> | null = null;
 
 const currentShopId = computed(() => shopStore.currentShopId || '');
 
@@ -440,7 +448,12 @@ async function handleSell(itemId: string) {
 /** 触发金币闪烁动画 */
 function triggerGoldFlash() {
   goldFlash.value = true;
-  setTimeout(() => {
+  // 清理上一次未触发的定时器，避免连续购买/出售时定时器堆叠
+  if (goldFlashTimerId !== null) {
+    clearTimeout(goldFlashTimerId);
+  }
+  goldFlashTimerId = setTimeout(() => {
+    goldFlashTimerId = null;
     goldFlash.value = false;
   }, 500);
 }
@@ -476,7 +489,11 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  // 保留，供未来扩展
+  // 清理未触发的金币闪烁复位定时器，防止卸载后访问响应式状态
+  if (goldFlashTimerId !== null) {
+    clearTimeout(goldFlashTimerId);
+    goldFlashTimerId = null;
+  }
 });
 
 // 切换商店时刷新数据（监听 store.currentShopId，非 prop）

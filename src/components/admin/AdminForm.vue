@@ -25,11 +25,12 @@
           <textarea
             v-else-if="field.type === 'textarea'"
             :id="'field-' + field.key"
-            v-model="formData[field.key]"
+            :value="formData[field.key] as string"
             :placeholder="field.placeholder"
             :disabled="field.disabled"
             class="form-textarea"
             rows="3"
+            @input="formData[field.key] = ($event.target as HTMLTextAreaElement).value"
           />
 
           <!-- 下拉选择 -->
@@ -106,11 +107,12 @@
             <textarea
               v-if="!jsonModes[field.key]"
               :id="'field-' + field.key"
-              v-model="formData[field.key]"
+              :value="formData[field.key] as string"
               :placeholder="field.placeholder"
               :disabled="field.disabled"
               class="form-textarea form-json"
               rows="5"
+              @input="formData[field.key] = ($event.target as HTMLTextAreaElement).value"
             />
 
             <!-- 键值对模式 -->
@@ -156,6 +158,23 @@
  * 根据字段配置动态渲染表单，支持 text/number/textarea/select/color/json 等类型
  */
 import { reactive, watch } from 'vue';
+import type { AdminRecord } from '@/modules/admin/types';
+
+/**
+ * 表单字段值类型
+ *
+ * 动态表单的值类型因 field.type 而异：
+ * - text/textarea/select/color/json(文本模式): string
+ * - number: number
+ * - switch: boolean
+ * - multiselect: string[]
+ * - json(对象模式): object
+ *
+ * v-model 绑定到 input/textarea/select 时，Vue 类型检查要求 string | number，
+ * 联合类型中 boolean/string[]/object 不兼容。因此在模板 v-model 处通过类型断言收窄，
+ * 此处的联合类型仅用于 script 内部的类型安全。
+ */
+type FormFieldValue = string | number | boolean | string[] | Record<string, unknown> | null;
 
 /** 表单字段定义 */
 export interface FormField {
@@ -176,16 +195,16 @@ const props = defineProps<{
   /** 字段定义 */
   fields: FormField[];
   /** 初始数据（编辑模式时传入） */
-  initialData?: Record<string, any> | null;
+  initialData?: AdminRecord | null;
 }>();
 
 const emit = defineEmits<{
-  submit: [data: Record<string, any>];
+  submit: [data: AdminRecord];
   cancel: [];
 }>();
 
-/** 表单数据 */
-const formData = reactive<Record<string, any>>({});
+/** 表单数据（内部用 FormFieldValue 联合类型保证 script 内类型安全） */
+const formData = reactive<Record<string, FormFieldValue>>({});
 
 /** JSON 编辑器模式（true=键值对, false=文本） */
 const jsonModes = reactive<Record<string, boolean>>({});
@@ -308,10 +327,10 @@ watch(
 
 /** 提交表单 */
 function handleSubmit() {
-  // 将 number 类型字段的值转为数字
-  const data: Record<string, any> = {};
+  // 将 number 类型字段的值转为数字，收集为 AdminRecord（Record<string, unknown>）
+  const data: AdminRecord = {};
   props.fields.forEach(field => {
-    let value = formData[field.key];
+    let value: unknown = formData[field.key];
     if (field.type === 'number' && typeof value === 'string') {
       value = Number(value);
     }

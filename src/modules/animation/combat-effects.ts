@@ -8,9 +8,14 @@ import { animate, createTimeline } from 'animejs';
 import { CombatColors } from '@/config/combat-colors';
 import type { FloatingType, ParticleConfig } from './types';
 
+/** 速度倍率的有效下限，防止 speed 为 0 或负值时产生 Infinity/负数 duration */
+const MIN_SPEED = 0.1;
+
 /** 根据速度倍率缩放动画 duration */
 function scaleDuration(duration: number, speed: number): number {
-  return Math.round(duration / speed);
+  // 兜底：speed 正常值为 1 或 2，但若异常传入 0/负值会得到 Infinity/负数，
+  // 用 Math.max 确保除数至少为 MIN_SPEED（动画变为极慢，可见但不崩溃）
+  return Math.round(duration / Math.max(MIN_SPEED, speed));
 }
 
 // ==================== 震动效果 ====================

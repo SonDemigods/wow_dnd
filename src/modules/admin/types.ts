@@ -40,6 +40,17 @@ export interface ReferenceOption {
   label: string;
 }
 
+/**
+ * 管理后台通用记录类型
+ *
+ * 后台管理模块操作任意配置表，记录结构动态变化（字段名/类型因表而异）。
+ * 使用 `unknown` 而非 `any` 保留类型安全，访问具体字段时通过 `typeof` 收窄。
+ *
+ * @see ConfigManager.vue handleEdit/handleDelete/handleFormSubmit 使用此类型
+ * @see AdminForm.vue initialData/submit/formData 使用此类型
+ */
+export type AdminRecord = Record<string, unknown>;
+
 // ============================================================================
 // 视图与表单类型
 // ============================================================================

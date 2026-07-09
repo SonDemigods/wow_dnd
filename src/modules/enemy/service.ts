@@ -86,12 +86,19 @@ export function generateEnemyStats(
  *
  * @param enemy - 敌人实例
  * @param playerDefense - 玩家防御值
+ * @param randomFn - 随机数生成函数，默认 Math.random。
+ *   暴露为可选参数便于测试注入确定性随机源（避免 mock 全局 Math.random 的副作用），
+ *   生产环境调用无需传参，使用默认值即可。
  * @returns 计算后的伤害值（向下取整，最小为 1）
  */
-export function calculateEnemyDamage(enemy: EnemyInstance, playerDefense: number): number {
+export function calculateEnemyDamage(
+  enemy: EnemyInstance,
+  playerDefense: number,
+  randomFn: () => number = Math.random
+): number {
   const baseDamage = enemy.physicalAttack ?? 10;
   const damageRange = enemy.damage;
-  const randomFactor = damageRange[0] + Math.random() * (damageRange[1] - damageRange[0]);
+  const randomFactor = damageRange[0] + randomFn() * (damageRange[1] - damageRange[0]);
   const rawDamage = (baseDamage + randomFactor) * 0.5;
   const mitigated = Math.max(1, rawDamage - playerDefense * 0.3);
   return Math.floor(mitigated);

@@ -17,6 +17,7 @@ import { useAudioStore } from './store';
 import { OrganVoice } from './organVoice';
 import type { IAudioService, SfxType, BgmScene, AudioSettings, SfxRoute } from './types';
 import { SFX_ROUTE_MAP } from './types';
+import { useToast } from '../../composables/useToast';
 
 /** 音频服务实现类 */
 class AudioService implements IAudioService {
@@ -147,6 +148,15 @@ class AudioService implements IAudioService {
   private initialized = false;
   private contextReady = false;
   private reverbReady = false;
+  /**
+   * AudioContext 启动失败时是否已通过 toast 通知过用户
+   *
+   * tryResume 在每次 playSfx/setBgmScene 调用时都可能触发，
+   * 若 Tone.start() 持续失败（如浏览器策略限制），
+   * 仅首次失败时通过 toast 提示用户，避免反复打扰。
+   * 成功后重置该标志，下次失败可再次提示。
+   */
+  private resumeFailedNotified = false;
   private currentBgmScene: BgmScene | null = null;
   private bgmPattern: Tone.Pattern<string> | Tone.Pattern<string[]> | null = null;
   private bgmLoop: Tone.Loop | null = null;
@@ -247,6 +257,9 @@ class AudioService implements IAudioService {
       }
     };
 
+    // 架构边界说明：service 层原则上不操作 DOM，但 Tone.js 要求 AudioContext.resume()
+    // 必须在用户手势回调中调用（浏览器 Autoplay Policy），此处注册一次性交互监听
+    // 是音频服务的必要边界例外。监听器使用 { once: true } 自动注销，无泄漏风险。
     const events = ['click', 'touchstart', 'keydown'] as const;
     for (const event of events) {
       document.addEventListener(event, resume, { once: true });
@@ -310,9 +323,25 @@ class AudioService implements IAudioService {
     try {
       await Tone.start();
       this.contextReady = true;
+      // 重置通知标志：成功后下次失败可再次提示用户
+      this.resumeFailedNotified = false;
       await this.ensureReverbReady();
-    } catch {
-      // 静默忽略
+    } catch (e) {
+      console.warn('[AudioService] AudioContext 启动失败（可能需用户先与页面交互）:', e);
+      // 首次失败时通过 toast 提示用户交互后才能播放音效，避免反复打扰
+      if (!this.resumeFailedNotified) {
+        this.resumeFailedNotified = true;
+        try {
+          useToast().show({
+            message: '音效未能启动，请点击页面以启用音频',
+            type: 'warning',
+            duration: 3000,
+          });
+        } catch (toastErr) {
+          // useToast 调用失败时不影响音频服务主流程
+          console.warn('[AudioService] Toast 提示失败:', toastErr);
+        }
+      }
     }
   }
 
@@ -1421,7 +1450,7 @@ class AudioService implements IAudioService {
     this.unsubscribeStore = null;
     // 取消所有事件总线监听
     for (const { event, handler } of this.eventHandlers) {
-      eventBus.off(event as keyof GameEventPayloadMap, handler as (data: any) => void);
+      eventBus.off(event as keyof GameEventPayloadMap, handler as (data: unknown) => void);
     }
     this.eventHandlers = [];
   }

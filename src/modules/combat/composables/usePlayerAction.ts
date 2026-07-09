@@ -41,6 +41,9 @@ export function usePlayerAction(
   endCombat: (result: CombatResult) => void,
   passive: ReturnType<typeof usePassiveSkills>,
 ) {
+  // passive 预留用于未来扩展（如玩家攻击触发 onAttack/onKill 被动钩子），
+  // 当前玩家行动不直接触发被动，被动触发集中在 useEnemyAction/useInitiative
+  void passive;
   const { addCombatLog, saveLogs, createPlayerEffectContext, createEnemyEffectContext } = log;
   const { aliveEnemies, currentTarget, playerEffects, enemyEffects, effectRegistry, hasBossEnemy } = state;
 

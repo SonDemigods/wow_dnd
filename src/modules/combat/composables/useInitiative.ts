@@ -137,7 +137,7 @@ export function useInitiative(
       state.turnTimerId.value = window.setTimeout(() => {
         state.turnTimerId.value = null;
         singleEnemyTurn(next.unitId);
-      }, Math.round(500 / state.combatSpeed.value));
+      }, Math.round(500 / Math.max(0.1, state.combatSpeed.value)));
     }
   }
 

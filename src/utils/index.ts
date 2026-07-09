@@ -6,3 +6,4 @@
 
 export * from './calculations';
 export * from './db-helpers';
+export * from './fileDownload';

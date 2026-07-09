@@ -60,7 +60,7 @@
  * @description 管理游戏主界面状态（角色选择/游戏中），协调子组件间的交互，处理角色选择、创建和退出逻辑
  */
 
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, type Ref } from 'vue';
 import CharacterSelect from './components/CharacterSelect.vue';
 import CharacterCreate from './components/CharacterCreate.vue';
 import GameMain from './components/GameMain.vue';
@@ -74,6 +74,13 @@ import { dataInitializer } from '@/modules/data/service';
 
 /** 游戏界面状态：角色选择 | 游戏中 | 后台管理 */
 type GameState = 'character-select' | 'game' | 'admin';
+
+// 扩展 Window 接口，供控制台命令访问 gameState（DEV 调试用）
+declare global {
+  interface Window {
+    __gameState: Ref<GameState>;
+  }
+}
 
 /** 当前游戏界面状态 */
 const gameState = ref<GameState>('character-select');
@@ -94,7 +101,7 @@ const toast = useToast();
 
 onMounted(async () => {
   // 暴露 gameState 到全局，供控制台命令切换视图
-  (window as any).__gameState = gameState;
+  window.__gameState = gameState;
 
   // 等待游戏数据初始化完成（main.ts 已启动 initializeData，此处幂等等待）
   // dataInitializer.initializeData 内部有 isDataInitialized 检查，重复调用安全

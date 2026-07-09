@@ -100,7 +100,8 @@ export class InventoryDbService {
         stackable: item.stackable,
         consumable: item.consumable || false,
         template: item.template || null,
-        levelRequirement: item.levelRequirement || null
+        // 用 ?? 而非 ||，0 是合法的等级要求（mapToItem 读取端亦用 ??）
+        levelRequirement: item.levelRequirement ?? null
       });
     });
   }

@@ -22,6 +22,7 @@ import type { SkillTemplateStorage } from '../skill/types';
 import type { CombatLogStorage } from '../combat/types';
 import type { AdventureLogData, LogEntry } from '../log/types';
 import { BACKUP_CONFIG } from '@/config/database';
+import { downloadBlob } from '@/utils/fileDownload';
 
 import type {
   BackupFile,
@@ -551,15 +552,8 @@ export class BackupService implements IBackupService {
     const blob = new Blob([JSON.stringify(backup, null, 2)], {
       type: 'application/json'
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
     const dateStr = new Date().toISOString().replace(/[:.]/g, '-');
-    a.download = `wow_dnd_backup_${dateStr}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `wow_dnd_backup_${dateStr}.json`);
   }
 
   /**
