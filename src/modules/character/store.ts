@@ -10,14 +10,9 @@ import type { Character, CharacterListItem, Stats, Attributes, FactionType, Race
 import { characterDbService } from './db';
 import { eventBus, GameEvents } from '../bus';
 import { useBaseStore } from '../base/store';
-// 级联清理边界场景：角色创建/删除时需跨模块持久化/清理数据。
-// 通过各模块 index.ts 公共入口引用 db service，遵循模块边界（不深入对方 db.ts 内部文件）。
-import { skillsDbService } from '../skill';
-import { inventoryDbService } from '../inventory';
-import { equipmentDbService } from '../equipment';
-import { explorationDbService } from '../exploration';
-import { adventureLogDbService } from '../log';
-import { questDbService } from '../quest';
+// CHR-4 修复：角色创建/删除的跨模块持久化逻辑收口到 CharacterLifecycleService，
+// Store 层不再直接依赖其他模块的 DbService，遵循五层架构原则。
+import { characterLifecycleService } from '@/services/CharacterLifecycleService';
 import {
   generateCharacterId,
   createInitialCharacter,
@@ -37,7 +32,6 @@ import {
 import { getExpForLevel } from '@/utils/calculations';
 import { backupService, importService, dataInitializer } from '../data';
 import type { ImportResult, ValidationResult } from '../data';
-import type { Skill, SkillBar } from '../skill/types';
 
 export const useCharacterStore = defineStore('character', () => {
   // ==================== 响应式状态（Store 是唯一数据源） ====================
@@ -168,15 +162,8 @@ export const useCharacterStore = defineStore('character', () => {
     raceBonus.value = race?.bonus || {};
     classBonus.value = cls?.bonus || {};
 
-    // 3. 初始化技能数据
-    const classAbilities = await skillsDbService.getSkillTemplatesByClass(classIdParam);
-    const skills: Skill[] = classAbilities
-      .filter(skill => skill.unlockLevel <= 1)
-      .map(skill => ({ ...skill }));
-    const skillBar: SkillBar = { slots: [null, null, null, null] };
-    skills.forEach((skill, index) => {
-      if (index < 4) skillBar.slots[index] = skill.id;
-    });
+    // 3. 初始化技能数据（CHR-4 修复：通过 CharacterLifecycleService 收口跨模块持久化）
+    await characterLifecycleService.initializeCharacterSkills(id, classIdParam);
 
     // 4. 持久化到数据库
     const listItem: CharacterListItem = {
@@ -191,13 +178,6 @@ export const useCharacterStore = defineStore('character', () => {
     };
     await characterDbService.saveCharacterListItem(listItem);
     await persistCharacter();
-    await skillsDbService.saveSkillsData({
-      characterId: id,
-      skills: skills.map(s => s.id),
-      skillBar,
-      currentClass: classIdParam,
-      updatedAt: Date.now()
-    });
 
     // 5. 通知 UI
     eventBus.emit(GameEvents.CHARACTER_CREATED, { characterId: id, name });
@@ -251,14 +231,10 @@ export const useCharacterStore = defineStore('character', () => {
     const listItem = await characterDbService.getCharacterListItem(characterId);
     if (!listItem) return false;
 
-    // 删除所有相关数据
+    // 删除角色本模块数据
     await characterDbService.deleteCharacterData(characterId);
-    await skillsDbService.deleteSkillsData(characterId);
-    await inventoryDbService.deleteInventory(characterId);
-    await equipmentDbService.deleteEquipment(characterId);
-    await explorationDbService.deleteExplorationData(characterId);
-    await adventureLogDbService.deleteAdventureLog(characterId);
-    await questDbService.deleteCharacterQuests(characterId);
+    // CHR-4 修复：级联删除其他模块数据收口到 CharacterLifecycleService
+    await characterLifecycleService.cascadeDeleteCharacter(characterId);
 
     // 清理 Store 状态
     if (currentCharacterId.value === characterId) {

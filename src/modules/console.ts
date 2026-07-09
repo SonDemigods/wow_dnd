@@ -20,10 +20,9 @@ import { useEquipmentStore } from './equipment';
 import { useShopStore } from './shop';
 import { useQuestStore } from './quest';
 import { useLogStore } from './log';
-import { enemyDbService } from './enemy';
-import { bossDbService } from './boss';
-import { inventoryDbService } from './inventory';
-import { equipmentDbService } from './equipment';
+// CHR-5 修复：控制台命令的数据查询收口到 AdminQueryService，
+// 不再直接依赖 enemy/boss/inventory/equipment 的 DbService。
+import { adminQueryService } from '@/services/AdminQueryService';
 import { MAX_LEVEL } from '../config/character';
 import { getExpForLevel } from '../utils/calculations';
 import { CONSOLE_STYLE as STYLE } from '../config/console-style';
@@ -604,8 +603,8 @@ registerCommand({
  *
  * @param {string[]} args - args[0] 为物品 ID（空则列出），args[1] 为数量（消耗品）
  *
- * @see inventoryDbService.getItemTemplate
- * @see equipmentDbService.getEquipmentTemplate
+ * @see adminQueryService.queryItemTemplate
+ * @see adminQueryService.queryAllItemTemplates
  */
 registerCommand({
   name: 'item',
@@ -614,8 +613,8 @@ registerCommand({
   usage: 'item <物品ID> [数量]',
   async handler(args) {
     if (args.length === 0) {
-      const lootItems = await inventoryDbService.getAllItemTemplates();
-      const equipItems = await equipmentDbService.getAllEquipmentTemplates();
+      // CHR-5 修复：通过 AdminQueryService 收口跨模块 DbService 查询
+      const { items: lootItems, equipments: equipItems } = await adminQueryService.queryAllItemTemplates();
 
       logTag('item', '═══ 消耗品 ═══');
       for (const item of lootItems) {
@@ -631,26 +630,27 @@ registerCommand({
 
     const itemId = args[0];
 
-    const lootItem = await inventoryDbService.getItemTemplate(itemId);
-    if (lootItem) {
-      const count = args[1] ? parseInt(args[1], 10) : 1;
-      if (isNaN(count) || count <= 0) {
-        return { success: false, message: '数量必须为正整数' };
+    // CHR-5 修复：通过 AdminQueryService 统一查询物品模板（消耗品 + 装备）
+    const result = await adminQueryService.queryItemTemplate(itemId);
+    if (result) {
+      if (result.type === 'item') {
+        const count = args[1] ? parseInt(args[1], 10) : 1;
+        if (isNaN(count) || count <= 0) {
+          return { success: false, message: '数量必须为正整数' };
+        }
+        const added = useInventoryStore().addItem(result.data.id, count);
+        if (added > 0) {
+          return { success: true, message: `已添加 ${result.data.name} x${added}` };
+        }
+        return { success: false, message: '背包已满，无法添加物品' };
+      } else {
+        // 装备类型固定添加 1 件
+        const added = useInventoryStore().addItem(result.data.id, 1);
+        if (added > 0) {
+          return { success: true, message: `已添加 ${result.data.name} 到背包` };
+        }
+        return { success: false, message: '背包已满，无法添加物品' };
       }
-      const added = useInventoryStore().addItem(lootItem.id, count);
-      if (added > 0) {
-        return { success: true, message: `已添加 ${lootItem.name} x${added}` };
-      }
-      return { success: false, message: '背包已满，无法添加物品' };
-    }
-
-    const equipItem = await equipmentDbService.getEquipmentTemplate(itemId);
-    if (equipItem) {
-      const added = useInventoryStore().addItem(equipItem.id, 1);
-      if (added > 0) {
-        return { success: true, message: `已添加 ${equipItem.name} 到背包` };
-      }
-      return { success: false, message: '背包已满，无法添加物品' };
     }
 
     return { success: false, message: `未找到物品: ${itemId}，输入 item 查看可用列表` };
@@ -760,8 +760,8 @@ registerCommand({
   usage: 'spawn <敌人ID>',
   async handler(args) {
     if (args.length === 0) {
-      const mobs = await enemyDbService.getAllEnemyTemplates();
-      const bosses = await bossDbService.getAllBossTemplates();
+      // CHR-5 修复：通过 AdminQueryService 收口跨模块 DbService 查询
+      const { mobs, bosses } = await adminQueryService.queryAllEnemyTemplates();
       logTag('spawn', '═══ 普通怪物 ═══');
       for (const data of mobs) {
         console.log(`  %c${data.id.padEnd(22)}%c ${data.name} %c(HP:${data.maxHp})`, STYLE.label, STYLE.value, STYLE.hint);

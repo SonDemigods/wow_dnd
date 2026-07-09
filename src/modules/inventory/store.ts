@@ -11,7 +11,7 @@
  * 4. 通知其他 Store（useLogStore、useCharacterStore）
  *
  * ## 跨模块依赖
- * - equipmentDbService：初始化时加载装备模板，合并入 itemTemplates 供背包展示
+ * - crossModuleQuery：初始化时加载装备模板，合并入 itemTemplates 供背包展示（ARCH-2 修复，消除对 equipmentDbService 的直接依赖）
  * - useCharacterStore：物品使用时传递效果到角色模块
  * - useLogStore：记录物品获得/使用/丢弃的冒险日志
  *
@@ -134,7 +134,7 @@ export const useInventoryStore = defineStore('inventory', () => {
    *
    * 合并两个来源的物品定义：
    * 1. config_items 表中的普通物品模板（通过 inventoryDbService）
-   * 2. equipment_templates 表中的装备模板（通过 equipmentDbService）
+   * 2. config_equipmentItems 表中的装备模板（通过 crossModuleQuery 聚合层访问，消除 C3 循环依赖）
    *
    * 装备模板会被转换为 Item 格式并合并入同一个 Map。
    * 如果同一 ID 在两表中都存在，config_items 中的数据优先（先插入的优先）。
