@@ -13,6 +13,45 @@
  */
 import { createPinia, setActivePinia, type Pinia } from 'pinia';
 import { createTestingPinia, type TestingPiniaOptions } from '@pinia/testing';
+import { config } from '@vue/test-utils';
+import { defineComponent, h } from 'vue';
+
+/**
+ * RecycleScroller / DynamicScroller 测试 stub
+ *
+ * jsdom 环境无 ResizeObserver 且元素尺寸为 0，真实的虚拟滚动组件无法计算可见区域，
+ * 不会渲染任何条目。此 stub 将 items 数组通过 v-for 全量渲染，使测试可以直接
+ * 通过 CSS 选择器查询到 .item-slot / .skill-slot / .quest-card 等元素。
+ */
+const VirtualScrollerStub = defineComponent({
+  name: 'VirtualScrollerStub',
+  props: ['items', 'itemSize', 'gridItems', 'itemSecondarySize', 'keyField', 'minItemSize', 'buffer', 'pageMode', 'prerender'],
+  setup(props, { slots }) {
+    return () =>
+      h(
+        'div',
+        { class: 'virtual-scroller-stub' },
+        (props.items || []).map((item: any, index: number) =>
+          slots.default?.({ item, index, active: true })
+        )
+      );
+  },
+});
+
+const DynamicScrollerItemStub = defineComponent({
+  name: 'DynamicScrollerItemStub',
+  props: ['item', 'active', 'dataIndex', 'size'],
+  setup(_, { slots }) {
+    return () => slots.default?.();
+  },
+});
+
+config.global.stubs = {
+  ...config.global.stubs,
+  RecycleScroller: VirtualScrollerStub,
+  DynamicScroller: VirtualScrollerStub,
+  DynamicScrollerItem: DynamicScrollerItemStub,
+};
 
 /**
  * 创建并激活一个真实的 Pinia 实例，供 Store 单元测试使用。

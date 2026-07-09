@@ -41,3 +41,17 @@ declare module '*.webp' {
   const src: string
   export default src
 }
+
+/**
+ * vue-virtual-scroller@2.0.0-beta 类型声明
+ * beta 版未内置 .d.ts，此处提供最小可用声明
+ */
+declare module 'vue-virtual-scroller' {
+  import type { Plugin } from 'vue'
+  const VueVirtualScroller: Plugin
+  // 使用 any 绕过 vue-tsc 对第三方组件 slot props 的类型检查
+  export const RecycleScroller: any
+  export const DynamicScroller: any
+  export const DynamicScrollerItem: any
+  export default VueVirtualScroller
+}

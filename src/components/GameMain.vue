@@ -46,66 +46,73 @@
     </div>
 
     <div class="game-footer">
-      <button class="footer-btn" @click="showCharacterInfo = true; onClickPanel('character_info')" title="角色">
+      <button class="footer-btn" @click="popupMounted.characterInfo = true; showCharacterInfo = true; onClickPanel('character_info')" title="角色">
         <BaseIcon name="person" gradient="gold" :size="16" />
         <span class="footer-text">角色</span>
       </button>
-      <button class="footer-btn" @click="showInventory = true; onClickPanel('inventory')" title="背包">
+      <button class="footer-btn" @click="popupMounted.inventory = true; showInventory = true; onClickPanel('inventory')" title="背包">
         <BaseIcon name="backpack" gradient="gold" :size="16" />
         <span class="footer-text">背包</span>
       </button>
-      <button class="footer-btn" @click="showSkills = true; onClickPanel('skills')" title="技能">
+      <button class="footer-btn" @click="popupMounted.skills = true; showSkills = true; onClickPanel('skills')" title="技能">
         <BaseIcon name="sword-spin" gradient="gold" :size="16" />
         <span class="footer-text">技能</span>
       </button>
-      <button class="footer-btn" @click="showQuests = true; onClickPanel('quests')" title="任务">
+      <button class="footer-btn" @click="popupMounted.quests = true; showQuests = true; onClickPanel('quests')" title="任务">
         <BaseIcon name="notebook" gradient="gold" :size="16" />
         <span class="footer-text">任务</span>
       </button>
-      <button class="footer-btn" @click="showAdventureLog = true; onClickPanel('adventure_log')" title="日志">
+      <button class="footer-btn" @click="popupMounted.adventureLog = true; showAdventureLog = true; onClickPanel('adventure_log')" title="日志">
         <BaseIcon name="scroll-unfurled" gradient="gold" :size="16" />
         <span class="footer-text">日志</span>
       </button>
-      <button class="footer-btn" @click="showSystem = true; onClickPanel('system')" title="系统">
+      <button class="footer-btn" @click="popupMounted.system = true; showSystem = true; onClickPanel('system')" title="系统">
         <BaseIcon name="cog" gradient="gold" :size="16" />
         <span class="footer-text">系统</span>
       </button>
     </div>
 
-    <CharacterInfoPopup 
-      :visible="showCharacterInfo" 
-      @close="showCharacterInfo = false; onPanelClose('character_info')" 
+    <CharacterInfoPopup
+      v-if="popupMounted.characterInfo"
+      :visible="showCharacterInfo"
+      @close="showCharacterInfo = false; onPanelClose('character_info')"
     />
-    
-    <InventoryPopup 
-      :visible="showInventory" 
-      @close="showInventory = false; onPanelClose('inventory')" 
+
+    <InventoryPopup
+      v-if="popupMounted.inventory"
+      :visible="showInventory"
+      @close="showInventory = false; onPanelClose('inventory')"
     />
-    
-    <SkillsPopup 
-      :visible="showSkills" 
-      @close="showSkills = false; onPanelClose('skills')" 
+
+    <SkillsPopup
+      v-if="popupMounted.skills"
+      :visible="showSkills"
+      @close="showSkills = false; onPanelClose('skills')"
     />
-    
-    <QuestPopup 
-      :visible="showQuests" 
-      @close="showQuests = false; onPanelClose('quests')" 
+
+    <QuestPopup
+      v-if="popupMounted.quests"
+      :visible="showQuests"
+      @close="showQuests = false; onPanelClose('quests')"
     />
-    
-    <AdventureLogPopup 
-      :visible="showAdventureLog" 
+
+    <AdventureLogPopup
+      v-if="popupMounted.adventureLog"
+      :visible="showAdventureLog"
       :current-area="currentArea"
-      @close="showAdventureLog = false; onPanelClose('adventure_log')" 
+      @close="showAdventureLog = false; onPanelClose('adventure_log')"
     />
-    
-    <ShopPopup 
-      :visible="showShop" 
-      @close="handleShopClose" 
+
+    <ShopPopup
+      v-if="popupMounted.shop"
+      :visible="showShop"
+      @close="handleShopClose"
     />
-    
-    <QuestBoardPopup 
-      :visible="showQuestBoard" 
-      @close="showQuestBoard = false; onPanelClose('quest_board')" 
+
+    <QuestBoardPopup
+      v-if="popupMounted.questBoard"
+      :visible="showQuestBoard"
+      @close="showQuestBoard = false; onPanelClose('quest_board')"
     />
 
     <CombatPopup
@@ -114,11 +121,13 @@
     />
 
     <AudioSettingsPopup
+      v-if="popupMounted.audioSettings"
       :visible="showAudioSettings"
       @close="showAudioSettings = false; onPanelClose('audio_settings')"
     />
 
     <SystemPopup
+      v-if="popupMounted.system"
       :visible="showSystem"
       @close="showSystem = false; onPanelClose('system')"
       @exit="handleExit"
@@ -133,7 +142,7 @@
  * @description 游戏的核心枢纽页面，集成地图/探索两个标签页，以及底部导航栏的角色、背包、技能、任务、日志等弹出面板
  */
 
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, defineAsyncComponent, h, onMounted, onUnmounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
 import { useShopStore } from '@/modules/shop';
@@ -144,20 +153,103 @@ import { useEnemyStore } from '@/modules/enemy';
 import { useCombatStore } from '@/modules/combat/store';
 import { useToast } from '@/composables/useToast';
 import type { CombatResult } from '@/modules/combat/types';
-import MapView from './MapView.vue';
-import ExplorationView from './ExplorationView.vue';
-import InventoryPopup from './popup/InventoryPopup.vue';
-import SkillsPopup from './popup/SkillsPopup.vue';
-import QuestPopup from './popup/QuestPopup.vue';
-import ShopPopup from './popup/ShopPopup.vue';
-import QuestBoardPopup from './popup/QuestBoardPopup.vue';
-import CharacterInfoPopup from './popup/CharacterInfoPopup.vue';
-import AdventureLogPopup from './popup/AdventureLogPopup.vue';
-import CombatPopup from './popup/CombatPopup.vue';
-import AudioSettingsPopup from './popup/AudioSettingsPopup.vue';
-import SystemPopup from './popup/SystemPopup.vue';
 import ResourceBar from './common/ResourceBar.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+
+/**
+ * 弹窗与视图组件懒加载（B1/B2：首屏 bundle 优化）
+ *
+ * 10 个弹窗 + 2 个内容视图改为 defineAsyncComponent，首屏不包含弹窗代码，
+ * 用户点击底部导航栏时才动态加载对应弹窗 chunk。
+ * delay=200ms 避免快速加载时闪烁占位组件；timeout=10s 防止网络异常无限等待。
+ */
+const AsyncPopupLoading = () => h('div', { class: 'popup-async-loading' }, '加载中...');
+const AsyncPopupError = () => h('div', { class: 'popup-async-loading popup-async-error' }, '加载失败');
+
+const MapView = defineAsyncComponent({
+  loader: () => import('./MapView.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const ExplorationView = defineAsyncComponent({
+  loader: () => import('./ExplorationView.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const InventoryPopup = defineAsyncComponent({
+  loader: () => import('./popup/InventoryPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const SkillsPopup = defineAsyncComponent({
+  loader: () => import('./popup/SkillsPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const QuestPopup = defineAsyncComponent({
+  loader: () => import('./popup/QuestPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const ShopPopup = defineAsyncComponent({
+  loader: () => import('./popup/ShopPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const QuestBoardPopup = defineAsyncComponent({
+  loader: () => import('./popup/QuestBoardPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const CharacterInfoPopup = defineAsyncComponent({
+  loader: () => import('./popup/CharacterInfoPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const AdventureLogPopup = defineAsyncComponent({
+  loader: () => import('./popup/AdventureLogPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const CombatPopup = defineAsyncComponent({
+  loader: () => import('./popup/CombatPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const AudioSettingsPopup = defineAsyncComponent({
+  loader: () => import('./popup/AudioSettingsPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const SystemPopup = defineAsyncComponent({
+  loader: () => import('./popup/SystemPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
 
 const emit = defineEmits<{
   (e: 'exit'): void;
@@ -181,6 +273,24 @@ const showQuestBoard = ref(false);
 const showCombat = ref(false);
 const showAudioSettings = ref(false);
 const showSystem = ref(false);
+/**
+ * 弹窗懒挂载标志（B1/B2：异步组件延迟加载）
+ *
+ * 每个弹窗首次打开时将对应标志置为 true 并保持，使 v-if 包裹的异步组件
+ * 仅在用户实际需要时才挂载（触发 defineAsyncComponent 的 loader），
+ * 避免进入游戏瞬间加载全部弹窗 chunk。
+ */
+const popupMounted = reactive({
+  characterInfo: false,
+  inventory: false,
+  skills: false,
+  quests: false,
+  adventureLog: false,
+  shop: false,
+  questBoard: false,
+  audioSettings: false,
+  system: false,
+});
 /** 是否触发升级动画 */
 const levelUpTriggered = ref(false);
 /**
@@ -232,6 +342,7 @@ function onPanelClose(name: string) {
 
 /** 从系统菜单打开音量设置 */
 function openAudioFromSystem() {
+  popupMounted.audioSettings = true;
   showAudioSettings.value = true;
   onPanelOpen('audio_settings');
 }
@@ -262,9 +373,11 @@ async function handleCellExplored(data: { cellType?: string; interactionId?: str
       return;
     }
     await shopStore.openShop(shopId);
+    popupMounted.shop = true;
     showShop.value = true;
     onPanelOpen('shop');
   } else if (cellType === 'board') {
+    popupMounted.questBoard = true;
     showQuestBoard.value = true;
     onPanelOpen('quest_board');
   }
@@ -687,5 +800,18 @@ defineExpose({ showNotif });
   .footer-text {
     font-size: 9px;
   }
+}
+
+/* ===== 异步组件加载占位（B1/B2） ===== */
+.popup-async-loading {
+  .flex-center();
+  min-height: 200px;
+  color: @accent-color;
+  font-size: @font-lg;
+  letter-spacing: 1px;
+}
+
+.popup-async-error {
+  color: #ff6b6b;
 }
 </style>

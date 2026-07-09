@@ -24,35 +24,41 @@
           </button>
         </div>
 
-        <div class="inventory-grid">
-          <div
-            v-for="(entry, idx) in displayItems"
-            :key="idx"
-            :data-item-id="entry.item.itemId"
-            :class="[
-              'item-slot',
-              entry.info?.rarity,
-              {
-                equipped: isEquipped(entry.item.itemId),
-                selected: selectedEntry?.item === entry.item
-              }
-            ]"
-            @click="selectItem(entry)"
+        <div ref="gridContainerRef" class="inventory-grid">
+          <RecycleScroller
+            :items="gridData"
+            :item-size="itemSize"
+            :grid-items="gridItems"
+            :item-secondary-size="itemSize"
+            key-field="id"
+            class="inventory-scroller"
           >
-            <ItemIcon
-              :icon="entry.info?.icon"
-              :rarity="entry.info?.rarity"
-              size="sm"
-            />
-            <span v-if="entry.item.count > 1" class="item-count">{{
-              entry.item.count
-            }}</span>
-          </div>
-          <div
-            v-for="i in emptySlots"
-            :key="'empty-' + i"
-            class="item-slot empty"
-          ></div>
+            <template #default="{ item }">
+              <div
+                v-if="item.type === 'item'"
+                :data-item-id="item.entry.item.itemId"
+                :class="[
+                  'item-slot',
+                  item.entry.info?.rarity,
+                  {
+                    equipped: isEquipped(item.entry.item.itemId),
+                    selected: selectedEntry?.item === item.entry.item
+                  }
+                ]"
+                @click="selectItem(item.entry)"
+              >
+                <ItemIcon
+                  :icon="item.entry.info?.icon"
+                  :rarity="item.entry.info?.rarity"
+                  size="sm"
+                />
+                <span v-if="item.entry.item.count > 1" class="item-count">{{
+                  item.entry.item.count
+                }}</span>
+              </div>
+              <div v-else class="item-slot empty"></div>
+            </template>
+          </RecycleScroller>
         </div>
 
         <div class="item-detail">
@@ -171,6 +177,7 @@
  */
 
 import { ref, computed, onMounted } from 'vue';
+import { RecycleScroller } from 'vue-virtual-scroller';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
 import ItemIcon from '../common/ItemIcon.vue';
@@ -182,6 +189,7 @@ import { useCharacterStore } from '@/modules/character';
 import { useEquipmentStore } from '@/modules/equipment';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useToast } from '@/composables/useToast';
+import { useResponsiveGrid } from '@/composables/useResponsiveGrid';
 import type {
   InventoryItem,
   Item,
@@ -243,6 +251,10 @@ const equippedItemIds = computed(() => {
   return ids;
 });
 const maxSlots = 50;
+
+/** 虚拟网格容器 ref，供 useResponsiveGrid 测量宽度计算列数 */
+const gridContainerRef = ref<HTMLElement | null>(null);
+const { gridItems, itemSize } = useResponsiveGrid(gridContainerRef, 48, 6);
 
 const categories = [
   { id: 'all' as const, name: '全部' },
@@ -365,6 +377,20 @@ const displayItems = computed<ItemEntry[]>(() => {
 
 const emptySlots = computed(() => {
   return Math.max(0, maxSlots - filteredItems.value.length);
+});
+
+/** RecycleScroller 渲染数据：合并物品槽位与空槽位，每个条目带唯一 id 供 keyField 使用 */
+const gridData = computed(() => {
+  const items = displayItems.value.map((entry, idx) => ({
+    id: `item-${entry.item.itemId}-${idx}`,
+    type: 'item' as const,
+    entry,
+  }));
+  const empties = Array.from({ length: emptySlots.value }, (_, i) => ({
+    id: `empty-${i}`,
+    type: 'empty' as const,
+  }));
+  return [...items, ...empties];
 });
 
 function selectCategory(catId: string) {
@@ -632,47 +658,53 @@ onMounted(() => {
 }
 
 .inventory-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
-  gap: @spacing-sm;
   background: @overlay-mid;
   padding: @spacing-lg;
   border-radius: @radius-md;
   border: @border-card;
   flex: 1;
   min-height: 0;
-  max-height: 300px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  align-content: start;
 }
 
-.inventory-grid::-webkit-scrollbar {
+.inventory-scroller {
+  max-height: 280px;
+}
+
+/* RecycleScroller gridItems 模式下，每个条目 wrapper 由组件设置宽高，
+   此处添加 padding 制造视觉间距（等效原 gap: @spacing-sm） */
+.inventory-scroller :deep(.vue-recycle-scroller__item-view) {
+  padding: 3px;
+  box-sizing: border-box;
+}
+
+.inventory-scroller::-webkit-scrollbar {
   width: 6px;
 }
 
-.inventory-grid::-webkit-scrollbar-track {
+.inventory-scroller::-webkit-scrollbar-track {
   background: @overlay-light;
   border-radius: @radius-xs;
 }
 
-.inventory-grid::-webkit-scrollbar-thumb {
+.inventory-scroller::-webkit-scrollbar-thumb {
   background: @popup-border-color;
   border-radius: @radius-xs;
 }
 
-.inventory-grid::-webkit-scrollbar-thumb:hover {
+.inventory-scroller::-webkit-scrollbar-thumb:hover {
   background: @color-dim-gray;
 }
 
 .item-slot {
-  aspect-ratio: 1;
+  width: 100%;
+  height: 100%;
   background: @white-05;
   border-radius: @radius-sm;
   .flex-center();
   cursor: pointer;
   transition: all @transition-normal;
   position: relative;
+  box-sizing: border-box;
   /* 物品入场动画 */
   animation: scaleIn 0.25s ease;
 }

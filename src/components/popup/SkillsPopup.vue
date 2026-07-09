@@ -20,17 +20,26 @@
 
         <div class="skills-grid-section">
           <h3>已学习技能</h3>
-          <div class="skills-grid">
-            <div 
-              v-for="skill in classSkills" 
-              :key="skill.id"
-              :class="['skill-slot', { equipped: isSkillEquipped(skill.id), locked: !canUnlock(skill), selected: selectedSkill?.id === skill.id }]"
-              @click="selectSkill(skill)"
+          <div ref="skillsGridContainerRef" class="skills-grid">
+            <RecycleScroller
+              :items="skillsGridData"
+              :item-size="skillsItemSize"
+              :grid-items="skillsGridItems"
+              :item-secondary-size="skillsItemSize"
+              key-field="id"
+              class="skills-scroller"
             >
-              <BaseIcon :name="skill.icon" :gradient="characterStore.classId" :size="24" />
-              <span v-if="!canUnlock(skill)" class="lock-badge"><BaseIcon name="padlock" :size="14" /></span>
-              <span v-if="isSkillEquipped(skill.id)" class="equipped-badge"><BaseIcon name="check-mark" gradient="heal" :size="14" /></span>
-            </div>
+              <template #default="{ item }">
+                <div
+                  :class="['skill-slot', { equipped: isSkillEquipped(item.skill.id), locked: !canUnlock(item.skill), selected: selectedSkill?.id === item.skill.id }]"
+                  @click="selectSkill(item.skill)"
+                >
+                  <BaseIcon :name="item.skill.icon" :gradient="characterStore.classId" :size="24" />
+                  <span v-if="!canUnlock(item.skill)" class="lock-badge"><BaseIcon name="padlock" :size="14" /></span>
+                  <span v-if="isSkillEquipped(item.skill.id)" class="equipped-badge"><BaseIcon name="check-mark" gradient="heal" :size="14" /></span>
+                </div>
+              </template>
+            </RecycleScroller>
           </div>
         </div>
 
@@ -93,10 +102,12 @@
  */
 
 import { ref, computed, onMounted } from 'vue';
+import { RecycleScroller } from 'vue-virtual-scroller';
 import { useSkillStore } from '@/modules/skill';
 import { useCharacterStore } from '@/modules/character';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useSkillDisplay } from '@/composables/useSkillDisplay';
+import { useResponsiveGrid } from '@/composables/useResponsiveGrid';
 import type { Skill, SkillSlotIndex } from '@/modules/skill';
 import BasePopup from '../common/BasePopup.vue';
 import SkillTags from '../common/SkillTags.vue';
@@ -118,6 +129,15 @@ const selectedSkill = ref<Skill | null>(null);
 const selectedSlotIndex = ref<number | null>(null);
 const classSkills = ref<Skill[]>([]);
 const barRenderKey = ref(0);
+
+/** 虚拟网格容器 ref，供 useResponsiveGrid 测量宽度计算列数 */
+const skillsGridContainerRef = ref<HTMLElement | null>(null);
+const { gridItems: skillsGridItems, itemSize: skillsItemSize } = useResponsiveGrid(skillsGridContainerRef, 48, 6);
+
+/** RecycleScroller 渲染数据：技能列表映射为带 id 的条目 */
+const skillsGridData = computed(() =>
+  classSkills.value.map(skill => ({ id: skill.id, skill }))
+);
 
 const skillBarSlots = computed(() => {
   // 依赖 barRenderKey 以在记忆/遗忘后强制重新计算
@@ -284,34 +304,40 @@ onMounted(() => {
 }
 
 .skills-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
-  gap: @spacing-sm;
   background: @overlay-dim;
   padding: @spacing-lg;
   border-radius: @radius-md;
   border: @border-card;
-  max-height: 200px;
-  overflow-y: auto;
-  align-content: start;
 }
 
-.skills-grid::-webkit-scrollbar {
+.skills-scroller {
+  max-height: 180px;
+}
+
+/* RecycleScroller gridItems 模式下，每个条目 wrapper 由组件设置宽高，
+   此处添加 padding 制造视觉间距（等效原 gap: @spacing-sm） */
+.skills-scroller :deep(.vue-recycle-scroller__item-view) {
+  padding: 3px;
+  box-sizing: border-box;
+}
+
+.skills-scroller::-webkit-scrollbar {
   width: 6px;
 }
 
-.skills-grid::-webkit-scrollbar-track {
+.skills-scroller::-webkit-scrollbar-track {
   background: @overlay-light;
   border-radius: @radius-xs;
 }
 
-.skills-grid::-webkit-scrollbar-thumb {
+.skills-scroller::-webkit-scrollbar-thumb {
   background: @popup-border-color;
   border-radius: @radius-xs;
 }
 
 .skill-slot {
-  aspect-ratio: 1;
+  width: 100%;
+  height: 100%;
   background: @white-05;
   border: @border-card;
   border-radius: @radius-sm;
@@ -319,6 +345,7 @@ onMounted(() => {
   cursor: pointer;
   transition: all @transition-quick;
   position: relative;
+  box-sizing: border-box;
 }
 
 .skill-slot:hover {
@@ -566,8 +593,8 @@ onMounted(() => {
     font-size: 9px;
   }
 
-  .skills-grid {
-    max-height: 150px;
+  .skills-scroller {
+    max-height: 130px;
   }
 }
 </style>

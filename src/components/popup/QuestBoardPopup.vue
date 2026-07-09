@@ -17,73 +17,87 @@
       </div>
 
       <div v-if="currentTab === 'available'" class="quest-list">
-        <div 
-          v-for="quest in availableQuests" 
-          :key="quest.id"
-          class="quest-card available"
+        <DynamicScroller
+          v-if="availableQuests.length"
+          :items="availableQuests"
+          :min-item-size="120"
+          key-field="id"
+          class="quest-scroller"
         >
-          <div class="quest-icon"><BaseIcon :name="getQuestIcon(quest.type)" gradient="gold" :size="34" /></div>
-          <div class="quest-content">
-            <div class="quest-header-row">
-              <h3>{{ quest.title }}</h3>
-              <span class="quest-level">Lv.{{ quest.levelRequirement }}</span>
-            </div>
-            <p class="quest-desc">{{ quest.description }}</p>
-            <div class="quest-objectives">
-              <div 
-                v-for="obj in quest.objectives" 
-                :key="obj.key"
-                class="objective"
-              >
-                <span class="objective-text">{{ getObjectiveText(obj) }}</span>
-                <span class="objective-target">{{ obj.target }}</span>
+          <template #default="{ item: quest, index, active }">
+            <DynamicScrollerItem :item="quest" :active="active" :data-index="index">
+              <div class="quest-card available">
+                <div class="quest-icon"><BaseIcon :name="getQuestIcon(quest.type)" gradient="gold" :size="34" /></div>
+                <div class="quest-content">
+                  <div class="quest-header-row">
+                    <h3>{{ quest.title }}</h3>
+                    <span class="quest-level">Lv.{{ quest.levelRequirement }}</span>
+                  </div>
+                  <p class="quest-desc">{{ quest.description }}</p>
+                  <div class="quest-objectives">
+                    <div
+                      v-for="obj in quest.objectives"
+                      :key="obj.key"
+                      class="objective"
+                    >
+                      <span class="objective-text">{{ getObjectiveText(obj) }}</span>
+                      <span class="objective-target">{{ obj.target }}</span>
+                    </div>
+                  </div>
+                  <div class="quest-rewards">
+                    <span v-if="quest.goldReward"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
+                    <span v-if="quest.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.xpReward }}</span>
+                    <span v-if="quest.itemRewards?.length"><BaseIcon name="chest" gradient="gold" :size="14" /> {{ quest.itemRewards.length }}</span>
+                  </div>
+                  <button
+                    class="accept-btn"
+                    :disabled="characterLevel < quest.levelRequirement"
+                    @click="acceptQuest(quest.id)"
+                  >
+                    接取
+                  </button>
+                </div>
               </div>
-            </div>
-            <div class="quest-rewards">
-              <span v-if="quest.goldReward"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
-              <span v-if="quest.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.xpReward }}</span>
-              <span v-if="quest.itemRewards?.length"><BaseIcon name="chest" gradient="gold" :size="14" /> {{ quest.itemRewards.length }}</span>
-            </div>
-            <button 
-              class="accept-btn"
-              :disabled="characterLevel < quest.levelRequirement"
-              @click="acceptQuest(quest.id)"
-            >
-              接取
-            </button>
-          </div>
-        </div>
-
-        <EmptyState v-if="!availableQuests.length" icon="notebook" text="暂无可接取的任务" />
+            </DynamicScrollerItem>
+          </template>
+        </DynamicScroller>
+        <EmptyState v-else icon="notebook" text="暂无可接取的任务" />
       </div>
 
       <div v-else class="quest-list">
-        <div 
-          v-for="quest in turnInQuests" 
-          :key="quest.id"
-          class="quest-card turnin"
+        <DynamicScroller
+          v-if="turnInQuests.length"
+          :items="turnInQuests"
+          :min-item-size="100"
+          key-field="id"
+          class="quest-scroller"
         >
-          <div class="quest-icon"><BaseIcon name="laurel-crown" gradient="gold" :size="34" /></div>
-          <div class="quest-content">
-            <div class="quest-header-row">
-              <h3>{{ quest.title }}</h3>
-              <span class="quest-status">可交付</span>
-            </div>
-            <p class="quest-desc">{{ quest.description }}</p>
-            <div class="quest-rewards">
-              <span v-if="quest.goldReward"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
-              <span v-if="quest.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.xpReward }}</span>
-            </div>
-            <button 
-              class="claim-btn"
-              @click="turnInQuest(quest.id)"
-            >
-              交付
-            </button>
-          </div>
-        </div>
-
-        <EmptyState v-if="!turnInQuests.length" icon="laurel-crown" text="暂无可交付的任务" />
+          <template #default="{ item: quest, index, active }">
+            <DynamicScrollerItem :item="quest" :active="active" :data-index="index">
+              <div class="quest-card turnin">
+                <div class="quest-icon"><BaseIcon name="laurel-crown" gradient="gold" :size="34" /></div>
+                <div class="quest-content">
+                  <div class="quest-header-row">
+                    <h3>{{ quest.title }}</h3>
+                    <span class="quest-status">可交付</span>
+                  </div>
+                  <p class="quest-desc">{{ quest.description }}</p>
+                  <div class="quest-rewards">
+                    <span v-if="quest.goldReward"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
+                    <span v-if="quest.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.xpReward }}</span>
+                  </div>
+                  <button
+                    class="claim-btn"
+                    @click="turnInQuest(quest.id)"
+                  >
+                    交付
+                  </button>
+                </div>
+              </div>
+            </DynamicScrollerItem>
+          </template>
+        </DynamicScroller>
+        <EmptyState v-else icon="laurel-crown" text="暂无可交付的任务" />
       </div>
     </template>
   </BasePopup>
@@ -96,6 +110,7 @@
  */
 
 import { ref, computed, onMounted, watch } from 'vue';
+import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import { useQuestStore } from '@/modules/quest';
 import { useCharacterStore } from '@/modules/character';
 import { useExplorationStore } from '@/modules/exploration/store';
@@ -227,8 +242,15 @@ onMounted(() => {
 .quest-list {
   .flex-col();
   gap: @spacing-lg;
+}
+
+.quest-scroller {
   max-height: 400px;
-  overflow-y: auto;
+}
+
+.quest-scroller :deep(.vue-recycle-scroller__item-view) {
+  padding-bottom: @spacing-lg;
+  box-sizing: border-box;
 }
 
 .quest-card {

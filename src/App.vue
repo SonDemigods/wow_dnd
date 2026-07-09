@@ -60,17 +60,51 @@
  * @description 管理游戏主界面状态（角色选择/游戏中），协调子组件间的交互，处理角色选择、创建和退出逻辑
  */
 
-import { ref, onMounted, type Ref } from 'vue';
-import CharacterSelect from './components/CharacterSelect.vue';
-import CharacterCreate from './components/CharacterCreate.vue';
-import GameMain from './components/GameMain.vue';
-import AdminLayout from './components/admin/AdminLayout.vue';
+import { ref, defineAsyncComponent, h, onMounted, type Ref } from 'vue';
 import ConfirmPopup from './components/common/ConfirmPopup.vue';
 import Toast from './components/common/Toast.vue';
 import { useCharacterStore } from './modules/character';
 import { useBaseStore } from './modules/base';
 import { useToast } from './composables/useToast';
 import { dataInitializer } from '@/modules/data/service';
+
+/**
+ * 异步组件加载占位（B1/B2：首屏 bundle 优化）
+ *
+ * 大型视图组件（CharacterSelect/GameMain/AdminLayout/CharacterCreate）改为按需懒加载，
+ * 首屏仅包含角色选择所需代码，进入游戏/管理后再动态加载对应 chunk。
+ */
+const AsyncLoading = () => h('div', { class: 'async-loading-placeholder' }, '加载中...');
+const AsyncError = () => h('div', { class: 'async-loading-placeholder async-error' }, '加载失败，请刷新页面');
+
+const CharacterSelect = defineAsyncComponent({
+  loader: () => import('./components/CharacterSelect.vue'),
+  loadingComponent: AsyncLoading,
+  errorComponent: AsyncError,
+  delay: 200,
+  timeout: 10000,
+});
+const CharacterCreate = defineAsyncComponent({
+  loader: () => import('./components/CharacterCreate.vue'),
+  loadingComponent: AsyncLoading,
+  errorComponent: AsyncError,
+  delay: 200,
+  timeout: 10000,
+});
+const GameMain = defineAsyncComponent({
+  loader: () => import('./components/GameMain.vue'),
+  loadingComponent: AsyncLoading,
+  errorComponent: AsyncError,
+  delay: 200,
+  timeout: 10000,
+});
+const AdminLayout = defineAsyncComponent({
+  loader: () => import('./components/admin/AdminLayout.vue'),
+  loadingComponent: AsyncLoading,
+  errorComponent: AsyncError,
+  delay: 200,
+  timeout: 10000,
+});
 
 /** 游戏界面状态：角色选择 | 游戏中 | 后台管理 */
 type GameState = 'character-select' | 'game' | 'admin';
@@ -303,5 +337,17 @@ function handleAdminExit() {
 
 .admin-screen {
   min-height: 100vh;
+}
+
+.async-loading-placeholder {
+  min-height: 100vh;
+  .flex-center();
+  color: @accent-color;
+  font-size: @font-xl;
+  letter-spacing: 2px;
+}
+
+.async-loading-placeholder.async-error {
+  color: #ff6b6b;
 }
 </style>

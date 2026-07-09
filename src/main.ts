@@ -7,6 +7,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { MotionPlugin } from '@vueuse/motion'
+import VueVirtualScroller from 'vue-virtual-scroller'
 import App from './App.vue'
 import { db } from '@/modules/data/core'
 import { dataInitializer } from '@/modules/data/service'
@@ -15,6 +16,7 @@ import { audioService } from '@/modules/audio/service'
 import './styles/popup.less'
 import './styles/animations.less'
 import './styles/icon-gradients.less'
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 
 /**
  * 初始化并启动应用
@@ -37,6 +39,7 @@ async function initApp() {
 
   app.use(pinia)
   app.use(MotionPlugin)
+  app.use(VueVirtualScroller)
   app.mount('#app')
 
   // UI 已渲染，后台初始化游戏数据（此期间 App.vue 显示 loading）

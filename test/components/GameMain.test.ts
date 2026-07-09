@@ -270,7 +270,11 @@ describe('GameMain 游戏主界面组件', () => {
       await flushPromises();
       const charBtn = wrapper.findAll('.footer-btn').find(b => b.text().includes('角色'));
       await charBtn!.trigger('click');
-      expect(wrapper.findComponent(CharacterInfoPopup).props('visible')).toBe(true);
+      await flushPromises();
+      // B1/B2：异步组件 + v-if 延迟挂载，检查内部状态而非 stub props
+      expect(wrapper.vm.showCharacterInfo).toBe(true);
+      expect(wrapper.vm.popupMounted.characterInfo).toBe(true);
+      expect(wrapper.findComponent(CharacterInfoPopup).exists()).toBe(true);
     });
 
     it('点击"角色"按钮 emit UI_CLICK({source:"nav_character_info"})', async () => {
@@ -291,7 +295,8 @@ describe('GameMain 游戏主界面组件', () => {
       const mapView = wrapper.findComponent(MapView);
       expect(mapView.exists()).toBe(true);
       mapView.vm.$emit('enter-zone');
-      await wrapper.vm.$nextTick();
+      await flushPromises();
+      // 异步组件切换后需 flushPromises 等待 stub 渲染（B1/B2）
       expect(wrapper.findComponent(ExplorationView).exists()).toBe(true);
       expect(wrapper.findComponent(MapView).exists()).toBe(false);
     });
@@ -299,7 +304,12 @@ describe('GameMain 游戏主界面组件', () => {
     it('SystemPopup emit exit 时组件透传 exit 事件', async () => {
       const wrapper = shallowMount(GameMain, { global: { plugins: [pinia] } });
       await flushPromises();
+      // SystemPopup 由 v-if="popupMounted.system" 延迟挂载，需先触发系统按钮（B1/B2）
+      const sysBtn = wrapper.findAll('.footer-btn').find(b => b.text().includes('系统'));
+      await sysBtn!.trigger('click');
+      await flushPromises();
       const systemPopup = wrapper.findComponent(SystemPopup);
+      expect(systemPopup.exists()).toBe(true);
       systemPopup.vm.$emit('exit');
       await wrapper.vm.$nextTick();
       expect(wrapper.emitted('exit')).toHaveLength(1);
