@@ -23,6 +23,8 @@ import { useInitiative } from '@/modules/combat/composables/useInitiative';
 import { createEmptyContainer, type EffectContainer } from '@/modules/combat/effects';
 import type { EnemyInstance } from '@/modules/enemy/types';
 import type { CombatResult } from '@/modules/combat/types';
+import type { Stats } from '@/modules/character/types';
+import type { ICombatContext } from '@/modules/combat/combatContext';
 
 // mock characterStore
 vi.mock('@/modules/character/store', () => ({
@@ -117,6 +119,47 @@ function makeLogMock() {
   } as never;
 }
 
+/** 构造 ICombatContext mock（character/skill/enemy 域字段供 useInitiative 实际使用） */
+function makeMockCtx(opts: {
+  characterEffectiveStats?: Partial<Stats>;
+} = {}): ICombatContext {
+  return {
+    character: {
+      name: '英雄',
+      classId: 'warrior',
+      hp: 100,
+      maxHp: 100,
+      attributes: { physicalAttack: 20, physicalDefense: 10, magicAttack: 15, magicDefense: 8 } as never,
+      effectiveStats: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10, ...opts.characterEffectiveStats } as never,
+      takeDamage: vi.fn(),
+      gainExp: vi.fn(),
+      gainGold: vi.fn(),
+      handleDeath: vi.fn(),
+      receiveHeal: vi.fn(),
+      changeMp: vi.fn(),
+    },
+    skill: {
+      castSkill: vi.fn(),
+      getSkill: vi.fn(),
+      tickCooldowns: vi.fn(),
+      resetCooldowns: vi.fn(),
+    },
+    enemy: {
+      getEnemyById: vi.fn(() => null),
+      deleteEnemy: vi.fn(),
+      takeDamage: vi.fn(),
+      createEnemy: vi.fn(),
+      getAvailableSkills: vi.fn(() => []),
+      useSkill: vi.fn(() => ({ success: false, damage: 0, isHeal: false })),
+      calculateDamage: vi.fn(() => 10),
+      tickCooldowns: vi.fn(),
+    },
+    quest: { onEnemyKilled: vi.fn() },
+    log: { addLogEntry: vi.fn() },
+    inventory: { useItem: vi.fn(), getItemInfo: vi.fn(), addItem: vi.fn() },
+  } as unknown as ICombatContext;
+}
+
 function makeEnemyActionMock() {
   return {
     enemyAction: vi.fn(),
@@ -132,7 +175,6 @@ function makeBossMock() {
     initBossFeatures: vi.fn(),
     applyMechanicEffect: vi.fn(),
     scaleBossEffectValue: vi.fn(),
-    setInitiativeCallback: vi.fn(),
   } as never;
 }
 
@@ -162,7 +204,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
   describe('assignEnemyPositions：3×2 网格位置分配', () => {
     it('Boss 优先占后排，普通敌人优先填前排', () => {
       const state = makeStateMock();
-      const init = useInitiative(state, makeLogMock(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
 
       const boss = makeEnemy({ id: 'boss-1', isBoss: true });
       const e1 = makeEnemy({ id: 'e1' });
@@ -180,7 +222,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
 
     it('前排满后普通敌人填后排', () => {
       const state = makeStateMock();
-      const init = useInitiative(state, makeLogMock(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
 
       const enemies = [
         makeEnemy({ id: 'e1' }),
@@ -199,7 +241,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
 
     it('多个 Boss 各占后排一个位置', () => {
       const state = makeStateMock();
-      const init = useInitiative(state, makeLogMock(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
 
       const b1 = makeEnemy({ id: 'b1', isBoss: true });
       const b2 = makeEnemy({ id: 'b2', isBoss: true });
@@ -214,7 +256,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
 
     it('空敌人列表时位置映射为空对象', () => {
       const state = makeStateMock();
-      const init = useInitiative(state, makeLogMock(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
 
       init.assignEnemyPositions([]);
 
@@ -223,7 +265,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
 
     it('每个敌人 col ∈ {0, 1, 2}', () => {
       const state = makeStateMock();
-      const init = useInitiative(state, makeLogMock(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
 
       const enemies = Array.from({ length: 6 }, (_, i) =>
         makeEnemy({ id: `e${i}`, isBoss: i < 2 })
@@ -246,7 +288,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       const state = makeStateMock();
       state.initiativeOrder.value = ['player', 'e1', 'e2'];
       state.currentInitiativeIndex.value = 0;
-      const init = useInitiative(state, makeLogMock(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
 
       const result = init.advanceTurn();
 
@@ -260,7 +302,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       state.initiativeOrder.value = ['player', 'e1'];
       state.currentInitiativeIndex.value = 1;
       state.turnCount.value = 0;
-      const init = useInitiative(state, makeLogMock(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
 
       const result = init.advanceTurn();
 
@@ -274,7 +316,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       const state = makeStateMock();
       state.initiativeOrder.value = ['player', 'e1'];
       state.currentInitiativeIndex.value = 0;
-      const init = useInitiative(state, makeLogMock(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
 
       const r1 = init.advanceTurn();
       expect(r1.isPlayer).toBe(false);
@@ -292,7 +334,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
     it('1 → 2', () => {
       const state = makeStateMock();
       state.combatSpeed.value = 1;
-      const init = useInitiative(state, makeLogMock(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
 
       init.toggleCombatSpeed();
 
@@ -302,7 +344,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
     it('2 → 1', () => {
       const state = makeStateMock();
       state.combatSpeed.value = 2;
-      const init = useInitiative(state, makeLogMock(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
 
       init.toggleCombatSpeed();
 
@@ -312,7 +354,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
     it('多次切换在 1 和 2 间循环', () => {
       const state = makeStateMock();
       state.combatSpeed.value = 1;
-      const init = useInitiative(state, makeLogMock(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
 
       init.toggleCombatSpeed();
       expect(state.combatSpeed.value).toBe(2);
@@ -335,9 +377,11 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       // 玩家速度：effectiveStats.dex(10) + speedMod(0) = 10
       state.initiativeOrder.value = [];
 
-      const init = useInitiative(state, makeLogMock(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+      // buildInitiativeOrder 已改为无参函数：玩家速度从 ctx.character.effectiveStats 读取
+      const ctx = makeMockCtx({ characterEffectiveStats: { dex: 10 } });
+      const init = useInitiative(state, makeLogMock(), ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
 
-      init.buildInitiativeOrder({ effectiveStats: { dex: 10 } } as never);
+      init.buildInitiativeOrder();
 
       // 期望顺序：player(10) > e1(8) > e2(3)
       expect(state.initiativeOrder.value).toEqual(['player', 'e1', 'e2']);
@@ -350,8 +394,10 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       const slowEnemy = makeEnemy({ id: 'slow', stats: { str: 5, dex: 2, con: 5, int: 5, wis: 5, cha: 5 } });
       state.enemies = computed(() => [slowEnemy]);
 
-      const init = useInitiative(state, makeLogMock(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
-      init.buildInitiativeOrder({ effectiveStats: { dex: 15 } } as never);
+      // buildInitiativeOrder 已改为无参函数：玩家速度从 ctx.character.effectiveStats 读取
+      const ctx = makeMockCtx({ characterEffectiveStats: { dex: 15 } });
+      const init = useInitiative(state, makeLogMock(), ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+      init.buildInitiativeOrder();
 
       expect(state.initiativeOrder.value[0]).toBe('player');
     });
@@ -365,7 +411,8 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       state.initiativeOrder.value = ['player', 'e1'];
       state.currentInitiativeIndex.value = 0;
       const log = makeLogMock();
-      const init = useInitiative(state, log, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+      const ctx = makeMockCtx();
+      const init = useInitiative(state, log, ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
 
       init.endPlayerTurn();
 
@@ -379,7 +426,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
 
   describe('返回值结构', () => {
     it('返回包含 7 个方法的对象', () => {
-      const init = useInitiative(makeStateMock(), makeLogMock(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+      const init = useInitiative(makeStateMock(), makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
       expect(typeof init.assignEnemyPositions).toBe('function');
       expect(typeof init.buildInitiativeOrder).toBe('function');
       expect(typeof init.advanceTurn).toBe('function');

@@ -23,6 +23,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useCombatState } from '@/modules/combat/composables/useCombatState';
+import { createCombatContext } from '@/modules/combat/combatContext';
 import { useEnemyStore } from '@/modules/enemy/store';
 import { createTestPinia } from '../utils/setup';
 import type { EnemyInstance } from '@/modules/enemy/types';
@@ -60,66 +61,66 @@ describe('useCombatState - 战斗状态 Composable', () => {
 
   describe('响应式状态初始值', () => {
     it('state 初始为 idle', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       expect(s.state.value).toBe('idle');
     });
 
     it('enemyIds / targetEnemyId 初始为空', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       expect(s.enemyIds.value).toEqual([]);
       expect(s.targetEnemyId.value).toBeNull();
     });
 
     it('turn / turnCount 初始值', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       expect(s.turn.value).toBe('player');
       expect(s.turnCount.value).toBe(0);
     });
 
     it('combatId / combatLogs / combatResult 初始值', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       expect(s.combatId.value).toBe('');
       expect(s.combatLogs.value).toEqual([]);
       expect(s.combatResult.value).toBeNull();
     });
 
     it('expGained / goldGained / combatSpeed 初始值', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       expect(s.expGained.value).toBe(0);
       expect(s.goldGained.value).toBe(0);
       expect(s.combatSpeed.value).toBe(1);
     });
 
     it('initiativeOrder / currentInitiativeIndex 初始值', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       expect(s.initiativeOrder.value).toEqual([]);
       expect(s.currentInitiativeIndex.value).toBe(0);
     });
 
     it('bossIntros / enemyPositions 初始为空对象', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       expect(s.bossIntros.value).toEqual({});
       expect(s.enemyPositions.value).toEqual({});
     });
 
     it('playerEffects 初始为空容器', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       // createEmptyContainer 返回空对象，无 effects 字段或 effects 为空数组
       expect(s.playerEffects.value).toEqual(expect.objectContaining({}));
     });
 
     it('turnTimerId 初始为 null', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       expect(s.turnTimerId.value).toBeNull();
     });
 
     it('bossPhaseManagers 初始为空 Map', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       expect(s.bossPhaseManagers.size).toBe(0);
     });
 
     it('effectRegistry 已注册默认处理器（非空）', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       // createDefaultRegistry 会注册多个 effect handler，验证非空
       expect(s.effectRegistry).toBeDefined();
       // 通过 reduceSum 调用不抛错来间接验证 handler 已注册
@@ -131,7 +132,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
 
   describe('计算属性', () => {
     it('isInCombat：state=fighting 时为 true，其他为 false', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       expect(s.isInCombat.value).toBe(false);
       s.state.value = 'fighting';
       expect(s.isInCombat.value).toBe(true);
@@ -145,7 +146,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
       const e2 = makeEnemy({ id: 'e2', name: '哥布林' });
       store.$patch({ enemiesCache: { e1, e2 } });
 
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.enemyIds.value = ['e1', 'e2', 'non-existent'];
       expect(s.enemies.value).toHaveLength(2);
       expect(s.enemies.value.map(e => e.id)).toEqual(['e1', 'e2']);
@@ -158,7 +159,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
       const e3 = makeEnemy({ id: 'e3', hp: 1 });
       store.$patch({ enemiesCache: { e1, e2, e3 } });
 
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.enemyIds.value = ['e1', 'e2', 'e3'];
       expect(s.aliveEnemies.value).toHaveLength(2);
       expect(s.aliveEnemies.value.map(e => e.id)).toEqual(['e1', 'e3']);
@@ -171,7 +172,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
           e1: makeEnemy({ id: 'e1', isBoss: false }),
         },
       });
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.enemyIds.value = ['e1'];
       expect(s.hasBossEnemy.value).toBe(false);
 
@@ -194,7 +195,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
           e3: makeEnemy({ id: 'e3', hp: 0 }),
         },
       });
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.enemyIds.value = ['e1', 'e2', 'e3'];
 
       // 无 targetEnemyId：返回第一个存活敌人
@@ -214,7 +215,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
       store.$patch({
         enemiesCache: { e1: makeEnemy({ id: 'e1', hp: 0 }) },
       });
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.enemyIds.value = ['e1'];
       expect(s.currentTarget.value).toBeNull();
     });
@@ -224,7 +225,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
       store.$patch({
         enemiesCache: { e1: makeEnemy({ id: 'e1', hp: 50 }) },
       });
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.enemyIds.value = ['e1'];
       expect(s.enemies.value[0].hp).toBe(50);
       expect(s.aliveEnemies.value).toHaveLength(1);
@@ -247,7 +248,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
         enemiesCache: { e1: makeEnemy({ id: 'e1' }) },
       });
 
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.state.value = 'fighting';
       s.enemyIds.value = ['e1'];
       s.targetEnemyId.value = 'e1';
@@ -285,7 +286,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
       const enemy = makeEnemy({ id: 'e1' });
       store.$patch({ enemiesCache: { e1: enemy } });
 
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.enemyIds.value = ['e1'];
       s.reset();
 
@@ -294,7 +295,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
     });
 
     it('reset 清理 bossPhaseManagers 与 bossIntros', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.bossIntros.value = { boss1: { title: 'Boss 出场' } as never };
       s.bossPhaseManagers.set('boss1', {} as never);
 
@@ -305,21 +306,21 @@ describe('useCombatState - 战斗状态 Composable', () => {
     });
 
     it('reset 清理 enemyPositions', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.enemyPositions.value = { e1: { row: 'front', col: 0 } };
       s.reset();
       expect(s.enemyPositions.value).toEqual({});
     });
 
     it('reset 清理 resourceSystems', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.resourceSystems.value = [{ type: 'rage' } as never];
       s.reset();
       expect(s.resourceSystems.value).toEqual([]);
     });
 
     it('reset 清理 turnTimerId（调用 clearTimeout）', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.turnTimerId.value = 12345 as never;
       const spy = vi.spyOn(globalThis, 'clearTimeout');
       s.reset();
@@ -329,7 +330,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
     });
 
     it('reset 时 turnTimerId 为 null 不调用 clearTimeout', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       const spy = vi.spyOn(globalThis, 'clearTimeout');
       s.reset();
       expect(spy).not.toHaveBeenCalled();
@@ -348,7 +349,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
         },
       });
 
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.enemyIds.value = ['e1', 'e2', 'e3'];
       s.state.value = 'fighting';
 
@@ -368,7 +369,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
         enemiesCache: { e1: makeEnemy({ id: 'e1', hp: 50 }) },
       });
 
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.enemyIds.value = ['e1'];
       s.state.value = 'fighting';
 
@@ -382,7 +383,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
         enemiesCache: { e1: makeEnemy({ id: 'e1', hp: 50 }) },
       });
 
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.enemyIds.value = ['e1'];
       s.state.value = 'fighting';
 
@@ -396,7 +397,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
 
   describe('addEffectToPlayer：战斗作用域约束', () => {
     it('非战斗状态（state=idle）忽略并输出 warn', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const effect = { id: 'eff-1', type: 'attack_up', remainingTurns: 3, value: 10, source: 'skill', sourceName: 'test' } as never;
 
@@ -407,7 +408,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
     });
 
     it('战斗状态（state=fighting）正常添加到 playerEffects', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.state.value = 'fighting';
       const effect = { id: 'eff-1', type: 'attack_up', remainingTurns: 3, value: 10, source: 'skill', sourceName: 'test' } as never;
 
@@ -418,7 +419,7 @@ describe('useCombatState - 战斗状态 Composable', () => {
     });
 
     it('战斗状态不输出 warn', () => {
-      const s = useCombatState();
+      const s = useCombatState(createCombatContext());
       s.state.value = 'fighting';
       const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const effect = { id: 'eff-1', type: 'attack_up', remainingTurns: 3, value: 10, source: 'skill', sourceName: 'test' } as never;

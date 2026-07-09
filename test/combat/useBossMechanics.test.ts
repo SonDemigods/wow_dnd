@@ -4,11 +4,10 @@
  * 覆盖 useBossMechanics 的：
  * 1. scaleBossEffectValue：纯函数，按 Boss 等级线性缩放效果值
  *    公式：baseValue × (1 + (level-1) × 0.08)，向下取整
- * 2. setInitiativeCallback：注入先攻重建回调
- * 3. initBossFeatures：初始化 Boss 阶段管理器与出场演出
+ * 2. initBossFeatures：初始化 Boss 阶段管理器与出场演出
  *    - 仅 isBoss && phases.length > 0 的敌人创建 BossPhaseManager
  *    - 仅 isBoss && intro 的敌人加入 bossIntros
- * 4. applyMechanicEffect：各机制分支
+ * 3. applyMechanicEffect：各机制分支
  *    - stun_player：添加 stun 效果到 playerEffects + 日志
  *    - silence_player：添加 silence 效果到 playerEffects + 日志
  *    - debuff_aura：按 Boss 等级缩放后添加减益效果 + 日志
@@ -16,31 +15,21 @@
  *    - aoe_attack / default：不修改状态
  *
  * Mock 策略：
- *  - useCharacterStore mock 模块（applyMechanicEffect 内部调用）
- *  - useEnemyStore mock 模块（summon_minions 分支用，本测试不深入）
+ *  - S3 解耦：useBossMechanics 通过 IBossContext 接口注入外部依赖，
+ *    不再 import useCharacterStore / useEnemyStore，故无需 mock 这些 Store。
+ *  - bossCtx mock 模块（getPlayerName / createMinion / rebuildInitiativeOrder）
  *  - state / log 构造 minimal mock（playerEffects 用真实 createEmptyContainer）
  *  - BossPhaseManager / effects 模块走真实路径
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ref } from 'vue';
-import { useBossMechanics } from '@/modules/combat/composables/useBossMechanics';
+import {
+  useBossMechanics,
+  type IBossContext,
+} from '@/modules/combat/composables/useBossMechanics';
 import { createEmptyContainer, type EffectContainer } from '@/modules/combat/effects';
 import type { EnemyInstance } from '@/modules/enemy/types';
 import type { BossPhase, BossIntro } from '@/modules/enemy/types';
-
-// mock characterStore（applyMechanicEffect 内部调用）
-vi.mock('@/modules/character/store', () => ({
-  useCharacterStore: vi.fn(() => ({ name: '英雄' })),
-}));
-
-// mock enemyStore（summon_minions 分支用，本测试不深入）
-vi.mock('@/modules/enemy/store', () => ({
-  useEnemyStore: vi.fn(() => ({
-    createEnemy: vi.fn().mockResolvedValue(null),
-  })),
-}));
-
-import { useCharacterStore } from '@/modules/character/store';
 
 // ==================== 测试数据构造 helper ====================
 
@@ -60,6 +49,16 @@ function makeLogMock() {
   return {
     addCombatLog: vi.fn(),
   } as never;
+}
+
+/** 构造 IBossContext mock（S3：替代旧 useCharacterStore / useEnemyStore mock） */
+function makeBossCtxMock(overrides: Partial<IBossContext> = {}): IBossContext {
+  return {
+    getPlayerName: vi.fn(() => '英雄'),
+    createMinion: vi.fn().mockResolvedValue(null),
+    rebuildInitiativeOrder: vi.fn(),
+    ...overrides,
+  };
 }
 
 /** 构造 EnemyInstance（Boss） */
@@ -127,13 +126,13 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
 
   describe('scaleBossEffectValue：按 Boss 等级线性缩放', () => {
     it('等级 1 时无加成（baseValue × 1.0）', () => {
-      const boss = useBossMechanics(makeStateMock(), makeLogMock());
+      const boss = useBossMechanics(makeStateMock(), makeLogMock(), makeBossCtxMock());
       expect(boss.scaleBossEffectValue(100, 1)).toBe(100);
       expect(boss.scaleBossEffectValue(50, 1)).toBe(50);
     });
 
     it('等级 5 时加成 32%（1 + 4×0.08 = 1.32），向下取整', () => {
-      const boss = useBossMechanics(makeStateMock(), makeLogMock());
+      const boss = useBossMechanics(makeStateMock(), makeLogMock(), makeBossCtxMock());
       // 100 × 1.32 = 132
       expect(boss.scaleBossEffectValue(100, 5)).toBe(132);
       // 50 × 1.32 = 66
@@ -141,36 +140,20 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
     });
 
     it('等级 10 时加成 72%（1 + 9×0.08 = 1.72）', () => {
-      const boss = useBossMechanics(makeStateMock(), makeLogMock());
+      const boss = useBossMechanics(makeStateMock(), makeLogMock(), makeBossCtxMock());
       // 100 × 1.72 = 172
       expect(boss.scaleBossEffectValue(100, 10)).toBe(172);
     });
 
     it('小数结果向下取整', () => {
-      const boss = useBossMechanics(makeStateMock(), makeLogMock());
+      const boss = useBossMechanics(makeStateMock(), makeLogMock(), makeBossCtxMock());
       // 33 × 1.32 = 43.56 → 43
       expect(boss.scaleBossEffectValue(33, 5)).toBe(43);
     });
 
     it('baseValue 为 0 时返回 0', () => {
-      const boss = useBossMechanics(makeStateMock(), makeLogMock());
+      const boss = useBossMechanics(makeStateMock(), makeLogMock(), makeBossCtxMock());
       expect(boss.scaleBossEffectValue(0, 10)).toBe(0);
-    });
-  });
-
-  // -------------------- setInitiativeCallback --------------------
-
-  describe('setInitiativeCallback：注入先攻重建回调', () => {
-    it('注入后 summon_minions 触发时回调被调用（间接验证）', async () => {
-      const state = makeStateMock();
-      const log = makeLogMock();
-      const boss = useBossMechanics(state, log);
-
-      const cb = vi.fn();
-      boss.setInitiativeCallback(cb);
-      // 回调注入后未直接调用，通过 summon_minions 间接触发（详见 applyMechanicEffect 测试）
-      // 此处仅验证 setInitiativeCallback 不抛错
-      expect(cb).not.toHaveBeenCalled();
     });
   });
 
@@ -179,7 +162,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
   describe('initBossFeatures：初始化 Boss 阶段管理器与出场演出', () => {
     it('为 isBoss && phases.length > 0 的敌人创建 BossPhaseManager', () => {
       const state = makeStateMock();
-      const boss = useBossMechanics(state, makeLogMock());
+      const boss = useBossMechanics(state, makeLogMock(), makeBossCtxMock());
 
       const bossWithPhases = makeBossEnemy({
         id: 'boss-phases',
@@ -202,7 +185,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
 
     it('为 isBoss && intro 的敌人收集 bossIntros', () => {
       const state = makeStateMock();
-      const boss = useBossMechanics(state, makeLogMock());
+      const boss = useBossMechanics(state, makeLogMock(), makeBossCtxMock());
 
       const intro: BossIntro = { effect: 'darken', lines: ['出场！'], duration: 1000 };
       const bossWithIntro = makeBossEnemy({ id: 'boss-intro', intro });
@@ -218,7 +201,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
 
     it('再次调用 initBossFeatures 清空旧的 phaseManagers 与 intros', () => {
       const state = makeStateMock();
-      const boss = useBossMechanics(state, makeLogMock());
+      const boss = useBossMechanics(state, makeLogMock(), makeBossCtxMock());
 
       const intro: BossIntro = { effect: 'shake', lines: ['1'], duration: 500 };
       boss.initBossFeatures([makeBossEnemy({ id: 'boss-1', phases: [makePhase()], intro })]);
@@ -236,7 +219,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
 
     it('空敌人列表不创建任何 phaseManager / intro', () => {
       const state = makeStateMock();
-      const boss = useBossMechanics(state, makeLogMock());
+      const boss = useBossMechanics(state, makeLogMock(), makeBossCtxMock());
 
       boss.initBossFeatures([]);
 
@@ -246,7 +229,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
 
     it('仅普通敌人（无 Boss）不创建 phaseManager / intro', () => {
       const state = makeStateMock();
-      const boss = useBossMechanics(state, makeLogMock());
+      const boss = useBossMechanics(state, makeLogMock(), makeBossCtxMock());
 
       boss.initBossFeatures([makeNormalEnemy({ id: 'n1' }), makeNormalEnemy({ id: 'n2' })]);
 
@@ -255,7 +238,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
     });
     it('清理后可重新初始化（验证 clear 语义）', () => {
       const state = makeStateMock();
-      const boss = useBossMechanics(state, makeLogMock());
+      const boss = useBossMechanics(state, makeLogMock(), makeBossCtxMock());
 
       boss.initBossFeatures([makeBossEnemy({ id: 'boss-1', phases: [makePhase()] })]);
       expect(state.bossPhaseManagers.size).toBe(1);
@@ -276,7 +259,8 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
     it('stun_player：添加 stun 效果到 playerEffects，并记录日志', () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const boss = useBossMechanics(state, log);
+      const bossCtx = makeBossCtxMock();
+      const boss = useBossMechanics(state, log, bossCtx);
 
       const enemy = makeBossEnemy({ id: 'stun-boss', name: '黑龙' });
       const phase = makePhase({
@@ -303,7 +287,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
     it('stun_player：params.turns 缺失时默认 1 回合', () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const boss = useBossMechanics(state, log);
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: '黑龙' });
       const phase = makePhase({
@@ -318,7 +302,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
     it('silence_player：添加 silence 效果，默认 2 回合', () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const boss = useBossMechanics(state, log);
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: '法师杀手' });
       const phase = makePhase({
@@ -336,7 +320,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
     it('silence_player：params 缺失时默认 2 回合', () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const boss = useBossMechanics(state, log);
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: '法师杀手' });
       const phase = makePhase({
@@ -351,7 +335,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
     it('debuff_aura：按 Boss 等级缩放后添加减益效果', () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const boss = useBossMechanics(state, log);
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: '光环Boss', level: 5 });
       const phase = makePhase({
@@ -375,7 +359,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
     it('debuff_aura：params 缺失时使用默认值（debuffType=attack_down, value=10, turns=3）', () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const boss = useBossMechanics(state, log);
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: 'Boss', level: 1 });
       const phase = makePhase({
@@ -393,7 +377,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
     it('healing_zone：直接修改 e.hp（上限 maxHp），并记录治疗日志', () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const boss = useBossMechanics(state, log);
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: '治疗Boss', hp: 100, maxHp: 1000 });
       const phase = makePhase({
@@ -413,7 +397,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
     it('healing_zone：治疗量超过 maxHp 时截断为 maxHp', () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const boss = useBossMechanics(state, log);
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: '治疗Boss', hp: 980, maxHp: 1000 });
       const phase = makePhase({
@@ -428,7 +412,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
     it('healing_zone：params.healPerTurn 缺失时默认 5', () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const boss = useBossMechanics(state, log);
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: 'Boss', hp: 100, maxHp: 1000 });
       const phase = makePhase({
@@ -443,7 +427,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
     it('aoe_attack：不修改 playerEffects，不记录日志（标记由 engine 设置）', () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const boss = useBossMechanics(state, log);
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy();
       const phase = makePhase({
@@ -459,7 +443,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
     it('未匹配的机制类型（default 分支）不修改状态', () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const boss = useBossMechanics(state, log);
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy();
       const phase = makePhase({
@@ -478,7 +462,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
     it('phase.mechanics 中无匹配类型时，params 为空对象（不抛错）', () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const boss = useBossMechanics(state, log);
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: 'Boss' });
       // phase 中没有 stun_player 机制，但 mechType 传入 stun_player
@@ -496,22 +480,22 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
   // -------------------- 返回值结构 --------------------
 
   describe('返回值结构', () => {
-    it('返回包含 4 个方法的对象', () => {
-      const boss = useBossMechanics(makeStateMock(), makeLogMock());
+    it('返回包含 3 个方法的对象', () => {
+      const boss = useBossMechanics(makeStateMock(), makeLogMock(), makeBossCtxMock());
       expect(typeof boss.initBossFeatures).toBe('function');
       expect(typeof boss.applyMechanicEffect).toBe('function');
       expect(typeof boss.scaleBossEffectValue).toBe('function');
-      expect(typeof boss.setInitiativeCallback).toBe('function');
     });
   });
 
-  // -------------------- 验证 useCharacterStore 调用 --------------------
+  // -------------------- 验证 bossCtx.getPlayerName 调用 --------------------
 
-  describe('useCharacterStore 调用', () => {
-    it('applyMechanicEffect 触发时调用 useCharacterStore 获取角色名', () => {
+  describe('bossCtx.getPlayerName 调用', () => {
+    it('applyMechanicEffect 触发时调用 bossCtx.getPlayerName 获取玩家名称', () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const boss = useBossMechanics(state, log);
+      const bossCtx = makeBossCtxMock();
+      const boss = useBossMechanics(state, log, bossCtx);
 
       const enemy = makeBossEnemy({ name: '黑龙' });
       const phase = makePhase({
@@ -520,8 +504,8 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
 
       boss.applyMechanicEffect(enemy, 'stun_player', phase);
 
-      expect(useCharacterStore).toHaveBeenCalled();
-      // 日志中包含 characterStore.name
+      expect(bossCtx.getPlayerName).toHaveBeenCalled();
+      // 日志中包含 getPlayerName 返回的玩家名称
       expect(log.addCombatLog.mock.calls[0][0].targetName).toBe('英雄');
     });
   });

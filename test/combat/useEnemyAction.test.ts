@@ -25,6 +25,7 @@ import { useEnemyAction } from '@/modules/combat/composables/useEnemyAction';
 import { createEmptyContainer, type EffectContainer } from '@/modules/combat/effects';
 import type { EnemyInstance } from '@/modules/enemy/types';
 import type { AiStrategyType } from '@/modules/enemy/types';
+import type { ICombatContext } from '@/modules/combat/combatContext';
 
 // mock characterStore
 const characterMock = {
@@ -131,6 +132,46 @@ function makeLogMock() {
   } as never;
 }
 
+/** 构造 ICombatContext mock（character/skill/enemy 域字段供 useEnemyAction 实际使用） */
+function makeMockCtx(overrides: Partial<ICombatContext> = {}): ICombatContext {
+  return {
+    character: {
+      name: '英雄',
+      classId: 'warrior',
+      hp: 100,
+      maxHp: 100,
+      attributes: { physicalAttack: 20, physicalDefense: 10, magicAttack: 15, magicDefense: 8 } as never,
+      effectiveStats: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 } as never,
+      takeDamage: vi.fn(),
+      gainExp: vi.fn(),
+      gainGold: vi.fn(),
+      handleDeath: vi.fn(),
+      receiveHeal: vi.fn(),
+      changeMp: vi.fn(),
+    },
+    skill: {
+      castSkill: vi.fn(),
+      getSkill: vi.fn(),
+      tickCooldowns: vi.fn(),
+      resetCooldowns: vi.fn(),
+    },
+    enemy: {
+      getEnemyById: vi.fn(() => null),
+      deleteEnemy: vi.fn(),
+      takeDamage: vi.fn(),
+      createEnemy: vi.fn(),
+      getAvailableSkills: vi.fn(() => []),
+      useSkill: vi.fn(() => ({ success: false, damage: 0, isHeal: false })),
+      calculateDamage: vi.fn(() => 10),
+      tickCooldowns: vi.fn(),
+    },
+    quest: { onEnemyKilled: vi.fn() },
+    log: { addLogEntry: vi.fn() },
+    inventory: { useItem: vi.fn(), getItemInfo: vi.fn(), addItem: vi.fn() },
+    ...overrides,
+  } as unknown as ICombatContext;
+}
+
 function makePassiveMock() {
   return {
     onDamaged: vi.fn(),
@@ -160,35 +201,35 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
 
   describe('getStrategy：AI 策略获取', () => {
     it('aggressive 类型返回 AggressiveStrategy 实例', () => {
-      const action = useEnemyAction(makeStateMock(), makeLogMock());
+      const action = useEnemyAction(makeStateMock(), makeLogMock(), makeMockCtx());
       const strategy = action.getStrategy('aggressive');
       expect(strategy).toBeDefined();
       expect(typeof strategy.decideAction).toBe('function');
     });
 
     it('defensive 类型返回 DefensiveStrategy 实例', () => {
-      const action = useEnemyAction(makeStateMock(), makeLogMock());
+      const action = useEnemyAction(makeStateMock(), makeLogMock(), makeMockCtx());
       const strategy = action.getStrategy('defensive');
       expect(strategy).toBeDefined();
       expect(typeof strategy.decideAction).toBe('function');
     });
 
     it('balanced 类型返回 BalancedStrategy 实例', () => {
-      const action = useEnemyAction(makeStateMock(), makeLogMock());
+      const action = useEnemyAction(makeStateMock(), makeLogMock(), makeMockCtx());
       const strategy = action.getStrategy('balanced');
       expect(strategy).toBeDefined();
       expect(typeof strategy.decideAction).toBe('function');
     });
 
     it('boss_phase 类型返回 BossPhaseStrategy 实例', () => {
-      const action = useEnemyAction(makeStateMock(), makeLogMock());
+      const action = useEnemyAction(makeStateMock(), makeLogMock(), makeMockCtx());
       const strategy = action.getStrategy('boss_phase');
       expect(strategy).toBeDefined();
       expect(typeof strategy.decideAction).toBe('function');
     });
 
     it('未知策略类型回退到 balanced', () => {
-      const action = useEnemyAction(makeStateMock(), makeLogMock());
+      const action = useEnemyAction(makeStateMock(), makeLogMock(), makeMockCtx());
       const fallback = action.getStrategy('unknown' as AiStrategyType);
       const balanced = action.getStrategy('balanced');
       // 回退策略应与 balanced 相同实例
@@ -202,14 +243,15 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
     it('返回 { actualDamage, shieldAbsorbed } 结构，并调用 characterStore.takeDamage', () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const action = useEnemyAction(state, log);
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, log, ctx);
 
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const result = action.applyEnemyDamageToPlayer(enemy, 30);
 
       expect(result).toHaveProperty('actualDamage');
       expect(result).toHaveProperty('shieldAbsorbed');
-      expect(characterMock.takeDamage).toHaveBeenCalled();
+      expect(ctx.character.takeDamage).toHaveBeenCalled();
       expect(log.addCombatLog).toHaveBeenCalled();
     });
 
@@ -217,7 +259,8 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
       const state = makeStateMock();
       const log = makeLogMock();
       const passive = makePassiveMock();
-      const action = useEnemyAction(state, log, passive);
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, log, ctx, passive);
 
       const enemy = makeEnemy({ id: 'e1' });
       action.applyEnemyDamageToPlayer(enemy, 30);
@@ -230,7 +273,8 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
       const state = makeStateMock();
       const log = makeLogMock();
       const passive = makePassiveMock();
-      const action = useEnemyAction(state, log, passive);
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, log, ctx, passive);
 
       const enemy = makeEnemy({ id: 'e1' });
       action.applyEnemyDamageToPlayer(enemy, 30);
@@ -244,21 +288,23 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
       const log = makeLogMock();
       const passive = makePassiveMock();
       passive.getDamageReduction.mockReturnValue(0.2); // 减伤 20%
-      const action = useEnemyAction(state, log, passive);
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, log, ctx, passive);
 
       const enemy = makeEnemy({ id: 'e1' });
       const result = action.applyEnemyDamageToPlayer(enemy, 100);
 
       // 100 × (1 - 0.2) = 80
       expect(result.actualDamage).toBe(80);
-      expect(characterMock.takeDamage).toHaveBeenCalledWith(80);
+      expect(ctx.character.takeDamage).toHaveBeenCalledWith(80);
     });
 
     it('护盾吸收时日志包含"护盾吸收"字样', () => {
       pipeResultMock.absorbed = 5;
       const state = makeStateMock();
       const log = makeLogMock();
-      const action = useEnemyAction(state, log);
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, log, ctx);
 
       const enemy = makeEnemy({ id: 'e1', name: '黑龙' });
       action.applyEnemyDamageToPlayer(enemy, 30);
@@ -271,12 +317,13 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
       pipeResultMock.thorns = 10;
       const state = makeStateMock();
       const log = makeLogMock();
-      const action = useEnemyAction(state, log);
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, log, ctx);
 
       const enemy = makeEnemy({ id: 'e1', name: '黑龙' });
       action.applyEnemyDamageToPlayer(enemy, 30);
 
-      expect(enemyStoreMock.takeDamage).toHaveBeenCalledWith('e1', 10);
+      expect(ctx.enemy.takeDamage).toHaveBeenCalledWith('e1', 10);
       // 荆棘反伤会额外记录 1 条日志
       expect(log.addCombatLog).toHaveBeenCalledTimes(2);
       const thornsLog = log.addCombatLog.mock.calls[1][0];
@@ -286,7 +333,8 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
     it('传入 skill 时日志 eventType 为 combat_skill_cast', () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const action = useEnemyAction(state, log);
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, log, ctx);
 
       const enemy = makeEnemy({ id: 'e1', name: '黑龙' });
       action.applyEnemyDamageToPlayer(enemy, 30, { id: 'sk1', name: '火焰冲击' });
@@ -303,7 +351,7 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
 
   describe('返回值结构', () => {
     it('返回包含 5 个方法的对象', () => {
-      const action = useEnemyAction(makeStateMock(), makeLogMock());
+      const action = useEnemyAction(makeStateMock(), makeLogMock(), makeMockCtx());
       expect(typeof action.applyEnemyDamageToPlayer).toBe('function');
       expect(typeof action.enemyBasicAttack).toBe('function');
       expect(typeof action.enemyAttackWithSkill).toBe('function');

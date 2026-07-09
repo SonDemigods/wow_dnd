@@ -4,12 +4,13 @@
  * 覆盖 useCombatLog 的：
  * 1. addCombatLog：自动填充 combatId/battleLogId/timestamp/turn 字段，并 push 到 state.combatLogs
  * 2. saveLogs：成功时调用 combatDbService.saveCombatLog；失败时捕获异常并 console.error
- * 3. createPlayerEffectContext：从 characterStore 读取属性构建 EffectContext
+ * 3. createPlayerEffectContext：从 ctx.character 读取属性构建 EffectContext
  * 4. createEnemyEffectContext：从 EnemyInstance 读取属性构建 EffectContext
  *
  * Mock 策略：
  *  - state 直接构造 minimal mock 对象（combatId/combatLogs/turnCount 为 ref），不依赖真实 useCombatState
- *  - characterStore / enemy 直接传入字面量对象（useCombatLog 接收参数而非内部调用 store）
+ *  - ctx 通过 makeMockCtx 构造 ICombatContext mock（character 域字段供 createPlayerEffectContext 读取）
+ *  - enemy 直接传入字面量对象（createEnemyEffectContext 接收参数而非内部调用 store）
  *  - combatDbService mock 模块，断言 saveCombatLog 调用与参数
  *  - generateBattleLogId 走真实路径（generateId 工具函数）
  */
@@ -18,7 +19,8 @@ import { ref } from 'vue';
 import { useCombatLog } from '@/modules/combat/composables/useCombatLog';
 import type { CombatLog } from '@/modules/combat/types';
 import type { EnemyInstance } from '@/modules/enemy/types';
-import type { Attributes } from '@/modules/character/types';
+import type { Attributes, Stats } from '@/modules/character/types';
+import type { ICombatContext } from '@/modules/combat/combatContext';
 
 // mock 战斗 DB 服务，避免触碰真实 IndexedDB
 vi.mock('@/modules/combat/db', () => ({
@@ -44,19 +46,60 @@ function makeStateMock(overrides: Partial<{
   } as never;
 }
 
-/** 构造 characterStore mock（仅包含 createPlayerEffectContext 用到的字段） */
-function makeCharacterMock(overrides: Partial<{ hp: number; maxHp: number; attributes: Partial<Attributes> }> = {}) {
+/** 构造 ICombatContext mock（仅 character 域字段被 useCombatLog 实际使用） */
+function makeMockCtx(overrides: Partial<{
+  hp: number;
+  maxHp: number;
+  attributes: Partial<Attributes>;
+}> = {}): ICombatContext {
   return {
-    hp: overrides.hp ?? 80,
-    maxHp: overrides.maxHp ?? 100,
-    attributes: {
-      physicalAttack: 20,
-      physicalDefense: 10,
-      magicAttack: 15,
-      magicDefense: 8,
-      ...overrides.attributes,
-    } as Attributes,
-  } as never;
+    character: {
+      name: '英雄',
+      classId: 'warrior',
+      hp: overrides.hp ?? 80,
+      maxHp: overrides.maxHp ?? 100,
+      attributes: {
+        maxHp: 100,
+        maxMana: 50,
+        physicalAttack: 20,
+        physicalDefense: 10,
+        magicAttack: 15,
+        magicDefense: 8,
+        critChance: 5,
+        dodgeChance: 5,
+        hpBonus: 0,
+        mpBonus: 0,
+        healBonus: 0,
+        ...overrides.attributes,
+      } as Attributes,
+      effectiveStats: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 } as Stats,
+      takeDamage: vi.fn(),
+      gainExp: vi.fn(),
+      gainGold: vi.fn(),
+      handleDeath: vi.fn(),
+      receiveHeal: vi.fn(),
+      changeMp: vi.fn(),
+    },
+    skill: {
+      castSkill: vi.fn(),
+      getSkill: vi.fn(),
+      tickCooldowns: vi.fn(),
+      resetCooldowns: vi.fn(),
+    },
+    enemy: {
+      getEnemyById: vi.fn(),
+      deleteEnemy: vi.fn(),
+      takeDamage: vi.fn(),
+      createEnemy: vi.fn(),
+      getAvailableSkills: vi.fn(),
+      useSkill: vi.fn(),
+      calculateDamage: vi.fn(),
+      tickCooldowns: vi.fn(),
+    },
+    quest: { onEnemyKilled: vi.fn() },
+    log: { addLogEntry: vi.fn() },
+    inventory: { useItem: vi.fn(), getItemInfo: vi.fn(), addItem: vi.fn() },
+  } as unknown as ICombatContext;
 }
 
 /** 构造 EnemyInstance mock（仅包含 createEnemyEffectContext 用到的字段） */
@@ -96,7 +139,8 @@ describe('useCombatLog - 战斗日志 Composable', () => {
   describe('addCombatLog：自动填充字段并 push 到日志列表', () => {
     it('自动填充 combatId / battleLogId / timestamp / turn，并保留传入字段', () => {
       const state = makeStateMock({ combatId: 'combat-abc', turnCount: 3 });
-      const log = useCombatLog(state);
+      const ctx = makeMockCtx();
+      const log = useCombatLog(state, ctx);
 
       const before = Date.now();
       log.addCombatLog({
@@ -129,7 +173,8 @@ describe('useCombatLog - 战斗日志 Composable', () => {
 
     it('多次调用 addCombatLog 顺序追加到 combatLogs', () => {
       const state = makeStateMock();
-      const log = useCombatLog(state);
+      const ctx = makeMockCtx();
+      const log = useCombatLog(state, ctx);
 
       log.addCombatLog({ actorType: 'system', actorId: 'sys', actorName: '系统', eventType: 'combat_event', message: '战斗开始' });
       log.addCombatLog({ actorType: 'player', actorId: 'player', actorName: '英雄', eventType: 'normal_attack', message: '攻击' });
@@ -146,7 +191,8 @@ describe('useCombatLog - 战斗日志 Composable', () => {
 
     it('turn 字段随 state.turnCount 变化（实时读取）', () => {
       const state = makeStateMock({ turnCount: 1 });
-      const log = useCombatLog(state);
+      const ctx = makeMockCtx();
+      const log = useCombatLog(state, ctx);
 
       log.addCombatLog({ actorType: 'player', actorId: 'p', actorName: 'p', eventType: 'normal_attack', message: '回合1' });
       state.turnCount.value = 5;
@@ -158,7 +204,8 @@ describe('useCombatLog - 战斗日志 Composable', () => {
 
     it('combatId 字段随 state.combatId 变化（实时读取）', () => {
       const state = makeStateMock({ combatId: 'old-combat' });
-      const log = useCombatLog(state);
+      const ctx = makeMockCtx();
+      const log = useCombatLog(state, ctx);
 
       log.addCombatLog({ actorType: 'system', actorId: 'sys', actorName: '系统', eventType: 'combat_event', message: 'a' });
       state.combatId.value = 'new-combat';
@@ -174,7 +221,8 @@ describe('useCombatLog - 战斗日志 Composable', () => {
   describe('saveLogs：批量持久化战斗日志', () => {
     it('空日志列表不调用 saveCombatLog', async () => {
       const state = makeStateMock({ combatLogs: [] });
-      const log = useCombatLog(state);
+      const ctx = makeMockCtx();
+      const log = useCombatLog(state, ctx);
 
       await log.saveLogs();
 
@@ -187,7 +235,8 @@ describe('useCombatLog - 战斗日志 Composable', () => {
         { combatId: 'c1', battleLogId: 'b2', timestamp: 2, turn: 1, actorType: 'enemy', actorId: 'e', actorName: 'e', eventType: 'normal_attack', message: 'b' },
       ];
       const state = makeStateMock({ combatLogs: logs });
-      const log = useCombatLog(state);
+      const ctx = makeMockCtx();
+      const log = useCombatLog(state, ctx);
 
       await log.saveLogs();
 
@@ -203,7 +252,8 @@ describe('useCombatLog - 战斗日志 Composable', () => {
           { combatId: 'c1', battleLogId: 'b1', timestamp: 1, turn: 0, actorType: 'system', actorId: 's', actorName: 's', eventType: 'combat_event', message: 'a' } as CombatLog,
         ],
       });
-      const log = useCombatLog(state);
+      const ctx = makeMockCtx();
+      const log = useCombatLog(state, ctx);
       const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       await expect(log.saveLogs()).resolves.toBeUndefined();
@@ -217,7 +267,8 @@ describe('useCombatLog - 战斗日志 Composable', () => {
         { combatId: 'c1', battleLogId: 'b1', timestamp: 1, turn: 0, actorType: 'system', actorId: 's', actorName: 's', eventType: 'combat_event', message: 'a' } as CombatLog,
       ];
       const state = makeStateMock({ combatLogs: logs });
-      const log = useCombatLog(state);
+      const ctx = makeMockCtx();
+      const log = useCombatLog(state, ctx);
 
       await log.saveLogs();
 
@@ -229,42 +280,42 @@ describe('useCombatLog - 战斗日志 Composable', () => {
   // -------------------- createPlayerEffectContext --------------------
 
   describe('createPlayerEffectContext：构建玩家效果上下文', () => {
-    it('从 characterStore 读取属性构建 EffectContext', () => {
+    it('从 ctx.character 读取属性构建 EffectContext', () => {
       const state = makeStateMock();
-      const log = useCombatLog(state);
-      const characterStore = makeCharacterMock({
+      const ctx = makeMockCtx({
         hp: 75,
         maxHp: 120,
         attributes: { physicalAttack: 30, physicalDefense: 15, magicAttack: 20, magicDefense: 10 } as Attributes,
       });
+      const log = useCombatLog(state, ctx);
 
-      const ctx = log.createPlayerEffectContext(characterStore);
+      const effectCtx = log.createPlayerEffectContext();
 
-      expect(ctx.ownerId).toBe('player');
-      expect(ctx.ownerType).toBe('player');
-      expect(ctx.currentHp).toBe(75);
-      expect(ctx.maxHp).toBe(120);
-      expect(ctx.baseStats.physicalAttack).toBe(30);
-      expect(ctx.baseStats.physicalDefense).toBe(15);
-      expect(ctx.baseStats.magicAttack).toBe(20);
-      expect(ctx.baseStats.magicDefense).toBe(10);
+      expect(effectCtx.ownerId).toBe('player');
+      expect(effectCtx.ownerType).toBe('player');
+      expect(effectCtx.currentHp).toBe(75);
+      expect(effectCtx.maxHp).toBe(120);
+      expect(effectCtx.baseStats.physicalAttack).toBe(30);
+      expect(effectCtx.baseStats.physicalDefense).toBe(15);
+      expect(effectCtx.baseStats.magicAttack).toBe(20);
+      expect(effectCtx.baseStats.magicDefense).toBe(10);
       // speed 固定为 0（由 effectRegistry.reduceSum 单独计算速度修正）
-      expect(ctx.baseStats.speed).toBe(0);
+      expect(effectCtx.baseStats.speed).toBe(0);
     });
 
-    it('不同 characterStore 实例返回独立上下文', () => {
-      const state = makeStateMock();
-      const log = useCombatLog(state);
-      const c1 = makeCharacterMock({ hp: 50, maxHp: 100 });
-      const c2 = makeCharacterMock({ hp: 80, maxHp: 200 });
+    it('不同 characterMock 实例返回独立上下文', () => {
+      const ctx1 = makeMockCtx({ hp: 50, maxHp: 100 });
+      const ctx2 = makeMockCtx({ hp: 80, maxHp: 200 });
+      const log1 = useCombatLog(makeStateMock(), ctx1);
+      const log2 = useCombatLog(makeStateMock(), ctx2);
 
-      const ctx1 = log.createPlayerEffectContext(c1);
-      const ctx2 = log.createPlayerEffectContext(c2);
+      const effectCtx1 = log1.createPlayerEffectContext();
+      const effectCtx2 = log2.createPlayerEffectContext();
 
-      expect(ctx1.currentHp).toBe(50);
-      expect(ctx1.maxHp).toBe(100);
-      expect(ctx2.currentHp).toBe(80);
-      expect(ctx2.maxHp).toBe(200);
+      expect(effectCtx1.currentHp).toBe(50);
+      expect(effectCtx1.maxHp).toBe(100);
+      expect(effectCtx2.currentHp).toBe(80);
+      expect(effectCtx2.maxHp).toBe(200);
     });
   });
 
@@ -273,7 +324,8 @@ describe('useCombatLog - 战斗日志 Composable', () => {
   describe('createEnemyEffectContext：构建敌人效果上下文', () => {
     it('从 EnemyInstance 读取属性构建 EffectContext', () => {
       const state = makeStateMock();
-      const log = useCombatLog(state);
+      const ctx = makeMockCtx();
+      const log = useCombatLog(state, ctx);
       const enemy = makeEnemyMock({
         id: 'boss-1',
         hp: 500,
@@ -284,22 +336,23 @@ describe('useCombatLog - 战斗日志 Composable', () => {
         magicDefense: 20,
       });
 
-      const ctx = log.createEnemyEffectContext(enemy);
+      const effectCtx = log.createEnemyEffectContext(enemy);
 
-      expect(ctx.ownerId).toBe('boss-1');
-      expect(ctx.ownerType).toBe('enemy');
-      expect(ctx.currentHp).toBe(500);
-      expect(ctx.maxHp).toBe(1000);
-      expect(ctx.baseStats.physicalAttack).toBe(50);
-      expect(ctx.baseStats.physicalDefense).toBe(25);
-      expect(ctx.baseStats.magicAttack).toBe(40);
-      expect(ctx.baseStats.magicDefense).toBe(20);
-      expect(ctx.baseStats.speed).toBe(0);
+      expect(effectCtx.ownerId).toBe('boss-1');
+      expect(effectCtx.ownerType).toBe('enemy');
+      expect(effectCtx.currentHp).toBe(500);
+      expect(effectCtx.maxHp).toBe(1000);
+      expect(effectCtx.baseStats.physicalAttack).toBe(50);
+      expect(effectCtx.baseStats.physicalDefense).toBe(25);
+      expect(effectCtx.baseStats.magicAttack).toBe(40);
+      expect(effectCtx.baseStats.magicDefense).toBe(20);
+      expect(effectCtx.baseStats.speed).toBe(0);
     });
 
     it('敌人属性缺失时回退为 0（|| 0 兜底）', () => {
       const state = makeStateMock();
-      const log = useCombatLog(state);
+      const ctx = makeMockCtx();
+      const log = useCombatLog(state, ctx);
       const enemy = makeEnemyMock({
         physicalAttack: undefined,
         physicalDefense: undefined,
@@ -307,27 +360,28 @@ describe('useCombatLog - 战斗日志 Composable', () => {
         magicDefense: undefined,
       });
 
-      const ctx = log.createEnemyEffectContext(enemy);
+      const effectCtx = log.createEnemyEffectContext(enemy);
 
-      expect(ctx.baseStats.physicalAttack).toBe(0);
-      expect(ctx.baseStats.physicalDefense).toBe(0);
-      expect(ctx.baseStats.magicAttack).toBe(0);
-      expect(ctx.baseStats.magicDefense).toBe(0);
+      expect(effectCtx.baseStats.physicalAttack).toBe(0);
+      expect(effectCtx.baseStats.physicalDefense).toBe(0);
+      expect(effectCtx.baseStats.magicAttack).toBe(0);
+      expect(effectCtx.baseStats.magicDefense).toBe(0);
     });
 
     it('不同敌人返回独立上下文', () => {
       const state = makeStateMock();
-      const log = useCombatLog(state);
+      const ctx = makeMockCtx();
+      const log = useCombatLog(state, ctx);
       const e1 = makeEnemyMock({ id: 'e1', hp: 30 });
       const e2 = makeEnemyMock({ id: 'e2', hp: 60 });
 
-      const ctx1 = log.createEnemyEffectContext(e1);
-      const ctx2 = log.createEnemyEffectContext(e2);
+      const effectCtx1 = log.createEnemyEffectContext(e1);
+      const effectCtx2 = log.createEnemyEffectContext(e2);
 
-      expect(ctx1.ownerId).toBe('e1');
-      expect(ctx1.currentHp).toBe(30);
-      expect(ctx2.ownerId).toBe('e2');
-      expect(ctx2.currentHp).toBe(60);
+      expect(effectCtx1.ownerId).toBe('e1');
+      expect(effectCtx1.currentHp).toBe(30);
+      expect(effectCtx2.ownerId).toBe('e2');
+      expect(effectCtx2.currentHp).toBe(60);
     });
   });
 });

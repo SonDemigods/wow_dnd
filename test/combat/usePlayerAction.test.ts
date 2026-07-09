@@ -38,6 +38,7 @@ import {
   createEmptyContainer,
   type EffectContainer,
 } from '@/modules/combat/effects';
+import type { ICombatContext } from '@/modules/combat/combatContext';
 import type { EnemyInstance } from '@/modules/enemy/types';
 
 // ==================== Mock 模块 ====================
@@ -212,6 +213,58 @@ function makePassiveMock() {
   } as never;
 }
 
+/**
+ * 构造 ICombatContext mock
+ *
+ * 各域方法指向已 mock 的 Store mock 对象（characterMock / enemyStoreMock /
+ * skillStoreMock / inventoryStoreMock / logStoreMock），保证测试中对 Store
+ * mock 的断言（如 expect(inventoryStoreMock.useItem).toHaveBeenCalledWith(...)）
+ * 仍然有效；character 域的 name/hp/maxHp/attributes/effectiveStats 通过 getter
+ * 动态读取 characterMock，保证测试中修改 characterMock.hp 后 ctx 能实时反映。
+ */
+function makeMockCtx(overrides: Partial<ICombatContext> = {}): ICombatContext {
+  return {
+    character: {
+      get name() { return characterMock.name; },
+      get classId() { return 'warrior' as never; },
+      get hp() { return characterMock.hp; },
+      get maxHp() { return characterMock.maxHp; },
+      get attributes() { return characterMock.attributes; },
+      get effectiveStats() { return characterMock.effectiveStats; },
+      takeDamage: characterMock.takeDamage,
+      gainExp: vi.fn(),
+      gainGold: vi.fn(),
+      handleDeath: vi.fn(),
+      receiveHeal: vi.fn(),
+      changeMp: vi.fn(),
+    },
+    skill: {
+      getSkill: skillStoreMock.getSkill,
+      castSkill: skillStoreMock.castSkill,
+      tickCooldowns: skillStoreMock.tickCooldowns,
+      resetCooldowns: vi.fn(),
+    },
+    enemy: {
+      getEnemyById: enemyStoreMock.getEnemyById,
+      takeDamage: enemyStoreMock.takeDamage,
+      deleteEnemy: vi.fn(),
+      createEnemy: vi.fn(),
+      getAvailableSkills: vi.fn(),
+      useSkill: vi.fn(),
+      calculateDamage: vi.fn(),
+      tickCooldowns: vi.fn(),
+    },
+    quest: { onEnemyKilled: vi.fn() },
+    log: { addLogEntry: logStoreMock.addLogEntry },
+    inventory: {
+      getItemInfo: inventoryStoreMock.getItemInfo,
+      useItem: inventoryStoreMock.useItem,
+      addItem: inventoryStoreMock.addItem,
+    },
+    ...overrides,
+  } as unknown as ICombatContext;
+}
+
 // ==================== 测试用例 ====================
 
 describe('usePlayerAction - 玩家行动 Composable', () => {
@@ -238,6 +291,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         makeStateMock(),
         makeLogMock(),
+        makeMockCtx(),
         makeInitiativeMock(),
         vi.fn(),
         makePassiveMock(),
@@ -260,6 +314,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         state,
         makeLogMock(),
+        makeMockCtx(),
         makeInitiativeMock(),
         vi.fn(),
         makePassiveMock(),
@@ -282,6 +337,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         state,
         makeLogMock(),
+        makeMockCtx(),
         makeInitiativeMock(),
         vi.fn(),
         makePassiveMock(),
@@ -303,6 +359,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         state,
         makeLogMock(),
+        makeMockCtx(),
         initiative,
         vi.fn(),
         makePassiveMock(),
@@ -325,6 +382,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         state,
         makeLogMock(),
+        makeMockCtx(),
         makeInitiativeMock(),
         vi.fn(),
         makePassiveMock(),
@@ -350,6 +408,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         state,
         makeLogMock(),
+        makeMockCtx(),
         makeInitiativeMock(),
         endCombat,
         makePassiveMock(),
@@ -369,6 +428,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         state,
         makeLogMock(),
+        makeMockCtx(),
         makeInitiativeMock(),
         vi.fn(),
         makePassiveMock(),
@@ -389,6 +449,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         state,
         makeLogMock(),
+        makeMockCtx(),
         makeInitiativeMock(),
         endCombat,
         makePassiveMock(),
@@ -410,6 +471,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         state,
         makeLogMock(),
+        makeMockCtx(),
         initiative,
         endCombat,
         makePassiveMock(),
@@ -447,6 +509,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         state,
         makeLogMock(),
+        makeMockCtx(),
         makeInitiativeMock(),
         vi.fn(),
         makePassiveMock(),
@@ -467,6 +530,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         makeStateMock(),
         makeLogMock(),
+        makeMockCtx(),
         makeInitiativeMock(),
         vi.fn(),
         makePassiveMock(),
@@ -493,6 +557,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         state,
         makeLogMock(),
+        makeMockCtx(),
         makeInitiativeMock(),
         vi.fn(),
         makePassiveMock(),
@@ -515,6 +580,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         makeStateMock(),
         makeLogMock(),
+        makeMockCtx(),
         initiative,
         vi.fn(),
         makePassiveMock(),
@@ -540,6 +606,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         makeStateMock(),
         makeLogMock(),
+        makeMockCtx(),
         makeInitiativeMock(),
         vi.fn(),
         makePassiveMock(),
@@ -562,6 +629,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         state,
         makeLogMock(),
+        makeMockCtx(),
         makeInitiativeMock(),
         vi.fn(),
         makePassiveMock(),
@@ -579,6 +647,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         state,
         makeLogMock(),
+        makeMockCtx(),
         makeInitiativeMock(),
         vi.fn(),
         makePassiveMock(),
@@ -606,6 +675,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const action = usePlayerAction(
         state,
         makeLogMock(),
+        makeMockCtx(),
         makeInitiativeMock(),
         vi.fn(),
         makePassiveMock(),

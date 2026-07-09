@@ -244,11 +244,11 @@ function createLogMock() {
 }
 
 function createBossMock() {
+  // S3：useBossMechanics 通过 IBossContext 注入，不再返回 setInitiativeCallback
   return {
     initBossFeatures: vi.fn(),
     applyMechanicEffect: vi.fn(),
     scaleBossEffectValue: vi.fn(),
-    setInitiativeCallback: vi.fn(),
   };
 }
 
