@@ -3,12 +3,13 @@
  * 
  * 从 combat store 提取的 Boss 专属机制函数。
  * 负责初始化 Boss 阶段管理器、缩放效果值，以及将阶段机制效果应用到玩家或敌人。
+ * 
+ * S3 解耦：通过 IBossContext 接口注入外部依赖，不再直接 import
+ * useCharacterStore / useEnemyStore，使 Boss 机制可独立测试与复用。
  */
 import type { EnemyInstance } from '../../enemy/types';
 import type { BossIntro, BossPhase, BossMechanicType } from '../../boss/types';
 import { BossPhaseManager } from '../../boss/phaseManager';
-import { useCharacterStore } from '../../character/store';
-import { useEnemyStore } from '../../enemy/store';
 import {
   generateEffectId,
   addEffectToContainer,
@@ -18,29 +19,35 @@ import {
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
 
+/**
+ * Boss 机制上下文接口
+ *
+ * combat Store 实现此接口并注入 useBossMechanics，消除 Boss 机制逻辑对
+ * combat Store / 外部 Store 的直接依赖。
+ *
+ * 设计原则：
+ * - 接口最小化：仅暴露 useBossMechanics 实际需要、且无法通过 state/log
+ *   参数获得的外部能力（玩家名称、创建小怪、重建先攻）
+ * - 延迟绑定：rebuildInitiativeOrder 通过闭包延迟引用 initiative，
+ *   避免构造期循环依赖（useInitiative 依赖 useBossMechanics，反之亦然）
+ */
+export interface IBossContext {
+  /** 获取玩家名称（用于日志显示） */
+  getPlayerName(): string;
+  /** 创建小怪（Boss 召唤机制） */
+  createMinion(dataId: string, level: number): Promise<EnemyInstance | null>;
+  /** 重建先攻顺序（召唤小怪后调用，通过闭包延迟绑定 initiative） */
+  rebuildInitiativeOrder(): void;
+}
+
 export function useBossMechanics(
   state: ReturnType<typeof useCombatState>,
   log: ReturnType<typeof useCombatLog>,
+  bossCtx: IBossContext,
 ) {
   /**
-   * 先攻顺序重建回调
-   *
-   * 由 combat store 在 initiative 就位后通过 setInitiativeCallback 注入，
-   * 避免构造期循环依赖（useInitiative 依赖 useBossMechanics，反之亦然）。
-   * 仅在 summon_minions 召唤小怪后用于重建先攻顺序。
-   */
-  let initiativeCallback: ((characterStore: ReturnType<typeof useCharacterStore>) => void) | null = null;
-
-  /**
-   * 注入先攻顺序重建回调（CMB-1 修复：替代 orderBuilder 延迟绑定 hack）
-   * @param cb - buildInitiativeOrder 函数
-   */
-  function setInitiativeCallback(cb: (characterStore: ReturnType<typeof useCharacterStore>) => void): void {
-    initiativeCallback = cb;
-  }
-
-  /**
    * 初始化 Boss 专属功能（阶段管理器、出场演出）
+   * @param enemiesData - 敌人数据数组
    */
   function initBossFeatures(enemiesData: EnemyInstance[]): void {
     state.bossPhaseManagers.clear();
@@ -73,9 +80,9 @@ export function useBossMechanics(
    * @param phase - 当前阶段（用于获取参数）
    */
   function applyMechanicEffect(e: EnemyInstance, mechType: BossMechanicType, phase: BossPhase): void {
-    const characterStore = useCharacterStore();
     const mechanic = phase.mechanics.find(m => m.type === mechType);
     const params = mechanic?.params || {};
+    const playerName = bossCtx.getPlayerName();
 
     switch (mechType) {
       case 'stun_player': {
@@ -92,8 +99,8 @@ export function useBossMechanics(
         log.addCombatLog({
           actorType: 'system', actorId: 'system', actorName: '系统',
           eventType: 'combat_event', targetType: 'player', targetId: 'player',
-          targetName: characterStore.name, isCrit: false, isDodge: false,
-          message: `${characterStore.name} 被 ${e.name} 眩晕了 ${stunEffect.remainingTurns} 回合！`
+          targetName: playerName, isCrit: false, isDodge: false,
+          message: `${playerName} 被 ${e.name} 眩晕了 ${stunEffect.remainingTurns} 回合！`
         });
         break;
       }
@@ -111,8 +118,8 @@ export function useBossMechanics(
         log.addCombatLog({
           actorType: 'system', actorId: 'system', actorName: '系统',
           eventType: 'combat_event', targetType: 'player', targetId: 'player',
-          targetName: characterStore.name, isCrit: false, isDodge: false,
-          message: `${characterStore.name} 被 ${e.name} 沉默了 ${silenceEffect.remainingTurns} 回合！`
+          targetName: playerName, isCrit: false, isDodge: false,
+          message: `${playerName} 被 ${e.name} 沉默了 ${silenceEffect.remainingTurns} 回合！`
         });
         break;
       }
@@ -133,8 +140,8 @@ export function useBossMechanics(
         log.addCombatLog({
           actorType: 'system', actorId: 'system', actorName: '系统',
           eventType: 'combat_event', targetType: 'player', targetId: 'player',
-          targetName: characterStore.name, isCrit: false, isDodge: false,
-          message: `${characterStore.name} 受到 ${e.name} 的减益光环影响！`
+          targetName: playerName, isCrit: false, isDodge: false,
+          message: `${playerName} 受到 ${e.name} 的减益光环影响！`
         });
         break;
       }
@@ -145,7 +152,6 @@ export function useBossMechanics(
       }
       case 'summon_minions': {
         // summon_minions 标记已由 engine 设置，需要实际创建小怪
-        const enemiesStore = useEnemyStore();
         const count = e.pendingSummons || 0;
         if (count > 0) {
           // 异步批量创建小怪，一次性重建先攻顺序
@@ -153,7 +159,7 @@ export function useBossMechanics(
             const newMinions: { id: string; name: string }[] = [];
             try {
               for (let i = 0; i < count; i++) {
-                const minion = await enemiesStore.createEnemy('slime', e.level);
+                const minion = await bossCtx.createMinion('slime', e.level);
                 if (minion) {
                   // 分配前排位置
                   const existingPos = Object.values(state.enemyPositions.value);
@@ -169,9 +175,7 @@ export function useBossMechanics(
               }
               // 所有小怪创建完成后，一次性重建先攻顺序
               if (newMinions.length > 0) {
-                if (initiativeCallback) {
-                  initiativeCallback(characterStore);
-                }
+                bossCtx.rebuildInitiativeOrder();
                 for (const m of newMinions) {
                   log.addCombatLog({
                     actorType: 'system', actorId: 'system', actorName: '系统',
@@ -207,5 +211,5 @@ export function useBossMechanics(
     }
   }
 
-  return { initBossFeatures, applyMechanicEffect, scaleBossEffectValue, setInitiativeCallback };
+  return { initBossFeatures, applyMechanicEffect, scaleBossEffectValue };
 }

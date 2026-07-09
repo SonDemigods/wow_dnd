@@ -8,9 +8,7 @@
 import type { CombatResult } from '../types';
 import type { EnemyInstance } from '../../enemy/types';
 import type { BossMechanicType } from '../../boss/types';
-import { useCharacterStore } from '../../character/store';
-import { useSkillStore } from '../../skill/store';
-import { useEnemyStore } from '../../enemy/store';
+import type { ICombatContext } from '../combatContext';
 import { eventBus, GameEvents } from '../../bus';
 import { processBossPhaseMechanics, applyPhaseStats } from '../../boss/engine';
 import { createEmptyContainer } from '../effects';
@@ -23,6 +21,7 @@ import type { usePassiveSkills } from './usePassiveSkills';
 export function useInitiative(
   state: ReturnType<typeof useCombatState>,
   log: ReturnType<typeof useCombatLog>,
+  ctx: ICombatContext,
   enemyAction: ReturnType<typeof useEnemyAction>,
   boss: ReturnType<typeof useBossMechanics>,
   endCombat: (result: CombatResult) => void,
@@ -66,15 +65,17 @@ export function useInitiative(
 
   /**
    * 构建先攻顺序（玩家 + 所有敌人按速度降序排列）
-   * @param characterStore - 角色 Store 实例
+   *
+   * 玩家速度与敌人速度均通过 effectRegistry.reduceSum 应用 getSpeedMod 效果修正，
+   * 使减速/冰冻效果能正确影响先攻顺序（P2-1）。
    */
-  function buildInitiativeOrder(characterStore: ReturnType<typeof useCharacterStore>): void {
+  function buildInitiativeOrder(): void {
     const units: { id: string; speed: number }[] = [];
 
     // 玩家速度（含效果修正）
-    const playerCtx = log.createPlayerEffectContext(characterStore);
+    const playerCtx = log.createPlayerEffectContext();
     const speedMod = state.effectRegistry.reduceSum(state.playerEffects.value, 'getSpeedMod', playerCtx);
-    const playerSpeed = (characterStore.effectiveStats.dex || 0) + speedMod;
+    const playerSpeed = (ctx.character.effectiveStats.dex || 0) + speedMod;
     units.push({ id: 'player', speed: playerSpeed });
 
     // 所有敌人速度（P2-1：与玩家侧一致，应用 getSpeedMod 效果修正，使减速/冰冻影响先攻顺序）
@@ -137,7 +138,7 @@ export function useInitiative(
 
     if (next.isPlayer) {
       state.turn.value = 'player';
-      useSkillStore().tickCooldowns();
+      ctx.skill.tickCooldowns();
       // 玩家回合开始时触发资源系统 onTurnStart 钩子（如怒气/能量回复）
       state.resourceSystems.value.forEach(sys => sys.onTurnStart?.());
       // 触发被动技能 onTurnStart 钩子（如法师法力涌动、德鲁伊自然治愈、牧师神圣冥想）
@@ -157,19 +158,16 @@ export function useInitiative(
    * 处理玩家和所有敌人的持续伤害、生命恢复效果。
    */
   function tickAllEffects(): void {
-    const characterStore = useCharacterStore();
-    const enemiesStore = useEnemyStore();
-
     // ===== 阶段 1：收集所有效果的 tick 结果 =====
     const playerTickResult = state.effectRegistry.tickAll(
       state.playerEffects.value,
-      log.createPlayerEffectContext(characterStore)
+      log.createPlayerEffectContext()
     );
 
     const enemyTickResults: Map<string, { dotDamage: number; regenAmount: number }> = new Map();
     const deadEnemyIds: string[] = [];
     for (const [eId, container] of Object.entries(state.enemyEffects.value)) {
-      const enemy = enemiesStore.getEnemyById(eId);
+      const enemy = ctx.enemy.getEnemyById(eId);
       if (!enemy || enemy.hp <= 0) {
         deadEnemyIds.push(eId);
         continue;
@@ -180,30 +178,30 @@ export function useInitiative(
     // ===== 阶段 2：统一应用伤害/恢复 =====
     // 玩家
     if (playerTickResult.dotDamage > 0) {
-      characterStore.takeDamage(playerTickResult.dotDamage);
+      ctx.character.takeDamage(playerTickResult.dotDamage);
       log.addCombatLog({
         actorType: 'system', actorId: 'system', actorName: '系统',
         eventType: 'combat_damage', targetType: 'player', targetId: 'player',
-        targetName: characterStore.name, damage: playerTickResult.dotDamage,
+        targetName: ctx.character.name, damage: playerTickResult.dotDamage,
         isCrit: false, isDodge: false,
-        message: `持续伤害对 ${characterStore.name} 造成 ${playerTickResult.dotDamage} 点伤害！`
+        message: `持续伤害对 ${ctx.character.name} 造成 ${playerTickResult.dotDamage} 点伤害！`
       });
     }
     if (playerTickResult.regenAmount > 0) {
-      characterStore.receiveHeal(playerTickResult.regenAmount);
+      ctx.character.receiveHeal(playerTickResult.regenAmount);
       log.addCombatLog({
         actorType: 'system', actorId: 'system', actorName: '系统',
         eventType: 'combat_heal', targetType: 'player', targetId: 'player',
-        targetName: characterStore.name, heal: playerTickResult.regenAmount,
+        targetName: ctx.character.name, heal: playerTickResult.regenAmount,
         isCrit: false, isDodge: false,
-        message: `生命恢复为 ${characterStore.name} 恢复了 ${playerTickResult.regenAmount} 点生命值！`
+        message: `生命恢复为 ${ctx.character.name} 恢复了 ${playerTickResult.regenAmount} 点生命值！`
       });
     }
     // 敌人
     for (const [eId, tickRes] of enemyTickResults) {
       if (tickRes.dotDamage > 0) {
-        enemiesStore.takeDamage(eId, tickRes.dotDamage);
-        const enemy = enemiesStore.getEnemyById(eId);
+        ctx.enemy.takeDamage(eId, tickRes.dotDamage);
+        const enemy = ctx.enemy.getEnemyById(eId);
         if (enemy) {
           log.addCombatLog({
             actorType: 'system', actorId: 'system', actorName: '系统',
@@ -215,7 +213,7 @@ export function useInitiative(
         }
       }
       if (tickRes.regenAmount > 0) {
-        const enemy = enemiesStore.getEnemyById(eId);
+        const enemy = ctx.enemy.getEnemyById(eId);
         if (enemy) {
           enemy.hp = Math.min(enemy.maxHp, enemy.hp + tickRes.regenAmount);
           log.addCombatLog({
@@ -235,7 +233,7 @@ export function useInitiative(
     }
 
     // ===== 阶段 3：统一检查死亡 =====
-    if (characterStore.hp <= 0) {
+    if (ctx.character.hp <= 0) {
       endCombat('defeat');
       log.saveLogs();
       return;
@@ -258,9 +256,6 @@ export function useInitiative(
    */
   function singleEnemyTurn(enemyId: string): void {
     if (state.state.value !== 'fighting') return;
-
-    const enemiesStore = useEnemyStore();
-    const characterStore = useCharacterStore();
 
     const e = state.enemies.value.find(en => en.id === enemyId);
     if (!e || e.hp <= 0) {
@@ -351,13 +346,13 @@ export function useInitiative(
     }
 
     // 推进该敌人的技能冷却
-    enemiesStore.tickCooldowns(e.id);
+    ctx.enemy.tickCooldowns(e.id);
 
     // 执行敌人行动
     enemyAction.enemyAction(e);
 
     // 检查玩家是否死亡
-    if (characterStore.hp <= 0) {
+    if (ctx.character.hp <= 0) {
       endCombat('defeat');
       log.saveLogs();
       return;

@@ -4,13 +4,9 @@
  * Store 是战斗数据的唯一持有者，所有响应式状态集中管理。
  * 重构后，Store ~170 行，具体逻辑按职责拆分到 composables/ 子目录。
  * 
- * 跨模块通信：
- * - characterStore: 直接调用 Action（takeDamage, gainExp, gainGold, handleDeath）
- * - skillsStore: 直接调用 Action（castSkill, getSkill）
- * - enemiesStore: 直接调用 Store Action（敌人创建、伤害计算）
- * - inventoryStore: 直接调用 Store（物品模板查询与物品添加）
- * - logStore: 直接调用 Store Action（日志记录）
- * - combatDbService: 直接调用持久化日志
+ * S2/S3 解耦：所有外部 Store 依赖通过 ICombatContext 单一接口收口，
+ * combat ↔ boss 结构性耦合通过 IBossContext 接口注入，Store 是唯一引用
+ * 外部 Store 的位置（createCombatContext 内部）。
  * 
  * EventBus 仅保留 UI/音效事件：
  * COMBAT_START, COMBAT_END, COMBAT_PLAYER_TURN, COMBAT_ENEMY_TURN,
@@ -21,20 +17,16 @@ import { defineStore } from 'pinia';
 import type { CombatAction, CombatActionResult, CombatResult } from './types';
 import type { EnemyInstance } from '../enemy/types';
 import type { Skill } from '../skill/types';
-import { useCharacterStore } from '../character/store';
-import { useSkillStore } from '../skill/store';
-// enemiesStore 调用已委托给各 composable
-import { useQuestStore } from '../quest/store';
 import { eventBus, GameEvents } from '../bus';
-import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
 import { isBossCombat, generateCombatId } from './service';
 import { createEmptyContainer } from './effects';
 import { ResourceSystemFactory } from './resources';
 
+import { createCombatContext, type ICombatContext } from './combatContext';
 import { useCombatState } from './composables/useCombatState';
 import { useCombatLog } from './composables/useCombatLog';
-import { useBossMechanics } from './composables/useBossMechanics';
+import { useBossMechanics, type IBossContext } from './composables/useBossMechanics';
 import { useEnemyAction } from './composables/useEnemyAction';
 import { useInitiative } from './composables/useInitiative';
 import { usePlayerAction } from './composables/usePlayerAction';
@@ -46,21 +38,34 @@ import { usePassiveSkills } from './composables/usePassiveSkills';
 export const useCombatStore = defineStore('combat', () => {
   // ==================== 组合所有模块 ====================
 
-  // 1. 状态层（ref/computed/生命周期）
-  const state = useCombatState();
+  // 0. 上下文层（S2：集中所有外部 Store 引用，combat 模块唯一引用外部 Store 的位置）
+  const ctx: ICombatContext = createCombatContext();
+
+  // 延迟绑定 initiative 引用（S3 R5：避免构造期循环依赖，
+  // useInitiative 依赖 useBossMechanics，而 bossCtx.rebuildInitiativeOrder 需要调用 initiative）
+  let initiativeRef: { buildInitiativeOrder: () => void } | null = null;
+
+  // 1. 状态层（ref/conputed/生命周期）
+  const state = useCombatState(ctx);
 
   // 2. 日志层（addCombatLog / saveLogs / EffectContext 工厂）
-  const log = useCombatLog(state);
+  const log = useCombatLog(state, ctx);
 
-  // 3. Boss 机制层（不再依赖 orderBuilder hack，先攻回调通过 setInitiativeCallback 注入，见下方）
-  const boss = useBossMechanics(state, log);
+  // 3. Boss 上下文（S3：实现 IBossContext，注入 useBossMechanics）
+  const bossCtx: IBossContext = {
+    getPlayerName: () => ctx.character.name,
+    createMinion: (dataId, level) => ctx.enemy.createEnemy(dataId, level),
+    rebuildInitiativeOrder: () => initiativeRef?.buildInitiativeOrder(),
+  };
 
-  // 4. 敌人行动层
-  // 4.5 被动技能层（Phase 5.2，需在 enemy 之前创建以便注入）
-  const passive = usePassiveSkills(state, log);
+  // 4. Boss 机制层（通过 bossCtx 接口访问玩家名称、创建小怪、重建先攻）
+  const boss = useBossMechanics(state, log, bossCtx);
 
-  // 敌人行动层（注入 passive 以便在玩家受伤时触发 onDamaged 被动）
-  const enemy = useEnemyAction(state, log, passive);
+  // 5. 被动技能层（需在 enemy 之前创建以便注入）
+  const passive = usePassiveSkills(state, log, ctx);
+
+  // 6. 敌人行动层（注入 passive 以便在玩家受伤时触发 onDamaged 被动）
+  const enemy = useEnemyAction(state, log, ctx, passive);
 
   // ==================== endCombat ====================
 
@@ -85,12 +90,10 @@ export const useCombatStore = defineStore('combat', () => {
     state.enemyEffects.value = {};
 
     try {
-      const characterStore = useCharacterStore();
       // 双日志职责说明（CMB-3）：
-      // - adventureLog（useLogStore）：冒险日志，记录战斗结果的摘要（击败/获得经验/逃跑等），面向玩家回顾
+      // - ctx.log（useLogStore）：冒险日志，记录战斗结果的摘要（击败/获得经验/逃跑等），面向玩家回顾
       // - log（useCombatLog）：战斗日志，记录详细的逐回合战斗事件，面向战斗回放与调试
       // 两者独立写入，互不干扰，避免职责混乱
-      const adventureLog = useLogStore();
       state.state.value = 'ended';
 
       const enemyNames = state.enemies.value.map(e => e.name).join('、');
@@ -105,19 +108,19 @@ export const useCombatStore = defineStore('combat', () => {
         state.expGained.value = totalExp;
         state.goldGained.value = totalGold;
 
-        adventureLog.addLogEntry({
+        ctx.log.addLogEntry({
           id: generateLogId(), timestamp: Date.now(), type: 'combat',
           message: `击败 ${enemyNames}！`, icon: 'game-icons:laurel-crown'
         });
 
         if (totalExp > 0) {
-          adventureLog.addLogEntry({
+          ctx.log.addLogEntry({
             id: generateLogId(), timestamp: Date.now(), type: 'combat',
             message: `获得 ${totalExp} 点经验值`, icon: 'game-icons:star-formation'
           });
         }
         if (totalGold > 0) {
-          adventureLog.addLogEntry({
+          ctx.log.addLogEntry({
             id: generateLogId(), timestamp: Date.now(), type: 'combat',
             message: `获得 ${totalGold} 金币`, icon: 'game-icons:two-coins'
           });
@@ -129,8 +132,8 @@ export const useCombatStore = defineStore('combat', () => {
           message: `战斗胜利！获得 ${totalExp} 经验值和 ${totalGold} 金币！`
         });
 
-        characterStore.gainExp(totalExp);
-        characterStore.gainGold(totalGold);
+        ctx.character.gainExp(totalExp);
+        ctx.character.gainGold(totalGold);
 
         // 战斗胜利时触发资源系统 onKill 钩子（击杀获取资源，如怒气/连击点/灵魂碎片）
         state.resourceSystems.value.forEach(sys => sys.onKill?.());
@@ -148,7 +151,7 @@ export const useCombatStore = defineStore('combat', () => {
         // 更新击杀进度
         for (const e of state.enemies.value) {
           if (e.dataId) {
-            useQuestStore().onEnemyKilled(e.dataId);
+            ctx.quest.onEnemyKilled(e.dataId);
           }
         }
       } else if (result === 'defeat') {
@@ -162,12 +165,12 @@ export const useCombatStore = defineStore('combat', () => {
           message: '战斗失败！'
         });
 
-        adventureLog.addLogEntry({
+        ctx.log.addLogEntry({
           id: generateLogId(), timestamp: Date.now(), type: 'combat',
           message: `被 ${enemyNames} 击败！`, icon: 'game-icons:death-zone'
         });
 
-        characterStore.handleDeath();
+        ctx.character.handleDeath();
       } else if (result === 'fled') {
         state.combatResult.value = result;
         state.expGained.value = 0;
@@ -179,7 +182,7 @@ export const useCombatStore = defineStore('combat', () => {
           message: '战斗以逃跑结束'
         });
 
-        adventureLog.addLogEntry({
+        ctx.log.addLogEntry({
           id: generateLogId(), timestamp: Date.now(), type: 'combat',
           message: `从 ${enemyNames} 面前逃跑`, icon: 'game-icons:run'
         });
@@ -201,15 +204,15 @@ export const useCombatStore = defineStore('combat', () => {
     }
   }
 
-  // 5. 先攻/调度层（依赖 endCombat）
-  const initiative = useInitiative(state, log, enemy, boss, endCombat, passive);
+  // 7. 先攻/调度层（依赖 endCombat）
+  const initiative = useInitiative(state, log, ctx, enemy, boss, endCombat, passive);
 
-  // initiative 已就位，注入先攻顺序重建回调（替代 orderBuilder 延迟绑定 hack，CMB-1 修复）
-  boss.setInitiativeCallback(initiative.buildInitiativeOrder);
+  // initiative 已就位，延迟绑定到 bossCtx.rebuildInitiativeOrder（替代 setInitiativeCallback hack）
+  initiativeRef = initiative;
 
-  // 6. 玩家行动层（注入 endCombat 和 passive，消除 (state as any) 依赖）
+  // 8. 玩家行动层（注入 endCombat 和 passive，消除 (state as any) 依赖）
   // BIZ-5：注入 passive 以便在伤害计算中应用 stat_modifier 和 buff 效果
-  const player = usePlayerAction(state, log, initiative, endCombat, passive);
+  const player = usePlayerAction(state, log, ctx, initiative, endCombat, passive);
 
   // ==================== Action：开始战斗 ====================
 
@@ -231,11 +234,10 @@ export const useCombatStore = defineStore('combat', () => {
     state.enemyEffects.value = {};
 
     // P2-3：重置技能冷却，防止跨战斗冷却残留
-    useSkillStore().resetCooldowns();
+    ctx.skill.resetCooldowns();
 
     // 初始化玩家资源系统（根据职业创建，空数组表示使用默认 MP 系统）
-    const characterStore = useCharacterStore();
-    state.resourceSystems.value = ResourceSystemFactory.create(characterStore.classId);
+    state.resourceSystems.value = ResourceSystemFactory.create(ctx.character.classId);
     // 战斗开始钩子：重置资源到初始值
     state.resourceSystems.value.forEach(sys => sys.reset());
 
@@ -246,7 +248,7 @@ export const useCombatStore = defineStore('combat', () => {
     boss.initBossFeatures(enemiesData);
     initiative.assignEnemyPositions(enemiesData);
 
-    initiative.buildInitiativeOrder(characterStore);
+    initiative.buildInitiativeOrder();
 
     const enemyNames = enemiesData.map(e => e.name).join('、');
 
@@ -255,7 +257,7 @@ export const useCombatStore = defineStore('combat', () => {
       eventType: 'combat_start', message: `战斗开始！你遭遇了 ${enemyNames}！`
     });
 
-    useLogStore().addLogEntry({
+    ctx.log.addLogEntry({
       id: generateLogId(), timestamp: Date.now(), type: 'combat',
       message: `遭遇 ${enemyNames}！`, icon: 'game-icons:crossed-swords'
     });
@@ -294,9 +296,9 @@ export const useCombatStore = defineStore('combat', () => {
     const disableResult = state.effectRegistry.getDisabledActions(state.playerEffects.value);
     if (disableResult.skipTurn) {
       log.addCombatLog({
-        actorType: 'player', actorId: 'player', actorName: useCharacterStore().name,
+        actorType: 'player', actorId: 'player', actorName: ctx.character.name,
         eventType: 'combat_event', isCrit: false, isDodge: false,
-        message: `${useCharacterStore().name} 无法行动！`
+        message: `${ctx.character.name} 无法行动！`
       });
       initiative.endPlayerTurn();
       return { success: false, type: action.type, isControlled: true, message: '你被控制了，无法行动！' };
@@ -349,10 +351,9 @@ export const useCombatStore = defineStore('combat', () => {
   function skipTurn(): void {
     if (state.state.value !== 'fighting' || state.turn.value !== 'player') return;
 
-    const characterStore = useCharacterStore();
     log.addCombatLog({
-      actorType: 'player', actorId: 'player', actorName: characterStore.name,
-      eventType: 'combat_turn_end', message: `${characterStore.name} 跳过了回合`,
+      actorType: 'player', actorId: 'player', actorName: ctx.character.name,
+      eventType: 'combat_turn_end', message: `${ctx.character.name} 跳过了回合`,
       isCrit: false, isDodge: false
     });
     eventBus.emit(GameEvents.COMBAT_SKIP_TURN, null);

@@ -23,15 +23,15 @@
 import type { PassiveSkill, PassiveEffect } from '@/modules/character/types';
 import type { ResourceSource } from '../resources/types';
 import { getPassivesByClassId } from '@/data/config_class_passives';
-import { useCharacterStore } from '@/modules/character/store';
+import type { ICombatContext } from '../combatContext';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
 
 export function usePassiveSkills(
   state: ReturnType<typeof useCombatState>,
-  log: ReturnType<typeof useCombatLog>
+  log: ReturnType<typeof useCombatLog>,
+  ctx: ICombatContext
 ) {
-  const characterStore = useCharacterStore();
   const { addCombatLog, resourceSystems } = { addCombatLog: log.addCombatLog, resourceSystems: state.resourceSystems };
 
   /** 当前职业的被动技能列表（战斗开始时加载） */
@@ -42,7 +42,7 @@ export function usePassiveSkills(
    * 应在 startCombat 中调用
    */
   function loadPassives(): void {
-    passives = getPassivesByClassId(characterStore.classId);
+    passives = getPassivesByClassId(ctx.character.classId);
   }
 
   /**
@@ -104,7 +104,7 @@ export function usePassiveSkills(
    * 检查并触发低血量被动（生命低于 30%）
    */
   function checkLowHpPassives(): void {
-    const hpRatio = characterStore.hp / characterStore.maxHp;
+    const hpRatio = ctx.character.hp / ctx.character.maxHp;
     if (hpRatio < 0.3) {
       passives
         .filter(p => p.trigger === 'on_low_hp')
@@ -122,7 +122,7 @@ export function usePassiveSkills(
     addCombatLog({
       actorType: 'system',
       actorId: 'player',
-      actorName: characterStore.name,
+      actorName: ctx.character.name,
       eventType: 'passive_trigger',
       isCrit: false,
       isDodge: false,
@@ -187,15 +187,15 @@ export function usePassiveSkills(
       healAmount = Math.floor(context.damage * amount);
     } else {
       // 百分比最大生命治疗
-      healAmount = Math.floor(characterStore.maxHp * amount);
+      healAmount = Math.floor(ctx.character.maxHp * amount);
     }
 
     if (healAmount > 0) {
-      characterStore.receiveHeal(healAmount);
+      ctx.character.receiveHeal(healAmount);
       addCombatLog({
         actorType: 'system',
         actorId: 'player',
-        actorName: characterStore.name,
+        actorName: ctx.character.name,
         eventType: 'combat_heal',
         isCrit: false,
         isDodge: false,
@@ -216,7 +216,7 @@ export function usePassiveSkills(
       addCombatLog({
         actorType: 'system',
         actorId: 'player',
-        actorName: characterStore.name,
+        actorName: ctx.character.name,
         eventType: 'passive_effect',
         isCrit: false,
         isDodge: false,
@@ -235,7 +235,7 @@ export function usePassiveSkills(
     addCombatLog({
       actorType: 'system',
       actorId: 'player',
-      actorName: characterStore.name,
+      actorName: ctx.character.name,
       eventType: 'passive_effect',
       isCrit: false,
       isDodge: false,
@@ -253,7 +253,7 @@ export function usePassiveSkills(
     addCombatLog({
       actorType: 'system',
       actorId: 'player',
-      actorName: characterStore.name,
+      actorName: ctx.character.name,
       eventType: 'passive_effect',
       isCrit: false,
       isDodge: false,
@@ -278,7 +278,7 @@ export function usePassiveSkills(
     const value = parseFloat(valueStr);
     let currentValue = 0;
     if (stat === 'hp') {
-      currentValue = characterStore.hp / characterStore.maxHp;
+      currentValue = ctx.character.hp / ctx.character.maxHp;
     }
     switch (op) {
       case '<': return currentValue < value;

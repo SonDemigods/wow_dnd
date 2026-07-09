@@ -19,8 +19,7 @@ import {
   createInitialFormState
 } from './service';
 import { getSwitchableForms } from './druidForms';
-import { useCharacterStore } from '@/modules/character/store';
-import { useLogStore } from '@/modules/log/store';
+import { createCombatContext } from '../combatContext';
 import { generateLogId } from '@/modules/log/service';
 
 /**
@@ -37,6 +36,9 @@ import { generateLogId } from '@/modules/log/service';
  * | 查询 | `canSwitch`, `isSkillAvailable`, `getAvailableSkills`, `calculateHealAmount` | 纯查询 |
  */
 export const useFormStore = defineStore('druidForm', () => {
+  // ==================== 战斗上下文（聚合 character/log Store 引用） ====================
+  const ctx = createCombatContext();
+
   // ==================== 响应式状态 ====================
 
   /** 形态系统完整状态 */
@@ -110,20 +112,19 @@ export const useFormStore = defineStore('druidForm', () => {
       return false;
     }
 
-    const characterStore = useCharacterStore();
     const newForm = getCurrentForm({ ...formState.value, currentForm: targetForm });
 
     // 应用形态切换治疗
-    const healAmount = calculateFormSwitchHeal(targetForm, characterStore.maxHp);
+    const healAmount = calculateFormSwitchHeal(targetForm, ctx.character.maxHp);
     if (healAmount > 0) {
-      characterStore.receiveHeal(healAmount);
+      ctx.character.receiveHeal(healAmount);
     }
 
     // 更新形态状态
     formState.value = switchForm(formState.value, targetForm);
 
     // 记录冒险日志
-    useLogStore().addLogEntry({
+    ctx.log.addLogEntry({
       id: generateLogId(),
       timestamp: Date.now(),
       type: 'combat',
@@ -179,8 +180,7 @@ export const useFormStore = defineStore('druidForm', () => {
    * @returns 治疗量
    */
   function calculateHealAmount(targetForm: DruidFormType): number {
-    const characterStore = useCharacterStore();
-    return calculateFormSwitchHeal(targetForm, characterStore.maxHp);
+    return calculateFormSwitchHeal(targetForm, ctx.character.maxHp);
   }
 
   return {

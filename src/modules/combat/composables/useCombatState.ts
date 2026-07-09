@@ -10,7 +10,7 @@ import type { EnemyInstance } from '../../enemy/types';
 import type { BossIntro } from '../../boss/types';
 import type { Effect, EffectContainer } from '../effects';
 import type { ResourceSystem } from '../resources';
-import { useEnemyStore } from '../../enemy/store';
+import type { ICombatContext } from '../combatContext';
 import { isBossCombat } from '../service';
 import {
   createEmptyContainer,
@@ -20,7 +20,7 @@ import {
 } from '../effects';
 import { BossPhaseManager } from '../../boss/phaseManager';
 
-export function useCombatState() {
+export function useCombatState(ctx: ICombatContext) {
   // ==================== 响应式状态 ====================
 
   /** 当前战斗状态 */
@@ -97,9 +97,6 @@ export function useCombatState() {
    */
   const resourceSystems = shallowRef<ResourceSystem[]>([]);
 
-  // ==================== 跨 Store 引用 ====================
-  const enemiesStore = useEnemyStore();
-
   // ==================== 计算属性 ====================
 
   /** 是否正在战斗中 */
@@ -110,7 +107,7 @@ export function useCombatState() {
    * 不再维护本地副本，数据源唯一
    */
   const enemies = computed<EnemyInstance[]>(() =>
-    enemyIds.value.map(id => enemiesStore.getEnemyById(id)).filter((e): e is EnemyInstance => e !== null && e !== undefined)
+    enemyIds.value.map(id => ctx.enemy.getEnemyById(id)).filter((e): e is EnemyInstance => e !== null && e !== undefined)
   );
 
   /** 存活敌人列表 */
@@ -168,7 +165,7 @@ export function useCombatState() {
     // 删除已死亡敌人
     for (const e of enemies.value) {
       if (e.hp <= 0) {
-        enemiesStore.deleteEnemy(e.id);
+        ctx.enemy.deleteEnemy(e.id);
       }
     }
     resetState();

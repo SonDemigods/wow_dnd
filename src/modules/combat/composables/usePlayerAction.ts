@@ -7,12 +7,8 @@
 import type { CombatActionResult, AoeHitInfo } from '../types';
 import type { EnemyInstance } from '../../enemy/types';
 import type { CombatResult } from '../types';
-import { useCharacterStore } from '../../character/store';
-import { useEnemyStore } from '../../enemy/store';
-import { useSkillStore } from '../../skill/store';
-import { useInventoryStore } from '../../inventory/store';
+import type { ICombatContext } from '../combatContext';
 import { eventBus, GameEvents } from '../../bus';
-import { useLogStore } from '../../log/store';
 import { generateLogId } from '../../log/service';
 import { useToast } from '@/composables/useToast';
 import {
@@ -41,6 +37,7 @@ const AOE_DAMAGE_PENALTY = 0.7;
 export function usePlayerAction(
   state: ReturnType<typeof useCombatState>,
   log: ReturnType<typeof useCombatLog>,
+  ctx: ICombatContext,
   initiative: ReturnType<typeof useInitiative>,
   endCombat: (result: CombatResult) => void,
   passive: ReturnType<typeof usePassiveSkills>,
@@ -100,8 +97,7 @@ export function usePlayerAction(
 
     if (isSelfBuff || targetType === 'self') {
       // 自身增益：应用到玩家
-      const characterStore = useCharacterStore();
-      const playerCtx = createPlayerEffectContext(characterStore);
+      const playerCtx = createPlayerEffectContext();
       for (const be of skill.buffs) {
         if (['attack_up', 'defense_up', 'speed_up', 'regen', 'shield', 'thorn'].includes(be.type)) {
           const effect: Effect = {
@@ -212,16 +208,15 @@ export function usePlayerAction(
   function applyBossCounterMechanics(target: EnemyInstance, actualDamage: number): void {
     if (actualDamage <= 0) return;
     const boss = target as BossRuntime;
-    const characterStore = useCharacterStore();
 
     if (boss.reflectDamage && boss.reflectDamage > 0) {
       const reflectAmount = Math.floor(actualDamage * boss.reflectDamage);
       if (reflectAmount > 0) {
-        characterStore.takeDamage(reflectAmount);
+        ctx.character.takeDamage(reflectAmount);
         addCombatLog({
           actorType: 'system', actorId: 'system', actorName: '系统',
           eventType: 'combat_damage', targetType: 'player', targetId: 'player',
-          targetName: characterStore.name, damage: reflectAmount,
+          targetName: ctx.character.name, damage: reflectAmount,
           isCrit: false, isDodge: false,
           message: `${target.name} 反弹了 ${reflectAmount} 点伤害！`
         });
@@ -231,13 +226,13 @@ export function usePlayerAction(
     if (boss.counterStance) {
       const counterDamage = Math.floor(actualDamage * 0.5);
       if (counterDamage > 0) {
-        characterStore.takeDamage(counterDamage);
+        ctx.character.takeDamage(counterDamage);
         addCombatLog({
           actorType: 'system', actorId: 'system', actorName: '系统',
           eventType: 'combat_damage', targetType: 'player', targetId: 'player',
-          targetName: characterStore.name, damage: counterDamage,
+          targetName: ctx.character.name, damage: counterDamage,
           isCrit: false, isDodge: false,
-          message: `${target.name} 反击对 ${characterStore.name} 造成 ${counterDamage} 点伤害！`
+          message: `${target.name} 反击对 ${ctx.character.name} 造成 ${counterDamage} 点伤害！`
         });
       }
       boss.counterStance = false;
@@ -277,8 +272,6 @@ export function usePlayerAction(
       return { success: false, type: 'attack', message: '没有可攻击的目标！' };
     }
 
-    const characterStore = useCharacterStore();
-
     // 检查敌人闪避（dodgeChance 是百分比，如 3 表示 3%）
     const enemyDodgeChance = (target.dodgeChance || 0) / 100;
     const isDodge = rollDodge(enemyDodgeChance);
@@ -287,19 +280,19 @@ export function usePlayerAction(
       addCombatLog({
         actorType: 'player',
         actorId: 'player',
-        actorName: characterStore.name,
+        actorName: ctx.character.name,
         eventType: 'combat_miss',
         targetType: 'enemy',
         targetId: target.id,
         targetName: target.name,
         isCrit: false,
         isDodge: true,
-        message: `${characterStore.name} 攻击被 ${target.name} 闪避了！`
+        message: `${ctx.character.name} 攻击被 ${target.name} 闪避了！`
       });
 
       // 发射闪避事件（音效 + 视觉特效）
       eventBus.emit(GameEvents.COMBAT_DODGE, {
-        attackerName: characterStore.name,
+        attackerName: ctx.character.name,
         dodgerName: target.name,
         dodgerType: 'enemy'
       });
@@ -316,7 +309,7 @@ export function usePlayerAction(
     }
 
     // 构建效果上下文（统一使用工厂函数）
-    const attackerCtx = createPlayerEffectContext(characterStore);
+    const attackerCtx = createPlayerEffectContext();
     const defenderCtx = createEnemyEffectContext(target);
 
     // 使用新管线计算伤害
@@ -330,18 +323,17 @@ export function usePlayerAction(
     );
 
     // 暴击判定（在管线之后应用）
-    const critChance = characterStore.attributes.critChance / 100;
+    const critChance = ctx.character.attributes.critChance / 100;
     const isCrit = rollCritical(critChance);
     const critMultiplier = isCrit ? 1.5 : 1;
     const finalDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
 
     // 造成伤害
-    const enemiesStore = useEnemyStore();
     // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
     const { damage: actualDamage } = applyBossDefenseMechanics(target, finalDamage);
     let isDead = false;
     if (actualDamage > 0) {
-      isDead = enemiesStore.takeDamage(target.id, actualDamage);
+      isDead = ctx.enemy.takeDamage(target.id, actualDamage);
     }
 
     // BIZ-6：应用 BOSS 反击机制（反弹/反击）
@@ -351,7 +343,7 @@ export function usePlayerAction(
     if (pipeResult.thorns > 0) {
       // P2-2：荆棘反伤基于暴击后伤害，与 Boss 反击基数保持一致
       const thornsDamage = Math.floor(pipeResult.thorns * critMultiplier);
-      characterStore.takeDamage(thornsDamage);
+      ctx.character.takeDamage(thornsDamage);
       addCombatLog({
         actorType: 'system',
         actorId: 'system',
@@ -359,11 +351,11 @@ export function usePlayerAction(
         eventType: 'combat_damage',
         targetType: 'player',
         targetId: 'player',
-        targetName: characterStore.name,
+        targetName: ctx.character.name,
         damage: thornsDamage,
         isCrit: false,
         isDodge: false,
-        message: `荆棘反伤对 ${characterStore.name} 造成 ${thornsDamage} 点伤害！`
+        message: `荆棘反伤对 ${ctx.character.name} 造成 ${thornsDamage} 点伤害！`
       });
     }
 
@@ -386,13 +378,13 @@ export function usePlayerAction(
     }
 
     // 更新敌人状态
-    const updatedTarget = enemiesStore.getEnemyById(target.id);
+    const updatedTarget = ctx.enemy.getEnemyById(target.id);
 
     // 添加日志
     addCombatLog({
       actorType: 'player',
       actorId: 'player',
-      actorName: characterStore.name,
+      actorName: ctx.character.name,
       eventType: isCrit ? 'combat_critical' : 'combat_damage',
       targetType: 'enemy',
       targetId: updatedTarget?.id || '',
@@ -401,8 +393,8 @@ export function usePlayerAction(
       isCrit,
       isDodge: false,
       message: isCrit
-        ? `${characterStore.name} 暴击！对 ${updatedTarget?.name} 造成 ${finalDamage} 点伤害！`
-        : `${characterStore.name} 对 ${updatedTarget?.name} 造成 ${finalDamage} 点伤害！`
+        ? `${ctx.character.name} 暴击！对 ${updatedTarget?.name} 造成 ${finalDamage} 点伤害！`
+        : `${ctx.character.name} 对 ${updatedTarget?.name} 造成 ${finalDamage} 点伤害！`
     });
 
     // 检查战斗是否结束
@@ -435,10 +427,7 @@ export function usePlayerAction(
    * @param skillId - 技能 ID
    */
   async function playerSkill(skillId: string): Promise<CombatActionResult> {
-    const skillsStore = useSkillStore();
-    const characterStore = useCharacterStore();
-
-    const skill = skillsStore.getSkill(skillId);
+    const skill = ctx.skill.getSkill(skillId);
 
     // BIZ-10：检查专属资源（怒气/能量/连击点等）是否足够（MP 由 castSkill 内部检查）
     if (skill?.resourceType && skill?.resourceCost) {
@@ -452,7 +441,7 @@ export function usePlayerAction(
       }
     }
 
-    const result = await skillsStore.castSkill(skillId, true);
+    const result = await ctx.skill.castSkill(skillId, true);
 
     if (!result.success) {
       return {
@@ -477,13 +466,13 @@ export function usePlayerAction(
     addCombatLog({
       actorType: 'player',
       actorId: 'player',
-      actorName: characterStore.name,
+      actorName: ctx.character.name,
       eventType: 'combat_skill_cast',
       skillId,
       skillName: skill?.name || '',
       isCrit: false,
       isDodge: false,
-      message: `${characterStore.name} 使用了 ${skill?.name || '技能'}！`
+      message: `${ctx.character.name} 使用了 ${skill?.name || '技能'}！`
     });
 
     // 如果是伤害技能，根据目标类型决定影响范围
@@ -493,7 +482,6 @@ export function usePlayerAction(
         const livingEnemies = aliveEnemies.value;
         const damageType: DamageType = result.type === 'magic_damage' ? 'magical' : 'physical';
         const aoeHits: AoeHitInfo[] = [];
-        const enemiesStore = useEnemyStore();
 
         for (const e of livingEnemies) {
           // AOE 惩罚在管线前应用，与攻防修正独立计算
@@ -502,7 +490,7 @@ export function usePlayerAction(
             effectRegistry,
             playerEffects.value,
             enemyEffects.value[e.id] || createEmptyContainer(),
-            createPlayerEffectContext(characterStore),
+            createPlayerEffectContext(),
             createEnemyEffectContext(e),
             damageType,
             aoeBaseDamage
@@ -511,7 +499,7 @@ export function usePlayerAction(
           // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
           const { damage: actualAoeDamage } = applyBossDefenseMechanics(e, aoeDamage);
           if (actualAoeDamage > 0) {
-            enemiesStore.takeDamage(e.id, actualAoeDamage);
+            ctx.enemy.takeDamage(e.id, actualAoeDamage);
           }
 
           // BIZ-6：应用 BOSS 反击机制（反弹/反击）
@@ -519,13 +507,13 @@ export function usePlayerAction(
 
           // 荆棘反伤：对玩家自身造成反弹伤害
           if (pipeResult.thorns > 0) {
-            characterStore.takeDamage(pipeResult.thorns);
+            ctx.character.takeDamage(pipeResult.thorns);
             addCombatLog({
               actorType: 'system', actorId: 'system', actorName: '系统',
               eventType: 'combat_damage', targetType: 'player', targetId: 'player',
-              targetName: characterStore.name, damage: pipeResult.thorns,
+              targetName: ctx.character.name, damage: pipeResult.thorns,
               isCrit: false, isDodge: false,
-              message: `荆棘反伤对 ${characterStore.name} 造成 ${pipeResult.thorns} 点伤害！`
+              message: `荆棘反伤对 ${ctx.character.name} 造成 ${pipeResult.thorns} 点伤害！`
             });
           }
 
@@ -541,7 +529,7 @@ export function usePlayerAction(
           addCombatLog({
             actorType: 'player',
             actorId: 'player',
-            actorName: characterStore.name,
+            actorName: ctx.character.name,
             eventType: result.type === 'magic_damage' ? 'combat_skill_cast' : 'combat_damage',
             targetType: 'enemy',
             targetId: e.id,
@@ -596,20 +584,19 @@ export function usePlayerAction(
           effectRegistry,
           playerEffects.value,
           enemyEffects.value[target.id] || createEmptyContainer(),
-          createPlayerEffectContext(characterStore),
+          createPlayerEffectContext(),
           createEnemyEffectContext(target),
           damageType,
           result.damage  // baseDamageOverride：技能基础伤害直接传入
         );
 
-        const enemiesStore = useEnemyStore();
         // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
         const { damage: actualSkillDamage } = applyBossDefenseMechanics(target, pipeResult.finalDamage);
         let isDead = false;
         if (actualSkillDamage > 0) {
-          isDead = enemiesStore.takeDamage(target.id, actualSkillDamage);
+          isDead = ctx.enemy.takeDamage(target.id, actualSkillDamage);
         }
-        const updatedTarget = enemiesStore.getEnemyById(target.id);
+        const updatedTarget = ctx.enemy.getEnemyById(target.id);
 
         // BIZ-6：应用 BOSS 反击机制（反弹/反击）
         applyBossCounterMechanics(target, actualSkillDamage);
@@ -625,7 +612,7 @@ export function usePlayerAction(
         addCombatLog({
           actorType: 'player',
           actorId: 'player',
-          actorName: characterStore.name,
+          actorName: ctx.character.name,
           eventType: result.type === 'magic_damage' ? 'combat_skill_cast' : 'combat_damage',
           targetType: 'enemy',
           targetId: updatedTarget?.id || '',
@@ -660,7 +647,7 @@ export function usePlayerAction(
 
       if (result.type === 'buff') {
         // 增益技能：对玩家自身施加效果
-        const playerCtx = createPlayerEffectContext(characterStore);
+        const playerCtx = createPlayerEffectContext();
         for (const be of result.appliedEffects) {
           const effect: Effect = {
             id: generateEffectId(),
@@ -678,14 +665,14 @@ export function usePlayerAction(
         eventBus.emit(GameEvents.COMBAT_CAST_HEAL, {
           amount: result.appliedEffects[0]?.value || 0,
           healType: 'buff',
-          targetName: characterStore.name
+          targetName: ctx.character.name
         });
 
         addCombatLog({
-          actorType: 'player', actorId: 'player', actorName: characterStore.name,
+          actorType: 'player', actorId: 'player', actorName: ctx.character.name,
           eventType: 'combat_skill_cast', skillId, skillName: effectSourceName,
           isCrit: false, isDodge: false,
-          message: `${characterStore.name} 使用了 ${effectSourceName}，获得增益效果！`
+          message: `${ctx.character.name} 使用了 ${effectSourceName}，获得增益效果！`
         });
 
         initiative.endPlayerTurn();
@@ -698,10 +685,10 @@ export function usePlayerAction(
             applyDebuffToEnemy(e, result.appliedEffects, effectSourceName);
           }
           addCombatLog({
-            actorType: 'player', actorId: 'player', actorName: characterStore.name,
+            actorType: 'player', actorId: 'player', actorName: ctx.character.name,
             eventType: 'combat_skill_cast', skillId, skillName: effectSourceName,
             isCrit: false, isDodge: false,
-            message: `${characterStore.name} 使用了 ${effectSourceName}，对所有敌人施加减益效果！`
+            message: `${ctx.character.name} 使用了 ${effectSourceName}，对所有敌人施加减益效果！`
           });
           initiative.endPlayerTurn();
         } else {
@@ -712,12 +699,12 @@ export function usePlayerAction(
           }
           applyDebuffToEnemy(target, result.appliedEffects, effectSourceName);
           addCombatLog({
-            actorType: 'player', actorId: 'player', actorName: characterStore.name,
+            actorType: 'player', actorId: 'player', actorName: ctx.character.name,
             eventType: 'combat_skill_cast', targetType: 'enemy',
             targetId: target.id, targetName: target.name,
             skillId, skillName: effectSourceName,
             isCrit: false, isDodge: false,
-            message: `${characterStore.name} 对 ${target.name} 使用了 ${effectSourceName}！`
+            message: `${ctx.character.name} 对 ${target.name} 使用了 ${effectSourceName}！`
           });
           initiative.endPlayerTurn();
         }
@@ -727,13 +714,13 @@ export function usePlayerAction(
       eventBus.emit(GameEvents.COMBAT_CAST_HEAL, {
         amount: result.heal,
         healType: result.type === 'mana_restore' ? 'mana' : 'health',
-        targetName: characterStore.name
+        targetName: ctx.character.name
       });
 
       addCombatLog({
         actorType: 'player',
         actorId: 'player',
-        actorName: characterStore.name,
+        actorName: ctx.character.name,
         eventType: 'combat_heal',
         skillId,
         skillName: skill?.name || '',
@@ -762,11 +749,8 @@ export function usePlayerAction(
    * @param itemId - 物品 ID
    */
   async function playerUseItem(itemId: string): Promise<CombatActionResult> {
-    const characterStore = useCharacterStore();
-    const inventoryStore = useInventoryStore();
-
     // 先获取物品信息，判断是否为伤害型物品
-    const itemInfo = inventoryStore.getItemInfo(itemId);
+    const itemInfo = ctx.inventory.getItemInfo(itemId);
     let damageResult: { damage: number; isCrit: boolean } | null = null;
     let itemKilledEnemy = false;
 
@@ -786,21 +770,20 @@ export function usePlayerAction(
           effectRegistry,
           playerEffects.value,
           enemyEffects.value[target.id] || createEmptyContainer(),
-          createPlayerEffectContext(characterStore),
+          createPlayerEffectContext(),
           createEnemyEffectContext(target),
           damageType,
           value  // baseDamageOverride：物品基础伤害直接传入
         );
 
         // 暴击判定
-        const critChance = characterStore.attributes.critChance / 100;
+        const critChance = ctx.character.attributes.critChance / 100;
         const isCrit = rollCritical(critChance);
         const critMultiplier = isCrit ? 1.5 : 1;
         const finalDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
 
         // 造成伤害
-        const enemiesStore = useEnemyStore();
-        const isDead = enemiesStore.takeDamage(target.id, finalDamage);
+        const isDead = ctx.enemy.takeDamage(target.id, finalDamage);
         itemKilledEnemy = isDead;
 
         damageResult = { damage: finalDamage, isCrit };
@@ -826,7 +809,7 @@ export function usePlayerAction(
     }
 
     // 调用 inventoryStore 使用物品（扣减数量 + 应用恢复/属性效果）
-    await inventoryStore.useItem(itemId);
+    await ctx.inventory.useItem(itemId);
 
     // 生命/法力恢复音效事件
     if (itemInfo?.effect) {
@@ -835,7 +818,7 @@ export function usePlayerAction(
         eventBus.emit(GameEvents.COMBAT_CAST_HEAL, {
           amount: value,
           healType: type === 'mana_restore' ? 'mana' : 'health',
-          targetName: characterStore.name
+          targetName: ctx.character.name
         });
       }
     }
@@ -843,12 +826,11 @@ export function usePlayerAction(
     // 战斗日志
     if (damageResult) {
       const target = currentTarget.value;
-      const enemiesStore = useEnemyStore();
-      const updatedTarget = target ? enemiesStore.getEnemyById(target.id) : null;
+      const updatedTarget = target ? ctx.enemy.getEnemyById(target.id) : null;
       addCombatLog({
         actorType: 'player',
         actorId: 'player',
-        actorName: characterStore.name,
+        actorName: ctx.character.name,
         eventType: damageResult.isCrit ? 'combat_critical' : 'combat_skill_cast',
         targetType: 'enemy',
         targetId: updatedTarget?.id || '',
@@ -857,18 +839,18 @@ export function usePlayerAction(
         isCrit: damageResult.isCrit,
         isDodge: false,
         message: damageResult.isCrit
-          ? `${characterStore.name} 使用 ${itemInfo?.name || '卷轴'}，暴击！对 ${updatedTarget?.name} 造成 ${damageResult.damage} 点伤害！`
-          : `${characterStore.name} 使用 ${itemInfo?.name || '卷轴'}，对 ${updatedTarget?.name} 造成 ${damageResult.damage} 点伤害！`
+          ? `${ctx.character.name} 使用 ${itemInfo?.name || '卷轴'}，暴击！对 ${updatedTarget?.name} 造成 ${damageResult.damage} 点伤害！`
+          : `${ctx.character.name} 使用 ${itemInfo?.name || '卷轴'}，对 ${updatedTarget?.name} 造成 ${damageResult.damage} 点伤害！`
       });
     } else {
       addCombatLog({
         actorType: 'player',
         actorId: 'player',
-        actorName: characterStore.name,
+        actorName: ctx.character.name,
         eventType: 'combat_item',
         isCrit: false,
         isDodge: false,
-        message: `${characterStore.name} 使用了 ${itemInfo?.name || '物品'}！`
+        message: `${ctx.character.name} 使用了 ${itemInfo?.name || '物品'}！`
       });
     }
 
@@ -902,14 +884,12 @@ export function usePlayerAction(
    * 玩家逃跑
    */
   function playerFlee(): CombatActionResult {
-    const characterStore = useCharacterStore();
-
     if (hasBossEnemy.value) {
       return { success: false, type: 'flee', message: '无法从Boss战中逃跑！' };
     }
 
     // 使用纯函数计算逃跑成功率
-    const stats = characterStore.effectiveStats;
+    const stats = ctx.character.effectiveStats;
     const fleeChance = calculateFleeChance(stats.dex);
     const success = rollFleeSuccess(fleeChance);
 
@@ -917,11 +897,11 @@ export function usePlayerAction(
       addCombatLog({
         actorType: 'player',
         actorId: 'player',
-        actorName: characterStore.name,
+        actorName: ctx.character.name,
         eventType: 'combat_flee',
         isCrit: false,
         isDodge: false,
-        message: `${characterStore.name} 成功逃离了战斗！`
+        message: `${ctx.character.name} 成功逃离了战斗！`
       });
 
       endCombat('fled');
@@ -936,11 +916,11 @@ export function usePlayerAction(
       addCombatLog({
         actorType: 'player',
         actorId: 'player',
-        actorName: characterStore.name,
+        actorName: ctx.character.name,
         eventType: 'combat_miss',
         isCrit: false,
         isDodge: false,
-        message: `${characterStore.name} 逃跑失败！`
+        message: `${ctx.character.name} 逃跑失败！`
       });
 
       initiative.endPlayerTurn();
@@ -967,10 +947,10 @@ export function usePlayerAction(
         if (amount <= 0) return;
 
         // 获取物品模板信息
-        const itemInfo = useInventoryStore().getItemInfo(drop.itemId);
+        const itemInfo = ctx.inventory.getItemInfo(drop.itemId);
         if (itemInfo) {
           // P2-2：检查 addItem 返回值，背包满时提示玩家
-          const actualAmount = useInventoryStore().addItem(drop.itemId, amount);
+          const actualAmount = ctx.inventory.addItem(drop.itemId, amount);
           if (actualAmount < amount) {
             useToast().show({
               message: `背包已满，${itemInfo.name} 仅获得 ${actualAmount}/${amount}`,
@@ -991,7 +971,7 @@ export function usePlayerAction(
 
           // 记录战利品到冒险日志
           const itemName = itemInfo?.name || drop.itemId;
-          useLogStore().addLogEntry({
+          ctx.log.addLogEntry({
             id: generateLogId(),
             timestamp: Date.now(),
             type: 'item',

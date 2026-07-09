@@ -7,3 +7,5 @@ export * from './types';
 export * from './db';
 export * from './service';
 export { useCombatStore } from './store';
+export type { ICombatContext } from './combatContext';
+export { createCombatContext } from './combatContext';

@@ -8,9 +8,7 @@ import type { CombatActionResult } from '../types';
 import type { EnemyInstance } from '../../enemy/types';
 import type { BattleContext, IAiStrategy } from '../ai/types';
 import type { AiStrategyType } from '../../enemy/types';
-import { useCharacterStore } from '../../character/store';
-import { useEnemyStore } from '../../enemy/store';
-import { useSkillStore } from '../../skill/store';
+import type { ICombatContext } from '../combatContext';
 import { eventBus, GameEvents } from '../../bus';
 import { rollDodge } from '../service';
 import { AggressiveStrategy, DefensiveStrategy, BalancedStrategy, BossPhaseStrategy } from '../ai/strategies';
@@ -40,6 +38,7 @@ function mapSkillTypeToDamageType(skillType?: string): DamageType {
 export function useEnemyAction(
   state: ReturnType<typeof useCombatState>,
   log: ReturnType<typeof useCombatLog>,
+  ctx: ICombatContext,
   passive?: ReturnType<typeof usePassiveSkills>
 ) {
   const { addCombatLog, createPlayerEffectContext, createEnemyEffectContext } = log;
@@ -76,9 +75,8 @@ export function useEnemyAction(
     skill?: { id: string; name: string },
     damageType: DamageType = 'physical'
   ): { actualDamage: number; shieldAbsorbed: number } {
-    const characterStore = useCharacterStore();
     const attackerCtx = createEnemyEffectContext(e);
-    const defenderCtx = createPlayerEffectContext(characterStore);
+    const defenderCtx = createPlayerEffectContext();
 
     const pipeResult = processDamagePipeline(
       effectRegistry,
@@ -100,7 +98,7 @@ export function useEnemyAction(
       : actualDamage;
 
     // 扣血
-    characterStore.takeDamage(finalDamage);
+    ctx.character.takeDamage(finalDamage);
 
     // 玩家受伤时触发资源系统 onDamaged 钩子（如战士怒气获取）
     if (actualDamage > 0) {
@@ -113,7 +111,7 @@ export function useEnemyAction(
     eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
       amount: rawDamage,
       damageType: 'physical',
-      targetName: characterStore.name,
+      targetName: ctx.character.name,
       actorType: 'enemy'
     });
 
@@ -125,24 +123,23 @@ export function useEnemyAction(
       eventType: skill ? 'combat_skill_cast' : 'combat_damage',
       targetType: 'player',
       targetId: 'player',
-      targetName: characterStore.name,
+      targetName: ctx.character.name,
       ...(skill ? { skillId: skill.id, skillName: skill.name } : {}),
       damage: finalDamage,
       isCrit: false,
       isDodge: false,
       message: shieldAbsorbed > 0
-        ? `${e.name}${skill ? ' 使用 ' + skill.name : ''}对 ${characterStore.name} 造成 ${finalDamage} 点伤害（护盾吸收 ${shieldAbsorbed}）！`
-        : `${e.name}${skill ? ' 使用 ' + skill.name : ''}对 ${characterStore.name} 造成 ${finalDamage} 点伤害！`
+        ? `${e.name}${skill ? ' 使用 ' + skill.name : ''}对 ${ctx.character.name} 造成 ${finalDamage} 点伤害（护盾吸收 ${shieldAbsorbed}）！`
+        : `${e.name}${skill ? ' 使用 ' + skill.name : ''}对 ${ctx.character.name} 造成 ${finalDamage} 点伤害！`
     });
 
     // 荆棘反伤（管线已计算）
     if (pipeResult.thorns > 0) {
-      const enemiesStore = useEnemyStore();
-      enemiesStore.takeDamage(e.id, pipeResult.thorns);
+      ctx.enemy.takeDamage(e.id, pipeResult.thorns);
       addCombatLog({
         actorType: 'player',
         actorId: 'player',
-        actorName: characterStore.name,
+        actorName: ctx.character.name,
         eventType: 'combat_damage',
         targetType: 'enemy',
         targetId: e.id,
@@ -162,14 +159,11 @@ export function useEnemyAction(
    * @param e - 执行攻击的敌人
    */
   function enemyBasicAttack(e: EnemyInstance): CombatActionResult {
-    const characterStore = useCharacterStore();
-    const enemiesStore = useEnemyStore();
-
     // 计算伤害
-    const damage = enemiesStore.calculateDamage(e, characterStore.attributes.physicalDefense);
+    const damage = ctx.enemy.calculateDamage(e, ctx.character.attributes.physicalDefense);
 
     // 检查玩家闪避
-    const dodgeChance = characterStore.attributes.dodgeChance / 100;
+    const dodgeChance = ctx.character.attributes.dodgeChance / 100;
     const isDodge = rollDodge(dodgeChance);
 
     if (isDodge) {
@@ -180,15 +174,15 @@ export function useEnemyAction(
         eventType: 'combat_miss',
         targetType: 'player',
         targetId: 'player',
-        targetName: characterStore.name,
+        targetName: ctx.character.name,
         isCrit: false,
         isDodge: true,
-        message: `${e.name} 的攻击被 ${characterStore.name} 闪避了！`
+        message: `${e.name} 的攻击被 ${ctx.character.name} 闪避了！`
       });
 
       eventBus.emit(GameEvents.COMBAT_DODGE, {
         attackerName: e.name,
-        dodgerName: characterStore.name,
+        dodgerName: ctx.character.name,
         dodgerType: 'player'
       });
 
@@ -217,10 +211,8 @@ export function useEnemyAction(
    * @param e - 执行攻击的敌人
    */
   function enemyAttackWithSkill(damage: number, skill: { id: string; name: string; type?: string }, e: EnemyInstance): CombatActionResult {
-    const characterStore = useCharacterStore();
-
     // 检查玩家闪避
-    const dodgeChance = characterStore.attributes.dodgeChance / 100;
+    const dodgeChance = ctx.character.attributes.dodgeChance / 100;
     const isDodge = rollDodge(dodgeChance);
 
     if (isDodge) {
@@ -231,17 +223,17 @@ export function useEnemyAction(
         eventType: 'combat_miss',
         targetType: 'player',
         targetId: 'player',
-        targetName: characterStore.name,
+        targetName: ctx.character.name,
         skillId: skill.id,
         skillName: skill.name,
         isCrit: false,
         isDodge: true,
-        message: `${e.name} 的 ${skill.name} 被 ${characterStore.name} 闪避了！`
+        message: `${e.name} 的 ${skill.name} 被 ${ctx.character.name} 闪避了！`
       });
 
       eventBus.emit(GameEvents.COMBAT_DODGE, {
         attackerName: e.name,
-        dodgerName: characterStore.name,
+        dodgerName: ctx.character.name,
         dodgerType: 'player'
       });
 
@@ -275,31 +267,28 @@ export function useEnemyAction(
       return { success: false, type: 'attack', message: '战斗已结束' };
     }
 
-    const characterStore = useCharacterStore();
-    const enemiesStore = useEnemyStore();
-
     // 检查 Boss 多目标攻击标记
     const isAoeAttack = e.aoeNextAttack === true;
     if (isAoeAttack) {
       e.aoeNextAttack = false;
       // 多目标攻击：使用管线统一处理伤害、护盾和荆棘反伤
-      const rawDamage = enemiesStore.calculateDamage(e, characterStore.attributes.physicalDefense);
+      const rawDamage = ctx.enemy.calculateDamage(e, ctx.character.attributes.physicalDefense);
       const aoeMultiplier = 1.3;
       const aoeDamage = Math.round(rawDamage * aoeMultiplier);
 
       // 检查玩家闪避
-      const dodgeChance = characterStore.attributes.dodgeChance / 100;
+      const dodgeChance = ctx.character.attributes.dodgeChance / 100;
       const isDodge = rollDodge(dodgeChance);
 
       if (isDodge) {
         addCombatLog({
           actorType: 'enemy', actorId: e.id, actorName: e.name,
           eventType: 'combat_miss', targetType: 'player', targetId: 'player',
-          targetName: characterStore.name, isCrit: false, isDodge: true,
-          message: `${e.name} 的范围攻击被 ${characterStore.name} 闪避了！`
+          targetName: ctx.character.name, isCrit: false, isDodge: true,
+          message: `${e.name} 的范围攻击被 ${ctx.character.name} 闪避了！`
         });
         eventBus.emit(GameEvents.COMBAT_DODGE, {
-          attackerName: e.name, dodgerName: characterStore.name, dodgerType: 'player'
+          attackerName: e.name, dodgerName: ctx.character.name, dodgerType: 'player'
         });
         return { success: true, type: 'attack', isDodge: true, message: '你闪避了敌人的范围攻击！' };
       }
@@ -311,7 +300,7 @@ export function useEnemyAction(
       addCombatLog({
         actorType: 'system', actorId: 'system', actorName: '系统',
         eventType: 'combat_event', isCrit: false, isDodge: false,
-        message: `${e.name} 发动范围攻击，对 ${characterStore.name} 造成 ${actualAoeDamage} 点伤害！`
+        message: `${e.name} 发动范围攻击，对 ${ctx.character.name} 造成 ${actualAoeDamage} 点伤害！`
       });
 
       return {
@@ -321,12 +310,12 @@ export function useEnemyAction(
     }
 
     // 获取敌人可用技能
-    const availableSkills = enemiesStore.getAvailableSkills(e.id);
+    const availableSkills = ctx.enemy.getAvailableSkills(e.id);
 
     // 构建战斗上下文
     const context: BattleContext = {
-      playerHp: characterStore.hp,
-      playerMaxHp: characterStore.maxHp,
+      playerHp: ctx.character.hp,
+      playerMaxHp: ctx.character.maxHp,
       enemyHp: e.hp,
       enemyMaxHp: e.maxHp,
       availableSkills,
@@ -339,11 +328,11 @@ export function useEnemyAction(
 
     switch (decision.type) {
       case 'skill': {
-        const result = enemiesStore.useSkill(e.id, decision.skillId);
+        const result = ctx.enemy.useSkill(e.id, decision.skillId);
         if (result.success) {
           if (result.isHeal) {
             // 敌人恢复生命值
-            const updatedEnemy = enemiesStore.getEnemyById(e.id);
+            const updatedEnemy = ctx.enemy.getEnemyById(e.id);
             if (!updatedEnemy) {
               return { success: false, type: 'skill', message: '找不到敌人数据' };
             }
@@ -372,12 +361,12 @@ export function useEnemyAction(
             const skillData = availableSkills.find(s => s.id === decision.skillId);
             const skillName = skillData?.name || decision.skillId;
             // 通过完整技能数据判断是否为减益技能
-            const fullSkill = useSkillStore().getSkill(decision.skillId);
+            const fullSkill = ctx.skill.getSkill(decision.skillId);
             const isDebuff = fullSkill?.type === 'debuff';
 
             if (isDebuff) {
               // 减益技能：效果施加到玩家身上
-              const playerCtx = createPlayerEffectContext(characterStore);
+              const playerCtx = createPlayerEffectContext();
               for (const b of result.buffs) {
                 const debuffEffect: Effect = {
                   id: generateEffectId(),
@@ -400,7 +389,7 @@ export function useEnemyAction(
                 skillName,
                 isCrit: false,
                 isDodge: false,
-                message: `${e.name} 使用了 ${skillName}，对 ${characterStore.name} 施加了减益效果！`
+                message: `${e.name} 使用了 ${skillName}，对 ${ctx.character.name} 施加了减益效果！`
               });
 
               return {
@@ -415,7 +404,7 @@ export function useEnemyAction(
               enemyEffects.value[e.id] = createEmptyContainer();
             }
             const container = enemyEffects.value[e.id]!;
-            const ctx = createEnemyEffectContext(e);
+            const enemyCtx = createEnemyEffectContext(e);
 
             for (const b of result.buffs) {
               const effect: Effect = {
@@ -427,7 +416,7 @@ export function useEnemyAction(
                 sourceName: e.name
               };
               addEffectToContainer(container, effect);
-              effectRegistry.get(effect.type as EffectType)?.onApply?.(effect, ctx);
+              effectRegistry.get(effect.type as EffectType)?.onApply?.(effect, enemyCtx);
             }
 
             addCombatLog({
@@ -450,7 +439,7 @@ export function useEnemyAction(
           } else {
             // 敌人使用攻击技能
             const skillData = availableSkills.find(s => s.id === decision.skillId);
-            const fullSkill = useSkillStore().getSkill(decision.skillId);
+            const fullSkill = ctx.skill.getSkill(decision.skillId);
             return enemyAttackWithSkill(
               result.damage,
               { id: decision.skillId, name: skillData?.name || decision.skillId, type: fullSkill?.type },
@@ -461,9 +450,9 @@ export function useEnemyAction(
         break;
       }
       case 'heal': {
-        const result = enemiesStore.useSkill(e.id, decision.skillId);
+        const result = ctx.enemy.useSkill(e.id, decision.skillId);
         if (result.success) {
-          const updatedEnemy = enemiesStore.getEnemyById(e.id);
+          const updatedEnemy = ctx.enemy.getEnemyById(e.id);
           if (!updatedEnemy) {
             return { success: false, type: 'skill', message: '找不到敌人数据' };
           }

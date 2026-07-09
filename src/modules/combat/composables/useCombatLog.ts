@@ -7,12 +7,12 @@
 import type { CombatLog } from '../types';
 import type { EnemyInstance } from '../../enemy/types';
 import type { EffectContext } from '../effects';
-import { useCharacterStore } from '../../character/store';
+import type { ICombatContext } from '../combatContext';
 import { combatDbService } from '../db';
 import { generateBattleLogId } from '../service';
 import type { useCombatState } from './useCombatState';
 
-export function useCombatLog(state: ReturnType<typeof useCombatState>) {
+export function useCombatLog(state: ReturnType<typeof useCombatState>, ctx: ICombatContext) {
   /**
    * 添加战斗日志（内部方法）
    * @param data - 日志数据（不含自动生成字段）
@@ -42,21 +42,21 @@ export function useCombatLog(state: ReturnType<typeof useCombatState>) {
 
   /**
    * 创建玩家效果上下文
-   * @param characterStore - 角色 Store 实例
+   * 通过 ctx.character 读取角色属性（保持响应式）
    */
-  function createPlayerEffectContext(characterStore: ReturnType<typeof useCharacterStore>): EffectContext {
+  function createPlayerEffectContext(): EffectContext {
     return {
       ownerId: 'player',
       ownerType: 'player',
       baseStats: {
-        physicalAttack: characterStore.attributes.physicalAttack,
-        physicalDefense: characterStore.attributes.physicalDefense,
-        magicAttack: characterStore.attributes.magicAttack,
-        magicDefense: characterStore.attributes.magicDefense,
+        physicalAttack: ctx.character.attributes.physicalAttack,
+        physicalDefense: ctx.character.attributes.physicalDefense,
+        magicAttack: ctx.character.attributes.magicAttack,
+        magicDefense: ctx.character.attributes.magicDefense,
         speed: 0,
       },
-      currentHp: characterStore.hp,
-      maxHp: characterStore.maxHp,
+      currentHp: ctx.character.hp,
+      maxHp: ctx.character.maxHp,
     };
   }
 
