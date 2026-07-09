@@ -233,6 +233,6 @@ export function applyPhaseStats(boss: EnemyInstance, phase: BossPhase): void {
   if (m.physicalAttack) boss.physicalAttack = Math.round((boss.physicalAttack || 10) * m.physicalAttack);
   if (m.magicAttack) boss.magicAttack = Math.round((boss.magicAttack || 10) * m.magicAttack);
   if (m.physicalDefense) boss.physicalDefense = Math.round((boss.physicalDefense || 5) * m.physicalDefense);
-  // magicDefense 仅在已配置时才应用乘数（未配置 = undefined 时不修改）
-  if (m.magicDefense && boss.magicDefense !== undefined) boss.magicDefense = Math.round(boss.magicDefense * m.magicDefense);
+  // P3-7：magicDefense 处理与其他属性保持一致，未定义时使用默认值 5
+  if (m.magicDefense) boss.magicDefense = Math.round((boss.magicDefense || 5) * m.magicDefense);
 }

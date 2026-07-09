@@ -782,6 +782,16 @@ export const useSkillStore = defineStore('skills', () => {
   }
 
   /**
+   * 重置所有技能冷却（P2-3：战斗开始时调用，防止跨战斗冷却残留）
+   *
+   * 与 `reset()` 不同，此方法仅清空冷却状态，不影响技能列表/技能栏等数据。
+   * 回合制下冷却以"回合"为单位，跨战斗残留不合理。
+   */
+  function resetCooldowns(): void {
+    cooldowns.value = {};
+  }
+
+  /**
    * 检查技能是否在冷却中
    *
    * @param skillId - 技能 ID
@@ -863,6 +873,7 @@ export const useSkillStore = defineStore('skills', () => {
 
     // 冷却管理
     tickCooldowns,
+    resetCooldowns,
     isOnCooldown,
     getCooldownRemaining,
 

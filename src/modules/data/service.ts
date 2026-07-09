@@ -808,6 +808,15 @@ export class ImportService implements IImportService {
 
     const reader = new FileReader();
     return new Promise((resolve) => {
+      // P2-3：补充 onerror 回调，防止文件读取失败时 Promise 永不 resolve 导致 UI 卡死
+      reader.onerror = () => {
+        resolve({
+          success: false,
+          error: '读取文件失败',
+          importedStores: [],
+          skippedStores: []
+        });
+      };
       reader.onload = async () => {
         try {
           const content = reader.result as string;

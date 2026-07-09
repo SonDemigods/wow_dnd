@@ -50,7 +50,9 @@ export class EventBus implements IEventBus {
    */
   emit<K extends keyof GameEventPayloadMap>(event: K, data: GameEventPayloadMap[K]): void {
     if (!this.listeners[event]) return;
-    for (const callback of this.listeners[event]) {
+    // P3-10：快照遍历，防止监听器在执行中 off/clearGroup 修改原数组导致跳过或重复触发
+    const callbacks = this.listeners[event].slice();
+    for (const callback of callbacks) {
       try {
         callback(data);
       } catch (e) {

@@ -13,6 +13,7 @@ import { useSkillStore } from '../../skill/store';
 import { useEnemyStore } from '../../enemy/store';
 import { eventBus, GameEvents } from '../../bus';
 import { processBossPhaseMechanics, applyPhaseStats } from '../../boss/engine';
+import { createEmptyContainer } from '../effects';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
 import type { useEnemyAction } from './useEnemyAction';
@@ -76,9 +77,15 @@ export function useInitiative(
     const playerSpeed = (characterStore.effectiveStats.dex || 0) + speedMod;
     units.push({ id: 'player', speed: playerSpeed });
 
-    // 所有敌人速度
+    // 所有敌人速度（P2-1：与玩家侧一致，应用 getSpeedMod 效果修正，使减速/冰冻影响先攻顺序）
     for (const e of state.enemies.value) {
-      const enemySpeed = e.stats?.dex ?? 5;
+      const enemyCtx = log.createEnemyEffectContext(e);
+      const enemySpeedMod = state.effectRegistry.reduceSum(
+        state.enemyEffects.value[e.id] || createEmptyContainer(),
+        'getSpeedMod',
+        enemyCtx
+      );
+      const enemySpeed = (e.stats?.dex ?? 5) + enemySpeedMod;
       units.push({ id: e.id, speed: enemySpeed });
     }
 
@@ -95,6 +102,10 @@ export function useInitiative(
    * @returns 下一个行动者的 ID 和是否为玩家
    */
   function advanceTurn(): { unitId: string; isPlayer: boolean } {
+    // P3-8：空先攻数组防御，防止取模得 NaN 导致 advanceToNextUnit 无限递归栈溢出
+    if (state.initiativeOrder.value.length === 0) {
+      return { unitId: '', isPlayer: false };
+    }
     state.currentInitiativeIndex.value = (state.currentInitiativeIndex.value + 1) % state.initiativeOrder.value.length;
     if (state.currentInitiativeIndex.value === 0) {
       state.turnCount.value++;
@@ -255,8 +266,13 @@ export function useInitiative(
     if (!e || e.hp <= 0) {
       // 敌人已死亡，从先攻序列中移除并清理效果容器
       if (e) {
+        // P3-11：记录被移除元素的索引，若在当前索引之前则递减当前索引，防止跳过下一个单位回合
+        const removedIndex = state.initiativeOrder.value.indexOf(enemyId);
         state.initiativeOrder.value = state.initiativeOrder.value.filter(id => id !== enemyId);
         delete state.enemyEffects.value[enemyId];
+        if (removedIndex !== -1 && removedIndex < state.currentInitiativeIndex.value) {
+          state.currentInitiativeIndex.value--;
+        }
         // 修正当前索引，防止因移除元素导致索引越界
         if (state.currentInitiativeIndex.value >= state.initiativeOrder.value.length) {
           state.currentInitiativeIndex.value = 0;

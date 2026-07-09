@@ -28,6 +28,7 @@ import { crossModuleQuery } from '@/services/CrossModuleQuery';
 import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
 import { useCharacterStore } from '../character/store';
+import { useQuestStore } from '../quest/store';
 import { RARITY_CONFIG } from '../../config/inventory';
 import {
   computeStackResult,
@@ -286,6 +287,9 @@ export const useInventoryStore = defineStore('inventory', () => {
         message: `获得了物品：${itemTemplate.name}${countText}`,
         icon: 'game-icons:chest'
       });
+
+      // P1-1：通知任务系统物品收集进度（collect 类型任务）
+      useQuestStore().onItemCollected(itemId, added);
     }
 
     return added;

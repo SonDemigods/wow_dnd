@@ -22,7 +22,8 @@ import type { CombatAction, CombatActionResult, CombatResult } from './types';
 import type { EnemyInstance } from '../enemy/types';
 import type { Skill } from '../skill/types';
 import { useCharacterStore } from '../character/store';
-// skillsStore / enemiesStore 调用已委托给各 composable
+import { useSkillStore } from '../skill/store';
+// enemiesStore 调用已委托给各 composable
 import { useQuestStore } from '../quest/store';
 import { eventBus, GameEvents } from '../bus';
 import { useLogStore } from '../log/store';
@@ -213,6 +214,9 @@ export const useCombatStore = defineStore('combat', () => {
   // ==================== Action：开始战斗 ====================
 
   function startCombat(enemiesData: EnemyInstance[]): void {
+    // P3-1：防御性重置，防止上一场战斗未正常 endCombat（组件异常卸载等）时
+    // 旧的 turnTimerId/bossIntroTimerId 残留并向新战斗 UI 推送过期数据
+    state.reset();
     state.combatId.value = generateCombatId();
     state.state.value = 'fighting';
     state.enemyIds.value = enemiesData.map(e => e.id);
@@ -225,6 +229,9 @@ export const useCombatStore = defineStore('combat', () => {
     state.goldGained.value = 0;
     state.playerEffects.value = createEmptyContainer();
     state.enemyEffects.value = {};
+
+    // P2-3：重置技能冷却，防止跨战斗冷却残留
+    useSkillStore().resetCooldowns();
 
     // 初始化玩家资源系统（根据职业创建，空数组表示使用默认 MP 系统）
     const characterStore = useCharacterStore();

@@ -54,6 +54,7 @@ import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
 import { useCharacterStore } from '../character/store';
 import { useInventoryStore } from '../inventory/store';
+import { useToast } from '@/composables/useToast';
 import {
   checkQuestProgress,
   calculateQuestRewards,
@@ -395,6 +396,22 @@ export const useQuestStore = defineStore('quest', () => {
     // 创建新任务实例（status = in_progress, 所有 progress.current = 0）
     const instance = generateQuestInstance(definition);
 
+    // P1-1：对 collect 类型目标，扫描当前背包设置初始进度
+    const inventoryStore = useInventoryStore();
+    const hasCollectObjective = definition.objectives.some(obj => obj.type === 'collect' && obj.itemId);
+    if (hasCollectObjective) {
+      instance.progress = instance.progress.map(prog => {
+        const obj = definition.objectives.find(o => o.key === prog.objectiveKey);
+        if (obj?.type === 'collect' && obj.itemId) {
+          const owned = inventoryStore.inventory
+            .filter(slot => slot.itemId === obj.itemId)
+            .reduce((sum, slot) => sum + slot.count, 0);
+          return { ...prog, current: Math.min(owned, prog.target) };
+        }
+        return prog;
+      });
+    }
+
     // 更新内存状态
     const newInstances = new Map(questInstances.value);
     newInstances.set(questId, instance);
@@ -596,7 +613,15 @@ export const useQuestStore = defineStore('quest', () => {
 
     // 物品奖励 → inventoryStore
     for (const item of rewards.items) {
-      useInventoryStore().addItem(item.itemId, item.count);
+      // P2-2：检查 addItem 返回值，背包满时提示玩家
+      const added = useInventoryStore().addItem(item.itemId, item.count);
+      if (added < item.count) {
+        useToast().show({
+          message: `背包已满，任务奖励物品仅获得 ${added}/${item.count}`,
+          type: 'warning',
+          duration: 3000
+        });
+      }
     }
   }
 

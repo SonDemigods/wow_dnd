@@ -14,6 +14,7 @@ import { useInventoryStore } from '../../inventory/store';
 import { eventBus, GameEvents } from '../../bus';
 import { useLogStore } from '../../log/store';
 import { generateLogId } from '../../log/service';
+import { useToast } from '@/composables/useToast';
 import {
   rollCritical,
   rollDodge,
@@ -33,6 +34,9 @@ import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
 import type { useInitiative } from './useInitiative';
 import type { usePassiveSkills } from './usePassiveSkills';
+
+/** P3-1：AOE 技能对每个目标造成的伤害占面板值的比例（设计文档：AOE 每目标 70% 基础伤害） */
+const AOE_DAMAGE_PENALTY = 0.7;
 
 export function usePlayerAction(
   state: ReturnType<typeof useCombatState>,
@@ -345,7 +349,9 @@ export function usePlayerAction(
 
     // 荆棘反伤：对攻击者自身造成反弹伤害
     if (pipeResult.thorns > 0) {
-      characterStore.takeDamage(pipeResult.thorns);
+      // P2-2：荆棘反伤基于暴击后伤害，与 Boss 反击基数保持一致
+      const thornsDamage = Math.floor(pipeResult.thorns * critMultiplier);
+      characterStore.takeDamage(thornsDamage);
       addCombatLog({
         actorType: 'system',
         actorId: 'system',
@@ -354,10 +360,10 @@ export function usePlayerAction(
         targetType: 'player',
         targetId: 'player',
         targetName: characterStore.name,
-        damage: pipeResult.thorns,
+        damage: thornsDamage,
         isCrit: false,
         isDodge: false,
-        message: `荆棘反伤对 ${characterStore.name} 造成 ${pipeResult.thorns} 点伤害！`
+        message: `荆棘反伤对 ${characterStore.name} 造成 ${thornsDamage} 点伤害！`
       });
     }
 
@@ -491,7 +497,7 @@ export function usePlayerAction(
 
         for (const e of livingEnemies) {
           // AOE 惩罚在管线前应用，与攻防修正独立计算
-          const aoeBaseDamage = Math.round(result.damage * 0.7);
+          const aoeBaseDamage = Math.round(result.damage * AOE_DAMAGE_PENALTY);
           const pipeResult = processDamagePipeline(
             effectRegistry,
             playerEffects.value,
@@ -762,6 +768,7 @@ export function usePlayerAction(
     // 先获取物品信息，判断是否为伤害型物品
     const itemInfo = inventoryStore.getItemInfo(itemId);
     let damageResult: { damage: number; isCrit: boolean } | null = null;
+    let itemKilledEnemy = false;
 
     if (itemInfo?.effect) {
       const { type, value } = itemInfo.effect;
@@ -793,7 +800,8 @@ export function usePlayerAction(
 
         // 造成伤害
         const enemiesStore = useEnemyStore();
-        enemiesStore.takeDamage(target.id, finalDamage);
+        const isDead = enemiesStore.takeDamage(target.id, finalDamage);
+        itemKilledEnemy = isDead;
 
         damageResult = { damage: finalDamage, isCrit };
 
@@ -866,7 +874,13 @@ export function usePlayerAction(
 
     // 检查敌人是否全部死亡
     if (damageResult && aliveEnemies.value.length === 0) {
-      endCombat('victory');
+      const target = currentTarget.value;
+      // P1-1：检查 BOSS 复活机制（与 playerAttack/playerSkill 保持一致）
+      if (itemKilledEnemy && target && checkBossRevive(target)) {
+        initiative.endPlayerTurn();
+      } else {
+        endCombat('victory');
+      }
     } else {
       initiative.endPlayerTurn();
     }
@@ -947,34 +961,44 @@ export function usePlayerAction(
   function handleLoot(e: EnemyInstance): void {
     e.drops?.forEach(drop => {
       if (Math.random() < drop.dropRate) {
-        const amount = Math.floor(Math.random() * (drop.maxAmount - drop.minAmount + 1)) + drop.minAmount;
+        // P2-4：校验 maxAmount >= minAmount，防止配置错误产生负数掉落数量
+        const span = Math.max(0, drop.maxAmount - drop.minAmount);
+        const amount = Math.floor(Math.random() * (span + 1)) + drop.minAmount;
+        if (amount <= 0) return;
 
         // 获取物品模板信息
         const itemInfo = useInventoryStore().getItemInfo(drop.itemId);
         if (itemInfo) {
-          // 直接调用 inventoryStore 添加物品
-          useInventoryStore().addItem(drop.itemId, amount);
+          // P2-2：检查 addItem 返回值，背包满时提示玩家
+          const actualAmount = useInventoryStore().addItem(drop.itemId, amount);
+          if (actualAmount < amount) {
+            useToast().show({
+              message: `背包已满，${itemInfo.name} 仅获得 ${actualAmount}/${amount}`,
+              type: 'warning',
+              duration: 3000
+            });
+          }
+
+          addCombatLog({
+            actorType: 'system',
+            actorId: 'system',
+            actorName: '系统',
+            eventType: 'combat_item',
+            isCrit: false,
+            isDodge: false,
+            message: `获得物品 ${drop.itemId} x${actualAmount}！`
+          });
+
+          // 记录战利品到冒险日志
+          const itemName = itemInfo?.name || drop.itemId;
+          useLogStore().addLogEntry({
+            id: generateLogId(),
+            timestamp: Date.now(),
+            type: 'item',
+            message: `从 ${e.name} 获得 ${itemName} x${actualAmount}`,
+            icon: 'game-icons:backpack'
+          });
         }
-
-        addCombatLog({
-          actorType: 'system',
-          actorId: 'system',
-          actorName: '系统',
-          eventType: 'combat_item',
-          isCrit: false,
-          isDodge: false,
-          message: `获得物品 ${drop.itemId} x${amount}！`
-        });
-
-        // 记录战利品到冒险日志
-        const itemName = itemInfo?.name || drop.itemId;
-        useLogStore().addLogEntry({
-          id: generateLogId(),
-          timestamp: Date.now(),
-          type: 'item',
-          message: `从 ${e.name} 获得 ${itemName} x${amount}`,
-          icon: 'game-icons:backpack'
-        });
       }
     });
   }

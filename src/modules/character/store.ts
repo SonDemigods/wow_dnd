@@ -368,9 +368,8 @@ export const useCharacterStore = defineStore('character', () => {
   async function applyBonus(delta: Partial<Stats>): Promise<void> {
     if (!character.value) return;
     bonusStats.value = computeBonusChange(bonusStats.value, delta, true);
-    // 仅当影响 HP/MP 的属性（体质/智力/感知/魅力）变化时，才重算上限
-    // 避免力量、敏捷、魅力变化引发不必要的 HP/MP 重算
-    if (delta.con || delta.int || delta.wis || delta.cha) {
+    // P3-6：仅当影响 HP/MP 的属性（体质/智力/感知）变化时才重算（HP←con，MP←int/wis，cha 不影响）
+    if (delta.con || delta.int || delta.wis) {
       const effStats = computeEffectiveStats(character.value.stats, bonusStats.value);
       character.value = recalculateHpMp(character.value, effStats);
     }
@@ -381,8 +380,11 @@ export const useCharacterStore = defineStore('character', () => {
   async function removeBonus(delta: Partial<Stats>): Promise<void> {
     if (!character.value) return;
     bonusStats.value = computeBonusChange(bonusStats.value, delta, false);
-    const effStats = computeEffectiveStats(character.value.stats, bonusStats.value);
-    character.value = recalculateHpMp(character.value, effStats);
+    // P3-6：与 applyBonus 保持对称，仅当影响 HP/MP 的属性（体质/智力/感知）变化时才重算
+    if (delta.con || delta.int || delta.wis) {
+      const effStats = computeEffectiveStats(character.value.stats, bonusStats.value);
+      character.value = recalculateHpMp(character.value, effStats);
+    }
     await persistCharacter();
   }
 

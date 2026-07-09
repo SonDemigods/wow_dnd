@@ -386,7 +386,7 @@ export const useShopStore = defineStore('shop', () => {
       }
     }
 
-    const totalPrice = shopItem.price * quantity;
+    let totalPrice = shopItem.price * quantity;
 
     // 1. 检查并扣除金币
     const characterStore = useCharacterStore();
@@ -400,9 +400,23 @@ export const useShopStore = defineStore('shop', () => {
     const inventoryStore = useInventoryStore();
     const added = inventoryStore.addItem(itemId, quantity);
     if (added < quantity) {
-      // 背包空间不足，返还金币
-      await characterStore.gainGold(totalPrice);
-      return false;
+      // P2-1：背包空间不足，按未添加比例返还金币（避免部分成功时白嫖）
+      const unitPrice = shopItem.price;
+      const refundAmount = unitPrice * (quantity - added);
+      if (refundAmount > 0) {
+        await characterStore.gainGold(refundAmount);
+      }
+      if (added === 0) {
+        return false;
+      }
+      // 部分成功：继续后续流程，商店库存/日志按实际购买量 added 处理
+      useToast().show({
+        message: `背包空间不足，仅成功购买 ${added} 件`,
+        type: 'warning',
+        duration: 2500
+      });
+      quantity = added;
+      totalPrice = shopItem.price * added;
     }
 
     // 3. 更新商店库存（ARCH-14：通过 _replaceSoldItems 整体替换触发响应式）

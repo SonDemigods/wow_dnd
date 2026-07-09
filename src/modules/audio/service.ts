@@ -1453,6 +1453,28 @@ class AudioService implements IAudioService {
       eventBus.off(event as keyof GameEventPayloadMap, handler as (data: unknown) => void);
     }
     this.eventHandlers = [];
+    // P3-9：dispose 所有 Tone.js 合成器、效果器与通道节点，释放 AudioContext 资源（HMR/重复 init 时避免泄漏）
+    const nodes: { dispose?: () => void }[] = [
+      this.synth, this.membrane, this.fmSynth, this.noiseSynth, this.metalSynth,
+      this.organVoice, this.masterFilter, this.masterVolume,
+      this.sfxReverb, this.cathedralReverb, this.combatReverb, this.bgmReverb, this.bgmDelay,
+      this.chorus, this.phaser, this.compressor,
+      this.magicChannel, this.combatChannel, this.uiChannel, this.explorationChannel,
+      this.characterChannel, this.standardChannel, this.bgmChannel,
+      this.bgmOscGain, this.bgmFilter,
+    ];
+    nodes.forEach(n => n.dispose?.());
+    this.bgmOsc?.dispose();
+    this.bgmFilterLfo?.dispose();
+    this.bgmOsc = null;
+    this.bgmFilterLfo = null;
+    // P3-2：重置初始化标志，允许 destroy 后重新 init 重建节点
+    // （否则 init() 会因 initialized === true 直接 return，后续 playSfx 调用已 dispose 节点会抛异常）
+    this.initialized = false;
+    this.contextReady = false;
+    this.reverbReady = false;
+    this.currentBgmScene = null;
+    this.synthScheduleTimes.clear();
   }
 }
 

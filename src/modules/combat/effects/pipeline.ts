@@ -46,15 +46,19 @@ export function processDamagePipeline(
 
   // 阶段 1: 攻击方修正 → 预期伤害
   const attackerMod = registry.reduceMultiplier(attackerEffects, 'getAttackerDamageMod', attackerCtx);
-  const expectedDamage = Math.floor(baseDamage * attackerMod);
+  // P2-5：NaN 防御，效果系统返回 NaN（除零/未初始化）时归零，防止腐蚀 HP 状态
+  const safeAttackerMod = Number.isFinite(attackerMod) ? attackerMod : 1;
+  const expectedDamage = Math.floor(baseDamage * safeAttackerMod);
 
   // 阶段 2: 防御方修正 → 实际伤害
   const defenderMod = registry.reduceMultiplier(defenderEffects, 'getDefenderDamageMod', defenderCtx);
-  const actualDamage = Math.floor(expectedDamage * defenderMod);
+  const safeDefenderMod = Number.isFinite(defenderMod) ? defenderMod : 1;
+  const actualDamage = Math.floor(expectedDamage * safeDefenderMod);
 
   // 阶段 3: 护盾吸收 → 最终伤害
   const absorbed = registry.reduceSum(defenderEffects, 'getDamageAbsorb', defenderCtx, actualDamage);
-  const finalDamage = Math.max(0, actualDamage - absorbed);
+  const rawFinal = actualDamage - absorbed;
+  const finalDamage = Number.isFinite(rawFinal) ? Math.max(0, rawFinal) : 0;
 
   // 阶段 4: 荆棘反伤
   const thorns = registry.reduceSum(defenderEffects, 'getThornDamage', defenderCtx, finalDamage);

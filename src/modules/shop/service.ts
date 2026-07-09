@@ -22,7 +22,8 @@ import type { Character } from '../character/types';
  * 新增 ShopType 时 TypeScript 会强制要求补充映射，编译期防止遗漏。
  */
 export const SHOP_TYPE_ITEM_TYPE_MAP: Record<ShopType, ItemType[]> = {
-  general: ['weapon', 'armor', 'material', 'misc'],
+  // P1-2：general 杂货商店售卖消耗品（药水/卷轴/食物/材料），与 SHOP_MODULE_DESIGN.md 一致
+  general: ['potion', 'scroll', 'food', 'material'],
   potion: ['potion'],
   scroll: ['scroll'],
   food: ['food'],

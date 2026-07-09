@@ -216,12 +216,12 @@ export function generateQuestInstance(
 export function getDefaultQuests(): QuestDefinition[] {
   return [
     {
-      id: 'quest_kill_goblin',
-      title: '消灭哥布林',
-      description: '村庄附近出现了一群哥布林，村民们非常害怕。请你前往东边的森林，消灭10只哥布林。',
+      id: 'quest_kill_gnoll',
+      title: '消灭豺狼人',
+      description: '村庄附近出现了一群豺狼人，村民们非常害怕。请你前往东边的森林，消灭10只豺狼人。',
       type: 'kill',
       objectives: [
-        { key: 'kill_goblin', type: 'kill', target: 10, enemyId: 'goblin' }
+        { key: 'kill_gnoll', type: 'kill', target: 10, enemyId: 'gnoll' }
       ],
       levelRequirement: 1,
       xpReward: 100,
