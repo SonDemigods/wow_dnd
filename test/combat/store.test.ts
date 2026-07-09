@@ -115,6 +115,7 @@ import { ResourceSystemFactory } from '@/modules/combat/resources';
 import { useCharacterStore } from '@/modules/character/store';
 import { useLogStore } from '@/modules/log/store';
 import { useQuestStore } from '@/modules/quest/store';
+import { useSkillStore } from '@/modules/skill/store';
 import { useCombatStore } from '@/modules/combat/store';
 
 // ==================== 测试数据构造 helper ====================
@@ -363,6 +364,8 @@ describe('useCombatStore - 战斗 Store', () => {
     vi.mocked(useCharacterStore).mockReturnValue(createCharStub() as never);
     vi.mocked(useLogStore).mockReturnValue(createLogStoreStub() as never);
     vi.mocked(useQuestStore).mockReturnValue(createQuestStoreStub() as never);
+    // P2-3：startCombat 会调用 useSkillStore().resetCooldowns()，需注入 stub
+    vi.mocked(useSkillStore).mockReturnValue({ resetCooldowns: vi.fn() } as never);
   });
 
   // -------------------- State 初始值 --------------------

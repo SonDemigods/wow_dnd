@@ -55,9 +55,9 @@ describe('SHOP_TYPE_ITEM_TYPE_MAP', () => {
     }
   });
 
-  it('general 商店可售武器、护甲、材料、杂物', () => {
+  it('general 商店可售药水、卷轴、食物、材料', () => {
     expect(SHOP_TYPE_ITEM_TYPE_MAP.general).toEqual(
-      expect.arrayContaining(['weapon', 'armor', 'material', 'misc'])
+      expect.arrayContaining(['potion', 'scroll', 'food', 'material'])
     );
   });
 
@@ -179,15 +179,15 @@ describe('generateShopItems', () => {
   it('general 商店可售多种类型物品', () => {
     const shop = makeShopConfig({ type: 'general' });
     const items = [
-      makeItem({ id: 'w1', type: 'weapon' }),
-      makeItem({ id: 'a1', type: 'armor' }),
+      makeItem({ id: 'p1', type: 'potion' }),
+      makeItem({ id: 's1', type: 'scroll' }),
+      makeItem({ id: 'f1', type: 'food' }),
       makeItem({ id: 'm1', type: 'material' }),
-      makeItem({ id: 'x1', type: 'misc' }),
     ];
     const shopItems = generateShopItems(shop, items);
     const itemIds = shopItems.map(si => si.itemId);
     // 全部 4 件物品都应在商品列表中（因为商品池只有 4 件）
-    expect(itemIds).toEqual(expect.arrayContaining(['w1', 'a1', 'm1', 'x1']));
+    expect(itemIds).toEqual(expect.arrayContaining(['p1', 's1', 'f1', 'm1']));
   });
 
   it('物品池为空时返回空数组', () => {
@@ -228,7 +228,7 @@ describe('generateShopItems', () => {
   it('稀有及以上商品携带 maxPurchaseCount 和 purchasedCount', () => {
     const shop = makeShopConfig({ type: 'general' });
     const items = [
-      makeItem({ id: 'rare1', type: 'weapon', rarity: 'rare', value: 100 }),
+      makeItem({ id: 'rare1', type: 'potion', rarity: 'rare', value: 100 }),
     ];
     const shopItems = generateShopItems(shop, items);
     expect(shopItems[0].maxPurchaseCount).toBe(5);
@@ -238,7 +238,7 @@ describe('generateShopItems', () => {
   it('史诗商品 maxPurchaseCount 为 3', () => {
     const shop = makeShopConfig({ type: 'general' });
     const items = [
-      makeItem({ id: 'epic1', type: 'weapon', rarity: 'epic', value: 100 }),
+      makeItem({ id: 'epic1', type: 'potion', rarity: 'epic', value: 100 }),
     ];
     const shopItems = generateShopItems(shop, items);
     expect(shopItems[0].maxPurchaseCount).toBe(3);
@@ -247,7 +247,7 @@ describe('generateShopItems', () => {
   it('传说商品 maxPurchaseCount 为 1', () => {
     const shop = makeShopConfig({ type: 'general' });
     const items = [
-      makeItem({ id: 'leg1', type: 'weapon', rarity: 'legendary', value: 100 }),
+      makeItem({ id: 'leg1', type: 'potion', rarity: 'legendary', value: 100 }),
     ];
     const shopItems = generateShopItems(shop, items);
     expect(shopItems[0].maxPurchaseCount).toBe(1);
@@ -256,8 +256,8 @@ describe('generateShopItems', () => {
   it('普通和优秀商品不携带 maxPurchaseCount', () => {
     const shop = makeShopConfig({ type: 'general' });
     const items = [
-      makeItem({ id: 'c1', type: 'weapon', rarity: 'common', value: 100 }),
-      makeItem({ id: 'u1', type: 'armor', rarity: 'uncommon', value: 100 }),
+      makeItem({ id: 'c1', type: 'potion', rarity: 'common', value: 100 }),
+      makeItem({ id: 'u1', type: 'scroll', rarity: 'uncommon', value: 100 }),
     ];
     const shopItems = generateShopItems(shop, items);
     for (const si of shopItems) {

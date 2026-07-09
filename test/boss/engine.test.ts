@@ -389,14 +389,14 @@ describe('applyPhaseStats', () => {
     expect(boss.magicDefense).toBe(40);
   });
 
-  it('magicDefense 为 undefined 时不修改', () => {
+  it('magicDefense 为 undefined 时使用默认值 5', () => {
     const boss = makeBoss({ magicDefense: undefined });
     const phase: BossPhase = {
       hpThreshold: 0.5, name: 'P2', dialogue: [], aiStrategy: 'aggressive', mechanics: [],
       statMultipliers: { magicDefense: 2 }
     };
     applyPhaseStats(boss, phase);
-    expect(boss.magicDefense).toBeUndefined();
+    expect(boss.magicDefense).toBe(10); // round(5 * 2)，与其他属性处理一致
   });
 
   it('physicalAttack 为 undefined 时使用默认值 10', () => {

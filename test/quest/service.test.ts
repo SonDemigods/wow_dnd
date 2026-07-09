@@ -407,13 +407,13 @@ describe('getDefaultQuests 默认任务模板', () => {
     expect(quests).toHaveLength(4);
   });
 
-  it('包含击杀哥布林任务', () => {
+  it('包含击杀豺狼人任务', () => {
     const quests = getDefaultQuests();
-    const goblinQuest = quests.find(q => q.id === 'quest_kill_goblin');
-    expect(goblinQuest).toBeDefined();
-    expect(goblinQuest!.type).toBe('kill');
-    expect(goblinQuest!.objectives[0].enemyId).toBe('goblin');
-    expect(goblinQuest!.objectives[0].target).toBe(10);
+    const gnollQuest = quests.find(q => q.id === 'quest_kill_gnoll');
+    expect(gnollQuest).toBeDefined();
+    expect(gnollQuest!.type).toBe('kill');
+    expect(gnollQuest!.objectives[0].enemyId).toBe('gnoll');
+    expect(gnollQuest!.objectives[0].target).toBe(10);
   });
 
   it('包含采集草药任务', () => {
