@@ -16,7 +16,38 @@
  *
  * @module inventory
  */
-export * from './types';
-export * from './db';
-export * from './service';
+export type {
+  ItemType,
+  ItemRarity,
+  ItemTypeData,
+  RarityConfig,
+  ItemEffectType,
+  ItemEffect,
+  Item,
+  InventoryItem,
+  SortField,
+  SortOrder,
+  ItemFilters,
+  InventoryDataStorage,
+  ItemDataStorage,
+  ItemStorage,
+  InventoryStorage
+} from './types';
+
+export { InventoryDbService, inventoryDbService } from './db';
+
+export {
+  INVENTORY_SIZE,
+  MAX_STACK,
+  ITEM_TYPE_NAMES,
+  RARITY_ORDER,
+  canStackItem,
+  computeStackResult,
+  findItemIndex,
+  sortItems,
+  filterItems,
+  sortAndFilterInventory,
+  computeUseEffect
+} from './service';
+
 export { useInventoryStore } from './store';

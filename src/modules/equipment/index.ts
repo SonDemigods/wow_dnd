@@ -5,7 +5,7 @@
  *
  * - `types.ts` → 全部导出（类型不会增加运行时体积，外部可自由引用）
  * - `db.ts` → 全部导出（EquipmentDbService 类供测试/扩展，equipmentDbService 实例供日常使用）
- * - `store.ts` → 仅导出 useEquipmentStore（Pinia Store 定义，其他内容为模块内部实现）
+ * - `store.ts` → 导出 useEquipmentStore + 回调注入函数（setInventoryCallbacks/clearInventoryCallbacks）
  *
  * ## 推荐使用方式
  *
@@ -20,6 +20,20 @@
  *
  * @module equipment
  */
-export * from './types';
-export * from './db';
-export { useEquipmentStore } from './store';
+export type {
+  EquipmentSlot,
+  EquipmentType,
+  EquipmentItem,
+  SetBonus,
+  SetBonusEffect,
+  ItemSet,
+  EquippedItem,
+  EquipmentState,
+  EquipmentDataStorage,
+  EquipmentTemplateStorage,
+  EquipmentStorage
+} from './types';
+
+export { EquipmentDbService, equipmentDbService } from './db';
+
+export { useEquipmentStore, setInventoryCallbacks, clearInventoryCallbacks } from './store';

@@ -19,8 +19,29 @@
  *
  * @module quest
  */
-export * from './types';
-export * from './db';
-export * from './service';
-export * from './objective_utils';
+export type {
+  QuestStatus,
+  QuestType,
+  QuestObjective,
+  QuestObjectiveProgress,
+  QuestDefinition,
+  QuestInstance,
+  QuestInstanceStorage,
+  QuestDefinitionStorage,
+  CharQuestStorage
+} from './types';
+
+export { QuestDbService, questDbService } from './db';
+
+export {
+  checkQuestProgress,
+  calculateQuestRewards,
+  checkPrerequisiteQuests,
+  canAcceptQuest,
+  generateQuestInstance,
+  getDefaultQuests
+} from './service';
+
+export { getObjectiveText, getEnemyName } from './objective_utils';
+
 export { useQuestStore } from './store';

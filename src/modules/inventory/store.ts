@@ -11,7 +11,7 @@
  * 4. 通知其他 Store（useLogStore、useCharacterStore）
  *
  * ## 跨模块依赖
- * - crossModuleQuery：初始化时加载装备模板，合并入 itemTemplates 供背包展示（ARCH-2 修复，消除对 equipmentDbService 的直接依赖）
+ * - item-template（聚合层）：初始化时加载合并后的物品模板（普通物品 + 装备），消除对 equipment 的直接/间接依赖（A1/G1 修复）
  * - useCharacterStore：物品使用时传递效果到角色模块
  * - useLogStore：记录物品获得/使用/丢弃的冒险日志
  *
@@ -24,7 +24,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Item, InventoryItem, SortField, SortOrder, ItemFilters, ItemType, ItemRarity } from './types';
 import { inventoryDbService } from './db';
-import { crossModuleQuery } from '@/services/CrossModuleQuery';
+import { unifiedItemTemplateCache } from '../item-template';
 import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
 import { useCharacterStore } from '../character/store';
@@ -132,44 +132,20 @@ export const useInventoryStore = defineStore('inventory', () => {
   /**
    * 加载物品模板到内存缓存
    *
-   * 合并两个来源的物品定义：
-   * 1. config_items 表中的普通物品模板（通过 inventoryDbService）
-   * 2. config_equipmentItems 表中的装备模板（通过 crossModuleQuery 聚合层访问，消除 C3 循环依赖）
+   * 通过 item-template 聚合层获取合并后的物品模板（A1/G1 修复）：
+   * - 普通物品模板（config_items 表）
+   * - 装备模板（config_equipmentItems 表，已转换为 Item 格式）
    *
-   * 装备模板会被转换为 Item 格式并合并入同一个 Map。
-   * 如果同一 ID 在两表中都存在，config_items 中的数据优先（先插入的优先）。
+   * 合并策略由 item-template/service.ts 的 mergeItemTemplates 实现：
+   * 普通物品优先，装备模板仅在 ID 不冲突时插入。
    *
    * 此函数在 initialize() 中调用，每次切换/初始化角色时重新加载。
+   * inventory 模块不再直接或间接依赖 equipment 模块（消除 C3 循环依赖）。
    */
   async function loadItemTemplates(): Promise<void> {
+    const items = await unifiedItemTemplateCache.getAll();
     const map = new Map<string, Item>();
-
-    // 加载普通物品模板（config_items 表）
-    const templates = await inventoryDbService.getAllItemTemplates();
-    templates.forEach(item => map.set(item.id, item));
-
-    // 加载装备模板并转换为物品格式（ARCH-2 修复：通过 crossModuleQuery 聚合层访问）
-    const equipmentTemplates = await crossModuleQuery.getAllEquipmentTemplates();
-    equipmentTemplates.forEach(equip => {
-      if (!map.has(equip.id)) {
-        // 装备模板字段映射到 Item 接口
-        // 注意：effect、consumable、template 等字段在装备上下文中不适用，故不映射
-        map.set(equip.id, {
-          id: equip.id,
-          name: equip.name,
-          type: equip.type,
-          rarity: equip.rarity,
-          level: equip.level,
-          icon: equip.icon,
-          description: equip.description,
-          bonus: equip.bonus,
-          value: equip.value,
-          stackable: equip.stackable || false,
-          levelRequirement: equip.levelRequirement
-        });
-      }
-    });
-
+    items.forEach(item => map.set(item.id, item));
     itemTemplates.value = map;
   }
 

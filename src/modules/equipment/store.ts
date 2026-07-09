@@ -4,7 +4,7 @@
  * ## 模块定位
  *
  * Store 是装备数据的唯一持有者，所有响应式状态集中在此管理。
- * 不通过 EventBus 广播事件 —— 跨模块通信直接调用其他 Store 的 Action。
+ * 不通过 EventBus 广播事件 —— 跨模块通信通过 Store Action 直接调用或回调注入。
  *
  * ## 数据流
  *
@@ -12,9 +12,17 @@
  * UI Layer ──→ Store Action ──→ service 纯函数（业务校验）
  *                    │                      ↓
  *                    ├── 更新 ref 状态（响应式驱动 UI）
- *                    ├── 调用其他 Store Action（角色属性、背包、日志）
+ *                    ├── 调用其他 Store Action（角色属性、日志）
+ *                    ├── 通过回调操作背包（A1/G1 修复：消除 equipment → inventory 静态依赖）
  *                    └── 调用 DB 层持久化
  * ```
+ *
+ * ## 跨模块依赖（A1/G1 修复）
+ *
+ * equipment 模块不再直接 import inventory/store：
+ * - 卸下装备放回背包：通过 setInventoryCallbacks 注入的 inventoryAddItemCallback
+ * - 装备物品从背包移除：通过 setInventoryCallbacks 注入的 inventoryRemoveItemCallback
+ * - 回调由 GameBootstrap.initialize 在 inventory 初始化后注入，dispose 时清除
  *
  * ## 存储策略
  *
@@ -30,8 +38,71 @@ import { equipmentDbService } from './db';
 import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
 import { useCharacterStore } from '../character/store';
-import { useInventoryStore } from '../inventory/store';
 import { validateSlot, computeEquipBonus, canEquipItem, getEquipmentBySlot, createEmptySlotMap, checkClassRestriction, getActiveSetBonuses } from './service';
+
+/**
+ * 物品入背包回调类型
+ *
+ * 卸下装备时需要将装备放回背包，但 equipment 模块不再直接 import inventory/store
+ * （A1/G1 修复：消除 equipment → inventory 静态依赖）。
+ * 通过回调注入方式，由 GameBootstrap 在初始化时绑定 inventoryStore.addItem。
+ *
+ * 回调签名与 inventoryStore.addItem 一致：
+ * @param itemId - 物品 ID
+ * @param quantity - 数量
+ * @returns 实际添加的数量
+ */
+type AddItemToInventoryCallback = (itemId: string, quantity: number) => number;
+
+/**
+ * 物品出背包回调类型
+ *
+ * 装备物品时需要从背包移除，但 equipment 模块不再直接 import inventory/store
+ * （A1/G1 修复：消除 equipment → inventory 静态依赖）。
+ * 通过回调注入方式，由 GameBootstrap 在初始化时绑定 inventoryStore.removeItem。
+ *
+ * 回调签名与 inventoryStore.removeItem 一致：
+ * @param itemId - 物品 ID
+ * @param quantity - 数量
+ * @returns 实际移除的数量
+ */
+type RemoveItemFromInventoryCallback = (itemId: string, quantity: number) => number;
+
+/**
+ * 物品入/出背包回调引用（模块级单例）
+ *
+ * 由 GameBootstrap.initialize 调用 setInventoryCallbacks 注入，
+ * equipment/store 内部 doUnequip / equipItem 通过此回调操作背包。
+ *
+ * 设计权衡：
+ * - 不使用 EventBus：装备放回/移除背包是同步语义，EventBus 异步触发不合适
+ * - 不使用 Pinia 跨 store 直接调用：会引入 equipment → inventory 静态依赖
+ * - 回调注入：保持同步语义 + 消除静态依赖，由 GameBootstrap 统一编排生命周期
+ */
+let inventoryAddItemCallback: AddItemToInventoryCallback | null = null;
+let inventoryRemoveItemCallback: RemoveItemFromInventoryCallback | null = null;
+
+/**
+ * 设置物品入/出背包回调（供 GameBootstrap 在初始化时调用）
+ *
+ * @param addCallback - inventoryStore.addItem 的引用（卸下装备时放回背包）
+ * @param removeCallback - inventoryStore.removeItem 的引用（装备物品时从背包移除）
+ */
+export function setInventoryCallbacks(
+  addCallback: AddItemToInventoryCallback | null,
+  removeCallback: RemoveItemFromInventoryCallback | null
+): void {
+  inventoryAddItemCallback = addCallback;
+  inventoryRemoveItemCallback = removeCallback;
+}
+
+/**
+ * 清除物品入/出背包回调（供 GameBootstrap.dispose 调用，避免回调泄漏）
+ */
+export function clearInventoryCallbacks(): void {
+  inventoryAddItemCallback = null;
+  inventoryRemoveItemCallback = null;
+}
 
 /**
  * 槽位配置（UI 展示用）
@@ -317,10 +388,13 @@ export const useEquipmentStore = defineStore('equipment', () => {
    * 完整的卸装流程（不包含持久化和日志）：
    * 1. 移除该装备的属性加成 → 调用 removeBonusesFromSlot
    * 2. 清空槽位 → equipment[slot] = null
-   * 3. 将装备放回背包 → inventoryStore.addItem
+   * 3. 将装备放回背包 → 通过 inventoryAddItemCallback（A1/G1 修复：回调注入替代直接 import）
    *
    * 此方法为内部函数，外部不应直接调用。
    * equipItem 和 unequipItem 各自包装持久化和日志后对外暴露。
+   *
+   * 注意：若回调未注入（inventoryAddItemCallback === null），物品将无法放回背包，
+   * 此情况仅在 GameBootstrap 未正确初始化时发生，生产环境不应出现。
    *
    * @param slot - 目标槽位
    * @returns 卸下的装备（含时间戳），若槽位为空则返回 null
@@ -333,8 +407,12 @@ export const useEquipmentStore = defineStore('equipment', () => {
 
     equipment.value[slot] = null;
 
-    const inventoryStore = useInventoryStore();
-    inventoryStore.addItem(equippedItem.item.id, 1);
+    // 通过回调注入将装备放回背包（A1/G1 修复：消除 equipment → inventory 静态依赖）
+    if (inventoryAddItemCallback) {
+      inventoryAddItemCallback(equippedItem.item.id, 1);
+    } else {
+      console.warn('[EquipmentStore] inventoryAddItemCallback 未注入，装备未放回背包。请检查 GameBootstrap 初始化流程。');
+    }
 
     return equippedItem;
   }
@@ -347,7 +425,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
    * 完整的装备流程（8 步）：
    * 1. 槽位校验 —— validateSlot
    * 2. 等级校验 —— 检查 levelRequirement
-   * 3. 从背包移除 —— inventoryStore.removeItem（失败则直接返回）
+   * 3. 从背包移除 —— inventoryRemoveItemCallback（失败则直接返回）
    * 4. 卸下旧装备 —— doUnequip（try/catch 含回滚，防止装备丢失）
    * 5. 装备新物品 —— 写入 equipment ref
    * 6. 应用属性加成 —— characterStore.applyBonus
@@ -356,6 +434,8 @@ export const useEquipmentStore = defineStore('equipment', () => {
    *
    * 第 3 步（背包移除）在第 4 步（卸旧装）之前执行，
    * 若第 4 步异常则通过 catch 块将装备放回背包，保证数据一致性。
+   *
+   * 背包操作通过回调注入完成（A1/G1 修复：消除 equipment → inventory 静态依赖）。
    *
    * @param slot - 目标槽位
    * @param item - 要装备的物品
@@ -380,18 +460,23 @@ export const useEquipmentStore = defineStore('equipment', () => {
       return false;
     }
 
-    // 3. 从背包中移除要装备的物品
-    const inventoryStore = useInventoryStore();
-    const removed = inventoryStore.removeItem(item.id, 1);
+    // 3. 从背包中移除要装备的物品（通过回调注入，A1/G1 修复）
+    if (!inventoryRemoveItemCallback) {
+      console.warn('[EquipmentStore] inventoryRemoveItemCallback 未注入，无法装备物品。请检查 GameBootstrap 初始化流程。');
+      return false;
+    }
+    const removed = inventoryRemoveItemCallback(item.id, 1);
     if (removed <= 0) return false;
 
     // 4. 如果有旧装备，先卸下
     try {
       await doUnequip(slot);
     } catch (e) {
-      // 回滚：卸下失败时将已移除的装备放回背包
+      // 回滚：卸下失败时将已移除的装备放回背包（通过回调注入）
       console.error('[EquipmentStore] equipItem 卸下旧装备失败，回滚已移除的物品:', e);
-      inventoryStore.addItem(item.id, 1);
+      if (inventoryAddItemCallback) {
+        inventoryAddItemCallback(item.id, 1);
+      }
       return false;
     }
 

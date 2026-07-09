@@ -3,5 +3,22 @@
  * @description 导出动画模块的所有类型定义和动画函数
  * @module animation
  */
-export * from './types';
-export * from './combat-effects';
+export type { FloatingType, ParticleConfig } from './types';
+
+export {
+  animateShake,
+  animateCritShake,
+  animateMagicPulse,
+  animateGlow,
+  animateHealGlow,
+  animateManaGlow,
+  animateCritBorderFlash,
+  animateDodgeBlink,
+  animateFloating,
+  animateScreenFlash,
+  animateVsFlash,
+  createParticleBurst,
+  animateBossIntro,
+  animatePhaseTransition,
+  animateResultPopup
+} from './combat-effects';

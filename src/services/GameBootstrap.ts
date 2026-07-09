@@ -6,7 +6,7 @@
  */
 import { useLogStore } from '@/modules/log/store';
 import { useInventoryStore } from '@/modules/inventory/store';
-import { useEquipmentStore } from '@/modules/equipment/store';
+import { useEquipmentStore, setInventoryCallbacks, clearInventoryCallbacks } from '@/modules/equipment/store';
 import { useSkillStore } from '@/modules/skill/store';
 import { useMapStore } from '@/modules/map/store';
 import { useExplorationStore } from '@/modules/exploration/store';
@@ -43,6 +43,9 @@ export class GameBootstrapService {
    * 初始化顺序（前者被后者依赖）：
    * log → inventory → equipment → skill → map → exploration → quest
    *
+   * 在 inventory 初始化完成后、equipment 初始化前，注入背包回调到装备模块
+   * （A1/G1 修复：消除 equipment → inventory 静态依赖，通过回调注入实现装备卸下放回背包）。
+   *
    * @param characterId - 角色 ID
    */
   async initialize(characterId: string): Promise<void> {
@@ -50,9 +53,13 @@ export class GameBootstrapService {
     await useLogStore().initialize(characterId);
 
     // 2. 背包模块（被探索/装备依赖）
-    await useInventoryStore().initialize(characterId);
+    const inventoryStore = useInventoryStore();
+    await inventoryStore.initialize(characterId);
 
-    // 3. 装备模块（依赖背包）
+    // 2.5 注入背包回调到装备模块（A1/G1 修复：回调注入替代 equipment → inventory 静态依赖）
+    setInventoryCallbacks(inventoryStore.addItem, inventoryStore.removeItem);
+
+    // 3. 装备模块（依赖背包回调）
     await useEquipmentStore().initialize(characterId);
 
     // 4. 技能模块（依赖角色）
@@ -75,6 +82,8 @@ export class GameBootstrapService {
    * 当前仅 exploration store 实现了 dispose；未来新增可释放 Store 时，
    * 将其加入下方 disposables 列表即可——TypeScript 会在编译期校验其 dispose 方法签名。
    *（ARCH-8/CODE-50 修复：以类型安全的 Disposable 接口替代 as unknown as 断言）
+   *
+   * 同时清除 equipment 模块的背包回调引用（A1/G1 修复：避免回调泄漏）。
    */
   dispose(): void {
     // 按初始化逆序收集需清理的 Store（当前仅 exploration 实现了 Disposable）
@@ -85,6 +94,9 @@ export class GameBootstrapService {
     for (const disposable of disposables) {
       disposable.dispose();
     }
+
+    // 清除装备模块的背包回调引用（A1/G1 修复：避免角色切换后回调指向旧 Store 实例）
+    clearInventoryCallbacks();
   }
 }
 
