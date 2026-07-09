@@ -3,29 +3,50 @@
  *
  * 覆盖：
  * 1. initialize：按依赖顺序调用 7 个 Store 的 initialize/init
- * 2. dispose：调用实现了 Disposable 接口的 Store 的 dispose
+ * 2. initialize：注入背包回调到装备模块（A1/G1 修复）
+ * 3. dispose：调用实现了 Disposable 接口的 Store 的 dispose
+ * 4. dispose：清除装备模块的背包回调引用（A1/G1 修复）
  *
  * Mock 策略：
  * - 7 个模块 Store 全量 mock，断言 initialize/init/dispose 调用顺序
+ * - setInventoryCallbacks / clearInventoryCallbacks mock 验证回调注入与清除
  * - 使用 createTestPinia 激活 Pinia（mock 的 store 需要在 Pinia 上下文中）
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createTestPinia } from '../utils/setup';
 
-/** mock 7 个模块 Store */
+/** mock 7 个模块 Store + 装备模块回调注入函数 */
+/**
+ * vi.hoisted 保证 mock 函数在 vi.mock 工厂提升到文件顶部时已初始化。
+ * setInventoryCallbacks / clearInventoryCallbacks 在工厂返回对象中直接引用（非函数包装），
+ * 必须使用 vi.hoisted 避免 TDZ（Temporal Dead Zone）错误。
+ */
+const hoisted = vi.hoisted(() => ({
+  setInventoryCallbacksMock: vi.fn(),
+  clearInventoryCallbacksMock: vi.fn(),
+}));
+
 const logInitMock = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/modules/log/store', () => ({
   useLogStore: () => ({ initialize: logInitMock }),
 }));
 
 const inventoryInitMock = vi.fn().mockResolvedValue(undefined);
+const inventoryAddItemMock = vi.fn();
+const inventoryRemoveItemMock = vi.fn();
 vi.mock('@/modules/inventory/store', () => ({
-  useInventoryStore: () => ({ initialize: inventoryInitMock }),
+  useInventoryStore: () => ({
+    initialize: inventoryInitMock,
+    addItem: inventoryAddItemMock,
+    removeItem: inventoryRemoveItemMock,
+  }),
 }));
 
 const equipmentInitMock = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/modules/equipment/store', () => ({
   useEquipmentStore: () => ({ initialize: equipmentInitMock }),
+  setInventoryCallbacks: hoisted.setInventoryCallbacksMock,
+  clearInventoryCallbacks: hoisted.clearInventoryCallbacksMock,
 }));
 
 const skillInitMock = vi.fn().mockResolvedValue(undefined);
@@ -66,6 +87,8 @@ describe('GameBootstrap 游戏初始化编排服务', () => {
       explorationInitMock,
       questInitMock,
       explorationDisposeMock,
+      hoisted.setInventoryCallbacksMock,
+      hoisted.clearInventoryCallbacksMock,
     ].forEach(m => m.mockClear());
   });
 
@@ -111,6 +134,26 @@ describe('GameBootstrap 游戏初始化编排服务', () => {
       // Assert
       expect(explorationInitMock).toHaveBeenCalledTimes(1);
     });
+
+    it('在 inventory 初始化后、equipment 初始化前注入背包回调（A1/G1 修复）', async () => {
+      // Arrange：记录 setInventoryCallbacks 与 equipmentInit 的调用顺序
+      const callOrder: string[] = [];
+      inventoryInitMock.mockImplementation(() => { callOrder.push('inventory'); return Promise.resolve(); });
+      hoisted.setInventoryCallbacksMock.mockImplementation(() => { callOrder.push('injectCallbacks'); });
+      equipmentInitMock.mockImplementation(() => { callOrder.push('equipment'); return Promise.resolve(); });
+
+      // Act
+      await gameBootstrap.initialize('char_1');
+
+      // Assert：回调注入发生在 inventory 之后、equipment 之前
+      const injectIdx = callOrder.indexOf('injectCallbacks');
+      const inventoryIdx = callOrder.indexOf('inventory');
+      const equipmentIdx = callOrder.indexOf('equipment');
+      expect(injectIdx).toBeGreaterThan(inventoryIdx);
+      expect(injectIdx).toBeLessThan(equipmentIdx);
+      // 注入的是 inventory store 的 addItem / removeItem
+      expect(hoisted.setInventoryCallbacksMock).toHaveBeenCalledWith(inventoryAddItemMock, inventoryRemoveItemMock);
+    });
   });
 
   describe('dispose：清理资源', () => {
@@ -120,6 +163,14 @@ describe('GameBootstrap 游戏初始化编排服务', () => {
 
       // Assert
       expect(explorationDisposeMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('清除装备模块的背包回调引用（A1/G1 修复）', () => {
+      // Act
+      gameBootstrap.dispose();
+
+      // Assert
+      expect(hoisted.clearInventoryCallbacksMock).toHaveBeenCalledTimes(1);
     });
   });
 });

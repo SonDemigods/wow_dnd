@@ -15,13 +15,15 @@
  *
  * Mock 策略（遵循 code_rule 隔离原则）：
  *  - equipmentDbService 全量 mock，不触碰真实 IndexedDB。
- *  - useCharacterStore / useInventoryStore / useLogStore 用 vi.hoisted stub 隔离跨 store 调用。
+ *  - useCharacterStore / useLogStore 用 vi.hoisted stub 隔离跨 store 调用。
+ *  - 背包操作通过 setInventoryCallbacks 注入回调 stub（A1/G1 修复：equipment 不再直接 import inventory/store），
+ *    每个 beforeEach 注入、afterEach 清除，避免回调泄漏。
  *  - generateLogId mock 为固定值。
  *  - service 层纯函数（validateSlot / computeEquipBonus / checkClassRestriction 等）使用真实实现，
  *    通过构造合适的测试数据覆盖各分支（与 base/audio 样板“mock db + 真实 service”模式一致）。
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useEquipmentStore } from '@/modules/equipment/store';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { useEquipmentStore, setInventoryCallbacks, clearInventoryCallbacks } from '@/modules/equipment/store';
 import { createTestPinia } from '../utils/setup';
 import type { EquipmentItem, EquipmentSlot, EquippedItem } from '@/modules/equipment/types';
 
@@ -33,7 +35,8 @@ const mocks = vi.hoisted(() => ({
     applyBonus: vi.fn().mockResolvedValue(undefined),
     removeBonus: vi.fn().mockResolvedValue(undefined),
   },
-  inventoryStore: {
+  /** 背包回调 stub：A1/G1 修复后通过 setInventoryCallbacks 注入（替代 useInventoryStore mock） */
+  inventoryCallbacks: {
     removeItem: vi.fn().mockReturnValue(1),
     addItem: vi.fn(),
   },
@@ -55,7 +58,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/modules/equipment/db', () => ({ equipmentDbService: mocks.equipmentDb }));
 vi.mock('@/modules/character/store', () => ({ useCharacterStore: () => mocks.characterStore }));
-vi.mock('@/modules/inventory/store', () => ({ useInventoryStore: () => mocks.inventoryStore }));
 vi.mock('@/modules/log/store', () => ({ useLogStore: () => mocks.logStore }));
 vi.mock('@/modules/log/service', () => ({ generateLogId: vi.fn().mockReturnValue('log-id') }));
 
@@ -110,7 +112,14 @@ describe('useEquipmentStore - 装备 Store', () => {
     // 重置 characterStore 状态
     mocks.characterStore.level = 10;
     mocks.characterStore.classId = 'warrior';
-    mocks.inventoryStore.removeItem.mockReturnValue(1);
+    mocks.inventoryCallbacks.removeItem.mockReturnValue(1);
+    // A1/G1 修复：通过回调注入替代 useInventoryStore 直接依赖
+    setInventoryCallbacks(mocks.inventoryCallbacks.addItem, mocks.inventoryCallbacks.removeItem);
+  });
+
+  afterEach(() => {
+    // 清除回调引用，避免跨用例泄漏（与 GameBootstrap.dispose 行为一致）
+    clearInventoryCallbacks();
   });
 
   // -------------------- State 初始值 --------------------
@@ -199,7 +208,7 @@ describe('useEquipmentStore - 装备 Store', () => {
       const result = await store.equipItem('armor1', makeWeapon());
       expect(result).toBe(false);
       // 未触达背包移除
-      expect(mocks.inventoryStore.removeItem).not.toHaveBeenCalled();
+      expect(mocks.inventoryCallbacks.removeItem).not.toHaveBeenCalled();
     });
 
     it('等级不足返回 false', async () => {
@@ -218,13 +227,13 @@ describe('useEquipmentStore - 装备 Store', () => {
       const weapon = makeWeapon({ classRestriction: ['mage'] });
       const result = await store.equipItem('weapon1', weapon);
       expect(result).toBe(false);
-      expect(mocks.inventoryStore.removeItem).not.toHaveBeenCalled();
+      expect(mocks.inventoryCallbacks.removeItem).not.toHaveBeenCalled();
     });
 
     it('背包无该物品（removeItem 返回 0）返回 false', async () => {
       const store = useEquipmentStore();
       store.$patch({ currentCharacterId: 'char-1' });
-      mocks.inventoryStore.removeItem.mockReturnValue(0);
+      mocks.inventoryCallbacks.removeItem.mockReturnValue(0);
       const result = await store.equipItem('weapon1', makeWeapon());
       expect(result).toBe(false);
     });
@@ -240,7 +249,7 @@ describe('useEquipmentStore - 装备 Store', () => {
       // 槽位已写入
       expect(store.equipment.weapon1).toEqual({ item: weapon, equippedAt: expect.any(Number) });
       // 从背包移除 1 件
-      expect(mocks.inventoryStore.removeItem).toHaveBeenCalledWith('w1', 1);
+      expect(mocks.inventoryCallbacks.removeItem).toHaveBeenCalledWith('w1', 1);
       // 应用了属性加成
       expect(mocks.characterStore.applyBonus).toHaveBeenCalledWith({ str: 5 });
       // 持久化调用
@@ -267,7 +276,7 @@ describe('useEquipmentStore - 装备 Store', () => {
       // 旧装备属性被移除
       expect(mocks.characterStore.removeBonus).toHaveBeenCalledWith({ str: 2 });
       // 旧装备放回背包
-      expect(mocks.inventoryStore.addItem).toHaveBeenCalledWith('old', 1);
+      expect(mocks.inventoryCallbacks.addItem).toHaveBeenCalledWith('old', 1);
       // 新装备已写入
       expect(store.equipment.weapon1?.item.id).toBe('new');
       // 新装备属性已应用
@@ -304,7 +313,7 @@ describe('useEquipmentStore - 装备 Store', () => {
       expect(result).toEqual(equipped);
       expect(store.equipment.weapon1).toBeNull();
       expect(mocks.characterStore.removeBonus).toHaveBeenCalledWith({ str: 5 });
-      expect(mocks.inventoryStore.addItem).toHaveBeenCalledWith('w1', 1);
+      expect(mocks.inventoryCallbacks.addItem).toHaveBeenCalledWith('w1', 1);
       expect(equipmentDbService.saveEquipment).toHaveBeenCalledTimes(1);
       expect(mocks.logStore.addLogEntry).toHaveBeenCalledWith(expect.objectContaining({
         message: '卸下了：铁剑',

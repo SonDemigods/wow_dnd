@@ -13,7 +13,8 @@
  *    - addItemTemplate / removeItemTemplate / resetInventory / loadInventory
  *
  * Mock 策略（遵循 code_rule 隔离原则）：
- *  - inventoryDbService / equipmentDbService 全量 mock，不触碰真实 IndexedDB。
+ *  - inventoryDbService + unifiedItemTemplateCache 全量 mock，不触碰真实 IndexedDB。
+ *    A1/G1 修复后，inventory 不再依赖 equipment DbService，物品模板通过 item-template 聚合层获取。
  *  - useCharacterStore / useLogStore 用 vi.hoisted stub 隔离跨 store 调用。
  *  - generateLogId mock 为固定值。
  *  - service 层纯函数（computeStackResult / findItemIndex / sortAndFilterInventory / computeUseEffect）
@@ -23,7 +24,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useInventoryStore } from '@/modules/inventory/store';
 import { createTestPinia } from '../utils/setup';
 import { INVENTORY_SIZE, MAX_STACK } from '@/modules/inventory/service';
-import type { Item, InventoryItem, ItemFilters, SortField, SortOrder } from '@/modules/inventory/types';
+import type { Item, InventoryItem, ItemFilters } from '@/modules/inventory/types';
 
 /** 跨 store stub + db stub：用 vi.hoisted 保证 mock 工厂可引用 */
 const mocks = vi.hoisted(() => ({
@@ -36,7 +37,6 @@ const mocks = vi.hoisted(() => ({
     addLogEntry: vi.fn(),
   },
   inventoryDb: {
-    getAllItemTemplates: vi.fn().mockResolvedValue([]),
     getInventory: vi.fn().mockResolvedValue([]),
     saveInventory: vi.fn().mockResolvedValue(undefined),
     saveItemTemplate: vi.fn().mockResolvedValue(undefined),
@@ -44,18 +44,20 @@ const mocks = vi.hoisted(() => ({
     deleteInventory: vi.fn().mockResolvedValue(undefined),
     getItemTemplate: vi.fn().mockResolvedValue(null),
   },
-  equipmentDb: {
-    getAllEquipmentTemplates: vi.fn().mockResolvedValue([]),
+  /** unifiedItemTemplateCache stub：A1/G1 修复后 inventory 通过聚合层获取合并模板 */
+  unifiedCache: {
+    getAll: vi.fn().mockResolvedValue([]),
   },
 }));
 
 vi.mock('@/modules/inventory/db', () => ({ inventoryDbService: mocks.inventoryDb }));
-vi.mock('@/modules/equipment/db', () => ({ equipmentDbService: mocks.equipmentDb }));
+vi.mock('@/modules/item-template/cache', () => ({ unifiedItemTemplateCache: mocks.unifiedCache }));
 vi.mock('@/modules/character/store', () => ({ useCharacterStore: () => mocks.characterStore }));
 vi.mock('@/modules/log/store', () => ({ useLogStore: () => mocks.logStore }));
 vi.mock('@/modules/log/service', () => ({ generateLogId: vi.fn().mockReturnValue('log-id') }));
 
 import { inventoryDbService } from '@/modules/inventory/db';
+import { unifiedItemTemplateCache } from '@/modules/item-template/cache';
 
 // ==================== 测试数据 helper ====================
 
@@ -545,7 +547,7 @@ describe('useInventoryStore - 背包 Store', () => {
       const items = [inv('p1', 2)];
       const templates = [makeItem()];
       vi.mocked(inventoryDbService.getInventory).mockResolvedValueOnce(items);
-      vi.mocked(inventoryDbService.getAllItemTemplates).mockResolvedValueOnce(templates);
+      vi.mocked(unifiedItemTemplateCache.getAll).mockResolvedValueOnce(templates);
 
       const store = useInventoryStore();
       await store.initialize('char-1');
@@ -557,7 +559,7 @@ describe('useInventoryStore - 背包 Store', () => {
     });
 
     it('initialize 空 characterId 时背包为空', async () => {
-      vi.mocked(inventoryDbService.getAllItemTemplates).mockResolvedValueOnce([]);
+      vi.mocked(unifiedItemTemplateCache.getAll).mockResolvedValueOnce([]);
       const store = useInventoryStore();
       await store.initialize('');
       expect(store.inventory).toEqual([]);
@@ -565,7 +567,7 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('loadInventory 复用当前角色 ID 重新初始化', async () => {
       vi.mocked(inventoryDbService.getInventory).mockResolvedValueOnce([inv('p1', 5)]);
-      vi.mocked(inventoryDbService.getAllItemTemplates).mockResolvedValueOnce([makeItem()]);
+      vi.mocked(unifiedItemTemplateCache.getAll).mockResolvedValueOnce([makeItem()]);
       const store = useInventoryStore();
       store.$patch({ currentCharacterId: 'char-1' });
       await store.loadInventory();

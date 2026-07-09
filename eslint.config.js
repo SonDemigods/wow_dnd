@@ -26,6 +26,12 @@ const sharedRules = {
       },
     ],
   }],
+  // ARCH-5/A3：禁止 export *（无名 re-export），强制显式命名导出
+  // 仅匹配 `export * from './xxx'`，不匹配 `export * as foo from './xxx'`（命名 re-export 允许）
+  'no-restricted-syntax': ['error', {
+    selector: 'ExportAllDeclaration[exported=null]',
+    message: '禁止使用 export *，请使用显式命名导出（export { Foo, Bar } from "./xxx" 或 export type { Type1 } from "./xxx"）',
+  }],
 };
 
 export default [
