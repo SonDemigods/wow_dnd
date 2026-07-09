@@ -22,6 +22,11 @@ description: 当用户提到“写代码”、“开发功能”、“添加测�
 4. **异常处理**：
    - Dexie 操作必须包含 `try-catch`。
    - Tone.js 初始化需处理浏览器自动播放策略（Autoplay Policy）拒绝异常。
+5. **跨模块通信与事件总线**：
+   - 业务逻辑优先通过 Store Action 直接调用（如 `useCharacterStore().takeDamage()`）。
+   - EventBus 保留用于 UI/音效事件（如 `CHARACTER_LEVEL_UP` 触发动画、`COMBAT_DEAL_DAMAGE` 播放音效）。
+   - **跨模块业务通知例外**：当模块 A 的业务流程需要通知模块 B，但 A 不应反向依赖 B 时（避免循环依赖），允许通过 EventBus 传递业务信号事件。此时事件载荷应仅包含最小信号（如 `result: 'victory'`），不传递业务数据；监听方自行查询 Store 状态获取详情。
+   - 事件监听器必须在组件 `onUnmounted` 或 Store `dispose` 中清理（`off` / `clearGroup`），杜绝内存泄漏。
 
 ## 二、 全文件类型测试覆盖规范
 测试用例必须覆盖 `src` 目录下的所有核心代码，无论后缀是 `.ts` 还是 `.vue`。
