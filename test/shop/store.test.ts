@@ -661,4 +661,401 @@ describe('useShopStore - 商店 Store', () => {
       expect(store.lastRefresh.size).toBe(0);
     });
   });
+
+  // -------------------- Actions：init 异常分支 --------------------
+  describe('Actions：init 异常分支', () => {
+    it('getAllShopConfigs 抛错 → catch 记录错误，isLoading 复位为 false', async () => {
+      // Arrange：loadShopConfigs 内部 getAllShopConfigs reject
+      vi.mocked(shopDbService.getAllShopConfigs).mockRejectedValueOnce(new Error('db down'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const store = useShopStore();
+      await store.init();
+
+      // Assert：错误被 catch 捕获，isLoading 复位
+      expect(errorSpy).toHaveBeenCalledWith('[ShopStore] 初始化失败:', expect.any(Error));
+      expect(store.isLoading).toBe(false);
+      errorSpy.mockRestore();
+    });
+
+    it('getAllShopItemsStorage 返回非 number lastRefresh → 跳过恢复该时间戳', async () => {
+      // Arrange：storage.lastRefresh 为字符串（非 number），应跳过 set
+      vi.mocked(shopDbService.getAllShopConfigs).mockResolvedValueOnce(SHOPS);
+      vi.mocked(shopDbService.getCurrentShopId).mockResolvedValueOnce(null);
+      vi.mocked(shopDbService.getAllSoldItems).mockResolvedValueOnce([]);
+      vi.mocked(shopDbService.getAllShopItemsStorage).mockResolvedValueOnce([
+        { shopId: 'general_goods', items: [], lastRefresh: 'not-a-number' as unknown as number },
+      ]);
+
+      const store = useShopStore();
+      await store.init();
+
+      // Assert：lastRefresh Map 不包含该商店（typeof 校验失败被跳过）
+      expect(store.lastRefresh.has('general_goods')).toBe(false);
+    });
+
+    it('DB 无配置且 saveShopConfig reject → catch 记录错误但不阻断流程', async () => {
+      // Arrange：DB 无配置触发种子播种，saveShopConfig reject
+      vi.mocked(shopDbService.getAllShopConfigs).mockResolvedValueOnce([]);
+      vi.mocked(shopDbService.getCurrentShopId).mockResolvedValueOnce(null);
+      vi.mocked(shopDbService.getAllSoldItems).mockResolvedValueOnce([]);
+      vi.mocked(shopDbService.getAllShopItemsStorage).mockResolvedValueOnce([]);
+      vi.mocked(shopDbService.saveShopConfig).mockRejectedValueOnce(new Error('write fail'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const store = useShopStore();
+      await store.init();
+      // 刷新微任务队列，确保 fire-and-forget 的 .catch 回调执行
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Assert：shops 仍加载种子数据（catch 不阻断），错误被记录
+      expect(store.shops).toEqual(SHOPS);
+      expect(errorSpy).toHaveBeenCalledWith('[ShopStore] 种子商店配置写入失败:', expect.any(Error));
+      errorSpy.mockRestore();
+    });
+  });
+
+  // -------------------- Actions：openShop 刷新与异常分支 --------------------
+  describe('Actions：openShop 刷新与异常分支', () => {
+    it('getShopItemsStorage 返回无 lastRefresh → 不触发刷新检查', async () => {
+      // Arrange：storage 有商品但 lastRefresh 非 number，loadOrGenerateItems 不设置 lastRefresh
+      vi.mocked(shopDbService.getAllShopConfigs).mockResolvedValueOnce(SHOPS);
+      const storedItems = [makeShopItem({ itemId: 'stored_1', price: 10, quantity: 5 })];
+      vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
+        shopId: 'general_goods',
+        items: storedItems,
+        lastRefresh: undefined as unknown as number,
+      });
+
+      const store = useShopStore();
+      await store.openShop('general_goods');
+
+      // Assert：lastRefresh 未被设置（非 number），但不影响商品加载
+      expect(store.lastRefresh.has('general_goods')).toBe(false);
+      expect(store.currentItems.some(i => i.itemId === 'stored_1')).toBe(true);
+    });
+
+    it('lastRefresh 过期 → 触发 regenerateItems 刷新商品', async () => {
+      // Arrange：storage.lastRefresh 远早于现在，超过 refreshInterval
+      vi.mocked(shopDbService.getAllShopConfigs).mockResolvedValueOnce(SHOPS);
+      vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
+        shopId: 'general_goods',
+        items: [makeShopItem({ itemId: 'stale_1', price: 10, quantity: 5 })],
+        lastRefresh: Date.now() - 400000, // 超过 300000ms 的刷新间隔
+      });
+      const freshItems = [makeShopItem({ itemId: 'fresh_1', price: 30, quantity: 2 })];
+      vi.mocked(generateShopItems).mockReturnValueOnce(freshItems);
+
+      const store = useShopStore();
+      await store.openShop('general_goods');
+
+      // Assert：触发了 regenerateItems，currentItems 为新生成的商品
+      expect(generateShopItems).toHaveBeenCalled();
+      expect(store.currentItems.some(i => i.itemId === 'fresh_1')).toBe(true);
+      expect(store.currentItems.some(i => i.itemId === 'stale_1')).toBe(false);
+    });
+
+    it('重复打开同一商店 → 不清空 currentItems（跳过 clear 分支）', async () => {
+      vi.mocked(shopDbService.getAllShopConfigs).mockResolvedValue(SHOPS);
+      vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValue(null);
+
+      const store = useShopStore();
+      await store.openShop('general_goods');
+      // 再次打开同一商店：currentShopId === shopId，跳过清空分支
+      await store.openShop('general_goods');
+
+      expect(store.currentShopId).toBe('general_goods');
+      expect(store.currentItems.length).toBeGreaterThan(0);
+    });
+
+    it('getCharacterId 返回空 → emit 时 characterId 为 undefined', async () => {
+      vi.mocked(shopDbService.getAllShopConfigs).mockResolvedValueOnce(SHOPS);
+      vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce(null);
+      mocks.characterStore.getCharacterId.mockReturnValue('');
+      const openedSpy = vi.fn();
+      eventBus.on(GameEvents.SHOP_OPENED, openedSpy);
+
+      const store = useShopStore();
+      await store.openShop('general_goods');
+
+      // Assert：characterId 为空时 emit payload 中 characterId 为 undefined
+      expect(openedSpy).toHaveBeenCalledWith({ shopId: 'general_goods', characterId: undefined });
+    });
+
+    it('loadOrGenerateItems 抛错 → catch 记录错误', async () => {
+      vi.mocked(shopDbService.getAllShopConfigs).mockResolvedValueOnce(SHOPS);
+      vi.mocked(shopDbService.getShopItemsStorage).mockRejectedValueOnce(new Error('load fail'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const store = useShopStore();
+      await store.openShop('general_goods');
+
+      expect(errorSpy).toHaveBeenCalledWith('[ShopStore] 打开商店失败:', expect.any(Error));
+      errorSpy.mockRestore();
+    });
+  });
+
+  // -------------------- Actions：buyItem 限购与部分成功 --------------------
+  describe('Actions：buyItem 限购与部分成功', () => {
+    it('maxPurchaseCount 限购：剩余 > 0 → 返回 false，不扣金币', async () => {
+      // Arrange：商品限购 5 次，已购 4 次，购买 2 件超过剩余 1 次
+      const store = useShopStore();
+      const item = makeShopItem({
+        itemId: 'rare_1', price: 100, quantity: 5, maxPurchaseCount: 5, purchasedCount: 4,
+      });
+      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+
+      const result = await store.buyItem('rare_1', 2);
+
+      // Assert：被限购拦截，未扣金币
+      expect(result).toBe(false);
+      expect(mocks.characterStore.spendGold).not.toHaveBeenCalled();
+    });
+
+    it('maxPurchaseCount 限购：已达上限 → 返回 false', async () => {
+      // Arrange：商品限购 3 次，已购 3 次，再买 1 件
+      const store = useShopStore();
+      const item: ShopItem = {
+        itemId: 'rare_2', price: 100, quantity: 5, maxPurchaseCount: 3, purchasedCount: 3,
+      };
+      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+
+      const result = await store.buyItem('rare_2', 1);
+
+      expect(result).toBe(false);
+      expect(mocks.characterStore.spendGold).not.toHaveBeenCalled();
+    });
+
+    it('spendGold 失败 → 返回 false，不加背包', async () => {
+      const store = useShopStore();
+      const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 3 });
+      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      mocks.characterStore.spendGold.mockResolvedValue(false);
+
+      const result = await store.buyItem('potion_1', 1);
+
+      expect(result).toBe(false);
+      expect(mocks.inventoryStore.addItem).not.toHaveBeenCalled();
+    });
+
+    it('部分成功（added > 0 且 < quantity）→ 返还部分金币并继续流程', async () => {
+      const store = useShopStore();
+      const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 5 });
+      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      mocks.inventoryStore.addItem.mockReturnValue(2); // 购买 3 件只成功 2 件
+      mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
+      vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
+        shopId: 'general_goods',
+        items: [makeShopItem({ itemId: 'potion_1', price: 50, quantity: 5 })],
+        lastRefresh: Date.now(),
+      });
+
+      const result = await store.buyItem('potion_1', 3);
+
+      // Assert：部分成功返回 true，返还 1 件金币（50），原始总价仍按 3 件扣
+      expect(result).toBe(true);
+      expect(mocks.characterStore.spendGold).toHaveBeenCalledWith(150); // 3*50
+      expect(mocks.characterStore.gainGold).toHaveBeenCalledWith(50); // (3-2)*50
+    });
+
+    it('部分成功且单价为 0 → 不返还金币（refundAmount === 0）', async () => {
+      const store = useShopStore();
+      const item = makeShopItem({ itemId: 'free_1', price: 0, quantity: 5 });
+      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      mocks.inventoryStore.addItem.mockReturnValue(2); // 购买 3 件只成功 2 件
+      mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'free_1', name: '免费物品' }));
+      vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
+        shopId: 'general_goods',
+        items: [makeShopItem({ itemId: 'free_1', price: 0, quantity: 5 })],
+        lastRefresh: Date.now(),
+      });
+
+      const result = await store.buyItem('free_1', 3);
+
+      // Assert：单价 0，refundAmount = 0，不调用 gainGold
+      expect(result).toBe(true);
+      expect(mocks.characterStore.gainGold).not.toHaveBeenCalled();
+    });
+
+    it('回购全部买完 → 从 soldItems 删除该物品及商店条目', async () => {
+      const store = useShopStore();
+      const soldEntry: SoldItemEntry = { itemId: 'ore_1', price: 25, quantity: 2 };
+      store.$patch({
+        currentShopId: 'general_goods',
+        currentItems: [{ itemId: 'ore_1', price: 25, quantity: 2 }],
+        soldItems: new Map([['general_goods', new Map([['ore_1', soldEntry]])]]),
+      });
+      mocks.inventoryStore.addItem.mockReturnValue(2); // 背包成功放入全部 2 件
+      mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'ore_1', name: '铁矿石' }));
+      vi.mocked(shopDbService.getShopItems).mockResolvedValue([]);
+
+      const result = await store.buyItem('ore_1', 2);
+
+      // Assert：购买成功，回购列表清空（物品及商店条目均被删除）
+      expect(result).toBe(true);
+      expect(store.soldItems.has('general_goods')).toBe(false);
+      // saveSoldItems 以空数组持久化（updatedSoldMap 为 undefined）
+      expect(shopDbService.saveSoldItems).toHaveBeenCalledWith('general_goods', []);
+    });
+
+    it('生成商品无 storage → generated 为 null，跳过库存更新', async () => {
+      const store = useShopStore();
+      const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 3 });
+      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
+      // getShopItemsStorage 默认返回 null（beforeEach 已设置）
+
+      const result = await store.buyItem('potion_1', 1);
+
+      // Assert：购买成功，但未调用 saveShopItems（generated 为 null）
+      expect(result).toBe(true);
+      expect(shopDbService.saveShopItems).not.toHaveBeenCalled();
+    });
+
+    it('生成商品不在 storage items 中 → idx === -1 跳过更新', async () => {
+      const store = useShopStore();
+      const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 3 });
+      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
+      // storage 中只有 other 物品，不含 potion_1
+      vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
+        shopId: 'general_goods',
+        items: [makeShopItem({ itemId: 'other', price: 10, quantity: 1 })],
+        lastRefresh: Date.now(),
+      });
+
+      const result = await store.buyItem('potion_1', 1);
+
+      // Assert：购买成功，但未调用 saveShopItems（idx === -1）
+      expect(result).toBe(true);
+      expect(shopDbService.saveShopItems).not.toHaveBeenCalled();
+    });
+
+    it('生成商品携带 maxPurchaseCount → 累计 purchasedCount', async () => {
+      const store = useShopStore();
+      const item: ShopItem = {
+        itemId: 'rare_1', price: 100, quantity: 3, maxPurchaseCount: 5, purchasedCount: 1,
+      };
+      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'rare_1', name: '稀有装备' }));
+      vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
+        shopId: 'general_goods',
+        items: [{ itemId: 'rare_1', price: 100, quantity: 3, maxPurchaseCount: 5, purchasedCount: 1 }],
+        lastRefresh: Date.now(),
+      });
+
+      const result = await store.buyItem('rare_1', 1);
+
+      // Assert：购买成功，purchasedCount 累计为 2 并持久化
+      expect(result).toBe(true);
+      expect(shopDbService.saveShopItems).toHaveBeenCalledWith(
+        'general_goods',
+        expect.arrayContaining([expect.objectContaining({ itemId: 'rare_1', purchasedCount: 2 })]),
+        expect.any(Number)
+      );
+    });
+
+    it('购买使生成商品 quantity 归零 → splice 移除', async () => {
+      const store = useShopStore();
+      const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 1 });
+      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
+      vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
+        shopId: 'general_goods',
+        items: [makeShopItem({ itemId: 'potion_1', price: 50, quantity: 1 })],
+        lastRefresh: Date.now(),
+      });
+
+      const result = await store.buyItem('potion_1', 1);
+
+      // Assert：购买成功，saveShopItems 以空列表持久化（物品被 splice）
+      expect(result).toBe(true);
+      expect(shopDbService.saveShopItems).toHaveBeenCalledWith('general_goods', [], expect.any(Number));
+    });
+  });
+
+  // -------------------- Actions：sellItem 边界分支 --------------------
+  describe('Actions：sellItem 边界分支', () => {
+    it('computeSellPrice 返回 0 → 返回 false', async () => {
+      const store = useShopStore();
+      store.$patch({ currentShopId: 'general_goods' });
+      mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'junk_1', name: '废弃物' }));
+      vi.mocked(computeSellPrice).mockReturnValue(0);
+
+      const result = await store.sellItem('junk_1', 1);
+
+      expect(result).toBe(false);
+      expect(mocks.inventoryStore.removeItem).not.toHaveBeenCalled();
+    });
+
+    it('removeItem 返回 0 → 返回 false', async () => {
+      const store = useShopStore();
+      store.$patch({ currentShopId: 'general_goods' });
+      mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
+      vi.mocked(computeSellPrice).mockReturnValue(25);
+      mocks.inventoryStore.removeItem.mockReturnValue(0);
+
+      const result = await store.sellItem('potion_1', 1);
+
+      expect(result).toBe(false);
+      expect(mocks.characterStore.gainGold).not.toHaveBeenCalled();
+    });
+
+    it('getShopItems 返回 null → mergeItems 以空列表合并', async () => {
+      const store = useShopStore();
+      store.$patch({ currentShopId: 'general_goods' });
+      mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
+      mocks.inventoryStore.removeItem.mockReturnValue(1);
+      vi.mocked(computeSellPrice).mockReturnValue(25);
+      vi.mocked(shopDbService.getShopItems).mockResolvedValue(null);
+
+      const result = await store.sellItem('potion_1', 1);
+
+      // Assert：出售成功，currentGenerated 为 null 时 mergeItems([]) 仍包含回购物品
+      expect(result).toBe(true);
+      expect(store.currentItems.some(i => i.itemId === 'potion_1')).toBe(true);
+    });
+
+    it('actualQuantity === 1 → 日志不带数量后缀', async () => {
+      const store = useShopStore();
+      store.$patch({ currentShopId: 'general_goods' });
+      mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
+      mocks.inventoryStore.removeItem.mockReturnValue(1);
+      vi.mocked(computeSellPrice).mockReturnValue(25);
+      vi.mocked(shopDbService.getShopItems).mockResolvedValue(null);
+
+      await store.sellItem('potion_1', 1);
+
+      // Assert：日志消息不含 " x" 后缀（actualQuantity === 1）
+      expect(mocks.logStore.addLogEntry).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.not.stringContaining(' x') })
+      );
+    });
+  });
+
+  // -------------------- Actions：refreshShop / 查询 边界 --------------------
+  describe('Actions：refreshShop / 查询 边界', () => {
+    it('refreshShop 时 currentShopId 不在 shops → regenerateItems 返回空数组', async () => {
+      const store = useShopStore();
+      // currentShopId 设置为 shops 中不存在的 id
+      store.$patch({
+        currentShopId: 'unknown_shop',
+        shops: [makeShopConfig({ id: 'general_goods' })],
+      });
+
+      await store.refreshShop();
+
+      // Assert：regenerateItems 因 config 未找到返回 []，未调用 generateShopItems
+      expect(generateShopItems).not.toHaveBeenCalled();
+      expect(store.currentItems).toEqual([]);
+    });
+
+    it('getSoldItemCount：currentShopId 设置但无 soldMap → 返回 0', () => {
+      const store = useShopStore();
+      store.$patch({ currentShopId: 'general_goods' });
+      // soldItems 为空 Map（未出售任何物品）
+
+      expect(store.getSoldItemCount('any')).toBe(0);
+    });
+  });
 });

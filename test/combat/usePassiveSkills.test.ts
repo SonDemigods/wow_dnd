@@ -497,6 +497,49 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
 
   // -------------------- getDamageReduction --------------------
 
+  describe('applyBuff：附加效果（仅记录日志）', () => {
+    it('buff 效果触发时记录 passive_effect 日志', () => {
+      const buffPassive = makePassive({
+        id: 'bp',
+        name: '附加效果被动',
+        trigger: 'on_combat_start',
+        effect: { type: 'buff', target: 'self', stat: 'poison', value: 0.3 },
+      });
+      getPassivesByClassIdMock.mockReturnValue([buffPassive]);
+
+      const log = makeLogMock();
+      const passive = usePassiveSkills(makeStateMock(), log, makeMockCtx());
+      passive.loadPassives();
+      log.addCombatLog.mockClear();
+
+      passive.onCombatStart();
+
+      const effectLogs = log.addCombatLog.mock.calls.filter(c => c[0].eventType === 'passive_effect');
+      expect(effectLogs).toHaveLength(1);
+      expect(effectLogs[0][0].message).toContain('附加效果');
+      expect(effectLogs[0][0].message).toContain('poison');
+    });
+
+    it('buff 效果 stat 缺失时日志显示未知', () => {
+      const buffPassive = makePassive({
+        trigger: 'on_combat_start',
+        effect: { type: 'buff', target: 'self', stat: undefined, value: 0.3 },
+      });
+      getPassivesByClassIdMock.mockReturnValue([buffPassive]);
+
+      const log = makeLogMock();
+      const passive = usePassiveSkills(makeStateMock(), log, makeMockCtx());
+      passive.loadPassives();
+      log.addCombatLog.mockClear();
+
+      passive.onCombatStart();
+
+      const effectLogs = log.addCombatLog.mock.calls.filter(c => c[0].eventType === 'passive_effect');
+      expect(effectLogs).toHaveLength(1);
+      expect(effectLogs[0][0].message).toContain('未知');
+    });
+  });
+
   describe('getDamageReduction：减伤比例（取最大值）', () => {
     it('无 damage_reduction 被动时返回 0', () => {
       getPassivesByClassIdMock.mockReturnValue([
@@ -618,6 +661,163 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       p.loadPassives();
 
       expect(p.getStatModifiers()).toEqual([]);
+    });
+  });
+
+  // -------------------- evaluateCondition（通过 getDamageReduction 间接测试） --------------------
+
+  describe('evaluateCondition：条件表达式运算符', () => {
+    it('`<=` 运算符：hpRatio <= 阈值时满足', () => {
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 'd1',
+          effect: { type: 'damage_reduction', target: 'self', value: 0.3, condition: 'hp <= 0.3' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
+      p.loadPassives();
+
+      // hp=30/100=0.3，0.3 <= 0.3 为 true → 减伤 0.3
+      characterMock.hp = 30;
+      characterMock.maxHp = 100;
+      expect(p.getDamageReduction()).toBe(0.3);
+
+      // hp=50/100=0.5，0.5 <= 0.3 为 false → 减伤 0
+      characterMock.hp = 50;
+      expect(p.getDamageReduction()).toBe(0);
+    });
+
+    it('`>` 运算符：hpRatio > 阈值时满足', () => {
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 'd1',
+          effect: { type: 'damage_reduction', target: 'self', value: 0.3, condition: 'hp > 0.3' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
+      p.loadPassives();
+
+      // hp=50/100=0.5，0.5 > 0.3 为 true → 减伤 0.3
+      characterMock.hp = 50;
+      characterMock.maxHp = 100;
+      expect(p.getDamageReduction()).toBe(0.3);
+
+      // hp=20/100=0.2，0.2 > 0.3 为 false → 减伤 0
+      characterMock.hp = 20;
+      expect(p.getDamageReduction()).toBe(0);
+    });
+
+    it('`>=` 运算符：hpRatio >= 阈值时满足', () => {
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 'd1',
+          effect: { type: 'damage_reduction', target: 'self', value: 0.3, condition: 'hp >= 0.3' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
+      p.loadPassives();
+
+      // hp=30/100=0.3，0.3 >= 0.3 为 true → 减伤 0.3
+      characterMock.hp = 30;
+      characterMock.maxHp = 100;
+      expect(p.getDamageReduction()).toBe(0.3);
+
+      // hp=20/100=0.2，0.2 >= 0.3 为 false → 减伤 0
+      characterMock.hp = 20;
+      expect(p.getDamageReduction()).toBe(0);
+    });
+
+    it('`==` 运算符：hpRatio == 阈值时满足', () => {
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 'd1',
+          effect: { type: 'damage_reduction', target: 'self', value: 0.3, condition: 'hp == 0.3' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
+      p.loadPassives();
+
+      // hp=30/100=0.3，0.3 == 0.3 为 true → 减伤 0.3
+      characterMock.hp = 30;
+      characterMock.maxHp = 100;
+      expect(p.getDamageReduction()).toBe(0.3);
+
+      // hp=50/100=0.5，0.5 == 0.3 为 false → 减伤 0
+      characterMock.hp = 50;
+      expect(p.getDamageReduction()).toBe(0);
+    });
+
+    it('`!=` 运算符：hpRatio != 阈值时满足', () => {
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 'd1',
+          effect: { type: 'damage_reduction', target: 'self', value: 0.3, condition: 'hp != 0.3' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
+      p.loadPassives();
+
+      // hp=50/100=0.5，0.5 != 0.3 为 true → 减伤 0.3
+      characterMock.hp = 50;
+      characterMock.maxHp = 100;
+      expect(p.getDamageReduction()).toBe(0.3);
+
+      // hp=30/100=0.3，0.3 != 0.3 为 false → 减伤 0
+      characterMock.hp = 30;
+      expect(p.getDamageReduction()).toBe(0);
+    });
+
+    it('未知运算符走 default 分支返回 true（条件恒满足）', () => {
+      // `<>` 匹配正则的 ([<>=!]+) 但不在 switch 已知 case 中
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 'd1',
+          effect: { type: 'damage_reduction', target: 'self', value: 0.3, condition: 'hp <> 0.3' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
+      p.loadPassives();
+
+      // default 返回 true，无论 hp 如何均满足
+      characterMock.hp = 100;
+      characterMock.maxHp = 100;
+      expect(p.getDamageReduction()).toBe(0.3);
+
+      characterMock.hp = 20;
+      expect(p.getDamageReduction()).toBe(0.3);
+    });
+
+    it('条件不匹配正则时返回 true（条件恒满足）', () => {
+      // 无运算符的纯文本条件，不匹配 /(\w+)\s*([<>=!]+)\s*([\d.]+)/
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 'd1',
+          effect: { type: 'damage_reduction', target: 'self', value: 0.3, condition: 'always' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
+      p.loadPassives();
+
+      characterMock.hp = 100;
+      characterMock.maxHp = 100;
+      expect(p.getDamageReduction()).toBe(0.3);
+    });
+
+    it('非 hp 的 stat 名时 currentValue 保持 0', () => {
+      // stat='mp' 不匹配 'hp'，currentValue 保持 0
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 'd1',
+          effect: { type: 'damage_reduction', target: 'self', value: 0.3, condition: 'mp < 0.3' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
+      p.loadPassives();
+
+      // currentValue=0, 0 < 0.3 为 true → 减伤 0.3
+      characterMock.hp = 100;
+      characterMock.maxHp = 100;
+      expect(p.getDamageReduction()).toBe(0.3);
     });
   });
 

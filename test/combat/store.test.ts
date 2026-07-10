@@ -49,7 +49,22 @@ vi.mock('@/modules/combat/composables/useCombatLog', () => ({
   useCombatLog: () => mocks.log,
 }));
 vi.mock('@/modules/combat/composables/useBossMechanics', () => ({
-  useBossMechanics: () => mocks.boss,
+  // 调用 bossCtx 方法以触发 store.ts 中 bossCtx 闭包函数定义，维持函数覆盖率。
+  // 真实 useBossMechanics 会通过 IBossContext 接口调用这些方法。
+  useBossMechanics: (
+    _state: unknown,
+    _log: unknown,
+    bossCtx: {
+      getPlayerName: () => string;
+      createMinion: (dataId: string, level: number) => Promise<unknown>;
+      rebuildInitiativeOrder: () => void;
+    },
+  ) => {
+    bossCtx.getPlayerName();
+    void bossCtx.createMinion('coverage', 1);
+    bossCtx.rebuildInitiativeOrder();
+    return mocks.boss;
+  },
 }));
 vi.mock('@/modules/combat/composables/useEnemyAction', () => ({
   useEnemyAction: () => mocks.enemy,
@@ -116,6 +131,7 @@ import { useCharacterStore } from '@/modules/character/store';
 import { useLogStore } from '@/modules/log/store';
 import { useQuestStore } from '@/modules/quest/store';
 import { useSkillStore } from '@/modules/skill/store';
+import { useEnemyStore } from '@/modules/enemy/store';
 import { useCombatStore } from '@/modules/combat/store';
 
 // ==================== 测试数据构造 helper ====================
@@ -183,6 +199,7 @@ function createCombatStateMock() {
   const bossIntros = ref<Record<string, any>>({});
   const resourceSystems = shallowRef<ResourceSystem[]>([]);
   const turnTimerId = ref<number | null>(null);
+  const bossIntroTimerId = ref<number | null>(null);
   const bossPhaseManagers = new Map();
   const enemies = ref<EnemyInstance[]>([]);
 
@@ -214,6 +231,8 @@ function createCombatStateMock() {
     enemyPositions.value = {};
     bossIntros.value = {};
     resourceSystems.value = [];
+    turnTimerId.value = null;
+    bossIntroTimerId.value = null;
   }
 
   const cleanup = vi.fn(() => { resetState(); });
@@ -228,7 +247,7 @@ function createCombatStateMock() {
     combatLogs, combatResult, expGained, goldGained,
     initiativeOrder, currentInitiativeIndex, combatSpeed,
     playerEffects, enemyEffects, enemyPositions, bossIntros,
-    resourceSystems, turnTimerId, bossPhaseManagers, effectRegistry,
+    resourceSystems, turnTimerId, bossIntroTimerId, bossPhaseManagers, effectRegistry,
     enemies, isInCombat, aliveEnemies, hasBossEnemy, currentTarget,
     cleanup, reset, addEffectToPlayer,
   };
@@ -366,6 +385,10 @@ describe('useCombatStore - 战斗 Store', () => {
     vi.mocked(useQuestStore).mockReturnValue(createQuestStoreStub() as never);
     // P2-3：startCombat 会调用 useSkillStore().resetCooldowns()，需注入 stub
     vi.mocked(useSkillStore).mockReturnValue({ resetCooldowns: vi.fn() } as never);
+    // bossCtx.createMinion 在 useBossMechanics mock 中被调用，需注入 enemyStore.createEnemy stub
+    vi.mocked(useEnemyStore).mockReturnValue({
+      createEnemy: vi.fn().mockResolvedValue(null),
+    } as never);
   });
 
   // -------------------- State 初始值 --------------------
@@ -486,6 +509,76 @@ describe('useCombatStore - 战斗 Store', () => {
       store.startCombat([makeEnemy()]);
 
       expect(introSpy).not.toHaveBeenCalled();
+    });
+
+    it('bossIntros 非空且 bossEnemy 存在时，300ms 后 emit COMBAT_BOSS_INTRO 并清空定时器', () => {
+      vi.useFakeTimers();
+      const introSpy = vi.fn();
+      eventBus.on(GameEvents.COMBAT_BOSS_INTRO, introSpy);
+
+      const intro = { effect: 'darken', lines: ['黑龙降临！'], duration: 1000 };
+      const bossEnemy = makeEnemy({
+        id: 'boss-intro-1', name: '黑龙', icon: 'dragon', isBoss: true,
+        intro: intro as never,
+      });
+
+      // 让 mock 的 initBossFeatures 模拟真实行为，设置 bossIntros
+      mocks.boss!.initBossFeatures.mockImplementationOnce((enemies: EnemyInstance[]) => {
+        const intros: Record<string, typeof intro> = {};
+        for (const e of enemies) {
+          if (e.isBoss && e.intro) {
+            intros[e.id] = e.intro as typeof intro;
+          }
+        }
+        mocks.state!.bossIntros.value = intros as never;
+      });
+
+      const store = useCombatStore();
+      store.startCombat([bossEnemy]);
+
+      // 定时器未触发前不 emit
+      expect(introSpy).not.toHaveBeenCalled();
+      expect(mocks.state!.bossIntroTimerId.value).not.toBeNull();
+
+      // 推进 300ms 触发回调
+      vi.advanceTimersByTime(300);
+
+      expect(introSpy).toHaveBeenCalledWith({
+        enemyId: 'boss-intro-1',
+        enemyName: '黑龙',
+        icon: 'dragon',
+        effect: 'darken',
+        lines: ['黑龙降临！'],
+        duration: 1000,
+      });
+      // 回调执行后清空定时器 ID
+      expect(mocks.state!.bossIntroTimerId.value).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it('bossIntros 中的 bossId 在 enemiesData 中不存在时不 emit（跳过内部分支）', () => {
+      vi.useFakeTimers();
+      const introSpy = vi.fn();
+      eventBus.on(GameEvents.COMBAT_BOSS_INTRO, introSpy);
+
+      // bossIntros 中的 bossId 与 enemiesData 不匹配
+      mocks.boss!.initBossFeatures.mockImplementationOnce(() => {
+        mocks.state!.bossIntros.value = {
+          'missing-boss': { effect: 'darken', lines: ['x'], duration: 500 },
+        } as never;
+      });
+
+      const store = useCombatStore();
+      store.startCombat([makeEnemy({ id: 'other-enemy' })]);
+
+      vi.advanceTimersByTime(300);
+
+      // bossEnemy 找不到，不 emit，也不设置定时器
+      expect(introSpy).not.toHaveBeenCalled();
+      expect(mocks.state!.bossIntroTimerId.value).toBeNull();
+
+      vi.useRealTimers();
     });
   });
 
@@ -616,6 +709,110 @@ describe('useCombatStore - 战斗 Store', () => {
       );
       expect(charStub.gainExp).not.toHaveBeenCalled();
       expect(charStub.handleDeath).not.toHaveBeenCalled();
+    });
+
+    it('victory 时 Boss 敌人触发 player.handleLoot 处理掉落', () => {
+      const endSpy = vi.fn();
+      eventBus.on(GameEvents.COMBAT_END, endSpy);
+
+      const charStub = createCharStub();
+      vi.mocked(useCharacterStore).mockReturnValue(charStub as never);
+
+      const bossEnemy = makeEnemy({ id: 'boss-1', isBoss: true, expReward: 100, goldReward: 50 });
+      const normalEnemy = makeEnemy({ id: 'normal-1', isBoss: false });
+      const store = setupFightingStore([bossEnemy, normalEnemy]);
+
+      store.endCombat('victory');
+
+      // 仅 Boss 敌人触发 handleLoot
+      expect(mocks.player!.handleLoot).toHaveBeenCalledTimes(1);
+      expect(mocks.player!.handleLoot).toHaveBeenCalledWith(bossEnemy);
+    });
+
+    it('victory 时调用 ctx.quest.onEnemyKilled 更新击杀进度（每个有 dataId 的敌人）', () => {
+      const endSpy = vi.fn();
+      eventBus.on(GameEvents.COMBAT_END, endSpy);
+
+      const charStub = createCharStub();
+      vi.mocked(useCharacterStore).mockReturnValue(charStub as never);
+      const questStub = createQuestStoreStub();
+      vi.mocked(useQuestStore).mockReturnValue(questStub as never);
+
+      const enemy1 = makeEnemy({ id: 'e1', dataId: 'goblin' });
+      const enemy2 = makeEnemy({ id: 'e2', dataId: 'slime' });
+      const store = setupFightingStore([enemy1, enemy2]);
+
+      store.endCombat('victory');
+
+      // 每个有 dataId 的敌人都触发 onEnemyKilled
+      expect(questStub.onEnemyKilled).toHaveBeenCalledWith('goblin');
+      expect(questStub.onEnemyKilled).toHaveBeenCalledWith('slime');
+      expect(questStub.onEnemyKilled).toHaveBeenCalledTimes(2);
+    });
+
+    it('victory 时触发资源系统 onKill 钩子', () => {
+      const endSpy = vi.fn();
+      eventBus.on(GameEvents.COMBAT_END, endSpy);
+
+      const charStub = createCharStub();
+      vi.mocked(useCharacterStore).mockReturnValue(charStub as never);
+
+      const sys1 = makeResourceSystem({ type: 'rage' });
+      const sys2 = makeResourceSystem({ type: 'combo' });
+      const store = setupFightingStore([makeEnemy({ expReward: 10, goldReward: 5 })]);
+      mocks.state!.resourceSystems.value = [sys1, sys2];
+
+      store.endCombat('victory');
+
+      expect(sys1.onKill).toHaveBeenCalled();
+      expect(sys2.onKill).toHaveBeenCalled();
+    });
+
+    it('victory 时 totalExp/totalGold 为 0 不写获得经验/金币日志', () => {
+      const endSpy = vi.fn();
+      eventBus.on(GameEvents.COMBAT_END, endSpy);
+
+      const charStub = createCharStub();
+      vi.mocked(useCharacterStore).mockReturnValue(charStub as never);
+      const logStoreStub = createLogStoreStub();
+      vi.mocked(useLogStore).mockReturnValue(logStoreStub as never);
+
+      // expReward 和 goldReward 均为 0
+      const store = setupFightingStore([makeEnemy({ expReward: 0, goldReward: 0 })]);
+
+      store.endCombat('victory');
+
+      // addLogEntry 调用次数：1 次"击败"日志，不写"获得经验"和"获得金币"日志
+      const messages = logStoreStub.addLogEntry.mock.calls.map((c: [{ message: string }]) => c[0].message);
+      expect(messages).toContain('击败 哥布林！');
+      expect(messages.some(m => m.includes('经验值'))).toBe(false);
+      expect(messages.some(m => m.includes('金币'))).toBe(false);
+    });
+
+    it('endCombat 内部抛错时被 catch 并仍调用 cleanup（优雅降级）', () => {
+      const charStub = createCharStub();
+      vi.mocked(useCharacterStore).mockReturnValue(charStub as never);
+      const logStoreStub = createLogStoreStub();
+      // 让 addLogEntry 抛错，触发 endCombat 的 catch 分支
+      logStoreStub.addLogEntry.mockImplementation(() => {
+        throw new Error('日志写入失败');
+      });
+      vi.mocked(useLogStore).mockReturnValue(logStoreStub as never);
+
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const store = setupFightingStore([makeEnemy({ expReward: 10, goldReward: 5 })]);
+
+      // 不应抛错（被 catch）
+      expect(() => store.endCombat('victory')).not.toThrow();
+
+      // catch 后仍调用 cleanup 进行优雅降级
+      expect(mocks.state!.cleanup).toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[CombatStore] 结束战斗异常'),
+        expect.any(Error),
+      );
+      errorSpy.mockRestore();
     });
   });
 
@@ -770,6 +967,86 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(result.success).toBe(false);
       expect(result.message).toBe('未知行动类型！');
     });
+
+    it('skill：委托 player.playerSkill 成功时触发资源系统 onAttack/generate 与 passive.onAttack', async () => {
+      const store = setupFightingStore([makeEnemy()]);
+      const sys = makeResourceSystem({ type: 'rage' });
+      mocks.state!.resourceSystems.value = [sys];
+      mocks.player!.playerSkill.mockResolvedValueOnce({
+        success: true, type: 'skill', damage: 40, isDodge: false, message: '技能命中',
+      });
+
+      const result = await store.playerAction({ type: 'skill', skillId: 'fireball' });
+
+      expect(result.success).toBe(true);
+      expect(result.damage).toBe(40);
+      expect(mocks.player!.playerSkill).toHaveBeenCalledWith('fireball');
+      // 技能命中后触发资源系统 onAttack 和 generate
+      expect(sys.onAttack).toHaveBeenCalled();
+      expect(sys.generate).toHaveBeenCalledWith(1, 'skill');
+      // 触发被动技能 onAttack 钩子
+      expect(mocks.passive!.onAttack).toHaveBeenCalledWith(40);
+    });
+
+    it('skill：闪避时不触发资源系统与被动钩子', async () => {
+      const store = setupFightingStore([makeEnemy()]);
+      const sys = makeResourceSystem({ type: 'rage' });
+      mocks.state!.resourceSystems.value = [sys];
+      mocks.player!.playerSkill.mockResolvedValueOnce({
+        success: true, type: 'skill', isDodge: true, message: '闪避',
+      });
+
+      await store.playerAction({ type: 'skill', skillId: 'fireball' });
+
+      expect(sys.onAttack).not.toHaveBeenCalled();
+      expect(sys.generate).not.toHaveBeenCalled();
+      expect(mocks.passive!.onAttack).not.toHaveBeenCalled();
+    });
+
+    it('item：委托 player.playerUseItem 并返回结果', async () => {
+      const store = setupFightingStore([makeEnemy()]);
+      mocks.player!.playerUseItem.mockResolvedValueOnce({
+        success: true, type: 'item', message: '使用药水',
+      });
+
+      const result = await store.playerAction({ type: 'item', itemId: 'potion' });
+
+      expect(result.success).toBe(true);
+      expect(mocks.player!.playerUseItem).toHaveBeenCalledWith('potion');
+    });
+
+    it('attack：success=false 时不触发资源系统与被动钩子', async () => {
+      const store = setupFightingStore([makeEnemy()]);
+      const sys = makeResourceSystem({ type: 'rage' });
+      mocks.state!.resourceSystems.value = [sys];
+      mocks.player!.playerAttack.mockReturnValueOnce({
+        success: false, type: 'attack', message: '攻击未命中', isDodge: false,
+      });
+
+      await store.playerAction({ type: 'attack' });
+
+      expect(sys.onAttack).not.toHaveBeenCalled();
+      expect(mocks.passive!.onAttack).not.toHaveBeenCalled();
+    });
+
+    it('playerAction 内部抛错时被 catch 并返回失败结果', async () => {
+      const store = setupFightingStore([makeEnemy()]);
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mocks.player!.playerAttack.mockImplementationOnce(() => {
+        throw new Error('内部异常');
+      });
+
+      const result = await store.playerAction({ type: 'attack' });
+
+      expect(result.success).toBe(false);
+      expect(result.type).toBe('attack');
+      expect(result.message).toBe('行动执行失败');
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[CombatStore] 玩家行动异常'),
+        expect.any(Error),
+      );
+      errorSpy.mockRestore();
+    });
   });
 
   // -------------------- Actions：canCastSkill / consumeSkillResource --------------------
@@ -802,6 +1079,21 @@ describe('useCombatStore - 战斗 Store', () => {
 
       expect(store.canCastSkill(skill)).toBe(false);
     });
+
+    it('技能 resourceType 不匹配任何资源系统时返回 true（回退到默认 MP 系统）', () => {
+      const store = setupFightingStore([makeEnemy()]);
+      // 资源系统为 rage，但技能需要 combo
+      const sys = makeResourceSystem({ type: 'rage', hasEnough: vi.fn(() => false) });
+      mocks.state!.resourceSystems.value = [sys];
+      const skill = {
+        id: 's1', name: '连击技能', resourceType: 'combo', resourceCost: 5,
+      } as unknown as Skill;
+
+      // 无匹配资源系统，回退到默认 MP 系统，返回 true
+      expect(store.canCastSkill(skill)).toBe(true);
+      // rage 系统的 hasEnough 不应被调用
+      expect(sys.hasEnough).not.toHaveBeenCalled();
+    });
   });
 
   describe('Actions：consumeSkillResource', () => {
@@ -821,6 +1113,42 @@ describe('useCombatStore - 战斗 Store', () => {
 
       expect(store.consumeSkillResource(skill)).toBe(true);
       expect(sys.consume).toHaveBeenCalledWith(20);
+    });
+
+    it('技能 resourceType 不匹配任何资源系统时返回 true（不消耗专属资源）', () => {
+      const store = setupFightingStore([makeEnemy()]);
+      const sys = makeResourceSystem({ type: 'rage', consume: vi.fn(() => false) });
+      mocks.state!.resourceSystems.value = [sys];
+      const skill = {
+        id: 's1', name: '连击技能', resourceType: 'combo', resourceCost: 5,
+      } as unknown as Skill;
+
+      // 无匹配资源系统，不消耗专属资源，返回 true
+      expect(store.consumeSkillResource(skill)).toBe(true);
+      expect(sys.consume).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------- Actions：dispose --------------------
+  describe('Actions：dispose 资源释放', () => {
+    it('调用 state.cleanup 清理战斗定时器与状态', () => {
+      const store = useCombatStore();
+      store.dispose();
+      expect(mocks.state!.cleanup).toHaveBeenCalledTimes(1);
+    });
+
+    it('dispose 后状态回到初始值（idle）', () => {
+      const store = setupFightingStore([makeEnemy()]);
+      expect(store.state).toBe('fighting');
+      store.dispose();
+      expect(store.state).toBe('idle');
+    });
+
+    it('多次调用 dispose 安全（幂等）', () => {
+      const store = useCombatStore();
+      store.dispose();
+      store.dispose();
+      expect(mocks.state!.cleanup).toHaveBeenCalledTimes(2);
     });
   });
 });

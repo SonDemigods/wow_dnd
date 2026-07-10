@@ -23,6 +23,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ref } from 'vue';
+import { flushPromises } from '@vue/test-utils';
 import {
   useBossMechanics,
   type IBossContext,
@@ -474,6 +475,212 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       expect(() => boss.applyMechanicEffect(enemy, 'stun_player', phase)).not.toThrow();
       // stun 效果仍会添加（用默认参数）
       expect(state.playerEffects.value.effects).toHaveLength(1);
+    });
+  });
+
+  // -------------------- applyMechanicEffect: summon_minions（异步召唤小怪） --------------------
+
+  describe('applyMechanicEffect：summon_minions 异步召唤小怪', () => {
+    it('pendingSummons 为 0 时不调用 createMinion / rebuildInitiativeOrder', async () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock();
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ name: '召唤Boss', pendingSummons: 0 });
+      const phase = makePhase({
+        mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
+      });
+
+      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      await flushPromises();
+
+      expect(bossCtx.createMinion).not.toHaveBeenCalled();
+      expect(bossCtx.rebuildInitiativeOrder).not.toHaveBeenCalled();
+      expect(log.addCombatLog).not.toHaveBeenCalled();
+    });
+
+    it('pendingSummons 缺失（undefined）时不调用 createMinion', async () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock();
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ name: '召唤Boss' });
+      const phase = makePhase({
+        mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
+      });
+
+      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      await flushPromises();
+
+      expect(bossCtx.createMinion).not.toHaveBeenCalled();
+    });
+
+    it('成功召唤多个小怪：调用 createMinion 多次、添加到 enemyPositions/enemyIds、调用 rebuildInitiativeOrder、记录日志', async () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock({
+        createMinion: vi.fn()
+          .mockResolvedValueOnce({ id: 'm1', name: '史莱姆A' })
+          .mockResolvedValueOnce({ id: 'm2', name: '史莱姆B' }),
+      });
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ id: 'boss-summon', name: '召唤师', level: 3, pendingSummons: 2 });
+      const phase = makePhase({
+        mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
+      });
+
+      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      await flushPromises();
+
+      // createMinion 调用 2 次，参数为 ('slime', bossLevel)
+      expect(bossCtx.createMinion).toHaveBeenCalledTimes(2);
+      expect(bossCtx.createMinion).toHaveBeenCalledWith('slime', 3);
+      // 小怪分配到前排，列号 0 和 1
+      expect(state.enemyPositions.value['m1']).toEqual({ row: 'front', col: 0 });
+      expect(state.enemyPositions.value['m2']).toEqual({ row: 'front', col: 1 });
+      // enemyIds 追加小怪 id
+      expect(state.enemyIds.value).toEqual(['m1', 'm2']);
+      // 一次性重建先攻顺序
+      expect(bossCtx.rebuildInitiativeOrder).toHaveBeenCalledTimes(1);
+      // 每个小怪一条日志
+      expect(log.addCombatLog).toHaveBeenCalledTimes(2);
+      const firstCall = log.addCombatLog.mock.calls[0][0];
+      expect(firstCall.message).toContain('召唤了');
+      expect(firstCall.message).toContain('史莱姆A');
+      expect(firstCall.targetId).toBe('m1');
+      expect(firstCall.eventType).toBe('combat_event');
+      // finally 重置 pendingSummons
+      expect(enemy.pendingSummons).toBe(0);
+    });
+
+    it('createMinion 返回 null 时跳过该小怪但仍处理其他小怪', async () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock({
+        createMinion: vi.fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce({ id: 'm2', name: '史莱姆B' }),
+      });
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ name: '召唤师', pendingSummons: 2 });
+      const phase = makePhase({
+        mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
+      });
+
+      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      await flushPromises();
+
+      // 仅 m2 被添加
+      expect(state.enemyIds.value).toEqual(['m2']);
+      expect(state.enemyPositions.value['m2']).toEqual({ row: 'front', col: 0 });
+      // 仍然调用 rebuildInitiativeOrder（因为 newMinions.length > 0）
+      expect(bossCtx.rebuildInitiativeOrder).toHaveBeenCalledTimes(1);
+      // 仅一条日志
+      expect(log.addCombatLog).toHaveBeenCalledTimes(1);
+      // pendingSummons 被重置
+      expect(enemy.pendingSummons).toBe(0);
+    });
+
+    it('所有 createMinion 都返回 null 时不调用 rebuildInitiativeOrder 与日志', async () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock({
+        createMinion: vi.fn().mockResolvedValue(null),
+      });
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ name: '召唤师', pendingSummons: 2 });
+      const phase = makePhase({
+        mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
+      });
+
+      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      await flushPromises();
+
+      expect(bossCtx.rebuildInitiativeOrder).not.toHaveBeenCalled();
+      expect(log.addCombatLog).not.toHaveBeenCalled();
+      // finally 仍重置 pendingSummons
+      expect(enemy.pendingSummons).toBe(0);
+    });
+
+    it('createMinion 抛错时调用 console.warn 并在 finally 重置 pendingSummons', async () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const bossCtx = makeBossCtxMock({
+        createMinion: vi.fn().mockRejectedValue(new Error('创建失败')),
+      });
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ name: '召唤师', pendingSummons: 2 });
+      const phase = makePhase({
+        mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
+      });
+
+      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      await flushPromises();
+
+      // 异常被 catch，输出 warn 日志
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('召唤小怪失败'));
+      // finally 仍重置 pendingSummons
+      expect(enemy.pendingSummons).toBe(0);
+      // 不调用 rebuildInitiativeOrder（因为异常前 newMinions 为空）
+      expect(bossCtx.rebuildInitiativeOrder).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it('已有前排位置时寻找可用列（覆盖 find 命中分支）', async () => {
+      const state = makeStateMock();
+      // 预设前排已有 col 0 和 col 1
+      state.enemyPositions.value = {
+        existing1: { row: 'front', col: 0 },
+        existing2: { row: 'front', col: 1 },
+      };
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock({
+        createMinion: vi.fn().mockResolvedValue({ id: 'm1', name: '新史莱姆' }),
+      });
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ name: '召唤师', pendingSummons: 1 });
+      const phase = makePhase({
+        mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
+      });
+
+      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      await flushPromises();
+
+      // 应该分配到 col 2（最后一个可用列）
+      expect(state.enemyPositions.value['m1']).toEqual({ row: 'front', col: 2 });
+    });
+
+    it('前排位置已满（col 0/1/2 全占）时回退到 col 0（覆盖 ?? 0 分支）', async () => {
+      const state = makeStateMock();
+      state.enemyPositions.value = {
+        e0: { row: 'front', col: 0 },
+        e1: { row: 'front', col: 1 },
+        e2: { row: 'front', col: 2 },
+      };
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock({
+        createMinion: vi.fn().mockResolvedValue({ id: 'm1', name: '新史莱姆' }),
+      });
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ name: '召唤师', pendingSummons: 1 });
+      const phase = makePhase({
+        mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
+      });
+
+      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      await flushPromises();
+
+      // 三列全满，find 返回 undefined，回退到 ?? 0
+      expect(state.enemyPositions.value['m1']).toEqual({ row: 'front', col: 0 });
     });
   });
 

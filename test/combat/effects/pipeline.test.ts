@@ -401,6 +401,62 @@ describe('processDamagePipeline — 完整 4 阶段集成', () => {
 });
 
 // ============================================================
+// NaN 防御 — 效果系统返回 NaN 时归零/归一，防止腐蚀 HP 状态
+// ============================================================
+
+describe('processDamagePipeline — NaN 防御', () => {
+  let registry: EffectHandlerRegistry;
+
+  beforeEach(() => {
+    registry = new EffectHandlerRegistry();
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+  });
+
+  it('攻击方修正返回 NaN 时 safeAttackerMod 归 1（expectedDamage = baseDamage）', () => {
+    // 注册一个返回 NaN 的攻击方修正处理器
+    registry.register({
+      type: 'attack_up',
+      getAttackerDamageMod: () => NaN,
+    });
+    const attacker = makeCtx();
+    const defender = makeCtx({ baseStats: { physicalAttack: 30, physicalDefense: 20, magicAttack: 25, magicDefense: 15, speed: 10 } });
+    const { attacker: ae, defender: de } = makeEmptyContainers();
+    addEffectToContainer(ae, makeEffect('attack_up', 20, 3));
+    // base = 14, attackerMod = NaN → safeAttackerMod = 1, expected = floor(14 * 1) = 14
+    const result = processDamagePipeline(registry, ae, de, attacker, defender, 'physical');
+    expect(result.expectedDamage).toBe(14);
+  });
+
+  it('防御方修正返回 NaN 时 safeDefenderMod 归 1（actualDamage = expectedDamage）', () => {
+    registry.register({
+      type: 'defense_up',
+      getDefenderDamageMod: () => NaN,
+    });
+    const attacker = makeCtx();
+    const defender = makeCtx({ baseStats: { physicalAttack: 30, physicalDefense: 20, magicAttack: 25, magicDefense: 15, speed: 10 } });
+    const { attacker: ae, defender: de } = makeEmptyContainers();
+    addEffectToContainer(de, makeEffect('defense_up', 20, 3));
+    // base = 14, defenderMod = NaN → safeDefenderMod = 1, actual = floor(14 * 1) = 14
+    const result = processDamagePipeline(registry, ae, de, attacker, defender, 'physical');
+    expect(result.actualDamage).toBe(14);
+  });
+
+  it('护盾吸收返回 NaN 时 rawFinal 为 NaN → finalDamage 归 0', () => {
+    registry.register({
+      type: 'shield',
+      getDamageAbsorb: () => NaN,
+    });
+    const attacker = makeCtx();
+    const defender = makeCtx({ baseStats: { physicalAttack: 30, physicalDefense: 20, magicAttack: 25, magicDefense: 15, speed: 10 } });
+    const { attacker: ae, defender: de } = makeEmptyContainers();
+    addEffectToContainer(de, makeEffect('shield', 100, 3));
+    // base = 14, actual = 14, absorbed = NaN → rawFinal = 14 - NaN = NaN → finalDamage = 0
+    const result = processDamagePipeline(registry, ae, de, attacker, defender, 'physical');
+    expect(result.finalDamage).toBe(0);
+  });
+});
+
+// ============================================================
 // baseDamageOverride — 跳过阶段 0
 // ============================================================
 

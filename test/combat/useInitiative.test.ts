@@ -21,7 +21,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ref, computed } from 'vue';
 import { useInitiative } from '@/modules/combat/composables/useInitiative';
 import { createEmptyContainer, type EffectContainer } from '@/modules/combat/effects';
-import type { EnemyInstance } from '@/modules/enemy/types';
+import { processBossPhaseMechanics, applyPhaseStats } from '@/modules/boss/engine';
+import type { EnemyInstance, BossPhase } from '@/modules/enemy/types';
 import type { CombatResult } from '@/modules/combat/types';
 import type { Stats } from '@/modules/character/types';
 import type { ICombatContext } from '@/modules/combat/combatContext';
@@ -50,7 +51,11 @@ vi.mock('@/modules/enemy/store', () => ({
 // mock eventBus 避免触发真实监听器
 vi.mock('@/modules/bus', () => ({
   eventBus: { emit: vi.fn() },
-  GameEvents: { COMBAT_TURN_END: 'combat:turn:end' },
+  GameEvents: {
+    COMBAT_TURN_END: 'combat:turn:end',
+    COMBAT_PLAYER_TURN: 'combat_player_turn',
+    COMBAT_BOSS_PHASE: 'combat_boss_phase',
+  },
 }));
 
 // mock boss engine 避免触发真实阶段机制
@@ -100,8 +105,10 @@ function makeStateMock() {
     enemyEffects: ref<Record<string, EffectContainer>>({}),
     enemyPositions: ref<Record<string, { row: 'front' | 'back'; col: number }>>({}),
     bossPhaseManagers: new Map<string, unknown>(),
+    resourceSystems: ref<unknown[]>([]),
     effectRegistry: {
       reduceSum: vi.fn(() => 0),
+      tickAll: vi.fn(() => ({ expiredIds: [], dotDamage: 0, regenAmount: 0 })),
     },
     enemies: computed(() => []),
     aliveEnemies: computed(() => []),
@@ -434,6 +441,704 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       expect(typeof init.advanceToNextUnit).toBe('function');
       expect(typeof init.singleEnemyTurn).toBe('function');
       expect(typeof init.endPlayerTurn).toBe('function');
+    });
+  });
+
+  // -------------------- advanceTurn：空数组防御 --------------------
+
+  describe('advanceTurn：空数组防御', () => {
+    it('initiativeOrder 为空时返回空 unitId 且不推进索引', () => {
+      const state = makeStateMock();
+      state.initiativeOrder.value = [];
+      state.currentInitiativeIndex.value = 0;
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      const result = init.advanceTurn();
+
+      expect(result.unitId).toBe('');
+      expect(result.isPlayer).toBe(false);
+      // 索引不变（取模运算未执行）
+      expect(state.currentInitiativeIndex.value).toBe(0);
+    });
+  });
+
+  // -------------------- advanceToNextUnit --------------------
+
+  describe('advanceToNextUnit：推进到下一行动者', () => {
+    it('state 非 fighting 时直接 return 不推进', () => {
+      const state = makeStateMock();
+      state.state.value = 'idle';
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 0;
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      // 索引未推进
+      expect(state.currentInitiativeIndex.value).toBe(0);
+    });
+
+    it('推进到玩家回合时设置 turn=player 并触发 tickCooldowns/onTurnStart/emit', () => {
+      const state = makeStateMock();
+      state.initiativeOrder.value = ['e1', 'player'];
+      state.currentInitiativeIndex.value = 0; // 当前 e1
+      const resourceOnTurnStart = vi.fn();
+      state.resourceSystems.value = [{ onTurnStart: resourceOnTurnStart }];
+      const ctx = makeMockCtx();
+      const passive = makePassiveMock();
+      const init = useInitiative(state, makeLogMock(), ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), passive);
+
+      init.advanceToNextUnit();
+
+      // 推进到索引 1（player）
+      expect(state.currentInitiativeIndex.value).toBe(1);
+      expect(state.turn.value).toBe('player');
+      expect(ctx.skill.tickCooldowns).toHaveBeenCalled();
+      expect(resourceOnTurnStart).toHaveBeenCalled();
+      expect(passive.onTurnStart).toHaveBeenCalled();
+    });
+
+    it('推进到敌人回合时设置 turn=enemy 并启动 setTimeout 调度', () => {
+      vi.useFakeTimers();
+      const state = makeStateMock();
+      const enemy = makeEnemy({ id: 'e1', hp: 50 });
+      state.enemies = computed(() => [enemy]);
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 0; // 当前 player
+      const ctx = makeMockCtx();
+      const enemyAction = makeEnemyActionMock();
+      const init = useInitiative(state, makeLogMock(), ctx, enemyAction, makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      // 推进到索引 1（e1，enemy）
+      expect(state.currentInitiativeIndex.value).toBe(1);
+      expect(state.turn.value).toBe('enemy');
+      expect(state.turnTimerId.value).not.toBeNull();
+
+      // 推进 timer，触发 singleEnemyTurn
+      vi.advanceTimersByTime(500);
+      expect(enemyAction.enemyAction).toHaveBeenCalled();
+      // timer 已清空
+      expect(state.turnTimerId.value).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it('combatSpeed=2 时 setTimeout 延迟减半（250ms）', () => {
+      vi.useFakeTimers();
+      const state = makeStateMock();
+      const enemy = makeEnemy({ id: 'e1', hp: 50 });
+      state.enemies = computed(() => [enemy]);
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 0;
+      state.combatSpeed.value = 2;
+      const ctx = makeMockCtx();
+      const enemyAction = makeEnemyActionMock();
+      const init = useInitiative(state, makeLogMock(), ctx, enemyAction, makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      // 2x 速度下延迟为 250ms，249ms 不足以触发
+      vi.advanceTimersByTime(249);
+      expect(enemyAction.enemyAction).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+      expect(enemyAction.enemyAction).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it('先攻索引回绕到 0 时触发 tickAllEffects 并 turnCount+1', () => {
+      const state = makeStateMock();
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1; // 当前 e1，推进后回绕到 0
+      const ctx = makeMockCtx();
+      const init = useInitiative(state, makeLogMock(), ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      // 索引回绕到 0，触发 tickAllEffects
+      expect(state.currentInitiativeIndex.value).toBe(0);
+      expect(state.effectRegistry.tickAll).toHaveBeenCalled();
+      expect(state.turnCount.value).toBe(1);
+    });
+
+    it('resourceSystems 中 onTurnStart 为空时安全跳过（可选链）', () => {
+      const state = makeStateMock();
+      state.initiativeOrder.value = ['e1', 'player'];
+      state.currentInitiativeIndex.value = 0;
+      // onTurnStart 为 undefined 的资源系统
+      state.resourceSystems.value = [{ onTurnStart: undefined }];
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      expect(() => init.advanceToNextUnit()).not.toThrow();
+    });
+
+    it('passive 未传入时不调用 onTurnStart（可选链）', () => {
+      const state = makeStateMock();
+      state.initiativeOrder.value = ['e1', 'player'];
+      state.currentInitiativeIndex.value = 0;
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn());
+
+      expect(() => init.advanceToNextUnit()).not.toThrow();
+      expect(state.turn.value).toBe('player');
+    });
+  });
+
+  // -------------------- tickAllEffects --------------------
+
+  describe('tickAllEffects：效果 tick 处理', () => {
+    it('player dotDamage>0 时调用 takeDamage 并记录伤害日志', () => {
+      const state = makeStateMock();
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1; // 推进后回绕到 0
+      const ctx = makeMockCtx();
+      vi.mocked(state.effectRegistry.tickAll).mockReturnValue({ expiredIds: [], dotDamage: 15, regenAmount: 0 });
+      const log = makeLogMock();
+      const init = useInitiative(state, log, ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      expect(ctx.character.takeDamage).toHaveBeenCalledWith(15);
+      expect(log.addCombatLog).toHaveBeenCalledWith(expect.objectContaining({ damage: 15, eventType: 'combat_damage' }));
+    });
+
+    it('player regenAmount>0 时调用 receiveHeal 并记录恢复日志', () => {
+      const state = makeStateMock();
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1;
+      const ctx = makeMockCtx();
+      vi.mocked(state.effectRegistry.tickAll).mockReturnValue({ expiredIds: [], dotDamage: 0, regenAmount: 20 });
+      const log = makeLogMock();
+      const init = useInitiative(state, log, ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      expect(ctx.character.receiveHeal).toHaveBeenCalledWith(20);
+      expect(log.addCombatLog).toHaveBeenCalledWith(expect.objectContaining({ heal: 20, eventType: 'combat_heal' }));
+    });
+
+    it('enemy dotDamage>0 且敌人存在时调用 takeDamage 并记录日志', () => {
+      const state = makeStateMock();
+      const enemy = makeEnemy({ id: 'e1', hp: 50, maxHp: 50 });
+      state.enemies = computed(() => [enemy]);
+      state.enemyEffects.value = { e1: createEmptyContainer() };
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1;
+      const ctx = makeMockCtx();
+      ctx.enemy.getEnemyById = vi.fn(() => enemy);
+      // tickAll 第一次（player）返回 0，第二次（enemy e1）返回 dotDamage
+      vi.mocked(state.effectRegistry.tickAll)
+        .mockReturnValueOnce({ expiredIds: [], dotDamage: 0, regenAmount: 0 })
+        .mockReturnValueOnce({ expiredIds: [], dotDamage: 12, regenAmount: 0 });
+      const log = makeLogMock();
+      const init = useInitiative(state, log, ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      expect(ctx.enemy.takeDamage).toHaveBeenCalledWith('e1', 12);
+      expect(log.addCombatLog).toHaveBeenCalledWith(expect.objectContaining({ damage: 12, targetId: 'e1' }));
+    });
+
+    it('enemy regenAmount>0 且敌人存在时增加 hp 并记录恢复日志', () => {
+      const state = makeStateMock();
+      const enemy = makeEnemy({ id: 'e1', hp: 30, maxHp: 50 });
+      state.enemies = computed(() => [enemy]);
+      state.enemyEffects.value = { e1: createEmptyContainer() };
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1;
+      const ctx = makeMockCtx();
+      ctx.enemy.getEnemyById = vi.fn(() => enemy);
+      vi.mocked(state.effectRegistry.tickAll)
+        .mockReturnValueOnce({ expiredIds: [], dotDamage: 0, regenAmount: 0 })
+        .mockReturnValueOnce({ expiredIds: [], dotDamage: 0, regenAmount: 10 });
+      const log = makeLogMock();
+      const init = useInitiative(state, log, ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      // hp 增加，但不超过 maxHp
+      expect(enemy.hp).toBe(40);
+      expect(log.addCombatLog).toHaveBeenCalledWith(expect.objectContaining({ heal: 10, targetId: 'e1' }));
+    });
+
+    it('enemy regenAmount>0 时 hp 不超过 maxHp', () => {
+      const state = makeStateMock();
+      const enemy = makeEnemy({ id: 'e1', hp: 48, maxHp: 50 });
+      state.enemies = computed(() => [enemy]);
+      state.enemyEffects.value = { e1: createEmptyContainer() };
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1;
+      const ctx = makeMockCtx();
+      ctx.enemy.getEnemyById = vi.fn(() => enemy);
+      vi.mocked(state.effectRegistry.tickAll)
+        .mockReturnValueOnce({ expiredIds: [], dotDamage: 0, regenAmount: 0 })
+        .mockReturnValueOnce({ expiredIds: [], dotDamage: 0, regenAmount: 10 });
+      const init = useInitiative(state, makeLogMock(), ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      // hp 被 maxHp 限制为 50
+      expect(enemy.hp).toBe(50);
+    });
+
+    it('已死亡敌人（hp<=0）的效果容器被清理', () => {
+      const state = makeStateMock();
+      const deadEnemy = makeEnemy({ id: 'e1', hp: 0, maxHp: 50 });
+      state.enemies = computed(() => [deadEnemy]);
+      state.enemyEffects.value = { e1: createEmptyContainer() };
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1;
+      const ctx = makeMockCtx();
+      ctx.enemy.getEnemyById = vi.fn(() => deadEnemy);
+      const init = useInitiative(state, makeLogMock(), ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      // e1 因 hp<=0 被加入 deadEnemyIds，效果容器被删除
+      expect(state.enemyEffects.value.e1).toBeUndefined();
+    });
+
+    it('敌人不存在（getEnemyById 返回 null）时效果容器被清理', () => {
+      const state = makeStateMock();
+      state.enemies = computed(() => []);
+      state.enemyEffects.value = { ghostE1: createEmptyContainer() };
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1;
+      const ctx = makeMockCtx();
+      ctx.enemy.getEnemyById = vi.fn(() => null);
+      const init = useInitiative(state, makeLogMock(), ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      expect(state.enemyEffects.value.ghostE1).toBeUndefined();
+    });
+
+    it('character.hp<=0 时调用 endCombat("defeat") 并 saveLogs', () => {
+      const state = makeStateMock();
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1;
+      const ctx = makeMockCtx();
+      ctx.character.hp = 0; // 玩家已死亡
+      const log = makeLogMock();
+      const endCombat = vi.fn();
+      const init = useInitiative(state, log, ctx, makeEnemyActionMock(), makeBossMock(), endCombat, makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      expect(endCombat).toHaveBeenCalledWith('defeat');
+      expect(log.saveLogs).toHaveBeenCalled();
+    });
+
+    it('所有敌人 hp<=0 时调用 endCombat("victory")', () => {
+      const state = makeStateMock();
+      const deadEnemy = makeEnemy({ id: 'e1', hp: 0, maxHp: 50 });
+      state.enemies = computed(() => [deadEnemy]);
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1;
+      const ctx = makeMockCtx();
+      ctx.character.hp = 100;
+      const endCombat = vi.fn();
+      const init = useInitiative(state, makeLogMock(), ctx, makeEnemyActionMock(), makeBossMock(), endCombat, makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      expect(endCombat).toHaveBeenCalledWith('victory');
+    });
+
+    it('enemies 为空数组时不触发 victory（length>0 守卫）', () => {
+      const state = makeStateMock();
+      state.enemies = computed(() => []);
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1;
+      const ctx = makeMockCtx();
+      ctx.character.hp = 100;
+      const endCombat = vi.fn();
+      const init = useInitiative(state, makeLogMock(), ctx, makeEnemyActionMock(), makeBossMock(), endCombat, makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      // enemies 为空，不触发 victory
+      expect(endCombat).not.toHaveBeenCalled();
+    });
+
+    it('dotDamage 与 regenAmount 同时为 0 时不调用 takeDamage/receiveHeal', () => {
+      const state = makeStateMock();
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1;
+      const ctx = makeMockCtx();
+      vi.mocked(state.effectRegistry.tickAll).mockReturnValue({ expiredIds: [], dotDamage: 0, regenAmount: 0 });
+      const init = useInitiative(state, makeLogMock(), ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      expect(ctx.character.takeDamage).not.toHaveBeenCalled();
+      expect(ctx.character.receiveHeal).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------- singleEnemyTurn --------------------
+
+  describe('singleEnemyTurn：单个敌人回合', () => {
+    it('state 非 fighting 时直接 return', () => {
+      const state = makeStateMock();
+      state.state.value = 'idle';
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 0;
+      const enemyAction = makeEnemyActionMock();
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), enemyAction, makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('e1');
+
+      expect(enemyAction.enemyAction).not.toHaveBeenCalled();
+    });
+
+    it('敌人不存在于 enemies 列表时推进到下一单位', () => {
+      const state = makeStateMock();
+      state.enemies = computed(() => []);
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 0;
+      const enemyAction = makeEnemyActionMock();
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), enemyAction, makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('e1');
+
+      // enemyAction 未被调用（敌人不存在）
+      expect(enemyAction.enemyAction).not.toHaveBeenCalled();
+    });
+
+    it('敌人 hp<=0 时从先攻序列移除并清理效果容器', () => {
+      const state = makeStateMock();
+      const deadEnemy = makeEnemy({ id: 'e1', hp: 0 });
+      state.enemies = computed(() => [deadEnemy]);
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1; // 当前指向 e1
+      state.enemyEffects.value = { e1: createEmptyContainer() };
+      const enemyAction = makeEnemyActionMock();
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), enemyAction, makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('e1');
+
+      // e1 从先攻序列移除
+      expect(state.initiativeOrder.value).not.toContain('e1');
+      // 效果容器被清理
+      expect(state.enemyEffects.value.e1).toBeUndefined();
+      // enemyAction 未被调用
+      expect(enemyAction.enemyAction).not.toHaveBeenCalled();
+    });
+
+    it('敌人 hp<=0 且移除索引在当前索引之前时递减当前索引', () => {
+      const state = makeStateMock();
+      const deadEnemy = makeEnemy({ id: 'e1', hp: 0 });
+      state.enemies = computed(() => [deadEnemy]);
+      state.initiativeOrder.value = ['player', 'e1', 'e2'];
+      state.currentInitiativeIndex.value = 2; // 当前指向 e2
+      state.enemyEffects.value = { e1: createEmptyContainer() };
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('e1');
+
+      // e1 从先攻序列移除
+      expect(state.initiativeOrder.value).toEqual(['player', 'e2']);
+      // e1 在索引 1，当前索引 2，移除后递减为 1（e2）
+      // 然后 advanceToNextUnit 推进：(1+1)%2 = 0（player）
+      expect(state.currentInitiativeIndex.value).toBe(0);
+      expect(state.turn.value).toBe('player');
+    });
+
+    it('敌人活着时执行 enemyAction 并推进回合', () => {
+      const state = makeStateMock();
+      const enemy = makeEnemy({ id: 'e1', hp: 50 });
+      state.enemies = computed(() => [enemy]);
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1;
+      const ctx = makeMockCtx();
+      const enemyAction = makeEnemyActionMock();
+      const log = makeLogMock();
+      const init = useInitiative(state, log, ctx, enemyAction, makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('e1');
+
+      expect(enemyAction.enemyAction).toHaveBeenCalledWith(enemy);
+      expect(ctx.enemy.tickCooldowns).toHaveBeenCalledWith('e1');
+      expect(log.addCombatLog).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'combat_turn_start' }));
+    });
+
+    it('敌人行动后玩家 hp<=0 时调用 endCombat("defeat")', () => {
+      const state = makeStateMock();
+      const enemy = makeEnemy({ id: 'e1', hp: 50 });
+      state.enemies = computed(() => [enemy]);
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1;
+      const ctx = makeMockCtx();
+      ctx.character.hp = 0; // 玩家死亡
+      const enemyAction = makeEnemyActionMock();
+      const endCombat = vi.fn();
+      const log = makeLogMock();
+      const init = useInitiative(state, log, ctx, enemyAction, makeBossMock(), endCombat, makePassiveMock());
+
+      init.singleEnemyTurn('e1');
+
+      expect(endCombat).toHaveBeenCalledWith('defeat');
+      expect(log.saveLogs).toHaveBeenCalled();
+    });
+  });
+
+  // -------------------- singleEnemyTurn：Boss 阶段处理 --------------------
+
+  describe('singleEnemyTurn：Boss 阶段处理', () => {
+    /** 构造 BossPhase 配置 */
+    function makeBossPhase(overrides: Partial<BossPhase> = {}): BossPhase {
+      return {
+        hpThreshold: 0.5,
+        name: '狂暴阶段',
+        dialogue: ['尝尝我的厉害！', '感受愤怒吧！'],
+        transitionEffect: 'flame',
+        aiStrategy: 'aggressive',
+        mechanics: [{ type: 'enrage', intervalTurns: 1 }],
+        statMultipliers: { physicalAttack: 1.5 },
+        ...overrides,
+      };
+    }
+
+    it('Boss 阶段切换时应用属性并记录日志、emit 事件', () => {
+      const state = makeStateMock();
+      const bossEnemy = makeEnemy({ id: 'boss1', isBoss: true, hp: 30, maxHp: 100 });
+      const phase = makeBossPhase();
+      bossEnemy.phases = [phase];
+      state.enemies = computed(() => [bossEnemy]);
+      state.initiativeOrder.value = ['player', 'boss1'];
+      state.currentInitiativeIndex.value = 1;
+      // mock phaseManager 返回阶段切换
+      const phaseManager = {
+        getCurrentPhase: vi.fn(() => ({ phase, changed: true })),
+        reset: vi.fn(),
+      };
+      state.bossPhaseManagers.set('boss1', phaseManager);
+      // mock processBossPhaseMechanics 返回空（无机制触发）
+      vi.mocked(processBossPhaseMechanics).mockReturnValue([]);
+      const ctx = makeMockCtx();
+      const log = makeLogMock();
+      const init = useInitiative(state, log, ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('boss1');
+
+      // 阶段切换时调用 applyPhaseStats
+      expect(applyPhaseStats).toHaveBeenCalledWith(bossEnemy, phase);
+      // aiStrategy 被更新
+      expect(bossEnemy.aiStrategy).toBe('aggressive');
+      // 阶段转换日志
+      expect(log.addCombatLog).toHaveBeenCalledWith(expect.objectContaining({
+        eventType: 'combat_event',
+        message: expect.stringContaining('阶段转换'),
+      }));
+    });
+
+    it('Boss 阶段切换时发射 COMBAT_BOSS_PHASE 事件', async () => {
+      const state = makeStateMock();
+      const bossEnemy = makeEnemy({ id: 'boss1', isBoss: true, hp: 30, maxHp: 100 });
+      const phase = makeBossPhase();
+      bossEnemy.phases = [phase];
+      state.enemies = computed(() => [bossEnemy]);
+      state.initiativeOrder.value = ['player', 'boss1'];
+      state.currentInitiativeIndex.value = 1;
+      const phaseManager = {
+        getCurrentPhase: vi.fn(() => ({ phase, changed: true })),
+        reset: vi.fn(),
+      };
+      state.bossPhaseManagers.set('boss1', phaseManager);
+      vi.mocked(processBossPhaseMechanics).mockReturnValue([]);
+      const { eventBus, GameEvents } = await import('@/modules/bus');
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('boss1');
+
+      expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_BOSS_PHASE, expect.objectContaining({
+        enemyId: 'boss1',
+        phaseName: '狂暴阶段',
+      }));
+    });
+
+    it('Boss 阶段切换时 dialogue 逐条记录日志', () => {
+      const state = makeStateMock();
+      const bossEnemy = makeEnemy({ id: 'boss1', isBoss: true, hp: 30, maxHp: 100 });
+      const phase = makeBossPhase({ dialogue: ['第一句台词', '第二句台词'] });
+      bossEnemy.phases = [phase];
+      state.enemies = computed(() => [bossEnemy]);
+      state.initiativeOrder.value = ['player', 'boss1'];
+      state.currentInitiativeIndex.value = 1;
+      const phaseManager = {
+        getCurrentPhase: vi.fn(() => ({ phase, changed: true })),
+        reset: vi.fn(),
+      };
+      state.bossPhaseManagers.set('boss1', phaseManager);
+      vi.mocked(processBossPhaseMechanics).mockReturnValue([]);
+      const log = makeLogMock();
+      const init = useInitiative(state, log, makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('boss1');
+
+      // dialogue 每条记录一次日志
+      expect(log.addCombatLog).toHaveBeenCalledWith(expect.objectContaining({ message: '"第一句台词"' }));
+      expect(log.addCombatLog).toHaveBeenCalledWith(expect.objectContaining({ message: '"第二句台词"' }));
+    });
+
+    it('Boss 阶段未切换时不调用 applyPhaseStats', () => {
+      const state = makeStateMock();
+      const bossEnemy = makeEnemy({ id: 'boss1', isBoss: true, hp: 30, maxHp: 100 });
+      const phase = makeBossPhase();
+      bossEnemy.phases = [phase];
+      state.enemies = computed(() => [bossEnemy]);
+      state.initiativeOrder.value = ['player', 'boss1'];
+      state.currentInitiativeIndex.value = 1;
+      // changed: false，阶段未切换
+      const phaseManager = {
+        getCurrentPhase: vi.fn(() => ({ phase, changed: false })),
+        reset: vi.fn(),
+      };
+      state.bossPhaseManagers.set('boss1', phaseManager);
+      vi.mocked(processBossPhaseMechanics).mockReturnValue([]);
+      vi.mocked(applyPhaseStats).mockClear();
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      // 记录调用前的 turnCount（singleEnemyTurn 内部 advanceToNextUnit 会使索引回绕并 turnCount+1）
+      const expectedTurnCount = state.turnCount.value;
+
+      init.singleEnemyTurn('boss1');
+
+      // 阶段未切换，不调用 applyPhaseStats
+      expect(applyPhaseStats).not.toHaveBeenCalled();
+      // 但 currentPhase 存在，仍调用 processBossPhaseMechanics
+      expect(processBossPhaseMechanics).toHaveBeenCalledWith(bossEnemy, phase, expectedTurnCount);
+    });
+
+    it('Boss 阶段机制触发时记录机制日志并调用 applyMechanicEffect', () => {
+      const state = makeStateMock();
+      const bossEnemy = makeEnemy({ id: 'boss1', isBoss: true, hp: 30, maxHp: 100 });
+      const phase = makeBossPhase();
+      bossEnemy.phases = [phase];
+      state.enemies = computed(() => [bossEnemy]);
+      state.initiativeOrder.value = ['player', 'boss1'];
+      state.currentInitiativeIndex.value = 1;
+      const phaseManager = {
+        getCurrentPhase: vi.fn(() => ({ phase, changed: false })),
+        reset: vi.fn(),
+      };
+      state.bossPhaseManagers.set('boss1', phaseManager);
+      // mock processBossPhaseMechanics 返回触发的机制
+      vi.mocked(processBossPhaseMechanics).mockReturnValue(['enrage']);
+      const boss = makeBossMock();
+      const log = makeLogMock();
+      const init = useInitiative(state, log, makeMockCtx(), makeEnemyActionMock(), boss, vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('boss1');
+
+      // 机制日志
+      expect(log.addCombatLog).toHaveBeenCalledWith(expect.objectContaining({
+        message: expect.stringContaining('狂暴'),
+      }));
+      // 调用 boss.applyMechanicEffect
+      expect(boss.applyMechanicEffect).toHaveBeenCalledWith(bossEnemy, 'enrage', phase);
+    });
+
+    it('phaseManager 不存在时不处理阶段逻辑', () => {
+      const state = makeStateMock();
+      const bossEnemy = makeEnemy({ id: 'boss1', isBoss: true, hp: 30, maxHp: 100 });
+      bossEnemy.phases = [makeBossPhase()];
+      state.enemies = computed(() => [bossEnemy]);
+      state.initiativeOrder.value = ['player', 'boss1'];
+      state.currentInitiativeIndex.value = 1;
+      // bossPhaseManagers 不包含 boss1
+      vi.mocked(processBossPhaseMechanics).mockClear();
+      vi.mocked(applyPhaseStats).mockClear();
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('boss1');
+
+      expect(processBossPhaseMechanics).not.toHaveBeenCalled();
+      expect(applyPhaseStats).not.toHaveBeenCalled();
+    });
+
+    it('currentPhase 为 null 时不调用 applyPhaseStats 和 processBossPhaseMechanics', () => {
+      const state = makeStateMock();
+      const bossEnemy = makeEnemy({ id: 'boss1', isBoss: true, hp: 30, maxHp: 100 });
+      bossEnemy.phases = [makeBossPhase()];
+      state.enemies = computed(() => [bossEnemy]);
+      state.initiativeOrder.value = ['player', 'boss1'];
+      state.currentInitiativeIndex.value = 1;
+      // getCurrentPhase 返回 null
+      const phaseManager = {
+        getCurrentPhase: vi.fn(() => ({ phase: null, changed: false })),
+        reset: vi.fn(),
+      };
+      state.bossPhaseManagers.set('boss1', phaseManager);
+      vi.mocked(processBossPhaseMechanics).mockClear();
+      vi.mocked(applyPhaseStats).mockClear();
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('boss1');
+
+      expect(applyPhaseStats).not.toHaveBeenCalled();
+      expect(processBossPhaseMechanics).not.toHaveBeenCalled();
+    });
+
+    it('非 Boss 敌人不进入阶段处理逻辑', () => {
+      const state = makeStateMock();
+      const normalEnemy = makeEnemy({ id: 'e1', isBoss: false, hp: 50 });
+      state.enemies = computed(() => [normalEnemy]);
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1;
+      vi.mocked(processBossPhaseMechanics).mockClear();
+      vi.mocked(applyPhaseStats).mockClear();
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('e1');
+
+      expect(processBossPhaseMechanics).not.toHaveBeenCalled();
+      expect(applyPhaseStats).not.toHaveBeenCalled();
+    });
+
+    it('Boss phases 为空数组时不进入阶段处理', () => {
+      const state = makeStateMock();
+      const bossEnemy = makeEnemy({ id: 'boss1', isBoss: true, hp: 30, maxHp: 100 });
+      bossEnemy.phases = [];
+      state.enemies = computed(() => [bossEnemy]);
+      state.initiativeOrder.value = ['player', 'boss1'];
+      state.currentInitiativeIndex.value = 1;
+      vi.mocked(processBossPhaseMechanics).mockClear();
+      vi.mocked(applyPhaseStats).mockClear();
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('boss1');
+
+      expect(processBossPhaseMechanics).not.toHaveBeenCalled();
+      expect(applyPhaseStats).not.toHaveBeenCalled();
+    });
+
+    it('阶段切换且 dialogue 为空数组时不记录台词日志', () => {
+      const state = makeStateMock();
+      const bossEnemy = makeEnemy({ id: 'boss1', isBoss: true, hp: 30, maxHp: 100 });
+      const phase = makeBossPhase({ dialogue: [] });
+      bossEnemy.phases = [phase];
+      state.enemies = computed(() => [bossEnemy]);
+      state.initiativeOrder.value = ['player', 'boss1'];
+      state.currentInitiativeIndex.value = 1;
+      const phaseManager = {
+        getCurrentPhase: vi.fn(() => ({ phase, changed: true })),
+        reset: vi.fn(),
+      };
+      state.bossPhaseManagers.set('boss1', phaseManager);
+      vi.mocked(processBossPhaseMechanics).mockReturnValue([]);
+      const log = makeLogMock();
+      const init = useInitiative(state, log, makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('boss1');
+
+      // 不应记录台词日志（message 以双引号包裹的）
+      const dialogueCalls = vi.mocked(log.addCombatLog).mock.calls.filter(
+        call => typeof call[0] === 'object' && call[0] !== null && 'message' in call[0] && typeof (call[0] as { message: string }).message === 'string' && (call[0] as { message: string }).message.startsWith('"')
+      );
+      expect(dialogueCalls.length).toBe(0);
     });
   });
 });

@@ -166,6 +166,12 @@ describe('RageSystem 战士怒气', () => {
       expect(rage.currentValue).toBe(3);
     });
 
+    it('未知 source 时使用 amount 作为 cap（?? fallback 分支）', () => {
+      // RAGE_CAPS 中不存在 'unknown'，?? 回退到 amount 本身
+      rage.generate(8, 'unknown' as ResourceSource);
+      expect(rage.currentValue).toBe(8);
+    });
+
     it('多次生成累加，但单次不超过 cap', () => {
       rage.generate(100, 'attack'); // 5
       rage.generate(100, 'turn'); // +1 = 6

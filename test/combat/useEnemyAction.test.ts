@@ -22,7 +22,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ref } from 'vue';
 import { useEnemyAction } from '@/modules/combat/composables/useEnemyAction';
-import { createEmptyContainer, type EffectContainer } from '@/modules/combat/effects';
+import { createEmptyContainer, processDamagePipeline, type EffectContainer } from '@/modules/combat/effects';
+import { rollDodge } from '@/modules/combat/service';
 import type { EnemyInstance } from '@/modules/enemy/types';
 import type { AiStrategyType } from '@/modules/enemy/types';
 import type { ICombatContext } from '@/modules/combat/combatContext';
@@ -59,6 +60,7 @@ vi.mock('@/modules/bus', () => ({
   GameEvents: {
     COMBAT_DEAL_DAMAGE: 'combat:deal-damage',
     COMBAT_ENEMY_DEATH: 'combat:enemy-death',
+    COMBAT_DODGE: 'combat:dodge',
   },
 }));
 
@@ -195,6 +197,8 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
     pipeResultMock.finalDamage = 20;
     pipeResultMock.absorbed = 0;
     pipeResultMock.thorns = 0;
+    // 显式重置 rollDodge（clearAllMocks 不会重置 mockReturnValue）
+    vi.mocked(rollDodge).mockReturnValue(false);
   });
 
   // -------------------- getStrategy --------------------
@@ -357,6 +361,471 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
       expect(typeof action.enemyAttackWithSkill).toBe('function');
       expect(typeof action.enemyAction).toBe('function');
       expect(typeof action.getStrategy).toBe('function');
+    });
+  });
+
+  // -------------------- enemyBasicAttack --------------------
+
+  describe('enemyBasicAttack：敌人普通攻击', () => {
+    it('命中时返回 success=true 并包含伤害值', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '哥布林' });
+      const result = action.enemyBasicAttack(enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.type).toBe('attack');
+      expect(result.damage).toBe(20); // pipeResult.finalDamage
+      expect(result.message).toContain('哥布林');
+      // 验证调用了 calculateDamage
+      expect(ctx.enemy.calculateDamage).toHaveBeenCalledWith(enemy, ctx.character.attributes.physicalDefense);
+    });
+
+    it('玩家闪避时返回 isDodge=true 并记录 combat_miss 日志', () => {
+      vi.mocked(rollDodge).mockReturnValue(true);
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '哥布林' });
+      const result = action.enemyBasicAttack(enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.isDodge).toBe(true);
+      expect(result.message).toContain('闪避');
+      const logCall = log.addCombatLog.mock.calls[0][0];
+      expect(logCall.eventType).toBe('combat_miss');
+      expect(logCall.isDodge).toBe(true);
+    });
+
+    it('闪避时不调用 character.takeDamage', () => {
+      vi.mocked(rollDodge).mockReturnValue(true);
+      const state = makeStateMock();
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, makeLogMock(), ctx);
+
+      action.enemyBasicAttack(makeEnemy({ id: 'e1' }));
+
+      expect(ctx.character.takeDamage).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------- enemyAttackWithSkill --------------------
+
+  describe('enemyAttackWithSkill：敌人技能攻击', () => {
+    it('命中时返回 type=skill 并包含伤害值', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '法师' });
+      const result = action.enemyAttackWithSkill(30, { id: 'sk1', name: '火球术' }, enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.type).toBe('skill');
+      expect(result.damage).toBe(20); // pipeResult.finalDamage
+      expect(result.message).toContain('火球术');
+    });
+
+    it('玩家闪避时返回 isDodge=true', () => {
+      vi.mocked(rollDodge).mockReturnValue(true);
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '法师' });
+      const result = action.enemyAttackWithSkill(30, { id: 'sk1', name: '火球术' }, enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.isDodge).toBe(true);
+      expect(result.message).toContain('闪避');
+      // 闪避日志包含技能信息
+      const logCall = log.addCombatLog.mock.calls[0][0];
+      expect(logCall.skillId).toBe('sk1');
+      expect(logCall.skillName).toBe('火球术');
+    });
+
+    it('magic_damage 技能类型映射为 magical 伤害类型', () => {
+      const state = makeStateMock();
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, makeLogMock(), ctx);
+
+      vi.mocked(processDamagePipeline).mockClear();
+      action.enemyAttackWithSkill(30, { id: 'sk1', name: '火球术', type: 'magic_damage' }, makeEnemy({ id: 'e1' }));
+
+      const callArgs = vi.mocked(processDamagePipeline).mock.calls[0];
+      // 第 6 个参数（索引 5）为 damageType
+      expect(callArgs[5]).toBe('magical');
+    });
+
+    it('未提供 type 时默认映射为 physical 伤害类型', () => {
+      const state = makeStateMock();
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, makeLogMock(), ctx);
+
+      vi.mocked(processDamagePipeline).mockClear();
+      action.enemyAttackWithSkill(30, { id: 'sk1', name: '重击' }, makeEnemy({ id: 'e1' }));
+
+      const callArgs = vi.mocked(processDamagePipeline).mock.calls[0];
+      expect(callArgs[5]).toBe('physical');
+    });
+
+    it('physical_damage 技能类型映射为 physical 伤害类型', () => {
+      const state = makeStateMock();
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, makeLogMock(), ctx);
+
+      vi.mocked(processDamagePipeline).mockClear();
+      action.enemyAttackWithSkill(30, { id: 'sk1', name: '猛击', type: 'physical_damage' }, makeEnemy({ id: 'e1' }));
+
+      const callArgs = vi.mocked(processDamagePipeline).mock.calls[0];
+      expect(callArgs[5]).toBe('physical');
+    });
+  });
+
+  // -------------------- enemyAction --------------------
+
+  describe('enemyAction：敌人行动决策', () => {
+    it('战斗已结束时返回 success=false', () => {
+      const state = makeStateMock();
+      state.state.value = 'idle';
+      const action = useEnemyAction(state, makeLogMock(), makeMockCtx());
+
+      const result = action.enemyAction(makeEnemy({ id: 'e1' }));
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('战斗已结束');
+    });
+
+    // -------- AOE 攻击分支 --------
+    it('aoeNextAttack=true 时执行范围攻击（命中）', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.calculateDamage.mockReturnValue(10);
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '巨龙', aoeNextAttack: true });
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.type).toBe('attack');
+      // aoeDamage = round(10 * 1.3) = 13，actualDamage = pipeResult.finalDamage = 20
+      expect(result.damage).toBe(20);
+      // aoeNextAttack 应被重置
+      expect(enemy.aoeNextAttack).toBe(false);
+      // 应记录 AOE 特殊日志（最后一条）
+      const lastLog = log.addCombatLog.mock.calls[log.addCombatLog.mock.calls.length - 1][0];
+      expect(lastLog.message).toContain('范围攻击');
+    });
+
+    it('aoeNextAttack=true 且玩家闪避时返回 isDodge=true', () => {
+      vi.mocked(rollDodge).mockReturnValue(true);
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '巨龙', aoeNextAttack: true });
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.isDodge).toBe(true);
+      expect(result.message).toContain('范围攻击');
+      expect(enemy.aoeNextAttack).toBe(false);
+    });
+
+    // -------- basic_attack 决策 --------
+    it('无可用技能时执行普通攻击', () => {
+      const state = makeStateMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([]);
+      const action = useEnemyAction(state, makeLogMock(), ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '史莱姆', aiStrategy: 'balanced' });
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.type).toBe('attack');
+      // 普通攻击调用 calculateDamage
+      expect(ctx.enemy.calculateDamage).toHaveBeenCalled();
+    });
+
+    // -------- skill 决策：useSkill 失败 → fallback --------
+    it('skill 决策但 useSkill 失败时回退到普通攻击', () => {
+      const mathSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      const state = makeStateMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'sk1', name: '火焰冲击' }]);
+      ctx.enemy.useSkill.mockReturnValue({ success: false, damage: 0, isHeal: false });
+      const action = useEnemyAction(state, makeLogMock(), ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '法师', aiStrategy: 'aggressive' });
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.type).toBe('attack'); // fallback 到 basic_attack
+      mathSpy.mockRestore();
+    });
+
+    // -------- skill 决策：isHeal 路径 --------
+    it('skill 决策且 isHeal=true 但找不到敌人数据时返回 failure', () => {
+      const mathSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      const state = makeStateMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'sk1', name: '火焰冲击' }]);
+      ctx.enemy.useSkill.mockReturnValue({ success: true, damage: -30, isHeal: true });
+      ctx.enemy.getEnemyById.mockReturnValue(null);
+      const action = useEnemyAction(state, makeLogMock(), ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '法师', aiStrategy: 'aggressive' });
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('找不到敌人数据');
+      mathSpy.mockRestore();
+    });
+
+    it('skill 决策且 isHeal=true 时恢复敌人生命值', () => {
+      const mathSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'sk1', name: '火焰冲击' }]);
+      ctx.enemy.useSkill.mockReturnValue({ success: true, damage: -30, isHeal: true });
+      const healedEnemy = makeEnemy({ id: 'e1', name: '法师' });
+      ctx.enemy.getEnemyById.mockReturnValue(healedEnemy);
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '法师', aiStrategy: 'aggressive' });
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.type).toBe('skill');
+      expect(result.heal).toBe(-30);
+      expect(result.message).toContain('恢复');
+      // 验证日志包含 combat_heal
+      const healLog = log.addCombatLog.mock.calls[0][0];
+      expect(healLog.eventType).toBe('combat_heal');
+      mathSpy.mockRestore();
+    });
+
+    // -------- skill 决策：isBuff + isDebuff 路径 --------
+    it('skill 决策且 isBuff + isDebuff 时对玩家施加减益效果', () => {
+      const mathSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      const state = makeStateMock();
+      state.effectRegistry = { get: vi.fn(() => undefined) };
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'sk1', name: '削弱术' }]);
+      ctx.enemy.useSkill.mockReturnValue({
+        success: true, damage: 0, isHeal: false,
+        isBuff: true, buffs: [{ type: 'attack_down', value: 5, turns: 2 }],
+      });
+      ctx.skill.getSkill.mockReturnValue({ type: 'debuff' } as never);
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '巫师', aiStrategy: 'aggressive' });
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.type).toBe('skill');
+      // 减益效果应写入 playerEffects
+      expect(state.playerEffects.value.effects.length).toBe(1);
+      expect(state.playerEffects.value.effects[0].type).toBe('attack_down');
+      // 日志包含"减益效果"
+      const debuffLog = log.addCombatLog.mock.calls.find(
+        (c: never[]) => (c[0] as { message: string }).message.includes('减益')
+      );
+      expect(debuffLog).toBeDefined();
+      mathSpy.mockRestore();
+    });
+
+    // -------- skill 决策：isBuff + !isDebuff（buff to enemy）路径 --------
+    it('skill 决策且 isBuff + 非减益时对敌人自身施加增益（创建新容器）', () => {
+      const mathSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      const state = makeStateMock();
+      state.effectRegistry = { get: vi.fn(() => undefined) };
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'sk1', name: '狂暴' }]);
+      ctx.enemy.useSkill.mockReturnValue({
+        success: true, damage: 0, isHeal: false,
+        isBuff: true, buffs: [{ type: 'attack_up', value: 10, turns: 3 }],
+      });
+      ctx.skill.getSkill.mockReturnValue({ type: 'buff' } as never);
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '战士', aiStrategy: 'aggressive' });
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.type).toBe('skill');
+      // 敌人效果容器被创建并写入增益
+      expect(state.enemyEffects.value['e1']).toBeDefined();
+      expect(state.enemyEffects.value['e1'].effects.length).toBe(1);
+      expect(state.enemyEffects.value['e1'].effects[0].type).toBe('attack_up');
+      // 日志包含"增益效果"
+      const buffLog = log.addCombatLog.mock.calls.find(
+        (c: never[]) => (c[0] as { message: string }).message.includes('增益')
+      );
+      expect(buffLog).toBeDefined();
+      mathSpy.mockRestore();
+    });
+
+    it('skill 决策且 isBuff 时复用已存在的敌人效果容器', () => {
+      const mathSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      const state = makeStateMock();
+      state.effectRegistry = { get: vi.fn(() => undefined) };
+      // 预先创建容器并放入一个已有效果
+      state.enemyEffects.value['e1'] = createEmptyContainer();
+      state.enemyEffects.value['e1'].effects.push({
+        id: 'old', type: 'defense_up', remainingTurns: 2, value: 5, source: 'enemy', sourceName: '战士',
+      });
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'sk1', name: '狂暴' }]);
+      ctx.enemy.useSkill.mockReturnValue({
+        success: true, damage: 0, isHeal: false,
+        isBuff: true, buffs: [{ type: 'attack_up', value: 10, turns: 3 }],
+      });
+      ctx.skill.getSkill.mockReturnValue({ type: 'buff' } as never);
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '战士', aiStrategy: 'aggressive' });
+      action.enemyAction(enemy);
+
+      // 容器中应有 2 个效果（旧 + 新）
+      expect(state.enemyEffects.value['e1'].effects.length).toBe(2);
+      mathSpy.mockRestore();
+    });
+
+    // -------- skill 决策：非 buff 非 heal → enemyAttackWithSkill --------
+    it('skill 决策且非 buff 非 heal 时执行技能攻击', () => {
+      const mathSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      const state = makeStateMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'sk1', name: '火焰冲击' }]);
+      ctx.enemy.useSkill.mockReturnValue({ success: true, damage: 25, isHeal: false });
+      ctx.skill.getSkill.mockReturnValue({ type: 'magic_damage' } as never);
+      const action = useEnemyAction(state, makeLogMock(), ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '法师', aiStrategy: 'aggressive' });
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.type).toBe('skill');
+      expect(result.damage).toBe(20); // pipeResult.finalDamage
+      mathSpy.mockRestore();
+    });
+
+    // -------- heal 决策 --------
+    it('heal 决策且 useSkill 失败时回退到普通攻击', () => {
+      const state = makeStateMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'heal1', name: '自我治疗', isHeal: true }]);
+      ctx.enemy.useSkill.mockReturnValue({ success: false, damage: 0, isHeal: false });
+      const action = useEnemyAction(state, makeLogMock(), ctx);
+
+      // defensive 策略在 hp < 40% 且有治疗技能时必定选择 heal
+      const enemy = makeEnemy({ id: 'e1', name: '牧师', aiStrategy: 'defensive', hp: 20, maxHp: 100 });
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.type).toBe('attack'); // fallback 到 basic_attack
+    });
+
+    it('heal 决策且找不到敌人数据时返回 failure', () => {
+      const state = makeStateMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'heal1', name: '自我治疗', isHeal: true }]);
+      ctx.enemy.useSkill.mockReturnValue({ success: true, damage: -30, isHeal: true });
+      ctx.enemy.getEnemyById.mockReturnValue(null);
+      const action = useEnemyAction(state, makeLogMock(), ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '牧师', aiStrategy: 'defensive', hp: 20, maxHp: 100 });
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('找不到敌人数据');
+    });
+
+    it('heal 决策成功时恢复敌人生命值', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'heal1', name: '自我治疗', isHeal: true }]);
+      ctx.enemy.useSkill.mockReturnValue({ success: true, damage: -30, isHeal: true });
+      ctx.enemy.getEnemyById.mockReturnValue(makeEnemy({ id: 'e1', name: '牧师' }));
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '牧师', aiStrategy: 'defensive', hp: 20, maxHp: 100 });
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.type).toBe('skill');
+      expect(result.heal).toBe(-30);
+      expect(result.message).toContain('恢复');
+    });
+
+    // -------- aiStrategy 未设置时默认 balanced --------
+    it('aiStrategy 未设置时使用 balanced 策略', () => {
+      const state = makeStateMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([]);
+      const action = useEnemyAction(state, makeLogMock(), ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
+      delete (enemy as { aiStrategy?: string }).aiStrategy;
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(true);
+      expect(ctx.enemy.calculateDamage).toHaveBeenCalled();
+    });
+  });
+
+  // -------------------- applyEnemyDamageToPlayer 补充 --------------------
+
+  describe('applyEnemyDamageToPlayer：补充分支', () => {
+    it('actualDamage > 0 时触发 resourceSystems 的 onDamaged 钩子', () => {
+      const state = makeStateMock();
+      const onDamagedSpy = vi.fn();
+      state.resourceSystems.value = [{ onDamaged: onDamagedSpy }];
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, makeLogMock(), ctx);
+
+      action.applyEnemyDamageToPlayer(makeEnemy({ id: 'e1' }), 30);
+
+      expect(onDamagedSpy).toHaveBeenCalledWith(20); // pipeResult.finalDamage
+    });
+
+    it('resourceSystems 中 onDamaged 为可选时不报错', () => {
+      const state = makeStateMock();
+      state.resourceSystems.value = [{}]; // 无 onDamaged 方法
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, makeLogMock(), ctx);
+
+      expect(() => action.applyEnemyDamageToPlayer(makeEnemy({ id: 'e1' }), 30)).not.toThrow();
+    });
+
+    it('damageReduction=0 时直接使用管线伤害值', () => {
+      pipeResultMock.finalDamage = 50;
+      const state = makeStateMock();
+      const passive = makePassiveMock();
+      passive.getDamageReduction.mockReturnValue(0);
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, makeLogMock(), ctx, passive);
+
+      const result = action.applyEnemyDamageToPlayer(makeEnemy({ id: 'e1' }), 50);
+
+      expect(result.actualDamage).toBe(50);
+      expect(ctx.character.takeDamage).toHaveBeenCalledWith(50);
     });
   });
 });

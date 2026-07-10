@@ -788,4 +788,193 @@ describe('useExplorationStore - 探索 Store', () => {
       expect(store.getGridCell(0, 0)?.completed).toBe(false);
     });
   });
+
+  // -------------------- Actions：enterArea 补充分支 --------------------
+  describe('Actions：enterArea 补充分支', () => {
+    it('getQuestRequiredMonsters：存在 kill 目标时收集对应 enemyId', async () => {
+      // mock 任务定义返回含 kill 目标的任务，覆盖 getQuestRequiredMonsters 内部循环
+      vi.mocked(crossModuleQuery.getQuestDefinitionsByBoard).mockResolvedValueOnce([
+        {
+          id: 'q1',
+          title: '击杀任务',
+          type: 'kill',
+          objectives: [
+            { key: 'kill_goblin', type: 'kill', target: 2, enemyId: 'goblin' },
+            { key: 'collect_ore', type: 'collect', target: 1, itemId: 'ore_1' },
+          ],
+        },
+      ]);
+
+      const store = useExplorationStore();
+      await store.enterArea('forest');
+
+      // getQuestDefinitionsByBoard 被调用
+      expect(crossModuleQuery.getQuestDefinitionsByBoard).toHaveBeenCalledWith('forest');
+      // 网格成功生成（questMonsters 已参与生成流程）
+      expect(store.grid.length).toBeGreaterThan(0);
+    });
+
+    it('pickRandomShop：无商店配置时不抛错并正常完成 enterArea', async () => {
+      vi.mocked(crossModuleQuery.getAllShopConfigs).mockResolvedValueOnce([]);
+
+      const store = useExplorationStore();
+      await store.enterArea('forest');
+
+      // 无商店配置时 pickRandomShop 走 false 分支，enterArea 仍正常完成
+      expect(store.currentAreaId).toBe('forest');
+      expect(store.isExploring).toBe(true);
+    });
+
+    it('buildAreaConfig：地点无 enemies/bosses 字段时使用空池兜底', async () => {
+      // 地点不带 enemies/bosses，覆盖 `|| []` 兜底分支
+      vi.mocked(crossModuleQuery.getLocationData).mockResolvedValue({
+        id: 'forest',
+        name: '森林',
+        levelRange: [1, 5],
+      });
+
+      const store = useExplorationStore();
+      await store.enterArea('forest');
+
+      expect(store.currentAreaId).toBe('forest');
+      expect(store.grid.length).toBeGreaterThan(0);
+    });
+  });
+
+  // -------------------- Actions：revealGrid 怪物兜底 id --------------------
+  describe('Actions：revealGrid - monster 兜底 id', () => {
+    it('monster 格子无 monsterId 时 triggerBattle 使用 goblin 兜底', async () => {
+      const battleSpy = vi.fn();
+      eventBus.on(GameEvents.EXPLORATION_BATTLE_TRIGGERED, battleSpy);
+
+      const store = useExplorationStore();
+      const monsterCell = makeCell({ x: 0, y: 0, type: 'monster', accessible: true });
+      store.$patch({
+        grid: makeSingleCellGrid(monsterCell),
+        currentAreaId: 'forest',
+      });
+
+      await store.revealGrid(0, 0);
+
+      // monster 无 monsterId 时兜底为 goblin
+      expect(battleSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ eventData: expect.objectContaining({ monsterId: 'goblin' }) })
+      );
+    });
+  });
+
+  // -------------------- Actions：onBattleResult 补充分支 --------------------
+  describe('Actions：onBattleResult 补充分支', () => {
+    it('pendingBattleCell 对应格子不存在时清空挂起状态并返回', async () => {
+      const store = useExplorationStore();
+      // 先通过 revealGrid monster 路径设置 pendingBattleCell
+      const monsterCell = makeCell({
+        x: 0, y: 0, type: 'monster', accessible: true, monsterId: 'goblin',
+      });
+      store.$patch({
+        grid: makeSingleCellGrid(monsterCell),
+        currentAreaId: 'forest',
+      });
+      await store.revealGrid(0, 0);
+
+      // 清空网格，使 pendingBattleCell 指向的格子不存在
+      store.$patch({ grid: [] });
+
+      // 不应抛错，直接返回
+      await store.onBattleResult(true);
+      expect(store.grid).toEqual([]);
+    });
+
+    it('胜利：格子已探索时不重复累加 visitedCells', async () => {
+      const store = useExplorationStore();
+      // 怪物格子已探索（explored=true），覆盖 `if (!cell.explored)` false 分支
+      const monsterCell = makeCell({
+        x: 0, y: 0, type: 'monster', accessible: true, explored: true, monsterId: 'goblin',
+      });
+      store.$patch({
+        grid: makeSingleCellGrid(monsterCell),
+        currentAreaId: 'forest',
+        visitedCells: 5,
+      });
+      await store.revealGrid(0, 0);
+
+      await store.onBattleResult(true);
+
+      // visitedCells 不增加（cell 已探索）
+      expect(store.visitedCells).toBe(5);
+      // 胜利后仍标记 completed
+      expect(store.getGridCell(0, 0)?.completed).toBe(true);
+    });
+
+    it('失败：格子已探索时不重复累加 visitedCells', async () => {
+      const store = useExplorationStore();
+      const monsterCell = makeCell({
+        x: 0, y: 0, type: 'monster', accessible: true, explored: true, monsterId: 'goblin',
+      });
+      store.$patch({
+        grid: makeSingleCellGrid(monsterCell),
+        currentAreaId: 'forest',
+        visitedCells: 4,
+      });
+      await store.revealGrid(0, 0);
+
+      await store.onBattleResult(false);
+
+      // visitedCells 不增加（cell 已探索）
+      expect(store.visitedCells).toBe(4);
+      // 失败时不标记 completed
+      expect(store.getGridCell(0, 0)?.completed).toBe(false);
+    });
+  });
+
+  // -------------------- Actions：revealGrid 已访问 shop/board 不累加 visitedCells --------------------
+  describe('Actions：revealGrid - shop/board 已访问守卫', () => {
+    it('shop 格子已访问过时 visitedCells 不重复累加', async () => {
+      const store = useExplorationStore();
+      // shop 已 visited，覆盖 `isNewlyVisited = !cell.visited` false 分支
+      const shopCell = makeCell({
+        x: 0, y: 0, type: 'shop', accessible: true, explored: true, visited: true,
+      });
+      store.$patch({
+        grid: makeSingleCellGrid(shopCell),
+        currentAreaId: 'forest',
+        visitedCells: 3,
+      });
+
+      await store.revealGrid(0, 0);
+
+      // 已访问过，visitedCells 不增加
+      expect(store.visitedCells).toBe(3);
+    });
+  });
+
+  // -------------------- Actions：applyEventChoice 无 icon 兜底 --------------------
+  describe('Actions：applyEventChoice - 无 icon 兜底', () => {
+    it('choice 无 icon 时日志使用默认 icon', async () => {
+      vi.mocked(applyEventEffect).mockResolvedValueOnce(false);
+      const store = useExplorationStore();
+
+      await store.applyEventChoice({
+        label: '神秘选项',
+        // 不传 icon，覆盖 `choice.icon || 'game-icons:choice'` 兜底分支
+        effect: { type: 'exp', amount: 10 },
+      });
+
+      expect(mocks.logStore.addLogEntry).toHaveBeenCalledWith(
+        expect.objectContaining({ icon: 'game-icons:choice', message: '选择：神秘选项' })
+      );
+    });
+  });
+
+  // -------------------- Actions：revealAllCells 无网格守卫 --------------------
+  describe('Actions：revealAllCells - 无网格守卫', () => {
+    it('有 currentAreaId 但 grid 为空时不执行', async () => {
+      const store = useExplorationStore();
+      store.$patch({ currentAreaId: 'forest', grid: [] });
+
+      await store.revealAllCells();
+
+      expect(explorationDbService.saveExplorationData).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -140,4 +140,54 @@ describe('BossPhaseManager', () => {
       expect(result.changed).toBe(true);
     });
   });
+
+  // -------------------- hpThreshold=0 基础阶段跳过（BIZ-23） --------------------
+
+  describe('基础阶段（hpThreshold=0）跳过逻辑', () => {
+    /** 构造含基础阶段（hpThreshold=0）的阶段配置 */
+    function makePhasesWithBase(): BossPhase[] {
+      return [
+        { hpThreshold: 1.0, name: '阶段1', dialogue: [], aiStrategy: 'balanced', mechanics: [] },
+        { hpThreshold: 0.5, name: '阶段2', dialogue: [], aiStrategy: 'aggressive', mechanics: [] },
+        { hpThreshold: 0.2, name: '濒死挣扎', dialogue: [], aiStrategy: 'boss_phase', mechanics: [] },
+        { hpThreshold: 0, name: '基础阶段', dialogue: [], aiStrategy: 'balanced', mechanics: [] },
+      ];
+    }
+
+    it('HP 满血时定位到阶段1（跳过基础阶段）', () => {
+      const phases = makePhasesWithBase();
+      const result = manager.getCurrentPhase(phases, 1000, 1000);
+      expect(result.phase?.name).toBe('阶段1');
+      expect(result.changed).toBe(true);
+    });
+
+    it('HP 降到 0 时不切回基础阶段，停留在濒死挣扎（BIZ-23）', () => {
+      const phases = makePhasesWithBase();
+      manager.getCurrentPhase(phases, 1000, 1000); // 阶段1
+      manager.getCurrentPhase(phases, 500, 1000); // 阶段2
+      manager.getCurrentPhase(phases, 200, 1000); // 濒死挣扎
+      // HP=0 时应跳过基础阶段（hpThreshold=0），停留在濒死挣扎
+      const result = manager.getCurrentPhase(phases, 0, 1000);
+      expect(result.phase?.name).toBe('濒死挣扎');
+      expect(result.changed).toBe(false);
+    });
+
+    it('仅含基础阶段（hpThreshold=0）时 HP 满血返回基础阶段', () => {
+      const phases: BossPhase[] = [
+        { hpThreshold: 0, name: '基础阶段', dialogue: [], aiStrategy: 'balanced', mechanics: [] },
+      ];
+      // 基础阶段被跳过，但 HP 高于所有非零阈值（无），返回最后一个阶段（基础阶段）
+      const result = manager.getCurrentPhase(phases, 1000, 1000);
+      expect(result.phase?.name).toBe('基础阶段');
+      expect(result.changed).toBe(true);
+    });
+
+    it('仅含基础阶段且 HP=0 时仍返回基础阶段（兜底返回最后一个）', () => {
+      const phases: BossPhase[] = [
+        { hpThreshold: 0, name: '基础阶段', dialogue: [], aiStrategy: 'balanced', mechanics: [] },
+      ];
+      const result = manager.getCurrentPhase(phases, 0, 1000);
+      expect(result.phase?.name).toBe('基础阶段');
+    });
+  });
 });

@@ -13,9 +13,9 @@
  *    - 格式校验
  *    - 唯一性
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { reactive, readonly, ref } from 'vue';
-import { toRawData, generateId } from '@/utils/db-helpers';
+import { toRawData, generateId, BaseDbService } from '@/utils/db-helpers';
 
 describe('toRawData 数据清洗', () => {
   it('普通对象返回深拷贝', () => {
@@ -139,5 +139,281 @@ describe('generateId 唯一 ID 生成', () => {
       ids.add(generateId('uniq'));
     }
     expect(ids.size).toBe(100);
+  });
+});
+
+// ============================================================================
+// BaseDbService 通用数据层基类
+// ============================================================================
+
+/** 测试用业务对象类型 */
+interface TestItem {
+  id: string;
+  name: string;
+  value: number;
+}
+
+/** 测试用 DB 存储格式（含额外时间戳） */
+interface TestItemStorage {
+  id: string;
+  name: string;
+  value: number;
+  _ts: number;
+}
+
+/** 创建 mock table，符合 BaseDbService 构造函数参数的接口 */
+function createMockTable() {
+  return {
+    put: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn(),
+    delete: vi.fn().mockResolvedValue(undefined),
+    toArray: vi.fn().mockResolvedValue([]),
+    bulkPut: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
+/** 默认子类：不覆盖 toStorage/toRuntime（直接返回原对象） */
+class DefaultTestService extends BaseDbService<TestItem> {
+  constructor(table: ReturnType<typeof createMockTable>) {
+    super(table, 'id');
+  }
+}
+
+/** 自定义子类：覆盖 toStorage/toRuntime 测试转换逻辑 */
+class CustomTestService extends BaseDbService<TestItem, TestItemStorage> {
+  constructor(table: ReturnType<typeof createMockTable>) {
+    super(table, 'id');
+  }
+  protected toStorage(data: TestItem): TestItemStorage {
+    return { ...data, _ts: 100 };
+  }
+  protected toRuntime(data: TestItemStorage): TestItem {
+    const { _ts: _omit, ...rest } = data;
+    return rest;
+  }
+}
+
+describe('BaseDbService 通用数据层基类', () => {
+  describe('save：保存单条记录', () => {
+    it('调用 toStorage + toRawData + table.put', async () => {
+      // Arrange
+      const table = createMockTable();
+      const service = new DefaultTestService(table);
+      const item: TestItem = { id: 'a', name: 'A', value: 1 };
+
+      // Act
+      await service.save(item);
+
+      // Assert
+      expect(table.put).toHaveBeenCalledTimes(1);
+      const saved = table.put.mock.calls[0][0];
+      expect(saved.id).toBe('a');
+      expect(saved.name).toBe('A');
+      // toRawData 深拷贝后应为不同引用
+      expect(saved).not.toBe(item);
+    });
+
+    it('自定义 toStorage 子类：转换后写入（含 _ts 字段）', async () => {
+      // Arrange
+      const table = createMockTable();
+      const service = new CustomTestService(table);
+      const item: TestItem = { id: 'b', name: 'B', value: 2 };
+
+      // Act
+      await service.save(item);
+
+      // Assert
+      const saved = table.put.mock.calls[0][0] as TestItemStorage;
+      expect(saved._ts).toBe(100);
+      expect(saved.name).toBe('B');
+    });
+  });
+
+  describe('saveAll：批量保存', () => {
+    it('调用 table.bulkPut 一次，传入数组', async () => {
+      // Arrange
+      const table = createMockTable();
+      const service = new DefaultTestService(table);
+      const items: TestItem[] = [
+        { id: 'a', name: 'A', value: 1 },
+        { id: 'b', name: 'B', value: 2 },
+      ];
+
+      // Act
+      await service.saveAll(items);
+
+      // Assert
+      expect(table.bulkPut).toHaveBeenCalledTimes(1);
+      const saved = table.bulkPut.mock.calls[0][0] as TestItem[];
+      expect(saved).toHaveLength(2);
+      expect(saved[0].id).toBe('a');
+      expect(saved[1].id).toBe('b');
+      // 每项都经过 toRawData 深拷贝
+      expect(saved[0]).not.toBe(items[0]);
+    });
+
+    it('空数组也正常调用 bulkPut', async () => {
+      // Arrange
+      const table = createMockTable();
+      const service = new DefaultTestService(table);
+
+      // Act
+      await service.saveAll([]);
+
+      // Assert
+      expect(table.bulkPut).toHaveBeenCalledWith([]);
+    });
+  });
+
+  describe('getById：按主键查询', () => {
+    it('存在时返回 toRuntime 转换后的对象', async () => {
+      // Arrange
+      const table = createMockTable();
+      table.get.mockResolvedValue({ id: 'a', name: 'A', value: 1, _ts: 100 });
+      const service = new CustomTestService(table);
+
+      // Act
+      const result = await service.getById('a');
+
+      // Assert
+      expect(table.get).toHaveBeenCalledWith('a');
+      expect(result).not.toBeNull();
+      expect(result!.id).toBe('a');
+      // toRuntime 应移除 _ts 字段
+      expect(result).not.toHaveProperty('_ts');
+    });
+
+    it('不存在时返回 null', async () => {
+      // Arrange
+      const table = createMockTable();
+      table.get.mockResolvedValue(undefined);
+      const service = new DefaultTestService(table);
+
+      // Act
+      const result = await service.getById('non-existent');
+
+      // Assert
+      expect(result).toBeNull();
+    });
+
+    it('默认 toRuntime（DefaultTestService 不覆盖）直接返回原对象', async () => {
+      // Arrange：DefaultTestService 不覆盖 toStorage/toRuntime，使用基类默认实现
+      const table = createMockTable();
+      table.get.mockResolvedValue({ id: 'a', name: 'A', value: 1 });
+      const service = new DefaultTestService(table);
+
+      // Act
+      const result = await service.getById('a');
+
+      // Assert：默认 toRuntime 直接返回（data as unknown as T）
+      expect(result).not.toBeNull();
+      expect(result!.id).toBe('a');
+      expect(result!.name).toBe('A');
+      expect(result!.value).toBe(1);
+    });
+  });
+
+  describe('getAll：获取全部记录', () => {
+    it('调用 toArray 并 map toRuntime', async () => {
+      // Arrange
+      const table = createMockTable();
+      table.toArray.mockResolvedValue([
+        { id: 'a', name: 'A', value: 1, _ts: 100 },
+        { id: 'b', name: 'B', value: 2, _ts: 200 },
+      ]);
+      const service = new CustomTestService(table);
+
+      // Act
+      const result = await service.getAll();
+
+      // Assert
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe('a');
+      expect(result[1].id).toBe('b');
+      // toRuntime 移除 _ts
+      expect(result[0]).not.toHaveProperty('_ts');
+    });
+
+    it('空表返回空数组', async () => {
+      // Arrange
+      const table = createMockTable();
+      table.toArray.mockResolvedValue([]);
+      const service = new DefaultTestService(table);
+
+      // Act
+      const result = await service.getAll();
+
+      // Assert
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('deleteById：按主键删除', () => {
+    it('调用 table.delete 传入主键', async () => {
+      // Arrange
+      const table = createMockTable();
+      const service = new DefaultTestService(table);
+
+      // Act
+      await service.deleteById('target-id');
+
+      // Assert
+      expect(table.delete).toHaveBeenCalledWith('target-id');
+    });
+  });
+
+  describe('getKey：获取主键值', () => {
+    it('默认 keyField="id" 时返回 id 字段', () => {
+      // Arrange
+      const table = createMockTable();
+      const service = new DefaultTestService(table);
+      const item: TestItem = { id: 'my-id', name: 'N', value: 0 };
+
+      // Act：调用 protected getKey（通过类型断言访问）
+      const key = (service as unknown as { getKey(data: TestItem): string }).getKey(item);
+
+      // Assert
+      expect(key).toBe('my-id');
+    });
+
+    it('自定义 keyField 时返回对应字段值', () => {
+      // Arrange：使用 name 作为主键
+      const table = createMockTable();
+      class NameKeyService extends BaseDbService<TestItem> {
+        constructor(t: ReturnType<typeof createMockTable>) {
+          super(t, 'name');
+        }
+      }
+      const service = new NameKeyService(table);
+      const item: TestItem = { id: 'x', name: 'key-by-name', value: 0 };
+
+      // Act
+      const key = (service as unknown as { getKey(data: TestItem): string }).getKey(item);
+
+      // Assert
+      expect(key).toBe('key-by-name');
+    });
+  });
+
+  describe('自定义 keyField', () => {
+    it('支持非 id 的主键字段名', async () => {
+      // Arrange
+      const table = createMockTable();
+      // 使用 name 作为主键
+      class NameKeyService extends BaseDbService<TestItem> {
+        constructor(t: ReturnType<typeof createMockTable>) {
+          super(t, 'name');
+        }
+      }
+      const service = new NameKeyService(table);
+      const item: TestItem = { id: 'x', name: 'custom-key', value: 0 };
+
+      // Act
+      await service.save(item);
+
+      // Assert：keyField 配置为 'name'
+      expect((service as unknown as { keyField: string }).keyField).toBe('name');
+      expect(table.put).toHaveBeenCalledTimes(1);
+    });
   });
 });

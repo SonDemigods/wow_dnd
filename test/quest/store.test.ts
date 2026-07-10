@@ -42,9 +42,14 @@ const mocks = vi.hoisted(() => ({
   },
   inventoryStore: {
     addItem: vi.fn(),
+    /** inventory 数组：acceptQuest 的 collect 初始进度扫描会读取此字段 */
+    inventory: [] as Array<{ itemId: string; count: number }>,
   },
   logStore: {
     addLogEntry: vi.fn(),
+  },
+  toast: {
+    show: vi.fn(),
   },
   questDb: {
     getAllQuestDefinitions: vi.fn().mockResolvedValue([]),
@@ -67,6 +72,7 @@ vi.mock('@/modules/character/store', () => ({ useCharacterStore: () => mocks.cha
 vi.mock('@/modules/inventory/store', () => ({ useInventoryStore: () => mocks.inventoryStore }));
 vi.mock('@/modules/log/store', () => ({ useLogStore: () => mocks.logStore }));
 vi.mock('@/modules/log/service', () => ({ generateLogId: vi.fn().mockReturnValue('log-id') }));
+vi.mock('@/composables/useToast', () => ({ useToast: () => mocks.toast }));
 
 import { questDbService } from '@/modules/quest/db';
 
@@ -120,6 +126,8 @@ describe('useQuestStore - 任务 Store', () => {
     eventBus.clearAll();
     // 重置 characterStore.level 为默认值（部分用例会修改）
     mocks.characterStore.level = 5;
+    // 重置 inventoryStore.inventory（collect 初始进度扫描测试会修改）
+    mocks.inventoryStore.inventory = [];
   });
 
   // -------------------- State 初始值 --------------------
@@ -735,6 +743,283 @@ describe('useQuestStore - 任务 Store', () => {
 
       expect(store.questInstances.size).toBe(0);
       expect(questDbService.clearAllQuestInstances).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // -------------------- Actions: init --------------------
+  describe('Actions: init', () => {
+    it('init 从 characterStore 获取角色ID 并执行初始化', async () => {
+      const def = makeDefinition();
+      vi.mocked(questDbService.getAllQuestDefinitions).mockResolvedValueOnce([def]);
+      vi.mocked(questDbService.getAllQuestInstances).mockResolvedValueOnce([]);
+
+      const store = useQuestStore();
+      // currentCharacterId 未设置，通过 _getCharacterId() 获取 'char-1'
+      await store.init();
+
+      expect(store.currentCharacterId).toBe('char-1');
+      expect(store.definitionList).toEqual([def]);
+    });
+
+    it('init 无角色ID时不执行初始化', async () => {
+      mocks.characterStore.getCharacterId.mockReturnValueOnce(null);
+      const store = useQuestStore();
+      await store.init();
+      expect(store.currentCharacterId).toBeNull();
+      expect(questDbService.getAllQuestDefinitions).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------- Actions: acceptQuest - collect 初始进度 --------------------
+  describe('Actions: acceptQuest - collect 初始进度扫描', () => {
+    it('接取 collect 任务时根据背包已有数量设置初始进度', async () => {
+      // Arrange：背包中已有 item_herb x 3
+      mocks.inventoryStore.inventory = [{ itemId: 'item_herb', count: 3 }];
+      const def = makeDefinition({
+        id: 'q-collect',
+        type: 'collect',
+        objectives: [makeCollectObjective({ key: 'collect_herb', target: 5, itemId: 'item_herb' })],
+      });
+      const store = useQuestStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        questDefinitions: defMap(def),
+      });
+
+      // Act
+      const result = await store.acceptQuest('q-collect');
+
+      // Assert
+      expect(result).toBe(true);
+      const inst = store.getQuestInstance('q-collect');
+      expect(inst!.progress).toEqual([
+        { objectiveKey: 'collect_herb', current: 3, target: 5 },
+      ]);
+    });
+
+    it('背包已有数量超过 target 时，初始进度上限为 target', async () => {
+      // Arrange：背包已有 10 个，target=5
+      mocks.inventoryStore.inventory = [{ itemId: 'item_herb', count: 10 }];
+      const def = makeDefinition({
+        id: 'q-collect-2',
+        type: 'collect',
+        objectives: [makeCollectObjective({ key: 'collect_herb', target: 5, itemId: 'item_herb' })],
+      });
+      const store = useQuestStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        questDefinitions: defMap(def),
+      });
+
+      // Act
+      await store.acceptQuest('q-collect-2');
+
+      // Assert：Math.min(10, 5) = 5
+      const inst = store.getQuestInstance('q-collect-2');
+      expect(inst!.progress[0].current).toBe(5);
+    });
+
+    it('接取含多目标的任务时，仅 collect 类型目标应用初始进度', async () => {
+      // Arrange：背包有 item_herb x 2
+      mocks.inventoryStore.inventory = [{ itemId: 'item_herb', count: 2 }];
+      const def = makeDefinition({
+        id: 'q-mixed',
+        type: 'kill',
+        objectives: [
+          makeKillObjective({ key: 'kill_goblin', target: 3, enemyId: 'goblin' }),
+          makeCollectObjective({ key: 'collect_herb', target: 5, itemId: 'item_herb' }),
+        ],
+      });
+      const store = useQuestStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        questDefinitions: defMap(def),
+      });
+
+      // Act
+      await store.acceptQuest('q-mixed');
+
+      // Assert：kill 目标 current=0，collect 目标 current=2
+      const inst = store.getQuestInstance('q-mixed');
+      expect(inst!.progress).toEqual([
+        { objectiveKey: 'kill_goblin', current: 0, target: 3 },
+        { objectiveKey: 'collect_herb', current: 2, target: 5 },
+      ]);
+    });
+
+    it('接取纯 kill 类型任务时不触发 collect 初始进度扫描', async () => {
+      // Arrange：背包有 item_herb，但任务为纯 kill 类型
+      mocks.inventoryStore.inventory = [{ itemId: 'item_herb', count: 5 }];
+      const def = makeDefinition({
+        id: 'q-kill-only',
+        type: 'kill',
+        objectives: [makeKillObjective({ key: 'kill_goblin', target: 3, enemyId: 'goblin' })],
+      });
+      const store = useQuestStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        questDefinitions: defMap(def),
+      });
+
+      // Act
+      await store.acceptQuest('q-kill-only');
+
+      // Assert：kill 目标 current=0（未应用 collect 扫描）
+      const inst = store.getQuestInstance('q-kill-only');
+      expect(inst!.progress).toEqual([
+        { objectiveKey: 'kill_goblin', current: 0, target: 3 },
+      ]);
+    });
+
+    it('背包为空时 collect 目标初始进度为 0', async () => {
+      // Arrange：背包为空（beforeEach 已重置）
+      const def = makeDefinition({
+        id: 'q-collect-empty',
+        type: 'collect',
+        objectives: [makeCollectObjective({ key: 'collect_herb', target: 5, itemId: 'item_herb' })],
+      });
+      const store = useQuestStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        questDefinitions: defMap(def),
+      });
+
+      // Act
+      await store.acceptQuest('q-collect-empty');
+
+      // Assert
+      const inst = store.getQuestInstance('q-collect-empty');
+      expect(inst!.progress[0].current).toBe(0);
+    });
+  });
+
+  // -------------------- Actions: 奖励发放 - 背包满提示 --------------------
+  describe('Actions: 奖励发放 - 背包满提示', () => {
+    it('任务奖励物品因背包满未完全发放时显示警告 toast', async () => {
+      // Arrange：addItem 返回 1（小于 item.count=2），模拟背包未完全发放
+      mocks.inventoryStore.addItem.mockReturnValueOnce(1);
+      const def = makeDefinition({
+        id: 'q-reward',
+        xpReward: 0,
+        goldReward: 0,
+        itemRewards: [{ itemId: 'item_potion', count: 2 }],
+        objectives: [makeKillObjective({ target: 1, enemyId: 'goblin' })],
+      });
+      const store = useQuestStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        questDefinitions: defMap(def),
+        questInstances: instMap(makeInstance({
+          questId: 'q-reward',
+          progress: [{ objectiveKey: 'kill_goblin', current: 0, target: 1 }],
+        })),
+      });
+
+      // Act
+      await store.onEnemyKilled('goblin');
+
+      // Assert：触发任务完成时发放奖励，背包满显示 toast
+      expect(mocks.inventoryStore.addItem).toHaveBeenCalledWith('item_potion', 2);
+      expect(mocks.toast.show).toHaveBeenCalledWith(expect.objectContaining({
+        message: expect.stringContaining('1/2'),
+        type: 'warning',
+        duration: 3000,
+      }));
+    });
+
+    it('奖励物品全部发放时不显示 toast', async () => {
+      // Arrange：addItem 返回 2（等于 item.count），全部发放
+      mocks.inventoryStore.addItem.mockReturnValueOnce(2);
+      const def = makeDefinition({
+        id: 'q-reward-full',
+        xpReward: 0,
+        goldReward: 0,
+        itemRewards: [{ itemId: 'item_potion', count: 2 }],
+        objectives: [makeKillObjective({ target: 1, enemyId: 'goblin' })],
+      });
+      const store = useQuestStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        questDefinitions: defMap(def),
+        questInstances: instMap(makeInstance({
+          questId: 'q-reward-full',
+          progress: [{ objectiveKey: 'kill_goblin', current: 0, target: 1 }],
+        })),
+      });
+
+      // Act
+      await store.onEnemyKilled('goblin');
+
+      // Assert：全部发放，不显示 toast
+      expect(mocks.toast.show).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------- Actions: 边界分支补充 --------------------
+  describe('Actions: 边界分支补充', () => {
+    it('completeQuest：任务定义不存在时返回 false', async () => {
+      const store = useQuestStore();
+      store.$patch({
+        questInstances: instMap(makeInstance({ questId: 'q1', status: 'in_progress' })),
+      });
+      // questDefinitions 为空，definition 不存在
+      const result = await store.completeQuest('q1');
+      expect(result).toBe(false);
+    });
+
+    it('claimReward：无奖励（xp=0, gold=0）时日志不含奖励文本', async () => {
+      const def = makeDefinition({ id: 'q1', xpReward: 0, goldReward: 0 });
+      const store = useQuestStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        questDefinitions: defMap(def),
+        questInstances: instMap(makeInstance({ questId: 'q1', status: 'completed', completedAt: 1 })),
+      });
+      await store.claimReward('q1');
+      const call = mocks.logStore.addLogEntry.mock.calls[0][0];
+      expect(call.message).toBe('提交了任务：测试任务');
+      expect(call.message).not.toContain('获得奖励');
+    });
+
+    it('claimReward：仅有经验奖励时日志包含经验', async () => {
+      const def = makeDefinition({ id: 'q1', xpReward: 100, goldReward: 0 });
+      const store = useQuestStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        questDefinitions: defMap(def),
+        questInstances: instMap(makeInstance({ questId: 'q1', status: 'completed', completedAt: 1 })),
+      });
+      await store.claimReward('q1');
+      expect(mocks.logStore.addLogEntry).toHaveBeenCalledWith(expect.objectContaining({
+        message: expect.stringContaining('100 经验'),
+      }));
+    });
+
+    it('claimReward：仅有金币奖励时日志包含金币', async () => {
+      const def = makeDefinition({ id: 'q1', xpReward: 0, goldReward: 50 });
+      const store = useQuestStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        questDefinitions: defMap(def),
+        questInstances: instMap(makeInstance({ questId: 'q1', status: 'completed', completedAt: 1 })),
+      });
+      await store.claimReward('q1');
+      expect(mocks.logStore.addLogEntry).toHaveBeenCalledWith(expect.objectContaining({
+        message: expect.stringContaining('50 金币'),
+      }));
+    });
+
+    it('abandonQuest：任务定义不存在时仍返回 true 但不记录日志', async () => {
+      const store = useQuestStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        questInstances: instMap(makeInstance({ questId: 'q1', status: 'in_progress' })),
+      });
+      // questDefinitions 为空，definition 不存在
+      const result = await store.abandonQuest('q1');
+      expect(result).toBe(true);
+      expect(store.getQuestInstance('q1')!.status).toBe('abandoned');
+      expect(mocks.logStore.addLogEntry).not.toHaveBeenCalled();
     });
   });
 });

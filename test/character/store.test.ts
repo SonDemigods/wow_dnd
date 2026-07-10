@@ -200,6 +200,7 @@ import {
 } from '@/modules/character/service';
 import { useBaseStore } from '@/modules/base/store';
 import { getExpForLevel } from '@/utils/calculations';
+import { backupService, importService, dataInitializer } from '@/modules/data';
 import { useCharacterStore } from '@/modules/character/store';
 
 // ==================== 测试数据构造 helper ====================
@@ -563,6 +564,15 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(ok).toBe(false);
       expect(store.character).toBeNull();
     });
+
+    it('数据缺失（data 为 null）时返回 false', async () => {
+      vi.mocked(characterDbService.getCharacterListItem).mockResolvedValueOnce(makeListItem());
+      vi.mocked(characterDbService.getCharacterData).mockResolvedValueOnce(null);
+      const store = useCharacterStore();
+      const ok = await store.selectCharacter('char_test_1');
+      expect(ok).toBe(false);
+      expect(store.character).toBeNull();
+    });
   });
 
   // -------------------- Actions：deleteCharacter --------------------
@@ -652,6 +662,33 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(store.character?.hp).toBe(80);
     });
 
+    it('takeDamage：未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.takeDamage(30);
+      expect(applyHpChange).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('receiveHeal：amount<=0 时直接返回不变更', async () => {
+      const store = setupLoggedInStore(makeChar({ hp: 50 }));
+      await store.receiveHeal(0);
+      expect(applyHpChange).not.toHaveBeenCalled();
+      expect(store.character?.hp).toBe(50);
+    });
+
+    it('receiveHeal：未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.receiveHeal(30);
+      expect(applyHpChange).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('setHp：未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.setHp(80);
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
     it('takeDamage：致死伤害仅将 hp 扣到 0，不自动触发死亡/复活', async () => {
       const deathSpy = vi.fn();
       const resurrectSpy = vi.fn();
@@ -703,6 +740,18 @@ describe('useCharacterStore - 角色 Store', () => {
       await store.setMp(-5);
       expect(store.character?.mana).toBe(0);
     });
+
+    it('changeMp：未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.changeMp(10);
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('setMp：未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.setMp(30);
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
   });
 
   // -------------------- Actions：经验值 --------------------
@@ -742,6 +791,13 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(applyExpGain).not.toHaveBeenCalled();
       expect(store.character?.exp).toBe(50);
     });
+
+    it('未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.gainExp(30);
+      expect(applyExpGain).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
   });
 
   // -------------------- Actions：金币 --------------------
@@ -766,6 +822,26 @@ describe('useCharacterStore - 角色 Store', () => {
       const ok = await store.spendGold(50);
       expect(ok).toBe(false);
       expect(store.character?.gold).toBe(30);
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('gainGold：amount=0 时直接返回不变更', async () => {
+      const store = setupLoggedInStore(makeChar({ gold: 100 }));
+      await store.gainGold(0);
+      expect(store.character?.gold).toBe(100);
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('gainGold：未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.gainGold(50);
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('spendGold：未登录时返回 false', async () => {
+      const store = useCharacterStore();
+      const ok = await store.spendGold(50);
+      expect(ok).toBe(false);
       expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
     });
   });
@@ -795,6 +871,28 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(computeBonusChange).toHaveBeenCalledWith({ str: 5, con: 3 }, { str: 5 }, false);
       expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
     });
+
+    it('removeBonus：con 变化时重算 HP/MP（与 applyBonus 对称）', async () => {
+      const store = setupLoggedInStore(makeChar());
+      store.$patch({ bonusStats: { con: 5 } });
+      await store.removeBonus({ con: 5 });
+      expect(computeBonusChange).toHaveBeenCalledWith({ con: 5 }, { con: 5 }, false);
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('applyBonus：未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.applyBonus({ str: 5 });
+      expect(computeBonusChange).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('removeBonus：未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.removeBonus({ str: 5 });
+      expect(computeBonusChange).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
   });
 
   // -------------------- Actions：身份变更 --------------------
@@ -809,6 +907,24 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
     });
 
+    it('setClass：更新 classBonus 并重算属性', async () => {
+      const store = setupLoggedInStore(makeChar({ classId: 'warrior' }));
+      store.$patch({
+        classesData: { warrior: makeClass(), mage: makeClass({ id: 'mage', bonus: { int: 3 } }) },
+      });
+      await store.setClass('mage');
+      expect(store.classBonus).toEqual({ int: 3 });
+      expect(store.character?.classId).toBe('mage');
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('setClass：未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.setClass('mage');
+      expect(store.character).toBeNull();
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
     it('setName：更新 character.name 与列表项', async () => {
       vi.mocked(characterDbService.getCharacterListItem).mockResolvedValueOnce(makeListItem({ id: 'char_test_1' }));
       const store = setupLoggedInStore();
@@ -817,6 +933,61 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(characterDbService.saveCharacterListItem).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'char_test_1', name: '新名字' })
       );
+    });
+
+    it('setName：未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.setName('新名字');
+      expect(characterDbService.saveCharacterListItem).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('setName：currentCharacterId 为 null 时直接返回（character 存在但未登录）', async () => {
+      const store = useCharacterStore();
+      store.$patch({ character: makeChar(), currentCharacterId: null });
+      await store.setName('新名字');
+      expect(characterDbService.getCharacterListItem).not.toHaveBeenCalled();
+    });
+
+    it('setName：列表项不存在时仍持久化角色数据', async () => {
+      vi.mocked(characterDbService.getCharacterListItem).mockResolvedValueOnce(null);
+      const store = setupLoggedInStore();
+      await store.setName('新名字');
+      expect(store.character?.name).toBe('新名字');
+      expect(characterDbService.saveCharacterListItem).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('setRace：未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.setRace('orc');
+      expect(store.raceBonus).toEqual({});
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('reset：未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.reset();
+      expect(getExpForLevel).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('handleDeath：未登录时直接返回不 emit', async () => {
+      const deathSpy = vi.fn();
+      eventBus.on(GameEvents.CHARACTER_DEATH, deathSpy);
+      const store = useCharacterStore();
+      await store.handleDeath();
+      expect(deathSpy).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('resurrect：未登录时直接返回不 emit', async () => {
+      const spy = vi.fn();
+      eventBus.on(GameEvents.CHARACTER_RESURRECTED, spy);
+      const store = useCharacterStore();
+      await store.resurrect();
+      expect(computeResurrection).not.toHaveBeenCalled();
+      expect(spy).not.toHaveBeenCalled();
     });
 
     it('reset：等级/经验重置，HP/MP 回满', async () => {
@@ -860,6 +1031,60 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(store.character?.hp).toBe(50);
       expect(store.character?.mana).toBe(25);
       expect(spy).toHaveBeenCalledWith({ newHp: 50, newMp: 25 });
+    });
+  });
+
+  // -------------------- Actions：数据获取 --------------------
+  describe('Actions：getCharacterId / getCharacterData', () => {
+    it('getCharacterId：返回当前 currentCharacterId', () => {
+      const store = setupLoggedInStore();
+      expect(store.getCharacterId()).toBe('char_test_1');
+    });
+
+    it('getCharacterId：未登录时返回 null', () => {
+      const store = useCharacterStore();
+      expect(store.getCharacterId()).toBeNull();
+    });
+
+    it('getCharacterData：返回当前 character 引用', () => {
+      const store = setupLoggedInStore();
+      expect(store.getCharacterData()).toBe(store.character);
+    });
+
+    it('getCharacterData：未登录时返回 null', () => {
+      const store = useCharacterStore();
+      expect(store.getCharacterData()).toBeNull();
+    });
+  });
+
+  // -------------------- Actions：导出/导入存档（薄委托） --------------------
+  describe('Actions：导出/导入存档（薄委托）', () => {
+    it('exportBackup：委托给 backupService.exportBackup', async () => {
+      const store = useCharacterStore();
+      await store.exportBackup();
+      expect(backupService.exportBackup).toHaveBeenCalledTimes(1);
+    });
+
+    it('validateImportBackup：委托给 importService.validateBackup 并返回结果', async () => {
+      const store = useCharacterStore();
+      const file = new File(['{}'], 'backup.json');
+      const result = await store.validateImportBackup(file);
+      expect(importService.validateBackup).toHaveBeenCalledWith(file);
+      expect(result).toEqual({ valid: true });
+    });
+
+    it('importBackup：委托给 importService.importBackup 并返回结果', async () => {
+      const store = useCharacterStore();
+      const file = new File(['{}'], 'backup.json');
+      const result = await store.importBackup(file);
+      expect(importService.importBackup).toHaveBeenCalledWith(file);
+      expect(result).toEqual({ success: true });
+    });
+
+    it('repairBaseData：委托给 dataInitializer.reinitializeData', async () => {
+      const store = useCharacterStore();
+      await store.repairBaseData();
+      expect(dataInitializer.reinitializeData).toHaveBeenCalledTimes(1);
     });
   });
 });

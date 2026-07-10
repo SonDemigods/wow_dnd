@@ -73,6 +73,16 @@ vi.mock('@/modules/quest/store', () => ({
   useQuestStore: () => ({ initialize: questInitMock }),
 }));
 
+const combatDisposeMock = vi.fn();
+vi.mock('@/modules/combat/store', () => ({
+  useCombatStore: () => ({ dispose: combatDisposeMock }),
+}));
+
+const audioDisposeMock = vi.fn();
+vi.mock('@/modules/audio/store', () => ({
+  useAudioStore: () => ({ dispose: audioDisposeMock }),
+}));
+
 import { gameBootstrap } from '@/services/GameBootstrap';
 
 describe('GameBootstrap 游戏初始化编排服务', () => {
@@ -87,6 +97,8 @@ describe('GameBootstrap 游戏初始化编排服务', () => {
       explorationInitMock,
       questInitMock,
       explorationDisposeMock,
+      combatDisposeMock,
+      audioDisposeMock,
       hoisted.setInventoryCallbacksMock,
       hoisted.clearInventoryCallbacksMock,
     ].forEach(m => m.mockClear());
@@ -165,12 +177,38 @@ describe('GameBootstrap 游戏初始化编排服务', () => {
       expect(explorationDisposeMock).toHaveBeenCalledTimes(1);
     });
 
+    it('调用 combat store 的 dispose（清理战斗定时器）', () => {
+      // Act
+      gameBootstrap.dispose();
+
+      // Assert
+      expect(combatDisposeMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('调用 audio store 的 dispose（清理 saveTimer）', () => {
+      // Act
+      gameBootstrap.dispose();
+
+      // Assert
+      expect(audioDisposeMock).toHaveBeenCalledTimes(1);
+    });
+
     it('清除装备模块的背包回调引用（A1/G1 修复）', () => {
       // Act
       gameBootstrap.dispose();
 
       // Assert
       expect(hoisted.clearInventoryCallbacksMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('dispose 清理 ≥ 3 个 Store（exploration + combat + audio）', () => {
+      // Act
+      gameBootstrap.dispose();
+
+      // Assert：三个 Disposable Store 均被调用
+      expect(explorationDisposeMock).toHaveBeenCalledTimes(1);
+      expect(combatDisposeMock).toHaveBeenCalledTimes(1);
+      expect(audioDisposeMock).toHaveBeenCalledTimes(1);
     });
   });
 });

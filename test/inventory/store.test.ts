@@ -574,4 +574,320 @@ describe('useInventoryStore - 背包 Store', () => {
       expect(store.inventory).toEqual([inv('p1', 5)]);
     });
   });
+
+  // -------------------- Actions: useItemByIndex --------------------
+  describe('Actions: useItemByIndex', () => {
+    it('索引为负数时返回 false', async () => {
+      const store = useInventoryStore();
+      store.$patch({ currentCharacterId: 'char-1', inventory: [inv('p1', 1)] });
+      expect(await store.useItemByIndex(-1)).toBe(false);
+    });
+
+    it('索引越界（>= length）时返回 false', async () => {
+      const store = useInventoryStore();
+      store.$patch({ currentCharacterId: 'char-1', inventory: [inv('p1', 1)] });
+      expect(await store.useItemByIndex(1)).toBe(false);
+    });
+
+    it('正常索引时委托 useItem 执行', async () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 2)],
+        itemTemplates: mapOf(makeItem({ consumable: true, effect: { type: 'health_restore', value: 30 } })),
+      });
+      const result = await store.useItemByIndex(0);
+      expect(result).toBe(true);
+      expect(mocks.characterStore.receiveHeal).toHaveBeenCalledWith(30);
+      expect(store.inventory).toEqual([inv('p1', 1)]);
+    });
+  });
+
+  // -------------------- Actions: dropItemByIndex --------------------
+  describe('Actions: dropItemByIndex', () => {
+    it('索引为负数时返回 false', () => {
+      const store = useInventoryStore();
+      store.$patch({ currentCharacterId: 'char-1', inventory: [inv('p1', 1)] });
+      expect(store.dropItemByIndex(-1)).toBe(false);
+    });
+
+    it('索引越界（>= length）时返回 false', () => {
+      const store = useInventoryStore();
+      store.$patch({ currentCharacterId: 'char-1', inventory: [inv('p1', 1)] });
+      expect(store.dropItemByIndex(1)).toBe(false);
+    });
+
+    it('未提供 count 时丢弃整个槽位', () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 3), inv('w1', 1)],
+        itemTemplates: mapOf(makeItem()),
+      });
+      expect(store.dropItemByIndex(0)).toBe(true);
+      expect(store.inventory).toEqual([inv('w1', 1)]);
+    });
+
+    it('count >= 槽位数量时丢弃整个槽位', () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 3)],
+        itemTemplates: mapOf(makeItem()),
+      });
+      expect(store.dropItemByIndex(0, 5)).toBe(true);
+      expect(store.inventory).toEqual([]);
+    });
+
+    it('count < 槽位数量时部分丢弃', () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 5)],
+        itemTemplates: mapOf(makeItem()),
+      });
+      expect(store.dropItemByIndex(0, 2)).toBe(true);
+      expect(store.inventory).toEqual([inv('p1', 3)]);
+    });
+
+    it('count=0 时槽位保留原数量（使用 ?? 而非 ||）', () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 5)],
+        itemTemplates: mapOf(makeItem()),
+      });
+      // count=0 是合法输入，dropCount = 0 ?? 5 = 0，走部分丢弃分支：5 - 0 = 5
+      expect(store.dropItemByIndex(0, 0)).toBe(true);
+      expect(store.inventory).toEqual([inv('p1', 5)]);
+    });
+
+    it('丢弃单个物品（dropCount=1）时日志不含 xN', async () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 3)],
+        itemTemplates: mapOf(makeItem({ name: '生命药水' })),
+      });
+      store.dropItemByIndex(0, 1);
+      await Promise.resolve();
+      expect(mocks.logStore.addLogEntry).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'item',
+        message: '丢弃了：生命药水',
+      }));
+    });
+
+    it('丢弃多个物品（dropCount>1）时日志包含 xN', async () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 5)],
+        itemTemplates: mapOf(makeItem({ name: '生命药水' })),
+      });
+      store.dropItemByIndex(0, 3);
+      await Promise.resolve();
+      expect(mocks.logStore.addLogEntry).toHaveBeenCalledWith(expect.objectContaining({
+        message: expect.stringContaining('x3'),
+      }));
+    });
+
+    it('丢弃的物品模板不存在时不记录日志但返回 true', async () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('unknown', 1)],
+        itemTemplates: mapOf(),
+      });
+      expect(store.dropItemByIndex(0)).toBe(true);
+      await Promise.resolve();
+      expect(mocks.logStore.addLogEntry).not.toHaveBeenCalled();
+    });
+
+    it('成功丢弃后触发持久化', async () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 2)],
+        itemTemplates: mapOf(makeItem()),
+      });
+      store.dropItemByIndex(0, 1);
+      await Promise.resolve();
+      expect(inventoryDbService.saveInventory).toHaveBeenCalledWith('char-1', expect.any(Array));
+    });
+  });
+
+  // -------------------- Actions: dropItemsByIndices --------------------
+  describe('Actions: dropItemsByIndices', () => {
+    it('空索引数组返回 false', () => {
+      const store = useInventoryStore();
+      store.$patch({ currentCharacterId: 'char-1', inventory: [inv('p1', 1)] });
+      expect(store.dropItemsByIndices([])).toBe(false);
+    });
+
+    it('批量删除多个索引（从大到小 splice 避免索引偏移）', async () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('a', 1), inv('b', 1), inv('c', 1), inv('d', 1)],
+      });
+      // 删除索引 0 和 2（a 和 c），保留 b 和 d
+      expect(store.dropItemsByIndices([0, 2])).toBe(true);
+      expect(store.inventory).toEqual([inv('b', 1), inv('d', 1)]);
+      await Promise.resolve();
+      expect(inventoryDbService.saveInventory).toHaveBeenCalled();
+    });
+
+    it('包含越界索引（>= length）时仅删除有效索引', () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('a', 1), inv('b', 1)],
+      });
+      expect(store.dropItemsByIndices([1, 99])).toBe(true);
+      expect(store.inventory).toEqual([inv('a', 1)]);
+    });
+
+    it('包含负数索引时仅删除有效索引', () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('a', 1), inv('b', 1), inv('c', 1)],
+      });
+      expect(store.dropItemsByIndices([-1, 1])).toBe(true);
+      expect(store.inventory).toEqual([inv('a', 1), inv('c', 1)]);
+    });
+  });
+
+  // -------------------- Actions: 模板管理 - 持久化失败 --------------------
+  describe('Actions: 模板管理 - 持久化失败', () => {
+    it('addItemTemplate 持久化失败时输出错误日志但不抛出异常', async () => {
+      const err = new Error('DB write failed');
+      vi.mocked(inventoryDbService.saveItemTemplate).mockRejectedValueOnce(err);
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => { /* 吞掉错误输出 */ });
+
+      const store = useInventoryStore();
+      const item = makeItem({ id: 'fail-add' });
+      // 不应抛出异常
+      expect(() => store.addItemTemplate(item)).not.toThrow();
+      // 内存缓存仍更新
+      expect(store.getItemInfo('fail-add')).toEqual(item);
+
+      // 等待 Promise.catch 执行
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining('保存物品模板失败'),
+        'fail-add',
+        err
+      );
+      spy.mockRestore();
+    });
+
+    it('removeItemTemplate 持久化失败时输出错误日志但不抛出异常', async () => {
+      const err = new Error('DB delete failed');
+      vi.mocked(inventoryDbService.deleteItemTemplate).mockRejectedValueOnce(err);
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => { /* 吞掉错误输出 */ });
+
+      const store = useInventoryStore();
+      const item = makeItem({ id: 'fail-rm' });
+      store.$patch({ itemTemplates: mapOf(item) });
+      expect(() => store.removeItemTemplate('fail-rm')).not.toThrow();
+      // 内存缓存仍更新
+      expect(store.getItemInfo('fail-rm')).toBeNull();
+
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining('删除物品模板失败'),
+        'fail-rm',
+        err
+      );
+      spy.mockRestore();
+    });
+  });
+
+  // -------------------- Actions: removeItemByIndex --------------------
+  describe('Actions: removeItemByIndex', () => {
+    it('索引为负数时返回 0', () => {
+      const store = useInventoryStore();
+      store.$patch({ currentCharacterId: 'char-1', inventory: [inv('p1', 1)] });
+      expect(store.removeItemByIndex(-1)).toBe(0);
+    });
+
+    it('索引越界（>= length）时返回 0', () => {
+      const store = useInventoryStore();
+      store.$patch({ currentCharacterId: 'char-1', inventory: [inv('p1', 1)] });
+      expect(store.removeItemByIndex(1)).toBe(0);
+    });
+
+    it('正常移除时返回槽位数量并删除槽位', async () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 3), inv('w1', 1)],
+      });
+      expect(store.removeItemByIndex(0)).toBe(3);
+      expect(store.inventory).toEqual([inv('w1', 1)]);
+      await Promise.resolve();
+      expect(inventoryDbService.saveInventory).toHaveBeenCalled();
+    });
+  });
+
+  // -------------------- Actions: useItem - 效果分支 --------------------
+  describe('Actions: useItem - 效果分支', () => {
+    it('physical_damage 效果：进入分支但不报错（TODO 待战斗系统实现）', async () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 1)],
+        itemTemplates: mapOf(makeItem({
+          consumable: true,
+          effect: { type: 'physical_damage', value: 30 },
+        })),
+      });
+      const result = await store.useItem('p1');
+      expect(result).toBe(true);
+      // 物品仍被消耗
+      expect(store.inventory).toEqual([]);
+      // 不应调用恢复效果
+      expect(mocks.characterStore.receiveHeal).not.toHaveBeenCalled();
+      expect(mocks.characterStore.changeMp).not.toHaveBeenCalled();
+    });
+
+    it('magic_damage 效果：进入分支但不报错（TODO 待战斗系统实现）', async () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 1)],
+        itemTemplates: mapOf(makeItem({
+          consumable: true,
+          effect: { type: 'magic_damage', value: 30 },
+        })),
+      });
+      const result = await store.useItem('p1');
+      expect(result).toBe(true);
+      expect(store.inventory).toEqual([]);
+      expect(mocks.characterStore.receiveHeal).not.toHaveBeenCalled();
+    });
+
+    it('stat 效果：effect.type=stat 时不触发即时效果，bonus 通过 applyBonus 应用', async () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 1)],
+        itemTemplates: mapOf(makeItem({
+          consumable: true,
+          effect: { type: 'stat', value: { str: 2 } },
+          bonus: { str: 2 },
+        })),
+      });
+      const result = await store.useItem('p1');
+      expect(result).toBe(true);
+      // bonus 被应用
+      expect(mocks.characterStore.applyBonus).toHaveBeenCalledWith({ str: 2 });
+      // 即时恢复效果不应被调用
+      expect(mocks.characterStore.receiveHeal).not.toHaveBeenCalled();
+      expect(mocks.characterStore.changeMp).not.toHaveBeenCalled();
+    });
+  });
 });

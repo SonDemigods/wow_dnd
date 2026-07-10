@@ -318,4 +318,39 @@ describe('useAudioStore - 音频 Store', () => {
       expect(audioDbService.saveSettings).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('Action: dispose 资源释放', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('未安排定时器时调用 dispose 不报错', () => {
+      const store = useAudioStore();
+      expect(() => store.dispose()).not.toThrow();
+    });
+
+    it('有待执行的去抖定时器时清除定时器，不再触发写库', () => {
+      const store = useAudioStore();
+      store.updateSettings({ masterVolume: 0.3 });
+      // 此时去抖定时器已安排但未触发
+      expect(audioDbService.saveSettings).not.toHaveBeenCalled();
+
+      store.dispose();
+
+      // 推进时间，定时器不应再触发
+      vi.advanceTimersByTime(500);
+      expect(audioDbService.saveSettings).not.toHaveBeenCalled();
+    });
+
+    it('多次调用 dispose 安全（幂等）', () => {
+      const store = useAudioStore();
+      store.updateSettings({ masterVolume: 0.3 });
+      store.dispose();
+      expect(() => store.dispose()).not.toThrow();
+    });
+  });
 });

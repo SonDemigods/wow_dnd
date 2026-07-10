@@ -3,26 +3,45 @@
  *
  * 覆盖三个层次的错误处理：
  * 1. tryAsync：纯函数式，返回 Result，无副作用
- * 2. wrapAsync：自动 catch + toast 通知 + 控制台日志
+ * 2. wrapAsync：自动 catch + toast 通知 + 错误上报
  * 3. report：手动上报错误
  *
  * Mock 策略：
  * - useToast mock，断言 show 调用参数
- * - console.error spy，验证日志输出
+ * - errorReporter mock，断言 report 调用参数（ErrorHandler 委托上报）
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { errorHandler } from '@/services/ErrorHandler';
+
+/**
+ * vi.hoisted 保证 mock 函数在 vi.mock 工厂提升到文件顶部时已初始化。
+ * errorReporterReportMock 在工厂返回对象中直接引用（非函数包装），
+ * 必须使用 vi.hoisted 避免 TDZ（Temporal Dead Zone）错误。
+ */
+const hoisted = vi.hoisted(() => ({
+  showMock: vi.fn(),
+  errorReporterReportMock: vi.fn(),
+}));
 
 /** mock useToast，避免真实 DOM 副作用 */
-const showMock = vi.fn();
 vi.mock('@/composables/useToast', () => ({
-  useToast: () => ({ show: showMock }),
+  useToast: () => ({ show: hoisted.showMock }),
 }));
+
+/** mock errorReporter，断言 ErrorHandler 委托上报的参数 */
+vi.mock('@/utils/errorReport', () => ({
+  errorReporter: { report: hoisted.errorReporterReportMock },
+}));
+
+import { errorHandler } from '@/services/ErrorHandler';
+
+/** 从 hoisted 中取出 spy 引用 */
+const showMock = hoisted.showMock;
+const errorReporterReportMock = hoisted.errorReporterReportMock;
 
 describe('ErrorHandler 统一错误处理服务', () => {
   beforeEach(() => {
     showMock.mockClear();
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    errorReporterReportMock.mockClear();
   });
 
   // ==================== tryAsync ====================
@@ -72,15 +91,20 @@ describe('ErrorHandler 统一错误处理服务', () => {
       }
     });
 
-    it('失败时输出 console.error 日志', async () => {
+    it('失败时委托 errorReporter 上报', async () => {
       // Arrange
-      const promise = Promise.reject(new Error('log test'));
+      const error = new Error('log test');
+      const promise = Promise.reject(error);
 
       // Act
       await errorHandler.tryAsync(promise);
 
       // Assert
-      expect(console.error).toHaveBeenCalled();
+      expect(errorReporterReportMock).toHaveBeenCalledTimes(1);
+      const [reportedError, source] = errorReporterReportMock.mock.calls[0];
+      expect(reportedError).toBeInstanceOf(Error);
+      expect(reportedError.message).toBe('log test');
+      expect(source).toBe('manual');
     });
   });
 
@@ -135,16 +159,32 @@ describe('ErrorHandler 统一错误处理服务', () => {
       expect(showMock).not.toHaveBeenCalled();
     });
 
-    it('非 Error 异常被包装并输出日志', async () => {
+    it('失败时委托 errorReporter 上报（含 userMessage 上下文）', async () => {
       // Arrange
-      const promise = Promise.reject(123);
+      const promise = Promise.reject(new Error('fail'));
 
       // Act
-      const result = await errorHandler.wrapAsync(promise, 'err');
+      await errorHandler.wrapAsync(promise, '操作失败');
 
       // Assert
-      expect(result).toBeUndefined();
-      expect(console.error).toHaveBeenCalled();
+      expect(errorReporterReportMock).toHaveBeenCalledTimes(1);
+      const [reportedError, source, context] = errorReporterReportMock.mock.calls[0];
+      expect(reportedError.message).toBe('fail');
+      expect(source).toBe('manual');
+      expect(context).toEqual({ userMessage: '操作失败' });
+    });
+
+    it('失败但无 userMessage 时上下文为 undefined', async () => {
+      // Arrange
+      const promise = Promise.reject(new Error('fail'));
+
+      // Act
+      await errorHandler.wrapAsync(promise);
+
+      // Assert
+      expect(errorReporterReportMock).toHaveBeenCalledTimes(1);
+      const [, , context] = errorReporterReportMock.mock.calls[0];
+      expect(context).toBeUndefined();
     });
   });
 
@@ -177,29 +217,35 @@ describe('ErrorHandler 统一错误处理服务', () => {
       expect(showMock).not.toHaveBeenCalled();
     });
 
-    it('非 Error 异常被包装为 Error', () => {
-      // Arrange
-      vi.mocked(console.error).mockClear();
-
+    it('非 Error 异常被包装为 Error 后上报', () => {
       // Act
       errorHandler.report('string err');
 
       // Assert
-      expect(console.error).toHaveBeenCalled();
-      const lastCall = vi.mocked(console.error).mock.calls.at(-1)!;
-      expect(lastCall[1]).toBe('string err');
-      expect(lastCall[2]).toBeInstanceOf(Error);
+      expect(errorReporterReportMock).toHaveBeenCalledTimes(1);
+      const [reportedError] = errorReporterReportMock.mock.calls[0];
+      expect(reportedError).toBeInstanceOf(Error);
+      expect(reportedError.message).toBe('string err');
     });
 
-    it('始终输出 console.error 日志', () => {
-      // Arrange
-      vi.mocked(console.error).mockClear();
-
+    it('始终委托 errorReporter 上报', () => {
       // Act
       errorHandler.report(new Error('logged'));
 
       // Assert
-      expect(console.error).toHaveBeenCalled();
+      expect(errorReporterReportMock).toHaveBeenCalledTimes(1);
+      const [reportedError, source] = errorReporterReportMock.mock.calls[0];
+      expect(reportedError.message).toBe('logged');
+      expect(source).toBe('manual');
+    });
+
+    it('有 userMessage 时上下文包含 userMessage', () => {
+      // Act
+      errorHandler.report(new Error('err'), '用户提示');
+
+      // Assert
+      const [, , context] = errorReporterReportMock.mock.calls[0];
+      expect(context).toEqual({ userMessage: '用户提示' });
     });
   });
 });
