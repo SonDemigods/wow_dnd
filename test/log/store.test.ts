@@ -40,7 +40,7 @@ vi.mock('@/services/ErrorHandler', () => ({
 import { adventureLogDbService } from '@/modules/log/db';
 import { errorHandler } from '@/services/ErrorHandler';
 import { useLogStore } from '@/modules/log/store';
-import { PAGE_SIZE } from '@/config/log';
+import { PAGE_SIZE, MAX_LOG_ENTRIES } from '@/config/log';
 
 // ==================== 测试数据构造 helper ====================
 
@@ -153,6 +153,21 @@ describe('useLogStore - 冒险日志 Store', () => {
       await store.initialize('c1');
       expect(store.logs).toEqual([]);
     });
+
+    it('BIZ-12：历史数据超过 MAX_LOG_ENTRIES 时加载后裁剪尾部', async () => {
+      // 模拟历史持久化数据超过容量上限（上限保护引入前的旧数据）
+      const overflow = MAX_LOG_ENTRIES + 50;
+      vi.mocked(adventureLogDbService.getAdventureLog).mockResolvedValueOnce({
+        characterId: 'c1', entries: makeLogs(overflow), updatedAt: 1,
+      });
+      const store = useLogStore();
+      await store.initialize('c1');
+
+      expect(store.logCount).toBe(MAX_LOG_ENTRIES);
+      // 前部条目（log-0）保留，尾部条目（log-(overflow-1)）被裁剪
+      expect(store.logs.find(l => l.id === 'log-0')).toBeDefined();
+      expect(store.logs.find(l => l.id === `log-${overflow - 1}`)).toBeUndefined();
+    });
   });
 
   // -------------------- Action: addLogEntry --------------------
@@ -229,6 +244,24 @@ describe('useLogStore - 冒险日志 Store', () => {
         icon: 'game-icons:crossed-swords',
       }));
       expect(store.logs[0].icon).toBe('game-icons:crossed-swords');
+    });
+
+    it('BIZ-12：超过 MAX_LOG_ENTRIES 时裁剪尾部最旧日志', async () => {
+      const store = useLogStore();
+      // 预置 MAX_LOG_ENTRIES 条日志（makeLogs 生成 log-0 ~ log-(MAX-1)）
+      store.$patch({ logs: makeLogs(MAX_LOG_ENTRIES) });
+      expect(store.logCount).toBe(MAX_LOG_ENTRIES);
+
+      // 新增一条 → 总数 MAX+1，裁剪尾部 1 条
+      await store.addLogEntry(makeLogEntry({ id: 'new', message: '新日志' }));
+
+      expect(store.logCount).toBe(MAX_LOG_ENTRIES);
+      // 新日志在头部
+      expect(store.logs[0].id).toBe('new');
+      // 尾部最后一条（log-(MAX-1)）应被裁剪
+      expect(store.logs.find(l => l.id === `log-${MAX_LOG_ENTRIES - 1}`)).toBeUndefined();
+      // 前部条目（log-0）应保留
+      expect(store.logs.find(l => l.id === 'log-0')).toBeDefined();
     });
   });
 

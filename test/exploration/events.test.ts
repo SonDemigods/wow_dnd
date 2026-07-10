@@ -429,6 +429,43 @@ describe('exploration/events - 事件处理器注册表', () => {
         expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('物品模板'));
         expect(result).toEqual({ completed: true });
       });
+
+      it('BIZ-10：背包满时（addItem 返回 0）走兜底奖励，日志提示"背包已满"', async () => {
+        // Arrange
+        vi.mocked(generateItemForCell).mockReturnValue('potion_1');
+        mocks.inventoryStore.getItemInfo.mockReturnValue({ id: 'potion_1', name: '生命药水' });
+        mocks.inventoryStore.addItem.mockReturnValue(0); // 背包满
+        const itemSpy = vi.fn();
+        eventBus.on(GameEvents.EXPLORATION_ITEM_FOUND, itemSpy);
+        const onItemFound = vi.fn();
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const ctx = makeCellContext({
+          cell: makeCell({ type: 'treasure' }),
+          uiCallbacks: { onItemFound },
+        });
+
+        // Act
+        const result = await cellEventHandlers.treasure!(ctx);
+
+        // Assert：走兜底奖励
+        expect(mocks.inventoryStore.addItem).toHaveBeenCalledWith('potion_1', 1);
+        expect(mocks.characterStore.gainGold).toHaveBeenCalled();
+        expect(mocks.characterStore.gainExp).toHaveBeenCalled();
+        // 日志提示"背包已满"
+        expect(mocks.logStore.addLogEntry).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'item', message: expect.stringContaining('背包已满') })
+        );
+        // 事件 count 为 0（未入包）
+        expect(itemSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ itemId: 'potion_1', count: 0 })
+        );
+        expect(onItemFound).toHaveBeenCalledWith(
+          expect.objectContaining({ itemId: 'potion_1', count: 0 })
+        );
+        // inventory_full 原因不打印 warn
+        expect(warnSpy).not.toHaveBeenCalled();
+        expect(result).toEqual({ completed: true });
+      });
     });
 
     // -------------------- trap --------------------
