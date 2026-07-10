@@ -13,6 +13,6 @@ __pycache__/
 coverage/
 .playwright/
 .playwright-report/
-.playwright-browser/
+.playwright-browsers/
 benchmarks/
 test-results/
