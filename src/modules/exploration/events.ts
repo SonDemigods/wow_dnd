@@ -205,7 +205,15 @@ export const cellEventHandlers: Partial<Record<CellType, CellEventHandler>> = {
 
     const item = ctx.inventoryStore.getItemInfo(randomItemId);
     if (item) {
-      // 正常路径：物品入包 + 日志 + 事件通知
+      // BIZ-10：先入包再记录日志/发射事件，避免背包满时"日志显示发现物品但实际丢失"
+      const actualAmount = ctx.inventoryStore.addItem(randomItemId, 1);
+      if (actualAmount === 0) {
+        // 背包已满，走兜底奖励（转换为金币 + 经验），避免宝箱物品静默丢失
+        await grantFallbackReward(ctx, randomItemId, 'inventory_full');
+        return { completed: true };
+      }
+
+      // 正常路径：物品已入包 → 日志 + 事件通知
       useLogStore().addLogEntry({
         id: generateLogId(),
         timestamp: Date.now(),
@@ -214,19 +222,17 @@ export const cellEventHandlers: Partial<Record<CellType, CellEventHandler>> = {
         icon: 'game-icons:chest'
       });
 
-      ctx.inventoryStore.addItem(randomItemId, 1);
-
       eventBus.emit(GameEvents.EXPLORATION_ITEM_FOUND, {
         characterId: ctx.characterId,
         itemId: randomItemId,
-        count: 1,
+        count: actualAmount,
         itemName: item.name
       });
 
-      ctx.uiCallbacks?.onItemFound?.({ itemId: randomItemId, count: 1, itemName: item.name });
+      ctx.uiCallbacks?.onItemFound?.({ itemId: randomItemId, count: actualAmount, itemName: item.name });
     } else {
       // 兜底路径：物品模板不存在，转换为金币 + 经验
-      await grantFallbackReward(ctx, randomItemId);
+      await grantFallbackReward(ctx, randomItemId, 'template_missing');
     }
     return { completed: true };
   },
@@ -368,15 +374,26 @@ export async function dispatchCellEvent(
 // ============================================================================
 
 /**
- * 兜底奖励：物品模板不存在时，发放金币和经验作为补偿
+ * 兜底奖励：将宝箱转换为金币 + 经验奖励
+ *
+ * 触发场景：
+ * - `template_missing`：物品模板不存在（配置缺失）
+ * - `inventory_full`：背包已满，物品无法入包（BIZ-10）
  *
  * 避免玩家探索收益为零。金币/经验数值由 config/exploration.ts 配置。
  *
  * @param ctx - 处理器上下文
- * @param itemId - 未找到模板的物品 ID（用于日志和事件载荷）
+ * @param itemId - 物品 ID（用于日志和事件载荷）
+ * @param reason - 触发兜底的原因（`template_missing` | `inventory_full`）
  */
-async function grantFallbackReward(ctx: ExplorationContext, itemId: string): Promise<void> {
-  console.warn(`[探索] 物品模板 "${itemId}" 不存在，发放兜底奖励`);
+async function grantFallbackReward(
+  ctx: ExplorationContext,
+  itemId: string,
+  reason: 'template_missing' | 'inventory_full' = 'template_missing'
+): Promise<void> {
+  if (reason === 'template_missing') {
+    console.warn(`[探索] 物品模板 "${itemId}" 不存在，发放兜底奖励`);
+  }
 
   const gold = Math.floor(Math.random() * FALLBACK_GOLD_RANDOM_RANGE) + FALLBACK_GOLD_MIN;
   const exp = Math.floor(Math.random() * FALLBACK_EXP_RANDOM_RANGE) + FALLBACK_EXP_MIN;
@@ -384,24 +401,32 @@ async function grantFallbackReward(ctx: ExplorationContext, itemId: string): Pro
   await ctx.characterStore.gainGold(gold);
   await ctx.characterStore.gainExp(exp);
 
+  const logMessage = reason === 'inventory_full'
+    ? `背包已满，宝箱物品已转换为 ${gold} 金币、${exp} 经验`
+    : `发现宝箱，获得 ${gold} 金币、${exp} 经验`;
+
   useLogStore().addLogEntry({
     id: generateLogId(),
     timestamp: Date.now(),
     type: 'item',
-    message: `发现宝箱，获得 ${gold} 金币、${exp} 经验`,
+    message: logMessage,
     icon: 'game-icons:chest'
   });
+
+  const convertedName = reason === 'inventory_full'
+    ? `物品已满（转换为 ${gold} 金币 + ${exp} 经验）`
+    : `未知物品（已转换为 ${gold} 金币 + ${exp} 经验）`;
 
   eventBus.emit(GameEvents.EXPLORATION_ITEM_FOUND, {
     characterId: ctx.characterId,
     itemId,
     count: 0,
-    itemName: `未知物品（已转换为 ${gold} 金币 + ${exp} 经验）`
+    itemName: convertedName
   });
 
   ctx.uiCallbacks?.onItemFound?.({
     itemId,
     count: 0,
-    itemName: `未知物品（已转换为 ${gold} 金币 + ${exp} 经验）`
+    itemName: convertedName
   });
 }

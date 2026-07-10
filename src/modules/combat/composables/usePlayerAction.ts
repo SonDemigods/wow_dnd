@@ -1027,6 +1027,9 @@ export function usePlayerAction(
             });
           }
 
+          // BIZ-11：使用物品名称而非 itemId，与冒险日志保持一致
+          // name 为空时回退到 itemId（防御性处理，正常配置不会出现空名称）
+          const itemName = itemInfo.name || drop.itemId;
           addCombatLog({
             actorType: 'system',
             actorId: 'system',
@@ -1034,11 +1037,10 @@ export function usePlayerAction(
             eventType: 'combat_item',
             isCrit: false,
             isDodge: false,
-            message: `获得物品 ${drop.itemId} x${actualAmount}！`
+            message: `获得物品 ${itemName} x${actualAmount}！`
           });
 
           // 记录战利品到冒险日志
-          const itemName = itemInfo?.name || drop.itemId;
           ctx.log.addLogEntry({
             id: generateLogId(),
             timestamp: Date.now(),

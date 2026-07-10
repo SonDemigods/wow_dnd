@@ -2,6 +2,12 @@
  * 后台管理模块服务层
  *
  * 提供配置数据表的 CRUD 业务逻辑
+ *
+ * 设计说明（DISC-1）：
+ * 本项目为单机游戏，admin 模块为内嵌的配置管理后台，访问控制由 UI 路由层
+ * （开发者菜单/管理入口）负责。service 层不做权限校验是单机场景下的设计意图，
+ * 避免在无多用户/联机需求的场景下引入不必要的复杂度。
+ * 若未来扩展为联机或多用户场景，应在 service 层之上补充权限中间件。
  */
 import { adminDbService } from './db';
 import type { AdminOperationResult } from './types';

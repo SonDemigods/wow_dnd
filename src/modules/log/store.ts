@@ -11,7 +11,7 @@ import { formatLogMessage } from './service';
 import { adventureLogDbService } from './db';
 import { eventBus, GameEvents } from '../bus';
 import { errorHandler } from '@/services/ErrorHandler';
-import { PAGE_SIZE } from '@/config/log';
+import { PAGE_SIZE, MAX_LOG_ENTRIES } from '@/config/log';
 
 export const useLogStore = defineStore('log', () => {
   // ==================== 状态 ====================
@@ -35,20 +35,35 @@ export const useLogStore = defineStore('log', () => {
 
   /**
    * 初始化 —— 从数据库加载指定角色的日志
+   *
+   * BIZ-12：加载后若超过 MAX_LOG_ENTRIES，裁剪尾部以符合容量上限。
+   * （历史数据可能在上限保护引入前已超量持久化）
    */
   async function initialize(characterId: string): Promise<void> {
     currentCharacterId.value = characterId;
     const stored = await adventureLogDbService.getAdventureLog(characterId);
-    logs.value = stored?.entries || [];
+    const entries = stored?.entries || [];
+    if (entries.length > MAX_LOG_ENTRIES) {
+      entries.length = MAX_LOG_ENTRIES;
+    }
+    logs.value = entries;
   }
 
   /**
    * 添加日志条目
-   * 步骤：格式化 → 插入头部 → 持久化 → emit 事件通知 UI
+   * 步骤：格式化 → 插入头部 → 裁剪超限尾部 → 持久化 → emit 事件通知 UI
+   *
+   * BIZ-12：当日志总数超过 MAX_LOG_ENTRIES 时，裁剪尾部最旧条目，
+   * 避免长期游戏后内存与 IndexedDB 记录无限膨胀。
    */
   async function addLogEntry(entry: LogEntry): Promise<void> {
     const formatted = formatLogMessage(entry);
-    logs.value = [formatted, ...logs.value];
+    const nextLogs = [formatted, ...logs.value];
+    // 超过容量上限时裁剪尾部（最旧的日志）
+    if (nextLogs.length > MAX_LOG_ENTRIES) {
+      nextLogs.length = MAX_LOG_ENTRIES;
+    }
+    logs.value = nextLogs;
     try {
       await saveToDb();
     } catch (e) {
