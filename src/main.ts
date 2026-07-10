@@ -13,10 +13,42 @@ import { db } from '@/modules/data/core'
 import { dataInitializer } from '@/modules/data/service'
 import { initConsole } from '@/modules/console'
 import { audioService } from '@/modules/audio/service'
+import { errorReporter } from '@/utils/errorReport'
 import './styles/popup.less'
 import './styles/animations.less'
 import './styles/icon-gradients.less'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
+
+/**
+ * 注册全局错误捕获
+ *
+ * 三层兜底确保未捕获的错误都能被 errorReporter 记录：
+ * 1. Vue 组件内错误（app.config.errorHandler）
+ * 2. 未处理的 Promise 拒绝（unhandledrejection）
+ * 3. 脚本运行时错误（window.onerror）
+ */
+function setupGlobalErrorHandlers(app: ReturnType<typeof createApp>): void {
+  // 1. Vue 组件内错误
+  app.config.errorHandler = (err, _instance, info) => {
+    errorReporter.report(err, 'vue', { info });
+  };
+
+  // 2. 未处理的 Promise 拒绝
+  window.addEventListener('unhandledrejection', (event) => {
+    errorReporter.report(event.reason, 'unhandledrejection');
+  });
+
+  // 3. 脚本运行时错误（忽略资源加载错误，event.error 为 null 时）
+  window.addEventListener('error', (event) => {
+    if (event.error) {
+      errorReporter.report(event.error, 'window.onerror', {
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+      });
+    }
+  });
+}
 
 /**
  * 初始化并启动应用
@@ -40,6 +72,10 @@ async function initApp() {
   app.use(pinia)
   app.use(MotionPlugin)
   app.use(VueVirtualScroller)
+
+  // 注册全局错误捕获（mount 前注册，捕获挂载过程中的错误）
+  setupGlobalErrorHandlers(app)
+
   app.mount('#app')
 
   // UI 已渲染，后台初始化游戏数据（此期间 App.vue 显示 loading）

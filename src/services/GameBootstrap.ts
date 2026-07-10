@@ -11,6 +11,8 @@ import { useSkillStore } from '@/modules/skill/store';
 import { useMapStore } from '@/modules/map/store';
 import { useExplorationStore } from '@/modules/exploration/store';
 import { useQuestStore } from '@/modules/quest/store';
+import { useCombatStore } from '@/modules/combat/store';
+import { useAudioStore } from '@/modules/audio/store';
 
 /**
  * 可释放资源接口
@@ -79,17 +81,24 @@ export class GameBootstrapService {
    * 清理所有模块（角色切换或退出时）
    *
    * 仅清理显式实现了 Disposable 接口的 Store，按初始化的逆序释放资源。
-   * 当前仅 exploration store 实现了 dispose；未来新增可释放 Store 时，
-   * 将其加入下方 disposables 列表即可——TypeScript 会在编译期校验其 dispose 方法签名。
+   * 当前实现 dispose 的 Store：
+   * - combatStore：清理战斗定时器（turnTimerId / bossIntroTimerId）
+   * - explorationStore：清理 EventBus 监听器与 UI 回调
+   * - audioStore：清理 saveTimer 去抖定时器
+   *
+   * 新增可释放 Store 时，将其加入下方 disposables 列表即可——
+   * TypeScript 会在编译期校验其 dispose 方法签名。
    *（ARCH-8/CODE-50 修复：以类型安全的 Disposable 接口替代 as unknown as 断言）
    *
    * 同时清除 equipment 模块的背包回调引用（A1/G1 修复：避免回调泄漏）。
    */
   dispose(): void {
-    // 按初始化逆序收集需清理的 Store（当前仅 exploration 实现了 Disposable）
-    // 新增可释放 Store 时，在此按逆序添加即可
+    // 按初始化逆序收集需清理的 Store
+    // combat 最先清理，避免后续 dispose 触发战斗回调
     const disposables: Disposable[] = [
-      useExplorationStore(), // 唯一实现 dispose 的 Store（清理 EventBus 监听器与 UI 回调）
+      useCombatStore(),
+      useExplorationStore(),
+      useAudioStore(),
     ];
     for (const disposable of disposables) {
       disposable.dispose();

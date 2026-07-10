@@ -96,6 +96,19 @@ export const useAudioStore = defineStore('audio', () => {
     await saveToDb();
   }
 
+  /**
+   * 释放 Store 持有的资源（角色切换时由 GameBootstrap.dispose 调用）
+   *
+   * 清理 saveTimer 去抖定时器，避免角色切换后回调指向已销毁的 Store 实例。
+   * 注意：不调用 flushSave（异步），角色切换时待写入数据由下次 loadFromDb 覆盖。
+   */
+  function dispose(): void {
+    if (saveTimer.value) {
+      clearTimeout(saveTimer.value);
+      saveTimer.value = null;
+    }
+  }
+
   return {
     settings,
     effectiveSfxVolume,
@@ -107,5 +120,6 @@ export const useAudioStore = defineStore('audio', () => {
     setSfxVolume,
     setBgmVolume,
     flushSave,
+    dispose,
   };
 });

@@ -5,6 +5,7 @@
  * @module services
  */
 import { useToast } from '@/composables/useToast';
+import { errorReporter } from '@/utils/errorReport';
 
 /** 操作结果（成功或失败） */
 export type Result<T, E = Error> =
@@ -33,13 +34,13 @@ class ErrorHandlerService {
       return { success: true, data };
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
-      console.error('[ErrorHandler]', error.message, error);
+      errorReporter.report(error, 'manual');
       return { success: false, error };
     }
   }
 
   /**
-   * 包装异步操作，自动处理错误（toast 通知 + 控制台日志）
+   * 包装异步操作，自动处理错误（toast 通知 + 错误上报）
    *
    * @param promise - 要执行的 Promise
    * @param userMessage - 展示给用户的错误提示文案（省略则不弹 toast）
@@ -50,7 +51,7 @@ class ErrorHandlerService {
       return await promise;
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
-      console.error('[ErrorHandler]', userMessage || error.message, error);
+      errorReporter.report(error, 'manual', userMessage ? { userMessage } : undefined);
       if (userMessage) {
         useToast().show({ message: userMessage, type: 'danger', duration: 3000 });
       }
@@ -66,7 +67,7 @@ class ErrorHandlerService {
    */
   report(error: unknown, userMessage?: string): void {
     const err = error instanceof Error ? error : new Error(String(error));
-    console.error('[ErrorHandler]', userMessage || err.message, err);
+    errorReporter.report(err, 'manual', userMessage ? { userMessage } : undefined);
     if (userMessage) {
       useToast().show({ message: userMessage, type: 'danger', duration: 3000 });
     }

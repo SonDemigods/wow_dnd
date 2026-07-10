@@ -27,3 +27,11 @@ export {
 } from './db-helpers';
 
 export { downloadBlob } from './fileDownload';
+
+export {
+  errorReporter,
+  type ErrorRecord,
+  type ErrorSource,
+  type ErrorReportAdapter,
+  type ErrorReporterConfig,
+} from './errorReport';

@@ -396,6 +396,19 @@ export const useCombatStore = defineStore('combat', () => {
     return true;
   }
 
+  // ==================== 资源释放 ====================
+
+  /**
+   * 释放 Store 持有的资源（角色切换时由 GameBootstrap.dispose 调用）
+   *
+   * 调用 cleanup 清理战斗定时器（turnTimerId / bossIntroTimerId），
+   * 避免角色切换时战斗仍在进行导致定时器回调指向已销毁的 Store 实例。
+   * cleanup 同时会删除已死亡敌人数据并重置全部战斗状态。
+   */
+  function dispose(): void {
+    state.cleanup();
+  }
+
   // ==================== 导出 ====================
 
   return {
@@ -436,5 +449,7 @@ export const useCombatStore = defineStore('combat', () => {
     // 资源系统辅助方法
     canCastSkill,
     consumeSkillResource,
+    // 资源释放
+    dispose,
   };
 });
