@@ -201,7 +201,9 @@ export class DataInitializer {
 
       if (import.meta.env.DEV) console.log('游戏数据初始化完成');
 
-      // 通知 baseStore 重新加载最新数据
+      // BIZ-9：跨模块业务通知例外（参考 code_rule.md §一.5）
+      // data 模块不应反向依赖 baseStore，故通过 EventBus 传递最小信号通知重载，
+      // 而非直接调用 baseStore.reload()。事件载荷仅含信号，不含业务数据。
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: 'init', action: 'bulk', id: '*' });
     } catch (error) {
       console.error('初始化游戏数据失败:', error);
@@ -497,7 +499,7 @@ export class DataInitializer {
 
       if (import.meta.env.DEV) console.log('基础数据修复完成');
 
-      // 通知 baseStore 重新加载最新数据
+      // BIZ-9：跨模块业务通知例外（参考 code_rule.md §一.5）
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: 'repair', action: 'bulk', id: '*' });
     } catch (error) {
       console.error('修复基础数据失败:', error);

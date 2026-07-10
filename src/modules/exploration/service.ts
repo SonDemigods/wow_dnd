@@ -126,8 +126,12 @@ export function buildItemPool(
     const itemLevel = item.level ?? RARITY_LEVEL_MAP[item.rarity] ?? 0;
     return itemLevel >= minLevel - 1 && itemLevel <= maxLevel + 2;
   });
-  // 随机打乱后取指定数量
-  const shuffled = suitableItems.sort(() => Math.random() - 0.5);
+  // BIZ-8：使用 Fisher-Yates 洗牌算法，避免 sort(random) 分布不均匀
+  const shuffled = [...suitableItems];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
   const pool = shuffled.slice(0, maxPoolSize).map(item => item.id);
   // 如果没有合适的物品，至少提供基础药水
   if (pool.length === 0) {

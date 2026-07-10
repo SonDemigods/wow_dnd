@@ -46,7 +46,13 @@ export class ResourceSystemFactory {
         return [new ChiSystem(1)];
 
       default:
-        // 其他职业（法师、牧师、圣骑士等）暂使用默认 MP 系统，由战斗 Store 处理
+        // BIZ-6：设计决策说明
+        // 以下职业使用默认 MP 系统（由战斗 Store 处理）：
+        // - mage（法师）、priest（牧师）、paladin（圣骑士）、shaman（萨满）、
+        //   druid（德鲁伊）、hunter（猎人）、evoker（龙脉术士）
+        //   → 这些职业在 WoW 中使用法力（MP），与当前实现一致。
+        // - death_knight（亡灵骑士）：WoW 中使用符文系统，当前版本简化为 MP，后续版本可扩展 RuneSystem。
+        // - demon_hunter（影刃猎手）：WoW 中使用怒气/魔能系统，当前版本简化为 MP，后续版本可扩展 FurySystem。
         return [];
     }
   }

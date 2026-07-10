@@ -110,7 +110,7 @@ export function useEnemyAction(
     // 伤害事件
     eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
       amount: rawDamage,
-      damageType: 'physical',
+      damageType: damageType === 'magical' ? 'magic' : 'physical',
       targetName: ctx.character.name,
       actorType: 'enemy'
     });
@@ -337,13 +337,17 @@ export function useEnemyAction(
               return { success: false, type: 'skill', message: '找不到敌人数据' };
             }
 
+            // BIZ-7：查询技能名称而非直接使用 skillId
+            const healSkillData = availableSkills.find(s => s.id === decision.skillId);
+            const healSkillName = healSkillData?.name || decision.skillId;
+
             addCombatLog({
               actorType: 'enemy',
               actorId: updatedEnemy.id,
               actorName: updatedEnemy.name,
               eventType: 'combat_heal',
               skillId: decision.skillId,
-              skillName: decision.skillId,
+              skillName: healSkillName,
               heal: result.damage,
               isCrit: false,
               isDodge: false,
@@ -457,13 +461,17 @@ export function useEnemyAction(
             return { success: false, type: 'skill', message: '找不到敌人数据' };
           }
 
+          // BIZ-7：查询技能名称而非直接使用 skillId
+          const healSkillData = availableSkills.find(s => s.id === decision.skillId);
+          const healSkillName = healSkillData?.name || decision.skillId;
+
           addCombatLog({
             actorType: 'enemy',
             actorId: updatedEnemy.id,
             actorName: updatedEnemy.name,
             eventType: 'combat_heal',
             skillId: decision.skillId,
-            skillName: decision.skillId,
+            skillName: healSkillName,
             heal: result.damage,
             isCrit: false,
             isDodge: false,

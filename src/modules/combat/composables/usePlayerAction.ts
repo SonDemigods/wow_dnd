@@ -495,7 +495,11 @@ export function usePlayerAction(
             damageType,
             aoeBaseDamage
           );
-          const aoeDamage = pipeResult.finalDamage;
+          // BIZ-4：暴击判定（每个敌人独立判定，与 playerAttack 保持一致）
+          const critChance = ctx.character.attributes.critChance / 100;
+          const isCrit = rollCritical(critChance);
+          const critMultiplier = isCrit ? 1.5 : 1;
+          const aoeDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
           // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
           const { damage: actualAoeDamage } = applyBossDefenseMechanics(e, aoeDamage);
           if (actualAoeDamage > 0) {
@@ -505,15 +509,16 @@ export function usePlayerAction(
           // BIZ-6：应用 BOSS 反击机制（反弹/反击）
           applyBossCounterMechanics(e, actualAoeDamage);
 
-          // 荆棘反伤：对玩家自身造成反弹伤害
+          // BIZ-1：荆棘反伤：对玩家自身造成反弹伤害（乘以暴击倍率，与 playerAttack 保持一致）
           if (pipeResult.thorns > 0) {
-            ctx.character.takeDamage(pipeResult.thorns);
+            const thornsDamage = Math.floor(pipeResult.thorns * critMultiplier);
+            ctx.character.takeDamage(thornsDamage);
             addCombatLog({
               actorType: 'system', actorId: 'system', actorName: '系统',
               eventType: 'combat_damage', targetType: 'player', targetId: 'player',
-              targetName: ctx.character.name, damage: pipeResult.thorns,
+              targetName: ctx.character.name, damage: thornsDamage,
               isCrit: false, isDodge: false,
-              message: `荆棘反伤对 ${ctx.character.name} 造成 ${pipeResult.thorns} 点伤害！`
+              message: `荆棘反伤对 ${ctx.character.name} 造成 ${thornsDamage} 点伤害！`
             });
           }
 
@@ -526,6 +531,16 @@ export function usePlayerAction(
             actorType: 'player'
           });
 
+          // BIZ-4：暴击事件
+          if (isCrit) {
+            eventBus.emit(GameEvents.COMBAT_CRITICAL_HIT, {
+              amount: aoeDamage,
+              damageType: damageType === 'magical' ? 'magic' : 'physical',
+              targetName: e.name || '敌人',
+              actorType: 'player'
+            });
+          }
+
           addCombatLog({
             actorType: 'player',
             actorId: 'player',
@@ -537,9 +552,11 @@ export function usePlayerAction(
             skillId,
             skillName: skill?.name || '',
             damage: aoeDamage,
-            isCrit: false,
+            isCrit,
             isDodge: false,
-            message: `${skill?.name || '技能'} 对 ${e.name} 造成 ${aoeDamage} 点${damageType === 'magical' ? '魔法' : '物理'}伤害！`
+            message: isCrit
+              ? `${skill?.name || '技能'} 暴击！对 ${e.name} 造成 ${aoeDamage} 点${damageType === 'magical' ? '魔法' : '物理'}伤害！`
+              : `${skill?.name || '技能'} 对 ${e.name} 造成 ${aoeDamage} 点${damageType === 'magical' ? '魔法' : '物理'}伤害！`
           });
         }
 
@@ -590,8 +607,14 @@ export function usePlayerAction(
           result.damage  // baseDamageOverride：技能基础伤害直接传入
         );
 
+        // BIZ-4：暴击判定（与 playerAttack 保持一致）
+        const critChance = ctx.character.attributes.critChance / 100;
+        const isCrit = rollCritical(critChance);
+        const critMultiplier = isCrit ? 1.5 : 1;
+        const skillDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
+
         // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
-        const { damage: actualSkillDamage } = applyBossDefenseMechanics(target, pipeResult.finalDamage);
+        const { damage: actualSkillDamage } = applyBossDefenseMechanics(target, skillDamage);
         let isDead = false;
         if (actualSkillDamage > 0) {
           isDead = ctx.enemy.takeDamage(target.id, actualSkillDamage);
@@ -601,13 +624,36 @@ export function usePlayerAction(
         // BIZ-6：应用 BOSS 反击机制（反弹/反击）
         applyBossCounterMechanics(target, actualSkillDamage);
 
+        // BIZ-1：荆棘反伤（与 playerAttack 保持一致，乘以暴击倍率）
+        if (pipeResult.thorns > 0) {
+          const thornsDamage = Math.floor(pipeResult.thorns * critMultiplier);
+          ctx.character.takeDamage(thornsDamage);
+          addCombatLog({
+            actorType: 'system', actorId: 'system', actorName: '系统',
+            eventType: 'combat_damage', targetType: 'player', targetId: 'player',
+            targetName: ctx.character.name, damage: thornsDamage,
+            isCrit: false, isDodge: false,
+            message: `荆棘反伤对 ${ctx.character.name} 造成 ${thornsDamage} 点伤害！`
+          });
+        }
+
         // 伤害类型音效事件
         eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
-          amount: pipeResult.finalDamage,
+          amount: skillDamage,
           damageType: damageType === 'magical' ? 'magic' : 'physical',
           targetName: updatedTarget?.name || '敌人',
           actorType: 'player'
         });
+
+        // BIZ-4：暴击事件
+        if (isCrit) {
+          eventBus.emit(GameEvents.COMBAT_CRITICAL_HIT, {
+            amount: skillDamage,
+            damageType: damageType === 'magical' ? 'magic' : 'physical',
+            targetName: updatedTarget?.name || '敌人',
+            actorType: 'player'
+          });
+        }
 
         addCombatLog({
           actorType: 'player',
@@ -619,10 +665,12 @@ export function usePlayerAction(
           targetName: updatedTarget?.name || '',
           skillId,
           skillName: skill?.name || '',
-          damage: pipeResult.finalDamage,
-          isCrit: false,
+          damage: skillDamage,
+          isCrit,
           isDodge: false,
-          message: `${skill?.name || '技能'} 对 ${updatedTarget?.name} 造成 ${pipeResult.finalDamage} 点${result.type === 'magic_damage' ? '魔法' : '物理'}伤害！`
+          message: isCrit
+            ? `${skill?.name || '技能'} 暴击！对 ${updatedTarget?.name} 造成 ${skillDamage} 点${result.type === 'magic_damage' ? '魔法' : '物理'}伤害！`
+            : `${skill?.name || '技能'} 对 ${updatedTarget?.name} 造成 ${skillDamage} 点${result.type === 'magic_damage' ? '魔法' : '物理'}伤害！`
         });
 
         // 附带 buff/debuff 效果（在 endCombat/endPlayerTurn 之前施加，防止效果添加到已清空的容器）
@@ -782,11 +830,31 @@ export function usePlayerAction(
         const critMultiplier = isCrit ? 1.5 : 1;
         const finalDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
 
-        // 造成伤害
-        const isDead = ctx.enemy.takeDamage(target.id, finalDamage);
+        // BIZ-2：应用 BOSS 防御机制（无敌/护盾）
+        const { damage: actualItemDamage } = applyBossDefenseMechanics(target, finalDamage);
+        let isDead = false;
+        if (actualItemDamage > 0) {
+          isDead = ctx.enemy.takeDamage(target.id, actualItemDamage);
+        }
         itemKilledEnemy = isDead;
 
         damageResult = { damage: finalDamage, isCrit };
+
+        // BIZ-2：应用 BOSS 反击机制（反弹/反击）
+        applyBossCounterMechanics(target, actualItemDamage);
+
+        // BIZ-3：荆棘反伤（与 playerAttack 保持一致）
+        if (pipeResult.thorns > 0) {
+          const thornsDamage = Math.floor(pipeResult.thorns * critMultiplier);
+          ctx.character.takeDamage(thornsDamage);
+          addCombatLog({
+            actorType: 'system', actorId: 'system', actorName: '系统',
+            eventType: 'combat_damage', targetType: 'player', targetId: 'player',
+            targetName: ctx.character.name, damage: thornsDamage,
+            isCrit: false, isDodge: false,
+            message: `荆棘反伤对 ${ctx.character.name} 造成 ${thornsDamage} 点伤害！`
+          });
+        }
 
         // 伤害音效事件
         eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {

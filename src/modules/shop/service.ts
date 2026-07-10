@@ -114,7 +114,12 @@ export function generateShopItems(shopConfig: ShopConfig, allItems: Item[]): Sho
 
   // 随机选择 6-12 件商品
   const count = Math.min(Math.floor(Math.random() * 7) + 6, availableItems.length);
-  const shuffled = [...availableItems].sort(() => Math.random() - 0.5);
+  // BIZ-8：使用 Fisher-Yates 洗牌算法，避免 sort(random) 分布不均匀
+  const shuffled = [...availableItems];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
   const selected = shuffled.slice(0, count);
 
   // 生成商品列表
