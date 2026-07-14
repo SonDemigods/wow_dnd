@@ -5,10 +5,11 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 项目架构图 |
-| 版本 | v1.0 |
-| 生成日期 | 2026年7月6日 |
+| 版本 | v2.0 |
+| 生成日期 | 2026年7月10日 |
 | 所属目录 | `doc/project/` |
 | 关联文档 | MODULE_FUNCTIONS.md、DEPENDENCY_GRAPH.md、DATA_ARCHITECTURE_OVERVIEW.md |
+| 更新说明 | 1. 系统整体架构图服务层补全为 6 个服务（新增 CharacterLifecycleService、AdminQueryService）；2. 基础设施层新增 item-template 模块；3. UI 组件层 common 群补全 BaseIcon/ClassResourceBar/RiskIndicator；4. Composables 层补全 useResponsiveGrid；5. 战斗模块新增 combatContext.ts 的 ICombatContext/ICombatQuery/ICombatCommand 接口拆分说明；6. 探索模块新增 events.ts 注册表模式架构；7. 职业差异化系统修正为 13 个职业、39 个被动技能；8. 天赋树描述修正为 3 系 3 层结构（tier2 需 3 点、tier3 需 6 点、单天赋最多 5 点、每 2 级获 1 点） |
 
 ---
 
@@ -33,7 +34,7 @@ graph TD
         L1D[ExplorationView 探索视图]
         L1E[MapView 地图视图]
         L1F[popup 弹窗组件群<br/>CombatPopup/InventoryPopup/SkillsPopup/<br/>ShopPopup/QuestPopup/QuestBoardPopup/<br/>AdventureLogPopup/AudioSettingsPopup/<br/>CharacterInfoPopup/SystemPopup]
-        L1G[common 通用组件群<br/>AlertPopup/BasePopup/ConfirmPopup/<br/>EffectTag/EmptyState/ItemIcon/<br/>ResourceBar/SkillTags/Tag/Toast]
+        L1G[common 通用组件群<br/>AlertPopup/BasePopup/BaseIcon/ClassResourceBar/<br/>ConfirmPopup/EffectTag/EmptyState/ItemIcon/<br/>ResourceBar/RiskIndicator/SkillTags/Tag/Toast]
         L1H[admin 后台组件群<br/>AdminForm/AdminLayout/<br/>AdminTable/ConfigManager]
     end
 
@@ -42,6 +43,7 @@ graph TD
         direction LR
         L2A[useSkillDisplay 技能展示]
         L2B[useToast 全局提示]
+        L2C[useResponsiveGrid 响应式网格]
     end
 
     %% ===== 第 2.5 层：服务层=====
@@ -51,6 +53,8 @@ graph TD
         L2S2[GameBootstrap<br/>初始化编排]
         L2S3[ItemTemplateCache<br/>物品模板缓存]
         L2S4[ErrorHandler<br/>统一错误处理]
+        L2S5[CharacterLifecycleService<br/>角色生命周期服务]
+        L2S6[AdminQueryService<br/>管理后台查询服务]
     end
 
     %% ===== 第三层：玩法核心层 =====
@@ -89,6 +93,7 @@ graph TD
         L6D[admin 后台管理]
         L6E[audio 音频]
         L6F[animation 动画]
+        L6G[item-template 统一物品模板]
     end
 
     %% ===== 第七层：工具与配置层 =====
@@ -96,7 +101,7 @@ graph TD
         direction LR
         L7A[utils/calculations 计算工具]
         L7B[config/* 配置<br/>character/combat-colors/<br/>database/inventory]
-        L7C[data/config_* 静态数据<br/>config_bosses/config_classes/<br/>config_equipmentItems/config_factions/<br/>config_items/config_locations/<br/>config_mobs/config_quests/<br/>config_races/config_shops/<br/>config_skills]
+        L7C[data/config_* 静态数据<br/>config_bosses/config_classes/<br/>config_class_passives/config_class_talents/<br/>config_equipmentItems/config_factions/<br/>config_items/config_locations/<br/>config_mobs/config_quests/<br/>config_races/config_shops/<br/>config_skills]
     end
 
     %% ===== 层间调用关系 =====
@@ -128,12 +133,12 @@ graph TD
     classDef toolLayer fill:#cfd8dc,stroke:#37474f,color:#000
 
     class L1A,L1B,L1C,L1D,L1E,L1F,L1G,L1H uiLayer
-    class L2A,L2B compLayer
-    class L2S1,L2S2,L2S3,L2S4 svcLayer
+    class L2A,L2B,L2C compLayer
+    class L2S1,L2S2,L2S3,L2S4,L2S5,L2S6 svcLayer
     class L3A,L3B,L3C,L3D playLayer
     class L4A,L4B,L4C,L4D,L4E dataLayer
     class L5A,L5B,L5C auxLayer
-    class L6A,L6B,L6C,L6D,L6E,L6F infraLayer
+    class L6A,L6B,L6C,L6D,L6E,L6F,L6G infraLayer
     class L7A,L7B,L7C toolLayer
 ```
 
@@ -141,14 +146,14 @@ graph TD
 
 | 层级 | 职责 | 主要成员 |
 |------|------|----------|
-| UI 组件层 | 用户交互与视图渲染 | GameMain、CharacterCreate/Select、ExplorationView、MapView、popup/、common/、admin/ |
-| Composables 层 | 跨组件复用的组合式逻辑 | useSkillDisplay、useToast |
-| 服务层 | 跨模块查询、初始化编排、缓存与错误处理 | CrossModuleQuery、GameBootstrap、ItemTemplateCache、ErrorHandler |
+| UI 组件层 | 用户交互与视图渲染 | GameMain、CharacterCreate/Select、ExplorationView、MapView、popup/、common/（含 BaseIcon/ClassResourceBar/RiskIndicator）、admin/ |
+| Composables 层 | 跨组件复用的组合式逻辑 | useSkillDisplay、useToast、useResponsiveGrid |
+| 服务层 | 跨模块查询、初始化编排、缓存、错误处理、角色生命周期、管理后台查询 | CrossModuleQuery、GameBootstrap、ItemTemplateCache、ErrorHandler、CharacterLifecycleService、AdminQueryService |
 | 玩法核心层 | 游戏核心玩法编排 | combat、exploration、map、shop |
 | 核心数据层 | 角色相关业务数据管理 | character、inventory、equipment、skill、quest |
 | 辅助模块层 | 为玩法层提供辅助能力 | log、enemy、boss |
-| 基础设施层 | 数据/事件/音频等基础能力 | data、bus、base、admin、audio、animation |
-| 工具与配置层 | 纯函数工具与静态配置 | utils/calculations、config/*、data/config_* |
+| 基础设施层 | 数据/事件/音频/物品模板等基础能力 | data、bus、base、admin、audio、animation、item-template |
+| 工具与配置层 | 纯函数工具与静态配置 | utils/calculations、config/*、data/config_*（含 config_class_passives/config_class_talents） |
 
 ---
 
@@ -216,7 +221,7 @@ graph TD
 
 ## 三、战斗模块架构详解
 
-战斗模块通过 composables 拆分降低复杂度，并包含 effects 与 ai 两个子系统。
+战斗模块通过 composables 拆分降低复杂度，并包含 effects、ai、resources、forms、pets 五大子系统。战斗上下文（combatContext.ts）将 combat 对 character/skill/quest/log/enemy/inventory 六个外部 Store 的依赖收口为单一接口，并拆分为只读的 `ICombatQuery` 与写入的 `ICombatCommand`。
 
 ### 3.1 Composables 组合架构
 
@@ -233,7 +238,10 @@ graph TD
     initiative[useInitiative<br/>先攻调度层<br/>行动顺序排序]
     player[usePlayerAction<br/>玩家行动层<br/>攻击/防御/技能]
 
-    %% ===== 跨模块依赖 =====
+    %% ===== 战斗上下文 =====
+    ctx[createCombatContext<br/>ICombatContext 上下文<br/>聚合 6 个外部 Store]
+
+    %% ===== 跨模块依赖（经 ctx 收口）=====
     charStore[characterStore]
     enemyStore[enemyStore]
     skillStore[skillStore]
@@ -252,6 +260,14 @@ graph TD
     entry -->|组合| initiative
     entry -->|组合| player
 
+    %% ===== 上下文注入关系 =====
+    entry -->|创建| ctx
+    ctx -->|只读 ICombatQuery| state
+    ctx -->|写入 ICombatCommand| player
+    ctx -->|只读| enemy
+    ctx -->|只读| initiative
+    ctx -->|写入| log
+
     %% ===== 依赖注入关系 =====
     log -->|依赖| state
     boss -->|依赖| state
@@ -260,28 +276,38 @@ graph TD
     enemy -->|依赖| state
     enemy -->|依赖| log
 
-    %% ===== 跨模块调用 =====
-    entry -->|Action| charStore
-    entry -->|Action| enemyStore
-    entry -->|Action| skillStore
-    entry -->|Action| invStore
-    entry -->|Action| questStore
-    entry -->|Action| logStore
+    %% ===== 上下文聚合外部 Store =====
+    ctx -->|聚合| charStore
+    ctx -->|聚合| enemyStore
+    ctx -->|聚合| skillStore
+    ctx -->|聚合| invStore
+    ctx -->|聚合| questStore
+    ctx -->|聚合| logStore
 
     %% ===== 事件发布 =====
     entry -->|发布 UI/音效事件| bus
 
     %% ===== 样式 =====
     classDef entryLayer fill:#fff9c4,stroke:#f57f17,color:#000
+    classDef ctxLayer fill:#f8bbd0,stroke:#ad1457,color:#000
     classDef subLayer fill:#c5e1a5,stroke:#33691e,color:#000
     classDef ext fill:#eceff1,stroke:#607d8b,color:#000
     classDef busLayer fill:#ffe0b2,stroke:#e65100,color:#000
 
     class entry entryLayer
+    class ctx ctxLayer
     class state,log,boss,enemy,initiative,player subLayer
     class charStore,enemyStore,skillStore,invStore,questStore,logStore ext
     class bus busLayer
 ```
+
+**战斗上下文（combatContext.ts）读写分离设计**：
+
+| 接口 | 职责 | 暴露内容 | 适用场景 |
+|------|------|----------|----------|
+| `ICombatQuery` | 只读查询 | character 只读属性（name/classId/hp/maxHp/attributes/effectiveStats）、skill.getSkill、enemy 查询方法、inventory.getItemInfo | 只读 composable（编译期保证无副作用） |
+| `ICombatCommand` | 写入命令 | character 状态变更（takeDamage/gainExp/gainGold/handleDeath/receiveHeal/changeMp）、skill.castSkill/tickCooldowns、enemy 状态变更、quest.onEnemyKilled、log.addLogEntry、inventory.useItem/addItem | 需要修改外部状态的 composable |
+| `ICombatContext` | 完整上下文 | `ICombatQuery & ICombatCommand` 交集类型 | 向后兼容所有现有 composable |
 
 ### 3.2 Effects 子系统（Buff/Debuff 效果系统）
 
@@ -343,7 +369,7 @@ graph LR
 
 ### 3.3 AI 子系统（策略模式）
 
-采用策略模式实现敌人 AI，支持四种行为策略。
+采用策略模式实现敌人 AI，支持四种行为策略与三种目标选择器。
 
 ```mermaid
 graph TD
@@ -359,6 +385,12 @@ graph TD
     balanced[BalancedStrategy<br/>平衡型<br/>根据状态动态决策]
     bossPhase[BossPhaseStrategy<br/>Boss 阶段型<br/>按 Boss 阶段切换策略]
 
+    %% ===== 三种目标选择器 =====
+    targetSel[ai/targetSelection<br/>ITargetSelector 接口]
+    threat[ThreatBasedTargetSelector<br/>基于威胁]
+    random[RandomTargetSelector<br/>随机]
+    lowestHp[LowestHpTargetSelector<br/>最低血量]
+
     %% ===== 决策结果 =====
     decision[AiDecision<br/>type: basic_attack/skill/heal<br/>skillId?]
 
@@ -373,6 +405,15 @@ graph TD
     balanced -->|输入| context
     bossPhase -->|输入| context
 
+    aggressive -->|选择目标| targetSel
+    defensive -->|选择目标| targetSel
+    balanced -->|选择目标| targetSel
+    bossPhase -->|选择目标| targetSel
+
+    targetSel -->|实现| threat
+    targetSel -->|实现| random
+    targetSel -->|实现| lowestHp
+
     aggressive -->|输出| decision
     defensive -->|输出| decision
     balanced -->|输出| decision
@@ -382,22 +423,27 @@ graph TD
     classDef iface fill:#fff9c4,stroke:#f57f17,color:#000
     classDef ctx fill:#cfd8dc,stroke:#37474f,color:#000
     classDef strat fill:#c5e1a5,stroke:#33691e,color:#000
-    classDef out fill:#b3e5fc,stroke:#01579b,color:#000
+    classDef sel fill:#b3e5fc,stroke:#01579b,color:#000
+    classDef out fill:#ffe0b2,stroke:#e65100,color:#000
 
     class interface iface
     class context ctx
     class aggressive,defensive,balanced,bossPhase strat
+    class targetSel,threat,random,lowestHp sel
     class decision out
 ```
 
 ### 3.4 战斗子模块架构图
 
-战斗模块内部包含 `resources / forms / pets` 三大子目录，配合既有的 `composables / effects / ai`，形成完整的职业差异化与战斗扩展能力。下图展示各子模块之间的协作关系。
+战斗模块内部包含 `resources / forms / pets / effects / ai / composables` 六大子目录，配合 `combatContext.ts` 上下文工厂，形成完整的职业差异化与战斗扩展能力。下图展示各子模块之间的协作关系。
 
 ```mermaid
 graph TD
     %% ===== 编排中心 =====
     combat[useCombatStore<br/>战斗编排中心]
+
+    %% ===== 战斗上下文 =====
+    ctx[combatContext.ts<br/>createCombatContext<br/>ICombatQuery + ICombatCommand]
 
     %% ===== 战斗内部子模块 =====
     resources[resources/<br/>ResourceSystemFactory<br/>Rage/Energy/ComboPoint/<br/>SoulShard/Chi]
@@ -412,17 +458,30 @@ graph TD
     useEnemyAction[useEnemyAction<br/>敌人行动层]
     useInitiative[useInitiative<br/>先攻调度层]
 
-    %% ===== 外部数据源 =====
+    %% ===== 外部数据源（经 ctx 收口）=====
     character[character<br/>职业/属性/天赋]
     skill[skill<br/>技能模板]
+    enemy[enemy<br/>敌人实例]
+    quest[quest<br/>任务进度]
+    log[log<br/>冒险日志]
+    inventory[inventory<br/>背包物品]
 
     %% ===== combat Store 组合关系 =====
+    combat -->|创建| ctx
     combat -->|按职业创建资源| resources
     combat -->|组合注入| passive
     combat -->|组合| effects
     combat -->|组合| strategies
     combat -->|组合| useEnemyAction
     combat -->|组合| useInitiative
+
+    %% ===== 上下文聚合外部 Store =====
+    ctx -->|聚合只读+写入| character
+    ctx -->|聚合只读+写入| skill
+    ctx -->|聚合只读+写入| enemy
+    ctx -->|聚合写入| quest
+    ctx -->|聚合写入| log
+    ctx -->|聚合只读+写入| inventory
 
     %% ===== 被动技能注入 =====
     passive -.->|注入| useEnemyAction
@@ -443,32 +502,35 @@ graph TD
 
     %% ===== 样式 =====
     classDef center fill:#fff9c4,stroke:#f57f17,color:#000
+    classDef ctxLayer fill:#f8bbd0,stroke:#ad1457,color:#000
     classDef sub fill:#c5e1a5,stroke:#33691e,color:#000
     classDef ext fill:#eceff1,stroke:#607d8b,color:#000
     classDef aiLayer fill:#b3e5fc,stroke:#01579b,color:#000
 
     class combat center
+    class ctx ctxLayer
     class resources,passive,effects,forms,pets,useEnemyAction,useInitiative sub
     class targetSel,strategies aiLayer
-    class character,skill ext
+    class character,skill,enemy,quest,log,inventory ext
 ```
 
 **子模块协作说明**：
 
 | 子模块 | 类型 | 协作方式 |
 |--------|------|----------|
+| `combatContext.ts` | 上下文工厂 | `createCombatContext` 聚合 character/skill/enemy/quest/log/inventory 六个外部 Store，拆分为 `ICombatQuery`（只读）与 `ICombatCommand`（写入），是 combat 模块内唯一引用外部 Store 的位置 |
 | `resources/` | 资源系统 | `ResourceSystemFactory` 按角色职业创建对应资源系统（怒气/能量/连击点/灵魂碎片/真气），由 combat Store 持有并在回合内消耗/回复 |
 | `composables/usePassiveSkills` | 被动技能 | 作为组合式函数被 combat Store 创建，再注入到 `useEnemyAction` 与 `useInitiative`，在敌人行动与先攻调度时触发被动效果 |
 | `forms/` | 德鲁伊变形 | 独立 `useFormStore`，形态切换时修正角色属性、限制可用技能，并通知 combat Store 重建先攻 |
 | `pets/` | 术士召唤 | 独立 `usePetStore`，召唤物属性基于角色计算，消耗灵魂碎片资源，参战行动由 combat Store 驱动 |
-| `ai/targetSelection` | 目标选择 | 实现 `ITargetSelector` 接口，被 4 种 AI 策略调用以选择攻击目标，为多角色队伍预留扩展点 |
+| `ai/targetSelection` | 目标选择 | 实现 `ITargetSelector` 接口（ThreatBased/Random/LowestHp 三种），被 4 种 AI 策略调用以选择攻击目标 |
 | `effects/` | 效果系统 | 既有三层结构（管线-容器-处理器），由 combat Store 与敌人行动层驱动 |
 
 ---
 
 ## 四、探索模块架构详解
 
-探索模块采用「Store 编排 + Service 纯函数」模式，通过 UI 回调与 EventBus 与外部交互。
+探索模块采用「Store 编排 + Service 纯函数 + events.ts 注册表」模式，通过 UI 回调与 EventBus 与外部交互。事件处理器注册表（events.ts）采用两层注册表模式，将事件类型与处理函数的映射关系从 store.ts 中解耦。
 
 ```mermaid
 graph TD
@@ -483,10 +545,20 @@ graph TD
         s3[updateAccessibleCells 更新可达格]
         s4[generateTrapDamage 陷阱伤害]
         s5[generateRandomEvent 随机事件]
+        s5a[generateMultiOptionEvent 多选项事件]
         s6[generateCampHeal 营地治疗]
         s7[generateItemForCell 格子物品]
         s8[computeEventProbability 事件概率]
         s9[buildItemPool 物品池]
+    end
+
+    %% ===== events.ts 注册表层 =====
+    subgraph events[events.ts 事件处理器注册表]
+        direction TB
+        e1[effectHandlers<br/>RandomEventEffectType 处理器<br/>heal/mana/exp/damage/mpLoss/gold]
+        e2[cellEventHandlers<br/>CellType 格子事件处理器<br/>treasure/trap/event/rest]
+        e3[applyEventEffect 分发函数]
+        e4[dispatchCellEvent 分发函数]
     end
 
     %% ===== UI 回调机制 =====
@@ -504,6 +576,7 @@ graph TD
     charStore[characterStore]
     invStore[inventoryStore]
     logStore[logStore]
+    crossModuleQuery[CrossModuleQuery 跨模块查询]
 
     %% ===== 持久化 =====
     db[(explorationDbService)]
@@ -512,12 +585,17 @@ graph TD
     store -->|调用纯函数| s1
     store -->|调用纯函数| s2
     store -->|调用纯函数| s3
-    store -->|调用纯函数| s4
-    store -->|调用纯函数| s5
-    store -->|调用纯函数| s6
-    store -->|调用纯函数| s7
-    store -->|调用纯函数| s8
     store -->|调用纯函数| s9
+
+    store -->|分发格子事件| e4
+    e4 -->|查找处理器| e2
+    e2 -->|内部调用| e3
+    e3 -->|查找处理器| e1
+    e2 -->|调用纯函数| s4
+    e2 -->|调用纯函数| s5
+    e2 -->|调用纯函数| s5a
+    e2 -->|调用纯函数| s6
+    e2 -->|调用纯函数| s7
 
     store -->|读写| db
 
@@ -532,29 +610,36 @@ graph TD
     combatEnd -->|触发| onBattleResult
     onBattleResult -->|更新| store
 
+    %% ===== 跨模块查询 =====
+    store -->|crossModuleQuery| crossModuleQuery
+    crossModuleQuery -->|查询| charStore
+    crossModuleQuery -->|查询| invStore
+
     %% ===== 跨模块战斗交互 =====
     store -->|triggerBattle| triggerBattle
     triggerBattle -->|打开| combatPopup
     combatPopup -->|战斗结束发布| combatEnd
 
     %% ===== 跨模块 Store 调用 =====
-    store -->|takeDamage/receiveHeal/gainGold| charStore
-    store -->|addItem| invStore
-    store -->|addLogEntry| logStore
+    e2 -->|takeDamage/receiveHeal/gainGold| charStore
+    e2 -->|addItem| invStore
+    e2 -->|addLogEntry| logStore
 
     %% ===== 样式 =====
     classDef storeLayer fill:#c5e1a5,stroke:#33691e,color:#000
     classDef svcLayer fill:#b3e5fc,stroke:#01579b,color:#000
+    classDef evtLayer fill:#f8bbd0,stroke:#ad1457,color:#000
     classDef uiLayer fill:#ffe0b2,stroke:#e65100,color:#000
     classDef busLayer fill:#fff9c4,stroke:#f57f17,color:#000
     classDef ext fill:#eceff1,stroke:#607d8b,color:#000
     classDef dbLayer fill:#ffccbc,stroke:#bf360c,color:#000
 
     class store storeLayer
-    class s1,s2,s3,s4,s5,s6,s7,s8,s9 svcLayer
+    class s1,s2,s3,s4,s5,s5a,s6,s7,s8,s9 svcLayer
+    class e1,e2,e3,e4 evtLayer
     class uiCb,uiComp,combatPopup uiLayer
     class bus,combatEnd,onBattleResult busLayer
-    class triggerBattle,charStore,invStore,logStore ext
+    class triggerBattle,charStore,invStore,logStore,crossModuleQuery ext
     class db dbLayer
 ```
 
@@ -563,8 +648,10 @@ graph TD
 | 机制 | 说明 |
 |------|------|
 | Store → Service | Store 调用 Service 纯函数完成网格生成、概率计算等无副作用运算 |
+| events.ts 注册表（ARCH-11） | 两层注册表：`effectHandlers`（RandomEventEffectType → 角色状态变更，6 种效果）与 `cellEventHandlers`（CellType → 格子事件结算，treasure/trap/event/rest 四种）。新增事件类型只需在 events.ts 注册处理器，无需修改 store.ts。未注册的 cell 类型（monster/boss/shop/board/start/empty）走 store.ts 专用路径 |
 | UI 回调（registerUICallbacks） | 替代部分 EventBus 数据事件，由 GameMain/ExplorationView 注册回调，Store 触发后由 UI 响应 |
 | EventBus 监听 | Store 订阅 `COMBAT_END` 事件，由 `onBattleResult` 处理战斗结果回调 |
+| 跨模块查询收口 | 区域进入阶段对地点/物品/任务/商店的查询统一经 `crossModuleQuery`，物品模板命中 `ItemTemplateCache` 内存缓存 |
 | 跨模块战斗闭环 | `triggerBattle` → `CombatPopup` → 战斗结束发布 `COMBAT_END` → `onBattleResult` 更新探索状态 |
 
 ---
@@ -765,6 +852,9 @@ graph TD
     systemPopup[SystemPopup<br/>系统弹窗]
 
     %% ===== 通用组件 =====
+    baseIcon[BaseIcon<br/>基础图标]
+    classResourceBar[ClassResourceBar<br/>职业资源条]
+    riskIndicator[RiskIndicator<br/>风险指示器]
     resourceBar[ResourceBar<br/>资源条]
     confirmPopup[ConfirmPopup<br/>确认弹窗]
     toast[Toast 全局提示]
@@ -795,6 +885,8 @@ graph TD
     gameMain -->|底部导航| characterInfoPopup
     gameMain -->|底部导航| systemPopup
     gameMain -->|头部| resourceBar
+    gameMain -->|头部| classResourceBar
+    gameMain -->|头部| riskIndicator
 
     adminLayout -->|包含| configManager
     adminLayout -->|包含| adminForm
@@ -810,7 +902,7 @@ graph TD
     class app root
     class charSelect,charCreate,gameMain,adminLayout,mapView,explorationView view
     class combatPopup,inventoryPopup,skillsPopup,shopPopup,questPopup,questBoardPopup,adventureLogPopup,audioSettingsPopup,characterInfoPopup,systemPopup popup
-    class resourceBar,confirmPopup,toast common
+    class baseIcon,classResourceBar,riskIndicator,resourceBar,confirmPopup,toast common
     class configManager,adminForm,adminTable admin
 ```
 
@@ -818,7 +910,7 @@ graph TD
 
 ## 七、事件总线架构
 
-EventBus 采用类型安全的发布/订阅模式，支持分组管理与生命周期控制。
+EventBus 采用类型安全的发布/订阅模式，支持分组管理与生命周期控制。`GameEvents` 枚举共定义 44 个事件，按模块分组。
 
 ```mermaid
 graph TD
@@ -837,7 +929,7 @@ graph TD
 
     %% ===== 类型安全机制 =====
     typeSafe["GameEventPayloadMap<br/>事件载荷映射接口<br/>K extends keyof GameEventPayloadMap"]
-    events["GameEvents 枚举<br/>按模块分组的事件常量"]
+    events["GameEvents 枚举<br/>44 个事件<br/>按模块分组的事件常量"]
 
     %% ===== 内部存储 =====
     listeners[("listeners 监听器映射表<br/>event -> callback 列表")]
@@ -896,26 +988,40 @@ graph TD
 
 | 设计点 | 说明 |
 |--------|------|
-| `GameEvents` 枚举 | 按模块分组的事件名常量，避免字符串硬编码 |
+| `GameEvents` 枚举 | 按模块分组的事件名常量，共 44 个事件，避免字符串硬编码 |
 | `GameEventPayloadMap` 接口 | 为每个事件定义对应的载荷类型，emit/on 双方通过泛型 `K extends keyof GameEventPayloadMap` 在编译期严格匹配 |
 | 无载荷事件 | 使用 `null` 类型（如 `COMBAT_PLAYER_TURN`） |
 | 复杂载荷 | 使用具体接口（如 `EnemyInstance`、`LocationData`） |
 | 分组管理 | `onGroup` 注册、`clearGroup` 批量清理，便于模块级生命周期管理 |
 | 单例模式 | `eventBus` 全局唯一实例，所有模块共享 |
 
+**事件分类统计**：
+
+| 事件类型 | 数量 | 主要用途 |
+|----------|------|----------|
+| 角色事件 CHARACTER 系列 | 6 | 升级/死亡/复活/创建/删除/登出通知 |
+| 战斗事件 COMBAT 系列 | 11 | UI 动画/音效/伤害数字 |
+| 探索事件 EXPLORATION 系列 | 8 | UI 回调/音效 |
+| 商店事件 SHOP 系列 | 3 | 交易通知 |
+| 任务事件 QUEST 系列 | 4 | 任务状态通知 |
+| 技能事件 SKILL 系列 | 2 | 施放/学习通知 |
+| UI 事件 UI 系列 | 5 | 面板/确认对话框 |
+| 其他事件 | 5 | 区域/数据/日志/物品 |
+| **合计** | **44** | — |
+
 ---
 
 ## 八、职业差异化系统架构图
 
-项目围绕「职业」建立了一套完整的差异化能力体系，涵盖资源系统、被动技能、天赋树、专属装备、变形与召唤六大子系统。下图展示各子系统如何由职业标识驱动，并与数据文件、角色模块及战斗模块联动。
+项目围绕「职业」建立了一套完整的差异化能力体系，涵盖资源系统、被动技能、天赋树、专属装备、变形与召唤六大子系统。共 13 个职业，每职业 3 个被动技能（共 39 个被动）。下图展示各子系统如何由职业标识驱动，并与数据文件、角色模块及战斗模块联动。
 
 ```mermaid
 graph TD
     %% ===== 数据源 =====
-    configClasses[config_classes.ts<br/>职业定义]
-    classPassives[class_passives.ts<br/>职业被动数据]
+    configClasses[config_classes.ts<br/>13 个职业定义]
+    classPassives[config_class_passives.ts<br/>39 个职业被动数据<br/>13 职业 × 3 被动]
     classItems[class_items.ts<br/>职业专属装备]
-    classTalents[class_talents.ts<br/>职业天赋数据]
+    classTalents[config_class_talents.ts<br/>职业天赋数据<br/>每职业 3 系 3 层]
     itemSets[item_sets.ts<br/>套装数据]
 
     %% ===== 职业核心 =====
@@ -924,8 +1030,8 @@ graph TD
 
     %% ===== 六大差异化子系统 =====
     resources[资源系统 resources/<br/>Rage/Energy/ComboPoint/<br/>SoulShard/Chi]
-    passive[被动技能 usePassiveSkills<br/>+ class_passives]
-    talents[天赋树 character/talents/<br/>+ class_talents]
+    passive[被动技能 usePassiveSkills<br/>+ config_class_passives]
+    talents[天赋树 character/talents/<br/>+ config_class_talents]
     equip[专属装备 + 套装<br/>equipment + class_items + item_sets]
     forms[变形系统 forms/<br/>德鲁伊专属]
     pets[召唤系统 pets/<br/>术士专属]
@@ -977,12 +1083,24 @@ graph TD
 
 | 子系统 | 实现位置 | 数据来源 | 适用职业 |
 |--------|----------|----------|----------|
-| 资源系统 | `combat/resources/` | `config_classes.ts`（职业资源类型） | 战士-怒气、盗贼-能量/连击点、术士-灵魂碎片、武僧-真气 |
-| 被动技能 | `combat/composables/usePassiveSkills.ts` | `class_passives.ts` | 全职业（按职业配置不同被动） |
-| 天赋树 | `character/talents/` | `class_talents.ts` | 全职业（按职业配置不同天赋树） |
+| 资源系统 | `combat/resources/` | `config_classes.ts`（职业资源类型） | 战士-怒气、潜行者-能量/连击点、术士-灵魂碎片、武僧-真气 |
+| 被动技能 | `combat/composables/usePassiveSkills.ts` | `config_class_passives.ts`（39 个被动） | 全 13 个职业（按职业配置不同被动） |
+| 天赋树 | `character/talents/` | `config_class_talents.ts` | 全 13 个职业（每职业 3 系 3 层天赋树） |
 | 专属装备 | `equipment` + 数据层 | `class_items.ts`、`item_sets.ts` | 全职业（按职业限定装备与套装） |
 | 变形 | `combat/forms/` | `forms/druid_forms.ts` | 德鲁伊专属 |
 | 召唤 | `combat/pets/` | `pets/warlock_pets.ts` | 术士专属 |
+
+**天赋树规则说明**：
+
+| 规则项 | 值 | 说明 |
+|--------|-----|------|
+| 天赋树结构 | 每职业 3 系 | 每系独立分配点数 |
+| 层级数量 | 3 层（tier 1/2/3） | 需逐层解锁 |
+| tier 2 解锁条件 | 该系投入 3 点 | `tier2Requirement = 3` |
+| tier 3 解锁条件 | 该系投入 6 点 | `tier3Requirement = 6` |
+| 单天赋最大点数 | 5 点 | `maxPointsPerTalent = 5` |
+| 点数获取频率 | 每 2 级获得 1 点 | `pointsPerLevel = 2` |
+| 总天赋点计算 | `floor(level / 2)` | 等级 1 时为 0 点 |
 
 **联动关系说明**：
 

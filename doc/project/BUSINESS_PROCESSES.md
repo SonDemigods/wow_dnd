@@ -5,18 +5,19 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 业务流程梳理 |
-| 版本 | v2.0 |
-| 生成日期 | 2026年7月7日 |
+| 版本 | v3.0 |
+| 生成日期 | 2026年7月10日 |
 | 所属目录 | `doc/project/` |
 | 关联文档 | MODULE_FUNCTIONS.md、DEPENDENCY_GRAPH.md、各模块设计文档 |
+| 更新说明 | 1. 角色创建流程修正为通过 characterLifecycleService.initializeCharacterSkills 收口技能初始化（CHR-4 修复）；2. 角色删除流程修正为通过 characterLifecycleService.cascadeDeleteCharacter 并行删除 6 个模块数据；3. 战斗流程补充 combatContext.ts 的 ICombatContext 上下文注入说明；4. 探索流程补充 events.ts 注册表模式（effectHandlers + cellEventHandlers）；5. 游戏初始化流程修正为正确顺序（log → inventory → equipment → skill → map → exploration → quest）并补充 inventory 回调注入与 dispose 清理 combat/exploration/audio 三个 Store；6. 天赋点分配流程修正为 3 系 3 层结构（tier2 需 3 点、tier3 需 6 点、单天赋最多 5 点、每 2 级获 1 点） |
 
 ---
 
 ## 概述
 
-本文档梳理项目 `wow_dnd` 的核心业务流程，覆盖角色生命周期、战斗、探索、任务、商店交易、成长系统与数据备份恢复七大领域。每个流程均以 Mermaid 图表呈现，并附关键实现位置说明，便于开发与缺陷定位。
+本文档梳理项目 `wow_dnd` 的核心业务流程，覆盖角色生命周期、战斗、探索、任务、商店交易、成长系统、数据备份恢复、游戏初始化、天赋点分配、德鲁伊变形与术士召唤十一大领域。每个流程均以 Mermaid 图表呈现，并附关键实现位置说明，便于开发与缺陷定位。
 
-模块统一遵循分层架构：`service.ts`（纯函数层）→ `store.ts`（编排层，负责状态/持久化/事件）→ `db.ts`（持久层）。下文流程图中出现的"Store Action"均指编排层入口。
+模块统一遵循分层架构：`service.ts`（纯函数层）→ `store.ts`（编排层，负责状态/持久化/事件）→ `db.ts`（持久层）。下文流程图中出现的"Store Action"均指编排层入口。跨模块的级联操作通过 `src/services/` 聚合层（CharacterLifecycleService / GameBootstrap / CrossModuleQuery 等）收口。
 
 ---
 
@@ -24,7 +25,7 @@
 
 ### 1.1 角色创建流程
 
-角色创建由 `characterStore.createCharacter` 编排，依次完成基础数据获取、纯函数计算、技能初始化与多表持久化。
+角色创建由 `characterStore.createCharacter` 编排，依次完成基础数据获取、纯函数计算、技能初始化与多表持久化。技能初始化通过 `characterLifecycleService.initializeCharacterSkills` 收口跨模块持久化（CHR-4 修复），character Store 不再直接依赖 skillDbService。
 
 ```mermaid
 flowchart TD
@@ -34,24 +35,26 @@ flowchart TD
     D --> D1[基础属性 = 10 + 种族加成 + 职业加成<br/>clamp 到 1, MAX_STAT]
     D1 --> D2[计算 maxHp / maxMana / 初始金币 50]
     D2 --> E[更新 Store 状态]
-    E --> F[初始化技能数据]
+    E --> F[characterLifecycleService.initializeCharacterSkills<br/>收口技能初始化 CHR-4]
     F --> F1[查询 unlockLevel 小于等于 1 的职业技能]
     F1 --> F2[填充 4 格技能栏]
-    F2 --> G[多表持久化]
+    F2 --> F3[skillsDbService.saveSkillsData 持久化技能数据]
+    F3 --> G[多表持久化]
     G --> G1[saveCharacterListItem 角色列表项]
     G --> G1a[saveCharacterData 角色详情]
-    G --> G1b[saveSkillsData 技能数据]
-    G1b --> H[发射 CHARACTER_CREATED 事件]
+    G1a --> H[发射 CHARACTER_CREATED 事件]
     H --> I[loadCharacterList 刷新列表]
     I --> J[创建完成]
 
     classDef pure fill:#e3f2fd,stroke:#1976d2
     classDef persist fill:#fff3e0,stroke:#f57c00
+    classDef svc fill:#f8bbd0,stroke:#ad1457
     class D,D1,D2 pure
-    class G,G1,G1a,G1b persist
+    class F,F1,F2,F3 svc
+    class G,G1,G1a persist
 ```
 
-**关键实现**：`src/modules/character/store.ts` 的 `createCharacter`、`src/modules/character/service.ts` 的 `createInitialCharacter` 与 `computeInitialStats`。
+**关键实现**：`src/modules/character/store.ts` 的 `createCharacter`、`src/modules/character/service.ts` 的 `createInitialCharacter` 与 `computeInitialStats`、`src/services/CharacterLifecycleService.ts` 的 `initializeCharacterSkills`。
 
 ### 1.2 角色选择流程
 
@@ -111,49 +114,58 @@ flowchart TD
 
 ### 1.4 角色删除流程
 
-删除操作执行严格的级联清理，确保所有关联数据一并移除，避免孤儿数据残留。
+删除操作通过 `characterLifecycleService.cascadeDeleteCharacter` 并行删除 6 个模块的关联数据，确保所有关联数据一并移除，避免孤儿数据残留（CHR-4 修复）。character Store 不再直接 import 6 个模块的 DbService。
 
 ```mermaid
 flowchart TD
     A[用户确认删除角色] --> B[getCharacterListItem 校验存在]
     B --> C{列表项是否存在}
     C -- 否 --> D[返回 false]
-    C -- 是 --> E[级联删除关联数据]
-    E --> E1[deleteCharacterData 角色详情]
-    E1 --> E2[deleteSkillsData 技能]
-    E2 --> E3[deleteInventory 背包]
-    E3 --> E4[deleteEquipment 装备]
-    E4 --> E5[deleteExplorationData 探索]
-    E5 --> E6[deleteAdventureLog 冒险日志]
-    E6 --> E7[deleteCharacterQuests 任务]
-    E7 --> F{是否为当前选中角色}
-    F -- 是 --> G[清空 Store 状态]
-    G --> G1[currentCharacterId 置 null]
-    G1 --> G2[character 置 null]
-    G2 --> G3[清空 bonusStats / raceBonus / classBonus]
-    G3 --> G4[saveGameState null]
-    G4 --> H[发射 CHARACTER_DELETED 事件]
-    F -- 否 --> H
-    H --> I[loadCharacterList 刷新列表]
-    I --> J[删除完成]
+    C -- 是 --> E[characterLifecycleService.cascadeDeleteCharacter<br/>并行删除 6 个模块数据 CHR-4]
+    E --> E1[Promise.all 并行执行]
+    E1 --> E1a[deleteSkillsData 技能]
+    E1 --> E1b[deleteInventory 背包]
+    E1 --> E1c[deleteEquipment 装备]
+    E1 --> E1d[deleteExplorationData 探索]
+    E1 --> E1e[deleteAdventureLog 冒险日志]
+    E1 --> E1f[deleteCharacterQuests 任务]
+    E1a --> F[deleteCharacterData 角色详情]
+    E1b --> F
+    E1c --> F
+    E1d --> F
+    E1e --> F
+    E1f --> F
+    F --> G{是否为当前选中角色}
+    G -- 是 --> H[清空 Store 状态]
+    H --> H1[currentCharacterId 置 null]
+    H1 --> H2[character 置 null]
+    H2 --> H3[清空 bonusStats / raceBonus / classBonus]
+    H3 --> H4[saveGameState null]
+    H4 --> I[发射 CHARACTER_DELETED 事件]
+    G -- 否 --> I
+    I --> J[loadCharacterList 刷新列表]
+    J --> K[删除完成]
 
     classDef cascade fill:#fff3e0,stroke:#f57c00
-    class E1,E2,E3,E4,E5,E6,E7 cascade
+    classDef svc fill:#f8bbd0,stroke:#ad1457
+    class E,E1,E1a,E1b,E1c,E1d,E1e,E1f svc
+    class F cascade
 ```
 
-**关键实现**：`src/modules/character/store.ts` 的 `deleteCharacter`，跨模块调用各模块 `db.ts` 的删除接口。
+**关键实现**：`src/modules/character/store.ts` 的 `deleteCharacter`、`src/services/CharacterLifecycleService.ts` 的 `cascadeDeleteCharacter`（使用 `Promise.all` 并行删除 6 个模块数据）。
 
 ---
 
 ## 二、战斗全流程
 
-战斗流程由 `combatStore` 编排，拆分至 `useInitiative`、`usePlayerAction`、`useEnemyAction`、`useBossMechanics` 等 Composable。采用速度制先攻：玩家与所有敌人按速度降序交替行动。战斗关键节点接入资源系统钩子（`onAttack`/`onDamaged`/`onKill`/`onTurnStart`）与被动技能触发，德鲁伊变形与术士召唤作为可选子系统参与战斗。
+战斗流程由 `combatStore` 编排，拆分至 `useInitiative`、`usePlayerAction`、`useEnemyAction`、`useBossMechanics` 等 Composable。战斗上下文（`combatContext.ts`）将 combat 对 character/skill/quest/log/enemy/inventory 六个外部 Store 的依赖收口为 `ICombatContext` 接口（拆分为只读 `ICombatQuery` 与写入 `ICombatCommand`），combat 内部所有 composable 仅依赖此接口，不再直接 import 具体 Store。采用速度制先攻：玩家与所有敌人按速度降序交替行动。战斗关键节点接入资源系统钩子（`onAttack`/`onDamaged`/`onKill`/`onTurnStart`）与被动技能触发，德鲁伊变形与术士召唤作为可选子系统参与战斗。
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant UI as 战斗 UI
     participant CS as CombatStore
+    participant Ctx as createCombatContext
     participant Init as useInitiative
     participant Player as usePlayerAction
     participant Enemy as useEnemyAction
@@ -164,6 +176,7 @@ sequenceDiagram
 
     Note over UI,CS: 阶段一 触发战斗
     UI->>CS: startCombat(enemiesData)
+    CS->>Ctx: createCombatContext 聚合 6 个外部 Store
     CS->>CS: 生成 combatId 初始化状态
     CS->>CS: initBossFeatures 装载 Boss 机制（setInitiativeCallback 注入先攻回调）
     CS->>Init: assignEnemyPositions 分配 3x2 阵位
@@ -186,8 +199,8 @@ sequenceDiagram
                 Player->>Player: 闪避判定 rollDodge
                 Player->>Player: 伤害管线 processDamagePipeline
                 Player->>Player: 暴击判定 rollCritical
-                Player->>Char: takeDamage 荆棘反伤
-                Player->>CS: 敌人扣血 takeDamage
+                Player->>Ctx: character.takeDamage 荆棘反伤
+                Player->>Ctx: enemy.takeDamage 敌人扣血
                 Note over CS,RS: 攻击命中（非闪避）后触发钩子
                 CS->>RS: sys.onAttack?.()（怒气/连击点生成）
                 CS->>PS: passive.onAttack(damage)（吸血/腐蚀等）
@@ -230,7 +243,7 @@ sequenceDiagram
         Init->>Init: advanceToNextUnit 推进先攻
         alt 新一轮开始
             Init->>Init: tickAllEffects 统一执行持续效果
-            Init->>Char: takeDamage 持续伤害
+            Init->>Ctx: character.takeDamage 持续伤害
             alt 玩家死亡
                 Init->>CS: endCombat defeat
             end
@@ -242,13 +255,13 @@ sequenceDiagram
         alt 普通攻击
             Enemy->>Enemy: enemyBasicAttack
             Enemy->>Player: 闪避判定 + 伤害管线
-            Enemy->>Char: takeDamage 对玩家造成伤害
+            Enemy->>Ctx: character.takeDamage 对玩家造成伤害
             Note over Enemy,RS: 玩家受伤后触发钩子（applyEnemyDamageToPlayer）
             Enemy->>RS: sys.onDamaged?.(amount)（怒气获取）
             Enemy->>PS: passive.onDamaged(amount)（复仇类 + on_low_hp 检查）
         else 技能攻击
             Enemy->>Enemy: enemyAttackWithSkill
-            Enemy->>Char: takeDamage
+            Enemy->>Ctx: character.takeDamage
             Enemy->>RS: sys.onDamaged?.(amount)
             Enemy->>PS: passive.onDamaged(amount)
         else 治疗/增益/减益
@@ -263,13 +276,13 @@ sequenceDiagram
 
     Note over CS,Quest: 阶段四 战斗结算
     alt 胜利
-        CS->>Char: gainExp 累加经验
-        CS->>Char: gainGold 累加金币
+        CS->>Ctx: character.gainExp 累加经验
+        CS->>Ctx: character.gainGold 累加金币
         CS->>Player: handleLoot Boss 掉落处理
-        CS->>Quest: onEnemyKilled 更新击杀任务进度
+        CS->>Ctx: quest.onEnemyKilled 更新击杀任务进度
         CS->>CS: 记录冒险日志（adventureLogs 摘要）
     else 失败
-        CS->>Char: handleDeath 触发死亡复活流程
+        CS->>Ctx: character.handleDeath 触发死亡复活流程
     else 逃跑
         CS->>CS: 仅记录日志
     end
@@ -289,19 +302,20 @@ sequenceDiagram
 | 战斗胜利 | `sys.onKill` | `passive.onKill` | `combat/store.ts` endCombat |
 
 **关键实现**：
+- 上下文工厂：`src/modules/combat/combatContext.ts` 的 `createCombatContext`（聚合 6 个外部 Store 为 `ICombatContext`，拆分 `ICombatQuery` 只读 + `ICombatCommand` 写入）
 - 编排入口：`src/modules/combat/store.ts` 的 `startCombat`、`playerAction`、`endCombat`
 - 先攻调度：`src/modules/combat/composables/useInitiative.ts`（`buildInitiativeOrder` 按速度降序，`advanceToNextUnit` 推进并触发 `onTurnStart` 钩子，`tickAllEffects` 在新一轮开始时统一结算）
 - 玩家行动：`src/modules/combat/composables/usePlayerAction.ts`（攻击/技能/物品/逃跑四类分支）
 - 敌人 AI：`src/modules/combat/composables/useEnemyAction.ts`（策略模式 `AggressiveStrategy` / `DefensiveStrategy` / `BalancedStrategy` / `BossPhaseStrategy`，受伤时触发 `onDamaged` 钩子）
 - 资源系统：`src/modules/combat/resources/`（`ResourceSystemFactory` 工厂 + 各职业资源系统实现，钩子接口定义于 `types.ts`）
-- 被动技能：`src/modules/combat/composables/usePassiveSkills.ts`（数据源 `src/data/class_passives.ts`，按 `trigger` 过滤执行）
-- Boss 机制：`src/modules/combat/composables/useBossMechanics.ts`（`setInitiativeCallback` 注入先攻回调）
+- 被动技能：`src/modules/combat/composables/usePassiveSkills.ts`（数据源 `src/data/config_class_passives.ts`，按 `trigger` 过滤执行）
+- Boss 机制：`src/modules/combat/composables/useBossMechanics.ts`（`IBossContext` 接口注入：`getPlayerName`/`createMinion`/`rebuildInitiativeOrder`，`setInitiativeCallback` 注入先攻回调）
 
 ---
 
 ## 三、探索全流程
 
-探索流程由 `explorationStore` 编排，区域进入时生成 10×10 网格并放置固定事件，玩家翻格子触发对应分支处理。区域进入阶段对地点/物品/任务/商店的查询统一经 `crossModuleQuery` 收口，物品模板命中 `itemTemplateCache` 内存缓存。
+探索流程由 `explorationStore` 编排，区域进入时生成 10×10 网格并放置固定事件，玩家翻格子触发对应分支处理。区域进入阶段对地点/物品/任务/商店的查询统一经 `crossModuleQuery` 收口，物品模板命中 `itemTemplateCache` 内存缓存。格子事件处理通过 `events.ts` 注册表模式分发（ARCH-11 修复），将事件类型与处理函数的映射关系从 store.ts 中解耦。
 
 ```mermaid
 flowchart TD
@@ -331,7 +345,7 @@ flowchart TD
 
     M --> N[用户点击格子 revealGrid]
     N --> O{格子类型判断}
-    O -- 怪物/Boss --> P1[triggerBattle 触发战斗]
+    O -- 怪物/Boss --> P1[triggerBattle 触发战斗<br/>store.ts 专用路径]
     P1 --> P1a[记录 pendingBattleCell]
     P1a --> P1b[等待 COMBAT_END 事件]
     P1b --> P1c{战斗结果}
@@ -343,45 +357,22 @@ flowchart TD
     P1f --> P1g
     P1g --> P1h[checkCompletion 完成检查]
 
-    O -- 商店/任务板 --> P2[标记 visited]
+    O -- 商店/任务板 --> P2[标记 visited<br/>store.ts 专用路径]
     P2 --> P2a[发射 EXPLORATION_CELL_EXPLORED]
     P2a --> P2b[UI 回调打开对应面板]
     P2b --> P1h
 
-    O -- 宝箱 --> P3[generateItemForCell 随机物品]
-    P3 --> P3a[addItem 加入背包]
-    P3a --> P3b[兜底 物品不存在转金币经验]
-    P3b --> P3c[标记 completed]
-    P3c --> P1h
-
-    O -- 陷阱 --> P4[generateTrapDamage 计算伤害]
-    P4 --> P4a[takeDamage 扣减 HP]
-    P4a --> P4b[标记 completed]
-    P4b --> P1h
-
-    O -- 随机事件 --> P5[generateRandomEvent 六种效果]
-    P5 --> P5a{效果类型}
-    P5a -- heal --> P5b1[receiveHeal 恢复 HP]
-    P5a -- mana --> P5b2[changeMp 恢复 MP]
-    P5a -- exp --> P5b3[gainExp 获得经验]
-    P5a -- damage --> P5b4[takeDamage 受到伤害]
-    P5a -- mpLoss --> P5b5[changeMp 损失 MP]
-    P5a -- gold --> P5b6[gainGold 获得金币]
-    P5b1 --> P5c[标记 completed]
-    P5b2 --> P5c
-    P5b3 --> P5c
-    P5b4 --> P5c
-    P5b5 --> P5c
-    P5b6 --> P5c
-    P5c --> P1h
-
-    O -- 营地 --> P6{营地是否已使用}
-    P6 -- 是 --> P7[无操作]
-    P6 -- 否 --> P6a[generateCampHeal 完全恢复]
-    P6a --> P6b[receiveHeal + changeMp]
-    P6b --> P6c[campUsed 置 true]
-    P6c --> P6d[标记 completed]
-    P6d --> P1h
+    O -- 宝箱/陷阱/事件/营地 --> P3[dispatchCellEvent 注册表分发<br/>events.ts ARCH-11]
+    P3 --> P3a{cellEventHandlers 查找处理器}
+    P3a -- treasure --> P3b[generateItemForCell 随机物品<br/>addItem 加入背包<br/>兜底 物品不存在或背包满转金币经验]
+    P3a -- trap --> P3c[generateTrapDamage 计算伤害<br/>takeDamage 扣减 HP]
+    P3a -- event --> P3d[generateMultiOptionEvent 或 generateRandomEvent<br/>applyEventEffect 分发到 effectHandlers]
+    P3a -- rest --> P3e[generateCampHeal 完全恢复<br/>receiveHeal + changeMp<br/>campUsed 置 true]
+    P3b --> P3f[标记 completed]
+    P3c --> P3f
+    P3d --> P3f
+    P3e --> P3f
+    P3f --> P1h
 
     P1h --> Q{探索是否完成}
     Q -- 击败 Boss 或 全部格子已访问 --> R[explorationComplete 置 true]
@@ -391,14 +382,16 @@ flowchart TD
     classDef battle fill:#ffebee,stroke:#c62828
     classDef shop fill:#e3f2fd,stroke:#1976d2
     classDef instant fill:#fff3e0,stroke:#f57c00
+    classDef evt fill:#f8bbd0,stroke:#ad1457
     class P1,P1a,P1b,P1c,P1d,P1e,P1f,P1g,P1h battle
     class P2,P2a,P2b shop
-    class P3,P3a,P3b,P3c,P4,P4a,P4b,P5,P5a,P5b1,P5b2,P5b3,P5b4,P5b5,P5b6,P5c,P6,P6a,P6b,P6c,P6d instant
+    class P3,P3a,P3b,P3c,P3d,P3e,P3f evt
 ```
 
 **关键实现**：
 - 编排入口：`src/modules/exploration/store.ts` 的 `enterArea`、`revealGrid`、`onBattleResult`
 - 网格生成：`src/modules/exploration/service.ts` 的 `generateGrid`（固定事件放置策略：起点边缘、商店/任务板角落、营地非相邻、Boss 中心区域）
+- 事件注册表：`src/modules/exploration/events.ts`（两层注册表：`effectHandlers` 处理 6 种效果类型 heal/mana/exp/damage/mpLoss/gold，`cellEventHandlers` 处理 4 种格子类型 treasure/trap/event/rest；`dispatchCellEvent` 与 `applyEventEffect` 分发函数）
 - 战斗结果回写：通过 `eventBus.on(COMBAT_END)` 监听，调用 `onBattleResult` 处理格子状态
 
 ---
@@ -469,6 +462,7 @@ flowchart TD
 **关键实现**：
 - 编排入口：`src/modules/quest/store.ts` 的 `acceptQuest`、`onEnemyKilled`、`onItemCollected`、`completeQuest`、`claimReward`
 - 进度计算：`src/modules/quest/service.ts` 的 `checkQuestProgress`（按 `enemyId` 或 `itemId` 匹配目标，累加并 `Math.min` 限幅）
+- UI 文本工具：`src/modules/quest/objective_utils.ts`（任务目标 UI 文本生成）
 - 设计要点：奖励在 `_handleQuestCompletion` 中通过 `_grantQuestRewards` 自动发放，`claimReward` 仅做 `completed → turned_in` 状态转换，避免重复发奖
 
 ---
@@ -747,7 +741,7 @@ flowchart TD
 
 ## 八、游戏初始化流程
 
-角色进入或切换时各业务 Store 的初始化由 `gameBootstrap.initialize(characterId)` 统一编排，各 Store 的 `init` 仅负责加载自身状态，假设依赖已由本服务预先初始化。
+角色进入或切换时各业务 Store 的初始化由 `gameBootstrap.initialize(characterId)` 统一编排，各 Store 的 `init` 仅负责加载自身状态，假设依赖已由本服务预先初始化。初始化顺序为 log → inventory → equipment → skill → map → exploration → quest，其中 inventory 初始化完成后会向 equipment 模块注入背包回调（A1/G1 修复），dispose 时按逆序清理 combat/exploration/audio 三个实现了 Disposable 接口的 Store。
 
 ```mermaid
 sequenceDiagram
@@ -773,8 +767,11 @@ sequenceDiagram
     Note over Inv: 2. 背包模块（被探索/装备依赖）
     Inv-->>GBS: 就绪
 
+    Note over GBS: 2.5 注入背包回调到装备模块（A1/G1 修复）
+    GBS->>Eq: setInventoryCallbacks(invStore.addItem, invStore.removeItem)
+
     GBS->>Eq: initialize(characterId)
-    Note over Eq: 3. 装备模块（依赖背包）
+    Note over Eq: 3. 装备模块（依赖背包回调，卸下装备时通过回调放回背包）
     Eq-->>GBS: 就绪
 
     GBS->>Skill: initialize(characterId)
@@ -802,24 +799,24 @@ sequenceDiagram
 ```mermaid
 flowchart LR
     Exit[角色切换 / 退出] --> Dispose[gameBootstrap.dispose]
-    Dispose --> Q[questStore.dispose?]
-    Dispose --> E[explorationStore.dispose?]
-    Dispose --> M[mapStore.dispose?]
-    Dispose --> S[skillStore.dispose?]
-    Dispose --> Eq[equipmentStore.dispose?]
-    Dispose --> I[inventoryStore.dispose?]
-    Dispose --> L[logStore.dispose?]
+    Dispose --> Combat[combatStore.dispose<br/>清理战斗定时器]
+    Dispose --> Exp[explorationStore.dispose<br/>清理 EventBus 监听器与 UI 回调]
+    Dispose --> Audio[audioStore.dispose<br/>清理 saveTimer 去抖定时器]
+    Dispose --> ClearCb[clearInventoryCallbacks<br/>清除装备模块的背包回调引用]
 ```
 
 **关键实现**：
 - 编排入口：`src/services/GameBootstrap.ts` 的 `initialize`（顺序：log → inventory → equipment → skill → map → exploration → quest）与 `dispose`（逆序清理）
-- 设计要点：各模块 `init` 仅加载自身状态，依赖关系由 `GameBootstrap` 的调用顺序保证；`dispose` 使用 `safeDispose` 运行时检测，未实现 `dispose` 的 Store 自动跳过（当前仅 explorationStore 实现）
+- 回调注入：`initialize` 在 inventory 初始化完成后、equipment 初始化前调用 `setInventoryCallbacks(invStore.addItem, invStore.removeItem)`（A1/G1 修复：消除 equipment → inventory 静态依赖）
+- Disposable 接口：`dispose` 仅清理显式实现了 `Disposable` 接口的 Store（ARCH-8 修复：类型安全的 dispose 签名校验），当前包括 combatStore（战斗定时器）、explorationStore（EventBus 监听器与 UI 回调）、audioStore（saveTimer 去抖定时器）
+- 回调清除：`dispose` 最后调用 `clearInventoryCallbacks()` 清除装备模块的背包回调引用（避免角色切换后回调指向旧 Store 实例）
+- 设计要点：各模块 `init` 仅加载自身状态，依赖关系由 `GameBootstrap` 的调用顺序保证
 
 ---
 
 ## 九、天赋点分配流程
 
-天赋系统由 `character/talents` 模块的 `useTalentStore` 管理。角色每升 2 级获得 1 点天赋点，玩家选择天赋节点分配点数，效果通过计算属性回灌角色属性与战斗计算。
+天赋系统由 `character/talents` 模块的 `useTalentStore` 管理。每个职业拥有 3 系天赋树，每系 3 层（tier 1/2/3），角色每升 2 级获得 1 点天赋点。玩家选择天赋节点分配点数，效果通过计算属性回灌角色属性与战斗计算。
 
 ```mermaid
 sequenceDiagram
@@ -841,9 +838,9 @@ sequenceDiagram
     U->>UI: 选择天赋节点点击学习
     UI->>TS: learn(talentId)
     TS->>TS: canLearnTalent 校验
-    Note over TS: 校验项：职业匹配 / 前置节点已满 / availablePoints 大于 0
+    Note over TS: 校验项：职业匹配 / tier 前置（tier2 需该系 3 点，tier3 需 6 点）/ availablePoints 大于 0 / 单天赋不超过 maxPointsPerTalent=5
     alt 校验失败
-        TS-->>UI: 返回 false（职业不符/前置未满/点数不足）
+        TS-->>UI: 返回 false（职业不符/tier 前置未满/点数不足/超过单天赋上限）
         UI-->>U: 提示失败原因
     else 校验通过
         TS->>TS: learnTalent 纯函数<br/>allocations[talentId] += 1
@@ -863,10 +860,23 @@ sequenceDiagram
     Note over TS: talentStore 不直接持久化，由调用方统一存档
 ```
 
+**天赋树规则**：
+
+| 规则项 | 值 | 常量名 |
+|--------|-----|--------|
+| 天赋树结构 | 每职业 3 系 | — |
+| 层级数量 | 3 层（tier 1/2/3） | — |
+| tier 2 解锁条件 | 该系投入 3 点 | `tier2Requirement` |
+| tier 3 解锁条件 | 该系投入 6 点 | `tier3Requirement` |
+| 单天赋最大点数 | 5 点 | `maxPointsPerTalent` |
+| 点数获取频率 | 每 2 级获得 1 点 | `pointsPerLevel` |
+| 总天赋点计算 | `floor(level / 2)` | `calculateTotalTalentPoints` |
+
 **关键实现**：
 - 编排入口：`src/modules/character/talents/store.ts` 的 `learn`、`updateLevel`、`initialize`、`reset`
-- 纯函数层：`src/modules/character/talents/service.ts` 的 `canLearnTalent`（校验）、`learnTalent`（更新分配）、`calculateTalentEffects`（效果聚合）、`getTalentStatBonuses`（属性加成）
-- 数据来源：`src/data/class_talents.ts` 的 `getTalentTreesByClassId`（按职业返回天赋树）
+- 纯函数层：`src/modules/character/talents/service.ts` 的 `canLearnTalent`（校验）、`learnTalent`（更新分配）、`calculateTalentEffects`（效果聚合）、`getTalentStatBonuses`（属性加成）、`calculateSpentPoints`（已用点数）
+- 类型定义：`src/modules/character/talents/types.ts` 的 `TALENT_POINT_RULES`（点数规则常量）、`Talent`/`TalentTree`/`TalentEffect` 接口
+- 数据来源：`src/data/config_class_talents.ts` 的 `getTalentTreesByClassId`（按职业返回天赋树）
 - 设计要点：天赋点 = `floor(level / 2)`；`learn` 仅替换 `allocations` 引用不直接持久化，由 `characterStore` 统一存档；效果通过 `effectSummary`/`statBonuses` 计算属性响应式回灌属性与战斗计算
 
 ---
@@ -927,6 +937,15 @@ flowchart LR
     Skills --> SkillBar[UI 技能栏更新]
     Heal[calculateFormSwitchHeal] --> CharS[characterStore.receiveHeal<br/>恢复 10% maxHp]
 ```
+
+**4 种德鲁伊形态**：
+
+| 形态 | 定位 | 属性特点 |
+|------|------|----------|
+| 人形（humanoid） | 默认形态 | 平衡属性，可施法 |
+| 熊（bear） | 坦克 | 高生命高防御 |
+| 猎豹（cat） | 近战输出 | 高敏捷高暴击 |
+| 枭兽（moonkin） | 法术输出 | 智力加成 |
 
 **关键实现**：
 - 编排入口：`src/modules/combat/forms/store.ts` 的 `switchTo`、`initialize`、`reset`、`tickCooldownEnd`
@@ -1008,11 +1027,11 @@ sequenceDiagram
 
 | 召唤物 | 定位 | 灵魂碎片消耗 | 来源 |
 |--------|------|-------------|------|
-| 小鬼 | 远程法术输出 | 较低 | `warlock_pets.ts` |
-| 虚空行者 | 坦克（高 HP） | 中 | `warlock_pets.ts` |
-| 魅魔 | 控制（减益） | 中 | `warlock_pets.ts` |
-| 地狱犬 | 近战输出 | 中高 | `warlock_pets.ts` |
-| 末日守卫 | 强力输出 | 高 | `warlock_pets.ts` |
+| 小鬼（imp） | 远程法术输出 | 较低 | `warlock_pets.ts` |
+| 虚空行者（voidwalker） | 坦克（高 HP） | 中 | `warlock_pets.ts` |
+| 魅魔（succubus） | 控制（减益） | 中 | `warlock_pets.ts` |
+| 地狱犬（felhunter） | 近战输出 | 中高 | `warlock_pets.ts` |
+| 末日守卫（doomguard） | 强力输出 | 高 | `warlock_pets.ts` |
 
 **关键实现**：
 - 编排入口：`src/modules/combat/pets/store.ts` 的 `summon`、`dismiss`、`petTakeAction`、`takeDamage`、`tickTurn`、`initialize`、`reset`
@@ -1027,10 +1046,15 @@ sequenceDiagram
 
 | 通信方式 | 适用场景 | 示例 |
 |----------|----------|------|
-| 直接 Store Action 调用 | 数据变更类跨模块操作 | `combatStore` 调用 `characterStore.gainExp`、`questStore.onEnemyKilled` |
+| 直接 Store Action 调用 | 数据变更类跨模块操作 | `combatStore` 经 `ICombatContext` 调用 `characterStore.gainExp`、`questStore.onEnemyKilled` |
 | EventBus 事件 | UI 刷新 / 音效触发 / 通知类 | `CHARACTER_LEVEL_UP`、`COMBAT_START`、`QUEST_COMPLETED` |
 | UI 回调注册 | 探索模块跨模块数据事件 | `explorationStore.registerUICallbacks` 替代 EventBus 传递数据 |
-| services 聚合层调用 | 跨模块查询 / 初始化编排 / 缓存 / 错误处理 | `explorationStore` 经 `crossModuleQuery` 查询地图/物品/任务/商店；`GameBootstrap` 编排 Store 初始化 |
+| services 聚合层调用 | 跨模块查询 / 初始化编排 / 缓存 / 错误处理 / 角色生命周期 / 管理后台查询 | `explorationStore` 经 `crossModuleQuery` 查询地图/物品/任务/商店；`GameBootstrap` 编排 Store 初始化；`CharacterLifecycleService` 收口角色创建/删除跨模块持久化 |
+| 回调注入 | 装备模块卸下装备放回背包 | `GameBootstrap.initialize` 中 `setInventoryCallbacks(invStore.addItem, invStore.removeItem)` 注入到 equipment 模块（A1/G1 修复） |
 | DB 层直接调用 | 仅限自身模块持久化 | `explorationStore` 调用 `explorationDbService.persistState`（跨模块查询已收口至 `crossModuleQuery`） |
 
 **设计原则**：数据变更走 Store Action，EventBus 不传递数据变更通知，仅用于 UI/音效类事件。
+
+---
+
+**文档结束**

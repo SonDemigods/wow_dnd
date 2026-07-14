@@ -5,20 +5,21 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 模块依赖关系梳理 |
-| 版本 | v1.0 |
-| 生成日期 | 2026年7月6日 |
+| 版本 | v2.0 |
+| 生成日期 | 2026年7月10日 |
 | 所属目录 | `doc/project/` |
-| 关联文档 | MODULE_FUNCTIONS.md、DATA_ARCHITECTURE_OVERVIEW.md |
+| 关联文档 | MODULE_FUNCTIONS.md、DATA_ARCHITECTURE_OVERVIEW.md、ARCHITECTURE_DIAGRAMS.md |
+| 更新说明 | 本次基于源码全面比对修正：服务层补全为 6 个服务（新增 `CharacterLifecycleService`、`AdminQueryService`）；新增 `item-template` 模块节点（统一物品模板层，消除 inventory ↔ equipment 双向依赖）；CHR-4 标记为已修复（character Store 通过 `CharacterLifecycleService` 收口级联删除/初始化）；CHR-5 标记为已修复（console 通过 `AdminQueryService` 收口跨模块查询）；C1 combat ↔ boss 标记为已解耦（通过 `IBossContext` 接口注入，S3 修复）；C3 inventory ↔ equipment 标记为已修复（通过 `unifiedItemTemplateCache` + `setInventoryCallbacks` 回调注入，A1/G1 修复）；combat 模块依赖广度标记为已收口（通过 `ICombatContext` 聚合 6 个外部 Store，S2 修复）；`GameBootstrap` 编排顺序修正为 log → inventory → equipment → skill → map → exploration → quest；dispose 清理范围补充 combat/exploration/audio 三个 Disposable Store + `clearInventoryCallbacks`；优化建议表中 O4/O5/O6/O9/O10 状态更新为已修复。 |
 
 ---
 
 ## 概述
 
-本文档基于源码 `import` 关系与 Store Action 调用链，梳理 18 个模块之间的依赖关系，识别循环依赖、跨层调用、隐式耦合等问题，为架构优化提供依据。
+本文档基于源码 `import` 关系与 Store Action 调用链，梳理 19 个模块（含 `item-template` 统一物品模板层）之间的依赖关系，识别循环依赖、跨层调用、隐式耦合等问题，为架构优化提供依据。
 
 依赖关系分为三类：
 - **静态依赖**：通过 `import` 引入的类型、函数、Store（编译期确定）
-- **运行时依赖**：通过 Store Action 调用、EventBus 发布订阅（运行期发生）
+- **运行时依赖**：通过 Store Action 调用、EventBus 发布订阅、回调注入（运行期发生）
 - **数据层依赖**：通过 DbService 跨模块直接查询（绕过 Store）
 
 ---
@@ -41,6 +42,7 @@ graph TD
     equipment[equipment 装备]
     skill[skill 技能]
     quest[quest 任务]
+    itemTemplate[item-template<br/>统一物品模板层]
 
     %% 玩法核心层
     combat[combat 战斗]
@@ -52,16 +54,15 @@ graph TD
     log[log 冒险日志]
     enemy[enemy 敌人]
     boss[boss Boss]
+    console[console 控制台]
 
     %% 服务层
-    crossModuleQuery[CrossModuleQuery 跨模块查询]
-    gameBootstrap[GameBootstrap 初始化编排]
-    itemTemplateCache[ItemTemplateCache 物品模板缓存]
-    errorHandler[ErrorHandler 错误处理]
-    map_db[map/db]
-    quest_db[quest/db]
-    shop_db[shop/db]
-    inventory_db[inventory/db]
+    crossModuleQuery[CrossModuleQuery<br/>跨模块查询]
+    gameBootstrap[GameBootstrap<br/>初始化编排]
+    itemTemplateCache[ItemTemplateCache<br/>探索用物品模板缓存]
+    errorHandler[ErrorHandler<br/>错误处理]
+    characterLifecycle[CharacterLifecycleService<br/>角色生命周期]
+    adminQuery[AdminQueryService<br/>管理后台查询]
 
     %% 基础设施依赖
     base --> data
@@ -76,16 +77,17 @@ graph TD
     character --> bus
     character --> base
     character --> calculations[utils/calculations]
+    character --> characterLifecycle
 
     inventory --> data
     inventory --> bus
     inventory --> character
-    inventory --> equipment_db[equipment/db]
+    inventory --> itemTemplate
 
     equipment --> data
     equipment --> bus
     equipment --> character
-    equipment --> inventory
+    equipment -.->|setInventoryCallbacks 回调注入| inventory
 
     skill --> data
     skill --> bus
@@ -97,15 +99,20 @@ graph TD
     quest --> inventory
     quest --> log
 
+    itemTemplate --> inventory_db[inventory/db]
+    itemTemplate --> equipment_db[equipment/db]
+
     %% 玩法核心层依赖
     combat --> data
     combat --> bus
-    combat --> character
-    combat --> enemy
-    combat --> skill
-    combat --> inventory
-    combat --> quest
-    combat --> log
+    combat --> combatContext[combatContext.ts<br/>ICombatContext 工厂]
+    combatContext --> character
+    combatContext --> enemy
+    combatContext --> skill
+    combatContext --> inventory
+    combatContext --> quest
+    combatContext --> log
+    combat -.->|IBossContext 接口注入| boss
 
     exploration --> data
     exploration --> bus
@@ -114,6 +121,7 @@ graph TD
     exploration --> map
     exploration --> crossModuleQuery
     exploration --> log
+    exploration --> eventsTS[events.ts<br/>注册表分发]
     exploration -.->|监听COMBAT_END| combat
 
     map --> data
@@ -134,22 +142,37 @@ graph TD
     enemy --> skill
 
     boss --> enemy
-    boss --> combat
     boss --> bus
 
+    console --> adminQuery
+
     %% 服务层依赖
-    crossModuleQuery --> map_db
-    crossModuleQuery --> quest_db
-    crossModuleQuery --> shop_db
+    crossModuleQuery --> map_db[map/db]
+    crossModuleQuery --> quest_db[quest/db]
+    crossModuleQuery --> shop_db[shop/db]
     crossModuleQuery --> itemTemplateCache
-    itemTemplateCache --> inventory_db
-    gameBootstrap -.->|编排 initialize| character
-    gameBootstrap -.->|编排 initialize| inventory
+    itemTemplateCache --> inventory_db2[inventory/db]
+    characterLifecycle --> skill_db[skill/db]
+    characterLifecycle --> inventory_db3[inventory/db]
+    characterLifecycle --> equipment_db2[equipment/db]
+    characterLifecycle --> exploration_db[exploration/db]
+    characterLifecycle --> log_db[log/db]
+    characterLifecycle --> quest_db2[quest/db]
+    adminQuery --> enemy_db[enemy/db]
+    adminQuery --> boss_db[boss/db]
+    adminQuery --> inventory_db4[inventory/db]
+    adminQuery --> equipment_db3[equipment/db]
+    gameBootstrap -.->|编排 initialize| log
+    gameBootstrap -.->|编排 initialize + setInventoryCallbacks| inventory
     gameBootstrap -.->|编排 initialize| equipment
     gameBootstrap -.->|编排 initialize| skill
     gameBootstrap -.->|编排 initialize| map
     gameBootstrap -.->|编排 initialize| exploration
     gameBootstrap -.->|编排 initialize| quest
+    gameBootstrap -.->|dispose 清理| combat
+    gameBootstrap -.->|dispose 清理| exploration
+    gameBootstrap -.->|dispose 清理| audio
+    gameBootstrap -.->|dispose: clearInventoryCallbacks| equipment
     errorHandler --> useToast[composables/useToast]
 
     %% 样式
@@ -158,15 +181,17 @@ graph TD
     classDef gameplay fill:#fff3e0,stroke:#ef6c00
     classDef aux fill:#e8f5e9,stroke:#388e3c
     classDef service fill:#fce4ec,stroke:#c2185b
+    classDef bridge fill:#e0f2f1,stroke:#00695c
 
     class data,bus,base,admin,audio,animation infra
-    class character,inventory,equipment,skill,quest core
+    class character,inventory,equipment,skill,quest,itemTemplate core
     class combat,exploration,map,shop gameplay
-    class log,enemy,boss aux
-    class crossModuleQuery,gameBootstrap,itemTemplateCache,errorHandler service
+    class log,enemy,boss,console aux
+    class crossModuleQuery,gameBootstrap,itemTemplateCache,errorHandler,characterLifecycle,adminQuery service
+    class combatContext,eventsTS bridge
 ```
 
-> 说明：虚线表示 EventBus 事件监听或运行时编排调用（如 GameBootstrap → 各 Store initialize）；`xxx_db` 表示直接 import 其他模块的 DbService（跨层数据查询）。服务层（粉色节点）收口跨模块查询与初始化编排。
+> 说明：虚线表示 EventBus 事件监听、运行时编排调用（如 GameBootstrap → 各 Store initialize）、接口注入（如 IBossContext、setInventoryCallbacks）或 dispose 清理；`xxx_db` 表示直接 import 其他模块的 DbService（跨层数据查询，已收口到服务层或 item-template 模块）。服务层（粉色节点）收口跨模块查询、初始化编排、缓存、错误处理、角色生命周期与管理后台查询。`combatContext.ts`（青色节点）是 combat 模块内唯一引用 6 个外部 Store 的位置（S2 修复）。`events.ts`（青色节点）是探索模块的事件处理器注册表（ARCH-11 修复）。
 
 ---
 
@@ -196,6 +221,7 @@ graph TD
         equipment
         skill
         quest
+        itemTemplate[item-template]
     end
 
     subgraph L1[基础设施层]
@@ -205,6 +231,16 @@ graph TD
         log
         enemy
         boss
+        console
+    end
+
+    subgraph S[服务层]
+        crossModuleQuery[CrossModuleQuery]
+        gameBootstrap[GameBootstrap]
+        itemTemplateCache[ItemTemplateCache]
+        errorHandler[ErrorHandler]
+        characterLifecycle[CharacterLifecycleService]
+        adminQuery[AdminQueryService]
     end
 
     subgraph L0[工具与配置]
@@ -221,14 +257,21 @@ graph TD
 
     L3 --> L2
     L3 --> L1
+    L3 --> S
 
     L2 --> L1
-
-    L1 --> L0
+    L2 --> S
     L2 --> L0
 
+    L1 --> L0
+    L1 --> S
+
+    S --> L0
+
     classDef layer fill:#fafafa,stroke:#999
+    classDef serviceLayer fill:#fce4ec,stroke:#c2185b
     class L4,L3,L2,L1,L0 layer
+    class S serviceLayer
 ```
 
 ### 2.2 依赖方向规范
@@ -239,6 +282,8 @@ graph TD
 | 同层之间 | 谨慎 | 玩法层之间通过 EventBus 或 Store 调用 |
 | 下层 → 上层 | 禁止 | 基础层不应依赖玩法层 |
 | 跨层跳级 | 谨慎 | UI 直接调核心数据层 Store 是允许的 |
+| 模块 → 服务层 | 允许 | 跨模块查询/缓存/编排/生命周期/管理后台查询收口于服务层 |
+| 模块 → item-template | 允许 | inventory 通过 item-template 聚合物品模板（单向，无循环） |
 
 ---
 
@@ -246,34 +291,50 @@ graph TD
 
 ### 3.1 静态依赖矩阵（import 关系）
 
-下表行表示"依赖方"，列表示"被依赖方"。`S` 表示 Store 依赖，`D` 表示 DbService 依赖，`T` 表示类型/工具依赖。
+下表行表示"依赖方"，列表示"被依赖方"。`S` 表示 Store 依赖，`D` 表示 DbService 依赖，`T` 表示类型/工具依赖，`C` 表示通过 combatContext 聚合的依赖，`R` 表示通过回调注入的运行时依赖。
 
-| 依赖方 \ 被依赖方 | data | bus | character | inventory | equipment | skill | quest | log | enemy | map | shop | combat |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| character | S | S | - | - | - | - | - | - | - | - | - | - |
-| inventory | S | - | S | - | D | - | - | S | - | - | - | - |
-| equipment | S | - | S | S | - | - | - | S | - | - | - | - |
-| skill | S | S | S | - | - | - | - | S | - | - | - | - |
-| quest | S | S | S | S | - | - | - | S | - | - | - | - |
-| combat | S | S | S | S | - | S | S | S | S | - | - | - |
-| exploration | S | S | S | S | - | - | D | S | - | D | D | - |
-| map | S | S | S | - | - | - | - | - | - | - | - | - |
-| shop | S | S | S | S | - | - | - | S | - | - | - | - |
-| enemy | S | - | - | - | - | S | - | - | - | - | - | - |
-| boss | - | S | - | - | - | - | - | - | S | - | - | S |
-| log | S | S | - | - | - | - | - | - | - | - | - | - |
+| 依赖方 \ 被依赖方 | data | bus | character | inventory | equipment | skill | quest | log | enemy | map | shop | combat | boss |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| character | S | S | - | - | - | - | - | - | - | - | - | - | - |
+| inventory | S | - | S | - | - | - | - | S | - | - | - | - | - |
+| equipment | S | - | S | -（R） | - | - | - | S | - | - | - | - | - |
+| skill | S | S | S | - | - | - | - | S | - | - | - | - | - |
+| quest | S | S | S | S | - | - | - | S | - | - | - | - | - |
+| item-template | - | - | - | D | D | - | - | - | - | - | - | - | - |
+| combat | S | S | C | C | - | C | C | C | C | - | - | - | -（IBossContext） |
+| exploration | S | S | S | S | - | - | - | S | - | - | - | - | - |
+| map | S | S | S | - | - | - | - | - | - | - | - | - | - |
+| shop | S | S | S | S | - | - | - | S | - | - | - | - | - |
+| enemy | S | - | - | - | - | S | - | - | - | - | - | - | - |
+| boss | - | S | - | - | - | - | - | - | S | - | - | - | - |
+| log | S | S | - | - | - | - | - | - | - | - | - | - | - |
+| console | - | - | - | - | - | - | - | - | - | - | - | - | - |
+
+> 说明：
+> - `equipment` 的 `inventory` 列标记为 `R`：表示通过 `setInventoryCallbacks` 回调注入的运行时依赖（非静态 import），由 `gameBootstrap.initialize` 在 inventory 初始化后注入 `addItem`/`removeItem` 回调。
+> - `combat` 的多个列标记为 `C`：表示通过 `combatContext.ts` 聚合的依赖（非 combat/store.ts 直接 import）。`createCombatContext()` 是 combat 模块内唯一引用 6 个外部 Store 的位置（S2 修复）。
+> - `combat` 的 `boss` 列标记为 `IBossContext`：表示通过接口注入解耦（S3 修复），combat/store.ts 实现 `IBossContext` 接口并注入到 `useBossMechanics`，boss 不再直接 import combat Store。
+> - `item-template` 模块单向依赖 `inventory/db` + `equipment/db`，消除原 inventory ↔ equipment 双向依赖（A1/G1 修复）。
+> - `console` 不再直接依赖任何模块的 DbService，通过 `adminQueryService` 收口查询（CHR-5 修复）。
+> - `character` 不再直接依赖 6 个模块的 DbService，通过 `characterLifecycleService` 收口级联删除/初始化（CHR-4 修复）。
 
 ### 3.2 运行时调用矩阵（Store Action 调用）
 
 | 调用方 \ 被调用方 | character | inventory | equipment | skill | quest | log | enemy | combat |
 |---|---|---|---|---|---|---|---|---|
-| combat | takeDamage/gainExp/gainGold/handleDeath/receiveHeal | useItem/addItem | - | castSkill/tickCooldowns | onEnemyKilled | addLogEntry | createEnemy/takeDamage/deleteEnemy/useSkill | - |
+| combat（经 ICombatContext） | takeDamage/gainExp/gainGold/handleDeath/receiveHeal/changeMp | useItem/addItem/getItemInfo | - | castSkill/tickCooldowns/resetCooldowns/getSkill | onEnemyKilled | addLogEntry | createEnemy/takeDamage/deleteEnemy/useSkill/getAvailableSkills/calculateDamage/tickCooldowns | - |
 | exploration | takeDamage/receiveHeal/changeMp/gainGold/gainExp | addItem/getItemInfo | - | - | - | addLogEntry | - | - |
 | inventory | receiveHeal/changeMp/applyBonus | - | - | - | - | addLogEntry | - | - |
-| equipment | applyBonus/removeBonus | addItem | - | - | - | addLogEntry | - | - |
+| equipment | applyBonus/removeBonus | -（回调注入 addItem） | - | - | - | addLogEntry | - | - |
 | skill | changeMp/receiveHeal | - | - | - | - | addLogEntry | - | - |
 | quest | gainExp/gainGold | addItem | - | - | - | addLogEntry | - | - |
 | shop | spendGold/gainGold | addItem/removeItem/getItemInfo | - | - | - | addLogEntry | - | - |
+| boss（经 IBossContext） | getPlayerName | - | - | - | - | - | createMinion | rebuildInitiativeOrder |
+
+> 说明：
+> - `combat` 的所有跨模块调用通过 `ICombatContext` 代理（S2 修复），`ICombatQuery` 提供只读访问，`ICombatCommand` 提供写入操作。
+> - `boss` 的跨模块调用通过 `IBossContext` 接口注入（S3 修复），接口含 `getPlayerName`/`createMinion`/`rebuildInitiativeOrder` 三个方法。
+> - `equipment` 调用 `inventory.addItem` 通过 `setInventoryCallbacks` 注入的回调完成（A1/G1 修复），非静态 import。
 
 ---
 
@@ -283,16 +344,15 @@ graph TD
 
 ```mermaid
 graph LR
-    combat --> character
-    combat --> enemy
-    combat --> skill
-    combat --> inventory
-    combat --> quest
-    combat --> log
-    combat --> boss
+    combat[combat/store.ts] --> combatContext[combatContext.ts<br/>createCombatContext]
+    combatContext --> character
+    combatContext --> enemy
+    combatContext --> skill
+    combatContext --> inventory
+    combatContext --> quest
+    combatContext --> log
+    combat -.->|IBossContext 接口注入| boss[useBossMechanics]
     boss --> enemy
-    boss --> combat
-    enemy --> skill
 
     character -.->|eventBus| UI
     combat -.->|eventBus| UI
@@ -301,9 +361,10 @@ graph LR
 ```
 
 **分析**：
-- 战斗模块是最复杂的依赖中心，直接依赖 7 个模块
-- `boss` 与 `combat` 存在双向依赖（combat 调用 boss 的 initBossFeatures，boss 调用 combat 的 Store）
-- 战斗模块通过 composables 拆分缓解了复杂度，但依赖广度不变
+- 战斗模块是最复杂的依赖中心，但通过对 6 个外部 Store 的依赖收口到 `combatContext.ts`（S2 修复），combat/store.ts 本身不再直接 import 外部 Store
+- `ICombatContext` 进一步拆分为 `ICombatQuery`（只读）与 `ICombatCommand`（写入），composable 可按需声明读/写意图
+- `boss` 与 `combat` 的双向依赖已通过 `IBossContext` 接口注入解耦（S3 修复）：combat/store.ts 实现 `IBossContext` 接口并注入到 `useBossMechanics`，boss 不再直接 import combat Store
+- 战斗模块通过 composables 拆分（resources / forms / pets / effects / ai）缓解了复杂度
 
 #### 4.1.1 战斗子模块依赖
 
@@ -313,56 +374,60 @@ graph LR
 graph LR
     %% ===== 战斗 Store 与子模块 =====
     combatStore[combat/store.ts]
+    combatContext[combatContext.ts<br/>ICombatContext 工厂]
     resources[resources/<br/>ResourceSystemFactory]
     passive[composables/usePassiveSkills]
     forms[forms/<br/>useFormStore 德鲁伊变形]
     pets[pets/<br/>usePetStore 术士召唤]
     ai[ai/<br/>strategies + targetSelection]
     effects[effects/<br/>pipeline/container/handlers]
+    bossMech[composables/useBossMechanics<br/>IBossContext 接口注入]
 
-    %% ===== 跨模块依赖 =====
-    character[character]
-    skill[skill]
+    %% ===== 跨模块依赖（经 ICombatContext 代理） =====
+    ctx[ICombatContext<br/>聚合 6 个外部 Store]
 
     %% ===== store 对子模块的静态依赖 =====
+    combatStore -->|import| combatContext
     combatStore -->|import| resources
     combatStore -->|import| passive
     combatStore -->|组合| effects
     combatStore -->|组合| ai
+    combatStore -->|组合 + IBossContext 注入| bossMech
 
-    %% ===== 被动技能注入关系 =====
-    passive -.->|注入| useEnemyAction[useEnemyAction]
-    passive -.->|注入| useInitiative[useInitiative]
+    %% ===== combatContext 聚合外部 Store =====
+    combatContext -->|聚合| ctx
+
+    %% ===== 职业差异化子模块对外依赖（经 ctx 或直接） =====
+    resources -->|按职业创建| ctx
+    forms -->|形态影响属性| ctx
+    forms -->|形态限制技能| ctx
+    pets -->|召唤物属性| ctx
+    pets -.->|召唤物参战| combatStore
 
     %% ===== AI 子系统内部 =====
     ai --> targetSelection[ai/targetSelection<br/>ITargetSelector]
     ai --> strategies[ai/strategies<br/>4 种策略]
 
-    %% ===== 职业差异化子模块对外依赖 =====
-    resources -->|按职业创建| character
-    forms -->|形态影响属性| character
-    forms -->|形态限制技能| skill
-    pets -->|召唤物属性| character
-    pets -.->|召唤物参战| combatStore
-
     %% ===== 样式 =====
     classDef storeLayer fill:#fff9c4,stroke:#f57f17,color:#000
     classDef subLayer fill:#c5e1a5,stroke:#33691e,color:#000
-    classDef ext fill:#eceff1,stroke:#607d8b,color:#000
+    classDef ctxLayer fill:#b2dfdb,stroke:#00695c,color:#000
 
-    class combatStore storeLayer
-    class resources,passive,forms,pets,ai,effects,targetSelection,strategies,useEnemyAction,useInitiative subLayer
-    class character,skill ext
+    class combatStore,combatContext storeLayer
+    class resources,passive,forms,pets,ai,effects,targetSelection,strategies,bossMech subLayer
+    class ctx ctxLayer
 ```
 
 **子模块职责与依赖说明**：
 
 | 子模块 | 职责 | 对外依赖 |
 |--------|------|----------|
-| `resources/` | 职业资源系统（怒气/能量/连击点/灵魂碎片/真气），由 `ResourceSystemFactory` 按职业创建 | character（职业判定） |
+| `combatContext.ts` | 聚合 6 个外部 Store 为 `ICombatContext`（`ICombatQuery` + `ICombatCommand`），是 combat 内唯一引用外部 Store 的位置 | character/skill/enemy/quest/log/inventory Store |
+| `composables/useBossMechanics` | Boss 机制逻辑，通过 `IBossContext` 接口注入外部依赖 | IBossContext 接口（由 combat/store.ts 实现） |
+| `resources/` | 职业资源系统（怒气/能量/连击点/灵魂碎片/真气），由 `ResourceSystemFactory` 按职业创建 | ICombatContext（职业判定） |
 | `composables/usePassiveSkills` | 被动技能触发逻辑，作为组合式函数注入到敌人行动与先攻调度 | 被注入到 useEnemyAction、useInitiative |
-| `forms/` | 德鲁伊变形系统，独立 `useFormStore`，管理形态切换与属性修正 | character、skill |
-| `pets/` | 术士召唤系统，独立 `usePetStore`，管理召唤物生成与行动 | character、combatStore |
+| `forms/` | 德鲁伊变形系统，独立 `useFormStore`，管理形态切换与属性修正 | ICombatContext（属性/技能） |
+| `pets/` | 术士召唤系统，独立 `usePetStore`，管理召唤物生成与行动 | ICombatContext（属性）、combatStore（参战） |
 | `ai/targetSelection` | AI 目标选择策略，抽象为 `ITargetSelector` 接口 | 无外部模块依赖 |
 | `effects/` | Buff/Debuff 效果系统（管线-容器-处理器三层结构） | 无外部模块依赖 |
 
@@ -373,6 +438,7 @@ graph LR
     exploration --> character
     exploration --> inventory
     exploration --> log
+    exploration --> eventsTS[events.ts 注册表]
     exploration --> crossModuleQuery[CrossModuleQuery 服务]
     crossModuleQuery --> map[map/db]
     crossModuleQuery --> quest[quest/db]
@@ -386,6 +452,7 @@ graph LR
 **分析**：
 - 探索模块通过 EventBus 与战斗模块双向通信（探索触发战斗，战斗结束通知探索）
 - 跨层调用已抽取到 `CrossModuleQuery` 服务，探索 Store 仅依赖该服务单例；物品模板查询进一步经 `ItemTemplateCache` 命中内存缓存
+- 即时结算路径通过 `events.ts` 注册表分发（`cellEventHandlers` 按 `CellType` 查找，`effectHandlers` 按 `RandomEventEffectType` 查找），新增事件类型只需在 `events.ts` 注册处理器，无需修改 store.ts（ARCH-11 修复）
 - 事件监听使用 `eventBus.onGroup('exploration', ...)` 分组订阅，`dispose` 时 `clearGroup('exploration')` 统一清理
 
 ### 4.3 角色模块依赖链
@@ -396,6 +463,14 @@ graph LR
     character --> bus
     character --> base
     character --> calculations
+    character --> characterLifecycle[CharacterLifecycleService]
+
+    characterLifecycle --> skill_db[skill/db]
+    characterLifecycle --> inventory_db[inventory/db]
+    characterLifecycle --> equipment_db[equipment/db]
+    characterLifecycle --> exploration_db[exploration/db]
+    characterLifecycle --> log_db[log/db]
+    characterLifecycle --> quest_db[quest/db]
 
     combat --> character
     skill --> character
@@ -409,8 +484,26 @@ graph LR
 
 **分析**：
 - 角色模块是**被依赖最多的模块**（8 个模块依赖它）
-- 角色模块本身只依赖基础设施层，依赖方向正确
+- 角色模块本身只依赖基础设施层 + `CharacterLifecycleService`，依赖方向正确
+- 角色创建/删除的跨模块持久化通过 `CharacterLifecycleService` 收口（CHR-4 修复），character Store 不再直接 import 6 个模块的 DbService
 - 高扇入意味着角色模块的任何改动都会影响全局，需要特别谨慎
+
+### 4.4 装备-背包依赖链（A1/G1 修复后）
+
+```mermaid
+graph LR
+    inventory --> itemTemplate[item-template 模块]
+    itemTemplate --> inventory_db[inventory/db]
+    itemTemplate --> equipment_db[equipment/db]
+    equipment -.->|setInventoryCallbacks 回调注入| inventory
+    gameBootstrap -.->|initialize 后注入回调| equipment
+```
+
+**分析**：
+- `inventory` 通过 `item-template` 模块的 `unifiedItemTemplateCache` 获取合并后的物品模板（普通物品 + 装备），不再直接 import `equipmentDbService`
+- `equipment` 卸下装备放回背包通过 `setInventoryCallbacks` 注入的 `addItem` 回调完成，不再直接 import `inventory/store`
+- `item-template` 模块单向依赖 `inventory/db` + `equipment/db`，无循环
+- 回调注入由 `gameBootstrap.initialize` 在 inventory 初始化后、equipment 初始化前调用 `setInventoryCallbacks` 完成；`dispose` 时调用 `clearInventoryCallbacks` 清除引用
 
 ---
 
@@ -418,45 +511,47 @@ graph LR
 
 ### 5.1 已识别的循环/双向依赖
 
-| 编号 | 涉及模块 | 依赖类型 | 严重程度 | 描述 |
-|------|----------|----------|----------|------|
-| C1 | combat ↔ boss | 静态双向 | 中 | combat 调用 boss 的 initBossFeatures，boss 调用 combat 的 Store。通过 `setInitiativeCallback` 注入回调，但双向引用本身仍在 |
-| C2 | exploration ↔ combat | 事件双向 | 低 | 通过 EventBus 双向通信（EXPLORATION_BATTLE_TRIGGERED + COMBAT_END）。使用 `onGroup('exploration')` 分组订阅 |
-| C3 | inventory ↔ equipment | 静态双向 | 中 | equipment 调 inventory.addItem；inventory 加载装备模板时调 equipmentDbService |
-| C4 | combat ↔ skill | 静态双向 | 低 | combat 调 skill.castSkill；skill 的 castSkill 返回伤害供 combat 使用 |
+| 编号 | 涉及模块 | 依赖类型 | 严重程度 | 状态 | 描述 |
+|------|----------|----------|----------|------|------|
+| C1 | combat ↔ boss | 静态双向 | 中 | ✅ 已解耦（S3） | 原 combat 调用 boss 的 initBossFeatures，boss 调用 combat 的 Store。已通过 `IBossContext` 接口注入解耦：combat/store.ts 实现 `IBossContext` 接口（`getPlayerName`/`createMinion`/`rebuildInitiativeOrder`）并注入到 `useBossMechanics`，boss 不再直接 import combat Store |
+| C2 | exploration ↔ combat | 事件双向 | 低 | ⚠️ 设计如此 | 通过 EventBus 双向通信（EXPLORATION_BATTLE_TRIGGERED + COMBAT_END）。使用 `onGroup('exploration')` 分组订阅，`dispose` 时 `clearGroup('exploration')` 统一清理。这是合理的业务耦合 |
+| C3 | inventory ↔ equipment | 静态双向 | 中 | ✅ 已修复（A1/G1） | 原 equipment 调 inventory.addItem；inventory 加载装备模板时调 equipmentDbService。已通过 `unifiedItemTemplateCache`（item-template 模块）+ `setInventoryCallbacks` 回调注入修复：inventory 通过 item-template 获取模板，equipment 通过回调访问 inventory |
+| C4 | combat ↔ skill | 静态双向 | 低 | ✅ 已收口（S2） | 原 combat 调 skill.castSkill；skill 的 castSkill 返回伤害供 combat 使用。已通过 `ICombatContext.skill` 代理收口，combat 不再直接 import skillStore |
 
 ### 5.2 循环依赖详解
 
-#### C1: combat ↔ boss 双向依赖
+#### C1: combat ↔ boss 双向依赖（已解耦）
 
 ```mermaid
 graph LR
-    combat[combat/store.ts] -->|import + 调用| boss[useBossMechanics]
-    boss -->|import + 调用| combat[useCombatStore]
-    boss -->|import| enemy[enemy/store]
+    combat[combat/store.ts] -->|import + 组合| bossMech[useBossMechanics]
+    combat -->|实现 IBossContext 接口| bossCtx[IBossContext]
+    bossCtx -->|注入| bossMech
+    bossMech -->|import 类型| enemy[enemy/store]
 ```
 
-**问题**：
-- `combat/store.ts` 通过 composables 引入 `useBossMechanics`
-- `boss` 模块的 composables 内部又调用 `useCombatStore()` 获取状态
-- 这形成了一个紧耦合的循环，boss 模块无法独立测试和复用
+**修复方案（S3）**：
+- `combat/store.ts` 实现 `IBossContext` 接口（`getPlayerName`/`createMinion`/`rebuildInitiativeOrder`）
+- `useBossMechanics` 接收 `bossCtx: IBossContext` 参数，不再直接 import `useCharacterStore` 和 `useEnemyStore`
+- `rebuildInitiativeOrder` 替代了原 `setInitiativeCallback` hack，语义更清晰
+- Boss 机制可独立测试（仅 mock `IBossContext` 接口而非完整 Pinia Store 链路）
 
-**缓解措施**：
-- 通过 `boss.setInitiativeCallback(initiative.buildInitiativeOrder)` 显式注入先攻顺序重建回调，boss 不延迟读取全局变量
-- 根本上 boss 模块应作为 combat 的子模块，或通过接口解耦（双向引用本身仍在，待后续优化）
-
-#### C3: inventory ↔ equipment 双向依赖
+#### C3: inventory ↔ equipment 双向依赖（已修复）
 
 ```mermaid
 graph LR
-    equipment -->|addItem| inventory
-    inventory -->|equipmentDbService| equipment_db[equipment/db.ts]
+    inventory -->|unifiedItemTemplateCache| itemTemplate[item-template 模块]
+    itemTemplate -->|itemTemplateDbService| inventory_db[inventory/db]
+    itemTemplate -->|itemTemplateDbService| equipment_db[equipment/db]
+    equipment -.->|setInventoryCallbacks 回调注入| inventory
 ```
 
-**问题**：
-- equipment Store 调用 inventory Store 的 addItem（装备卸下时放回背包）
-- inventory Store 加载物品模板时，从 equipmentDbService 获取装备模板
-- 数据流向不清晰：装备模板既属于 equipment 又被 inventory 引用
+**修复方案（A1/G1）**：
+- 新增 `item-template` 模块，聚合 `config_items`（普通物品）与 `config_equipmentItems`（装备）查询
+- `inventory/store.ts` 通过 `unifiedItemTemplateCache.getAll()` 获取合并后的模板，不再直接 import `equipmentDbService`
+- `equipment/store.ts` 通过 `setInventoryCallbacks` 注入的 `addItem`/`removeItem` 回调访问 inventory，不再直接 import `inventory/store`
+- 回调注入由 `gameBootstrap.initialize` 完成，`dispose` 时 `clearInventoryCallbacks` 清除引用
+- 依赖方向：`inventory → item-template → inventory.db + equipment.db`（单向，无循环）；`equipment -.→ inventory`（运行时回调，非静态依赖）
 
 ---
 
@@ -475,51 +570,79 @@ graph LR
 | `getQuestRequiredMonsters` | `crossModuleQuery.getQuestDefinitionsByBoard()` | 获取任务怪物 |
 | `pickRandomShop` | `crossModuleQuery.getAllShopConfigs()` | 随机选商店 |
 
-### 6.1.1 CHR-4 character 直接依赖多模块 DbService
+### 6.1.1 CHR-4 character 直接依赖多模块 DbService（已修复）
 
-`src/modules/character/store.ts` 在角色创建/删除流程中直接 import 了 6 个其他模块的 DbService：
+`src/modules/character/store.ts` 原直接 import 了 6 个其他模块的 DbService，现已通过 `CharacterLifecycleService` 收口（CHR-4 修复）。
+
+**修复后的依赖结构**：
 
 ```typescript
-// character/store.ts 中的跨层调用（CHR-4，未修复）
-import { skillsDbService } from '../skill/db';
-import { inventoryDbService } from '../inventory/db';
-import { equipmentDbService } from '../equipment/db';
-import { explorationDbService } from '../exploration/db';
-import { adventureLogDbService } from '../log/db';
-import { questDbService } from '../quest/db';
+// character/store.ts（修复后）
+import { characterDbService } from './db';
+import { characterLifecycleService } from '@/services/CharacterLifecycleService';
 ```
 
-**违规点**：
-| 调用位置 | 被调用方 | 用途 |
+**收口情况**：
+
+| 调用位置 | 原被调用方 | 现被调用方 | 用途 |
+|----------|----------|----------|------|
+| `createCharacter` | `skillsDbService.saveSkillsData()` / `getSkillTemplatesByClass()` | `characterLifecycleService.initializeCharacterSkills(id, classId)` | 初始化角色技能（查询模板 + 填充技能栏 + 持久化） |
+| `deleteCharacter` | 6 个模块 DbService 的 delete 方法 | `characterLifecycleService.cascadeDeleteCharacter(id)` | 级联删除 6 个模块数据（Promise.all 并行） |
+
+**CharacterLifecycleService 内部依赖**：
+
+| 方法 | 被调用方 | 用途 |
 |----------|----------|------|
-| `createCharacter` | `skillsDbService.saveSkillsData()` | 初始化角色技能 |
-| `createCharacter` | `skillsDbService.getSkillTemplatesByClass()` | 按职业获取技能模板 |
-| `deleteCharacter` | `skillsDbService.deleteSkillsData()` | 删除角色技能 |
-| `deleteCharacter` | `inventoryDbService.deleteInventory()` | 删除角色背包 |
-| `deleteCharacter` | `equipmentDbService.deleteEquipment()` | 删除角色装备 |
-| `deleteCharacter` | `explorationDbService.deleteExplorationData()` | 删除探索数据 |
-| `deleteCharacter` | `adventureLogDbService.deleteAdventureLog()` | 删除冒险日志 |
-| `deleteCharacter` | `questDbService.deleteCharacterQuests()` | 删除任务进度 |
+| `initializeCharacterSkills` | `skillsDbService.getSkillTemplatesByClass` / `saveSkillsData` | 查询技能模板 + 持久化技能数据 |
+| `cascadeDeleteCharacter` | `skillsDbService.deleteSkillsData` | 删除 char_skills 表 |
+| `cascadeDeleteCharacter` | `inventoryDbService.deleteInventory` | 删除 char_inventory 表 |
+| `cascadeDeleteCharacter` | `equipmentDbService.deleteEquipment` | 删除 char_equipment 表 |
+| `cascadeDeleteCharacter` | `explorationDbService.deleteExplorationData` | 删除 char_exploration 表 |
+| `cascadeDeleteCharacter` | `adventureLogDbService.deleteAdventureLog` | 删除 runtime_adventureLogs 表 |
+| `cascadeDeleteCharacter` | `questDbService.deleteCharacterQuests` | 删除 char_quests 表 |
 
-**建议**：将角色级联删除/初始化逻辑抽取到 `CharacterLifecycleService` 之类的服务层，character Store 仅依赖该服务。
+### 6.1.2 CHR-5 console 直接依赖多模块 DbService（已修复）
 
-### 6.1.2 CHR-5 console 直接依赖多模块 DbService
+`src/modules/console.ts`（管理后台入口）原直接 import 了 4 个模块的 DbService，现已通过 `AdminQueryService` 收口（CHR-5 修复）。
 
-`src/modules/console.ts`（管理后台入口）直接 import 了 4 个模块的 DbService：
+**修复后的依赖结构**：
 
 ```typescript
-// modules/console.ts 中的跨层调用（CHR-5，未修复）
-import { enemyDbService } from './enemy';
-import { bossDbService } from './boss';
-import { inventoryDbService } from './inventory';
-import { equipmentDbService } from './equipment';
+// modules/console.ts（修复后）
+import { adminQueryService } from '@/services/AdminQueryService';
 ```
 
-**建议**：管理后台应通过各模块 Store 或统一的 AdminQueryService 访问数据，避免直接穿透到持久层。
+**收口情况**：
+
+| 调用位置 | 原被调用方 | 现被调用方 | 用途 |
+|----------|----------|----------|------|
+| `item` 命令（无参数） | `inventoryDbService.getAllItemTemplates` / `equipmentDbService.getAllEquipmentTemplates` | `adminQueryService.queryAllItemTemplates()` | 列出所有物品模板（消耗品 + 装备） |
+| `item` 命令（按 ID） | `inventoryDbService.getItemTemplate` / `equipmentDbService.getEquipmentTemplate` | `adminQueryService.queryItemTemplate(itemId)` | 按ID查物品模板（先查消耗品，未命中再查装备） |
+| `spawn` 命令（无参数） | `enemyDbService.getAllEnemyTemplates` / `bossDbService.getAllBossTemplates` | `adminQueryService.queryAllEnemyTemplates()` | 列出所有敌人模板（普通怪物 + Boss） |
 
 ### 6.2 Store 初始化顺序耦合
 
-初始化顺序由 `src/services/GameBootstrap.ts` 统一编排，各 Store 的 `init` 仅负责加载自身状态，不再隐式初始化其他 Store。`GameBootstrap.initialize(characterId)` 按依赖顺序初始化（character→log→inventory→equipment→skill→map→exploration→quest），退出角色时 `dispose()` 按逆序清理（含 `eventBus.clearGroup`）。
+初始化顺序由 `src/services/GameBootstrap.ts` 统一编排，各 Store 的 `init` 仅负责加载自身状态，不再隐式初始化其他 Store。
+
+**`GameBootstrap.initialize(characterId)` 初始化顺序**（前者被后者依赖）：
+
+```
+log → inventory → equipment → skill → map → exploration → quest
+```
+
+- 在 inventory 初始化完成后、equipment 初始化前，调用 `setInventoryCallbacks(inventoryStore.addItem, inventoryStore.removeItem)` 注入回调到装备模块（A1/G1 修复）
+- 各 Store 的 `init` 仅加载自身状态，不再隐式初始化其他 Store（EXP-5 修复）
+
+**`GameBootstrap.dispose()` 清理范围**（按初始化逆序）：
+
+| 清理对象 | 清理内容 |
+|----------|----------|
+| `useCombatStore().dispose()` | 清理战斗定时器（turnTimerId / bossIntroTimerId） |
+| `useExplorationStore().dispose()` | 清理 EventBus 监听器（`clearGroup('exploration')`）与 UI 回调 |
+| `useAudioStore().dispose()` | 清理 saveTimer 去抖定时器 |
+| `clearInventoryCallbacks()` | 清除 equipment 模块的背包回调引用（A1/G1 修复：避免角色切换后回调指向旧 Store 实例） |
+
+> 仅清理显式实现了 `Disposable` 接口的 Store，TypeScript 在编译期校验 dispose 方法签名（ARCH-8 修复）。
 
 ---
 
@@ -587,16 +710,16 @@ graph LR
 
 | 编号 | 问题 | 建议 | 优先级 | 状态 |
 |------|------|------|--------|------|
-| O9 | character/store.ts 直接依赖 6 个模块 DbService | 抽取 CharacterLifecycleService 收口级联删除/初始化 | 高 | ⏳ 待修复（CHR-4） |
-| O10 | modules/console.ts 直接依赖 4 个模块 DbService | 通过各模块 Store 或 AdminQueryService 访问 | 中 | ⏳ 待修复（CHR-5） |
+| O9 | character/store.ts 直接依赖 6 个模块 DbService | 抽取 CharacterLifecycleService 收口级联删除/初始化 | 高 | ✅ 已修复（CHR-4） |
+| O10 | modules/console.ts 直接依赖 4 个模块 DbService | 通过各模块 Store或 AdminQueryService 访问 | 中 | ✅ 已修复（CHR-5） |
 
 ### 8.2 中期优化（中等风险）
 
-| 编号 | 问题 | 建议 | 优先级 |
-|------|------|------|--------|
-| O4 | boss 与 combat 双向耦合 | 将 boss 作为 combat 的子目录（`combat/boss/`），或定义 IBossContext 接口反向解耦。当前通过 `setInitiativeCallback` 注入回调，但双向引用本身仍在 | 中 |
-| O5 | inventory ↔ equipment 双向依赖 | 抽取物品模板统一管理层，equipment 和 inventory 都从该层获取模板 | 中 |
-| O6 | combat 模块依赖广度大 | 引入 CombatContext 聚合角色/敌人/技能/背包的查询接口，减少直接依赖 | 低 |
+| 编号 | 问题 | 建议 | 优先级 | 状态 |
+|------|------|------|--------|------|
+| O4 | boss 与 combat 双向耦合 | 定义 IBossContext 接口反向解耦 | 中 | ✅ 已修复（S3） |
+| O5 | inventory ↔ equipment 双向依赖 | 抽取物品模板统一管理层，equipment 和 inventory 都从该层获取模板 | 中 | ✅ 已修复（A1/G1，item-template 模块 + setInventoryCallbacks） |
+| O6 | combat 模块依赖广度大 | 引入 CombatContext 聚合角色/敌人/技能/背包的查询接口，减少直接依赖 | 低 | ✅ 已修复（S2，ICombatContext 读写分离） |
 
 ### 8.3 长期优化（高风险）
 
@@ -605,7 +728,22 @@ graph LR
 | O7 | 模块间直接 Store 调用导致强耦合 | 引入依赖注入容器或服务定位器模式 | 低 |
 | O8 | 缺少模块边界强制约束 | 引入 ESLint 规则禁止跨层 import（如 `no-restricted-imports`） | 中 |
 
-详见 [ISSUES.md](./ISSUES.md)。
+---
+
+## 九、已完成的依赖优化总结
+
+| 修复编号 | 问题 | 修复方案 | 涉及文件 |
+|----------|------|----------|----------|
+| CHR-4 | character Store 直接依赖 6 个模块 DbService | 新增 `CharacterLifecycleService`，收口 `initializeCharacterSkills` 与 `cascadeDeleteCharacter` | `src/services/CharacterLifecycleService.ts`、`src/modules/character/store.ts` |
+| CHR-5 | console 直接依赖 4 个模块 DbService | 新增 `AdminQueryService`，收口物品/敌人模板查询 | `src/services/AdminQueryService.ts`、`src/modules/console.ts` |
+| S2 | combat 模块直接 import 6 个外部 Store | 新增 `combatContext.ts`，聚合为 `ICombatContext`（`ICombatQuery` + `ICombatCommand` 读写分离） | `src/modules/combat/combatContext.ts`、`src/modules/combat/store.ts` |
+| S3 | combat ↔ boss 双向静态耦合 | 新增 `IBossContext` 接口，combat/store.ts 实现接口并注入到 `useBossMechanics` | `src/modules/combat/composables/useBossMechanics.ts`、`src/modules/combat/store.ts` |
+| A1/G1 | inventory ↔ equipment 双向依赖 | 新增 `item-template` 模块（`unifiedItemTemplateCache`）+ `setInventoryCallbacks` 回调注入 | `src/modules/item-template/*`、`src/modules/inventory/store.ts`、`src/modules/equipment/store.ts` |
+| EXP-5 | 探索模块隐式初始化其他 Store | 新增 `GameBootstrap`，统一编排初始化顺序与逆序 dispose 清理 | `src/services/GameBootstrap.ts` |
+| EXP-4 | 探索模块跨模块查询分散 | 新增 `CrossModuleQuery`，收口 map/inventory/quest/shop 查询 | `src/services/CrossModuleQuery.ts` |
+| PERF-1 | 探索模块每次 buildAreaConfig 全表扫描 | 新增 `ItemTemplateCache`，懒加载内存缓存 | `src/services/ItemTemplateCache.ts` |
+| ARCH-8 | dispose 使用 `as unknown as` 断言无类型安全 | 定义 `Disposable` 接口，TypeScript 编译期校验 dispose 签名 | `src/services/GameBootstrap.ts` |
+| ARCH-11 | 探索事件处理器分散在 store.ts 的 switch 语句 | 新增 `events.ts`，注册表模式分发（`cellEventHandlers` + `effectHandlers`） | `src/modules/exploration/events.ts`、`src/modules/exploration/store.ts` |
 
 ---
 
