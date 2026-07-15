@@ -38,6 +38,12 @@ const RESOURCE_DISPLAY_CONFIG: Record<ResourceType, { name: string; icon: string
   soul_shard: { name: '碎片', icon: 'game-icons:soul', gradient: 'debuff' },
   chi: { name: '真气', icon: 'game-icons:fist', gradient: 'heal' },
   focus: { name: '集中', icon: 'game-icons:targeting', gradient: 'physical' },
+  holy_power: { name: '神圣', icon: 'game-icons:halo', gradient: 'holy' },
+  runic_power: { name: '符能', icon: 'game-icons:rune-sword', gradient: 'blood' },
+  rune: { name: '符文', icon: 'game-icons:rune-stone', gradient: 'blood' },
+  fury: { name: '怒火', icon: 'game-icons:demon-claw', gradient: 'debuff' },
+  soul: { name: '灵魂', icon: 'game-icons:soul', gradient: 'debuff' },
+  essence: { name: '精华', icon: 'game-icons:dragon-orb', gradient: 'mana' },
   mana: { name: '法力', icon: 'game-icons:magic-palm', gradient: 'mana' },
 };
 
@@ -117,6 +123,42 @@ const percent = computed(() => {
   box-shadow: 0 0 8px rgba(102, 187, 106, 0.3);
 }
 
+/* 神圣能量 - 金色 */
+.resource-fill.holy_power {
+  background: linear-gradient(90deg, #ffd700, #ffec80);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+}
+
+/* 符能 - 蓝白 */
+.resource-fill.runic_power {
+  background: linear-gradient(90deg, #4a90d9, #7bb3f0);
+  box-shadow: 0 0 8px rgba(74, 144, 217, 0.3);
+}
+
+/* 符文 - 深蓝 */
+.resource-fill.rune {
+  background: linear-gradient(90deg, #2a4d8f, #4a6fb5);
+  box-shadow: 0 0 8px rgba(42, 77, 143, 0.3);
+}
+
+/* 怒火 - 绿色（恶魔之怒） */
+.resource-fill.fury {
+  background: linear-gradient(90deg, #33cc33, #66ff66);
+  box-shadow: 0 0 8px rgba(51, 204, 51, 0.3);
+}
+
+/* 灵魂 - 紫色 */
+.resource-fill.soul {
+  background: linear-gradient(90deg, #9933cc, #cc66ff);
+  box-shadow: 0 0 8px rgba(153, 51, 204, 0.3);
+}
+
+/* 精华 - 青蓝 */
+.resource-fill.essence {
+  background: linear-gradient(90deg, #00ccff, #66e6ff);
+  box-shadow: 0 0 8px rgba(0, 204, 255, 0.3);
+}
+
 /* 法力 - 蓝色（回退） */
 .resource-fill.mana {
   background: linear-gradient(90deg, #448aff, #2962ff);
@@ -145,6 +187,12 @@ const percent = computed(() => {
 .wave-slow.soul_shard { background: rgba(220, 200, 255, 0.5); }
 .wave-slow.chi { background: rgba(200, 255, 230, 0.5); }
 .wave-slow.focus { background: rgba(200, 255, 200, 0.5); }
+.wave-slow.holy_power { background: rgba(255, 240, 180, 0.5); }
+.wave-slow.runic_power { background: rgba(200, 220, 255, 0.5); }
+.wave-slow.rune { background: rgba(190, 210, 255, 0.5); }
+.wave-slow.fury { background: rgba(200, 255, 200, 0.5); }
+.wave-slow.soul { background: rgba(220, 200, 255, 0.5); }
+.wave-slow.essence { background: rgba(200, 240, 255, 0.5); }
 .wave-slow.mana { background: rgba(200, 220, 255, 0.5); }
 
 .wave-fast {

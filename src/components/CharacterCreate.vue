@@ -211,12 +211,12 @@
             </div>
             <div class="sec-attr">
               <BaseIcon name="health-normal" gradient="blood" :size="14" />
-              <span>最大HP</span>
+              <span>最大生命</span>
               <strong>{{ derivedAttributes.maxHp }}</strong>
             </div>
             <div class="sec-attr">
               <BaseIcon name="magic-palm" gradient="mana" :size="14" />
-              <span>最大MP</span>
+              <span>最大法力</span>
               <strong>{{ derivedAttributes.maxMana }}</strong>
             </div>
           </div>

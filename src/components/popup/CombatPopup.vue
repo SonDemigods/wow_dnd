@@ -383,7 +383,10 @@ const showManaBar = computed(() => !ResourceSystemFactory.replacesMana(character
 /** 资源类型中文名映射 */
 const RESOURCE_TYPE_NAMES: Record<string, string> = {
   rage: '怒气', energy: '能量', combo_point: '连击',
-  soul_shard: '碎片', chi: '真气', focus: '集中', mana: '法力',
+  soul_shard: '碎片', chi: '真气', focus: '集中',
+  holy_power: '神圣', runic_power: '符能', rune: '符文',
+  fury: '怒火', soul: '灵魂', essence: '精华',
+  mana: '法力',
 };
 
 /** 获取技能消耗文本（专属资源或 MP） */

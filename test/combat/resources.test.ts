@@ -563,17 +563,52 @@ describe('ResourceSystemFactory 职业映射', () => {
     expect(systems[0].currentValue).toBe(1);
   });
 
-  it('monk 返回 [ChiSystem]', () => {
+  it('monk 返回 [EnergySystem, ChiSystem]', () => {
     const systems = ResourceSystemFactory.create('monk');
+    expect(systems).toHaveLength(2);
+    expect(systems[0].type).toBe('energy');
+    expect(systems[0].currentValue).toBe(50);
+    expect(systems[1].type).toBe('chi');
+    expect(systems[1].currentValue).toBe(1);
+  });
+
+  it('paladin 返回 [HolyPowerSystem]', () => {
+    const systems = ResourceSystemFactory.create('paladin');
     expect(systems).toHaveLength(1);
-    expect(systems[0].type).toBe('chi');
+    expect(systems[0].type).toBe('holy_power');
+    expect(systems[0].currentValue).toBe(0);
+  });
+
+  it('death_knight 返回 [RunicPowerSystem, RuneSystem]', () => {
+    const systems = ResourceSystemFactory.create('death_knight');
+    expect(systems).toHaveLength(2);
+    expect(systems[0].type).toBe('runic_power');
+    expect(systems[0].currentValue).toBe(0);
+    expect(systems[1].type).toBe('rune');
+    expect(systems[1].currentValue).toBe(6);
+  });
+
+  it('demon_hunter 返回 [FurySystem, SoulSystem]', () => {
+    const systems = ResourceSystemFactory.create('demon_hunter');
+    expect(systems).toHaveLength(2);
+    expect(systems[0].type).toBe('fury');
+    expect(systems[0].currentValue).toBe(0);
+    expect(systems[1].type).toBe('soul');
+    expect(systems[1].currentValue).toBe(0);
+  });
+
+  it('evoker 返回 [EssenceSystem]', () => {
+    const systems = ResourceSystemFactory.create('evoker');
+    expect(systems).toHaveLength(1);
+    expect(systems[0].type).toBe('essence');
     expect(systems[0].currentValue).toBe(1);
   });
 
   it('未知职业返回空数组（回退到 MP 系统）', () => {
     expect(ResourceSystemFactory.create('mage')).toEqual([]);
     expect(ResourceSystemFactory.create('priest')).toEqual([]);
-    expect(ResourceSystemFactory.create('paladin')).toEqual([]);
+    expect(ResourceSystemFactory.create('shaman')).toEqual([]);
+    expect(ResourceSystemFactory.create('druid')).toEqual([]);
     expect(ResourceSystemFactory.create('unknown_class')).toEqual([]);
   });
 

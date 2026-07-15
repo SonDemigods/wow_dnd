@@ -12,6 +12,12 @@ import { ComboPointSystem } from './ComboPointSystem';
 import { SoulShardSystem } from './SoulShardSystem';
 import { ChiSystem } from './ChiSystem';
 import { FocusSystem } from './FocusSystem';
+import { HolyPowerSystem } from './HolyPowerSystem';
+import { RunicPowerSystem } from './RunicPowerSystem';
+import { RuneSystem } from './RuneSystem';
+import { FurySystem } from './FurySystem';
+import { SoulSystem } from './SoulSystem';
+import { EssenceSystem } from './EssenceSystem';
 
 /**
  * 资源系统工厂
@@ -23,8 +29,10 @@ import { FocusSystem } from './FocusSystem';
  * ```
  */
 export class ResourceSystemFactory {
-  /** 完全替代 MP 的资源类型（战士怒气/盗贼能量/猎人集中值），存在时 UI 应隐藏 MP 条 */
-  private static readonly MANA_REPLACING_TYPES = new Set<ResourceType>(['rage', 'energy', 'focus']);
+  /** 完全替代 MP 的资源类型（战士怒气/盗贼能量/猎人集中/亡灵骑士符能/影刃猎手怒火），存在时 UI 应隐藏 MP 条 */
+  private static readonly MANA_REPLACING_TYPES = new Set<ResourceType>([
+    'rage', 'energy', 'focus', 'runic_power', 'fury',
+  ]);
 
   /**
    * 根据职业 ID 创建资源系统
@@ -42,36 +50,47 @@ export class ResourceSystemFactory {
         return [new EnergySystem(50), new ComboPointSystem(0)];
 
       case 'warlock':
-        // 术士：灵魂碎片
+        // 术士：灵魂碎片（辅助，主资源为 MP）
         return [new SoulShardSystem(1)];
 
       case 'monk':
-        // 武僧：真气
-        return [new ChiSystem(1)];
+        // 武僧：能量 + 真气双资源（能量替代 MP）
+        return [new EnergySystem(50), new ChiSystem(1)];
 
       case 'hunter':
         // 猎人：集中值
         return [new FocusSystem(100)];
 
+      case 'paladin':
+        // 圣骑士：神圣（辅助，主资源为 MP）
+        return [new HolyPowerSystem(0)];
+
+      case 'death_knight':
+        // 亡灵骑士：符能（主资源，替代 MP）+ 符文（辅助）
+        return [new RunicPowerSystem(0), new RuneSystem(6)];
+
+      case 'demon_hunter':
+        // 影刃猎手：怒火（主资源，替代 MP）+ 灵魂（辅助）
+        return [new FurySystem(0), new SoulSystem(0)];
+
+      case 'evoker':
+        // 龙脉术士：精华（辅助，主资源为 MP）
+        return [new EssenceSystem(1)];
+
       default:
-        // BIZ-6：设计决策说明
         // 以下职业使用默认 MP 系统（由战斗 Store 处理）：
-        // - mage（法师）、priest（牧师）、paladin（圣骑士）、shaman（萨满）、
-        //   druid（德鲁伊）、evoker（龙脉术士）
-        //   → 这些职业在 WoW 中使用法力（MP），与当前实现一致。
-        // - death_knight（亡灵骑士）：WoW 中使用符文系统，当前版本简化为 MP，后续版本可扩展 RuneSystem。
-        // - demon_hunter（影刃猎手）：WoW 中使用怒气/魔能系统，当前版本简化为 MP，后续版本可扩展 FurySystem。
+        // - mage（法师）、priest（牧师）、shaman（萨满）、druid（德鲁伊）
         return [];
     }
   }
 
   /**
-   * 判断该职业是否使用替代 MP 的专属资源系统（rage/energy/focus）
+   * 判断该职业是否使用替代 MP 的专属资源系统
    *
    * 用于非战斗 UI（主界面、角色面板等）决定是否隐藏 MP 资源条。
-   * - 战士(怒气)/盗贼(能量)/猎人(集中值) → true，隐藏 MP 条
-   * - 术士(灵魂碎片)/武僧(真气) → false，保留 MP 条（专属资源为辅助资源）
-   * - 法师/牧师等 → false，使用 MP 系统
+   * - 战士(怒气)/潜行者(能量)/猎人(集中)/武僧(能量)/亡灵骑士(符能)/影刃猎手(怒火) → true，隐藏 MP 条
+   * - 圣骑士(神圣)/术士(碎片)/龙脉术士(精华) → false，保留 MP 条（专属资源为辅助资源）
+   * - 法师/牧师/萨满/德鲁伊 → false，使用 MP 系统
    *
    * @param classId - 职业 ID
    * @returns true 表示该职业完全替代 MP，应隐藏 MP 资源条
@@ -81,10 +100,10 @@ export class ResourceSystemFactory {
   }
 
   /**
-   * 获取该职业的替代型资源系统实例（仅 rage/energy/focus）
+   * 获取该职业的替代型资源系统实例（仅主资源替代 MP 的系统）
    *
    * 用于非战斗 UI（主界面、角色面板）显示职业专属资源条。
-   * 返回的实例携带初始值（战士怒气 0、盗贼能量 50、猎人集中值 100），仅供展示。
+   * 返回的实例携带初始值（战士怒气 0、潜行者能量 50、猎人集中值 100 等），仅供展示。
    *
    * @param classId - 职业 ID
    * @returns 替代型资源系统数组（空数组表示该职业使用 MP）

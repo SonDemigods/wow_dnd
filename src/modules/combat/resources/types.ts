@@ -17,6 +17,12 @@ import type { Ref } from 'vue';
  * - `soul_shard`：术士灵魂碎片（施法获取，召唤/强化技能消耗）
  * - `chi`：武僧真气（通过特定技能生成，消耗于终结技）
  * - `focus`：猎人集中值（攻击/回合回复获取，消耗于射击技能）
+ * - `holy_power`：圣骑士神圣（攻击/受伤/技能积累，终结技消耗）
+ * - `runic_power`：亡灵骑士符能（攻击/受伤/回合/击杀积累，替代 MP）
+ * - `rune`：亡灵骑士符文（每回合恢复，核心技能消耗）
+ * - `fury`：影刃猎手怒火（攻击/受伤/回合/击杀积累，替代 MP）
+ * - `soul`：影刃猎手灵魂（攻击/击杀/技能积累，终结技消耗）
+ * - `essence`：龙脉术士精华（回合/技能生成，强力龙族技能消耗）
  * - `mana`：法师/牧师等施法职业的法力（默认回退资源）
  */
 export type ResourceType =
@@ -26,6 +32,12 @@ export type ResourceType =
   | 'soul_shard'
   | 'chi'
   | 'focus'
+  | 'holy_power'
+  | 'runic_power'
+  | 'rune'
+  | 'fury'
+  | 'soul'
+  | 'essence'
   | 'mana';
 
 /**
