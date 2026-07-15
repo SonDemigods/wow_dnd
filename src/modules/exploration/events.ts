@@ -24,8 +24,8 @@ import type {
   RandomEventEffectType,
   ExplorationUICallbacks
 } from './types';
-import type { useCharacterStore } from '../character/store';
-import type { useInventoryStore } from '../inventory/store';
+import type { useCharacterStore } from '@/modules/character/store';
+import type { useInventoryStore } from '@/modules/inventory/store';
 import {
   generateTrapDamage,
   generateRandomEvent,
@@ -33,9 +33,9 @@ import {
   generateCampHeal,
   generateItemForCell
 } from './service';
-import { eventBus, GameEvents } from '../bus';
-import { useLogStore } from '../log/store';
-import { generateLogId } from '../log/service';
+import { eventBus, GameEvents } from '@/modules/bus';
+import { useLogStore } from '@/modules/log/store';
+import { generateLogId } from '@/modules/log/service';
 import {
   MULTI_OPTION_EVENT_PROBABILITY,
   FALLBACK_GOLD_MIN,

@@ -1,9 +1,9 @@
 /**
  * 地图模块纯逻辑函数
  *
- * 提供地点查询、解锁检查、区域状态判定等纯函数，不含状态和副作用
+ * 提供地点查询、解锁检查、区域状态判定、数据转换、工具函数等纯函数，不含状态和副作用
  */
-import type { LocationData, MapState, ZoneStatus } from './types';
+import type { LocationData, MapState, ZoneStatus, LocationStorage } from './types';
 
 /**
  * 根据 ID 从地点集合中查找地点
@@ -52,4 +52,37 @@ export function getLocationsByContinent(
     }
   });
   return result;
+}
+
+/**
+ * 根据角色ID生成地图状态存储键
+ */
+export function getMapStateKey(characterId: string): string {
+  return `map_${characterId}`;
+}
+
+/**
+ * 将存储格式转换为 LocationData 业务类型
+ */
+export function mapToLocationData(storage: LocationStorage): LocationData {
+  return {
+    id: storage.id,
+    name: storage.name,
+    icon: storage.icon,
+    description: storage.description,
+    continent: storage.continent ?? '',
+    enemies: storage.enemies,
+    bosses: storage.bosses,
+    quests: storage.quests,
+    levelRange: storage.levelRange ?? [1, 1],
+    color: storage.color ?? '#000000',
+    mapX: storage.mapX ?? 0,
+    mapY: storage.mapY ?? 0,
+    type: 'location' as const
+  };
+}
+
+/** 数值钳制到 [min, max] 区间 */
+export function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }

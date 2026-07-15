@@ -4,7 +4,7 @@
  * 提供数据格式转换、过滤筛选等纯函数，不含状态和 DB 调用
  */
 
-import type { RaceData, ClassData, RaceType, FactionType } from '../character/types';
+import type { RaceData, ClassData, RaceType, FactionType } from '@/modules/character/types';
 
 /**
  * 将数组转为以 id 为键的 Record

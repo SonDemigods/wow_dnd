@@ -7,7 +7,7 @@
  */
 
 import type { Skill, SkillBar, SkillBuffEffect } from './types';
-import type { Stats } from '../character/types';
+import type { Stats } from '@/modules/character/types';
 
 // ============================================================================
 // 伤害/效果计算

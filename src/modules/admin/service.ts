@@ -11,7 +11,7 @@
  */
 import { adminDbService } from './db';
 import type { AdminOperationResult } from './types';
-import type { GameDatabaseSchema } from '../data/core';
+import type { GameDatabaseSchema } from '@/modules/data/core';
 import { CONFIG_TABLES } from './types';
 import { errorHandler } from '@/services/ErrorHandler';
 

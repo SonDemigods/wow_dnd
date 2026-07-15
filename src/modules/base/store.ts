@@ -6,10 +6,10 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed, type Ref } from 'vue';
-import type { FactionData, RaceData, ClassData, RaceType, FactionType } from '../character/types';
+import type { FactionData, RaceData, ClassData, RaceType, FactionType } from '@/modules/character/types';
 import type { FactionCreateUpdateData, RaceCreateUpdateData, ClassCreateUpdateData } from './types';
 import { baseDbService } from './db';
-import { eventBus, GameEvents } from '../bus';
+import { eventBus, GameEvents } from '@/modules/bus';
 import { errorHandler } from '@/services/ErrorHandler';
 
 // ==================== 通用工厂函数 ====================

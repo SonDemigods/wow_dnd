@@ -8,14 +8,14 @@
 import { defineStore } from 'pinia';
 import { ref, computed, shallowRef } from 'vue';
 import type { ExplorationCell, ExplorationState, AreaConfig, ExplorationUICallbacks, RandomEventEffectType } from './types';
-import type { LocationData } from '../map/types';
+import type { LocationData } from '@/modules/map/types';
 import { explorationDbService } from './db';
 import { crossModuleQuery } from '@/services/CrossModuleQuery';
-import { eventBus, GameEvents } from '../bus';
-import { useLogStore } from '../log/store';
-import { generateLogId } from '../log/service';
-import { useCharacterStore } from '../character/store';
-import { useInventoryStore } from '../inventory/store';
+import { eventBus, GameEvents } from '@/modules/bus';
+import { useLogStore } from '@/modules/log/store';
+import { generateLogId } from '@/modules/log/service';
+import { useCharacterStore } from '@/modules/character/store';
+import { useInventoryStore } from '@/modules/inventory/store';
 import {
   generateGrid,
   findStartPosition,

@@ -26,7 +26,7 @@
  * @module quest
  */
 
-import type { InventoryItem } from '../inventory/types';
+import type { InventoryItem } from '@/modules/inventory/types';
 
 // ============================================================================
 // 枚举类型

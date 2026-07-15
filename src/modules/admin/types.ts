@@ -18,7 +18,7 @@
  *
  * @see OperationResult data 模块的通用操作结果接口
  */
-export type { OperationResult as AdminOperationResult } from '../data/types';
+export type { OperationResult as AdminOperationResult } from '@/modules/data/types';
 
 // ============================================================================
 // 通用接口

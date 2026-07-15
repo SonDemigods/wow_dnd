@@ -8,8 +8,8 @@
  *
  * @see fromStorageBase 与 enemy/db.ts 共享的存储 → 运行时转换逻辑
  */
-import { db as gameDb, dbService } from '../data/core';
-import { fromStorageBase } from '../enemy/db';
+import { db as gameDb, dbService } from '@/modules/data/core';
+import { fromStorageBase } from '@/modules/enemy/db';
 import type { BossStorage, BossTemplate } from './types';
 
 /**

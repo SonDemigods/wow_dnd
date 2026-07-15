@@ -4,7 +4,7 @@
  * 提供敌人属性推导、伤害计算、实例创建等纯函数，不含状态和副作用
  */
 import type { EnemyInstance, EnemyDrop, EnemyData } from './types';
-import type { Stats } from '../character/types';
+import type { Stats } from '@/modules/character/types';
 
 /**
  * 根据模板和等级推导敌人属性统计（含等级缩放）

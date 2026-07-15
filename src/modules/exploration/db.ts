@@ -3,7 +3,7 @@
  * @description 封装探索数据的 IndexedDB 操作，提供数据持久化能力
  * @module exploration
  */
-import { db as gameDb, dbService } from '../data/core';
+import { db as gameDb, dbService } from '@/modules/data/core';
 import type { ExplorationStorage, ExplorationState } from './types';
 import { toRawData } from '../../utils';
 

@@ -29,10 +29,10 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Skill, SkillBar, SkillType, SkillSlotIndex, SkillUseResult, AppliedEffectInfo } from './types';
 import { skillsDbService } from './db';
-import { eventBus, GameEvents } from '../bus';
-import { useCharacterStore } from '../character/store';
-import { useLogStore } from '../log/store';
-import { generateLogId } from '../log/service';
+import { eventBus, GameEvents } from '@/modules/bus';
+import { useCharacterStore } from '@/modules/character/store';
+import { useLogStore } from '@/modules/log/store';
+import { generateLogId } from '@/modules/log/service';
 import {
   calculateSkillDamage,
   calculateBuffValue,

@@ -4,7 +4,7 @@
  * 包含阵营、种族、职业等基础数据的类型定义和操作接口
  */
 
-import type { Stats, FactionType, RaceType } from '../character/types';
+import type { Stats, FactionType, RaceType } from '@/modules/character/types';
 
 /**
  * 阵营创建/更新数据接口

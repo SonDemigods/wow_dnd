@@ -6,7 +6,7 @@
  * @module shop
  */
 
-import type { ItemRarity, ItemType, ItemEffect } from '../inventory/types';
+import type { ItemRarity, ItemType, ItemEffect } from '@/modules/inventory/types';
 
 /**
  * 商店类型（联合类型字面量）

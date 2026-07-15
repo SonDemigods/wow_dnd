@@ -11,9 +11,9 @@
  * - ❌ 数据持久化（由 DB 层负责）
  */
 
-import type { Item, ItemType } from '../inventory/types';
+import type { Item, ItemType } from '@/modules/inventory/types';
 import type { ShopConfig, ShopItem, ShopType } from './types';
-import type { Character } from '../character/types';
+import type { Character } from '@/modules/character/types';
 
 /**
  * 商店类型 → 可售物品类型映射表

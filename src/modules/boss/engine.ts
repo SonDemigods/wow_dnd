@@ -6,7 +6,7 @@
  */
 
 import type { BossPhase, BossMechanic, BossMechanicType } from './types';
-import type { EnemyInstance } from '../enemy/types';
+import type { EnemyInstance } from '@/modules/enemy/types';
 
 // ============================================================================
 // Boss 运行时状态接口

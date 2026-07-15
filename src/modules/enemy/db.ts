@@ -4,7 +4,7 @@
  * 封装普通怪物模板数据的 IndexedDB 操作，提供数据持久化能力
  * （Boss 数据已拆分至 ../boss/db.ts）
  */
-import { db as gameDb, dbService } from '../data/core';
+import { db as gameDb, dbService } from '@/modules/data/core';
 import type { EnemyStorage, EnemyData, AiStrategyType } from './types';
 
 /**

@@ -475,6 +475,9 @@ export function updateAccessibleCells(grid: ExplorationCell[][]): ExplorationCel
   const colSize = grid[0]?.length ?? 0;
 
   // 深拷贝网格
+  // [性能敏感] 对 8x8 网格（64 个 cell）做全文浅拷贝，每次状态更新都触发。
+  // 当前规模下开销可接受（~0.1ms 级别）。若未来扩展至 16x16（256 cell）以上，
+  // 可考虑改为按需更新（dirty flag + 仅更新变化的 cell）。
   const newGrid: ExplorationCell[][] = grid.map(row => row.map(cell => ({ ...cell })));
 
   // 揭示隐藏房间：当任意相邻格已被探索时，隐藏房间变为可见

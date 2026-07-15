@@ -5,7 +5,7 @@
  * @module skill
  */
 
-import type { EffectType } from '../combat/effects';
+import type { EffectType } from '@/modules/combat/effects';
 
 // ============================================================================
 // 枚举类型

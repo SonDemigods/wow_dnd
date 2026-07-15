@@ -18,7 +18,7 @@
  * @module skill
  */
 
-import { db as gameDb, dbService } from '../data/core';
+import { db as gameDb, dbService } from '@/modules/data/core';
 import type { Skill, SkillBar, SkillsData, SkillType, SkillTemplateStorage } from './types';
 import { toRawData } from '../../utils';
 

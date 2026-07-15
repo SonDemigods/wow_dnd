@@ -6,8 +6,8 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { MapState, LocationData, MapZone } from './types';
-import { getLocationById, isLocationAccessible, getLocationsByContinent, getZoneStatus } from './service';
+import type { MapState, MapView, LocationData, MapZone } from './types';
+import { getLocationById, isLocationAccessible, getLocationsByContinent, getZoneStatus, clamp } from './service';
 import { mapDbService } from './db';
 import { eventBus, GameEvents } from '../bus';
 
@@ -20,16 +20,12 @@ const PAN_MIN = -50;
 const PAN_MAX = 50;
 
 /** 默认地图视图 */
-const DEFAULT_MAP_VIEW = {
+const DEFAULT_MAP_VIEW: MapView = {
   zoomLevel: 1,
   panX: 0,
-  panY: 0
+  panY: 0,
 };
 
-/** 数值钳制到 [min, max] 区间 */
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
 
 /**
  * 地图状态存储

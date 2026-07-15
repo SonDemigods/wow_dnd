@@ -326,8 +326,20 @@ const turn = computed(() => combatStore.turn);
 const turnCount = computed(() => combatStore.turnCount);
 const logs = computed(() => combatStore.combatLogs);
 
-/** 战斗日志倒序（最新在最上面） */
-const logsReversed = computed(() => [...logs.value].reverse());
+/**
+ * 战斗日志倒序（最新在最上面）
+ * [性能] 带缓存的 computed：当 logs.value 引用未变时直接返回缓存数组，避免每次访问都创建新副本。
+ * 当前战斗日志条数有限（通常 &lt; 100 条），浅拷贝开销可接受。
+ * 若未来日志量增大，可改用 shallowRef + 手动控制更新频率。
+ */
+let cachedLogs: CombatLog[] = [];
+let cachedReversed: CombatLog[] = [];
+const logsReversed = computed(() => {
+  if (logs.value === cachedLogs) return cachedReversed;
+  cachedLogs = logs.value;
+  cachedReversed = [...logs.value].reverse();
+  return cachedReversed;
+});
 
 // 动画状态（按敌人 ID 索引）
 const enemyShakes = ref<Record<string, boolean>>({});

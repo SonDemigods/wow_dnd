@@ -7,12 +7,12 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { EnemyInstance } from './types';
-import type { Skill } from '../skill/types';
+import type { Skill } from '@/modules/skill/types';
 import { createEnemyInstance, calculateEnemyDamage } from './service';
 import { enemyDbService } from './db';
-import { bossDbService } from '../boss/db';
-import { createBossInstance } from '../boss/service';
-import { useSkillStore } from '../skill/store';
+import { bossDbService } from '@/modules/boss/db';
+import { createBossInstance } from '@/modules/boss/service';
+import { useSkillStore } from '@/modules/skill/store';
 import { errorHandler } from '@/services/ErrorHandler';
 
 /**

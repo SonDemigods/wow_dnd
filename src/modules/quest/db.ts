@@ -24,7 +24,7 @@
  * @module quest/db
  */
 
-import { db as gameDb, dbService } from '../data/core';
+import { db as gameDb, dbService } from '@/modules/data/core';
 import type { QuestInstance, QuestDefinition, QuestInstanceStorage, QuestDefinitionStorage } from './types';
 import { toRawData } from '../../utils';
 

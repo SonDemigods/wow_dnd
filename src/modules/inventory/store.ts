@@ -228,6 +228,8 @@ export const useInventoryStore = defineStore('inventory', () => {
 
     let added = 0;
     // 浅拷贝整个背包以确保 Vue 响应式更新
+    // [性能敏感] O(n) 浅拷贝，当前背包规模（几十个物品槽位）开销可接受。
+    // 若未来扩展到数百个槽位，可考虑基于 Immer 或结构共享方案。
     const newInventory = inventory.value.map(item => ({ ...item }));
 
     // 第一步：可堆叠物品先尝试填充已有槽位
@@ -323,6 +325,7 @@ export const useInventoryStore = defineStore('inventory', () => {
   function removeItemByIndex(index: number): number {
     if (index < 0 || index >= inventory.value.length) return 0;
     const invItem = inventory.value[index];
+    // [性能敏感] 数组浅拷贝，当前背包规模可接受。
     const newInventory = [...inventory.value];
     newInventory.splice(index, 1);
     inventory.value = newInventory;
@@ -392,6 +395,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     }
 
     // 消耗物品：堆叠物品 count-1，单件物品移除槽位
+    // [性能敏感] map 创建新数组副本，当前背包规模可接受。
     if (invItem.count > 1) {
       inventory.value = inventory.value.map((item, i) =>
         i === idx ? { ...item, count: item.count - 1 } : item
@@ -450,9 +454,11 @@ export const useInventoryStore = defineStore('inventory', () => {
 
     if (dropCount >= invItem.count) {
       // 丢弃全部：移除槽位
+      // [性能敏感] filter 创建新数组副本，当前背包规模可接受。
       inventory.value = inventory.value.filter((_, i) => i !== index);
     } else {
       // 丢弃部分：减少 count
+      // [性能敏感] map 创建新数组副本，当前背包规模可接受。
       inventory.value = inventory.value.map((item, i) =>
         i === index ? { ...item, count: item.count - dropCount } : item
       );
@@ -489,6 +495,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     if (indices.length === 0) return false;
 
     // 从大到小排序：从尾部开始 splice，前面的索引不会受影响
+    // [性能敏感] 数组浅拷贝，当前背包规模可接受。
     const sortedIndices = [...indices].sort((a, b) => b - a);
     const newInventory = [...inventory.value];
     sortedIndices.forEach(index => {
@@ -512,6 +519,10 @@ export const useInventoryStore = defineStore('inventory', () => {
    * 3. 排序：先按稀有度降序（传说 → 普通），同稀有度按类型升序（拼音）
    *
    * 注意：此操作不可逆，整理后的槽位顺序与原始顺序无关。
+   *
+   * [性能敏感] 整理操作重建整个背包数组，涉及 Map 聚合 + 重分配 + 排序。
+   * 当前背包规模（几十个物品槽位）开销可接受。若未来扩展到数百个槽位，
+   * 可考虑增量整理（仅对新增/变化物品做排序插入）。
    */
   function organizeInventory(): void {
     // 第一步：汇总每个 itemId 的总数量

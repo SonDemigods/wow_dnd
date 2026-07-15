@@ -4,8 +4,8 @@
  * 封装对 IndexedDB 中所有数据表的通用 CRUD 操作，
  * 复用现有 db（GameDatabase）实例
  */
-import { db as gameDb, dbService } from '../data/core';
-import type { GameDatabaseSchema } from '../data/core';
+import { db as gameDb, dbService } from '@/modules/data/core';
+import type { GameDatabaseSchema } from '@/modules/data/core';
 import { toRawData } from '../../utils';
 import type { Table } from 'dexie';
 

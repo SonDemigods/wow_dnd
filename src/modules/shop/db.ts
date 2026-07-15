@@ -19,9 +19,9 @@
  * ```
  */
 
-import { db as gameDb, dbService } from '../data/core';
+import { db as gameDb, dbService } from '@/modules/data/core';
 import type { ShopConfig, ShopItem, ShopItemsStorage, ShopSoldItemsStorage, SoldItemEntry } from './types';
-import { getGameState, saveGameState } from '../data/gameStateHelper';
+import { getGameState, saveGameState } from '@/modules/data/gameStateHelper';
 import { toRawData } from '../../utils';
 
 /**

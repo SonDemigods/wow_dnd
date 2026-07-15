@@ -6,8 +6,8 @@
  * 仅在此层追加 Boss 专属的阶段管理器注入。
  */
 import type { BossInstance, BossTemplate } from './types';
-import type { EnemyDrop } from '../enemy/types';
-import { generateEnemyStats, BOSS_DROP_TABLE } from '../enemy/service';
+import type { EnemyDrop } from '@/modules/enemy/types';
+import { generateEnemyStats, BOSS_DROP_TABLE } from '@/modules/enemy/service';
 import { BossPhaseManager } from './phaseManager';
 
 /**

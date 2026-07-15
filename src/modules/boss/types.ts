@@ -6,7 +6,7 @@
  * @module boss
  */
 
-import type { EnemyData, EnemyInstance, DangerLevel } from '../enemy/types';
+import type { EnemyData, EnemyInstance, DangerLevel } from '@/modules/enemy/types';
 import type { BossPhaseManager } from './phaseManager';
 import type {
   AiStrategyType,
@@ -15,7 +15,7 @@ import type {
   BossMechanicType,
   BossMechanic,
   BossPhase
-} from '../enemy/types';
+} from '@/modules/enemy/types';
 
 // ============================================================================
 // 重导出（向后兼容）

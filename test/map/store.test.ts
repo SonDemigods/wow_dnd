@@ -44,6 +44,7 @@ vi.mock('@/modules/map/service', () => ({
   isLocationAccessible: vi.fn(),
   getLocationsByContinent: vi.fn(),
   getZoneStatus: vi.fn(),
+  clamp: vi.fn((v: number, min: number, max: number) => Math.max(min, Math.min(max, v))),
 }));
 
 /** 从 mock 中取出 spy 引用，便于断言 */
@@ -53,6 +54,7 @@ import {
   isLocationAccessible,
   getLocationsByContinent,
   getZoneStatus,
+  clamp,
 } from '@/modules/map/service';
 import { useMapStore } from '@/modules/map/store';
 

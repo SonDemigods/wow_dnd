@@ -5,7 +5,7 @@
  * @module enemy
  */
 
-import type { Stats } from '../character/types';
+import type { Stats } from '@/modules/character/types';
 
 // ============================================================================
 // 枚举类型

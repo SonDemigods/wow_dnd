@@ -4,8 +4,8 @@
  * 封装阵营、种族、职业数据的数据库操作
  */
 
-import { db as gameDb, dbService } from '../data/core';
-import type { FactionData, RaceData, ClassData, RaceType, FactionType } from '../character/types';
+import { db as gameDb, dbService } from '@/modules/data/core';
+import type { FactionData, RaceData, ClassData, RaceType, FactionType } from '@/modules/character/types';
 import type { FactionCreateUpdateData, RaceCreateUpdateData, ClassCreateUpdateData } from './types';
 import { generateId } from '../../utils/db-helpers';
 import { filterClassesByRace, filterClassesByFaction } from './service';

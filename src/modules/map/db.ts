@@ -6,34 +6,7 @@
  */
 import { db as gameDb, dbService } from '../data/core';
 import type { LocationStorage, MapState, LocationData, MapStateStorage } from './types';
-
-/**
- * 根据角色ID生成地图状态存储键
- */
-function getMapStateKey(characterId: string): string {
-  return `map_${characterId}`;
-}
-
-/**
- * 将存储格式转换为 LocationData 业务类型
- */
-function mapToLocationData(storage: LocationStorage): LocationData {
-  return {
-    id: storage.id,
-    name: storage.name,
-    icon: storage.icon,
-    description: storage.description,
-    continent: storage.continent ?? '',
-    enemies: storage.enemies,
-    bosses: storage.bosses,
-    quests: storage.quests,
-    levelRange: storage.levelRange ?? [1, 1],
-    color: storage.color ?? '#000000',
-    mapX: storage.mapX ?? 0,
-    mapY: storage.mapY ?? 0,
-    type: 'location' as const
-  };
-}
+import { getMapStateKey, mapToLocationData } from './service';
 
 /**
  * 地图数据层服务

@@ -13,7 +13,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { BossPhase, BossMechanicType } from './types';
-import type { EnemyInstance } from '../enemy/types';
+import type { EnemyInstance } from '@/modules/enemy/types';
 import { BossPhaseManager } from './phaseManager';
 import { processBossPhaseMechanics, applyPhaseStats } from './engine';
 

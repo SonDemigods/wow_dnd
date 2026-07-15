@@ -49,11 +49,11 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { QuestDefinition, QuestInstance } from './types';
 import { questDbService } from './db';
-import { eventBus, GameEvents } from '../bus';
-import { useLogStore } from '../log/store';
-import { generateLogId } from '../log/service';
-import { useCharacterStore } from '../character/store';
-import { useInventoryStore } from '../inventory/store';
+import { eventBus, GameEvents } from '@/modules/bus';
+import { useLogStore } from '@/modules/log/store';
+import { generateLogId } from '@/modules/log/service';
+import { useCharacterStore } from '@/modules/character/store';
+import { useInventoryStore } from '@/modules/inventory/store';
 import { useToast } from '@/composables/useToast';
 import {
   checkQuestProgress,
