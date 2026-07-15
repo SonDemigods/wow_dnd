@@ -12,9 +12,10 @@
         </div>
       </div>
       <div class="player-resources">
-        <ResourceBar icon="health-normal" iconGradient="blood" name="HP" :current="currentHp" :max="maxHp" :percent="hpPercent" type="hp" />
-        <ResourceBar icon="magic-palm" iconGradient="mana" name="MP" :current="currentMp" :max="maxMp" :percent="mpPercent" type="mp" />
-        <ResourceBar icon="star-formation" iconGradient="gold" name="EXP" :current="exp" :max="expToNext" :percent="expPercent" type="exp" />
+        <ResourceBar icon="health-normal" iconGradient="blood" name="生命" :current="currentHp" :max="maxHp" :percent="hpPercent" type="hp" />
+        <ResourceBar v-if="showManaBar" icon="magic-palm" iconGradient="mana" name="法力" :current="currentMp" :max="maxMp" :percent="mpPercent" type="mp" />
+        <ClassResourceBar v-for="(sys, idx) in classResourceSystems" :key="'class-res-' + idx" :resource-system="sys" />
+        <ResourceBar icon="star-formation" iconGradient="gold" name="经验" :current="exp" :max="expToNext" :percent="expPercent" type="exp" />
       </div>
     </div>
 
@@ -151,9 +152,11 @@ import { gameBootstrap } from '@/services/GameBootstrap';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useEnemyStore } from '@/modules/enemy';
 import { useCombatStore } from '@/modules/combat/store';
+import { ResourceSystemFactory } from '@/modules/combat/resources';
 import { useToast } from '@/composables/useToast';
 import type { CombatResult } from '@/modules/combat/types';
 import ResourceBar from './common/ResourceBar.vue';
+import ClassResourceBar from './common/ClassResourceBar.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 
 /**
@@ -312,6 +315,10 @@ const currentMp = computed(() => characterStore.mana);
 const maxMp = computed(() => characterStore.maxMana);
 const hpPercent = computed(() => characterStore.hpPercentage);
 const mpPercent = computed(() => characterStore.manaPercentage);
+/** 是否显示 MP 资源条（战士/盗贼/猎人等替代型资源职业隐藏 MP 条） */
+const showManaBar = computed(() => !ResourceSystemFactory.replacesMana(characterStore.classId));
+/** 职业专属资源系统（仅替代型：怒气/能量/集中值），非战斗时携带初始值供展示 */
+const classResourceSystems = computed(() => ResourceSystemFactory.getManaReplacingSystems(characterStore.classId));
 const exp = computed(() => characterStore.exp);
 const expToNext = computed(() => characterStore.expToNextLevel);
 const expPercent = computed(() => characterStore.expPercentage);

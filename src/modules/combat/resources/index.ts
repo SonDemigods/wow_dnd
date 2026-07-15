@@ -10,4 +10,5 @@ export { EnergySystem } from './EnergySystem';
 export { ComboPointSystem } from './ComboPointSystem';
 export { SoulShardSystem } from './SoulShardSystem';
 export { ChiSystem } from './ChiSystem';
+export { FocusSystem } from './FocusSystem';
 export { ResourceSystemFactory } from './ResourceSystemFactory';

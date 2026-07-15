@@ -36,27 +36,33 @@
               icon=""
               iconName="health-normal"
               iconGradient="blood"
-              name="HP"
+              name="生命"
               :current="currentHp"
               :max="maxHp"
               :percent="hpPercent"
               type="hp"
             />
             <ResourceBar
+              v-if="showManaBar"
               icon=""
               iconName="magic-palm"
               iconGradient="mana"
-              name="MP"
+              name="法力"
               :current="currentMp"
               :max="maxMp"
               :percent="mpPercent"
               type="mp"
             />
+            <ClassResourceBar
+              v-for="(sys, idx) in classResourceSystems"
+              :key="'class-res-' + idx"
+              :resource-system="sys"
+            />
             <ResourceBar
               icon=""
               iconName="star-formation"
               iconGradient="gold"
-              name="EXP"
+              name="经验"
               :current="currentExp"
               :max="maxExp"
               :percent="expPercent"
@@ -141,12 +147,12 @@
           <div class="resource-stats">
             <div class="resource-item">
               <BaseIcon name="health-normal" gradient="blood" :size="16" />
-              <span class="resource-label">最大HP</span>
+              <span class="resource-label">最大生命</span>
               <span class="resource-value">{{ attributes.maxHp }}</span>
             </div>
-            <div class="resource-item">
+            <div v-if="showManaBar" class="resource-item">
               <BaseIcon name="magic-palm" gradient="mana" :size="16" />
-              <span class="resource-label">最大MP</span>
+              <span class="resource-label">最大法力</span>
               <span class="resource-value">{{ attributes.maxMana }}</span>
             </div>
           </div>
@@ -292,12 +298,14 @@ import { ref, computed, onMounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { useEquipmentStore } from '@/modules/equipment';
 import { useBaseStore } from '@/modules/base';
+import { ResourceSystemFactory } from '@/modules/combat/resources';
 import { eventBus, GameEvents } from '@/modules/bus';
 import type { Stats, Attributes } from '@/modules/character/types';
 import type { EquipmentSlot, EquipmentItem } from '@/modules/equipment/types';
 import Tag from '../common/Tag.vue';
 import BasePopup from '../common/BasePopup.vue';
 import ResourceBar from '../common/ResourceBar.vue';
+import ClassResourceBar from '../common/ClassResourceBar.vue';
 import ItemIcon from '../common/ItemIcon.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import EmptyState from '@/components/common/EmptyState.vue';
@@ -332,6 +340,10 @@ const maxExp = computed(() => characterStore.expToNextLevel);
 const hpPercent = computed(() => characterStore.hpPercentage);
 const mpPercent = computed(() => characterStore.manaPercentage);
 const expPercent = computed(() => characterStore.expPercentage);
+/** 是否显示 MP 资源条（战士/盗贼/猎人等替代型资源职业隐藏 MP 条） */
+const showManaBar = computed(() => !ResourceSystemFactory.replacesMana(character.value?.classId || ''));
+/** 职业专属资源系统（仅替代型：怒气/能量/集中值），非战斗时携带初始值供展示 */
+const classResourceSystems = computed(() => ResourceSystemFactory.getManaReplacingSystems(character.value?.classId || ''));
 
 interface SlotInfo {
   key: EquipmentSlot;

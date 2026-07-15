@@ -37,6 +37,7 @@ const RESOURCE_DISPLAY_CONFIG: Record<ResourceType, { name: string; icon: string
   combo_point: { name: '连击', icon: 'game-icons:archery-target', gradient: 'gold' },
   soul_shard: { name: '碎片', icon: 'game-icons:soul', gradient: 'debuff' },
   chi: { name: '真气', icon: 'game-icons:fist', gradient: 'heal' },
+  focus: { name: '集中', icon: 'game-icons:targeting', gradient: 'physical' },
   mana: { name: '法力', icon: 'game-icons:magic-palm', gradient: 'mana' },
 };
 
@@ -110,6 +111,12 @@ const percent = computed(() => {
   box-shadow: 0 0 8px rgba(0, 255, 150, 0.3);
 }
 
+/* 集中值 - 绿色 */
+.resource-fill.focus {
+  background: linear-gradient(90deg, #66bb6a, #43a047);
+  box-shadow: 0 0 8px rgba(102, 187, 106, 0.3);
+}
+
 /* 法力 - 蓝色（回退） */
 .resource-fill.mana {
   background: linear-gradient(90deg, #448aff, #2962ff);
@@ -137,6 +144,7 @@ const percent = computed(() => {
 .wave-slow.combo_point { background: rgba(255, 220, 180, 0.5); }
 .wave-slow.soul_shard { background: rgba(220, 200, 255, 0.5); }
 .wave-slow.chi { background: rgba(200, 255, 230, 0.5); }
+.wave-slow.focus { background: rgba(200, 255, 200, 0.5); }
 .wave-slow.mana { background: rgba(200, 220, 255, 0.5); }
 
 .wave-fast {

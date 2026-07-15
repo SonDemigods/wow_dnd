@@ -16,6 +16,7 @@ import type { Ref } from 'vue';
  * - `combo_point`：潜行者连击点（通过技能积累，终结技消耗）
  * - `soul_shard`：术士灵魂碎片（施法获取，召唤/强化技能消耗）
  * - `chi`：武僧真气（通过特定技能生成，消耗于终结技）
+ * - `focus`：猎人集中值（攻击/回合回复获取，消耗于射击技能）
  * - `mana`：法师/牧师等施法职业的法力（默认回退资源）
  */
 export type ResourceType =
@@ -24,6 +25,7 @@ export type ResourceType =
   | 'combo_point'
   | 'soul_shard'
   | 'chi'
+  | 'focus'
   | 'mana';
 
 /**

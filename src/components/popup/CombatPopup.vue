@@ -63,7 +63,7 @@
                     <div v-if="e.isBoss" class="boss-badge"><BaseIcon name="crowned-skull" gradient="gold" :size="12" /> 首领</div>
                   </div>
                   <div class="combatant-bars">
-                    <ResourceBar icon="health-normal" iconGradient="blood" name="HP" :current="e.hp" :max="e.maxHp" :percent="getHpPercent(e)" type="hp" />
+                    <ResourceBar icon="health-normal" iconGradient="blood" name="生命" :current="e.hp" :max="e.maxHp" :percent="getHpPercent(e)" type="hp" />
                   </div>
                   <!-- Buff/Debuff 效果指示器 -->
                   <div v-if="getEnemyEffectCount(e.id) > 0" class="effects-indicator enemy-effects">
@@ -97,8 +97,8 @@
             <div class="combatant-level">Lv.{{ playerLevel }}</div>
           </div>
           <div class="combatant-bars">
-            <ResourceBar icon="health-normal" iconGradient="blood" name="HP" :current="playerHp" :max="playerMaxHp" :percent="playerHpPercent" type="hp" />
-            <ResourceBar icon="magic-palm" iconGradient="mana" name="MP" :current="playerMp" :max="playerMaxMp" :percent="playerMpPercent" type="mp" />
+            <ResourceBar icon="health-normal" iconGradient="blood" name="生命" :current="playerHp" :max="playerMaxHp" :percent="playerHpPercent" type="hp" />
+            <ResourceBar v-if="showManaBar" icon="magic-palm" iconGradient="mana" name="法力" :current="playerMp" :max="playerMaxMp" :percent="playerMpPercent" type="mp" />
             <!-- 职业专属资源条（怒气/能量/连击点/灵魂碎片/真气等） -->
             <ClassResourceBar
               v-for="(sys, idx) in combatStore.resourceSystems"
@@ -157,14 +157,14 @@
             v-for="skill in equippedSkills"
             :key="skill.id"
             class="action-btn skill-btn"
-            :class="{ 'no-mp': playerMp < skill.mpCost, 'on-cooldown': skillsStore.isOnCooldown(skill.id) }"
+            :class="{ 'no-mp': !canCastSkill(skill), 'on-cooldown': skillsStore.isOnCooldown(skill.id) }"
             @click="doSkill(skill.id)"
-            :disabled="!canAct || playerMp < skill.mpCost || skillsStore.isOnCooldown(skill.id)"
+            :disabled="!canAct || !canCastSkill(skill) || skillsStore.isOnCooldown(skill.id)"
           >
             <span class="skill-icon"><BaseIcon :name="skill.icon" :size="18" /></span>
             <span class="skill-name">{{ skill.name }}</span>
             <span :class="['skill-effect', `skill-effect-${skill.type}`]">{{ getSkillEffectText(skill) }}</span>
-            <span class="skill-cost">{{ skill.mpCost }} MP</span>
+            <span class="skill-cost">{{ getSkillCostText(skill) }}</span>
             <span v-if="getTargetTypeText(skill.targetType)" class="skill-target">{{ getTargetTypeText(skill.targetType) }}</span>
             <span v-if="skillsStore.isOnCooldown(skill.id)" class="skill-cooldown">
               冷却 {{ skillsStore.getCooldownRemaining(skill.id) }}
@@ -232,6 +232,7 @@
 
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useCombatStore } from '@/modules/combat/store';
+import { ResourceSystemFactory } from '@/modules/combat/resources';
 import { useCharacterStore } from '@/modules/character';
 import { useSkillStore } from '@/modules/skill/store';
 import { useInventoryStore } from '@/modules/inventory/store';
@@ -375,6 +376,33 @@ const playerMp = computed(() => characterStore.mana);
 const playerMaxMp = computed(() => characterStore.maxMana);
 const playerHpPercent = computed(() => Math.max(0, Math.min(100, (playerHp.value / playerMaxHp.value) * 100)));
 const playerMpPercent = computed(() => Math.max(0, Math.min(100, (playerMp.value / playerMaxMp.value) * 100)));
+
+/** 是否显示 MP 资源条（战士/盗贼/猎人等替代型资源职业隐藏 MP 条） */
+const showManaBar = computed(() => !ResourceSystemFactory.replacesMana(characterStore.classId));
+
+/** 资源类型中文名映射 */
+const RESOURCE_TYPE_NAMES: Record<string, string> = {
+  rage: '怒气', energy: '能量', combo_point: '连击',
+  soul_shard: '碎片', chi: '真气', focus: '集中', mana: '法力',
+};
+
+/** 获取技能消耗文本（专属资源或 MP） */
+function getSkillCostText(skill: Skill): string {
+  if (skill.resourceType && skill.resourceCost) {
+    return `${skill.resourceCost} ${RESOURCE_TYPE_NAMES[skill.resourceType] || ''}`;
+  }
+  return `${skill.mpCost} MP`;
+}
+
+/** 检查技能是否可施放（MP + 专属资源双重检查） */
+function canCastSkill(skill: Skill): boolean {
+  if (playerMp.value < skill.mpCost) return false;
+  if (skill.resourceType && skill.resourceCost) {
+    const sys = combatStore.resourceSystems.find(s => s.type === skill.resourceType);
+    if (sys && !sys.hasEnough(skill.resourceCost)) return false;
+  }
+  return true;
+}
 
 // 敌人数据（当前目标）
 const currentTarget = computed(() => combatStore.currentTarget);
