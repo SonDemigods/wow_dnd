@@ -662,8 +662,11 @@ describe('useCombatStore - 战斗 Store', () => {
 
       store.endCombat('victory');
 
-      // cleanup 后 state 回到 idle，combatResult 被重置为 null
+      // cleanup 后 state 回到 idle，但 combatResult 需保留供 UI 结果弹窗展示
       expect(store.state).toBe('idle');
+      expect(store.combatResult).toBe('victory');
+      expect(store.expGained).toBe(30);
+      expect(store.goldGained).toBe(15);
       // emit 事件验证 result 和奖励
       expect(endSpy).toHaveBeenCalledWith(
         expect.objectContaining({ result: 'victory', expGained: 30, goldGained: 15 }),

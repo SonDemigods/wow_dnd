@@ -165,6 +165,9 @@ import BaseIcon from '@/components/common/BaseIcon.vue';
  */
 const AsyncPopupLoading = () => h('div', { class: 'popup-async-loading' }, '加载中...');
 const AsyncPopupError = () => h('div', { class: 'popup-async-loading popup-async-error' }, '加载失败');
+// 战斗弹窗全屏遮罩加载占位（与 .combat-overlay 样式一致，避免加载期间主界面裸露）
+const AsyncCombatLoading = () => h('div', { class: 'combat-async-loading' }, '加载中...');
+const AsyncCombatError = () => h('div', { class: 'combat-async-loading popup-async-error' }, '加载失败');
 
 const MapView = defineAsyncComponent({
   loader: () => import('./MapView.vue'),
@@ -231,9 +234,9 @@ const AdventureLogPopup = defineAsyncComponent({
 });
 const CombatPopup = defineAsyncComponent({
   loader: () => import('./popup/CombatPopup.vue'),
-  loadingComponent: AsyncPopupLoading,
-  errorComponent: AsyncPopupError,
-  delay: 200,
+  loadingComponent: AsyncCombatLoading,
+  errorComponent: AsyncCombatError,
+  delay: 0,
   timeout: 10000,
 });
 const AudioSettingsPopup = defineAsyncComponent({
@@ -813,5 +816,20 @@ defineExpose({ showNotif });
 
 .popup-async-error {
   color: #ff6b6b;
+}
+
+/* 战斗弹窗异步加载占位：全屏遮罩，与 .combat-overlay 保持一致 */
+.combat-async-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.92);
+  z-index: @z-combat-overlay;
+  .flex-center();
+  color: @accent-color;
+  font-size: @font-lg;
+  letter-spacing: 1px;
 }
 </style>

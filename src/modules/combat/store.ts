@@ -198,6 +198,11 @@ export const useCombatStore = defineStore('combat', () => {
       });
 
       state.cleanup();
+      // cleanup 会重置所有状态（含 combatResult），需在 cleanup 后重新设置结果，
+      // 供 UI 结果弹窗展示（v-if="combatStore.combatResult"）及自动关闭逻辑使用
+      state.combatResult.value = result;
+      state.expGained.value = result === 'victory' ? totalExp : 0;
+      state.goldGained.value = result === 'victory' ? totalGold : 0;
     } catch (e) {
       console.error('[CombatStore] 结束战斗异常:', e);
       state.cleanup();
