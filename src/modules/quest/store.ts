@@ -239,12 +239,15 @@ export const useQuestStore = defineStore('quest', () => {
    *
    * 执行以下步骤（按顺序）：
    * 1. 构建 updatedInstance（status → completed, completedAt → 当前时间）
-   * 2. 发放奖励（_grantQuestRewards）
-   * 3. 更新内存 + 持久化（_updateAndPersistInstance）
+   * 2. 更新内存 + 持久化（_updateAndPersistInstance）
+   * 3. 发放奖励（_grantQuestRewards）
    * 4. 触发 QUEST_COMPLETED 事件
    * 5. 记录冒险日志
    *
    * 被 _processQuestProgress（自动完成）和 completeQuest（手动完成）共用。
+   *
+   * 注意：先持久化再发奖，防止持久化失败时玩家已获得奖励但任务状态未更新，
+   * 导致同一任务可被重复刷取的漏洞。
    *
    * @param questId    - 任务ID
    * @param instance   - 当前任务实例（进度已更新至完成状态）
@@ -262,9 +265,9 @@ export const useQuestStore = defineStore('quest', () => {
       completedAt: Date.now()
     };
 
-    // 先发奖再持久化：若发奖失败（如角色被删除），异常上抛阻止状态更新
-    await _grantQuestRewards(definition);
+    // 先持久化再发奖：持久化失败则上抛异常不发放奖励，避免玩家可重复刷取（Bug 2 修复）
     await _updateAndPersistInstance(questId, updatedInstance);
+    await _grantQuestRewards(definition);
 
     // 通知 UI 刷新（如任务面板、进度条）
     eventBus.emit(GameEvents.QUEST_COMPLETED, { questId, definition });

@@ -24,9 +24,7 @@
       <div v-if="currentStep === 1" class="step-grid">
         <div class="faction-grid">
           <button
-            v-for="faction in baseStore.factions.filter(
-              (f) => f.id !== 'neutral'
-            )"
+            v-for="faction in displayFactions"
             :key="faction.id"
             :class="[
               'faction-card',
@@ -314,6 +312,9 @@ const currentStepTitle = computed(() => {
       return '';
   }
 });
+
+/** 展示阵营列表，排除中立阵营（中立单独渲染在下方） */
+const displayFactions = computed(() => baseStore.factions.filter((f) => f.id !== 'neutral'));
 
 const neutralFaction = computed(() => {
   return baseStore.factions.find((f) => f.id === 'neutral');

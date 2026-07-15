@@ -627,6 +627,14 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       state.currentInitiativeIndex.value = 1;
       const ctx = makeMockCtx();
       ctx.enemy.getEnemyById = vi.fn(() => enemy);
+      // regen 通过 takeDamage(eId, -regenAmount) 实现，mock 需要真正修改 hp
+      ctx.enemy.takeDamage = vi.fn((id: string, damage: number) => {
+        const target = [enemy].find(e => e.id === id);
+        if (target) {
+          target.hp = Math.max(0, Math.min(target.maxHp, target.hp - damage));
+        }
+        return false;
+      });
       // tickAll 第一次（player）返回 0，第二次（enemy e1）返回 dotDamage
       vi.mocked(state.effectRegistry.tickAll)
         .mockReturnValueOnce({ expiredIds: [], dotDamage: 0, regenAmount: 0 })
@@ -649,6 +657,14 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       state.currentInitiativeIndex.value = 1;
       const ctx = makeMockCtx();
       ctx.enemy.getEnemyById = vi.fn(() => enemy);
+      // regen 通过 takeDamage(eId, -regenAmount) 实现，mock 需要真正修改 hp
+      ctx.enemy.takeDamage = vi.fn((id: string, damage: number) => {
+        const target = [enemy].find(e => e.id === id);
+        if (target) {
+          target.hp = Math.max(0, Math.min(target.maxHp, target.hp - damage));
+        }
+        return false;
+      });
       vi.mocked(state.effectRegistry.tickAll)
         .mockReturnValueOnce({ expiredIds: [], dotDamage: 0, regenAmount: 0 })
         .mockReturnValueOnce({ expiredIds: [], dotDamage: 0, regenAmount: 10 });
@@ -671,6 +687,14 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       state.currentInitiativeIndex.value = 1;
       const ctx = makeMockCtx();
       ctx.enemy.getEnemyById = vi.fn(() => enemy);
+      // regen 通过 takeDamage(eId, -regenAmount) 实现，mock 需要真正修改 hp
+      ctx.enemy.takeDamage = vi.fn((id: string, damage: number) => {
+        const target = [enemy].find(e => e.id === id);
+        if (target) {
+          target.hp = Math.max(0, Math.min(target.maxHp, target.hp - damage));
+        }
+        return false;
+      });
       vi.mocked(state.effectRegistry.tickAll)
         .mockReturnValueOnce({ expiredIds: [], dotDamage: 0, regenAmount: 0 })
         .mockReturnValueOnce({ expiredIds: [], dotDamage: 0, regenAmount: 10 });

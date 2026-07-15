@@ -22,8 +22,7 @@ export { EnemyDbService, fromStorageBase, enemyDbService } from './db';
 export {
   generateEnemyStats,
   calculateEnemyDamage,
-  createEnemyInstance,
-  BOSS_DROP_TABLE
+  createEnemyInstance
 } from './service';
 
 export { useEnemyStore } from './store';

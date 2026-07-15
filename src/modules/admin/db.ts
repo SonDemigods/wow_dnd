@@ -137,7 +137,7 @@ export class AdminDbService {
         return await collection.distinct().toArray() as T[];
       } catch (e) {
         // 索引不存在时回退到全字段过滤搜索
-        console.error(e);
+        console.warn(e);
         const lowerKeyword = keyword.toLowerCase();
         return await table.filter((item: Record<string, unknown>) => {
           const searchableFields = ['name', 'title', 'id', 'type', 'rarity', 'factionId', 'raceId', 'classId'];

@@ -5,12 +5,6 @@
  */
 
 import type { RaceData, ClassData, RaceType, FactionType } from '../character/types';
-import { generateId } from '../../utils/db-helpers';
-
-/**
- * 生成唯一 ID
- */
-export { generateId };
 
 /**
  * 将数组转为以 id 为键的 Record
@@ -39,3 +33,6 @@ export function filterClassesByRace(classes: ClassData[], raceId: RaceType): Cla
 export function filterClassesByFaction(classes: ClassData[], factionId: FactionType): ClassData[] {
   return classes.filter(cls => cls.factionsIds.includes(factionId));
 }
+
+// generateId 在 utils/db-helpers 中实现，base/service 重新导出供外部测试使用
+export { generateId } from '../../utils/db-helpers';

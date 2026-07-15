@@ -36,6 +36,7 @@ import { useInventoryStore } from '../inventory/store';
 import { generateShopItems, canAffordItem, computeSellPrice } from './service';
 import { useToast } from '@/composables/useToast';
 import { SHOPS } from '@/data/config_shops';
+import { errorHandler } from '@/services/ErrorHandler';
 
 /**
  * 商店 Pinia Store
@@ -256,6 +257,7 @@ export const useShopStore = defineStore('shop', () => {
       }
     } catch (err) {
       console.error('[ShopStore] 初始化失败:', err);
+      errorHandler.report(err, '加载商店失败');
     } finally {
       isLoading.value = false;
     }
@@ -324,6 +326,7 @@ export const useShopStore = defineStore('shop', () => {
       eventBus.emit(GameEvents.SHOP_OPENED, { shopId, characterId: characterId || undefined });
     } catch (err) {
       console.error('[ShopStore] 打开商店失败:', err);
+      errorHandler.report(err, '加载商店失败');
     }
   }
 
@@ -601,8 +604,13 @@ export const useShopStore = defineStore('shop', () => {
     if (!currentShopId.value) return;
 
     const shopId = currentShopId.value;
-    const generatedItems = await regenerateItems(shopId);
-    currentItems.value = mergeItems(generatedItems);
+    try {
+      const generatedItems = await regenerateItems(shopId);
+      currentItems.value = mergeItems(generatedItems);
+    } catch (err) {
+      console.error('[ShopStore] 刷新商店失败:', err);
+      errorHandler.report(err, '加载商店失败');
+    }
   }
 
   // ==================== 查询辅助方法 ====================

@@ -83,7 +83,7 @@ export type {
   RaceCreateUpdateData,
   ClassCreateUpdateData
 } from './base';
-export { baseDbService, generateId, arrayToRecord, useBaseStore } from './base';
+export { baseDbService, arrayToRecord, useBaseStore } from './base';
 
 // ===== boss =====
 export type {
@@ -245,7 +245,6 @@ export {
   generateEnemyStats,
   calculateEnemyDamage,
   createEnemyInstance,
-  BOSS_DROP_TABLE,
   useEnemyStore
 } from './enemy';
 

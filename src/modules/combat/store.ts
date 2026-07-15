@@ -73,7 +73,7 @@ export const useCombatStore = defineStore('combat', () => {
    * 结束战斗
    * @param result - 战斗结果
    */
-  function endCombat(result: CombatResult): void {
+  async function endCombat(result: CombatResult): Promise<void> {
     // 防止重入：已在结算中或战斗已结束时直接忽略
     if (state.state.value === 'ended' || state.state.value === 'idle') return;
 
@@ -132,8 +132,10 @@ export const useCombatStore = defineStore('combat', () => {
           message: `战斗胜利！获得 ${totalExp} 经验值和 ${totalGold} 金币！`
         });
 
-        ctx.character.gainExp(totalExp);
-        ctx.character.gainGold(totalGold);
+        await Promise.all([
+          ctx.character.gainExp(totalExp),
+          ctx.character.gainGold(totalGold)
+        ]);
 
         // 战斗胜利时触发资源系统 onKill 钩子（击杀获取资源，如怒气/连击点/灵魂碎片）
         state.resourceSystems.value.forEach(sys => sys.onKill?.());

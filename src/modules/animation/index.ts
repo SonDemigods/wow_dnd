@@ -21,4 +21,4 @@ export {
   animateBossIntro,
   animatePhaseTransition,
   animateResultPopup
-} from './combat-effects';
+} from './service';

@@ -58,7 +58,7 @@
         <div v-else class="item-list">
           <div
             v-for="(entry, index) in displaySellItems"
-            :key="index"
+            :key="entry.item.itemId"
             :class="['item-card', entry.info?.rarity, { selected: sellSelectedIndex === index }]"
             @click="selectSellItem(entry, index)"
           >
@@ -167,6 +167,7 @@ import { useShopStore } from '@/modules/shop';
 import { useCharacterStore } from '@/modules/character';
 import { useInventoryStore } from '@/modules/inventory';
 import { eventBus, GameEvents } from '@/modules/bus';
+import { errorHandler } from '@/services/ErrorHandler';
 import type { ShopDisplayItem } from '@/modules/shop';
 import type { InventoryItem, Item, ItemType, ItemRarity, ItemEffect } from '@/modules/inventory';
 import BasePopup from '../common/BasePopup.vue';
@@ -477,6 +478,7 @@ async function loadShopItems() {
     await shopStore.refreshShop();
   } catch (err) {
     console.error('[ShopPopup] 加载商店数据失败:', err);
+    errorHandler.report(err, '加载商店失败');
   } finally {
     isLoading = false;
   }

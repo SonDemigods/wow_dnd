@@ -231,6 +231,7 @@
  */
 
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { errorHandler } from '@/services/ErrorHandler';
 import { useCombatStore } from '@/modules/combat/store';
 import { ResourceSystemFactory } from '@/modules/combat/resources';
 import { useCharacterStore } from '@/modules/character';
@@ -447,6 +448,7 @@ const equippedSkills = computed<Skill[]>(() => {
     return (unlocked || []).slice(0, 4);
   } catch (e) {
     console.error(e);
+    errorHandler.report(e);
     return [];
   }
 });
@@ -472,6 +474,7 @@ const consumableItems = computed(() => {
       .filter(Boolean) as { index: number; itemId: string; count: number; name: string; icon: string; description: string; rarity: ItemRarity }[];
   } catch (e) {
     console.error(e);
+    errorHandler.report(e);
     return [];
   }
 });

@@ -215,7 +215,7 @@ export function applyLevelUp(character: Character, newLevel: number): Character 
 
 /** 计算金币变更后的角色数据 */
 export function applyGoldChange(character: Character, amount: number): Character {
-  return { ...character, gold: character.gold + amount };
+  return { ...character, gold: Math.max(0, character.gold + amount) };
 }
 
 /** 检查是否有足够金币 */

@@ -11,5 +11,5 @@ export type {
 } from './types';
 
 export { baseDbService } from './db';
-export { generateId, arrayToRecord } from './service';
+export { arrayToRecord } from './service';
 export { useBaseStore } from './store';

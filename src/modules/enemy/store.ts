@@ -13,6 +13,7 @@ import { enemyDbService } from './db';
 import { bossDbService } from '../boss/db';
 import { createBossInstance } from '../boss/service';
 import { useSkillStore } from '../skill/store';
+import { errorHandler } from '@/services/ErrorHandler';
 
 /**
  * 敌人状态存储
@@ -69,7 +70,7 @@ export const useEnemyStore = defineStore('enemies', () => {
 
       throw new Error(`Enemy data not found: ${dataId}`);
     } catch (e) {
-      console.error('[EnemiesStore] 创建敌人失败:', e);
+      errorHandler.report(e, '创建敌人失败');
       return null;
     }
   }

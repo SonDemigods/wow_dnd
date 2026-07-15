@@ -623,34 +623,34 @@ describe('useCombatStore - 战斗 Store', () => {
 
   // -------------------- Actions：endCombat --------------------
   describe('Actions：endCombat', () => {
-    it('重入 guard：state=idle 时直接返回', () => {
+    it('重入 guard：state=idle 时直接返回', async () => {
       const store = useCombatStore();
-      store.endCombat('victory');
+      await store.endCombat('victory');
       // 不应 emit COMBAT_END
       expect(mocks.log!.saveLogs).not.toHaveBeenCalled();
     });
 
-    it('重入 guard：state=ended 时直接返回', () => {
+    it('重入 guard：state=ended 时直接返回', async () => {
       const store = useCombatStore();
       mocks.state!.state.value = 'ended';
-      store.endCombat('victory');
+      await store.endCombat('victory');
       expect(mocks.log!.saveLogs).not.toHaveBeenCalled();
     });
 
-    it('空敌人短路：设置 state=ended 但不 emit COMBAT_END', () => {
+    it('空敌人短路：设置 state=ended 但不 emit COMBAT_END', async () => {
       const endSpy = vi.fn();
       eventBus.on(GameEvents.COMBAT_END, endSpy);
 
       const store = useCombatStore();
       mocks.state!.state.value = 'fighting';
       mocks.state!.enemies.value = [];
-      store.endCombat('victory');
+      await store.endCombat('victory');
 
       expect(store.state).toBe('ended');
       expect(endSpy).not.toHaveBeenCalled();
     });
 
-    it('victory：设置 combatResult、emit COMBAT_END、调用 gainExp/gainGold', () => {
+    it('victory：设置 combatResult、emit COMBAT_END、调用 gainExp/gainGold', async () => {
       const endSpy = vi.fn();
       eventBus.on(GameEvents.COMBAT_END, endSpy);
 
@@ -660,7 +660,7 @@ describe('useCombatStore - 战斗 Store', () => {
       const enemy = makeEnemy({ id: 'e1', expReward: 30, goldReward: 15 });
       const store = setupFightingStore([enemy]);
 
-      store.endCombat('victory');
+      await store.endCombat('victory');
 
       // cleanup 后 state 回到 idle，但 combatResult 需保留供 UI 结果弹窗展示
       expect(store.state).toBe('idle');
@@ -680,7 +680,7 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(mocks.state!.cleanup).toHaveBeenCalled();
     });
 
-    it('defeat：emit COMBAT_END、调用 characterStore.handleDeath', () => {
+    it('defeat：emit COMBAT_END、调用 characterStore.handleDeath', async () => {
       const endSpy = vi.fn();
       eventBus.on(GameEvents.COMBAT_END, endSpy);
 
@@ -689,7 +689,7 @@ describe('useCombatStore - 战斗 Store', () => {
 
       const store = setupFightingStore([makeEnemy()]);
 
-      store.endCombat('defeat');
+      await store.endCombat('defeat');
 
       expect(endSpy).toHaveBeenCalledWith(
         expect.objectContaining({ result: 'defeat', expGained: 0, goldGained: 0 }),
@@ -697,7 +697,7 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(charStub.handleDeath).toHaveBeenCalled();
     });
 
-    it('fled：emit COMBAT_END、不调用 gainExp/gainGold/handleDeath', () => {
+    it('fled：emit COMBAT_END、不调用 gainExp/gainGold/handleDeath', async () => {
       const endSpy = vi.fn();
       eventBus.on(GameEvents.COMBAT_END, endSpy);
 
@@ -705,7 +705,7 @@ describe('useCombatStore - 战斗 Store', () => {
       vi.mocked(useCharacterStore).mockReturnValue(charStub as never);
 
       const store = setupFightingStore([makeEnemy()]);
-      store.endCombat('fled');
+      await store.endCombat('fled');
 
       expect(endSpy).toHaveBeenCalledWith(
         expect.objectContaining({ result: 'fled', expGained: 0, goldGained: 0 }),
@@ -714,7 +714,7 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(charStub.handleDeath).not.toHaveBeenCalled();
     });
 
-    it('victory 时 Boss 敌人触发 player.handleLoot 处理掉落', () => {
+    it('victory 时 Boss 敌人触发 player.handleLoot 处理掉落', async () => {
       const endSpy = vi.fn();
       eventBus.on(GameEvents.COMBAT_END, endSpy);
 
@@ -725,14 +725,14 @@ describe('useCombatStore - 战斗 Store', () => {
       const normalEnemy = makeEnemy({ id: 'normal-1', isBoss: false });
       const store = setupFightingStore([bossEnemy, normalEnemy]);
 
-      store.endCombat('victory');
+      await store.endCombat('victory');
 
       // 仅 Boss 敌人触发 handleLoot
       expect(mocks.player!.handleLoot).toHaveBeenCalledTimes(1);
       expect(mocks.player!.handleLoot).toHaveBeenCalledWith(bossEnemy);
     });
 
-    it('victory 时调用 ctx.quest.onEnemyKilled 更新击杀进度（每个有 dataId 的敌人）', () => {
+    it('victory 时调用 ctx.quest.onEnemyKilled 更新击杀进度（每个有 dataId 的敌人）', async () => {
       const endSpy = vi.fn();
       eventBus.on(GameEvents.COMBAT_END, endSpy);
 
@@ -745,7 +745,7 @@ describe('useCombatStore - 战斗 Store', () => {
       const enemy2 = makeEnemy({ id: 'e2', dataId: 'slime' });
       const store = setupFightingStore([enemy1, enemy2]);
 
-      store.endCombat('victory');
+      await store.endCombat('victory');
 
       // 每个有 dataId 的敌人都触发 onEnemyKilled
       expect(questStub.onEnemyKilled).toHaveBeenCalledWith('goblin');
@@ -753,7 +753,7 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(questStub.onEnemyKilled).toHaveBeenCalledTimes(2);
     });
 
-    it('victory 时触发资源系统 onKill 钩子', () => {
+    it('victory 时触发资源系统 onKill 钩子', async () => {
       const endSpy = vi.fn();
       eventBus.on(GameEvents.COMBAT_END, endSpy);
 
@@ -765,13 +765,13 @@ describe('useCombatStore - 战斗 Store', () => {
       const store = setupFightingStore([makeEnemy({ expReward: 10, goldReward: 5 })]);
       mocks.state!.resourceSystems.value = [sys1, sys2];
 
-      store.endCombat('victory');
+      await store.endCombat('victory');
 
       expect(sys1.onKill).toHaveBeenCalled();
       expect(sys2.onKill).toHaveBeenCalled();
     });
 
-    it('victory 时 totalExp/totalGold 为 0 不写获得经验/金币日志', () => {
+    it('victory 时 totalExp/totalGold 为 0 不写获得经验/金币日志', async () => {
       const endSpy = vi.fn();
       eventBus.on(GameEvents.COMBAT_END, endSpy);
 
@@ -783,7 +783,7 @@ describe('useCombatStore - 战斗 Store', () => {
       // expReward 和 goldReward 均为 0
       const store = setupFightingStore([makeEnemy({ expReward: 0, goldReward: 0 })]);
 
-      store.endCombat('victory');
+      await store.endCombat('victory');
 
       // addLogEntry 调用次数：1 次"击败"日志，不写"获得经验"和"获得金币"日志
       const messages = logStoreStub.addLogEntry.mock.calls.map((c: [{ message: string }]) => c[0].message);
@@ -792,7 +792,7 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(messages.some(m => m.includes('金币'))).toBe(false);
     });
 
-    it('endCombat 内部抛错时被 catch 并仍调用 cleanup（优雅降级）', () => {
+    it('endCombat 内部抛错时被 catch 并仍调用 cleanup（优雅降级）', async () => {
       const charStub = createCharStub();
       vi.mocked(useCharacterStore).mockReturnValue(charStub as never);
       const logStoreStub = createLogStoreStub();
@@ -807,7 +807,7 @@ describe('useCombatStore - 战斗 Store', () => {
       const store = setupFightingStore([makeEnemy({ expReward: 10, goldReward: 5 })]);
 
       // 不应抛错（被 catch）
-      expect(() => store.endCombat('victory')).not.toThrow();
+      await expect(store.endCombat('victory')).resolves.not.toThrow();
 
       // catch 后仍调用 cleanup 进行优雅降级
       expect(mocks.state!.cleanup).toHaveBeenCalled();

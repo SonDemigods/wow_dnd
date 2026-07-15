@@ -75,7 +75,7 @@ function createCrudActions<T extends { id: string }, TCreateData = Omit<T, 'id'>
     }
   }
 
-  async function delete_(id: string): Promise<boolean> {
+  async function remove(id: string): Promise<boolean> {
     try {
       await deleteFn(id);
       eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: entityType, action: 'delete', id });
@@ -90,7 +90,7 @@ function createCrudActions<T extends { id: string }, TCreateData = Omit<T, 'id'>
     }
   }
 
-  return { create, update, delete: delete_ };
+  return { create, update, remove };
 }
 
 // ==================== Store 定义 ====================
@@ -246,7 +246,7 @@ export const useBaseStore = defineStore('base', () => {
   const {
     create: createFaction,
     update: updateFaction,
-    delete: deleteFaction
+    remove: deleteFaction
   } = createCrudActions<FactionData, FactionCreateUpdateData>(
     'faction',
     (data) => baseDbService.createFaction(data),
@@ -259,7 +259,7 @@ export const useBaseStore = defineStore('base', () => {
   const {
     create: createRace,
     update: updateRace,
-    delete: deleteRace
+    remove: deleteRace
   } = createCrudActions<RaceData, RaceCreateUpdateData>(
     'race',
     (data) => baseDbService.createRace(data),
@@ -272,7 +272,7 @@ export const useBaseStore = defineStore('base', () => {
   const {
     create: createClass,
     update: updateClass,
-    delete: deleteClass
+    remove: deleteClass
   } = createCrudActions<ClassData, ClassCreateUpdateData>(
     'class',
     (data) => baseDbService.createClass(data),

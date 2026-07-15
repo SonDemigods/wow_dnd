@@ -60,7 +60,10 @@ function sanitizeSvgBody(body: string): string {
     // 移除 on* 事件处理器属性（onclick/onload/onerror/onmouseover 等）
     .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '')
     // 移除 javascript: 协议的 href/xlink:href（防止点击劫持）
-    .replace(/(xlink:href|href)\s*=\s*["']\s*javascript:[^"']*["']/gi, '');
+    .replace(/(xlink:href|href)\s*=\s*["']\s*javascript:[^"']*["']/gi, '')
+    // 移除 CSS behavior / -moz-binding 属性注入（IE/Firefox 遗留 CSS 表达式攻击面）
+    .replace(/\bbehavior\s*:/gi, 'x-behavior-disabled:')
+    .replace(/\b-moz-binding\s*:/gi, 'x-moz-binding-disabled:');
 }
 
 const props = withDefaults(defineProps<{

@@ -215,7 +215,9 @@ export function useInitiative(
       if (tickRes.regenAmount > 0) {
         const enemy = ctx.enemy.getEnemyById(eId);
         if (enemy) {
-          enemy.hp = Math.min(enemy.maxHp, enemy.hp + tickRes.regenAmount);
+          // 通过 takeDamage 传入负值实现回血，走 enemy Store 的展开赋值（enemiesCache[id] = { ...enemy, hp: newHp }），
+          // 确保 Vue 响应式追踪生效，UI 血条正常更新
+          ctx.enemy.takeDamage(eId, -tickRes.regenAmount);
           log.addCombatLog({
             actorType: 'system', actorId: 'system', actorName: '系统',
             eventType: 'combat_heal', targetType: 'enemy', targetId: eId,

@@ -13,6 +13,7 @@ import { adminDbService } from './db';
 import type { AdminOperationResult } from './types';
 import type { GameDatabaseSchema } from '../data/core';
 import { CONFIG_TABLES } from './types';
+import { errorHandler } from '@/services/ErrorHandler';
 
 /**
  * 管理后台服务类
@@ -33,6 +34,7 @@ export class AdminService {
       const id = await adminDbService.add(tableName as keyof GameDatabaseSchema, data, key);
       return { success: true, data: id };
     } catch (error) {
+      errorHandler.report(error, `admin add(${tableName}) 失败`);
       return { success: false, error: error instanceof Error ? error.message : '添加失败' };
     }
   }
@@ -42,6 +44,7 @@ export class AdminService {
       await adminDbService.update(tableName as keyof GameDatabaseSchema, id, data);
       return { success: true };
     } catch (error) {
+      errorHandler.report(error, `admin update(${tableName}) 失败`);
       return { success: false, error: error instanceof Error ? error.message : '更新失败' };
     }
   }
@@ -51,6 +54,7 @@ export class AdminService {
       await adminDbService.delete(tableName as keyof GameDatabaseSchema, id);
       return { success: true };
     } catch (error) {
+      errorHandler.report(error, `admin delete(${tableName}) 失败`);
       return { success: false, error: error instanceof Error ? error.message : '删除失败' };
     }
   }
@@ -60,6 +64,7 @@ export class AdminService {
       await adminDbService.clear(tableName as keyof GameDatabaseSchema);
       return { success: true };
     } catch (error) {
+      errorHandler.report(error, `admin clear(${tableName}) 失败`);
       return { success: false, error: error instanceof Error ? error.message : '清空失败' };
     }
   }

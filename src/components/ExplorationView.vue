@@ -136,6 +136,7 @@ function getCellClasses(cell: ExplorationCell) {
 
 // 拖动功能 - 鼠标事件
 const mouseDownTarget = ref<EventTarget | null>(null);
+let rafId = 0;
 
 function startDrag(e: MouseEvent) {
   isDragging.value = true;
@@ -146,15 +147,18 @@ function startDrag(e: MouseEvent) {
 
 function onDrag(e: MouseEvent) {
   if (!isDragging.value) return;
-  const dx = e.clientX - (startX.value + panX.value);
-  const dy = e.clientY - (startY.value + panY.value);
-  // 移动超过阈值后才实际拖动
-  if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
-    hasDragged.value = true;
-    panX.value = e.clientX - startX.value;
-    panY.value = e.clientY - startY.value;
-    e.preventDefault();
-  }
+  cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(() => {
+    const dx = e.clientX - (startX.value + panX.value);
+    const dy = e.clientY - (startY.value + panY.value);
+    // 移动超过阈值后才实际拖动
+    if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+      hasDragged.value = true;
+      panX.value = e.clientX - startX.value;
+      panY.value = e.clientY - startY.value;
+    }
+  });
+  e.preventDefault();
 }
 
 function endDrag() {

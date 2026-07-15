@@ -63,6 +63,9 @@ async function initApp() {
     await db.open()
   } catch (error) {
     console.error('数据库打开失败，请刷新页面重试:', error)
+    errorReporter.report(error, 'manual', { context: '数据库打开失败，应用无法启动' })
+    // 数据库是应用核心依赖，打开失败则无法正常运作，阻止后续挂载避免用户进入损坏状态
+    throw error
   }
 
   // 尽早创建并挂载 Vue 应用，UI 先渲染 loading 视图
@@ -83,6 +86,7 @@ async function initApp() {
     await dataInitializer.initializeData()
   } catch (error) {
     console.error('游戏数据初始化失败，请刷新页面重试:', error)
+    errorReporter.report(error, 'manual', { context: '游戏数据初始化失败' })
   }
 
   // 挂载开发控制台命令到 window.cmd

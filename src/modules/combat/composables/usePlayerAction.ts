@@ -361,7 +361,7 @@ export function usePlayerAction(
 
     // 物理伤害音效事件
     eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
-      amount: finalDamage,
+      amount: actualDamage,
       damageType: 'physical',
       targetName: target.name || '敌人',
       actorType: 'player'
@@ -639,7 +639,7 @@ export function usePlayerAction(
 
         // 伤害类型音效事件
         eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
-          amount: skillDamage,
+          amount: actualSkillDamage,
           damageType: damageType === 'magical' ? 'magic' : 'physical',
           targetName: updatedTarget?.name || '敌人',
           actorType: 'player'
@@ -674,7 +674,7 @@ export function usePlayerAction(
         });
 
         // 附带 buff/debuff 效果（在 endCombat/endPlayerTurn 之前施加，防止效果添加到已清空的容器）
-        if (skill?.buffs && skill.buffs.length > 0 && result.damage) {
+        if (skill?.buffs && skill.buffs.length > 0) {
           applySkillBuffs(skill, targetType);
         }
 

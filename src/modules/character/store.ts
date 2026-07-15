@@ -325,7 +325,7 @@ export const useCharacterStore = defineStore('character', () => {
 
   /** 获得金币（供其他模块直接调用） */
   async function gainGold(amount: number): Promise<void> {
-    if (!character.value || amount === 0) return;
+    if (!character.value || amount <= 0) return;
     character.value = applyGoldChange(character.value, amount);
     await persistCharacter();
   }
@@ -439,12 +439,10 @@ export const useCharacterStore = defineStore('character', () => {
   async function handleDeath(): Promise<void> {
     if (!character.value) return;
 
-    // 损失本级经验
-    character.value = { ...character.value, exp: 0 };
     eventBus.emit(GameEvents.CHARACTER_DEATH, { cause: 'death' });
     await persistCharacter();
 
-    // 自动复活
+    // 自动复活（由 computeResurrection 统一处理经验清零等状态重置）
     await resurrect();
   }
 

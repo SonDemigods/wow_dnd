@@ -17,5 +17,6 @@ export { audioDbService } from './db';
 
 export { audioService } from './service';
 
-export type { OrganPreset } from './organVoice';
+export type { OrganPreset, OrganStopConfig } from './organVoice';
+export { OrganVoice } from './organVoice';
 export { useAudioStore } from './store';

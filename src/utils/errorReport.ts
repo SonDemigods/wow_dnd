@@ -49,11 +49,14 @@ export interface ErrorReporterConfig {
   maxLocalStorageEntries: number;
 }
 
+/** localStorage 错误日志存储键名 */
+const ERROR_LOG_STORAGE_KEY = 'wow_dnd_error_log';
+
 const DEFAULT_CONFIG: ErrorReporterConfig = {
   enabled: true,
   maxBufferSize: 50,
   persistToLocalStorage: true,
-  localStorageKey: 'wow_dnd_error_log',
+  localStorageKey: ERROR_LOG_STORAGE_KEY,
   maxLocalStorageEntries: 20,
 };
 

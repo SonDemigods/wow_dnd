@@ -310,6 +310,7 @@ describe('ExplorationView 探索视图组件', () => {
     });
 
     it('拖动超过阈值后释放不触发 revealGrid', async () => {
+      vi.useFakeTimers();
       const mapStore = useMapStore(pinia);
       mapStore.$patch((state) => {
         state.currentLocation = makeLocation() as any;
@@ -330,9 +331,12 @@ describe('ExplorationView 探索视图组件', () => {
       await cell.trigger('mousedown', { clientX: 100, clientY: 100 });
       // 移动 30px 超过 DRAG_THRESHOLD(5)，标记为拖动
       await container.trigger('mousemove', { clientX: 130, clientY: 100 });
+      // 刷新 rAF 回调，使 hasDragged 被正确设置
+      vi.runAllTimers();
       await container.trigger('mouseup');
 
       expect(explorationStore.revealGrid).not.toHaveBeenCalled();
+      vi.useRealTimers();
     });
   });
 });
