@@ -147,13 +147,14 @@ const commands = new Map<string, CommandDef>();
 /**
  * 注册一个控制台命令
  *
- * 将 CommandDef 以 name 为键存入 commands Map，供 exec() 路由。
+ * 将 CommandDef 以 name 的小写形式为键存入 commands Map，供 exec() 路由。
+ * exec() 会将用户输入的命令名转为小写后查找，此处统一以小写为键保证匹配。
  * 模块加载时通过顶层 registerCommand() 调用注册所有内置命令。
  *
  * @param {CommandDef} def - 命令定义对象
  */
 function registerCommand(def: CommandDef): void {
-  commands.set(def.name, def);
+  commands.set(def.name.toLowerCase(), def);
 }
 
 /**
@@ -269,7 +270,7 @@ registerCommand({
   usage: 'help [类别|命令名]',
   handler(args) {
     if (args.length > 0) {
-      const cmd = commands.get(args[0]);
+      const cmd = commands.get(args[0].toLowerCase());
       if (cmd) {
         return {
           success: true,
@@ -1251,10 +1252,11 @@ export async function exec(input: string): Promise<CommandResult> {
 export function initConsole(): void {
   const cmdObj: Record<string, (...args: unknown[]) => Promise<CommandResult> | CommandResult> = {};
 
-  for (const [name] of commands) {
-    cmdObj[name] = (...args: unknown[]) => {
+  for (const [, cmd] of commands) {
+    // 使用原始名称（驼峰命名）作为 cmdObj 的 key，保持 cmd.revealAll() 的调用方式
+    cmdObj[cmd.name] = (...args: unknown[]) => {
       const strArgs = args.map(a => String(a));
-      return exec(`${name} ${strArgs.join(' ')}`.trim());
+      return exec(`${cmd.name} ${strArgs.join(' ')}`.trim());
     };
   }
 
