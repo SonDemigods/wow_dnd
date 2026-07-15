@@ -91,6 +91,9 @@ export const useMapStore = defineStore('map', () => {
   async function initialize(characterId: string): Promise<void> {
     currentCharacterId.value = characterId;
 
+    // 先重置 currentLocation，避免上一个角色的数据残留（新角色无保存的 locationId 时不会进入下面的恢复分支）
+    currentLocation.value = null;
+
     // 加载地图状态
     const savedState = await mapDbService.getMapState(characterId);
     if (savedState?.view) {
