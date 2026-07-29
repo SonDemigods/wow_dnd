@@ -40,6 +40,24 @@ export const ALL_EQUIPMENT_SLOTS: EquipmentSlot[] = [
 ];
 
 /**
+ * 槽位配置（UI 展示用）
+ *
+ * 定义每个装备槽位的展示名称和图标。
+ * 与 ALL_EQUIPMENT_SLOTS 共同构成槽位定义的完整视角。
+ *
+ * P3-101 修复：原定义位于 store.ts，与 ALL_EQUIPMENT_SLOTS（service.ts）分离，
+ * 两者维护不同步风险高。现统一收口到 service.ts 维护，store.ts 通过 import 引用。
+ */
+export const SLOT_CONFIG: Record<EquipmentSlot, { name: string; icon: string }> = {
+  weapon1: { name: '主手', icon: 'game-icons:broadsword' },
+  weapon2: { name: '副手', icon: 'game-icons:checked-shield' },
+  armor1: { name: '头部', icon: 'game-icons:visored-helm' },
+  armor2: { name: '胸部', icon: 'game-icons:chest-armor' },
+  armor3: { name: '腿部', icon: 'game-icons:leg-armor' },
+  armor4: { name: '鞋子', icon: 'game-icons:leather-boot' }
+};
+
+/**
  * 创建空槽位映射（泛型工厂函数）
  *
  * 生成一个包含全部 6 个槽位键、每个键值为 defaultValue 的记录对象。

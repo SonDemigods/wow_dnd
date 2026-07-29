@@ -21,14 +21,28 @@ export class CharacterDbService {
   async saveCharacterListItem(character: CharacterListItem): Promise<void> {
     await dbService.withRetry(async () => {
       const existing = await gameDb.char_data.get(character.id) as Partial<CharacterDataStorage> | undefined;
+      // P3-107 修复：显式构造对象，逐字段从 existing 中提取需要保留的字段，
+      // 避免 `{ ...existing, ...data }` spread 合并可能保留 existing 中的脏字段
+      // （如历史遗留字段或意外写入的临时字段）。
+      // 新建场景下 existing 不存在，使用合理默认值占位（随后 persistCharacter 会写入完整数据覆盖）。
+      const defaultStats: Stats = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
       await gameDb.char_data.put({
-        ...existing,
         characterId: character.id,
         name: character.name,
         factionId: character.factionId,
         raceId: character.raceId,
         classId: character.classId,
         level: character.level,
+        // 以下字段来自 existing，保留以避免覆盖完整角色数据
+        exp: existing?.exp ?? 0,
+        expToNextLevel: existing?.expToNextLevel ?? 100,
+        gold: existing?.gold ?? 0,
+        baseStats: existing?.baseStats ?? defaultStats,
+        currentHp: existing?.currentHp ?? 100,
+        maxHp: existing?.maxHp ?? 100,
+        currentMp: existing?.currentMp ?? 50,
+        maxMp: existing?.maxMp ?? 50,
+        bonusStats: existing?.bonusStats ?? {},
         createdTime: character.createdTime,
         lastPlayedTime: character.lastPlayedTime,
         updatedAt: Date.now()
@@ -186,7 +200,9 @@ export class CharacterDbService {
       mana: storage.currentMp,
       maxMana: storage.maxMp,
       stats: storage.baseStats,
-      gold: storage.gold
+      gold: storage.gold,
+      // P1-16 修复：保留 createdTime，避免重新加载角色时被 Date.now() 覆盖
+      createdTime: storage.createdTime
     };
   }
 }

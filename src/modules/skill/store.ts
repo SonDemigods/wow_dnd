@@ -31,6 +31,7 @@ import type { Skill, SkillBar, SkillType, SkillSlotIndex, SkillUseResult, Applie
 import { skillsDbService } from './db';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useCharacterStore } from '@/modules/character/store';
+import { useTalentStore } from '@/modules/character/talents/store';
 import { useLogStore } from '@/modules/log/store';
 import { generateLogId } from '@/modules/log/service';
 import {
@@ -364,8 +365,18 @@ export const useSkillStore = defineStore('skills', () => {
       };
     }
 
+    // P1-19 修复：未加载角色时禁止施放技能，避免无角色时仍触发 SKILL_CAST 事件
+    if (!charData) {
+      return {
+        success: false,
+        skillId,
+        type: 'physical_damage',
+        message: '未加载角色，无法施放技能'
+      };
+    }
+
     // 1. 校验技能是否可施放（法力值检查）
-    const castCheck = canCastSkill(skill, charData?.mana || 0);
+    const castCheck = canCastSkill(skill, charData.mana);
     if (!castCheck.canCast) {
       return {
         success: false,
@@ -386,7 +397,11 @@ export const useSkillStore = defineStore('skills', () => {
     }
 
     // 2. 消耗法力值 → 直接调用 characterStore Action
-    await characterStore.changeMp(-skill.mpCost);
+    // P2-76：mpCost 可选，undefined 视为 0（资源型技能不消耗 MP）
+    const mpCost = skill.mpCost ?? 0;
+    if (mpCost > 0) {
+      await characterStore.changeMp(-mpCost);
+    }
 
     // 3. 计算技能效果值（属性加成后的最终数值）
     const damageValue = calculateSkillDamage(skill, characterStore.effectiveStats);
@@ -405,8 +420,16 @@ export const useSkillStore = defineStore('skills', () => {
 
       case 'health_restore':
         // 生命恢复：返回 heal 值并直接调用 characterStore 恢复 HP
-        heal = damageValue;
-        await characterStore.receiveHeal(damageValue);
+        // P2-75 修复：应用 healing_multiplier 天赋加成（如天赋提供 24% 治疗提升，则实际治疗量 = 基础 × 1.24）
+        {
+          const talentStore = useTalentStore();
+          const healingMultiplier = talentStore.effectSummary.healingMultiplier;
+          const finalHeal = healingMultiplier > 0
+            ? Math.floor(damageValue * (1 + healingMultiplier))
+            : damageValue;
+          heal = finalHeal;
+          await characterStore.receiveHeal(finalHeal);
+        }
         break;
 
       case 'mana_restore':
@@ -609,7 +632,9 @@ export const useSkillStore = defineStore('skills', () => {
     if (skill.unlockLevel > characterLevel) return false;
 
     const charData = characterStore.getCharacterData();
-    if (!canCastSkill(skill, charData?.mana || 0).canCast) return false;
+    // P1-19 修复：未加载角色时不可使用技能
+    if (!charData) return false;
+    if (!canCastSkill(skill, charData.mana).canCast) return false;
 
     // 冷却检查
     return !isOnCooldown(skillId);
@@ -768,17 +793,28 @@ export const useSkillStore = defineStore('skills', () => {
    *
    * 遍历 `cooldowns` 中所有条目，将剩余回合数减 1。
    * 减到 0 后自动删除该条目（表示冷却完毕）。
+   *
+   * P3-99 修复：构建新对象替换原对象，避免直接 mutate 现有 cooldowns 对象的属性。
+   * 原 `cooldowns.value[key]--` / `delete cooldowns.value[key]` 会修改 Record 引用，
+   * 改为先构造 newCooldowns 再整体赋值，确保响应式与不可变性语义一致。
    */
   function tickCooldowns(): void {
+    const newCooldowns: Record<string, number> = {};
     for (const key of Object.keys(cooldowns.value)) {
-      if (cooldowns.value[key] > 0) {
-        cooldowns.value[key]--;
-        // 冷却完毕 → 移除条目
-        if (cooldowns.value[key] === 0) {
-          delete cooldowns.value[key];
+      const remaining = cooldowns.value[key];
+      if (remaining > 0) {
+        const next = remaining - 1;
+        // 减 1 后仍 > 0 则保留，到 0 则不加入新对象（表示冷却完毕 → 移除条目）
+        if (next > 0) {
+          newCooldowns[key] = next;
         }
+      } else {
+        // 防御性保留：<= 0 的条目（异常值，如 0 或负数）原样保留，
+        // 与原 `if (cooldowns.value[key] > 0)` 短路时跳过处理的行为一致
+        newCooldowns[key] = remaining;
       }
     }
+    cooldowns.value = newCooldowns;
   }
 
   /**

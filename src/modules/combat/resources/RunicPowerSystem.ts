@@ -21,6 +21,8 @@ const RUNIC_POWER_CAPS: Record<ResourceSource, number> = {
   turn: 3,
   skill: 20,
   kill: 10,
+  // P2-43：被动技能触发的资源生成不截断，按配置值全额生成
+  passive: Infinity,
 };
 
 export class RunicPowerSystem extends BaseResourceSystem {

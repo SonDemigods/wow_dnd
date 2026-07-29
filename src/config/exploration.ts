@@ -41,8 +41,8 @@ export const TRAP_PROBABILITY_MAX = 22;
 /** 随机事件固定概率（百分比，不随等级变化） */
 export const EVENT_PROBABILITY = 15;
 
-/** 空事件概率基础值 */
-export const EMPTY_PROBABILITY_BASE = 30;
+/** 空事件概率基础值（P3-133 修复：原值 30 导致五项基础值之和为 102，调整为 28 使总和等于归一化基数 100） */
+export const EMPTY_PROBABILITY_BASE = 28;
 /** 空事件概率随等级下降系数 */
 export const EMPTY_PROBABILITY_LEVEL_COEFFICIENT = 1;
 /** 空事件概率下限（百分比） */
@@ -51,12 +51,30 @@ export const EMPTY_PROBABILITY_MIN = 15;
 /** 概率归一化基数（各项百分比之和的目标值） */
 export const PROBABILITY_NORMALIZATION_BASE = 100;
 
+// P3-133 修复：开发期聚合校验概率常量合法性
+if (import.meta.env.DEV) {
+  const _probBaseSum =
+    MONSTER_PROBABILITY_BASE +
+    ITEM_PROBABILITY_BASE +
+    TRAP_PROBABILITY_BASE +
+    EVENT_PROBABILITY +
+    EMPTY_PROBABILITY_BASE;
+  if (_probBaseSum !== PROBABILITY_NORMALIZATION_BASE) {
+    console.warn(
+      `[exploration config] 概率基础值之和 (${_probBaseSum}) 不等于归一化基数 (${PROBABILITY_NORMALIZATION_BASE})，` +
+      `可能导致归一化后概率分布异常`
+    );
+  }
+}
+
 // ==================== 营地恢复（generateCampHeal） ====================
 
+// P3-132 修复：原值 9999 为魔法数字，改用 Number.MAX_SAFE_INTEGER 表示"完全恢复"，
+// 由角色上限（maxHp / maxMana）自然裁剪，避免硬编码上限被未来数值突破。
 /** 营地恢复 HP（标记为完全恢复的大数值，由角色上限裁剪） */
-export const CAMP_HEAL_HP = 9999;
+export const CAMP_HEAL_HP = Number.MAX_SAFE_INTEGER;
 /** 营地恢复 MP（标记为完全恢复的大数值，由角色上限裁剪） */
-export const CAMP_HEAL_MANA = 9999;
+export const CAMP_HEAL_MANA = Number.MAX_SAFE_INTEGER;
 
 // ==================== 陷阱伤害（generateTrapDamage） ====================
 

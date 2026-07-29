@@ -40,6 +40,7 @@ import {
 } from '@/modules/combat/effects';
 import type { ICombatContext } from '@/modules/combat/combatContext';
 import type { EnemyInstance } from '@/modules/enemy/types';
+import { eventBus, GameEvents } from '@/modules/bus';
 
 // ==================== Mock 模块 ====================
 
@@ -113,6 +114,7 @@ vi.mock('@/modules/bus', () => ({
     COMBAT_CRITICAL_HIT: 'combat:critical-hit',
     COMBAT_DODGE: 'combat:dodge',
     COMBAT_CAST_HEAL: 'combat:cast-heal',
+    INVENTORY_FULL: 'inventory_full',
   },
 }));
 
@@ -1375,10 +1377,15 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
 
       action.handleLoot(enemy);
 
-      expect(toastShowMock).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'warning',
-        message: expect.stringContaining('背包已满'),
-      }));
+      // P2-42 修复：handleLoot 不再直接调用 useToast，改为通过 EventBus 发射 INVENTORY_FULL 事件
+      expect(eventBus.emit).toHaveBeenCalledWith(
+        GameEvents.INVENTORY_FULL,
+        expect.objectContaining({
+          itemName: '材料',
+          actualAmount: 3,
+          expectedAmount: 5,
+        })
+      );
     });
 
     it('getItemInfo 返回 null 时不调用 addItem', () => {
@@ -1525,6 +1532,622 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
         type: 'item',
         message: expect.stringContaining('mat1'),
       }));
+    });
+  });
+
+  // -------------------- 单数技能与物品的荆棘反伤/暴击分支补充 --------------------
+
+  describe('边界分支补充：single 技能荆棘反伤与暴击事件', () => {
+    it('single 伤害技能 thorns>0 时对玩家造成荆棘反伤', async () => {
+      // 覆盖 usePlayerAction.ts 第 628-637 行：single 技能 pipeResult.thorns > 0 分支
+      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '重击', targetType: 'single',
+      });
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'physical_damage', damage: 30,
+      });
+      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      pipeResultMock.finalDamage = 25;
+      pipeResultMock.thorns = 5;
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerSkill('sk1');
+
+      // single 技能荆棘反伤：thorns=5，非暴击倍率 1
+      expect(characterMock.takeDamage).toHaveBeenCalledWith(5);
+    });
+
+    it('single 伤害技能暴击时触发 COMBAT_CRITICAL_HIT 事件', async () => {
+      // 覆盖 usePlayerAction.ts 第 649-655 行：single 技能 isCrit 分支
+      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '重击', targetType: 'single',
+      });
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'physical_damage', damage: 30,
+      });
+      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      pipeResultMock.finalDamage = 25;
+      rollCriticalMock.mockReturnValue(true);
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerSkill('sk1');
+
+      const { eventBus, GameEvents } = await import('@/modules/bus');
+      expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_CRITICAL_HIT, expect.objectContaining({
+        actorType: 'player',
+      }));
+    });
+
+    it('伤害型物品 thorns>0 时对玩家造成荆棘反伤', async () => {
+      // 覆盖 usePlayerAction.ts 第 847-857 行：playerUseItem 中 pipeResult.thorns > 0 分支
+      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      inventoryStoreMock.getItemInfo.mockReturnValue({
+        name: '炸弹', effect: { type: 'physical_damage', value: 50 },
+      });
+      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      pipeResultMock.finalDamage = 40;
+      pipeResultMock.thorns = 6;
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerUseItem('item1');
+
+      // 物品荆棘反伤：thorns=6，非暴击倍率 1
+      expect(characterMock.takeDamage).toHaveBeenCalledWith(6);
+    });
+
+    it('伤害型物品暴击时荆棘反伤受暴击倍率影响', async () => {
+      // 覆盖 usePlayerAction.ts 第 848 行：playerUseItem 暴击时 thorns × critMultiplier
+      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      inventoryStoreMock.getItemInfo.mockReturnValue({
+        name: '炸弹', effect: { type: 'physical_damage', value: 50 },
+      });
+      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      pipeResultMock.finalDamage = 40;
+      pipeResultMock.thorns = 6;
+      rollCriticalMock.mockReturnValue(true);
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerUseItem('item1');
+
+      // 暴击时 thorns * 1.5 = Math.floor(9) = 9
+      expect(characterMock.takeDamage).toHaveBeenCalledWith(9);
+    });
+
+    it('AOE 伤害技能暴击时触发 COMBAT_CRITICAL_HIT 事件', async () => {
+      // 覆盖 usePlayerAction.ts 第 535-536 行：AOE 循环中 isCrit 分支
+      const e1 = makeEnemy({ id: 'e1', name: '敌人1' });
+      const e2 = makeEnemy({ id: 'e2', name: '敌人2' });
+      const state = makeStateMock({ target: e1, alive: [e1, e2] });
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '火球术', targetType: 'all_enemies',
+      });
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'magic_damage', damage: 30,
+      });
+      pipeResultMock.finalDamage = 20;
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      rollCriticalMock.mockReturnValue(true);
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerSkill('sk1');
+
+      const { eventBus, GameEvents } = await import('@/modules/bus');
+      expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_CRITICAL_HIT, expect.objectContaining({
+        actorType: 'player',
+      }));
+    });
+  });
+
+  // -------------------- 边界分支补充：playerAttack/playerSkill 逻辑或 falsy 路径 --------------------
+
+  describe('边界分支补充：playerAttack 空名回退', () => {
+    it('playerAttack 暴击时 target.name 为空字符串时事件 targetName 回退为"敌人"', async () => {
+      // 覆盖 usePlayerAction.ts 第 366, 375 行：target.name || '敌人' 的 falsy 分支
+      const enemy = makeEnemy({ id: 'e1', name: '' });
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      pipeResultMock.finalDamage = 20;
+      rollCriticalMock.mockReturnValue(true);
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      action.playerAttack();
+
+      const { eventBus, GameEvents } = await import('@/modules/bus');
+      expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_DEAL_DAMAGE, expect.objectContaining({
+        targetName: '敌人',
+      }));
+      expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_CRITICAL_HIT, expect.objectContaining({
+        targetName: '敌人',
+      }));
+    });
+  });
+
+  describe('边界分支补充：playerSkill AOE physical_damage 空名回退', () => {
+    it('AOE physical_damage + 空技能名 + 空敌人名 + 暴击时覆盖所有 physical FALSE 分支', async () => {
+      // 覆盖 usePlayerAction.ts 第 472, 475, 483, 529, 530, 538, 539, 548, 551, 553, 558 行
+      const e1 = makeEnemy({ id: 'e1', name: '' });
+      const e2 = makeEnemy({ id: 'e2', name: '' });
+      const state = makeStateMock({ target: e1, alive: [e1, e2] });
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '', targetType: 'all_enemies',
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'physical_damage', damage: 30,
+      });
+      pipeResultMock.finalDamage = 20;
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      // 第一个敌人暴击，第二个不暴击（覆盖 crit 和 non-crit 路径）
+      rollCriticalMock.mockReturnValueOnce(true).mockReturnValueOnce(false);
+
+      const log = makeLogMock();
+      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerSkill('sk1');
+
+      const { eventBus, GameEvents } = await import('@/modules/bus');
+      // AOE deal damage 事件：damageType 为 physical，targetName 回退为 '敌人'
+      expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_DEAL_DAMAGE, expect.objectContaining({
+        damageType: 'physical',
+        targetName: '敌人',
+      }));
+      // AOE crit 事件：damageType 为 physical
+      expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_CRITICAL_HIT, expect.objectContaining({
+        damageType: 'physical',
+        targetName: '敌人',
+      }));
+      // 日志 skillName 回退为空字符串
+      const aoeLogCalls = log.addCombatLog.mock.calls.filter(
+        (call: unknown[]) => (call[0] as { eventType: string }).eventType === 'combat_damage'
+      );
+      expect(aoeLogCalls.length).toBeGreaterThan(0);
+      expect((aoeLogCalls[0][0] as { skillName: string }).skillName).toBe('');
+    });
+  });
+
+  describe('边界分支补充：playerSkill single magic_damage 空名回退', () => {
+    it('single magic_damage + 空技能名 + getEnemyById null + 暴击时覆盖所有 magic TRUE 分支', async () => {
+      // 覆盖 usePlayerAction.ts 第 463, 598, 643, 644, 652, 653, 662, 664, 665, 667, 672 行
+      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '',
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'magic_damage', damage: 30,
+      });
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      enemyStoreMock.getEnemyById.mockReturnValue(null);
+      pipeResultMock.finalDamage = 25;
+      rollCriticalMock.mockReturnValue(true);
+
+      const log = makeLogMock();
+      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerSkill('sk1');
+
+      const { eventBus, GameEvents } = await import('@/modules/bus');
+      // single deal damage 事件：damageType 为 magic，targetName 回退为 '敌人'
+      expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_DEAL_DAMAGE, expect.objectContaining({
+        damageType: 'magic',
+        targetName: '敌人',
+      }));
+      // single crit 事件：damageType 为 magic
+      expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_CRITICAL_HIT, expect.objectContaining({
+        damageType: 'magic',
+        targetName: '敌人',
+      }));
+      // 日志 eventType 为 combat_skill_cast 且带 targetType:enemy（伤害日志，区别于初始施放日志）
+      const critLogCall = log.addCombatLog.mock.calls.find(
+        (call: unknown[]) => {
+          const entry = call[0] as { eventType: string; targetType?: string };
+          return entry.eventType === 'combat_skill_cast' && entry.targetType === 'enemy';
+        }
+      );
+      expect(critLogCall).toBeDefined();
+      const logEntry = critLogCall![0] as { targetId: string; targetName: string; skillName: string; message: string };
+      expect(logEntry.targetId).toBe('');
+      expect(logEntry.targetName).toBe('');
+      expect(logEntry.skillName).toBe('');
+      expect(logEntry.message).toContain('技能');
+      expect(logEntry.message).toContain('暴击');
+      expect(logEntry.message).toContain('魔法');
+    });
+
+    it('single magic_damage + 空技能名 + 非暴击时覆盖 non-crit magic 分支', async () => {
+      // 覆盖 usePlayerAction.ts 第 673 行：non-crit 路径的 magic_damage ternary
+      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '',
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'magic_damage', damage: 30,
+      });
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      enemyStoreMock.getEnemyById.mockReturnValue(null);
+      pipeResultMock.finalDamage = 25;
+      rollCriticalMock.mockReturnValue(false);
+
+      const log = makeLogMock();
+      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerSkill('sk1');
+
+      // 非暴击日志 message 包含 "魔法" 但不包含 "暴击"
+      const damageLogCall = log.addCombatLog.mock.calls.find(
+        (call: unknown[]) => (call[0] as { eventType: string }).eventType === 'combat_skill_cast' && (call[0] as { damage: number }).damage !== undefined
+      );
+      expect(damageLogCall).toBeDefined();
+      const logEntry = damageLogCall![0] as { message: string };
+      expect(logEntry.message).toContain('魔法');
+      expect(logEntry.message).not.toContain('暴击');
+    });
+  });
+
+  describe('边界分支补充：playerSkill heal mana_restore 与 buff 空名回退', () => {
+    it('heal 技能 type 为 mana_restore 时 healType 为 mana', async () => {
+      // 覆盖 usePlayerAction.ts 第 764, 774, 778 行
+      const state = makeStateMock();
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '',
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'mana_restore', heal: 20,
+      } as never);
+
+      const log = makeLogMock();
+      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerSkill('sk1');
+
+      const { eventBus, GameEvents } = await import('@/modules/bus');
+      expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_CAST_HEAL, expect.objectContaining({
+        healType: 'mana',
+        amount: 20,
+      }));
+      // 日志 skillName 为空字符串
+      const healLogCall = log.addCombatLog.mock.calls.find(
+        (call: unknown[]) => (call[0] as { eventType: string }).eventType === 'combat_heal'
+      );
+      expect(healLogCall).toBeDefined();
+      const logEntry = healLogCall![0] as { skillName: string; message: string };
+      expect(logEntry.skillName).toBe('');
+      expect(logEntry.message).toContain('技能');
+    });
+
+    it('buff 技能空名 + appliedEffects[0].value 为 0 时 amount 回退为 0', async () => {
+      // 覆盖 usePlayerAction.ts 第 694, 714 行
+      const state = makeStateMock();
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '',
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'buff', appliedEffects: [{ type: 'attack_up', value: 0, turns: 3 }],
+      } as never);
+
+      const log = makeLogMock();
+      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerSkill('sk1');
+
+      const { eventBus, GameEvents } = await import('@/modules/bus');
+      expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_CAST_HEAL, expect.objectContaining({
+        amount: 0,
+        healType: 'buff',
+      }));
+      // 日志 message 包含 '技能'（effectSourceName 回退）
+      const buffLogCall = log.addCombatLog.mock.calls.find(
+        (call: unknown[]) => (call[0] as { eventType: string }).eventType === 'combat_skill_cast'
+      );
+      expect(buffLogCall).toBeDefined();
+      expect((buffLogCall![0] as { message: string }).message).toContain('技能');
+    });
+  });
+
+  // -------------------- 边界分支补充：playerUseItem 暴击事件 damageType/targetName/itemInfo.name 回退 --------------------
+
+  describe('边界分支补充：playerUseItem 暴击事件回退分支', () => {
+    it('magic_damage 型物品暴击时 COMBAT_CRITICAL_HIT 事件 damageType 为 magic', async () => {
+      // 覆盖 usePlayerAction.ts 第 871 行：type === 'magic_damage' ? 'magic' : 'physical' 的 truthy 分支
+      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      inventoryStoreMock.getItemInfo.mockReturnValue({
+        name: '魔法卷轴', effect: { type: 'magic_damage', value: 50 },
+      });
+      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      pipeResultMock.finalDamage = 35;
+      rollCriticalMock.mockReturnValue(true);
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerUseItem('item1');
+
+      const { eventBus, GameEvents } = await import('@/modules/bus');
+      expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_CRITICAL_HIT, expect.objectContaining({
+        damageType: 'magic',
+        actorType: 'player',
+      }));
+    });
+
+    it('暴击时 target.name 为空字符串时 COMBAT_CRITICAL_HIT 事件 targetName 回退为"敌人"', async () => {
+      // 覆盖 usePlayerAction.ts 第 872 行：target.name || '敌人' 的 falsy 分支
+      const enemy = makeEnemy({ id: 'e1', name: '' });
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      inventoryStoreMock.getItemInfo.mockReturnValue({
+        name: '炸弹', effect: { type: 'physical_damage', value: 50 },
+      });
+      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      pipeResultMock.finalDamage = 40;
+      rollCriticalMock.mockReturnValue(true);
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerUseItem('item1');
+
+      const { eventBus, GameEvents } = await import('@/modules/bus');
+      expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_CRITICAL_HIT, expect.objectContaining({
+        targetName: '敌人',
+      }));
+    });
+
+    it('暴击且 itemInfo.name 为空字符串时日志 message 回退为"卷轴"', async () => {
+      // 覆盖 usePlayerAction.ts 第 910 行：itemInfo?.name || '卷轴' 的 falsy 分支（暴击路径）
+      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      inventoryStoreMock.getItemInfo.mockReturnValue({
+        name: '', effect: { type: 'physical_damage', value: 50 },
+      });
+      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      pipeResultMock.finalDamage = 40;
+      rollCriticalMock.mockReturnValue(true);
+
+      const log = makeLogMock();
+      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerUseItem('item1');
+
+      // 暴击日志 message 中 itemInfo.name 为空，回退为"卷轴"
+      const critLogCall = log.addCombatLog.mock.calls.find(
+        (call: unknown[]) => (call[0] as { eventType: string }).eventType === 'combat_critical'
+      );
+      expect(critLogCall).toBeDefined();
+      expect((critLogCall![0] as { message: string }).message).toContain('卷轴');
+      expect((critLogCall![0] as { message: string }).message).toContain('暴击');
+    });
+
+    it('damageResult 存在但 useItem 后 currentTarget 为 null 时 updatedTarget 回退为 null', async () => {
+      // 覆盖 usePlayerAction.ts 第 897 行：target ? ctx.enemy.getEnemyById(target.id) : null 的 falsy 分支
+      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      inventoryStoreMock.getItemInfo.mockReturnValue({
+        name: '炸弹', effect: { type: 'physical_damage', value: 50 },
+      });
+      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      pipeResultMock.finalDamage = 40;
+
+      // 在 useItem 调用时清除 currentTarget，模拟目标在物品使用过程中变为空
+      inventoryStoreMock.useItem.mockImplementation(() => {
+        state.currentTarget.value = null;
+        return Promise.resolve();
+      });
+
+      const log = makeLogMock();
+      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerUseItem('item1');
+
+      // updatedTarget 为 null，日志中 targetId 和 targetName 回退为空字符串
+      // playerUseItem 非暴击日志 eventType 为 'combat_skill_cast'
+      const damageLogCall = log.addCombatLog.mock.calls.find(
+        (call: unknown[]) => (call[0] as { eventType: string }).eventType === 'combat_skill_cast'
+      );
+      expect(damageLogCall).toBeDefined();
+      expect((damageLogCall![0] as { targetId: string }).targetId).toBe('');
+      expect((damageLogCall![0] as { targetName: string }).targetName).toBe('');
+    });
+  });
+
+  // -------------------- 边界分支补充：剩余未覆盖分支（457/505/727/760） --------------------
+
+  describe('边界分支补充：playerSkill 剩余分支', () => {
+    it('技能有 resourceType 但 resourceSystems 无匹配系统时不调用 consume', async () => {
+      // 覆盖 usePlayerAction.ts 第 457 行：if (resourceSys) 的 FALSE 分支
+      const state = makeStateMock();
+      // resourceSystems 默认为空数组，无匹配系统
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '怒击', resourceType: 'rage', resourceCost: 10,
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'health_restore', heal: 20,
+      } as never);
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerSkill('sk1');
+
+      // 资源系统未找到，不调用 consume，但技能仍正常施放
+      expect(state.resourceSystems.value.length).toBe(0);
+    });
+
+    it('AOE 技能对无敌 Boss 造成 0 伤害时跳过 takeDamage', async () => {
+      // 覆盖 usePlayerAction.ts 第 505 行：if (actualAoeDamage > 0) 的 FALSE 分支
+      const boss = makeEnemy({ id: 'e1', name: 'Boss' });
+      // 注入 Boss 运行时无敌标记
+      (boss as unknown as { invulnerable: boolean }).invulnerable = true;
+      const state = makeStateMock({ target: boss, alive: [boss] });
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '暴风雪', targetType: 'all_enemies',
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'magic_damage', damage: 30,
+      } as never);
+      pipeResultMock.finalDamage = 20;
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      await action.playerSkill('sk1');
+
+      // 无敌 Boss：actualAoeDamage 为 0，不调用 takeDamage
+      expect(enemyStoreMock.takeDamage).not.toHaveBeenCalled();
+    });
+
+    it('appliedEffects 存在但 type 非 buff/debuff 时不施加效果', async () => {
+      // 覆盖 usePlayerAction.ts 第 727 行：else if (result.type === 'debuff') 的 FALSE 分支
+      const state = makeStateMock();
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '神秘技能',
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'unknown', appliedEffects: [{ type: 'custom', value: 5, turns: 2 }],
+      } as never);
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      const result = await action.playerSkill('sk1');
+
+      // type 非 buff/debuff，不进入任何效果分支，正常返回成功
+      expect(result.success).toBe(true);
+    });
+
+    it('castSkill 成功但无 damage/appliedEffects/heal 时直接结束回合', async () => {
+      // 覆盖 usePlayerAction.ts 第 760 行：else if (result.heal) 的 FALSE 分支
+      const state = makeStateMock();
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '空技能',
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true,
+      } as never);
+
+      const initiative = makeInitiativeMock();
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), initiative, vi.fn(), makePassiveMock());
+
+      const result = await action.playerSkill('sk1');
+
+      // 无任何效果字段，落入末尾返回成功
+      expect(result.success).toBe(true);
+      expect(result.type).toBe('skill');
+    });
+  });
+
+  // -------------------- 边界分支补充：applyDebuffToEnemy/applySkillBuffs/Boss 反击剩余分支 --------------------
+
+  describe('边界分支补充：效果施加与 Boss 反击剩余分支', () => {
+    it('applyDebuffToEnemy 对已有效果容器的敌人不创建新容器', () => {
+      // 覆盖 usePlayerAction.ts 第 61 行：if (!enemyEffects.value[e.id]) 的 FALSE 分支
+      const enemy = makeEnemy({ id: 'e1' });
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      // 预先创建容器
+      state.enemyEffects.value['e1'] = createEmptyContainer();
+      const initialContainer = state.enemyEffects.value['e1'];
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      // 第二次调用：容器已存在，不创建新容器
+      action.applyDebuffToEnemy(enemy, [{ type: 'attack_down', value: 5, turns: 2 }], '毒击');
+
+      // 同一个容器引用，未被替换
+      expect(state.enemyEffects.value['e1']).toBe(initialContainer);
+      expect(state.enemyEffects.value['e1'].effects.length).toBe(1);
+    });
+
+    it('applySkillBuffs 自身增益路径中 buff 类型不在自身列表时跳过该 buff', () => {
+      // 覆盖 usePlayerAction.ts 第 102 行：if ([...].includes(be.type)) 的 FALSE 分支
+      const state = makeStateMock();
+      const skill = {
+        name: '混合增益',
+        buffs: [
+          { type: 'attack_up', value: 10, turns: 3 },
+          { type: 'poison', value: 5, turns: 2 },
+        ],
+      };
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      // isSelfBuff 为 true（attack_up），进入自身增益路径
+      // poison 不在自身增益列表中，跳过
+      action.applySkillBuffs(skill, 'self');
+
+      // 只有 attack_up 被施加（1 个效果），poison 被跳过
+      expect(state.playerEffects.value.effects.length).toBe(1);
+      expect(state.playerEffects.value.effects[0].type).toBe('attack_up');
+    });
+
+    it('applySkillBuffs 单目标但 currentTarget 为 null 时不施加', () => {
+      // 覆盖 usePlayerAction.ts 第 128 行：if (target) 的 FALSE 分支
+      const state = makeStateMock({ target: null, alive: [] });
+      const skill = {
+        name: '毒击',
+        buffs: [{ type: 'poison', value: 5, turns: 2 }],
+      };
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      // targetType 非 self/all_enemies，currentTarget 为 null
+      action.applySkillBuffs(skill, 'single');
+
+      // 不抛错，不施加效果
+      expect(Object.keys(state.enemyEffects.value).length).toBe(0);
+    });
+
+    it('Boss reflectDamage 存在但反弹伤害向下取整为 0 时不造成反伤', () => {
+      // 覆盖 usePlayerAction.ts 第 214 行：if (reflectAmount > 0) 的 FALSE 分支
+      const enemy = makeEnemy({ id: 'e1', name: 'Boss' });
+      (enemy as unknown as { reflectDamage: number }).reflectDamage = 0.5;
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      // finalDamage = 1，reflectAmount = Math.floor(1 * 0.5) = 0
+      pipeResultMock.finalDamage = 1;
+      rollCriticalMock.mockReturnValue(false);
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      action.playerAttack();
+
+      // reflectAmount 为 0，不调用 character.takeDamage
+      expect(characterMock.takeDamage).not.toHaveBeenCalled();
+    });
+
+    it('Boss counterStance 存在但反击伤害向下取整为 0 时不造成反击', () => {
+      // 覆盖 usePlayerAction.ts 第 228 行：if (counterDamage > 0) 的 FALSE 分支
+      const enemy = makeEnemy({ id: 'e1', name: 'Boss' });
+      (enemy as unknown as { counterStance: boolean }).counterStance = true;
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      // finalDamage = 1，counterDamage = Math.floor(1 * 0.5) = 0
+      pipeResultMock.finalDamage = 1;
+      rollCriticalMock.mockReturnValue(false);
+
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock());
+
+      action.playerAttack();
+
+      // counterDamage 为 0，不调用 character.takeDamage
+      expect(characterMock.takeDamage).not.toHaveBeenCalled();
     });
   });
 });

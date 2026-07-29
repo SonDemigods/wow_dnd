@@ -607,10 +607,10 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       expect(enemy.pendingSummons).toBe(0);
     });
 
-    it('createMinion 抛错时调用 console.warn 并在 finally 重置 pendingSummons', async () => {
+    it('createMinion 抛错时调用 console.error 并在 finally 重置 pendingSummons', async () => {
       const state = makeStateMock();
       const log = makeLogMock();
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const bossCtx = makeBossCtxMock({
         createMinion: vi.fn().mockRejectedValue(new Error('创建失败')),
       });
@@ -624,13 +624,13 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       boss.applyMechanicEffect(enemy, 'summon_minions', phase);
       await flushPromises();
 
-      // 异常被 catch，输出 warn 日志
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('召唤小怪失败'));
+      // P2-32 修复：catch 块现在使用 console.error 记录完整错误信息（包含错误对象）
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('召唤小怪失败'), expect.any(Error));
       // finally 仍重置 pendingSummons
       expect(enemy.pendingSummons).toBe(0);
       // 不调用 rebuildInitiativeOrder（因为异常前 newMinions 为空）
       expect(bossCtx.rebuildInitiativeOrder).not.toHaveBeenCalled();
-      warnSpy.mockRestore();
+      errorSpy.mockRestore();
     });
 
     it('已有前排位置时寻找可用列（覆盖 find 命中分支）', async () => {
@@ -679,8 +679,8 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       boss.applyMechanicEffect(enemy, 'summon_minions', phase);
       await flushPromises();
 
-      // 三列全满，find 返回 undefined，回退到 ?? 0
-      expect(state.enemyPositions.value['m1']).toEqual({ row: 'front', col: 0 });
+      // P2-41 修复：前排三列全满时回退到后排 col 0
+      expect(state.enemyPositions.value['m1']).toEqual({ row: 'back', col: 0 });
     });
   });
 

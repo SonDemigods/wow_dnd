@@ -7,9 +7,12 @@ import {
   getLocationById,
   isLocationAccessible,
   getZoneStatus,
-  getLocationsByContinent
+  getLocationsByContinent,
+  getMapStateKey,
+  mapToLocationData,
+  clamp
 } from '@/modules/map/service';
-import type { LocationData, MapState } from '@/modules/map/types';
+import type { LocationData, MapState, LocationStorage } from '@/modules/map/types';
 
 /** 创建测试用地点数据 */
 function makeLocation(overrides: Partial<LocationData> = {}): LocationData {
@@ -177,5 +180,143 @@ describe('getLocationsByContinent', () => {
     ]);
     const result = getLocationsByContinent(locations, 'kalimdor');
     expect(result).toHaveLength(2);
+  });
+});
+
+// ============================================================
+// 补充覆盖：getMapStateKey / mapToLocationData / clamp
+// ============================================================
+
+describe('getMapStateKey 地图状态存储键生成', () => {
+  it('返回 map_{characterId} 格式的键', () => {
+    expect(getMapStateKey('char_001')).toBe('map_char_001');
+  });
+
+  it('空字符串 ID 返回 map_', () => {
+    expect(getMapStateKey('')).toBe('map_');
+  });
+
+  it('不同 ID 生成不同键', () => {
+    expect(getMapStateKey('char_a')).not.toBe(getMapStateKey('char_b'));
+  });
+});
+
+describe('mapToLocationData 存储格式转换', () => {
+  /** 构造测试用 LocationStorage */
+  function makeStorage(overrides: Partial<LocationStorage> = {}): LocationStorage {
+    return {
+      id: 'loc_001',
+      name: '艾尔文森林',
+      icon: 'game-icons:forest',
+      description: '新手区域',
+      type: 'location',
+      continent: 'eastern_kingdoms',
+      enemies: ['goblin', 'wolf'],
+      bosses: ['boss_bear'],
+      quests: ['quest_001'],
+      levelRange: [1, 10],
+      color: '#green',
+      mapX: 100,
+      mapY: 200,
+      ...overrides,
+    };
+  }
+
+  it('完整字段转换：保留 id/name/icon/description/enemies/bosses/quests', () => {
+    const storage = makeStorage();
+    const loc = mapToLocationData(storage);
+    expect(loc.id).toBe('loc_001');
+    expect(loc.name).toBe('艾尔文森林');
+    expect(loc.icon).toBe('game-icons:forest');
+    expect(loc.description).toBe('新手区域');
+    expect(loc.enemies).toEqual(['goblin', 'wolf']);
+    expect(loc.bosses).toEqual(['boss_bear']);
+    expect(loc.quests).toEqual(['quest_001']);
+    expect(loc.type).toBe('location');
+  });
+
+  it('continent 为 undefined 时兜底为空字符串', () => {
+    const storage = makeStorage({ continent: undefined });
+    const loc = mapToLocationData(storage);
+    expect(loc.continent).toBe('');
+  });
+
+  it('levelRange 为 undefined 时兜底为 [1, 1]', () => {
+    const storage = makeStorage({ levelRange: undefined });
+    const loc = mapToLocationData(storage);
+    expect(loc.levelRange).toEqual([1, 1]);
+  });
+
+  it('color 为 undefined 时兜底为 #000000', () => {
+    const storage = makeStorage({ color: undefined });
+    const loc = mapToLocationData(storage);
+    expect(loc.color).toBe('#000000');
+  });
+
+  it('mapX 为 undefined 时兜底为 0', () => {
+    const storage = makeStorage({ mapX: undefined });
+    const loc = mapToLocationData(storage);
+    expect(loc.mapX).toBe(0);
+  });
+
+  it('mapY 为 undefined 时兜底为 0', () => {
+    const storage = makeStorage({ mapY: undefined });
+    const loc = mapToLocationData(storage);
+    expect(loc.mapY).toBe(0);
+  });
+
+  it('所有可选字段缺失时全部使用兜底值', () => {
+    const storage: LocationStorage = {
+      id: 'loc_min',
+      name: '最小地点',
+      icon: 'icon',
+      description: 'desc',
+      type: 'location',
+    };
+    const loc = mapToLocationData(storage);
+    expect(loc.continent).toBe('');
+    expect(loc.levelRange).toEqual([1, 1]);
+    expect(loc.color).toBe('#000000');
+    expect(loc.mapX).toBe(0);
+    expect(loc.mapY).toBe(0);
+    expect(loc.enemies).toBeUndefined();
+    expect(loc.bosses).toBeUndefined();
+    expect(loc.quests).toBeUndefined();
+  });
+});
+
+describe('clamp 数值钳制', () => {
+  it('value 在 [min, max] 区间内时返回 value', () => {
+    expect(clamp(5, 1, 10)).toBe(5);
+  });
+
+  it('value 小于 min 时返回 min', () => {
+    expect(clamp(0, 5, 10)).toBe(5);
+    expect(clamp(-100, 1, 10)).toBe(1);
+  });
+
+  it('value 大于 max 时返回 max', () => {
+    expect(clamp(15, 1, 10)).toBe(10);
+    expect(clamp(999, 1, 10)).toBe(10);
+  });
+
+  it('value 等于 min 时返回 min', () => {
+    expect(clamp(5, 5, 10)).toBe(5);
+  });
+
+  it('value 等于 max 时返回 max', () => {
+    expect(clamp(10, 5, 10)).toBe(10);
+  });
+
+  it('min === max 时始终返回该值', () => {
+    expect(clamp(0, 7, 7)).toBe(7);
+    expect(clamp(100, 7, 7)).toBe(7);
+    expect(clamp(7, 7, 7)).toBe(7);
+  });
+
+  it('负数区间正常工作', () => {
+    expect(clamp(-5, -10, -1)).toBe(-5);
+    expect(clamp(-20, -10, -1)).toBe(-10);
+    expect(clamp(0, -10, -1)).toBe(-1);
   });
 });

@@ -2,7 +2,7 @@
  * @fileoverview Boss 阶段管理器单元测试
  * @description 测试 BossPhaseManager 类的阶段定位、切换检测、重置等行为
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BossPhaseManager } from '@/modules/boss/phaseManager';
 import type { BossPhase } from '@/modules/boss/types';
 
@@ -107,6 +107,15 @@ describe('BossPhaseManager', () => {
       manager.getCurrentPhase(phases, 500, 1000); // 阶段2（changed=false）
       const result = manager.getCurrentPhase(phases, 200, 1000); // 阶段3
       expect(result.phase?.name).toBe('阶段3');
+      expect(result.changed).toBe(true);
+    });
+
+    it('findPhaseIndex 返回越界索引时 phase 为 null（防御性兜底分支）', () => {
+      const phases = makePhases();
+      // 模拟 findPhaseIndex 返回越界索引以覆盖 `phases[newIndex] || null` 的 falsy 分支
+      vi.spyOn(manager as unknown as { findPhaseIndex: () => number | null }, 'findPhaseIndex').mockReturnValue(99);
+      const result = manager.getCurrentPhase(phases, 500, 1000);
+      expect(result.phase).toBeNull();
       expect(result.changed).toBe(true);
     });
   });

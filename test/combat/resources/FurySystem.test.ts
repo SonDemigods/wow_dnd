@@ -90,4 +90,9 @@ describe('FurySystem 影刃猎手怒火', () => {
     }
     expect(fury.currentValue).toBe(100);
   });
+
+  it('未知来源时使用 amount 作为上限（?? 回退分支）', () => {
+    fury.generate(50, 'invalid' as never);
+    expect(fury.currentValue).toBe(50);
+  });
 });

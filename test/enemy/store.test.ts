@@ -282,6 +282,16 @@ describe('useEnemyStore - 敌人 Store', () => {
       expect(store.getCooldownRemaining('e1', 'sk-1')).toBe(0);
       expect(store.getCooldownRemaining('e2', 'sk-2')).toBe(0);
     });
+
+    it('tickCooldowns 对无冷却记录的敌人直接返回（行 222 true 分支）', () => {
+      const store = useEnemyStore();
+      // 敌人 e1 存在但无冷却记录，tickCooldowns 不应报错
+      store.$patch({
+        enemiesCache: { e1: makeEnemyInstance({ id: 'e1', skillPool: ['sk-1'] }) },
+      });
+      expect(() => store.tickCooldowns('e1')).not.toThrow();
+      expect(store.getCooldownRemaining('e1', 'sk-1')).toBe(0);
+    });
   });
 
   // -------------------- Action: useSkill --------------------
@@ -350,6 +360,119 @@ describe('useEnemyStore - 敌人 Store', () => {
       expect(result.damage).toBe(0);
       expect(result.buffs).toEqual([{ type: 'attack_up', value: 10, turns: 3 }]);
     });
+
+    it('buff 技能：无 buffs 数组时返回空 buffs 列表（行 187 分支）', () => {
+      const store = useEnemyStore();
+      store.$patch({ enemiesCache: { e1: makeEnemyInstance({ id: 'e1', skillPool: ['sk-1'] }) } });
+      // buffs 字段未设置（undefined），覆盖 `if (skill.buffs && skill.buffs.length > 0)` 的 falsy 分支
+      skillStoreMocks.getSkill.mockReturnValue(
+        makeSkill({ id: 'sk-1', type: 'buff', cooldown: 1 })
+      );
+
+      const result = store.useSkill('e1', 'sk-1');
+      expect(result.success).toBe(true);
+      expect(result.isBuff).toBe(true);
+      expect(result.buffs).toEqual([]);
+    });
+
+    it('魔法伤害技能：使用 magicAttack 计算伤害（行 191 magic_damage 分支）', () => {
+      const store = useEnemyStore();
+      store.$patch({
+        enemiesCache: { e1: makeEnemyInstance({ id: 'e1', magicAttack: 15, skillPool: ['sk-1'] }) },
+      });
+      skillStoreMocks.getSkill.mockReturnValue(
+        makeSkill({
+          id: 'sk-1',
+          type: 'magic_damage',
+          cooldown: 1,
+          effect: { type: 'magic_damage', value: 5, coefficient: 2 },
+        })
+      );
+
+      const result = store.useSkill('e1', 'sk-1');
+      expect(result.success).toBe(true);
+      // baseDamage = round(15 * 2 + 5) = 35
+      expect(result.damage).toBe(35);
+    });
+
+    it('攻击属性为 undefined 时回退到 10（行 191 ?? 10 分支）', () => {
+      const store = useEnemyStore();
+      // physicalAttack 和 magicAttack 都未设置（undefined）
+      store.$patch({
+        enemiesCache: {
+          e1: makeEnemyInstance({ id: 'e1', physicalAttack: undefined as unknown as number, magicAttack: undefined as unknown as number, skillPool: ['sk-1'] }),
+        },
+      });
+      skillStoreMocks.getSkill.mockReturnValue(
+        makeSkill({
+          id: 'sk-1',
+          type: 'physical_damage',
+          cooldown: 0,
+          effect: { type: 'physical_damage', value: 5, coefficient: 1 },
+        })
+      );
+
+      const result = store.useSkill('e1', 'sk-1');
+      expect(result.success).toBe(true);
+      // baseDamage = round(10 * 1 + 5) = 15（attackStat 回退到 10）
+      expect(result.damage).toBe(15);
+    });
+
+    it('effect.coefficient 为 undefined 时回退到 1（行 194 ?? 1 分支）', () => {
+      const store = useEnemyStore();
+      store.$patch({
+        enemiesCache: { e1: makeEnemyInstance({ id: 'e1', physicalAttack: 20, skillPool: ['sk-1'] }) },
+      });
+      skillStoreMocks.getSkill.mockReturnValue(
+        makeSkill({
+          id: 'sk-1',
+          type: 'physical_damage',
+          cooldown: 0,
+          // coefficient 未设置，触发 ?? 1 回退
+          effect: { type: 'physical_damage', value: 5 } as any,
+        })
+      );
+
+      const result = store.useSkill('e1', 'sk-1');
+      expect(result.success).toBe(true);
+      // baseDamage = round(20 * 1 + 5) = 25（coefficient 回退到 1）
+      expect(result.damage).toBe(25);
+    });
+
+    it('cooldown 为 0 时不记录冷却（行 138 false 分支）', () => {
+      const store = useEnemyStore();
+      store.$patch({
+        enemiesCache: { e1: makeEnemyInstance({ id: 'e1', skillPool: ['sk-1'] }) },
+      });
+      skillStoreMocks.getSkill.mockReturnValue(
+        makeSkill({ id: 'sk-1', type: 'physical_damage', cooldown: 0, effect: { type: 'physical_damage', value: 5, coefficient: 1 } })
+      );
+
+      store.useSkill('e1', 'sk-1');
+      // cooldown=0 不应记录冷却
+      expect(store.getCooldownRemaining('e1', 'sk-1')).toBe(0);
+    });
+
+    it('同一敌人连续使用多个技能：第二次 recordCooldown 时 skillCooldowns.value[id] 已存在（行 139 false 分支）', () => {
+      const store = useEnemyStore();
+      store.$patch({
+        enemiesCache: { e1: makeEnemyInstance({ id: 'e1', skillPool: ['sk-1', 'sk-2'] }) },
+      });
+      // 第一次使用 sk-1（cooldown=2），创建 skillCooldowns.value['e1']
+      skillStoreMocks.getSkill.mockReturnValueOnce(
+        makeSkill({ id: 'sk-1', type: 'physical_damage', cooldown: 2, effect: { type: 'physical_damage', value: 5, coefficient: 1 } })
+      );
+      store.useSkill('e1', 'sk-1');
+      expect(store.getCooldownRemaining('e1', 'sk-1')).toBe(2);
+
+      // 第二次使用 sk-2（cooldown=3），skillCooldowns.value['e1'] 已存在，走 false 分支
+      skillStoreMocks.getSkill.mockReturnValueOnce(
+        makeSkill({ id: 'sk-2', type: 'physical_damage', cooldown: 3, effect: { type: 'physical_damage', value: 5, coefficient: 1 } })
+      );
+      store.useSkill('e1', 'sk-2');
+      expect(store.getCooldownRemaining('e1', 'sk-1')).toBe(2);
+      expect(store.getCooldownRemaining('e1', 'sk-2')).toBe(3);
+    });
   });
 
   // -------------------- Action: getAvailableSkills --------------------
@@ -377,6 +500,32 @@ describe('useEnemyStore - 敌人 Store', () => {
       const available = store.getAvailableSkills('e1');
       // sk-1 在冷却中应被过滤，仅剩 sk-2
       expect(available).toEqual([{ id: 'sk-2', name: '治疗', isHeal: true, isBuff: false }]);
+    });
+
+    it('mana_restore 类型技能 isHeal 为 true（行 126 || 右侧分支）', () => {
+      const store = useEnemyStore();
+      store.$patch({
+        enemiesCache: { e1: makeEnemyInstance({ id: 'e1', skillPool: ['sk-1'] }) },
+      });
+      skillStoreMocks.getSkill.mockReturnValue(
+        makeSkill({ id: 'sk-1', name: '法力恢复', type: 'mana_restore' })
+      );
+
+      const available = store.getAvailableSkills('e1');
+      expect(available).toEqual([{ id: 'sk-1', name: '法力恢复', isHeal: true, isBuff: false }]);
+    });
+
+    it('debuff 类型技能 isBuff 为 true（行 127 || 右侧分支）', () => {
+      const store = useEnemyStore();
+      store.$patch({
+        enemiesCache: { e1: makeEnemyInstance({ id: 'e1', skillPool: ['sk-1'] }) },
+      });
+      skillStoreMocks.getSkill.mockReturnValue(
+        makeSkill({ id: 'sk-1', name: '削弱', type: 'debuff' })
+      );
+
+      const available = store.getAvailableSkills('e1');
+      expect(available).toEqual([{ id: 'sk-1', name: '削弱', isHeal: false, isBuff: true }]);
     });
   });
 

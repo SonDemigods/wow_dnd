@@ -10,6 +10,38 @@ import type { Skill, SkillBar, SkillBuffEffect } from './types';
 import type { Stats } from '@/modules/character/types';
 
 // ============================================================================
+// 类型守卫
+// ============================================================================
+
+/**
+ * 合法的技能目标类型集合
+ *
+ * 用于 `isValidTargetType` 类型守卫的运行时校验，确保从 DB 读取的 string
+ * 在收窄为字面量联合类型前通过运行时验证。
+ */
+const VALID_TARGET_TYPES: ReadonlySet<NonNullable<Skill['targetType']>> = new Set([
+  'single',
+  'all_enemies',
+  'self',
+  'ally',
+]);
+
+/**
+ * 技能目标类型类型守卫
+ *
+ * 运行时校验 `data.targetType`（DB 中存储为 string）是否为合法的目标类型字面量。
+ * 替代 `as Skill['targetType']` 不安全类型断言，确保类型收窄基于运行时数据。
+ *
+ * @param value - 待校验的字符串值（通常来自 DB 读取）
+ * @returns 为 true 时收窄为 `Skill['targetType']`，为 false 时调用方应使用 undefined
+ *
+ * @see toSkill 在 DB → 运行时转换中使用此守卫
+ */
+export function isValidTargetType(value: string | undefined | null): value is NonNullable<Skill['targetType']> {
+  return value != null && VALID_TARGET_TYPES.has(value as NonNullable<Skill['targetType']>);
+}
+
+// ============================================================================
 // 伤害/效果计算
 // ============================================================================
 
@@ -307,8 +339,8 @@ export function canCastSkill(
     return { canCast: false, reason: '技能冷却中' };
   }
 
-  // 3. 法力值校验
-  if (opts.currentMana < skill.mpCost) {
+  // 3. 法力值校验（P2-76：mpCost 可选，undefined 视为 0）
+  if (opts.currentMana < (skill.mpCost ?? 0)) {
     return { canCast: false, reason: '法力不足' };
   }
 

@@ -252,6 +252,19 @@ describe('checkQuestProgress 进度更新', () => {
     expect(result).toBeNull();
   });
 
+  it('目标匹配但进度数组中无对应 objectiveKey 时不更新进度', () => {
+    // 击杀 goblin 匹配到目标，但 progress 中没有 objectiveKey='kill_goblin' 的条目
+    const def = makeDefinition({
+      objectives: [{ key: 'kill_goblin', type: 'kill', target: 5, enemyId: 'goblin' }],
+    });
+    const inst = makeInstance({
+      progress: [{ objectiveKey: 'different_key', current: 0, target: 5 }],
+    });
+    const result = checkQuestProgress(inst, def, { enemyId: 'goblin' });
+    // 匹配到目标但无进度条目，matched 仍为 false，返回 null
+    expect(result).toBeNull();
+  });
+
   it('进度不超过 target 上限', () => {
     const def = makeDefinition({
       objectives: [{ key: 'kill_goblin', type: 'kill', target: 5, enemyId: 'goblin' }],

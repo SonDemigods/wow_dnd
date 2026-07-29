@@ -2,7 +2,8 @@
  * 数据库相关配置
  *
  * 包含数据库连接、重试策略和备份的配置常量。
- * 类型定义已移至 modules/data/types.ts，此处只保留配置数据。
+ * 类型定义位于 modules/data/types.ts，调用方应直接从该模块导入类型。
+ * P2-80 修复：移除无意义的类型再导出，避免同一类型存在两个导入入口。
  */
 
 import type {
@@ -10,9 +11,6 @@ import type {
   DBServiceConfig,
   BackupConfig
 } from '../modules/data/types';
-
-// 重新导出类型，保持下游导入路径不变
-export type { DatabaseConfig, DBServiceConfig, BackupConfig };
 
 /**
  * 数据库连接配置

@@ -38,6 +38,8 @@ const VirtualScrollerStub = defineComponent({
   },
 });
 
+export { VirtualScrollerStub };
+
 const DynamicScrollerItemStub = defineComponent({
   name: 'DynamicScrollerItemStub',
   props: ['item', 'active', 'dataIndex', 'size'],

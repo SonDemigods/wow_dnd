@@ -721,4 +721,219 @@ describe('updateAccessibleCells 可访问性扩散', () => {
     expect(newGrid[1][0].accessible).toBe(true);
     expect(newGrid[1][1].accessible).toBe(true);
   });
+
+  it('隐藏房间在左上角(0,0)且无已探索邻居时遍历到 dx=0&&dy=0 continue 分支', () => {
+    // 覆盖 line 489: if (dx === 0 && dy === 0) continue;
+    // 隐藏房间在 (0,0)，上方/左方均越界，内层循环会到达 dy=0,dx=0 的 continue
+    const grid: import('@/modules/exploration/types').ExplorationCell[][] = [
+      [
+        { x: 0, y: 0, type: 'treasure', explored: false, accessible: false, visited: false, hidden: true },
+        { x: 1, y: 0, type: 'empty', explored: false, accessible: false, visited: false },
+      ],
+      [
+        { x: 0, y: 1, type: 'empty', explored: false, accessible: false, visited: false },
+        { x: 1, y: 1, type: 'empty', explored: false, accessible: false, visited: false },
+      ],
+    ];
+    const newGrid = updateAccessibleCells(grid);
+    // 无已探索邻居 → 隐藏房间保持隐藏
+    expect(newGrid[0][0].hidden).toBe(true);
+    expect(newGrid[0][0].explored).toBe(false);
+  });
+});
+
+// ============================================================
+// 补充覆盖：多选项事件模板全分支、generateGrid 边界分支
+// ============================================================
+
+describe('generateMultiOptionEvent 多选项事件模板覆盖（全模板）', () => {
+  it('random=0.25 时选中宝箱守卫模板（含金币选项）', () => {
+    // Arrange：Math.floor(0.25 * 4) = 1 → multiOptionEventTemplates[1] 宝箱守卫
+    vi.spyOn(Math, 'random').mockReturnValue(0.25);
+    // Act
+    const result = generateMultiOptionEvent(5);
+    // Assert
+    expect(result.message).toContain('宝箱');
+    expect(result.icon).toBe('game-icons:treasure-map');
+    expect(result.choices).toHaveLength(2);
+    // 两个选项均为 gold 类型（风险/安全收益）
+    expect(result.choices.every(c => c.effect.type === 'gold')).toBe(true);
+    // 高风险选项收益应大于安全选项
+    const amounts = result.choices.map(c => c.effect.amount);
+    expect(Math.max(...amounts)).toBeGreaterThan(Math.min(...amounts));
+  });
+
+  it('random=0.5 时选中魔法卷轴模板（mana/exp 选项）', () => {
+    // Arrange：Math.floor(0.5 * 4) = 2 → multiOptionEventTemplates[2] 魔法卷轴
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    // Act
+    const result = generateMultiOptionEvent(5);
+    // Assert
+    expect(result.message).toContain('卷轴');
+    expect(result.icon).toBe('game-icons:scroll-unfurled');
+    expect(result.choices).toHaveLength(2);
+    const types = result.choices.map(c => c.effect.type);
+    expect(types).toContain('mana');
+    expect(types).toContain('exp');
+  });
+
+  it('random=0.75 时选中黑色药水模板', () => {
+    // Arrange：Math.floor(0.75 * 4) = 3 → multiOptionEventTemplates[3] 黑色药水
+    // 模板内 effect.type 使用 Math.random() < 0.5 判断 heal/damage，mock=0.75 → damage
+    vi.spyOn(Math, 'random').mockReturnValue(0.75);
+    // Act
+    const result = generateMultiOptionEvent(5);
+    // Assert
+    expect(result.message).toContain('药水');
+    expect(result.icon).toBe('game-icons:potion-ball');
+    expect(result.choices).toHaveLength(2);
+    // mock=0.75 → 第一个选项 type='damage'（勇敢饮下）
+    expect(result.choices[0].effect.type).toBe('damage');
+    // 第二个选项始终为 exp（丢弃药水）
+    expect(result.choices[1].effect.type).toBe('exp');
+  });
+
+  it('黑色药水模板在 random<0.5 时第一个选项为 heal', () => {
+    // Arrange：Math.floor(0.74 * 4) = 2? 不对，需要 index=3 → random ∈ [0.75, 1.0)
+    // 但模板内部又要 Math.random() < 0.5 → heal。无法用单一 mock 同时满足。
+    // 改用 mockImplementation 按调用顺序返回不同值
+    const randomSpy = vi.spyOn(Math, 'random');
+    // 第一次调用（选模板）：返回 0.75 → index=3 → 黑色药水
+    // 第二次调用（模板内 type 判断）：返回 0.4 → < 0.5 → heal
+    randomSpy.mockReturnValueOnce(0.75).mockReturnValueOnce(0.4);
+    // Act
+    const result = generateMultiOptionEvent(5);
+    // Assert
+    expect(result.choices[0].effect.type).toBe('heal');
+  });
+});
+
+describe('generateGrid 边界分支覆盖', () => {
+  it('eventType=monster 且 monsterPool 为空时 cellMonsterId 保持 undefined', () => {
+    // Arrange：mock random=0 使 determineCellEvent 返回 'monster'
+    // monsterPool 为空 → 跳过 generateEnemyForCell，cellMonsterId 保持 undefined
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    // Act
+    const grid = generateGrid(makeGridConfig({
+      size: 5,
+      monsterPool: [],
+      eventProbability: makeProbability({
+        monster: 100, item: 0, trap: 0, event: 0, empty: 0,
+      }),
+    }));
+    // Assert：验证有 monster 格子，且 monsterId 均为 undefined
+    let monsterCount = 0;
+    for (const row of grid) {
+      for (const cell of row) {
+        if (cell.type === 'monster') {
+          monsterCount++;
+          expect(cell.monsterId).toBeUndefined();
+        }
+      }
+    }
+    expect(monsterCount).toBeGreaterThan(0);
+  });
+
+  it('eventType=monster 且 monsterPool 非空时调用 generateEnemyForCell 填充 monsterId', () => {
+    // Arrange：mock random=0 使 determineCellEvent 返回 'monster'
+    // monsterPool 非空 → 调用 generateEnemyForCell（覆盖行 404）
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    // Act
+    const grid = generateGrid(makeGridConfig({
+      size: 5,
+      monsterPool: ['goblin', 'spider'],
+      eventProbability: makeProbability({
+        monster: 100, item: 0, trap: 0, event: 0, empty: 0,
+      }),
+    }));
+    // Assert：验证有 monster 格子，且 monsterId 来自 monsterPool
+    let monsterCount = 0;
+    for (const row of grid) {
+      for (const cell of row) {
+        if (cell.type === 'monster') {
+          monsterCount++;
+          expect(cell.monsterId).toBeDefined();
+          expect(['goblin', 'spider']).toContain(cell.monsterId);
+        }
+      }
+    }
+    expect(monsterCount).toBeGreaterThan(0);
+  });
+
+  it('size=2 时固定事件占满网格，触发 findAnyEmptyPosition 兜底返回 {0,0}', () => {
+    // Arrange：size=2 共 4 格，起点+商店+任务板+营地占满后 boss 调用 findAnyEmptyPosition
+    // 所有格子均被占用时，findAnyEmptyPosition 返回 {0,0} 兜底
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    // Act：不应抛错（兜底逻辑生效）
+    const grid = generateGrid(makeGridConfig({ size: 2 }));
+    // Assert：网格生成成功，且包含 boss 格子（即便位置冲突也会写入）
+    expect(grid).toHaveLength(2);
+    expect(grid[0]).toHaveLength(2);
+    let bossCount = 0;
+    for (const row of grid) {
+      for (const cell of row) {
+        if (cell.type === 'boss') bossCount++;
+      }
+    }
+    expect(bossCount).toBe(1);
+  });
+});
+
+// ============================================================
+// 补充覆盖：buildItemPool ?? 回退、findStartPosition/updateAccessibleCells 空数组兜底、
+// generateGrid questNormalMonsters 超出空格子 break 分支
+// ============================================================
+
+describe('buildItemPool ?? 回退分支覆盖', () => {
+  it('item.level 为 undefined 且 rarity 不在 RARITY_LEVEL_MAP 时 itemLevel 回退为 0', () => {
+    // Arrange：rarity='legendary' 不在 RARITY_LEVEL_MAP（仅含 common/uncommon/rare/epic）
+    // item.level ?? RARITY_LEVEL_MAP[item.rarity] ?? 0 → undefined ?? undefined ?? 0 → 0
+    // 0 >= minLevel-1=0 && 0 <= maxLevel+2=7 → 合适
+    const items = [
+      { id: 'unknown_rarity', rarity: 'legendary' },
+    ];
+    // Act
+    const pool = buildItemPool(items, 1, 5);
+    // Assert：itemLevel=0 在 [0, 7] 区间内，应被选中
+    expect(pool).toContain('unknown_rarity');
+  });
+});
+
+describe('generateGrid questNormalMonsters 超出空格子 break 分支', () => {
+  it('questNormalMonsters 数量超过空格子时触发 break', () => {
+    // Arrange：size=2 共 4 格，固定事件（起点+商店+任务板+营地+Boss）占满后空格子=0
+    // questNormalMonsters 有 3 个，但 emptyCells 为空 → 第一个就触发 cellIndex >= emptyCells.length
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    // Act：不应抛错，break 分支正常生效
+    const grid = generateGrid(makeGridConfig({
+      size: 2,
+      questNormalMonsters: ['mob_a', 'mob_b', 'mob_c'],
+    }));
+    // Assert：网格正常生成
+    expect(grid).toHaveLength(2);
+  });
+});
+
+describe('findStartPosition 空数组兜底分支覆盖', () => {
+  it('grid[0] 为 undefined 时 ?? 0 兜底（grid 包含 undefined 元素）', () => {
+    // Arrange：grid 为 [undefined] 时，grid[0]?.length 为 undefined → ?? 0 → 内层循环不执行
+    // 外层循环 y=0 时 grid[0] 为 undefined，但只读取 grid[0]?.length，不访问 grid[y][x]
+    const grid = [undefined as any] as import('@/modules/exploration/types').ExplorationCell[][];
+    // Act
+    const pos = findStartPosition(grid);
+    // Assert：未找到起点，返回 {0, 0}
+    expect(pos).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe('updateAccessibleCells 空数组兜底分支覆盖', () => {
+  it('grid 为空数组时 grid[0]?.length ?? 0 兜底为 0', () => {
+    // Arrange：空网格 → size=0, colSize=grid[0]?.length ?? 0 = 0
+    // grid[0] 为 undefined → ?.length 为 undefined → ?? 0 兜底分支被覆盖
+    const grid: import('@/modules/exploration/types').ExplorationCell[][] = [];
+    // Act
+    const newGrid = updateAccessibleCells(grid);
+    // Assert：返回空数组，不报错
+    expect(newGrid).toEqual([]);
+  });
 });

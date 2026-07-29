@@ -9,8 +9,9 @@
  * 2. getEnemyName —— 按 enemyId 查询敌人中文名
  *    - 命中 MOBS / 命中 BOSSES / 未命中回退原 ID
  *    - MOBS 与 BOSSES 同 ID 时普通怪优先
+ * 3. ENEMY_NAME_MAP IIFE 分支覆盖 —— boss.id 已存在于 MOBS 时跳过覆盖
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getObjectiveText, getEnemyName } from '@/modules/quest/objective_utils';
 import type { QuestObjective } from '@/modules/quest/types';
 import { MOBS } from '@/data/config_mobs';
@@ -121,5 +122,29 @@ describe('getEnemyName 敌人名称查询', () => {
 
   it('空字符串 ID → 回退为空字符串', () => {
     expect(getEnemyName('')).toBe('');
+  });
+});
+
+// ==================== ENEMY_NAME_MAP IIFE 分支覆盖 ====================
+
+describe('ENEMY_NAME_MAP IIFE 分支：boss.id 已存在于 MOBS 时跳过覆盖', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('boss.id 已存在于 MOBS 时保留 MOBS 名称（普通怪优先，跳过 boss 覆盖）', async () => {
+    // Arrange：构造 MOBS 和 BOSSES 有同 ID 的数据
+    vi.doMock('@/data/config_mobs', () => ({
+      MOBS: [{ id: 'shared_id', name: '普通怪名称' }]
+    }));
+    vi.doMock('@/data/config_bosses', () => ({
+      BOSSES: [{ id: 'shared_id', name: 'Boss名称' }]
+    }));
+
+    // Act：重新导入模块，触发 IIFE 构建 ENEMY_NAME_MAP
+    const { getEnemyName } = await import('@/modules/quest/objective_utils');
+
+    // Assert：MOBS 优先，boss.id 已存在于 MOBS → 跳过覆盖
+    expect(getEnemyName('shared_id')).toBe('普通怪名称');
   });
 });

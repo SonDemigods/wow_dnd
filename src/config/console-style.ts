@@ -10,8 +10,26 @@
  *              value:  浅灰白色值
  *              hint:   灰色斜体提示
  *              section:橙色分组标题
- *              rarity: 稀有度配色（与 WoW 装备稀有度保持一致）
+ *              rarity: 稀有度配色（P2-73 修复：直接引用 RARITY_CONFIG 作为唯一颜色源，
+ *                      避免与 src/config/inventory.ts 重复定义产生同步风险）
  */
+import { RARITY_CONFIG } from './inventory';
+import type { ItemRarity } from '@/modules/inventory/types';
+
+/**
+ * 根据 RARITY_CONFIG 动态生成控制台稀有度样式
+ *
+ * P2-73 修复：以 RARITY_CONFIG 为唯一颜色源，控制台样式跟随其变化，
+ * 消除两处重复定义的同步风险。
+ */
+function buildRarityConsoleStyle(): Record<ItemRarity, string> {
+  const style = {} as Record<ItemRarity, string>;
+  (Object.keys(RARITY_CONFIG) as ItemRarity[]).forEach(rarity => {
+    style[rarity] = `color: ${RARITY_CONFIG[rarity].color}`;
+  });
+  return style;
+}
+
 export const CONSOLE_STYLE = {
   tag: 'color: #111; background: #f59e0b; padding: 1px 5px; border-radius: 3px; font-weight: bold',
   ok: 'color: #4ade80',
@@ -20,11 +38,5 @@ export const CONSOLE_STYLE = {
   value: 'color: #e2e8f0',
   hint: 'color: #94a3b8; font-style: italic',
   section: 'color: #f59e0b; font-weight: bold',
-  rarity: {
-    common: 'color: #9d9d9d',
-    uncommon: 'color: #1eff00',
-    rare: 'color: #0070dd',
-    epic: 'color: #a335ee',
-    legendary: 'color: #ff8000'
-  }
+  rarity: buildRarityConsoleStyle()
 } as const;

@@ -26,6 +26,8 @@ import { adminQueryService } from '@/services/AdminQueryService';
 import { MAX_LEVEL } from '../config/character';
 import { getExpForLevel } from '../utils/calculations';
 import { CONSOLE_STYLE as STYLE } from '../config/console-style';
+// P3-117 修复：从配置动态获取所有大陆 ID，替代 goto 命令中硬编码的大陆列表
+import { CONTINENTS } from '@/data/config_locations';
 
 // ============================================================
 // 类型定义
@@ -985,11 +987,11 @@ registerCommand({
   usage: 'goto <地点ID>',
   handler(args) {
     if (args.length === 0) {
-      const allLocations = [
-        ...useMapStore().getLocationsByContinent('kalimdor'),
-        ...useMapStore().getLocationsByContinent('eastern_kingdoms'),
-        ...useMapStore().getLocationsByContinent('northrend')
-      ];
+      // P3-117 修复：动态遍历所有大陆获取地点，不再硬编码 'kalimdor'/'eastern_kingdoms'/'northrend'
+      const mapStore = useMapStore();
+      const allLocations = CONTINENTS.flatMap(
+        continent => mapStore.getLocationsByContinent(continent.id)
+      );
       logTag('goto', '═══ 可用地点 ═══');
       for (const loc of allLocations) {
         console.log(`  %c${loc.id.padEnd(24)}%c ${loc.name}`, STYLE.label, STYLE.value);
@@ -1168,6 +1170,10 @@ registerCommand({
   usage: 'log [数量] [类型]  (类型: combat/quest/item/level/info)',
   handler(args) {
     const count = args[0] ? parseInt(args[0], 10) : 10;
+    // P3-118 修复：添加 NaN 校验，避免无效参数导致后续 slice 异常
+    if (isNaN(count) || count <= 0) {
+      return { success: false, message: '数量必须为正整数' };
+    }
     const logTypes = ['info', 'combat', 'quest', 'item', 'level', 'death', 'resurrect', 'shop', 'skill', 'exploration', 'zone'] as const;
     const filterType = logTypes.includes(args[1] as typeof logTypes[number]) ? (args[1] as typeof logTypes[number]) : undefined;
 
@@ -1183,7 +1189,7 @@ registerCommand({
 
     logTag('log', `═══ 冒险日志 (最近${Math.min(count, logs.length)}条) ═══`);
     for (const entry of recent) {
-      const time = new Date(entry.timestamp || '').toLocaleTimeString();
+      const time = new Date(entry.timestamp).toLocaleTimeString();
       console.log(`  %c[${time}]%c ${entry.icon || ''} ${entry.message}`, STYLE.hint, STYLE.value);
     }
     return { success: true, message: `共 ${useLogStore().logCount} 条日志` };

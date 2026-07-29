@@ -224,11 +224,12 @@ export class OrganVoice {
           const transposed = Tone.Frequency(n).transpose(interval).toNote();
           // 每个音栓层独立触发，叠加出丰富谐波
           // velocity 保持 0-1 线性值，synth 的音量已在构造时通过 volume 参数设置
+          // P0 修复：此处不应再乘 config.gain，否则增益会被施加两次（dB 音量 + 线性力度乘数）
           synth.triggerAttackRelease(
             transposed,
             duration,
             synthTime,
-            velocity * config.gain,
+            velocity,
           );
           // 微调时间确保同一合成器的每次调用时间严格递增
           synthTime += 0.001;
@@ -258,7 +259,9 @@ export class OrganVoice {
 
   /** 销毁所有合成器 */
   dispose(): void {
+    // P3-114 修复：先 disconnect 再 dispose，避免销毁后仍有连接导致音频图泄漏
     this.disposeStops();
+    this.output.disconnect();
     this.output.dispose();
   }
 

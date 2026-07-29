@@ -35,6 +35,8 @@ describe('errorReporter - 错误上报工具', () => {
       localStorageKey: 'wow_dnd_error_log',
       maxLocalStorageEntries: 20,
     });
+    // 重置适配器为 no-op（避免上一个测试的 throwing adapter 泄漏）
+    errorReporter.setAdapter({ report: () => {} });
     // 清空缓冲区与持久化记录
     errorReporter.clearErrors();
     // spy console.error（errorReporter 始终输出 console.error）
@@ -154,6 +156,8 @@ describe('errorReporter - 错误上报工具', () => {
   describe('localStorage 持久化', () => {
     it('report 后错误持久化到 localStorage', () => {
       errorReporter.report(new Error('持久化测试'));
+      // P2-77：persistToLocalStorage 改为防抖批量写入，需 flush 后才能读到
+      errorReporter.flushPersist();
 
       const persisted = errorReporter.loadPersistedErrors();
       expect(persisted).toHaveLength(1);
@@ -184,6 +188,8 @@ describe('errorReporter - 错误上报工具', () => {
       errorReporter.report(new Error('错误2'));
       errorReporter.report(new Error('错误3'));
       errorReporter.report(new Error('错误4'));
+      // P2-77：批量写入需 flush 后才能读到
+      errorReporter.flushPersist();
 
       const persisted = errorReporter.loadPersistedErrors();
       expect(persisted).toHaveLength(3);
@@ -193,6 +199,8 @@ describe('errorReporter - 错误上报工具', () => {
 
     it('clearErrors：清除缓冲区与 localStorage', () => {
       errorReporter.report(new Error('待清除'));
+      // P2-77：先 flush 让记录写入 localStorage
+      errorReporter.flushPersist();
       expect(errorReporter.getRecentErrors()).toHaveLength(1);
       expect(errorReporter.loadPersistedErrors()).toHaveLength(1);
 
@@ -205,6 +213,8 @@ describe('errorReporter - 错误上报工具', () => {
     it('自定义 localStorageKey', () => {
       errorReporter.configure({ localStorageKey: 'custom_error_key' });
       errorReporter.report(new Error('自定义键'));
+      // P2-77：批量写入需 flush 后才能读到
+      errorReporter.flushPersist();
 
       const raw = localStorage.getItem('custom_error_key');
       expect(raw).not.toBeNull();
@@ -245,20 +255,54 @@ describe('errorReporter - 错误上报工具', () => {
       expect(() => errorReporter.report(() => { throw new Error('inner'); })).not.toThrow();
     });
 
+    it('adapter.report 抛出异常时被 catch 捕获，不向外抛出', () => {
+      const throwingAdapter: ErrorReportAdapter = {
+        report: () => { throw new Error('adapter crash'); },
+      };
+      errorReporter.setAdapter(throwingAdapter);
+
+      expect(() => errorReporter.report(new Error('触发适配器异常'))).not.toThrow();
+      // 验证 catch 块的 console.error 被调用
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[ErrorReporter] 上报失败:',
+        expect.any(Error),
+      );
+    });
+
     it('localStorage 不可用时不影响缓冲区', () => {
-      // 模拟 localStorage.setItem 抛出异常
-      const originalSetItem = localStorage.setItem;
-      localStorage.setItem = () => { throw new Error('QuotaExceeded'); };
+      // 模拟 JSON.stringify 抛出异常，触发 flushPersistInternal 的 catch 块
+      const stringifySpy = vi.spyOn(JSON, 'stringify').mockImplementation(() => {
+        throw new Error('stringify failed');
+      });
 
       errorReporter.report(new Error('localStorage 不可用'));
+      // P2-77：批量写入改为防抖，需手动 flush 触发实际写入（含 JSON.stringify）
+      errorReporter.flushPersist();
 
       // 缓冲区仍然有记录
       expect(errorReporter.getRecentErrors()).toHaveLength(1);
       // console.error 被调用（包含持久化失败的错误）
-      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[ErrorReporter] localStorage 持久化失败:',
+        expect.any(Error),
+      );
 
-      // 恢复
-      localStorage.setItem = originalSetItem;
+      stringifySpy.mockRestore();
+    });
+
+    it('clearErrors 时 localStorage.removeItem 抛出异常被 catch 捕获', () => {
+      // 使用 Storage.prototype.removeItem 确保覆盖 localStorage 实现
+      const removeItemSpy = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+        throw new Error('removeItem failed');
+      });
+
+      expect(() => errorReporter.clearErrors()).not.toThrow();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[ErrorReporter] 清除 localStorage 失败:',
+        expect.any(Error),
+      );
+
+      removeItemSpy.mockRestore();
     });
   });
 });

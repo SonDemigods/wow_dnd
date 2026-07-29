@@ -256,7 +256,8 @@ function createCombatStateMock() {
 function createLogMock() {
   return {
     addCombatLog: vi.fn(),
-    saveLogs: vi.fn(),
+    // P2-46：saveLogs 现在以 .catch() 链式调用，mock 需返回 resolved Promise
+    saveLogs: vi.fn().mockResolvedValue(undefined),
     createPlayerEffectContext: vi.fn(() => ({ ownerId: 'player', ownerType: 'player' })),
     createEnemyEffectContext: vi.fn(() => ({ ownerId: 'enemy', ownerType: 'enemy' })),
   };
@@ -499,6 +500,16 @@ describe('useCombatStore - 战斗 Store', () => {
       // emit
       expect(startSpy).toHaveBeenCalledWith({ enemy });
       expect(turnSpy).toHaveBeenCalledWith(null);
+    });
+
+    it('startCombat 时初始化资源系统并调用 reset 钩子（覆盖 forEach 回调 行 249）', () => {
+      const sys = makeResourceSystem({ type: 'rage' });
+      vi.mocked(ResourceSystemFactory).create.mockReturnValueOnce([sys]);
+
+      const store = useCombatStore();
+      store.startCombat([makeEnemy()]);
+
+      expect(sys.reset).toHaveBeenCalled();
     });
 
     it('bossIntros 为空时不触发 COMBAT_BOSS_INTRO（跳过 setTimeout 分支）', () => {
@@ -753,6 +764,21 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(questStub.onEnemyKilled).toHaveBeenCalledTimes(2);
     });
 
+    it('victory 时敌人无 dataId 不触发 onEnemyKilled（行 155 falsy 分支）', async () => {
+      const charStub = createCharStub();
+      vi.mocked(useCharacterStore).mockReturnValue(charStub as never);
+      const questStub = createQuestStoreStub();
+      vi.mocked(useQuestStore).mockReturnValue(questStub as never);
+
+      // 敌人无 dataId（falsy），不应触发 onEnemyKilled
+      const enemyNoDataId = makeEnemy({ id: 'e1', dataId: undefined });
+      const store = setupFightingStore([enemyNoDataId]);
+
+      await store.endCombat('victory');
+
+      expect(questStub.onEnemyKilled).not.toHaveBeenCalled();
+    });
+
     it('victory 时触发资源系统 onKill 钩子', async () => {
       const endSpy = vi.fn();
       eventBus.on(GameEvents.COMBAT_END, endSpy);
@@ -816,6 +842,50 @@ describe('useCombatStore - 战斗 Store', () => {
         expect.any(Error),
       );
       errorSpy.mockRestore();
+    });
+
+    it('endCombat 时 enemies 被清空后 emit COMBAT_END 的 enemy 字段为 null（行 197 || null 分支）', async () => {
+      const endSpy = vi.fn();
+      eventBus.on(GameEvents.COMBAT_END, endSpy);
+
+      const charStub = createCharStub();
+      vi.mocked(useCharacterStore).mockReturnValue(charStub as never);
+
+      const store = setupFightingStore([makeEnemy()]);
+
+      // 模拟在 log.saveLogs 执行期间 enemies 被清空，
+      // 使后续 emit 读取 state.enemies.value[0] 为 undefined，走 || null 防御性分支
+      mocks.log!.saveLogs.mockImplementationOnce(() => {
+        mocks.state!.enemies.value = [];
+      });
+
+      await store.endCombat('fled');
+
+      expect(endSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ enemy: null }),
+      );
+    });
+
+    it('endCombat 传入未知 result 时跳过 victory/defeat/fled 分支（行 176 false 分支）', async () => {
+      const endSpy = vi.fn();
+      eventBus.on(GameEvents.COMBAT_END, endSpy);
+
+      const charStub = createCharStub();
+      vi.mocked(useCharacterStore).mockReturnValue(charStub as never);
+
+      const store = setupFightingStore([makeEnemy()]);
+
+      // 传入不匹配任何已知分支的 result（防御性分支覆盖）
+      await store.endCombat('unknown' as CombatResult);
+
+      // 仍 emit COMBAT_END，但不进入 victory/defeat/fled 任一分支
+      expect(endSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ result: 'unknown' as CombatResult }),
+      );
+      // 不调用 gainExp/gainGold（victory 分支）
+      expect(charStub.gainExp).not.toHaveBeenCalled();
+      // 不调用 handleDeath（defeat 分支）
+      expect(charStub.handleDeath).not.toHaveBeenCalled();
     });
   });
 
@@ -1006,6 +1076,21 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(mocks.passive!.onAttack).not.toHaveBeenCalled();
     });
 
+    it('skill：damage 为 undefined 时 passive.onAttack 收到 0（|| 0 兜底）', async () => {
+      const store = setupFightingStore([makeEnemy()]);
+      const sys = makeResourceSystem({ type: 'rage' });
+      mocks.state!.resourceSystems.value = [sys];
+      // success=true, isDodge=false, 但 damage 未定义 → 走 `result.damage || 0` 的 falsy 分支
+      mocks.player!.playerSkill.mockResolvedValueOnce({
+        success: true, type: 'skill', isDodge: false, message: '技能命中无伤害',
+      } as never);
+
+      await store.playerAction({ type: 'skill', skillId: 'buff_skill' });
+
+      expect(sys.onAttack).toHaveBeenCalled();
+      expect(mocks.passive!.onAttack).toHaveBeenCalledWith(0);
+    });
+
     it('item：委托 player.playerUseItem 并返回结果', async () => {
       const store = setupFightingStore([makeEnemy()]);
       mocks.player!.playerUseItem.mockResolvedValueOnce({
@@ -1030,6 +1115,21 @@ describe('useCombatStore - 战斗 Store', () => {
 
       expect(sys.onAttack).not.toHaveBeenCalled();
       expect(mocks.passive!.onAttack).not.toHaveBeenCalled();
+    });
+
+    it('attack：damage 为 undefined 时 passive.onAttack 收到 0（|| 0 兜底）', async () => {
+      const store = setupFightingStore([makeEnemy()]);
+      const sys = makeResourceSystem();
+      mocks.state!.resourceSystems.value = [sys];
+      // success=true, isDodge=false, 但 damage 未定义 → 走 `result.damage || 0` 的 falsy 分支
+      mocks.player!.playerAttack.mockReturnValueOnce({
+        success: true, type: 'attack', isDodge: false, message: '命中但无伤害',
+      } as never);
+
+      await store.playerAction({ type: 'attack' });
+
+      expect(sys.onAttack).toHaveBeenCalled();
+      expect(mocks.passive!.onAttack).toHaveBeenCalledWith(0);
     });
 
     it('playerAction 内部抛错时被 catch 并返回失败结果', async () => {

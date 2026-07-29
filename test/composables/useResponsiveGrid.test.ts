@@ -191,6 +191,8 @@ describe('useResponsiveGrid - 响应式网格列数计算', () => {
     });
 
     it('ResizeObserver 回调触发 update 重新计算列数', () => {
+      // P3-123 修复：回调通过 requestAnimationFrame 节流，使用 fake timers 推进 raf
+      vi.useFakeTimers();
       // Arrange：初始宽度 320
       const el = document.createElement('div');
       setElementSize(el, 320, '0px', '0px');
@@ -200,10 +202,13 @@ describe('useResponsiveGrid - 响应式网格列数计算', () => {
       // Act：模拟容器尺寸变化为 650
       setElementSize(el, 650, '0px', '0px');
       observerInstances[0].callback([], observerInstances[0] as unknown as ResizeObserver);
+      // P3-123 修复：推进 raf 定时器，触发节流后的 update
+      vi.advanceTimersByTime(16);
 
       // Assert：width=650, cols=floor(660/60)=11, itemSize=floor(660/11)=60
       expect(gridItems.value).toBe(11);
       expect(itemSize.value).toBe(60);
+      vi.useRealTimers();
       wrapper.unmount();
     });
 

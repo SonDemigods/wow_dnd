@@ -30,6 +30,7 @@ import {
   isClassFactionCompatible
 } from './service';
 import { getExpForLevel } from '@/utils/calculations';
+import { errorReporter } from '@/utils/errorReport';
 import { backupService, importService, dataInitializer } from '../data';
 import type { ImportResult, ValidationResult } from '../data';
 
@@ -63,21 +64,21 @@ export const useCharacterStore = defineStore('character', () => {
   const exp = computed(() => character.value?.exp || 0);
   const expToNextLevel = computed(() => character.value?.expToNextLevel || 100);
   const expPercentage = computed(() => {
-    if (expToNextLevel.value === 0) return 100;
+    // expToNextLevel 已通过 || 100 兜底保证非 0，无需额外除零防御
     return Math.min(100, Math.round((exp.value / expToNextLevel.value) * 100));
   });
 
   const hp = computed(() => character.value?.hp || 0);
   const maxHp = computed(() => character.value?.maxHp || 100);
   const hpPercentage = computed(() => {
-    if (maxHp.value === 0) return 0;
+    // maxHp 已通过 || 100 兜底保证非 0，无需额外除零防御
     return Math.min(100, Math.round((hp.value / maxHp.value) * 100));
   });
 
   const mana = computed(() => character.value?.mana || 0);
   const maxMana = computed(() => character.value?.maxMana || 50);
   const manaPercentage = computed(() => {
-    if (maxMana.value === 0) return 0;
+    // maxMana 已通过 || 50 兜底保证非 0，无需额外除零防御
     return Math.min(100, Math.round((mana.value / maxMana.value) * 100));
   });
 
@@ -101,8 +102,17 @@ export const useCharacterStore = defineStore('character', () => {
   /** 保存角色数据到数据库（saveCharacterData 已包含列表字段，无需单独更新列表项） */
   async function persistCharacter(): Promise<void> {
     if (!currentCharacterId.value || !character.value) return;
-    const storage = characterDbService.toStorageFormat(currentCharacterId.value, character.value, bonusStats.value);
-    await characterDbService.saveCharacterData(storage);
+    // P3-108 修复：添加 try-catch，持久化失败时上报错误但不抛出异常（fire-and-forget 模式）
+    // 避免 IndexedDB 异常中断业务流程，参考 inventory/store.ts 的 persistInventory 实现
+    try {
+      const storage = characterDbService.toStorageFormat(currentCharacterId.value, character.value, bonusStats.value);
+      await characterDbService.saveCharacterData(storage);
+    } catch (err) {
+      errorReporter.report(err, 'manual', {
+        context: '角色数据持久化失败，UI 与 DB 状态可能不一致',
+        characterId: currentCharacterId.value,
+      });
+    }
   }
 
   // ==================== Action：初始化 ====================
@@ -162,10 +172,13 @@ export const useCharacterStore = defineStore('character', () => {
     raceBonus.value = race?.bonus || {};
     classBonus.value = cls?.bonus || {};
 
-    // 3. 初始化技能数据（CHR-4 修复：通过 CharacterLifecycleService 收口跨模块持久化）
-    await characterLifecycleService.initializeCharacterSkills(id, classIdParam);
+    // P2-51 修复：调整持久化与技能初始化的顺序
+    // 原顺序：先 initializeCharacterSkills（跨模块），再持久化基础数据。
+    // 若 initializeCharacterSkills 抛异常，角色已在 store 中但未持久化，重启后丢失。
+    // 新顺序：先持久化基础数据，再 initializeCharacterSkills。
+    // 若 initializeCharacterSkills 失败，角色已落盘，技能可后续重新初始化（可恢复状态）。
 
-    // 4. 持久化到数据库
+    // 3. 持久化基础数据到数据库（先落盘，确保角色不丢失）
     const listItem: CharacterListItem = {
       id,
       name,
@@ -178,6 +191,9 @@ export const useCharacterStore = defineStore('character', () => {
     };
     await characterDbService.saveCharacterListItem(listItem);
     await persistCharacter();
+
+    // 4. 初始化技能数据（CHR-4 修复：通过 CharacterLifecycleService 收口跨模块持久化）
+    await characterLifecycleService.initializeCharacterSkills(id, classIdParam);
 
     // 5. 通知 UI
     eventBus.emit(GameEvents.CHARACTER_CREATED, { characterId: id, name });
@@ -200,10 +216,21 @@ export const useCharacterStore = defineStore('character', () => {
     if (!listItem || !data) return false;
 
     // 更新最后游玩时间
-    listItem.lastPlayedTime = Date.now();
-    await characterDbService.saveCharacterListItem(listItem);
+    // P3-98 修复：浅拷贝 listItem 后修改，避免直接 mutate 持久化层返回的对象引用
+    const updatedListItem = { ...listItem, lastPlayedTime: Date.now() };
+    await characterDbService.saveCharacterListItem(updatedListItem);
 
-    // 更新 Store 状态
+    // 持久化游戏状态
+    await characterDbService.saveGameState(characterId);
+
+    // 通知 UI（角色切换时发送 CHARACTER_LOGOUT 用于清理旧角色的音频等模块状态）
+    // 注意：initialize 中直接调用时不发送事件，避免启动时多余的 UI 重绘
+    // P1-21 修复：在更新 store 状态之前 emit LOGOUT，确保监听器收到事件时 currentCharacterId 仍为旧值
+    if (emitEvent) {
+      eventBus.emit(GameEvents.CHARACTER_LOGOUT, null); // 先登出旧角色 UI 状态
+    }
+
+    // 更新 Store 状态（在 emit LOGOUT 之后，确保监听器收到事件时 currentCharacterId 仍为旧值）
     character.value = characterDbService.fromStorageFormat(data);
     currentCharacterId.value = characterId;
     bonusStats.value = data.bonusStats || {};
@@ -213,20 +240,28 @@ export const useCharacterStore = defineStore('character', () => {
     raceBonus.value = race?.bonus || {};
     classBonus.value = cls?.bonus || {};
 
-    // 持久化游戏状态
-    await characterDbService.saveGameState(characterId);
-
-    // 通知 UI（角色切换时发送 CHARACTER_LOGOUT 用于清理旧角色的音频等模块状态）
-    // 注意：initialize 中直接调用时不发送事件，避免启动时多余的 UI 重绘
-    if (emitEvent) {
-      eventBus.emit(GameEvents.CHARACTER_LOGOUT, null); // 先登出旧角色 UI 状态
-    }
-
     return true;
   }
 
   // ==================== Action：删除角色 ====================
 
+  /**
+   * 删除角色及其所有关联数据
+   *
+   * P2-52 修复：删除流程采用"主数据先行 + 级联失败不阻断"策略：
+   * 1. 先删除角色本模块数据（characterDbService）
+   * 2. 再级联删除其他模块数据（CharacterLifecycleService）
+   *
+   * 级联删除内部使用 Promise.allSettled 确保所有模块删除操作都完成，
+   * 任一模块失败时汇总错误上报到 errorReporter，但不抛出异常阻断流程。
+   * 这样设计的理由：
+   * - 角色主数据已删，若此时回滚（重新保存）会导致角色"复活"但关联数据状态不一致
+   * - 残留的孤儿数据可通过后续维护脚本清理，比"角色复活但数据残缺"更可控
+   * - 失败信息已上报到 errorReporter，运维可感知并介入
+   *
+   * @param characterId - 角色 ID
+   * @returns 是否删除成功（主数据删除成功即视为 true）
+   */
   async function deleteCharacter(characterId: string): Promise<boolean> {
     const listItem = await characterDbService.getCharacterListItem(characterId);
     if (!listItem) return false;
@@ -234,7 +269,17 @@ export const useCharacterStore = defineStore('character', () => {
     // 删除角色本模块数据
     await characterDbService.deleteCharacterData(characterId);
     // CHR-4 修复：级联删除其他模块数据收口到 CharacterLifecycleService
-    await characterLifecycleService.cascadeDeleteCharacter(characterId);
+    // P2-52 修复：级联失败不阻断主流程，错误上报到 errorReporter
+    try {
+      await characterLifecycleService.cascadeDeleteCharacter(characterId);
+    } catch (err) {
+      // 级联删除部分失败：主数据已删，记录错误但继续清理 Store 状态
+      // 孤儿数据可通过运维脚本清理，比回滚角色主数据更可控
+      errorReporter.report(err, 'manual', {
+        context: '角色级联删除部分失败，可能产生孤儿数据',
+        characterId,
+      });
+    }
 
     // 清理 Store 状态
     if (currentCharacterId.value === characterId) {
@@ -410,6 +455,8 @@ export const useCharacterStore = defineStore('character', () => {
       await characterDbService.saveCharacterListItem(updatedItem);
     }
     await persistCharacter();
+    // P1-22 修复：刷新 characterList，确保 UI 显示最新名称
+    await loadCharacterList();
   }
 
   /** 重置角色 */
@@ -435,7 +482,13 @@ export const useCharacterStore = defineStore('character', () => {
 
   // ==================== Action：死亡与复活 ====================
 
-  /** 处理角色死亡 */
+  /**
+   * 处理角色死亡
+   *
+   * P2-57 设计说明：角色死亡后自动复活（由 computeResurrection 统一处理经验清零等状态重置）。
+   * 这是有意设计：死亡惩罚为经验清零 + 半血复活，而非永久死亡。
+   * 若未来需要"永久死亡"模式，可在 config 中添加配置项控制此行为。
+   */
   async function handleDeath(): Promise<void> {
     if (!character.value) return;
 

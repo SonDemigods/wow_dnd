@@ -105,6 +105,27 @@ describe('EquipmentDbService - 装备数据层（fake-indexeddb 真实 CRUD）',
       expect(raw!.updatedAt).toBeTypeOf('number');
       expect(raw!.equipment.weapon1).toBe('w');
     });
+
+    it('data.equipment 不是对象时返回默认全 null 槽位映射（类型守卫兜底）', async () => {
+      // 直接写入损坏的数据（equipment 字段为字符串）
+      await db.char_equipment.put({
+        characterId: 'corrupt-str',
+        equipment: 'not-an-object' as unknown as Record<EquipmentSlot, string | null>,
+        updatedAt: Date.now()
+      });
+      const result = await equipmentDbService.getEquipment('corrupt-str');
+      expect(result).toEqual(makeEmptyEquipment());
+    });
+
+    it('data.equipment 为 null 时返回默认全 null 槽位映射', async () => {
+      await db.char_equipment.put({
+        characterId: 'corrupt-null',
+        equipment: null as unknown as Record<EquipmentSlot, string | null>,
+        updatedAt: Date.now()
+      });
+      const result = await equipmentDbService.getEquipment('corrupt-null');
+      expect(result).toEqual(makeEmptyEquipment());
+    });
   });
 
   describe('deleteEquipment：删除装备', () => {
@@ -194,6 +215,48 @@ describe('EquipmentDbService - 装备数据层（fake-indexeddb 真实 CRUD）',
 
       const result = await equipmentDbService.getEquipmentTemplate('zero-req');
       expect(result!.levelRequirement).toBeUndefined();
+    });
+
+    it('bonus 为 null 时 mapTemplateToEquipmentItem 返回空对象（|| 兜底分支）', async () => {
+      // 直接写入 bonus 为 null 的损坏数据，验证 || {} 兜底
+      await db.config_equipmentItems.put({
+        id: 'null-bonus',
+        name: '无加成装备',
+        type: 'weapon',
+        rarity: 'common',
+        icon: 'icon',
+        description: '',
+        bonus: null as unknown as Record<string, number>,
+        value: 0,
+        slots: ['weapon1'],
+        levelRequirement: null,
+        stackable: false,
+        template: ''
+      });
+      const result = await equipmentDbService.getEquipmentTemplate('null-bonus');
+      expect(result).not.toBeNull();
+      expect(result!.bonus).toEqual({});
+    });
+
+    it('slots 不是数组时 mapTemplateToEquipmentItem 返回空数组（Array.isArray 兜底分支）', async () => {
+      // 直接写入 slots 为非数组的损坏数据，验证 Array.isArray 兜底
+      await db.config_equipmentItems.put({
+        id: 'bad-slots',
+        name: '损坏槽位装备',
+        type: 'weapon',
+        rarity: 'common',
+        icon: 'icon',
+        description: '',
+        bonus: { str: 1 },
+        value: 0,
+        slots: 'not-an-array' as unknown as string[],
+        levelRequirement: null,
+        stackable: false,
+        template: ''
+      });
+      const result = await equipmentDbService.getEquipmentTemplate('bad-slots');
+      expect(result).not.toBeNull();
+      expect(result!.slots).toEqual([]);
     });
 
     it('覆盖保存：相同 ID 再次保存，新数据替换旧数据', async () => {

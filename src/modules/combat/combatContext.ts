@@ -49,6 +49,8 @@ export interface ICombatQuery {
     readonly classId: string;
     readonly hp: number;
     readonly maxHp: number;
+    readonly mana: number;
+    readonly maxMana: number;
     readonly attributes: Attributes;
     readonly effectiveStats: Stats;
   };
@@ -160,6 +162,8 @@ export function createCombatContext(): ICombatContext {
       get classId() { return characterStore.classId; },
       get hp() { return characterStore.hp; },
       get maxHp() { return characterStore.maxHp; },
+      get mana() { return characterStore.mana; },
+      get maxMana() { return characterStore.maxMana; },
       get attributes() { return characterStore.attributes; },
       get effectiveStats() { return characterStore.effectiveStats; },
       takeDamage: (amount) => characterStore.takeDamage(amount),

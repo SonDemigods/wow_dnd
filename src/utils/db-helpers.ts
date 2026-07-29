@@ -6,18 +6,30 @@
 
 /**
  * 将对象转为纯数据，去除 Vue/Proxy 响应式包装
- * 
+ *
  * IndexedDB 使用结构化克隆算法存储数据，无法克隆 Proxy 对象。
  * Vue/Pinia 的 reactive/ref 包裹的数据都是 Proxy，直接写入会触发 DataCloneError。
- * 通过 JSON 序列化往返可剥离所有 Proxy 包装，生成纯 JS 对象。
- * 
+ *
+ * P2-78 修复：优先使用 structuredClone，保留 Date、Map、Set 等特殊类型；
+ * 若 structuredClone 不可用或遇到不可克隆对象（如 Vue Proxy 嵌套响应式），
+ * 回退到 JSON 序列化（剥离 Proxy 包装，但会丢失特殊类型）。
+ * 当前项目 IndexedDB 存储的数据均为可 JSON 序列化的纯数据，回退路径不影响使用。
+ *
  * 返回值为纯 JS 对象，可直接传给 Dexie 的 put/add/bulkPut 等方法，
  * 替代原来各模块中重复出现的 JSON.parse(JSON.stringify(...)) 写法。
- * 
+ *
  * @param data - 需要清洗的数据（可以是 Proxy 包装对象）
  * @returns 纯 JS 对象/数组
  */
 export function toRawData<T>(data: T): T {
+  // 优先 structuredClone：保留 Date/Map/Set/RegExp 等特殊类型
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(data);
+    } catch {
+      // Vue Proxy 嵌套响应式或不可克隆类型，回退到 JSON 序列化
+    }
+  }
   return JSON.parse(JSON.stringify(data));
 }
 
@@ -28,7 +40,7 @@ export function toRawData<T>(data: T): T {
  * @returns 格式为 `{prefix}_{timestamp}_{random}` 的唯一标识符
  */
 export function generateId(prefix: string): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }
 
 /**
@@ -62,6 +74,9 @@ export abstract class BaseDbService<T, S = T> {
     protected readonly keyField: string = 'id'
   ) {}
 
+  // P3-138 说明：保留默认实现而非改为 abstract，因为测试中的 DefaultTestService 依赖默认实现。
+  // 默认实现使用 unknown 断言，适用于 T 和 S 类型相同的场景（如纯 JSON 存储）。
+  // 子类如有特殊转换需求，应覆盖这两个方法。
   /** 运行时对象 → DB 存储格式（默认直接返回，子类可覆盖以做转换/清洗） */
   protected toStorage(data: T): S { return data as unknown as S; }
 

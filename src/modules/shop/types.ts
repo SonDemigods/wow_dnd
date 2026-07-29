@@ -34,6 +34,7 @@ export type ShopType = 'general' | 'potion' | 'scroll' | 'food' | 'material';
  * @property {ShopType} type - 商店类型，决定可售商品类别范围
  * @property {string} icon - 商店图标标识（Iconify 格式）
  * @property {number} refreshInterval - 商品自动刷新间隔（毫秒），0 表示不自动刷新
+ * @property {string} [locationId] - 商店所属地点 ID（可选），用于关联商店与地图地点。P3-134 修复
  *
  * @see cloneShopConfig 写入 DB 前通过此函数创建浅拷贝
  * @see SHOPS 硬编码种子数据
@@ -44,6 +45,8 @@ export interface ShopConfig {
   type: ShopType;
   icon: string;
   refreshInterval: number;
+  /** 商店所属地点 ID（可选），用于关联商店与地图地点。P3-134 修复 */
+  locationId?: string;
 }
 
 /**

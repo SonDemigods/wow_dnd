@@ -148,6 +148,8 @@ export interface TalentEffectSummary {
   critBonus: number;
   /** 资源加成（resource_bonus），key 为资源键，value 为总加成值 */
   resourceBonuses: Record<string, number>;
+  /** 治疗倍率总和（healing_multiplier，P2-75 新增），如 0.24 表示治疗量提升 24% */
+  healingMultiplier: number;
   /** 特殊效果列表（special） */
   specialEffects: Array<{ description: string; value: number }>;
   /** 技能增强列表（skill_enhance） */
@@ -164,6 +166,7 @@ export function createEmptyEffectSummary(): TalentEffectSummary {
     damageReduction: 0,
     critBonus: 0,
     resourceBonuses: {},
+    healingMultiplier: 0,
     specialEffects: [],
     skillEnhancements: []
   };
@@ -199,6 +202,11 @@ function accumulateEffect(summary: TalentEffectSummary, effect: TalentEffect, ra
       if (effect.stat) {
         summary.resourceBonuses[effect.stat] = (summary.resourceBonuses[effect.stat] || 0) + totalValue;
       }
+      break;
+    case 'healing_multiplier':
+      // P2-75 修复：将"治疗效果提升"从 special 提升为一等公民类型，
+      // 供 skill/store.ts 在治疗计算中读取并应用（原 special 类型无消费方，导致天赋失效）
+      summary.healingMultiplier += totalValue;
       break;
     case 'special':
       summary.specialEffects.push({

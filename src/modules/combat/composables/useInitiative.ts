@@ -75,7 +75,8 @@ export function useInitiative(
     // 玩家速度（含效果修正）
     const playerCtx = log.createPlayerEffectContext();
     const speedMod = state.effectRegistry.reduceSum(state.playerEffects.value, 'getSpeedMod', playerCtx);
-    const playerSpeed = (ctx.character.effectiveStats.dex || 0) + speedMod;
+    // P2-45 修复：统一使用 ?? 操作符，避免 dex=0 时被 || 吞掉
+    const playerSpeed = (ctx.character.effectiveStats.dex ?? 0) + speedMod;
     units.push({ id: 'player', speed: playerSpeed });
 
     // 所有敌人速度（P2-1：与玩家侧一致，应用 getSpeedMod 效果修正，使减速/冰冻影响先攻顺序）
@@ -237,14 +238,14 @@ export function useInitiative(
     // ===== 阶段 3：统一检查死亡 =====
     if (ctx.character.hp <= 0) {
       endCombat('defeat');
-      log.saveLogs();
+      // P2-37 修复：移除重复的 saveLogs 调用，endCombat 内部已调用 log.saveLogs()
       return;
     }
     // 检查敌人是否全部死亡（DOT 杀敌触发胜利判定，BIZ-4 修复）
     const allEnemiesDead = state.enemies.value.every(e => e.hp <= 0);
     if (allEnemiesDead && state.enemies.value.length > 0) {
       endCombat('victory');
-      log.saveLogs();
+      // P2-37 修复：移除重复的 saveLogs 调用，endCombat 内部已调用 log.saveLogs()
       return;
     }
   }

@@ -179,6 +179,24 @@ describe('EventBus 事件总线', () => {
       // on 注册的那一份仍存在
       expect(cb).toHaveBeenCalledTimes(1);
     });
+
+    it('listeners[event] 已被删除时 clearGroup 跳过 splice（防御性分支）', () => {
+      const cb = vi.fn();
+      bus.onGroup('g1', GameEvents.UI_CLICK, cb);
+      // 直接删除 listeners[event]，模拟 removeEvent 已清理事件但 group 残留的防御性场景
+      delete (bus as unknown as { listeners: Record<string, unknown[]> }).listeners[GameEvents.UI_CLICK];
+      expect(() => bus.clearGroup('g1')).not.toThrow();
+      bus.emit(GameEvents.UI_CLICK, { source: 'btn' });
+      expect(cb).not.toHaveBeenCalled();
+    });
+
+    it('callback 已被 off 移除但 group 残留时 clearGroup 跳过 splice（idx === -1）', () => {
+      const cb = vi.fn();
+      bus.onGroup('g1', GameEvents.UI_CLICK, cb);
+      // off 移除 callback，但 group 记录仍保留，indexOf 返回 -1
+      bus.off(GameEvents.UI_CLICK, cb);
+      expect(() => bus.clearGroup('g1')).not.toThrow();
+    });
   });
 
   // ==================== clearAll / removeEvent ====================
@@ -230,6 +248,20 @@ describe('EventBus 事件总线', () => {
     it('removeEvent 不存在的事件不抛错', () => {
       expect(() => bus.removeEvent('not-exist-event')).not.toThrow();
     });
+
+    it('removeEvent 后分组仍保留其他事件的记录（length > 0 不删除分组）', () => {
+      const cb1 = vi.fn();
+      const cb2 = vi.fn();
+      bus.onGroup('g1', GameEvents.UI_CLICK, cb1);
+      bus.onGroup('g1', GameEvents.UI_PANEL_OPENED, cb2);
+
+      // 移除 ui_click 事件，g1 仍保留 ui_panel_opened 的记录
+      bus.removeEvent(GameEvents.UI_CLICK);
+
+      // g1 仍有 ui_panel_opened 的监听器，应正常触发
+      bus.emit(GameEvents.UI_PANEL_OPENED, { panel: 'bag' });
+      expect(cb2).toHaveBeenCalledTimes(1);
+    });
   });
 
   // ==================== 异常隔离 ====================
@@ -252,17 +284,18 @@ describe('EventBus 事件总线', () => {
       expect(order).toEqual(['first', 'throwing', 'third']);
     });
 
-    it('once 回调抛错时，off 在回调之后执行导致监听器未被移除（记录当前行为）', () => {
+    it('once 回调抛错时监听器仍被正确移除（P0 修复：try/finally 保证注销）', () => {
       const cb = vi.fn(() => {
         throw new Error('boom');
       });
       bus.once(GameEvents.UI_CLICK, cb);
-      bus.emit(GameEvents.UI_CLICK, { source: 'btn' });
+      // 第一次 emit：回调抛错，但 finally 块确保 off 被执行
+      expect(() => bus.emit(GameEvents.UI_CLICK, { source: 'btn' })).not.toThrow();
+      // 第二次 emit：监听器已被移除，回调不应再次触发
       bus.emit(GameEvents.UI_CLICK, { source: 'btn' });
 
-      // 源码 once 实现：先调用 callback，再 off。callback 抛错时 off 不执行，
-      // onceCallback 仍保留在 listeners 中，第二次 emit 仍会触发。
-      expect(cb).toHaveBeenCalledTimes(2);
+      // 修复后：即使回调抛错，once 语义仍然成立——只触发一次
+      expect(cb).toHaveBeenCalledTimes(1);
     });
   });
 });

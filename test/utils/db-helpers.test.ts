@@ -97,8 +97,9 @@ describe('toRawData 数据清洗', () => {
     expect(toRawData(null)).toBeNull();
   });
 
-  it('处理 undefined 会抛错（JSON.stringify(undefined) 返回 undefined 导致 JSON.parse 失败）', () => {
-    expect(() => toRawData(undefined)).toThrow();
+  it('处理 undefined 返回 undefined（P2-78：structuredClone 支持 undefined，不再抛错）', () => {
+    // P2-78 修复：优先使用 structuredClone，可正确处理 undefined（JSON 路径会抛错但 structuredClone 不会）
+    expect(toRawData(undefined)).toBeUndefined();
   });
 
   it('处理基本类型', () => {

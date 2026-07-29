@@ -127,6 +127,13 @@ describe('generateEnemyStats 等级缩放属性推导', () => {
     expect(stats.stats.cha).toBe(5);
   });
 
+  it('未配置 dodgeChance 时 dex 使用默认值 5（?? 回退）', () => {
+    const template = makeTemplate({ dodgeChance: undefined });
+    const stats = generateEnemyStats(template, 1);
+    // dex = Math.floor((undefined ?? 5) * 1.5) = Math.floor(7.5) = 7
+    expect(stats.stats.dex).toBe(7);
+  });
+
   it('hp 与 maxHp 相等', () => {
     const stats = generateEnemyStats(makeTemplate(), 5);
     expect(stats.hp).toBe(stats.maxHp);

@@ -276,6 +276,24 @@ describe('reduceSum — 累加护盾/反伤/速度', () => {
     addEffectToContainer(container, makeEffect('speed_up', 15, 3));
     expect(registry.reduceSum(container, 'getSpeedMod', ctx)).toBe(15);
   });
+
+  it('无处理器的效果不参与累加（reduceSum if (!handler) continue 分支）', () => {
+    // 不注册任何处理器，效果存在但 handler 为 undefined
+    const container = createEmptyContainer();
+    addEffectToContainer(container, makeEffect('poison', 10, 3));
+    expect(registry.reduceSum(container, 'getSpeedMod', ctx)).toBe(0);
+    expect(registry.reduceSum(container, 'getDamageAbsorb', ctx, 50)).toBe(0);
+    expect(registry.reduceSum(container, 'getThornDamage', ctx, 100)).toBe(0);
+  });
+
+  it('handler 存在但无 getSpeedMod 方法时跳过（reduceSum if (fn) 分支）', () => {
+    // 注册一个没有 getSpeedMod 的处理器
+    registry.register(makeHandler('poison', { onTick: () => ({ dotDamage: 5, regenAmount: 0 }) }));
+    const container = createEmptyContainer();
+    addEffectToContainer(container, makeEffect('poison', 10, 3));
+    // poison handler 存在但无 getSpeedMod，应跳过不累加
+    expect(registry.reduceSum(container, 'getSpeedMod', ctx)).toBe(0);
+  });
 });
 
 // ============================================================
@@ -453,6 +471,17 @@ describe('getDisabledActions — 行动禁用', () => {
     expect(result.types).toHaveLength(3);
     expect(result.types).toEqual(expect.arrayContaining(['attack', 'skill', 'flee']));
     expect(result.skipTurn).toBe(true);
+  });
+
+  it('handler 无 getDisabledActions 方法时跳过（if (handler?.getDisabledActions) 分支）', () => {
+    // 注册一个没有 getDisabledActions 的处理器
+    registry.register(makeHandler('poison', { onTick: () => ({ dotDamage: 5, regenAmount: 0 }) }));
+    const container = createEmptyContainer();
+    addEffectToContainer(container, makeEffect('poison', 10, 3));
+    const result = registry.getDisabledActions(container);
+    // poison handler 存在但无 getDisabledActions，不禁用任何行动
+    expect(result.types).toHaveLength(0);
+    expect(result.skipTurn).toBe(false);
   });
 });
 

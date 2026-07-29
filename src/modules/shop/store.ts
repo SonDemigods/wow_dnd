@@ -122,7 +122,10 @@ export const useShopStore = defineStore('shop', () => {
    * @returns 合并后的商品列表（回购物品在前，生成商品在后）
    */
   function mergeItems(generatedItems: ShopItem[]): ShopItem[] {
-    const soldMap = soldItems.value.get(currentShopId.value || '');
+    // P3-103 修复：使用显式守卫替代非空断言，避免 currentShopId 为 null 时意外通过
+    const shopId = currentShopId.value;
+    if (!shopId) return [...generatedItems];
+    const soldMap = soldItems.value.get(shopId);
     const sold: ShopItem[] = soldMap
       ? Array.from(soldMap.values()).map(e => ({ itemId: e.itemId, price: e.price, quantity: e.quantity }))
       : [];
@@ -423,46 +426,62 @@ export const useShopStore = defineStore('shop', () => {
     }
 
     // 3. 更新商店库存（ARCH-14：通过 _replaceSoldItems 整体替换触发响应式）
+    // P2-54 修复：将扣金币、加背包、减库存视为事务，第 3 步失败时回滚前两步
     let generated: ShopItem[] | null = null;
 
-    if (isBuyback && soldMap) {
-      // 从回购列表中扣减（前置条件 isBuyback 已保证 soldMap 中存在该 itemId）
-      _replaceSoldItems(newMap => {
-        const innerMap = newMap.get(shopId);
-        if (!innerMap) return;
-        const entry = innerMap.get(itemId);
-        if (!entry) return;
-        entry.quantity -= quantity;
-        if (entry.quantity <= 0) {
-          innerMap.delete(itemId);
-        }
-        if (innerMap.size === 0) {
-          newMap.delete(shopId);
-        }
-      });
+    try {
+      if (isBuyback && soldMap) {
+        // 从回购列表中扣减（前置条件 isBuyback 已保证 soldMap 中存在该 itemId）
+        _replaceSoldItems(newMap => {
+          const innerMap = newMap.get(shopId);
+          if (!innerMap) return;
+          const entry = innerMap.get(itemId);
+          if (!entry) return;
+          entry.quantity -= quantity;
+          if (entry.quantity <= 0) {
+            innerMap.delete(itemId);
+          }
+          if (innerMap.size === 0) {
+            newMap.delete(shopId);
+          }
+        });
 
-      // BIZ-16: 持久化回购列表到 IndexedDB（整体替换后读取最新状态）
-      const updatedSoldMap = soldItems.value.get(shopId);
-      await shopDbService.saveSoldItems(shopId, updatedSoldMap ? Array.from(updatedSoldMap.values()) : []);
-    } else {
-      // 从生成商品中扣减（读取完整 storage 以保留原 lastRefresh，避免重置刷新计时器）
-      const storage = await shopDbService.getShopItemsStorage(shopId);
-      generated = storage?.items ?? null;
-      if (generated) {
-        const idx = generated.findIndex(i => i.itemId === itemId);
-        if (idx !== -1) {
-          generated[idx].quantity -= quantity;
-          // BIZ-21: 累计已购买次数（仅当商品携带 maxPurchaseCount 时）
-          if (generated[idx].maxPurchaseCount !== undefined) {
-            generated[idx].purchasedCount = (generated[idx].purchasedCount ?? 0) + quantity;
+        // BIZ-16: 持久化回购列表到 IndexedDB（整体替换后读取最新状态）
+        const updatedSoldMap = soldItems.value.get(shopId);
+        await shopDbService.saveSoldItems(shopId, updatedSoldMap ? Array.from(updatedSoldMap.values()) : []);
+      } else {
+        // 从生成商品中扣减（读取完整 storage 以保留原 lastRefresh，避免重置刷新计时器）
+        const storage = await shopDbService.getShopItemsStorage(shopId);
+        generated = storage?.items ?? null;
+        if (generated) {
+          const idx = generated.findIndex(i => i.itemId === itemId);
+          if (idx !== -1) {
+            generated[idx].quantity -= quantity;
+            // BIZ-21: 累计已购买次数（仅当商品携带 maxPurchaseCount 时）
+            if (generated[idx].maxPurchaseCount !== undefined) {
+              generated[idx].purchasedCount = (generated[idx].purchasedCount ?? 0) + quantity;
+            }
+            if (generated[idx].quantity <= 0) {
+              generated.splice(idx, 1);
+            }
+            // BIZ-20: 保留原 lastRefresh，避免购买操作重置刷新计时器
+            await shopDbService.saveShopItems(shopId, generated, storage?.lastRefresh);
           }
-          if (generated[idx].quantity <= 0) {
-            generated.splice(idx, 1);
-          }
-          // BIZ-20: 保留原 lastRefresh，避免购买操作重置刷新计时器
-          await shopDbService.saveShopItems(shopId, generated, storage?.lastRefresh);
         }
       }
+    } catch (err) {
+      // P2-54 修复：商店库存更新失败，回滚金币和背包
+      console.error('[ShopStore] buyItem 更新商店库存失败，回滚金币和背包:', err);
+      // 回滚背包：移除已添加的物品
+      inventoryStore.removeItem(itemId, quantity);
+      // 回滚金币：返还已扣的金币
+      await characterStore.gainGold(totalPrice);
+      useToast().show({
+        message: '商店库存更新失败，已退还金币和物品',
+        type: 'error',
+        duration: 3000
+      });
+      return false;
     }
 
     // 4. 刷新当前商品列表（回购路径需重新读取 DB，生成路径复用已读取的数据）
@@ -516,6 +535,9 @@ export const useShopStore = defineStore('shop', () => {
     const itemTemplate = inventoryStore.getItemInfo(itemId);
     if (!itemTemplate) return false;
 
+    // P1-15 修复：任务物品不可出售，防止玩家出售后无法找回导致存档损坏
+    if (itemTemplate.type === 'quest') return false;
+
     // 2. 计算售价（复用已获取的 itemTemplate，避免重复查询）
     const unitPrice = computeSellPrice(itemTemplate);
     if (unitPrice <= 0) return false;
@@ -547,8 +569,9 @@ export const useShopStore = defineStore('shop', () => {
     });
 
     // BIZ-16: 持久化回购列表到 IndexedDB（整体替换后读取最新状态）
-    const currentSoldMap = soldItems.value.get(shopId);
-    await shopDbService.saveSoldItems(shopId, currentSoldMap ? Array.from(currentSoldMap.values()) : []);
+    // _replaceSoldItems 的 mutator 已保证创建 shopId 对应的 innerMap，currentSoldMap 必存在
+    const currentSoldMap = soldItems.value.get(shopId)!;
+    await shopDbService.saveSoldItems(shopId, Array.from(currentSoldMap.values()));
 
     // 6. 刷新当前商品列表（合并回购物品）
     const currentGenerated = await shopDbService.getShopItems(shopId);

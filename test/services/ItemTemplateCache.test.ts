@@ -137,6 +137,21 @@ describe('ItemTemplateCache 物品模板缓存服务', () => {
       // Assert
       expect(getAllItemTemplatesMock).toHaveBeenCalledTimes(1);
     });
+
+    it('已加载时跳过 load 直接命中缓存（覆盖 loaded=true 分支）', async () => {
+      // Arrange：先 load 使 loaded=true
+      getAllItemTemplatesMock.mockResolvedValue([makeItem('i1', '物品1')]);
+      await itemTemplateCache.load();
+      getAllItemTemplatesMock.mockClear();
+
+      // Act：此时 loaded=true，跳过 load 直接查缓存
+      const result = await itemTemplateCache.getById('i1');
+
+      // Assert
+      expect(result).not.toBeNull();
+      expect(result?.name).toBe('物品1');
+      expect(getAllItemTemplatesMock).not.toHaveBeenCalled();
+    });
   });
 
   // ==================== getAll ====================
@@ -172,6 +187,19 @@ describe('ItemTemplateCache 物品模板缓存服务', () => {
 
       // Act + Assert：getAll 内部 await this.load() 失败时错误向上传播
       await expect(itemTemplateCache.getAll()).rejects.toThrow('fail');
+    });
+
+    it('templates 为 null 时 getAll 返回空数组兜底（覆盖 ?? [] 分支）', async () => {
+      // Arrange：手动构造 loaded=true 但 templates=null 的异常状态
+      // 模拟 doLoad 成功后 templates 仍为 null 的边界情况（CODE-15 兜底）
+      (itemTemplateCache as unknown as { loaded: boolean; templates: Item[] | null }).loaded = true;
+      (itemTemplateCache as unknown as { templates: Item[] | null }).templates = null;
+
+      // Act
+      const result = await itemTemplateCache.getAll();
+
+      // Assert：返回空数组（?? [] 兜底）
+      expect(result).toEqual([]);
     });
   });
 

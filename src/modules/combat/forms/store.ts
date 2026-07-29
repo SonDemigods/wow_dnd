@@ -18,8 +18,11 @@ import {
   isSkillAvailableInForm,
   createInitialFormState
 } from './service';
-import { getSwitchableForms } from './druidForms';
-import { createCombatContext } from '../combatContext';
+import { getSwitchableForms, getFormByType } from './druidForms';
+// P2-39/P2-47 修复：直接依赖 useCharacterStore 和 useLogStore，
+// 不再调用 createCombatContext 创建完整 ICombatContext（其中 6 个 Store 引用全部未使用）
+import { useCharacterStore } from '@/modules/character/store';
+import { useLogStore } from '@/modules/log/store';
 import { generateLogId } from '@/modules/log/service';
 
 /**
@@ -36,8 +39,9 @@ import { generateLogId } from '@/modules/log/service';
  * | 查询 | `canSwitch`, `isSkillAvailable`, `getAvailableSkills`, `calculateHealAmount` | 纯查询 |
  */
 export const useFormStore = defineStore('druidForm', () => {
-  // ==================== 战斗上下文（聚合 character/log Store 引用） ====================
-  const ctx = createCombatContext();
+  // P2-39/P2-47 修复：直接持有需要的外部 Store 引用，不再创建完整 ICombatContext
+  const characterStore = useCharacterStore();
+  const logStore = useLogStore();
 
   // ==================== 响应式状态 ====================
 
@@ -103,28 +107,38 @@ export const useFormStore = defineStore('druidForm', () => {
    * 3. 通过 switchForm 纯函数更新状态
    * 4. 记录冒险日志
    *
+   * P3-96 修复：返回类型由 `Promise<boolean>` 改为 `Promise<{ success: boolean; reason?: string }>`，
+   *            冷却/未解锁/同形态等失败场景携带 reason 字段，供调用方做响应式反馈（如 toast 提示）。
+   *
    * @param targetForm - 目标形态
-   * @returns 是否切换成功
+   * @returns `{ success, reason? }` — 成功仅返回 `{ success: true }`；失败返回 `{ success: false, reason }`
    */
-  function switchTo(targetForm: DruidFormType): boolean {
+  async function switchTo(targetForm: DruidFormType): Promise<{ success: boolean; reason?: string }> {
     const result = canSwitchForm(targetForm, formState.value);
     if (!result.canSwitch) {
-      return false;
+      // P3-96 修复：返回失败原因，调用方可据 reason 给出 toast 提示
+      return { success: false, reason: result.reason };
     }
 
-    const newForm = getCurrentForm({ ...formState.value, currentForm: targetForm });
+    // P3-87 修复：直接调用 getFormByType，避免创建多余的临时对象
+    const newForm = getFormByType(targetForm);
 
     // 应用形态切换治疗
-    const healAmount = calculateFormSwitchHeal(targetForm, ctx.character.maxHp);
+    const healAmount = calculateFormSwitchHeal(targetForm, characterStore.maxHp);
     if (healAmount > 0) {
-      ctx.character.receiveHeal(healAmount);
+      // P1-11 修复：await receiveHeal 并添加 try-catch，避免未捕获的 Promise rejection
+      try {
+        await characterStore.receiveHeal(healAmount);
+      } catch (e) {
+        console.error('[FormsStore] receiveHeal 失败:', e);
+      }
     }
 
     // 更新形态状态
     formState.value = switchForm(formState.value, targetForm);
 
     // 记录冒险日志
-    ctx.log.addLogEntry({
+    logStore.addLogEntry({
       id: generateLogId(),
       timestamp: Date.now(),
       type: 'combat',
@@ -132,7 +146,7 @@ export const useFormStore = defineStore('druidForm', () => {
       icon: newForm.icon
     });
 
-    return true;
+    return { success: true };
   }
 
   /**
@@ -180,7 +194,7 @@ export const useFormStore = defineStore('druidForm', () => {
    * @returns 治疗量
    */
   function calculateHealAmount(targetForm: DruidFormType): number {
-    return calculateFormSwitchHeal(targetForm, ctx.character.maxHp);
+    return calculateFormSwitchHeal(targetForm, characterStore.maxHp);
   }
 
   return {

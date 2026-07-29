@@ -64,10 +64,11 @@ export class EquipmentDbService {
       rarity: data.rarity as EquipmentItem['rarity'],
       icon: data.icon,
       description: data.description,
-      bonus: (data.bonus || {}) as Partial<EquipmentItem['bonus']>,
+      bonus: (data.bonus ?? {}) as Partial<EquipmentItem['bonus']>,
       value: data.value,
       slots: (Array.isArray(data.slots) ? data.slots : []) as EquipmentSlot[],
-      levelRequirement: data.levelRequirement || undefined,
+      levelRequirement: data.levelRequirement ?? undefined,
+      // P3-109 说明：stackable 使用 || 归一化（false 和 undefined 语义一致，均为不可堆叠）
       stackable: data.stackable || false,
       template: data.template || undefined
     };

@@ -4,6 +4,10 @@
  * @module data
  */
 
+// P1-31 修复：将开发环境校验的副作用 import 移至文件顶部 import 区域
+// 数据完整性校验（开发环境自动执行，生产环境无副作用）
+import './validate';
+
 // 导出阵营数据
 export { FACTIONS } from './config_factions';
 
@@ -52,26 +56,6 @@ export { QUESTS } from './config_quests';
 // 导出商店数据
 export { SHOPS } from './config_shops';
 
-// 数据完整性校验（开发环境自动执行，生产环境无副作用）
-import './validate';
 export { validateLocationData } from './validate';
 
-// 导出配置常量
-export { MAX_LEVEL, STAT_NAMES, LEVEL_EXP_REQUIREMENTS } from '@/config/character';
-
-// 导出计算函数
-export {
-  calculateAllAttributes,
-  calculateMaxHp,
-  calculateMaxMana,
-  calculatePhysicalAttack,
-  calculatePhysicalDefense,
-  calculateMagicAttack,
-  calculateMagicDefense,
-  calculateCritChance,
-  calculateDodgeChance,
-  calculateHpBonus,
-  calculateMpBonus,
-  calculateHealBonus,
-  getExpForLevel
-} from '@/utils/calculations';
+// P1-30 修复：移除 config 和 utils 的越层重新导出，调用方应直接从 @/config/character 或 @/utils/calculations 导入

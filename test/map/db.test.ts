@@ -128,6 +128,13 @@ describe('MapDbService - 地图数据层（fake-indexeddb 真实 CRUD）', () =>
       expect(await mapDbService.getCurrentLocationId('char-1')).toBe('loc-a');
       expect(await mapDbService.getCurrentLocationId('char-2')).toBe('loc-b');
     });
+
+    it('记录存在但 currentLocationId 字段缺失时返回 null（|| 回退）', async () => {
+      // 仅保存 tab，不保存 locationId，记录存在但无 currentLocationId 字段
+      await mapDbService.saveCurrentTab('char-1', 'quests');
+      const result = await mapDbService.getCurrentLocationId('char-1');
+      expect(result).toBeNull();
+    });
   });
 
   describe('saveCurrentTab / getCurrentTab：当前标签页读写', () => {
@@ -157,6 +164,13 @@ describe('MapDbService - 地图数据层（fake-indexeddb 真实 CRUD）', () =>
 
       expect(await mapDbService.getCurrentTab('char-1')).toBe('tab-a');
       expect(await mapDbService.getCurrentTab('char-2')).toBe('tab-b');
+    });
+
+    it('记录存在但 currentTab 字段缺失时返回 null（|| 回退）', async () => {
+      // 仅保存 locationId，不保存 tab，记录存在但无 currentTab 字段
+      await mapDbService.saveCurrentLocationId('char-1', 'forest-1');
+      const result = await mapDbService.getCurrentTab('char-1');
+      expect(result).toBeNull();
     });
   });
 

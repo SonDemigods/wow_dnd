@@ -473,7 +473,13 @@ export type PassiveEffectType =
  * @property {PassiveEffectType} type - 效果类型（决定 applyPassive 的处理分支）
  * @property {'self' | 'enemy'} target - 效果作用目标
  * @property {string} [stat] - 受影响的属性键（stat_modifier/resource_gen 使用，如 'crit_damage_multiplier'、'rage'）
- * @property {number} value - 效果数值（百分比时为小数，如 0.2 表示 20%）
+ * @property {number} value - 效果数值，单位随 type 不同（P2-74 约定）：
+ *   - `resource_gen`：绝对数值（如 value: 30 = 生成 30 怒气，value: 2 = 生成 2 连击点）
+ *   - `heal`：百分比小数。分母随触发时机变化：on_attack 时按造成伤害计算（如 value: 0.05 = 吸血造成伤害的 5%），
+ *     on_turn_start/on_damaged/on_low_hp 时按最大生命计算（如 value: 0.03 = 恢复 3% 最大生命）
+ *   - `stat_modifier`：百分比小数（如 value: 0.1 = 属性提升 10%）
+ *   - `damage_reduction`：百分比小数（如 value: 0.2 = 减伤 20%）
+ *   - `buff`：百分比小数（如 value: 0.08 = 8% 增益）
  * @property {string} [condition] - 触发条件表达式（如 'hp < 0.3'）
  */
 export interface PassiveEffect {

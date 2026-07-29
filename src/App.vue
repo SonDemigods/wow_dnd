@@ -60,13 +60,14 @@
  * @description 管理游戏主界面状态（角色选择/游戏中），协调子组件间的交互，处理角色选择、创建和退出逻辑
  */
 
-import { ref, defineAsyncComponent, h, onMounted, type Ref } from 'vue';
+import { ref, defineAsyncComponent, h, onMounted, onUnmounted, type Ref } from 'vue';
 import ConfirmPopup from './components/common/ConfirmPopup.vue';
 import Toast from './components/common/Toast.vue';
 import { useCharacterStore } from './modules/character';
 import { useBaseStore } from './modules/base';
 import { useToast } from './composables/useToast';
-import { dataInitializer } from '@/modules/data/service';
+import { eventBus, GameEvents } from './modules/bus';
+// P3-127 修复：移除 dataInitializer 导入，数据初始化统一由 main.ts 在 App 挂载前完成
 
 /**
  * 异步组件加载占位（B1/B2：首屏 bundle 优化）
@@ -134,16 +135,13 @@ const baseStore = useBaseStore();
 const toast = useToast();
 
 onMounted(async () => {
-  // 暴露 gameState 到全局，供控制台命令切换视图
-  window.__gameState = gameState;
-
-  // 等待游戏数据初始化完成（main.ts 已启动 initializeData，此处幂等等待）
-  // dataInitializer.initializeData 内部有 isDataInitialized 检查，重复调用安全
-  try {
-    await dataInitializer.initializeData();
-  } catch {
-    // main.ts 已记录错误，此处忽略避免重复提示
+  // P2-70 修复：仅在开发环境暴露 gameState 到全局，供控制台命令切换视图
+  if (import.meta.env.DEV) {
+    window.__gameState = gameState;
   }
+
+  // P3-127 修复：移除对 dataInitializer.initializeData 的重复调用，
+  // 数据初始化已由 main.ts 在 App 挂载前完成，此处直接初始化各模块 Store。
 
   // 先初始化基础数据（阵营、种族、职业），再初始化角色模块
   // 注意：characterStore.initialize 依赖 baseStore 的 factions/races/classes 数据，必须串行
@@ -159,6 +157,21 @@ onMounted(async () => {
   loading.value = false;
 });
 
+// P2-42 修复：监听 INVENTORY_FULL 事件，统一显示背包已满 toast 提示
+// 替代 usePlayerAction 等 Composable 中直接调用 useToast 的副作用
+const onInventoryFull = (payload: { itemName: string; actualAmount: number; expectedAmount: number }) => {
+  toast.show({
+    message: `背包已满，${payload.itemName} 仅获得 ${payload.actualAmount}/${payload.expectedAmount}`,
+    type: 'warning',
+    duration: 3000
+  });
+};
+eventBus.on(GameEvents.INVENTORY_FULL, onInventoryFull);
+
+onUnmounted(() => {
+  eventBus.off(GameEvents.INVENTORY_FULL, onInventoryFull);
+});
+
 /**
  * 选择角色并进入游戏
  * @param {string} characterId - 选中的角色ID
@@ -166,7 +179,16 @@ onMounted(async () => {
 async function handleCharacterSelect(characterId: string) {
   if (import.meta.env.DEV) console.log('选择角色:', characterId);
   transitionName.value = 'view-forward';
-  await characterStore.selectCharacter(characterId);
+  // P1-26 修复：检查 selectCharacter 返回值，失败时提示用户并保持在角色选择界面
+  const success = await characterStore.selectCharacter(characterId);
+  if (!success) {
+    toast.show({
+      message: '角色加载失败，请重试',
+      type: 'danger',
+      duration: 3000
+    });
+    return;
+  }
   gameState.value = 'game';
 }
 

@@ -38,15 +38,26 @@ export const useLogStore = defineStore('log', () => {
    *
    * BIZ-12：加载后若超过 MAX_LOG_ENTRIES，裁剪尾部以符合容量上限。
    * （历史数据可能在上限保护引入前已超量持久化）
+   *
+   * P3-112 修复：截断后需持久化，否则下次加载仍会读到超量数据，截断形同虚设。
+   * 使用 fire-and-forget 异步持久化，失败时仅记录错误日志，不阻断初始化流程。
    */
   async function initialize(characterId: string): Promise<void> {
     currentCharacterId.value = characterId;
     const stored = await adventureLogDbService.getAdventureLog(characterId);
     const entries = stored?.entries || [];
+    let truncated = false;
     if (entries.length > MAX_LOG_ENTRIES) {
       entries.length = MAX_LOG_ENTRIES;
+      truncated = true;
     }
     logs.value = entries;
+    // 仅在确实发生截断时持久化，避免无意义写入
+    if (truncated) {
+      saveToDb().catch(err => {
+        console.error('[LogStore] initialize 截断后持久化失败:', err);
+      });
+    }
   }
 
   /**

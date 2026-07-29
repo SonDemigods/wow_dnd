@@ -8,6 +8,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { TalentAllocation } from './types';
+import { TALENT_POINT_RULES } from './types';
 import {
   canLearnTalent,
   learnTalent,
@@ -50,8 +51,10 @@ export const useTalentStore = defineStore('talent', () => {
   const spentPoints = computed(() => calculateSpentPoints(allocations.value));
 
   /** 总天赋点数（基于等级计算） */
+  // P3-110 修复：与 service.ts 中 calculateAvailablePoints / createInitialTalentState 保持一致，
+  // 使用 TALENT_POINT_RULES.pointsPerLevel 替代硬编码 2，确保规则变更时双方同步
   const totalPoints = computed(() =>
-    Math.floor(currentLevel.value / 2)
+    Math.floor(currentLevel.value / TALENT_POINT_RULES.pointsPerLevel)
   );
 
   /** 剩余可用点数 */
@@ -74,6 +77,7 @@ export const useTalentStore = defineStore('talent', () => {
         damageReduction: 0,
         critBonus: 0,
         resourceBonuses: {},
+        healingMultiplier: 0,
         specialEffects: [],
         skillEnhancements: []
       };

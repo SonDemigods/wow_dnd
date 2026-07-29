@@ -437,7 +437,8 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       p.loadPassives();
 
       p.onCombatStart();
-      expect(generate).toHaveBeenCalledWith(30, 'skill');
+      // P2-43 修复：被动资源生成使用 'passive' 来源，不受 skill 上限限制
+      expect(generate).toHaveBeenCalledWith(30, 'passive');
     });
 
     it('resourceType 缺失时不调用 generate', () => {
@@ -818,6 +819,66 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       characterMock.hp = 100;
       characterMock.maxHp = 100;
       expect(p.getDamageReduction()).toBe(0.3);
+    });
+  });
+
+  // -------------------- 边界分支补充：healAmount=0 与 stat 缺失 --------------------
+
+  describe('边界分支补充：applyHeal 与 applyStatModifier falsy 路径', () => {
+    it('on_attack 吸血计算结果为 0 时不治疗', () => {
+      // 覆盖 usePassiveSkills.ts 第 193 行：if (healAmount > 0) falsy 分支
+      // damage × value 向下取整为 0
+      const passive = makePassive({
+        trigger: 'on_attack',
+        effect: { type: 'heal', target: 'self', value: 0.1 },
+      });
+      getPassivesByClassIdMock.mockReturnValue([passive]);
+
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
+      p.loadPassives();
+
+      // damage=5, value=0.1 → floor(0.5)=0，不治疗
+      p.onAttack(5);
+      expect(characterMock.receiveHeal).not.toHaveBeenCalled();
+    });
+
+    it('on_turn_start 百分比治疗计算结果为 0 时不治疗', () => {
+      // 覆盖 usePassiveSkills.ts 第 193 行：if (healAmount > 0) falsy 分支（else 路径）
+      const passive = makePassive({
+        trigger: 'on_turn_start',
+        effect: { type: 'heal', target: 'self', value: 0.001 },
+      });
+      getPassivesByClassIdMock.mockReturnValue([passive]);
+
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
+      p.loadPassives();
+
+      characterMock.hp = 50;
+      characterMock.maxHp = 50;
+      // maxHp × value = 50 × 0.001 = 0.05 → floor=0，不治疗
+      p.onTurnStart();
+      expect(characterMock.receiveHeal).not.toHaveBeenCalled();
+    });
+
+    it('stat_modifier 被动 stat 缺失时不记录日志', () => {
+      // 覆盖 usePassiveSkills.ts 第 215 行：if (effect.stat) falsy 分支
+      const passive = makePassive({
+        trigger: 'on_combat_start',
+        effect: { type: 'stat_modifier', target: 'self', stat: undefined, value: 0.2 },
+      });
+      getPassivesByClassIdMock.mockReturnValue([passive]);
+
+      const log = makeLogMock();
+      const p = usePassiveSkills(makeStateMock(), log, makeMockCtx());
+      p.loadPassives();
+
+      p.onCombatStart();
+
+      // stat 缺失，不记录 passive_effect 日志
+      const statModCalls = vi.mocked(log.addCombatLog).mock.calls.filter(
+        call => call[0] && typeof call[0] === 'object' && 'eventType' in call[0] && (call[0] as { eventType: string }).eventType === 'passive_effect' && typeof (call[0] as { message: string }).message === 'string' && (call[0] as { message: string }).message.startsWith('属性修正')
+      );
+      expect(statModCalls.length).toBe(0);
     });
   });
 

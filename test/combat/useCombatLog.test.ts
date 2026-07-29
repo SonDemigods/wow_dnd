@@ -299,8 +299,8 @@ describe('useCombatLog - 战斗日志 Composable', () => {
       expect(effectCtx.baseStats.physicalDefense).toBe(15);
       expect(effectCtx.baseStats.magicAttack).toBe(20);
       expect(effectCtx.baseStats.magicDefense).toBe(10);
-      // speed 固定为 0（由 effectRegistry.reduceSum 单独计算速度修正）
-      expect(effectCtx.baseStats.speed).toBe(0);
+      // P1-8 修复：speed 使用 effectiveStats.dex，与 useInitiative 先攻计算一致
+      expect(effectCtx.baseStats.speed).toBe(10);
     });
 
     it('不同 characterMock 实例返回独立上下文', () => {
@@ -346,7 +346,8 @@ describe('useCombatLog - 战斗日志 Composable', () => {
       expect(effectCtx.baseStats.physicalDefense).toBe(25);
       expect(effectCtx.baseStats.magicAttack).toBe(40);
       expect(effectCtx.baseStats.magicDefense).toBe(20);
-      expect(effectCtx.baseStats.speed).toBe(0);
+      // P1-8 修复：speed 使用 enemy.stats.dex，与 useInitiative 先攻计算一致
+      expect(effectCtx.baseStats.speed).toBe(5);
     });
 
     it('敌人属性缺失时回退为 0（|| 0 兜底）', () => {

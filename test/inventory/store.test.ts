@@ -890,4 +890,166 @@ describe('useInventoryStore - 背包 Store', () => {
       expect(mocks.characterStore.changeMp).not.toHaveBeenCalled();
     });
   });
+
+  // -------------------- Actions: persistInventory 持久化失败 --------------------
+  describe('Actions: persistInventory 持久化失败', () => {
+    it('saveInventory 抛错时进入 catch 通过 errorReporter 上报并设置 persistError', async () => {
+      const err = new Error('DB write failed');
+      vi.mocked(inventoryDbService.saveInventory).mockRejectedValueOnce(err);
+      // P2-50 修复：错误现在通过 errorReporter 上报，不再直接 console.error
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { /* 吞掉错误输出 */ });
+
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [],
+        itemTemplates: mapOf(makeItem({ id: 'p1', stackable: true })),
+      });
+
+      // addItem 内部调用 persistInventory（fire-and-forget），saveInventory 抛错被 catch
+      store.addItem('p1', 1);
+
+      // 等待 fire-and-forget 的 Promise 完成
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // P2-50 修复：persistError 暴露错误状态供 UI 监听
+      expect(store.persistError).toBe('DB write failed');
+      // errorReporter 会上报错误（输出到 console.error 作为日志格式）
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+  });
+
+  // -------------------- 补充覆盖：防御性分支 --------------------
+  describe('补充覆盖：防御性分支', () => {
+    it('totalValue 中物品模板缺失时跳过该物品（if (item) FALSE 分支）', () => {
+      // 覆盖 line 91: if (item) 的 FALSE 分支
+      const store = useInventoryStore();
+      store.$patch({
+        inventory: [inv('p1', 2), inv('unknown', 3)],
+        itemTemplates: mapOf(makeItem({ value: 10 })),
+      });
+      // unknown 无模板 → 跳过，只计 p1: 10*2 = 20
+      expect(store.totalValue).toBe(20);
+    });
+
+    it('itemCountByType 中物品模板缺失时跳过该物品（if (item) FALSE 分支）', () => {
+      // 覆盖 line 106: if (item) 的 FALSE 分支
+      const store = useInventoryStore();
+      store.$patch({
+        inventory: [inv('p1', 2), inv('unknown', 5)],
+        itemTemplates: mapOf(makeItem({ type: 'potion' })),
+      });
+      const counts = store.itemCountByType;
+      // unknown 无模板 → 跳过，只计 p1
+      expect(counts.potion).toBe(2);
+    });
+
+    it('removeItem 物品不在背包时 removed=0 不触发持久化（if (removed > 0) FALSE 分支）', () => {
+      // 覆盖 line 308: if (removed > 0) 的 FALSE 分支
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 5)],
+        itemTemplates: mapOf(makeItem()),
+      });
+      const removed = store.removeItem('not_in_inv', 3);
+      expect(removed).toBe(0);
+      expect(store.inventory).toEqual([inv('p1', 5)]);
+    });
+
+    it('useItem 多物品背包中堆叠物品 count-1（ternary FALSE 分支）', async () => {
+      // 覆盖 line 401: i === idx ? ... : item 中 : item 分支
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 2), inv('w1', 1)],
+        itemTemplates: mapOf(makeItem({ consumable: true, effect: { type: 'health_restore', value: 50 } })),
+      });
+      await store.useItem('p1');
+      // p1 count 减 1，w1 不变
+      expect(store.inventory).toEqual([inv('p1', 1), inv('w1', 1)]);
+    });
+
+    it('dropItemByIndex 多物品背包中部分丢弃（ternary FALSE 分支）', () => {
+      // 覆盖 line 463: i === index ? ... : item 中 : item 分支
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 5), inv('w1', 1)],
+        itemTemplates: mapOf(makeItem()),
+      });
+      store.dropItemByIndex(0, 2);
+      // p1 count 减 2，w1 不变
+      expect(store.inventory).toEqual([inv('p1', 3), inv('w1', 1)]);
+    });
+
+    it('useItem effect.type 非 stat 且非已知类型时跳过所有效果分支', async () => {
+      // 覆盖 line 387: else if (type === 'stat') 的 FALSE 分支
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('p1', 1)],
+        itemTemplates: mapOf(makeItem({
+          consumable: true,
+          effect: { type: 'health_restore' as any, value: 0 },
+        })),
+      });
+      // value=0 → health_restore 条件不满足 → 所有 else if 都不匹配
+      const result = await store.useItem('p1');
+      expect(result).toBe(true);
+      expect(mocks.characterStore.receiveHeal).not.toHaveBeenCalled();
+    });
+
+    it('organizeInventory 物品模板缺失时排序回退为 common/misc', () => {
+      // 覆盖 lines 557-561: RARITY_ORDER[itemA?.rarity || 'common'] 和 ITEM_TYPE_NAMES[itemA?.type || 'misc']
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('unknown', 1), inv('p1', 1)],
+        itemTemplates: mapOf(makeItem({ id: 'p1', stackable: true })),
+      });
+      store.organizeInventory();
+      // 不报错即可，unknown 回退为 common/misc
+      expect(store.inventory).toHaveLength(2);
+    });
+
+    it('organizeInventory 所有物品模板均缺失时 itemA 和 itemB 的 rarity/type 均回退', () => {
+      // 覆盖 line 557/560: itemB?.rarity || 'common' 和 itemB?.type || 'misc' 的 itemB 回退分支
+      // 当所有物品模板均缺失时，comparator 任意配对都会触发 itemA 和 itemB 的 || 回退
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('unknown_a', 1), inv('unknown_b', 1)],
+        itemTemplates: new Map(),
+      });
+      store.organizeInventory();
+      expect(store.inventory).toHaveLength(2);
+    });
+
+    it('organizeInventory 无 currentCharacterId 时 persistInventory 早返回不持久化', async () => {
+      // 覆盖 line 163: if (currentCharacterId.value) 的 FALSE 分支
+      const store = useInventoryStore();
+      // currentCharacterId 默认为 null
+      store.$patch({
+        inventory: [inv('a', 1)],
+        itemTemplates: mapOf(makeItem({ id: 'a', stackable: true })),
+      });
+      store.organizeInventory();
+      // flush fire-and-forget persistInventory
+      await new Promise(resolve => setTimeout(resolve, 0));
+      // currentCharacterId 为 null → persistInventory 早返回，不应调用 saveInventory
+      expect(inventoryDbService.saveInventory).not.toHaveBeenCalled();
+    });
+
+    it('loadInventory 无 currentCharacterId 时不执行初始化', async () => {
+      // 覆盖 line 689: if (currentCharacterId.value) 的 FALSE 分支
+      const store = useInventoryStore();
+      // currentCharacterId 默认为 null
+      await store.loadInventory();
+      // 不应调用 DB
+      expect(inventoryDbService.getInventory).not.toHaveBeenCalled();
+    });
+  });
 });

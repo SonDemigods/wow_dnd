@@ -1,7 +1,7 @@
 <template>
   <span class="skill-tags">
     <EffectTag :type="skill.type" />
-    <span class="skill-tag skill-tag-cost">{{ skill.mpCost }} MP</span>
+    <span class="skill-tag skill-tag-cost">{{ skill.mpCost ?? 0 }} MP</span>
     <span v-if="skill.cooldown && skill.cooldown > 0" class="skill-tag skill-tag-cooldown">
       冷却 {{ skill.cooldown }} 回合
     </span>

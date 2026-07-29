@@ -14,6 +14,7 @@ import type {
 import { PET_SUMMON_CONFIG } from './types';
 import { DEFAULT_UNLOCKED_PETS, getPetByType } from './warlockPets';
 import type { Stats } from '@/modules/character/types';
+import { generateId } from '@/utils/db-helpers';
 
 // ============================================================
 // 召唤物实例创建与属性计算
@@ -22,10 +23,12 @@ import type { Stats } from '@/modules/character/types';
 /**
  * 生成召唤物实例的唯一 ID
  *
+ * P3-86 修复：复用统一的 generateId 工具函数，避免手动拼接 Math.random。
+ *
  * @returns 形如 `pet_xxxxxxxx` 的唯一 ID
  */
 export function generatePetInstanceId(): string {
-  return `${PET_SUMMON_CONFIG.instanceIdPrefix}${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  return generateId(PET_SUMMON_CONFIG.instanceIdPrefix.replace(/_$/, ''));
 }
 
 /**

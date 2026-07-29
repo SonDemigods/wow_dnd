@@ -63,8 +63,14 @@ export class CharacterLifecycleService {
       .map(skill => ({ ...skill }));
 
     // 2. 填充技能栏（前 4 个已学技能自动装备）
+    // P3-129 修复：填充前按 unlockLevel 升序、id 升序稳定排序，避免依赖数组原始顺序
+    // 导致不同数据源加载时技能栏填充结果不一致
+    const sortedSkills = [...skills].sort((a, b) => {
+      if (a.unlockLevel !== b.unlockLevel) return a.unlockLevel - b.unlockLevel;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
     const skillBar: SkillBar = { slots: [null, null, null, null] };
-    skills.forEach((skill, index) => {
+    sortedSkills.forEach((skill, index) => {
       if (index < 4) skillBar.slots[index] = skill.id;
     });
 
@@ -100,11 +106,13 @@ export class CharacterLifecycleService {
    *
    * @param characterId - 角色 ID
    *
-   * @remarks 使用 Promise.all 并行执行以提升性能；
-   *          各模块 DbService 已内置 withRetry 重试机制，无需在本层额外处理
+   * @remarks 使用 Promise.allSettled 并行执行，确保所有模块删除操作都完成；
+   *          各模块 DbService 已内置 withRetry 重试机制，无需在本层额外处理。
+   *          P2-69 修复：原 Promise.all 会在任一 reject 时立即返回，其他并行操作继续执行
+   *          但不会被等待，导致部分删除状态。改用 allSettled 等待全部完成并汇总失败结果。
    */
   async cascadeDeleteCharacter(characterId: string): Promise<void> {
-    await Promise.all([
+    const results = await Promise.allSettled([
       skillsDbService.deleteSkillsData(characterId),
       inventoryDbService.deleteInventory(characterId),
       equipmentDbService.deleteEquipment(characterId),
@@ -112,6 +120,14 @@ export class CharacterLifecycleService {
       adventureLogDbService.deleteAdventureLog(characterId),
       questDbService.deleteCharacterQuests(characterId),
     ]);
+    // 汇总失败结果，任一失败则抛出聚合错误（保留全部失败信息便于诊断）
+    const failures = results.filter(
+      (r): r is PromiseRejectedResult => r.status === 'rejected'
+    );
+    if (failures.length > 0) {
+      const reasons = failures.map(f => String(f.reason)).join('; ');
+      throw new Error(`级联删除角色 ${characterId} 部分失败: ${reasons}`);
+    }
   }
 }
 

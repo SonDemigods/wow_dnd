@@ -423,4 +423,107 @@ describe('useMapStore - 地图 Store', () => {
       expect(store.getZones(1)).toEqual([]);
     });
   });
+
+  // -------------------- 防御性分支补充 --------------------
+  describe('防御性分支补充', () => {
+    it('loadLocations：地点缺少 mapX/mapY 坐标时跳过并 console.warn（if FALSE 分支）', async () => {
+      // 覆盖 line 73 的 else 分支与 line 76 的 console.warn
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      vi.mocked(mapDbService.getMapState).mockResolvedValueOnce(null);
+      vi.mocked(mapDbService.getAllLocationData).mockResolvedValueOnce([
+        makeLocation({ id: 'has-coords', mapX: 1, mapY: 2 }),
+        { ...makeLocation({ id: 'no-coords' }), mapX: null as unknown as number, mapY: null as unknown as number },
+      ]);
+      vi.mocked(mapDbService.getCurrentLocationId).mockResolvedValueOnce(null);
+      vi.mocked(getZoneStatus).mockReturnValue('locked');
+
+      const store = useMapStore();
+      await store.initialize('c1');
+
+      // 缺坐标的地点被跳过，只加载有坐标的地点
+      expect(store.getZones(1)).toHaveLength(1);
+      expect(store.getZones(1)[0].id).toBe('has-coords');
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('no-coords'));
+      warnSpy.mockRestore();
+    });
+
+    it('savedState 有 view 但无 unlockedZones/completedZones 时回退为空数组（?? 分支）', async () => {
+      // 覆盖 line 98 (unlockedZones ?? []) 与 line 99 (completedZones ?? []) 的 ?? 分支
+      const saved: MapState = {
+        view: { zoomLevel: 2, panX: 3, panY: 4 },
+        // 不提供 unlockedZones 与 completedZones
+      };
+      vi.mocked(mapDbService.getMapState).mockResolvedValueOnce(saved);
+      vi.mocked(mapDbService.getAllLocationData).mockResolvedValueOnce([]);
+      vi.mocked(mapDbService.getCurrentLocationId).mockResolvedValueOnce(null);
+
+      const store = useMapStore();
+      await store.initialize('c1');
+
+      // ?? 回退为空数组
+      expect(store.state.unlockedZones).toEqual([]);
+      expect(store.state.completedZones).toEqual([]);
+      expect(store.state.view.zoomLevel).toBe(2);
+    });
+
+    it('恢复 currentLocationId 时 getLocationById 返回 undefined → 不设置 currentLocation（if FALSE 分支）', async () => {
+      // 覆盖 line 112 的 if (location) FALSE 分支
+      vi.mocked(mapDbService.getMapState).mockResolvedValueOnce(null);
+      vi.mocked(mapDbService.getAllLocationData).mockResolvedValueOnce([]);
+      vi.mocked(mapDbService.getCurrentLocationId).mockResolvedValueOnce('missing-loc');
+      vi.mocked(getLocationById).mockReturnValueOnce(undefined);
+
+      const store = useMapStore();
+      await store.initialize('c1');
+
+      // savedLocationId 存在但地点未找到，currentLocation 保持 null
+      expect(store.currentLocation).toBeNull();
+      expect(getLocationById).toHaveBeenCalledWith(expect.any(Map), 'missing-loc');
+    });
+
+    it('safeSaveState：saveMapState 抛错时 catch 记录错误不影响调用方', async () => {
+      // 覆盖 line 63 的 console.error catch 分支
+      vi.mocked(mapDbService.getMapState).mockResolvedValueOnce(null);
+      vi.mocked(mapDbService.getAllLocationData).mockResolvedValueOnce([]);
+      vi.mocked(mapDbService.getCurrentLocationId).mockResolvedValueOnce(null);
+      vi.mocked(mapDbService.saveMapState).mockRejectedValueOnce(new Error('db write fail'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const store = useMapStore();
+      await store.initialize('c1');
+      store.zoomTo(3); // 触发 safeSaveState（fire-and-forget）
+
+      // 等待微任务执行完 catch 回调
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // catch 记录错误
+      expect(errorSpy).toHaveBeenCalledWith('[map] 保存地图状态失败:', expect.any(Error));
+      errorSpy.mockRestore();
+    });
+
+    it('enterZone：saveCurrentLocationId 抛错时 catch 记录错误不影响切换', async () => {
+      // 覆盖 line 175 的 console.error catch 分支
+      const loc = makeLocation({ id: 'zone-a' });
+      vi.mocked(getLocationById).mockReturnValueOnce(loc);
+      vi.mocked(mapDbService.saveCurrentLocationId).mockRejectedValueOnce(new Error('write fail'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const store = useMapStore();
+      // 先 initialize 设置 currentCharacterId
+      vi.mocked(mapDbService.getMapState).mockResolvedValueOnce(null);
+      vi.mocked(mapDbService.getAllLocationData).mockResolvedValueOnce([]);
+      vi.mocked(mapDbService.getCurrentLocationId).mockResolvedValueOnce(null);
+      await store.initialize('c1');
+
+      store.enterZone('zone-a'); // 触发 fire-and-forget 持久化
+
+      // 等待微任务执行完 catch 回调
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // 切换仍成功，catch 记录错误
+      expect(store.currentLocation).toEqual(loc);
+      expect(errorSpy).toHaveBeenCalledWith('[map] 保存当前区域失败:', expect.any(Error));
+      errorSpy.mockRestore();
+    });
+  });
 });

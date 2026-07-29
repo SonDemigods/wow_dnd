@@ -5,6 +5,7 @@
  */
 
 import { animate, createTimeline } from 'animejs';
+import type { JSAnimation, Timeline } from 'animejs';
 import { CombatColors } from '@/config/combat-colors';
 import type { FloatingType, ParticleConfig } from './types';
 
@@ -21,8 +22,8 @@ function scaleDuration(duration: number, speed: number): number {
 // ==================== 震动效果 ====================
 
 /** 普通攻击震动 */
-export function animateShake(target: HTMLElement, speed: number = 1): void {
-  animate(target, {
+export function animateShake(target: HTMLElement, speed: number = 1): JSAnimation {
+  return animate(target, {
     translateX: [
       { to: -8, duration: scaleDuration(120, speed) },
       { to: 8, duration: scaleDuration(120, speed) },
@@ -36,8 +37,8 @@ export function animateShake(target: HTMLElement, speed: number = 1): void {
 }
 
 /** 暴击震动（更强、更持久） */
-export function animateCritShake(target: HTMLElement, speed: number = 1): void {
-  animate(target, {
+export function animateCritShake(target: HTMLElement, speed: number = 1): JSAnimation {
+  return animate(target, {
     translateX: [
       { to: -14, duration: scaleDuration(90, speed) },
       { to: 14, duration: scaleDuration(180, speed) },
@@ -62,8 +63,8 @@ export function animateCritShake(target: HTMLElement, speed: number = 1): void {
 // ==================== 受击方身体特效（T1 新增） ====================
 
 /** 法术伤害：柔和缩放脉冲 */
-export function animateMagicPulse(target: HTMLElement, speed: number = 1): void {
-  animate(target, {
+export function animateMagicPulse(target: HTMLElement, speed: number = 1): JSAnimation {
+  return animate(target, {
     scale: [
       { to: 0.92, duration: scaleDuration(250, speed) },
       { to: 1.02, duration: scaleDuration(250, speed) },
@@ -79,8 +80,8 @@ export function animateMagicPulse(target: HTMLElement, speed: number = 1): void 
 }
 
 /** 光晕扩散（HP/MP 共用） */
-export function animateGlow(target: HTMLElement, baseColor: string, speed: number = 1): void {
-  animate(target, {
+export function animateGlow(target: HTMLElement, baseColor: string, speed: number = 1): JSAnimation {
+  return animate(target, {
     boxShadow: [
       { to: `0 0 8px ${baseColor}, 0 0 24px ${baseColor}88`, duration: scaleDuration(400, speed) },
       { to: '0 0 0px transparent', duration: scaleDuration(600, speed) },
@@ -91,16 +92,16 @@ export function animateGlow(target: HTMLElement, baseColor: string, speed: numbe
 }
 
 /** 生命恢复：绿色光晕从内向外扩散 */
-export const animateHealGlow = (target: HTMLElement, speed?: number) =>
+export const animateHealGlow = (target: HTMLElement, speed?: number): JSAnimation =>
   animateGlow(target, CombatColors.healHp, speed);
 
 /** 法力恢复：蓝色光晕从内向外扩散 */
-export const animateManaGlow = (target: HTMLElement, speed?: number) =>
+export const animateManaGlow = (target: HTMLElement, speed?: number): JSAnimation =>
   animateGlow(target, CombatColors.healMp, speed);
 
 /** 暴击：金色边框爆闪 */
-export function animateCritBorderFlash(target: HTMLElement, speed: number = 1): void {
-  animate(target, {
+export function animateCritBorderFlash(target: HTMLElement, speed: number = 1): JSAnimation {
+  return animate(target, {
     borderColor: [
       { to: CombatColors.damageCrit, duration: scaleDuration(150, speed) },
       { to: CombatColors.damageCrit, duration: scaleDuration(200, speed) },
@@ -121,8 +122,8 @@ export function animateCritBorderFlash(target: HTMLElement, speed: number = 1): 
 // ==================== 闪避闪烁 ====================
 
 /** 闪避闪烁效果 */
-export function animateDodgeBlink(target: HTMLElement, speed: number = 1): void {
-  animate(target, {
+export function animateDodgeBlink(target: HTMLElement, speed: number = 1): JSAnimation {
+  return animate(target, {
     opacity: [
       { to: 0.2, duration: scaleDuration(200, speed) },
       { to: 1, duration: scaleDuration(200, speed) },
@@ -158,7 +159,7 @@ export function animateFloating(
   target: HTMLElement,
   type: FloatingType,
   speed: number = 1
-): void {
+): JSAnimation {
   const p = FLOATING_PARAMS[type];
   const isCrit = type === 'crit';
 
@@ -214,7 +215,7 @@ export function animateFloating(
     },
   };
 
-  animate(target, keyframes);
+  return animate(target, keyframes);
 }
 
 // ==================== 屏幕闪白 ====================
@@ -224,9 +225,9 @@ export function animateScreenFlash(
   target: HTMLElement,
   type: 'crit' | 'dodge',
   speed: number = 1
-): void {
+): JSAnimation {
   const isCrit = type === 'crit';
-  animate(target, {
+  return animate(target, {
     backgroundColor: isCrit
       ? [
           { to: CombatColors.flashCrit, duration: scaleDuration(180, speed) },
@@ -248,8 +249,8 @@ export function animateScreenFlash(
 // ==================== VS 分隔闪动 ====================
 
 /** VS 分隔符闪动 */
-export function animateVsFlash(target: HTMLElement, speed: number = 1): void {
-  animate(target, {
+export function animateVsFlash(target: HTMLElement, speed: number = 1): JSAnimation {
+  return animate(target, {
     scale: [
       { to: 1.4, duration: scaleDuration(225, speed) },
       { to: 1, duration: scaleDuration(225, speed) },
@@ -271,15 +272,17 @@ export function animateVsFlash(target: HTMLElement, speed: number = 1): void {
  * @param originRect 爆发起始位置（相对 container 的坐标）
  * @param config 粒子配置
  * @param speed 速度倍率
+ * @returns 所有粒子动画实例数组，供调用方在组件卸载时统一 pause
  */
 export function createParticleBurst(
   container: HTMLElement,
   originRect: { left: number; top: number; width: number; height: number },
   config: ParticleConfig,
   speed: number = 1
-): void {
+): JSAnimation[] {
   const centerX = originRect.left + originRect.width / 2;
   const centerY = originRect.top + originRect.height / 2;
+  const animations: JSAnimation[] = [];
 
   for (let i = 0; i < config.count; i++) {
     const particle = document.createElement('span');
@@ -345,22 +348,35 @@ export function createParticleBurst(
     // 恢复类粒子偏上
     const biasY = (config.shape === 'star' || config.shape === 'spark') ? dist * 0.5 : 0;
 
-    animate(particle, {
+    const anim = animate(particle, {
       translateX: [0, targetX - centerX],
       translateY: [0, targetY - centerY - biasY],
       scale: config.shape === 'slash' ? [0, 1, 0.3] : [1, 0],
       opacity: [1, 0],
-      rotate: config.shape === 'slash' ? `${(Math.random() - 0.5) * 360}deg` : undefined,
+      ...(config.shape === 'slash' ? { rotate: `${(Math.random() - 0.5) * 360}deg` } : {}),
       duration: scaleDuration(config.duration, speed),
       ease: 'easeOutExpo',
       onComplete: () => {
         particle.remove();
       },
     });
+    animations.push(anim);
   }
+  return animations;
 }
 
 // ==================== Boss 出场演出 ====================
+
+/**
+ * Boss 出场演出动画控制器（P2-60 修复）
+ *
+ * 提供取消方法，供调用方在组件卸载时清理未完成的自动关闭定时器，
+ * 避免组件销毁后定时器回调仍执行导致访问已分离 DOM。
+ */
+export interface BossIntroAnimationController {
+  /** 取消自动关闭定时器并暂停时间线 */
+  cancel: () => void;
+}
 
 /** Boss 出场演出（多步骤时间线） */
 export function animateBossIntro(
@@ -370,7 +386,7 @@ export function animateBossIntro(
   lines: HTMLElement[],
   duration: number,
   speed: number = 1
-): void {
+): BossIntroAnimationController {
   const tl = createTimeline({ defaults: { ease: 'easeOutCubic' } });
 
   // 遮罩淡入
@@ -402,16 +418,31 @@ export function animateBossIntro(
     }, `-=${scaleDuration(i === 0 ? 200 : 100, speed)}`);
   }
 
-  // 自动关闭
+  // 自动关闭（P2-60 修复：返回控制器供调用方取消）
   const minDuration = scaleDuration(1000 + lines.length * 900, speed);
   const actualDuration = Math.max(scaleDuration(duration, speed), minDuration);
-  setTimeout(() => {
+  let closeTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+    closeTimer = null;
     animate(overlay, {
       opacity: 0,
       duration: scaleDuration(300, speed),
       ease: 'easeInQuad',
     });
   }, actualDuration);
+
+  return {
+    cancel: () => {
+      if (closeTimer !== null) {
+        clearTimeout(closeTimer);
+        closeTimer = null;
+      }
+      try {
+        tl.pause();
+      } catch {
+        // 时间线已销毁或不可暂停时忽略
+      }
+    },
+  };
 }
 
 // ==================== Boss 阶段转换 ====================
@@ -421,7 +452,7 @@ export function animatePhaseTransition(
   backdrop: HTMLElement,
   content: HTMLElement,
   speed: number = 1
-): void {
+): Timeline {
   const tl = createTimeline({ defaults: { ease: 'easeOutCubic' } });
 
   // 遮罩闪现
@@ -448,6 +479,8 @@ export function animatePhaseTransition(
     opacity: 0,
     duration: scaleDuration(500, speed),
   });
+
+  return tl;
 }
 
 // ==================== 结果弹窗 ====================
@@ -459,7 +492,7 @@ export function animateResultPopup(
   resultText: HTMLElement,
   rewards: HTMLElement[],
   speed: number = 1
-): void {
+): Timeline {
   const tl = createTimeline({ defaults: { ease: 'easeOutElastic(1, .5)' } });
 
   // 弹窗弹入
@@ -488,8 +521,10 @@ export function animateResultPopup(
       translateY: [10, 0],
       opacity: [0, 1],
       duration: scaleDuration(400, speed),
-    }, `-=${scaleDuration(i === 0 ? 200 : 200, speed)}`);
+    }, `-=${scaleDuration(i === 0 ? 200 : 100, speed)}`);
   }
+
+  return tl;
 }
 
 

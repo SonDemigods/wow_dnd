@@ -94,6 +94,15 @@ describe('executeBossMechanic', () => {
       executeBossMechanic(boss, makeMechanic({ type: 'enrage' }), 1);
       expect(boss.physicalAttack).toBe(15); // round(10 * 1.5)
     });
+
+    it('已狂暴时再次触发不叠加（enraged 标记防御）', () => {
+      const boss = makeBoss({ physicalAttack: 100 });
+      executeBossMechanic(boss, makeMechanic({ type: 'enrage' }), 1);
+      expect(boss.physicalAttack).toBe(150);
+      // 第二次触发：enraged 已为 true，直接 return，不叠加
+      executeBossMechanic(boss, makeMechanic({ type: 'enrage' }), 2);
+      expect(boss.physicalAttack).toBe(150);
+    });
   });
 
   describe('damage_shield 伤害护盾', () => {
@@ -261,6 +270,15 @@ describe('executeBossMechanic', () => {
     it('steal_buff 触发并返回 true', () => {
       const boss = makeBoss();
       expect(executeBossMechanic(boss, makeMechanic({ type: 'steal_buff' }), 1)).toBe(true);
+    });
+  });
+
+  describe('未知机制类型', () => {
+    it('未注册的机制类型返回 false 且不更新 lastTriggerTurn', () => {
+      const boss = makeBoss();
+      const mechanic = makeMechanic({ type: 'unknown_mechanic' as never, intervalTurns: 1 });
+      expect(executeBossMechanic(boss, mechanic, 1)).toBe(false);
+      expect(mechanic.lastTriggerTurn).toBeUndefined();
     });
   });
 });

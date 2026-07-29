@@ -53,7 +53,8 @@ export function useCombatLog(state: ReturnType<typeof useCombatState>, ctx: ICom
         physicalDefense: ctx.character.attributes.physicalDefense,
         magicAttack: ctx.character.attributes.magicAttack,
         magicDefense: ctx.character.attributes.magicDefense,
-        speed: 0,
+        // P1-8 修复：使用实际速度值，与 useInitiative 中先攻计算速度来源一致
+        speed: ctx.character.effectiveStats.dex || 0,
       },
       currentHp: ctx.character.hp,
       maxHp: ctx.character.maxHp,
@@ -69,11 +70,13 @@ export function useCombatLog(state: ReturnType<typeof useCombatState>, ctx: ICom
       ownerId: enemy.id,
       ownerType: 'enemy',
       baseStats: {
-        physicalAttack: enemy.physicalAttack || 0,
-        physicalDefense: enemy.physicalDefense || 0,
-        magicAttack: enemy.magicAttack || 0,
-        magicDefense: enemy.magicDefense || 0,
-        speed: 0,
+        // P3-88 修复：使用 ?? 替代 ||，避免 0 值被吞掉
+        physicalAttack: enemy.physicalAttack ?? 0,
+        physicalDefense: enemy.physicalDefense ?? 0,
+        magicAttack: enemy.magicAttack ?? 0,
+        magicDefense: enemy.magicDefense ?? 0,
+        // P1-8 修复：使用实际速度值，与 useInitiative 中先攻计算速度来源一致
+        speed: enemy.stats?.dex ?? 0,
       },
       currentHp: enemy.hp,
       maxHp: enemy.maxHp,

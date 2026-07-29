@@ -101,7 +101,7 @@ export interface SkillBuffEffect {
  * @property {string} name - 技能显示名称
  * @property {string} icon - 技能图标（Iconify 格式，如 `game-icons:sword-brandish`）
  * @property {string} description - 技能描述文本
- * @property {number} mpCost - 法力消耗值
+ * @property {number} [mpCost] - 法力消耗值（P2-76：改为可选，资源型技能可不配置；消费方使用 `?? 0` 处理）
  * @property {SkillType} type - 技能类型（决定伤害计算公式和 UI 展示）
  * @property {SkillEffect} effect - 技能直接效果（伤害/恢复）
  * @property {number} unlockLevel - 解锁所需等级（角色等级 >= 此值才可使用）
@@ -120,7 +120,7 @@ export interface Skill {
   name: string;
   icon: string;
   description: string;
-  mpCost: number;
+  mpCost?: number;
   type: SkillType;
   effect: SkillEffect;
   unlockLevel: number;
@@ -266,7 +266,7 @@ export interface SkillTemplateStorage {
   name: string;
   icon: string;
   description: string;
-  mpCost: number;
+  mpCost?: number;
   type: SkillType;
   effect: { type: SkillType; value: number; coefficient?: number };
   unlockLevel: number;

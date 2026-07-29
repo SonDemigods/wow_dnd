@@ -5,8 +5,8 @@
  * @module combat/pets
  */
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
-import type { PetInstance, PetSystemState, WarlockPet, WarlockPetType } from './types';
+import { computed, ref, shallowRef } from 'vue';
+import type { PetInstance, PetSkill, PetSystemState, WarlockPet, WarlockPetType } from './types';
 import {
   canDismissPet,
   canSummonPet,
@@ -44,7 +44,8 @@ export const usePetStore = defineStore('warlock-pets', () => {
   /** 当前术士等级（用于创建召唤物实例） */
   const currentLevel = ref<number>(1);
   /** 战斗日志回调（由战斗 Store 注入） */
-  const logCallback = ref<((message: string) => void) | null>(null);
+  // P1-12 修复：函数引用不需要深度响应式，改用 shallowRef 避免不必要的响应式追踪
+  const logCallback = shallowRef<((message: string) => void) | null>(null);
 
   // ============================================================
   // 计算属性
@@ -223,7 +224,7 @@ export const usePetStore = defineStore('warlock-pets', () => {
    *
    * @returns 选择的技能（包含 id、name、damageMultiplier 等）
    */
-  function petTakeAction() {
+  function petTakeAction(): PetSkill | null {
     if (state.value.activePet === null) return null;
     const pet = state.value.activePet;
     const skill = selectPetAction(pet);

@@ -828,4 +828,112 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
       expect(ctx.character.takeDamage).toHaveBeenCalledWith(50);
     });
   });
+
+  // -------------------- 边界分支补充：技能名称回退 --------------------
+
+  describe('边界分支补充：技能名称缺失时回退为 skillId', () => {
+    it('skill 决策 isHeal 路径：技能名称缺失时日志 skillName 回退为 skillId', () => {
+      // 覆盖 useEnemyAction.ts 第 342 行：healSkillData?.name || decision.skillId falsy 分支
+      const mathSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      // availableSkills 中技能缺少 name 字段
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'sk1' } as never]);
+      ctx.enemy.useSkill.mockReturnValue({ success: true, damage: -30, isHeal: true });
+      ctx.enemy.getEnemyById.mockReturnValue(makeEnemy({ id: 'e1', name: '法师' }));
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '法师', aiStrategy: 'aggressive' });
+      action.enemyAction(enemy);
+
+      // 日志 skillName 回退为 decision.skillId
+      const healLog = log.addCombatLog.mock.calls[0][0] as { skillName: string };
+      expect(healLog.skillName).toBe('sk1');
+      mathSpy.mockRestore();
+    });
+
+    it('skill 决策 isBuff 路径：技能名称缺失时 skillName 回退为 skillId', () => {
+      // 覆盖 useEnemyAction.ts 第 366 行：skillData?.name || decision.skillId falsy 分支
+      const mathSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      const state = makeStateMock();
+      state.effectRegistry = { get: vi.fn(() => undefined) };
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'sk1' } as never]);
+      ctx.enemy.useSkill.mockReturnValue({
+        success: true, damage: 0, isHeal: false,
+        isBuff: true, buffs: [{ type: 'attack_down', value: 5, turns: 2 }],
+      });
+      ctx.skill.getSkill.mockReturnValue({ type: 'debuff' } as never);
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '巫师', aiStrategy: 'aggressive' });
+      const result = action.enemyAction(enemy);
+
+      // 验证日志 message 中包含 skillId（回退）
+      const buffLog = log.addCombatLog.mock.calls[0][0] as { message: string };
+      expect(buffLog.message).toContain('sk1');
+      mathSpy.mockRestore();
+    });
+
+    it('skill 决策攻击路径：技能名称缺失时 skillName 回退为 skillId', () => {
+      // 覆盖 useEnemyAction.ts 第 449 行：skillData?.name || decision.skillId falsy 分支
+      const mathSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      const state = makeStateMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'sk1' } as never]);
+      ctx.enemy.useSkill.mockReturnValue({ success: true, damage: 25, isHeal: false });
+      ctx.skill.getSkill.mockReturnValue({ type: 'magic_damage' } as never);
+      const action = useEnemyAction(state, makeLogMock(), ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '法师', aiStrategy: 'aggressive' });
+      const result = action.enemyAction(enemy);
+
+      // 技能攻击返回成功，skillName 回退为 skillId
+      expect(result.success).toBe(true);
+      expect(result.type).toBe('skill');
+      mathSpy.mockRestore();
+    });
+
+    it('heal 决策路径：技能名称缺失时日志 skillName 回退为 skillId', () => {
+      // 覆盖 useEnemyAction.ts 第 466 行：healSkillData?.name || decision.skillId falsy 分支
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      // 治疗技能缺少 name 字段
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'heal1', isHeal: true } as never]);
+      ctx.enemy.useSkill.mockReturnValue({ success: true, damage: -30, isHeal: true });
+      ctx.enemy.getEnemyById.mockReturnValue(makeEnemy({ id: 'e1', name: '牧师' }));
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '牧师', aiStrategy: 'defensive', hp: 20, maxHp: 100 });
+      action.enemyAction(enemy);
+
+      // 日志 skillName 回退为 decision.skillId
+      const healLog = log.addCombatLog.mock.calls[0][0] as { skillName: string };
+      expect(healLog.skillName).toBe('heal1');
+    });
+  });
+
+  // -------------------- 边界分支补充：护盾吸收 + 技能组合 --------------------
+
+  describe('边界分支补充：护盾吸收与技能同时存在', () => {
+    it('shieldAbsorbed>0 且传入 skill 时日志包含技能名与护盾吸收', () => {
+      // 覆盖 useEnemyAction.ts 第 132 行：shieldAbsorbed>0 且 skill truthy 的组合分支
+      pipeResultMock.absorbed = 5;
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '黑龙' });
+      action.applyEnemyDamageToPlayer(enemy, 30, { id: 'sk1', name: '火焰冲击' });
+
+      const logCall = log.addCombatLog.mock.calls[0][0] as { message: string };
+      // 日志应同时包含技能名和护盾吸收
+      expect(logCall.message).toContain('火焰冲击');
+      expect(logCall.message).toContain('护盾吸收');
+    });
+  });
 });

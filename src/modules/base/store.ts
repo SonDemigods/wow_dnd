@@ -54,8 +54,10 @@ function createCrudActions<T extends { id: string }, TCreateData = Omit<T, 'id'>
   async function create(data: TCreateData): Promise<boolean> {
     try {
       const id = await createFn(data);
-      eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: entityType, action: 'create', id });
+      // P2-65 修复：先 loadFn 刷新本 store 状态，再 emit 事件通知其他模块，
+      // 确保其他模块的监听器回调中查询 base store 时能看到最新数据
       await loadFn();
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: entityType, action: 'create', id });
       return true;
     } catch (error) {
       errorHandler.report(error, `创建${ENTITY_LABEL[entityType]}失败`);
@@ -66,8 +68,9 @@ function createCrudActions<T extends { id: string }, TCreateData = Omit<T, 'id'>
   async function update(id: string, data: TCreateData): Promise<boolean> {
     try {
       await updateFn(id, data);
-      eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: entityType, action: 'update', id });
+      // P2-65 修复：先 loadFn 再 emit，避免其他模块读到过期状态
       await loadFn();
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: entityType, action: 'update', id });
       return true;
     } catch (error) {
       errorHandler.report(error, `更新${ENTITY_LABEL[entityType]}失败`);
@@ -78,11 +81,12 @@ function createCrudActions<T extends { id: string }, TCreateData = Omit<T, 'id'>
   async function remove(id: string): Promise<boolean> {
     try {
       await deleteFn(id);
-      eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: entityType, action: 'delete', id });
+      // P2-65 修复：先 loadFn 再 emit，避免其他模块读到过期状态
       await loadFn();
       if (selectedIdRef.value === id) {
         selectedIdRef.value = null;
       }
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: entityType, action: 'delete', id });
       return true;
     } catch (error) {
       errorHandler.report(error, `删除${ENTITY_LABEL[entityType]}失败`);
@@ -320,14 +324,56 @@ export const useBaseStore = defineStore('base', () => {
   }
 
   /**
+   * GAME_DATA_UPDATED 事件监听器引用（dispose 时注销）
+   *
+   * P2-64 修复：base store 需监听外部模块（data/admin）触发的 GAME_DATA_UPDATED
+   * 事件，在配置数据变更后自动刷新本地缓存，避免读到过期数据。
+   */
+  let dataUpdatedHandler: ((payload: { type: string; action: string; id: string }) => void) | null = null;
+
+  /**
    * 初始化
-   * 直接调用 loadAllData 加载基础数据，并通过 EventBus 通知其他模块已完成初始化。
-   * 注意：不再自监听 GAME_DATA_UPDATED，CRUD 操作后直接调用对应 load 方法刷新
+   *
+   * 执行流程：
+   * 1. 重置选中状态（P2-62 修复：防止角色切换时选中状态泄漏）
+   * 2. 加载基础数据
+   * 3. 注册 GAME_DATA_UPDATED 监听器（P2-64 修复：响应外部模块的数据变更）
+   * 4. 通知其他模块基础数据已就绪
    */
   async function initialize(): Promise<void> {
+    // P2-62 修复：初始化时重置选中状态，防止角色切换时 faction/race/class 选中泄漏
+    resetSelection();
     await loadAllData();
+    // P2-64 修复：监听外部模块（data/admin）的 GAME_DATA_UPDATED 事件，
+    // 过滤出 base 相关类型后重新加载本地缓存
+    if (dataUpdatedHandler === null) {
+      dataUpdatedHandler = (payload) => {
+        // 仅响应 base 类型或通配符的更新通知
+        // 忽略 'bulk' action：这是 initialize 自身 emit 的，避免循环刷新
+        if (
+          (payload.type === 'base' || payload.type === '*' || payload.id === '*') &&
+          payload.action !== 'bulk'
+        ) {
+          loadAllData().catch(err => console.error('[BaseStore] 响应 GAME_DATA_UPDATED 刷新失败:', err));
+        }
+      };
+      eventBus.on(GameEvents.GAME_DATA_UPDATED, dataUpdatedHandler);
+    }
     // 通知其他模块基础数据已就绪
     eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: 'base', action: 'bulk', id: '*' });
+  }
+
+  /**
+   * 释放 Store 持有的资源
+   *
+   * P2-64 修复：注销 GAME_DATA_UPDATED 监听器，避免内存泄漏。
+   * 角色切换或应用卸载时由 GameBootstrap.dispose 调用。
+   */
+  function dispose(): void {
+    if (dataUpdatedHandler !== null) {
+      eventBus.off(GameEvents.GAME_DATA_UPDATED, dataUpdatedHandler);
+      dataUpdatedHandler = null;
+    }
   }
 
   return {
@@ -379,6 +425,8 @@ export const useBaseStore = defineStore('base', () => {
     selectRace,
     selectClass,
     resetSelection,
-    initialize
+    initialize,
+    // P2-64：暴露 dispose 方法供 GameBootstrap 调用
+    dispose
   };
 });

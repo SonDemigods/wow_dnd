@@ -336,6 +336,27 @@ describe('useCombatState - 战斗状态 Composable', () => {
       expect(spy).not.toHaveBeenCalled();
       spy.mockRestore();
     });
+
+    it('reset 清理 bossIntroTimerId（调用 clearTimeout）', () => {
+      // 覆盖 useCombatState.ts 第 131-134 行：bossIntroTimerId !== null 时清理
+      const s = useCombatState(createCombatContext());
+      s.bossIntroTimerId.value = 67890 as never;
+      const spy = vi.spyOn(globalThis, 'clearTimeout');
+      s.reset();
+      expect(s.bossIntroTimerId.value).toBeNull();
+      expect(spy).toHaveBeenCalledWith(67890);
+      spy.mockRestore();
+    });
+
+    it('reset 时 bossIntroTimerId 为 null 不调用 clearTimeout', () => {
+      // 覆盖 useCombatState.ts 第 131 行：bossIntroTimerId 为 null 时跳过清理分支
+      const s = useCombatState(createCombatContext());
+      const spy = vi.spyOn(globalThis, 'clearTimeout');
+      s.reset();
+      // bossIntroTimerId 为 null，不应因 bossIntroTimerId 调用 clearTimeout
+      expect(s.bossIntroTimerId.value).toBeNull();
+      spy.mockRestore();
+    });
   });
 
   describe('cleanup：删除死亡敌人 + reset', () => {

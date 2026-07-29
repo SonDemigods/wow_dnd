@@ -114,6 +114,11 @@ export enum GameEvents {
 
   // ==================== 物品 ====================
   ITEM_DROPPED = 'item_dropped',
+  /**
+   * 背包已满提示（P2-42：替代 Store/Composable 中直接调用 useToast 的副作用）
+   * 由战斗掉落、商店购买等场景发射，UI 层监听后显示 toast 提示
+   */
+  INVENTORY_FULL = 'inventory_full',
 
   // ==================== 战斗补充 ====================
   COMBAT_SKIP_TURN = 'combat_skip_turn',
@@ -152,7 +157,8 @@ export interface GameEventPayloadMap {
   [GameEvents.CHARACTER_DEATH]: { cause: string };
   [GameEvents.CHARACTER_RESURRECTED]: { newHp: number; newMp: number };
   [GameEvents.COMBAT_START]: { enemy: EnemyInstance };
-  [GameEvents.COMBAT_END]: { result: string; enemy: EnemyInstance | null; expGained: number; goldGained?: number };
+  // P3-89 修复：补充 enemyCount/enemyNames 摘要字段，enemy 保留首敌引用以向后兼容
+  [GameEvents.COMBAT_END]: { result: string; enemy: EnemyInstance | null; enemyCount: number; enemyNames: string[]; expGained: number; goldGained?: number };
   [GameEvents.COMBAT_PLAYER_TURN]: null;
   [GameEvents.COMBAT_ENEMY_TURN]: null;
   [GameEvents.COMBAT_DEAL_DAMAGE]: { amount: number; damageType: 'physical' | 'magic'; targetName: string; actorType?: 'player' | 'enemy' };
@@ -184,6 +190,13 @@ export interface GameEventPayloadMap {
   [GameEvents.CONFIRM_CONFIRMED]: { action: string };
   [GameEvents.CONFIRM_CANCELED]: { action: string };
   [GameEvents.ITEM_DROPPED]: { itemId: string };
+  /**
+   * 背包已满提示（P2-42）
+   * - itemName：物品名称（用于 toast 显示）
+   * - actualAmount：实际获得数量
+   * - expectedAmount：预期获得数量
+   */
+  [GameEvents.INVENTORY_FULL]: { itemName: string; actualAmount: number; expectedAmount: number };
   [GameEvents.COMBAT_SKIP_TURN]: null;
   [GameEvents.COMBAT_BOSS_INTRO]: { enemyId: string; enemyName: string; icon: string; effect: string; lines: string[]; duration: number };
   [GameEvents.COMBAT_BOSS_PHASE]: { enemyId: string; enemyName: string; phaseName: string; effect: string };

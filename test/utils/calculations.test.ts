@@ -194,4 +194,8 @@ describe('getExpForLevel 等级经验查询', () => {
   it('刚好 MAX_LEVEL 返回对应值', () => {
     expect(getExpForLevel(MAX_LEVEL)).toBe(LEVEL_EXP_REQUIREMENTS[MAX_LEVEL]);
   });
+
+  it('非整数等级（表中不存在）触发 || 0 回退返回 0', () => {
+    expect(getExpForLevel(2.5)).toBe(0);
+  });
 });

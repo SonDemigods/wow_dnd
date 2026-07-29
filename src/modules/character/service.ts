@@ -267,7 +267,8 @@ export function computeResurrection(character: Character): Character {
   return {
     ...character,
     exp: 0,
-    hp: Math.floor(character.maxHp * 0.5),
-    mana: Math.floor(character.maxMana * 0.5)
+    // P1-23 修复：确保复活后至少 1 HP，避免 maxHp 极低时复活为 0 HP 立即死亡形成无限循环
+    hp: Math.max(1, Math.floor(character.maxHp * 0.5)),
+    mana: Math.max(1, Math.floor(character.maxMana * 0.5))
   };
 }

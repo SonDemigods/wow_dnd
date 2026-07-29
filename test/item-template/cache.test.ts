@@ -198,6 +198,23 @@ describe('UnifiedItemTemplateCache 统一物品模板缓存', () => {
       expect(getAllItemsMock).toHaveBeenCalledTimes(1);
       expect(getAllEquipmentMock).toHaveBeenCalledTimes(1);
     });
+
+    it('已加载时不再触发 load，直接从缓存返回（跳过 if (!loaded) 分支）', async () => {
+      // Arrange：先加载一次使 loaded=true
+      getAllItemsMock.mockResolvedValue([makeItem('p1')]);
+      getAllEquipmentMock.mockResolvedValue([]);
+      await unifiedItemTemplateCache.load();
+      getAllItemsMock.mockClear();
+      getAllEquipmentMock.mockClear();
+
+      // Act：再次调用 getById，loaded=true，不触发 load
+      const result = await unifiedItemTemplateCache.getById('p1');
+
+      // Assert
+      expect(result).toEqual(makeItem('p1'));
+      expect(getAllItemsMock).not.toHaveBeenCalled();
+      expect(getAllEquipmentMock).not.toHaveBeenCalled();
+    });
   });
 
   // ==================== getAll ====================
@@ -238,6 +255,23 @@ describe('UnifiedItemTemplateCache 统一物品模板缓存', () => {
       // 实际上 getAll 的实现是 await this.load()，失败会抛出
       // 这里测试 load 失败后 getAll 的行为
       await expect(unifiedItemTemplateCache.getAll()).rejects.toThrow('fail');
+    });
+
+    it('mergedTemplates 为 null 时 getAll 返回空数组兜底（?? [] 分支）', async () => {
+      // Arrange：直接操作内部状态，构造 loaded=true 但 mergedTemplates=null 的防御性场景
+      // 这种状态在正常流程中不会出现，但 ?? [] 是防御性兜底
+      const cacheInternal = unifiedItemTemplateCache as unknown as {
+        loaded: boolean;
+        mergedTemplates: Item[] | null;
+      };
+      cacheInternal.loaded = true;
+      cacheInternal.mergedTemplates = null;
+
+      // Act
+      const result = await unifiedItemTemplateCache.getAll();
+
+      // Assert：返回空数组而非 null
+      expect(result).toEqual([]);
     });
   });
 

@@ -74,6 +74,13 @@ describe('DBService 带重试机制', () => {
       const result = await service.withRetry(fn);
       expect(result).toBeNull();
     });
+
+    it('maxRetries=0 时直接抛出"所有重试均已耗尽"错误（不执行 fn）', async () => {
+      const service = new DBService({ delay: 10, maxRetries: 0, backoff: 'exponential' });
+      const fn = vi.fn().mockResolvedValue('success');
+      await expect(service.withRetry(fn)).rejects.toThrow('所有重试均已耗尽');
+      expect(fn).not.toHaveBeenCalled();
+    });
   });
 
   describe('指数退避策略', () => {

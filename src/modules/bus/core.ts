@@ -63,15 +63,21 @@ export class EventBus implements IEventBus {
 
   /**
    * 注册一次性事件监听器
-   * 
-   * 事件触发一次后自动取消注册
+   *
+   * 事件触发一次后自动取消注册。
+   * 使用 try/finally 确保即使回调抛出异常，监听器也会被正确注销，
+   * 避免异常导致的一次性监听器永久泄漏（P0 修复）。
+   *
    * @param event - 事件名称
    * @param callback - 回调函数
    */
   once<K extends keyof GameEventPayloadMap>(event: K, callback: (data: GameEventPayloadMap[K]) => void): void {
     const onceCallback = (data: GameEventPayloadMap[K]) => {
-      callback(data);
-      this.off(event, onceCallback);
+      try {
+        callback(data);
+      } finally {
+        this.off(event, onceCallback);
+      }
     };
     this.on(event, onceCallback);
   }

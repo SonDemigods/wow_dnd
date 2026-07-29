@@ -489,6 +489,14 @@ describe('ThreatBasedTargetSelector 仇恨优先', () => {
     expect(selector.select([c1, c2Full])).toBe(c1);
   });
 
+  it('best（首个候选）无 threat 字段时走 ?? 0 回退分支', () => {
+    // 首次 reduce 迭代 best=first（threat undefined → 0），current=second（threat=5）
+    // 5 > 0 → 返回 second，触发 best.threat ?? 0 的 ?? 回退
+    const first = makeCombatant({ id: 'first', threat: undefined, hp: 100 });
+    const second = makeCombatant({ id: 'second', threat: 5, hp: 100 });
+    expect(selector.select([first, second])).toBe(second);
+  });
+
   it('多目标时正确选出最高仇恨', () => {
     const a = makeCombatant({ id: 'a', threat: 10, hp: 100 });
     const b = makeCombatant({ id: 'b', threat: 30, hp: 50 });

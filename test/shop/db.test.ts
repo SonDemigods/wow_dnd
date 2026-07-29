@@ -260,6 +260,35 @@ describe('ShopDbService - 商店数据层（fake-indexeddb 真实 CRUD）', () =
     });
   });
 
+  describe('deleteShopItems：删除指定商店商品', () => {
+    it('删除已存在商品后 getShopItems 返回 null', async () => {
+      // Arrange
+      await shopDbService.saveShopItems('shop-1', [makeShopItem('a', 1, 1)]);
+      expect(await shopDbService.getShopItems('shop-1')).not.toBeNull();
+      // Act
+      await shopDbService.deleteShopItems('shop-1');
+      // Assert
+      expect(await shopDbService.getShopItems('shop-1')).toBeNull();
+    });
+
+    it('删除不影响其他商店', async () => {
+      // Arrange
+      await shopDbService.saveShopItems('shop-a', [makeShopItem('a', 1, 1)]);
+      await shopDbService.saveShopItems('shop-b', [makeShopItem('b', 2, 2)]);
+      // Act
+      await shopDbService.deleteShopItems('shop-a');
+      // Assert
+      expect(await shopDbService.getShopItems('shop-a')).toBeNull();
+      expect(await shopDbService.getShopItems('shop-b')).not.toBeNull();
+      expect(await shopDbService.getAllShopItemsStorage()).toHaveLength(1);
+    });
+
+    it('删除不存在的商品不抛错', async () => {
+      // Arrange & Act & Assert
+      await expect(shopDbService.deleteShopItems('non-existent')).resolves.toBeUndefined();
+    });
+  });
+
   // -------------------- 回购表 runtime_shopSoldItems --------------------
 
   describe('saveSoldItems / getSoldItems：回购列表读写', () => {

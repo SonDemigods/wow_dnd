@@ -231,6 +231,18 @@ describe('useAdminStore - 后台管理 Store', () => {
       // 旧数据未被覆盖（异常抛出前未赋值）
       expect(store.tableData).toEqual([{ id: 'old' }]);
     });
+
+    it('currentTableMeta 为空时直接返回不加载（防御性早退）', async () => {
+      const store = useAdminStore();
+      // 设置一个不存在的表 key，使 currentTableMeta 返回 undefined
+      store.$patch({ selectedConfigTable: 'non_existent_table' as any });
+
+      await store.loadTableData();
+
+      expect(adminService.getAll).not.toHaveBeenCalled();
+      expect(adminService.searchTable).not.toHaveBeenCalled();
+      expect(store.isLoading).toBe(false);
+    });
   });
 
   // -------------------- Actions: openCreateForm / openEditForm / closeForm --------------------

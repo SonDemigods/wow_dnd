@@ -50,7 +50,7 @@ export type ResourceType =
  * - `skill`：施放特定技能获取
  * - `kill`：击杀敌人时获取
  */
-export type ResourceSource = 'attack' | 'damaged' | 'turn' | 'skill' | 'kill';
+export type ResourceSource = 'attack' | 'damaged' | 'turn' | 'skill' | 'kill' | 'passive';
 
 /**
  * 资源系统抽象接口

@@ -573,6 +573,22 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(ok).toBe(false);
       expect(store.character).toBeNull();
     });
+
+    it('bonusStats 为 undefined 时回退为空对象（|| {} 分支）', async () => {
+      const listItem = makeListItem();
+      const char = makeChar();
+      vi.mocked(characterDbService.getCharacterListItem).mockResolvedValueOnce(listItem);
+      // bonusStats 未定义，覆盖 `data.bonusStats || {}` 的 falsy 分支
+      vi.mocked(characterDbService.getCharacterData).mockResolvedValueOnce({
+        character: char, raceId: 'human', classId: 'warrior',
+      } as never);
+
+      const store = useCharacterStore();
+      const ok = await store.selectCharacter('char_test_1');
+
+      expect(ok).toBe(true);
+      expect(store.bonusStats).toEqual({});
+    });
   });
 
   // -------------------- Actions：deleteCharacter --------------------
@@ -965,6 +981,24 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
     });
 
+    it('setRace：racesData 中无对应种族时 raceBonus 回退为空对象（?.bonus || {} 分支）', async () => {
+      // racesData 不含 'undead'，raceData 为 undefined，覆盖 `raceData?.bonus || {}` 的 falsy 分支
+      const store = setupLoggedInStore(makeChar({ raceId: 'human' }));
+      store.$patch({ racesData: { human: makeRace() } });
+      await store.setRace('undead');
+      expect(store.raceBonus).toEqual({});
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('setClass：classesData 中无对应职业时 classBonus 回退为空对象（?.bonus || {} 分支）', async () => {
+      // classesData 不含 'paladin'，classData 为 undefined，覆盖 `classData?.bonus || {}` 的 falsy 分支
+      const store = setupLoggedInStore(makeChar({ classId: 'warrior' }));
+      store.$patch({ classesData: { warrior: makeClass() } });
+      await store.setClass('paladin');
+      expect(store.classBonus).toEqual({});
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
     it('reset：未登录时直接返回不变更', async () => {
       const store = useCharacterStore();
       await store.reset();
@@ -1085,6 +1119,52 @@ describe('useCharacterStore - 角色 Store', () => {
       const store = useCharacterStore();
       await store.repairBaseData();
       expect(dataInitializer.reinitializeData).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // -------------------- 覆盖率补全：防御性分支 --------------------
+  describe('覆盖率补全：防御性分支', () => {
+    it('effectiveStats 在 character 为 null 时返回默认属性', () => {
+      const store = useCharacterStore();
+      expect(store.character).toBeNull();
+      // 覆盖 if (!character.value) return { str: 10, ... }
+      expect(store.effectiveStats).toEqual({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 });
+    });
+
+    it('factionIcon 在无阵营数据时返回默认图标（|| 回退）', () => {
+      const store = useCharacterStore();
+      store.$patch({ character: makeChar({ factionId: 'unknown_faction' }) });
+      // factionsData 不含 'unknown_faction'，覆盖 || 'game-icons:checked-shield'
+      expect(store.factionIcon).toBe('game-icons:checked-shield');
+    });
+
+    it('classIcon 在无职业数据时返回默认图标（|| 回退）', () => {
+      const store = useCharacterStore();
+      store.$patch({ character: makeChar({ classId: 'unknown_class' }) });
+      // classesData 不含 'unknown_class'，覆盖 || 'game-icons:broadsword'
+      expect(store.classIcon).toBe('game-icons:broadsword');
+    });
+
+    it('factionColor 在无阵营数据时返回默认颜色（|| 回退）', () => {
+      const store = useCharacterStore();
+      store.$patch({ character: makeChar({ factionId: 'unknown_faction' }) });
+      // 覆盖 || '#9d9d9d'
+      expect(store.factionColor).toBe('#9d9d9d');
+    });
+
+    it('classColor 在无职业数据时返回默认颜色（|| 回退）', () => {
+      const store = useCharacterStore();
+      store.$patch({ character: makeChar({ classId: 'unknown_class' }) });
+      // 覆盖 || '#9d9d9d'
+      expect(store.classColor).toBe('#9d9d9d');
+    });
+
+    it('persistCharacter 在 currentCharacterId 为 null 时直接返回（character 存在但未登录）', async () => {
+      const store = useCharacterStore();
+      store.$patch({ character: makeChar(), currentCharacterId: null });
+      // 调用 takeDamage 会触发 persistCharacter，但 currentCharacterId 为 null → 直接返回
+      await store.takeDamage(10);
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
     });
   });
 });

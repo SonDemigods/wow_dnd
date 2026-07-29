@@ -219,6 +219,145 @@ describe('sortItems 排序', () => {
   it('空数组排序返回空数组', () => {
     expect(sortItems([], templates, 'rarity', 'asc')).toEqual([]);
   });
+
+  it('按 type 升序（拼音序：卷轴 < 武器 < 药水）', () => {
+    // 覆盖 case 'type' 分支（行 166-171）及 ITEM_TYPE_NAMES[itemA?.type || 'misc'] 正常路径
+    const inv = [makeInvItem('a', 1), makeInvItem('b', 1), makeInvItem('c', 1)];
+    const sorted = sortItems(inv, templates, 'type', 'asc');
+    // 卷轴(scroll, juǎn) < 武器(weapon, wǔ) < 药水(potion, yào)
+    expect(sorted.map(i => i.itemId)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('按 type 降序（药水 > 武器 > 卷轴）', () => {
+    const inv = [makeInvItem('b', 1), makeInvItem('a', 1), makeInvItem('c', 1)];
+    const sorted = sortItems(inv, templates, 'type', 'desc');
+    expect(sorted.map(i => i.itemId)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('按 type 排序时缺失模板的物品回退为 misc', () => {
+    // 覆盖 ITEM_TYPE_NAMES[itemA?.type || 'misc'] 中 || 'misc' 兜底分支
+    const inv = [makeInvItem('a', 1), makeInvItem('unknown', 1)];
+    const sorted = sortItems(inv, templates, 'type', 'asc');
+    // unknown 回退为 misc（杂项），weapon(misc 排序可能因 localeCompare 变化）
+    expect(sorted).toHaveLength(2);
+  });
+
+  it('按 level 排序时缺失模板的物品回退为 0', () => {
+    // 覆盖 (itemA?.level || 0) 中 || 0 兜底分支
+    const inv = [makeInvItem('a', 1), makeInvItem('unknown', 1)];
+    const sorted = sortItems(inv, templates, 'level', 'asc');
+    // unknown 回退为 level=0，应排在 level=10 的 'a' 之前
+    expect(sorted[0].itemId).toBe('unknown');
+  });
+
+  it('按 name 排序时缺失模板的物品回退为空字符串', () => {
+    // 覆盖 (itemA?.name || '') 中 || '' 兜底分支
+    const inv = [makeInvItem('a', 1), makeInvItem('unknown', 1)];
+    const sorted = sortItems(inv, templates, 'name', 'asc');
+    // unknown 回退为 name=''，应排在最前
+    expect(sorted[0].itemId).toBe('unknown');
+  });
+
+  it('按 rarity 排序时 itemB 缺失模板回退为 common', () => {
+    // 覆盖 RARITY_ORDER[itemB?.rarity || 'common'] 中 || 'common' 兜底分支
+    // inv 顺序 [b, unknown] → comparator(b, unknown) → itemB=undefined → rarity 回退 'common'
+    const inv = [makeInvItem('b', 1), makeInvItem('unknown', 1)];
+    const sorted = sortItems(inv, templates, 'rarity', 'asc');
+    // b=common(0), unknown=common(0) → 顺序稳定
+    expect(sorted).toHaveLength(2);
+  });
+
+  it('按 type 排序时 itemB 模板存在但 type 字段为 undefined 时回退为 misc', () => {
+    // 覆盖 line 169: ITEM_TYPE_NAMES[itemB?.type || 'misc'] 中 || 'misc' 分支
+    // itemB 存在但 type=undefined → ?. 不短路但 || 触发回退
+    const partialTemplates = makeTemplateMap([
+      makeItem({ id: 'a', type: 'weapon', rarity: 'common', name: '剑', level: 1 }),
+      { id: 'no_type', name: '无类型', type: undefined as any, rarity: 'common', icon: '', description: '', value: 0, stackable: false } as Item,
+    ]);
+    const inv = [makeInvItem('a', 1), makeInvItem('no_type', 1)];
+    const sorted = sortItems(inv, partialTemplates, 'type', 'asc');
+    expect(sorted).toHaveLength(2);
+  });
+
+  it('按 rarity 排序时 itemB 模板存在但 rarity 字段为 undefined 时回退为 common', () => {
+    // 覆盖 line 174: RARITY_ORDER[itemB?.rarity || 'common'] 中 || 'common' 分支
+    const partialTemplates = makeTemplateMap([
+      makeItem({ id: 'a', type: 'weapon', rarity: 'common', name: '剑', level: 1 }),
+      { id: 'no_rarity', name: '无稀有度', type: 'misc', rarity: undefined as any, icon: '', description: '', value: 0, stackable: false } as Item,
+    ]);
+    const inv = [makeInvItem('a', 1), makeInvItem('no_rarity', 1)];
+    const sorted = sortItems(inv, partialTemplates, 'rarity', 'asc');
+    expect(sorted).toHaveLength(2);
+  });
+
+  it('按 name 排序时 itemB 模板存在但 name 字段为 undefined 时回退为空字符串', () => {
+    // 覆盖 line 177: (itemB?.name || '') 中 || '' 分支
+    const partialTemplates = makeTemplateMap([
+      makeItem({ id: 'a', type: 'weapon', rarity: 'common', name: '剑', level: 1 }),
+      { id: 'no_name', name: undefined as any, type: 'misc', rarity: 'common', icon: '', description: '', value: 0, stackable: false } as Item,
+    ]);
+    const inv = [makeInvItem('a', 1), makeInvItem('no_name', 1)];
+    const sorted = sortItems(inv, partialTemplates, 'name', 'asc');
+    // no_name 回退为 ''，应排在 '剑' 之前
+    expect(sorted[0].itemId).toBe('no_name');
+  });
+
+  it('按 level 排序时 itemB 模板存在但 level 字段为 undefined 时回退为 0', () => {
+    // 覆盖 line 180: (itemB?.level || 0) 中 || 0 分支
+    const partialTemplates = makeTemplateMap([
+      makeItem({ id: 'a', type: 'weapon', rarity: 'common', name: '剑', level: 5 }),
+      { id: 'no_level', name: '无等级', type: 'misc', rarity: 'common', icon: '', description: '', value: 0, stackable: false, level: undefined as any } as Item,
+    ]);
+    const inv = [makeInvItem('a', 1), makeInvItem('no_level', 1)];
+    const sorted = sortItems(inv, partialTemplates, 'level', 'asc');
+    // no_level 回退为 0，应排在 level=5 的 'a' 之前
+    expect(sorted[0].itemId).toBe('no_level');
+  });
+
+  it('按 type 排序时 itemA 和 itemB 的 type 均为 undefined 时全部回退为 misc', () => {
+    // 覆盖 line 169: ITEM_TYPE_NAMES[itemB?.type || 'misc'] 中 || 'misc' 的 itemB 回退分支
+    // 当所有物品模板 type 均缺失时，comparator 的任意配对都会触发 itemA 和 itemB 的 || 回退
+    const partialTemplates = makeTemplateMap([
+      { id: 'no_type_a', name: 'A', type: undefined as any, rarity: 'common', icon: '', description: '', value: 0, stackable: false } as Item,
+      { id: 'no_type_b', name: 'B', type: undefined as any, rarity: 'common', icon: '', description: '', value: 0, stackable: false } as Item,
+    ]);
+    const inv = [makeInvItem('no_type_a', 1), makeInvItem('no_type_b', 1)];
+    const sorted = sortItems(inv, partialTemplates, 'type', 'asc');
+    expect(sorted).toHaveLength(2);
+  });
+
+  it('按 rarity 排序时 itemA 和 itemB 的 rarity 均为 undefined 时全部回退为 common', () => {
+    // 覆盖 line 174: RARITY_ORDER[itemB?.rarity || 'common'] 中 || 'common' 的 itemB 回退分支
+    const partialTemplates = makeTemplateMap([
+      { id: 'no_rar_a', name: 'A', type: 'misc', rarity: undefined as any, icon: '', description: '', value: 0, stackable: false } as Item,
+      { id: 'no_rar_b', name: 'B', type: 'misc', rarity: undefined as any, icon: '', description: '', value: 0, stackable: false } as Item,
+    ]);
+    const inv = [makeInvItem('no_rar_a', 1), makeInvItem('no_rar_b', 1)];
+    const sorted = sortItems(inv, partialTemplates, 'rarity', 'asc');
+    expect(sorted).toHaveLength(2);
+  });
+
+  it('按 name 排序时 itemA 和 itemB 的 name 均为 undefined 时全部回退为空字符串', () => {
+    // 覆盖 line 177: (itemB?.name || '') 中 || '' 的 itemB 回退分支
+    const partialTemplates = makeTemplateMap([
+      { id: 'no_name_a', name: undefined as any, type: 'misc', rarity: 'common', icon: '', description: '', value: 0, stackable: false } as Item,
+      { id: 'no_name_b', name: undefined as any, type: 'misc', rarity: 'common', icon: '', description: '', value: 0, stackable: false } as Item,
+    ]);
+    const inv = [makeInvItem('no_name_a', 1), makeInvItem('no_name_b', 1)];
+    const sorted = sortItems(inv, partialTemplates, 'name', 'asc');
+    expect(sorted).toHaveLength(2);
+  });
+
+  it('按 level 排序时 itemA 和 itemB 的 level 均为 undefined 时全部回退为 0', () => {
+    // 覆盖 line 180: (itemB?.level || 0) 中 || 0 的 itemB 回退分支
+    const partialTemplates = makeTemplateMap([
+      { id: 'no_lvl_a', name: 'A', type: 'misc', rarity: 'common', icon: '', description: '', value: 0, stackable: false, level: undefined as any } as Item,
+      { id: 'no_lvl_b', name: 'B', type: 'misc', rarity: 'common', icon: '', description: '', value: 0, stackable: false, level: undefined as any } as Item,
+    ]);
+    const inv = [makeInvItem('no_lvl_a', 1), makeInvItem('no_lvl_b', 1)];
+    const sorted = sortItems(inv, partialTemplates, 'level', 'asc');
+    expect(sorted).toHaveLength(2);
+  });
 });
 
 describe('filterItems 筛选', () => {

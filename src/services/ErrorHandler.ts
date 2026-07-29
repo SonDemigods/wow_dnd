@@ -42,6 +42,10 @@ class ErrorHandlerService {
   /**
    * 包装异步操作，自动处理错误（toast 通知 + 错误上报）
    *
+   * @deprecated P3-124 修复：该函数失败时返回 undefined，调用方极易忽略失败场景而继续使用
+   *   undefined 数据，导致后续逻辑出错。新代码请改用 {@link tryAsync} 的 Result 模式，
+   *   通过 success 分支显式区分成功与失败，强制调用方处理错误路径。
+   *
    * @param promise - 要执行的 Promise
    * @param userMessage - 展示给用户的错误提示文案（省略则不弹 toast）
    * @returns 成功时返回数据，失败时返回 undefined

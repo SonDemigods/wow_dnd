@@ -15,6 +15,14 @@ import type { TalentTree } from '@/modules/character/talents/types';
  * 2. 每系天赋 3 层，需逐层解锁（tier2 需该系投入 3 点，tier3 需 6 点）
  * 3. 每个天赋 maxRank 为 3，单系最多投入 9 点
  * 4. 效果涵盖属性加成、伤害倍率、暴击、资源加成等
+ *
+ * P2-75 effects[].type 值约定：
+ * - 'stat_bonus'：属性加成，valuePerRank 为每点天赋提供的属性值（绝对数值）
+ * - 'damage_bonus'：伤害倍率，valuePerRank 为每点天赋提供的伤害百分比提升（小数，0.05 = 5%）
+ * - 'crit_bonus'：暴击加成，valuePerRank 为每点天赋提供的暴击率提升（小数，0.02 = 2%）
+ * - 'special'：特殊效果，valuePerRank 含义视 description 而定
+ *   （如"治疗效果提升"时 valuePerRank=0.08 表示每点天赋提升 8% 治疗效果）
+ *   special 类型效果由 talents/service.ts 中的 switch 分支逐一处理，不自动应用到属性
  */
 export const CLASS_TALENT_TREES: TalentTree[] = [
   // ============================================================
@@ -173,7 +181,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
         effects: [{ type: 'damage_reduction', valuePerRank: 0.02 }]
       },
       {
-        id: 'mage_frost_t3', name: '冰封寒odian', description: '每级提升 5% 魔法伤害',
+        id: 'mage_frost_t3', name: '冰封寒霜', description: '每级提升 5% 魔法伤害',
         icon: 'game-icons:icicles', tier: 3, maxRank: 3,
         requires: ['mage_frost_t2'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.05 }]
@@ -200,7 +208,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
         id: 'paladin_holy_t2', name: '神圣治疗', description: '每级提升 8% 治疗效果',
         icon: 'game-icons:health-normal', tier: 2, maxRank: 3,
         requires: ['paladin_holy_t1'],
-        effects: [{ type: 'special', valuePerRank: 0.08, description: '治疗效果提升' }]
+        effects: [{ type: 'healing_multiplier', valuePerRank: 0.08, description: '治疗效果提升' }]
       },
       {
         id: 'paladin_holy_t3', name: '圣光闪耀', description: '每级提升 5% 魔法伤害',
@@ -528,7 +536,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
         id: 'priest_holy_t2', name: '强化治疗', description: '每级提升 8% 治疗效果',
         icon: 'game-icons:health-normal', tier: 2, maxRank: 3,
         requires: ['priest_holy_t1'],
-        effects: [{ type: 'special', valuePerRank: 0.08, description: '治疗效果提升' }]
+        effects: [{ type: 'healing_multiplier', valuePerRank: 0.08, description: '治疗效果提升' }]
       },
       {
         id: 'priest_holy_t3', name: '圣光涌动', description: '每级提升 5% 魔法伤害',
@@ -586,7 +594,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
         id: 'priest_disc_t3', name: '苦修', description: '每级提升 6% 治疗效果',
         icon: 'game-icons:prayer', tier: 3, maxRank: 3,
         requires: ['priest_disc_t2'],
-        effects: [{ type: 'special', valuePerRank: 0.06, description: '治疗效果提升' }]
+        effects: [{ type: 'healing_multiplier', valuePerRank: 0.06, description: '治疗效果提升' }]
       }
     ]
   },
@@ -662,7 +670,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
         id: 'shaman_rest_t2', name: '强效治疗', description: '每级提升 8% 治疗效果',
         icon: 'game-icons:health-normal', tier: 2, maxRank: 3,
         requires: ['shaman_rest_t1'],
-        effects: [{ type: 'special', valuePerRank: 0.08, description: '治疗效果提升' }]
+        effects: [{ type: 'healing_multiplier', valuePerRank: 0.08, description: '治疗效果提升' }]
       },
       {
         id: 'shaman_rest_t3', name: '自然守护', description: '每级减免 2% 受到的伤害',
@@ -744,7 +752,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
         id: 'druid_rest_t2', name: '回春术', description: '每级提升 8% 治疗效果',
         icon: 'game-icons:plant-root', tier: 2, maxRank: 3,
         requires: ['druid_rest_t1'],
-        effects: [{ type: 'special', valuePerRank: 0.08, description: '治疗效果提升' }]
+        effects: [{ type: 'healing_multiplier', valuePerRank: 0.08, description: '治疗效果提升' }]
       },
       {
         id: 'druid_rest_t3', name: '生命之树', description: '每级减免 2% 受到的伤害',
@@ -908,7 +916,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
         id: 'monk_mw_t2', name: '复苏之雾', description: '每级提升 8% 治疗效果',
         icon: 'game-icons:windsock', tier: 2, maxRank: 3,
         requires: ['monk_mw_t1'],
-        effects: [{ type: 'special', valuePerRank: 0.08, description: '治疗效果提升' }]
+        effects: [{ type: 'healing_multiplier', valuePerRank: 0.08, description: '治疗效果提升' }]
       },
       {
         id: 'monk_mw_t3', name: '真气贯通', description: '每级提升 4% 魔法伤害',

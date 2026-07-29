@@ -20,6 +20,7 @@
 
 import { db as gameDb, dbService } from '@/modules/data/core';
 import type { Skill, SkillBar, SkillsData, SkillType, SkillTemplateStorage } from './types';
+import { isValidTargetType } from './service';
 import { toRawData } from '../../utils';
 
 /**
@@ -151,7 +152,7 @@ export class SkillsDbService {
         type: skill.type,
         effect: skill.effect,
         unlockLevel: skill.unlockLevel,
-        classRestriction: classRestriction || null,
+        classRestriction: classRestriction ?? null,
         targetType: skill.targetType ?? undefined,
         usableBy: skill.usableBy || 'player',
         cooldown: skill.cooldown ?? 0,
@@ -184,14 +185,17 @@ export class SkillsDbService {
       name: data.name,
       icon: data.icon,
       description: data.description,
+      // P2-76：mpCost 改为可选，undefined 保留（资源型技能无需 MP）
       mpCost: data.mpCost,
       type: data.type,
       // 防御性回退：effect 缺失时默认为物理伤害
       effect: data.effect || { type: 'physical_damage' as SkillType, value: 0 },
       unlockLevel: data.unlockLevel,
       // targetType 类型收窄：DB 中为 string，运行时为字面量联合类型
-      targetType: data.targetType as Skill['targetType'] || undefined,
-      usableBy: data.usableBy || 'player',
+      // P2-56 修复：使用类型守卫 isValidTargetType 替代 as 断言，运行时校验合法性
+      targetType: isValidTargetType(data.targetType) ? data.targetType : undefined,
+      // P3-109 修复：使用 ?? 替代 ||，保留 falsy 但合法的值
+      usableBy: data.usableBy ?? 'player',
       cooldown: data.cooldown ?? 0,
       // buffs 浅拷贝：防止引用共享导致的意外修改
       buffs: data.buffs ? data.buffs.map(b => ({ type: b.type, value: b.value, turns: b.turns })) : undefined,
@@ -240,8 +244,12 @@ export class SkillsDbService {
    */
   async getSkillTemplatesByClass(classId: string): Promise<Skill[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.config_skills.where('classRestriction').equals(classId).toArray() as SkillTemplateStorage[];
-      return items.map(data => this.toSkill(data));
+      // P1-18 修复：IndexedDB 不索引 null 值，anyOf(classId, null) 会抛 DataError
+      // 改为查全部后过滤：返回职业专属技能 + classRestriction 为 null/undefined 的通用技能
+      const allItems = await gameDb.config_skills.toArray() as SkillTemplateStorage[];
+      return allItems
+        .filter(item => !item.classRestriction || item.classRestriction === classId)
+        .map(data => this.toSkill(data));
     });
   }
 

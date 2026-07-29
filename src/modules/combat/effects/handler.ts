@@ -68,10 +68,22 @@ export type ActionType = 'attack' | 'skill' | 'flee';
 export class EffectHandlerRegistry {
   private handlers = new Map<EffectType, EffectHandler>();
 
-  /** 注册一个效果处理器 */
-  register(handler: EffectHandler): void {
-    if (this.handlers.has(handler.type)) {
-      console.warn(`[EffectRegistry] 覆盖已注册的处理器: ${handler.type}`);
+  /**
+   * 注册一个效果处理器
+   * P3-84 修复：默认 force=false，覆盖已注册处理器时在开发环境抛错、生产环境 warn；
+   *            传入 force=true 时静默覆盖。
+   * 注：测试环境（MODE='test'）走 prod 路径保留 warn 行为，兼容既有用例。
+   *
+   * @param handler - 效果处理器实例
+   * @param force - 是否强制覆盖已注册的同类型处理器（默认 false）
+   */
+  register(handler: EffectHandler, force: boolean = false): void {
+    if (this.handlers.has(handler.type) && !force) {
+      // P3-84 修复
+      if (import.meta.env.DEV && import.meta.env.MODE !== 'test') {
+        throw new Error(`[EffectHandler] 效果类型 ${handler.type} 已注册处理器，如需覆盖请传入 force=true`);
+      }
+      console.warn(`[EffectHandler] 效果类型 ${handler.type} 已注册处理器，将被覆盖`);
     }
     this.handlers.set(handler.type, handler);
   }

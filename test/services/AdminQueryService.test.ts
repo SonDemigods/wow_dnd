@@ -121,14 +121,17 @@ describe('AdminQueryService 管理后台查询服务', () => {
       // Arrange
       const mockItem = { id: 'potion_01', name: '治疗药水' };
       getItemTemplateMock.mockResolvedValue(mockItem);
+      // P3-120 修复：并行查询，装备表也会被调用，需 mock 返回值避免 undefined
+      getEquipmentTemplateMock.mockResolvedValue(null);
 
       // Act
       const result = await adminQueryService.queryItemTemplate('potion_01');
 
-      // Assert: 消耗品命中后不再查询装备
+      // Assert：消耗品命中时返回 item 类型（消耗品优先于装备）
       expect(result).toEqual({ type: 'item', data: mockItem });
       expect(getItemTemplateMock).toHaveBeenCalledWith('potion_01');
-      expect(getEquipmentTemplateMock).not.toHaveBeenCalled();
+      // P3-120 修复：并行查询两表，装备表同时被调用（消耗品优先返回）
+      expect(getEquipmentTemplateMock).toHaveBeenCalledWith('potion_01');
     });
 
     it('消耗品未命中时应回退查询装备', async () => {

@@ -47,12 +47,13 @@ import {
   MONSTER_ABILITIES,
   RACES,
   FACTIONS,
-  MAX_LEVEL,
   CLASS_SPECIFIC_ITEMS,
   CLASS_PASSIVES,
   CLASS_TALENT_TREES,
   ITEM_SETS
 } from '@/data';
+// P1-30 修复：MAX_LEVEL 改为从 @/config/character 直接导入，不再通过 @/data 越层导出
+import { MAX_LEVEL } from '@/config/character';
 
 /**
  * 需要备份的数组形状表配置

@@ -20,7 +20,8 @@ import type { Stats } from '../../character/types';
  * - `crit_bonus`：暴击加成（暴击率/暴击伤害提升）
  * - `resource_bonus`：资源加成（怒气/能量上限提升等）
  * - `skill_enhance`：技能增强（特定技能效果提升）
- * - `special`：特殊效果（需自定义处理逻辑）
+ * - `healing_multiplier`：治疗倍率（治疗效果百分比提升，P2-75 新增，替代 special 的"治疗效果提升"语义）
+ * - `special`：特殊效果（需自定义处理逻辑，目前无消费方，仅为兼容保留）
  */
 export type TalentEffectType =
   | 'stat_bonus'
@@ -29,6 +30,7 @@ export type TalentEffectType =
   | 'crit_bonus'
   | 'resource_bonus'
   | 'skill_enhance'
+  | 'healing_multiplier'
   | 'special';
 
 /**

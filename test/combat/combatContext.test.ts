@@ -179,6 +179,13 @@ describe('combatContext - 战斗上下文工厂（A2 读写分离）', () => {
       expect(enemyStub.calculateDamage).toHaveBeenCalledWith(enemy, 10);
     });
 
+    it('enemy.getAvailableSkills 委托到 enemyStore.getAvailableSkills 并透传参数', () => {
+      // 覆盖 combatContext.ts 第 183 行：getAvailableSkills 代理
+      const ctx = createCombatContext();
+      ctx.enemy.getAvailableSkills('enemy-1');
+      expect(enemyStub.getAvailableSkills).toHaveBeenCalledWith('enemy-1');
+    });
+
     it('inventory.getItemInfo 委托到 inventoryStore.getItemInfo 并透传参数', () => {
       const ctx = createCombatContext();
       ctx.inventory.getItemInfo('potion-1');

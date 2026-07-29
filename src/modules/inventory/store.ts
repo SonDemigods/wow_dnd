@@ -29,6 +29,7 @@ import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
 import { useCharacterStore } from '../character/store';
 import { useQuestStore } from '../quest/store';
+import { errorReporter } from '@/utils/errorReport';
 import { RARITY_CONFIG } from '../../config/inventory';
 import {
   computeStackResult,
@@ -63,6 +64,14 @@ export const useInventoryStore = defineStore('inventory', () => {
   const currentCharacterId = ref<string | null>(null);
   /** 加载状态标识（用于 UI 显示加载动画） */
   const isLoading = ref(false);
+  /**
+   * 最近一次持久化错误（null 表示无错误或已恢复）
+   *
+   * P2-50 修复：原 persistInventory 静默吞掉错误，UI 与 DB 状态不一致。
+   * 暴露错误状态供 UI 监听并提示用户"保存失败，请重试"。
+   * 写入成功时重置为 null，便于 UI 通过 watch 判断错误恢复。
+   */
+  const persistError = ref<string | null>(null);
 
   // ==================== 计算属性 ====================
 
@@ -154,8 +163,14 @@ export const useInventoryStore = defineStore('inventory', () => {
   /**
    * 持久化背包数据到 IndexedDB
    *
-   * 内部有 try/catch，持久化失败时输出错误日志但不抛出异常，
-   * 避免因 DB 写入失败而中断用户操作流程。
+   * 内部有 try/catch，持久化失败时上报到 errorReporter（统一错误处理路径），
+   * 不抛出异常以避免中断用户操作流程。
+   *
+   * P2-50 修复：原仅 console.error 静默吞掉错误，UI 与 DB 状态不一致且无统一上报。
+   * 现通过两条路径修复：
+   * 1. 通过 errorReporter 上报到错误日志（防抖批量写入 localStorage），便于全局监测
+   * 2. 同步设置 persistError ref，供 UI 通过 watch 监听并提示用户"保存失败，请重试"
+   * 写入成功时重置 persistError 为 null，便于 UI 判断错误恢复。
    *
    * 大部分 Action 以 fire-and-forget 调用（不 await），useItem 例外（见其文档）。
    */
@@ -163,8 +178,15 @@ export const useInventoryStore = defineStore('inventory', () => {
     if (currentCharacterId.value) {
       try {
         await inventoryDbService.saveInventory(currentCharacterId.value, inventory.value);
+        persistError.value = null;
       } catch (err) {
-        console.error('[InventoryStore] 持久化背包数据失败:', err);
+        // P2-50 修复：通过 errorReporter 统一上报 + persistError 暴露给 UI
+        persistError.value = err instanceof Error ? err.message : String(err);
+        errorReporter.report(err, 'manual', {
+          context: '背包数据持久化失败，UI 与 DB 状态可能不一致',
+          characterId: currentCharacterId.value,
+          itemCount: inventory.value.length,
+        });
       }
     }
   }
@@ -371,6 +393,11 @@ export const useInventoryStore = defineStore('inventory', () => {
     // 获取角色 Store（提升到顶部避免重复调用）
     const characterStore = useCharacterStore();
 
+    // P1-14 修复：校验等级要求，低等级角色不可使用高等级消耗品
+    if (itemTemplate.levelRequirement && characterStore.level < itemTemplate.levelRequirement) {
+      return false;
+    }
+
     // 计算并应用物品即时效果（effect 字段）
     const effect = computeUseEffect(itemTemplate);
     if (effect) {
@@ -390,7 +417,17 @@ export const useInventoryStore = defineStore('inventory', () => {
     }
 
     // 应用属性加成（bonus 字段，独立于 effect）
-    if (itemTemplate.bonus) {
+    // P2-53 修复：消耗品的 bonus 是永久叠加到 bonusStats，使用 10 瓶"力量药水"会永久获得 +50 力量。
+    // 设计原则：bonus 字段不应配置在 consumable 物品上，应仅用于装备；
+    //           消耗品的临时增益应通过 buff 系统（combat/effects）实现。
+    // 此处保留 applyBonus 调用作为向后兼容，但开发期会输出警告提示配置问题。
+    if (itemTemplate.bonus && Object.keys(itemTemplate.bonus).length > 0) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          `[InventoryStore] 消耗品 ${itemTemplate.id} (${itemTemplate.name}) 配置了 bonus 字段，` +
+          `使用时将永久叠加到 bonusStats。建议改为 buff 系统实现临时增益。`
+        );
+      }
       await characterStore.applyBonus(itemTemplate.bonus);
     }
 
@@ -450,6 +487,10 @@ export const useInventoryStore = defineStore('inventory', () => {
     if (index < 0 || index >= inventory.value.length) return false;
 
     const invItem = inventory.value[index];
+    // P1-15 修复：任务物品不可丢弃，防止玩家误操作导致任务卡死
+    const itemTemplate = itemTemplates.value.get(invItem.itemId);
+    if (itemTemplate?.type === 'quest') return false;
+
     const dropCount = count ?? invItem.count;
 
     if (dropCount >= invItem.count) {
@@ -494,9 +535,18 @@ export const useInventoryStore = defineStore('inventory', () => {
   function dropItemsByIndices(indices: number[]): boolean {
     if (indices.length === 0) return false;
 
+    // P1-15 修复：过滤掉任务物品的索引，任务物品不可丢弃
+    const validIndices = indices.filter(index => {
+      if (index < 0 || index >= inventory.value.length) return false;
+      const invItem = inventory.value[index];
+      const itemTemplate = itemTemplates.value.get(invItem.itemId);
+      return itemTemplate?.type !== 'quest';
+    });
+    if (validIndices.length === 0) return false;
+
     // 从大到小排序：从尾部开始 splice，前面的索引不会受影响
     // [性能敏感] 数组浅拷贝，当前背包规模可接受。
-    const sortedIndices = [...indices].sort((a, b) => b - a);
+    const sortedIndices = [...validIndices].sort((a, b) => b - a);
     const newInventory = [...inventory.value];
     sortedIndices.forEach(index => {
       if (index >= 0 && index < newInventory.length) {
@@ -541,11 +591,12 @@ export const useInventoryStore = defineStore('inventory', () => {
           newInventory.push({ itemId, count: 1 });
         }
       } else {
-        // 可堆叠：按 MAX_STACK 分拆到多个槽位
-        while (totalCount > 0) {
-          const stackSize = Math.min(totalCount, MAX_STACK);
+        // P3-105 修复：使用独立变量 remaining，避免修改 forEach 回调参数
+        let remaining = totalCount;
+        while (remaining > 0) {
+          const stackSize = Math.min(remaining, MAX_STACK);
           newInventory.push({ itemId, count: stackSize });
-          totalCount -= stackSize;
+          remaining -= stackSize;
         }
       }
     });
@@ -716,6 +767,8 @@ export const useInventoryStore = defineStore('inventory', () => {
     searchKeyword,
     currentCharacterId,
     isLoading,
+    // P2-50：暴露持久化错误状态，供 UI 监听并提示用户
+    persistError,
 
     // 计算属性（computed）
     filteredInventory,

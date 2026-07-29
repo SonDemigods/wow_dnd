@@ -287,6 +287,21 @@ describe('useAudioStore - 音频 Store', () => {
       expect(store.settings.bgmVolume).toBe(DEFAULT_AUDIO_SETTINGS.bgmVolume);
       expect(store.settings.muted).toBe(DEFAULT_AUDIO_SETTINGS.muted);
     });
+
+    it('masterVolume 字段缺失时走 ?? 回退到默认值（覆盖 masterVolume ?? 分支）', async () => {
+      // 仅提供其他字段，masterVolume 为 undefined，触发 ?? DEFAULT_AUDIO_SETTINGS.masterVolume
+      vi.mocked(audioDbService.loadSettings).mockResolvedValueOnce({
+        sfxVolume: 0.4,
+        bgmVolume: 0.5,
+      } as AudioSettings);
+
+      const store = useAudioStore();
+      await store.loadFromDb();
+
+      expect(store.settings.masterVolume).toBe(DEFAULT_AUDIO_SETTINGS.masterVolume);
+      expect(store.settings.sfxVolume).toBe(0.4);
+      expect(store.settings.bgmVolume).toBe(0.5);
+    });
   });
 
   describe('Action: flushSave 立即写库', () => {
@@ -341,9 +356,11 @@ describe('useAudioStore - 音频 Store', () => {
 
       store.dispose();
 
-      // 推进时间，定时器不应再触发
+      // P2-66 修复：dispose 现在会调用 flushSave 触发一次写库
+      // 推进时间，定时器不应再触发（已清除）
       vi.advanceTimersByTime(500);
-      expect(audioDbService.saveSettings).not.toHaveBeenCalled();
+      // flushSave 已经触发了一次 saveSettings，定时器不再触发额外的
+      expect(audioDbService.saveSettings).toHaveBeenCalledTimes(1);
     });
 
     it('多次调用 dispose 安全（幂等）', () => {

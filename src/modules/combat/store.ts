@@ -41,9 +41,14 @@ export const useCombatStore = defineStore('combat', () => {
   // 0. 上下文层（S2：集中所有外部 Store 引用，combat 模块唯一引用外部 Store 的位置）
   const ctx: ICombatContext = createCombatContext();
 
-  // 延迟绑定 initiative 引用（S3 R5：避免构造期循环依赖，
-  // useInitiative 依赖 useBossMechanics，而 bossCtx.rebuildInitiativeOrder 需要调用 initiative）
-  let initiativeRef: { buildInitiativeOrder: () => void } | null = null;
+  // P2-35 修复：延迟绑定容器（替代 let + null hack）
+  // 结构性循环依赖：useInitiative 依赖 useBossMechanics（通过 boss 参数），
+  // 而 bossCtx.rebuildInitiativeOrder 需要调用 initiative.buildInitiativeOrder。
+  // 使用 holder 对象承载延迟绑定的引用，语义比 let + null 更清晰：
+  // - holder.current 显式表达"延迟赋值"意图
+  // - 避免裸 let 变量被误用为可变状态
+  // - 调用方通过 holder.current?.fn() 安全访问
+  const initiativeHolder: { current: { buildInitiativeOrder: () => void } | null } = { current: null };
 
   // 1. 状态层（ref/conputed/生命周期）
   const state = useCombatState(ctx);
@@ -55,7 +60,7 @@ export const useCombatStore = defineStore('combat', () => {
   const bossCtx: IBossContext = {
     getPlayerName: () => ctx.character.name,
     createMinion: (dataId, level) => ctx.enemy.createEnemy(dataId, level),
-    rebuildInitiativeOrder: () => initiativeRef?.buildInitiativeOrder(),
+    rebuildInitiativeOrder: () => initiativeHolder.current?.buildInitiativeOrder(),
   };
 
   // 4. Boss 机制层（通过 bossCtx 接口访问玩家名称、创建小怪、重建先攻）
@@ -66,6 +71,12 @@ export const useCombatStore = defineStore('combat', () => {
 
   // 6. 敌人行动层（注入 passive 以便在玩家受伤时触发 onDamaged 被动）
   const enemy = useEnemyAction(state, log, ctx, passive);
+
+  // P2-36 修复：player 延迟绑定容器
+  // 结构性循环依赖：endCombat 调用 player.handleLoot，而 player 又依赖 endCombat（用于 playerFlee 等）。
+  // 使用 holder 对象避免 TDZ 风险（player 是 const，定义在 endCombat 之后），
+  // 同时显式表达"延迟绑定"意图，避免阅读 endCombat 时困惑 player 的来源。
+  const playerHolder: { current: { handleLoot: (e: EnemyInstance) => void } | null } = { current: null };
 
   // ==================== endCombat ====================
 
@@ -144,9 +155,10 @@ export const useCombatStore = defineStore('combat', () => {
         passive.onKill();
 
         // 处理掉落（仅 Boss）
+        // P2-36 修复：通过 playerHolder 延迟引用 player，避免 TDZ 风险
         for (const e of state.enemies.value) {
           if (isBossCombat(e)) {
-            player.handleLoot(e);
+            playerHolder.current?.handleLoot(e);
           }
         }
 
@@ -190,11 +202,16 @@ export const useCombatStore = defineStore('combat', () => {
         });
       }
 
-      log.saveLogs();
+      // P2-46 修复：await saveLogs，避免 dispose/角色切换时日志写入丢失
+      await log.saveLogs();
 
+      // P3-89 修复：COMBAT_END 事件载荷补充敌人摘要（enemyCount/enemyNames），
+      // 同时保留首个敌人引用 `enemy` 以向后兼容既有消费者（仅读取首敌信息的 UI/音效）。
       eventBus.emit(GameEvents.COMBAT_END, {
         result,
         enemy: state.enemies.value[0] || null,
+        enemyCount: state.enemies.value.length,
+        enemyNames: state.enemies.value.map(e => e.name),
         expGained: result === 'victory' ? totalExp : 0,
         goldGained: result === 'victory' ? totalGold : 0
       });
@@ -214,12 +231,15 @@ export const useCombatStore = defineStore('combat', () => {
   // 7. 先攻/调度层（依赖 endCombat）
   const initiative = useInitiative(state, log, ctx, enemy, boss, endCombat, passive);
 
-  // initiative 已就位，延迟绑定到 bossCtx.rebuildInitiativeOrder（替代 setInitiativeCallback hack）
-  initiativeRef = initiative;
+  // P2-35 修复：initiative 已就位，绑定到 initiativeHolder 供 bossCtx.rebuildInitiativeOrder 使用
+  initiativeHolder.current = initiative;
 
   // 8. 玩家行动层（注入 endCombat 和 passive，消除 (state as any) 依赖）
   // BIZ-5：注入 passive 以便在伤害计算中应用 stat_modifier 和 buff 效果
   const player = usePlayerAction(state, log, ctx, initiative, endCombat, passive);
+
+  // P2-36 修复：player 已就位，绑定到 playerHolder 供 endCombat.handleLoot 使用
+  playerHolder.current = player;
 
   // ==================== Action：开始战斗 ====================
 
@@ -289,7 +309,8 @@ export const useCombatStore = defineStore('combat', () => {
     }
 
     eventBus.emit(GameEvents.COMBAT_PLAYER_TURN, null);
-    log.saveLogs();
+    // P2-46 修复：startCombat 为同步函数，使用 .catch 显式处理 saveLogs 错误，避免 unhandled rejection
+    log.saveLogs().catch(err => console.error('[CombatStore] startCombat 保存日志失败:', err));
   }
 
   // ==================== Action：玩家行动 ====================

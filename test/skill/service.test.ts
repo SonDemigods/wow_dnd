@@ -98,6 +98,17 @@ describe('calculateSkillDamage 技能伤害计算', () => {
       // 30 + 25 * 0.8 = 50
       expect(calculateSkillDamage(skill, stats)).toBe(50);
     });
+
+    it('未指定 coefficient 时按等级自动计算（覆盖 ?? getSkillCoefficient 分支）', () => {
+      const skill = makeSkill({
+        type: 'magic_damage',
+        effect: { type: 'magic_damage', value: 30 },
+        unlockLevel: 1,
+      });
+      const stats = makeStats({ int: 25 });
+      // 系数 = 0.50（Lv1-2 tier 0 damage），30 + 25 * 0.5 = 42.5 → floor = 42
+      expect(calculateSkillDamage(skill, stats)).toBe(42);
+    });
   });
 
   describe('health_restore 生命恢复', () => {
@@ -111,6 +122,17 @@ describe('calculateSkillDamage 技能伤害计算', () => {
       // 40 + 30 * 0.3 = 49
       expect(calculateSkillDamage(skill, stats)).toBe(49);
     });
+
+    it('未指定 coefficient 时按等级自动计算（覆盖 ?? getSkillCoefficient 分支）', () => {
+      const skill = makeSkill({
+        type: 'health_restore',
+        effect: { type: 'health_restore', value: 40 },
+        unlockLevel: 1,
+      });
+      const stats = makeStats({ wis: 30 });
+      // 系数 = 0.30（Lv1-2 tier 0 heal），40 + 30 * 0.30 = 49
+      expect(calculateSkillDamage(skill, stats)).toBe(49);
+    });
   });
 
   describe('mana_restore 法力恢复', () => {
@@ -122,6 +144,17 @@ describe('calculateSkillDamage 技能伤害计算', () => {
       });
       const stats = makeStats({ int: 30 });
       // 20 + 30 * 0.3 = 29
+      expect(calculateSkillDamage(skill, stats)).toBe(29);
+    });
+
+    it('未指定 coefficient 时按等级自动计算（覆盖 ?? getSkillCoefficient 分支）', () => {
+      const skill = makeSkill({
+        type: 'mana_restore',
+        effect: { type: 'mana_restore', value: 20 },
+        unlockLevel: 1,
+      });
+      const stats = makeStats({ int: 30 });
+      // 系数 = 0.30（Lv1-2 tier 0 heal），20 + 30 * 0.30 = 29
       expect(calculateSkillDamage(skill, stats)).toBe(29);
     });
   });
@@ -563,5 +596,33 @@ describe('canCastSkill 施放校验', () => {
       expect(result.canCast).toBe(true);
       expect(result.reason).toBe('');
     });
+  });
+});
+
+// ============================================================
+// 补充覆盖：default 兜底分支（未知类型）
+// ============================================================
+
+describe('default 兜底分支覆盖', () => {
+  it('calculateSkillDamage 未知技能类型时走 default 返回 effect.value', () => {
+    // Arrange：SkillType 联合类型已穷尽 case，default 仅在运行时收到未知类型时触发
+    // 通过类型断言传入不在联合类型中的值，模拟未来扩展或异常数据
+    const skill = makeSkill({
+      type: 'unknown_type' as Skill['type'],
+      effect: { type: 'unknown_type' as Skill['effect']['type'], value: 42 },
+    });
+    // Act
+    const result = calculateSkillDamage(skill, makeStats());
+    // Assert：default 分支直接返回 effect.value
+    expect(result).toBe(42);
+  });
+
+  it('calculateBuffValue 未知效果类型时走 default 返回 value', () => {
+    // Arrange：EffectType 联合类型已穷尽 case，default 仅在运行时收到未知类型时触发
+    const effect = makeBuffEffect({ type: 'unknown_effect' as SkillBuffEffect['type'], value: 99 });
+    // Act
+    const result = calculateBuffValue(effect, makeStats({ wis: 100, dex: 100 }));
+    // Assert：default 分支直接返回 value，不受属性加成影响
+    expect(result).toBe(99);
   });
 });

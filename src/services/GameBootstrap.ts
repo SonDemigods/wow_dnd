@@ -81,10 +81,19 @@ export class GameBootstrapService {
    * 清理所有模块（角色切换或退出时）
    *
    * 仅清理显式实现了 Disposable 接口的 Store，按初始化的逆序释放资源。
+   *
+   * P2-71 修复说明：initialize 初始化 7 个 Store（log/inventory/equipment/skill/map/exploration/quest），
+   * 但并非所有 Store 都需要 dispose。只有持有需要显式释放的资源（EventBus 监听器、定时器、回调引用）
+   * 的 Store 才实现 Disposable 接口并加入下方列表：
+   *
    * 当前实现 dispose 的 Store：
    * - combatStore：清理战斗定时器（turnTimerId / bossIntroTimerId）
    * - explorationStore：清理 EventBus 监听器与 UI 回调
    * - audioStore：清理 saveTimer 去抖定时器
+   *
+   * 以下 initialize 的 Store 经核查无 EventBus 监听器、定时器或订阅需要清理，故不实现 dispose：
+   * - logStore / inventoryStore / equipmentStore / skillStore / mapStore / questStore
+   * 若未来这些 Store 新增了需释放的资源，应实现 Disposable 接口并加入 disposables 列表。
    *
    * 新增可释放 Store 时，将其加入下方 disposables 列表即可——
    * TypeScript 会在编译期校验其 dispose 方法签名。

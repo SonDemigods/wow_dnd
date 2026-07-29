@@ -61,7 +61,17 @@ vi.mock('@/modules/character/store', () => ({ useCharacterStore: () => mocks.cha
 vi.mock('@/modules/log/store', () => ({ useLogStore: () => mocks.logStore }));
 vi.mock('@/modules/log/service', () => ({ generateLogId: vi.fn().mockReturnValue('log-id') }));
 
+// service 层使用真实实现，仅 getActiveSetBonuses 包装为 vi.fn 以便单测覆盖防御性 continue 分支
+vi.mock('@/modules/equipment/service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/modules/equipment/service')>();
+  return {
+    ...actual,
+    getActiveSetBonuses: vi.fn(actual.getActiveSetBonuses),
+  };
+});
+
 import { equipmentDbService } from '@/modules/equipment/db';
+import { getActiveSetBonuses } from '@/modules/equipment/service';
 
 // ==================== 测试数据 helper ====================
 
@@ -257,7 +267,7 @@ describe('useEquipmentStore - 装备 Store', () => {
       // 日志记录
       expect(mocks.logStore.addLogEntry).toHaveBeenCalledWith(expect.objectContaining({
         type: 'item',
-        message: '装备了：铁剑',
+        message: '装备了：铁剑（主手）',
       }));
     });
 
@@ -281,6 +291,22 @@ describe('useEquipmentStore - 装备 Store', () => {
       expect(store.equipment.weapon1?.item.id).toBe('new');
       // 新装备属性已应用
       expect(mocks.characterStore.applyBonus).toHaveBeenCalledWith({ str: 6 });
+    });
+
+    it('装备过程中 currentCharacterId 被清空时 persist 跳过持久化（行 307 falsy 分支）', async () => {
+      const store = useEquipmentStore();
+      store.$patch({ currentCharacterId: 'char-1' });
+      const weapon = makeWeapon({ bonus: { str: 1 } });
+
+      // 模拟并发竞态：applyBonus 执行期间 currentCharacterId 被清空，
+      // 导致后续 persist() 读取到 null 走 falsy 分支（不调用 saveEquipment）
+      mocks.characterStore.applyBonus.mockImplementationOnce(async () => {
+        store.$patch({ currentCharacterId: null });
+      });
+
+      await store.equipItem('weapon1', weapon);
+
+      expect(equipmentDbService.saveEquipment).not.toHaveBeenCalled();
     });
   });
 
@@ -543,6 +569,63 @@ describe('useEquipmentStore - 装备 Store', () => {
       expect(mocks.characterStore.removeBonus).toHaveBeenCalledWith({ str: 5 });
       expect(store.equipment.weapon1).toBeNull();
     });
+
+    it('套装已激活时再次调用 reapplySetBonuses 不重复应用/移除（行 272/281 falsy 分支）', async () => {
+      const store = useEquipmentStore();
+      store.$patch({ currentCharacterId: 'char-1' });
+      const setWeapon = makeWeapon({
+        id: 'set_w', name: '力量之剑', slots: ['weapon1'],
+        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { str: 3 },
+      });
+      const setArmor = makeArmor({
+        id: 'set_a', name: '力量之甲', slots: ['armor2'],
+        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 2 },
+      });
+      // 先装备两件激活套装
+      await store.equipItem('weapon1', setWeapon);
+      await store.equipItem('armor2', setArmor);
+      // 清除调用记录
+      mocks.characterStore.applyBonus.mockClear();
+      mocks.characterStore.removeBonus.mockClear();
+
+      // 再装备一件非套装物品（armor1 槽位），套装仍激活
+      const nonSetArmor = makeArmor({
+        id: 'non_set', name: '皮甲', slots: ['armor1'], bonus: { dex: 1 },
+      });
+      await store.equipItem('armor1', nonSetArmor);
+
+      // 套装奖励已在 appliedSetBonuses 中：
+      // - 行 272 falsy：appliedSetBonuses 中的条目仍在 currentKeys 中 → 不调用 removeBonus
+      // - 行 281 falsy：currentActive 中的条目仍在 appliedKeys 中 → 不调用 applyBonus
+      expect(mocks.characterStore.removeBonus).not.toHaveBeenCalledWith({ str: 5 });
+      expect(mocks.characterStore.applyBonus).not.toHaveBeenCalledWith({ str: 5 });
+    });
+
+    it('套装奖励无 stat/value 时跳过应用（continue 分支 行 279）', async () => {
+      const store = useEquipmentStore();
+      store.$patch({ currentCharacterId: 'char-1' });
+      // Mock getActiveSetBonuses 返回无 stat/value 的奖励（仅 effect/description）
+      vi.mocked(getActiveSetBonuses).mockReturnValueOnce([
+        {
+          setId: 'test_set',
+          setName: '测试套装',
+          piecesEquipped: 2,
+          bonus: {
+            requiredPieces: 2,
+            bonus: { effect: 'special_effect', description: '特殊效果' },
+          },
+        },
+      ]);
+
+      // 装备一件物品触发 reapplySetBonuses
+      const weapon = makeWeapon({ id: 'w1', bonus: { str: 1 } });
+      await store.equipItem('weapon1', weapon);
+
+      // 无 stat/value 的套装奖励被 continue 跳过：
+      // applyBonus 仅被调用 1 次（装备自身 bonus { str: 1 }），不包含套装奖励
+      expect(mocks.characterStore.applyBonus).toHaveBeenCalledTimes(1);
+      expect(mocks.characterStore.applyBonus).toHaveBeenCalledWith({ str: 1 });
+    });
   });
 
   // -------------------- Actions: equipItem 回调缺失与异常回滚 --------------------
@@ -616,8 +699,7 @@ describe('useEquipmentStore - 装备 Store', () => {
 
   // -------------------- Actions: unequipItem 回调缺失 --------------------
   describe('Actions: unequipItem 回调缺失', () => {
-    it('未注入 addItem 回调时输出警告但依然清空槽位', async () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    it('未注入 addItem 回调时抛出错误并保留槽位（P0 修复：避免装备丢失）', async () => {
       clearInventoryCallbacks();
       const store = useEquipmentStore();
       const weapon = makeWeapon({ bonus: { str: 5 } });
@@ -626,13 +708,14 @@ describe('useEquipmentStore - 装备 Store', () => {
         equipment: buildEquipment({ weapon1: { item: weapon, equippedAt: 1 } }),
       });
 
-      const result = await store.unequipItem('weapon1');
+      // 修复后：回调未注入时直接抛出错误，阻止卸下操作，避免装备丢失
+      await expect(store.unequipItem('weapon1')).rejects.toThrow(
+        '[EquipmentStore] inventoryAddItemCallback 未注入，无法卸下装备。请检查 GameBootstrap 初始化流程。'
+      );
 
-      // 槽位被清空，装备未放回背包（回调缺失）
-      expect(result).not.toBeNull();
-      expect(store.equipment.weapon1).toBeNull();
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('inventoryAddItemCallback 未注入'));
-      warnSpy.mockRestore();
+      // 槽位保留，装备未丢失
+      expect(store.equipment.weapon1).not.toBeNull();
+      expect(store.equipment.weapon1?.item.id).toBe(weapon.id);
     });
 
     it('卸下无 bonus 的装备时不调用 removeBonus', async () => {
@@ -681,6 +764,16 @@ describe('useEquipmentStore - 装备 Store', () => {
       });
       // 物品无 bonus，totalStats 全 0
       expect(store.totalStats).toEqual({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
+    });
+
+    it('bonus 属性值为 0 时回退为 0（|| 0 分支 行 183）', () => {
+      const store = useEquipmentStore();
+      // bonus 中 str 为 0（falsy），触发 || 0 分支；dex 为 3 正常累加
+      const weapon = makeWeapon({ bonus: { str: 0, dex: 3 } as never });
+      store.$patch({
+        equipment: buildEquipment({ weapon1: { item: weapon, equippedAt: 1 } }),
+      });
+      expect(store.totalStats).toEqual({ str: 0, dex: 3, con: 0, int: 0, wis: 0, cha: 0 });
     });
   });
 });

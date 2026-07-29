@@ -186,6 +186,40 @@ describe('ErrorHandler 统一错误处理服务', () => {
       const [, , context] = errorReporterReportMock.mock.calls[0];
       expect(context).toBeUndefined();
     });
+
+    it('非 Error 异常被包装为 Error（覆盖 instanceof false 分支）', async () => {
+      // Arrange：reject 一个字符串（非 Error 实例），触发 err instanceof Error === false 分支
+      const promise = Promise.reject('字符串错误');
+
+      // Act
+      const result = await errorHandler.wrapAsync(promise);
+
+      // Assert
+      expect(result).toBeUndefined();
+      expect(errorReporterReportMock).toHaveBeenCalledTimes(1);
+      const [reportedError] = errorReporterReportMock.mock.calls[0];
+      expect(reportedError).toBeInstanceOf(Error);
+      expect(reportedError.message).toBe('字符串错误');
+    });
+
+    it('非 Error 异常且有 userMessage 时弹 toast 并包装为 Error', async () => {
+      // Arrange：reject 一个数字（非 Error 实例）
+      const promise = Promise.reject(404);
+
+      // Act
+      const result = await errorHandler.wrapAsync(promise, '请求失败');
+
+      // Assert
+      expect(result).toBeUndefined();
+      expect(showMock).toHaveBeenCalledWith({
+        message: '请求失败',
+        type: 'danger',
+        duration: 3000,
+      });
+      const [reportedError] = errorReporterReportMock.mock.calls[0];
+      expect(reportedError).toBeInstanceOf(Error);
+      expect(reportedError.message).toBe('404');
+    });
   });
 
   // ==================== report ====================

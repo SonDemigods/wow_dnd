@@ -14,6 +14,13 @@ import type { PassiveSkill } from '@/modules/character/types';
  * 1. 每个职业 3 个被动，覆盖不同触发时机（战斗开始/攻击/受伤/低血量/被动）
  * 2. 效果类型多样化（属性修正/资源生成/减伤/治疗）
  * 3. 数值遵循 WoW 风格：百分比用小数（0.2 = 20%）
+ *
+ * P2-74 value 字段单位约定（按 effect.type 区分）：
+ * - resource_gen：绝对数值（如 value: 30 = 生成 30 怒气，value: 2 = 生成 2 连击点）
+ * - heal：百分比小数（如 value: 0.05 = 恢复 5% 最大生命）
+ * - stat_modifier：百分比小数（如 value: 0.1 = 属性提升 10%）
+ * - damage_reduction：百分比小数（如 value: 0.2 = 减伤 20%）
+ * - buff：百分比小数（如 value: 0.08 = 8% 增益）
  */
 export const CLASS_PASSIVES: PassiveSkill[] = [
   // ==================== 战士 ====================

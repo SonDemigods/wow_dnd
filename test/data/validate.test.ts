@@ -440,3 +440,39 @@ describe('validateItemSets 错误分支', () => {
     logSpy.mockRestore();
   });
 });
+
+// ==================== import.meta.env.DEV 分支 ====================
+
+describe('import.meta.env.DEV 分支', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('DEV=false 时模块加载不执行校验函数', async () => {
+    // Arrange：mock 数据源为空，避免真实数据干扰
+    vi.doMock('@/data/config_mobs', () => ({ MOBS: [] }));
+    vi.doMock('@/data/config_bosses', () => ({ BOSSES: [] }));
+    vi.doMock('@/data/config_locations', () => ({ LOCATIONS: [] }));
+    vi.doMock('@/data/config_quests', () => ({ QUESTS: [] }));
+    vi.doMock('@/data/config_items', () => ({ LOOT_ITEMS: [] }));
+    vi.doMock('@/data/config_item_sets', () => ({ ITEM_SETS: [] }));
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Act：stub DEV 为 false 后重新导入模块
+    vi.stubEnv('DEV', false);
+    await import('@/data/validate');
+
+    // Assert：DEV=false 时不执行任何校验，无日志输出
+    expect(logSpy).not.toHaveBeenCalled();
+    expect(errSpy).not.toHaveBeenCalled();
+
+    logSpy.mockRestore();
+    errSpy.mockRestore();
+  });
+});

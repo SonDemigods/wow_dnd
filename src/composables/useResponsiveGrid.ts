@@ -41,16 +41,30 @@ export function useResponsiveGrid(
   }
 
   let observer: ResizeObserver | null = null;
+  // P3-123 修复：ResizeObserver 回调高频触发，用 requestAnimationFrame 节流，避免布局抖动
+  let rafId: number | null = null;
+  const throttledUpdate = (): void => {
+    if (rafId !== null) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      update();
+    });
+  };
 
   onMounted(() => {
     update();
     if (containerRef.value && typeof ResizeObserver !== 'undefined') {
-      observer = new ResizeObserver(update);
+      observer = new ResizeObserver(throttledUpdate);
       observer.observe(containerRef.value);
     }
   });
 
   onUnmounted(() => {
+    // P3-123 修复：清理未执行的 raf，避免组件卸载后仍触发状态更新
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
     observer?.disconnect();
     observer = null;
   });

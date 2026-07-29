@@ -99,14 +99,19 @@ export const useAudioStore = defineStore('audio', () => {
   /**
    * 释放 Store 持有的资源（角色切换时由 GameBootstrap.dispose 调用）
    *
-   * 清理 saveTimer 去抖定时器，避免角色切换后回调指向已销毁的 Store 实例。
-   * 注意：不调用 flushSave（异步），角色切换时待写入数据由下次 loadFromDb 覆盖。
+   * 清理 saveTimer 去抖定时器并强制 flush 未写入的设置，
+   * 避免快速角色切换时丢失音量等设置。
+   * P2-66 修复：调用 flushSave 确保待写入数据落盘。
+   * 注意：Disposable 接口要求 dispose(): void，因此 flushSave 以 fire-and-forget 方式调用，
+   * 通过 .catch 记录错误而非中断 dispose 流程。
    */
   function dispose(): void {
     if (saveTimer.value) {
       clearTimeout(saveTimer.value);
       saveTimer.value = null;
     }
+    // P2-66 修复：强制 flush，避免快速角色切换丢失设置
+    flushSave().catch(err => console.error('[AudioStore] dispose flush 失败:', err));
   }
 
   return {

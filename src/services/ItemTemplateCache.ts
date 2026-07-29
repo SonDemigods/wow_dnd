@@ -111,6 +111,33 @@ class ItemTemplateCacheService {
     this.templateMap.clear();
     this.loaded = false;
   }
+
+  /**
+   * 保存物品模板并使缓存失效（P3-121 修复）
+   *
+   * 代理 inventoryDbService.saveItemTemplate，写入成功后调用 invalidate() 清除缓存，
+   * 确保后续查询不会返回过期数据。原实现仅缓存读取、不感知写入，导致保存/删除后
+   * 缓存仍返回旧数据。
+   *
+   * @param item - 物品数据
+   */
+  async saveItemTemplate(item: Item): Promise<void> {
+    await inventoryDbService.saveItemTemplate(item);
+    this.invalidate();
+  }
+
+  /**
+   * 删除物品模板并使缓存失效（P3-121 修复）
+   *
+   * 代理 inventoryDbService.deleteItemTemplate，删除成功后调用 invalidate() 清除缓存，
+   * 确保后续查询不会返回过期数据。
+   *
+   * @param itemId - 物品 ID
+   */
+  async deleteItemTemplate(itemId: string): Promise<void> {
+    await inventoryDbService.deleteItemTemplate(itemId);
+    this.invalidate();
+  }
 }
 
 /** 物品模板缓存单例 */

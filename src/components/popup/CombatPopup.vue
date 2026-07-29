@@ -375,6 +375,9 @@ const bossIntroLineRefs = ref<Record<number, HTMLElement>>({});
 const phaseBackdropRef = ref<HTMLElement | null>(null);
 const phaseContentRef = ref<HTMLElement | null>(null);
 const vsDividerRef = ref<HTMLElement | null>(null);
+
+// P2-60 修复：Boss 出场演出动画控制器，组件卸载时调用 cancel() 清理定时器
+let bossIntroController: { cancel: () => void } | null = null;
 const resultPopupRef = ref<HTMLElement | null>(null);
 const resultIconRef = ref<HTMLElement | null>(null);
 const resultTextRef = ref<HTMLElement | null>(null);
@@ -407,12 +410,14 @@ function getSkillCostText(skill: Skill): string {
   if (skill.resourceType && skill.resourceCost) {
     return `${skill.resourceCost} ${RESOURCE_TYPE_NAMES[skill.resourceType] || ''}`;
   }
-  return `${skill.mpCost} MP`;
+  // P2-76：mpCost 可选，undefined 时显示 0 MP
+  return `${skill.mpCost ?? 0} MP`;
 }
 
 /** 检查技能是否可施放（MP + 专属资源双重检查） */
 function canCastSkill(skill: Skill): boolean {
-  if (playerMp.value < skill.mpCost) return false;
+  // P2-76：mpCost 可选，undefined 视为 0
+  if (playerMp.value < (skill.mpCost ?? 0)) return false;
   if (skill.resourceType && skill.resourceCost) {
     const sys = combatStore.resourceSystems.find(s => s.type === skill.resourceType);
     if (sys && !sys.hasEnough(skill.resourceCost)) return false;
@@ -844,11 +849,17 @@ function onBossIntro(data: { enemyId: string; enemyName: string; icon: string; e
   bossIntroLines.value = data.lines;
   showBossIntro.value = true;
 
+  // P2-60 修复：保存 animateBossIntro 返回的控制器，便于 onUnmounted 中取消
+  if (bossIntroController) {
+    bossIntroController.cancel();
+    bossIntroController = null;
+  }
+
   // 使用 anime.js 时间线播放演出
   nextTick(() => {
     if (bossIntroOverlayRef.value && bossIntroIconRef.value && bossIntroNameRef.value) {
       const lineEls = Object.values(bossIntroLineRefs.value);
-      animateBossIntro(
+      bossIntroController = animateBossIntro(
         bossIntroOverlayRef.value,
         bossIntroIconRef.value,
         bossIntroNameRef.value,
@@ -864,6 +875,7 @@ function onBossIntro(data: { enemyId: string; enemyName: string; icon: string; e
   const actualDuration = Math.max(data.duration, minDuration);
   setAnimTimer(() => {
     showBossIntro.value = false;
+    bossIntroController = null;
   }, actualDuration + 300); // +300 给淡出动画留时间
 }
 
@@ -1145,6 +1157,11 @@ onUnmounted(() => {
   clearAutoClose();
   // 清理所有未触发的动画定时器，防止卸载后访问响应式状态
   clearAllAnimationTimers();
+  // P2-60 修复：取消 Boss 出场演出动画控制器，清理自动关闭定时器
+  if (bossIntroController) {
+    bossIntroController.cancel();
+    bossIntroController = null;
+  }
 });
 
 </script>

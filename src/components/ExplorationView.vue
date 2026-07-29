@@ -59,7 +59,7 @@
  * @description 基于网格的探索玩法界面，支持拖拽平移探索地图、点击翻开格子触发战斗/商店/任务等交互事件
  */
 
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useExplorationStore } from '@/modules/exploration';
 import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
@@ -247,8 +247,16 @@ onMounted(async () => {
   if (characterId) {
     await explorationStore.init(characterId);
   }
-  
+
   initExploration();
+});
+
+// P2-68 修复：组件卸载时清理 rafId，避免卸载后回调执行导致错误
+onUnmounted(() => {
+  if (rafId) {
+    cancelAnimationFrame(rafId);
+    rafId = 0;
+  }
 });
 </script>
 

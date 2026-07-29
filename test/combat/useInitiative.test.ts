@@ -751,7 +751,8 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       init.advanceToNextUnit();
 
       expect(endCombat).toHaveBeenCalledWith('defeat');
-      expect(log.saveLogs).toHaveBeenCalled();
+      // P2-37 修复：tickAllEffects 中移除了重复的 saveLogs 调用，由 endCombat 内部统一处理
+      // 此处 endCombat 为 mock，不会调用 saveLogs；真实 endCombat 会调用
     });
 
     it('所有敌人 hp<=0 时调用 endCombat("victory")', () => {
@@ -904,7 +905,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       init.singleEnemyTurn('e1');
 
       expect(endCombat).toHaveBeenCalledWith('defeat');
-      expect(log.saveLogs).toHaveBeenCalled();
+      // P2-37 修复：singleEnemyTurn 中移除了重复的 saveLogs 调用，由 endCombat 内部统一处理
     });
   });
 
@@ -1163,6 +1164,256 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
         call => typeof call[0] === 'object' && call[0] !== null && 'message' in call[0] && typeof (call[0] as { message: string }).message === 'string' && (call[0] as { message: string }).message.startsWith('"')
       );
       expect(dialogueCalls.length).toBe(0);
+    });
+
+    it('阶段切换且 aiStrategy 缺失时不更新敌人策略', () => {
+      // 覆盖 useInitiative.ts 第 302 行：if (currentPhase.aiStrategy) falsy 分支
+      const state = makeStateMock();
+      const bossEnemy = makeEnemy({ id: 'boss1', isBoss: true, hp: 30, maxHp: 100 });
+      const phase = makeBossPhase({ aiStrategy: undefined });
+      bossEnemy.phases = [phase];
+      state.enemies = computed(() => [bossEnemy]);
+      state.initiativeOrder.value = ['player', 'boss1'];
+      state.currentInitiativeIndex.value = 1;
+      const phaseManager = {
+        getCurrentPhase: vi.fn(() => ({ phase, changed: true })),
+        reset: vi.fn(),
+      };
+      state.bossPhaseManagers.set('boss1', phaseManager);
+      vi.mocked(processBossPhaseMechanics).mockReturnValue([]);
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('boss1');
+
+      // aiStrategy 缺失，不应赋值（保持 undefined）
+      expect(bossEnemy.aiStrategy).toBeUndefined();
+      // 阶段切换日志仍记录
+      expect(applyPhaseStats).toHaveBeenCalledWith(bossEnemy, phase);
+    });
+
+    it('阶段切换且 transitionEffect 缺失时事件 effect 默认为 darken', async () => {
+      // 覆盖 useInitiative.ts 第 316 行：currentPhase.transitionEffect || 'darken' falsy 分支
+      const state = makeStateMock();
+      const bossEnemy = makeEnemy({ id: 'boss1', isBoss: true, hp: 30, maxHp: 100 });
+      const phase = makeBossPhase({ transitionEffect: undefined });
+      bossEnemy.phases = [phase];
+      state.enemies = computed(() => [bossEnemy]);
+      state.initiativeOrder.value = ['player', 'boss1'];
+      state.currentInitiativeIndex.value = 1;
+      const phaseManager = {
+        getCurrentPhase: vi.fn(() => ({ phase, changed: true })),
+        reset: vi.fn(),
+      };
+      state.bossPhaseManagers.set('boss1', phaseManager);
+      vi.mocked(processBossPhaseMechanics).mockReturnValue([]);
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('boss1');
+
+      const { eventBus, GameEvents } = await import('@/modules/bus');
+      expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_BOSS_PHASE, expect.objectContaining({
+        effect: 'darken',
+      }));
+    });
+
+    it('机制触发未知 mechType 时日志回退为原始 mechType', () => {
+      // 覆盖 useInitiative.ts 第 340 行：mechNames[mechType] || mechType falsy 分支
+      const state = makeStateMock();
+      const bossEnemy = makeEnemy({ id: 'boss1', isBoss: true, hp: 30, maxHp: 100 });
+      const phase = makeBossPhase();
+      bossEnemy.phases = [phase];
+      state.enemies = computed(() => [bossEnemy]);
+      state.initiativeOrder.value = ['player', 'boss1'];
+      state.currentInitiativeIndex.value = 1;
+      const phaseManager = {
+        getCurrentPhase: vi.fn(() => ({ phase, changed: false })),
+        reset: vi.fn(),
+      };
+      state.bossPhaseManagers.set('boss1', phaseManager);
+      // 返回未知机制类型（不在 mechNames 映射中）
+      vi.mocked(processBossPhaseMechanics).mockReturnValue(['unknown_mech' as never]);
+      const boss = makeBossMock();
+      const log = makeLogMock();
+      const init = useInitiative(state, log, makeMockCtx(), makeEnemyActionMock(), boss, vi.fn(), makePassiveMock());
+
+      init.singleEnemyTurn('boss1');
+
+      // 未知机制类型回退为原始字符串
+      expect(log.addCombatLog).toHaveBeenCalledWith(expect.objectContaining({
+        message: expect.stringContaining('unknown_mech'),
+      }));
+      expect(boss.applyMechanicEffect).toHaveBeenCalledWith(bossEnemy, 'unknown_mech', phase);
+    });
+  });
+
+  // -------------------- 边界分支补充：regenAmount 时 enemy 为 null --------------------
+
+  describe('边界分支补充：tick 阶段后 enemy 为 null', () => {
+    it('enemy dotDamage>0 但二次查询 getEnemyById 返回 null 时不记录伤害日志', () => {
+      // 覆盖 useInitiative.ts 第 205 行：if (enemy) falsy 分支
+      // 阶段 1（line 170）getEnemyById 返回 enemy（不被跳过），阶段 2（line 204）返回 null
+      const state = makeStateMock();
+      const enemy = makeEnemy({ id: 'e1', hp: 30, maxHp: 50 });
+      state.enemies = computed(() => [enemy]);
+      state.enemyEffects.value = { e1: createEmptyContainer() };
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1;
+      const ctx = makeMockCtx();
+      // 第一次调用返回 enemy（line 170），第二次调用返回 null（line 204）
+      ctx.enemy.getEnemyById = vi.fn()
+        .mockReturnValueOnce(enemy)
+        .mockReturnValue(null);
+      ctx.enemy.takeDamage = vi.fn();
+      vi.mocked(state.effectRegistry.tickAll)
+        .mockReturnValueOnce({ expiredIds: [], dotDamage: 0, regenAmount: 0 })
+        .mockReturnValueOnce({ expiredIds: [], dotDamage: 12, regenAmount: 0 });
+      const log = makeLogMock();
+      const init = useInitiative(state, log, ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      // takeDamage 被调用（line 203），但 enemy 为 null 不记录日志
+      expect(ctx.enemy.takeDamage).toHaveBeenCalledWith('e1', 12);
+      expect(log.addCombatLog).not.toHaveBeenCalledWith(expect.objectContaining({ eventType: 'combat_damage', targetId: 'e1' }));
+    });
+
+    it('enemy regenAmount>0 但二次查询 getEnemyById 返回 null 时不调用 takeDamage', () => {
+      // 覆盖 useInitiative.ts 第 217 行：if (enemy) falsy 分支
+      const state = makeStateMock();
+      const enemy = makeEnemy({ id: 'e1', hp: 30, maxHp: 50 });
+      state.enemies = computed(() => [enemy]);
+      state.enemyEffects.value = { e1: createEmptyContainer() };
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 1;
+      const ctx = makeMockCtx();
+      // 第一次调用返回 enemy（line 170），第二次调用返回 null（line 216）
+      ctx.enemy.getEnemyById = vi.fn()
+        .mockReturnValueOnce(enemy)
+        .mockReturnValue(null);
+      const takeDamageSpy = vi.fn();
+      ctx.enemy.takeDamage = takeDamageSpy;
+      vi.mocked(state.effectRegistry.tickAll)
+        .mockReturnValueOnce({ expiredIds: [], dotDamage: 0, regenAmount: 0 })
+        .mockReturnValueOnce({ expiredIds: [], dotDamage: 0, regenAmount: 10 });
+      const log = makeLogMock();
+      const init = useInitiative(state, log, ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.advanceToNextUnit();
+
+      // enemy 为 null，不调用 takeDamage，不记录恢复日志
+      expect(takeDamageSpy).not.toHaveBeenCalled();
+      expect(log.addCombatLog).not.toHaveBeenCalledWith(expect.objectContaining({ eventType: 'combat_heal', targetId: 'e1' }));
+    });
+  });
+
+  // -------------------- 边界分支补充：buildInitiativeOrder stats 回退 --------------------
+
+  describe('边界分支补充：buildInitiativeOrder 中 stats 缺失', () => {
+    it('敌人 stats 缺失时 dex 回退为 5', () => {
+      // 覆盖 useInitiative.ts 第 89 行：e.stats?.dex ?? 5 falsy 分支
+      const state = makeStateMock();
+      const enemyNoStats = makeEnemy({ id: 'e1' });
+      // 使用类型断言清除 stats，触发 ?? 5 回退
+      (enemyNoStats as { stats?: unknown }).stats = undefined;
+      state.enemies = computed(() => [enemyNoStats]);
+      state.initiativeOrder.value = ['player', 'e1'];
+      state.currentInitiativeIndex.value = 0;
+      const ctx = makeMockCtx();
+      const init = useInitiative(state, makeLogMock(), ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.buildInitiativeOrder();
+
+      // 验证先攻顺序已构建（包含 player 和 e1）
+      expect(state.initiativeOrder.value).toContain('player');
+      expect(state.initiativeOrder.value).toContain('e1');
+    });
+
+    it('玩家 effectiveStats.dex 为 0 时 speed 回退为 0', () => {
+      // 覆盖 useInitiative.ts 第 78 行：ctx.character.effectiveStats.dex || 0 falsy 分支
+      const state = makeStateMock();
+      state.enemies = computed(() => []);
+      state.initiativeOrder.value = [];
+      state.currentInitiativeIndex.value = 0;
+      // 构造 dex=0 的 ctx（触发 || 0 回退）
+      const ctx = makeMockCtx({ characterEffectiveStats: { dex: 0 } as never });
+      const init = useInitiative(state, makeLogMock(), ctx, makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.buildInitiativeOrder();
+
+      // 验证先攻顺序包含 player
+      expect(state.initiativeOrder.value).toContain('player');
+    });
+  });
+
+  // -------------------- 边界分支补充：assignEnemyPositions 超出格子 --------------------
+
+  describe('边界分支补充：assignEnemyPositions Boss 超出后排', () => {
+    it('Boss 数量超过后排位置时 col 回退为 0', () => {
+      // 覆盖 useInitiative.ts 第 48 行：backSlots.shift() ?? 0 falsy 分支
+      const state = makeStateMock();
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      // 4 个 Boss，超过后排 3 个位置
+      const bosses = Array.from({ length: 4 }, (_, i) =>
+        makeEnemy({ id: `boss${i}`, isBoss: true })
+      );
+
+      init.assignEnemyPositions(bosses);
+
+      // 第 4 个 Boss 的 col 回退为 0（backSlots 已空，?? 0）
+      expect(state.enemyPositions.value['boss3']).toEqual({ row: 'back', col: 0 });
+    });
+
+    it('前排和后排都满时第 7 个普通敌人不分配位置', () => {
+      // 覆盖 useInitiative.ts 第 57 行：backSlots.length > 0 的 falsy 分支
+      // 3 前排 + 3 后排 = 6 格全部占满，第 7 个普通敌人无处可放
+      const state = makeStateMock();
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      const enemies = Array.from({ length: 7 }, (_, i) =>
+        makeEnemy({ id: `e${i}` })
+      );
+
+      init.assignEnemyPositions(enemies);
+
+      // 前 6 个敌人有位置
+      for (let i = 0; i < 6; i++) {
+        expect(state.enemyPositions.value[`e${i}`]).toBeDefined();
+      }
+      // 第 7 个敌人（e6）无位置（frontSlots 和 backSlots 都已空）
+      expect(state.enemyPositions.value['e6']).toBeUndefined();
+    });
+  });
+
+  // -------------------- 边界分支补充：buildInitiativeOrder playerIndex < 0 --------------------
+
+  describe('边界分支补充：buildInitiativeOrder 中 player 不在先攻序列', () => {
+    it('initiativeOrder 不含 player 时 currentInitiativeIndex 回退为 0', () => {
+      // 覆盖 useInitiative.ts 第 98 行：playerIndex >= 0 ? playerIndex : 0 的 falsy 分支
+      // 使用 writable computed 在 setter 中过滤掉 'player'，使 indexOf 返回 -1
+      const inner = ref<string[]>([]);
+      const writableFiltering = computed({
+        get: () => inner.value,
+        set: (val: string[]) => {
+          // 模拟 setter 过滤掉 'player'（防御性回退测试）
+          inner.value = val.filter(id => id !== 'player');
+        },
+      });
+
+      const enemy = makeEnemy({ id: 'e1' });
+      const state = makeStateMock();
+      state.enemies = computed(() => [enemy]);
+      // 替换 initiativeOrder 为过滤型 writable computed
+      (state as { initiativeOrder: unknown }).initiativeOrder = writableFiltering;
+
+      const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
+
+      init.buildInitiativeOrder();
+
+      // player 被过滤，currentInitiativeIndex 回退为 0
+      expect(state.currentInitiativeIndex.value).toBe(0);
+      // initiativeOrder 中不含 player
+      expect(state.initiativeOrder.value).not.toContain('player');
     });
   });
 });

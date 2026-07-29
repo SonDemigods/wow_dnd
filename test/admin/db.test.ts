@@ -14,7 +14,7 @@
  *  - config_shops（schema: 'id'）无 name 索引，用于触发 search 回退全字段过滤路径
  */
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { reactive } from 'vue';
 import { adminDbService } from '@/modules/admin/db';
 import { db } from '@/modules/data/core';
@@ -161,6 +161,20 @@ describe('AdminDbService - 后台管理数据层（fake-indexeddb 真实 CRUD）
       await expect(
         adminDbService.update<MobRecord>('config_mobs', 'non-existent', { name: 'x' })
       ).rejects.toThrow('记录不存在');
+    });
+
+    it('existing.id 为 undefined 时走 ?? id 回退分支（防御性兜底）', async () => {
+      // 防御性场景：表的主键不是 id（如 char_data 主键为 characterId），existing.id 为 undefined
+      // 添加一条 char_data 记录，主键为 'char_1'，但没有 id 字段
+      await db.char_data.clear();
+      await db.char_data.add({ characterId: 'char_1', name: '测试角色' } as any);
+
+      await adminDbService.update<any>('char_data', 'char_1', { name: '新名' });
+
+      const stored = await adminDbService.getById<any>('char_data', 'char_1');
+      expect(stored).not.toBeNull();
+      expect(stored!.id).toBe('char_1');
+      expect(stored!.name).toBe('新名');
     });
   });
 

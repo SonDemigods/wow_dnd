@@ -13,7 +13,7 @@
  * 再通过 mapToItem() 将宽松的存储类型转换为精确的 Item 类型。
  */
 import { db as gameDb, dbService } from '../data/core';
-import type { Item, InventoryItem, ItemEffect, InventoryDataStorage, ItemDataStorage, ItemStorage } from './types';
+import type { Item, InventoryItem, ItemEffect, InventoryDataStorage, ItemDataStorage } from './types';
 import { toRawData } from '../../utils';
 
 /**
@@ -95,7 +95,10 @@ export class InventoryDbService {
         icon: item.icon,
         description: item.description,
         bonus: item.bonus || {},
-        effect: item.effect as unknown as ItemStorage['effect'] || null,
+        // P2-59 修复：显式构造 effect 存储对象，避免 as unknown as 双重断言
+        effect: item.effect
+          ? { type: item.effect.type, value: item.effect.value }
+          : null,
         value: item.value,
         stackable: item.stackable,
         consumable: item.consumable || false,
@@ -131,10 +134,11 @@ export class InventoryDbService {
       level: data.level,
       icon: data.icon,
       description: data.description,
-      bonus: (data.bonus || {}) as Partial<Item['bonus']>,
+      bonus: (data.bonus ?? {}) as Partial<Item['bonus']>,
       effect: data.effect as unknown as ItemEffect | undefined,
       value: data.value,
       stackable: data.stackable,
+      // P3-109 说明：consumable/template 使用 || 将 false/空字符串归一化为 undefined，保持语义一致
       consumable: data.consumable || undefined,
       template: data.template || undefined,
       levelRequirement: data.levelRequirement ?? undefined

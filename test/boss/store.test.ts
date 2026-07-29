@@ -204,6 +204,23 @@ describe('useBossStore - Boss 战斗 Store', () => {
       });
       expect(store.nextPhaseThreshold).toBeNull();
     });
+
+    it('nextPhaseThreshold：上一阶段阈值为 0 时返回 null（falsy 兜底）', () => {
+      const store = useBossStore();
+      // 构造 phase0 的 hpThreshold 为 0（falsy），覆盖 `|| null` 分支
+      const phase0 = makePhase({ hpThreshold: 0, name: '基础阶段' });
+      const phase1 = makePhase({ hpThreshold: 0.5, name: '二阶段' });
+      const boss = makeBossInstance({
+        phases: [phase0, phase1],
+      } as Partial<EnemyInstance>);
+      store.$patch({
+        currentBoss: boss,
+        currentPhase: phase1,
+        currentPhaseIndex: 1,
+      });
+      // currentPhaseIndex-1 = 0 → phases[0].hpThreshold = 0（falsy）→ 返回 null
+      expect(store.nextPhaseThreshold).toBeNull();
+    });
   });
 
   // -------------------- Action: initBossCombat --------------------
@@ -329,6 +346,21 @@ describe('useBossStore - Boss 战斗 Store', () => {
       expect(result).toBe(false);
       expect(applyPhaseStats).not.toHaveBeenCalled();
       expect(store.currentPhase).toEqual(phase1);
+    });
+
+    it('phaseManager 已创建但 phases 为空数组时返回 false（行 139 分支）', () => {
+      const store = useBossStore();
+      const phase = makePhase({ name: '一阶段' });
+      const boss = makeBossInstance({ phases: [phase] } as Partial<EnemyInstance>);
+      phaseManagerMocks.getCurrentPhase.mockReturnValueOnce({ phase, changed: true });
+      store.initBossCombat(boss);
+
+      // 初始化后 phaseManager 已创建，但将 phases 置为空数组
+      store.$patch({
+        currentBoss: { ...boss, phases: [] } as EnemyInstance,
+      });
+
+      expect(store.checkPhaseSwitch()).toBe(false);
     });
   });
 

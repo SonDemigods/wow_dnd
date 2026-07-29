@@ -292,15 +292,16 @@ describe('SkillsDbService - 技能数据层（fake-indexeddb 真实 CRUD）', ()
       expect(result).toEqual([]);
     });
 
-    it('classRestriction 为 null（无限制）的技能不会被职业查询命中', async () => {
+    it('classRestriction 为 null（通用技能）会被所有职业查询命中（P1-18 修复）', async () => {
       // Arrange：不传 classRestriction 时存储为 null
       await skillsDbService.saveSkillTemplate(makeSkill({ id: 'common-1' }));
       await skillsDbService.saveSkillTemplate(makeSkill({ id: 'w-1' }), 'warrior');
       // Act
       const result = await skillsDbService.getSkillTemplatesByClass('warrior');
-      // Assert
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('w-1');
+      // Assert：P1-18 修复后，通用技能（classRestriction=null）也会被命中
+      expect(result).toHaveLength(2);
+      const ids = result.map(s => s.id).sort();
+      expect(ids).toEqual(['common-1', 'w-1']);
     });
   });
 

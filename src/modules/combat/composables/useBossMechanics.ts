@@ -86,6 +86,7 @@ export function useBossMechanics(
 
     switch (mechType) {
       case 'stun_player': {
+        // P3-90 修复说明：turns=0 无实际意义（眩晕 0 回合等于无效），使用 || 提供默认值 1
         const turns = Number(params?.turns) || 1;
         const stunEffect: Effect = {
           id: generateEffectId(),
@@ -105,6 +106,7 @@ export function useBossMechanics(
         break;
       }
       case 'silence_player': {
+        // P3-90 修复说明：turns=0 无实际意义（沉默 0 回合等于无效），使用 || 提供默认值 2
         const turns = Number(params?.turns) || 2;
         const silenceEffect: Effect = {
           id: generateEffectId(),
@@ -124,8 +126,9 @@ export function useBossMechanics(
         break;
       }
       case 'debuff_aura': {
-        const debuffType = String(params?.debuffType || 'attack_down');
+        const debuffType = String(params?.debuffType ?? 'attack_down');
         const baseValue = Number(params?.value) || 10;
+        // P3-90 修复说明：turns=0 无实际意义（减益持续 0 回合等于无效），使用 || 提供默认值 3
         const turns = Number(params?.turns) || 3;
         const scaledValue = scaleBossEffectValue(baseValue, e.level);
         const debuffEffect: Effect = {
@@ -154,6 +157,8 @@ export function useBossMechanics(
         // summon_minions 标记已由 engine 设置，需要实际创建小怪
         const count = e.pendingSummons || 0;
         if (count > 0) {
+          // P1-6 修复：同步清零 pendingSummons，避免异步执行期间下一回合重复召唤
+          e.pendingSummons = 0;
           // 异步批量创建小怪，一次性重建先攻顺序
           (async () => {
             const newMinions: { id: string; name: string }[] = [];
@@ -161,13 +166,18 @@ export function useBossMechanics(
               for (let i = 0; i < count; i++) {
                 const minion = await bossCtx.createMinion('slime', e.level);
                 if (minion) {
-                  // 分配前排位置
+                  // P2-41 修复：分配位置时优先前排，前排满时使用后排，避免位置重叠
                   const existingPos = Object.values(state.enemyPositions.value);
-                  const usedCols = existingPos.filter(p => p.row === 'front').map(p => p.col);
-                  const availableCol = [0, 1, 2].find(c => !usedCols.includes(c)) ?? 0;
+                  const frontUsedCols = existingPos.filter(p => p.row === 'front').map(p => p.col);
+                  const backUsedCols = existingPos.filter(p => p.row === 'back').map(p => p.col);
+                  const frontAvailableCol = [0, 1, 2].find(c => !frontUsedCols.includes(c));
+                  const backAvailableCol = [0, 1, 2].find(c => !backUsedCols.includes(c));
+                  const { row, col } = frontAvailableCol !== undefined
+                    ? { row: 'front' as const, col: frontAvailableCol }
+                    : { row: 'back' as const, col: backAvailableCol ?? 0 };
                   state.enemyPositions.value = {
                     ...state.enemyPositions.value,
-                    [minion.id]: { row: 'front', col: availableCol }
+                    [minion.id]: { row, col }
                   };
                   state.enemyIds.value.push(minion.id);
                   newMinions.push({ id: minion.id, name: minion.name });
@@ -185,10 +195,30 @@ export function useBossMechanics(
                   });
                 }
               }
-            } catch {
-              console.warn(`[BossMechanics] ${e.name} 召唤小怪失败`);
-            } finally {
-              e.pendingSummons = 0;
+            } catch (err) {
+              // P2-32 修复：优雅降级 —— 清理已创建的小怪避免半成品状态污染战斗，
+              // 并通过战斗日志和错误上报记录失败原因（替代原仅 console.warn 的吞异常行为）
+              console.error(`[BossMechanics] ${e.name} 召唤小怪失败，清理已创建的 ${newMinions.length} 个小怪:`, err);
+              for (const m of newMinions) {
+                const pos = state.enemyPositions.value[m.id];
+                if (pos) {
+                  const newPos = { ...state.enemyPositions.value };
+                  delete newPos[m.id];
+                  state.enemyPositions.value = newPos;
+                }
+                const idx = state.enemyIds.value.indexOf(m.id);
+                if (idx >= 0) {
+                  const newIds = [...state.enemyIds.value];
+                  newIds.splice(idx, 1);
+                  state.enemyIds.value = newIds;
+                }
+              }
+              log.addCombatLog({
+                actorType: 'system', actorId: 'system', actorName: '系统',
+                eventType: 'combat_event', targetType: 'enemy', targetId: e.id,
+                targetName: e.name, isCrit: false, isDodge: false,
+                message: `${e.name} 的召唤仪式被打断！`
+              });
             }
           })();
         }

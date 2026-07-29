@@ -197,6 +197,26 @@ describe('useSkillDisplay - 技能展示工具函数', () => {
       expect(getSkillEffectText(skill)).toBe('眩晕 (2回合)');
     });
 
+    it('buff 未知 b.type 时走 || 回退返回原类型字符串', () => {
+      // 触发 line 79 的 names[b.type] || b.type 后备分支
+      const skill = makeSkill({
+        type: 'buff',
+        effect: { type: 'buff', value: 0 },
+        buffs: [{ type: 'unknown_buff' as any, value: 10, turns: 3 }],
+      });
+      expect(getSkillEffectText(skill)).toBe('unknown_buff (3回合)');
+    });
+
+    it('debuff 未知 b.type 时走 || 回退返回原类型字符串', () => {
+      // 触发 line 90 的 names[b.type] || b.type 后备分支
+      const skill = makeSkill({
+        type: 'debuff',
+        effect: { type: 'debuff', value: 0 },
+        buffs: [{ type: 'unknown_debuff' as any, value: 10, turns: 3 }],
+      });
+      expect(getSkillEffectText(skill)).toBe('unknown_debuff (3回合)');
+    });
+
     it('未知 effect.type 返回 ${value}', () => {
       const skill = { ...makeSkill(), effect: { type: 'unknown', value: 99 } } as Skill;
       expect(getSkillEffectText(skill)).toBe('99');

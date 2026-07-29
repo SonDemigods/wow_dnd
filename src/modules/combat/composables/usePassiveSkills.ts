@@ -21,7 +21,6 @@
  * @module combat/composables
  */
 import type { PassiveSkill, PassiveEffect } from '@/modules/character/types';
-import type { ResourceSource } from '../resources/types';
 import { getPassivesByClassId } from '@/data/config_class_passives';
 import type { ICombatContext } from '../combatContext';
 import type { useCombatState } from './useCombatState';
@@ -32,7 +31,9 @@ export function usePassiveSkills(
   log: ReturnType<typeof useCombatLog>,
   ctx: ICombatContext
 ) {
-  const { addCombatLog, resourceSystems } = { addCombatLog: log.addCombatLog, resourceSystems: state.resourceSystems };
+  // P3-83 修复：直接解构，无需多余的中间对象
+  const { addCombatLog } = log;
+  const { resourceSystems } = state;
 
   /** 当前职业的被动技能列表（战斗开始时加载） */
   let passives: PassiveSkill[] = [];
@@ -167,7 +168,8 @@ export function usePassiveSkills(
     // 遍历当前战斗中的资源系统，找到匹配类型的系统并生成资源
     resourceSystems.value.forEach(sys => {
       if (sys.type === resourceType) {
-        sys.generate(amount, 'skill' as ResourceSource);
+        // P2-43 修复：被动资源生成使用 'passive' 来源，不受 skill 上限限制
+        sys.generate(amount, 'passive');
       }
     });
   }
@@ -279,6 +281,12 @@ export function usePassiveSkills(
     let currentValue = 0;
     if (stat === 'hp') {
       currentValue = ctx.character.hp / ctx.character.maxHp;
+    } else if (stat === 'mp') {
+      // P1-9 修复：扩展支持 mp 属性条件判断
+      currentValue = ctx.character.maxMana > 0 ? ctx.character.mana / ctx.character.maxMana : 0;
+    } else {
+      // P1-9 修复：未知 stat 返回 false，避免基于初始值 0 误判（如 mp < 0.3 变成 0 < 0.3 = true）
+      return false;
     }
     switch (op) {
       case '<': return currentValue < value;

@@ -296,6 +296,19 @@ export interface EnemyInstance extends EnemyData {
   aoeNextAttack?: boolean;
   /** Boss 待召唤小怪数量（运行时，由 Boss 引擎设置，下次行动时触发召唤并清除） */
   pendingSummons?: number;
+  // ===== Boss 引擎运行时注入字段（P2-34：显式声明，避免类型断言绕过检查） =====
+  /** Boss 无敌标记（运行时，由 Boss 引擎在 invulnerable 机制中设置） */
+  invulnerable?: boolean;
+  /** Boss 护盾值（运行时，由 Boss 引擎在 damage_shield 机制中设置，吸收伤害） */
+  shield?: number;
+  /** Boss 反弹伤害值（运行时，由 Boss 引擎在 reflect_damage 机制中设置） */
+  reflectDamage?: number;
+  /** Boss 反击姿态标记（运行时，由 Boss 引擎在 counter_stance 机制中设置） */
+  counterStance?: boolean;
+  /** Boss 可复活标记（运行时，由 Boss 引擎在 revive 机制中设置） */
+  canRevive?: boolean;
+  /** Boss 蓄力攻击标记（运行时，由 Boss 引擎在 charge_attack 机制中设置） */
+  charging?: boolean;
 }
 
 // ============================================================================

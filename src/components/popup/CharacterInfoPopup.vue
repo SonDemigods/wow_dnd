@@ -300,6 +300,7 @@ import { useEquipmentStore } from '@/modules/equipment';
 import { useBaseStore } from '@/modules/base';
 import { ResourceSystemFactory } from '@/modules/combat/resources';
 import { eventBus, GameEvents } from '@/modules/bus';
+import { useToast } from '@/composables/useToast';
 import type { Stats, Attributes } from '@/modules/character/types';
 import type { EquipmentSlot, EquipmentItem } from '@/modules/equipment/types';
 import Tag from '../common/Tag.vue';
@@ -475,23 +476,31 @@ function selectEquipment(slot: SlotInfo) {
 
 async function unequipItem(slotKey: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'unequip_btn' });
-  const result = await equipmentStore.unequipItem(slotKey as EquipmentSlot);
-  if (result) {
-    // 装备槽卸下动画
-    const slotEl = document.querySelector(
-      `[data-equip-slot="${slotKey}"]`
-    ) as HTMLElement;
-    if (slotEl) {
-      slotEl.classList.add('equip-anim-empty');
-      slotEl.addEventListener(
-        'animationend',
-        () => {
-          slotEl.classList.remove('equip-anim-empty');
-        },
-        { once: true }
-      );
+  try {
+    const result = await equipmentStore.unequipItem(slotKey as EquipmentSlot);
+    if (result) {
+      // 装备槽卸下动画
+      const slotEl = document.querySelector(
+        `[data-equip-slot="${slotKey}"]`
+      ) as HTMLElement;
+      if (slotEl) {
+        slotEl.classList.add('equip-anim-empty');
+        slotEl.addEventListener(
+          'animationend',
+          () => {
+            slotEl.classList.remove('equip-anim-empty');
+          },
+          { once: true }
+        );
+      }
+      selectedSlot.value = null;
     }
-    selectedSlot.value = null;
+  } catch (e) {
+    useToast().show({
+      message: e instanceof Error ? e.message : '卸下装备失败',
+      type: 'danger',
+      duration: 3000
+    });
   }
 }
 

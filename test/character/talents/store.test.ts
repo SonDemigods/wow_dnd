@@ -153,6 +153,7 @@ describe('useTalentStore - 天赋 Store', () => {
         damageReduction: 0,
         critBonus: 0,
         resourceBonuses: {},
+        healingMultiplier: 0,
         specialEffects: [],
         skillEnhancements: [],
       });
@@ -160,7 +161,7 @@ describe('useTalentStore - 天赋 Store', () => {
 
     it('effectSummary：有 classId 时委托 calculateTalentEffects', () => {
       const summary = { statBonuses: { str: 2 }, damageMultiplier: 0.1, damageReduction: 0,
-        critBonus: 0, resourceBonuses: {}, specialEffects: [], skillEnhancements: [] };
+        critBonus: 0, resourceBonuses: {}, healingMultiplier: 0, specialEffects: [], skillEnhancements: [] };
       vi.mocked(calculateTalentEffects).mockReturnValue(summary);
       const store = useTalentStore();
       store.$patch({ currentClassId: 'warrior', allocations: { t1: 1 } });

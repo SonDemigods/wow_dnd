@@ -53,9 +53,10 @@ function setupGlobalErrorHandlers(app: ReturnType<typeof createApp>): void {
 /**
  * 初始化并启动应用
  *
- * 优化启动时序（INIT-1）：先打开数据库并挂载 Vue 应用，让 UI 尽早渲染（显示 loading），
- * 再后台执行游戏数据初始化。避免冷启动期间长时间白屏。
- * 注意：数据初始化完成前，App.vue 通过 loading 状态阻止用户操作。
+ * 启动时序：先打开数据库，完成游戏数据初始化，再挂载 Vue 应用。
+ * P3-127 修复：数据初始化移至 mount 之前完成，统一由 main.ts 负责，
+ * App.vue 不再重复调用 initializeData，避免并发重复初始化。
+ * 注意：数据初始化完成前不挂载应用，App 挂载后可直接初始化各模块 Store。
  */
 async function initApp() {
   // 先打开数据库（IndexedDB 打开很快），确保后续初始化与 Store 读取可用
@@ -68,7 +69,17 @@ async function initApp() {
     throw error
   }
 
-  // 尽早创建并挂载 Vue 应用，UI 先渲染 loading 视图
+  // P3-127 修复：数据初始化移至 mount 之前完成，统一由 main.ts 负责，
+  // App.vue 不再重复调用 initializeData（原 App.vue onMounted 中的调用已移除）。
+  // 先完成数据初始化再挂载，确保 App 挂载时 baseStore/characterStore 可读到完整数据。
+  try {
+    await dataInitializer.initializeData()
+  } catch (error) {
+    console.error('游戏数据初始化失败，请刷新页面重试:', error)
+    errorReporter.report(error, 'manual', { context: '游戏数据初始化失败' })
+  }
+
+  // 创建并挂载 Vue 应用（数据已就绪，App 挂载后可直接初始化各模块 Store）
   const app = createApp(App)
   const pinia = createPinia()
 
@@ -80,14 +91,6 @@ async function initApp() {
   setupGlobalErrorHandlers(app)
 
   app.mount('#app')
-
-  // UI 已渲染，后台初始化游戏数据（此期间 App.vue 显示 loading）
-  try {
-    await dataInitializer.initializeData()
-  } catch (error) {
-    console.error('游戏数据初始化失败，请刷新页面重试:', error)
-    errorReporter.report(error, 'manual', { context: '游戏数据初始化失败' })
-  }
 
   // 挂载开发控制台命令到 window.cmd
   initConsole()

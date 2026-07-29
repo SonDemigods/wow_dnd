@@ -40,7 +40,8 @@ export {
   canLearnSkill,
   validateSkillBarSlot,
   isSkillEquipped,
-  canCastSkill
+  canCastSkill,
+  isValidTargetType
 } from './service';
 
 export { useSkillStore } from './store';

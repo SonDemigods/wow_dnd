@@ -30,7 +30,12 @@ export function addEffectToContainer(
       }
       break;
     case 'max':
-      // 取最大值并刷新持续时间
+      // P3-91 修复：max 策略语义说明
+      /**
+       * max 策略：新效果值和已有效果值取较大者。
+       * 注意：此策略仅比较 value 字段，不处理 duration（取较大 duration）。
+       * 即 value 和 remainingTurns 各自独立取 max，互不影响。
+       */
       if (existing) {
         existing.remainingTurns = Math.max(existing.remainingTurns, effect.remainingTurns);
         existing.value = Math.max(existing.value, effect.value);

@@ -38,7 +38,8 @@ import { equipmentDbService } from './db';
 import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
 import { useCharacterStore } from '../character/store';
-import { validateSlot, computeEquipBonus, canEquipItem, getEquipmentBySlot, createEmptySlotMap, checkClassRestriction, getActiveSetBonuses } from './service';
+import { validateSlot, computeEquipBonus, canEquipItem, getEquipmentBySlot, createEmptySlotMap, checkClassRestriction, getActiveSetBonuses, SLOT_CONFIG } from './service';
+import { errorReporter } from '@/utils/errorReport';
 
 /**
  * 物品入背包回调类型
@@ -105,21 +106,6 @@ export function clearInventoryCallbacks(): void {
 }
 
 /**
- * 槽位配置（UI 展示用）
- *
- * 定义每个装备槽位的展示名称和图标。
- * 与 ALL_EQUIPMENT_SLOTS（service.ts）共同构成槽位定义的完整视角。
- */
-const SLOT_CONFIG: Record<EquipmentSlot, { name: string; icon: string }> = {
-  weapon1: { name: '主手', icon: 'game-icons:broadsword' },
-  weapon2: { name: '副手', icon: 'game-icons:checked-shield' },
-  armor1: { name: '头部', icon: 'game-icons:visored-helm' },
-  armor2: { name: '胸部', icon: 'game-icons:chest-armor' },
-  armor3: { name: '腿部', icon: 'game-icons:leg-armor' },
-  armor4: { name: '鞋子', icon: 'game-icons:leather-boot' }
-};
-
-/**
  * 获取默认空装备状态（全部槽位为 null）
  *
  * 复用 service 层的 createEmptySlotMap 工厂函数，确保与 DB 层的默认值生成逻辑一致。
@@ -175,12 +161,16 @@ export const useEquipmentStore = defineStore('equipment', () => {
       wis: 0,
       cha: 0
     };
+    // P2-49 修复：有效的 Stats 属性白名单，防止 bonus 中包含无效 key 时产生 NaN
+    const validStatKeys: ReadonlySet<keyof Stats> = new Set(['str', 'dex', 'con', 'int', 'wis', 'cha']);
     Object.values(equipment.value).forEach(equippedItem => {
       if (equippedItem && equippedItem.item.bonus) {
         const bonus = equippedItem.item.bonus;
         Object.keys(bonus).forEach(key => {
-          const statKey = key as keyof Stats;
-          stats[statKey] += bonus[statKey] || 0;
+          if (validStatKeys.has(key as keyof Stats)) {
+            const statKey = key as keyof Stats;
+            stats[statKey] += bonus[statKey] || 0;
+          }
         });
       }
     });
@@ -260,7 +250,8 @@ export const useEquipmentStore = defineStore('equipment', () => {
 
     const currentKeys = new Set(
       currentActive
-        .filter(b => b.bonus.bonus.stat && b.bonus.bonus.value)
+        // P2-48 修复：使用 != null 显式检查，避免 value=0 的套装奖励被吞掉
+        .filter(b => b.bonus.bonus.stat != null && b.bonus.bonus.value != null)
         .map(b => buildKey(b.setId, b.bonus.requiredPieces, b.bonus.bonus.stat!, b.bonus.bonus.value!))
     );
     const appliedKeys = new Set(
@@ -286,7 +277,8 @@ export const useEquipmentStore = defineStore('equipment', () => {
 
     // 更新已应用列表
     appliedSetBonuses.value = currentActive
-      .filter(b => b.bonus.bonus.stat && b.bonus.bonus.value)
+      // P2-48 修复：使用 != null 显式检查，避免 value=0 的套装奖励被吞掉
+      .filter(b => b.bonus.bonus.stat != null && b.bonus.bonus.value != null)
       .map(b => ({
         setId: b.setId,
         requiredPieces: b.bonus.requiredPieces,
@@ -305,11 +297,20 @@ export const useEquipmentStore = defineStore('equipment', () => {
    */
   async function persist(): Promise<void> {
     if (currentCharacterId.value) {
-      const idMap = createEmptySlotMap<string | null>(null);
-      for (const slot of Object.keys(equipment.value) as EquipmentSlot[]) {
-        idMap[slot] = equipment.value[slot]?.item.id ?? null;
+      // P3-108 修复：添加 try-catch，持久化失败时上报错误但不抛出异常（fire-and-forget 模式）
+      // 避免 IndexedDB 异常中断业务流程，参考 inventory/store.ts 的 persistInventory 实现
+      try {
+        const idMap = createEmptySlotMap<string | null>(null);
+        for (const slot of Object.keys(equipment.value) as EquipmentSlot[]) {
+          idMap[slot] = equipment.value[slot]?.item.id ?? null;
+        }
+        await equipmentDbService.saveEquipment(currentCharacterId.value, idMap);
+      } catch (err) {
+        errorReporter.report(err, 'manual', {
+          context: '装备数据持久化失败，UI 与 DB 状态可能不一致',
+          characterId: currentCharacterId.value,
+        });
       }
-      await equipmentDbService.saveEquipment(currentCharacterId.value, idMap);
     }
   }
 
@@ -380,6 +381,23 @@ export const useEquipmentStore = defineStore('equipment', () => {
     }
   }
 
+  /**
+   * 重新应用指定槽位装备的属性加成
+   *
+   * 与 removeBonusesFromSlot 对应，用于回滚场景（如背包满导致卸下失败后恢复装备状态）。
+   * 仅应用单件装备的基础 bonus，不包含套装奖励（套装奖励由 reapplySetBonuses 单独管理）。
+   *
+   * @param slot - 目标槽位
+   */
+  async function applyBonusForSlot(slot: EquipmentSlot): Promise<void> {
+    const eq = equipment.value[slot];
+    if (!eq) return;
+    const bonus = computeEquipBonus(eq.item);
+    if (Object.keys(bonus).length > 0) {
+      await useCharacterStore().applyBonus(bonus);
+    }
+  }
+
   // ==================== 内部辅助：卸下装备 ====================
 
   /**
@@ -393,25 +411,34 @@ export const useEquipmentStore = defineStore('equipment', () => {
    * 此方法为内部函数，外部不应直接调用。
    * equipItem 和 unequipItem 各自包装持久化和日志后对外暴露。
    *
-   * 注意：若回调未注入（inventoryAddItemCallback === null），物品将无法放回背包，
-   * 此情况仅在 GameBootstrap 未正确初始化时发生，生产环境不应出现。
+   * 安全保障：
+   * - 若回调未注入（inventoryAddItemCallback === null）：抛出错误，阻止卸下操作，避免装备丢失
+   * - 若背包已满（回调返回 0）：回滚槽位和属性加成，抛出错误，让调用方提示用户清理背包
    *
    * @param slot - 目标槽位
    * @returns 卸下的装备（含时间戳），若槽位为空则返回 null
+   * @throws {Error} 当 inventoryAddItemCallback 未注入或背包已满无法放回时抛出
    */
   async function doUnequip(slot: EquipmentSlot): Promise<EquippedItem | null> {
     const equippedItem = equipment.value[slot];
     if (!equippedItem) return null;
 
-    await removeBonusesFromSlot(slot);
+    // 回调未注入时直接抛出，避免装备被卸下后无处可去导致丢失
+    if (!inventoryAddItemCallback) {
+      throw new Error('[EquipmentStore] inventoryAddItemCallback 未注入，无法卸下装备。请检查 GameBootstrap 初始化流程。');
+    }
 
+    await removeBonusesFromSlot(slot);
     equipment.value[slot] = null;
 
     // 通过回调注入将装备放回背包（A1/G1 修复：消除 equipment → inventory 静态依赖）
-    if (inventoryAddItemCallback) {
-      inventoryAddItemCallback(equippedItem.item.id, 1);
-    } else {
-      console.warn('[EquipmentStore] inventoryAddItemCallback 未注入，装备未放回背包。请检查 GameBootstrap 初始化流程。');
+    const added = inventoryAddItemCallback(equippedItem.item.id, 1);
+
+    // 背包已满等原因导致放回失败：回滚槽位和属性加成，避免装备丢失
+    if (added <= 0) {
+      equipment.value[slot] = equippedItem;
+      await applyBonusForSlot(slot);
+      throw new Error(`[EquipmentStore] 背包已满，无法卸下「${equippedItem.item.name}」。请先清理背包。`);
     }
 
     return equippedItem;
@@ -469,8 +496,10 @@ export const useEquipmentStore = defineStore('equipment', () => {
     if (removed <= 0) return false;
 
     // 4. 如果有旧装备，先卸下
+    // P2-55 修复：记录旧装备，用于第 6 步失败时回滚
+    let previousEquipped: EquippedItem | null = null;
     try {
-      await doUnequip(slot);
+      previousEquipped = await doUnequip(slot);
     } catch (e) {
       // 回滚：卸下失败时将已移除的装备放回背包（通过回调注入）
       console.error('[EquipmentStore] equipItem 卸下旧装备失败，回滚已移除的物品:', e);
@@ -487,9 +516,35 @@ export const useEquipmentStore = defineStore('equipment', () => {
     };
 
     // 6. 应用新装备的属性加成
-    const newBonus = computeEquipBonus(item);
-    if (Object.keys(newBonus).length > 0) {
-      await characterStore.applyBonus(newBonus);
+    // P2-55 修复：applyBonus 失败时回滚装备状态（移除新装备、装回旧装备、放回背包）
+    try {
+      const newBonus = computeEquipBonus(item);
+      if (Object.keys(newBonus).length > 0) {
+        await characterStore.applyBonus(newBonus);
+      }
+    } catch (e) {
+      console.error('[EquipmentStore] equipItem applyBonus 失败，回滚装备状态:', e);
+      // 6.1 移除新装备
+      equipment.value[slot] = null;
+      // 6.2 把新装备放回背包
+      if (inventoryAddItemCallback) {
+        inventoryAddItemCallback(item.id, 1);
+      }
+      // 6.3 如果之前有旧装备，重新装上并应用 bonus
+      if (previousEquipped) {
+        // 从背包移除旧装备（doUnequip 已放回背包）
+        if (inventoryRemoveItemCallback) {
+          inventoryRemoveItemCallback(previousEquipped.item.id, 1);
+        }
+        equipment.value[slot] = previousEquipped;
+        try {
+          await applyBonusForSlot(slot);
+        } catch (rollbackErr) {
+          // 旧装备 bonus 应用失败也只记录日志，避免二次抛出掩盖原始错误
+          console.error('[EquipmentStore] equipItem 回滚旧装备 bonus 失败:', rollbackErr);
+        }
+      }
+      return false;
     }
 
     // 6.5 BIZ-13：重新应用套装效果（装备变化可能导致套装激活/失效）
@@ -503,7 +558,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
       id: generateLogId(),
       timestamp: Date.now(),
       type: 'item',
-      message: `装备了：${item.name}`,
+      message: `装备了：${item.name}（${SLOT_CONFIG[slot].name}）`,
       icon: 'game-icons:crossed-swords'
     });
 
@@ -620,7 +675,11 @@ export const useEquipmentStore = defineStore('equipment', () => {
    */
   function addEquipmentTemplate(item: EquipmentItem): void {
     equipmentTemplates.value.set(item.id, item);
-    equipmentDbService.saveEquipmentTemplate(item);
+    // P1-17 修复：添加错误处理，避免 unhandled promise rejection 导致内存与持久化状态不一致
+    equipmentDbService.saveEquipmentTemplate(item).catch(err => {
+      console.error('[EquipmentStore] saveEquipmentTemplate 失败:', err);
+      equipmentTemplates.value.delete(item.id);
+    });
   }
 
   /**
@@ -630,7 +689,10 @@ export const useEquipmentStore = defineStore('equipment', () => {
    */
   function removeEquipmentTemplate(itemId: string): void {
     equipmentTemplates.value.delete(itemId);
-    equipmentDbService.deleteEquipmentTemplate(itemId);
+    // P1-17 修复：添加错误处理，失败时回滚内存缓存
+    equipmentDbService.deleteEquipmentTemplate(itemId).catch(err => {
+      console.error('[EquipmentStore] deleteEquipmentTemplate 失败:', err);
+    });
   }
 
   // ==================== Action：重置 ====================

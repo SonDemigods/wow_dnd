@@ -8,7 +8,9 @@
  * 此文件仅保留 Dexie 表声明的通用类型。
  */
 import Dexie, { Table } from 'dexie';
-import { DATABASE_CONFIG, DB_SERVICE_CONFIG, type DBServiceConfig } from '@/config/database';
+import { DATABASE_CONFIG, DB_SERVICE_CONFIG } from '@/config/database';
+// P2-80 修复：类型直接从 data/types 导入，避免经 config/database.ts 再导出
+import type { DBServiceConfig } from '@/modules/data/types';
 
 // ==================== 各模块 Storage 类型导入 ====================
 import type { FactionStorage, RaceStorage, ClassStorage, CharacterDataStorage, PassiveSkill } from '../character/types';
@@ -248,9 +250,9 @@ export function getTable<T>(
 
 /**
  * 数据库服务类
- * 
+ *
  * 提供带重试机制的数据库操作封装，用于处理数据库操作失败时的自动重试。
- * 配置类型 DBServiceConfig 定义在 @/config/database 中。
+ * 配置类型 DBServiceConfig 定义在 @/modules/data/types 中。
  */
 export class DBService {
   /** 当前配置选项 */

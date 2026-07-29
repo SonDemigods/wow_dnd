@@ -1058,4 +1058,131 @@ describe('useShopStore - 商店 Store', () => {
       expect(store.getSoldItemCount('any')).toBe(0);
     });
   });
+
+  // -------------------- 防御性分支补充 --------------------
+  describe('防御性分支补充', () => {
+    it('shopItem 有 maxPurchaseCount 但 purchasedCount 为 undefined 时 ?? 回退为 0（line 371）', async () => {
+      // 覆盖 line 371: shopItem.purchasedCount ?? 0 的 ?? 分支
+      const store = useShopStore();
+      // currentItems 中的 shopItem 携带 maxPurchaseCount 但无 purchasedCount
+      const item: ShopItem = {
+        itemId: 'rare_1', price: 100, quantity: 5, maxPurchaseCount: 3,
+      } as ShopItem; // purchasedCount 故意缺失
+      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'rare_1', name: '稀有装备' }));
+      vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
+        shopId: 'general_goods',
+        items: [makeShopItem({ itemId: 'rare_1', price: 100, quantity: 5 })],
+        lastRefresh: Date.now(),
+      });
+
+      // 购买 1 件：currentPurchased = undefined ?? 0 = 0, 0+1=1 <= 3 → 通过限购
+      const result = await store.buyItem('rare_1', 1);
+      expect(result).toBe(true);
+      expect(mocks.characterStore.spendGold).toHaveBeenCalledWith(100);
+    });
+
+    it('生成商品有 maxPurchaseCount 但 purchasedCount 为 undefined 时累计 ?? 回退为 0（line 457）', async () => {
+      // 覆盖 line 457: generated[idx].purchasedCount ?? 0 的 ?? 分支
+      const store = useShopStore();
+      const item = makeShopItem({ itemId: 'rare_1', price: 100, quantity: 3, maxPurchaseCount: 5 });
+      // currentItems 中的 item 有 purchasedCount（正常路径），storage 中的 generated item 无 purchasedCount（?? 分支）
+      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'rare_1', name: '稀有装备' }));
+      vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
+        shopId: 'general_goods',
+        // storage 中的 item 有 maxPurchaseCount 但无 purchasedCount → 触发 ?? 0 回退
+        items: [{ itemId: 'rare_1', price: 100, quantity: 3, maxPurchaseCount: 5 }] as ShopItem[],
+        lastRefresh: Date.now(),
+      });
+
+      const result = await store.buyItem('rare_1', 1);
+      expect(result).toBe(true);
+      // purchasedCount = (undefined ?? 0) + 1 = 1
+      expect(shopDbService.saveShopItems).toHaveBeenCalledWith(
+        'general_goods',
+        expect.arrayContaining([expect.objectContaining({ itemId: 'rare_1', purchasedCount: 1 })]),
+        expect.any(Number)
+      );
+    });
+
+    it('refreshShop：regenerateItems 抛错时 catch 记录错误并报告（line 611-612）', async () => {
+      // 覆盖 line 611-612: refreshShop catch 块的 console.error + errorHandler.report
+      vi.mocked(shopDbService.saveShopItems).mockRejectedValueOnce(new Error('write fail'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const store = useShopStore();
+      store.$patch({
+        currentShopId: 'general_goods',
+        shops: [makeShopConfig()],
+      });
+
+      await store.refreshShop();
+
+      // catch 记录错误
+      expect(errorSpy).toHaveBeenCalledWith('[ShopStore] 刷新商店失败:', expect.any(Error));
+      errorSpy.mockRestore();
+    });
+
+    it('buyItem 回购路径：await 期间 innerMap 被清空 → 防御守卫 return（line 432）', async () => {
+      // 覆盖 line 432: if (!innerMap) return 的防御守卫
+      // 场景：spendGold 的 await 期间，soldItems 被其他流程清空（如 closeShop 并发），
+      // 导致 _replaceSoldItems 深拷贝的副本中 innerMap 不存在
+      const store = useShopStore();
+      const soldEntry: SoldItemEntry = { itemId: 'ore_1', price: 25, quantity: 2 };
+      store.$patch({
+        currentShopId: 'general_goods',
+        currentItems: [{ itemId: 'ore_1', price: 25, quantity: 2 }],
+        soldItems: new Map([['general_goods', new Map([['ore_1', soldEntry]])]]),
+      });
+      mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'ore_1', name: '铁矿石' }));
+      vi.mocked(shopDbService.getShopItems).mockResolvedValue([]);
+
+      // 在 spendGold 的 await 期间清空 soldItems，使 _replaceSoldItems 副本中 innerMap 不存在
+      mocks.characterStore.spendGold.mockImplementation(async () => {
+        store.$patch({ soldItems: new Map() });
+        return true;
+      });
+
+      const result = await store.buyItem('ore_1', 1);
+
+      expect(result).toBe(true);
+      // 防御守卫触发后仍调用 saveSoldItems（updatedSoldMap 为 undefined 走 [] 回退）
+      expect(shopDbService.saveSoldItems).toHaveBeenCalledWith('general_goods', []);
+    });
+
+    it('buyItem 回购路径：await 期间 entry 被删除 → 防御守卫 return（line 434）', async () => {
+      // 覆盖 line 434: if (!entry) return 的防御守卫
+      // 场景：spendGold 的 await 期间，其他流程删除了 itemId 对应的 entry，
+      // 导致 _replaceSoldItems 深拷贝的副本中 entry 不存在
+      const store = useShopStore();
+      const soldEntry: SoldItemEntry = { itemId: 'ore_1', price: 25, quantity: 2 };
+      store.$patch({
+        currentShopId: 'general_goods',
+        currentItems: [{ itemId: 'ore_1', price: 25, quantity: 2 }],
+        soldItems: new Map([['general_goods', new Map([['ore_1', soldEntry]])]]),
+      });
+      mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'ore_1', name: '铁矿石' }));
+      vi.mocked(shopDbService.getShopItems).mockResolvedValue([]);
+
+      // 在 spendGold 的 await 期间删除 ore_1 对应的 entry
+      mocks.characterStore.spendGold.mockImplementation(async () => {
+        const newMap = new Map(store.soldItems);
+        const innerMap = newMap.get('general_goods');
+        if (innerMap) {
+          const newInner = new Map(innerMap);
+          newInner.delete('ore_1');
+          newMap.set('general_goods', newInner);
+        }
+        store.$patch({ soldItems: newMap });
+        return true;
+      });
+
+      const result = await store.buyItem('ore_1', 1);
+
+      expect(result).toBe(true);
+      // 防御守卫触发后 innerMap 仍存在（但为空），saveSoldItems 以空数组持久化
+      expect(shopDbService.saveSoldItems).toHaveBeenCalledWith('general_goods', []);
+    });
+  });
 });

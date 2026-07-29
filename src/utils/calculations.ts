@@ -144,22 +144,30 @@ export function calculateHealBonus(stats: Stats): number {
 }
 
 /**
+ * 所有衍生属性集合
+ *
+ * P3-131 修复：显式声明返回类型，便于消费方引用精确类型。
+ */
+export interface Attributes {
+  physicalAttack: number;
+  physicalDefense: number;
+  magicAttack: number;
+  magicDefense: number;
+  critChance: number;
+  dodgeChance: number;
+  maxHp: number;
+  maxMana: number;
+  healBonus: number;
+  hpBonus: number;
+  mpBonus: number;
+}
+
+/**
  * 计算所有衍生属性
  * @param {Stats} stats - 角色主属性对象
- * @returns {Object} 包含所有衍生属性的对象
- * @returns {number} .physicalAttack - 物理攻击力
- * @returns {number} .physicalDefense - 物理防御力
- * @returns {number} .magicAttack - 魔法攻击力
- * @returns {number} .magicDefense - 魔法防御力
- * @returns {number} .critChance - 暴击概率
- * @returns {number} .dodgeChance - 闪避概率
- * @returns {number} .maxHp - 最大生命值
- * @returns {number} .maxMana - 最大法力值
- * @returns {number} .healBonus - 生命恢复加成
- * @returns {number} .hpBonus - 每级HP加成
- * @returns {number} .mpBonus - 每级MP加成
+ * @returns {Attributes} 包含所有衍生属性的对象
  */
-export function calculateAllAttributes(stats: Stats) {
+export function calculateAllAttributes(stats: Stats): Attributes {
   return {
     physicalAttack: calculatePhysicalAttack(stats),
     physicalDefense: calculatePhysicalDefense(stats),

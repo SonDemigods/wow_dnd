@@ -224,6 +224,21 @@ describe('useQuestStore - 任务 Store', () => {
       expect(store.availableQuests[0].id).toBe('q1');
     });
 
+    it('availableQuests: characterStore.level 为 0 时回退为 1（行 167 || 1 falsy 分支）', () => {
+      // level=0 是 falsy，触发 _getCharacterLevel 的 `|| 1` 回退
+      mocks.characterStore.level = 0;
+      const store = useQuestStore();
+      store.$patch({
+        questDefinitions: defMap(
+          makeDefinition({ id: 'q1', levelRequirement: 1 }),
+          makeDefinition({ id: 'q2', levelRequirement: 2 }),
+        ),
+      });
+      // 回退后 level=1：q1（要求 1）可接，q2（要求 2）等级不足
+      const ids = store.availableQuests.map(d => d.id);
+      expect(ids).toEqual(['q1']);
+    });
+
     it('inProgressQuests: 合并定义 + 进度视图', () => {
       const store = useQuestStore();
       const def = makeDefinition({ id: 'q1', title: '击杀哥布林' });
@@ -240,6 +255,20 @@ describe('useQuestStore - 任务 Store', () => {
       const view = store.inProgressQuests[0];
       expect(view.title).toBe('击杀哥布林');
       expect(view.progress).toEqual([{ objectiveKey: 'kill_goblin', current: 3, target: 10 }]);
+    });
+
+    it('inProgressQuests: 跳过定义缺失的进行中任务（行 151 falsy 分支）', () => {
+      const store = useQuestStore();
+      const def = makeDefinition({ id: 'q1', title: '击杀哥布林' });
+      const inst1 = makeInstance({ questId: 'q1', status: 'in_progress' });
+      // q_missing 有进行中实例但无定义 → 应被跳过
+      const inst2 = makeInstance({ questId: 'q_missing', status: 'in_progress' });
+      store.$patch({
+        questDefinitions: defMap(def),
+        questInstances: instMap(inst1, inst2),
+      });
+      expect(store.inProgressQuests).toHaveLength(1);
+      expect(store.inProgressQuests[0].title).toBe('击杀哥布林');
     });
   });
 
@@ -334,6 +363,35 @@ describe('useQuestStore - 任务 Store', () => {
         questInstances: instMap(makeInstance({ questId: 'q1', status: 'in_progress' })),
       });
       const result = await store.acceptQuest('q1');
+      expect(result).toBe(false);
+    });
+
+    it('currentCharacterId 为 null 时回退到 getCharacterId（行 392 || 分支）', async () => {
+      const def = makeDefinition({ id: 'q1', levelRequirement: 1 });
+      const store = useQuestStore();
+      // 不设置 currentCharacterId，getCharacterId 默认返回 'char-1'
+      store.$patch({
+        questDefinitions: defMap(def),
+      });
+
+      const result = await store.acceptQuest('q1');
+
+      expect(result).toBe(true);
+      // saveQuestInstance 使用 getCharacterId 返回的 'char-1'
+      expect(questDbService.saveQuestInstance).toHaveBeenCalledWith(expect.anything(), 'char-1');
+    });
+
+    it('currentCharacterId 和 getCharacterId 均为 null 时返回 false（行 393 falsy 分支）', async () => {
+      mocks.characterStore.getCharacterId.mockReturnValueOnce(null);
+      const def = makeDefinition({ id: 'q1', levelRequirement: 1 });
+      const store = useQuestStore();
+      // 不设置 currentCharacterId，getCharacterId 返回 null
+      store.$patch({
+        questDefinitions: defMap(def),
+      });
+
+      const result = await store.acceptQuest('q1');
+
       expect(result).toBe(false);
     });
   });
@@ -466,6 +524,105 @@ describe('useQuestStore - 任务 Store', () => {
       expect(store.getQuestInstance('q1')!.status).toBe('completed');
       expect(spy).toHaveBeenCalledTimes(1);
       expect(mocks.characterStore.gainExp).toHaveBeenCalledWith(80);
+    });
+
+    it('onEnemyKilled：跳过非 in_progress 状态和缺失定义的任务（continue 分支 行 455/458）', async () => {
+      const store = useQuestStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        questDefinitions: defMap(makeDefinition({
+          id: 'q1',
+          objectives: [makeKillObjective({ key: 'kill_goblin', target: 1, enemyId: 'goblin' })],
+        })),
+        questInstances: instMap(
+          // q1: 正常进行中，有定义 → 应处理
+          makeInstance({
+            questId: 'q1',
+            progress: [{ objectiveKey: 'kill_goblin', current: 0, target: 1 }],
+          }),
+          // q2: 已完成状态 → 跳过（continue 行 455）
+          makeInstance({
+            questId: 'q2',
+            status: 'completed',
+            progress: [{ objectiveKey: 'kill_goblin', current: 1, target: 1 }],
+          }),
+          // q3: 进行中但定义缺失 → 跳过（continue 行 458）
+          makeInstance({
+            questId: 'q3',
+            progress: [{ objectiveKey: 'kill_goblin', current: 0, target: 1 }],
+          }),
+        ),
+      });
+
+      await store.onEnemyKilled('goblin');
+
+      // q1 正常处理，进度累加
+      expect(store.getQuestInstance('q1')!.progress[0].current).toBe(1);
+      // q2 不受影响（已完成）
+      expect(store.getQuestInstance('q2')!.progress[0].current).toBe(1);
+      // q3 不受影响（无定义）
+      expect(store.getQuestInstance('q3')!.progress[0].current).toBe(0);
+    });
+
+    it('onItemCollected：跳过非 in_progress 状态和缺失定义的任务（continue 分支 行 475/478）', async () => {
+      const store = useQuestStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        questDefinitions: defMap(makeDefinition({
+          id: 'q1',
+          type: 'collect',
+          objectives: [makeCollectObjective({ key: 'collect_herb', target: 5, itemId: 'item_herb' })],
+        })),
+        questInstances: instMap(
+          // q1: 正常进行中，有定义 → 应处理
+          makeInstance({
+            questId: 'q1',
+            progress: [{ objectiveKey: 'collect_herb', current: 0, target: 5 }],
+          }),
+          // q2: 已放弃状态 → 跳过（continue 行 475）
+          makeInstance({
+            questId: 'q2',
+            status: 'abandoned',
+            progress: [{ objectiveKey: 'collect_herb', current: 0, target: 5 }],
+          }),
+          // q3: 进行中但定义缺失 → 跳过（continue 行 478）
+          makeInstance({
+            questId: 'q3',
+            progress: [{ objectiveKey: 'collect_herb', current: 0, target: 5 }],
+          }),
+        ),
+      });
+
+      await store.onItemCollected('item_herb', 2);
+
+      // q1 正常处理，进度累加
+      expect(store.getQuestInstance('q1')!.progress[0].current).toBe(2);
+      // q2 不受影响（已放弃）
+      expect(store.getQuestInstance('q2')!.progress[0].current).toBe(0);
+      // q3 不受影响（无定义）
+      expect(store.getQuestInstance('q3')!.progress[0].current).toBe(0);
+    });
+
+    it('onEnemyKilled：currentCharacterId 和 getCharacterId 均为 null 时不持久化（行 188-189 falsy 分支）', async () => {
+      mocks.characterStore.getCharacterId.mockReturnValueOnce(null);
+      const store = useQuestStore();
+      // 不设置 currentCharacterId，getCharacterId 返回 null
+      store.$patch({
+        questDefinitions: defMap(makeDefinition({
+          id: 'q1',
+          objectives: [makeKillObjective({ key: 'kill_goblin', target: 3, enemyId: 'goblin' })],
+        })),
+        questInstances: instMap(makeInstance({
+          questId: 'q1',
+          progress: [{ objectiveKey: 'kill_goblin', current: 0, target: 3 }],
+        })),
+      });
+
+      await store.onEnemyKilled('goblin');
+
+      // 进度仍应更新（内存），但因 cid 为 null 不持久化到 DB
+      expect(store.getQuestInstance('q1')!.progress[0].current).toBe(1);
+      expect(questDbService.saveQuestInstance).not.toHaveBeenCalled();
     });
   });
 

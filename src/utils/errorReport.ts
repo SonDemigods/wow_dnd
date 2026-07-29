@@ -74,6 +74,17 @@ class ErrorReporter {
   private buffer: ErrorRecord[] = [];
   private adapter: ErrorReportAdapter | null = null;
   private config: ErrorReporterConfig = { ...DEFAULT_CONFIG };
+  /**
+   * 待写入 localStorage 的错误记录缓冲区
+   *
+   * P2-77 修复：原实现每次上报都读取全部历史记录、追加、再写回 localStorage，
+   * O(n) 复杂度在错误爆发时会阻塞主线程。改为先追加到内存缓冲区，
+   * 通过 setTimeout 异步批量写入，避免主线程阻塞。
+   */
+  private pendingPersist: ErrorRecord[] = [];
+  private persistTimer: ReturnType<typeof setTimeout> | null = null;
+  /** 批量写入延迟（ms），平衡实时性与性能 */
+  private static readonly PERSIST_DEBOUNCE_MS = 500;
 
   /** 更新配置 */
   configure(partial: Partial<ErrorReporterConfig>): void {
@@ -115,11 +126,31 @@ class ErrorReporter {
   /** 清除内存缓冲区与 localStorage 持久化记录 */
   clearErrors(): void {
     this.buffer = [];
+    // P2-77：同步清理待写入缓冲区与定时器，避免清空后又被旧记录写回
+    this.pendingPersist = [];
+    if (this.persistTimer !== null) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
     try {
       localStorage.removeItem(this.config.localStorageKey);
     } catch (e) {
       console.error('[ErrorReporter] 清除 localStorage 失败:', e);
     }
+  }
+
+  /**
+   * 同步刷新待写入 localStorage 的错误记录
+   *
+   * P2-77：persistToLocalStorage 改为防抖批量写入后，测试与诊断场景
+   * 可调用此方法立即触发持久化，无需等待 PERSIST_DEBOUNCE_MS。
+   */
+  flushPersist(): void {
+    if (this.persistTimer !== null) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
+    this.flushPersistInternal();
   }
 
   /** 从 localStorage 加载历史错误记录（用于诊断面板展示） */
@@ -167,9 +198,32 @@ class ErrorReporter {
   }
 
   private persistToLocalStorage(record: ErrorRecord): void {
+    // P2-77 修复：追加到待写入缓冲区，通过 setTimeout 异步批量写入，
+    // 避免错误爆发时频繁读写 localStorage 阻塞主线程
+    this.pendingPersist.push(record);
+    if (this.persistTimer === null) {
+      this.persistTimer = setTimeout(() => {
+        this.persistTimer = null;
+        this.flushPersistInternal();
+      }, ErrorReporter.PERSIST_DEBOUNCE_MS);
+    }
+  }
+
+  /**
+   * 将待写入缓冲区的错误记录批量持久化到 localStorage
+   *
+   * 合并已持久化的记录与待写入记录，截断到 maxLocalStorageEntries 上限后一次性写入。
+   * 失败时记录错误但不影响主流程。
+   */
+  private flushPersistInternal(): void {
+    if (this.pendingPersist.length === 0) return;
+
+    const toWrite = this.pendingPersist;
+    this.pendingPersist = [];
+
     try {
       const existing = this.loadPersistedErrors();
-      existing.push(record);
+      existing.push(...toWrite);
       // 环形缓冲：保留最近 N 条
       const trimmed = existing.slice(-this.config.maxLocalStorageEntries);
       localStorage.setItem(this.config.localStorageKey, JSON.stringify(trimmed));

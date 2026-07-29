@@ -526,3 +526,54 @@ describe('computeResurrection 复活', () => {
     expect(result.mana).toBe(50); // Math.floor(101 * 0.5)
   });
 });
+
+// ============================================================
+// 补充覆盖：|| 兜底分支（bonusStats/delta 字段为 0 或 undefined）
+// ============================================================
+
+describe('|| 兜底分支覆盖', () => {
+  it('computeEffectiveStats: bonusStats.str 为 0 时走 || 0 兜底', () => {
+    // Arrange：bonusStats.str = 0 → falsy → 走 || 0 分支
+    const base = makeStats({ str: 10 });
+    const bonus = { str: 0 };
+    // Act
+    const effective = computeEffectiveStats(base, bonus);
+    // Assert：10 + 0 = 10
+    expect(effective.str).toBe(10);
+  });
+
+  it('computeEffectiveStats: bonusStats 所有字段为 0 时全部走 || 0 兜底', () => {
+    // Arrange：所有字段为 0 → 全部 falsy → 走 || 0 分支
+    const base = makeStats({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 });
+    const bonus = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+    // Act
+    const effective = computeEffectiveStats(base, bonus);
+    // Assert：所有属性保持原值
+    expect(effective.str).toBe(10);
+    expect(effective.dex).toBe(10);
+    expect(effective.con).toBe(10);
+    expect(effective.int).toBe(10);
+    expect(effective.wis).toBe(10);
+    expect(effective.cha).toBe(10);
+  });
+
+  it('computeBonusChange: delta[key] 为 0 时走 || 0 兜底', () => {
+    // Arrange：delta.str = 0 → falsy → 走 || 0 分支
+    const current = { str: 5 };
+    const delta = { str: 0 };
+    // Act
+    const result = computeBonusChange(current, delta, true);
+    // Assert：clampStat(5 + 0) = 5（加成不变）
+    expect(result.str).toBe(5);
+  });
+
+  it('computeBonusChange: delta[key] 为 0 且 isAdd=false 时走 || 0 兜底', () => {
+    // Arrange：delta.str = 0 → falsy → 走 || 0 分支
+    const current = { str: 8 };
+    const delta = { str: 0 };
+    // Act
+    const result = computeBonusChange(current, delta, false);
+    // Assert：clampBonus(8 - 0) = 8（加成不变）
+    expect(result.str).toBe(8);
+  });
+});

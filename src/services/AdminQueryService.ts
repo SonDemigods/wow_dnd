@@ -60,9 +60,11 @@ export class AdminQueryService {
   }
 
   /**
-   * 查询单个物品模板（先查消耗品，未命中再查装备）
+   * 查询单个物品模板（并行查询消耗品与装备表，选择命中结果）
    *
    * 用于 `item` 命令添加物品时按 ID 查找模板。
+   * P3-120 修复：原实现先查消耗品未命中再查装备（串行），改为 Promise.all 并行查询两表，
+   * 降低查询延迟；消耗品优先级高于装备（同时命中时返回消耗品）。
    *
    * @param itemId - 物品 ID
    * @returns 物品模板和类型标识，未找到时返回 null
@@ -73,14 +75,16 @@ export class AdminQueryService {
   async queryItemTemplate(
     itemId: string
   ): Promise<{ type: 'item'; data: Item } | { type: 'equipment'; data: EquipmentItem } | null> {
-    // 先查消耗品
-    const lootItem = await inventoryDbService.getItemTemplate(itemId);
+    // P3-120 修复：并行查询消耗品与装备表，避免串行等待
+    const [lootItem, equipItem] = await Promise.all([
+      inventoryDbService.getItemTemplate(itemId),
+      equipmentDbService.getEquipmentTemplate(itemId),
+    ]);
+
+    // 同时命中时消耗品优先（与原串行逻辑的返回顺序保持一致）
     if (lootItem) {
       return { type: 'item', data: lootItem };
     }
-
-    // 未命中再查装备
-    const equipItem = await equipmentDbService.getEquipmentTemplate(itemId);
     if (equipItem) {
       return { type: 'equipment', data: equipItem };
     }

@@ -10,7 +10,6 @@ import type { CombatResult } from '../types';
 import type { ICombatContext } from '../combatContext';
 import { eventBus, GameEvents } from '../../bus';
 import { generateLogId } from '../../log/service';
-import { useToast } from '@/composables/useToast';
 import {
   rollCritical,
   rollDodge,
@@ -42,8 +41,9 @@ export function usePlayerAction(
   endCombat: (result: CombatResult) => void,
   passive: ReturnType<typeof usePassiveSkills>,
 ) {
-  // passive 预留用于未来扩展（如玩家攻击触发 onAttack/onKill 被动钩子），
-  // 当前玩家行动不直接触发被动，被动触发集中在 useEnemyAction/useInitiative
+  // P3-82 修复说明：passive 参数为预留扩展点（未来玩家攻击触发 onAttack/onKill 被动钩子）。
+  // 当前玩家行动不直接触发被动，被动触发集中在 useEnemyAction/useInitiative。
+  // 保留参数而非移除，避免未来扩展时需修改函数签名和所有调用方。
   void passive;
   const { addCombatLog, saveLogs, createPlayerEffectContext, createEnemyEffectContext } = log;
   const { aliveEnemies, currentTarget, playerEffects, enemyEffects, effectRegistry, hasBossEnemy } = state;
@@ -62,7 +62,8 @@ export function usePlayerAction(
       enemyEffects.value[e.id] = createEmptyContainer();
     }
     const container = enemyEffects.value[e.id]!;
-    const ctx = createEnemyEffectContext(e);
+    // P1-7 修复：重命名为 effectCtx，避免遮蔽外层 usePlayerAction 参数 ctx: ICombatContext
+    const effectCtx = createEnemyEffectContext(e);
 
     for (const be of effects) {
       const effect: Effect = {
@@ -75,7 +76,7 @@ export function usePlayerAction(
       };
       addEffectToContainer(container, effect);
       // 调用 handler.onApply 触发效果施加回调
-      effectRegistry.get(effect.type)?.onApply?.(effect, ctx);
+      effectRegistry.get(effect.type)?.onApply?.(effect, effectCtx);
     }
   }
 
@@ -133,20 +134,8 @@ export function usePlayerAction(
 
   // ==================== 玩家行动 ====================
 
-  /**
-   * BOSS 运行时属性类型（BIZ-6）
-   *
-   * EnemyInstance 上由 boss engine 注入的运行时状态字段，
-   * 通过类型断言访问以消费 BOSS 机制标记。
-   */
-  type BossRuntime = EnemyInstance & {
-    invulnerable?: boolean;
-    shield?: number;
-    reflectDamage?: number;
-    counterStance?: boolean;
-    canRevive?: boolean;
-    charging?: boolean;
-  };
+  // P2-34 修复：BossRuntime 字段已显式声明到 EnemyInstance 接口中，
+  // 不再需要本地类型断言。直接通过 target.xxx 访问运行时注入字段。
 
   /**
    * 应用 BOSS 防御机制（BIZ-6）
@@ -160,8 +149,7 @@ export function usePlayerAction(
    * @returns 实际伤害（扣完护盾后）和是否被完全挡住
    */
   function applyBossDefenseMechanics(target: EnemyInstance, rawDamage: number): { damage: number; blocked: boolean } {
-    const boss = target as BossRuntime;
-    if (boss.invulnerable) {
+    if (target.invulnerable) {
       addCombatLog({
         actorType: 'system', actorId: 'system', actorName: '系统',
         eventType: 'combat_event', targetType: 'enemy', targetId: target.id,
@@ -170,9 +158,9 @@ export function usePlayerAction(
       });
       return { damage: 0, blocked: true };
     }
-    if (boss.shield && boss.shield > 0) {
-      if (rawDamage <= boss.shield) {
-        boss.shield -= rawDamage;
+    if (target.shield && target.shield > 0) {
+      if (rawDamage <= target.shield) {
+        target.shield -= rawDamage;
         addCombatLog({
           actorType: 'system', actorId: 'system', actorName: '系统',
           eventType: 'combat_event', targetType: 'enemy', targetId: target.id,
@@ -181,14 +169,14 @@ export function usePlayerAction(
         });
         return { damage: 0, blocked: true };
       } else {
-        const remaining = rawDamage - boss.shield;
+        const remaining = rawDamage - target.shield;
         addCombatLog({
           actorType: 'system', actorId: 'system', actorName: '系统',
           eventType: 'combat_event', targetType: 'enemy', targetId: target.id,
           targetName: target.name, isCrit: false, isDodge: false,
-          message: `${target.name} 的护盾被击破！吸收了 ${boss.shield} 点伤害。`
+          message: `${target.name} 的护盾被击破！吸收了 ${target.shield} 点伤害。`
         });
-        boss.shield = 0;
+        target.shield = 0;
         return { damage: remaining, blocked: false };
       }
     }
@@ -207,10 +195,9 @@ export function usePlayerAction(
    */
   function applyBossCounterMechanics(target: EnemyInstance, actualDamage: number): void {
     if (actualDamage <= 0) return;
-    const boss = target as BossRuntime;
 
-    if (boss.reflectDamage && boss.reflectDamage > 0) {
-      const reflectAmount = Math.floor(actualDamage * boss.reflectDamage);
+    if (target.reflectDamage && target.reflectDamage > 0) {
+      const reflectAmount = Math.floor(actualDamage * target.reflectDamage);
       if (reflectAmount > 0) {
         ctx.character.takeDamage(reflectAmount);
         addCombatLog({
@@ -223,7 +210,7 @@ export function usePlayerAction(
       }
     }
 
-    if (boss.counterStance) {
+    if (target.counterStance) {
       const counterDamage = Math.floor(actualDamage * 0.5);
       if (counterDamage > 0) {
         ctx.character.takeDamage(counterDamage);
@@ -235,7 +222,7 @@ export function usePlayerAction(
           message: `${target.name} 反击对 ${ctx.character.name} 造成 ${counterDamage} 点伤害！`
         });
       }
-      boss.counterStance = false;
+      target.counterStance = false;
     }
   }
 
@@ -248,10 +235,9 @@ export function usePlayerAction(
    * @returns 是否复活了
    */
   function checkBossRevive(target: EnemyInstance): boolean {
-    const boss = target as BossRuntime;
-    if (boss.canRevive) {
-      boss.hp = Math.floor(boss.maxHp * 0.5);
-      boss.canRevive = false;
+    if (target.canRevive) {
+      target.hp = Math.floor(target.maxHp * 0.5);
+      target.canRevive = false;
       addCombatLog({
         actorType: 'system', actorId: 'system', actorName: '系统',
         eventType: 'combat_event', targetType: 'enemy', targetId: target.id,
@@ -381,6 +367,8 @@ export function usePlayerAction(
     const updatedTarget = ctx.enemy.getEnemyById(target.id);
 
     // 添加日志
+    // P3-94 修复：damage 字段与 message 文本统一使用 actualDamage（实际扣血量，已扣 BOSS 护盾/无敌），
+    // 避免日志记录的 finalDamage（暴击后未扣护盾）与实际造成的伤害不一致。
     addCombatLog({
       actorType: 'player',
       actorId: 'player',
@@ -389,12 +377,12 @@ export function usePlayerAction(
       targetType: 'enemy',
       targetId: updatedTarget?.id || '',
       targetName: updatedTarget?.name || '',
-      damage: finalDamage,
+      damage: actualDamage,
       isCrit,
       isDodge: false,
       message: isCrit
-        ? `${ctx.character.name} 暴击！对 ${updatedTarget?.name} 造成 ${finalDamage} 点伤害！`
-        : `${ctx.character.name} 对 ${updatedTarget?.name} 造成 ${finalDamage} 点伤害！`
+        ? `${ctx.character.name} 暴击！对 ${updatedTarget?.name} 造成 ${actualDamage} 点伤害！`
+        : `${ctx.character.name} 对 ${updatedTarget?.name} 造成 ${actualDamage} 点伤害！`
     });
 
     // 检查战斗是否结束
@@ -522,7 +510,8 @@ export function usePlayerAction(
             });
           }
 
-          aoeHits.push({ enemyId: e.id, enemyName: e.name, damage: actualAoeDamage });
+          // P3-93 修复：补充 isCrit 字段，让 AOE 逐目标命中信息完整（供 UI 展示暴击特效/日志）
+          aoeHits.push({ enemyId: e.id, enemyName: e.name, damage: actualAoeDamage, isCrit });
 
           eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
             amount: aoeDamage,
@@ -1018,12 +1007,14 @@ export function usePlayerAction(
         const itemInfo = ctx.inventory.getItemInfo(drop.itemId);
         if (itemInfo) {
           // P2-2：检查 addItem 返回值，背包满时提示玩家
+          // P2-42 修复：通过 EventBus 发射 INVENTORY_FULL 事件，由 UI 层监听并显示 toast，
+          // 避免在 Composable 中直接调用 useToast 引入 UI 副作用
           const actualAmount = ctx.inventory.addItem(drop.itemId, amount);
           if (actualAmount < amount) {
-            useToast().show({
-              message: `背包已满，${itemInfo.name} 仅获得 ${actualAmount}/${amount}`,
-              type: 'warning',
-              duration: 3000
+            eventBus.emit(GameEvents.INVENTORY_FULL, {
+              itemName: itemInfo.name,
+              actualAmount,
+              expectedAmount: amount,
             });
           }
 

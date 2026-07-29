@@ -10,7 +10,14 @@ import type { FactionCreateUpdateData, RaceCreateUpdateData, ClassCreateUpdateDa
 import { generateId } from '../../utils/db-helpers';
 import { filterClassesByRace, filterClassesByFaction } from './service';
 
-/** 类型安全转换辅助函数，消除 `as unknown as T` 双重断言 */
+/**
+ * 类型转换辅助函数
+ *
+ * P3-111 修复说明：此函数仅做 `as T` 单层断言，不提供运行时类型安全保证。
+ * Dexie 的 toArray() 返回 unknown[]，需要断言为具体类型。
+ * 如果未来需要运行时校验，可引入 zod schema 替代此函数。
+ * 当前保留此函数是因为 Dexie schema 已通过 TypeScript 类型推断保证结构正确性。
+ */
 function cast<T>(data: unknown): T {
   return data as T;
 }
@@ -57,31 +64,40 @@ export class BaseDbService {
 
   /**
    * 更新阵营
+   *
+   * P2-63 修复：将 get-then-write 包裹在 Dexie 事务中，避免 TOCTOU 竞态。
+   * 事务保证 get 和 put 之间的原子性，其他读写操作无法在事务内部插入。
    */
   async updateFaction(id: string, data: FactionCreateUpdateData): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.config_factions.get(id);
-      if (!existing) {
-        throw new Error('Faction not found');
-      }
-      await gameDb.config_factions.put({
-        ...existing,
-        ...data,
-        id
+      await gameDb.transaction('rw', gameDb.config_factions, async () => {
+        const existing = await gameDb.config_factions.get(id);
+        if (!existing) {
+          throw new Error('Faction not found');
+        }
+        await gameDb.config_factions.put({
+          ...existing,
+          ...data,
+          id
+        });
       });
     });
   }
 
   /**
    * 删除阵营
+   *
+   * P2-63 修复：同 updateFaction，事务包裹 get-then-delete。
    */
   async deleteFaction(id: string): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.config_factions.get(id);
-      if (!existing) {
-        throw new Error('Faction not found');
-      }
-      await gameDb.config_factions.delete(id);
+      await gameDb.transaction('rw', gameDb.config_factions, async () => {
+        const existing = await gameDb.config_factions.get(id);
+        if (!existing) {
+          throw new Error('Faction not found');
+        }
+        await gameDb.config_factions.delete(id);
+      });
     });
   }
 
@@ -133,31 +149,39 @@ export class BaseDbService {
 
   /**
    * 更新种族
+   *
+   * P2-63 修复：事务包裹 get-then-write，避免 TOCTOU 竞态。
    */
   async updateRace(id: string, data: RaceCreateUpdateData): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.config_races.get(id);
-      if (!existing) {
-        throw new Error('Race not found');
-      }
-      await gameDb.config_races.put({
-        ...existing,
-        ...data,
-        id
+      await gameDb.transaction('rw', gameDb.config_races, async () => {
+        const existing = await gameDb.config_races.get(id);
+        if (!existing) {
+          throw new Error('Race not found');
+        }
+        await gameDb.config_races.put({
+          ...existing,
+          ...data,
+          id
+        });
       });
     });
   }
 
   /**
    * 删除种族
+   *
+   * P2-63 修复：事务包裹 get-then-write，避免 TOCTOU 竞态。
    */
   async deleteRace(id: string): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.config_races.get(id);
-      if (!existing) {
-        throw new Error('Race not found');
-      }
-      await gameDb.config_races.delete(id);
+      await gameDb.transaction('rw', gameDb.config_races, async () => {
+        const existing = await gameDb.config_races.get(id);
+        if (!existing) {
+          throw new Error('Race not found');
+        }
+        await gameDb.config_races.delete(id);
+      });
     });
   }
 
@@ -185,6 +209,10 @@ export class BaseDbService {
 
   /**
    * 根据种族获取职业（委托给 service 纯函数做内存过滤）
+   *
+   * P3-119 说明：采用全量加载后内存过滤，而非 Dexie 多值索引查询。
+   * 原因：config_classes 表数据量小（< 20 条），全量加载 + JS 过滤性能足够，
+   * 且多值索引需要额外维护 schema，收益不大。如未来数据量增长可改为索引查询。
    */
   async getClassesByRace(raceId: RaceType): Promise<ClassData[]> {
     return dbService.withRetry(async () => {
@@ -195,6 +223,8 @@ export class BaseDbService {
 
   /**
    * 根据阵营获取职业（委托给 service 纯函数做内存过滤）
+   *
+   * P3-119 说明：同 getClassesByRace，采用全量加载后内存过滤。
    */
   async getClassesByFaction(factionId: FactionType): Promise<ClassData[]> {
     return dbService.withRetry(async () => {
@@ -219,31 +249,39 @@ export class BaseDbService {
 
   /**
    * 更新职业
+   *
+   * P2-63 修复：事务包裹 get-then-write，避免 TOCTOU 竞态。
    */
   async updateClass(id: string, data: ClassCreateUpdateData): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.config_classes.get(id);
-      if (!existing) {
-        throw new Error('Class not found');
-      }
-      await gameDb.config_classes.put({
-        ...existing,
-        ...data,
-        id
+      await gameDb.transaction('rw', gameDb.config_classes, async () => {
+        const existing = await gameDb.config_classes.get(id);
+        if (!existing) {
+          throw new Error('Class not found');
+        }
+        await gameDb.config_classes.put({
+          ...existing,
+          ...data,
+          id
+        });
       });
     });
   }
 
   /**
    * 删除职业
+   *
+   * P2-63 修复：事务包裹 get-then-write，避免 TOCTOU 竞态。
    */
   async deleteClass(id: string): Promise<void> {
     await dbService.withRetry(async () => {
-      const existing = await gameDb.config_classes.get(id);
-      if (!existing) {
-        throw new Error('Class not found');
-      }
-      await gameDb.config_classes.delete(id);
+      await gameDb.transaction('rw', gameDb.config_classes, async () => {
+        const existing = await gameDb.config_classes.get(id);
+        if (!existing) {
+          throw new Error('Class not found');
+        }
+        await gameDb.config_classes.delete(id);
+      });
     });
   }
 }

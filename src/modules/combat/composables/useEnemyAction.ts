@@ -35,6 +35,16 @@ function mapSkillTypeToDamageType(skillType?: string): DamageType {
   return 'physical';
 }
 
+// P3-85 修复：AI 策略实例无闭包依赖（不引用 state/log/ctx），提取为模块级常量共享，
+// 避免每次调用 useEnemyAction 都重新创建一份策略注册表。
+/** AI 策略注册表（模块级共享单例） */
+const strategyRegistry: Record<AiStrategyType, IAiStrategy> = {
+  aggressive: new AggressiveStrategy(),
+  defensive: new DefensiveStrategy(),
+  balanced: new BalancedStrategy(),
+  boss_phase: new BossPhaseStrategy(),
+};
+
 export function useEnemyAction(
   state: ReturnType<typeof useCombatState>,
   log: ReturnType<typeof useCombatLog>,
@@ -45,14 +55,6 @@ export function useEnemyAction(
   const { playerEffects, enemyEffects, effectRegistry, resourceSystems } = state;
 
   // ==================== AI 策略 ====================
-
-  /** AI 策略注册表 */
-  const strategyRegistry: Record<AiStrategyType, IAiStrategy> = {
-    aggressive: new AggressiveStrategy(),
-    defensive: new DefensiveStrategy(),
-    balanced: new BalancedStrategy(),
-    boss_phase: new BossPhaseStrategy(),
-  };
 
   /**
    * 根据策略类型获取 AI 策略实例
@@ -93,8 +95,9 @@ export function useEnemyAction(
 
     // BIZ-5：应用被动减伤效果（如战士钢铁意志：低血减伤 20%）
     const damageReduction = passive?.getDamageReduction() || 0;
+    // P1-13 修复：添加 Math.max(0, ...) 保护负数边界，防止 damageReduction > 1 时 finalDamage 变负数导致"回血"
     const finalDamage = damageReduction > 0
-      ? Math.floor(actualDamage * (1 - damageReduction))
+      ? Math.max(0, Math.floor(actualDamage * (1 - damageReduction)))
       : actualDamage;
 
     // 扣血
@@ -330,6 +333,8 @@ export function useEnemyAction(
       case 'skill': {
         const result = ctx.enemy.useSkill(e.id, decision.skillId);
         if (result.success) {
+          // P2-40 修复：在 case 'skill' 开头缓存完整技能数据，避免在 isHeal/buff/attack 分支重复调用 getSkill
+          const cachedFullSkill = ctx.skill.getSkill(decision.skillId);
           if (result.isHeal) {
             // 敌人恢复生命值
             const updatedEnemy = ctx.enemy.getEnemyById(e.id);
@@ -364,8 +369,8 @@ export function useEnemyAction(
             // 敌人使用 buff/debuff 技能：区分自身增益（buff）和对玩家减益（debuff）
             const skillData = availableSkills.find(s => s.id === decision.skillId);
             const skillName = skillData?.name || decision.skillId;
-            // 通过完整技能数据判断是否为减益技能
-            const fullSkill = ctx.skill.getSkill(decision.skillId);
+            // 通过完整技能数据判断是否为减益技能（P2-40：复用 cachedFullSkill）
+            const fullSkill = cachedFullSkill;
             const isDebuff = fullSkill?.type === 'debuff';
 
             if (isDebuff) {
@@ -441,9 +446,9 @@ export function useEnemyAction(
               message: `${e.name} 使用了 ${skillName}！`
             };
           } else {
-            // 敌人使用攻击技能
+            // 敌人使用攻击技能（P2-40：复用 cachedFullSkill）
             const skillData = availableSkills.find(s => s.id === decision.skillId);
-            const fullSkill = ctx.skill.getSkill(decision.skillId);
+            const fullSkill = cachedFullSkill;
             return enemyAttackWithSkill(
               result.damage,
               { id: decision.skillId, name: skillData?.name || decision.skillId, type: fullSkill?.type },

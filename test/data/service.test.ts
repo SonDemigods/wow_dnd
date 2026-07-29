@@ -153,6 +153,11 @@ const { mockSeedData } = vi.hoisted(() => {
 
 vi.mock('@/data', () => mockSeedData);
 
+// P1-30 修复后 MAX_LEVEL 从 @/config/character 直接导入，需同步 mock
+vi.mock('@/config/character', () => ({
+  MAX_LEVEL: mockSeedData.MAX_LEVEL,
+}));
+
 // ============================================================================
 // Mock：@/utils/fileDownload 的 downloadBlob（避免真实 DOM 操作）
 // ============================================================================
@@ -437,6 +442,27 @@ describe('DataInitializer 数据初始化服务', () => {
 
       // Act & Assert
       await expect(initializer.initializeData()).rejects.toBe('非Error字符串');
+    });
+
+    it('initTable 传入空数组时跳过 bulkPut（data.length === 0 分支）', async () => {
+      // 直接调用私有 initTable 方法传入空数组，覆盖 if (data.length > 0) 的 false 分支
+      const before = await db.config_factions.count();
+      await (initializer as unknown as { initTable: (t: typeof db.config_factions, d: readonly unknown[]) => Promise<void> })
+        .initTable(db.config_factions, []);
+      const after = await db.config_factions.count();
+      expect(after).toBe(before); // 没有写入任何数据
+    });
+
+    it('initBosses 在 BOSSES 为空时提前返回不写入数据', async () => {
+      // 临时将 mock 种子数据的 BOSSES 置空，触发 if (BOSSES.length === 0) return
+      const originalBosses = mockSeedData.BOSSES;
+      mockSeedData.BOSSES = [];
+      try {
+        await (initializer as unknown as { initBosses: () => Promise<void> }).initBosses();
+        expect(await db.config_bosses.count()).toBe(0);
+      } finally {
+        mockSeedData.BOSSES = originalBosses;
+      }
     });
   });
 

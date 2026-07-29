@@ -99,6 +99,27 @@ describe('InventoryDbService - 背包数据层（fake-indexeddb 真实 CRUD）',
       expect(raw!.updatedAt).toBeTypeOf('number');
       expect(raw!.items).toEqual([makeInventoryItem('a', 1)]);
     });
+
+    it('data.items 不是数组时返回空数组（类型守卫兜底）', async () => {
+      // 直接写入损坏的数据（items 字段为字符串）
+      await db.char_inventory.put({
+        characterId: 'corrupt-str',
+        items: 'not-an-array' as unknown as InventoryItem[],
+        updatedAt: Date.now()
+      });
+      const result = await inventoryDbService.getInventory('corrupt-str');
+      expect(result).toEqual([]);
+    });
+
+    it('data.items 为 null 时返回空数组', async () => {
+      await db.char_inventory.put({
+        characterId: 'corrupt-null',
+        items: null as unknown as InventoryItem[],
+        updatedAt: Date.now()
+      });
+      const result = await inventoryDbService.getInventory('corrupt-null');
+      expect(result).toEqual([]);
+    });
   });
 
   describe('deleteInventory：删除背包', () => {
@@ -183,6 +204,29 @@ describe('InventoryDbService - 背包数据层（fake-indexeddb 真实 CRUD）',
 
       const result = await inventoryDbService.getItemTemplate('zero-req');
       expect(result!.levelRequirement).toBe(0);
+    });
+
+    it('bonus 为 null 时 mapToItem 返回空对象作为 bonus（|| 兜底）', async () => {
+      // 直接写入 bonus 为 null 的损坏数据，验证 mapToItem 的 || {} 兜底
+      await db.config_items.put({
+        id: 'null-bonus',
+        name: '无加成物品',
+        type: 'misc',
+        rarity: 'common',
+        level: 1,
+        icon: 'icon',
+        description: '',
+        bonus: null as unknown as Record<string, number>,
+        effect: null,
+        value: 0,
+        stackable: false,
+        consumable: false,
+        template: null,
+        levelRequirement: null
+      });
+      const result = await inventoryDbService.getItemTemplate('null-bonus');
+      expect(result).not.toBeNull();
+      expect(result!.bonus).toEqual({});
     });
 
     it('覆盖保存：相同 ID 再次保存，新数据替换旧数据', async () => {

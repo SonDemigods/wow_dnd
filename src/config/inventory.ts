@@ -18,7 +18,8 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeData> = {
   scroll: { id: 'scroll', name: '卷轴', stackable: true, maxStack: 10, usable: true },
   food: { id: 'food', name: '食物', stackable: true, maxStack: 20, usable: true },
   material: { id: 'material', name: '材料', stackable: true, maxStack: 99 },
-  quest: { id: 'quest', name: '任务物品', stackable: true, maxStack: 1 },
+  // P2-72 修复：任务物品不可堆叠（stackable 与 maxStack=1 矛盾，且设计上不可堆叠）
+  quest: { id: 'quest', name: '任务物品', stackable: false, maxStack: 1 },
   weapon: { id: 'weapon', name: '武器', stackable: false, maxStack: 1 },
   armor: { id: 'armor', name: '护甲', stackable: false, maxStack: 1 },
   misc: { id: 'misc', name: '杂项', stackable: true, maxStack: 1 }

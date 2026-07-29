@@ -912,6 +912,15 @@ describe('useSkillStore - 技能 Store', () => {
       expect(store.getCooldownRemaining('s1')).toBe(3);
       expect(store.getCooldownRemaining('unknown')).toBe(0);
     });
+
+    it('resetCooldowns：清空所有冷却（战斗开始时调用）', () => {
+      const store = useSkillStore();
+      store.$patch({ cooldowns: { s1: 3, s2: 1, s3: 2 } });
+
+      store.resetCooldowns();
+
+      expect(store.cooldowns).toEqual({});
+    });
   });
 
   // -------------------- Actions：reset --------------------
@@ -955,6 +964,131 @@ describe('useSkillStore - 技能 Store', () => {
       // 不修改内存缓存
       expect(store.skillTemplates.size).toBe(1);
       expect(store.skillTemplates.get('old')).toBeDefined();
+    });
+  });
+
+  // -------------------- 防御性分支补充 --------------------
+  describe('防御性分支补充', () => {
+    it('persist：currentCharacterId 为空时回退到 characterStore.getCharacterId()（|| 分支 line 189）', async () => {
+      // 覆盖 line 189: currentCharacterId.value || characterStore.getCharacterId() 的 || 分支
+      const s1 = makeSkill({ id: 's1' });
+      const store = useSkillStore();
+      store.skillTemplates.set('s1', s1);
+      // currentCharacterId 保持为 null（未调用 initialize）
+      mocks.characterStore.getCharacterId.mockReturnValue('fallback_char');
+
+      await store.learnSkill('s1');
+
+      // persist 使用 getCharacterId() 的回退值
+      expect(skillsDbService.saveSkillsData).toHaveBeenCalledWith(
+        expect.objectContaining({ characterId: 'fallback_char' })
+      );
+    });
+
+    it('castSkill：charData.mana 为 0 时 canCastSkill 收到 0（|| 分支 line 368）', async () => {
+      // 覆盖 line 368: charData?.mana || 0 的 || 分支（mana 为 0 是 falsy）
+      const s1 = makeSkill({ id: 's1', type: 'physical_damage', mpCost: 10 });
+      mocks.characterStore.getCharacterData.mockReturnValue({ mana: 0 } as Partial<Character>);
+      vi.mocked(canCastSkill).mockReturnValue({ canCast: true, reason: '' });
+      const store = useSkillStore();
+      store.$patch({ skills: [s1] });
+
+      await store.castSkill('s1');
+
+      // canCastSkill 被调用时 mana 参数为 0
+      expect(canCastSkill).toHaveBeenCalledWith(s1, 0);
+    });
+
+    it('castSkill：buff 技能无 buffs 数组时 appliedEffects 保持 undefined（FALSE 分支 line 421）', async () => {
+      // 覆盖 line 421: skill.buffs && skill.buffs.length > 0 的 FALSE 分支
+      const s1 = makeSkill({ id: 's1', type: 'buff', mpCost: 5, name: '空增益' });
+      // 不设置 buffs 字段 → skill.buffs 为 undefined
+      const store = useSkillStore();
+      store.$patch({ skills: [s1] });
+
+      const result = await store.castSkill('s1');
+
+      expect(result.success).toBe(true);
+      // buffs 为空 → appliedEffects 不被设置
+      expect(result.appliedEffects).toBeUndefined();
+    });
+
+    it('castSkill：buff 技能 buffs 为空数组时 appliedEffects 保持 undefined', async () => {
+      // 覆盖 line 421: skill.buffs.length > 0 的 FALSE 分支（length === 0）
+      const s1 = makeSkill({ id: 's1', type: 'debuff', mpCost: 5, name: '空减益', buffs: [] });
+      const store = useSkillStore();
+      store.$patch({ skills: [s1] });
+
+      const result = await store.castSkill('s1');
+
+      expect(result.success).toBe(true);
+      expect(result.appliedEffects).toBeUndefined();
+    });
+
+    it('canUseSkill：charData 为 null 时直接返回 false（P1-19 修复：未加载角色不可使用技能）', () => {
+      const s1 = makeSkill({ id: 's1', unlockLevel: 1, mpCost: 10 });
+      mocks.characterStore.getCharacterData.mockReturnValue(null);
+      const store = useSkillStore();
+      store.$patch({ skills: [s1] });
+      mocks.characterStore.level = 1;
+
+      const result = store.canUseSkill('s1');
+
+      // P1-19 修复：未加载角色时直接返回 false，不再调用 canCastSkill
+      expect(result).toBe(false);
+      expect(canCastSkill).not.toHaveBeenCalled();
+    });
+
+    it('checkLevelUnlocks(true)：技能栏已满时新技能解锁但不自动装备（FALSE 分支 line 722）', async () => {
+      // 覆盖 line 722: if (emptySlot !== -1) 的 FALSE 分支
+      const s1 = makeSkill({ id: 's1', unlockLevel: 1 });
+      const store = useSkillStore();
+      // 技能栏 4 个槽位全部占满
+      store.$patch({
+        skills: [
+          makeSkill({ id: 's2' }),
+          makeSkill({ id: 's3' }),
+          makeSkill({ id: 's4' }),
+          makeSkill({ id: 's5' }),
+        ],
+        skillBar: { slots: ['s2', 's3', 's4', 's5'] },
+      });
+      store.skillTemplates.set('s1', s1);
+      mocks.characterStore.level = 1;
+
+      await store.checkLevelUnlocks(true);
+
+      // s1 被解锁加入 skills，但技能栏已满不自动装备
+      expect(store.skills).toHaveLength(5);
+      expect(store.skills.some(s => s.id === 's1')).toBe(true);
+      expect(store.skillBar.slots).toEqual(['s2', 's3', 's4', 's5']);
+    });
+
+    it('tickCooldowns：冷却值为 0 时不递减（FALSE 分支 line 774）', () => {
+      // 覆盖 line 774: if (cooldowns.value[key] > 0) 的 FALSE 分支
+      const store = useSkillStore();
+      // 防御性场景：cooldowns 中存在 0 值（异常状态）
+      store.$patch({ cooldowns: { s1: 0, s2: -1 } });
+
+      store.tickCooldowns();
+
+      // 0 和负值不被处理（> 0 判断为 false）
+      expect(store.cooldowns.s1).toBe(0);
+      expect(store.cooldowns.s2).toBe(-1);
+    });
+
+    it('persist：currentCharacterId 与 getCharacterId 均为空时 early return（line 189）', async () => {
+      // 覆盖 line 189: if (!charId) return 的 early return 分支
+      const s1 = makeSkill({ id: 's1' });
+      const store = useSkillStore();
+      store.skillTemplates.set('s1', s1);
+      // currentCharacterId 保持为 null（未调用 initialize）
+      mocks.characterStore.getCharacterId.mockReturnValue(null);
+
+      await store.learnSkill('s1');
+
+      // persist 因 charId 为空提前返回，不调用 saveSkillsData
+      expect(skillsDbService.saveSkillsData).not.toHaveBeenCalled();
     });
   });
 });
