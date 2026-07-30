@@ -246,23 +246,12 @@ import ResourceBar from '@/components/common/ResourceBar.vue';
 import ClassResourceBar from '@/components/common/ClassResourceBar.vue';
 import ItemIcon from '@/components/common/ItemIcon.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
-import {
-  animateShake,
-  animateCritShake,
-  animateDodgeBlink,
-  animateFloating,
-  animateScreenFlash,
-  animateVsFlash,
-  animateBossIntro,
-  animatePhaseTransition,
-  animateResultPopup,
-  animateMagicPulse,
-  animateHealGlow,
-  animateManaGlow,
-  animateCritBorderFlash,
-  createParticleBurst,
-} from '@/modules/animation';
-import type { FloatingType, ParticleConfig } from '@/modules/animation';
+import { animateResultPopup } from '@/modules/animation';
+// QA-5 阶段四：抽离的 4 个 composable
+import { useCombatSpeed } from '@/modules/combat/composables/useCombatSpeed';
+import { useCombatAutoClose } from '@/modules/combat/composables/useCombatAutoClose';
+import { useBossIntroOverlay } from '@/modules/combat/composables/useBossIntroOverlay';
+import { useCombatAnimations } from '@/modules/combat/composables/useCombatAnimations';
 
 const emit = defineEmits<{
   (e: 'close', result?: CombatResult): void;
@@ -308,18 +297,89 @@ const combatStore = useCombatStore();
 const logRef = ref<HTMLElement | null>(null);
 const isAnimating = ref(false);
 const showItemModal = ref(false);
-const autoCloseCountdown = ref(0);
+// ==================== QA-5 阶段四：Composable 调用 ====================
 
-// 战斗速度（从 Store 读取）
-const combatSpeed = computed(() => combatStore.combatSpeed);
+// 倍速切换（combatSpeed + toggleSpeed）
+const { combatSpeed, toggleSpeed } = useCombatSpeed();
 
-function toggleSpeed() {
-  combatStore.toggleCombatSpeed();
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_speed_toggle' });
-}
+// 自动关闭倒计时（autoCloseCountdown + scheduleAutoClose + clearAutoClose）
+const {
+  autoCloseCountdown,
+  scheduleAutoClose,
+  clearAutoClose: clearAutoCloseTimer,
+  handleClose: handleCloseAutoClose,
+} = useCombatAutoClose(() => {
+  emit('close', combatStore.combatResult || undefined);
+});
 
-let autoCloseTimer: ReturnType<typeof setInterval> | null = null;
-let autoCloseTimeout: ReturnType<typeof setTimeout> | null = null;
+// 当前目标敌人 ID（animations 依赖注入需要，提前声明）
+const currentTarget = computed(() => combatStore.currentTarget);
+
+// Boss 出场演出（showBossIntro + onBossIntro + dispose）
+const {
+  showBossIntro,
+  bossIntroIcon,
+  bossIntroName,
+  bossIntroLines,
+  bossIntroOverlayRef,
+  bossIntroIconRef,
+  bossIntroNameRef,
+  bossIntroLineRefs,
+  onBossIntro,
+  dispose: disposeBossIntro,
+} = useBossIntroOverlay({
+  getCombatSpeed: () => combatSpeed.value,
+  setAnimTimer,
+  isUnmounted,
+});
+
+// 战斗视觉特效（震动/闪避/浮动数字/屏幕闪白/VS 闪光/Boss 阶段转换 + 事件处理）
+const {
+  enemyShakes,
+  enemyCritShakes,
+  enemyDodgeBlinks,
+  enemyFloatings,
+  playerShake,
+  playerCritShake,
+  playerDodgeBlink,
+  vsFlash,
+  playerFloating,
+  screenFlash,
+  screenFlashType,
+  showPhaseTransition,
+  phaseTransitionEffect,
+  phaseTransitionName,
+  screenFlashRef,
+  phaseBackdropRef,
+  phaseContentRef,
+  vsDividerRef,
+  PHYSICAL_PARTICLES,
+  MAGIC_PARTICLES,
+  HEAL_PARTICLES,
+  MANA_PARTICLES,
+  CRIT_PARTICLES,
+  showFloating,
+  triggerShake,
+  triggerCritShake,
+  triggerDodgeBlink,
+  triggerScreenFlash,
+  triggerMagicPulse,
+  triggerHealGlow,
+  triggerManaGlow,
+  triggerCritBorderFlash,
+  triggerParticles,
+  triggerVsFlash,
+  applyCombatDamageEffects,
+  onCritHit,
+  onEnemyDealDamage,
+  onDodge,
+  onBossPhase,
+} = useCombatAnimations({
+  getCombatSpeed: () => combatSpeed.value,
+  setAnimTimer,
+  isUnmounted,
+  getCurrentTargetId: () => currentTarget.value?.id,
+});
 
 // 战斗状态 - 直接从 Combat Store 响应式数据派生
 const turn = computed(() => combatStore.turn);
@@ -341,43 +401,9 @@ const logsReversed = computed(() => {
   return cachedReversed;
 });
 
-// 动画状态（按敌人 ID 索引）
-const enemyShakes = ref<Record<string, boolean>>({});
-const enemyCritShakes = ref<Record<string, boolean>>({});
-const enemyDodgeBlinks = ref<Record<string, boolean>>({});
-const enemyFloatings = ref<Record<string, { text: string; type: FloatingType } | null>>({});
-// 保留这些全局动画
-const playerShake = ref(false);
-const playerCritShake = ref(false);
-const playerDodgeBlink = ref(false);
-const vsFlash = ref(false);
-const playerFloating = ref<{ text: string; type: FloatingType } | null>(null);
-const screenFlash = ref(false);
-const screenFlashType = ref<'crit' | 'dodge'>('crit');
+// 动画状态、Boss 出场演出状态、Boss 阶段转换状态、模板 refs 已迁移至 useCombatAnimations / useBossIntroOverlay
 
-// Boss 出场演出状态
-const showBossIntro = ref(false);
-const bossIntroIcon = ref('');
-const bossIntroName = ref('');
-const bossIntroLines = ref<string[]>([]);
-
-// Boss 阶段转换特效状态
-const showPhaseTransition = ref(false);
-const phaseTransitionEffect = ref('');
-const phaseTransitionName = ref('');
-
-// 模板 refs（用于 anime.js 直接操作 DOM）
-const screenFlashRef = ref<HTMLElement | null>(null);
-const bossIntroOverlayRef = ref<HTMLElement | null>(null);
-const bossIntroIconRef = ref<HTMLElement | null>(null);
-const bossIntroNameRef = ref<HTMLElement | null>(null);
-const bossIntroLineRefs = ref<Record<number, HTMLElement>>({});
-const phaseBackdropRef = ref<HTMLElement | null>(null);
-const phaseContentRef = ref<HTMLElement | null>(null);
-const vsDividerRef = ref<HTMLElement | null>(null);
-
-// P2-60 修复：Boss 出场演出动画控制器，组件卸载时调用 cancel() 清理定时器
-let bossIntroController: { cancel: () => void } | null = null;
+// 结果弹窗模板 refs（用于结果弹窗动画，保留在组件中）
 const resultPopupRef = ref<HTMLElement | null>(null);
 const resultIconRef = ref<HTMLElement | null>(null);
 const resultTextRef = ref<HTMLElement | null>(null);
@@ -425,8 +451,7 @@ function canCastSkill(skill: Skill): boolean {
   return true;
 }
 
-// 敌人数据（当前目标）
-const currentTarget = computed(() => combatStore.currentTarget);
+// currentTarget 已在 composable 调用前声明（animations 依赖注入需要）
 
 function getHpPercent(e: { hp: number; maxHp: number }): number {
   return Math.max(0, Math.min(100, (e.hp / e.maxHp) * 100));
@@ -607,330 +632,12 @@ function scrollToTop() {
   }
 }
 
-// 浮动伤害/生命恢复数字
-function showFloating(target: 'enemy' | 'player', text: string, type: FloatingType, enemyId?: string) {
-  if (target === 'enemy' && enemyId) {
-    enemyFloatings.value[enemyId] = { text, type };
-    nextTick(() => {
-      const el = document.querySelector(`[data-enemy-float="${enemyId}"]`) as HTMLElement;
-      if (el) animateFloating(el, type, combatSpeed.value);
-    });
-    setAnimTimer(() => { if (enemyFloatings.value[enemyId]) enemyFloatings.value[enemyId] = null; }, 2200);
-  } else {
-    playerFloating.value = { text, type };
-    nextTick(() => {
-      const el = document.querySelector('.player-side .floating-damage') as HTMLElement;
-      if (el) animateFloating(el, type, combatSpeed.value);
-    });
-    setAnimTimer(() => { playerFloating.value = null; }, 2200);
-  }
-}
-
-// 震动效果（普通攻击）
-function triggerShake(target: 'enemy' | 'player', enemyId?: string) {
-  if (target === 'enemy' && enemyId) {
-    enemyShakes.value[enemyId] = true;
-    nextTick(() => {
-      const el = document.querySelector(`[data-enemy-shake="${enemyId}"]`) as HTMLElement;
-      if (el) animateShake(el, combatSpeed.value);
-    });
-    setAnimTimer(() => { enemyShakes.value[enemyId] = false; }, 600);
-  } else {
-    playerShake.value = true;
-    nextTick(() => {
-      const el = document.querySelector('.player-side') as HTMLElement;
-      if (el) animateShake(el, combatSpeed.value);
-    });
-    setAnimTimer(() => { playerShake.value = false; }, 600);
-  }
-}
-
-// 暴击震动效果（更强、更持久）
-function triggerCritShake(target: 'enemy' | 'player', enemyId?: string) {
-  if (target === 'enemy' && enemyId) {
-    enemyCritShakes.value[enemyId] = true;
-    nextTick(() => {
-      const el = document.querySelector(`[data-enemy-shake="${enemyId}"]`) as HTMLElement;
-      if (el) animateCritShake(el, combatSpeed.value);
-    });
-    setAnimTimer(() => { enemyCritShakes.value[enemyId] = false; }, 900);
-  } else {
-    playerCritShake.value = true;
-    nextTick(() => {
-      const el = document.querySelector('.player-side') as HTMLElement;
-      if (el) animateCritShake(el, combatSpeed.value);
-    });
-    setAnimTimer(() => { playerCritShake.value = false; }, 900);
-  }
-}
-
-// 闪避闪烁效果
-function triggerDodgeBlink(target: 'enemy' | 'player', enemyId?: string) {
-  if (target === 'enemy' && enemyId) {
-    enemyDodgeBlinks.value[enemyId] = true;
-    nextTick(() => {
-      const el = document.querySelector(`[data-enemy-shake="${enemyId}"]`) as HTMLElement;
-      if (el) animateDodgeBlink(el, combatSpeed.value);
-    });
-    setAnimTimer(() => { enemyDodgeBlinks.value[enemyId] = false; }, 800);
-  } else {
-    playerDodgeBlink.value = true;
-    nextTick(() => {
-      const el = document.querySelector('.player-side') as HTMLElement;
-      if (el) animateDodgeBlink(el, combatSpeed.value);
-    });
-    setAnimTimer(() => { playerDodgeBlink.value = false; }, 800);
-  }
-}
-
-// 屏幕闪白特效
-function triggerScreenFlash(type: 'crit' | 'dodge') {
-  screenFlashType.value = type;
-  screenFlash.value = true;
-  nextTick(() => {
-    if (screenFlashRef.value) {
-      animateScreenFlash(screenFlashRef.value, type, combatSpeed.value);
-    }
-  });
-  setAnimTimer(() => { screenFlash.value = false; }, 600);
-}
-
-// 法术伤害：缩放脉冲（T1 新增）
-function triggerMagicPulse(target: 'enemy' | 'player', enemyId?: string) {
-  nextTick(() => {
-    const selector = target === 'enemy' && enemyId
-      ? `[data-enemy-shake="${enemyId}"]`
-      : '.player-side';
-    const el = document.querySelector(selector) as HTMLElement;
-    if (el) animateMagicPulse(el, combatSpeed.value);
-  });
-}
-
-// 生命恢复：绿色光晕（T1 新增）
-function triggerHealGlow() {
-  nextTick(() => {
-    const el = document.querySelector('.player-side') as HTMLElement;
-    if (el) animateHealGlow(el, combatSpeed.value);
-  });
-}
-
-// 法力恢复：蓝色光晕（T1 新增）
-function triggerManaGlow() {
-  nextTick(() => {
-    const el = document.querySelector('.player-side') as HTMLElement;
-    if (el) animateManaGlow(el, combatSpeed.value);
-  });
-}
-
-// 暴击：金色边框爆闪（T1 新增）
-function triggerCritBorderFlash(target: 'enemy' | 'player', enemyId?: string) {
-  nextTick(() => {
-    const selector = target === 'enemy' && enemyId
-      ? `[data-enemy-shake="${enemyId}"]`
-      : '.player-side';
-    const el = document.querySelector(selector) as HTMLElement;
-    if (el) animateCritBorderFlash(el, combatSpeed.value);
-  });
-}
-
-// 粒子爆发（T2 新增）
-function triggerParticles(target: 'enemy' | 'player', config: ParticleConfig, enemyId?: string) {
-  nextTick(() => {
-    const selector = target === 'enemy' && enemyId
-      ? `[data-enemy-shake="${enemyId}"]`
-      : '.player-side';
-    const element = document.querySelector(selector) as HTMLElement;
-    if (!element) return;
-    const rect = element.getBoundingClientRect();
-    // 使用 combat-container 作为容器，确保粒子正确叠加在战斗界面上
-    const container = document.querySelector('.combat-container') as HTMLElement;
-    if (!container) return;
-    const containerRect = container.getBoundingClientRect();
-    createParticleBurst(container, {
-      left: rect.left - containerRect.left,
-      top: rect.top - containerRect.top,
-      width: rect.width,
-      height: rect.height,
-    }, config, combatSpeed.value);
-  });
-}
-
-/** 物理伤害粒子配置 */
-const PHYSICAL_PARTICLES: ParticleConfig = {
-  count: 7,
-  colors: ['#ff6b6b', '#ff4444', '#ff8c00', '#ff9999'],
-  shape: 'slash',
-  radius: 40,
-  sizeRange: [3, 6],
-  duration: 800,
-};
-
-/** 法术伤害粒子配置 */
-const MAGIC_PARTICLES: ParticleConfig = {
-  count: 11,
-  colors: ['#a855f7', '#c084fc', '#9333ea', '#d8b4fe'],
-  shape: 'circle',
-  radius: 50,
-  sizeRange: [4, 8],
-  duration: 900,
-};
-
-/** 生命恢复粒子配置 */
-const HEAL_PARTICLES: ParticleConfig = {
-  count: 9,
-  colors: ['#4CAF50', '#81c784', '#a5d6a7', '#66bb6a'],
-  shape: 'spark',
-  radius: 35,
-  sizeRange: [4, 7],
-  duration: 1000,
-};
-
-/** 法力恢复粒子配置 */
-const MANA_PARTICLES: ParticleConfig = {
-  count: 9,
-  colors: ['#6e9bff', '#93acff', '#4d7cff', '#b3c8ff'],
-  shape: 'star',
-  radius: 35,
-  sizeRange: [4, 7],
-  duration: 1000,
-};
-
-/** 暴击粒子配置 */
-const CRIT_PARTICLES: ParticleConfig = {
-  count: 16,
-  colors: ['#ffd700', '#ffec8b', '#ffa500', '#ffe4b5', '#ffb90f'],
-  shape: 'slash',
-  radius: 60,
-  sizeRange: [4, 9],
-  duration: 1000,
-};
-
-// 暴击事件处理
-function onCritHit(data: { amount: number; damageType: string; targetName: string; actorType: 'player' | 'enemy'; enemyId?: string }) {
-  if (isUnmounted.value) return;
-  // 震动目标：玩家暴击震敌人，敌人暴击震玩家
-  const shakeTarget = data.actorType === 'player' ? 'enemy' : 'player';
-  // 暴击震动 + 屏幕闪白
-  triggerCritShake(shakeTarget, data.enemyId);
-  triggerScreenFlash('crit');
-  // 玩家暴击时浮动文字由 applyCombatDamageEffects 处理，此处仅处理敌人暴击
-  if (data.actorType === 'enemy') {
-    showFloating(shakeTarget, `暴击! -${data.amount}`, 'crit', data.enemyId);
-  }
-}
-
-// 敌人造成伤害事件处理（敌人攻击玩家时的视觉反馈）
-function onEnemyDealDamage(data: { amount: number; damageType: string; targetName: string; actorType?: 'player' | 'enemy' }) {
-  if (isUnmounted.value) return;
-  // 仅处理敌人对玩家造成的伤害
-  if (data.actorType !== 'enemy') return;
-  // 玩家受击震动
-  triggerShake('player');
-  // 玩家受击浮动伤害文字
-  showFloating('player', `-${data.amount}`, 'physical');
-}
-
-// 闪避事件处理
-function onDodge(data: { attackerName: string; dodgerName: string; dodgerType: 'player' | 'enemy'; enemyId?: string }) {
-  if (isUnmounted.value) return;
-  // 闪避者闪烁
-  triggerDodgeBlink(data.dodgerType, data.enemyId);
-  // 闪避浮动文字
-  showFloating(data.dodgerType, '闪避!', 'dodge', data.enemyId);
-  // 屏幕轻闪
-  triggerScreenFlash('dodge');
-}
-
-// Boss 出场演出事件处理
-function onBossIntro(data: { enemyId: string; enemyName: string; icon: string; effect: string; lines: string[]; duration: number }) {
-  if (isUnmounted.value) return;
-  bossIntroIcon.value = data.icon;
-  bossIntroName.value = data.enemyName;
-  bossIntroLines.value = data.lines;
-  showBossIntro.value = true;
-
-  // P2-60 修复：保存 animateBossIntro 返回的控制器，便于 onUnmounted 中取消
-  if (bossIntroController) {
-    bossIntroController.cancel();
-    bossIntroController = null;
-  }
-
-  // 使用 anime.js 时间线播放演出
-  nextTick(() => {
-    if (bossIntroOverlayRef.value && bossIntroIconRef.value && bossIntroNameRef.value) {
-      const lineEls = Object.values(bossIntroLineRefs.value);
-      bossIntroController = animateBossIntro(
-        bossIntroOverlayRef.value,
-        bossIntroIconRef.value,
-        bossIntroNameRef.value,
-        lineEls,
-        data.duration,
-        combatSpeed.value
-      );
-    }
-  });
-
-  // 演出结束后自动关闭
-  const minDuration = 1000 + data.lines.length * 900;
-  const actualDuration = Math.max(data.duration, minDuration);
-  setAnimTimer(() => {
-    showBossIntro.value = false;
-    bossIntroController = null;
-  }, actualDuration + 300); // +300 给淡出动画留时间
-}
-
-// Boss 阶段转换事件处理
-function onBossPhase(data: { enemyId: string; enemyName: string; phaseName: string; effect: string }) {
-  if (isUnmounted.value) return;
-  phaseTransitionEffect.value = data.effect;
-  phaseTransitionName.value = `${data.enemyName} 进入 "${data.phaseName}" 阶段！`;
-  showPhaseTransition.value = true;
-
-  // 使用 anime.js 播放阶段转换
-  nextTick(() => {
-    if (phaseBackdropRef.value && phaseContentRef.value) {
-      animatePhaseTransition(phaseBackdropRef.value, phaseContentRef.value, combatSpeed.value);
-    }
-  });
-
-  // 2.5 秒后自动关闭（匹配动画时长）
-  setAnimTimer(() => {
-    showPhaseTransition.value = false;
-  }, 2500);
-}
-
-// VS 分隔线闪光动画（doAction / doSkill 共用）
-function triggerVsFlash() {
-  vsFlash.value = true;
-  nextTick(() => {
-    if (vsDividerRef.value) animateVsFlash(vsDividerRef.value, combatSpeed.value);
-  });
-  setAnimTimer(() => { vsFlash.value = false; }, 450);
-}
-
-/** 应用战斗伤害视觉特效（多目标伤害 / 单体伤害），doAction / doSkill 共用 */
-function applyCombatDamageEffects(result: { aoeHits?: { enemyId: string; damage: number }[]; damage?: number; isCrit?: boolean }, damageType: 'physical' | 'magic' = 'physical') {
-  if (result.aoeHits && result.aoeHits.length > 0) {
-    for (const hit of result.aoeHits) {
-      triggerShake('enemy', hit.enemyId);
-      showFloating('enemy', `-${hit.damage}`, damageType, hit.enemyId);
-      triggerParticles('enemy', damageType === 'magic' ? MAGIC_PARTICLES : PHYSICAL_PARTICLES, hit.enemyId);
-    }
-  } else if (result.damage && result.damage > 0) {
-    const type: FloatingType = result.isCrit ? 'crit' : damageType;
-    if (result.isCrit) {
-      triggerCritShake('enemy', currentTarget.value?.id);
-      triggerCritBorderFlash('enemy', currentTarget.value?.id);
-    } else {
-      triggerShake('enemy', currentTarget.value?.id);
-      if (damageType === 'magic') {
-        triggerMagicPulse('enemy', currentTarget.value?.id);
-      }
-    }
-    showFloating('enemy', `-${result.damage}`, type, currentTarget.value?.id);
-    triggerParticles('enemy', result.isCrit ? CRIT_PARTICLES : (damageType === 'magic' ? MAGIC_PARTICLES : PHYSICAL_PARTICLES), currentTarget.value?.id);
-  }
-}
+// 视觉特效触发函数（showFloating / triggerShake / triggerCritShake / triggerDodgeBlink /
+// triggerScreenFlash / triggerMagicPulse / triggerHealGlow / triggerManaGlow /
+// triggerCritBorderFlash / triggerParticles / triggerVsFlash）、粒子配置常量
+// （PHYSICAL_PARTICLES / MAGIC_PARTICLES / HEAL_PARTICLES / MANA_PARTICLES / CRIT_PARTICLES）、
+// 事件处理（onCritHit / onEnemyDealDamage / onDodge / onBossIntro / onBossPhase）、
+// 编排函数（applyCombatDamageEffects）已迁移至 useCombatAnimations / useBossIntroOverlay
 
 // 选择攻击目标
 function selectTarget(enemyId: string) {
@@ -1095,42 +802,12 @@ watch(() => combatStore.combatResult, (result) => {
   }
 });
 
-function scheduleAutoClose() {
-  clearAutoClose();
-  const delay = combatStore.combatResult === 'victory' ? 3 : 2;
-  autoCloseCountdown.value = delay;
+// scheduleAutoClose / clearAutoClose 已迁移至 useCombatAutoClose
+// （解构为 scheduleAutoClose / clearAutoCloseTimer）
 
-  autoCloseTimer = setInterval(() => {
-    autoCloseCountdown.value--;
-    if (autoCloseCountdown.value <= 0) {
-      if (autoCloseTimer) {
-        clearInterval(autoCloseTimer);
-        autoCloseTimer = null;
-      }
-    }
-  }, 1000);
-
-  autoCloseTimeout = setTimeout(() => {
-    clearAutoClose();
-    handleClose();
-  }, delay * 1000);
-}
-
-function clearAutoClose() {
-  if (autoCloseTimer) {
-    clearInterval(autoCloseTimer);
-    autoCloseTimer = null;
-  }
-  if (autoCloseTimeout) {
-    clearTimeout(autoCloseTimeout);
-    autoCloseTimeout = null;
-  }
-  autoCloseCountdown.value = 0;
-}
-
+/** 用户点击"确定"关闭结果弹窗 */
 function handleClose() {
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_result_close' });
-  clearAutoClose();
+  handleCloseAutoClose();
   emit('close', combatStore.combatResult || undefined);
 }
 
@@ -1140,6 +817,7 @@ onMounted(() => {
   if (id) {
     skillsStore.initialize(id);
   }
+  // 事件处理函数来自 useCombatAnimations / useBossIntroOverlay
   eventBus.on(GameEvents.COMBAT_CRITICAL_HIT, onCritHit);
   eventBus.on(GameEvents.COMBAT_DEAL_DAMAGE, onEnemyDealDamage);
   eventBus.on(GameEvents.COMBAT_DODGE, onDodge);
@@ -1154,14 +832,12 @@ onUnmounted(() => {
   eventBus.off(GameEvents.COMBAT_DODGE, onDodge);
   eventBus.off(GameEvents.COMBAT_BOSS_INTRO, onBossIntro);
   eventBus.off(GameEvents.COMBAT_BOSS_PHASE, onBossPhase);
-  clearAutoClose();
+  // 清理自动关闭定时器（来自 useCombatAutoClose）
+  clearAutoCloseTimer();
   // 清理所有未触发的动画定时器，防止卸载后访问响应式状态
   clearAllAnimationTimers();
-  // P2-60 修复：取消 Boss 出场演出动画控制器，清理自动关闭定时器
-  if (bossIntroController) {
-    bossIntroController.cancel();
-    bossIntroController = null;
-  }
+  // P2-60 修复：取消 Boss 出场演出动画控制器（来自 useBossIntroOverlay）
+  disposeBossIntro();
 });
 
 </script>
