@@ -40,6 +40,7 @@ const mocks = vi.hoisted(() => ({
   inventoryStore: {
     addItem: vi.fn(() => 1),
     removeItem: vi.fn(() => 1),
+    flushPersist: vi.fn().mockResolvedValue(undefined),
     getItemInfo: vi.fn(() => null as Item | null),
     getAllItems: vi.fn(() => [] as Item[]),
   },

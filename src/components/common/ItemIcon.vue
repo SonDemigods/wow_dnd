@@ -14,7 +14,7 @@
 
 import { computed } from 'vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
-import type { ItemRarity } from '@/modules/inventory/types';
+import type { ItemRarity } from '@/modules/inventory';
 
 const props = withDefaults(defineProps<{
   /** 图标名（game-icons 名称） */

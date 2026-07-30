@@ -151,10 +151,10 @@ import { useExplorationStore, type ExplorationUICallbacks, type MultiOptionEvent
 import { gameBootstrap } from '@/services/GameBootstrap';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useEnemyStore } from '@/modules/enemy';
-import { useCombatStore } from '@/modules/combat/store';
+import { useCombatStore } from '@/modules/combat';
 import { ResourceSystemFactory } from '@/modules/combat/resources';
 import { useToast } from '@/composables/useToast';
-import type { CombatResult } from '@/modules/combat/types';
+import type { CombatResult } from '@/modules/combat';
 import ResourceBar from './common/ResourceBar.vue';
 import ClassResourceBar from './common/ClassResourceBar.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';

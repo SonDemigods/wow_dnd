@@ -17,8 +17,8 @@
  */
 
 import * as Tone from 'tone';
-import { eventBus, GameEvents } from '../bus';
-import type { EventCallback, GameEventPayloadMap } from '../bus/types';
+import { eventBus, GameEvents } from '@/modules/bus';
+import type { EventCallback, GameEventPayloadMap } from '@/modules/bus';
 import { useAudioStore } from './store';
 import type { IAudioService, SfxType, BgmScene, AudioSettings } from './types';
 import { useToast } from '../../composables/useToast';

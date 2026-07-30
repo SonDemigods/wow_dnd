@@ -20,6 +20,7 @@ import {
 } from '../effects';
 import { BossPhaseManager } from '@/modules/boss';
 
+// ARCH-6：需完整上下文（读 enemy.getEnemyById；写 enemy.deleteEnemy）
 export function useCombatState(ctx: ICombatContext) {
   // ==================== 响应式状态 ====================
 

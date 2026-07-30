@@ -1,18 +1,22 @@
 /**
  * 战斗日志 Composable
- * 
+ *
  * 从 combat store 提取的日志记录和效果上下文创建函数。
  * 依赖 useCombatState() 返回的状态对象来访问 combatId、combatLogs、turnCount。
+ *
+ * ARCH-6 审计结果：本 composable 仅读取 ctx.character 的只读属性（attributes/
+ * effectiveStats/hp/maxHp），不调用任何写入方法，因此 ctx 参数收窄为 ICombatQuery，
+ * 在编译期保证无副作用。
  */
 import type { CombatLog } from '../types';
 import type { EnemyInstance } from '../../enemy/types';
 import type { EffectContext } from '../effects';
-import type { ICombatContext } from '../combatContext';
+import type { ICombatQuery } from '../combatContext';
 import { combatDbService } from '../db';
 import { generateBattleLogId } from '../service';
 import type { useCombatState } from './useCombatState';
 
-export function useCombatLog(state: ReturnType<typeof useCombatState>, ctx: ICombatContext) {
+export function useCombatLog(state: ReturnType<typeof useCombatState>, ctx: ICombatQuery) {
   /**
    * 添加战斗日志（内部方法）
    * @param data - 日志数据（不含自动生成字段）

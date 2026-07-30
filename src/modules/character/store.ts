@@ -8,8 +8,8 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Character, CharacterListItem, Stats, Attributes, FactionType, RaceType, ClassType, FactionData, RaceData, ClassData, CreateCharacterParams } from './types';
 import { characterDbService } from './db';
-import { eventBus, GameEvents } from '../bus';
-import { useBaseStore } from '../base/store';
+import { eventBus, GameEvents } from '@/modules/bus';
+import { useBaseStore } from '@/modules/base/store';
 // CHR-4 修复：角色创建/删除的跨模块持久化逻辑收口到 CharacterLifecycleService，
 // Store 层不再直接依赖其他模块的 DbService，遵循五层架构原则。
 import { characterLifecycleService } from '@/services/CharacterLifecycleService';

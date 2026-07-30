@@ -3,7 +3,7 @@
  * @description 封装冒险日志数据的 IndexedDB 操作，提供数据持久化能力
  * @module log
  */
-import { db as gameDb, dbService } from '../data/core';
+import { db as gameDb, dbService } from '@/modules/data';
 import type { LogEntry, AdventureLogData } from './types';
 import { toRawData } from '../../utils';
 

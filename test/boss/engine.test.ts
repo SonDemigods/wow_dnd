@@ -5,11 +5,10 @@
 import { describe, it, expect } from 'vitest';
 import { executeBossMechanic, processBossPhaseMechanics, applyPhaseStats } from '@/modules/boss/engine';
 import { wrapAsBossInstance } from '@/modules/boss/service';
-import type { BossMechanic, BossPhase } from '@/modules/boss/types';
-import type { EnemyInstance } from '@/modules/enemy/types';
+import type { BossMechanic, BossPhase, BossEnemyInstance } from '@/modules/boss/types';
 
-/** 创建测试用 Boss 运行时实例 */
-function makeBoss(overrides: Partial<EnemyInstance> = {}): EnemyInstance {
+/** 创建测试用 Boss 运行时实例（扁平 BossEnemyInstance） */
+function makeBoss(overrides: Partial<BossEnemyInstance> = {}): BossEnemyInstance {
   return {
     id: 'boss_001',
     dataId: 'boss_001',
@@ -30,6 +29,7 @@ function makeBoss(overrides: Partial<EnemyInstance> = {}): EnemyInstance {
     stats: { str: 40, dex: 8, con: 300, int: 24, wis: 18, cha: 5 },
     expReward: 500,
     goldReward: 300,
+    phases: [],
     ...overrides
   };
 }

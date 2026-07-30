@@ -30,3 +30,9 @@ export {
 export { useCombatStore } from './store';
 export type { ICombatContext, ICombatQuery, ICombatCommand } from './combatContext';
 export { createCombatContext } from './combatContext';
+
+// QA-5 拆分后的 4 个 composable，供 CombatPopup.vue 等组件使用
+export { useCombatSpeed } from './composables/useCombatSpeed';
+export { useCombatAutoClose } from './composables/useCombatAutoClose';
+export { useBossIntroOverlay } from './composables/useBossIntroOverlay';
+export { useCombatAnimations } from './composables/useCombatAnimations';

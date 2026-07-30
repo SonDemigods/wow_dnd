@@ -335,3 +335,47 @@ export interface BossInstance {
   /** 机制执行器注入的运行时状态（护盾/无敌/反弹等），收口 12 个 Boss 运行时字段 */
   runtime: BossRuntimeState;
 }
+
+// ============================================================================
+// 扁平化 Boss 敌人实例接口（TS-2 修复：消除类型断言桥接）
+// ============================================================================
+
+/**
+ * 扁平化 Boss 敌人实例接口
+ *
+ * TS-2 修复：Boss 数据流中 `phases`/`intro` 运行时附加属性的类型声明。
+ *
+ * ## 背景
+ *
+ * Boss 创建流程采用"扁平化传递"模式：
+ * 1. `createBossInstance` 产生组合式 `BossInstance`（base + phases + intro + runtime）
+ * 2. `GameBootstrap.bossCreateFn` 回调将其扁平化为 `BossEnemyInstance`：
+ *    展开 `base` 字段，将 `phases`/`intro` 作为顶层字段附加
+ * 3. 扁平化对象存入 `enemyStore.enemiesCache`（类型为 `EnemyInstance`， widened）
+ * 4. `combat/store.ts` 的 `enemiesData: EnemyInstance[]` 数组携带 Boss 时，
+ *    `useBossMechanics.initBossFeatures` 通过 `isBossEnemyInstance` 类型守卫收窄
+ * 5. `wrapAsBossInstance` 接收 `BossEnemyInstance`，读取 `phases`/`intro` 重建组合式结构
+ *
+ * ## 为何单独定义而非用 `BossInstance`
+ *
+ * - `BossInstance` 是组合式结构（持有 `base: EnemyInstance` + `runtime`）
+ * - `BossEnemyInstance` 是扁平结构（直接 extends `EnemyInstance`，无 `runtime`）
+ * - 扁平结构用于在 `enemyStore` / `enemiesData` 数组中传递，与普通敌人统一类型签名
+ * - `wrapAsBossInstance` 负责从扁平结构重建组合式结构（`base` 与原对象同引用）
+ *
+ * @property {true} isBoss - 字面量类型标记，编译时区分 Boss 与普通敌人
+ * @property {BossPhase[]} phases - Boss 阶段配置（由 bossCreateFn 注入）
+ * @property {BossIntro} [intro] - Boss 出场演出配置（可选，由 bossCreateFn 注入）
+ *
+ * @see isBossEnemyInstance 类型守卫，从 EnemyInstance 收窄到 BossEnemyInstance
+ * @see wrapAsBossInstance 从扁平结构重建组合式 BossInstance
+ * @see BossInstance 组合式运行时结构
+ */
+export interface BossEnemyInstance extends EnemyInstance {
+  /** 字面量类型标记，编译时区分 Boss 与普通敌人 */
+  isBoss: true;
+  /** Boss 阶段配置（运行时附加，由 bossCreateFn 注入） */
+  phases: BossPhase[];
+  /** Boss 出场演出配置（运行时附加，由 bossCreateFn 注入） */
+  intro?: BossIntro;
+}

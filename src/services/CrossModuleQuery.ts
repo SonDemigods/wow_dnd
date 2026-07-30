@@ -12,11 +12,11 @@ import { equipmentDbService } from '@/modules/equipment';
 import { unifiedItemTemplateCache } from '@/modules/item-template';
 // P3-125 修复：引入 errorReporter 用于查询失败时记录错误并降级返回安全默认值
 import { errorReporter } from '@/utils/errorReport';
-import type { LocationData } from '@/modules/map/types';
-import type { Item } from '@/modules/inventory/types';
-import type { QuestDefinition } from '@/modules/quest/types';
-import type { ShopConfig } from '@/modules/shop/types';
-import type { EquipmentItem } from '@/modules/equipment/types';
+import type { LocationData } from '@/modules/map';
+import type { Item } from '@/modules/inventory';
+import type { QuestDefinition } from '@/modules/quest';
+import type { ShopConfig } from '@/modules/shop';
+import type { EquipmentItem } from '@/modules/equipment';
 
 /**
  * 跨模块查询服务

@@ -13,19 +13,19 @@ import { DATABASE_CONFIG, DB_SERVICE_CONFIG } from '@/config/database';
 import type { DBServiceConfig } from '@/modules/data/types';
 
 // ==================== 各模块 Storage 类型导入 ====================
-import type { FactionStorage, RaceStorage, ClassStorage, CharacterDataStorage, PassiveSkill } from '../character/types';
-import type { TalentTree } from '../character/talents/types';
-import type { ItemStorage, InventoryStorage } from '../inventory/types';
-import type { EquipmentTemplateStorage, EquipmentStorage, EquipmentItem, ItemSet } from '../equipment/types';
-import type { EnemyStorage } from '../enemy/types';
-import type { BossStorage } from '../boss/types';
-import type { LocationStorage, MapStateStorage } from '../map/types';
-import type { ShopConfig, ShopItemsStorage, ShopSoldItemsStorage } from '../shop/types';
-import type { SkillTemplateStorage, SkillsData } from '../skill/types';
-import type { QuestDefinitionStorage, CharQuestStorage } from '../quest/types';
-import type { ExplorationStorage } from '../exploration/types';
-import type { CombatLogStorage } from '../combat/types';
-import type { AdventureLogData } from '../log/types';
+import type { FactionStorage, RaceStorage, ClassStorage, CharacterDataStorage, PassiveSkill } from '@/modules/character/types';
+import type { TalentTree } from '@/modules/character/talents/types';
+import type { ItemStorage, InventoryStorage } from '@/modules/inventory/types';
+import type { EquipmentTemplateStorage, EquipmentStorage, EquipmentItem, ItemSet } from '@/modules/equipment/types';
+import type { EnemyStorage } from '@/modules/enemy/types';
+import type { BossStorage } from '@/modules/boss/types';
+import type { LocationStorage, MapStateStorage } from '@/modules/map/types';
+import type { ShopConfig, ShopItemsStorage, ShopSoldItemsStorage } from '@/modules/shop/types';
+import type { SkillTemplateStorage, SkillsData } from '@/modules/skill/types';
+import type { QuestDefinitionStorage, CharQuestStorage } from '@/modules/quest/types';
+import type { ExplorationStorage } from '@/modules/exploration/types';
+import type { CombatLogStorage } from '@/modules/combat/types';
+import type { AdventureLogData } from '@/modules/log/types';
 
 /**
  * 全局游戏状态存储格式

@@ -9,7 +9,7 @@
  */
 import type { EnemyInstance } from '@/modules/enemy';
 import type { BossIntro, BossPhase, BossMechanicType, BossInstance } from '@/modules/boss';
-import { wrapAsBossInstance } from '@/modules/boss';
+import { wrapAsBossInstance, isBossEnemyInstance } from '@/modules/boss';
 import { BossPhaseManager } from '@/modules/boss';
 import {
   generateEffectId,
@@ -60,16 +60,22 @@ export function useBossMechanics(
    *   - 先创建 BossInstance（wrapAsBossInstance 内部通过类型断言读取附加属性恢复 phases/intro）
    *   - 后续通过 bossInstance.phases/intro 访问，不再通过 e.phases/e.intro
    *
-   * @param enemiesData - 敌人数据数组
+   * TS-2 修复：
+   *   - 定义 BossEnemyInstance extends EnemyInstance，phases/intro 在类型层面声明
+   *   - isBossEnemyInstance 类型守卫替代 if (e.isBoss) 简单判断，收窄为 BossEnemyInstance
+   *   - wrapAsBossInstance 入参改为 BossEnemyInstance，消除 as 断言
+   *
+   * @param enemiesData - 敌人数据数组（Boss 元素携带 phases/intro 字段）
    */
   function initBossFeatures(enemiesData: EnemyInstance[]): void {
     state.bossPhaseManagers.clear();
     state.bossInstances.clear();
     const intros: Record<string, BossIntro> = {};
     for (const e of enemiesData) {
-      if (e.isBoss) {
+      // TS-2 修复：用 isBossEnemyInstance 类型守卫收窄为 BossEnemyInstance
+      // 替代原先 if (e.isBoss) + wrapAsBossInstance 内部 as 断言
+      if (isBossEnemyInstance(e)) {
         // 创建组合式 BossInstance，base 与 enemy 同引用
-        // 阶段四：wrapAsBossInstance 通过类型断言读取 enemy 上的 phases/intro 附加属性
         const bossInstance = wrapAsBossInstance(e);
         state.bossInstances.set(e.id, bossInstance);
         if (bossInstance.phases.length > 0) {

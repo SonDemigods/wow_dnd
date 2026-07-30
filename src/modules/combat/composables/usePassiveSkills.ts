@@ -29,6 +29,7 @@ import type { useCombatLog } from './useCombatLog';
 export function usePassiveSkills(
   state: ReturnType<typeof useCombatState>,
   log: ReturnType<typeof useCombatLog>,
+  // ARCH-6：需完整上下文（读 character.classId/name/hp/maxHp/mana/maxMana；写 character.receiveHeal）
   ctx: ICombatContext
 ) {
   // P3-83 修复：直接解构，无需多余的中间对象

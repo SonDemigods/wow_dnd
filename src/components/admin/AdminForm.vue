@@ -158,7 +158,7 @@
  * 根据字段配置动态渲染表单，支持 text/number/textarea/select/color/json 等类型
  */
 import { reactive, watch } from 'vue';
-import type { AdminRecord } from '@/modules/admin/types';
+import type { AdminRecord } from '@/modules/admin';
 
 /**
  * 表单字段值类型

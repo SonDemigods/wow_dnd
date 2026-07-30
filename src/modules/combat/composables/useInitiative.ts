@@ -20,6 +20,7 @@ import type { usePassiveSkills } from './usePassiveSkills';
 export function useInitiative(
   state: ReturnType<typeof useCombatState>,
   log: ReturnType<typeof useCombatLog>,
+  // ARCH-6：需完整上下文（读 character.effectiveStats/name/hp、enemy.getEnemyById；写 character.takeDamage/receiveHeal、enemy.takeDamage/tickCooldowns、skill.tickCooldowns）
   ctx: ICombatContext,
   enemyAction: ReturnType<typeof useEnemyAction>,
   boss: ReturnType<typeof useBossMechanics>,

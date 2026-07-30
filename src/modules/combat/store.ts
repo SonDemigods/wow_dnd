@@ -15,10 +15,10 @@
  */
 import { defineStore } from 'pinia';
 import type { CombatAction, CombatActionResult, CombatResult } from './types';
-import type { EnemyInstance } from '../enemy/types';
-import type { Skill } from '../skill/types';
-import { eventBus, GameEvents } from '../bus';
-import { generateLogId } from '../log/service';
+import type { EnemyInstance } from '@/modules/enemy/types';
+import type { Skill } from '@/modules/skill/types';
+import { eventBus, GameEvents } from '@/modules/bus';
+import { generateLogId } from '@/modules/log/service';
 import { isBossCombat, generateCombatId } from './service';
 import { createEmptyContainer } from './effects';
 import { ResourceSystemFactory } from './resources';

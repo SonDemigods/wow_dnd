@@ -12,7 +12,7 @@
  * Dexie 的类型推断有限，因此从 DB 读取时需要用 as unknown as 进行类型断言，
  * 再通过 mapToItem() 将宽松的存储类型转换为精确的 Item 类型。
  */
-import { db as gameDb, dbService } from '../data/core';
+import { db as gameDb, dbService } from '@/modules/data';
 import type { Item, InventoryItem, ItemEffect, InventoryDataStorage, ItemDataStorage } from './types';
 import { toRawData } from '../../utils';
 

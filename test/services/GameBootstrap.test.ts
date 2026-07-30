@@ -43,11 +43,13 @@ vi.mock('@/modules/log/store', () => ({
 const inventoryInitMock = vi.fn().mockResolvedValue(undefined);
 const inventoryAddItemMock = vi.fn();
 const inventoryRemoveItemMock = vi.fn();
+const inventoryFlushPersistMock = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/modules/inventory/store', () => ({
   useInventoryStore: () => ({
     initialize: inventoryInitMock,
     addItem: inventoryAddItemMock,
     removeItem: inventoryRemoveItemMock,
+    flushPersist: inventoryFlushPersistMock,
     inventory: [],
   }),
   setInventoryExternalCallbacks: hoisted.setInventoryExternalCallbacksMock,
@@ -200,8 +202,8 @@ describe('GameBootstrap 游戏初始化编排服务', () => {
       const equipmentIdx = callOrder.indexOf('equipment');
       expect(injectIdx).toBeGreaterThan(inventoryIdx);
       expect(injectIdx).toBeLessThan(equipmentIdx);
-      // 注入的是 inventory store 的 addItem / removeItem
-      expect(hoisted.setInventoryCallbacksMock).toHaveBeenCalledWith(inventoryAddItemMock, inventoryRemoveItemMock);
+      // 注入的是 inventory store 的 addItem / removeItem / flushPersist（DB-1/DB-2 修复）
+      expect(hoisted.setInventoryCallbacksMock).toHaveBeenCalledWith(inventoryAddItemMock, inventoryRemoveItemMock, inventoryFlushPersistMock);
     });
 
     it('在 inventory 初始化后、equipment 初始化前注入 Boss 创建回调（阶段四）', async () => {

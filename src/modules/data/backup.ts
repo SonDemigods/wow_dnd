@@ -1,0 +1,315 @@
+/**
+ * @fileoverview 数据备份服务
+ *
+ * 提供游戏数据的备份功能，包括：
+ * - 创建备份
+ * - 导出备份文件
+ * - 自动备份管理
+ *
+ * 从 service.ts 拆分而来（QA-11），保持原逻辑与公开 API 完全不变。
+ */
+import type { Table } from 'dexie';
+import { db, getTable } from './core';
+import type { GameStateStorage, GameDatabaseSchema } from './core';
+import type { FactionStorage, RaceStorage, ClassStorage } from '../character/types';
+import type { ItemStorage } from '../inventory/types';
+import type { EquipmentTemplateStorage } from '../equipment/types';
+import type { EnemyStorage } from '../enemy/types';
+import type { BossStorage } from '../boss/types';
+import type { LocationData, MapStateStorage } from '../map/types';
+import type { ShopConfig, ShopItemsStorage } from '../shop/types';
+import type { SkillTemplateStorage } from '../skill/types';
+import type { CombatLogStorage } from '../combat/types';
+import type { LogEntry } from '../log/types';
+import { BACKUP_CONFIG } from '@/config/database';
+import { downloadBlob } from '@/utils/fileDownload';
+
+import type {
+  BackupFile,
+  BackupData,
+  IBackupService
+} from './types';
+
+/**
+ * 需要备份的数组形状表配置
+ *
+ * 定义备份中"直接以数组形式存储"的表（配置表 + map/shop）。
+ * collectAllData 读取与 importData 写入均基于此配置驱动，避免重复的 if/else
+ * 和散落的类型断言（CODE-34/CODE-38）。
+ *
+ * 注意：getTable<T> 内部收敛了 Table 类型断言（CODE-5），调用方无需再断言。
+ */
+/** 数组形状备份字段名集合（用于类型安全的字段访问） */
+type ArrayBackupField =
+  | 'map'
+  | 'shop'
+  | 'factions'
+  | 'races'
+  | 'classes'
+  | 'items'
+  | 'equipmentItems'
+  | 'mobs'
+  | 'bosses'
+  | 'skillTemplates';
+
+const TABLES_TO_BACKUP: ReadonlyArray<{
+  /** BackupData 中对应的字段名 */
+  field: ArrayBackupField;
+  /** GameDatabase 中对应的表名 */
+  table: keyof GameDatabaseSchema;
+  /** 导入结果中记录的存储表名 */
+  storeName: string;
+}> = [
+  { field: 'map', table: 'config_locations', storeName: 'config_locations' },
+  { field: 'shop', table: 'config_shops', storeName: 'config_shops' },
+  { field: 'factions', table: 'config_factions', storeName: 'config_factions' },
+  { field: 'races', table: 'config_races', storeName: 'config_races' },
+  { field: 'classes', table: 'config_classes', storeName: 'config_classes' },
+  { field: 'items', table: 'config_items', storeName: 'config_items' },
+  { field: 'equipmentItems', table: 'config_equipmentItems', storeName: 'config_equipmentItems' },
+  { field: 'mobs', table: 'config_mobs', storeName: 'config_mobs' },
+  { field: 'bosses', table: 'config_bosses', storeName: 'config_bosses' },
+  { field: 'skillTemplates', table: 'config_skills', storeName: 'config_skills' },
+];
+
+// TABLES_TO_BACKUP 在 backup.ts 与 importer.ts 间共享：通过下方 export 暴露给 importer 使用。
+export { TABLES_TO_BACKUP };
+export type { ArrayBackupField };
+
+/**
+ * 计算数据的校验和（简单哈希算法）
+ *
+ * 用于验证备份文件的完整性
+ * @param data - 要计算校验和的数据
+ * @returns 校验和字符串
+ */
+export function calculateChecksum(data: unknown): string {
+  const str = JSON.stringify(data);
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+  }
+  return Math.abs(hash).toString(16);
+}
+
+/**
+ * 备份服务类
+ *
+ * 提供游戏数据的备份功能，包括：
+ * - 创建备份
+ * - 导出备份文件
+ * - 自动备份管理
+ */
+export class BackupService implements IBackupService {
+  /** 自动备份存储键名 */
+  private readonly AUTO_BACKUP_KEY = BACKUP_CONFIG.autoBackupKey;
+  /** 最大自动备份数量 */
+  private readonly MAX_AUTO_BACKUPS = BACKUP_CONFIG.maxAutoBackups;
+  /** 备份版本号 */
+  private readonly BACKUP_VERSION = BACKUP_CONFIG.backupVersion;
+
+  /**
+   * 创建备份
+   *
+   * 收集所有游戏数据并生成备份对象
+   * @returns BackupFile - 备份文件对象
+   */
+  async createBackup(): Promise<BackupFile> {
+    const timestamp = Date.now();
+    const data = await this.collectAllData();
+    const checksum = calculateChecksum(data);
+
+    return {
+      version: this.BACKUP_VERSION,
+      timestamp,
+      checksum,
+      gameVersion: '1.0.0',
+      data
+    };
+  }
+
+  /**
+   * 导出备份文件
+   *
+   * 将备份数据导出为 JSON 文件供用户下载
+   */
+  async exportBackup(): Promise<void> {
+    const backup = await this.createBackup();
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {
+      type: 'application/json'
+    });
+    const dateStr = new Date().toISOString().replace(/[:.]/g, '-');
+    downloadBlob(blob, `wow_dnd_backup_${dateStr}.json`);
+  }
+
+  /**
+   * 获取所有自动备份
+   * @returns BackupFile[] - 自动备份列表
+   */
+  async getAutoBackups(): Promise<BackupFile[]> {
+    try {
+      const stored = localStorage.getItem(this.AUTO_BACKUP_KEY);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error('加载自动备份失败:', error);
+    }
+    return [];
+  }
+
+  /**
+   * 删除指定备份
+   * @param timestamp - 备份时间戳
+   */
+  async deleteBackup(timestamp: number): Promise<void> {
+    const backups = await this.getAutoBackups();
+    const filtered = backups.filter((b) => b.timestamp !== timestamp);
+    localStorage.setItem(this.AUTO_BACKUP_KEY, JSON.stringify(filtered));
+  }
+
+  /**
+   * 清除所有自动备份
+   */
+  async clearAutoBackups(): Promise<void> {
+    localStorage.removeItem(this.AUTO_BACKUP_KEY);
+  }
+
+  /**
+   * 创建自动备份
+   *
+   * 将最新备份添加到自动备份列表，超过最大数量时移除最旧的备份
+   */
+  async createAutoBackup(): Promise<void> {
+    const backup = await this.createBackup();
+    const backups = await this.getAutoBackups();
+    backups.unshift(backup);
+
+    if (backups.length > this.MAX_AUTO_BACKUPS) {
+      backups.pop();
+    }
+
+    localStorage.setItem(this.AUTO_BACKUP_KEY, JSON.stringify(backups));
+  }
+
+  /**
+   * 收集所有游戏数据
+   *
+   * 从数据库中读取所有需要备份的数据表，包括运行时数据和完整配置表。
+   *
+   * 性能与实现说明：
+   * - PERF-2：所有互不依赖的表通过 Promise.all 并行读取，避免串行阻塞主线程。
+   * - CODE-38：配置表清单与 TABLES_TO_BACKUP 保持一致，importData 写入时
+   *   通过该配置驱动遍历，避免读取/写入两侧表名散落。
+   * - CODE-5：配置表的 Table 类型断言收敛在 getTable<T> 内部，调用方无需
+   *   `as unknown as XXX` 双重断言。
+   *
+   * @returns BackupData - 备份数据对象
+   */
+  private async collectAllData(): Promise<BackupData> {
+    // PERF-2：互不依赖的表用 Promise.all 并行读取，避免串行阻塞主线程
+    const [
+      characterRecords, inventoryRecords, questsRecords, equipmentRecords,
+      skillsRecords, explorationRecords, combatRecords, adventureLogRecords,
+      gameStateRecords, mapStateRecords, shopItemsRecords,
+      mapRecords, shopRecords, factionsRecords, racesRecords, classesRecords,
+      itemsRecords, equipmentItemsRecords, mobsRecords, bossesRecords, skillTemplatesRecords
+    ] = await Promise.all([
+      // 角色表（Record 形状，以 characterId 为键）
+      db.char_data.toArray(),
+      db.char_inventory.toArray(),
+      db.char_quests.toArray(),
+      db.char_equipment.toArray(),
+      db.char_skills.toArray(),
+      db.char_exploration.toArray(),
+      // 运行时表
+      db.runtime_combatLogs.toArray(),
+      db.runtime_adventureLogs.toArray(),
+      db.runtime_gameState.toArray(),
+      db.runtime_mapState.toArray(),
+      db.runtime_shopItems.toArray(),
+      // 配置表（数组形状）：通过 getTable<具体类型> 收敛 Table 类型断言（CODE-5）
+      // 表清单与 TABLES_TO_BACKUP 配置保持一致
+      getTable<LocationData>(db, 'config_locations').toArray(),
+      getTable<ShopConfig>(db, 'config_shops').toArray(),
+      getTable<FactionStorage>(db, 'config_factions').toArray(),
+      getTable<RaceStorage>(db, 'config_races').toArray(),
+      getTable<ClassStorage>(db, 'config_classes').toArray(),
+      getTable<ItemStorage>(db, 'config_items').toArray(),
+      getTable<EquipmentTemplateStorage>(db, 'config_equipmentItems').toArray(),
+      getTable<EnemyStorage>(db, 'config_mobs').toArray(),
+      getTable<BossStorage>(db, 'config_bosses').toArray(),
+      getTable<SkillTemplateStorage>(db, 'config_skills').toArray(),
+    ]);
+
+    // 构建角色数据 Record（以 characterId 为键）
+    const characters = this.toCharacterRecord(characterRecords);
+    const inventory = this.toCharacterRecord(inventoryRecords);
+    const quests = this.toCharacterRecord(questsRecords);
+    const equipment = this.toCharacterRecord(equipmentRecords);
+    const skills = this.toCharacterRecord(skillsRecords);
+    const exploration = this.toCharacterRecord(explorationRecords);
+
+    // combat 使用特殊键名（battleLogId 优先，缺失时降级为 combatId+timestamp 组合）
+    const combat: Record<string, CombatLogStorage> = {};
+    combatRecords.forEach((item) => {
+      const key = item.battleLogId || `${item.combatId}_${item.timestamp}`;
+      combat[key] = item;
+    });
+
+    // adventureLog 按 characterId 分组
+    const adventureLog: Record<string, LogEntry[]> = {};
+    adventureLogRecords.forEach((item) => {
+      adventureLog[item.characterId] = item.entries || [];
+    });
+
+    // id-keyed Record
+    const gameState: Record<string, GameStateStorage> = {};
+    gameStateRecords.forEach((item) => { gameState[item.id] = item; });
+
+    const mapState: Record<string, MapStateStorage> = {};
+    mapStateRecords.forEach((item) => { mapState[item.id] = item; });
+
+    const shopItems: Record<string, ShopItemsStorage> = {};
+    shopItemsRecords.forEach((item) => { shopItems[item.shopId] = item; });
+
+    return {
+      characters,
+      inventory,
+      quests,
+      equipment,
+      skills,
+      exploration,
+      combat,
+      adventureLog,
+      map: mapRecords,
+      shop: shopRecords,
+      gameState,
+      shopItems,
+      mapState,
+      factions: factionsRecords,
+      races: racesRecords,
+      classes: classesRecords,
+      items: itemsRecords,
+      equipmentItems: equipmentItemsRecords,
+      mobs: mobsRecords,
+      bosses: bossesRecords,
+      skillTemplates: skillTemplatesRecords,
+    };
+  }
+
+  /**
+   * 将数组转换为以 characterId 为键的 Record
+   */
+  private toCharacterRecord<T extends { characterId: string }>(items: T[]): Record<string, T> {
+    const record: Record<string, T> = {};
+    for (const item of items) {
+      record[item.characterId] = item;
+    }
+    return record;
+  }
+}
+
+/** Table 类型导出，便于 importer.ts 复用辅助函数 */
+export type { Table };

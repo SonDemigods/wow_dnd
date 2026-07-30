@@ -13,12 +13,13 @@ export type {
   BossStorage,
   BossTemplate,
   BossRuntimeState,
-  BossInstance
+  BossInstance,
+  BossEnemyInstance
 } from './types';
 
 export { BossDbService, bossDbService } from './db';
 
-export { createBossInstance, wrapAsBossInstance } from './service';
+export { createBossInstance, wrapAsBossInstance, isBossEnemyInstance } from './service';
 
 export {
   executeBossMechanic,

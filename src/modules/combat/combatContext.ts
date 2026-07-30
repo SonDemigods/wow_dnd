@@ -23,24 +23,25 @@
  *
  * @module combat/combatContext
  */
-import type { Stats, Attributes } from '../character/types';
-import type { Skill, SkillUseResult } from '../skill/types';
-import type { EnemyInstance } from '../enemy/types';
-import type { Item } from '../inventory/types';
-import type { LogEntry } from '../log/types';
-
-import { useCharacterStore } from '../character/store';
-import { useSkillStore } from '../skill/store';
-import { useEnemyStore } from '../enemy/store';
-import { useQuestStore } from '../quest/store';
-import { useLogStore } from '../log/store';
-import { useInventoryStore } from '../inventory/store';
+import { useCharacterStore, type Stats, type Attributes } from '@/modules/character';
+import { useSkillStore, type Skill, type SkillUseResult } from '@/modules/skill';
+import { useEnemyStore, type EnemyInstance } from '@/modules/enemy';
+import { useQuestStore } from '@/modules/quest';
+import { useLogStore, type LogEntry } from '@/modules/log';
+import { useInventoryStore, type Item } from '@/modules/inventory';
 
 /**
  * 战斗只读查询接口（A2 拆分）
  *
  * 聚合 combat 模块对外部 Store 的只读访问：属性读取 + 纯查询方法。
  * 只读 composable（如未来战斗回放）可仅依赖此接口，编译期保证无副作用。
+ *
+ * ARCH-6 审计结果（2026-07-30）：
+ * - useCombatLog 已收窄为 ICombatQuery（仅读取 character 属性构建 EffectContext）
+ * - 其他 composable（useCombatState/usePassiveSkills/useInitiative/useEnemyAction/
+ *   usePlayerAction/usePlayerSkill/usePlayerItem/useLootHandler）均同时需要读+写，
+ *   保持 ICombatContext；store.ts 作为聚合入口亦保持 ICombatContext
+ * - 拆分接口供未来新 composable 或战斗回放系统使用，符合硬约束
  */
 export interface ICombatQuery {
   /** 角色域（只读）：来自 useCharacterStore 的属性读取 */
@@ -78,6 +79,14 @@ export interface ICombatQuery {
  *
  * 聚合 combat 模块对外部 Store 的状态变更操作。
  * 需要修改外部状态的 composable 依赖此接口。
+ *
+ * ARCH-6 审计决策（2026-07-31）：
+ * - 当前状态：预留接口，源代码中无实际使用方
+ * - 审计结论：8 个需写入的 composable 均同时需要读取（如读 character.name 后写 character.takeDamage），
+ *   不存在"纯写入"场景，故所有写入 composable 仍使用 ICombatContext
+ * - 保留原因：符合项目硬约束"combat context 必须分为只读 ICombatQuery 和只写 ICombatCommand 接口"，
+ *   供未来战斗回放系统、批量命令执行器或纯写入场景使用
+ * - 使用方：useCombatLog 已收窄为 ICombatQuery（只读）；ICombatCommand 待未来新 composable 启用
  */
 export interface ICombatCommand {
   /** 角色域（写入）：来自 useCharacterStore 的状态变更方法 */
@@ -135,7 +144,10 @@ export interface ICombatCommand {
  * `ICombatQuery & ICombatCommand` 的交集类型，向后兼容所有现有 composable。
  * combat 内部 composable 通过此接口访问外部数据，不直接 import Store。
  *
- * 新代码建议按需使用 `ICombatQuery`（只读）或 `ICombatCommand`（写入）以显式声明意图。
+ * ARCH-6 审计结论（2026-07-31）：
+ * - 当前所有需写入的 composable（8 个）与 store.ts 聚合入口均使用 ICombatContext
+ * - 仅 useCombatLog 收窄为 ICombatQuery（纯读取场景）
+ * - 新代码建议按需使用 `ICombatQuery`（只读）或 `ICombatCommand`（写入）以显式声明意图
  */
 export type ICombatContext = ICombatQuery & ICombatCommand;
 

@@ -75,8 +75,8 @@
  */
 import { onMounted } from 'vue';
 import { useAdminStore } from '@/modules/admin';
-import { CONFIG_TABLES } from '@/modules/admin/types';
-import type { ConfigTableName } from '@/modules/admin/types';
+import { CONFIG_TABLES } from '@/modules/admin';
+import type { ConfigTableName } from '@/modules/admin';
 import ConfigManager from './ConfigManager.vue';
 
 const store = useAdminStore();

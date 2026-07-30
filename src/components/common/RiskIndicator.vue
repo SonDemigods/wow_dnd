@@ -13,7 +13,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
-import type { CellType } from '@/modules/exploration/types';
+import type { CellType } from '@/modules/exploration';
 
 const props = defineProps<{
   cellType: CellType;

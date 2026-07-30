@@ -24,10 +24,10 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Item, InventoryItem, SortField, SortOrder, ItemFilters, ItemType, ItemRarity } from './types';
 import { inventoryDbService } from './db';
-import { unifiedItemTemplateCache } from '../item-template';
-import { useLogStore } from '../log/store';
-import { generateLogId } from '../log/service';
-import { useCharacterStore } from '../character/store';
+import { unifiedItemTemplateCache } from '@/modules/item-template';
+import { useLogStore } from '@/modules/log/store';
+import { generateLogId } from '@/modules/log/service';
+import { useCharacterStore } from '@/modules/character/store';
 import { errorReporter } from '@/utils/errorReport';
 import { RARITY_CONFIG } from '../../config/inventory';
 import {
@@ -107,9 +107,17 @@ export const useInventoryStore = defineStore('inventory', () => {
    *
    * P2-50 修复：原 persistInventory 静默吞掉错误，UI 与 DB 状态不一致。
    * 暴露错误状态供 UI 监听并提示用户"保存失败，请重试"。
-   * 写入成功时重置为 null，便于 UI 通过 watch 判断错误恢复。
+   * 写入成功时重置为 null，便于 UI 判断错误恢复。
    */
   const persistError = ref<string | null>(null);
+  /**
+   * 进行中的持久化 Promise（null 表示无进行中的持久化）
+   *
+   * DB-1/DB-2 修复：addItem/removeItem 以 fire-and-forget 调用 persistInventory，
+   * 外部模块（如 equipment/store.ts 在回滚场景）需要等待持久化完成以确保 DB 状态一致。
+   * flushPersist() 通过 await 此 Promise 实现等待语义。
+   */
+  let pendingPersistPromise: Promise<void> | null = null;
 
   // ==================== 计算属性 ====================
 
@@ -213,19 +221,42 @@ export const useInventoryStore = defineStore('inventory', () => {
    * 大部分 Action 以 fire-and-forget 调用（不 await），useItem 例外（见其文档）。
    */
   async function persistInventory(): Promise<void> {
-    if (currentCharacterId.value) {
-      try {
-        await inventoryDbService.saveInventory(currentCharacterId.value, inventory.value);
-        persistError.value = null;
-      } catch (err) {
-        // P2-50 修复：通过 errorReporter 统一上报 + persistError 暴露给 UI
-        persistError.value = err instanceof Error ? err.message : String(err);
-        errorReporter.report(err, 'manual', {
-          context: '背包数据持久化失败，UI 与 DB 状态可能不一致',
-          characterId: currentCharacterId.value,
-          itemCount: inventory.value.length,
-        });
-      }
+    const charId = currentCharacterId.value;
+    if (charId) {
+      // DB-1/DB-2 修复：跟踪进行中的持久化 Promise，供 flushPersist 等待
+      const promise = (async () => {
+        try {
+          await inventoryDbService.saveInventory(charId, inventory.value);
+          persistError.value = null;
+        } catch (err) {
+          // P2-50 修复：通过 errorReporter 统一上报 + persistError 暴露给 UI
+          persistError.value = err instanceof Error ? err.message : String(err);
+          errorReporter.report(err, 'manual', {
+            context: '背包数据持久化失败，UI 与 DB 状态可能不一致',
+            characterId: charId,
+            itemCount: inventory.value.length,
+          });
+        }
+      })();
+      pendingPersistPromise = promise;
+      return promise;
+    }
+  }
+
+  /**
+   * 等待进行中的持久化操作完成
+   *
+   * DB-1/DB-2 修复：equipment/store.ts 在 persist 失败回滚内存状态后，
+   * 需要确保回滚的 removeItem 操作也已写入 DB，避免 fire-and-forget
+   * persistInventory 与 equipment persist 失败之间的竞态导致 DB 状态不一致。
+   *
+   * 调用方式：由 GameBootstrap 通过 setInventoryCallbacks 注入到 equipment 模块。
+   * 无进行中的持久化时立即返回。
+   */
+  async function flushPersist(): Promise<void> {
+    if (pendingPersistPromise) {
+      await pendingPersistPromise;
+      pendingPersistPromise = null;
     }
   }
 
@@ -831,6 +862,9 @@ export const useInventoryStore = defineStore('inventory', () => {
     addItem,
     removeItem,
     useItem,
+
+    // DB-1/DB-2 修复：等待进行中的持久化完成（供 equipment 模块回滚场景使用）
+    flushPersist,
 
     // Action：查询（只读，不修改状态）
     getItemInfo,

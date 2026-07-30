@@ -24,7 +24,7 @@ import { equipmentDbService } from '@/modules/equipment';
 import { explorationDbService } from '@/modules/exploration';
 import { adventureLogDbService } from '@/modules/log';
 import { questDbService } from '@/modules/quest';
-import type { Skill, SkillBar } from '@/modules/skill/types';
+import type { Skill, SkillBar } from '@/modules/skill';
 
 /**
  * 角色生命周期服务

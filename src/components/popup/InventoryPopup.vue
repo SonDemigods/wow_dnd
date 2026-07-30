@@ -197,7 +197,7 @@ import type {
   ItemRarity,
   ItemEffect
 } from '@/modules/inventory';
-import type { EquipmentSlot, EquipmentItem } from '@/modules/equipment/types';
+import type { EquipmentSlot, EquipmentItem } from '@/modules/equipment';
 
 interface ItemEntry {
   item: InventoryItem;

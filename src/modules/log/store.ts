@@ -9,7 +9,7 @@ import { ref, computed } from 'vue';
 import type { LogEntry, LogType } from './types';
 import { formatLogMessage } from './service';
 import { adventureLogDbService } from './db';
-import { eventBus, GameEvents } from '../bus';
+import { eventBus, GameEvents } from '@/modules/bus';
 import { errorHandler } from '@/services/ErrorHandler';
 import { PAGE_SIZE, MAX_LOG_ENTRIES } from '@/config/log';
 

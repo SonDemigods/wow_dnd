@@ -9,7 +9,7 @@ import { ref, computed } from 'vue';
 import type { MapState, MapView, LocationData, MapZone } from './types';
 import { getLocationById, isLocationAccessible, getLocationsByContinent, getZoneStatus, clamp } from './service';
 import { mapDbService } from './db';
-import { eventBus, GameEvents } from '../bus';
+import { eventBus, GameEvents } from '@/modules/bus';
 import { errorReporter } from '@/utils/errorReport';
 
 /** 缩放边界常量 */

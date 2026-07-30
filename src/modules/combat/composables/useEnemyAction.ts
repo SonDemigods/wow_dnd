@@ -48,6 +48,7 @@ const strategyRegistry: Record<AiStrategyType, IAiStrategy> = {
 export function useEnemyAction(
   state: ReturnType<typeof useCombatState>,
   log: ReturnType<typeof useCombatLog>,
+  // ARCH-6：需完整上下文（读 character.name/attributes/hp/maxHp、enemy.calculateDamage/getAvailableSkills/getEnemyById、skill.getSkill；写 character.takeDamage、enemy.takeDamage/useSkill）
   ctx: ICombatContext,
   passive?: ReturnType<typeof usePassiveSkills>
 ) {

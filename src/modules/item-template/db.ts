@@ -9,6 +9,9 @@
  *
  * @module item-template
  */
+// ARCH-7 说明：item-template 作为聚合层，有意直接引用 inventory/db 与 equipment/db，
+// 避免走 @/modules/inventory 公共入口会引入循环依赖（inventory/store → item-template → inventory/index → inventory/store）。
+// 依赖方向：item-template → inventory.db + equipment.db（单向，无运行时循环）。
 import { inventoryDbService } from '../inventory/db';
 import { equipmentDbService } from '../equipment/db';
 import type { Item } from './types';

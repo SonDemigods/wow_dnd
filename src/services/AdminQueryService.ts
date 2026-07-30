@@ -22,10 +22,10 @@ import { enemyDbService } from '@/modules/enemy';
 import { bossDbService } from '@/modules/boss';
 import { inventoryDbService } from '@/modules/inventory';
 import { equipmentDbService } from '@/modules/equipment';
-import type { Item } from '@/modules/inventory/types';
-import type { EquipmentItem } from '@/modules/equipment/types';
-import type { EnemyData } from '@/modules/enemy/types';
-import type { BossTemplate } from '@/modules/boss/types';
+import type { Item } from '@/modules/inventory';
+import type { EquipmentItem } from '@/modules/equipment';
+import type { EnemyData } from '@/modules/enemy';
+import type { BossTemplate } from '@/modules/boss';
 
 /**
  * 管理后台查询服务

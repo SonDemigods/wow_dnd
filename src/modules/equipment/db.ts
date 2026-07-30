@@ -31,7 +31,7 @@
  * | 装备模板管理 | `saveEquipmentTemplate`, `getEquipmentTemplate`, `getAllEquipmentTemplates`, `deleteEquipmentTemplate` | config_equipmentItems |
  * | 内部工具 | `mapTemplateToEquipmentItem`, `getDefaultEquipment` | - |
  */
-import { db as gameDb, dbService } from '../data/core';
+import { db as gameDb, dbService } from '@/modules/data';
 import type { EquipmentDataStorage, EquipmentTemplateStorage, EquipmentItem, EquipmentSlot } from './types';
 import { createEmptySlotMap } from './service';
 

@@ -264,7 +264,7 @@ import type {
   FactionType,
   RaceType,
   ClassType
-} from '@/modules/character/types';
+} from '@/modules/character';
 import { STAT_NAMES } from '@/config/character';
 import {
   calculatePhysicalAttack,

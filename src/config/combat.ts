@@ -36,6 +36,18 @@ export const DAMAGE_RANDOM_RANGE = 10;
  */
 export const DEFENSE_REDUCTION_COEFFICIENT = 0.3;
 
+// ==================== 暴击参数 ====================
+
+/**
+ * 暴击伤害倍率
+ *
+ * 暴击时最终伤害 = floor(管线最终伤害 × 该倍率)。
+ * 该倍率同时作用于荆棘反伤（与玩家伤害保持口径一致，见 QA-12 / P2-2）。
+ *
+ * @see src/modules/combat/composables/helpers/critCalc.ts rollPlayerCrit / computeThornsDamage
+ */
+export const CRIT_DAMAGE_MULTIPLIER = 1.5;
+
 // ==================== 逃跑判定参数 ====================
 
 /**

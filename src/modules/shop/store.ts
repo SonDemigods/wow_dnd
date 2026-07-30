@@ -37,6 +37,7 @@ import { generateShopItems, canAffordItem, computeSellPrice } from './service';
 import { useToast } from '@/composables/useToast';
 import { SHOPS } from '@/data/config_shops';
 import { errorHandler } from '@/services/ErrorHandler';
+import { errorReporter } from '@/utils/errorReport';
 
 /**
  * 商店 Pinia Store
@@ -471,11 +472,40 @@ export const useShopStore = defineStore('shop', () => {
       }
     } catch (err) {
       // P2-54 修复：商店库存更新失败，回滚金币和背包
+      // DB-3 增强：回滚失败时上报 errorReporter，确保运维可监测
       console.error('[ShopStore] buyItem 更新商店库存失败，回滚金币和背包:', err);
+      errorReporter.report(err, 'manual', {
+        context: '商店购买库存更新失败，已回滚金币和背包',
+        shopId,
+        itemId,
+        quantity,
+      });
       // 回滚背包：移除已添加的物品
-      inventoryStore.removeItem(itemId, quantity);
+      try {
+        inventoryStore.removeItem(itemId, quantity);
+        // DB-3 修复：等待回滚的背包持久化完成，确保 DB 状态与内存一致
+        // 与 DB-1/DB-2 同源问题：addItem 的 fire-and-forget persistInventory1
+        // 与回滚 removeItem 的 persistInventory2 竞态，若 persistInventory1 后完成
+        // 会覆盖回滚状态导致物品残留。flushPersist 等待最新 persist 完成即可
+        // （Dexie 同表写入串行化，await 最后一个隐式 await 所有前序）
+        await inventoryStore.flushPersist();
+      } catch (rollbackErr) {
+        console.error('[ShopStore] buyItem 回滚背包失败:', rollbackErr);
+        errorReporter.report(rollbackErr, 'manual', {
+          context: '商店购买回滚背包失败，物品可能残留',
+          shopId, itemId, quantity,
+        });
+      }
       // 回滚金币：返还已扣的金币
-      await characterStore.gainGold(totalPrice);
+      try {
+        await characterStore.gainGold(totalPrice);
+      } catch (rollbackErr) {
+        console.error('[ShopStore] buyItem 回滚金币失败:', rollbackErr);
+        errorReporter.report(rollbackErr, 'manual', {
+          context: '商店购买回滚金币失败，金币可能未退还',
+          shopId, totalPrice,
+        });
+      }
       useToast().show({
         message: '商店库存更新失败，已退还金币和物品',
         type: 'danger',

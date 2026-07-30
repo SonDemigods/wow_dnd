@@ -7,7 +7,7 @@
  * BossInstance 扁平化到 EnemyInstance 的逻辑由 GameBootstrap 的 bossCreateFn 回调内联处理，
  * combat state 通过 wrapAsBossInstance 包装回组合式 BossInstance（保持 base 同引用）。
  */
-import type { BossInstance, BossTemplate, BossRuntimeState, BossPhase, BossIntro } from './types';
+import type { BossInstance, BossTemplate, BossRuntimeState, BossEnemyInstance } from './types';
 import type { EnemyInstance, EnemyDrop } from '@/modules/enemy/types';
 import { generateEnemyStats, BOSS_DROP_TABLE } from '@/modules/enemy/service';
 import { generateId } from '@/utils/db-helpers';
@@ -71,11 +71,34 @@ export function createBossInstance(template: BossTemplate, level: number, rng: R
 }
 
 // ============================================================================
+// 类型守卫
+// ============================================================================
+
+/**
+ * 类型守卫：判断 EnemyInstance 是否为 BossEnemyInstance
+ *
+ * TS-2 修复：替代 `wrapAsBossInstance` 内的 `as EnemyInstance & { phases?: ...; intro?: ... }` 断言。
+ *
+ * 判定依据：`isBoss === true`。由 `bossCreateFn` 构造不变量保证：所有 `isBoss: true` 的
+ * 敌人实例均携带 `phases`（可能为空数组）与 `intro`（可能为 undefined）字段。
+ *
+ * 使用场景：
+ * - `useBossMechanics.initBossFeatures` 遍历 `enemiesData: EnemyInstance[]` 时，
+ *   用此守卫收窄为 `BossEnemyInstance` 后传给 `wrapAsBossInstance`
+ *
+ * @param enemy - 待判断的敌人实例
+ * @returns 是否为 Boss 敌人实例（携带 phases/intro 字段）
+ */
+export function isBossEnemyInstance(enemy: EnemyInstance): enemy is BossEnemyInstance {
+  return enemy.isBoss === true;
+}
+
+// ============================================================================
 // 组合式 BossInstance 包装函数
 // ============================================================================
 
 /**
- * 将扁平 EnemyInstance 包装为组合式 BossInstance（保持 base 同引用）
+ * 将扁平 BossEnemyInstance 包装为组合式 BossInstance（保持 base 同引用）
  *
  * 用途：combat state 的 initBossFeatures 在战斗开始时，对 enemy store 中的 Boss
  * 敌人包装为组合式 BossInstance，存入 state.bossInstances Map。
@@ -84,31 +107,28 @@ export function createBossInstance(template: BossTemplate, level: number, rng: R
  * - engine 修改 `boss.base.physicalAttack` 会立即反映到 `enemy.physicalAttack`
  * - combat 层持有 EnemyInstance，无需感知 BossInstance 即可读到 engine 写入的战斗属性
  *
- * phases/intro 配置的传递：
- * - enemy store 持有 Boss 的扁平数据（EnemyInstance），运行时附加 phases/intro 属性
- * - 这些附加属性由 GameBootstrap 的 bossCreateFn 回调在创建时附加
- * - 此处通过类型断言读取，恢复 BossInstance 所需的 phases/intro 配置
- * - 类型层面不体现这些属性，避免 enemy/types.ts 反向依赖 boss 类型
+ * phases/intro 配置的传递（TS-2 修复后）：
+ * - enemy store 持有 Boss 的扁平数据，类型为 `EnemyInstance`（widened）
+ * - 调用方通过 `isBossEnemyInstance` 类型守卫收窄为 `BossEnemyInstance` 后传入
+ * - `phases`/`intro` 作为 `BossEnemyInstance` 的类型字段直接读取，无需断言
+ * - 避免了原先 `as EnemyInstance & { phases?: ...; intro?: ... }` 的类型断层
  *
  * 阶段五升级：
  *   - 保留 wrapAsBossInstance：它是 combat state 包装 enemy store 数据的必要函数
  *
  * 使用场景：
- * - combat state 的 bossInstances Map 初始化时包装 EnemyInstance
- * - boss/store.ts 的 initBossCombat 接受 EnemyInstance 时内部包装
+ * - combat state 的 bossInstances Map 初始化时包装 BossEnemyInstance
+ * - boss/store.ts 的 initBossCombat 接受 BossEnemyInstance 时内部包装
  *
- * @param enemy - 扁平 EnemyInstance（必须 isBoss=true，运行时携带 phases/intro 附加属性）
+ * @param enemy - 扁平 BossEnemyInstance（isBoss=true，携带 phases/intro 字段）
  * @returns 组合式 BossInstance（base 与 enemy 同引用，runtime 初始为空）
  */
-export function wrapAsBossInstance(enemy: EnemyInstance): BossInstance {
-  // 通过类型断言读取 enemy 上的 phases/intro 运行时附加属性
-  // （由 GameBootstrap 的 bossCreateFn 回调附加，类型层面不体现）
-  const bossEnemy = enemy as EnemyInstance & { phases?: BossPhase[]; intro?: BossIntro };
+export function wrapAsBossInstance(enemy: BossEnemyInstance): BossInstance {
   return {
     base: enemy,
     isBoss: true,
-    phases: bossEnemy.phases ?? [],
-    intro: bossEnemy.intro,
+    phases: enemy.phases ?? [],
+    intro: enemy.intro,
     runtime: {},
   };
 }

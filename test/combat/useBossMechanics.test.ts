@@ -45,7 +45,7 @@ import {
 import { createEmptyContainer, type EffectContainer } from '@/modules/combat/effects';
 import { wrapAsBossInstance } from '@/modules/boss/service';
 import type { EnemyInstance } from '@/modules/enemy/types';
-import type { BossPhase, BossIntro } from '@/modules/enemy/types';
+import type { BossPhase, BossIntro, BossEnemyInstance } from '@/modules/boss/types';
 
 // ==================== 测试数据构造 helper ====================
 
@@ -79,8 +79,8 @@ function makeBossCtxMock(overrides: Partial<IBossContext> = {}): IBossContext {
   };
 }
 
-/** 构造 EnemyInstance（Boss） */
-function makeBossEnemy(o: Partial<EnemyInstance> & { phases?: BossPhase[]; intro?: BossIntro } = {}): EnemyInstance {
+/** 构造 BossEnemyInstance（Boss） */
+function makeBossEnemy(o: Partial<BossEnemyInstance> = {}): BossEnemyInstance {
   return {
     id: 'boss-1',
     dataId: 'dragon',
@@ -97,8 +97,9 @@ function makeBossEnemy(o: Partial<EnemyInstance> & { phases?: BossPhase[]; intro
     expReward: 500,
     goldReward: 200,
     isBoss: true,
+    phases: [],
     ...o,
-  } as EnemyInstance;
+  };
 }
 
 /** 构造普通敌人 */

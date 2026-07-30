@@ -4,7 +4,7 @@
  * 封装地图数据的 IndexedDB 操作，提供数据持久化能力。
  * 地图状态按角色ID隔离存储，切换角色后各角色数据独立保留。
  */
-import { db as gameDb, dbService } from '../data/core';
+import { db as gameDb, dbService } from '@/modules/data';
 import type { LocationStorage, MapState, LocationData, MapStateStorage } from './types';
 import { getMapStateKey, mapToLocationData } from './service';
 

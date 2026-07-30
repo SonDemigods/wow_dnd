@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { createBossInstance, wrapAsBossInstance } from '@/modules/boss/service';
 import { BOSS_DROP_TABLE, generateEnemyStats } from '@/modules/enemy/service';
-import type { BossTemplate, BossInstance, BossRuntimeState } from '@/modules/boss/types';
+import type { BossTemplate, BossInstance, BossRuntimeState, BossEnemyInstance } from '@/modules/boss/types';
 import type { EnemyInstance } from '@/modules/enemy/types';
 
 /** 创建测试用 Boss 模板 */
@@ -198,14 +198,14 @@ describe('createBossInstance', () => {
 
 describe('wrapAsBossInstance', () => {
   /**
-   * 构造携带 Boss 配置的扁平 EnemyInstance
+   * 构造携带 Boss 配置的扁平 BossEnemyInstance
    *
    * 模拟 GameBootstrap 的 bossCreateFn 回调产生的对象：
    * - base 字段（id/hp/stats 等战斗属性）
    * - isBoss: true
-   * - phases/intro 作为运行时附加属性（类型层面不体现，由 wrapAsBossInstance 通过类型断言读取）
+   * - phases/intro 作为 BossEnemyInstance 的类型字段（TS-2 修复：类型层面已声明）
    */
-  function makeFlatBossEnemy(overrides: Partial<EnemyInstance> = {}): EnemyInstance {
+  function makeFlatBossEnemy(overrides: Partial<BossEnemyInstance> = {}): BossEnemyInstance {
     return {
       id: 'boss-flat-1',
       dataId: 'boss_test_001',
@@ -229,7 +229,7 @@ describe('wrapAsBossInstance', () => {
       phases: [{ hpThreshold: 0.5, name: 'P2', dialogue: ['怒了'], aiStrategy: 'aggressive', mechanics: [] }],
       intro: { effect: 'shake', lines: ['登场'], duration: 2000 },
       ...overrides,
-    } as EnemyInstance;
+    };
   }
 
   describe('同引用特性', () => {
@@ -264,7 +264,7 @@ describe('wrapAsBossInstance', () => {
     it('phases 从 enemy 附加属性恢复', () => {
       const enemy = makeFlatBossEnemy();
       const boss = wrapAsBossInstance(enemy);
-      expect(boss.phases).toEqual((enemy as any).phases);
+      expect(boss.phases).toEqual(enemy.phases);
       expect(boss.phases.length).toBe(1);
       expect(boss.phases[0].name).toBe('P2');
     });
@@ -272,20 +272,18 @@ describe('wrapAsBossInstance', () => {
     it('intro 从 enemy 附加属性恢复', () => {
       const enemy = makeFlatBossEnemy();
       const boss = wrapAsBossInstance(enemy);
-      expect(boss.intro).toEqual((enemy as any).intro);
+      expect(boss.intro).toEqual(enemy.intro);
       expect(boss.intro?.effect).toBe('shake');
     });
 
-    it('phases 为 undefined 时默认为空数组', () => {
-      const enemy = makeFlatBossEnemy();
-      delete (enemy as any).phases;
+    it('phases 为空数组时，boss.phases 也是空数组', () => {
+      const enemy = makeFlatBossEnemy({ phases: [] });
       const boss = wrapAsBossInstance(enemy);
       expect(boss.phases).toEqual([]);
     });
 
     it('intro 为 undefined 时，boss.intro 为 undefined', () => {
-      const enemy = makeFlatBossEnemy();
-      delete (enemy as any).intro;
+      const enemy = makeFlatBossEnemy({ intro: undefined });
       const boss = wrapAsBossInstance(enemy);
       expect(boss.intro).toBeUndefined();
     });
@@ -340,12 +338,13 @@ describe('wrapAsBossInstance', () => {
 
   describe('多阶段 Boss 与多实例场景', () => {
     it('多阶段 Boss 的 phases 完整恢复', () => {
-      const enemy = makeFlatBossEnemy();
-      (enemy as any).phases = [
-        { hpThreshold: 0.7, name: 'P1', dialogue: [], aiStrategy: 'balanced', mechanics: [] },
-        { hpThreshold: 0.4, name: 'P2', dialogue: ['怒了'], aiStrategy: 'aggressive', mechanics: [{ type: 'enrage', intervalTurns: 1 }] },
-        { hpThreshold: 0, name: 'P3', dialogue: [], aiStrategy: 'defensive', mechanics: [] },
-      ];
+      const enemy = makeFlatBossEnemy({
+        phases: [
+          { hpThreshold: 0.7, name: 'P1', dialogue: [], aiStrategy: 'balanced', mechanics: [] },
+          { hpThreshold: 0.4, name: 'P2', dialogue: ['怒了'], aiStrategy: 'aggressive', mechanics: [{ type: 'enrage', intervalTurns: 1 }] },
+          { hpThreshold: 0, name: 'P3', dialogue: [], aiStrategy: 'defensive', mechanics: [] },
+        ],
+      });
       const boss = wrapAsBossInstance(enemy);
       expect(boss.phases.length).toBe(3);
       expect(boss.phases[0].name).toBe('P1');
@@ -378,8 +377,7 @@ describe('wrapAsBossInstance', () => {
     });
 
     it('phases 为空数组时，boss.phases 也是空数组', () => {
-      const enemy = makeFlatBossEnemy();
-      (enemy as any).phases = [];
+      const enemy = makeFlatBossEnemy({ phases: [] });
       const boss = wrapAsBossInstance(enemy);
       expect(boss.phases).toEqual([]);
       expect(boss.phases.length).toBe(0);

@@ -33,11 +33,11 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { EquipmentItem, EquipmentSlot, EquippedItem } from './types';
-import type { Stats } from '../character/types';
+import type { Stats } from '@/modules/character/types';
 import { equipmentDbService } from './db';
-import { useLogStore } from '../log/store';
-import { generateLogId } from '../log/service';
-import { useCharacterStore } from '../character/store';
+import { useLogStore } from '@/modules/log/store';
+import { generateLogId } from '@/modules/log/service';
+import { useCharacterStore } from '@/modules/character/store';
 import { validateSlot, computeEquipBonus, canEquipItem, getEquipmentBySlot, createEmptySlotMap, checkClassRestriction, getActiveSetBonuses, SLOT_CONFIG } from './service';
 import { errorReporter } from '@/utils/errorReport';
 
@@ -82,19 +82,35 @@ type RemoveItemFromInventoryCallback = (itemId: string, quantity: number) => num
  */
 let inventoryAddItemCallback: AddItemToInventoryCallback | null = null;
 let inventoryRemoveItemCallback: RemoveItemFromInventoryCallback | null = null;
+/**
+ * 等待背包持久化完成的回调（DB-1/DB-2 修复）
+ *
+ * inventoryStore.addItem/removeItem 内部以 fire-and-forget 调用 persistInventory。
+ * 当 equipment persist 失败需要回滚内存状态时，回滚的 removeItem 也会触发
+ * fire-and-forget persistInventory。若不等待，可能出现竞态：
+ * - addItem 的 persistInventory1（写入新状态）与 removeItem 的 persistInventory2（写入回滚状态）并发
+ * - 若 persistInventory1 后完成，DB 中会是新状态（错误）
+ *
+ * 通过 flushPersist 等待 persistInventory1 完成后再触发 persistInventory2，
+ * 确保回滚状态最终写入 DB。
+ */
+let inventoryFlushPersistCallback: (() => Promise<void>) | null = null;
 
 /**
  * 设置物品入/出背包回调（供 GameBootstrap 在初始化时调用）
  *
  * @param addCallback - inventoryStore.addItem 的引用（卸下装备时放回背包）
  * @param removeCallback - inventoryStore.removeItem 的引用（装备物品时从背包移除）
+ * @param flushPersistCallback - inventoryStore.flushPersist 的引用（DB-1/DB-2 修复：回滚时等待持久化完成）
  */
 export function setInventoryCallbacks(
   addCallback: AddItemToInventoryCallback | null,
-  removeCallback: RemoveItemFromInventoryCallback | null
+  removeCallback: RemoveItemFromInventoryCallback | null,
+  flushPersistCallback: (() => Promise<void>) | null = null
 ): void {
   inventoryAddItemCallback = addCallback;
   inventoryRemoveItemCallback = removeCallback;
+  inventoryFlushPersistCallback = flushPersistCallback;
 }
 
 /**
@@ -103,6 +119,7 @@ export function setInventoryCallbacks(
 export function clearInventoryCallbacks(): void {
   inventoryAddItemCallback = null;
   inventoryRemoveItemCallback = null;
+  inventoryFlushPersistCallback = null;
 }
 
 /**
@@ -136,6 +153,9 @@ export const useEquipmentStore = defineStore('equipment', () => {
 
   /** 装备模板缓存：Map<装备ID, 装备完整数据>，从 config_equipmentItems 表加载 */
   const equipmentTemplates = ref<Map<string, EquipmentItem>>(new Map());
+
+  /** DB-1/DB-2 修复：装备持久化错误状态，供 UI 监听并提示用户重试（null 表示无错误） */
+  const persistError = ref<string | null>(null);
 
   /** 当前活跃角色 ID，null 表示未进入角色 */
   const currentCharacterId = ref<string | null>(null);
@@ -297,20 +317,14 @@ export const useEquipmentStore = defineStore('equipment', () => {
    */
   async function persist(): Promise<void> {
     if (currentCharacterId.value) {
-      // P3-108 修复：添加 try-catch，持久化失败时上报错误但不抛出异常（fire-and-forget 模式）
-      // 避免 IndexedDB 异常中断业务流程，参考 inventory/store.ts 的 persistInventory 实现
-      try {
-        const idMap = createEmptySlotMap<string | null>(null);
-        for (const slot of Object.keys(equipment.value) as EquipmentSlot[]) {
-          idMap[slot] = equipment.value[slot]?.item.id ?? null;
-        }
-        await equipmentDbService.saveEquipment(currentCharacterId.value, idMap);
-      } catch (err) {
-        errorReporter.report(err, 'manual', {
-          context: '装备数据持久化失败，UI 与 DB 状态可能不一致',
-          characterId: currentCharacterId.value,
-        });
+      const idMap = createEmptySlotMap<string | null>(null);
+      for (const slot of Object.keys(equipment.value) as EquipmentSlot[]) {
+        idMap[slot] = equipment.value[slot]?.item.id ?? null;
       }
+      // DB-1/DB-2 修复：抛出异常让调用方感知失败并回滚内存状态
+      // 调用方（equipItem/unequipItem）负责 try-catch 并回滚
+      await equipmentDbService.saveEquipment(currentCharacterId.value, idMap);
+      persistError.value = null;
     }
   }
 
@@ -551,7 +565,53 @@ export const useEquipmentStore = defineStore('equipment', () => {
     await reapplySetBonuses();
 
     // 7. 持久化到数据库
-    await persist();
+    // DB-2 修复：persist 失败时回滚装备和背包状态，避免物品丢失
+    // DB-1/DB-2 增强：回滚后 await flushPersist 确保回滚的背包操作写入 DB，避免竞态
+    try {
+      await persist();
+    } catch (persistErr) {
+      console.error('[EquipmentStore] equipItem persist 失败，回滚装备状态:', persistErr);
+      persistError.value = persistErr instanceof Error ? persistErr.message : String(persistErr);
+      errorReporter.report(persistErr, 'manual', {
+        context: '装备持久化失败，已回滚装备和背包状态',
+        characterId: currentCharacterId.value,
+      });
+      // 回滚：移除新装备的 bonus
+      try {
+        const newBonus = computeEquipBonus(item);
+        if (Object.keys(newBonus).length > 0) {
+          await useCharacterStore().removeBonus(newBonus);
+        }
+      } catch (rollbackErr) {
+        console.error('[EquipmentStore] equipItem 回滚新装备 bonus 失败:', rollbackErr);
+      }
+      // 回滚：移除新装备
+      equipment.value[slot] = null;
+      // 回滚：放回新装备到背包
+      if (inventoryAddItemCallback) {
+        inventoryAddItemCallback(item.id, 1);
+      }
+      // 回滚：如果有旧装备，重新装上
+      if (previousEquipped) {
+        if (inventoryRemoveItemCallback) {
+          inventoryRemoveItemCallback(previousEquipped.item.id, 1);
+        }
+        equipment.value[slot] = previousEquipped;
+        try {
+          await applyBonusForSlot(slot);
+        } catch (rollbackErr) {
+          console.error('[EquipmentStore] equipItem 回滚旧装备 bonus 失败:', rollbackErr);
+        }
+      }
+      // 重新应用套装效果
+      await reapplySetBonuses();
+      // DB-1/DB-2 增强：等待回滚的背包持久化完成，确保 DB 状态与内存一致
+      // 避免 addItem 的 persistInventory1 与回滚 removeItem 的 persistInventory2 竞态
+      if (inventoryFlushPersistCallback) {
+        await inventoryFlushPersistCallback();
+      }
+      return false;
+    }
 
     // 8. 记录冒险日志
     useLogStore().addLogEntry({
@@ -586,7 +646,37 @@ export const useEquipmentStore = defineStore('equipment', () => {
     await reapplySetBonuses();
 
     // 持久化到数据库
-    await persist();
+    // DB-1 修复：persist 失败时回滚装备状态（恢复装备 + 移除背包物品），避免物品复制
+    try {
+      await persist();
+    } catch (persistErr) {
+      console.error('[EquipmentStore] unequipItem persist 失败，回滚装备状态:', persistErr);
+      persistError.value = persistErr instanceof Error ? persistErr.message : String(persistErr);
+      errorReporter.report(persistErr, 'manual', {
+        context: '装备持久化失败，已回滚装备状态',
+        characterId: currentCharacterId.value,
+      });
+      // 回滚：从背包移除已放回的装备
+      if (inventoryRemoveItemCallback) {
+        inventoryRemoveItemCallback(equippedItem.item.id, 1);
+      }
+      // 回滚：恢复装备到槽位
+      equipment.value[slot] = equippedItem;
+      // 回滚：重新应用装备 bonus
+      try {
+        await applyBonusForSlot(slot);
+      } catch (rollbackErr) {
+        console.error('[EquipmentStore] unequipItem 回滚装备 bonus 失败:', rollbackErr);
+      }
+      // 重新应用套装效果
+      await reapplySetBonuses();
+      // DB-1/DB-2 增强：等待回滚的背包持久化完成，确保 DB 状态与内存一致
+      // 避免 doUnequip 的 addItem persistInventory1 与回滚 removeItem 的 persistInventory2 竞态
+      if (inventoryFlushPersistCallback) {
+        await inventoryFlushPersistCallback();
+      }
+      return null;
+    }
 
     // 记录冒险日志
     useLogStore().addLogEntry({
@@ -742,6 +832,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     equipmentTemplates,
     currentCharacterId,
     isLoading,
+    persistError,
 
     // 计算属性
     totalStats,

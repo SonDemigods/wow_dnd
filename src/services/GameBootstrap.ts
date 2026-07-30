@@ -4,18 +4,18 @@
  *              的跨层调用问题（EXP-5 修复）。各模块 init 仅负责自身状态加载，假设依赖已由本服务预先初始化。
  * @module services
  */
-import { useLogStore } from '@/modules/log/store';
+import { useLogStore } from '@/modules/log';
 import { useInventoryStore, setInventoryExternalCallbacks, clearInventoryExternalCallbacks } from '@/modules/inventory';
-import { useEquipmentStore, setInventoryCallbacks, clearInventoryCallbacks } from '@/modules/equipment/store';
-import { useSkillStore } from '@/modules/skill/store';
-import { useMapStore } from '@/modules/map/store';
-import { useExplorationStore } from '@/modules/exploration/store';
+import { useEquipmentStore, setInventoryCallbacks, clearInventoryCallbacks } from '@/modules/equipment';
+import { useSkillStore } from '@/modules/skill';
+import { useMapStore } from '@/modules/map';
+import { useExplorationStore } from '@/modules/exploration';
 import { useQuestStore, setQuestExternalCallbacks, clearQuestExternalCallbacks } from '@/modules/quest';
-import { useCombatStore } from '@/modules/combat/store';
-import { useAudioStore } from '@/modules/audio/store';
-import { setBossCreateFn } from '@/modules/enemy/store';
+import { useCombatStore } from '@/modules/combat';
+import { useAudioStore } from '@/modules/audio';
+import { setBossCreateFn } from '@/modules/enemy';
 import { bossDbService, createBossInstance } from '@/modules/boss';
-import type { EnemyInstance } from '@/modules/enemy/types';
+import type { BossEnemyInstance } from '@/modules/boss';
 
 /**
  * 可释放资源接口
@@ -66,7 +66,8 @@ export class GameBootstrapService {
     await inventoryStore.initialize(characterId);
 
     // 2.5 注入背包回调到装备模块（A1/G1 修复：回调注入替代 equipment → inventory 静态依赖）
-    setInventoryCallbacks(inventoryStore.addItem, inventoryStore.removeItem);
+    // DB-1/DB-2 修复：同时注入 flushPersist，供装备 persist 失败回滚时等待背包持久化完成
+    setInventoryCallbacks(inventoryStore.addItem, inventoryStore.removeItem, inventoryStore.flushPersist);
 
     // 2.55 ARCH-2 修复：注入 inventory ↔ quest 双向回调以切断循环依赖
     // - quest 模块在 acceptQuest（计算 collect 初始进度）和 _grantQuestRewards（发放物品奖励）时
@@ -85,9 +86,11 @@ export class GameBootstrapService {
     });
 
     // 2.6 注入 Boss 创建回调到敌人模块（回调注入替代 enemy → boss 静态依赖）
-    // createBossInstance 返回组合式 BossInstance，此处展开 base 并附加 phases/intro
-    // 作为运行时附加属性（类型层面不体现，由 wrapAsBossInstance 通过类型断言读取恢复）
-    setBossCreateFn(async (dataId, level) => {
+    // TS-2 修复：createBossInstance 返回组合式 BossInstance，此处展开 base 并附加
+    // phases/intro 构造扁平 BossEnemyInstance（类型层面完整声明，无需 as 断言）
+    // enemy store 接收时 widened 为 EnemyInstance，wrapAsBossInstance 通过
+    // isBossEnemyInstance 类型守卫收窄后读取 phases/intro
+    setBossCreateFn(async (dataId, level): Promise<BossEnemyInstance | null> => {
       const template = await bossDbService.getBossTemplate(dataId);
       if (!template) return null;
       const boss = createBossInstance(template, level);
@@ -96,7 +99,7 @@ export class GameBootstrapService {
         isBoss: true,
         phases: boss.phases,
         intro: boss.intro,
-      } as EnemyInstance;
+      };
     });
 
     // 3. 装备模块（依赖背包回调）

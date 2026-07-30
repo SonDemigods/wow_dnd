@@ -138,6 +138,14 @@ vi.mock('@/modules/combat/service', () => ({
   rollFleeSuccess: (chance: number) => rollFleeSuccessMock(chance),
 }));
 
+// mock critCalc（QA-12 后 critCalc 直接使用 Rng 接口，不再依赖 rollCritical）
+// 通过控制 rollPlayerCrit 返回值来模拟暴击/非暴击场景
+const rollPlayerCritMock = vi.hoisted(() => vi.fn(() => ({ isCrit: false, multiplier: 1 })));
+vi.mock('@/modules/combat/composables/helpers/critCalc', () => ({
+  rollPlayerCrit: rollPlayerCritMock,
+  computeThornsDamage: (thorns: number, multiplier: number) => Math.floor(thorns * multiplier),
+}));
+
 // mock processDamagePipeline（控制伤害管线结果）
 const pipeResultMock = { finalDamage: 20, absorbed: 0, thorns: 0 };
 vi.mock('@/modules/combat/effects', async () => {
@@ -328,7 +336,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
     pipeResultMock.absorbed = 0;
     pipeResultMock.thorns = 0;
     rollDodgeMock.mockReturnValue(false);
-    rollCriticalMock.mockReturnValue(false);
+    rollPlayerCritMock.mockReturnValue({ isCrit: false, multiplier: 1 });
     rollFleeSuccessMock.mockReturnValue(true);
     enemyStoreMock.takeDamage.mockReturnValue(false);
     enemyStoreMock.getEnemyById.mockReturnValue(null);
@@ -432,7 +440,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
     it('暴击时返回 isCrit=true', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
-      rollCriticalMock.mockReturnValue(true);
+      rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
       enemyStoreMock.takeDamage.mockReturnValue(false);
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
 
@@ -966,7 +974,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 20;
       pipeResultMock.thorns = 5;
-      rollCriticalMock.mockReturnValue(true);
+      rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
 
@@ -1291,7 +1299,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 40;
-      rollCriticalMock.mockReturnValue(true);
+      rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
 
@@ -1654,7 +1662,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 25;
-      rollCriticalMock.mockReturnValue(true);
+      rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
 
@@ -1697,7 +1705,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 40;
       pipeResultMock.thorns = 6;
-      rollCriticalMock.mockReturnValue(true);
+      rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
 
@@ -1720,7 +1728,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       });
       pipeResultMock.finalDamage = 20;
       enemyStoreMock.takeDamage.mockReturnValue(false);
-      rollCriticalMock.mockReturnValue(true);
+      rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
 
@@ -1743,7 +1751,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 20;
-      rollCriticalMock.mockReturnValue(true);
+      rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
 
@@ -1774,7 +1782,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.finalDamage = 20;
       enemyStoreMock.takeDamage.mockReturnValue(false);
       // 第一个敌人暴击，第二个不暴击（覆盖 crit 和 non-crit 路径）
-      rollCriticalMock.mockReturnValueOnce(true).mockReturnValueOnce(false);
+      rollPlayerCritMock.mockReturnValueOnce({ isCrit: true, multiplier: 1.5 }).mockReturnValueOnce({ isCrit: false, multiplier: 1 });
 
       const log = makeLogMock();
       const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
@@ -1815,7 +1823,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       enemyStoreMock.getEnemyById.mockReturnValue(null);
       pipeResultMock.finalDamage = 25;
-      rollCriticalMock.mockReturnValue(true);
+      rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       const log = makeLogMock();
       const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
@@ -1863,7 +1871,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       enemyStoreMock.getEnemyById.mockReturnValue(null);
       pipeResultMock.finalDamage = 25;
-      rollCriticalMock.mockReturnValue(false);
+      rollPlayerCritMock.mockReturnValue({ isCrit: false, multiplier: 1 });
 
       const log = makeLogMock();
       const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
@@ -1954,7 +1962,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 35;
-      rollCriticalMock.mockReturnValue(true);
+      rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
 
@@ -1977,7 +1985,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 40;
-      rollCriticalMock.mockReturnValue(true);
+      rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
 
@@ -1999,7 +2007,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 40;
-      rollCriticalMock.mockReturnValue(true);
+      rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       const log = makeLogMock();
       const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
@@ -2203,7 +2211,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       // finalDamage = 1，reflectAmount = Math.floor(1 * 0.5) = 0
       pipeResultMock.finalDamage = 1;
-      rollCriticalMock.mockReturnValue(false);
+      rollPlayerCritMock.mockReturnValue({ isCrit: false, multiplier: 1 });
 
       const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
 
@@ -2223,7 +2231,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       // finalDamage = 1，counterDamage = Math.floor(1 * 0.5) = 0
       pipeResultMock.finalDamage = 1;
-      rollCriticalMock.mockReturnValue(false);
+      rollPlayerCritMock.mockReturnValue({ isCrit: false, multiplier: 1 });
 
       const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
 

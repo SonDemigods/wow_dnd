@@ -232,26 +232,23 @@
 
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { errorHandler } from '@/services/ErrorHandler';
-import { useCombatStore } from '@/modules/combat/store';
+import { useCombatStore } from '@/modules/combat';
 import { ResourceSystemFactory } from '@/modules/combat/resources';
 import { useCharacterStore } from '@/modules/character';
-import { useSkillStore } from '@/modules/skill/store';
-import { useInventoryStore } from '@/modules/inventory/store';
+import { useSkillStore } from '@/modules/skill';
+import { useInventoryStore } from '@/modules/inventory';
 import { useSkillDisplay } from '@/composables/useSkillDisplay';
 import { eventBus, GameEvents } from '@/modules/bus';
-import type { CombatLog, CombatResult, CombatActionType } from '@/modules/combat/types';
-import type { Skill } from '@/modules/skill/types';
-import type { ItemRarity } from '@/modules/inventory/types';
+import type { CombatLog, CombatResult, CombatActionType } from '@/modules/combat';
+import type { Skill } from '@/modules/skill';
+import type { ItemRarity } from '@/modules/inventory';
 import ResourceBar from '@/components/common/ResourceBar.vue';
 import ClassResourceBar from '@/components/common/ClassResourceBar.vue';
 import ItemIcon from '@/components/common/ItemIcon.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import { animateResultPopup } from '@/modules/animation';
-// QA-5 阶段四：抽离的 4 个 composable
-import { useCombatSpeed } from '@/modules/combat/composables/useCombatSpeed';
-import { useCombatAutoClose } from '@/modules/combat/composables/useCombatAutoClose';
-import { useBossIntroOverlay } from '@/modules/combat/composables/useBossIntroOverlay';
-import { useCombatAnimations } from '@/modules/combat/composables/useCombatAnimations';
+// QA-5 阶段四：抽离的 4 个 composable（通过 combat 模块公共入口导入，符合 ARCH-4 规范）
+import { useCombatSpeed, useCombatAutoClose, useBossIntroOverlay, useCombatAnimations } from '@/modules/combat';
 
 const emit = defineEmits<{
   (e: 'close', result?: CombatResult): void;
