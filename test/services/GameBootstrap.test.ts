@@ -4,26 +4,35 @@
  * 覆盖：
  * 1. initialize：按依赖顺序调用 7 个 Store 的 initialize/init
  * 2. initialize：注入背包回调到装备模块（A1/G1 修复）
- * 3. dispose：调用实现了 Disposable 接口的 Store 的 dispose
- * 4. dispose：清除装备模块的背包回调引用（A1/G1 修复）
+ * 3. initialize：注入 Boss 创建回调到敌人模块（阶段四：切断 enemy → boss 反向依赖）
+ * 4. dispose：调用实现了 Disposable 接口的 Store 的 dispose
+ * 5. dispose：清除装备模块的背包回调引用（A1/G1 修复）
+ * 6. dispose：清除敌人模块的 Boss 创建回调引用（阶段四：避免回调泄漏）
  *
  * Mock 策略：
  * - 7 个模块 Store 全量 mock，断言 initialize/init/dispose 调用顺序
  * - setInventoryCallbacks / clearInventoryCallbacks mock 验证回调注入与清除
+ * - setBossCreateFn mock 验证 Boss 创建回调注入与清除（阶段四）
+ * - boss/db、boss/service mock 避免 GameBootstrap 顶层导入触发真实模块加载
  * - 使用 createTestPinia 激活 Pinia（mock 的 store 需要在 Pinia 上下文中）
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createTestPinia } from '../utils/setup';
 
-/** mock 7 个模块 Store + 装备模块回调注入函数 */
+/** mock 7 个模块 Store + 装备/敌人模块回调注入函数 */
 /**
  * vi.hoisted 保证 mock 函数在 vi.mock 工厂提升到文件顶部时已初始化。
- * setInventoryCallbacks / clearInventoryCallbacks 在工厂返回对象中直接引用（非函数包装），
- * 必须使用 vi.hoisted 避免 TDZ（Temporal Dead Zone）错误。
+ * setInventoryCallbacks / clearInventoryCallbacks / setBossCreateFn 在工厂返回对象中
+ * 直接引用（非函数包装），必须使用 vi.hoisted 避免 TDZ（Temporal Dead Zone）错误。
  */
 const hoisted = vi.hoisted(() => ({
   setInventoryCallbacksMock: vi.fn(),
   clearInventoryCallbacksMock: vi.fn(),
+  setBossCreateFnMock: vi.fn(),
+  setInventoryExternalCallbacksMock: vi.fn(),
+  clearInventoryExternalCallbacksMock: vi.fn(),
+  setQuestExternalCallbacksMock: vi.fn(),
+  clearQuestExternalCallbacksMock: vi.fn(),
 }));
 
 const logInitMock = vi.fn().mockResolvedValue(undefined);
@@ -39,7 +48,10 @@ vi.mock('@/modules/inventory/store', () => ({
     initialize: inventoryInitMock,
     addItem: inventoryAddItemMock,
     removeItem: inventoryRemoveItemMock,
+    inventory: [],
   }),
+  setInventoryExternalCallbacks: hoisted.setInventoryExternalCallbacksMock,
+  clearInventoryExternalCallbacks: hoisted.clearInventoryExternalCallbacksMock,
 }));
 
 const equipmentInitMock = vi.fn().mockResolvedValue(undefined);
@@ -69,8 +81,14 @@ vi.mock('@/modules/exploration/store', () => ({
 }));
 
 const questInitMock = vi.fn().mockResolvedValue(undefined);
+const questOnItemCollectedMock = vi.fn();
 vi.mock('@/modules/quest/store', () => ({
-  useQuestStore: () => ({ initialize: questInitMock }),
+  useQuestStore: () => ({
+    initialize: questInitMock,
+    onItemCollected: questOnItemCollectedMock,
+  }),
+  setQuestExternalCallbacks: hoisted.setQuestExternalCallbacksMock,
+  clearQuestExternalCallbacks: hoisted.clearQuestExternalCallbacksMock,
 }));
 
 const combatDisposeMock = vi.fn();
@@ -81,6 +99,20 @@ vi.mock('@/modules/combat/store', () => ({
 const audioDisposeMock = vi.fn();
 vi.mock('@/modules/audio/store', () => ({
   useAudioStore: () => ({ dispose: audioDisposeMock }),
+}));
+
+/** mock enemy/store 的 setBossCreateFn（阶段四：Boss 创建回调注入） */
+vi.mock('@/modules/enemy/store', () => ({
+  useEnemyStore: () => ({}),
+  setBossCreateFn: hoisted.setBossCreateFnMock,
+}));
+
+/** mock boss/db 与 boss/service（GameBootstrap 顶层导入，回调内部消费） */
+vi.mock('@/modules/boss/db', () => ({
+  bossDbService: { getBossTemplate: vi.fn() },
+}));
+vi.mock('@/modules/boss/service', () => ({
+  createBossInstance: vi.fn(),
 }));
 
 import { gameBootstrap } from '@/services/GameBootstrap';
@@ -101,6 +133,11 @@ describe('GameBootstrap 游戏初始化编排服务', () => {
       audioDisposeMock,
       hoisted.setInventoryCallbacksMock,
       hoisted.clearInventoryCallbacksMock,
+      hoisted.setBossCreateFnMock,
+      hoisted.setInventoryExternalCallbacksMock,
+      hoisted.clearInventoryExternalCallbacksMock,
+      hoisted.setQuestExternalCallbacksMock,
+      hoisted.clearQuestExternalCallbacksMock,
     ].forEach(m => m.mockClear());
   });
 
@@ -166,6 +203,60 @@ describe('GameBootstrap 游戏初始化编排服务', () => {
       // 注入的是 inventory store 的 addItem / removeItem
       expect(hoisted.setInventoryCallbacksMock).toHaveBeenCalledWith(inventoryAddItemMock, inventoryRemoveItemMock);
     });
+
+    it('在 inventory 初始化后、equipment 初始化前注入 Boss 创建回调（阶段四）', async () => {
+      // Arrange：记录 setBossCreateFn 与 equipmentInit 的调用顺序
+      const callOrder: string[] = [];
+      inventoryInitMock.mockImplementation(() => { callOrder.push('inventory'); return Promise.resolve(); });
+      hoisted.setBossCreateFnMock.mockImplementation(() => { callOrder.push('injectBossFn'); });
+      equipmentInitMock.mockImplementation(() => { callOrder.push('equipment'); return Promise.resolve(); });
+
+      // Act
+      await gameBootstrap.initialize('char_1');
+
+      // Assert：Boss 回调注入发生在 inventory 之后、equipment 之前
+      const injectIdx = callOrder.indexOf('injectBossFn');
+      const inventoryIdx = callOrder.indexOf('inventory');
+      const equipmentIdx = callOrder.indexOf('equipment');
+      expect(injectIdx).toBeGreaterThan(inventoryIdx);
+      expect(injectIdx).toBeLessThan(equipmentIdx);
+      // 注入的是一个函数（Boss 创建回调）
+      expect(hoisted.setBossCreateFnMock).toHaveBeenCalledTimes(1);
+      expect(typeof hoisted.setBossCreateFnMock.mock.calls[0][0]).toBe('function');
+    });
+
+    it('在 inventory 初始化后注入 inventory ↔ quest 双向回调（ARCH-2 修复）', async () => {
+      // Arrange
+      const callOrder: string[] = [];
+      inventoryInitMock.mockImplementation(() => { callOrder.push('inventory'); return Promise.resolve(); });
+      hoisted.setInventoryExternalCallbacksMock.mockImplementation(() => { callOrder.push('injectInvCb'); });
+      hoisted.setQuestExternalCallbacksMock.mockImplementation(() => { callOrder.push('injectQuestCb'); });
+      equipmentInitMock.mockImplementation(() => { callOrder.push('equipment'); return Promise.resolve(); });
+
+      // Act
+      await gameBootstrap.initialize('char_1');
+
+      // Assert：双向回调注入发生在 inventory 之后、equipment 之前
+      const invCbIdx = callOrder.indexOf('injectInvCb');
+      const questCbIdx = callOrder.indexOf('injectQuestCb');
+      const inventoryIdx = callOrder.indexOf('inventory');
+      const equipmentIdx = callOrder.indexOf('equipment');
+      expect(invCbIdx).toBeGreaterThan(inventoryIdx);
+      expect(invCbIdx).toBeLessThan(equipmentIdx);
+      expect(questCbIdx).toBeGreaterThan(inventoryIdx);
+      expect(questCbIdx).toBeLessThan(equipmentIdx);
+
+      // 注入到 inventory 的是 quest.onItemCollected
+      expect(hoisted.setInventoryExternalCallbacksMock).toHaveBeenCalledWith({
+        onItemCollected: questOnItemCollectedMock,
+      });
+
+      // 注入到 quest 的是包含 getInventoryItemCount / addItemToInventory 的对象
+      expect(hoisted.setQuestExternalCallbacksMock).toHaveBeenCalledTimes(1);
+      const questCbArg = hoisted.setQuestExternalCallbacksMock.mock.calls[0][0];
+      expect(typeof questCbArg.getInventoryItemCount).toBe('function');
+      expect(typeof questCbArg.addItemToInventory).toBe('function');
+    });
   });
 
   describe('dispose：清理资源', () => {
@@ -199,6 +290,23 @@ describe('GameBootstrap 游戏初始化编排服务', () => {
 
       // Assert
       expect(hoisted.clearInventoryCallbacksMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('清除敌人模块的 Boss 创建回调引用（阶段四：避免回调泄漏）', () => {
+      // Act
+      gameBootstrap.dispose();
+
+      // Assert：传入 null 清除回调，避免角色切换后回调指向旧闭包
+      expect(hoisted.setBossCreateFnMock).toHaveBeenCalledWith(null);
+    });
+
+    it('清除 inventory ↔ quest 双向回调引用（ARCH-2 修复：避免回调泄漏）', () => {
+      // Act
+      gameBootstrap.dispose();
+
+      // Assert：双向回调均被清除
+      expect(hoisted.clearInventoryExternalCallbacksMock).toHaveBeenCalledTimes(1);
+      expect(hoisted.clearQuestExternalCallbacksMock).toHaveBeenCalledTimes(1);
     });
 
     it('dispose 清理 ≥ 3 个 Store（exploration + combat + audio）', () => {

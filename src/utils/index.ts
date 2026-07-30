@@ -35,3 +35,10 @@ export {
   type ErrorReportAdapter,
   type ErrorReporterConfig,
 } from './errorReport';
+
+export {
+  type Rng,
+  defaultRng,
+  createRngFromFn,
+  createSeededRng,
+} from './rng';

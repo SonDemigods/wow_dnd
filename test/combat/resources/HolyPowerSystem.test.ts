@@ -9,7 +9,7 @@
  * 6. 累加不超过 maxValue
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { HolyPowerSystem } from '../../../src/modules/combat/resources/HolyPowerSystem';
+import { HolyPowerSystem } from '@/modules/combat/resources/HolyPowerSystem';
 
 describe('HolyPowerSystem 圣骑士神圣', () => {
   let holy: HolyPowerSystem;

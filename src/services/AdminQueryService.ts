@@ -14,7 +14,7 @@
  *
  * - 管理后台不直接访问 DbService，避免绕过 Store 的业务校验
  * - 查询类操作通过本服务聚合，减少 console.ts 的跨模块 import
- * - 服务层无状态，仅聚合查询，不持有缓存（缓存由 ItemTemplateCache 负责）
+ * - 服务层无状态，仅聚合查询，不持有缓存（缓存由 modules/item-template 的 unifiedItemTemplateCache 负责）
  *
  * @module services
  */

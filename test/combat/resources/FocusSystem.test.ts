@@ -9,7 +9,7 @@
  * 6. 累加不超过 maxValue=100
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { FocusSystem } from '../../../src/modules/combat/resources/FocusSystem';
+import { FocusSystem } from '@/modules/combat/resources/FocusSystem';
 
 describe('FocusSystem 猎人集中值', () => {
   let focus: FocusSystem;

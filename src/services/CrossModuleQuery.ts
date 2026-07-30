@@ -8,7 +8,8 @@ import { mapDbService } from '@/modules/map';
 import { questDbService } from '@/modules/quest';
 import { shopDbService } from '@/modules/shop';
 import { equipmentDbService } from '@/modules/equipment';
-import { itemTemplateCache } from '@/services/ItemTemplateCache';
+// ARCH-1 修复：改用统一物品模板缓存（合并普通物品 + 装备），消除 services/ItemTemplateCache 双重缓存
+import { unifiedItemTemplateCache } from '@/modules/item-template';
 // P3-125 修复：引入 errorReporter 用于查询失败时记录错误并降级返回安全默认值
 import { errorReporter } from '@/utils/errorReport';
 import type { LocationData } from '@/modules/map/types';
@@ -22,7 +23,7 @@ import type { EquipmentItem } from '@/modules/equipment/types';
  *
  * 将探索模块对地图、背包、任务、商店数据的查询统一收口，
  * 消除探索 Store 直接 import 其他模块 DbService 的跨层依赖。
- * 后续可在此层叠加缓存、批处理等增强能力（见 ItemTemplateCache）。
+ * 物品模板缓存由 modules/item-template 的 unifiedItemTemplateCache 提供（ARCH-1 修复后统一）。
  *
  * P3-125 修复：每个查询方法均添加 try-catch，失败时通过 errorReporter 记录错误
  * 并返回安全默认值（null 或空数组），避免单点查询异常导致探索流程整体崩溃。
@@ -39,10 +40,10 @@ export class CrossModuleQueryService {
     }
   }
 
-  /** 获取所有物品模板（命中内存缓存，避免重复 DB I/O，PERF-1 修复；失败时返回空数组） */
+  /** 获取所有物品模板（命中统一内存缓存，含普通物品 + 装备，避免重复 DB I/O，PERF-1 修复；失败时返回空数组） */
   async getAllItemTemplates(): Promise<Item[]> {
     try {
-      return await itemTemplateCache.getAll();
+      return await unifiedItemTemplateCache.getAll();
     } catch (err) {
       // P3-125 修复：缓存加载失败时降级返回空数组，避免阻塞探索物品池构建
       errorReporter.report(err, 'manual', { context: 'CrossModuleQuery.getAllItemTemplates 失败' });

@@ -7,6 +7,7 @@
 import { animate, createTimeline } from 'animejs';
 import type { JSAnimation, Timeline } from 'animejs';
 import { CombatColors } from '@/config/combat-colors';
+import { defaultRng } from '@/utils/rng';
 import type { FloatingType, ParticleConfig } from './types';
 
 /** 速度倍率的有效下限，防止 speed 为 0 或负值时产生 Infinity/负数 duration */
@@ -286,8 +287,8 @@ export function createParticleBurst(
 
   for (let i = 0; i < config.count; i++) {
     const particle = document.createElement('span');
-    const size = config.sizeRange[0] + Math.random() * (config.sizeRange[1] - config.sizeRange[0]);
-    const color = config.colors[Math.floor(Math.random() * config.colors.length)];
+    const size = config.sizeRange[0] + defaultRng.next() * (config.sizeRange[1] - config.sizeRange[0]);
+    const color = defaultRng.pick(config.colors);
 
     // 粒子基础样式
     particle.style.cssText = `
@@ -313,7 +314,7 @@ export function createParticleBurst(
           width: `${size * 3}px`,
           height: `${size * 0.4}px`,
           background: color,
-          transform: `rotate(${Math.random() * 360}deg) scale(0)`,
+          transform: `rotate(${defaultRng.next() * 360}deg) scale(0)`,
         });
         break;
       case 'star':
@@ -340,8 +341,8 @@ export function createParticleBurst(
     container.appendChild(particle);
 
     // 随机飞散方向
-    const angle = (Math.PI * 2 * i) / config.count + (Math.random() - 0.5) * 0.6;
-    const dist = config.radius * (0.6 + Math.random() * 0.4);
+    const angle = (Math.PI * 2 * i) / config.count + (defaultRng.next() - 0.5) * 0.6;
+    const dist = config.radius * (0.6 + defaultRng.next() * 0.4);
     const targetX = centerX + Math.cos(angle) * dist;
     const targetY = centerY + Math.sin(angle) * dist;
 
@@ -353,7 +354,7 @@ export function createParticleBurst(
       translateY: [0, targetY - centerY - biasY],
       scale: config.shape === 'slash' ? [0, 1, 0.3] : [1, 0],
       opacity: [1, 0],
-      ...(config.shape === 'slash' ? { rotate: `${(Math.random() - 0.5) * 360}deg` } : {}),
+      ...(config.shape === 'slash' ? { rotate: `${(defaultRng.next() - 0.5) * 360}deg` } : {}),
       duration: scaleDuration(config.duration, speed),
       ease: 'easeOutExpo',
       onComplete: () => {

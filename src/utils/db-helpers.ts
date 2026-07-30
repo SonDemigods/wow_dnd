@@ -4,6 +4,8 @@
  * @module utils/db-helpers
  */
 
+import { defaultRng, type Rng } from './rng';
+
 /**
  * 将对象转为纯数据，去除 Vue/Proxy 响应式包装
  *
@@ -37,10 +39,12 @@ export function toRawData<T>(data: T): T {
  * 生成唯一 ID
  *
  * @param prefix - ID 前缀，用于标识所属模块（如 'base'、'character'、'inventory'）
+ * @param rng - 随机数生成器，默认 `defaultRng`（基于 Math.random）。
+ *   传入 `createSeededRng(seed)` 可生成确定性 ID，用于测试复现与战斗回放。
  * @returns 格式为 `{prefix}_{timestamp}_{random}` 的唯一标识符
  */
-export function generateId(prefix: string): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+export function generateId(prefix: string, rng: Rng = defaultRng): string {
+  return `${prefix}_${Date.now()}_${rng.next().toString(36).substring(2, 11)}`;
 }
 
 /**

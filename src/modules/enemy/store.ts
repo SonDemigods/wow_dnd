@@ -3,6 +3,12 @@
  *
  * Store 是敌人数据的唯一持有者，Action 负责编排：
  *   调纯函数 → 更新 Store 状态 →（敌人仅内存，不调 DB）
+ *
+ * 阶段四升级：切断 enemy → boss 反向依赖
+ *   原 createEnemy 直接导入 bossDbService/createBossInstance 实现 Boss 回退，
+ *   现改为通过 setBossCreateFn 注入回调，enemy 模块不再静态依赖 boss 模块。
+ *   boss 模块在初始化时（GameBootstrap）调用 setBossCreateFn 注入创建函数。
+ *   此模式与 inventory 模块的 setInventoryCallbacks 一致。
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
@@ -10,10 +16,31 @@ import type { EnemyInstance } from './types';
 import type { Skill } from '@/modules/skill/types';
 import { createEnemyInstance, calculateEnemyDamage } from './service';
 import { enemyDbService } from './db';
-import { bossDbService } from '@/modules/boss/db';
-import { createBossInstance } from '@/modules/boss/service';
 import { useSkillStore } from '@/modules/skill/store';
 import { errorHandler } from '@/services/ErrorHandler';
+
+// ============================================================================
+// Boss 创建回调注入（阶段四：切断 enemy → boss 反向依赖）
+// ============================================================================
+
+/**
+ * Boss 创建函数类型
+ *
+ * 由 boss 模块在初始化时注入，enemy store 通过此回调实现 Boss 回退创建，
+ * 避免静态依赖 boss 模块。
+ */
+type BossCreateFn = (dataId: string, level: number) => Promise<EnemyInstance | null>;
+
+/** Boss 创建函数（由 boss 模块注入，未注入时 createEnemy 跳过 Boss 回退） */
+let bossCreateFn: BossCreateFn | null = null;
+
+/**
+ * 注入 Boss 创建函数（由 boss 模块初始化时调用）
+ * @param fn - Boss 创建函数，接收 (dataId, level)，返回 EnemyInstance 或 null
+ */
+export function setBossCreateFn(fn: BossCreateFn | null): void {
+  bossCreateFn = fn;
+}
 
 /**
  * 敌人状态存储
@@ -41,7 +68,8 @@ export const useEnemyStore = defineStore('enemies', () => {
   /**
    * 创建敌人实例
    *
-   * 查找顺序：优先从普通怪物表（enemyDbService）查找，未命中时回退到 Boss 表（bossDbService）。
+   * 查找顺序：优先从普通怪物表（enemyDbService）查找，未命中时通过注入的
+   * bossCreateFn 回退到 Boss 表（阶段四：不再静态依赖 boss 模块）。
    * 命中后将实例存入缓存并加入活跃列表；均未命中或创建失败时返回 null。
    *
    * @param dataId - 敌人数据 ID
@@ -59,13 +87,14 @@ export const useEnemyStore = defineStore('enemies', () => {
         return enemy;
       }
 
-      // 回退到 Boss 表查找
-      const bossTemplate = await bossDbService.getBossTemplate(dataId);
-      if (bossTemplate) {
-        const boss = createBossInstance(bossTemplate, level);
-        activeEnemyIds.value.push(boss.id);
-        enemiesCache.value[boss.id] = { ...boss };
-        return boss;
+      // 回退到 Boss 表查找（通过注入的回调，避免静态依赖 boss 模块）
+      if (bossCreateFn) {
+        const boss = await bossCreateFn(dataId, level);
+        if (boss) {
+          activeEnemyIds.value.push(boss.id);
+          enemiesCache.value[boss.id] = { ...boss };
+          return boss;
+        }
       }
 
       throw new Error(`Enemy data not found: ${dataId}`);

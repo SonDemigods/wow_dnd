@@ -11,6 +11,7 @@ import type { FactionCreateUpdateData, RaceCreateUpdateData, ClassCreateUpdateDa
 import { baseDbService } from './db';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { errorHandler } from '@/services/ErrorHandler';
+import { errorReporter } from '@/utils/errorReport';
 
 // ==================== 通用工厂函数 ====================
 
@@ -354,7 +355,11 @@ export const useBaseStore = defineStore('base', () => {
           (payload.type === 'base' || payload.type === '*' || payload.id === '*') &&
           payload.action !== 'bulk'
         ) {
-          loadAllData().catch(err => console.error('[BaseStore] 响应 GAME_DATA_UPDATED 刷新失败:', err));
+          loadAllData().catch(err => {
+            // P2 DB-8 修复：上报 errorReporter 便于运维监测
+            console.error('[BaseStore] 响应 GAME_DATA_UPDATED 刷新失败:', err);
+            errorReporter.report(err, 'manual', { context: 'BaseStore 响应 GAME_DATA_UPDATED 刷新失败' });
+          });
         }
       };
       eventBus.on(GameEvents.GAME_DATA_UPDATED, dataUpdatedHandler);

@@ -147,7 +147,7 @@ import { ref, reactive, computed, defineAsyncComponent, h, onMounted, onUnmounte
 import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
 import { useShopStore } from '@/modules/shop';
-import { useExplorationStore, type ExplorationUICallbacks } from '@/modules/exploration';
+import { useExplorationStore, type ExplorationUICallbacks, type MultiOptionEventResult } from '@/modules/exploration';
 import { gameBootstrap } from '@/services/GameBootstrap';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useEnemyStore } from '@/modules/enemy';
@@ -394,15 +394,14 @@ async function handleCellExplored(data: { cellType?: string; interactionId?: str
 }
 
 // 监听探索战斗事件
-async function handleBattleTriggered(data: { eventData?: { monsterId?: string; areaLevel?: number } }) {
-  if (!data?.eventData?.monsterId) return;
-  
-  const monsterId = data.eventData.monsterId;
-  const areaLevel = data.eventData.areaLevel || 1;
-  
+// P2 TS-5 修复：参数类型与 ExplorationUICallbacks.onBattleTriggered 接口对齐，移除 as 断言
+// 接口契约保证 eventData.monsterId/areaLevel 必填，调用方（exploration/store.ts）负责保证
+async function handleBattleTriggered(data: { eventData: { monsterId: string; areaLevel: number } }) {
+  const { monsterId, areaLevel } = data.eventData;
+
   // 从数据库获取敌人模板数据，传入地图等级
   const enemy = await useEnemyStore().createEnemy(monsterId, areaLevel);
-  
+
   if (enemy) {
     useCombatStore().startCombat([enemy]);
     showCombat.value = true;
@@ -410,27 +409,26 @@ async function handleBattleTriggered(data: { eventData?: { monsterId?: string; a
 }
 
 // 监听物品发现事件
-function handleItemFound(data: { itemId?: string; count?: number; itemName?: string }) {
-  const itemName = data?.itemName || '未知物品';
-  const count = data?.count || 1;
-  showNotif(`发现物品: ${itemName} x${count}`, 'success');
+// P2 TS-5 修复：参数类型与 ExplorationUICallbacks.onItemFound 接口对齐
+function handleItemFound(data: { itemId: string; count: number; itemName: string }) {
+  showNotif(`发现物品: ${data.itemName} x${data.count}`, 'success');
 }
 
 // 监听陷阱触发事件
-function handleTrapTriggered(data: { damage?: number; trapType?: string }) {
-  const damage = data?.damage || 0;
-  const trapType = data?.trapType || '陷阱';
-  showNotif(`触发${trapType}，受到 ${damage} 点伤害`, 'danger');
+// P2 TS-5 修复：参数类型与 ExplorationUICallbacks.onTrapTriggered 接口对齐
+function handleTrapTriggered(data: { damage: number; trapType: string }) {
+  showNotif(`触发${data.trapType}，受到 ${data.damage} 点伤害`, 'danger');
 }
 
 // 监听随机事件
-function handleRandomEvent(data: { message?: string; icon?: string }) {
-  const message = data?.message || '触发了随机事件';
-  showNotif(message, 'info');
+// P2 TS-5 修复：参数类型与 ExplorationUICallbacks.onRandomEvent 接口对齐
+function handleRandomEvent(data: { message: string; icon: string }) {
+  showNotif(data.message, 'info');
 }
 
 // 监听多选项事件：展示事件描述，由玩家在弹窗中选择后调用 applyEventChoice
-function handleMultiOptionEvent(data: { message: string; icon: string; choices: Array<{ label: string; icon?: string; effect: { type: string; amount: number } }> }) {
+// P2 TS-5 修复：使用 MultiOptionEventResult 类型替代手写类型
+function handleMultiOptionEvent(data: MultiOptionEventResult) {
   // 展示事件描述（完整选项弹窗可后续扩展，当前以通知形式提示并自动选择第一项）
   showNotif(data.message, 'info');
   const explorationStore = useExplorationStore();
@@ -455,6 +453,7 @@ onMounted(async () => {
   const explorationStore = useExplorationStore();
 
   // 注册探索 UI 回调（替代 EventBus 跨模块数据事件监听）
+  // P2 TS-5 修复：处理器参数类型已与 ExplorationUICallbacks 接口对齐，移除 as 断言
   explorationStore.registerUICallbacks({
     onCellExplored: handleCellExplored,
     onBattleTriggered: handleBattleTriggered,
@@ -462,7 +461,7 @@ onMounted(async () => {
     onTrapTriggered: handleTrapTriggered,
     onRandomEvent: handleRandomEvent,
     onMultiOptionEvent: handleMultiOptionEvent
-  } as ExplorationUICallbacks);
+  });
   
   // 初始化所有角色相关模块（EXP-5：统一由 GameBootstrap 编排，避免探索模块隐式初始化其他 Store）
   const cid = characterStore.currentCharacterId;

@@ -7,17 +7,31 @@
  * 2. initBossFeatures：初始化 Boss 阶段管理器与出场演出
  *    - 仅 isBoss && phases.length > 0 的敌人创建 BossPhaseManager
  *    - 仅 isBoss && intro 的敌人加入 bossIntros
+ *    - 为 isBoss 的敌人创建 bossInstances 映射（base 与 enemy 同引用）
  * 3. applyMechanicEffect：各机制分支
  *    - stun_player：添加 stun 效果到 playerEffects + 日志
  *    - silence_player：添加 silence 效果到 playerEffects + 日志
  *    - debuff_aura：按 Boss 等级缩放后添加减益效果 + 日志
  *    - healing_zone：直接修改 e.hp（上限 maxHp）+ 日志
  *    - aoe_attack / default：不修改状态
+ *    - summon_minions：异步召唤小怪（前排优先分配位置）
+ * 4. applyBossDefenseMechanics：Boss 防御机制（阶段九迁移）
+ *    - invulnerable 无敌免疫伤害
+ *    - shield 吸收伤害（全额吸收 / 击破溢出）
+ *    - 非 Boss 直接返回原伤害
+ * 5. applyBossCounterMechanics：Boss 反击机制（阶段九迁移）
+ *    - reflectDamage 反弹伤害
+ *    - counterStance 反击姿态（50% 伤害，触发后清除）
+ *    - actualDamage <= 0 时不触发
+ * 6. checkBossRevive：Boss 复活机制（阶段九迁移）
+ *    - canRevive 时恢复 50% HP
+ *    - 复活后清除 canRevive 标记
+ *    - 非 Boss 不复活
  *
  * Mock 策略：
  *  - S3 解耦：useBossMechanics 通过 IBossContext 接口注入外部依赖，
  *    不再 import useCharacterStore / useEnemyStore，故无需 mock 这些 Store。
- *  - bossCtx mock 模块（getPlayerName / createMinion / rebuildInitiativeOrder）
+ *  - bossCtx mock 模块（getPlayerName / createMinion / rebuildInitiativeOrder / applyDamageToPlayer）
  *  - state / log 构造 minimal mock（playerEffects 用真实 createEmptyContainer）
  *  - BossPhaseManager / effects 模块走真实路径
  */
@@ -29,6 +43,7 @@ import {
   type IBossContext,
 } from '@/modules/combat/composables/useBossMechanics';
 import { createEmptyContainer, type EffectContainer } from '@/modules/combat/effects';
+import { wrapAsBossInstance } from '@/modules/boss/service';
 import type { EnemyInstance } from '@/modules/enemy/types';
 import type { BossPhase, BossIntro } from '@/modules/enemy/types';
 
@@ -38,6 +53,7 @@ import type { BossPhase, BossIntro } from '@/modules/enemy/types';
 function makeStateMock() {
   return {
     bossPhaseManagers: new Map<string, unknown>(),
+    bossInstances: new Map(),
     bossIntros: ref<Record<string, BossIntro>>({}),
     playerEffects: ref<EffectContainer>(createEmptyContainer()),
     enemyPositions: ref<Record<string, { row: 'front' | 'back'; col: number }>>({}),
@@ -58,6 +74,7 @@ function makeBossCtxMock(overrides: Partial<IBossContext> = {}): IBossContext {
     getPlayerName: vi.fn(() => '英雄'),
     createMinion: vi.fn().mockResolvedValue(null),
     rebuildInitiativeOrder: vi.fn(),
+    applyDamageToPlayer: vi.fn(),
     ...overrides,
   };
 }
@@ -264,11 +281,12 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       const boss = useBossMechanics(state, log, bossCtx);
 
       const enemy = makeBossEnemy({ id: 'stun-boss', name: '黑龙' });
+      const bossInstance = wrapAsBossInstance(enemy);
       const phase = makePhase({
         mechanics: [{ type: 'stun_player', intervalTurns: 3, params: { turns: 2 } }],
       });
 
-      boss.applyMechanicEffect(enemy, 'stun_player', phase);
+      boss.applyMechanicEffect(bossInstance, 'stun_player', phase);
 
       // 验证 stun 效果已添加
       expect(state.playerEffects.value.effects).toHaveLength(1);
@@ -291,11 +309,12 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: '黑龙' });
+      const bossInstance = wrapAsBossInstance(enemy);
       const phase = makePhase({
         mechanics: [{ type: 'stun_player', intervalTurns: 3 }],
       });
 
-      boss.applyMechanicEffect(enemy, 'stun_player', phase);
+      boss.applyMechanicEffect(bossInstance, 'stun_player', phase);
 
       expect(state.playerEffects.value.effects[0].remainingTurns).toBe(1);
     });
@@ -306,11 +325,12 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: '法师杀手' });
+      const bossInstance = wrapAsBossInstance(enemy);
       const phase = makePhase({
         mechanics: [{ type: 'silence_player', intervalTurns: 5, params: { turns: 3 } }],
       });
 
-      boss.applyMechanicEffect(enemy, 'silence_player', phase);
+      boss.applyMechanicEffect(bossInstance, 'silence_player', phase);
 
       expect(state.playerEffects.value.effects[0].type).toBe('silence');
       expect(state.playerEffects.value.effects[0].remainingTurns).toBe(3);
@@ -324,11 +344,12 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: '法师杀手' });
+      const bossInstance = wrapAsBossInstance(enemy);
       const phase = makePhase({
         mechanics: [{ type: 'silence_player', intervalTurns: 5 }],
       });
 
-      boss.applyMechanicEffect(enemy, 'silence_player', phase);
+      boss.applyMechanicEffect(bossInstance, 'silence_player', phase);
 
       expect(state.playerEffects.value.effects[0].remainingTurns).toBe(2);
     });
@@ -339,6 +360,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: '光环Boss', level: 5 });
+      const bossInstance = wrapAsBossInstance(enemy);
       const phase = makePhase({
         mechanics: [{
           type: 'debuff_aura',
@@ -347,7 +369,7 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
         }],
       });
 
-      boss.applyMechanicEffect(enemy, 'debuff_aura', phase);
+      boss.applyMechanicEffect(bossInstance, 'debuff_aura', phase);
 
       // baseValue=10, bossLevel=5 → 10 × 1.32 = 13.2 → 13
       expect(state.playerEffects.value.effects[0].type).toBe('attack_down');
@@ -363,11 +385,12 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: 'Boss', level: 1 });
+      const bossInstance = wrapAsBossInstance(enemy);
       const phase = makePhase({
         mechanics: [{ type: 'debuff_aura', intervalTurns: 3 }],
       });
 
-      boss.applyMechanicEffect(enemy, 'debuff_aura', phase);
+      boss.applyMechanicEffect(bossInstance, 'debuff_aura', phase);
 
       expect(state.playerEffects.value.effects[0].type).toBe('attack_down');
       // level=1 → 10 × 1.0 = 10
@@ -381,12 +404,14 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: '治疗Boss', hp: 100, maxHp: 1000 });
+      const bossInstance = wrapAsBossInstance(enemy);
       const phase = makePhase({
         mechanics: [{ type: 'healing_zone', intervalTurns: 2, params: { healPerTurn: 50 } }],
       });
 
-      boss.applyMechanicEffect(enemy, 'healing_zone', phase);
+      boss.applyMechanicEffect(bossInstance, 'healing_zone', phase);
 
+      // wrapAsBossInstance 保持 base 与 enemy 同引用，enemy.hp 同步更新
       expect(enemy.hp).toBe(150);
       expect(log.addCombatLog).toHaveBeenCalledTimes(1);
       const logCall = log.addCombatLog.mock.calls[0][0];
@@ -401,11 +426,12 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: '治疗Boss', hp: 980, maxHp: 1000 });
+      const bossInstance = wrapAsBossInstance(enemy);
       const phase = makePhase({
         mechanics: [{ type: 'healing_zone', intervalTurns: 2, params: { healPerTurn: 50 } }],
       });
 
-      boss.applyMechanicEffect(enemy, 'healing_zone', phase);
+      boss.applyMechanicEffect(bossInstance, 'healing_zone', phase);
 
       expect(enemy.hp).toBe(1000);
     });
@@ -416,11 +442,12 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: 'Boss', hp: 100, maxHp: 1000 });
+      const bossInstance = wrapAsBossInstance(enemy);
       const phase = makePhase({
         mechanics: [{ type: 'healing_zone', intervalTurns: 2 }],
       });
 
-      boss.applyMechanicEffect(enemy, 'healing_zone', phase);
+      boss.applyMechanicEffect(bossInstance, 'healing_zone', phase);
 
       expect(enemy.hp).toBe(105);
     });
@@ -431,11 +458,12 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy();
+      const bossInstance = wrapAsBossInstance(enemy);
       const phase = makePhase({
         mechanics: [{ type: 'aoe_attack', intervalTurns: 3 }],
       });
 
-      boss.applyMechanicEffect(enemy, 'aoe_attack', phase);
+      boss.applyMechanicEffect(bossInstance, 'aoe_attack', phase);
 
       expect(state.playerEffects.value.effects).toHaveLength(0);
       expect(log.addCombatLog).not.toHaveBeenCalled();
@@ -447,14 +475,15 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy();
+      const bossInstance = wrapAsBossInstance(enemy);
       const phase = makePhase({
         mechanics: [],
       });
 
       // reflect_damage / enrage / damage_shield 等走 default 分支
-      boss.applyMechanicEffect(enemy, 'reflect_damage', phase);
-      boss.applyMechanicEffect(enemy, 'enrage', phase);
-      boss.applyMechanicEffect(enemy, 'damage_shield', phase);
+      boss.applyMechanicEffect(bossInstance, 'reflect_damage', phase);
+      boss.applyMechanicEffect(bossInstance, 'enrage', phase);
+      boss.applyMechanicEffect(bossInstance, 'damage_shield', phase);
 
       expect(state.playerEffects.value.effects).toHaveLength(0);
       expect(log.addCombatLog).not.toHaveBeenCalled();
@@ -466,13 +495,14 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       const boss = useBossMechanics(state, log, makeBossCtxMock());
 
       const enemy = makeBossEnemy({ name: 'Boss' });
+      const bossInstance = wrapAsBossInstance(enemy);
       // phase 中没有 stun_player 机制，但 mechType 传入 stun_player
       const phase = makePhase({
         mechanics: [{ type: 'aoe_attack', intervalTurns: 3 }],
       });
 
       // 不应抛错，mechanic 找不到时 params 默认为 {}
-      expect(() => boss.applyMechanicEffect(enemy, 'stun_player', phase)).not.toThrow();
+      expect(() => boss.applyMechanicEffect(bossInstance, 'stun_player', phase)).not.toThrow();
       // stun 效果仍会添加（用默认参数）
       expect(state.playerEffects.value.effects).toHaveLength(1);
     });
@@ -487,12 +517,14 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       const bossCtx = makeBossCtxMock();
       const boss = useBossMechanics(state, log, bossCtx);
 
-      const enemy = makeBossEnemy({ name: '召唤Boss', pendingSummons: 0 });
+      const enemy = makeBossEnemy({ name: '召唤Boss' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.pendingSummons = 0;
       const phase = makePhase({
         mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
       });
 
-      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      boss.applyMechanicEffect(bossInstance, 'summon_minions', phase);
       await flushPromises();
 
       expect(bossCtx.createMinion).not.toHaveBeenCalled();
@@ -507,11 +539,12 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       const boss = useBossMechanics(state, log, bossCtx);
 
       const enemy = makeBossEnemy({ name: '召唤Boss' });
+      const bossInstance = wrapAsBossInstance(enemy);
       const phase = makePhase({
         mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
       });
 
-      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      boss.applyMechanicEffect(bossInstance, 'summon_minions', phase);
       await flushPromises();
 
       expect(bossCtx.createMinion).not.toHaveBeenCalled();
@@ -527,12 +560,14 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       });
       const boss = useBossMechanics(state, log, bossCtx);
 
-      const enemy = makeBossEnemy({ id: 'boss-summon', name: '召唤师', level: 3, pendingSummons: 2 });
+      const enemy = makeBossEnemy({ id: 'boss-summon', name: '召唤师', level: 3 });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.pendingSummons = 2;
       const phase = makePhase({
         mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
       });
 
-      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      boss.applyMechanicEffect(bossInstance, 'summon_minions', phase);
       await flushPromises();
 
       // createMinion 调用 2 次，参数为 ('slime', bossLevel)
@@ -552,8 +587,8 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       expect(firstCall.message).toContain('史莱姆A');
       expect(firstCall.targetId).toBe('m1');
       expect(firstCall.eventType).toBe('combat_event');
-      // finally 重置 pendingSummons
-      expect(enemy.pendingSummons).toBe(0);
+      // finally 重置 pendingSummons（runtime 字段）
+      expect(bossInstance.runtime.pendingSummons).toBe(0);
     });
 
     it('createMinion 返回 null 时跳过该小怪但仍处理其他小怪', async () => {
@@ -566,12 +601,14 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       });
       const boss = useBossMechanics(state, log, bossCtx);
 
-      const enemy = makeBossEnemy({ name: '召唤师', pendingSummons: 2 });
+      const enemy = makeBossEnemy({ name: '召唤师' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.pendingSummons = 2;
       const phase = makePhase({
         mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
       });
 
-      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      boss.applyMechanicEffect(bossInstance, 'summon_minions', phase);
       await flushPromises();
 
       // 仅 m2 被添加
@@ -581,8 +618,8 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       expect(bossCtx.rebuildInitiativeOrder).toHaveBeenCalledTimes(1);
       // 仅一条日志
       expect(log.addCombatLog).toHaveBeenCalledTimes(1);
-      // pendingSummons 被重置
-      expect(enemy.pendingSummons).toBe(0);
+      // pendingSummons 被重置（runtime 字段）
+      expect(bossInstance.runtime.pendingSummons).toBe(0);
     });
 
     it('所有 createMinion 都返回 null 时不调用 rebuildInitiativeOrder 与日志', async () => {
@@ -593,18 +630,20 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       });
       const boss = useBossMechanics(state, log, bossCtx);
 
-      const enemy = makeBossEnemy({ name: '召唤师', pendingSummons: 2 });
+      const enemy = makeBossEnemy({ name: '召唤师' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.pendingSummons = 2;
       const phase = makePhase({
         mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
       });
 
-      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      boss.applyMechanicEffect(bossInstance, 'summon_minions', phase);
       await flushPromises();
 
       expect(bossCtx.rebuildInitiativeOrder).not.toHaveBeenCalled();
       expect(log.addCombatLog).not.toHaveBeenCalled();
-      // finally 仍重置 pendingSummons
-      expect(enemy.pendingSummons).toBe(0);
+      // finally 仍重置 pendingSummons（runtime 字段）
+      expect(bossInstance.runtime.pendingSummons).toBe(0);
     });
 
     it('createMinion 抛错时调用 console.error 并在 finally 重置 pendingSummons', async () => {
@@ -616,18 +655,20 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       });
       const boss = useBossMechanics(state, log, bossCtx);
 
-      const enemy = makeBossEnemy({ name: '召唤师', pendingSummons: 2 });
+      const enemy = makeBossEnemy({ name: '召唤师' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.pendingSummons = 2;
       const phase = makePhase({
         mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
       });
 
-      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      boss.applyMechanicEffect(bossInstance, 'summon_minions', phase);
       await flushPromises();
 
       // P2-32 修复：catch 块现在使用 console.error 记录完整错误信息（包含错误对象）
       expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('召唤小怪失败'), expect.any(Error));
-      // finally 仍重置 pendingSummons
-      expect(enemy.pendingSummons).toBe(0);
+      // finally 仍重置 pendingSummons（runtime 字段）
+      expect(bossInstance.runtime.pendingSummons).toBe(0);
       // 不调用 rebuildInitiativeOrder（因为异常前 newMinions 为空）
       expect(bossCtx.rebuildInitiativeOrder).not.toHaveBeenCalled();
       errorSpy.mockRestore();
@@ -646,12 +687,14 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       });
       const boss = useBossMechanics(state, log, bossCtx);
 
-      const enemy = makeBossEnemy({ name: '召唤师', pendingSummons: 1 });
+      const enemy = makeBossEnemy({ name: '召唤师' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.pendingSummons = 1;
       const phase = makePhase({
         mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
       });
 
-      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      boss.applyMechanicEffect(bossInstance, 'summon_minions', phase);
       await flushPromises();
 
       // 应该分配到 col 2（最后一个可用列）
@@ -671,12 +714,14 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       });
       const boss = useBossMechanics(state, log, bossCtx);
 
-      const enemy = makeBossEnemy({ name: '召唤师', pendingSummons: 1 });
+      const enemy = makeBossEnemy({ name: '召唤师' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.pendingSummons = 1;
       const phase = makePhase({
         mechanics: [{ type: 'summon_minions', intervalTurns: 3 }],
       });
 
-      boss.applyMechanicEffect(enemy, 'summon_minions', phase);
+      boss.applyMechanicEffect(bossInstance, 'summon_minions', phase);
       await flushPromises();
 
       // P2-41 修复：前排三列全满时回退到后排 col 0
@@ -705,15 +750,519 @@ describe('useBossMechanics - Boss 机制 Composable', () => {
       const boss = useBossMechanics(state, log, bossCtx);
 
       const enemy = makeBossEnemy({ name: '黑龙' });
+      const bossInstance = wrapAsBossInstance(enemy);
       const phase = makePhase({
         mechanics: [{ type: 'stun_player', intervalTurns: 3, params: { turns: 1 } }],
       });
 
-      boss.applyMechanicEffect(enemy, 'stun_player', phase);
+      boss.applyMechanicEffect(bossInstance, 'stun_player', phase);
 
       expect(bossCtx.getPlayerName).toHaveBeenCalled();
       // 日志中包含 getPlayerName 返回的玩家名称
       expect(log.addCombatLog.mock.calls[0][0].targetName).toBe('英雄');
+    });
+  });
+
+  // -------------------- initBossFeatures：bossInstances Map 初始化 --------------------
+
+  describe('initBossFeatures：bossInstances Map 初始化', () => {
+    it('为 isBoss 的敌人创建 bossInstances 映射', () => {
+      const state = makeStateMock();
+      const boss = useBossMechanics(state, makeLogMock(), makeBossCtxMock());
+
+      const bossEnemy = makeBossEnemy({ id: 'boss-1' });
+      const normal = makeNormalEnemy({ id: 'normal-1' });
+
+      boss.initBossFeatures([bossEnemy, normal]);
+
+      expect(state.bossInstances.has('boss-1')).toBe(true);
+      expect(state.bossInstances.has('normal-1')).toBe(false);
+    });
+
+    it('bossInstance.base 与 enemy 保持同引用', () => {
+      const state = makeStateMock();
+      const boss = useBossMechanics(state, makeLogMock(), makeBossCtxMock());
+
+      const bossEnemy = makeBossEnemy({ id: 'boss-1' });
+      boss.initBossFeatures([bossEnemy]);
+
+      const bossInstance = state.bossInstances.get('boss-1');
+      expect(bossInstance).toBeDefined();
+      expect(bossInstance.base).toBe(bossEnemy);
+    });
+
+    it('非 Boss 敌人不创建 bossInstances', () => {
+      const state = makeStateMock();
+      const boss = useBossMechanics(state, makeLogMock(), makeBossCtxMock());
+
+      boss.initBossFeatures([makeNormalEnemy({ id: 'n1' }), makeNormalEnemy({ id: 'n2' })]);
+
+      expect(state.bossInstances.size).toBe(0);
+    });
+  });
+
+  // -------------------- applyBossDefenseMechanics --------------------
+
+  describe('applyBossDefenseMechanics：Boss 防御机制', () => {
+    it('invulnerable 无敌时伤害为 0 且 blocked=true', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeBossEnemy({ id: 'boss-1', name: '无敌Boss' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.invulnerable = true;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      const result = boss.applyBossDefenseMechanics(enemy, 100);
+
+      expect(result.damage).toBe(0);
+      expect(result.blocked).toBe(true);
+    });
+
+    it('invulnerable 时记录"免疫伤害"日志', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeBossEnemy({ id: 'boss-1', name: '无敌Boss' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.invulnerable = true;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      boss.applyBossDefenseMechanics(enemy, 100);
+
+      expect(log.addCombatLog).toHaveBeenCalledTimes(1);
+      const logCall = log.addCombatLog.mock.calls[0][0];
+      expect(logCall.message).toContain('无敌');
+      expect(logCall.message).toContain('免疫');
+      expect(logCall.targetName).toBe('无敌Boss');
+    });
+
+    it('shield 大于伤害时吸收全部，shield 剩余', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeBossEnemy({ id: 'boss-1', name: '护盾Boss' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.shield = 50;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      const result = boss.applyBossDefenseMechanics(enemy, 30);
+
+      expect(result.damage).toBe(0);
+      expect(result.blocked).toBe(true);
+      expect(bossInstance.runtime.shield).toBe(20);
+    });
+
+    it('shield 等于伤害时全部吸收（边界）', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeBossEnemy({ id: 'boss-1' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.shield = 30;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      const result = boss.applyBossDefenseMechanics(enemy, 30);
+
+      expect(result.damage).toBe(0);
+      expect(result.blocked).toBe(true);
+      expect(bossInstance.runtime.shield).toBe(0);
+    });
+
+    it('shield 小于伤害时击破，返回剩余伤害', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeBossEnemy({ id: 'boss-1' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.shield = 10;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      const result = boss.applyBossDefenseMechanics(enemy, 30);
+
+      expect(result.damage).toBe(20);
+      expect(result.blocked).toBe(false);
+    });
+
+    it('shield 被击破时 shield 归零', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeBossEnemy({ id: 'boss-1' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.shield = 10;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      boss.applyBossDefenseMechanics(enemy, 30);
+
+      expect(bossInstance.runtime.shield).toBe(0);
+    });
+
+    it('shield 被击破时记录"护盾被击破"日志', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeBossEnemy({ id: 'boss-1', name: '护盾Boss' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.shield = 10;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      boss.applyBossDefenseMechanics(enemy, 30);
+
+      expect(log.addCombatLog).toHaveBeenCalledTimes(1);
+      const logCall = log.addCombatLog.mock.calls[0][0];
+      expect(logCall.message).toContain('护盾被击破');
+      expect(logCall.message).toContain('10');
+      expect(logCall.targetName).toBe('护盾Boss');
+    });
+
+    it('无 shield（undefined）时直接返回原伤害', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeBossEnemy({ id: 'boss-1' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      // runtime.shield 未设置（undefined）
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      const result = boss.applyBossDefenseMechanics(enemy, 50);
+
+      expect(result.damage).toBe(50);
+      expect(result.blocked).toBe(false);
+      expect(log.addCombatLog).not.toHaveBeenCalled();
+    });
+
+    it('非 Boss（bossInstances 无此 id）时直接返回原伤害', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeNormalEnemy({ id: 'normal-1' });
+      // bossInstances 为空，不包含 normal-1
+
+      const result = boss.applyBossDefenseMechanics(enemy, 50);
+
+      expect(result.damage).toBe(50);
+      expect(result.blocked).toBe(false);
+      expect(log.addCombatLog).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------- applyBossCounterMechanics --------------------
+
+  describe('applyBossCounterMechanics：Boss 反击机制', () => {
+    it('reflectDamage 反弹伤害给玩家', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock();
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ id: 'boss-1', name: '反弹Boss' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.reflectDamage = 0.2;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      boss.applyBossCounterMechanics(enemy, 50);
+
+      // reflectAmount = Math.floor(50 * 0.2) = 10
+      expect(bossCtx.applyDamageToPlayer).toHaveBeenCalledWith(10);
+    });
+
+    it('reflectDamage 反弹值 = Math.floor(actualDamage * reflectDamage)', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock();
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ id: 'boss-1' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.reflectDamage = 0.33;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      boss.applyBossCounterMechanics(enemy, 100);
+
+      // reflectAmount = Math.floor(100 * 0.33) = Math.floor(33) = 33
+      expect(bossCtx.applyDamageToPlayer).toHaveBeenCalledWith(33);
+    });
+
+    it('reflectDamage 反弹伤害记录日志', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock();
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ id: 'boss-1', name: '反弹Boss' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.reflectDamage = 0.2;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      boss.applyBossCounterMechanics(enemy, 50);
+
+      expect(log.addCombatLog).toHaveBeenCalledTimes(1);
+      const logCall = log.addCombatLog.mock.calls[0][0];
+      expect(logCall.eventType).toBe('combat_damage');
+      expect(logCall.message).toContain('反弹');
+      expect(logCall.message).toContain('10');
+      expect(logCall.targetType).toBe('player');
+    });
+
+    it('counterStance 反击对玩家造成 50% 伤害', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock();
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ id: 'boss-1' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.counterStance = true;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      boss.applyBossCounterMechanics(enemy, 50);
+
+      // counterDamage = Math.floor(50 * 0.5) = 25
+      expect(bossCtx.applyDamageToPlayer).toHaveBeenCalledWith(25);
+    });
+
+    it('counterStance 反击伤害 = Math.floor(actualDamage * 0.5)', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock();
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ id: 'boss-1' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.counterStance = true;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      boss.applyBossCounterMechanics(enemy, 55);
+
+      // counterDamage = Math.floor(55 * 0.5) = Math.floor(27.5) = 27
+      expect(bossCtx.applyDamageToPlayer).toHaveBeenCalledWith(27);
+    });
+
+    it('counterStance 反击后清除标记', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock();
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ id: 'boss-1' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.counterStance = true;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      boss.applyBossCounterMechanics(enemy, 50);
+
+      expect(bossInstance.runtime.counterStance).toBe(false);
+    });
+
+    it('reflectDamage + counterStance 同时触发两次 applyDamageToPlayer', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock();
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ id: 'boss-1' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.reflectDamage = 0.2;
+      bossInstance.runtime.counterStance = true;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      boss.applyBossCounterMechanics(enemy, 50);
+
+      // reflectAmount = Math.floor(50 * 0.2) = 10
+      // counterDamage = Math.floor(50 * 0.5) = 25
+      expect(bossCtx.applyDamageToPlayer).toHaveBeenCalledTimes(2);
+      expect(bossCtx.applyDamageToPlayer).toHaveBeenNthCalledWith(1, 10);
+      expect(bossCtx.applyDamageToPlayer).toHaveBeenNthCalledWith(2, 25);
+      // 两条日志
+      expect(log.addCombatLog).toHaveBeenCalledTimes(2);
+      // counterStance 被清除
+      expect(bossInstance.runtime.counterStance).toBe(false);
+    });
+
+    it('actualDamage <= 0 时不触发反击', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock();
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ id: 'boss-1' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.reflectDamage = 0.5;
+      bossInstance.runtime.counterStance = true;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      boss.applyBossCounterMechanics(enemy, 0);
+
+      expect(bossCtx.applyDamageToPlayer).not.toHaveBeenCalled();
+      expect(log.addCombatLog).not.toHaveBeenCalled();
+      // counterStance 未被清除（未进入反击逻辑）
+      expect(bossInstance.runtime.counterStance).toBe(true);
+    });
+
+    it('非 Boss（bossInstances 无此 id）时不触发反击', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock();
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeNormalEnemy({ id: 'normal-1' });
+      // bossInstances 为空
+
+      boss.applyBossCounterMechanics(enemy, 50);
+
+      expect(bossCtx.applyDamageToPlayer).not.toHaveBeenCalled();
+      expect(log.addCombatLog).not.toHaveBeenCalled();
+    });
+
+    it('reflectDamage 反弹值向下取整为 0 时不造成反伤', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const bossCtx = makeBossCtxMock();
+      const boss = useBossMechanics(state, log, bossCtx);
+
+      const enemy = makeBossEnemy({ id: 'boss-1' });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.reflectDamage = 0.01;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      boss.applyBossCounterMechanics(enemy, 50);
+
+      // reflectAmount = Math.floor(50 * 0.01) = Math.floor(0.5) = 0
+      expect(bossCtx.applyDamageToPlayer).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------- checkBossRevive --------------------
+
+  describe('checkBossRevive：Boss 复活机制', () => {
+    it('canRevive 时恢复 50% HP 并返回 true', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeBossEnemy({ id: 'boss-1', maxHp: 1000, hp: 0 });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.canRevive = true;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      const result = boss.checkBossRevive(enemy);
+
+      expect(result).toBe(true);
+      expect(enemy.hp).toBe(500);
+    });
+
+    it('HP 恢复值 = Math.floor(maxHp * 0.5) 向下取整', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeBossEnemy({ id: 'boss-1', maxHp: 999, hp: 0 });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.canRevive = true;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      boss.checkBossRevive(enemy);
+
+      // Math.floor(999 * 0.5) = Math.floor(499.5) = 499
+      expect(enemy.hp).toBe(499);
+    });
+
+    it('canRevive 时记录复活日志', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeBossEnemy({ id: 'boss-1', name: '黑龙', maxHp: 1000, hp: 0 });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.canRevive = true;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      boss.checkBossRevive(enemy);
+
+      expect(log.addCombatLog).toHaveBeenCalledTimes(1);
+      const logCall = log.addCombatLog.mock.calls[0][0];
+      expect(logCall.message).toContain('复活');
+      expect(logCall.message).toContain('50%');
+      expect(logCall.targetName).toBe('黑龙');
+      expect(logCall.targetId).toBe('boss-1');
+    });
+
+    it('canRevive 后标记被清除（不可重复复活）', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeBossEnemy({ id: 'boss-1', maxHp: 1000, hp: 0 });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.canRevive = true;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      boss.checkBossRevive(enemy);
+
+      expect(bossInstance.runtime.canRevive).toBe(false);
+
+      // 第二次调用不复活
+      enemy.hp = 0;
+      const result2 = boss.checkBossRevive(enemy);
+      expect(result2).toBe(false);
+      expect(enemy.hp).toBe(0);
+    });
+
+    it('无 canRevive 时返回 false 且不修改 HP', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeBossEnemy({ id: 'boss-1', maxHp: 1000, hp: 0 });
+      const bossInstance = wrapAsBossInstance(enemy);
+      // canRevive 未设置（undefined）
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      const result = boss.checkBossRevive(enemy);
+
+      expect(result).toBe(false);
+      expect(enemy.hp).toBe(0);
+      expect(log.addCombatLog).not.toHaveBeenCalled();
+    });
+
+    it('canRevive=false 时返回 false', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeBossEnemy({ id: 'boss-1', maxHp: 1000, hp: 0 });
+      const bossInstance = wrapAsBossInstance(enemy);
+      bossInstance.runtime.canRevive = false;
+      state.bossInstances.set(enemy.id, bossInstance);
+
+      const result = boss.checkBossRevive(enemy);
+
+      expect(result).toBe(false);
+      expect(enemy.hp).toBe(0);
+    });
+
+    it('非 Boss（bossInstances 无此 id）时返回 false', () => {
+      const state = makeStateMock();
+      const log = makeLogMock();
+      const boss = useBossMechanics(state, log, makeBossCtxMock());
+
+      const enemy = makeNormalEnemy({ id: 'normal-1', maxHp: 100, hp: 0 });
+      // bossInstances 为空
+
+      const result = boss.checkBossRevive(enemy);
+
+      expect(result).toBe(false);
+      expect(log.addCombatLog).not.toHaveBeenCalled();
     });
   });
 });

@@ -478,7 +478,7 @@ export const useShopStore = defineStore('shop', () => {
       await characterStore.gainGold(totalPrice);
       useToast().show({
         message: '商店库存更新失败，已退还金币和物品',
-        type: 'error',
+        type: 'danger',
         duration: 3000
       });
       return false;

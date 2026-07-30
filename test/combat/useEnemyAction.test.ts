@@ -24,6 +24,7 @@ import { ref } from 'vue';
 import { useEnemyAction } from '@/modules/combat/composables/useEnemyAction';
 import { createEmptyContainer, processDamagePipeline, type EffectContainer } from '@/modules/combat/effects';
 import { rollDodge } from '@/modules/combat/service';
+import { wrapAsBossInstance } from '@/modules/boss/service';
 import type { EnemyInstance } from '@/modules/enemy/types';
 import type { AiStrategyType } from '@/modules/enemy/types';
 import type { ICombatContext } from '@/modules/combat/combatContext';
@@ -122,6 +123,7 @@ function makeStateMock() {
     currentTarget: { value: null as EnemyInstance | null },
     hasBossEnemy: { value: false },
     effectRegistry: {},
+    bossInstances: new Map(),
   } as never;
 }
 
@@ -511,15 +513,18 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
       ctx.enemy.calculateDamage.mockReturnValue(10);
       const action = useEnemyAction(state, log, ctx);
 
-      const enemy = makeEnemy({ id: 'e1', name: '巨龙', aoeNextAttack: true });
+      const enemy = makeEnemy({ id: 'e1', name: '巨龙' });
+      // aoeNextAttack 是 Boss 运行时状态，需通过 bossInstances Map 设置
+      state.bossInstances.set(enemy.id, wrapAsBossInstance(enemy));
+      state.bossInstances.get(enemy.id)!.runtime.aoeNextAttack = true;
       const result = action.enemyAction(enemy);
 
       expect(result.success).toBe(true);
       expect(result.type).toBe('attack');
       // aoeDamage = round(10 * 1.3) = 13，actualDamage = pipeResult.finalDamage = 20
       expect(result.damage).toBe(20);
-      // aoeNextAttack 应被重置
-      expect(enemy.aoeNextAttack).toBe(false);
+      // aoeNextAttack 应被重置（runtime 字段）
+      expect(state.bossInstances.get(enemy.id)!.runtime.aoeNextAttack).toBe(false);
       // 应记录 AOE 特殊日志（最后一条）
       const lastLog = log.addCombatLog.mock.calls[log.addCombatLog.mock.calls.length - 1][0];
       expect(lastLog.message).toContain('范围攻击');
@@ -532,13 +537,16 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
       const ctx = makeMockCtx();
       const action = useEnemyAction(state, log, ctx);
 
-      const enemy = makeEnemy({ id: 'e1', name: '巨龙', aoeNextAttack: true });
+      const enemy = makeEnemy({ id: 'e1', name: '巨龙' });
+      // aoeNextAttack 是 Boss 运行时状态，需通过 bossInstances Map 设置
+      state.bossInstances.set(enemy.id, wrapAsBossInstance(enemy));
+      state.bossInstances.get(enemy.id)!.runtime.aoeNextAttack = true;
       const result = action.enemyAction(enemy);
 
       expect(result.success).toBe(true);
       expect(result.isDodge).toBe(true);
       expect(result.message).toContain('范围攻击');
-      expect(enemy.aoeNextAttack).toBe(false);
+      expect(state.bossInstances.get(enemy.id)!.runtime.aoeNextAttack).toBe(false);
     });
 
     // -------- basic_attack 决策 --------

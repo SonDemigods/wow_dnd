@@ -43,6 +43,7 @@ function makeStateMock(overrides: Partial<{
     combatId: ref(overrides.combatId ?? 'combat-1'),
     combatLogs: ref<CombatLog[]>(overrides.combatLogs ?? []),
     turnCount: ref(overrides.turnCount ?? 0),
+    bossInstances: new Map(),
   } as never;
 }
 

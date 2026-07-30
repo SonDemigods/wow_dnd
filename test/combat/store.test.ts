@@ -201,6 +201,7 @@ function createCombatStateMock() {
   const turnTimerId = ref<number | null>(null);
   const bossIntroTimerId = ref<number | null>(null);
   const bossPhaseManagers = new Map();
+  const bossInstances = new Map();
   const enemies = ref<EnemyInstance[]>([]);
 
   const isInCombat = computed(() => state.value === 'fighting');
@@ -247,7 +248,7 @@ function createCombatStateMock() {
     combatLogs, combatResult, expGained, goldGained,
     initiativeOrder, currentInitiativeIndex, combatSpeed,
     playerEffects, enemyEffects, enemyPositions, bossIntros,
-    resourceSystems, turnTimerId, bossIntroTimerId, bossPhaseManagers, effectRegistry,
+    resourceSystems, turnTimerId, bossIntroTimerId, bossPhaseManagers, bossInstances, effectRegistry,
     enemies, isInCombat, aliveEnemies, hasBossEnemy, currentTarget,
     cleanup, reset, addEffectToPlayer,
   };

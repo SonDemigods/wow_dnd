@@ -28,6 +28,7 @@ import { useCombatState } from './composables/useCombatState';
 import { useCombatLog } from './composables/useCombatLog';
 import { useBossMechanics, type IBossContext } from './composables/useBossMechanics';
 import { useEnemyAction } from './composables/useEnemyAction';
+import type { Rng } from '@/utils/rng';
 import { useInitiative } from './composables/useInitiative';
 import { usePlayerAction } from './composables/usePlayerAction';
 import { usePassiveSkills } from './composables/usePassiveSkills';
@@ -61,6 +62,7 @@ export const useCombatStore = defineStore('combat', () => {
     getPlayerName: () => ctx.character.name,
     createMinion: (dataId, level) => ctx.enemy.createEnemy(dataId, level),
     rebuildInitiativeOrder: () => initiativeHolder.current?.buildInitiativeOrder(),
+    applyDamageToPlayer: (amount) => ctx.character.takeDamage(amount),
   };
 
   // 4. Boss 机制层（通过 bossCtx 接口访问玩家名称、创建小怪、重建先攻）
@@ -76,7 +78,7 @@ export const useCombatStore = defineStore('combat', () => {
   // 结构性循环依赖：endCombat 调用 player.handleLoot，而 player 又依赖 endCombat（用于 playerFlee 等）。
   // 使用 holder 对象避免 TDZ 风险（player 是 const，定义在 endCombat 之后），
   // 同时显式表达"延迟绑定"意图，避免阅读 endCombat 时困惑 player 的来源。
-  const playerHolder: { current: { handleLoot: (e: EnemyInstance) => void } | null } = { current: null };
+  const playerHolder: { current: { handleLoot: (e: EnemyInstance, rng?: Rng) => void } | null } = { current: null };
 
   // ==================== endCombat ====================
 
@@ -236,7 +238,8 @@ export const useCombatStore = defineStore('combat', () => {
 
   // 8. 玩家行动层（注入 endCombat 和 passive，消除 (state as any) 依赖）
   // BIZ-5：注入 passive 以便在伤害计算中应用 stat_modifier 和 buff 效果
-  const player = usePlayerAction(state, log, ctx, initiative, endCombat, passive);
+  // 阶段九：注入 boss 以便调用 Boss 防御/反击/复活机制（已从 usePlayerAction 迁出到 useBossMechanics）
+  const player = usePlayerAction(state, log, ctx, initiative, endCombat, passive, boss);
 
   // P2-36 修复：player 已就位，绑定到 playerHolder 供 endCombat.handleLoot 使用
   playerHolder.current = player;

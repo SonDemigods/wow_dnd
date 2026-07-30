@@ -39,8 +39,8 @@ vi.mock('@/modules/equipment/db', () => ({
   equipmentDbService: { getAllEquipmentTemplates: mocks.getAllEquipmentTemplatesMock },
 }));
 
-vi.mock('@/services/ItemTemplateCache', () => ({
-  itemTemplateCache: { getAll: mocks.itemCacheGetAllMock },
+vi.mock('@/modules/item-template', () => ({
+  unifiedItemTemplateCache: { getAll: mocks.itemCacheGetAllMock },
 }));
 
 const {
@@ -87,7 +87,7 @@ describe('CrossModuleQuery 跨模块查询服务', () => {
     expect(result).toBeNull();
   });
 
-  it('getAllItemTemplates 委托 itemTemplateCache.getAll', async () => {
+  it('getAllItemTemplates 委托 unifiedItemTemplateCache.getAll', async () => {
     // Arrange
     const items = [{ id: 'i1' }, { id: 'i2' }];
     itemCacheGetAllMock.mockResolvedValue(items);

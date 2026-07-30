@@ -8,7 +8,7 @@
  * 5. 累加不超过 maxValue=6
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { RuneSystem } from '../../../src/modules/combat/resources/RuneSystem';
+import { RuneSystem } from '@/modules/combat/resources/RuneSystem';
 
 describe('RuneSystem 亡灵骑士符文', () => {
   let rune: RuneSystem;

@@ -294,7 +294,7 @@
  * @description 展示角色的完整属性面板，包括核心属性、次级属性、装备槽位和卸装操作
  */
 
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { useEquipmentStore } from '@/modules/equipment';
 import { useBaseStore } from '@/modules/base';
@@ -321,6 +321,14 @@ const emit = defineEmits<{
 
 const characterStore = useCharacterStore();
 const equipmentStore = useEquipmentStore();
+
+// P2 BIZ-10 修复：跟踪待清理的 animationend 监听器，弹窗卸载时主动移除
+const pendingAnimCleanup: Array<{ el: HTMLElement; handler: EventListenerOrEventListenerObject }> = [];
+
+function registerAnimCleanup(el: HTMLElement, handler: () => void): void {
+  pendingAnimCleanup.push({ el, handler });
+  el.addEventListener('animationend', handler, { once: true });
+}
 const baseStore = useBaseStore();
 
 const character = computed(() => characterStore.character);
@@ -485,13 +493,10 @@ async function unequipItem(slotKey: string) {
       ) as HTMLElement;
       if (slotEl) {
         slotEl.classList.add('equip-anim-empty');
-        slotEl.addEventListener(
-          'animationend',
-          () => {
-            slotEl.classList.remove('equip-anim-empty');
-          },
-          { once: true }
-        );
+        // P2 BIZ-10 修复：使用 registerAnimCleanup 跟踪监听器，弹窗卸载时主动清理
+        registerAnimCleanup(slotEl, () => {
+          slotEl.classList.remove('equip-anim-empty');
+        });
       }
       selectedSlot.value = null;
     }
@@ -509,6 +514,14 @@ onMounted(async () => {
   if (characterStore.currentCharacterId) {
     await equipmentStore.initialize(characterStore.currentCharacterId);
   }
+});
+
+// P2 BIZ-10 修复：弹窗卸载时主动清理未触发的 animationend 监听器
+onUnmounted(() => {
+  pendingAnimCleanup.forEach(({ el, handler }) => {
+    el.removeEventListener('animationend', handler);
+  });
+  pendingAnimCleanup.length = 0;
 });
 
 

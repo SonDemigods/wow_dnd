@@ -486,7 +486,7 @@ describe('exploration/events - 事件处理器注册表', () => {
         const result = await cellEventHandlers.trap!(ctx);
 
         // Assert
-        expect(generateTrapDamage).toHaveBeenCalledWith(ctx.areaConfig.level);
+        expect(generateTrapDamage).toHaveBeenCalledWith(ctx.areaConfig.level, expect.objectContaining({ next: expect.any(Function) }));
         expect(mocks.characterStore.takeDamage).toHaveBeenCalledWith(25);
         expect(trapSpy).toHaveBeenCalledWith(
           expect.objectContaining({ damage: 25, trapType: '普通陷阱' })
@@ -542,7 +542,7 @@ describe('exploration/events - 事件处理器注册表', () => {
         const result = await cellEventHandlers.event!(ctx);
 
         // Assert
-        expect(generateRandomEvent).toHaveBeenCalledWith(ctx.areaConfig.level);
+        expect(generateRandomEvent).toHaveBeenCalledWith(ctx.areaConfig.level, expect.objectContaining({ next: expect.any(Function) }));
         expect(mocks.characterStore.receiveHeal).toHaveBeenCalledWith(15);
         expect(eventSpy).toHaveBeenCalledWith(
           expect.objectContaining({ message: '发现神秘泉水', icon: 'game-icons:water-drop' })
@@ -604,7 +604,7 @@ describe('exploration/events - 事件处理器注册表', () => {
         const result = await cellEventHandlers.event!(ctx);
 
         // Assert
-        expect(generateMultiOptionEvent).toHaveBeenCalledWith(ctx.areaConfig.level);
+        expect(generateMultiOptionEvent).toHaveBeenCalledWith(ctx.areaConfig.level, expect.objectContaining({ next: expect.any(Function) }));
         expect(onMultiOptionEvent).toHaveBeenCalledWith(
           expect.objectContaining({ message: '发现一座古老祭坛' })
         );

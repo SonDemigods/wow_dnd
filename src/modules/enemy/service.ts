@@ -5,6 +5,8 @@
  */
 import type { EnemyInstance, EnemyDrop, EnemyData } from './types';
 import type { Stats } from '@/modules/character/types';
+import { generateId } from '@/utils/db-helpers';
+import { defaultRng, type Rng } from '@/utils/rng';
 
 /**
  * 根据模板和等级推导敌人属性统计（含等级缩放）
@@ -86,19 +88,20 @@ export function generateEnemyStats(
  *
  * @param enemy - 敌人实例
  * @param playerDefense - 玩家防御值
- * @param randomFn - 随机数生成函数，默认 Math.random。
- *   暴露为可选参数便于测试注入确定性随机源（避免 mock 全局 Math.random 的副作用），
+ * @param rng - 随机数生成器，默认 `defaultRng`（基于 Math.random）。
+ *   传入 `createSeededRng(seed)` 或 `createRngFromFn(() => 0)` 可注入确定性随机源，
+ *   便于测试断言与战斗回放（避免 mock 全局 Math.random 的副作用）。
  *   生产环境调用无需传参，使用默认值即可。
  * @returns 计算后的伤害值（向下取整，最小为 1）
  */
 export function calculateEnemyDamage(
   enemy: EnemyInstance,
   playerDefense: number,
-  randomFn: () => number = Math.random
+  rng: Rng = defaultRng
 ): number {
   const baseDamage = enemy.physicalAttack ?? 10;
   const damageRange = enemy.damage;
-  const randomFactor = damageRange[0] + randomFn() * (damageRange[1] - damageRange[0]);
+  const randomFactor = damageRange[0] + rng.next() * (damageRange[1] - damageRange[0]);
   const rawDamage = (baseDamage + randomFactor) * 0.5;
   const mitigated = Math.max(1, rawDamage - playerDefense * 0.3);
   return Math.floor(mitigated);
@@ -108,10 +111,11 @@ export function calculateEnemyDamage(
  * 创建完整的敌人实例（纯函数，不涉及 DB 和状态存储）
  * @param template - 敌人模板数据
  * @param level - 敌人等级
+ * @param rng - 随机数生成器，默认 `defaultRng`。传入确定性 RNG 可生成可复现的 ID
  * @returns 完整的敌人实例
  */
-export function createEnemyInstance(template: EnemyData, level: number): EnemyInstance {
-  const id = `enemy_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+export function createEnemyInstance(template: EnemyData, level: number, rng: Rng = defaultRng): EnemyInstance {
+  const id = generateId('enemy', rng);
   const derived = generateEnemyStats(template, level);
 
   const enemy: EnemyInstance = {

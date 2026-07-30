@@ -36,6 +36,7 @@ import {
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useLogStore } from '@/modules/log/store';
 import { generateLogId } from '@/modules/log/service';
+import { defaultRng, type Rng } from '@/utils/rng';
 import {
   MULTI_OPTION_EVENT_PROBABILITY,
   FALLBACK_GOLD_MIN,
@@ -65,6 +66,11 @@ export interface ExplorationContext {
   uiCallbacks: ExplorationUICallbacks | null;
   /** 当前角色 ID（用于 eventBus 事件载荷） */
   characterId: string | null;
+  /**
+   * 可选的随机数生成器，用于确定性回放与测试注入。
+   * 未提供时使用基于 Math.random 的 defaultRng，保持与原行为完全一致。
+   */
+  rng?: Rng;
 }
 
 /**
@@ -242,7 +248,8 @@ export const cellEventHandlers: Partial<Record<CellType, CellEventHandler>> = {
    * 角色死亡时不发射事件/日志（由调用方触发 handleDeath 后统一处理）。
    */
   trap: async (ctx) => {
-    const damage = generateTrapDamage(ctx.areaConfig.level);
+    const rng = ctx.rng ?? defaultRng;
+    const damage = generateTrapDamage(ctx.areaConfig.level, rng);
     await ctx.characterStore.takeDamage(damage);
     const shouldHandleDeath = ctx.characterStore.hp <= 0;
 
@@ -271,9 +278,10 @@ export const cellEventHandlers: Partial<Record<CellType, CellEventHandler>> = {
    * 普通事件通过 applyEventEffect 分发到 effectHandlers 处理。
    */
   event: async (ctx) => {
+    const rng = ctx.rng ?? defaultRng;
     // 多选项事件：仅通知 UI 展示弹窗，效果由 applyEventChoice 在玩家选择后应用
-    if (Math.random() < MULTI_OPTION_EVENT_PROBABILITY) {
-      const multiEvent = generateMultiOptionEvent(ctx.areaConfig.level);
+    if (rng.bool(MULTI_OPTION_EVENT_PROBABILITY)) {
+      const multiEvent = generateMultiOptionEvent(ctx.areaConfig.level, rng);
       ctx.uiCallbacks?.onMultiOptionEvent?.(multiEvent);
 
       useLogStore().addLogEntry({
@@ -287,7 +295,7 @@ export const cellEventHandlers: Partial<Record<CellType, CellEventHandler>> = {
     }
 
     // 普通随机事件：生成效果 → 通过注册表分发应用
-    const eventResult = generateRandomEvent(ctx.areaConfig.level);
+    const eventResult = generateRandomEvent(ctx.areaConfig.level, rng);
     const shouldHandleDeath = await applyEventEffect(
       eventResult.effect.type,
       ctx,
@@ -395,8 +403,9 @@ async function grantFallbackReward(
     console.warn(`[探索] 物品模板 "${itemId}" 不存在，发放兜底奖励`);
   }
 
-  const gold = Math.floor(Math.random() * FALLBACK_GOLD_RANDOM_RANGE) + FALLBACK_GOLD_MIN;
-  const exp = Math.floor(Math.random() * FALLBACK_EXP_RANDOM_RANGE) + FALLBACK_EXP_MIN;
+  const rng = ctx.rng ?? defaultRng;
+  const gold = Math.floor(rng.next() * FALLBACK_GOLD_RANDOM_RANGE) + FALLBACK_GOLD_MIN;
+  const exp = Math.floor(rng.next() * FALLBACK_EXP_RANDOM_RANGE) + FALLBACK_EXP_MIN;
 
   await ctx.characterStore.gainGold(gold);
   await ctx.characterStore.gainExp(exp);

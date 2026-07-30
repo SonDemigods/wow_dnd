@@ -26,8 +26,8 @@
  *  - service 层纯函数（checkQuestProgress / calculateQuestRewards / canAcceptQuest /
  *    generateQuestInstance / getDefaultQuests）使用真实实现，与样板模式一致。
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useQuestStore } from '@/modules/quest/store';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { useQuestStore, setQuestExternalCallbacks, clearQuestExternalCallbacks } from '@/modules/quest/store';
 import { createTestPinia } from '../utils/setup';
 import { eventBus, GameEvents } from '@/modules/bus';
 import type { QuestDefinition, QuestInstance, QuestObjective } from '@/modules/quest/types';
@@ -128,6 +128,22 @@ describe('useQuestStore - 任务 Store', () => {
     mocks.characterStore.level = 5;
     // 重置 inventoryStore.inventory（collect 初始进度扫描测试会修改）
     mocks.inventoryStore.inventory = [];
+
+    // ARCH-2 修复：通过回调注入替代 useInventoryStore 直接调用，
+    // 测试中注入基于 mocks.inventoryStore 的回调以保持原测试断言有效
+    setQuestExternalCallbacks({
+      getInventoryItemCount: (itemId) => {
+        return mocks.inventoryStore.inventory
+          .filter(slot => slot.itemId === itemId)
+          .reduce((sum, slot) => sum + slot.count, 0);
+      },
+      addItemToInventory: (itemId, quantity) => mocks.inventoryStore.addItem(itemId, quantity),
+    });
+  });
+
+  afterEach(() => {
+    // 清除回调引用，避免跨用例泄漏
+    clearQuestExternalCallbacks();
   });
 
   // -------------------- State 初始值 --------------------

@@ -44,4 +44,4 @@ export {
 
 export { getObjectiveText, getEnemyName } from './objective_utils';
 
-export { useQuestStore } from './store';
+export { useQuestStore, setQuestExternalCallbacks, clearQuestExternalCallbacks } from './store';

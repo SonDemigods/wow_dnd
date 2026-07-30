@@ -4,13 +4,17 @@
  * @module data/bosses
  */
 
-import type { EnemyData } from '../modules/enemy/types';
+import type { BossTemplate } from '../modules/boss/types';
 
 /**
  * Boss 怪物数据集（含阶段机制、AI 策略、出场演出）
- * @type {EnemyData[]}
+ *
+ * 阶段四升级：类型从 EnemyData[] 改为 BossTemplate[]。
+ * EnemyData 已移除 phases/intro 字段，Boss 专属配置由 BossTemplate 独立声明。
+ *
+ * @type {BossTemplate[]}
  */
-export const BOSSES: EnemyData[] = [
+export const BOSSES: BossTemplate[] = [
   {
     id: 'dragon_whelp',
     name: '幼龙',

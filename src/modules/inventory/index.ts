@@ -50,4 +50,4 @@ export {
   computeUseEffect
 } from './service';
 
-export { useInventoryStore } from './store';
+export { useInventoryStore, setInventoryExternalCallbacks, clearInventoryExternalCallbacks } from './store';

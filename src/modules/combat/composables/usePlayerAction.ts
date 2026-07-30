@@ -29,6 +29,8 @@ import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
 import type { useInitiative } from './useInitiative';
 import type { usePassiveSkills } from './usePassiveSkills';
+import type { useBossMechanics } from './useBossMechanics';
+import { defaultRng, type Rng } from '@/utils/rng';
 
 /** P3-1：AOE 技能对每个目标造成的伤害占面板值的比例（设计文档：AOE 每目标 70% 基础伤害） */
 const AOE_DAMAGE_PENALTY = 0.7;
@@ -40,12 +42,13 @@ export function usePlayerAction(
   initiative: ReturnType<typeof useInitiative>,
   endCombat: (result: CombatResult) => void,
   passive: ReturnType<typeof usePassiveSkills>,
+  boss: ReturnType<typeof useBossMechanics>,
 ) {
   // P3-82 修复说明：passive 参数为预留扩展点（未来玩家攻击触发 onAttack/onKill 被动钩子）。
   // 当前玩家行动不直接触发被动，被动触发集中在 useEnemyAction/useInitiative。
   // 保留参数而非移除，避免未来扩展时需修改函数签名和所有调用方。
   void passive;
-  const { addCombatLog, saveLogs, createPlayerEffectContext, createEnemyEffectContext } = log;
+  const { addCombatLog, createPlayerEffectContext, createEnemyEffectContext } = log;
   const { aliveEnemies, currentTarget, playerEffects, enemyEffects, effectRegistry, hasBossEnemy } = state;
 
   // ==================== 内部辅助：效果施加 ====================
@@ -133,121 +136,10 @@ export function usePlayerAction(
   }
 
   // ==================== 玩家行动 ====================
-
-  // P2-34 修复：BossRuntime 字段已显式声明到 EnemyInstance 接口中，
-  // 不再需要本地类型断言。直接通过 target.xxx 访问运行时注入字段。
-
-  /**
-   * 应用 BOSS 防御机制（BIZ-6）
-   *
-   * 在玩家对敌人造成伤害前调用：
-   * - invulnerable：无敌，伤害为 0
-   * - shield：护盾吸收伤害（先扣护盾，剩余再扣 HP）
-   *
-   * @param target - 目标敌人
-   * @param rawDamage - 原始伤害
-   * @returns 实际伤害（扣完护盾后）和是否被完全挡住
-   */
-  function applyBossDefenseMechanics(target: EnemyInstance, rawDamage: number): { damage: number; blocked: boolean } {
-    if (target.invulnerable) {
-      addCombatLog({
-        actorType: 'system', actorId: 'system', actorName: '系统',
-        eventType: 'combat_event', targetType: 'enemy', targetId: target.id,
-        targetName: target.name, isCrit: false, isDodge: false,
-        message: `${target.name} 处于无敌状态，免疫伤害！`
-      });
-      return { damage: 0, blocked: true };
-    }
-    if (target.shield && target.shield > 0) {
-      if (rawDamage <= target.shield) {
-        target.shield -= rawDamage;
-        addCombatLog({
-          actorType: 'system', actorId: 'system', actorName: '系统',
-          eventType: 'combat_event', targetType: 'enemy', targetId: target.id,
-          targetName: target.name, isCrit: false, isDodge: false,
-          message: `${target.name} 的护盾吸收了 ${rawDamage} 点伤害！`
-        });
-        return { damage: 0, blocked: true };
-      } else {
-        const remaining = rawDamage - target.shield;
-        addCombatLog({
-          actorType: 'system', actorId: 'system', actorName: '系统',
-          eventType: 'combat_event', targetType: 'enemy', targetId: target.id,
-          targetName: target.name, isCrit: false, isDodge: false,
-          message: `${target.name} 的护盾被击破！吸收了 ${target.shield} 点伤害。`
-        });
-        target.shield = 0;
-        return { damage: remaining, blocked: false };
-      }
-    }
-    return { damage: rawDamage, blocked: false };
-  }
-
-  /**
-   * 应用 BOSS 反击机制（BIZ-6）
-   *
-   * 在玩家对敌人造成伤害后调用：
-   * - reflectDamage：按比例反弹伤害
-   * - counterStance：反击姿态，造成 50% 伤害反击（一次性）
-   *
-   * @param target - 目标敌人
-   * @param actualDamage - 实际造成的伤害
-   */
-  function applyBossCounterMechanics(target: EnemyInstance, actualDamage: number): void {
-    if (actualDamage <= 0) return;
-
-    if (target.reflectDamage && target.reflectDamage > 0) {
-      const reflectAmount = Math.floor(actualDamage * target.reflectDamage);
-      if (reflectAmount > 0) {
-        ctx.character.takeDamage(reflectAmount);
-        addCombatLog({
-          actorType: 'system', actorId: 'system', actorName: '系统',
-          eventType: 'combat_damage', targetType: 'player', targetId: 'player',
-          targetName: ctx.character.name, damage: reflectAmount,
-          isCrit: false, isDodge: false,
-          message: `${target.name} 反弹了 ${reflectAmount} 点伤害！`
-        });
-      }
-    }
-
-    if (target.counterStance) {
-      const counterDamage = Math.floor(actualDamage * 0.5);
-      if (counterDamage > 0) {
-        ctx.character.takeDamage(counterDamage);
-        addCombatLog({
-          actorType: 'system', actorId: 'system', actorName: '系统',
-          eventType: 'combat_damage', targetType: 'player', targetId: 'player',
-          targetName: ctx.character.name, damage: counterDamage,
-          isCrit: false, isDodge: false,
-          message: `${target.name} 反击对 ${ctx.character.name} 造成 ${counterDamage} 点伤害！`
-        });
-      }
-      target.counterStance = false;
-    }
-  }
-
-  /**
-   * 检查 BOSS 复活机制（BIZ-6）
-   *
-   * 在敌人死亡时调用：如果 BOSS 有 canRevive 标记，恢复 50% HP 并清除标记。
-   *
-   * @param target - 目标敌人
-   * @returns 是否复活了
-   */
-  function checkBossRevive(target: EnemyInstance): boolean {
-    if (target.canRevive) {
-      target.hp = Math.floor(target.maxHp * 0.5);
-      target.canRevive = false;
-      addCombatLog({
-        actorType: 'system', actorId: 'system', actorName: '系统',
-        eventType: 'combat_event', targetType: 'enemy', targetId: target.id,
-        targetName: target.name, isCrit: false, isDodge: false,
-        message: `${target.name} 复活了！恢复 50% 生命值！`
-      });
-      return true;
-    }
-    return false;
-  }
+  // 阶段九：Boss 防御/反击/复活机制已迁移到 useBossMechanics，通过 boss 参数调用：
+  //   boss.boss.applyBossDefenseMechanics(target, rawDamage)
+  //   boss.boss.applyBossCounterMechanics(target, actualDamage)
+  //   boss.boss.checkBossRevive(target)
 
   /**
    * 玩家普通攻击
@@ -284,7 +176,7 @@ export function usePlayerAction(
       });
 
       initiative.endPlayerTurn();
-      saveLogs();
+      // P2 BIZ-4 修复：移除重复 saveLogs，endPlayerTurn 内部已调用（若仍战斗中）
 
       return {
         success: true,
@@ -316,14 +208,14 @@ export function usePlayerAction(
 
     // 造成伤害
     // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
-    const { damage: actualDamage } = applyBossDefenseMechanics(target, finalDamage);
+    const { damage: actualDamage } = boss.applyBossDefenseMechanics(target, finalDamage);
     let isDead = false;
     if (actualDamage > 0) {
       isDead = ctx.enemy.takeDamage(target.id, actualDamage);
     }
 
     // BIZ-6：应用 BOSS 反击机制（反弹/反击）
-    applyBossCounterMechanics(target, actualDamage);
+    boss.applyBossCounterMechanics(target, actualDamage);
 
     // 荆棘反伤：对攻击者自身造成反弹伤害
     if (pipeResult.thorns > 0) {
@@ -388,7 +280,7 @@ export function usePlayerAction(
     // 检查战斗是否结束
     if (isDead || !updatedTarget || aliveEnemies.value.length === 0) {
       // BIZ-6：检查 BOSS 复活机制
-      if (isDead && checkBossRevive(target)) {
+      if (isDead && boss.checkBossRevive(target)) {
         initiative.endPlayerTurn();
       } else {
         endCombat('victory');
@@ -396,8 +288,7 @@ export function usePlayerAction(
     } else {
       initiative.endPlayerTurn();
     }
-
-    saveLogs();
+    // P2 BIZ-4 修复：移除重复 saveLogs，endPlayerTurn/endCombat 内部已调用
 
     return {
       success: true,
@@ -489,13 +380,13 @@ export function usePlayerAction(
           const critMultiplier = isCrit ? 1.5 : 1;
           const aoeDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
           // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
-          const { damage: actualAoeDamage } = applyBossDefenseMechanics(e, aoeDamage);
+          const { damage: actualAoeDamage } = boss.applyBossDefenseMechanics(e, aoeDamage);
           if (actualAoeDamage > 0) {
             ctx.enemy.takeDamage(e.id, actualAoeDamage);
           }
 
           // BIZ-6：应用 BOSS 反击机制（反弹/反击）
-          applyBossCounterMechanics(e, actualAoeDamage);
+          boss.applyBossCounterMechanics(e, actualAoeDamage);
 
           // BIZ-1：荆棘反伤：对玩家自身造成反弹伤害（乘以暴击倍率，与 playerAttack 保持一致）
           if (pipeResult.thorns > 0) {
@@ -560,8 +451,7 @@ export function usePlayerAction(
         } else {
           initiative.endPlayerTurn();
         }
-
-        saveLogs();
+        // P2 BIZ-4 修复：移除重复 saveLogs，endPlayerTurn/endCombat 内部已调用
 
         return {
           success: true,
@@ -603,7 +493,7 @@ export function usePlayerAction(
         const skillDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
 
         // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
-        const { damage: actualSkillDamage } = applyBossDefenseMechanics(target, skillDamage);
+        const { damage: actualSkillDamage } = boss.applyBossDefenseMechanics(target, skillDamage);
         let isDead = false;
         if (actualSkillDamage > 0) {
           isDead = ctx.enemy.takeDamage(target.id, actualSkillDamage);
@@ -611,7 +501,7 @@ export function usePlayerAction(
         const updatedTarget = ctx.enemy.getEnemyById(target.id);
 
         // BIZ-6：应用 BOSS 反击机制（反弹/反击）
-        applyBossCounterMechanics(target, actualSkillDamage);
+        boss.applyBossCounterMechanics(target, actualSkillDamage);
 
         // BIZ-1：荆棘反伤（与 playerAttack 保持一致，乘以暴击倍率）
         if (pipeResult.thorns > 0) {
@@ -669,7 +559,7 @@ export function usePlayerAction(
 
         if (isDead || !updatedTarget || aliveEnemies.value.length === 0) {
           // BIZ-6：检查 BOSS 复活机制
-          if (isDead && checkBossRevive(target)) {
+          if (isDead && boss.checkBossRevive(target)) {
             initiative.endPlayerTurn();
           } else {
             endCombat('victory');
@@ -769,8 +659,7 @@ export function usePlayerAction(
 
       initiative.endPlayerTurn();
     }
-
-    saveLogs();
+    // P2 BIZ-4 修复：移除重复 saveLogs，endPlayerTurn/endCombat 内部已调用
 
     return {
       success: true,
@@ -820,7 +709,7 @@ export function usePlayerAction(
         const finalDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
 
         // BIZ-2：应用 BOSS 防御机制（无敌/护盾）
-        const { damage: actualItemDamage } = applyBossDefenseMechanics(target, finalDamage);
+        const { damage: actualItemDamage } = boss.applyBossDefenseMechanics(target, finalDamage);
         let isDead = false;
         if (actualItemDamage > 0) {
           isDead = ctx.enemy.takeDamage(target.id, actualItemDamage);
@@ -830,7 +719,7 @@ export function usePlayerAction(
         damageResult = { damage: finalDamage, isCrit };
 
         // BIZ-2：应用 BOSS 反击机制（反弹/反击）
-        applyBossCounterMechanics(target, actualItemDamage);
+        boss.applyBossCounterMechanics(target, actualItemDamage);
 
         // BIZ-3：荆棘反伤（与 playerAttack 保持一致）
         if (pipeResult.thorns > 0) {
@@ -915,7 +804,7 @@ export function usePlayerAction(
     if (damageResult && aliveEnemies.value.length === 0) {
       const target = currentTarget.value;
       // P1-1：检查 BOSS 复活机制（与 playerAttack/playerSkill 保持一致）
-      if (itemKilledEnemy && target && checkBossRevive(target)) {
+      if (itemKilledEnemy && target && boss.checkBossRevive(target)) {
         initiative.endPlayerTurn();
       } else {
         endCombat('victory');
@@ -923,8 +812,7 @@ export function usePlayerAction(
     } else {
       initiative.endPlayerTurn();
     }
-
-    saveLogs();
+    // P2 BIZ-4 修复：移除重复 saveLogs，endPlayerTurn/endCombat 内部已调用
 
     return {
       success: true,
@@ -962,7 +850,7 @@ export function usePlayerAction(
       });
 
       endCombat('fled');
-      saveLogs();
+      // P2 BIZ-4 修复：移除重复 saveLogs，endCombat 内部已调用
 
       return {
         success: true,
@@ -981,7 +869,7 @@ export function usePlayerAction(
       });
 
       initiative.endPlayerTurn();
-      saveLogs();
+      // P2 BIZ-4 修复：移除重复 saveLogs，endPlayerTurn 内部已调用（若仍战斗中）
 
       return {
         success: false,
@@ -994,13 +882,14 @@ export function usePlayerAction(
   /**
    * 处理掉落（仅 Boss 掉落物品）
    * @param e - 敌人数据
+   * @param rng - 随机数生成器，默认使用 defaultRng（DB-4 修复：支持注入确定性 RNG 用于测试与回放）
    */
-  function handleLoot(e: EnemyInstance): void {
+  function handleLoot(e: EnemyInstance, rng: Rng = defaultRng): void {
     e.drops?.forEach(drop => {
-      if (Math.random() < drop.dropRate) {
+      if (rng.bool(drop.dropRate)) {
         // P2-4：校验 maxAmount >= minAmount，防止配置错误产生负数掉落数量
         const span = Math.max(0, drop.maxAmount - drop.minAmount);
-        const amount = Math.floor(Math.random() * (span + 1)) + drop.minAmount;
+        const amount = rng.int(drop.minAmount, drop.minAmount + span);
         if (amount <= 0) return;
 
         // 获取物品模板信息

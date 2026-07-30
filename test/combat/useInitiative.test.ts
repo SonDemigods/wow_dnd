@@ -22,6 +22,7 @@ import { ref, computed } from 'vue';
 import { useInitiative } from '@/modules/combat/composables/useInitiative';
 import { createEmptyContainer, type EffectContainer } from '@/modules/combat/effects';
 import { processBossPhaseMechanics, applyPhaseStats } from '@/modules/boss/engine';
+import { wrapAsBossInstance } from '@/modules/boss/service';
 import type { EnemyInstance, BossPhase } from '@/modules/enemy/types';
 import type { CombatResult } from '@/modules/combat/types';
 import type { Stats } from '@/modules/character/types';
@@ -105,6 +106,7 @@ function makeStateMock() {
     enemyEffects: ref<Record<string, EffectContainer>>({}),
     enemyPositions: ref<Record<string, { row: 'front' | 'back'; col: number }>>({}),
     bossPhaseManagers: new Map<string, unknown>(),
+    bossInstances: new Map(),
     resourceSystems: ref<unknown[]>([]),
     effectRegistry: {
       reduceSum: vi.fn(() => 0),
@@ -940,6 +942,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
         reset: vi.fn(),
       };
       state.bossPhaseManagers.set('boss1', phaseManager);
+      state.bossInstances.set('boss1', wrapAsBossInstance(bossEnemy));
       // mock processBossPhaseMechanics 返回空（无机制触发）
       vi.mocked(processBossPhaseMechanics).mockReturnValue([]);
       const ctx = makeMockCtx();
@@ -949,7 +952,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       init.singleEnemyTurn('boss1');
 
       // 阶段切换时调用 applyPhaseStats
-      expect(applyPhaseStats).toHaveBeenCalledWith(bossEnemy, phase);
+      expect(applyPhaseStats).toHaveBeenCalledWith(wrapAsBossInstance(bossEnemy), phase);
       // aiStrategy 被更新
       expect(bossEnemy.aiStrategy).toBe('aggressive');
       // 阶段转换日志
@@ -972,6 +975,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
         reset: vi.fn(),
       };
       state.bossPhaseManagers.set('boss1', phaseManager);
+      state.bossInstances.set('boss1', wrapAsBossInstance(bossEnemy));
       vi.mocked(processBossPhaseMechanics).mockReturnValue([]);
       const { eventBus, GameEvents } = await import('@/modules/bus');
       const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
@@ -997,6 +1001,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
         reset: vi.fn(),
       };
       state.bossPhaseManagers.set('boss1', phaseManager);
+      state.bossInstances.set('boss1', wrapAsBossInstance(bossEnemy));
       vi.mocked(processBossPhaseMechanics).mockReturnValue([]);
       const log = makeLogMock();
       const init = useInitiative(state, log, makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
@@ -1022,6 +1027,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
         reset: vi.fn(),
       };
       state.bossPhaseManagers.set('boss1', phaseManager);
+      state.bossInstances.set('boss1', wrapAsBossInstance(bossEnemy));
       vi.mocked(processBossPhaseMechanics).mockReturnValue([]);
       vi.mocked(applyPhaseStats).mockClear();
       const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
@@ -1034,7 +1040,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       // 阶段未切换，不调用 applyPhaseStats
       expect(applyPhaseStats).not.toHaveBeenCalled();
       // 但 currentPhase 存在，仍调用 processBossPhaseMechanics
-      expect(processBossPhaseMechanics).toHaveBeenCalledWith(bossEnemy, phase, expectedTurnCount);
+      expect(processBossPhaseMechanics).toHaveBeenCalledWith(expect.objectContaining({ base: bossEnemy }), phase, expectedTurnCount);
     });
 
     it('Boss 阶段机制触发时记录机制日志并调用 applyMechanicEffect', () => {
@@ -1050,6 +1056,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
         reset: vi.fn(),
       };
       state.bossPhaseManagers.set('boss1', phaseManager);
+      state.bossInstances.set('boss1', wrapAsBossInstance(bossEnemy));
       // mock processBossPhaseMechanics 返回触发的机制
       vi.mocked(processBossPhaseMechanics).mockReturnValue(['enrage']);
       const boss = makeBossMock();
@@ -1063,7 +1070,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
         message: expect.stringContaining('狂暴'),
       }));
       // 调用 boss.applyMechanicEffect
-      expect(boss.applyMechanicEffect).toHaveBeenCalledWith(bossEnemy, 'enrage', phase);
+      expect(boss.applyMechanicEffect).toHaveBeenCalledWith(expect.objectContaining({ base: bossEnemy }), 'enrage', phase);
     });
 
     it('phaseManager 不存在时不处理阶段逻辑', () => {
@@ -1097,6 +1104,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
         reset: vi.fn(),
       };
       state.bossPhaseManagers.set('boss1', phaseManager);
+      state.bossInstances.set('boss1', wrapAsBossInstance(bossEnemy));
       vi.mocked(processBossPhaseMechanics).mockClear();
       vi.mocked(applyPhaseStats).mockClear();
       const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
@@ -1153,6 +1161,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
         reset: vi.fn(),
       };
       state.bossPhaseManagers.set('boss1', phaseManager);
+      state.bossInstances.set('boss1', wrapAsBossInstance(bossEnemy));
       vi.mocked(processBossPhaseMechanics).mockReturnValue([]);
       const log = makeLogMock();
       const init = useInitiative(state, log, makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
@@ -1180,6 +1189,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
         reset: vi.fn(),
       };
       state.bossPhaseManagers.set('boss1', phaseManager);
+      state.bossInstances.set('boss1', wrapAsBossInstance(bossEnemy));
       vi.mocked(processBossPhaseMechanics).mockReturnValue([]);
       const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
 
@@ -1188,7 +1198,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       // aiStrategy 缺失，不应赋值（保持 undefined）
       expect(bossEnemy.aiStrategy).toBeUndefined();
       // 阶段切换日志仍记录
-      expect(applyPhaseStats).toHaveBeenCalledWith(bossEnemy, phase);
+      expect(applyPhaseStats).toHaveBeenCalledWith(wrapAsBossInstance(bossEnemy), phase);
     });
 
     it('阶段切换且 transitionEffect 缺失时事件 effect 默认为 darken', async () => {
@@ -1205,6 +1215,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
         reset: vi.fn(),
       };
       state.bossPhaseManagers.set('boss1', phaseManager);
+      state.bossInstances.set('boss1', wrapAsBossInstance(bossEnemy));
       vi.mocked(processBossPhaseMechanics).mockReturnValue([]);
       const init = useInitiative(state, makeLogMock(), makeMockCtx(), makeEnemyActionMock(), makeBossMock(), vi.fn(), makePassiveMock());
 
@@ -1230,6 +1241,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
         reset: vi.fn(),
       };
       state.bossPhaseManagers.set('boss1', phaseManager);
+      state.bossInstances.set('boss1', wrapAsBossInstance(bossEnemy));
       // 返回未知机制类型（不在 mechNames 映射中）
       vi.mocked(processBossPhaseMechanics).mockReturnValue(['unknown_mech' as never]);
       const boss = makeBossMock();
@@ -1242,7 +1254,7 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       expect(log.addCombatLog).toHaveBeenCalledWith(expect.objectContaining({
         message: expect.stringContaining('unknown_mech'),
       }));
-      expect(boss.applyMechanicEffect).toHaveBeenCalledWith(bossEnemy, 'unknown_mech', phase);
+      expect(boss.applyMechanicEffect).toHaveBeenCalledWith(expect.objectContaining({ base: bossEnemy }), 'unknown_mech', phase);
     });
   });
 

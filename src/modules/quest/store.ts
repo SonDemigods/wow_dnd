@@ -53,7 +53,6 @@ import { eventBus, GameEvents } from '@/modules/bus';
 import { useLogStore } from '@/modules/log/store';
 import { generateLogId } from '@/modules/log/service';
 import { useCharacterStore } from '@/modules/character/store';
-import { useInventoryStore } from '@/modules/inventory/store';
 import { useToast } from '@/composables/useToast';
 import {
   checkQuestProgress,
@@ -62,6 +61,50 @@ import {
   generateQuestInstance,
   getDefaultQuests
 } from './service';
+
+/**
+ * 背包操作回调类型（ARCH-2 修复：回调注入替代 quest → inventory 静态依赖）
+ *
+ * quest 模块在 acceptQuest（查询 collect 任务初始进度）和 _grantQuestRewards（发放物品奖励）
+ * 时需要访问背包数据，原直接 import useInventoryStore 形成循环依赖。
+ * 通过回调注入切断依赖，由 GameBootstrap 在初始化时注入 inventoryStore 的对应方法。
+ */
+type GetInventoryItemCountCallback = (itemId: string) => number;
+type AddItemToInventoryCallback = (itemId: string, quantity: number) => number;
+
+/**
+ * 背包操作回调引用（模块级单例）
+ *
+ * 由 GameBootstrap.initialize 调用 setQuestExternalCallbacks 注入，
+ * quest/store 内部 acceptQuest / _grantQuestRewards 通过此回调访问背包。
+ *
+ * 设计权衡同 inventory/store.ts 的 onItemCollectedCallback：
+ * - 同步语义优于 EventBus 异步触发
+ * - 回调注入消除 quest → inventory 静态依赖（循环依赖）
+ */
+let getInventoryItemCountCallback: GetInventoryItemCountCallback | null = null;
+let addItemToInventoryCallback: AddItemToInventoryCallback | null = null;
+
+/**
+ * 设置 quest 模块的外部回调（供 GameBootstrap 在初始化时调用）
+ *
+ * @param callbacks - 外部回调集合，传 null 表示清除
+ */
+export function setQuestExternalCallbacks(callbacks: {
+  getInventoryItemCount: GetInventoryItemCountCallback;
+  addItemToInventory: AddItemToInventoryCallback;
+} | null): void {
+  getInventoryItemCountCallback = callbacks?.getInventoryItemCount ?? null;
+  addItemToInventoryCallback = callbacks?.addItemToInventory ?? null;
+}
+
+/**
+ * 清除 quest 模块的外部回调（供 GameBootstrap.dispose 调用，避免回调泄漏）
+ */
+export function clearQuestExternalCallbacks(): void {
+  getInventoryItemCountCallback = null;
+  addItemToInventoryCallback = null;
+}
 
 /**
  * 任务状态存储
@@ -400,15 +443,14 @@ export const useQuestStore = defineStore('quest', () => {
     const instance = generateQuestInstance(definition);
 
     // P1-1：对 collect 类型目标，扫描当前背包设置初始进度
-    const inventoryStore = useInventoryStore();
+    // ARCH-2 修复：通过回调注入替代 useInventoryStore() 直接调用，消除 quest → inventory 静态依赖
     const hasCollectObjective = definition.objectives.some(obj => obj.type === 'collect' && obj.itemId);
-    if (hasCollectObjective) {
+    const getItemCount = getInventoryItemCountCallback;
+    if (hasCollectObjective && getItemCount) {
       instance.progress = instance.progress.map(prog => {
         const obj = definition.objectives.find(o => o.key === prog.objectiveKey);
         if (obj?.type === 'collect' && obj.itemId) {
-          const owned = inventoryStore.inventory
-            .filter(slot => slot.itemId === obj.itemId)
-            .reduce((sum, slot) => sum + slot.count, 0);
+          const owned = getItemCount(obj.itemId);
           return { ...prog, current: Math.min(owned, prog.target) };
         }
         return prog;
@@ -614,10 +656,11 @@ export const useQuestStore = defineStore('quest', () => {
       await useCharacterStore().gainGold(rewards.gold);
     }
 
-    // 物品奖励 → inventoryStore
+    // 物品奖励 → inventoryStore（ARCH-2 修复：通过回调注入替代 useInventoryStore() 直接调用）
     for (const item of rewards.items) {
       // P2-2：检查 addItem 返回值，背包满时提示玩家
-      const added = useInventoryStore().addItem(item.itemId, item.count);
+      // ARCH-2 修复：回调未注入时降级为 0（视为添加失败），并提示玩家
+      const added = addItemToInventoryCallback ? addItemToInventoryCallback(item.itemId, item.count) : 0;
       if (added < item.count) {
         useToast().show({
           message: `背包已满，任务奖励物品仅获得 ${added}/${item.count}`,

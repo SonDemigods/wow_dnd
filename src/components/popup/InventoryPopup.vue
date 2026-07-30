@@ -176,7 +176,7 @@
  * @description 展示角色背包物品网格，支持按分类筛选、整理堆叠、使用消耗品、装备武器/护甲到槽位及丢弃物品操作
  */
 
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { RecycleScroller } from 'vue-virtual-scroller';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
@@ -213,6 +213,16 @@ const SLOT_NAMES: Record<EquipmentSlot, string> = {
   armor3: '护甲槽3',
   armor4: '护甲槽4'
 };
+
+// P2 BIZ-9 修复：跟踪待清理的 animationend 监听器，弹窗卸载时主动移除
+// 避免 { once: true } 在动画未触发时残留（如弹窗快速关闭）
+const pendingAnimCleanup: Array<{ el: HTMLElement; handler: EventListenerOrEventListenerObject }> = [];
+
+/** 注册一次性 animationend 监听器并加入清理队列 */
+function registerAnimCleanup(el: HTMLElement, handler: () => void): void {
+  pendingAnimCleanup.push({ el, handler });
+  el.addEventListener('animationend', handler, { once: true });
+}
 
 defineProps<{
   visible: boolean;
@@ -452,13 +462,10 @@ async function useItem(itemId: string) {
   ) as HTMLElement;
   if (slotEl) {
     slotEl.style.animation = 'item-bounce 0.4s ease';
-    slotEl.addEventListener(
-      'animationend',
-      () => {
-        slotEl.style.animation = '';
-      },
-      { once: true }
-    );
+    // P2 BIZ-9 修复：使用 registerAnimCleanup 跟踪监听器，弹窗卸载时主动清理
+    registerAnimCleanup(slotEl, () => {
+      slotEl.style.animation = '';
+    });
   }
 
   toast.show({ message: getEffectToast(info), type: 'success', icon: '💊' });
@@ -507,13 +514,10 @@ async function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
     ) as HTMLElement;
     if (slotEl) {
       slotEl.classList.add('equip-anim-fill');
-      slotEl.addEventListener(
-        'animationend',
-        () => {
-          slotEl.classList.remove('equip-anim-fill');
-        },
-        { once: true }
-      );
+      // P2 BIZ-9 修复：使用 registerAnimCleanup 跟踪监听器，弹窗卸载时主动清理
+      registerAnimCleanup(slotEl, () => {
+        slotEl.classList.remove('equip-anim-fill');
+      });
     }
     toast.show({
       message: `已装备 ${item.name} 到 ${SLOT_NAMES[slot]}`,
@@ -589,6 +593,14 @@ async function loadInventory() {
 
 onMounted(() => {
   loadInventory();
+});
+
+// P2 BIZ-9 修复：弹窗卸载时主动清理未触发的 animationend 监听器
+onUnmounted(() => {
+  pendingAnimCleanup.forEach(({ el, handler }) => {
+    el.removeEventListener('animationend', handler);
+  });
+  pendingAnimCleanup.length = 0;
 });
 </script>
 

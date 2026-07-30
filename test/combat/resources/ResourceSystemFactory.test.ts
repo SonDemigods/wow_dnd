@@ -14,7 +14,7 @@
  * 11. getManaReplacingSystems 方法
  */
 import { describe, it, expect } from 'vitest';
-import { ResourceSystemFactory } from '../../../src/modules/combat/resources/ResourceSystemFactory';
+import { ResourceSystemFactory } from '@/modules/combat/resources/ResourceSystemFactory';
 
 describe('ResourceSystemFactory 全职业映射', () => {
   it('warrior 返回 [RageSystem]，replacesMana 为 true', () => {

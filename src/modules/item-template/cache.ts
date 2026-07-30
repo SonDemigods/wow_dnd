@@ -4,9 +4,9 @@
  *   缓存合并后的物品模板（普通物品 + 装备），提供内存级查询。
  *   首次查询时从 DB 加载并合并，后续查询直接命中内存。
  *
- *   与 services/ItemTemplateCache 的区别：
- *   - ItemTemplateCache（旧）：仅缓存普通物品模板，保留做兼容期（R1 风险缓解）
- *   - UnifiedItemTemplateCache（新）：缓存合并后的模板，供 inventory/store 使用
+ *   ARCH-1 修复后，本缓存为系统内唯一的物品模板缓存：
+ *   - inventory/store、services/CrossModuleQuery 均通过 unifiedItemTemplateCache 访问
+ *   - 原 services/ItemTemplateCache 已删除（避免双重缓存数据不一致）
  *
  *   采用懒加载 + Promise 去重策略，避免并发重复 DB 查询。
  *
@@ -102,7 +102,7 @@ class UnifiedItemTemplateCacheService {
   /**
    * 获取全量合并模板
    *
-   * 未加载时自动触发 load。load 失败时返回空数组兜底（与 ItemTemplateCache 行为一致）。
+   * 未加载时自动触发 load。load 失败时返回空数组兜底。
    *
    * @returns 合并后的物品模板列表（普通物品 + 转换后的装备）
    */

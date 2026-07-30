@@ -126,7 +126,8 @@ const skillsStore = useSkillStore();
 const characterStore = useCharacterStore();
 
 const selectedSkill = ref<Skill | null>(null);
-const selectedSlotIndex = ref<number | null>(null);
+// P2 TS-4 修复：使用 SkillSlotIndex 精确类型替代 number，消 equipSkill 调用处的 as 断言
+const selectedSlotIndex = ref<SkillSlotIndex | null>(null);
 const classSkills = ref<Skill[]>([]);
 const barRenderKey = ref(0);
 
@@ -182,9 +183,9 @@ function activateSkill(skillId: string) {
     if (skillAtSlot0) {
       skillsStore.unequipSkill(skillAtSlot0);
     }
-    skillsStore.equipSkill(skillId, 0 as SkillSlotIndex);
+    skillsStore.equipSkill(skillId, 0);
   } else {
-    skillsStore.equipSkill(skillId, targetSlot as SkillSlotIndex);
+    skillsStore.equipSkill(skillId, targetSlot);
   }
   selectedSlotIndex.value = null;
   barRenderKey.value++;
@@ -202,9 +203,10 @@ function deactivateSkill(skillId: string) {
   barRenderKey.value++;
 }
 
-function findEmptySlot(): number | null {
+function findEmptySlot(): SkillSlotIndex | null {
   const emptyIndex = skillsStore.skillBar.slots.findIndex(slot => slot === null);
-  return emptyIndex !== -1 ? emptyIndex : null;
+  // skillBar.slots 长度固定为 4（SkillSlotIndex=0|1|2|3），findIndex 返回 -1 或 0-3
+  return emptyIndex !== -1 ? (emptyIndex as SkillSlotIndex) : null;
 }
 
 async function loadClassSkills() {

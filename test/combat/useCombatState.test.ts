@@ -119,6 +119,11 @@ describe('useCombatState - 战斗状态 Composable', () => {
       expect(s.bossPhaseManagers.size).toBe(0);
     });
 
+    it('bossInstances 初始为空 Map', () => {
+      const s = useCombatState(createCombatContext());
+      expect(s.bossInstances.size).toBe(0);
+    });
+
     it('effectRegistry 已注册默认处理器（非空）', () => {
       const s = useCombatState(createCombatContext());
       // createDefaultRegistry 会注册多个 effect handler，验证非空
@@ -277,8 +282,8 @@ describe('useCombatState - 战斗状态 Composable', () => {
       expect(s.goldGained.value).toBe(0);
       expect(s.initiativeOrder.value).toEqual([]);
       expect(s.currentInitiativeIndex.value).toBe(0);
-      // combatSpeed 是用户偏好（1x/2x 倍率），reset 不重置以保留用户设置
-      expect(s.combatSpeed.value).toBe(2);
+      // P2 BIZ-1 修复：reset 重置战斗速度为默认值 1x，避免上一场 2x 速度残留到新战斗
+      expect(s.combatSpeed.value).toBe(1);
     });
 
     it('reset 不删除 enemiesStore 中的敌人', () => {
@@ -298,10 +303,12 @@ describe('useCombatState - 战斗状态 Composable', () => {
       const s = useCombatState(createCombatContext());
       s.bossIntros.value = { boss1: { title: 'Boss 出场' } as never };
       s.bossPhaseManagers.set('boss1', {} as never);
+      s.bossInstances.set('boss1', {} as never);
 
       s.reset();
 
       expect(s.bossPhaseManagers.size).toBe(0);
+      expect(s.bossInstances.size).toBe(0);
       expect(s.bossIntros.value).toEqual({});
     });
 

@@ -4,6 +4,7 @@
  * @module exploration
  */
 import type { GridEventType, GridEventProbability, ExplorationCell, RandomEventResult, MultiOptionEventResult, GridGenerationConfig, CellType } from './types';
+import { defaultRng, type Rng } from '@/utils/rng';
 import {
   GRID_SIZE,
   MONSTER_PROBABILITY_BASE,
@@ -70,10 +71,15 @@ export const EVENT_TO_CELL_TYPE: Record<GridEventType, CellType> = {
   boss: 'boss',
 };
 
-/** 从数组中随机选取一个元素 */
-export function pickRandomFromArray<T>(arr: T[]): T | undefined {
+/**
+ * 从数组中随机选取一个元素
+ * @param arr - 候选数组
+ * @param rng - 随机数生成器，默认使用基于 Math.random 的 defaultRng
+ * @returns 随机元素；数组为空时返回 undefined
+ */
+export function pickRandomFromArray<T>(arr: T[], rng: Rng = defaultRng): T | undefined {
   if (arr.length === 0) return undefined;
-  return arr[Math.floor(Math.random() * arr.length)];
+  return rng.pick(arr);
 }
 
 // ============================================================
@@ -114,24 +120,23 @@ export function computeEventProbability(avgLevel: number): GridEventProbability 
  * @param minLevel - 区域最低等级
  * @param maxLevel - 区域最高等级
  * @param maxPoolSize - 物品池最大数量
+ * @param rng - 随机数生成器，默认使用基于 Math.random 的 defaultRng
  * @returns 筛选后的物品ID列表
  */
 export function buildItemPool(
   allItems: Array<{ id: string; level?: number; rarity: string }>,
   minLevel: number,
   maxLevel: number,
-  maxPoolSize: number = ITEM_POOL_DEFAULT_MAX_SIZE
+  maxPoolSize: number = ITEM_POOL_DEFAULT_MAX_SIZE,
+  rng: Rng = defaultRng
 ): string[] {
   const suitableItems = allItems.filter(item => {
     const itemLevel = item.level ?? RARITY_LEVEL_MAP[item.rarity] ?? 0;
     return itemLevel >= minLevel - 1 && itemLevel <= maxLevel + 2;
   });
   // BIZ-8：使用 Fisher-Yates 洗牌算法，避免 sort(random) 分布不均匀
-  const shuffled = [...suitableItems];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
+  // rng.shuffle 返回新数组，不修改原数组，与原手动洗牌行为一致
+  const shuffled = rng.shuffle(suitableItems);
   const pool = shuffled.slice(0, maxPoolSize).map(item => item.id);
   // 如果没有合适的物品，至少提供基础药水
   if (pool.length === 0) {
@@ -151,11 +156,12 @@ export function buildItemPool(
  * 随机值落在哪个桶就返回对应事件类型。相比轮盘赌算法更简洁。
  *
  * @param probability - 事件概率配置（五项之和为 100）
+ * @param rng - 随机数生成器，默认使用基于 Math.random 的 defaultRng
  * @returns 选中的事件类型
  */
-export function determineCellEvent(probability: GridEventProbability): GridEventType {
+export function determineCellEvent(probability: GridEventProbability, rng: Rng = defaultRng): GridEventType {
   const total = probability.monster + probability.item + probability.trap + probability.event + probability.empty;
-  let random = Math.random() * total;
+  let random = rng.next() * total;
 
   // 按顺序检查累积概率区间
   if (random < probability.monster) return 'monster';
@@ -172,11 +178,12 @@ export function determineCellEvent(probability: GridEventProbability): GridEvent
 /**
  * 根据区域等级计算陷阱伤害值
  * @param areaLevel - 区域等级
+ * @param rng - 随机数生成器，默认使用基于 Math.random 的 defaultRng
  * @returns 伤害值（最小为1）
  */
-export function generateTrapDamage(areaLevel: number): number {
+export function generateTrapDamage(areaLevel: number, rng: Rng = defaultRng): number {
   const baseDamage = areaLevel * TRAP_DAMAGE_BASE;
-  const variance = (Math.random() - 0.5) * TRAP_DAMAGE_VARIANCE;
+  const variance = (rng.next() - 0.5) * TRAP_DAMAGE_VARIANCE;
   return Math.max(TRAP_DAMAGE_MIN, Math.floor(baseDamage + variance));
 }
 
@@ -203,8 +210,8 @@ export function generateItemForCell(itemPool: string[]): string {
  * @param monsterPool - 可用的怪物 ID 列表
  * @returns 选中的怪物 ID，池为空时返回空字符串
  */
-export function generateEnemyForCell(monsterPool: string[]): string {
-  return pickRandomFromArray(monsterPool) ?? '';
+export function generateEnemyForCell(monsterPool: string[], rng: Rng = defaultRng): string {
+  return pickRandomFromArray(monsterPool, rng) ?? '';
 }
 
 
@@ -217,14 +224,15 @@ export function generateEnemyForCell(monsterPool: string[]): string {
  * 最后一个分支作为兜底。
  *
  * @param areaLevel - 区域等级
+ * @param rng - 随机数生成器，默认使用基于 Math.random 的 defaultRng
  * @returns 随机事件的结果，包含消息、图标和效果
  */
-export function generateRandomEvent(areaLevel: number): RandomEventResult {
-  const random = Math.random();
+export function generateRandomEvent(areaLevel: number, rng: Rng = defaultRng): RandomEventResult {
+  const random = rng.next();
 
   // [0, 0.3) → 30% 概率恢复生命值
   if (random < RANDOM_EVENT_HEAL_THRESHOLD) {
-    const healAmount = Math.floor(areaLevel * HEAL_AMOUNT_LEVEL_COEFFICIENT + Math.random() * HEAL_AMOUNT_RANDOM_MAX);
+    const healAmount = Math.floor(areaLevel * HEAL_AMOUNT_LEVEL_COEFFICIENT + rng.next() * HEAL_AMOUNT_RANDOM_MAX);
     return {
       message: `发现神秘泉水，恢复了 ${healAmount} 点生命值`,
       icon: 'game-icons:water-drop',
@@ -233,7 +241,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
   }
   // [0.3, 0.5) → 20% 概率恢复魔法值
   if (random < RANDOM_EVENT_MANA_THRESHOLD) {
-    const mpAmount = Math.floor(areaLevel * MANA_AMOUNT_LEVEL_COEFFICIENT + Math.random() * MANA_AMOUNT_RANDOM_MAX);
+    const mpAmount = Math.floor(areaLevel * MANA_AMOUNT_LEVEL_COEFFICIENT + rng.next() * MANA_AMOUNT_RANDOM_MAX);
     return {
       message: `发现魔法水晶，恢复了 ${mpAmount} 点魔法值`,
       icon: 'game-icons:emerald',
@@ -242,7 +250,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
   }
   // [0.5, 0.65) → 15% 概率获得经验值
   if (random < RANDOM_EVENT_EXP_THRESHOLD) {
-    const expAmount = Math.floor(areaLevel * EXP_AMOUNT_LEVEL_COEFFICIENT + Math.random() * EXP_AMOUNT_RANDOM_MAX);
+    const expAmount = Math.floor(areaLevel * EXP_AMOUNT_LEVEL_COEFFICIENT + rng.next() * EXP_AMOUNT_RANDOM_MAX);
     return {
       message: `发现古代石碑，获得了 ${expAmount} 点经验值`,
       icon: 'game-icons:spell-book',
@@ -251,7 +259,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
   }
   // [0.65, 0.8) → 15% 概率受到陷阱伤害
   if (random < RANDOM_EVENT_DAMAGE_THRESHOLD) {
-    const trapDamage = Math.floor(areaLevel * DAMAGE_AMOUNT_LEVEL_COEFFICIENT + Math.random() * DAMAGE_AMOUNT_RANDOM_MAX);
+    const trapDamage = Math.floor(areaLevel * DAMAGE_AMOUNT_LEVEL_COEFFICIENT + rng.next() * DAMAGE_AMOUNT_RANDOM_MAX);
     return {
       message: `触发了隐藏陷阱，受到 ${trapDamage} 点伤害`,
       icon: 'game-icons:caltrops',
@@ -260,7 +268,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
   }
   // [0.8, 0.9) → 10% 概率损失魔法值
   if (random < RANDOM_EVENT_MP_LOSS_THRESHOLD) {
-    const mpLoss = Math.floor(areaLevel * MP_LOSS_LEVEL_COEFFICIENT + Math.random() * MP_LOSS_RANDOM_MAX);
+    const mpLoss = Math.floor(areaLevel * MP_LOSS_LEVEL_COEFFICIENT + rng.next() * MP_LOSS_RANDOM_MAX);
     return {
       message: `遭遇魔法干扰，损失了 ${mpLoss} 点魔法值`,
       icon: 'game-icons:magic-swirl',
@@ -268,7 +276,7 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
     };
   }
   // [0.9, 1.0) → 10% 概率获得金币
-  const goldAmount = Math.floor(areaLevel * GOLD_AMOUNT_LEVEL_COEFFICIENT + Math.random() * GOLD_AMOUNT_RANDOM_MAX);
+  const goldAmount = Math.floor(areaLevel * GOLD_AMOUNT_LEVEL_COEFFICIENT + rng.next() * GOLD_AMOUNT_RANDOM_MAX);
   return {
     message: `发现宝箱，获得了 ${goldAmount} 金币`,
     icon: 'game-icons:two-coins',
@@ -283,10 +291,11 @@ export function generateRandomEvent(areaLevel: number): RandomEventResult {
 /**
  * 多选项事件模板
  *
- * 每个模板为函数，接收 areaLevel 返回完整的事件描述与选项列表。
+ * 每个模板为函数，接收 areaLevel 和 rng 返回完整的事件描述与选项列表。
  * 选项设计遵循风险/收益权衡原则：高收益选项附带风险，安全选项收益较低。
+ * 模板签名统一接收 rng 参数，确保所有随机性均可注入确定性源。
  */
-const multiOptionEventTemplates: Array<(areaLevel: number) => MultiOptionEventResult> = [
+const multiOptionEventTemplates: Array<(areaLevel: number, rng: Rng) => MultiOptionEventResult> = [
   // 神秘祭坛：献祭 HP 换取经验，或直接离开
   (lv) => ({
     message: '发现一座古老祭坛，表面泛着幽幽蓝光',
@@ -315,11 +324,11 @@ const multiOptionEventTemplates: Array<(areaLevel: number) => MultiOptionEventRe
     ],
   }),
   // 黑色药水：未知效果
-  (lv) => ({
+  (lv, rng) => ({
     message: '发现一瓶冒着黑烟的神秘药水',
     icon: 'game-icons:potion-ball',
     choices: [
-      { label: '勇敢饮下（可能恢复或受伤）', icon: 'game-icons:drink-me', effect: { type: Math.random() < 0.5 ? 'heal' : 'damage', amount: lv * 4 + 8 } },
+      { label: '勇敢饮下（可能恢复或受伤）', icon: 'game-icons:drink-me', effect: { type: rng.bool(0.5) ? 'heal' : 'damage', amount: lv * 4 + 8 } },
       { label: '丢弃药水', icon: 'game-icons:trash', effect: { type: 'exp', amount: lv * 2 } },
     ],
   }),
@@ -332,11 +341,12 @@ const multiOptionEventTemplates: Array<(areaLevel: number) => MultiOptionEventRe
  * 多选项事件让玩家做出策略性选择，每个选项有不同的风险/收益。
  *
  * @param areaLevel - 区域等级
+ * @param rng - 随机数生成器，默认使用基于 Math.random 的 defaultRng
  * @returns 多选项事件结果
  */
-export function generateMultiOptionEvent(areaLevel: number): MultiOptionEventResult {
-  const template = multiOptionEventTemplates[Math.floor(Math.random() * multiOptionEventTemplates.length)];
-  return template(areaLevel);
+export function generateMultiOptionEvent(areaLevel: number, rng: Rng = defaultRng): MultiOptionEventResult {
+  const template = rng.pick(multiOptionEventTemplates);
+  return template(areaLevel, rng);
 }
 
 // ============================================================
@@ -348,9 +358,10 @@ export function generateMultiOptionEvent(areaLevel: number): MultiOptionEventRes
  * 随机生成指定尺寸的探索网格，放置起点、商店、任务板、营地和 BOSS 等固定事件，
  * 并根据区域配置的概率分布随机填充怪物、物品、陷阱等事件格子。
  * @param config - 网格生成配置
+ * @param rng - 随机数生成器，默认使用基于 Math.random 的 defaultRng
  * @returns 完整的探索网格二维数组
  */
-export function generateGrid(config: GridGenerationConfig): ExplorationCell[][] {
+export function generateGrid(config: GridGenerationConfig, rng: Rng = defaultRng): ExplorationCell[][] {
   const size = config.size ?? GRID_SIZE;
 
   // 初始化空网格
@@ -363,7 +374,7 @@ export function generateGrid(config: GridGenerationConfig): ExplorationCell[][] 
   }
 
   // 放置固定事件（起点、商店、任务板、营地、Boss）
-  placeFixedEvents(grid, size, config.bossPool);
+  placeFixedEvents(grid, size, config.bossPool, rng);
 
   // 收集所有空格子坐标
   const emptyCells: { x: number; y: number }[] = [];
@@ -375,18 +386,15 @@ export function generateGrid(config: GridGenerationConfig): ExplorationCell[][] 
     }
   }
 
-  // 打乱空格子顺序
-  for (let i = emptyCells.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [emptyCells[i], emptyCells[j]] = [emptyCells[j], emptyCells[i]];
-  }
+  // 打乱空格子顺序（rng.shuffle 返回新数组）
+  const shuffledEmptyCells = rng.shuffle(emptyCells);
 
   let cellIndex = 0;
 
   // 第一步：优先放置任务所需的怪物
   for (const monsterId of config.questNormalMonsters) {
-    if (cellIndex >= emptyCells.length) break;
-    const pos = emptyCells[cellIndex];
+    if (cellIndex >= shuffledEmptyCells.length) break;
+    const pos = shuffledEmptyCells[cellIndex];
     grid[pos.y][pos.x] = { x: pos.x, y: pos.y, type: 'monster', explored: false, accessible: false, visited: false, completed: false, monsterId };
     cellIndex++;
   }
@@ -394,21 +402,21 @@ export function generateGrid(config: GridGenerationConfig): ExplorationCell[][] 
   // 第二步：对剩余空格子按概率随机分配事件类型
   const probability = config.eventProbability;
   const monsterPool = config.monsterPool;
-  for (let i = cellIndex; i < emptyCells.length; i++) {
-    const pos = emptyCells[i];
-    const eventType = determineCellEvent(probability);
+  for (let i = cellIndex; i < shuffledEmptyCells.length; i++) {
+    const pos = shuffledEmptyCells[i];
+    const eventType = determineCellEvent(probability, rng);
 
     const cellType: CellType = EVENT_TO_CELL_TYPE[eventType];
     let cellMonsterId: string | undefined;
     if (eventType === 'monster' && monsterPool.length > 0) {
-      cellMonsterId = generateEnemyForCell(monsterPool);
+      cellMonsterId = generateEnemyForCell(monsterPool, rng);
     }
 
     grid[pos.y][pos.x] = { x: pos.x, y: pos.y, type: cellType, explored: false, accessible: false, visited: false, completed: false, monsterId: cellMonsterId };
   }
 
   // 第三步：随机选取 2~3 个宝箱格标记为隐藏房间（含更丰厚奖励，相邻格探索后揭示）
-  markHiddenRooms(grid, size);
+  markHiddenRooms(grid, size, rng);
 
   return grid;
 }
@@ -418,8 +426,12 @@ export function generateGrid(config: GridGenerationConfig): ExplorationCell[][] 
  *
  * 隐藏房间在生成时不可见、不可访问，当任意相邻格被探索后自动揭示。
  * 隐藏房间通常包含更高等级的物品奖励，鼓励玩家探索地图边缘。
+ *
+ * @param grid - 探索网格
+ * @param size - 网格尺寸
+ * @param rng - 随机数生成器
  */
-function markHiddenRooms(grid: ExplorationCell[][], size: number): void {
+function markHiddenRooms(grid: ExplorationCell[][], size: number, rng: Rng): void {
   const treasureCells: { x: number; y: number }[] = [];
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -429,19 +441,16 @@ function markHiddenRooms(grid: ExplorationCell[][], size: number): void {
     }
   }
 
-  // 打乱顺序
-  for (let i = treasureCells.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [treasureCells[i], treasureCells[j]] = [treasureCells[j], treasureCells[i]];
-  }
+  // 打乱顺序（rng.shuffle 返回新数组，不修改原数组）
+  const shuffled = rng.shuffle(treasureCells);
 
   // 标记 2~3 个为隐藏（不超过宝箱总数）
   const hiddenCount = Math.min(
-    treasureCells.length,
-    HIDDEN_ROOM_MIN_COUNT + Math.floor(Math.random() * (HIDDEN_ROOM_MAX_COUNT - HIDDEN_ROOM_MIN_COUNT + 1))
+    shuffled.length,
+    rng.int(HIDDEN_ROOM_MIN_COUNT, HIDDEN_ROOM_MAX_COUNT)
   );
   for (let i = 0; i < hiddenCount; i++) {
-    const { x, y } = treasureCells[i];
+    const { x, y } = shuffled[i];
     grid[y][x].hidden = true;
     grid[y][x].explored = false;
     grid[y][x].accessible = false;
@@ -568,8 +577,10 @@ function getDistance(pos1: { x: number; y: number }, pos2: { x: number; y: numbe
  * 查找一个不与任何已占用位置相邻的空位。
  * 用于放置营地——营地应与其他固定事件保持一定距离，
  * 避免起点/商店/任务板紧挨着营地。
+ *
+ * @param rng - 随机数生成器，用于从候选位置中随机选取
  */
-function findNonAdjacentPosition(grid: ExplorationCell[][], size: number, occupiedPositions: { x: number; y: number }[]): { x: number; y: number } {
+function findNonAdjacentPosition(grid: ExplorationCell[][], size: number, occupiedPositions: { x: number; y: number }[], rng: Rng): { x: number; y: number } {
   const candidates: { x: number; y: number }[] = [];
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -580,15 +591,17 @@ function findNonAdjacentPosition(grid: ExplorationCell[][], size: number, occupi
     }
   }
   if (candidates.length === 0) return findAnyEmptyPosition(grid, size);
-  return candidates[Math.floor(Math.random() * candidates.length)];
+  return rng.pick(candidates);
 }
 
 /**
  * 在中心区域查找适合放置 Boss 的位置。
  * Boss 需与所有已有固定事件保持至少 2 格的切比雪夫距离，
  * 且限定在网格中央 1/4～3/4 区域，确保玩家需要探索一定深度才能遭遇。
+ *
+ * @param rng - 随机数生成器，用于从候选位置中随机选取
  */
-function findBossPosition(grid: ExplorationCell[][], size: number, occupiedPositions: { x: number; y: number }[]): { x: number; y: number } {
+function findBossPosition(grid: ExplorationCell[][], size: number, occupiedPositions: { x: number; y: number }[], rng: Rng): { x: number; y: number } {
   const candidates: { x: number; y: number }[] = [];
   const centerStart = Math.floor(size / 4);
   const centerEnd = Math.floor(size * 3 / 4);
@@ -601,7 +614,7 @@ function findBossPosition(grid: ExplorationCell[][], size: number, occupiedPosit
     }
   }
   if (candidates.length === 0) return findAnyEmptyPosition(grid, size);
-  return candidates[Math.floor(Math.random() * candidates.length)];
+  return rng.pick(candidates);
 }
 
 /** 查找任意一个空位 */
@@ -623,11 +636,13 @@ function findAnyEmptyPosition(grid: ExplorationCell[][], size: number): { x: num
  * 3. 任务板 — 另一随机角落
  * 4. 营地 — 不与上述三者相邻的空位
  * 5. Boss — 中心区域，与其他事件保持距离
+ *
+ * @param rng - 随机数生成器，用于所有随机选取
  */
-function placeFixedEvents(grid: ExplorationCell[][], size: number, bossPool: string[]): void {
+function placeFixedEvents(grid: ExplorationCell[][], size: number, bossPool: string[], rng: Rng): void {
   // 起点：随机选一个边缘位置，已探索、已访问、可访问
   const edgePositions = getEdgePositions(size);
-  const startPos = edgePositions[Math.floor(Math.random() * edgePositions.length)];
+  const startPos = rng.pick(edgePositions);
   grid[startPos.y][startPos.x] = {
     x: startPos.x, y: startPos.y,
     type: 'start', explored: true, accessible: true, visited: true, completed: false
@@ -637,7 +652,8 @@ function placeFixedEvents(grid: ExplorationCell[][], size: number, bossPool: str
   const corners = [[0, 0], [0, size - 1], [size - 1, 0], [size - 1, size - 1]];
   const availableCorners = corners.filter(c => !isOccupied(grid, c[0], c[1]));
 
-  const shopCornerIndex = Math.floor(Math.random() * availableCorners.length);
+  // 保留索引用于 splice 移除已选角落
+  const shopCornerIndex = rng.int(0, availableCorners.length - 1);
   const shopPos = availableCorners[shopCornerIndex];
   grid[shopPos[1]][shopPos[0]] = {
     x: shopPos[0], y: shopPos[1],
@@ -645,22 +661,22 @@ function placeFixedEvents(grid: ExplorationCell[][], size: number, bossPool: str
   };
   availableCorners.splice(shopCornerIndex, 1);
 
-  const boardPos = availableCorners[Math.floor(Math.random() * availableCorners.length)];
+  const boardPos = rng.pick(availableCorners);
   grid[boardPos[1]][boardPos[0]] = {
     x: boardPos[0], y: boardPos[1],
     type: 'board', explored: true, accessible: true, visited: true, completed: false
   };
 
   // 营地：放置在非相邻位置
-  const campPos = findNonAdjacentPosition(grid, size, [startPos, { x: shopPos[0], y: shopPos[1] }, { x: boardPos[0], y: boardPos[1] }]);
+  const campPos = findNonAdjacentPosition(grid, size, [startPos, { x: shopPos[0], y: shopPos[1] }, { x: boardPos[0], y: boardPos[1] }], rng);
   grid[campPos.y][campPos.x] = {
     x: campPos.x, y: campPos.y,
     type: 'rest', explored: false, accessible: false, visited: false, completed: false
   };
 
   // Boss：放置在中心区域
-  const bossPos = findBossPosition(grid, size, [startPos, { x: shopPos[0], y: shopPos[1] }, { x: boardPos[0], y: boardPos[1] }, campPos]);
-  const bossMonsterId = bossPool.length > 0 ? bossPool[Math.floor(Math.random() * bossPool.length)] : undefined;
+  const bossPos = findBossPosition(grid, size, [startPos, { x: shopPos[0], y: shopPos[1] }, { x: boardPos[0], y: boardPos[1] }, campPos], rng);
+  const bossMonsterId = bossPool.length > 0 ? rng.pick(bossPool) : undefined;
   grid[bossPos.y][bossPos.x] = {
     x: bossPos.x, y: bossPos.y,
     type: 'boss', explored: false, accessible: false, visited: false, completed: false, monsterId: bossMonsterId

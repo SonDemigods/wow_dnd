@@ -9,7 +9,7 @@
  * 6. 累加不超过 maxValue=100
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { FurySystem } from '../../../src/modules/combat/resources/FurySystem';
+import { FurySystem } from '@/modules/combat/resources/FurySystem';
 
 describe('FurySystem 影刃猎手怒火', () => {
   let fury: FurySystem;

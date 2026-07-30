@@ -2,8 +2,12 @@
  * @fileoverview AI 目标选择策略
  * @description 为敌人 AI 提供目标选择能力。当前游戏仅有玩家单一目标，此模块为未来多角色队伍系统
  *              预留扩展点。所有选择器实现 ITargetSelector 接口，可按敌人 AI 策略类型灵活替换（CMB-4 修复）。
+ *
+ * 阶段十二升级：RandomTargetSelector 通过构造函数注入 Rng，支持确定性目标选择与战斗回放。
  * @module combat/ai
  */
+
+import { defaultRng, type Rng } from '@/utils/rng';
 
 /** 战斗参与者（目标的抽象表示） */
 export interface Combatant {
@@ -62,13 +66,17 @@ export class ThreatBasedTargetSelector implements ITargetSelector {
  * 随机选择器
  *
  * 从候选目标中均匀随机选择一个。适用于低智商怪物或召唤物。
+ *
+ * 阶段十二：通过构造函数注入 Rng，注入确定性 RNG 可复现目标选择序列。
  */
 export class RandomTargetSelector implements ITargetSelector {
   readonly name = 'random';
 
+  constructor(private readonly rng: Rng = defaultRng) {}
+
   select(candidates: Combatant[]): Combatant | null {
     if (candidates.length === 0) return null;
-    return candidates[Math.floor(Math.random() * candidates.length)];
+    return this.rng.pick(candidates);
   }
 }
 

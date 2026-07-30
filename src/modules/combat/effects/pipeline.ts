@@ -6,19 +6,23 @@
 import type { EffectContainer, EffectContext, DamageType, DamagePipelineResult, Effect } from './types';
 import { EffectHandlerRegistry } from './handler';
 import { addEffectToContainer } from './container';
+import { defaultRng, type Rng } from '@/utils/rng';
 
 /**
  * 计算基础伤害（按伤害类型选择攻防属性）
+ *
+ * @param rng - 随机数生成器，用于伤害浮动（0~9 的整数增量）
  */
 function calcBaseDamage(
   attackerStats: EffectContext['baseStats'],
   defenderStats: EffectContext['baseStats'],
-  damageType: DamageType
+  damageType: DamageType,
+  rng: Rng
 ): number {
   const attack = damageType === 'physical' ? attackerStats.physicalAttack : attackerStats.magicAttack;
   const defense = damageType === 'physical' ? defenderStats.physicalDefense : defenderStats.magicDefense;
 
-  const baseDamage = Math.floor(attack * 0.4) + Math.floor(Math.random() * 10);
+  const baseDamage = Math.floor(attack * 0.4) + rng.int(0, 9);
   const defenseReduction = Math.min(Math.floor(baseDamage * 0.3), defense);
   return Math.max(1, baseDamage - defenseReduction);
 }
@@ -28,9 +32,11 @@ function calcBaseDamage(
  *
  * 阶段 0: 计算基础伤害（按 damageType 选择物攻/魔攻 vs 物防/魔防）
  * 阶段 1: 攻击方效果修正 → 预期伤害
- * 阶段 2: 防御方效果修正 → 实际伤害
+ * 阶段 2: 防御方修正 → 实际伤害
  * 阶段 3: 护盾吸收 → 最终伤害
  * 阶段 4: 荆棘反伤
+ *
+ * @param rng - 随机数生成器，默认 `defaultRng`。仅在未传 baseDamageOverride 时用于阶段 0 基础伤害浮动
  */
 export function processDamagePipeline(
   registry: EffectHandlerRegistry,
@@ -39,10 +45,11 @@ export function processDamagePipeline(
   attackerCtx: EffectContext,
   defenderCtx: EffectContext,
   damageType: DamageType,
-  baseDamageOverride?: number  // 技能伤害可直接传入跳过阶段 0
+  baseDamageOverride?: number,  // 技能伤害可直接传入跳过阶段 0
+  rng: Rng = defaultRng
 ): DamagePipelineResult {
   // 阶段 0: 基础伤害
-  const baseDamage = baseDamageOverride ?? calcBaseDamage(attackerCtx.baseStats, defenderCtx.baseStats, damageType);
+  const baseDamage = baseDamageOverride ?? calcBaseDamage(attackerCtx.baseStats, defenderCtx.baseStats, damageType, rng);
 
   // 阶段 1: 攻击方修正 → 预期伤害
   const attackerMod = registry.reduceMultiplier(attackerEffects, 'getAttackerDamageMod', attackerCtx);

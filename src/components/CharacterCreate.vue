@@ -286,9 +286,11 @@ const emit = defineEmits<{
 
 const currentStep = ref(1);
 const name = ref('');
-const selectedFaction = ref<string | null>(null);
-const selectedRace = ref<string | null>(null);
-const selectedClass = ref<string | null>(null);
+// P2 TS-3 修复：使用精确联合类型替代 string，消除下游 as 断言
+// 数据源均为 baseStore 的 faction.id / race.id / cls.id（已是 FactionType/RaceType/ClassType）
+const selectedFaction = ref<FactionType | null>(null);
+const selectedRace = ref<RaceType | null>(null);
+const selectedClass = ref<ClassType | null>(null);
 
 /** 弹窗状态 */
 const showModal = ref(false);
@@ -331,8 +333,8 @@ const availableClasses = computed(() => {
   if (!selectedRace.value || !selectedFaction.value) return [];
   return baseStore.classes.filter(
     (c) =>
-      c.raceIds.includes(selectedRace.value as RaceType) &&
-      c.factionsIds.includes(selectedFaction.value as FactionType)
+      c.raceIds.includes(selectedRace.value) &&
+      c.factionsIds.includes(selectedFaction.value)
   );
 });
 
@@ -407,18 +409,18 @@ async function loadData() {
   await baseStore.loadAllData();
 }
 
-function selectFaction(id: string) {
+function selectFaction(id: FactionType) {
   selectedFaction.value = id;
   selectedRace.value = null;
   eventBus.emit(GameEvents.UI_CLICK, { source: 'select_faction' });
 }
 
-function selectRace(id: string) {
+function selectRace(id: RaceType) {
   selectedRace.value = id;
   eventBus.emit(GameEvents.UI_CLICK, { source: 'select_race' });
 }
 
-function selectClass(id: string) {
+function selectClass(id: ClassType) {
   selectedClass.value = id;
   eventBus.emit(GameEvents.UI_CLICK, { source: 'select_class' });
 }
@@ -524,9 +526,9 @@ function onModalConfirm() {
 async function doCreate() {
   await characterStore.createCharacter(
     name.value.trim(),
-    selectedFaction.value as FactionType,
-    selectedRace.value as RaceType,
-    selectedClass.value as ClassType
+    selectedFaction.value!,
+    selectedRace.value!,
+    selectedClass.value!
   );
 
   emit('created');

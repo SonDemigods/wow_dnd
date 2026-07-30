@@ -15,9 +15,10 @@
  *   - store.ts：Pinia store 统一为 `useXxxStore`，且在各子模块 index.ts 中采用命名导出（非 export *）
  *
  * 重名处理说明：
- *   boss 与 enemy 模块均独立定义并导出以下 6 个类型：AiStrategyType、BossIntroEffect、
- *   BossIntro、BossMechanicType、BossMechanic、BossPhase。为避免显式导出产生重复标识符
- *   编译错误，保留先出现的 boss 模块的导出；enemy 段省略上述重名类型（见下方注释）。
+ *   boss 模块独立定义并导出 5 个 Boss 专属类型（BossIntroEffect、BossIntro、
+ *   BossMechanicType、BossMechanic、BossPhase），enemy 模块不再导出这些类型。
+ *   仅 AiStrategyType 仍由 enemy（权威定义）和 boss（re-export）同时导出，为避免显式
+ *   导出产生重复标识符编译错误，保留先出现的 boss 段的导出；enemy 段省略 AiStrategyType。
  *   其余子模块之间无类型/值重名。
  *
  * 维护约定（新增模块须遵守，避免引入重名）：
@@ -95,18 +96,18 @@ export type {
   BossPhase,
   BossStorage,
   BossTemplate,
+  BossRuntimeState,
   BossInstance
 } from './boss';
 export {
   BossDbService,
   bossDbService,
   createBossInstance,
+  wrapAsBossInstance,
   executeBossMechanic,
   processBossPhaseMechanics,
   applyPhaseStats,
-  createBossIntro,
-  BossPhaseManager,
-  useBossStore
+  BossPhaseManager
 } from './boss';
 
 // ===== bus =====
@@ -228,9 +229,11 @@ export {
 } from './data';
 
 // ===== enemy =====
-// 注意：enemy 与 boss 均独立定义并导出以下 6 个类型：AiStrategyType、BossIntroEffect、
-// BossIntro、BossMechanicType、BossMechanic、BossPhase。为避免显式导出重复标识符错误，
-// 此处保留 boss 段的导出（boss 在本文件中先出现），enemy 段省略上述重名类型。
+// Boss 专属类型（BossIntroEffect/BossIntro/BossMechanicType/BossMechanic/BossPhase）
+// 由 boss 模块独立导出，enemy 模块不再导出这些类型。
+// AiStrategyType 权威定义在 enemy/types.ts，但 boss 模块也 re-export 了此类型
+// （boss/types.ts L24）。为避免显式导出重复标识符错误，此处保留 boss 段的导出
+// （boss 在本文件中先出现），enemy 段省略 AiStrategyType。
 export type {
   DangerLevel,
   EnemyData,
@@ -245,6 +248,7 @@ export {
   generateEnemyStats,
   calculateEnemyDamage,
   createEnemyInstance,
+  setBossCreateFn,
   useEnemyStore
 } from './enemy';
 

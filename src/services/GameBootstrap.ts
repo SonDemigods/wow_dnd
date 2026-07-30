@@ -5,14 +5,17 @@
  * @module services
  */
 import { useLogStore } from '@/modules/log/store';
-import { useInventoryStore } from '@/modules/inventory/store';
+import { useInventoryStore, setInventoryExternalCallbacks, clearInventoryExternalCallbacks } from '@/modules/inventory';
 import { useEquipmentStore, setInventoryCallbacks, clearInventoryCallbacks } from '@/modules/equipment/store';
 import { useSkillStore } from '@/modules/skill/store';
 import { useMapStore } from '@/modules/map/store';
 import { useExplorationStore } from '@/modules/exploration/store';
-import { useQuestStore } from '@/modules/quest/store';
+import { useQuestStore, setQuestExternalCallbacks, clearQuestExternalCallbacks } from '@/modules/quest';
 import { useCombatStore } from '@/modules/combat/store';
 import { useAudioStore } from '@/modules/audio/store';
+import { setBossCreateFn } from '@/modules/enemy/store';
+import { bossDbService, createBossInstance } from '@/modules/boss';
+import type { EnemyInstance } from '@/modules/enemy/types';
 
 /**
  * 可释放资源接口
@@ -48,6 +51,10 @@ export class GameBootstrapService {
    * 在 inventory 初始化完成后、equipment 初始化前，注入背包回调到装备模块
    * （A1/G1 修复：消除 equipment → inventory 静态依赖，通过回调注入实现装备卸下放回背包）。
    *
+   * ARCH-2 修复：在 inventory 初始化后、quest 初始化前，双向注入回调以切断 inventory ↔ quest 循环依赖：
+   * - 注入 quest.onItemCollected 到 inventory（addItem 时通知任务进度）
+   * - 注入 inventory.getItemCount / addItem 到 quest（acceptQuest 初始进度 / _grantQuestRewards 发奖）
+   *
    * @param characterId - 角色 ID
    */
   async initialize(characterId: string): Promise<void> {
@@ -60,6 +67,37 @@ export class GameBootstrapService {
 
     // 2.5 注入背包回调到装备模块（A1/G1 修复：回调注入替代 equipment → inventory 静态依赖）
     setInventoryCallbacks(inventoryStore.addItem, inventoryStore.removeItem);
+
+    // 2.55 ARCH-2 修复：注入 inventory ↔ quest 双向回调以切断循环依赖
+    // - quest 模块在 acceptQuest（计算 collect 初始进度）和 _grantQuestRewards（发放物品奖励）时
+    //   需要查询/操作背包数据，原直接 import useInventoryStore 形成循环依赖
+    // - inventory 模块在 addItem 成功时需要通知 quest 推进 collect 任务进度
+    // 通过回调注入由 GameBootstrap 统一编排，保持同步语义且消除静态依赖
+    const questStore = useQuestStore();
+    setInventoryExternalCallbacks({ onItemCollected: questStore.onItemCollected });
+    setQuestExternalCallbacks({
+      getInventoryItemCount: (itemId) => {
+        return inventoryStore.inventory
+          .filter(slot => slot.itemId === itemId)
+          .reduce((sum, slot) => sum + slot.count, 0);
+      },
+      addItemToInventory: (itemId, quantity) => inventoryStore.addItem(itemId, quantity),
+    });
+
+    // 2.6 注入 Boss 创建回调到敌人模块（回调注入替代 enemy → boss 静态依赖）
+    // createBossInstance 返回组合式 BossInstance，此处展开 base 并附加 phases/intro
+    // 作为运行时附加属性（类型层面不体现，由 wrapAsBossInstance 通过类型断言读取恢复）
+    setBossCreateFn(async (dataId, level) => {
+      const template = await bossDbService.getBossTemplate(dataId);
+      if (!template) return null;
+      const boss = createBossInstance(template, level);
+      return {
+        ...boss.base,
+        isBoss: true,
+        phases: boss.phases,
+        intro: boss.intro,
+      } as EnemyInstance;
+    });
 
     // 3. 装备模块（依赖背包回调）
     await useEquipmentStore().initialize(characterId);
@@ -74,7 +112,7 @@ export class GameBootstrapService {
     await useExplorationStore().init(characterId);
 
     // 7. 任务模块（依赖角色、探索）
-    await useQuestStore().initialize(characterId);
+    await questStore.initialize(characterId);
   }
 
   /**
@@ -115,6 +153,13 @@ export class GameBootstrapService {
 
     // 清除装备模块的背包回调引用（A1/G1 修复：避免角色切换后回调指向旧 Store 实例）
     clearInventoryCallbacks();
+
+    // 清除 inventory ↔ quest 双向回调引用（ARCH-2 修复：避免角色切换后回调指向旧 Store 实例）
+    clearInventoryExternalCallbacks();
+    clearQuestExternalCallbacks();
+
+    // 清除敌人模块的 Boss 创建回调引用（阶段四：避免角色切换后回调指向旧闭包）
+    setBossCreateFn(null);
   }
 }
 

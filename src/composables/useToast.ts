@@ -62,8 +62,9 @@ export function useToast() {
       icon.value = '';
     } else {
       message.value = options.message;
-      type.value = options.type || 'info';
-      icon.value = options.icon || '';
+      // P2 TS-8 修复：使用 ?? 替代 ||，避免空字符串等 falsy 值被吞掉
+      type.value = options.type ?? 'info';
+      icon.value = options.icon ?? '';
     }
 
     visible.value = true;
@@ -91,4 +92,26 @@ export function useToast() {
     show,
     close
   };
+}
+
+/**
+ * 销毁 Toast 模块级状态
+ *
+ * P2 BIZ-12 修复：HMR 模块热替换时，旧模块的 timer 若未触发会残留，
+ * 回调可能访问旧模块的 visible / message 等 ref，导致 Vue 警告。
+ * 通过 dispose 显式清理 timer，避免 HMR 状态泄漏。
+ */
+export function disposeToast(): void {
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
+  visible.value = false;
+}
+
+// HMR 模块热替换时清理旧模块的 timer，避免回调访问旧 ref
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    disposeToast();
+  });
 }

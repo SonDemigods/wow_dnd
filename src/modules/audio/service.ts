@@ -18,6 +18,7 @@ import { OrganVoice } from './organVoice';
 import type { IAudioService, SfxType, BgmScene, AudioSettings, SfxRoute } from './types';
 import { SFX_ROUTE_MAP } from './types';
 import { useToast } from '../../composables/useToast';
+import { defaultRng } from '@/utils/rng';
 
 /** 音频服务实现类 */
 class AudioService implements IAudioService {
@@ -1056,7 +1057,7 @@ class AudioService implements IAudioService {
                     'D4', 'C4', 'D4', 'F4', 'G4', 'A4', 'G4', 'F4'];
 
     this.bgmLoop = new Tone.Loop((time) => {
-      const note = melody[Math.floor(Math.random() * melody.length)];
+      const note = defaultRng.pick(melody);
       this.tOrgan(note, '4n', time, 0.03);
     }, '4n').start(0);
 

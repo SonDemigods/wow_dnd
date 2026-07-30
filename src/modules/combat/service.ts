@@ -6,23 +6,26 @@
  */
 import type { EnemyInstance } from '../enemy/types';
 import { generateId } from '@/utils/db-helpers';
+import { defaultRng, type Rng } from '@/utils/rng';
 
 /**
  * 暴击判定
  * @param critChance - 暴击几率（0~1 之间的小数，如 0.05 表示 5%）
+ * @param rng - 随机数生成器，默认 `defaultRng`。传入确定性 RNG 可复现战斗
  * @returns 是否暴击
  */
-export function rollCritical(critChance: number): boolean {
-  return Math.random() < critChance;
+export function rollCritical(critChance: number, rng: Rng = defaultRng): boolean {
+  return rng.bool(critChance);
 }
 
 /**
  * 闪避判定
  * @param dodgeChance - 闪避几率（0~1 之间的小数，如 0.03 表示 3%）
+ * @param rng - 随机数生成器，默认 `defaultRng`
  * @returns 是否闪避
  */
-export function rollDodge(dodgeChance: number): boolean {
-  return Math.random() < dodgeChance;
+export function rollDodge(dodgeChance: number, rng: Rng = defaultRng): boolean {
+  return rng.bool(dodgeChance);
 }
 
 /**
@@ -37,10 +40,11 @@ export function calculateFleeChance(dex: number): number {
 /**
  * 逃跑成功判定
  * @param fleeChance - 逃跑成功率（0~1 之间的小数）
+ * @param rng - 随机数生成器，默认 `defaultRng`
  * @returns 是否逃跑成功
  */
-export function rollFleeSuccess(fleeChance: number): boolean {
-  return Math.random() < fleeChance;
+export function rollFleeSuccess(fleeChance: number, rng: Rng = defaultRng): boolean {
+  return rng.bool(fleeChance);
 }
 
 /**

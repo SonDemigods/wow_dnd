@@ -6,6 +6,8 @@
  * @module utils/errorReport
  */
 
+import { generateId } from './db-helpers';
+
 /** 错误来源标识 */
 export type ErrorSource = 'vue' | 'unhandledrejection' | 'window.onerror' | 'manual';
 
@@ -140,6 +142,21 @@ class ErrorReporter {
   }
 
   /**
+   * 销毁实例，释放定时器并 flush 待写入缓冲区
+   *
+   * P2 BIZ-11 修复：HMR 模块热替换时，旧实例的 persistTimer 若未触发会被遗弃，
+   * 回调可能访问旧实例的 pendingPersist 缓冲区写入过期数据。
+   * 通过 dispose 显式清理定时器并 flush 残留记录，避免 HMR 状态泄漏。
+   */
+  dispose(): void {
+    this.flushPersist();
+    if (this.persistTimer !== null) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
+  }
+
+  /**
    * 同步刷新待写入 localStorage 的错误记录
    *
    * P2-77：persistToLocalStorage 改为防抖批量写入后，测试与诊断场景
@@ -171,7 +188,7 @@ class ErrorReporter {
   private createRecord(error: unknown, source: ErrorSource, context?: Record<string, unknown>): ErrorRecord {
     const err = error instanceof Error ? error : new Error(String(error));
     return {
-      id: `err_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      id: generateId('err'),
       timestamp: Date.now(),
       message: err.message,
       stack: err.stack,
@@ -236,3 +253,10 @@ class ErrorReporter {
 
 /** 错误上报单例 */
 export const errorReporter = new ErrorReporter();
+
+// P2 BIZ-11 修复：HMR 模块热替换时清理旧实例的定时器与缓冲区，避免状态泄漏
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    errorReporter.dispose();
+  });
+}

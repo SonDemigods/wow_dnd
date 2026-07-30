@@ -270,10 +270,11 @@ export function useEnemyAction(
       return { success: false, type: 'attack', message: '战斗已结束' };
     }
 
-    // 检查 Boss 多目标攻击标记
-    const isAoeAttack = e.aoeNextAttack === true;
-    if (isAoeAttack) {
-      e.aoeNextAttack = false;
+    // 检查 Boss 多目标攻击标记（阶段三 3.5：从 bossInstances Map 获取 runtime 状态）
+    const bossInstance = state.bossInstances.get(e.id);
+    const isAoeAttack = bossInstance?.runtime.aoeNextAttack === true;
+    if (isAoeAttack && bossInstance) {
+      bossInstance.runtime.aoeNextAttack = false;
       // 多目标攻击：使用管线统一处理伤害、护盾和荆棘反伤
       const rawDamage = ctx.enemy.calculateDamage(e, ctx.character.attributes.physicalDefense);
       const aoeMultiplier = 1.3;

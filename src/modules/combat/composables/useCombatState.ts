@@ -6,8 +6,8 @@
  */
 import { ref, computed, shallowRef } from 'vue';
 import type { CombatState, CombatResult, CombatLog } from '../types';
-import type { EnemyInstance } from '../../enemy/types';
-import type { BossIntro } from '../../boss/types';
+import type { EnemyInstance } from '@/modules/enemy';
+import type { BossIntro, BossInstance } from '@/modules/boss';
 import type { Effect, EffectContainer } from '../effects';
 import type { ResourceSystem } from '../resources';
 import type { ICombatContext } from '../combatContext';
@@ -18,7 +18,7 @@ import {
   EffectHandlerRegistry,
   addEffectToContainer
 } from '../effects';
-import { BossPhaseManager } from '../../boss/phaseManager';
+import { BossPhaseManager } from '@/modules/boss';
 
 export function useCombatState(ctx: ICombatContext) {
   // ==================== 响应式状态 ====================
@@ -34,6 +34,14 @@ export function useCombatState(ctx: ICombatContext) {
 
   /** Boss 阶段管理器（按敌人 ID 索引） */
   const bossPhaseManagers = new Map<string, BossPhaseManager>();
+  /**
+   * Boss 实例映射（按敌人 ID 索引，阶段三 3.5 新增）
+   *
+   * 收口 Boss 运行时状态（shield/invulnerable/reflectDamage 等 12 个字段）。
+   * combat 模块通过此 Map 获取 BossInstance，访问 runtime 状态，
+   * 替代原先散落在 EnemyInstance 顶层的运行时字段。
+   */
+  const bossInstances = new Map<string, BossInstance>();
   /** Boss 出场演出数据（按敌人 ID 索引，战斗开始后立即清空） */
   const bossIntros = ref<Record<string, BossIntro>>({});
   /** 敌人位置映射（enemyId -> { row: 'front'|'back', col: 0-2 }），3×2 网格布局 */
@@ -150,10 +158,13 @@ export function useCombatState(ctx: ICombatContext) {
     playerEffects.value = createEmptyContainer();
     enemyEffects.value = {};
     bossPhaseManagers.clear();
+    bossInstances.clear();
     bossIntros.value = {};
     enemyPositions.value = {};
     // 清理资源系统（释放引用，便于 GC）
     resourceSystems.value = [];
+    // P2 BIZ-1 修复：重置战斗速度，避免上一场 2x 速度残留到新战斗
+    combatSpeed.value = 1;
   }
 
   // ==================== Action：清理 & 重置 ====================
@@ -216,6 +227,7 @@ export function useCombatState(ctx: ICombatContext) {
 
     // 普通变量
     bossPhaseManagers,
+    bossInstances,
     effectRegistry,
     turnTimerId,
     bossIntroTimerId,

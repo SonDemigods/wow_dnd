@@ -9,7 +9,7 @@
  * 6. 累加不超过 maxValue=100
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { RunicPowerSystem } from '../../../src/modules/combat/resources/RunicPowerSystem';
+import { RunicPowerSystem } from '@/modules/combat/resources/RunicPowerSystem';
 
 describe('RunicPowerSystem 亡灵骑士符能', () => {
   let runic: RunicPowerSystem;

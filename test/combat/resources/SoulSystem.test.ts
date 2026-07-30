@@ -9,7 +9,7 @@
  * 6. 累加不超过 maxValue=5
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { SoulSystem } from '../../../src/modules/combat/resources/SoulSystem';
+import { SoulSystem } from '@/modules/combat/resources/SoulSystem';
 
 describe('SoulSystem 影刃猎手灵魂', () => {
   let soul: SoulSystem;

@@ -4,19 +4,21 @@
  * 覆盖 useEnemyStore 的：
  * 1. State 初始值（activeEnemyIds/enemiesCache 为空、enemies/enemiesCount 派生为空/0）
  * 2. Actions：
- *    - createEnemy（普通表命中 / 回退 Boss 表 / 均未命中返回 null）
+ *    - createEnemy（普通表命中 / 回退 Boss 表 / 均未命中返回 null / 未注入 Boss 回调）
  *    - takeDamage（扣血 / 致死 / 不存在敌人 / hp 下限 clamp 0）
  *    - getEnemyById（命中 / 未命中）
  *    - tickCooldowns（指定敌人递减 / 全量递减 / 归零移除）
  *    - getCooldownRemaining / getAvailableSkills / useSkill / calculateDamage / deleteEnemy / clearAll
  *
  * Mock 策略（遵循 code_rule 隔离原则）：
- *  - enemyDbService / bossDbService 全量 mock，避免触碰真实 IndexedDB。
- *  - enemy/service 的 createEnemyInstance / calculateEnemyDamage 与 boss/service 的 createBossInstance 全量 mock。
+ *  - enemyDbService 全量 mock，避免触碰真实 IndexedDB。
+ *  - enemy/service 的 createEnemyInstance / calculateEnemyDamage 全量 mock。
+ *  - Boss 回退创建通过 setBossCreateFn 注入 bossCreateFnMock（阶段四：不再 mock boss/db、boss/service，
+ *    enemy 模块已切断对 boss 模块的静态依赖，Boss 创建逻辑由 GameBootstrap 注入回调承载）。
  *  - skillsStore 通过 vi.hoisted 共享 getSkill spy（store 内部 useSkillStore() 获取实例）。
  *  - skillCooldowns 为 store 内部状态未导出，通过 useSkill 写入 + getCooldownRemaining 读取间接验证。
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createTestPinia } from '../utils/setup';
 import type { EnemyInstance, EnemyData } from '@/modules/enemy/types';
 import type { Skill } from '@/modules/skill/types';
@@ -29,22 +31,10 @@ vi.mock('@/modules/enemy/db', () => ({
   },
 }));
 
-/** mock Boss DB 层（createEnemy 回退查找） */
-vi.mock('@/modules/boss/db', () => ({
-  bossDbService: {
-    getBossTemplate: vi.fn(),
-  },
-}));
-
 /** mock enemy service 纯函数 */
 vi.mock('@/modules/enemy/service', () => ({
   createEnemyInstance: vi.fn(),
   calculateEnemyDamage: vi.fn(),
-}));
-
-/** mock boss service 的 createBossInstance */
-vi.mock('@/modules/boss/service', () => ({
-  createBossInstance: vi.fn(),
 }));
 
 /** 通过 vi.hoisted 共享 skillsStore.getSkill spy */
@@ -55,12 +45,19 @@ vi.mock('@/modules/skill/store', () => ({
   useSkillStore: vi.fn(() => ({ getSkill: skillStoreMocks.getSkill })),
 }));
 
+/**
+ * Boss 创建回调 mock（阶段四：替代对 boss/db、boss/service 的直接 mock）
+ *
+ * enemy/store 通过 setBossCreateFn 注入的回调实现 Boss 回退创建，
+ * 测试中直接注入此 mock，验证 enemy store 是否正确调用回调、处理返回值。
+ * Boss 回调内部逻辑（bossDbService + createBossInstance）由 GameBootstrap 测试覆盖。
+ */
+const bossCreateFnMock = vi.fn();
+
 /** 从 mock 中取出 spy 引用，便于断言 */
 import { enemyDbService } from '@/modules/enemy/db';
-import { bossDbService } from '@/modules/boss/db';
 import { createEnemyInstance, calculateEnemyDamage } from '@/modules/enemy/service';
-import { createBossInstance } from '@/modules/boss/service';
-import { useEnemyStore } from '@/modules/enemy/store';
+import { useEnemyStore, setBossCreateFn } from '@/modules/enemy/store';
 
 // ==================== 测试数据构造 helper ====================
 
@@ -126,6 +123,15 @@ describe('useEnemyStore - 敌人 Store', () => {
   beforeEach(() => {
     createTestPinia();
     vi.clearAllMocks();
+    // 默认：Boss 创建回调返回 null（Boss 表未命中）
+    bossCreateFnMock.mockResolvedValue(null);
+    // 注入 Boss 创建回调（阶段四：替代 enemy → boss 静态依赖）
+    setBossCreateFn(bossCreateFnMock);
+  });
+
+  afterEach(() => {
+    // 清除 Boss 创建回调注入，避免泄漏到其他测试文件
+    setBossCreateFn(null);
   });
 
   // -------------------- State 初始值 --------------------
@@ -160,35 +166,50 @@ describe('useEnemyStore - 敌人 Store', () => {
 
       expect(enemyDbService.getEnemyTemplate).toHaveBeenCalledWith('mob-1');
       expect(createEnemyInstance).toHaveBeenCalledWith(template, 3);
-      expect(bossDbService.getBossTemplate).not.toHaveBeenCalled();
+      // 普通表命中时不应触发 Boss 回退回调
+      expect(bossCreateFnMock).not.toHaveBeenCalled();
       expect(result).toEqual(enemy);
       expect(store.activeEnemyIds).toContain('enemy-x');
       expect(store.enemiesCache['enemy-x']).toEqual(enemy);
     });
 
-    it('普通表未命中时回退 Boss 表：调用 createBossInstance 并加入缓存', async () => {
+    it('普通表未命中时回退 Boss 表：通过注入的 bossCreateFn 创建并加入缓存', async () => {
       vi.mocked(enemyDbService.getEnemyTemplate).mockResolvedValueOnce(null);
-      const bossTemplate = { ...makeEnemyTemplate(), isBoss: true as const };
-      vi.mocked(bossDbService.getBossTemplate).mockResolvedValueOnce(bossTemplate);
       const boss = makeEnemyInstance({ id: 'boss-x', isBoss: true });
-      vi.mocked(createBossInstance).mockReturnValueOnce(boss);
+      bossCreateFnMock.mockResolvedValueOnce(boss);
 
       const store = useEnemyStore();
       const result = await store.createEnemy('boss-1', 5);
 
-      expect(bossDbService.getBossTemplate).toHaveBeenCalledWith('boss-1');
-      expect(createBossInstance).toHaveBeenCalledWith(bossTemplate, 5);
+      // 验证 enemy store 将 (dataId, level) 透传给注入的回调
+      expect(bossCreateFnMock).toHaveBeenCalledWith('boss-1', 5);
       expect(result).toEqual(boss);
+      expect(store.activeEnemyIds).toContain('boss-x');
       expect(store.enemiesCache['boss-x']).toEqual(boss);
     });
 
     it('普通表与 Boss 表均未命中时返回 null 且不写入缓存', async () => {
       vi.mocked(enemyDbService.getEnemyTemplate).mockResolvedValueOnce(null);
-      vi.mocked(bossDbService.getBossTemplate).mockResolvedValueOnce(null);
+      // bossCreateFnMock 默认返回 null（在 beforeEach 中设置）
 
       const store = useEnemyStore();
       const result = await store.createEnemy('not-exist', 1);
 
+      expect(bossCreateFnMock).toHaveBeenCalledWith('not-exist', 1);
+      expect(result).toBeNull();
+      expect(store.activeEnemyIds).toEqual([]);
+      expect(store.enemiesCache).toEqual({});
+    });
+
+    it('未注入 Boss 创建回调时：普通表未命中直接返回 null，不抛错', async () => {
+      vi.mocked(enemyDbService.getEnemyTemplate).mockResolvedValueOnce(null);
+      // 清除回调注入，覆盖 store 中 `if (bossCreateFn)` 的 false 分支
+      setBossCreateFn(null);
+
+      const store = useEnemyStore();
+      const result = await store.createEnemy('not-exist', 1);
+
+      expect(bossCreateFnMock).not.toHaveBeenCalled();
       expect(result).toBeNull();
       expect(store.activeEnemyIds).toEqual([]);
       expect(store.enemiesCache).toEqual({});

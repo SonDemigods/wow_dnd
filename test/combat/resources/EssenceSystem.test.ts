@@ -9,7 +9,7 @@
  * 6. 累加不超过 maxValue=5
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { EssenceSystem } from '../../../src/modules/combat/resources/EssenceSystem';
+import { EssenceSystem } from '@/modules/combat/resources/EssenceSystem';
 
 describe('EssenceSystem 龙脉术士精华', () => {
   let essence: EssenceSystem;

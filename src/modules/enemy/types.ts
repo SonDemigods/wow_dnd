@@ -1,7 +1,13 @@
 /**
  * @fileoverview 敌人模块类型定义
- * @description 包含敌人基础数据、敌人实例、敌人掉落、Boss 阶段/机制/出场演出等相关类型定义。
- *              本文件是 enemy 模块的类型基石，所有接口和类型别名均在此集中定义。
+ * @description 包含敌人基础数据、敌人实例、敌人掉落等类型定义。
+ *
+ *              阶段四升级：EnemyData 不再携带 Boss 专属的 phases/intro 字段，
+ *              这两个字段已下沉到 BossTemplate 独立声明。enemy 模块不再感知
+ *              Boss 专属类型，依赖方向仅 boss → enemy 单向。
+ *              isBoss?: boolean 保留为简单标识（不引入 boss 类型依赖）。
+ *              AiStrategyType 保留在本文件（普通敌人也使用）。
+ *
  * @module enemy
  */
 
@@ -43,141 +49,6 @@ export type DangerLevel = '普通' | '困难' | '危险' | '极危险' | '致命
  */
 export type AiStrategyType = 'aggressive' | 'defensive' | 'balanced' | 'boss_phase';
 
-/**
- * Boss 出场特效类型
- *
- * 控制 Boss 战斗开始前的视觉演出效果，营造氛围并提示玩家即将进入高难度战斗。
- *
- * - `darken`：屏幕变暗
- * - `shake`：屏幕震动
- * - `flame`：火焰特效
- * - `freeze`：冰冻特效
- * - `lightning`：闪电特效
- *
- * @see BossIntro.effect 出场演出使用此类型指定特效
- * @see BossPhase.transitionEffect 阶段切换也可复用此特效类型
- */
-export type BossIntroEffect = 'darken' | 'shake' | 'flame' | 'freeze' | 'lightning';
-
-/**
- * Boss 机制类型
- *
- * 定义 Boss 战中可触发的特殊战斗机制，每个 Boss 阶段可配备多种机制。
- * 机制按 `intervalTurns` 间隔自动触发，丰富 Boss 战的策略深度。
- *
- * - `summon_minions`：召唤小怪
- * - `summon_elite`：召唤精英怪
- * - `damage_shield`：伤害护盾
- * - `invulnerable`：无敌
- * - `reflect_damage`：反弹伤害
- * - `enrage`：狂暴（提升攻击力）
- * - `aoe_attack`：范围攻击
- * - `charge_attack`：冲锋攻击
- * - `stun_player`：眩晕玩家
- * - `silence_player`：沉默玩家
- * - `debuff_aura`：减益光环
- * - `arena_hazard`：场地危险（环境伤害）
- * - `healing_zone`：治疗区域
- * - `split`：分裂
- * - `revive`：复活
- * - `steal_buff`：偷取增益
- * - `counter_stance`：反击姿态
- *
- * @see BossMechanic.type 每个机制实例需指定一个机制类型
- * @see BossPhase.mechanics Boss 阶段通过机制列表配置战斗行为
- */
-export type BossMechanicType =
-  | 'summon_minions' | 'summon_elite'
-  | 'damage_shield' | 'invulnerable' | 'reflect_damage'
-  | 'enrage' | 'aoe_attack' | 'charge_attack'
-  | 'stun_player' | 'silence_player' | 'debuff_aura'
-  | 'arena_hazard' | 'healing_zone'
-  | 'split' | 'revive' | 'steal_buff' | 'counter_stance';
-
-// ============================================================================
-// Boss 相关接口
-// ============================================================================
-
-/**
- * Boss 出场配置接口
- *
- * 定义 Boss 登场时的演出序列，包含特效、台词和动画时长。
- * 出场演出在战斗正式开始前播放，用于增强沉浸感和叙事表达。
- *
- * @property {BossIntroEffect} effect - 出场视觉特效类型
- * @property {string[]} lines - 出场台词列表（按顺序逐条展示）
- * @property {number} duration - 动画持续时长（毫秒）
- *
- * @see EnemyData.intro 每个 Boss 级别的敌人可配置独立出场演出
- */
-export interface BossIntro {
-  effect: BossIntroEffect;
-  lines: string[];
-  duration: number;
-}
-
-/**
- * Boss 机制配置接口
- *
- * 定义单个 Boss 机制的触发规则和参数。每个阶段可包含多个机制，
- * 机制按回合间隔自动触发，通过 `params` 传递机制特定的配置参数。
- *
- * @property {BossMechanicType} type - 机制类型（决定触发后的具体行为）
- * @property {number} intervalTurns - 触发间隔（回合数，每隔 N 回合触发一次）
- * @property {number} [lastTriggerTurn] - 上次触发回合（运行时追踪用，初始为 undefined）
- * @property {Record<string, string | number>} [params] - 机制参数（支持数值和字符串配置，如召唤数量、护盾值等）
- *
- * @see BossPhase.mechanics Boss 阶段通过此接口配置阶段专属机制
- */
-export interface BossMechanic {
-  type: BossMechanicType;
-  intervalTurns: number;
-  lastTriggerTurn?: number;
-  params?: Record<string, string | number>;
-}
-
-/**
- * Boss 阶段配置接口
- *
- * 定义 Boss 在不同血量阶段的战斗行为变化。当 Boss 的血量百分比达到
- * `hpThreshold` 阈值时，自动切换到对应阶段，触发台词、特效和 AI 策略变更。
- *
- * 阶段切换流程：
- * 1. 检测当前 HP 百分比是否 ≤ `hpThreshold`
- * 2. 播放 `transitionEffect` 特效和 `dialogue` 台词
- * 3. 切换 `aiStrategy` 并启用该阶段的 `mechanics` 列表
- * 4. 应用 `statMultipliers` 属性调整
- *
- * @property {number} hpThreshold - 触发该阶段的 HP 百分比阈值（0-1，如 0.5 表示半血触发）
- * @property {string} name - 阶段名称（如"第一阶段""狂暴阶段"等）
- * @property {string[]} dialogue - 阶段切换台词（按顺序逐条展示）
- * @property {BossIntroEffect} [transitionEffect] - 阶段切换特效（可选，默认无特效）
- * @property {AiStrategyType} aiStrategy - 该阶段的 AI 策略（决定技能选择和行为模式）
- * @property {BossMechanic[]} mechanics - 该阶段的机制列表（阶段切换后生效）
- * @property {object} [statMultipliers] - 属性调整乘数（如 1.5 表示属性提升 50%）
- * @property {number} [statMultipliers.physicalAttack] - 物理攻击力乘数
- * @property {number} [statMultipliers.magicAttack] - 魔法攻击力乘数
- * @property {number} [statMultipliers.physicalDefense] - 物理防御力乘数
- * @property {number} [statMultipliers.magicDefense] - 魔法防御力乘数
- *
- * @see EnemyData.phases Boss 敌人通过 phases 数组配置多阶段战斗
- * @see AiStrategyType 阶段 AI 策略的可选值
- */
-export interface BossPhase {
-  hpThreshold: number;
-  name: string;
-  dialogue: string[];
-  transitionEffect?: BossIntroEffect;
-  aiStrategy: AiStrategyType;
-  mechanics: BossMechanic[];
-  statMultipliers?: {
-    physicalAttack?: number;
-    magicAttack?: number;
-    physicalDefense?: number;
-    magicDefense?: number;
-  };
-}
-
 // ============================================================================
 // 核心数据接口
 // ============================================================================
@@ -201,7 +72,7 @@ export interface BossPhase {
  * @property {number} xp - 经验值奖励（基础值，实际奖励会根据等级进行缩放）
  * @property {number} gold - 金币奖励（基础值，实际奖励会根据等级进行缩放）
  * @property {DangerLevel} dangerLevel - 危险等级（影响奖励缩放和 AI 行为）
- * @property {boolean} [isBoss] - 是否为 Boss 敌人（Boss 敌人会启用阶段机制和出场演出）
+ * @property {boolean} [isBoss] - 是否为 Boss 敌人（简单标识，Boss 专属的 phases/intro 由 BossTemplate 独立持有）
  * @property {number} [physicalAttack] - 物理攻击力（未配置时使用默认推导值）
  * @property {number} [physicalDefense] - 物理防御力（未配置时使用默认推导值）
  * @property {number} [magicAttack] - 魔法攻击力（未配置时使用默认推导值）
@@ -210,8 +81,6 @@ export interface BossPhase {
  * @property {number} [dodgeChance] - 闪避率（0-1，未配置时使用默认推导值）
  * @property {string[]} [skillPool] - 可用技能模板 ID 列表（AI 从此列表中选取技能施放）
  * @property {AiStrategyType} [aiStrategy] - AI 策略类型（决定技能选择和行为模式）
- * @property {BossPhase[]} [phases] - Boss 阶段配置（仅 Boss 敌人有效）
- * @property {BossIntro} [intro] - Boss 出场演出配置（仅 Boss 敌人有效）
  *
  * @see EnemyInstance 运行时实例，继承本接口并附加战斗状态
  * @see EnemyStorage IndexedDB 存储格式，与本接口字段对应
@@ -234,8 +103,6 @@ export interface EnemyData {
   dodgeChance?: number;
   skillPool?: string[];
   aiStrategy?: AiStrategyType;
-  phases?: BossPhase[];
-  intro?: BossIntro;
 }
 
 /**
@@ -292,23 +159,10 @@ export interface EnemyInstance extends EnemyData {
   expReward: number;
   goldReward: number;
   drops?: EnemyDrop[];
-  /** Boss 范围攻击标记（运行时，由 Boss 引擎设置，下次行动时触发 AOE 并清除） */
-  aoeNextAttack?: boolean;
-  /** Boss 待召唤小怪数量（运行时，由 Boss 引擎设置，下次行动时触发召唤并清除） */
-  pendingSummons?: number;
-  // ===== Boss 引擎运行时注入字段（P2-34：显式声明，避免类型断言绕过检查） =====
-  /** Boss 无敌标记（运行时，由 Boss 引擎在 invulnerable 机制中设置） */
-  invulnerable?: boolean;
-  /** Boss 护盾值（运行时，由 Boss 引擎在 damage_shield 机制中设置，吸收伤害） */
-  shield?: number;
-  /** Boss 反弹伤害值（运行时，由 Boss 引擎在 reflect_damage 机制中设置） */
-  reflectDamage?: number;
-  /** Boss 反击姿态标记（运行时，由 Boss 引擎在 counter_stance 机制中设置） */
-  counterStance?: boolean;
-  /** Boss 可复活标记（运行时，由 Boss 引擎在 revive 机制中设置） */
-  canRevive?: boolean;
-  /** Boss 蓄力攻击标记（运行时，由 Boss 引擎在 charge_attack 机制中设置） */
-  charging?: boolean;
+  // 阶段三 3.5：Boss 运行时字段（shield/invulnerable/reflectDamage/counterStance/
+  // canRevive/charging/aoeNextAttack/pendingSummons/pendingEliteSummons/
+  // debuffAura/healingZone/enraged）已移除，收口到 BossInstance.runtime。
+  // combat 模块通过 state.bossInstances.get(id).runtime 访问运行时状态。
 }
 
 // ============================================================================

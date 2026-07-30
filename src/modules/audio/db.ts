@@ -7,6 +7,7 @@
 import { getGameState, saveGameState } from '../data/gameStateHelper';
 import type { AudioSettings } from './types';
 import { DEFAULT_AUDIO_SETTINGS } from './types';
+import { errorReporter } from '@/utils/errorReport';
 
 /** runtime_gameState 中存储音频设置的键名 */
 const DB_KEY = 'audio_settings';
@@ -37,7 +38,9 @@ class AudioDbService {
     try {
       await saveGameState(settings as AudioSettingsStorage, DB_KEY);
     } catch (e) {
+      // P2 DB-7 修复：上报 errorReporter 便于运维监测，与 inventory/store.ts 模式一致
       console.warn('[AudioDb] 保存音频设置失败:', e);
+      errorReporter.report(e, 'manual', { context: '音频设置持久化失败' });
     }
   }
 
@@ -59,7 +62,9 @@ class AudioDbService {
         bgmEnabled: saved.bgmEnabled ?? DEFAULT_AUDIO_SETTINGS.bgmEnabled,
       };
     } catch (e) {
+      // P2 DB-7 修复：上报 errorReporter 便于运维监测
       console.warn('[AudioDb] 加载音频设置失败:', e);
+      errorReporter.report(e, 'manual', { context: '音频设置加载失败，将使用默认设置' });
       return null;
     }
   }

@@ -68,6 +68,7 @@ function makePassive(o: Partial<PassiveSkill> & { effect?: Partial<PassiveEffect
 function makeStateMock() {
   return {
     resourceSystems: ref<unknown[]>([]),
+    bossInstances: new Map(),
   } as never;
 }
 

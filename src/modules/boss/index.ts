@@ -12,12 +12,13 @@ export type {
   BossPhase,
   BossStorage,
   BossTemplate,
+  BossRuntimeState,
   BossInstance
 } from './types';
 
 export { BossDbService, bossDbService } from './db';
 
-export { createBossInstance } from './service';
+export { createBossInstance, wrapAsBossInstance } from './service';
 
 export {
   executeBossMechanic,
@@ -25,8 +26,4 @@ export {
   applyPhaseStats
 } from './engine';
 
-export { createBossIntro } from './intro';
-
 export { BossPhaseManager } from './phaseManager';
-
-export { useBossStore } from './store';

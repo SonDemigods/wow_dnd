@@ -28,7 +28,6 @@ import { unifiedItemTemplateCache } from '../item-template';
 import { useLogStore } from '../log/store';
 import { generateLogId } from '../log/service';
 import { useCharacterStore } from '../character/store';
-import { useQuestStore } from '../quest/store';
 import { errorReporter } from '@/utils/errorReport';
 import { RARITY_CONFIG } from '../../config/inventory';
 import {
@@ -41,6 +40,45 @@ import {
   INVENTORY_SIZE,
   RARITY_ORDER
 } from './service';
+
+/**
+ * 物品收集通知回调类型（ARCH-2 修复：回调注入替代 inventory → quest 静态依赖）
+ *
+ * 当背包 addItem 成功添加物品时触发，供 quest 模块监听以推进 collect 类型任务进度。
+ * 设计参考 equipment/store.ts 的 setInventoryCallbacks 模式。
+ */
+type OnItemCollectedCallback = (itemId: string, quantity: number) => void;
+
+/**
+ * 物品收集通知回调引用（模块级单例）
+ *
+ * 由 GameBootstrap.initialize 调用 setInventoryExternalCallbacks 注入，
+ * inventory/store 内部 addItem 通过此回调通知 quest 模块。
+ *
+ * 设计权衡：
+ * - 不使用 EventBus：物品收集是同步语义，EventBus 异步触发不合适
+ * - 不使用 Pinia 跨 store 直接调用：会引入 inventory → quest 静态依赖（循环依赖）
+ * - 回调注入：保持同步语义 + 消除静态依赖，由 GameBootstrap 统一编排生命周期
+ */
+let onItemCollectedCallback: OnItemCollectedCallback | null = null;
+
+/**
+ * 设置 inventory 模块的外部回调（供 GameBootstrap 在初始化时调用）
+ *
+ * @param callbacks - 外部回调集合，传 null 表示清除
+ */
+export function setInventoryExternalCallbacks(callbacks: {
+  onItemCollected: OnItemCollectedCallback;
+} | null): void {
+  onItemCollectedCallback = callbacks?.onItemCollected ?? null;
+}
+
+/**
+ * 清除 inventory 模块的外部回调（供 GameBootstrap.dispose 调用，避免回调泄漏）
+ */
+export function clearInventoryExternalCallbacks(): void {
+  onItemCollectedCallback = null;
+}
 
 /**
  * 背包状态存储
@@ -289,7 +327,8 @@ export const useInventoryStore = defineStore('inventory', () => {
       });
 
       // P1-1：通知任务系统物品收集进度（collect 类型任务）
-      useQuestStore().onItemCollected(itemId, added);
+      // ARCH-2 修复：通过回调注入替代 useQuestStore() 直接调用，消除 inventory → quest 静态依赖
+      onItemCollectedCallback?.(itemId, added);
     }
 
     return added;
@@ -370,8 +409,13 @@ export const useInventoryStore = defineStore('inventory', () => {
    * 效果类型支持：
    * - health_restore：调用 characterStore.receiveHeal
    * - mana_restore：调用 characterStore.changeMp
-   * - physical_damage / magic_damage：TODO（需在战斗上下文中调用）
+   * - physical_damage / magic_damage：不在本方法处理（见下方说明）
    * - stat：通过 bonus 字段处理（见下方 bonus 分支）
+   *
+   * 伤害型物品（physical_damage / magic_damage）的设计说明：
+   * 伤害计算依赖战斗上下文（目标、暴击、BOSS 防御机制、荆棘反伤等），
+   * 由 combat/composables/usePlayerAction.ts 的 playerUseItem 先对目标造成伤害，
+   * 再调用本方法仅消耗物品数量。本方法遇到伤害型效果时跳过（非战斗上下文使用伤害物品无意义）。
    *
    * 注意：effect 和 bonus 是两个独立的 if 分支：
    * - effect 处理即时效果（恢复/伤害）
@@ -408,9 +452,9 @@ export const useInventoryStore = defineStore('inventory', () => {
       } else if (type === 'mana_restore' && typeof value === 'number' && value > 0) {
         await characterStore.changeMp(value);
       } else if (type === 'physical_damage' && typeof value === 'number' && value > 0) {
-        // TODO: 根据战斗系统设计实现物理伤害效果（需在战斗上下文中调用）
+        // 伤害型物品由战斗系统处理（见 usePlayerAction.playerUseItem），此处仅消耗物品数量
       } else if (type === 'magic_damage' && typeof value === 'number' && value > 0) {
-        // TODO: 根据战斗系统设计实现法术伤害效果（需在战斗上下文中调用）
+        // 伤害型物品由战斗系统处理（见 usePlayerAction.playerUseItem），此处仅消耗物品数量
       } else if (type === 'stat') {
         // stat 类型效果通过 bonus 字段处理，见下方 bonus 应用逻辑
       }

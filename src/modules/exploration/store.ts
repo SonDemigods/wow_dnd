@@ -7,7 +7,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed, shallowRef } from 'vue';
-import type { ExplorationCell, ExplorationState, AreaConfig, ExplorationUICallbacks, RandomEventEffectType } from './types';
+import type { ExplorationCell, ExplorationState, AreaConfig, ExplorationUICallbacks, EventChoice } from './types';
 import type { LocationData } from '@/modules/map/types';
 import { explorationDbService } from './db';
 import { crossModuleQuery } from '@/services/CrossModuleQuery';
@@ -25,6 +25,7 @@ import {
   GRID_SIZE
 } from './service';
 import { dispatchCellEvent, applyEventEffect } from './events';
+import { defaultRng, type Rng } from '@/utils/rng';
 
 export const useExplorationStore = defineStore('exploration', () => {
   // ==================== 响应式状态（Store 是唯一数据源） ====================
@@ -178,12 +179,14 @@ export const useExplorationStore = defineStore('exploration', () => {
     };
   }
 
-  /** 从数据库加载所有商店配置，随机选取一个作为本次探索的商店 */
-  async function pickRandomShop(): Promise<void> {
+  /**
+   * 从数据库加载所有商店配置，随机选取一个作为本次探索的商店
+   * @param rng - 随机数生成器，默认使用 defaultRng（DB-6 修复：支持注入确定性 RNG 用于测试与回放）
+   */
+  async function pickRandomShop(rng: Rng = defaultRng): Promise<void> {
     const shops = await crossModuleQuery.getAllShopConfigs();
     if (shops && shops.length > 0) {
-      const idx = Math.floor(Math.random() * shops.length);
-      assignedShopId.value = shops[idx].id;
+      assignedShopId.value = rng.pick(shops).id;
     }
   }
 
@@ -551,13 +554,14 @@ export const useExplorationStore = defineStore('exploration', () => {
    *
    * @param choice - 玩家选择的事件选项
    */
-  async function applyEventChoice(choice: { label: string; icon?: string; effect: { type: string; amount: number } }): Promise<void> {
+  async function applyEventChoice(choice: EventChoice): Promise<void> {
     const characterStore = useCharacterStore();
     const { type, amount } = choice.effect;
 
     // 通过效果处理器注册表分发（ARCH-11 修复）
+    // P2 TS-6 修复：参数类型已使用 EventChoice，effect.type 已是 RandomEventEffectType，消除断言
     const shouldHandleDeath = await applyEventEffect(
-      type as RandomEventEffectType,
+      type,
       {
         characterStore,
         inventoryStore: useInventoryStore(),

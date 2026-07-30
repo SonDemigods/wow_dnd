@@ -14,6 +14,7 @@
 import type { Item, ItemType } from '@/modules/inventory/types';
 import type { ShopConfig, ShopItem, ShopType } from './types';
 import type { Character } from '@/modules/character/types';
+import { defaultRng, type Rng } from '@/utils/rng';
 
 /**
  * 商店类型 → 可售物品类型映射表
@@ -104,22 +105,19 @@ function getRarityMultiplier(rarity: string): number {
  *
  * @param shopConfig - 商店配置
  * @param allItems   - 所有物品模板列表
+ * @param rng        - 随机数生成器，默认 `defaultRng`。传入确定性 RNG 可复现商品列表
  * @returns 生成的商品列表，物品池为空时返回空数组
  */
-export function generateShopItems(shopConfig: ShopConfig, allItems: Item[]): ShopItem[] {
+export function generateShopItems(shopConfig: ShopConfig, allItems: Item[], rng: Rng = defaultRng): ShopItem[] {
   const allowedTypes = SHOP_TYPE_ITEM_TYPE_MAP[shopConfig.type];
 
   // 筛选出该商店可售类型的物品模板
   const availableItems = allItems.filter(item => allowedTypes.includes(item.type));
 
   // 随机选择 6-12 件商品
-  const count = Math.min(Math.floor(Math.random() * 7) + 6, availableItems.length);
-  // BIZ-8：使用 Fisher-Yates 洗牌算法，避免 sort(random) 分布不均匀
-  const shuffled = [...availableItems];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
+  const count = Math.min(rng.int(6, 12), availableItems.length);
+  // BIZ-8：使用 Fisher-Yates 洗牌算法，避免 sort(random) 分布不均匀（阶段十二：复用 rng.shuffle）
+  const shuffled = rng.shuffle(availableItems);
   const selected = shuffled.slice(0, count);
 
   // 生成商品列表
@@ -127,7 +125,7 @@ export function generateShopItems(shopConfig: ShopConfig, allItems: Item[]): Sho
     const shopItem: ShopItem = {
       itemId: item.id,
       price: calculatePrice(item, true),
-      quantity: Math.max(1, Math.floor(Math.random() * 5) + 1),
+      quantity: Math.max(1, rng.int(1, 5)),
     };
     // BIZ-21：为稀有及以上商品设置购买次数上限，防止玩家囤积稀有物品
     const maxPurchaseCount = getMaxPurchaseCount(item.rarity);

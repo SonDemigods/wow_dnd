@@ -6,11 +6,10 @@
  * useEnemyAction（敌人行动）和 useBossMechanics（Boss 机制效果）。
  */
 import type { CombatResult } from '../types';
-import type { EnemyInstance } from '../../enemy/types';
-import type { BossMechanicType } from '../../boss/types';
+import type { EnemyInstance } from '@/modules/enemy';
 import type { ICombatContext } from '../combatContext';
 import { eventBus, GameEvents } from '../../bus';
-import { processBossPhaseMechanics, applyPhaseStats } from '../../boss/engine';
+import { processBossPhaseMechanics, applyPhaseStats } from '@/modules/boss';
 import { createEmptyContainer } from '../effects';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
@@ -292,13 +291,15 @@ export function useInitiative(
     });
 
     // 处理 Boss 阶段转换和机制
-    if (e.isBoss && e.phases && e.phases.length > 0) {
+    // 阶段四：EnemyData 已移除 phases 字段，通过 bossInstance.phases 访问
+    if (e.isBoss) {
       const phaseManager = state.bossPhaseManagers.get(e.id);
-      if (phaseManager) {
-        const result = phaseManager.getCurrentPhase(e.phases, e.hp, e.maxHp);
+      const bossInstance = state.bossInstances.get(e.id);
+      if (phaseManager && bossInstance && bossInstance.phases.length > 0) {
+        const result = phaseManager.getCurrentPhase(bossInstance.phases, e.hp, e.maxHp);
         const currentPhase = result.phase;
         if (result.changed && currentPhase) {
-          applyPhaseStats(e, currentPhase);
+          applyPhaseStats(bossInstance, currentPhase);
           // 同步更新 AI 策略为当前阶段的策略
           if (currentPhase.aiStrategy) {
             e.aiStrategy = currentPhase.aiStrategy;
@@ -328,7 +329,7 @@ export function useInitiative(
           }
         }
         if (currentPhase) {
-          const triggered = processBossPhaseMechanics(e, currentPhase, state.turnCount.value);
+          const triggered = processBossPhaseMechanics(bossInstance, currentPhase, state.turnCount.value);
           for (const mechType of triggered) {
             const mechNames: Record<string, string> = {
               enrage: '狂暴', damage_shield: '伤害护盾', aoe_attack: '范围攻击',
@@ -341,8 +342,8 @@ export function useInitiative(
               message: `${e.name} 触发了【${mechNames[mechType] || mechType}】机制！`
             });
 
-            // 实际应用机制效果
-            boss.applyMechanicEffect(e, mechType as BossMechanicType, currentPhase);
+            // 实际应用机制效果（阶段十：triggered 已为 BossMechanicType[]，无需断言）
+            boss.applyMechanicEffect(bossInstance, mechType, currentPhase);
           }
         }
       }
@@ -357,23 +358,29 @@ export function useInitiative(
     // 检查玩家是否死亡
     if (ctx.character.hp <= 0) {
       endCombat('defeat');
-      log.saveLogs();
+      // P2 BIZ-3 修复：移除重复的 saveLogs 调用，endCombat 内部已调用 log.saveLogs()
       return;
     }
 
     // 推进到下一个行动者
     advanceToNextUnit();
-
-    log.saveLogs();
+    // P2 BIZ-3 修复：仅在仍在战斗中时保存日志，避免与 endCombat 内部的 saveLogs 重复
+    if (state.state.value === 'fighting') {
+      log.saveLogs();
+    }
   }
 
   /**
    * 结束玩家回合
-   * 持久化日志后，推进到先攻序列中的下一个行动者。
+   * 推进到先攻序列中的下一个行动者后持久化日志。
    */
   function endPlayerTurn(): void {
-    log.saveLogs();
     advanceToNextUnit();
+    // P2 BIZ-2 修复：先推进回合再保存日志，确保 tickAllEffects 产生的新日志（DOT/恢复）被保存
+    // 若 advanceToNextUnit 触发了 endCombat，则 endCombat 内部已调用 saveLogs，此处跳过避免重复
+    if (state.state.value === 'fighting') {
+      log.saveLogs();
+    }
   }
 
   return {

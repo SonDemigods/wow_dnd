@@ -10,6 +10,7 @@ import type { MapState, MapView, LocationData, MapZone } from './types';
 import { getLocationById, isLocationAccessible, getLocationsByContinent, getZoneStatus, clamp } from './service';
 import { mapDbService } from './db';
 import { eventBus, GameEvents } from '../bus';
+import { errorReporter } from '@/utils/errorReport';
 
 /** 缩放边界常量 */
 const ZOOM_MIN = 1;
@@ -60,7 +61,12 @@ export const useMapStore = defineStore('map', () => {
     try {
       await mapDbService.saveMapState(currentCharacterId.value, state.value);
     } catch (err) {
+      // P2 DB-5 修复：上报 errorReporter 便于运维监测，与 inventory/store.ts 的 persistInventory 模式一致
       console.error('[map] 保存地图状态失败:', err);
+      errorReporter.report(err, 'manual', {
+        context: '地图状态持久化失败，UI 与 DB 状态可能不一致',
+        characterId: currentCharacterId.value,
+      });
     }
   }
 
@@ -172,7 +178,15 @@ export const useMapStore = defineStore('map', () => {
     // 持久化当前区域 ID（fire and forget，捕获错误避免影响调用方）
     if (currentCharacterId.value) {
       mapDbService.saveCurrentLocationId(currentCharacterId.value, zoneId)
-        .catch(err => console.error('[map] 保存当前区域失败:', err));
+        .catch(err => {
+          // P2 DB-5 修复：上报 errorReporter 便于运维监测
+          console.error('[map] 保存当前区域失败:', err);
+          errorReporter.report(err, 'manual', {
+            context: '当前区域持久化失败，UI 与 DB 状态可能不一致',
+            characterId: currentCharacterId.value,
+            zoneId,
+          });
+        });
     }
 
     eventBus.emit(GameEvents.ZONE_ENTERED, { locationId: zoneId, location });
