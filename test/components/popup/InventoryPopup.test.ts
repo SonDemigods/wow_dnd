@@ -20,7 +20,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import InventoryPopup from '@/components/popup/InventoryPopup.vue';
 import { useInventoryStore } from '@/modules/inventory';
-import { useCharacterStore } from '@/modules/character';
+import { useGameStore } from '@/modules/game';
 import { useEquipmentStore } from '@/modules/equipment';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { createStubPinia } from '../../utils/setup';
@@ -63,11 +63,10 @@ describe('InventoryPopup 背包弹窗组件', () => {
 
   it('onMounted 调用 inventoryStore.initialize 与 equipmentStore.initialize', async () => {
     const pinia = createStubPinia();
-    const characterStore = useCharacterStore();
     const inventoryStore = useInventoryStore();
     const equipmentStore = useEquipmentStore();
-    // 预设当前角色 ID，触发 loadInventory 内部的 initialize 调用
-    characterStore.$patch((state) => {
+    // P3-116：currentCharacterId 收敛到 GameStore，需通过 GameStore.$patch 修改数据源
+    useGameStore().$patch((state) => {
       state.currentCharacterId = 'char_001';
     });
 

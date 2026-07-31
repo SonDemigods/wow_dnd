@@ -243,38 +243,8 @@ describe('CharacterDbService - 角色数据层（fake-indexeddb 真实 CRUD）',
     });
   });
 
-  // -------------------- getGameState / saveGameState --------------------
-
-  describe('getGameState / saveGameState：游戏状态读写', () => {
-    it('未保存时 getGameState 返回 null（runtime_gameState 表无记录）', async () => {
-      const result = await characterDbService.getGameState();
-      expect(result).toBeNull();
-    });
-
-    it('保存 currentCharacterId 后可读回', async () => {
-      await characterDbService.saveGameState('char-1');
-
-      const result = await characterDbService.getGameState();
-      expect(result).not.toBeNull();
-      expect(result!.currentCharacterId).toBe('char-1');
-    });
-
-    it('保存 null currentCharacterId 后可读回 null', async () => {
-      await characterDbService.saveGameState(null);
-
-      const result = await characterDbService.getGameState();
-      expect(result).not.toBeNull();
-      expect(result!.currentCharacterId).toBeNull();
-    });
-
-    it('覆盖保存：再次保存新 ID 替换旧 ID', async () => {
-      await characterDbService.saveGameState('char-old');
-      await characterDbService.saveGameState('char-new');
-
-      const result = await characterDbService.getGameState();
-      expect(result!.currentCharacterId).toBe('char-new');
-    });
-  });
+  // P3-116：getGameState / saveGameState 已迁移到 GameStore，本模块不再持有这两个方法
+  // 相关测试用例已删除（GameState 读写测试见 test/game/store.test.ts）
 
   // -------------------- toStorageFormat / fromStorageFormat 字段映射 --------------------
 

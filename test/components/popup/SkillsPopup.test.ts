@@ -23,7 +23,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import SkillsPopup from '@/components/popup/SkillsPopup.vue';
 import { useSkillStore } from '@/modules/skill';
-import { useCharacterStore } from '@/modules/character';
+import { useGameStore } from '@/modules/game';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { createStubPinia } from '../../utils/setup';
 
@@ -52,9 +52,10 @@ describe('SkillsPopup 技能面板弹窗组件', () => {
 
   it('characterStore.currentCharacterId 有值时 onMounted 调用 skillsStore.initialize', async () => {
     const pinia = createStubPinia();
-    const characterStore = useCharacterStore();
+    const gameStore = useGameStore();
     const skillsStore = useSkillStore();
-    characterStore.$patch((state) => {
+    // P3-116：currentCharacterId 收敛到 GameStore，需通过 GameStore.$patch 修改数据源
+    gameStore.$patch((state) => {
       state.currentCharacterId = 'char1';
     });
     vi.mocked(skillsStore.getSkillTemplatesByClass).mockResolvedValue([]);
@@ -79,9 +80,10 @@ describe('SkillsPopup 技能面板弹窗组件', () => {
 
   it('mock getSkillTemplatesByClass 返回 2 个技能时渲染 2 个 .skill-slot', async () => {
     const pinia = createStubPinia();
-    const characterStore = useCharacterStore();
+    const gameStore = useGameStore();
     const skillsStore = useSkillStore();
-    characterStore.$patch((state) => {
+    // P3-116：currentCharacterId 收敛到 GameStore，需通过 GameStore.$patch 修改数据源
+    gameStore.$patch((state) => {
       state.currentCharacterId = 'char1';
     });
     vi.mocked(skillsStore.getSkillTemplatesByClass).mockResolvedValue([
@@ -108,9 +110,10 @@ describe('SkillsPopup 技能面板弹窗组件', () => {
 
   it('$patch skillBar.slots 让技能已装备时渲染 .skill-slot.equipped', async () => {
     const pinia = createStubPinia();
-    const characterStore = useCharacterStore();
+    const gameStore = useGameStore();
     const skillsStore = useSkillStore();
-    characterStore.$patch((state) => {
+    // P3-116：currentCharacterId 收敛到 GameStore，需通过 GameStore.$patch 修改数据源
+    gameStore.$patch((state) => {
       state.currentCharacterId = 'char1';
     });
     vi.mocked(skillsStore.getSkillTemplatesByClass).mockResolvedValue([
@@ -135,9 +138,10 @@ describe('SkillsPopup 技能面板弹窗组件', () => {
 
   it('点击 .skill-slot 触发 UI_CLICK({source:"skill_select"})', async () => {
     const pinia = createStubPinia();
-    const characterStore = useCharacterStore();
+    const gameStore = useGameStore();
     const skillsStore = useSkillStore();
-    characterStore.$patch((state) => {
+    // P3-116：currentCharacterId 收敛到 GameStore，需通过 GameStore.$patch 修改数据源
+    gameStore.$patch((state) => {
       state.currentCharacterId = 'char1';
     });
     vi.mocked(skillsStore.getSkillTemplatesByClass).mockResolvedValue([
@@ -162,9 +166,10 @@ describe('SkillsPopup 技能面板弹窗组件', () => {
 
   it('选中未装备技能后点击"记忆"触发 skillsStore.equipSkill 与 UI_CLICK({source:"skill_memorize"})', async () => {
     const pinia = createStubPinia();
-    const characterStore = useCharacterStore();
+    const gameStore = useGameStore();
     const skillsStore = useSkillStore();
-    characterStore.$patch((state) => {
+    // P3-116：currentCharacterId 收敛到 GameStore，需通过 GameStore.$patch 修改数据源
+    gameStore.$patch((state) => {
       state.currentCharacterId = 'char1';
     });
     vi.mocked(skillsStore.getSkillTemplatesByClass).mockResolvedValue([
@@ -191,9 +196,10 @@ describe('SkillsPopup 技能面板弹窗组件', () => {
 
   it('选中已装备技能后点击"遗忘"触发 skillsStore.unequipSkill 与 UI_CLICK({source:"skill_forget"})', async () => {
     const pinia = createStubPinia();
-    const characterStore = useCharacterStore();
+    const gameStore = useGameStore();
     const skillsStore = useSkillStore();
-    characterStore.$patch((state) => {
+    // P3-116：currentCharacterId 收敛到 GameStore，需通过 GameStore.$patch 修改数据源
+    gameStore.$patch((state) => {
       state.currentCharacterId = 'char1';
     });
     vi.mocked(skillsStore.getSkillTemplatesByClass).mockResolvedValue([

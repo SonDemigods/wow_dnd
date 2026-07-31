@@ -22,9 +22,54 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createTestPinia } from '../utils/setup';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useShopStore } from '@/modules/shop/store';
+import { useGameStore } from '@/modules/game';
 import type { ShopConfig, ShopItem, SoldItemEntry } from '@/modules/shop/types';
 import type { Item } from '@/modules/inventory/types';
 import type { Character } from '@/modules/character/types';
+
+// ==================== Mock：GameStore（P3-116：currentShopId 收敛到 GameStore） ====================
+// 提供可控的 mock useGameStore，内部用真实 Pinia ref 保证响应式，
+// setCurrentShopId/getCurrentShopId 等方法用 vi.hoisted 提升为全局 spy，
+// 避免 Pinia action 包装破坏 spy 性质，测试中直接通过 gameStoreSpies 断言。
+const gameStoreSpies = vi.hoisted(() => ({
+  setCurrentCharacterId: vi.fn(),
+  setCurrentShopId: vi.fn(),
+  getCurrentCharacterId: vi.fn(),
+  getCurrentShopId: vi.fn(),
+  updateGameSettings: vi.fn(),
+  flushPersist: vi.fn(),
+  initialize: vi.fn(),
+}));
+
+vi.mock('@/modules/game', async () => {
+  const { defineStore } = await import('pinia');
+  const { ref } = await import('vue');
+  const useGameStore = defineStore('mockGame', () => {
+    const currentCharacterId = ref<string | null>(null);
+    const currentShopId = ref<string | null>(null);
+    // 每次 store 创建时重新绑定 mock 实现到当前 ref（createTestPinia 后 store 重建）
+    gameStoreSpies.setCurrentCharacterId.mockImplementation(async (id: string | null) => {
+      currentCharacterId.value = id;
+    });
+    gameStoreSpies.setCurrentShopId.mockImplementation(async (id: string | null) => {
+      currentShopId.value = id;
+    });
+    gameStoreSpies.getCurrentCharacterId.mockImplementation(() => currentCharacterId.value);
+    gameStoreSpies.getCurrentShopId.mockImplementation(() => currentShopId.value);
+    return {
+      currentCharacterId,
+      currentShopId,
+      setCurrentCharacterId: gameStoreSpies.setCurrentCharacterId,
+      setCurrentShopId: gameStoreSpies.setCurrentShopId,
+      getCurrentCharacterId: gameStoreSpies.getCurrentCharacterId,
+      getCurrentShopId: gameStoreSpies.getCurrentShopId,
+      updateGameSettings: gameStoreSpies.updateGameSettings,
+      flushPersist: gameStoreSpies.flushPersist,
+      initialize: gameStoreSpies.initialize,
+    };
+  });
+  return { useGameStore };
+});
 
 // ==================== vi.hoisted：跨 store stub 持有对象 ====================
 const mocks = vi.hoisted(() => ({
@@ -194,8 +239,9 @@ describe('useShopStore - 阶段二 DB-3 跨表事务保护', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const store = useShopStore();
       const soldEntry: SoldItemEntry = { itemId: 'ore_1', price: 25, quantity: 2 };
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       store.$patch({
-        currentShopId: 'general_goods',
         currentItems: [{ itemId: 'ore_1', price: 25, quantity: 2 }],
         soldItems: new Map([['general_goods', new Map([['ore_1', soldEntry]])]]),
       });
@@ -249,8 +295,9 @@ describe('useShopStore - 阶段二 DB-3 跨表事务保护', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const store = useShopStore();
       const soldEntry: SoldItemEntry = { itemId: 'ore_1', price: 25, quantity: 2 };
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       store.$patch({
-        currentShopId: 'general_goods',
         currentItems: [{ itemId: 'ore_1', price: 25, quantity: 2 }],
         soldItems: new Map([['general_goods', new Map([['ore_1', soldEntry]])]]),
       });
@@ -303,8 +350,9 @@ describe('useShopStore - 阶段二 DB-3 跨表事务保护', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const store = useShopStore();
       const soldEntry: SoldItemEntry = { itemId: 'ore_1', price: 25, quantity: 2 };
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       store.$patch({
-        currentShopId: 'general_goods',
         currentItems: [{ itemId: 'ore_1', price: 25, quantity: 2 }],
         soldItems: new Map([['general_goods', new Map([['ore_1', soldEntry]])]]),
       });
@@ -356,8 +404,9 @@ describe('useShopStore - 阶段二 DB-3 跨表事务保护', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const store = useShopStore();
       const soldEntry: SoldItemEntry = { itemId: 'ore_1', price: 25, quantity: 2 };
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       store.$patch({
-        currentShopId: 'general_goods',
         currentItems: [{ itemId: 'ore_1', price: 25, quantity: 2 }],
         soldItems: new Map([['general_goods', new Map([['ore_1', soldEntry]])]]),
       });
@@ -410,7 +459,9 @@ describe('useShopStore - 阶段二 DB-3 跨表事务保护', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const store = useShopStore();
       const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 3 });
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
 
       // Act
@@ -452,7 +503,9 @@ describe('useShopStore - 阶段二 DB-3 跨表事务保护', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const store = useShopStore();
       const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 3 });
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
 
       // Act
@@ -480,8 +533,9 @@ describe('useShopStore - 阶段二 DB-3 跨表事务保护', () => {
       // Arrange
       const store = useShopStore();
       const soldEntry: SoldItemEntry = { itemId: 'ore_1', price: 25, quantity: 2 };
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       store.$patch({
-        currentShopId: 'general_goods',
         currentItems: [{ itemId: 'ore_1', price: 25, quantity: 2 }],
         soldItems: new Map([['general_goods', new Map([['ore_1', soldEntry]])]]),
       });
@@ -513,7 +567,9 @@ describe('useShopStore - 阶段二 DB-3 跨表事务保护', () => {
       });
       const store = useShopStore();
       const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 3 });
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
 
       // Act

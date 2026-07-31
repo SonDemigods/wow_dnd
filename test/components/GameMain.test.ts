@@ -26,6 +26,7 @@ import SystemPopup from '@/components/popup/SystemPopup.vue';
 import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
 import { useExplorationStore } from '@/modules/exploration';
+import { useGameStore } from '@/modules/game';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { gameBootstrap } from '@/services/GameBootstrap';
 import { createStubPinia } from '../utils/setup';
@@ -136,8 +137,8 @@ describe('GameMain 游戏主界面组件', () => {
     });
 
     it('currentCharacterId 存在时调用 gameBootstrap.initialize(cid)', async () => {
-      const characterStore = useCharacterStore(pinia);
-      characterStore.$patch((state) => {
+      // P3-116：currentCharacterId 收敛到 GameStore，需通过 GameStore.$patch 修改数据源
+      useGameStore(pinia).$patch((state) => {
         state.currentCharacterId = 'char-1';
       });
       shallowMount(GameMain, { global: { plugins: [pinia] } });
@@ -152,8 +153,8 @@ describe('GameMain 游戏主界面组件', () => {
     });
 
     it('currentCharacterId 存在时调用 mapStore.getCurrentTab', async () => {
-      const characterStore = useCharacterStore(pinia);
-      characterStore.$patch((state) => {
+      // P3-116：currentCharacterId 收敛到 GameStore，需通过 GameStore.$patch 修改数据源
+      useGameStore(pinia).$patch((state) => {
         state.currentCharacterId = 'char-1';
       });
       const mapStore = useMapStore(pinia);

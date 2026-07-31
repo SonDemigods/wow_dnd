@@ -36,6 +36,50 @@ import type {
   ClassData,
 } from '@/modules/character/types';
 
+// ==================== Mock：GameStore（P3-116：currentCharacterId 收敛到 GameStore） ====================
+// 提供可控的 mock useGameStore，内部用真实 Pinia ref 保证响应式，
+// setCurrentCharacterId/getCurrentCharacterId 等方法用 vi.hoisted 提升为全局 spy，
+// 避免 Pinia action 包装破坏 spy 性质，测试中直接通过 gameStoreSpies 断言。
+const gameStoreSpies = vi.hoisted(() => ({
+  setCurrentCharacterId: vi.fn(),
+  setCurrentShopId: vi.fn(),
+  getCurrentCharacterId: vi.fn(),
+  getCurrentShopId: vi.fn(),
+  updateGameSettings: vi.fn(),
+  flushPersist: vi.fn(),
+  initialize: vi.fn(),
+}));
+
+vi.mock('@/modules/game', async () => {
+  const { defineStore } = await import('pinia');
+  const { ref } = await import('vue');
+  const useGameStore = defineStore('mockGame', () => {
+    const currentCharacterId = ref<string | null>(null);
+    const currentShopId = ref<string | null>(null);
+    // 每次 store 创建时重新绑定 mock 实现到当前 ref（createTestPinia 后 store 重建）
+    gameStoreSpies.setCurrentCharacterId.mockImplementation(async (id: string | null) => {
+      currentCharacterId.value = id;
+    });
+    gameStoreSpies.setCurrentShopId.mockImplementation(async (id: string | null) => {
+      currentShopId.value = id;
+    });
+    gameStoreSpies.getCurrentCharacterId.mockImplementation(() => currentCharacterId.value);
+    gameStoreSpies.getCurrentShopId.mockImplementation(() => currentShopId.value);
+    return {
+      currentCharacterId,
+      currentShopId,
+      setCurrentCharacterId: gameStoreSpies.setCurrentCharacterId,
+      setCurrentShopId: gameStoreSpies.setCurrentShopId,
+      getCurrentCharacterId: gameStoreSpies.getCurrentCharacterId,
+      getCurrentShopId: gameStoreSpies.getCurrentShopId,
+      updateGameSettings: gameStoreSpies.updateGameSettings,
+      flushPersist: gameStoreSpies.flushPersist,
+      initialize: gameStoreSpies.initialize,
+    };
+  });
+  return { useGameStore };
+});
+
 // ==================== Mock：7 个 DB service ====================
 vi.mock('@/modules/character/db', () => ({
   characterDbService: {
@@ -45,8 +89,6 @@ vi.mock('@/modules/character/db', () => ({
     getCharacterData: vi.fn().mockResolvedValue(null),
     saveCharacterData: vi.fn().mockResolvedValue(undefined),
     deleteCharacterData: vi.fn().mockResolvedValue(undefined),
-    getGameState: vi.fn().mockResolvedValue(null),
-    saveGameState: vi.fn().mockResolvedValue(undefined),
     toStorageFormat: vi.fn((id: string, char: Character, bonus: Partial<Stats>) => ({
       characterId: id,
       name: char.name,
@@ -205,6 +247,7 @@ import {
 import { useBaseStore } from '@/modules/base/store';
 import { getExpForLevel } from '@/utils/calculations';
 import { backupService, importService, dataInitializer } from '@/modules/data';
+import { useGameStore } from '@/modules/game';
 import { useCharacterStore } from '@/modules/character/store';
 
 // ==================== 测试数据构造 helper ====================
@@ -259,9 +302,12 @@ function makeClass(o: Partial<ClassData> = {}): ClassData {
 
 /** 注入一份基础数据并选中一个角色，便于测试需要 character 存在的 action */
 function setupLoggedInStore(char: Character = makeChar()) {
+  // P3-116：currentCharacterId 收敛到 GameStore，通过 mock 的 setCurrentCharacterId 设置
+  // mock 实现同步修改 ref，无需 await 即可让 characterStore 的只读 computed 拿到值
+  const gameStore = useGameStore();
+  gameStore.setCurrentCharacterId('char_test_1');
   const store = useCharacterStore();
   store.$patch({
-    currentCharacterId: 'char_test_1',
     character: char,
     racesData: { human: makeRace() },
     classesData: { warrior: makeClass() },
@@ -457,8 +503,7 @@ describe('useCharacterStore - 角色 Store', () => {
       vi.mocked(useBaseStore).mockReturnValueOnce({ factions: f, races: r, classes: c } as never);
       const items = [makeListItem()];
       vi.mocked(characterDbService.getAllCharacterListItems).mockResolvedValueOnce(items);
-      // getGameState 默认返回 null，不触发自动选择
-      vi.mocked(characterDbService.getGameState).mockResolvedValueOnce(null);
+      // P3-116：GameStore.getCurrentCharacterId 默认返回 null，不触发自动选择
 
       const store = useCharacterStore();
       await store.initialize();
@@ -469,9 +514,10 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(store.characterList).toEqual(items);
     });
 
-    it('getGameState 返回 currentCharacterId 时自动调用 selectCharacter', async () => {
+    it('GameStore.getCurrentCharacterId 返回 ID 时自动调用 selectCharacter', async () => {
       vi.mocked(useBaseStore).mockReturnValueOnce({ factions: [], races: [], classes: [] } as never);
-      vi.mocked(characterDbService.getGameState).mockResolvedValueOnce({ currentCharacterId: 'char_test_1' });
+      // P3-116：mock gameStore.getCurrentCharacterId 返回角色 ID，触发 selectCharacter
+      gameStoreSpies.getCurrentCharacterId.mockReturnValueOnce('char_test_1');
       const listItem = makeListItem();
       vi.mocked(characterDbService.getCharacterListItem).mockResolvedValueOnce(listItem);
       vi.mocked(characterDbService.getCharacterData).mockResolvedValueOnce({
@@ -557,7 +603,8 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(characterDbService.saveCharacterListItem).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'char_test_1' })
       );
-      expect(characterDbService.saveGameState).toHaveBeenCalledWith('char_test_1');
+      // P3-116：currentCharacterId 持久化由 GameStore 负责
+      expect(gameStoreSpies.setCurrentCharacterId).toHaveBeenCalledWith('char_test_1');
       expect(spy).toHaveBeenCalledWith(null);
     });
 
@@ -635,7 +682,8 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(store.currentCharacterId).toBeNull();
       expect(store.character).toBeNull();
       expect(store.bonusStats).toEqual({});
-      expect(characterDbService.saveGameState).toHaveBeenCalledWith(null);
+      // P3-116：currentCharacterId 持久化由 GameStore 负责
+      expect(gameStoreSpies.setCurrentCharacterId).toHaveBeenCalledWith(null);
     });
   });
 
@@ -653,7 +701,8 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(store.bonusStats).toEqual({});
       expect(store.raceBonus).toEqual({});
       expect(store.classBonus).toEqual({});
-      expect(characterDbService.saveGameState).toHaveBeenCalledWith(null);
+      // P3-116：currentCharacterId 持久化由 GameStore 负责
+      expect(gameStoreSpies.setCurrentCharacterId).toHaveBeenCalledWith(null);
       expect(spy).toHaveBeenCalledWith(null);
     });
   });
@@ -964,7 +1013,8 @@ describe('useCharacterStore - 角色 Store', () => {
 
     it('setName：currentCharacterId 为 null 时直接返回（character 存在但未登录）', async () => {
       const store = useCharacterStore();
-      store.$patch({ character: makeChar(), currentCharacterId: null });
+      store.$patch({ character: makeChar() });
+      // P3-116：currentCharacterId 来自 GameStore，默认为 null（未登录状态）
       await store.setName('新名字');
       expect(characterDbService.getCharacterListItem).not.toHaveBeenCalled();
     });
@@ -1241,7 +1291,8 @@ describe('useCharacterStore - 角色 Store', () => {
 
     it('persistCharacter 在 currentCharacterId 为 null 时直接返回（character 存在但未登录）', async () => {
       const store = useCharacterStore();
-      store.$patch({ character: makeChar(), currentCharacterId: null });
+      store.$patch({ character: makeChar() });
+      // P3-116：currentCharacterId 来自 GameStore，默认为 null（未登录状态）
       // 调用 takeDamage 会触发 persistCharacter，但 currentCharacterId 为 null → 直接返回
       await store.takeDamage(10);
       expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();

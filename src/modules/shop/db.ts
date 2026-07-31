@@ -7,7 +7,9 @@
  * - `config_shops`            — 商店配置（静态数据，种子 → DB 单向同步）
  * - `runtime_shopItems`       — 商店当前商品 + lastRefresh 时间戳（BIZ-20）
  * - `runtime_shopSoldItems`   — 商店回购列表（BIZ-16，页面刷新后恢复）
- * - `gameState`               — 当前打开的商店ID（页面刷新后恢复）
+ *
+ * P3-116 修复：currentShopId 的 GameState 操作已迁移到 GameStore，
+ * 本模块不再直接访问 runtime_gameState 表。
  *
  * **数据流向**：
  * ```
@@ -21,7 +23,6 @@
 
 import { db as gameDb, dbService } from '@/modules/data/core';
 import type { ShopConfig, ShopItem, ShopItemsStorage, ShopSoldItemsStorage, SoldItemEntry } from './types';
-import { getGameState, saveGameState } from '@/modules/data/gameStateHelper';
 import { toRawData } from '../../utils';
 
 /**
@@ -245,27 +246,7 @@ export class ShopDbService {
     });
   }
 
-  /**
-   * 持久化当前打开的商店ID
-   *
-   * 页面刷新后，{@link init} 会通过 {@link getCurrentShopId} 恢复此值。
-   *
-   * @param shopId - 商店ID，传入 null 表示关闭商店
-   */
-  async saveCurrentShopId(shopId: string | null): Promise<void> {
-    await saveGameState({ currentShopId: shopId, lastPlayedAt: new Date().toISOString() });
-  }
-
-  /**
-   * 获取上次保存的商店ID（页面恢复用）
-   *
-   * @returns 商店ID，未保存过则返回 null
-   */
-  async getCurrentShopId(): Promise<string | null> {
-    const state = await getGameState();
-    if (!state) return null;
-    return state.currentShopId ?? null;
-  }
+  // P3-116：saveCurrentShopId / getCurrentShopId 已迁移到 GameStore，本模块不再持有这两个方法
 }
 
 /**

@@ -1,9 +1,12 @@
 /**
  * 角色模块数据层
- * 
+ *
  * 封装角色数据的 IndexedDB 操作，提供数据持久化能力
+ *
+ * P3-116 修复：GameState 操作（getGameState/saveGameState）已迁移到 GameStore，
+ * 本模块不再直接访问 runtime_gameState 表。
  */
-import { db as gameDb, dbService, getGameState, saveGameState } from '@/modules/data';
+import { db as gameDb, dbService } from '@/modules/data';
 import type { CharacterDataStorage } from './types';
 import type { Character, CharacterListItem, Stats, RaceType, ClassType, FactionType } from './types';
 import { toRawData } from '../../utils';
@@ -124,24 +127,6 @@ export class CharacterDbService {
     await dbService.withRetry(async () => {
       await gameDb.char_data.delete(characterId);
     });
-  }
-
-  /**
-   * 获取游戏状态（当前选中角色ID）
-   * @returns 当前角色ID或null
-   */
-  async getGameState(): Promise<{ currentCharacterId: string | null } | null> {
-    const state = await getGameState();
-    if (!state) return null;
-    return { currentCharacterId: state.currentCharacterId ?? null };
-  }
-
-  /**
-   * 保存游戏状态（当前选中角色ID）
-   * @param currentCharacterId - 当前角色ID
-   */
-  async saveGameState(currentCharacterId: string | null): Promise<void> {
-    await saveGameState({ currentCharacterId, lastPlayedAt: new Date().toISOString() });
   }
 
   /**

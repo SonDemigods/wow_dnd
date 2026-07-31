@@ -53,7 +53,8 @@ const {
     settings: { masterVolume: 0.7, sfxVolume: 0.8, bgmVolume: 0.5, muted: false, sfxEnabled: true, bgmEnabled: true },
     effectiveBgmVolume: 0.5,
     loadFromDb: vi.fn().mockResolvedValue(undefined),
-    updateSettings: vi.fn(),
+    // P3-116：updateSettings 改为 async（委托 GameStore 持久化）
+    updateSettings: vi.fn().mockResolvedValue(undefined),
     $subscribe: vi.fn().mockReturnValue(() => {}),
   };
   const eventBusMock = {
@@ -202,8 +203,7 @@ describe('AudioService 音频服务核心', () => {
       await audioService.init();
 
       expect(createAudioNodesMock).toHaveBeenCalledTimes(1);
-      // loadFromDb 被调用
-      expect(storeMock.loadFromDb).toHaveBeenCalled();
+      // P3-116：loadFromDb 已移除，init 不再调用 store.loadFromDb
       // Store 订阅被注册
       expect(storeMock.$subscribe).toHaveBeenCalled();
     });

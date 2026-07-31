@@ -125,32 +125,45 @@ function getInputValue(e: Event): number {
 
 function onMasterVolumeChange(e: Event) {
   const value = getInputValue(e) / 100;
-  store.setMasterVolume(value);
+  // P3-116：setMasterVolume 改为 async（委托 GameStore 持久化），UI 事件中以 fire-and-forget 方式调用
+  store.setMasterVolume(value).catch(err => {
+    console.error('[AudioSettingsPopup] setMasterVolume 失败:', err);
+  });
 }
 
 function onSfxVolumeChange(e: Event) {
   const value = getInputValue(e) / 100;
-  store.updateSettings({ sfxVolume: value });
+  store.updateSettings({ sfxVolume: value }).catch(err => {
+    console.error('[AudioSettingsPopup] updateSettings sfxVolume 失败:', err);
+  });
 }
 
 function onBgmVolumeChange(e: Event) {
   const value = getInputValue(e) / 100;
-  store.updateSettings({ bgmVolume: value });
+  store.updateSettings({ bgmVolume: value }).catch(err => {
+    console.error('[AudioSettingsPopup] updateSettings bgmVolume 失败:', err);
+  });
 }
 
 function onMuteClick() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'audio_mute' });
-  store.toggleMute();
+  store.toggleMute().catch(err => {
+    console.error('[AudioSettingsPopup] toggleMute 失败:', err);
+  });
 }
 
 function toggleSfx() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'audio_toggle_sfx' });
-  store.updateSettings({ sfxEnabled: !store.settings.sfxEnabled });
+  store.updateSettings({ sfxEnabled: !store.settings.sfxEnabled }).catch(err => {
+    console.error('[AudioSettingsPopup] toggleSfx 失败:', err);
+  });
 }
 
 function toggleBgm() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'audio_toggle_bgm' });
-  store.updateSettings({ bgmEnabled: !store.settings.bgmEnabled });
+  store.updateSettings({ bgmEnabled: !store.settings.bgmEnabled }).catch(err => {
+    console.error('[AudioSettingsPopup] toggleBgm 失败:', err);
+  });
 }
 </script>
 

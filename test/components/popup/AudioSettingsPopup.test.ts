@@ -19,6 +19,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import AudioSettingsPopup from '@/components/popup/AudioSettingsPopup.vue';
 import { useAudioStore } from '@/modules/audio';
+import { useGameStore } from '@/modules/game';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { createStubPinia } from '../../utils/setup';
 
@@ -51,8 +52,28 @@ describe('AudioSettingsPopup 音量设置弹窗组件', () => {
     eventBus.clearAll();
   });
 
-  it('visible=true 时渲染标题"音量设置"与 3 个音量滑块', () => {
+  /**
+   * 创建 stub Pinia 并预设 audio store 的 async 方法返回 resolved Promise。
+   *
+   * P3-116 后 audioStore 的 setMasterVolume/updateSettings/toggleMute 等方法
+   * 改为 async（委托 GameStore 持久化），组件以 fire-and-forget 方式调用 `.catch()`。
+   * createStubPinia 默认 stub 的 vi.fn() 返回 undefined，会导致 `.catch()` 报错，
+   * 因此需在此统一 mockResolvedValue(undefined)。
+   */
+  function setupPiniaWithAudioStore() {
     const pinia = createStubPinia();
+    const store = useAudioStore();
+    vi.mocked(store.setMasterVolume).mockResolvedValue(undefined);
+    vi.mocked(store.setSfxVolume).mockResolvedValue(undefined);
+    vi.mocked(store.setBgmVolume).mockResolvedValue(undefined);
+    vi.mocked(store.updateSettings).mockResolvedValue(undefined);
+    vi.mocked(store.toggleMute).mockResolvedValue(undefined);
+    vi.mocked(store.flushSave).mockResolvedValue(undefined);
+    return { pinia, store };
+  }
+
+  it('visible=true 时渲染标题"音量设置"与 3 个音量滑块', () => {
+    const { pinia } = setupPiniaWithAudioStore();
     const wrapper = mount(AudioSettingsPopup, {
       props: { visible: true },
       global: { plugins: [pinia] },
@@ -62,10 +83,10 @@ describe('AudioSettingsPopup 音量设置弹窗组件', () => {
   });
 
   it('masterVolume=0.5 时主音量滑块 value=50 且显示"50%"', () => {
-    const pinia = createStubPinia();
-    const store = useAudioStore();
-    store.$patch((state) => {
-      state.settings.masterVolume = 0.5;
+    const { pinia } = setupPiniaWithAudioStore();
+    // P3-116：settings 收敛到 GameStore.gameSettings，需通过 GameStore.$patch 修改数据源
+    useGameStore().$patch((state) => {
+      state.gameSettings.masterVolume = 0.5;
     });
     const wrapper = mount(AudioSettingsPopup, {
       props: { visible: true },
@@ -77,8 +98,7 @@ describe('AudioSettingsPopup 音量设置弹窗组件', () => {
   });
 
   it('主音量滑块 input 触发 store.setMasterVolume(0.8)', async () => {
-    const pinia = createStubPinia();
-    const store = useAudioStore();
+    const { pinia, store } = setupPiniaWithAudioStore();
     const wrapper = mount(AudioSettingsPopup, {
       props: { visible: true },
       global: { plugins: [pinia] },
@@ -89,10 +109,10 @@ describe('AudioSettingsPopup 音量设置弹窗组件', () => {
   });
 
   it('点击音效开关触发 store.updateSettings({ sfxEnabled: false }) 与 UI_CLICK', async () => {
-    const pinia = createStubPinia();
-    const store = useAudioStore();
-    store.$patch((state) => {
-      state.settings.sfxEnabled = true;
+    const { pinia, store } = setupPiniaWithAudioStore();
+    // P3-116：settings 收敛到 GameStore.gameSettings，需通过 GameStore.$patch 修改数据源
+    useGameStore().$patch((state) => {
+      state.gameSettings.sfxEnabled = true;
     });
     const uiClickSpy = vi.fn();
     eventBus.on(GameEvents.UI_CLICK, uiClickSpy);
@@ -108,8 +128,7 @@ describe('AudioSettingsPopup 音量设置弹窗组件', () => {
   });
 
   it('点击静音按钮触发 store.toggleMute 与 UI_CLICK({source:"audio_mute"})', async () => {
-    const pinia = createStubPinia();
-    const store = useAudioStore();
+    const { pinia, store } = setupPiniaWithAudioStore();
     const uiClickSpy = vi.fn();
     eventBus.on(GameEvents.UI_CLICK, uiClickSpy);
 
@@ -124,7 +143,7 @@ describe('AudioSettingsPopup 音量设置弹窗组件', () => {
   });
 
   it('点击"确定"按钮触发 close 事件与 UI_CLICK({source:"audio_settings_close"})', async () => {
-    const pinia = createStubPinia();
+    const { pinia } = setupPiniaWithAudioStore();
     const uiClickSpy = vi.fn();
     eventBus.on(GameEvents.UI_CLICK, uiClickSpy);
 

@@ -10,6 +10,7 @@ import type { Character, CharacterListItem, Stats, Attributes, FactionType, Race
 import { characterDbService } from './db';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useBaseStore } from '@/modules/base/store';
+import { useGameStore } from '@/modules/game';
 // CHR-4 修复：角色创建/删除的跨模块持久化逻辑收口到 CharacterLifecycleService，
 // Store 层不再直接依赖其他模块的 DbService，遵循五层架构原则。
 import { characterLifecycleService } from '@/services/CharacterLifecycleService';
@@ -38,7 +39,11 @@ import type { ImportResult, ValidationResult } from '../data';
 
 export const useCharacterStore = defineStore('character', () => {
   // ==================== 响应式状态（Store 是唯一数据源） ====================
-  const currentCharacterId = ref<string | null>(null);
+  // P3-116 修复：currentCharacterId 收敛到 GameStore，characterStore 通过只读 computed 代理访问。
+  // 所有修改必须通过 gameStore.setCurrentCharacterId() 完成（触发持久化），
+  // 不能直接赋值 currentCharacterId.value（只读 computed 会触发 Vue 警告且不生效）。
+  const gameStore = useGameStore();
+  const currentCharacterId = computed<string | null>(() => gameStore.currentCharacterId);
   const character = ref<Character | null>(null);
   const characterList = ref<CharacterListItem[]>([]);
   const bonusStats = ref<Partial<Stats>>({});
@@ -126,10 +131,10 @@ export const useCharacterStore = defineStore('character', () => {
     racesData.value = Object.fromEntries(baseStore.races.map(r => [r.id, r]));
     classesData.value = Object.fromEntries(baseStore.classes.map(c => [c.id, c]));
 
-    // 从数据库恢复上次登录的角色
-    const gameState = await characterDbService.getGameState();
-    if (gameState?.currentCharacterId) {
-      await selectCharacter(gameState.currentCharacterId, false);
+    // P3-116 修复：从 GameStore 读取 currentCharacterId（GameStore 已在 App.vue 中先初始化）
+    const currentId = gameStore.getCurrentCharacterId();
+    if (currentId) {
+      await selectCharacter(currentId, false);
     }
     await loadCharacterList();
   }
@@ -170,7 +175,8 @@ export const useCharacterStore = defineStore('character', () => {
 
     // 2. 更新 Store 状态
     character.value = newChar;
-    currentCharacterId.value = id;
+    // P3-116 修复：通过 GameStore 设置 currentCharacterId（触发持久化）
+    await gameStore.setCurrentCharacterId(id);
     raceBonus.value = race?.bonus || {};
     classBonus.value = cls?.bonus || {};
 
@@ -222,8 +228,8 @@ export const useCharacterStore = defineStore('character', () => {
     const updatedListItem = { ...listItem, lastPlayedTime: Date.now() };
     await characterDbService.saveCharacterListItem(updatedListItem);
 
-    // 持久化游戏状态
-    await characterDbService.saveGameState(characterId);
+    // P3-116 修复：通过 GameStore 设置并持久化 currentCharacterId
+    await gameStore.setCurrentCharacterId(characterId);
 
     // 通知 UI（角色切换时发送 CHARACTER_LOGOUT 用于清理旧角色的音频等模块状态）
     // 注意：initialize 中直接调用时不发送事件，避免启动时多余的 UI 重绘
@@ -233,8 +239,8 @@ export const useCharacterStore = defineStore('character', () => {
     }
 
     // 更新 Store 状态（在 emit LOGOUT 之后，确保监听器收到事件时 currentCharacterId 仍为旧值）
+    // P3-116 修复：currentCharacterId 已由上方 gameStore.setCurrentCharacterId 更新（只读 computed 自动反映），无需再赋值
     character.value = characterDbService.fromStorageFormat(data);
-    currentCharacterId.value = characterId;
     bonusStats.value = data.bonusStats || {};
 
     const race = racesData.value[data.raceId];
@@ -285,12 +291,12 @@ export const useCharacterStore = defineStore('character', () => {
 
     // 清理 Store 状态
     if (currentCharacterId.value === characterId) {
-      currentCharacterId.value = null;
+      // P3-116 修复：通过 GameStore 清空 currentCharacterId（触发持久化）
+      await gameStore.setCurrentCharacterId(null);
       character.value = null;
       bonusStats.value = {};
       raceBonus.value = {};
       classBonus.value = {};
-      await characterDbService.saveGameState(null);
     }
 
     // 通知 UI
@@ -303,12 +309,12 @@ export const useCharacterStore = defineStore('character', () => {
   // ==================== Action：登出 ====================
 
   async function logout(): Promise<void> {
-    currentCharacterId.value = null;
+    // P3-116 修复：通过 GameStore 清空 currentCharacterId（触发持久化）
+    await gameStore.setCurrentCharacterId(null);
     character.value = null;
     bonusStats.value = {};
     raceBonus.value = {};
     classBonus.value = {};
-    await characterDbService.saveGameState(null);
     eventBus.emit(GameEvents.CHARACTER_LOGOUT, null);
   }
 

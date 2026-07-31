@@ -60,6 +60,7 @@ import ConfirmPopup from './components/common/ConfirmPopup.vue';
 import Toast from './components/common/Toast.vue';
 import { useCharacterStore } from './modules/character';
 import { useBaseStore } from './modules/base';
+import { useGameStore } from './modules/game';
 import { useToast } from './composables/useToast';
 import { eventBus, GameEvents } from './modules/bus';
 // P3-127 修复：移除 dataInitializer 导入，数据初始化统一由 main.ts 在 App 挂载前完成
@@ -121,6 +122,7 @@ const characterSelectRef = ref<InstanceType<typeof CharacterSelect>>();
 
 const characterStore = useCharacterStore();
 const baseStore = useBaseStore();
+const gameStore = useGameStore();
 const toast = useToast();
 /**
  * P3-126 修复：用 reactive 包装 toast 的 4 个 ref，模板通过 v-bind 展开传递。
@@ -143,12 +145,17 @@ onMounted(async () => {
   // P3-127 修复：移除对 dataInitializer.initializeData 的重复调用，
   // 数据初始化已由 main.ts 在 App 挂载前完成，此处直接初始化各模块 Store。
 
+  // P3-116 修复：GameStore 必须最先初始化，提供全局状态（currentCharacterId /
+  // currentShopId / gameSettings）给其他 store 读取。GameStore.initialize 内部会
+  // 自动迁移旧 audio_settings 键到 gameState.gameSettings。
+  await gameStore.initialize();
+
   // 先初始化基础数据（阵营、种族、职业），再初始化角色模块
   // 注意：characterStore.initialize 依赖 baseStore 的 factions/races/classes 数据，必须串行
   await baseStore.initialize();
   await characterStore.initialize();
-  // 检查是否有当前角色
-  const currentCharacterId = characterStore.getCharacterId();
+  // 检查是否有当前角色（直接从 GameStore 读取，明确数据源）
+  const currentCharacterId = gameStore.getCurrentCharacterId();
   if (currentCharacterId) {
     // 如果有当前角色ID，直接进入游戏
     gameState.value = 'game';

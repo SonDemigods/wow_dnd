@@ -73,7 +73,6 @@ export type {
 export {
   SFX_ROUTE_MAP,
   DEFAULT_AUDIO_SETTINGS,
-  audioDbService,
   audioService,
   useAudioStore
 } from './audio';

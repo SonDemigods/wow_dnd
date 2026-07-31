@@ -358,43 +358,6 @@ describe('ShopDbService - 商店数据层（fake-indexeddb 真实 CRUD）', () =
     });
   });
 
-  // -------------------- 当前商店ID（runtime_gameState 表）--------------------
-
-  describe('saveCurrentShopId / getCurrentShopId：当前商店ID读写', () => {
-    it('保存当前商店ID后可读回', async () => {
-      // Arrange
-      await shopDbService.saveCurrentShopId('shop-1');
-      // Act
-      const result = await shopDbService.getCurrentShopId();
-      // Assert
-      expect(result).toBe('shop-1');
-    });
-
-    it('未保存过时 getCurrentShopId 返回 null', async () => {
-      // Arrange & Act
-      const result = await shopDbService.getCurrentShopId();
-      // Assert
-      expect(result).toBeNull();
-    });
-
-    it('传入 null 表示关闭商店，读回 null', async () => {
-      // Arrange
-      await shopDbService.saveCurrentShopId('shop-1');
-      expect(await shopDbService.getCurrentShopId()).toBe('shop-1');
-      // Act
-      await shopDbService.saveCurrentShopId(null);
-      // Assert
-      expect(await shopDbService.getCurrentShopId()).toBeNull();
-    });
-
-    it('覆盖保存：再次保存新ID替换旧ID', async () => {
-      // Arrange
-      await shopDbService.saveCurrentShopId('shop-a');
-      // Act
-      await shopDbService.saveCurrentShopId('shop-b');
-      const result = await shopDbService.getCurrentShopId();
-      // Assert
-      expect(result).toBe('shop-b');
-    });
-  });
+  // P3-116：saveCurrentShopId / getCurrentShopId 已迁移到 GameStore，本模块不再持有这两个方法
+  // 相关测试用例已删除（GameState 读写测试见 test/game/store.test.ts）
 });

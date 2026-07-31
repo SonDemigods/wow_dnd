@@ -143,7 +143,7 @@ export class GameBootstrapService {
    * 当前实现 dispose 的 Store：
    * - combatStore：清理战斗定时器（turnTimerId / bossIntroTimerId）
    * - explorationStore：清理 EventBus 监听器与 UI 回调
-   * - audioStore：清理 saveTimer 去抖定时器
+   * - audioStore：P3-116 后去抖定时器已移除，dispose 为空操作，保留接口供未来扩展
    *
    * 以下 initialize 的 Store 经核查无 EventBus 监听器、定时器或订阅需要清理，故不实现 dispose：
    * - logStore / inventoryStore / equipmentStore / skillStore / mapStore / questStore

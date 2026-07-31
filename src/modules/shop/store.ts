@@ -38,6 +38,7 @@ import { useToast } from '@/composables/useToast';
 import { SHOPS } from '@/data/config_shops';
 import { errorHandler } from '@/services/ErrorHandler';
 import { errorReporter } from '@/utils/errorReport';
+import { useGameStore } from '@/modules/game';
 
 /**
  * 商店 Pinia Store
@@ -51,8 +52,12 @@ export const useShopStore = defineStore('shop', () => {
   /** 全部商店配置列表（从 DB 加载，空则用种子数据播种） */
   const shops = ref<ShopConfig[]>([]);
 
+  // P3-116 修复：currentShopId 收敛到 GameStore，shopStore 通过只读 computed 代理访问。
+  // 所有修改必须通过 gameStore.setCurrentShopId() 完成（触发持久化），
+  // 不能直接赋值 currentShopId.value（只读 computed 会触发 Vue 警告且不生效）。
+  const gameStore = useGameStore();
   /** 当前打开的商店ID，null 表示未打开任何商店 */
-  const currentShopId = ref<string | null>(null);
+  const currentShopId = computed<string | null>(() => gameStore.currentShopId);
 
   /** 当前商店的商品列表（生成商品 + 回购物品合并后） */
   const currentItems = ref<ShopItem[]>([]);
@@ -234,10 +239,12 @@ export const useShopStore = defineStore('shop', () => {
     try {
       await loadShopConfigs();
 
-      // 恢复上次保存的商店ID
-      const savedShopId = await shopDbService.getCurrentShopId();
-      if (savedShopId && shops.value.some(s => s.id === savedShopId)) {
-        currentShopId.value = savedShopId;
+      // P3-116 修复：currentShopId 已由 GameStore 持有（App.vue 初始化时从 DB 恢复）
+      // 此处仅需验证 savedShopId 是否在当前商店配置中有效，无效则清空
+      const savedShopId = gameStore.getCurrentShopId();
+      if (savedShopId && !shops.value.some(s => s.id === savedShopId)) {
+        // 商店配置中不存在该 ID（数据损坏或版本变更），清空 currentShopId
+        await gameStore.setCurrentShopId(null);
       }
 
       // BIZ-16: 恢复回购列表（持久化数据 → 内存 Map，通过 _replaceSoldItems 触发响应式）
@@ -317,11 +324,10 @@ export const useShopStore = defineStore('shop', () => {
         }
       }
 
-      // 持久化当前商店ID
-      await shopDbService.saveCurrentShopId(shopId);
+      // P3-116 修复：通过 GameStore 设置并持久化 currentShopId（只读 computed 自动反映）
+      await gameStore.setCurrentShopId(shopId);
 
       // 更新 Store 状态
-      currentShopId.value = shopId;
       currentItems.value = mergeItems(generatedItems);
 
       // 通知 UI（音效等）
@@ -634,11 +640,10 @@ export const useShopStore = defineStore('shop', () => {
     const closedShopId = currentShopId.value;
     if (!closedShopId) return;
 
-    // 持久化空商店ID
-    await shopDbService.saveCurrentShopId(null);
+    // P3-116 修复：通过 GameStore 清空 currentShopId（触发持久化，只读 computed 自动反映）
+    await gameStore.setCurrentShopId(null);
 
     // 清理状态
-    currentShopId.value = null;
     currentItems.value = [];
 
     // 通知 UI
@@ -720,11 +725,11 @@ export const useShopStore = defineStore('shop', () => {
     await shopDbService.clearAllShopItems();
     await shopDbService.clearAllSoldItems();
     shops.value = [];
-    currentShopId.value = null;
+    // P3-116 修复：通过 GameStore 清空 currentShopId（触发持久化）
+    await gameStore.setCurrentShopId(null);
     currentItems.value = [];
     soldItems.value = new Map();
     lastRefresh.value = new Map();
-    await shopDbService.saveCurrentShopId(null);
   }
 
   // ==================== 公开导出 ====================

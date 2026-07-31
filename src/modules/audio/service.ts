@@ -87,8 +87,11 @@ class AudioService implements IAudioService {
   /**
    * 初始化音频服务
    *
-   * 流程：创建节点 → 加载 DB 设置 → 同步音量 → 订阅 store → 绑定事件 → 监听首次交互。
+   * 流程：创建节点 → 同步音量 → 订阅 store → 绑定事件 → 监听首次交互。
    * 重复调用会直接返回（幂等）。
+   *
+   * P3-116 修复：音频设置由 GameStore.initialize 统一加载（在 App.vue 中先于本服务调用），
+   * 本服务无需再调用 store.loadFromDb()。
    */
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -98,9 +101,8 @@ class AudioService implements IAudioService {
     this.sfxSynth = new SfxSynth(this.nodes);
     this.bgmSynth = new BgmSynth(this.nodes, this.sfxSynth);
 
-    // 从 DB 加载持久化设置
+    // 订阅 store 状态变化以同步音量
     const store = useAudioStore();
-    await store.loadFromDb();
 
     // 同步音量
     this.applyVolume();
@@ -271,9 +273,17 @@ class AudioService implements IAudioService {
     return { ...useAudioStore().settings };
   }
 
-  /** 更新设置（自动持久化由 store 负责） */
+  /**
+   * 更新设置（自动持久化由 store 负责）
+   *
+   * P3-116 修复：store.updateSettings 已改为 async（委托 GameStore 持久化）。
+   * 本方法保持 void 返回值以兼容 IAudioService 接口，内部以 fire-and-forget
+   * 方式调用，持久化失败由 GameStore 内部 errorReporter 兜底。
+   */
   updateSettings(settings: Partial<AudioSettings>): void {
-    useAudioStore().updateSettings(settings);
+    useAudioStore().updateSettings(settings).catch(err => {
+      console.error('[AudioService] updateSettings 持久化失败:', err);
+    });
   }
 
   // ==================== 事件绑定 ====================

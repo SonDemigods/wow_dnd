@@ -30,14 +30,32 @@ import type { AdventureLogData } from '@/modules/log/types';
 /**
  * 全局游戏状态存储格式
  * 属于 data 模块自身的运行时状态，不归属任何业务模块
+ *
+ * P3-116 修复：
+ * - 新增 gameSettings 字段（合并原 audio_settings 键的音频设置数据）
+ * - settings 字段标记 @deprecated（已被 gameSettings 替代），保留为可选供向后兼容旧存档
+ * - maxLevel 字段标记 @deprecated（从未使用），保留为可选供向后兼容
  */
 export interface GameStateStorage {
   id: string;
   currentCharacterId?: string | null;
   currentShopId?: string | null;
   lastPlayedAt?: string;
-  settings?: { soundEnabled: boolean; musicEnabled: boolean; autoSave: boolean; difficulty: string };
   initializedAt?: string;
+  /** P3-116：游戏设置（含音频设置），合并原 audio_settings 键的数据 */
+  gameSettings?: {
+    masterVolume: number;
+    sfxVolume: number;
+    bgmVolume: number;
+    muted: boolean;
+    sfxEnabled: boolean;
+    bgmEnabled: boolean;
+    autoSave?: boolean;
+    difficulty?: string;
+  };
+  /** @deprecated 已被 gameSettings 替代，保留供向后兼容旧存档 */
+  settings?: { soundEnabled: boolean; musicEnabled: boolean; autoSave: boolean; difficulty: string };
+  /** @deprecated 从未使用，保留供向后兼容 */
   maxLevel?: number;
   [key: string]: unknown;
 }
@@ -201,8 +219,11 @@ export class GameDatabase extends Dexie {
 
   /**
    * 初始化默认游戏状态
-   * 
+   *
    * 在数据库首次创建时调用，设置初始游戏配置
+   *
+   * P3-116 修复：使用 gameSettings 字段替代原 settings 字段，
+   * 合并原 audio_settings 键的音频设置默认值。
    */
   private async populateInitialData(): Promise<void> {
     await this.runtime_gameState.put({
@@ -210,13 +231,18 @@ export class GameDatabase extends Dexie {
       currentCharacterId: null,
       currentShopId: null,
       lastPlayedAt: new Date().toISOString(),
-      settings: {
-        soundEnabled: true,
-        musicEnabled: true,
+      initializedAt: new Date().toISOString(),
+      // P3-116：使用 gameSettings 替代原 settings 字段，合并音频设置默认值
+      gameSettings: {
+        masterVolume: 0.7,
+        sfxVolume: 0.8,
+        bgmVolume: 0.5,
+        muted: false,
+        sfxEnabled: true,
+        bgmEnabled: true,
         autoSave: true,
-        difficulty: 'normal'
+        difficulty: 'normal',
       },
-      initializedAt: new Date().toISOString()
     });
   }
 }

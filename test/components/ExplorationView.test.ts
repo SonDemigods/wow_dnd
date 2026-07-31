@@ -20,7 +20,7 @@ import { defineComponent, h } from 'vue';
 import { shallowMount, flushPromises } from '@vue/test-utils';
 import ExplorationView from '@/components/ExplorationView.vue';
 import { useExplorationStore } from '@/modules/exploration';
-import { useCharacterStore } from '@/modules/character';
+import { useGameStore } from '@/modules/game';
 import { useMapStore } from '@/modules/map';
 import { eventBus } from '@/modules/bus';
 import { createStubPinia } from '../utils/setup';
@@ -120,8 +120,8 @@ describe('ExplorationView 探索视图组件', () => {
 
   describe('onMounted 初始化', () => {
     it('currentCharacterId 存在时调用 explorationStore.init(characterId)', async () => {
-      const characterStore = useCharacterStore(pinia);
-      characterStore.$patch((state) => {
+      // P3-116：currentCharacterId 收敛到 GameStore，需通过 GameStore.$patch 修改数据源
+      useGameStore(pinia).$patch((state) => {
         state.currentCharacterId = 'char-1';
       });
       const explorationStore = useExplorationStore(pinia);

@@ -221,7 +221,7 @@ export type BgmScene =
  * 音频设置接口
  *
  * 管理玩家的全部音频偏好设置，所有音量值均为 0-1 的线性值。
- * 设置通过 useAudioStore 管理状态，通过 AudioDbService 持久化到 IndexedDB。
+ * 设置通过 useAudioStore 管理状态（P3-116 后委托 GameStore 持久化到 IndexedDB）。
  *
  * 音量计算链（dB 相加 = 线性相乘）：
  * - 主音量 dB 映射到 masterVolume 节点
@@ -236,7 +236,7 @@ export type BgmScene =
  * @property {boolean} sfxEnabled - 是否启用音效（false 时 effectiveSfxVolume 恒为 0）
  * @property {boolean} bgmEnabled - 是否启用背景音乐（false 时 effectiveBgmVolume 恒为 0）
  *
- * @see useAudioStore 管理此设置的状态和持久化
+ * @see useAudioStore 管理此设置的状态（P3-116 后持久化由 GameStore 统一负责）
  * @see AudioService.applyVolume 将设置应用到 Tone.js 各通道
  * @see DEFAULT_AUDIO_SETTINGS 全局唯一的默认值常量
  */
@@ -252,12 +252,12 @@ export interface AudioSettings {
 /**
  * 默认音频设置常量
  *
- * 全局唯一的默认值来源，db.ts 和 store.ts 均引用此常量。
+ * 全局唯一的默认值来源，GameStore（gameSettings 默认值）和 audio store 均引用此常量。
  * 原因：保证模块内所有默认值一致，避免因多处硬编码导致的配置漂移。
  *
  * @see AudioSettings 接口定义
- * @see audioDbService.loadSettings DB 读取失败时使用此常量作为 fallback
- * @see useAudioStore 初始化时使用此常量填充状态
+ * @see useGameStore.initialize 首次初始化时使用此常量填充 gameSettings
+ * @see useAudioStore 通过只读 computed 派生自此常量填充的 GameStore.gameSettings
  */
 export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   masterVolume: 0.7,

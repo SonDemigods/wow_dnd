@@ -29,6 +29,50 @@ import type { ShopConfig, ShopItem, SoldItemEntry } from '@/modules/shop/types';
 import type { Item } from '@/modules/inventory/types';
 import type { Character } from '@/modules/character/types';
 
+// ==================== Mock：GameStore（P3-116：currentShopId 收敛到 GameStore） ====================
+// 提供可控的 mock useGameStore，内部用真实 Pinia ref 保证响应式，
+// setCurrentShopId/getCurrentShopId 等方法用 vi.hoisted 提升为全局 spy，
+// 避免 Pinia action 包装破坏 spy 性质，测试中直接通过 gameStoreSpies 断言。
+const gameStoreSpies = vi.hoisted(() => ({
+  setCurrentCharacterId: vi.fn(),
+  setCurrentShopId: vi.fn(),
+  getCurrentCharacterId: vi.fn(),
+  getCurrentShopId: vi.fn(),
+  updateGameSettings: vi.fn(),
+  flushPersist: vi.fn(),
+  initialize: vi.fn(),
+}));
+
+vi.mock('@/modules/game', async () => {
+  const { defineStore } = await import('pinia');
+  const { ref } = await import('vue');
+  const useGameStore = defineStore('mockGame', () => {
+    const currentCharacterId = ref<string | null>(null);
+    const currentShopId = ref<string | null>(null);
+    // 每次 store 创建时重新绑定 mock 实现到当前 ref（createTestPinia 后 store 重建）
+    gameStoreSpies.setCurrentCharacterId.mockImplementation(async (id: string | null) => {
+      currentCharacterId.value = id;
+    });
+    gameStoreSpies.setCurrentShopId.mockImplementation(async (id: string | null) => {
+      currentShopId.value = id;
+    });
+    gameStoreSpies.getCurrentCharacterId.mockImplementation(() => currentCharacterId.value);
+    gameStoreSpies.getCurrentShopId.mockImplementation(() => currentShopId.value);
+    return {
+      currentCharacterId,
+      currentShopId,
+      setCurrentCharacterId: gameStoreSpies.setCurrentCharacterId,
+      setCurrentShopId: gameStoreSpies.setCurrentShopId,
+      getCurrentCharacterId: gameStoreSpies.getCurrentCharacterId,
+      getCurrentShopId: gameStoreSpies.getCurrentShopId,
+      updateGameSettings: gameStoreSpies.updateGameSettings,
+      flushPersist: gameStoreSpies.flushPersist,
+      initialize: gameStoreSpies.initialize,
+    };
+  });
+  return { useGameStore };
+});
+
 // ==================== vi.hoisted：跨 store stub 持有对象 ====================
 const mocks = vi.hoisted(() => ({
   characterStore: {
@@ -123,6 +167,7 @@ import { shopDbService } from '@/modules/shop/db';
 import { generateShopItems, canAffordItem, computeSellPrice } from '@/modules/shop/service';
 import { SHOPS } from '@/data/config_shops';
 import { useShopStore } from '@/modules/shop/store';
+import { useGameStore } from '@/modules/game';
 
 // ==================== 测试数据构造 helper ====================
 
@@ -222,13 +267,17 @@ describe('useShopStore - 商店 Store', () => {
     it('currentShopConfig：currentShopId 命中时返回对应配置', () => {
       const store = useShopStore();
       const config = makeShopConfig({ id: 'general_goods' });
-      store.$patch({ shops: [config], currentShopId: 'general_goods' });
+      // P3-116：currentShopId 收敛到 GameStore，通过 mock 的 setCurrentShopId 设置
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ shops: [config] });
       expect(store.currentShopConfig).toEqual(config);
     });
 
     it('currentShopConfig：currentShopId 未命中时返回 null', () => {
       const store = useShopStore();
-      store.$patch({ shops: [makeShopConfig({ id: 'general_goods' })], currentShopId: 'unknown' });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('unknown');
+      store.$patch({ shops: [makeShopConfig({ id: 'general_goods' })] });
       expect(store.currentShopConfig).toBeNull();
     });
   });
@@ -238,7 +287,7 @@ describe('useShopStore - 商店 Store', () => {
     it('DB 有配置时直接加载到 shops', async () => {
       const configs = [makeShopConfig({ id: 'shop_a' }), makeShopConfig({ id: 'shop_b' })];
       vi.mocked(shopDbService.getAllShopConfigs).mockResolvedValueOnce(configs);
-      vi.mocked(shopDbService.getCurrentShopId).mockResolvedValueOnce(null);
+      // P3-116：gameStore.getCurrentShopId 默认返回 null，无需 mock
       vi.mocked(shopDbService.getAllSoldItems).mockResolvedValueOnce([]);
       vi.mocked(shopDbService.getAllShopItemsStorage).mockResolvedValueOnce([]);
 
@@ -253,7 +302,7 @@ describe('useShopStore - 商店 Store', () => {
 
     it('DB 无配置时用 SHOPS 种子数据播种并写回 DB', async () => {
       vi.mocked(shopDbService.getAllShopConfigs).mockResolvedValueOnce([]);
-      vi.mocked(shopDbService.getCurrentShopId).mockResolvedValueOnce(null);
+      // P3-116：gameStore.getCurrentShopId 默认返回 null，无需 mock
       vi.mocked(shopDbService.getAllSoldItems).mockResolvedValueOnce([]);
       vi.mocked(shopDbService.getAllShopItemsStorage).mockResolvedValueOnce([]);
 
@@ -267,7 +316,6 @@ describe('useShopStore - 商店 Store', () => {
 
     it('恢复 savedShopId + soldItems + lastRefresh', async () => {
       vi.mocked(shopDbService.getAllShopConfigs).mockResolvedValueOnce(SHOPS);
-      vi.mocked(shopDbService.getCurrentShopId).mockResolvedValueOnce('general_goods');
       vi.mocked(shopDbService.getAllSoldItems).mockResolvedValueOnce([
         {
           shopId: 'general_goods',
@@ -279,6 +327,9 @@ describe('useShopStore - 商店 Store', () => {
       ]);
 
       const store = useShopStore();
+      // P3-116：currentShopId 收敛到 GameStore，通过 setCurrentShopId 设置 mock ref 的值
+      //（mock 实现同步修改 ref，无需 await 即可让 computed 拿到值）
+      useGameStore().setCurrentShopId('general_goods');
       await store.init();
 
       expect(store.currentShopId).toBe('general_goods');
@@ -343,7 +394,8 @@ describe('useShopStore - 商店 Store', () => {
 
       expect(store.currentShopId).toBe('general_goods');
       expect(store.currentItems.length).toBeGreaterThan(0);
-      expect(shopDbService.saveCurrentShopId).toHaveBeenCalledWith('general_goods');
+      // P3-116：currentShopId 持久化由 GameStore 负责
+      expect(gameStoreSpies.setCurrentShopId).toHaveBeenCalledWith('general_goods');
       expect(openedSpy).toHaveBeenCalledWith({ shopId: 'general_goods', characterId: 'char_1' });
     });
 
@@ -394,7 +446,9 @@ describe('useShopStore - 商店 Store', () => {
 
     it('物品不存在返回 false', async () => {
       const store = useShopStore();
-      store.$patch({ currentShopId: 'general_goods', currentItems: [] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [] });
 
       const result = await store.buyItem('not_exist', 1);
       expect(result).toBe(false);
@@ -403,7 +457,9 @@ describe('useShopStore - 商店 Store', () => {
     it('金币不足返回 false', async () => {
       const store = useShopStore();
       const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 3 });
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
       vi.mocked(canAffordItem).mockReturnValue(false);
 
       const result = await store.buyItem('potion_1', 1);
@@ -414,7 +470,9 @@ describe('useShopStore - 商店 Store', () => {
     it('背包空间不足时返还金币', async () => {
       const store = useShopStore();
       const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 3 });
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
       mocks.inventoryStore.addItem.mockReturnValue(0); // 背包满
       vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
         shopId: 'general_goods',
@@ -431,7 +489,9 @@ describe('useShopStore - 商店 Store', () => {
     it('成功购买生成商品：扣金币、加背包、减库存、emit SHOP_TRANSACTION、记录日志', async () => {
       const store = useShopStore();
       const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 3 });
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
       vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValue({
         shopId: 'general_goods',
@@ -458,8 +518,9 @@ describe('useShopStore - 商店 Store', () => {
       const store = useShopStore();
       const soldEntry: SoldItemEntry = { itemId: 'ore_1', price: 25, quantity: 2 };
       const innerMap = new Map([['ore_1', soldEntry]]);
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       store.$patch({
-        currentShopId: 'general_goods',
         currentItems: [{ itemId: 'ore_1', price: 25, quantity: 2 }],
         soldItems: new Map([['general_goods', innerMap]]),
       });
@@ -485,7 +546,8 @@ describe('useShopStore - 商店 Store', () => {
 
     it('物品模板不存在返回 false', async () => {
       const store = useShopStore();
-      store.$patch({ currentShopId: 'general_goods' });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       mocks.inventoryStore.getItemInfo.mockReturnValue(null);
 
       const result = await store.sellItem('not_exist', 1);
@@ -494,7 +556,8 @@ describe('useShopStore - 商店 Store', () => {
 
     it('成功出售：减背包、加金币、加入回购列表、emit SHOP_TRANSACTION、记录日志', async () => {
       const store = useShopStore();
-      store.$patch({ currentShopId: 'general_goods' });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       const itemTemplate = makeItem({ id: 'potion_1', name: '治疗药水' });
       mocks.inventoryStore.getItemInfo.mockReturnValue(itemTemplate);
       mocks.inventoryStore.removeItem.mockReturnValue(2); // 实际移除 2 件
@@ -523,8 +586,9 @@ describe('useShopStore - 商店 Store', () => {
     it('同物品多次出售合并数量', async () => {
       const store = useShopStore();
       const existingEntry: SoldItemEntry = { itemId: 'potion_1', price: 50, quantity: 1 };
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       store.$patch({
-        currentShopId: 'general_goods',
         soldItems: new Map([['general_goods', new Map([['potion_1', existingEntry]])]]),
       });
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
@@ -549,7 +613,8 @@ describe('useShopStore - 商店 Store', () => {
       await store.closeShop();
 
       expect(closedSpy).not.toHaveBeenCalled();
-      expect(shopDbService.saveCurrentShopId).not.toHaveBeenCalled();
+      // P3-116：currentShopId 持久化由 GameStore 负责
+      expect(gameStoreSpies.setCurrentShopId).not.toHaveBeenCalled();
     });
 
     it('成功关闭：清空状态、emit SHOP_CLOSED、持久化 null', async () => {
@@ -557,13 +622,16 @@ describe('useShopStore - 商店 Store', () => {
       eventBus.on(GameEvents.SHOP_CLOSED, closedSpy);
 
       const store = useShopStore();
-      store.$patch({ currentShopId: 'general_goods', currentItems: [makeShopItem()] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [makeShopItem()] });
 
       await store.closeShop();
 
       expect(store.currentShopId).toBeNull();
       expect(store.currentItems).toEqual([]);
-      expect(shopDbService.saveCurrentShopId).toHaveBeenCalledWith(null);
+      // P3-116：currentShopId 持久化由 GameStore 负责
+      expect(gameStoreSpies.setCurrentShopId).toHaveBeenCalledWith(null);
       expect(closedSpy).toHaveBeenCalledWith({ shopId: 'general_goods' });
     });
   });
@@ -581,8 +649,9 @@ describe('useShopStore - 商店 Store', () => {
       vi.mocked(generateShopItems).mockReturnValueOnce(newItems);
 
       const store = useShopStore();
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       store.$patch({
-        currentShopId: 'general_goods',
         shops: [makeShopConfig()],
       });
 
@@ -625,8 +694,9 @@ describe('useShopStore - 商店 Store', () => {
     it('getSoldItemCount：返回指定物品的回购数量', () => {
       const store = useShopStore();
       const entry: SoldItemEntry = { itemId: 'ore_1', price: 30, quantity: 5 };
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       store.$patch({
-        currentShopId: 'general_goods',
         soldItems: new Map([['general_goods', new Map([['ore_1', entry]])]]),
       });
 
@@ -644,9 +714,10 @@ describe('useShopStore - 商店 Store', () => {
   describe('Actions：reset', () => {
     it('清空 DB + 内存状态', async () => {
       const store = useShopStore();
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       store.$patch({
         shops: [makeShopConfig()],
-        currentShopId: 'general_goods',
         currentItems: [makeShopItem()],
       });
 
@@ -654,7 +725,8 @@ describe('useShopStore - 商店 Store', () => {
 
       expect(shopDbService.clearAllShopItems).toHaveBeenCalled();
       expect(shopDbService.clearAllSoldItems).toHaveBeenCalled();
-      expect(shopDbService.saveCurrentShopId).toHaveBeenCalledWith(null);
+      // P3-116：currentShopId 持久化由 GameStore 负责
+      expect(gameStoreSpies.setCurrentShopId).toHaveBeenCalledWith(null);
       expect(store.shops).toEqual([]);
       expect(store.currentShopId).toBeNull();
       expect(store.currentItems).toEqual([]);
@@ -682,7 +754,7 @@ describe('useShopStore - 商店 Store', () => {
     it('getAllShopItemsStorage 返回非 number lastRefresh → 跳过恢复该时间戳', async () => {
       // Arrange：storage.lastRefresh 为字符串（非 number），应跳过 set
       vi.mocked(shopDbService.getAllShopConfigs).mockResolvedValueOnce(SHOPS);
-      vi.mocked(shopDbService.getCurrentShopId).mockResolvedValueOnce(null);
+      // P3-116：gameStore.getCurrentShopId 默认返回 null，无需 mock
       vi.mocked(shopDbService.getAllSoldItems).mockResolvedValueOnce([]);
       vi.mocked(shopDbService.getAllShopItemsStorage).mockResolvedValueOnce([
         { shopId: 'general_goods', items: [], lastRefresh: 'not-a-number' as unknown as number },
@@ -698,7 +770,7 @@ describe('useShopStore - 商店 Store', () => {
     it('DB 无配置且 saveShopConfig reject → catch 记录错误但不阻断流程', async () => {
       // Arrange：DB 无配置触发种子播种，saveShopConfig reject
       vi.mocked(shopDbService.getAllShopConfigs).mockResolvedValueOnce([]);
-      vi.mocked(shopDbService.getCurrentShopId).mockResolvedValueOnce(null);
+      // P3-116：gameStore.getCurrentShopId 默认返回 null，无需 mock
       vi.mocked(shopDbService.getAllSoldItems).mockResolvedValueOnce([]);
       vi.mocked(shopDbService.getAllShopItemsStorage).mockResolvedValueOnce([]);
       vi.mocked(shopDbService.saveShopConfig).mockRejectedValueOnce(new Error('write fail'));
@@ -804,7 +876,9 @@ describe('useShopStore - 商店 Store', () => {
       const item = makeShopItem({
         itemId: 'rare_1', price: 100, quantity: 5, maxPurchaseCount: 5, purchasedCount: 4,
       });
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
 
       const result = await store.buyItem('rare_1', 2);
 
@@ -819,7 +893,9 @@ describe('useShopStore - 商店 Store', () => {
       const item: ShopItem = {
         itemId: 'rare_2', price: 100, quantity: 5, maxPurchaseCount: 3, purchasedCount: 3,
       };
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
 
       const result = await store.buyItem('rare_2', 1);
 
@@ -830,7 +906,9 @@ describe('useShopStore - 商店 Store', () => {
     it('spendGold 失败 → 返回 false，不加背包', async () => {
       const store = useShopStore();
       const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 3 });
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
       mocks.characterStore.spendGold.mockResolvedValue(false);
 
       const result = await store.buyItem('potion_1', 1);
@@ -842,7 +920,9 @@ describe('useShopStore - 商店 Store', () => {
     it('部分成功（added > 0 且 < quantity）→ 返还部分金币并继续流程', async () => {
       const store = useShopStore();
       const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 5 });
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
       mocks.inventoryStore.addItem.mockReturnValue(2); // 购买 3 件只成功 2 件
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
       vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
@@ -862,7 +942,9 @@ describe('useShopStore - 商店 Store', () => {
     it('部分成功且单价为 0 → 不返还金币（refundAmount === 0）', async () => {
       const store = useShopStore();
       const item = makeShopItem({ itemId: 'free_1', price: 0, quantity: 5 });
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
       mocks.inventoryStore.addItem.mockReturnValue(2); // 购买 3 件只成功 2 件
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'free_1', name: '免费物品' }));
       vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
@@ -881,8 +963,9 @@ describe('useShopStore - 商店 Store', () => {
     it('回购全部买完 → 从 soldItems 删除该物品及商店条目', async () => {
       const store = useShopStore();
       const soldEntry: SoldItemEntry = { itemId: 'ore_1', price: 25, quantity: 2 };
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       store.$patch({
-        currentShopId: 'general_goods',
         currentItems: [{ itemId: 'ore_1', price: 25, quantity: 2 }],
         soldItems: new Map([['general_goods', new Map([['ore_1', soldEntry]])]]),
       });
@@ -902,7 +985,9 @@ describe('useShopStore - 商店 Store', () => {
     it('生成商品无 storage → generated 为 null，跳过库存更新', async () => {
       const store = useShopStore();
       const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 3 });
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
       // getShopItemsStorage 默认返回 null（beforeEach 已设置）
 
@@ -916,7 +1001,9 @@ describe('useShopStore - 商店 Store', () => {
     it('生成商品不在 storage items 中 → idx === -1 跳过更新', async () => {
       const store = useShopStore();
       const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 3 });
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
       // storage 中只有 other 物品，不含 potion_1
       vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
@@ -937,7 +1024,9 @@ describe('useShopStore - 商店 Store', () => {
       const item: ShopItem = {
         itemId: 'rare_1', price: 100, quantity: 3, maxPurchaseCount: 5, purchasedCount: 1,
       };
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'rare_1', name: '稀有装备' }));
       vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
         shopId: 'general_goods',
@@ -959,7 +1048,9 @@ describe('useShopStore - 商店 Store', () => {
     it('购买使生成商品 quantity 归零 → splice 移除', async () => {
       const store = useShopStore();
       const item = makeShopItem({ itemId: 'potion_1', price: 50, quantity: 1 });
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
       vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
         shopId: 'general_goods',
@@ -979,7 +1070,8 @@ describe('useShopStore - 商店 Store', () => {
   describe('Actions：sellItem 边界分支', () => {
     it('computeSellPrice 返回 0 → 返回 false', async () => {
       const store = useShopStore();
-      store.$patch({ currentShopId: 'general_goods' });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'junk_1', name: '废弃物' }));
       vi.mocked(computeSellPrice).mockReturnValue(0);
 
@@ -991,7 +1083,8 @@ describe('useShopStore - 商店 Store', () => {
 
     it('removeItem 返回 0 → 返回 false', async () => {
       const store = useShopStore();
-      store.$patch({ currentShopId: 'general_goods' });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
       vi.mocked(computeSellPrice).mockReturnValue(25);
       mocks.inventoryStore.removeItem.mockReturnValue(0);
@@ -1004,7 +1097,8 @@ describe('useShopStore - 商店 Store', () => {
 
     it('getShopItems 返回 null → mergeItems 以空列表合并', async () => {
       const store = useShopStore();
-      store.$patch({ currentShopId: 'general_goods' });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
       mocks.inventoryStore.removeItem.mockReturnValue(1);
       vi.mocked(computeSellPrice).mockReturnValue(25);
@@ -1019,7 +1113,8 @@ describe('useShopStore - 商店 Store', () => {
 
     it('actualQuantity === 1 → 日志不带数量后缀', async () => {
       const store = useShopStore();
-      store.$patch({ currentShopId: 'general_goods' });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'potion_1', name: '治疗药水' }));
       mocks.inventoryStore.removeItem.mockReturnValue(1);
       vi.mocked(computeSellPrice).mockReturnValue(25);
@@ -1039,8 +1134,9 @@ describe('useShopStore - 商店 Store', () => {
     it('refreshShop 时 currentShopId 不在 shops → regenerateItems 返回空数组', async () => {
       const store = useShopStore();
       // currentShopId 设置为 shops 中不存在的 id
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('unknown_shop');
       store.$patch({
-        currentShopId: 'unknown_shop',
         shops: [makeShopConfig({ id: 'general_goods' })],
       });
 
@@ -1053,7 +1149,8 @@ describe('useShopStore - 商店 Store', () => {
 
     it('getSoldItemCount：currentShopId 设置但无 soldMap → 返回 0', () => {
       const store = useShopStore();
-      store.$patch({ currentShopId: 'general_goods' });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       // soldItems 为空 Map（未出售任何物品）
 
       expect(store.getSoldItemCount('any')).toBe(0);
@@ -1069,7 +1166,9 @@ describe('useShopStore - 商店 Store', () => {
       const item: ShopItem = {
         itemId: 'rare_1', price: 100, quantity: 5, maxPurchaseCount: 3,
       } as ShopItem; // purchasedCount 故意缺失
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'rare_1', name: '稀有装备' }));
       vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
         shopId: 'general_goods',
@@ -1088,7 +1187,9 @@ describe('useShopStore - 商店 Store', () => {
       const store = useShopStore();
       const item = makeShopItem({ itemId: 'rare_1', price: 100, quantity: 3, maxPurchaseCount: 5 });
       // currentItems 中的 item 有 purchasedCount（正常路径），storage 中的 generated item 无 purchasedCount（?? 分支）
-      store.$patch({ currentShopId: 'general_goods', currentItems: [item] });
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
+      store.$patch({ currentItems: [item] });
       mocks.inventoryStore.getItemInfo.mockReturnValue(makeItem({ id: 'rare_1', name: '稀有装备' }));
       vi.mocked(shopDbService.getShopItemsStorage).mockResolvedValueOnce({
         shopId: 'general_goods',
@@ -1113,8 +1214,9 @@ describe('useShopStore - 商店 Store', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const store = useShopStore();
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       store.$patch({
-        currentShopId: 'general_goods',
         shops: [makeShopConfig()],
       });
 
@@ -1131,8 +1233,9 @@ describe('useShopStore - 商店 Store', () => {
       // 导致 _replaceSoldItems 深拷贝的副本中 innerMap 不存在
       const store = useShopStore();
       const soldEntry: SoldItemEntry = { itemId: 'ore_1', price: 25, quantity: 2 };
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       store.$patch({
-        currentShopId: 'general_goods',
         currentItems: [{ itemId: 'ore_1', price: 25, quantity: 2 }],
         soldItems: new Map([['general_goods', new Map([['ore_1', soldEntry]])]]),
       });
@@ -1158,8 +1261,9 @@ describe('useShopStore - 商店 Store', () => {
       // 导致 _replaceSoldItems 深拷贝的副本中 entry 不存在
       const store = useShopStore();
       const soldEntry: SoldItemEntry = { itemId: 'ore_1', price: 25, quantity: 2 };
+      // P3-116：currentShopId 收敛到 GameStore
+      useGameStore().setCurrentShopId('general_goods');
       store.$patch({
-        currentShopId: 'general_goods',
         currentItems: [{ itemId: 'ore_1', price: 25, quantity: 2 }],
         soldItems: new Map([['general_goods', new Map([['ore_1', soldEntry]])]]),
       });
