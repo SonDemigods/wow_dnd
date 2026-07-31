@@ -311,6 +311,10 @@ export {
   useExplorationStore
 } from './exploration';
 
+// ===== game =====
+export type { GameSettings, GameRuntimeState } from './game';
+export { DEFAULT_GAME_SETTINGS, useGameStore } from './game';
+
 // ===== inventory =====
 export type {
   ItemType,
