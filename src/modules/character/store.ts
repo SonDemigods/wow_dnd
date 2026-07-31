@@ -27,7 +27,9 @@ import {
   computeInitialStats,
   recalculateHpMp,
   computeResurrection,
-  isClassFactionCompatible
+  isClassFactionCompatible,
+  isRaceFactionCompatible,
+  isClassRaceCompatible
 } from './service';
 import { getExpForLevel } from '@/utils/calculations';
 import { errorReporter } from '@/utils/errorReport';
@@ -410,12 +412,19 @@ export const useCharacterStore = defineStore('character', () => {
   }
 
   // ==================== Action：种族/职业变更 ====================
-  // setRace/setClass 共用模式：更新内部 bonus → 重算基础属性 → 重算衍生属性 → 持久化
+  // setRace/setClass 共用模式：校验兼容性 → 更新内部 bonus → 重算基础属性 → 重算衍生属性 → 持久化
+  // P3-100 修复：与 createCharacter 中已有的 isClassFactionCompatible 校验对齐，
+  //              补全 setRace/setClass 缺失的兼容性校验，防止绕过 UI 直接调用 store 导致非法组合。
 
   /** 设置种族 */
   async function setRace(race: RaceType): Promise<void> {
     if (!character.value) return;
     const raceData = racesData.value[race];
+    if (!raceData) return;
+    // P3-100 修复：校验种族与当前角色阵营兼容（如 alliance 角色不可切到 horde 种族 orc）
+    if (!isRaceFactionCompatible(raceData, character.value.factionId)) {
+      throw new Error(`种族「${raceData.name}」不支持阵营「${character.value.factionId}」`);
+    }
     raceBonus.value = raceData?.bonus || {};
     character.value = {
       ...character.value,
@@ -431,6 +440,14 @@ export const useCharacterStore = defineStore('character', () => {
   async function setClass(classIdParam: ClassType): Promise<void> {
     if (!character.value) return;
     const classData = classesData.value[classIdParam];
+    if (!classData) return;
+    // P3-100 修复：校验职业与当前角色阵营和种族均兼容
+    if (!isClassFactionCompatible(classData, character.value.factionId)) {
+      throw new Error(`职业「${classData.name}」不支持阵营「${character.value.factionId}」`);
+    }
+    if (!isClassRaceCompatible(classData, character.value.raceId)) {
+      throw new Error(`职业「${classData.name}」不支持种族「${character.value.raceId}」`);
+    }
     classBonus.value = classData?.bonus || {};
     character.value = {
       ...character.value,

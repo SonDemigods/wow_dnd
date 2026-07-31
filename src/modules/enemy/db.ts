@@ -36,7 +36,8 @@ export class EnemyDbService {
         critChance: enemy.critChance ?? null,
         dodgeChance: enemy.dodgeChance ?? null,
         skillPool: enemy.skillPool ?? undefined,
-        aiStrategy: enemy.aiStrategy ?? undefined
+        aiStrategy: enemy.aiStrategy ?? undefined,
+        attackType: enemy.attackType ?? undefined
       });
     });
   }
@@ -102,6 +103,7 @@ interface EnemyStorageBase {
   dodgeChance?: number | null;
   skillPool?: string[];
   aiStrategy?: string;
+  attackType?: string;
 }
 
 /**
@@ -112,6 +114,7 @@ interface EnemyStorageBase {
  * - 数值字段通过 `Number()` 强制转换，转换失败时使用默认值
  * - `damage` 校验数组长度，不合法时回退为 `[1, 3]`
  * - `aiStrategy` 由 `string` 断言为 `AiStrategyType`（数据源受控）
+ * - `attackType` 仅在值为 `'physical'` 或 `'magical'` 时透传，其他值（含 undefined）忽略（P3-95）
  *
  * @param data - 数据库存储格式（enemy 或 boss 共有字段）
  * @returns 转换后的基础 EnemyData
@@ -121,6 +124,11 @@ export function fromStorageBase(data: EnemyStorageBase): EnemyData {
   const damage: [number, number] = (Array.isArray(rawDamage) && rawDamage.length >= 2)
     ? [Number(rawDamage[0]), Number(rawDamage[1])]
     : [1, 3];
+
+  // P3-95：attackType 仅允许 'physical' | 'magical'，非法值视为未配置（默认 physical）
+  const rawAttackType = data.attackType;
+  const attackType: EnemyData['attackType'] =
+    rawAttackType === 'physical' || rawAttackType === 'magical' ? rawAttackType : undefined;
 
   return {
     id: data.id,
@@ -139,6 +147,7 @@ export function fromStorageBase(data: EnemyStorageBase): EnemyData {
     dodgeChance: data.dodgeChance != null ? Number(data.dodgeChance) : undefined,
     skillPool: data.skillPool,
     aiStrategy: data.aiStrategy as AiStrategyType | undefined,
+    attackType,
   };
 }
 

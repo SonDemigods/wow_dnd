@@ -79,11 +79,31 @@ function makeTree(o: Partial<TalentTree> = {}): TalentTree {
   } as TalentTree;
 }
 
-/** 构造天赋效果 */
+/**
+ * 构造天赋效果
+ *
+ * P3-139 修复后：TalentEffect 为可辨识联合类型，每个分支有独立的必填字段。
+ * 默认构造 stat_bonus 分支（stat='str'），调用方可通过 o 覆盖 type 与其他字段。
+ * 对于 resource_bonus 分支，stat 默认为 'rage_max'（合法 ResourceStatKey）。
+ */
 function makeEffect(o: Partial<TalentEffect> = {}): TalentEffect {
+  // 根据传入的 type 推断默认必填字段（可辨识联合分支的差异化默认值）
+  const type = o.type ?? 'stat_bonus';
+  const defaultsByType: Record<string, Partial<TalentEffect>> = {
+    stat_bonus: { stat: 'str' },
+    resource_bonus: { stat: 'rage_max' },
+    skill_enhance: { targetSkill: 'fireball' },
+    special: {},
+    damage_multiplier: {},
+    damage_reduction: {},
+    crit_bonus: {},
+    healing_multiplier: {},
+    hp_multiplier: {},
+  };
   return {
     type: 'stat_bonus',
     valuePerRank: 1,
+    ...defaultsByType[type],
     ...o,
   } as TalentEffect;
 }
@@ -314,6 +334,7 @@ describe('talents/service - 天赋纯函数服务层', () => {
         critBonus: 0,
         resourceBonuses: {},
         healingMultiplier: 0,
+        hpMultiplier: 0,
         specialEffects: [],
         skillEnhancements: [],
       });
@@ -324,8 +345,10 @@ describe('talents/service - 天赋纯函数服务层', () => {
       const b = createEmptyEffectSummary();
       a.statBonuses.str = 1;
       a.damageMultiplier = 0.5;
+      a.hpMultiplier = 0.15;
       expect(b.statBonuses.str).toBeUndefined();
       expect(b.damageMultiplier).toBe(0);
+      expect(b.hpMultiplier).toBe(0);
     });
   });
 
@@ -377,20 +400,6 @@ describe('talents/service - 天赋纯函数服务层', () => {
       vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
       const summary = calculateTalentEffects('warrior', { t1: 3 });
       expect(summary.statBonuses.str).toBe(6);
-    });
-
-    it('stat_bonus 缺少 stat 字段时跳过', () => {
-      const tree = makeTree({
-        talents: [
-          makeTalent({
-            id: 't1',
-            effects: [makeEffect({ type: 'stat_bonus', valuePerRank: 2 })],
-          }),
-        ],
-      });
-      vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
-      const summary = calculateTalentEffects('warrior', { t1: 1 });
-      expect(summary.statBonuses).toEqual({});
     });
 
     it('stat_bonus 同属性多天赋累加', () => {
@@ -458,13 +467,31 @@ describe('talents/service - 天赋纯函数服务层', () => {
         talents: [
           makeTalent({
             id: 't1',
-            effects: [makeEffect({ type: 'resource_bonus', stat: 'rage', valuePerRank: 5 })],
+            effects: [makeEffect({ type: 'resource_bonus', stat: 'rage_max', valuePerRank: 5 })],
           }),
         ],
       });
       vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
       const summary = calculateTalentEffects('warrior', { t1: 2 });
-      expect(summary.resourceBonuses.rage).toBe(10);
+      expect(summary.resourceBonuses.rage_max).toBe(10);
+    });
+
+    it('resource_bonus 同资源多天赋累加', () => {
+      const tree = makeTree({
+        talents: [
+          makeTalent({
+            id: 't1',
+            effects: [makeEffect({ type: 'resource_bonus', stat: 'mana_max', valuePerRank: 0.1 })],
+          }),
+          makeTalent({
+            id: 't2',
+            effects: [makeEffect({ type: 'resource_bonus', stat: 'mana_max', valuePerRank: 0.05 })],
+          }),
+        ],
+      });
+      vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
+      const summary = calculateTalentEffects('mage', { t1: 3, t2: 2 });
+      expect(summary.resourceBonuses.mana_max).toBeCloseTo(0.4);
     });
 
     it('healing_multiplier 累加（P2-75 修复）', () => {
@@ -479,6 +506,41 @@ describe('talents/service - 天赋纯函数服务层', () => {
       vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
       const summary = calculateTalentEffects('warrior', { t1: 3 });
       expect(summary.healingMultiplier).toBeCloseTo(0.24);
+    });
+
+    it('hp_multiplier 累加（P3-139 修复，替代原 stat_bonus+hp_max 错误配置）', () => {
+      const tree = makeTree({
+        talents: [
+          makeTalent({
+            id: 't1',
+            effects: [makeEffect({ type: 'hp_multiplier', valuePerRank: 0.05 })],
+          }),
+        ],
+      });
+      vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
+      const summary = calculateTalentEffects('warrior', { t1: 3 });
+      expect(summary.hpMultiplier).toBeCloseTo(0.15);
+      // 验证不再误写入 statBonuses（原 bug：stat_bonus+hp_max 会污染 statBonuses['hp_max']）
+      expect(summary.statBonuses.hp_max).toBeUndefined();
+      expect(summary.statBonuses).toEqual({});
+    });
+
+    it('hp_multiplier 多天赋累加', () => {
+      const tree = makeTree({
+        talents: [
+          makeTalent({
+            id: 't1',
+            effects: [makeEffect({ type: 'hp_multiplier', valuePerRank: 0.05 })],
+          }),
+          makeTalent({
+            id: 't2',
+            effects: [makeEffect({ type: 'hp_multiplier', valuePerRank: 0.03 })],
+          }),
+        ],
+      });
+      vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
+      const summary = calculateTalentEffects('warrior', { t1: 3, t2: 2 });
+      expect(summary.hpMultiplier).toBeCloseTo(0.21);
     });
 
     it('special 效果追加到 specialEffects 列表', () => {
@@ -521,20 +583,6 @@ describe('talents/service - 天赋纯函数服务层', () => {
       vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
       const summary = calculateTalentEffects('warrior', { t1: 2 });
       expect(summary.skillEnhancements).toEqual([{ skillId: 'fireball', value: 0.3 }]);
-    });
-
-    it('skill_enhance 缺少 targetSkill 时跳过', () => {
-      const tree = makeTree({
-        talents: [
-          makeTalent({
-            id: 't1',
-            effects: [makeEffect({ type: 'skill_enhance', valuePerRank: 0.15 })],
-          }),
-        ],
-      });
-      vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
-      const summary = calculateTalentEffects('warrior', { t1: 2 });
-      expect(summary.skillEnhancements).toEqual([]);
     });
 
     it('多天赋树效果跨树累加', () => {

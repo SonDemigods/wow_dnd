@@ -7,6 +7,7 @@
 import type { EnemyInstance } from '../enemy/types';
 import { generateId } from '@/utils/db-helpers';
 import { defaultRng, type Rng } from '@/utils/rng';
+import { FLEE_BASE_CHANCE, FLEE_DEX_COEFFICIENT } from '@/config/combat';
 
 /**
  * 暴击判定
@@ -34,7 +35,7 @@ export function rollDodge(dodgeChance: number, rng: Rng = defaultRng): boolean {
  * @returns 逃跑成功率（0~1 之间的小数）
  */
 export function calculateFleeChance(dex: number): number {
-  return 0.5 + dex * 0.01;
+  return FLEE_BASE_CHANCE + dex * FLEE_DEX_COEFFICIENT;
 }
 
 /**

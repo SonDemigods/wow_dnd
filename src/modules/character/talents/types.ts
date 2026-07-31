@@ -6,21 +6,32 @@
  */
 import type { ClassType } from '../../character/types';
 import type { Stats } from '../../character/types';
+import type { ResourceType } from '@/modules/combat/resources/types';
 
 // ============================================================================
 // 天赋效果类型
 // ============================================================================
 
 /**
+ * 资源上限字段联合类型
+ *
+ * P3-139 修复：将 resource_bonus 的 stat 字段收窄为精确联合类型，
+ * 避免拼写错误导致天赋效果静默失效。
+ * 形式为 `${ResourceType}_max`，对应 resourceBonuses 的 key。
+ */
+export type ResourceStatKey = `${ResourceType}_max`;
+
+/**
  * 天赋效果类型枚举
  *
- * - `stat_bonus`：属性加成（力量/敏捷/智力等）
+ * - `stat_bonus`：属性加成（力量/敏捷/智力等基础属性，stat 限定为 keyof Stats）
  * - `damage_multiplier`：伤害倍率（物理/魔法伤害百分比提升）
  * - `damage_reduction`：伤害减免（受到伤害百分比降低）
  * - `crit_bonus`：暴击加成（暴击率/暴击伤害提升）
- * - `resource_bonus`：资源加成（怒气/能量上限提升等）
+ * - `resource_bonus`：资源加成（怒气/能量上限提升等，stat 限定为 ResourceStatKey）
  * - `skill_enhance`：技能增强（特定技能效果提升）
  * - `healing_multiplier`：治疗倍率（治疗效果百分比提升，P2-75 新增，替代 special 的"治疗效果提升"语义）
+ * - `hp_multiplier`：生命上限倍率（每级提升 X% 生命上限，P3-139 新增，修复原 stat_bonus+hp_max 配置 bug）
  * - `special`：特殊效果（需自定义处理逻辑，目前无消费方，仅为兼容保留）
  */
 export type TalentEffectType =
@@ -31,24 +42,89 @@ export type TalentEffectType =
   | 'resource_bonus'
   | 'skill_enhance'
   | 'healing_multiplier'
+  | 'hp_multiplier'
   | 'special';
 
 /**
- * 天赋效果接口
+ * 基础属性加成效果（stat_bonus）
  *
- * @property {TalentEffectType} type - 效果类型
- * @property {string} [stat] - 受影响的属性键（stat_bonus 时使用，如 'str'、'dex'）
- * @property {number} valuePerRank - 每级天赋提供的数值（可为整数或百分比小数）
- * @property {string} [targetSkill] - 目标技能 ID（skill_enhance 时使用）
- * @property {string} [description] - 效果描述
+ * stat 字段限定为 keyof Stats（str/dex/con/int/wis/cha），
+ * 编译期拦截 'hp_max' / 'armor' 等非法属性键。
  */
-export interface TalentEffect {
-  type: TalentEffectType;
-  stat?: keyof Stats | string;
+export interface StatBonusEffect {
+  type: 'stat_bonus';
+  /** 受影响的属性键，必须为 Stats 的合法 key */
+  stat: keyof Stats;
+  /** 每级天赋提供的属性值（绝对数值，如 str +3） */
   valuePerRank: number;
-  targetSkill?: string;
+}
+
+/**
+ * 资源上限加成效果（resource_bonus）
+ *
+ * stat 字段限定为 ResourceStatKey（如 'rage_max' / 'mana_max'），
+ * 对应 resourceBonuses 的 key。
+ */
+export interface ResourceBonusEffect {
+  type: 'resource_bonus';
+  /** 受影响的资源上限键，形如 `${ResourceType}_max` */
+  stat: ResourceStatKey;
+  /** 每级天赋提供的资源上限值（整数如 +10 怒气，或小数如 +0.10 法力倍率） */
+  valuePerRank: number;
+}
+
+/**
+ * 技能增强效果（skill_enhance）
+ */
+export interface SkillEnhanceEffect {
+  type: 'skill_enhance';
+  /** 目标技能 ID */
+  targetSkill: string;
+  /** 每级天赋提供的增强值（通常为百分比小数） */
+  valuePerRank: number;
+}
+
+/**
+ * 特殊效果（special）
+ *
+ * 需自定义处理逻辑，目前无消费方，仅为兼容保留。
+ */
+export interface SpecialEffect {
+  type: 'special';
+  /** 每级天赋提供的数值，含义视 description 而定 */
+  valuePerRank: number;
+  /** 效果描述（可选，缺省时 service 使用 '特殊效果' 兜底） */
   description?: string;
 }
+
+/**
+ * 无 stat 字段的数值累加效果
+ *
+ * 涵盖 damage_multiplier / damage_reduction / crit_bonus / healing_multiplier / hp_multiplier，
+ * 这些类型仅需 valuePerRank 字段进行累加。
+ */
+export interface SimpleMultiplierEffect {
+  type: 'damage_multiplier' | 'damage_reduction' | 'crit_bonus' | 'healing_multiplier' | 'hp_multiplier';
+  /** 每级天赋提供的数值（百分比小数，如 0.05 = 5%） */
+  valuePerRank: number;
+  /** 效果描述（可选，仅用于配置文档化） */
+  description?: string;
+}
+
+/**
+ * 天赋效果可辨识联合类型
+ *
+ * P3-139 修复：将原 `stat?: keyof Stats | string` 宽松类型拆分为可辨识联合，
+ * 让 stat_bonus 的 stat 字段编译期保证为 keyof Stats，
+ * resource_bonus 的 stat 字段编译期保证为 ResourceStatKey，
+ * 消除 'hp_max' 等非法键导致的静默失效 bug。
+ */
+export type TalentEffect =
+  | StatBonusEffect
+  | ResourceBonusEffect
+  | SkillEnhanceEffect
+  | SpecialEffect
+  | SimpleMultiplierEffect;
 
 // ============================================================================
 // 天赋节点类型

@@ -189,6 +189,9 @@ export const useMapStore = defineStore('map', () => {
         });
     }
 
+    // P3 BIZ-7 审计决策（2026-07-31）：
+    // - 消费者清单：audio/service.ts:369 监听 ZONE_ENTERED 但不读 data
+    // - 保留 location 字段供未来 UI 消费者展示地点信息；若确认无 UI 消费者可移除
     eventBus.emit(GameEvents.ZONE_ENTERED, { locationId: zoneId, location });
     return true;
   }

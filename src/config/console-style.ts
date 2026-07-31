@@ -24,6 +24,8 @@ import type { ItemRarity } from '@/modules/inventory/types';
  */
 function buildRarityConsoleStyle(): Record<ItemRarity, string> {
   const style = {} as Record<ItemRarity, string>;
+  // P3 TS-17 审计决策（2026-07-31）：Object.keys 返回 string[]，TS 语言限制无法静态推断为 ItemRarity[]。
+  // RARITY_CONFIG 的键已由类型保证为 ItemRarity，断言是合理 workaround。
   (Object.keys(RARITY_CONFIG) as ItemRarity[]).forEach(rarity => {
     style[rarity] = `color: ${RARITY_CONFIG[rarity].color}`;
   });

@@ -40,36 +40,50 @@ export interface Disposable {
  * 负责按依赖顺序初始化各模块 Store，确保：
  * - 基础模块（日志、背包）先于依赖它们的模块（探索、任务）初始化
  * - 角色切换时按逆序清理，避免状态残留与监听器累积
+ *
+ * P3-128 并行化：将原本串行的 7 步初始化按依赖关系重组为 4 层并行：
+ * - Layer 1：log + inventory（互不依赖）
+ * - Layer 1.5：注入所有回调（同步，需在 inventory 完成后、Layer 2 前）
+ * - Layer 2：equipment + skill + map（互不依赖，仅 equipment 依赖 inventory 回调）
+ * - Layer 3：exploration（依赖 log + map）
+ * - Layer 4：quest（依赖 inventory + exploration）
+ *
+ * 性能收益：原 7 次 await 串行 → 4 层 await，理论上减少约 40% 初始化耗时
+ * （以各 Store 平均 50ms IO 估算，原 350ms → 约 200ms）。
  */
 export class GameBootstrapService {
   /**
    * 初始化指定角色的所有模块
    *
-   * 初始化顺序（前者被后者依赖）：
-   * log → inventory → equipment → skill → map → exploration → quest
+   * 初始化分层（P3-128 并行化）：
+   * Layer 1: log + inventory 并行（互不依赖）
+   * Layer 1.5: 注入所有回调（同步，inventory 完成后、Layer 2 前）
+   * Layer 2: equipment + skill + map 并行（互不依赖）
+   * Layer 3: exploration（依赖 log + map）
+   * Layer 4: quest（依赖 inventory + exploration 回调）
    *
-   * 在 inventory 初始化完成后、equipment 初始化前，注入背包回调到装备模块
-   * （A1/G1 修复：消除 equipment → inventory 静态依赖，通过回调注入实现装备卸下放回背包）。
-   *
-   * ARCH-2 修复：在 inventory 初始化后、quest 初始化前，双向注入回调以切断 inventory ↔ quest 循环依赖：
-   * - 注入 quest.onItemCollected 到 inventory（addItem 时通知任务进度）
-   * - 注入 inventory.getItemCount / addItem 到 quest（acceptQuest 初始进度 / _grantQuestRewards 发奖）
+   * 在 Layer 1.5 注入的回调：
+   * - setInventoryCallbacks：装备模块通过回调操作背包（A1/G1 修复 + DB-1/DB-2 flushPersist）
+   * - setInventoryExternalCallbacks / setQuestExternalCallbacks：双向回调切断 inventory ↔ quest 循环依赖（ARCH-2 修复）
+   * - setBossCreateFn：Boss 创建回调切断 enemy → boss 反向依赖（阶段四 + TS-2 修复）
    *
    * @param characterId - 角色 ID
    */
   async initialize(characterId: string): Promise<void> {
-    // 1. 日志模块（基础数据，被探索/战斗依赖）
-    await useLogStore().initialize(characterId);
-
-    // 2. 背包模块（被探索/装备依赖）
+    // ==================== Layer 1：log + inventory 并行 ====================
+    // log 被探索/战斗依赖；inventory 被装备/任务依赖；两者互不依赖
     const inventoryStore = useInventoryStore();
-    await inventoryStore.initialize(characterId);
+    await Promise.all([
+      useLogStore().initialize(characterId),
+      inventoryStore.initialize(characterId),
+    ]);
 
-    // 2.5 注入背包回调到装备模块（A1/G1 修复：回调注入替代 equipment → inventory 静态依赖）
+    // ==================== Layer 1.5：注入所有回调（同步） ====================
+    // 注入背包回调到装备模块（A1/G1 修复：回调注入替代 equipment → inventory 静态依赖）
     // DB-1/DB-2 修复：同时注入 flushPersist，供装备 persist 失败回滚时等待背包持久化完成
     setInventoryCallbacks(inventoryStore.addItem, inventoryStore.removeItem, inventoryStore.flushPersist);
 
-    // 2.55 ARCH-2 修复：注入 inventory ↔ quest 双向回调以切断循环依赖
+    // ARCH-2 修复：注入 inventory ↔ quest 双向回调以切断循环依赖
     // - quest 模块在 acceptQuest（计算 collect 初始进度）和 _grantQuestRewards（发放物品奖励）时
     //   需要查询/操作背包数据，原直接 import useInventoryStore 形成循环依赖
     // - inventory 模块在 addItem 成功时需要通知 quest 推进 collect 任务进度
@@ -85,7 +99,7 @@ export class GameBootstrapService {
       addItemToInventory: (itemId, quantity) => inventoryStore.addItem(itemId, quantity),
     });
 
-    // 2.6 注入 Boss 创建回调到敌人模块（回调注入替代 enemy → boss 静态依赖）
+    // 注入 Boss 创建回调到敌人模块（回调注入替代 enemy → boss 静态依赖）
     // TS-2 修复：createBossInstance 返回组合式 BossInstance，此处展开 base 并附加
     // phases/intro 构造扁平 BossEnemyInstance（类型层面完整声明，无需 as 断言）
     // enemy store 接收时 widened 为 EnemyInstance，wrapAsBossInstance 通过
@@ -102,19 +116,18 @@ export class GameBootstrapService {
       };
     });
 
-    // 3. 装备模块（依赖背包回调）
-    await useEquipmentStore().initialize(characterId);
+    // ==================== Layer 2：equipment + skill + map 并行 ====================
+    // equipment 依赖 Layer 1.5 注入的背包回调；skill/map 与 inventory 无依赖
+    await Promise.all([
+      useEquipmentStore().initialize(characterId),
+      useSkillStore().initialize(characterId),
+      useMapStore().initialize(characterId),
+    ]);
 
-    // 4. 技能模块（依赖角色）
-    await useSkillStore().initialize(characterId);
-
-    // 5. 地图模块（被探索依赖）
-    await useMapStore().initialize(characterId);
-
-    // 6. 探索模块（依赖上述所有，仅加载自身状态，不再隐式初始化其他 Store）
+    // ==================== Layer 3：exploration（依赖 log + map） ====================
     await useExplorationStore().init(characterId);
 
-    // 7. 任务模块（依赖角色、探索）
+    // ==================== Layer 4：quest（依赖 inventory 回调 + exploration） ====================
     await questStore.initialize(characterId);
   }
 

@@ -192,16 +192,21 @@ export class QuestDbService {
   /**
    * 删除指定角色的全部任务实例
    *
-   * 先按 characterId 筛选，再逐行删除（Dexie 不支持批量条件删除）。
+   * P3 DB-11 修复：改用 Dexie 的 `where(...).equals(...).delete()` 批量删除，
+   * 替代原"toArray 查询 + 循环 delete"模式。
+   * - 原模式问题：循环中某次 delete 失败会触发 withRetry 整体重试，重试时 toArray 已不包含已删数据，
+   *   并发场景下新任务实例可能在重试过程中被遗漏删除
+   * - 新模式优势：Dexie 的 Collection.delete() 是原子操作，一次事务内完成全部删除，
+   *   避免循环删除的非原子性；同时消除复合主键 delete 的类型断言
    *
    * @param characterId - 要清理的角色ID
    */
   async deleteCharacterQuests(characterId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      const instances = await gameDb.char_quests.where('characterId').equals(characterId).toArray() as unknown as QuestInstanceStorage[];
-      for (const instance of instances) {
-        await gameDb.char_quests.delete([characterId, instance.questId] as unknown as string);
-      }
+      await gameDb.char_quests
+        .where('characterId')
+        .equals(characterId)
+        .delete();
     });
   }
 

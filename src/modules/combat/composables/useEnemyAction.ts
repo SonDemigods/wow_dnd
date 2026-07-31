@@ -160,11 +160,18 @@ export function useEnemyAction(
 
   /**
    * 敌人普通攻击（内部方法）
+   *
+   * P3-95 修复：根据 `e.attackType` 选择玩家防御属性。
+   * - `attackType === 'magical'`：走魔法防御（法系敌人普攻走魔法）
+   * - 其他情况：走物理防御（默认物理）
    * @param e - 执行攻击的敌人
    */
   function enemyBasicAttack(e: EnemyInstance): CombatActionResult {
-    // 计算伤害
-    const damage = ctx.enemy.calculateDamage(e, ctx.character.attributes.physicalDefense);
+    // 计算伤害（根据敌人普攻类型选择对应的玩家防御）
+    const playerDef = e.attackType === 'magical'
+      ? ctx.character.attributes.magicDefense
+      : ctx.character.attributes.physicalDefense;
+    const damage = ctx.enemy.calculateDamage(e, playerDef);
 
     // 检查玩家闪避
     const dodgeChance = ctx.character.attributes.dodgeChance / 100;
@@ -277,7 +284,11 @@ export function useEnemyAction(
     if (isAoeAttack && bossInstance) {
       bossInstance.runtime.aoeNextAttack = false;
       // 多目标攻击：使用管线统一处理伤害、护盾和荆棘反伤
-      const rawDamage = ctx.enemy.calculateDamage(e, ctx.character.attributes.physicalDefense);
+      // P3-95：根据敌人普攻类型选择对应玩家防御
+      const aoePlayerDef = e.attackType === 'magical'
+        ? ctx.character.attributes.magicDefense
+        : ctx.character.attributes.physicalDefense;
+      const rawDamage = ctx.enemy.calculateDamage(e, aoePlayerDef);
       const aoeMultiplier = 1.3;
       const aoeDamage = Math.round(rawDamage * aoeMultiplier);
 

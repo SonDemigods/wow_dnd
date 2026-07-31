@@ -156,6 +156,8 @@ vi.mock('@/modules/character/service', () => ({
   })),
   isDead: vi.fn((char: Character) => char.hp <= 0),
   isClassFactionCompatible: vi.fn(() => true),
+  isRaceFactionCompatible: vi.fn(() => true),
+  isClassRaceCompatible: vi.fn(() => true),
 }));
 
 // ==================== Mock：跨 store 依赖（baseStore，仅 initialize 使用） ====================
@@ -197,6 +199,8 @@ import {
   computeResurrection,
   isDead,
   isClassFactionCompatible,
+  isRaceFactionCompatible,
+  isClassRaceCompatible,
 } from '@/modules/character/service';
 import { useBaseStore } from '@/modules/base/store';
 import { getExpForLevel } from '@/utils/calculations';
@@ -981,21 +985,97 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
     });
 
-    it('setRace：racesData 中无对应种族时 raceBonus 回退为空对象（?.bonus || {} 分支）', async () => {
-      // racesData 不含 'undead'，raceData 为 undefined，覆盖 `raceData?.bonus || {}` 的 falsy 分支
+    it('setRace：racesData 中无对应种族时直接返回不变更（P3-100 修复后 raceData 不存在视为非法）', async () => {
+      // P3-100 修复：raceData 为 undefined 时直接 return，不再静默写入空 bonus
       const store = setupLoggedInStore(makeChar({ raceId: 'human' }));
       store.$patch({ racesData: { human: makeRace() } });
       await store.setRace('undead');
       expect(store.raceBonus).toEqual({});
-      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
     });
 
-    it('setClass：classesData 中无对应职业时 classBonus 回退为空对象（?.bonus || {} 分支）', async () => {
-      // classesData 不含 'paladin'，classData 为 undefined，覆盖 `classData?.bonus || {}` 的 falsy 分支
+    it('setClass：classesData 中无对应职业时直接返回不变更（P3-100 修复后 classData 不存在视为非法）', async () => {
+      // P3-100 修复：classData 为 undefined 时直接 return，不再静默写入空 bonus
       const store = setupLoggedInStore(makeChar({ classId: 'warrior' }));
       store.$patch({ classesData: { warrior: makeClass() } });
       await store.setClass('paladin');
       expect(store.classBonus).toEqual({});
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    // -------------------- P3-100：兼容性校验 --------------------
+
+    it('setRace：种族与角色阵营不兼容时抛错（如 alliance 角色切到 horde 种族）', async () => {
+      vi.mocked(isRaceFactionCompatible).mockReturnValueOnce(false);
+      const store = setupLoggedInStore(makeChar({ raceId: 'human', factionId: 'alliance' }));
+      store.$patch({
+        racesData: {
+          human: makeRace(),
+          orc: makeRace({ id: 'orc', name: '兽人', factionId: 'horde' })
+        },
+      });
+      await expect(store.setRace('orc')).rejects.toThrow('种族「兽人」不支持阵营「alliance」');
+      expect(store.character?.raceId).toBe('human'); // 未被修改
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('setRace：种族与角色阵营兼容时正常更新（如 alliance 角色切到同阵营其他种族）', async () => {
+      const store = setupLoggedInStore(makeChar({ raceId: 'human', factionId: 'alliance' }));
+      store.$patch({
+        racesData: {
+          human: makeRace(),
+          dwarf: makeRace({ id: 'dwarf', name: '矮人', factionId: 'alliance', bonus: { con: 3 } })
+        },
+      });
+      await store.setRace('dwarf');
+      expect(store.character?.raceId).toBe('dwarf');
+      expect(store.raceBonus).toEqual({ con: 3 });
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('setClass：职业与角色阵营不兼容时抛错', async () => {
+      vi.mocked(isClassFactionCompatible).mockReturnValueOnce(false);
+      const store = setupLoggedInStore(makeChar({ raceId: 'human', factionId: 'alliance', classId: 'warrior' }));
+      store.$patch({
+        classesData: {
+          warrior: makeClass(),
+          evoker: makeClass({ id: 'evoker', name: '龙脉术士', factionsIds: ['neutral'], raceIds: [] })
+        },
+      });
+      await expect(store.setClass('evoker')).rejects.toThrow('职业「龙脉术士」不支持阵营「alliance」');
+      expect(store.character?.classId).toBe('warrior'); // 未被修改
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('setClass：职业与角色种族不兼容时抛错', async () => {
+      vi.mocked(isClassRaceCompatible).mockReturnValueOnce(false);
+      const store = setupLoggedInStore(makeChar({ raceId: 'human', factionId: 'alliance', classId: 'warrior' }));
+      store.$patch({
+        classesData: {
+          warrior: makeClass(),
+          demon_hunter: makeClass({
+            id: 'demon_hunter', name: '影刃猎手',
+            factionsIds: ['alliance', 'horde', 'neutral'],
+            raceIds: ['night_elf', 'blood_elf'] // 不含 human
+          })
+        },
+      });
+      await expect(store.setClass('demon_hunter')).rejects.toThrow('职业「影刃猎手」不支持种族「human」');
+      expect(store.character?.classId).toBe('warrior'); // 未被修改
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('setClass：职业 raceIds 为空数组时对所有种族开放（无种族限制）', async () => {
+      const store = setupLoggedInStore(makeChar({ raceId: 'human', factionId: 'alliance', classId: 'warrior' }));
+      store.$patch({
+        classesData: {
+          warrior: makeClass(),
+          mage: makeClass({ id: 'mage', name: '法师', factionsIds: ['alliance'], raceIds: [], bonus: { int: 3 } })
+        },
+      });
+      await store.setClass('mage');
+      expect(store.character?.classId).toBe('mage');
+      expect(store.classBonus).toEqual({ int: 3 });
       expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
     });
 

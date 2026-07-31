@@ -38,30 +38,56 @@ describe('data/backup 子模块独立测试', () => {
       expect(typeof calculateChecksum).toBe('function');
     });
 
+    it('calculateChecksum 返回 Promise（P3-113 异步化）', async () => {
+      const result = calculateChecksum({ a: 1 });
+      expect(result).toBeInstanceOf(Promise);
+      await expect(result).resolves.toBeTypeOf('string');
+    });
+
     it('TABLES_TO_BACKUP 是数组', () => {
       expect(Array.isArray(TABLES_TO_BACKUP)).toBe(true);
     });
   });
 
-  describe('calculateChecksum 纯函数行为', () => {
-    it('相同数据返回相同校验和', () => {
+  describe('calculateChecksum 纯函数行为（P3-113：SHA-256 异步）', () => {
+    it('相同数据返回相同校验和', async () => {
       const data = { a: 1, b: 'test' };
-      expect(calculateChecksum(data)).toBe(calculateChecksum(data));
+      const [r1, r2] = await Promise.all([calculateChecksum(data), calculateChecksum(data)]);
+      expect(r1).toBe(r2);
     });
 
-    it('不同数据返回不同校验和', () => {
-      expect(calculateChecksum({ a: 1 })).not.toBe(calculateChecksum({ a: 2 }));
+    it('不同数据返回不同校验和', async () => {
+      const [r1, r2] = await Promise.all([
+        calculateChecksum({ a: 1 }),
+        calculateChecksum({ a: 2 })
+      ]);
+      expect(r1).not.toBe(r2);
     });
 
-    it('返回值为十六进制字符串', () => {
-      const result = calculateChecksum({ test: true });
+    it('返回值为 64 字符的 SHA-256 十六进制字符串', async () => {
+      const result = await calculateChecksum({ test: true });
       expect(typeof result).toBe('string');
       expect(result).toMatch(/^[0-9a-f]+$/);
+      // SHA-256 输出固定 256 位 = 64 个十六进制字符
+      expect(result).toHaveLength(64);
     });
 
-    it('空对象返回非空校验和', () => {
-      const result = calculateChecksum({});
+    it('空对象返回非空校验和', async () => {
+      const result = await calculateChecksum({});
       expect(result.length).toBeGreaterThan(0);
+    });
+
+    it('P3-113：SHA-256 输出长度固定为 64 字符（碰撞概率 2^-128）', async () => {
+      const results = await Promise.all([
+        calculateChecksum({}),
+        calculateChecksum({ a: 1 }),
+        calculateChecksum('hello'),
+        calculateChecksum([1, 2, 3]),
+        calculateChecksum(null),
+      ]);
+      for (const r of results) {
+        expect(r).toHaveLength(64);
+      }
     });
   });
 

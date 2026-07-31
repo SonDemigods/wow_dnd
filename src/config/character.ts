@@ -6,8 +6,20 @@
 
 /**
  * 玩家可达到的最大等级
+ *
+ * 使用 `as const` 使类型为字面量 `20`（而非 `number`），
+ * 确保作为 `Level` 联合类型的成员使用时类型安全。
  */
-export const MAX_LEVEL = 20;
+export const MAX_LEVEL = 20 as const;
+
+/**
+ * 合法等级范围（1 ~ MAX_LEVEL）
+ *
+ * P3-130 修复：将 LEVEL_EXP_REQUIREMENTS 的键约束为该联合类型，
+ * 编译期即可发现越界访问（如 `LEVEL_EXP_REQUIREMENTS[0]` 或 `[21]`）。
+ * 消费方（getExpForLevel）在边界检查后通过类型断言访问。
+ */
+export type Level = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20;
 
 /**
  * 单属性数值上限（核心属性最高不超过此值）
@@ -28,8 +40,11 @@ export const STAT_NAMES = {
 
 /**
  * 每级所需经验值表
+ *
+ * P3-130 修复：键类型由 `number` 收窄为 `Level`（1~20 联合类型），
+ * 防止越界访问。消费方 `getExpForLevel` 通过边界检查 + 类型断言访问。
  */
-export const LEVEL_EXP_REQUIREMENTS: Record<number, number> = {
+export const LEVEL_EXP_REQUIREMENTS: Record<Level, number> = {
   1: 0,
   2: 100,
   3: 250,

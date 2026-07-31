@@ -8,6 +8,7 @@ import type { Stats } from '@/modules/character/types';
 import {
   MAX_LEVEL,
   LEVEL_EXP_REQUIREMENTS,
+  type Level,
   HP_BASE,
   HP_CON_COEFFICIENT,
   MP_BASE,
@@ -185,11 +186,14 @@ export function calculateAllAttributes(stats: Stats): Attributes {
 
 /**
  * 获取指定等级所需的经验值
+ *
+ * P3-130 修复：LEVEL_EXP_REQUIREMENTS 键类型收窄为 `Level`（1~20），
+ * 此处通过边界检查后用类型断言访问，保证不会越界。
  * @param {number} level - 目标等级
  * @returns {number} 升级到该等级所需的经验值
  */
 export function getExpForLevel(level: number): number {
   if (level <= 1) return 0;
   if (level > MAX_LEVEL) return LEVEL_EXP_REQUIREMENTS[MAX_LEVEL];
-  return LEVEL_EXP_REQUIREMENTS[level] || 0;
+  return LEVEL_EXP_REQUIREMENTS[level as Level] ?? 0;
 }

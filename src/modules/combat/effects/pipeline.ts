@@ -7,6 +7,7 @@ import type { EffectContainer, EffectContext, DamageType, DamagePipelineResult, 
 import { EffectHandlerRegistry } from './handler';
 import { addEffectToContainer } from './container';
 import { defaultRng, type Rng } from '@/utils/rng';
+import { DAMAGE_BASE_COEFFICIENT, DAMAGE_RANDOM_RANGE, DEFENSE_REDUCTION_COEFFICIENT } from '@/config/combat';
 
 /**
  * 计算基础伤害（按伤害类型选择攻防属性）
@@ -22,8 +23,8 @@ function calcBaseDamage(
   const attack = damageType === 'physical' ? attackerStats.physicalAttack : attackerStats.magicAttack;
   const defense = damageType === 'physical' ? defenderStats.physicalDefense : defenderStats.magicDefense;
 
-  const baseDamage = Math.floor(attack * 0.4) + rng.int(0, 9);
-  const defenseReduction = Math.min(Math.floor(baseDamage * 0.3), defense);
+  const baseDamage = Math.floor(attack * DAMAGE_BASE_COEFFICIENT) + rng.int(0, DAMAGE_RANDOM_RANGE - 1);
+  const defenseReduction = Math.min(Math.floor(baseDamage * DEFENSE_REDUCTION_COEFFICIENT), defense);
   return Math.max(1, baseDamage - defenseReduction);
 }
 

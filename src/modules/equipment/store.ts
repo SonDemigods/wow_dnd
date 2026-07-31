@@ -29,6 +29,10 @@
  * char_equipment 表仅存装备 ID 映射（Record<EquipmentSlot, string | null>），
  * 完整装备属性通过 equipmentTemplates（内存 Map）按 ID 获取。
  * 这样装备属性变更只需更新模板，无需遍历所有角色数据。
+ *
+ * P3 TS-17 审计决策（2026-07-31）：本文件中 `Object.keys(equipment.value) as EquipmentSlot[]`
+ * 共 3 处（约 325、364、810 行），属于 TS 语言限制的标准 workaround。
+ * equipment.value 类型为 Record<EquipmentSlot, ...>，键已由类型保证为 EquipmentSlot，断言是合理的。
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
@@ -271,8 +275,10 @@ export const useEquipmentStore = defineStore('equipment', () => {
     const currentKeys = new Set(
       currentActive
         // P2-48 修复：使用 != null 显式检查，避免 value=0 的套装奖励被吞掉
-        .filter(b => b.bonus.bonus.stat != null && b.bonus.bonus.value != null)
-        .map(b => buildKey(b.setId, b.bonus.requiredPieces, b.bonus.bonus.stat!, b.bonus.bonus.value!))
+        // P3 TS-15 修复：使用类型守卫 predicate 收窄类型，消除非空断言 !
+        .filter((b): b is typeof b & { bonus: { bonus: { stat: string; value: number } } } =>
+          b.bonus.bonus.stat != null && b.bonus.bonus.value != null)
+        .map(b => buildKey(b.setId, b.bonus.requiredPieces, b.bonus.bonus.stat, b.bonus.bonus.value))
     );
     const appliedKeys = new Set(
       appliedSetBonuses.value.map(b => buildKey(b.setId, b.requiredPieces, b.stat, b.value))
@@ -298,12 +304,14 @@ export const useEquipmentStore = defineStore('equipment', () => {
     // 更新已应用列表
     appliedSetBonuses.value = currentActive
       // P2-48 修复：使用 != null 显式检查，避免 value=0 的套装奖励被吞掉
-      .filter(b => b.bonus.bonus.stat != null && b.bonus.bonus.value != null)
+      // P3 TS-15 修复：使用类型守卫 predicate 收窄类型，消除非空断言 ! 和 as keyof Stats
+      .filter((b): b is typeof b & { bonus: { bonus: { stat: string; value: number } } } =>
+        b.bonus.bonus.stat != null && b.bonus.bonus.value != null)
       .map(b => ({
         setId: b.setId,
         requiredPieces: b.bonus.requiredPieces,
         stat: b.bonus.bonus.stat as keyof Stats,
-        value: b.bonus.bonus.value!
+        value: b.bonus.bonus.value
       }));
   }
 

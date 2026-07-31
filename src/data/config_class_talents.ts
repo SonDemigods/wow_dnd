@@ -102,7 +102,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
         id: 'warrior_prot_t3', name: '壁垒', description: '每级提升 5% 生命上限',
         icon: 'game-icons:castle', tier: 3, maxRank: 3,
         requires: ['warrior_prot_t2'],
-        effects: [{ type: 'stat_bonus', stat: 'hp_max', valuePerRank: 0.05 }]
+        effects: [{ type: 'hp_multiplier', valuePerRank: 0.05, description: '生命上限提升' }]
       }
     ]
   },
@@ -1062,7 +1062,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
         id: 'evoker_pres_t3', name: '生命赐福', description: '每级提升 5% 生命上限',
         icon: 'game-icons:health-normal', tier: 3, maxRank: 3,
         requires: ['evoker_pres_t2'],
-        effects: [{ type: 'stat_bonus', stat: 'hp_max', valuePerRank: 0.05 }]
+        effects: [{ type: 'hp_multiplier', valuePerRank: 0.05, description: '生命上限提升' }]
       }
     ]
   },

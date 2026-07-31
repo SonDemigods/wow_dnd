@@ -174,6 +174,8 @@ export class OrganVoice {
           type: 'custom',
           partials: config.partials,
         } as Tone.SynthOptions['oscillator'], // 'custom' 类型不被 Tone.js 标准类型接受，需断言
+        // P3 TS-18 审计决策（2026-07-31）：Tone.js 类型定义未覆盖 'custom' + partials 组合，
+        // 升级 Tone.js 类型定义后可移除断言。当前为类型定义局限性，非业务问题。
         envelope: { ...this.envelope },
         volume: Tone.gainToDb(config.gain),
       }).connect(this.output);
@@ -192,7 +194,9 @@ export class OrganVoice {
   setEnvelope(env: { attack?: number; decay?: number; sustain?: number; release?: number }): void {
     this.envelope = { ...this.envelope, ...env };
     for (const { synth } of this.stopSynths) {
-      synth.set({ envelope: this.envelope as Tone.SynthOptions['envelope'] }); // envelope 对象形式需断言
+      // P3 TS-18 审计决策（2026-07-31）：envelope 对象形式不被 Tone.js 标准类型接受，
+      // 与 buildStops 中 oscillator 断言同源，升级 Tone.js 类型定义后可移除。
+      synth.set({ envelope: this.envelope as Tone.SynthOptions['envelope'] });
     }
   }
 

@@ -83,3 +83,82 @@ export const FLEE_DEX_COEFFICIENT = 0.01;
  * @see src/modules/combat/store.ts startCombat / endCombat
  */
 export const BOSS_INTRO_DELAY = 300;
+
+// ==================== AI 策略参数 ====================
+
+/**
+ * 激进型策略使用技能的概率
+ *
+ * @see src/modules/combat/ai/strategies.ts AggressiveStrategy
+ */
+export const AGGRESSIVE_SKILL_CHANCE = 0.5;
+
+/**
+ * 防御型策略 HP 低于该阈值时优先生命恢复（0~1 之间的小数）
+ *
+ * @see src/modules/combat/ai/strategies.ts DefensiveStrategy
+ */
+export const DEFENSIVE_HEAL_HP_THRESHOLD = 0.4;
+
+/**
+ * 防御型策略使用技能的概率
+ *
+ * @see src/modules/combat/ai/strategies.ts DefensiveStrategy
+ */
+export const DEFENSIVE_SKILL_CHANCE = 0.2;
+
+/**
+ * 均衡型策略 HP 低于该阈值时考虑生命恢复（0~1 之间的小数）
+ *
+ * @see src/modules/combat/ai/strategies.ts BalancedStrategy
+ */
+export const BALANCED_HEAL_HP_THRESHOLD = 0.5;
+
+/**
+ * 均衡型策略生命恢复触发概率
+ *
+ * @see src/modules/combat/ai/strategies.ts BalancedStrategy
+ */
+export const BALANCED_HEAL_CHANCE = 0.6;
+
+/**
+ * 均衡型策略使用技能的概率
+ *
+ * @see src/modules/combat/ai/strategies.ts BalancedStrategy
+ */
+export const BALANCED_SKILL_CHANCE = 0.3;
+
+/**
+ * Boss 狂暴阶段 HP 阈值（低于此值必定使用技能）
+ *
+ * @see src/modules/combat/ai/strategies.ts BossPhaseStrategy
+ */
+export const BOSS_ENRAGE_HP_THRESHOLD = 0.2;
+
+/**
+ * Boss 半血阶段 HP 阈值（低于此值进入半血激进模式）
+ *
+ * @see src/modules/combat/ai/strategies.ts BossPhaseStrategy
+ */
+export const BOSS_HALF_HP_THRESHOLD = 0.5;
+
+/**
+ * Boss 半血阶段生命恢复概率
+ *
+ * @see src/modules/combat/ai/strategies.ts BossPhaseStrategy
+ */
+export const BOSS_HALF_HEAL_CHANCE = 0.2;
+
+/**
+ * Boss 半血阶段使用技能的概率
+ *
+ * @see src/modules/combat/ai/strategies.ts BossPhaseStrategy
+ */
+export const BOSS_HALF_SKILL_CHANCE = 0.6;
+
+/**
+ * Boss 正常血量阶段使用技能的概率
+ *
+ * @see src/modules/combat/ai/strategies.ts BossPhaseStrategy
+ */
+export const BOSS_NORMAL_SKILL_CHANCE = 0.3;

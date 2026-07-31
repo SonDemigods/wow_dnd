@@ -77,20 +77,40 @@ export { TABLES_TO_BACKUP };
 export type { ArrayBackupField };
 
 /**
- * 计算数据的校验和（简单哈希算法）
+ * 计算数据的校验和（SHA-256）
  *
- * 用于验证备份文件的完整性
+ * 用于验证备份文件的完整性。采用 Web Crypto API 的 SHA-256 算法，
+ * 替代原基于 `(hash << 5) - hash` 的 32 位 DJB2 变种哈希。
+ *
+ * P3-113 迁移原因：
+ * - 原算法为 32 位非加密哈希，碰撞概率较高（约 2^-32），备份文件若发生
+ *   局部比特翻转且恰好使哈希值不变，校验会误判为"未损坏"。
+ * - SHA-256 输出 256 位摘要，碰撞概率可忽略（约 2^-128），且为业界标准。
+ *
+ * 异步化原因：
+ * - Web Crypto API 的 `crypto.subtle.digest` 为异步接口。
+ * - 调用方（`BackupService.createBackup` / `ImportService.validateBackup`）
+ *   均为 async 函数，await 即可；不影响外部 API 形状。
+ *
+ * 兼容性：
+ * - 浏览器：所有现代浏览器（Chrome 60+/Firefox 75+/Safari 11+）原生支持。
+ * - 测试环境（Node）：Node 16+ 通过 `globalThis.crypto.subtle` 暴露 Web Crypto API。
+ *
  * @param data - 要计算校验和的数据
- * @returns 校验和字符串
+ * @returns 64 字符的 SHA-256 十六进制字符串
  */
-export function calculateChecksum(data: unknown): string {
+export async function calculateChecksum(data: unknown): Promise<string> {
   const str = JSON.stringify(data);
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
+  // TextEncoder 将字符串编码为 Uint8Array（UTF-8），digest 接受 BufferSource
+  const buffer = new TextEncoder().encode(str);
+  const digestBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  // 将 ArrayBuffer 转换为十六进制字符串
+  const bytes = new Uint8Array(digestBuffer);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0');
   }
-  return Math.abs(hash).toString(16);
+  return hex;
 }
 
 /**
@@ -118,7 +138,8 @@ export class BackupService implements IBackupService {
   async createBackup(): Promise<BackupFile> {
     const timestamp = Date.now();
     const data = await this.collectAllData();
-    const checksum = calculateChecksum(data);
+    // P3-113：calculateChecksum 改为异步（SHA-256 via Web Crypto API），需 await
+    const checksum = await calculateChecksum(data);
 
     return {
       version: this.BACKUP_VERSION,

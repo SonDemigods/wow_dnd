@@ -9,6 +9,19 @@
 import type { IAiStrategy, BattleContext, AiDecision } from './types';
 import type { EnemyInstance } from '@/modules/enemy/types';
 import { defaultRng, type Rng } from '@/utils/rng';
+import {
+  AGGRESSIVE_SKILL_CHANCE,
+  DEFENSIVE_HEAL_HP_THRESHOLD,
+  DEFENSIVE_SKILL_CHANCE,
+  BALANCED_HEAL_HP_THRESHOLD,
+  BALANCED_HEAL_CHANCE,
+  BALANCED_SKILL_CHANCE,
+  BOSS_ENRAGE_HP_THRESHOLD,
+  BOSS_HALF_HP_THRESHOLD,
+  BOSS_HALF_HEAL_CHANCE,
+  BOSS_HALF_SKILL_CHANCE,
+  BOSS_NORMAL_SKILL_CHANCE,
+} from '@/config/combat';
 
 /** 激进型：优先使用技能攻击，HP低于30%也不生命恢复 */
 export class AggressiveStrategy implements IAiStrategy {
@@ -16,7 +29,7 @@ export class AggressiveStrategy implements IAiStrategy {
   constructor(private readonly rng: Rng = defaultRng) {}
   decideAction(_enemy: EnemyInstance, ctx: BattleContext): AiDecision {
     const attackSkills = ctx.availableSkills.filter(s => !s.isHeal);
-    if (attackSkills.length > 0 && this.rng.bool(0.5)) {
+    if (attackSkills.length > 0 && this.rng.bool(AGGRESSIVE_SKILL_CHANCE)) {
       const skill = this.rng.pick(attackSkills);
       return { type: 'skill', skillId: skill.id };
     }
@@ -31,10 +44,10 @@ export class DefensiveStrategy implements IAiStrategy {
   decideAction(_enemy: EnemyInstance, ctx: BattleContext): AiDecision {
     const hpPercent = ctx.enemyHp / ctx.enemyMaxHp;
     const healSkills = ctx.availableSkills.filter(s => s.isHeal);
-    if (hpPercent < 0.4 && healSkills.length > 0) {
+    if (hpPercent < DEFENSIVE_HEAL_HP_THRESHOLD && healSkills.length > 0) {
       return { type: 'heal', skillId: healSkills[0].id };
     }
-    if (this.rng.bool(0.2)) {
+    if (this.rng.bool(DEFENSIVE_SKILL_CHANCE)) {
       const attackSkills = ctx.availableSkills.filter(s => !s.isHeal);
       if (attackSkills.length > 0) {
         const skill = this.rng.pick(attackSkills);
@@ -52,11 +65,11 @@ export class BalancedStrategy implements IAiStrategy {
   decideAction(_enemy: EnemyInstance, ctx: BattleContext): AiDecision {
     const hpPercent = ctx.enemyHp / ctx.enemyMaxHp;
     const healSkills = ctx.availableSkills.filter(s => s.isHeal);
-    if (hpPercent < 0.5 && healSkills.length > 0 && this.rng.bool(0.6)) {
+    if (hpPercent < BALANCED_HEAL_HP_THRESHOLD && healSkills.length > 0 && this.rng.bool(BALANCED_HEAL_CHANCE)) {
       return { type: 'heal', skillId: healSkills[0].id };
     }
     const attackSkills = ctx.availableSkills.filter(s => !s.isHeal);
-    if (attackSkills.length > 0 && this.rng.bool(0.3)) {
+    if (attackSkills.length > 0 && this.rng.bool(BALANCED_SKILL_CHANCE)) {
       const skill = this.rng.pick(attackSkills);
       return { type: 'skill', skillId: skill.id };
     }
@@ -70,7 +83,7 @@ export class BossPhaseStrategy implements IAiStrategy {
   constructor(private readonly rng: Rng = defaultRng) {}
   decideAction(_enemy: EnemyInstance, ctx: BattleContext): AiDecision {
     const hpPercent = ctx.enemyHp / ctx.enemyMaxHp;
-    if (hpPercent < 0.2) {
+    if (hpPercent < BOSS_ENRAGE_HP_THRESHOLD) {
       // 狂暴：必定使用技能，不生命恢复
       const attackSkills = ctx.availableSkills.filter(s => !s.isHeal);
       if (attackSkills.length > 0) {
@@ -79,14 +92,14 @@ export class BossPhaseStrategy implements IAiStrategy {
       }
       return { type: 'basic_attack' };
     }
-    if (hpPercent < 0.5) {
+    if (hpPercent < BOSS_HALF_HP_THRESHOLD) {
       // 半血：高概率技能（60%），小概率生命恢复（20%），否则普通攻击
       const healSkills = ctx.availableSkills.filter(s => s.isHeal);
-      if (healSkills.length > 0 && this.rng.bool(0.2)) {
+      if (healSkills.length > 0 && this.rng.bool(BOSS_HALF_HEAL_CHANCE)) {
         return { type: 'heal', skillId: healSkills[0].id };
       }
       const attackSkills = ctx.availableSkills.filter(s => !s.isHeal);
-      if (attackSkills.length > 0 && this.rng.bool(0.6)) {
+      if (attackSkills.length > 0 && this.rng.bool(BOSS_HALF_SKILL_CHANCE)) {
         const skill = this.rng.pick(attackSkills);
         return { type: 'skill', skillId: skill.id };
       }
@@ -94,7 +107,7 @@ export class BossPhaseStrategy implements IAiStrategy {
     }
     // 正常血量：30% 概率使用技能，其余普通攻击
     const attackSkills = ctx.availableSkills.filter(s => !s.isHeal);
-    if (attackSkills.length > 0 && this.rng.bool(0.3)) {
+    if (attackSkills.length > 0 && this.rng.bool(BOSS_NORMAL_SKILL_CHANCE)) {
       const skill = this.rng.pick(attackSkills);
       return { type: 'skill', skillId: skill.id };
     }

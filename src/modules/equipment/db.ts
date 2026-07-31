@@ -32,7 +32,7 @@
  * | 内部工具 | `mapTemplateToEquipmentItem`, `getDefaultEquipment` | - |
  */
 import { db as gameDb, dbService } from '@/modules/data';
-import type { EquipmentDataStorage, EquipmentTemplateStorage, EquipmentItem, EquipmentSlot } from './types';
+import type { EquipmentTemplateStorage, EquipmentItem, EquipmentSlot } from './types';
 import { createEmptySlotMap } from './service';
 
 /**
@@ -52,6 +52,12 @@ export class EquipmentDbService {
    * - type/rarity/slots → 通过 as 断言收紧类型
    * - bonus → Record<string, number> 转为 Partial<Stats>
    * - 可选字段 → 提供默认值（levelRequirement=undefined, stackable=false）
+   *
+   * P3 TS-10 审计决策（2026-07-31）：
+   * - type/rarity/bonus 的 `as` 断言保留，属于"边界层信任 DB 数据"策略
+   * - 数据合法性由数据写入路径保证（admin 后台表单校验 + 初始化器使用静态常量）
+   * - 旧存档迁移问题应由迁移脚本统一处理，而非在每个读取点做运行时校验
+   * - 双重断言 `as unknown as` 已消除（见 getEquipment/getEquipmentTemplate/getAllEquipmentTemplates）
    *
    * @param data - 数据库原始存储格式
    * @returns 运行时 EquipmentItem 格式
@@ -100,6 +106,10 @@ export class EquipmentDbService {
    *
    * 若角色无装备记录或数据损坏，返回默认全空映射。
    *
+   * P3 TS-10 修复：Dexie 表已用 `Table<EquipmentStorage, string>` 泛型化，
+   * `get()` 返回 `Promise<EquipmentStorage | undefined>`，无需双重断言。
+   * 字段访问使用 `typeof` 守卫确保 equipment 为对象类型。
+   *
    * @param characterId - 角色 ID
    * @returns 装备 ID 映射（全 null 表示无装备）
    */
@@ -107,7 +117,7 @@ export class EquipmentDbService {
     characterId: string
   ): Promise<Record<EquipmentSlot, string | null>> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.char_equipment.get(characterId) as unknown as EquipmentDataStorage | undefined;
+      const data = await gameDb.char_equipment.get(characterId);
       if (!data) {
         return this.getDefaultEquipment();
       }
@@ -173,12 +183,15 @@ export class EquipmentDbService {
   /**
    * 获取单个装备模板
    *
+   * P3 TS-10 修复：Dexie 表已用 `Table<EquipmentTemplateStorage, string>` 泛型化，
+   * `get()` 返回 `Promise<EquipmentTemplateStorage | undefined>`，无需双重断言。
+   *
    * @param itemId - 装备 ID
    * @returns 装备数据（运行时格式），不存在则返回 null
    */
   async getEquipmentTemplate(itemId: string): Promise<EquipmentItem | null> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.config_equipmentItems.get(itemId) as unknown as EquipmentTemplateStorage | undefined;
+      const data = await gameDb.config_equipmentItems.get(itemId);
       if (!data) return null;
       return this.mapTemplateToEquipmentItem(data);
     });
@@ -189,11 +202,13 @@ export class EquipmentDbService {
    *
    * 通常在 initialize 时调用，一次性加载全部模板到内存。
    *
+   * P3 TS-10 修复：Dexie 表已泛型化，`toArray()` 返回 `Promise<EquipmentTemplateStorage[]>`，无需断言。
+   *
    * @returns 全部装备模板列表（运行时格式）
    */
   async getAllEquipmentTemplates(): Promise<EquipmentItem[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.config_equipmentItems.toArray() as unknown as EquipmentTemplateStorage[];
+      const items = await gameDb.config_equipmentItems.toArray();
       return items.map(data => this.mapTemplateToEquipmentItem(data));
     });
   }

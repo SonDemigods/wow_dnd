@@ -81,6 +81,11 @@ export abstract class BaseDbService<T, S = T> {
   // P3-138 说明：保留默认实现而非改为 abstract，因为测试中的 DefaultTestService 依赖默认实现。
   // 默认实现使用 unknown 断言，适用于 T 和 S 类型相同的场景（如纯 JSON 存储）。
   // 子类如有特殊转换需求，应覆盖这两个方法。
+  //
+  // P3 TS-11 审计决策（2026-07-31）：
+  // - toStorage/toRuntime 的 `as unknown as` 双重断言保留，因 T 与 S 默认相同，无运行时风险
+  // - getKey 改用 `Record<string, unknown>` + `String(...)` 显式转换，避免假设主键字段必为 string
+  //   （子类可能用 number 主键，虽 Dexie 表声明为 string 主键，但运行时数据可能来自外部）
   /** 运行时对象 → DB 存储格式（默认直接返回，子类可覆盖以做转换/清洗） */
   protected toStorage(data: T): S { return data as unknown as S; }
 
@@ -89,7 +94,7 @@ export abstract class BaseDbService<T, S = T> {
 
   /** 获取主键值 */
   protected getKey(data: T): string {
-    return (data as unknown as Record<string, string>)[this.keyField];
+    return String((data as Record<string, unknown>)[this.keyField]);
   }
 
   /** 保存（新增或覆盖）单条记录 */

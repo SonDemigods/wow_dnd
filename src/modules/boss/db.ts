@@ -52,6 +52,7 @@ export class BossDbService {
         // undefined 直接保留（这些字段不参与索引）
         skillPool: boss.skillPool || undefined,
         aiStrategy: boss.aiStrategy || undefined,
+        attackType: boss.attackType || undefined,
         phases: boss.phases || undefined,
         intro: boss.intro || undefined
       });

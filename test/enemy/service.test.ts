@@ -221,6 +221,64 @@ describe('calculateEnemyDamage 注入 RNG（P3-5 / 阶段十二）', () => {
   });
 });
 
+describe('calculateEnemyDamage 普攻伤害类型（P3-95）', () => {
+  it("attackType='magical' 时使用 magicAttack 计算基础伤害", () => {
+    // 法系敌人：magicAttack=30，physicalAttack=5
+    const enemy = makeInstance({
+      attackType: 'magical',
+      physicalAttack: 5,
+      magicAttack: 30,
+      damage: [5, 10],
+    });
+    // rng=0: randomFactor=5, rawDamage=(30+5)*0.5=17.5, mitigated=max(1, 17.5-0)=17.5, floor=17
+    expect(calculateEnemyDamage(enemy, 0, createRngFromFn(() => 0))).toBe(17);
+  });
+
+  it("attackType='magical' 时玩家魔法防御生效（不再走物理防御）", () => {
+    const enemy = makeInstance({
+      attackType: 'magical',
+      physicalAttack: 5,
+      magicAttack: 30,
+      damage: [5, 10],
+    });
+    // rng=0: rawDamage=17.5, magicDefense=20: mitigated=max(1, 17.5-20*0.3)=max(1, 11.5)=11.5, floor=11
+    expect(calculateEnemyDamage(enemy, 20, createRngFromFn(() => 0))).toBe(11);
+  });
+
+  it("attackType='physical'（默认）时仍使用 physicalAttack", () => {
+    const enemy = makeInstance({
+      attackType: 'physical',
+      physicalAttack: 30,
+      magicAttack: 5,
+      damage: [5, 10],
+    });
+    // rng=0: rawDamage=(30+5)*0.5=17.5, mitigated=17.5, floor=17
+    expect(calculateEnemyDamage(enemy, 0, createRngFromFn(() => 0))).toBe(17);
+  });
+
+  it('attackType 未配置时默认走物理攻击力', () => {
+    const enemy = makeInstance({
+      attackType: undefined,
+      physicalAttack: 30,
+      magicAttack: 5,
+      damage: [5, 10],
+    });
+    // rng=0: rawDamage=(30+5)*0.5=17.5, floor=17
+    expect(calculateEnemyDamage(enemy, 0, createRngFromFn(() => 0))).toBe(17);
+  });
+
+  it("attackType='magical' 且 magicAttack 未配置时使用默认值 5", () => {
+    const enemy = makeInstance({
+      attackType: 'magical',
+      physicalAttack: 30,
+      magicAttack: undefined,
+      damage: [0, 0],
+    });
+    // rng=0: rawDamage=(5+0)*0.5=2.5, floor=2
+    expect(calculateEnemyDamage(enemy, 0, createRngFromFn(() => 0))).toBe(2);
+  });
+});
+
 describe('createEnemyInstance 敌人实例创建', () => {
   it('生成以 enemy_ 为前缀的唯一 ID', () => {
     const inst = createEnemyInstance(makeTemplate(), 1);

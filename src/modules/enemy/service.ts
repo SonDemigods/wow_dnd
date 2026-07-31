@@ -80,14 +80,19 @@ export function generateEnemyStats(
  * 计算敌人对玩家造成的伤害
  *
  * 伤害公式：
- *   rawDamage = (物理攻击力 + 伤害范围随机值) × 0.5
+ *   rawDamage = (攻击力 + 伤害范围随机值) × 0.5
  *   mitigated = max(1, rawDamage - 玩家防御 × 0.3)
  *   最终伤害 = floor(mitigated)
  *
- * 即物理攻击力与伤害范围各占 50% 权重，玩家防御按 30% 比例减免，最低造成 1 点伤害。
+ * 即攻击力与伤害范围各占 50% 权重，玩家防御按 30% 比例减免，最低造成 1 点伤害。
+ *
+ * P3-95 修复：根据 `enemy.attackType` 选择使用物理攻击力或魔法攻击力。
+ * - `attackType === 'magical'`：使用 `magicAttack`（法系敌人普攻走魔法）
+ * - 其他情况（含未配置）：使用 `physicalAttack`（默认物理）
+ * 注意：调用方需根据 attackType 传入对应的玩家防御（physicalDefense 或 magicDefense）。
  *
  * @param enemy - 敌人实例
- * @param playerDefense - 玩家防御值
+ * @param playerDefense - 玩家防御值（由调用方根据 enemy.attackType 选择物理或魔法防御）
  * @param rng - 随机数生成器，默认 `defaultRng`（基于 Math.random）。
  *   传入 `createSeededRng(seed)` 或 `createRngFromFn(() => 0)` 可注入确定性随机源，
  *   便于测试断言与战斗回放（避免 mock 全局 Math.random 的副作用）。
@@ -99,7 +104,10 @@ export function calculateEnemyDamage(
   playerDefense: number,
   rng: Rng = defaultRng
 ): number {
-  const baseDamage = enemy.physicalAttack ?? 10;
+  const isMagical = enemy.attackType === 'magical';
+  const baseDamage = isMagical
+    ? (enemy.magicAttack ?? 5)
+    : (enemy.physicalAttack ?? 10);
   const damageRange = enemy.damage;
   const randomFactor = damageRange[0] + rng.next() * (damageRange[1] - damageRange[0]);
   const rawDamage = (baseDamage + randomFactor) * 0.5;

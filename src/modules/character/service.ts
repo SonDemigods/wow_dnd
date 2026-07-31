@@ -5,7 +5,7 @@
  * 所有业务逻辑均为纯函数，数据通过参数传入、通过返回值输出。
  * Store 层负责调用这些纯函数并管理响应式状态与持久化。
  */
-import type { Character, Stats, Attributes, RaceData, ClassData, CreateCharacterParams, ExpGainResult, FactionType } from './types';
+import type { Character, Stats, Attributes, RaceData, ClassData, CreateCharacterParams, ExpGainResult, FactionType, RaceType } from './types';
 import {
   calculateMaxHp,
   calculateMaxMana,
@@ -89,6 +89,34 @@ export function computeAttributes(stats: Stats): Attributes {
  */
 export function isClassFactionCompatible(classData: ClassData, factionId: FactionType): boolean {
   return classData.factionsIds.includes(factionId);
+}
+
+/**
+ * 校验种族与阵营的兼容性
+ * 所选种族的 factionId 必须等于当前角色阵营 ID（如 alliance 角色不可切到 horde 种族 orc）
+ * @param raceData - 种族数据
+ * @param factionId - 所选阵营 ID
+ * @returns true 表示兼容，false 表示不兼容
+ *
+ * P3-100 修复：setRace 入口校验，与 createCharacter 中已有的 isClassFactionCompatible 对齐。
+ * 数据依据：RaceData.factionId（种族归属阵营，见 types.ts:190）。
+ */
+export function isRaceFactionCompatible(raceData: RaceData, factionId: FactionType): boolean {
+  return raceData.factionId === factionId;
+}
+
+/**
+ * 校验职业与种族的兼容性
+ * 所选职业的 raceIds 必须包含当前角色种族 ID（空数组表示无限制，对所有种族开放）
+ * @param classData - 职业数据
+ * @param raceId - 所选种族 ID
+ * @returns true 表示兼容，false 表示不兼容
+ *
+ * P3-100 修复：setClass 入口校验。ClassData.raceIds 为空数组时表示无种族限制（如 warrior 对所有种族开放）；
+ * 非空数组时表示有种族限制（如 demon_hunter 仅对 night_elf/blood_elf 开放）。
+ */
+export function isClassRaceCompatible(classData: ClassData, raceId: RaceType): boolean {
+  return classData.raceIds.length === 0 || classData.raceIds.includes(raceId);
 }
 
 /** 创建初始角色（纯函数） */
@@ -236,6 +264,8 @@ function clampBonus(value: number): number {
  */
 export function computeBonusChange(currentBonus: Partial<Stats>, delta: Partial<Stats>, isAdd: boolean): Partial<Stats> {
   const result = { ...currentBonus };
+  // P3 TS-17 审计决策（2026-07-31）：Object.keys 返回 string[]，TS 语言限制无法静态推断为 (keyof Stats)[]。
+  // delta 类型为 Partial<Stats>，键已由类型保证为 keyof Stats，断言是合理 workaround。
   const keys = Object.keys(delta) as (keyof Stats)[];
   for (const key of keys) {
     const current = result[key] || 0;

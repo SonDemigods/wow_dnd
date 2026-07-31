@@ -78,6 +78,7 @@ export const useTalentStore = defineStore('talent', () => {
         critBonus: 0,
         resourceBonuses: {},
         healingMultiplier: 0,
+        hpMultiplier: 0,
         specialEffects: [],
         skillEnhancements: []
       };

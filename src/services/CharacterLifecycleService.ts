@@ -110,6 +110,12 @@ export class CharacterLifecycleService {
    *          各模块 DbService 已内置 withRetry 重试机制，无需在本层额外处理。
    *          P2-69 修复：原 Promise.all 会在任一 reject 时立即返回，其他并行操作继续执行
    *          但不会被等待，导致部分删除状态。改用 allSettled 等待全部完成并汇总失败结果。
+   *
+   * P3 DB-10 审计决策（2026-07-31）：未使用 db.transaction 包裹 6 个删除操作，属有意设计权衡：
+   * - 跨 6 张表的事务在 Dexie 中实现复杂，且与各模块 withRetry 重试机制兼容性差
+   * - 主数据（char_data）已先删除，残留的孤儿数据可通过运维脚本清理，不影响业务正确性
+   * - allSettled + 失败聚合保证可观测性，运维可据此定位失败模块
+   * - 若未来要求强一致性，可评估跨表事务方案（需重写各模块 DbService 的删除接口）
    */
   async cascadeDeleteCharacter(characterId: string): Promise<void> {
     const results = await Promise.allSettled([

@@ -18,6 +18,15 @@ import type { useCombatState } from './useCombatState';
 
 export function useCombatLog(state: ReturnType<typeof useCombatState>, ctx: ICombatQuery) {
   /**
+   * 保存中的 Promise 引用（防重入锁）
+   *
+   * P3 BIZ-5 修复：战斗中一次回合可能触发 3-5 次 saveLogs()，每次都保存全量日志。
+   * 如果并发调用各自启动 Promise.all，会导致 IndexedDB 事务队列堆积与重复 put。
+   * 通过复用同一 Promise，并发调用方等待同一持久化任务完成。
+   */
+  let savingPromise: Promise<void> | null = null;
+
+  /**
    * 添加战斗日志（内部方法）
    * @param data - 日志数据（不含自动生成字段）
    */
@@ -34,14 +43,27 @@ export function useCombatLog(state: ReturnType<typeof useCombatState>, ctx: ICom
 
   /**
    * 持久化战斗日志（内部方法）
+   *
+   * P3 BIZ-5 修复：防重入设计。
+   * - 首次调用启动持久化任务，savingPromise 被赋值
+   * - 并发调用直接返回同一 Promise，避免重复保存全量日志
+   * - 任务完成后清除引用，下次调用将启动新任务（保存新增日志）
    */
   async function saveLogs(): Promise<void> {
-    try {
-      const logsToSave = [...state.combatLogs.value];
-      await Promise.all(logsToSave.map(log => combatDbService.saveCombatLog(log)));
-    } catch (e) {
-      console.error('[CombatStore] 保存战斗日志失败:', e);
+    if (savingPromise) {
+      return savingPromise;
     }
+    savingPromise = (async () => {
+      try {
+        const logsToSave = [...state.combatLogs.value];
+        await Promise.all(logsToSave.map(log => combatDbService.saveCombatLog(log)));
+      } catch (e) {
+        console.error('[CombatStore] 保存战斗日志失败:', e);
+      } finally {
+        savingPromise = null;
+      }
+    })();
+    return savingPromise;
   }
 
   /**

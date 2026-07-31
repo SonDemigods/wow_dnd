@@ -46,7 +46,7 @@ export class ImportService implements IImportService {
     return new Promise((resolve) => {
       const reader = new FileReader();
 
-      reader.onload = () => {
+      reader.onload = async () => {
         try {
           const content = reader.result as string;
           const backup = JSON.parse(content);
@@ -56,7 +56,7 @@ export class ImportService implements IImportService {
             return;
           }
 
-          const checksum = calculateChecksum(backup.data);
+          const checksum = await calculateChecksum(backup.data);
           if (checksum !== backup.checksum) {
             resolve({ success: false, error: '备份文件已损坏' });
             return;

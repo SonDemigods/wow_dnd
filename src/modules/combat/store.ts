@@ -28,6 +28,7 @@ import { useCombatState } from './composables/useCombatState';
 import { useCombatLog } from './composables/useCombatLog';
 import { useBossMechanics, type IBossContext } from './composables/useBossMechanics';
 import { useEnemyAction } from './composables/useEnemyAction';
+import { BOSS_INTRO_DELAY } from '@/config/combat';
 import type { Rng } from '@/utils/rng';
 import { useInitiative } from './composables/useInitiative';
 import { usePlayerAction } from './composables/usePlayerAction';
@@ -186,6 +187,15 @@ export const useCombatStore = defineStore('combat', () => {
           message: `被 ${enemyNames} 击败！`, icon: 'game-icons:death-zone'
         });
 
+        // P3 BIZ-13 审计决策（2026-07-31）：
+        // - handleDeath 内部执行 persistCharacter + resurrect（修改角色 HP/MP/经验）
+        // - 不 await 的原因：state.cleanup() 仅重置 combat 状态（enemies/combatLogs/initiativeOrder 等），
+        //   不涉及 character 模块；resurrect 修改的是 character.value，与 combat 清理无竞态
+        // - 性能权衡：await 会增加 ~50ms IO 时间（两次 persistCharacter），影响战斗结束动画响应
+        // - 与 exploration/store.ts:416 的对比：exploration 在死亡后立即持久化探索状态，
+        //   需要保证探索状态在 character 死亡前完成；combat 场景无此依赖
+        // - 风险评估：若 resurrect 在 state.cleanup 之前完成，character.value 已被替换为新对象，
+        //   但 cleanup 不读取 character，故无影响
         ctx.character.handleDeath();
       } else if (result === 'fled') {
         state.combatResult.value = result;
@@ -209,6 +219,13 @@ export const useCombatStore = defineStore('combat', () => {
 
       // P3-89 修复：COMBAT_END 事件载荷补充敌人摘要（enemyCount/enemyNames），
       // 同时保留首个敌人引用 `enemy` 以向后兼容既有消费者（仅读取首敌信息的 UI/音效）。
+      //
+      // P3 BIZ-6 审计决策（2026-07-31）：
+      // - 消费者清单：exploration/store.ts:630 仅读 data.result；audio/service.ts:298 仅读 data.result
+      // - 当前无消费者读取 data.enemy，理论上可移除该字段
+      // - 保留原因：测试中存在专门验证 enemy=null 防御分支的用例（test/combat/store.test.ts:848），
+      //   且未来可能有 UI 组件需要展示首敌信息（如战斗结算弹窗的敌人头像）
+      // - 后续清理：若确认无 UI 消费者，可移除 enemy 字段并删除对应测试用例
       eventBus.emit(GameEvents.COMBAT_END, {
         result,
         enemy: state.enemies.value[0] || null,
@@ -307,7 +324,7 @@ export const useCombatStore = defineStore('combat', () => {
             enemyId: bossId, enemyName: bossEnemy.name, icon: bossEnemy.icon,
             effect: intro.effect, lines: intro.lines, duration: intro.duration
           });
-        }, 300);
+        }, BOSS_INTRO_DELAY);
       }
     }
 

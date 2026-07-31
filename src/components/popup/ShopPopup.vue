@@ -377,7 +377,7 @@ const displayShopItems = computed<ShopDisplayItem[]>(() => {
       quantity: shopItem.quantity,
       effect: itemInfo.effect
     } as ShopDisplayItem;
-  }).filter(Boolean) as ShopDisplayItem[];
+  }).filter((item): item is ShopDisplayItem => item !== null);
 
   if (selectedCategory.value === 'all') return enriched;
   return enriched.filter(item => {

@@ -45,12 +45,7 @@
       @cancel="cancelExit"
     />
 
-    <Toast
-      :visible="toast.visible.value"
-      :message="toast.message.value"
-      :type="toast.type.value"
-      :icon="toast.icon.value"
-    />
+    <Toast v-bind="toastState" />
   </div>
 </template>
 
@@ -60,7 +55,7 @@
  * @description 管理游戏主界面状态（角色选择/游戏中），协调子组件间的交互，处理角色选择、创建和退出逻辑
  */
 
-import { ref, defineAsyncComponent, h, onMounted, onUnmounted, type Ref } from 'vue';
+import { ref, reactive, defineAsyncComponent, h, onMounted, onUnmounted, type Ref } from 'vue';
 import ConfirmPopup from './components/common/ConfirmPopup.vue';
 import Toast from './components/common/Toast.vue';
 import { useCharacterStore } from './modules/character';
@@ -108,14 +103,8 @@ const AdminLayout = defineAsyncComponent({
 });
 
 /** 游戏界面状态：角色选择 | 游戏中 | 后台管理 */
+// P3 TS-12 修复：GameState 类型与 Window.__gameState 声明已移至 env.d.ts
 type GameState = 'character-select' | 'game' | 'admin';
-
-// 扩展 Window 接口，供控制台命令访问 gameState（DEV 调试用）
-declare global {
-  interface Window {
-    __gameState: Ref<GameState>;
-  }
-}
 
 /** 当前游戏界面状态 */
 const gameState = ref<GameState>('character-select');
@@ -133,6 +122,17 @@ const characterSelectRef = ref<InstanceType<typeof CharacterSelect>>();
 const characterStore = useCharacterStore();
 const baseStore = useBaseStore();
 const toast = useToast();
+/**
+ * P3-126 修复：用 reactive 包装 toast 的 4 个 ref，模板通过 v-bind 展开传递。
+ * 避免 `toast.visible.value` 这种显式 .value 写法（违反 Vue 模板惯例）。
+ * reactive 自动 unwrap 顶层 ref，响应性保持不变。
+ */
+const toastState = reactive({
+  visible: toast.visible,
+  message: toast.message,
+  type: toast.type,
+  icon: toast.icon,
+});
 
 onMounted(async () => {
   // P2-70 修复：仅在开发环境暴露 gameState 到全局，供控制台命令切换视图

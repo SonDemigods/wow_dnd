@@ -118,18 +118,23 @@ function emitClose() {
 
 const store = useAudioStore();
 
+/** P3 TS-14 修复：使用 instanceof 守卫替代 as 断言，安全提取 input value */
+function getInputValue(e: Event): number {
+  return e.target instanceof HTMLInputElement ? Number(e.target.value) : 0;
+}
+
 function onMasterVolumeChange(e: Event) {
-  const value = Number((e.target as HTMLInputElement).value) / 100;
+  const value = getInputValue(e) / 100;
   store.setMasterVolume(value);
 }
 
 function onSfxVolumeChange(e: Event) {
-  const value = Number((e.target as HTMLInputElement).value) / 100;
+  const value = getInputValue(e) / 100;
   store.updateSettings({ sfxVolume: value });
 }
 
 function onBgmVolumeChange(e: Event) {
-  const value = Number((e.target as HTMLInputElement).value) / 100;
+  const value = getInputValue(e) / 100;
   store.updateSettings({ bgmVolume: value });
 }
 

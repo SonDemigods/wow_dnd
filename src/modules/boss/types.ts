@@ -193,6 +193,7 @@ export interface BossPhase {
  * @property {number|null} [dodgeChance] - 闪避率 0-1（null 表示未配置，由等级缩放推导）
  * @property {string[]} [skillPool] - 可用技能模板 ID 列表（AI 从此列表中选取技能施放）
  * @property {string} [aiStrategy] - AI 策略类型（存储为 string，读取后由 db.ts 断言为 AiStrategyType）
+ * @property {string} [attackType] - 普攻伤害类型（'physical'|'magical'，P3-95，读取时由 fromStorageBase 透传）
  * @property {BossPhase[]} [phases] - Boss 多阶段配置（仅 Boss 有效，阶段切换由 BossPhaseManager 管理）
  * @property {BossIntro} [intro] - Boss 出场演出配置（仅 Boss 有效，由 combat 流程通过 COMBAT_BOSS_INTRO 事件消费）
  *
@@ -217,6 +218,7 @@ export interface BossStorage {
   dodgeChance?: number | null;
   skillPool?: string[];
   aiStrategy?: string;
+  attackType?: string;
   phases?: BossPhase[];
   intro?: BossIntro;
 }

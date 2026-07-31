@@ -102,7 +102,7 @@ const activeQuests = computed<ActiveQuest[]>(() => {
       if (!definition || !instance) return null;
       return { questId: id, definition, instance };
     })
-    .filter(Boolean) as ActiveQuest[];
+    .filter((q): q is ActiveQuest => q !== null);
 });
 
 const confirmState = reactive({

@@ -20,7 +20,13 @@ import type { Item } from './types';
  * 统一物品模板缓存服务
  *
  * 内部维护合并后的模板列表与 ID 索引，对外提供 getAll/getById/invalidate 接口。
- * 加载失败后 loaded 保持 false，下次调用自动重试。
+ *
+ * 错误处理策略（P3-106 修复）：
+ * - `load()` 失败时 `loaded` 保持 false、`loadingPromise` 重置为 null，下次调用自动重试
+ *   （不缓存错误，避免短暂 DB 故障导致长期不可用）
+ * - `getAll()` / `getById()` 在 `load()` 失败时降级返回安全默认值（`[]` / `null`），
+ *   并通过 console.error 记录错误，不向上抛出（避免调用方需逐处 try-catch）
+ * - 调用方若需感知加载失败，可直接调用 `load()` 捕获异常
  */
 class UnifiedItemTemplateCacheService {
   /** 合并后的模板列表缓存（null 表示未加载） */
@@ -88,13 +94,19 @@ class UnifiedItemTemplateCacheService {
    * 按 ID 查询单个物品模板
    *
    * 未加载时自动触发 load。返回合并视图中的 Item（可能是普通物品或转换后的装备）。
+   * load 失败时降级返回 null（P3-106：不向上抛出，调用方按"未找到"处理）。
    *
    * @param itemId - 物品 ID
-   * @returns 物品模板，未找到时返回 null
+   * @returns 物品模板，未找到或加载失败时返回 null
    */
   async getById(itemId: string): Promise<Item | null> {
     if (!this.loaded) {
-      await this.load();
+      try {
+        await this.load();
+      } catch (error) {
+        console.error('[UnifiedItemTemplateCache] 加载物品模板失败，getById 降级返回 null:', error);
+        return null;
+      }
     }
     return this.templateMap.get(itemId) ?? null;
   }
@@ -102,13 +114,18 @@ class UnifiedItemTemplateCacheService {
   /**
    * 获取全量合并模板
    *
-   * 未加载时自动触发 load。load 失败时返回空数组兜底。
+   * 未加载时自动触发 load。load 失败时降级返回空数组兜底（P3-106：兑现注释承诺）。
    *
-   * @returns 合并后的物品模板列表（普通物品 + 转换后的装备）
+   * @returns 合并后的物品模板列表（普通物品 + 转换后的装备；加载失败时返回 []）
    */
   async getAll(): Promise<Item[]> {
     if (!this.loaded) {
-      await this.load();
+      try {
+        await this.load();
+      } catch (error) {
+        console.error('[UnifiedItemTemplateCache] 加载物品模板失败，getAll 降级返回空数组:', error);
+        return [];
+      }
     }
     return this.mergedTemplates ?? [];
   }

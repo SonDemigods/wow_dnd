@@ -42,6 +42,14 @@
  *    questDefinitions / questInstances 使用 Map<string, T> 存储，查询 O(1)。
  *    每次更新都创建新的 Map 实例以触发 Vue 响应式更新。
  *
+ * P3 BIZ-8 审计决策（2026-07-31）：
+ *   QUEST_ACCEPTED / QUEST_COMPLETED / QUEST_REWARDED 事件载荷包含完整 QuestDefinition 对象。
+ *   - 消费者清单：audio/service.ts:396/400/404 监听但仅 playSfx，不读 data
+ *   - 当前无消费者读取 data.definition，理论上可移除该字段
+ *   - 保留原因：测试中存在断言 definition 字段的用例（test/quest/store.test.ts:348 等），
+ *     且未来 UI 组件（如任务完成弹窗）可能需要立即展示任务标题/奖励信息
+ *   - 后续清理：若确认无 UI 消费者，可移除 definition 字段并更新对应测试
+ *
  * @module quest/store
  */
 
@@ -640,6 +648,13 @@ export const useQuestStore = defineStore('quest', () => {
    *
    * 注意：物品奖励通过 inventoryStore.addItem 同步调用（非 async），
    * 这是 Pinia Store 内部 Action 调用的典型模式。
+   *
+   * P3 DB-12 审计决策（2026-07-31）：跨模块发奖未使用 db.transaction 保护，属有意设计权衡：
+   * - 跨 char_data（经验/金币）与 char_inventory（物品）的事务在 Dexie 中实现成本高
+   * - _handleQuestCompletion 已通过"先持久化任务状态再发奖"避免重复刷取（行 269-270）
+   * - 部分失败场景：经验/金币已发但物品背包满时，已通过 toast 提示玩家（行 673-678）
+   * - 若未来要求严格事务性，需将 char_data 与 char_inventory 写入包在 db.transaction 中，
+   *   但跨模块事务实现成本较高，建议保留现状但增强日志记录丢失的奖励
    *
    * @param definition - 任务定义（含奖励字段）
    */

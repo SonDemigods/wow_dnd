@@ -538,7 +538,7 @@ function getSkillEffectText(skill: Skill): string {
 }
 
 /** 获取技能目标类型文本 */
-function getTargetTypeText(targetType?: string): string {
+function getTargetTypeText(targetType?: 'single' | 'all_enemies' | 'self' | 'ally'): string {
   if (!targetType || targetType === 'single') return '';
   return getTargetTypeName(targetType);
 }
@@ -790,9 +790,10 @@ watch(() => combatStore.combatResult, (result) => {
     // 使用 anime.js 播放结果弹窗动画
     nextTick(() => {
       if (resultPopupRef.value && resultIconRef.value && resultTextRef.value) {
+        // P3 TS-13 修复：使用 instanceof 守卫收窄 HTMLElement 类型，替代 as 断言
         const rewardEls = Array.from(
           resultPopupRef.value.querySelectorAll('.reward-item')
-        ) as HTMLElement[];
+        ).filter((el): el is HTMLElement => el instanceof HTMLElement);
         animateResultPopup(resultPopupRef.value, resultIconRef.value, resultTextRef.value, rewardEls, combatSpeed.value);
       }
     });

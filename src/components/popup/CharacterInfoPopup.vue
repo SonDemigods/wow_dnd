@@ -488,14 +488,13 @@ async function unequipItem(slotKey: string) {
     const result = await equipmentStore.unequipItem(slotKey as EquipmentSlot);
     if (result) {
       // 装备槽卸下动画
-      const slotEl = document.querySelector(
-        `[data-equip-slot="${slotKey}"]`
-      ) as HTMLElement;
-      if (slotEl) {
-        slotEl.classList.add('equip-anim-empty');
+      // P3 TS-13 修复：使用 instanceof 守卫收窄 HTMLElement 类型，替代 as 断言
+      const slotElRaw = document.querySelector(`[data-equip-slot="${slotKey}"]`);
+      if (slotElRaw instanceof HTMLElement) {
+        slotElRaw.classList.add('equip-anim-empty');
         // P2 BIZ-10 修复：使用 registerAnimCleanup 跟踪监听器，弹窗卸载时主动清理
-        registerAnimCleanup(slotEl, () => {
-          slotEl.classList.remove('equip-anim-empty');
+        registerAnimCleanup(slotElRaw, () => {
+          slotElRaw.classList.remove('equip-anim-empty');
         });
       }
       selectedSlot.value = null;

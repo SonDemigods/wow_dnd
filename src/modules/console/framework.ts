@@ -172,6 +172,8 @@ export function logTag(cmd: string, text: string): void {
  * @returns {CommandCategory | undefined} 匹配到的类别 key，无匹配时 undefined
  */
 export function resolveCategory(input: string): CommandCategory | undefined {
+  // P3 TS-17 审计决策（2026-07-31）：Object.keys 返回 string[]，TS 语言限制无法静态推断为 CommandCategory[]。
+  // COMMAND_CATEGORY_LABELS 的键已由类型保证为 CommandCategory，断言是合理 workaround。
   return (Object.keys(COMMAND_CATEGORY_LABELS) as CommandCategory[]).find(
     k => k === input || COMMAND_CATEGORY_LABELS[k] === input
   );
@@ -214,9 +216,9 @@ export function requireCharacter():
  * @see game 命令
  */
 export function switchGameState(target: string, msg: string): CommandResult {
-  // window.__gameState 类型由 App.vue 的 declare global 声明为 Ref<GameState>，
-  // 此处 target 来自命令参数，运行时 switch 命令已校验合法值，通过断言收窄到 GameState 联合类型
-  const gs = (window as Window & { __gameState?: { value: 'character-select' | 'game' | 'admin' } }).__gameState;
+  // P3 TS-12 修复：window.__gameState 类型由 App.vue 的 declare global 声明为 Ref<GameState>，
+  // 直接访问即可，无需重新断言。target 来自命令参数，运行时 switch 命令已校验合法值。
+  const gs = window.__gameState;
   if (!gs) {
     return { success: false, message: 'gameState 未初始化，请等待游戏加载完成' };
   }

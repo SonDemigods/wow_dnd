@@ -150,6 +150,8 @@ export interface TalentEffectSummary {
   resourceBonuses: Record<string, number>;
   /** 治疗倍率总和（healing_multiplier，P2-75 新增），如 0.24 表示治疗量提升 24% */
   healingMultiplier: number;
+  /** 生命上限倍率总和（hp_multiplier，P3-139 新增），如 0.15 表示生命上限提升 15% */
+  hpMultiplier: number;
   /** 特殊效果列表（special） */
   specialEffects: Array<{ description: string; value: number }>;
   /** 技能增强列表（skill_enhance） */
@@ -167,6 +169,7 @@ export function createEmptyEffectSummary(): TalentEffectSummary {
     critBonus: 0,
     resourceBonuses: {},
     healingMultiplier: 0,
+    hpMultiplier: 0,
     specialEffects: [],
     skillEnhancements: []
   };
@@ -174,6 +177,9 @@ export function createEmptyEffectSummary(): TalentEffectSummary {
 
 /**
  * 累加单个天赋效果到聚合结果
+ *
+ * P3-139 修复：基于可辨识联合类型，TS 自动收窄每个 case 的 effect 形状，
+ * 不再需要 `if (effect.stat)` 守卫，stat 字段在对应分支中保证存在。
  *
  * @param summary - 聚合结果对象（会被修改）
  * @param effect - 天赋效果
@@ -184,11 +190,12 @@ function accumulateEffect(summary: TalentEffectSummary, effect: TalentEffect, ra
   const totalValue = effect.valuePerRank * rank;
 
   switch (effect.type) {
-    case 'stat_bonus':
-      if (effect.stat) {
-        summary.statBonuses[effect.stat] = (summary.statBonuses[effect.stat] || 0) + totalValue;
-      }
+    case 'stat_bonus': {
+      // effect 已收窄为 StatBonusEffect，stat 字段保证为 keyof Stats
+      const { stat } = effect;
+      summary.statBonuses[stat] = (summary.statBonuses[stat] || 0) + totalValue;
       break;
+    }
     case 'damage_multiplier':
       summary.damageMultiplier += totalValue;
       break;
@@ -198,15 +205,21 @@ function accumulateEffect(summary: TalentEffectSummary, effect: TalentEffect, ra
     case 'crit_bonus':
       summary.critBonus += totalValue;
       break;
-    case 'resource_bonus':
-      if (effect.stat) {
-        summary.resourceBonuses[effect.stat] = (summary.resourceBonuses[effect.stat] || 0) + totalValue;
-      }
+    case 'resource_bonus': {
+      // effect 已收窄为 ResourceBonusEffect，stat 字段保证为 ResourceStatKey
+      const { stat } = effect;
+      summary.resourceBonuses[stat] = (summary.resourceBonuses[stat] || 0) + totalValue;
       break;
+    }
     case 'healing_multiplier':
       // P2-75 修复：将"治疗效果提升"从 special 提升为一等公民类型，
       // 供 skill/store.ts 在治疗计算中读取并应用（原 special 类型无消费方，导致天赋失效）
       summary.healingMultiplier += totalValue;
+      break;
+    case 'hp_multiplier':
+      // P3-139 修复：新增 hp_multiplier 类型，替代原 stat_bonus+hp_max 的错误配置，
+      // 让"每级提升 X% 生命上限"的天赋效果能被正确聚合（原配置因 hp_max 非 keyof Stats 被静默丢弃）
+      summary.hpMultiplier += totalValue;
       break;
     case 'special':
       summary.specialEffects.push({
@@ -215,12 +228,11 @@ function accumulateEffect(summary: TalentEffectSummary, effect: TalentEffect, ra
       });
       break;
     case 'skill_enhance':
-      if (effect.targetSkill) {
-        summary.skillEnhancements.push({
-          skillId: effect.targetSkill,
-          value: totalValue
-        });
-      }
+      // effect 已收窄为 SkillEnhanceEffect，targetSkill 字段保证为 string
+      summary.skillEnhancements.push({
+        skillId: effect.targetSkill,
+        value: totalValue
+      });
       break;
   }
 }

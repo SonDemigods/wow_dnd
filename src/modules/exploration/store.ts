@@ -304,6 +304,12 @@ export const useExplorationStore = defineStore('exploration', () => {
     // 获取地点数据并发射区域进入事件
     const location = await crossModuleQuery.getLocationData(areaId);
     if (location) {
+      // P3 BIZ-7 审计决策（2026-07-31）：
+      // - 消费者清单：audio/service.ts:369 监听 ZONE_ENTERED 但不读 data（仅 playSfx('door_open')）
+      // - 当前无消费者读取 data.location，理论上可移除该字段
+      // - 保留原因：测试中存在断言 location 字段的用例（test/exploration/store.test.ts:252），
+      //   且未来 UI 可能需要展示地点信息（如区域名称提示）
+      // - 后续清理：若确认无 UI 消费者，可移除 location 字段并更新对应测试
       eventBus.emit(GameEvents.ZONE_ENTERED, { locationId: areaId, location });
     }
 

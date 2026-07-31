@@ -457,14 +457,13 @@ async function useItem(itemId: string) {
   if (!success) return;
 
   // 物品使用弹跳动画
-  const slotEl = document.querySelector(
-    `[data-item-id="${itemId}"]`
-  ) as HTMLElement;
-  if (slotEl) {
-    slotEl.style.animation = 'item-bounce 0.4s ease';
+  // P3 TS-13 修复：使用 instanceof 守卫收窄 HTMLElement 类型，替代 as 断言
+  const slotElRaw = document.querySelector(`[data-item-id="${itemId}"]`);
+  if (slotElRaw instanceof HTMLElement) {
+    slotElRaw.style.animation = 'item-bounce 0.4s ease';
     // P2 BIZ-9 修复：使用 registerAnimCleanup 跟踪监听器，弹窗卸载时主动清理
-    registerAnimCleanup(slotEl, () => {
-      slotEl.style.animation = '';
+    registerAnimCleanup(slotElRaw, () => {
+      slotElRaw.style.animation = '';
     });
   }
 
@@ -509,14 +508,13 @@ async function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
   const success = await equipmentStore.equipItem(slot, item);
   if (success) {
     // 装备槽填充动画（如果角色面板打开）
-    const slotEl = document.querySelector(
-      `[data-equip-slot="${slot}"]`
-    ) as HTMLElement;
-    if (slotEl) {
-      slotEl.classList.add('equip-anim-fill');
+    // P3 TS-13 修复：使用 instanceof 守卫收窄 HTMLElement 类型，替代 as 断言
+    const slotElRaw = document.querySelector(`[data-equip-slot="${slot}"]`);
+    if (slotElRaw instanceof HTMLElement) {
+      slotElRaw.classList.add('equip-anim-fill');
       // P2 BIZ-9 修复：使用 registerAnimCleanup 跟踪监听器，弹窗卸载时主动清理
-      registerAnimCleanup(slotEl, () => {
-        slotEl.classList.remove('equip-anim-fill');
+      registerAnimCleanup(slotElRaw, () => {
+        slotElRaw.classList.remove('equip-anim-fill');
       });
     }
     toast.show({

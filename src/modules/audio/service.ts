@@ -117,7 +117,9 @@ class AudioService implements IAudioService {
     this.listenForFirstInteraction();
 
     this.initialized = true;
-    console.log('[AudioService] 音频服务已就绪，等待用户交互启动 AudioContext');
+    if (import.meta.env.DEV) {
+      console.log('[AudioService] 音频服务已就绪，等待用户交互启动 AudioContext');
+    }
   }
 
   /** 监听首次用户交互事件 */
@@ -132,7 +134,9 @@ class AudioService implements IAudioService {
         // 生成混响脉冲响应并建立效果链（需要在 AudioContext 运行后）
         await this.ensureReverbReady();
 
-        console.log('[AudioService] AudioContext 已启动，效果链已连接');
+        if (import.meta.env.DEV) {
+          console.log('[AudioService] AudioContext 已启动，效果链已连接');
+        }
       } catch (e) {
         console.warn('[AudioService] AudioContext 启动失败:', e);
       }

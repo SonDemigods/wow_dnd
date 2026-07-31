@@ -201,7 +201,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 25,
     magicDefense: 15,
     critChance: 10,
-    dodgeChance: 5
+    dodgeChance: 5,
+    attackType: 'magical'
   },
   {
     id: 'nerubian',
@@ -473,6 +474,7 @@ export const MOBS: EnemyData[] = [
     magicAttack: 18,
     magicDefense: 8,
     critChance: 10,
-    dodgeChance: 8
+    dodgeChance: 8,
+    attackType: 'magical'
   }
 ];

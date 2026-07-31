@@ -81,6 +81,11 @@ export type AiStrategyType = 'aggressive' | 'defensive' | 'balanced' | 'boss_pha
  * @property {number} [dodgeChance] - 闪避率（0-1，未配置时使用默认推导值）
  * @property {string[]} [skillPool] - 可用技能模板 ID 列表（AI 从此列表中选取技能施放）
  * @property {AiStrategyType} [aiStrategy] - AI 策略类型（决定技能选择和行为模式）
+ * @property {'physical'|'magical'} [attackType] - 普攻伤害类型（P3-95 修复）
+ *   未配置时默认 'physical'，敌人普攻走物理攻击力 vs 玩家物理防御；
+ *   配置为 'magical' 时，敌人普攻走魔法攻击力 vs 玩家魔法防御，
+ *   使法系敌人（如 element/imp/naga/dragon）的普攻也能利用其较高的 magicAttack 属性。
+ *   技能伤害类型由 SkillTemplate.type 决定，不受本字段影响。
  *
  * @see EnemyInstance 运行时实例，继承本接口并附加战斗状态
  * @see EnemyStorage IndexedDB 存储格式，与本接口字段对应
@@ -103,6 +108,7 @@ export interface EnemyData {
   dodgeChance?: number;
   skillPool?: string[];
   aiStrategy?: AiStrategyType;
+  attackType?: 'physical' | 'magical';
 }
 
 /**
@@ -198,6 +204,7 @@ export interface EnemyInstance extends EnemyData {
  * @property {number|null} [dodgeChance] - 闪避率（null 表示未配置）
  * @property {string[]} [skillPool] - 可用技能模板 ID 列表
  * @property {string} [aiStrategy] - AI 策略类型（存储为 string，读取时由 db.ts 断言为 AiStrategyType）
+ * @property {string} [attackType] - 普攻伤害类型（存储为 string，'physical'|'magical'，读取时由 db.ts 透传）
  *
  * @see EnemyData 运行时接口，字段语义相同但使用 `undefined`
  * @see fromStorage 存储 → 运行时的转换逻辑
@@ -220,4 +227,5 @@ export interface EnemyStorage {
   dodgeChance?: number | null;
   skillPool?: string[];
   aiStrategy?: string;
+  attackType?: string;
 }
