@@ -9,7 +9,8 @@
  * @see fromStorageBase 与 enemy/db.ts 共享的存储 → 运行时转换逻辑
  */
 import { db as gameDb, dbService } from '@/modules/data/core';
-import { fromStorageBase } from '@/modules/enemy/db';
+// P3-152：从 enemy 公共入口引用 fromStorageBase，避免穿透到 @/modules/enemy/db（违反模块边界 error 规则）
+import { fromStorageBase } from '@/modules/enemy';
 import type { BossStorage, BossTemplate } from './types';
 
 /**

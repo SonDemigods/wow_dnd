@@ -68,9 +68,31 @@ export default defineConfig({
 
   /**
    * 构建配置
+   *
+   * P3-142：新增 manualChunks 分包策略，将第三方依赖拆分为独立 vendor chunk，
+   * 提升浏览器缓存命中率（业务代码改动不会让 vendor chunk 失效），
+   * 并配合 P3-141 的 Tone.js 动态导入进一步降低首屏体积。
    */
   build: {
     minify: 'esbuild',
     target: 'es2020',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vue 核心（vue / pinia / @vueuse/motion）：框架基础，变更频率极低
+          'vendor-vue': ['vue', 'pinia', '@vueuse/motion'],
+          // Dexie：IndexedDB 封装，独立 chunk 避免与业务代码耦合
+          'vendor-db': ['dexie'],
+          // animejs：动画库，独立 chunk
+          'vendor-anime': ['animejs'],
+          // vue-virtual-scroller：长列表虚拟滚动，独立 chunk
+          'vendor-scroller': ['vue-virtual-scroller'],
+          // @iconify/vue：图标库，独立 chunk 便于按需加载
+          'vendor-iconify': ['@iconify/vue'],
+          // Tone.js：配合 P3-141 动态导入，独立 chunk 避免与其他 vendor 混合
+          'vendor-tone': ['tone'],
+        },
+      },
+    },
   },
 })

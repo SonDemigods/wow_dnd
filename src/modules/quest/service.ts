@@ -18,11 +18,12 @@
  * @module quest/service
  */
 
-import type { 
-  QuestDefinition, 
+import type {
+  QuestDefinition,
   QuestInstance,
   QuestObjectiveProgress
 } from './types';
+import { resolveEnemyId } from '@/modules/enemy';
 
 /**
  * 检查任务进度
@@ -62,7 +63,11 @@ export function checkQuestProgress(
 
   // 遍历任务定义中的所有目标，检查是否匹配当前事件
   for (const objective of definition.objectives) {
-    const isKillMatch = relevantData.enemyId && objective.type === 'kill' && objective.enemyId === relevantData.enemyId;
+    // P3-137：双向规范化 enemyId 后比较
+    // 兼容旧存档/旧备份中的 enemyId（旧 ID）与新配置中的 enemyId（新 ID）混合匹配
+    const isKillMatch = relevantData.enemyId && objective.type === 'kill'
+      && objective.enemyId !== undefined
+      && resolveEnemyId(objective.enemyId) === resolveEnemyId(relevantData.enemyId);
     const isCollectMatch = relevantData.itemId && objective.type === 'collect' && objective.itemId === relevantData.itemId;
 
     if (isKillMatch || isCollectMatch) {
@@ -221,7 +226,7 @@ export function getDefaultQuests(): QuestDefinition[] {
       description: '村庄附近出现了一群豺狼人，村民们非常害怕。请你前往东边的森林，消灭10只豺狼人。',
       type: 'kill',
       objectives: [
-        { key: 'kill_gnoll', type: 'kill', target: 10, enemyId: 'gnoll' }
+        { key: 'kill_gnoll', type: 'kill', target: 10, enemyId: 'mob_gnoll' }
       ],
       levelRequirement: 1,
       xpReward: 100,
@@ -247,7 +252,7 @@ export function getDefaultQuests(): QuestDefinition[] {
       description: '最近有狼群在村庄周边活动，已经造成了一些损失。请消灭5只狼。',
       type: 'kill',
       objectives: [
-        { key: 'kill_wolf', type: 'kill', target: 5, enemyId: 'wolf' }
+        { key: 'kill_wolf', type: 'kill', target: 5, enemyId: 'mob_gray_wolf' }
       ],
       levelRequirement: 2,
       xpReward: 150,
@@ -260,8 +265,8 @@ export function getDefaultQuests(): QuestDefinition[] {
       description: '一个强大的兽人首领带领着他的部下占领了矿山。请你前去击败他，夺回矿山！',
       type: 'kill',
       objectives: [
-        { key: 'kill_orc_minion', type: 'kill', target: 3, enemyId: 'orc' },
-        { key: 'kill_orc_boss', type: 'kill', target: 1, enemyId: 'ogre' }
+        { key: 'kill_orc_minion', type: 'kill', target: 3, enemyId: 'mob_orc_grunt' },
+        { key: 'kill_orc_boss', type: 'kill', target: 1, enemyId: 'mob_ogre' }
       ],
       levelRequirement: 5,
       xpReward: 500,

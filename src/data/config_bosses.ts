@@ -16,7 +16,7 @@ import type { BossTemplate } from '../modules/boss/types';
  */
 export const BOSSES: BossTemplate[] = [
   {
-    id: 'dragon_whelp',
+    id: 'boss_dragon_whelp',
     name: '幼龙',
     icon: 'game-icons:wyvern',
     maxHp: 120,
@@ -40,7 +40,7 @@ export const BOSSES: BossTemplate[] = [
     intro: { effect: 'flame', lines: ['幼龙拦住了去路！', '它的双翼遮蔽了天空...'], duration: 2000 }
   },
   {
-    id: 'demon',
+    id: 'boss_abyss_guard',
     name: '深渊卫士',
     icon: 'game-icons:daemon-skull',
     maxHp: 150,
@@ -64,7 +64,7 @@ export const BOSSES: BossTemplate[] = [
     intro: { effect: 'darken', lines: ['深渊卫士撕裂了空间！', '黑暗能量在你周围涌动...'], duration: 2500 }
   },
   {
-    id: 'frost_wyrm',
+    id: 'boss_frost_wyrm',
     name: '冰霜巨龙',
     icon: 'game-icons:frozen-orb',
     maxHp: 130,
@@ -88,7 +88,7 @@ export const BOSSES: BossTemplate[] = [
     intro: { effect: 'freeze', lines: ['冰霜巨龙从风雪中现身！', '它的吐息冻结了一切...'], duration: 2500 }
   },
   {
-    id: 'undead_knight',
+    id: 'boss_undead_knight',
     name: '亡灵骑士',
     icon: 'game-icons:black-knight-helm',
     maxHp: 110,
@@ -112,7 +112,7 @@ export const BOSSES: BossTemplate[] = [
     intro: { effect: 'darken', lines: ['亡灵骑士缓缓拔出咒文剑...', '冰冷的死亡气息笼罩了战场'], duration: 2200 }
   },
   {
-    id: 'lich',
+    id: 'boss_lich',
     name: '亡灵大法师',
     icon: 'game-icons:skull-mask',
     maxHp: 140,
@@ -137,7 +137,7 @@ export const BOSSES: BossTemplate[] = [
     intro: { effect: 'lightning', lines: ['亡灵大法师从暗影中现身...', '你的灵魂被它的目光穿透！'], duration: 2500 }
   },
   {
-    id: 'frost_giant',
+    id: 'boss_frost_giant',
     name: '冰霜巨人',
     icon: 'game-icons:giant',
     maxHp: 160,

@@ -229,6 +229,8 @@ function makePassiveMock() {
     onAttack: vi.fn(),
     onKill: vi.fn(),
     getDamageReduction: vi.fn(() => 0),
+    // P3-146：默认返回空 stat_modifier 数组，使管线退化为原始行为
+    getStatModifiers: vi.fn(() => []),
   } as never;
 }
 

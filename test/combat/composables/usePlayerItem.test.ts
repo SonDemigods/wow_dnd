@@ -204,6 +204,20 @@ function makeBossMock() {
   } as never;
 }
 
+/**
+ * P3-146：usePlayerItem 新增 passive 参数，构造 mock 注入
+ * 默认返回空 stat_modifier 数组，使管线退化为原始行为。
+ */
+function makePassiveMock() {
+  return {
+    onDamaged: vi.fn(),
+    onAttack: vi.fn(),
+    onKill: vi.fn(),
+    getDamageReduction: vi.fn(() => 0),
+    getStatModifiers: vi.fn(() => []),
+  } as never;
+}
+
 function makeMockCtx(): ICombatContext {
   return {
     character: {
@@ -264,7 +278,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
 
   it('返回包含 playerUseItem 方法的对象', () => {
     const item = usePlayerItem(
-      makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(),
+      makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makePassiveMock(),
     );
     expect(typeof item.playerUseItem).toBe('function');
   });
@@ -277,7 +291,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       const state = makeStateMock({ target: null, alive: [] });
 
       const result = await usePlayerItem(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makePassiveMock(),
       ).playerUseItem('item1');
 
       expect(result.success).toBe(false);
@@ -296,7 +310,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       pipeResultMock.finalDamage = 40;
 
       const result = await usePlayerItem(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makePassiveMock(),
       ).playerUseItem('item1');
 
       expect(result.success).toBe(true);
@@ -315,7 +329,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       pipeResultMock.finalDamage = 35;
 
       await usePlayerItem(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makePassiveMock(),
       ).playerUseItem('item1');
 
       expect(enemyStoreMock.takeDamage).toHaveBeenCalledWith('e1', 35);
@@ -332,7 +346,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       const result = await usePlayerItem(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makePassiveMock(),
       ).playerUseItem('item1');
 
       // finalDamage = 40 * 1.5 = 60
@@ -352,7 +366,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       await usePlayerItem(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makePassiveMock(),
       ).playerUseItem('item1');
 
       // 暴击时 thorns * 1.5 = Math.floor(9) = 9
@@ -370,7 +384,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
 
       const endCombat = vi.fn();
       await usePlayerItem(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makeBossMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makeBossMock(), makePassiveMock(),
       ).playerUseItem('item1');
 
       expect(endCombat).toHaveBeenCalledWith('victory');
@@ -400,7 +414,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       const endCombat = vi.fn();
       const initiative = makeInitiativeMock();
       await usePlayerItem(
-        state, makeLogMock(), ctx, initiative, endCombat, realBoss as never,
+        state, makeLogMock(), ctx, initiative, endCombat, realBoss as never, makePassiveMock(),
       ).playerUseItem('item1');
 
       expect(boss.hp).toBe(50);
@@ -416,7 +430,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       });
 
       await usePlayerItem(
-        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(),
+        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makePassiveMock(),
       ).playerUseItem('item1');
 
       const { eventBus, GameEvents } = await import('@/modules/bus');
@@ -432,7 +446,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       });
 
       await usePlayerItem(
-        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(),
+        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makePassiveMock(),
       ).playerUseItem('item1');
 
       const { eventBus, GameEvents } = await import('@/modules/bus');
@@ -448,7 +462,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       inventoryStoreMock.getItemInfo.mockReturnValue(null);
 
       const result = await usePlayerItem(
-        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(),
+        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makePassiveMock(),
       ).playerUseItem('item1');
 
       expect(inventoryStoreMock.useItem).toHaveBeenCalledWith('item1');
@@ -466,7 +480,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       pipeResultMock.finalDamage = 40;
 
       const result = await usePlayerItem(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makePassiveMock(),
       ).playerUseItem('item1');
 
       expect(result.success).toBe(true);
@@ -479,7 +493,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       });
 
       const result = await usePlayerItem(
-        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(),
+        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makePassiveMock(),
       ).playerUseItem('item1');
 
       expect(result.success).toBe(true);

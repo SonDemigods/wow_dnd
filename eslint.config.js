@@ -1,7 +1,7 @@
 /**
  * @fileoverview ESLint flat config（S4 修复）
  * @description 模块边界强制规则，防止跨层 import 违规。
- *              初始以 warn 模式运行，收集误报后逐步切换为 error。
+ *              P3-152：已从 warn 模式升级为 error，全项目无真实违规。
  */
 import js from '@eslint/js';
 import tsParser from '@typescript-eslint/parser';
@@ -11,13 +11,16 @@ import globals from 'globals';
 
 /** 共享规则：模块边界 + TypeScript 严格性 */
 const sharedRules = {
-  // 禁止显式 any（warn 模式，逐步收紧）
-  '@typescript-eslint/no-explicit-any': 'warn',
+  // P3-152：禁止显式 any 升级为 error（全项目无 as any 漏洞）
+  '@typescript-eslint/no-explicit-any': 'error',
+  // P3-152：TS 文件关闭 no-undef（TS 类型如 EventListenerOrEventListenerObject 由 tsParser 识别，
+  // vitest 全局如 afterEach 由 vitest/globals 提供，no-undef 是 JS 规则会误报）
+  'no-undef': 'off',
   // 使用 TS 版本的 no-unused-vars，支持 argsIgnorePattern
   'no-unused-vars': 'off',
   '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-  // 模块边界强制：禁止直接 import 其他模块的 db.ts
-  'no-restricted-imports': ['warn', {
+  // P3-152：模块边界强制升级为 error，禁止直接 import 其他模块的 db.ts
+  'no-restricted-imports': ['error', {
     patterns: [
       {
         group: ['@/modules/*/db'],
@@ -48,7 +51,8 @@ const sharedRules = {
  * - 测试文件另行豁免（test/** 直接 import db.ts 进行 CRUD 验证）
  */
 const strictModuleBoundaryRules = {
-  'no-restricted-imports': ['warn', {
+  // P3-152：升级为 error
+  'no-restricted-imports': ['error', {
     patterns: [
       // 原有规则保留
       {
@@ -73,8 +77,9 @@ const strictModuleBoundaryRules = {
 
 export default [
   // 全局忽略
+  // P3-152：env.d.ts 是环境声明文件，any 是必要的（Vue DefineComponent 默认导出类型）
   {
-    ignores: ['node_modules/', 'dist/', 'coverage/', '*.config.ts', '*.config.js'],
+    ignores: ['node_modules/', 'dist/', 'coverage/', '*.config.ts', '*.config.js', 'src/env.d.ts'],
   },
   // JS 基础规则
   js.configs.recommended,
@@ -129,10 +134,13 @@ export default [
     rules: strictModuleBoundaryRules,
   },
   // 测试文件豁免：DB 层测试需直接 import db.ts 进行 CRUD 验证（fake-indexeddb）
+  // P3-152：测试 mock 中 any 是合理用法（mock 函数、部分字段省略等），
+  // 与 src 业务代码的"严禁 any"红线区分对待。降级为 warn 不阻断 lint。
   {
     files: ['test/**/*.ts', 'test/**/*.vue'],
     rules: {
       'no-restricted-imports': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
     },
   },
 ];

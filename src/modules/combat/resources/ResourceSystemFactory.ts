@@ -62,7 +62,7 @@ export class ResourceSystemFactory {
         return [new FocusSystem(100)];
 
       case 'paladin':
-        // 圣骑士：神圣（辅助，主资源为 MP）
+        // 圣骑士：神圣（主伤害资源）+ MP（治疗辅助，P3-148 后伤害技能全部走 holy_power，治疗技能保留 MP）
         return [new HolyPowerSystem(0)];
 
       case 'death_knight':
@@ -74,7 +74,7 @@ export class ResourceSystemFactory {
         return [new FurySystem(0), new SoulSystem(0)];
 
       case 'evoker':
-        // 龙脉术士：精华（辅助，主资源为 MP）
+        // 龙脉术士：精华（主资源，P3-148 后核心技能全部走 essence）+ MP（应急治疗辅助）
         return [new EssenceSystem(1)];
 
       default:
@@ -89,7 +89,7 @@ export class ResourceSystemFactory {
    *
    * 用于非战斗 UI（主界面、角色面板等）决定是否隐藏 MP 资源条。
    * - 战士(怒气)/潜行者(能量)/猎人(集中)/武僧(能量)/亡灵骑士(符能)/影刃猎手(怒火) → true，隐藏 MP 条
-   * - 圣骑士(神圣)/术士(碎片)/龙脉术士(精华) → false，保留 MP 条（专属资源为辅助资源）
+   * - 圣骑士(神圣)/术士(碎片)/龙脉术士(精华) → false，保留 MP 条（双资源设计：MP 用于治疗/应急，专属资源用于核心输出）
    * - 法师/牧师/萨满/德鲁伊 → false，使用 MP 系统
    *
    * @param classId - 职业 ID

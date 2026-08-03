@@ -26,9 +26,10 @@
  * @module skill
  */
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, shallowRef, triggerRef } from 'vue';
 import type { Skill, SkillBar, SkillType, SkillSlotIndex, SkillUseResult, AppliedEffectInfo } from './types';
 import { skillsDbService } from './db';
+import { errorReporter } from '@/utils/errorReport';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useCharacterStore } from '@/modules/character/store';
 import { useTalentStore } from '@/modules/character/talents/store';
@@ -73,11 +74,19 @@ export const useSkillStore = defineStore('skills', () => {
   /** 技能栏配置（4 个槽位，存储技能 ID 或 null） */
   const skillBar = ref<SkillBar>({ slots: [null, null, null, null] });
 
-  /** 技能模板缓存（key: skillId → value: Skill，按职业加载，用于还原 skills 列表和装备操作） */
-  const skillTemplates = ref<Map<string, Skill>>(new Map());
+  /**
+   * 技能模板缓存（key: skillId → value: Skill，按职业加载，用于还原 skills 列表和装备操作）
+   *
+   * P3-144 修复：改用 shallowRef。原地 set/delete/clear 调用点通过 triggerRef 显式触发响应式更新。
+   */
+  const skillTemplates = shallowRef<Map<string, Skill>>(new Map());
 
-  /** 怪物/首领技能模板缓存（key: skillId → value: Skill，敌人 AI 专用） */
-  const monsterSkillTemplates = ref<Map<string, Skill>>(new Map());
+  /**
+   * 怪物/首领技能模板缓存（key: skillId → value: Skill，敌人 AI 专用）
+   *
+   * P3-144 修复：同 skillTemplates，改用 shallowRef。
+   */
+  const monsterSkillTemplates = shallowRef<Map<string, Skill>>(new Map());
 
   /** 当前操作的角色 ID（初始化时设置，用于持久化时自动关联） */
   const currentCharacterId = ref<string | null>(null);
@@ -183,20 +192,31 @@ export const useSkillStore = defineStore('skills', () => {
    * 将 Store 中的 `skills`（ID 数组）+ `skillBar` 持久化到 IndexedDB。
    * `skills` 仅存储 ID 数组，完整 Skill 对象从模板缓存还原。
    * 这是每次数据变更后的统一持久化入口。
+   *
+   * P3-151：补齐 try-catch + errorReporter 上报，参考 inventory/store.ts 的最佳实践。
+   * persist 失败时 UI 与 DB 状态可能不一致，需通过 errorReporter 记录便于监测。
    */
   async function persist(): Promise<void> {
     const characterStore = useCharacterStore();
     const charId = currentCharacterId.value || characterStore.getCharacterId();
     if (!charId) return;
 
-    await skillsDbService.saveSkillsData({
-      characterId: charId,
-      // 仅存 ID 数组，完整数据从模板缓存中按 ID 还原
-      skills: skills.value.map(s => s.id),
-      skillBar: skillBar.value,
-      currentClass: characterStore.classId,
-      updatedAt: Date.now()
-    });
+    try {
+      await skillsDbService.saveSkillsData({
+        characterId: charId,
+        // 仅存 ID 数组，完整数据从模板缓存中按 ID 还原
+        skills: skills.value.map(s => s.id),
+        skillBar: skillBar.value,
+        currentClass: characterStore.classId,
+        updatedAt: Date.now()
+      });
+    } catch (err) {
+      errorReporter.report(err, 'manual', {
+        context: '技能数据持久化失败，UI 与 DB 状态可能不一致',
+        characterId: charId,
+        skillCount: skills.value.length,
+      });
+    }
   }
 
   /**
@@ -657,8 +677,7 @@ export const useSkillStore = defineStore('skills', () => {
     templateMap: typeof skillTemplates,
     fetcher: () => Promise<Skill[]>
   ): Promise<void> {
-    // 清空旧缓存（防止残留数据污染新加载结果）
-    templateMap.value.clear();
+    // P3-144：shallowRef 模式下直接整体替换，无需先 clear（旧 Map 会被 GC 回收）
     const templates = await fetcher();
     // 重新填充 Map（O(n) 时间复杂度）
     const newMap = new Map<string, Skill>();
@@ -677,7 +696,8 @@ export const useSkillStore = defineStore('skills', () => {
   async function loadTemplatesForClass(classId: string): Promise<void> {
     // classId 为空时短路：只清空缓存，不查询 DB
     if (!classId) {
-      skillTemplates.value.clear();
+      skillTemplates.value = new Map();
+      // P3-144：shallowRef 整体替换，无需 triggerRef（赋值新 Map 自动触发）
       return;
     }
     await loadTemplatesTo(skillTemplates, () => skillsDbService.getSkillTemplatesByClass(classId));
@@ -771,6 +791,8 @@ export const useSkillStore = defineStore('skills', () => {
    */
   async function addSkillTemplate(skill: Skill): Promise<void> {
     skillTemplates.value.set(skill.id, skill);
+    // P3-144：shallowRef 原地 mutate 后显式触发响应式更新
+    triggerRef(skillTemplates);
     await skillsDbService.saveSkillTemplate(skill);
   }
 
@@ -781,6 +803,8 @@ export const useSkillStore = defineStore('skills', () => {
    */
   async function removeSkillTemplate(skillId: string): Promise<void> {
     skillTemplates.value.delete(skillId);
+    // P3-144：shallowRef 原地 mutate 后显式触发响应式更新
+    triggerRef(skillTemplates);
     await skillsDbService.deleteSkillTemplate(skillId);
   }
 
@@ -860,8 +884,9 @@ export const useSkillStore = defineStore('skills', () => {
   async function reset(): Promise<void> {
     skills.value = [];
     skillBar.value = { slots: [null, null, null, null] };
-    skillTemplates.value.clear();
-    monsterSkillTemplates.value.clear();
+    // P3-144：shallowRef 整体替换，无需 triggerRef（赋值新 Map 自动触发）
+    skillTemplates.value = new Map();
+    monsterSkillTemplates.value = new Map();
     cooldowns.value = {};
     currentCharacterId.value = null;
     await persist();

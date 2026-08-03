@@ -21,7 +21,7 @@
  * - persistInventory 内部有 try/catch，失败时输出 console.error 但不影响 UI
  */
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, shallowRef } from 'vue';
 import type { Item, InventoryItem, SortField, SortOrder, ItemFilters, ItemType, ItemRarity } from './types';
 import { inventoryDbService } from './db';
 import { unifiedItemTemplateCache } from '@/modules/item-template';
@@ -88,8 +88,13 @@ export const useInventoryStore = defineStore('inventory', () => {
 
   /** 背包物品列表（每个元素代表一个槽位），索引即 UI 位置 */
   const inventory = ref<InventoryItem[]>([]);
-  /** 物品模板缓存（key=itemId, value=Item），包含普通物品和装备物品 */
-  const itemTemplates = ref<Map<string, Item>>(new Map());
+  /**
+   * 物品模板缓存（key=itemId, value=Item），包含普通物品和装备物品
+   *
+   * P3-144 修复：改用 shallowRef。更新模式为整体替换（loadItemTemplates 中 `itemTemplates.value = new Map(...)`），
+   * 无原地 mutate 调用点，shallowRef 避免对 Map 内部做深度响应式追踪。
+   */
+  const itemTemplates = shallowRef<Map<string, Item>>(new Map());
   /** 当前筛选条件（所有字段可选，全部为空表示不筛选） */
   const filters = ref<ItemFilters>({});
   /** 当前排序字段，默认按类型排序 */

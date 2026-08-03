@@ -9,11 +9,13 @@
  * 3. 被动效果通过 effect.type 分发处理：
  *    - resource_gen：直接调用 resourceSystems.generate 生成资源
  *    - heal：on_attack 按伤害百分比吸血；on_turn_start/on_damaged/on_low_hp 按最大生命百分比治疗
- *    - stat_modifier/damage_reduction/buff：记录日志，实际效果由战斗计算管线预留扩展点支持
+ *    - stat_modifier：通过 getStatModifiers() 暴露给伤害管线与暴击判定（P3-146 已接入）
+ *    - damage_reduction：通过 getDamageReduction() 暴露给 applyEnemyDamageToPlayer
+ *    - buff：通过 applyBuff() 写入 EffectContainer（P3-146 已接入，如术士腐蚀术 DOT）
  *
  * 集成点：
  * - combatStore.startCombat：调用 passive.onCombatStart()
- * - combatStore.playerAction attack/skill：调用 passive.onAttack(damage)
+ * - combatStore.playerAction attack/skill：调用 passive.onAttack(damage, targetId)
  * - useEnemyAction.applyEnemyDamageToPlayer：调用 passive.onDamaged(amount)
  * - useInitiative.advanceToNextUnit：调用 passive.onTurnStart()
  * - combatStore.endCombat victory：调用 passive.onKill()
@@ -25,6 +27,24 @@ import { getPassivesByClassId } from '@/data/config_class_passives';
 import type { ICombatContext } from '../combatContext';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
+import {
+  addEffectToContainer,
+  createEmptyContainer,
+  generateEffectId,
+  type Effect,
+  type EffectType,
+} from '../effects';
+
+/**
+ * 被动触发上下文
+ *
+ * @property damage - 触发伤害值（吸血计算使用）
+ * @property targetEnemyId - 当前攻击目标敌人 ID（buff 类被动对敌人施加效果使用）
+ */
+interface PassiveTriggerContext {
+  damage?: number;
+  targetEnemyId?: string;
+}
 
 export function usePassiveSkills(
   state: ReturnType<typeof useCombatState>,
@@ -33,8 +53,9 @@ export function usePassiveSkills(
   ctx: ICombatContext
 ) {
   // P3-83 修复：直接解构，无需多余的中间对象
-  const { addCombatLog } = log;
-  const { resourceSystems } = state;
+  // P3-146：增加 createPlayerEffectContext/createEnemyEffectContext 用于 buff 接入容器
+  const { addCombatLog, createEnemyEffectContext } = log;
+  const { resourceSystems, enemyEffects, effectRegistry } = state;
 
   /** 当前职业的被动技能列表（战斗开始时加载） */
   let passives: PassiveSkill[] = [];
@@ -71,11 +92,12 @@ export function usePassiveSkills(
   /**
    * 玩家攻击命中后触发的被动
    * @param damage - 本次攻击造成的伤害值（用于吸血计算）
+   * @param targetEnemyId - 当前攻击目标敌人 ID（P3-146：buff 类被动对敌人施加效果使用）
    */
-  function onAttack(damage: number): void {
+  function onAttack(damage: number, targetEnemyId?: string): void {
     passives
       .filter(p => p.trigger === 'on_attack')
-      .forEach(p => applyPassive(p, { damage }));
+      .forEach(p => applyPassive(p, { damage, targetEnemyId }));
 
     // 攻击后可能血量变化（吸血），不触发低血量
   }
@@ -117,9 +139,9 @@ export function usePassiveSkills(
   /**
    * 应用被动效果（内部核心方法）
    * @param passive - 被动技能数据
-   * @param context - 触发上下文（含伤害值等信息）
+   * @param context - 触发上下文（含伤害值、目标敌人 ID 等信息）
    */
-  function applyPassive(passive: PassiveSkill, context?: { damage?: number }): void {
+  function applyPassive(passive: PassiveSkill, context?: PassiveTriggerContext): void {
     // 记录被动触发日志
     addCombatLog({
       actorType: 'system',
@@ -140,19 +162,18 @@ export function usePassiveSkills(
         applyHeal(effect, context);
         break;
       case 'stat_modifier':
-        // 属性修正效果由战斗计算管线预留扩展点支持
-        // 当前仅记录日志，实际效果待战斗计算模块扩展 stat_modifier_hooks 后自动生效
+        // P3-146：stat_modifier 已通过 getStatModifiers() 接入伤害管线与暴击判定，
+        // 此处仅记录日志（条件评估在 getStatModifiers 中实时计算）
         applyStatModifier(effect);
         break;
       case 'damage_reduction':
-        // 减伤效果由伤害管线预留扩展点支持
-        // 当前仅记录日志，实际效果待 processDamagePipeline 扩展后自动生效
+        // damage_reduction 通过 getDamageReduction() 暴露给 applyEnemyDamageToPlayer
+        // 此处仅记录日志
         applyDamageReduction(effect);
         break;
       case 'buff':
-        // buff 效果由效果系统预留扩展点支持
-        // 当前仅记录日志，实际效果待效果系统扩展后自动生效
-        applyBuff(effect);
+        // P3-146：buff 类被动转换为 effect 写入对应容器（如术士腐蚀术 DOT）
+        applyBuff(effect, context);
         break;
     }
   }
@@ -180,7 +201,7 @@ export function usePassiveSkills(
    * - on_attack 触发：按造成伤害的百分比吸血
    * - on_turn_start/on_damaged/on_low_hp 触发：按最大生命百分比治疗
    */
-  function applyHeal(effect: PassiveEffect, context?: { damage?: number }): void {
+  function applyHeal(effect: PassiveEffect, context?: PassiveTriggerContext): void {
     const amount = effect.value;
     if (amount <= 0) return;
 
@@ -247,21 +268,93 @@ export function usePassiveSkills(
   }
 
   /**
-   * 应用 buff 效果（BIZ-5）
+   * 应用 buff 效果（P3-146 接入 EffectContainer）
    *
-   * buff 效果通过 applyBuffOnAttack() 方法在玩家攻击时对敌人施加 DOT，
-   * 此处仅记录日志。
+   * 根据 effect.target 与 effect.stat 将 buff 转换为对应 Effect 写入容器：
+   * - `target='enemy'` + `stat='corruption_dot'`：对当前攻击目标施加 poison 效果（DOT）
+   *   value 解释为按本次伤害百分比的额外 DOT 伤害（如 0.05 = 5% 本次伤害作为 poison value）
+   * - `target='self'`：暂未配置此类被动，预留扩展点
+   *
+   * 写入容器后会调用对应 handler.onApply，与技能 buff 流程一致。
+   *
+   * @param effect  - 被动 effect 数据
+   * @param context - 触发上下文（需含 targetEnemyId 才能对敌人施加效果）
    */
-  function applyBuff(effect: PassiveEffect): void {
+  function applyBuff(effect: PassiveEffect, context?: PassiveTriggerContext): void {
+    if (effect.target === 'enemy') {
+      // 敌方目标 buff：必须有 targetEnemyId 才能施加
+      const targetId = context?.targetEnemyId;
+      if (!targetId) {
+        addCombatLog({
+          actorType: 'system', actorId: 'player', actorName: ctx.character.name,
+          eventType: 'passive_effect', isCrit: false, isDodge: false,
+          message: `附加效果失败：未指定目标敌人（${effect.stat || '未知'}）`,
+        });
+        return;
+      }
+
+      // 确保敌人容器存在
+      if (!enemyEffects.value[targetId]) {
+        enemyEffects.value[targetId] = createEmptyContainer();
+      }
+      const container = enemyEffects.value[targetId]!;
+      const enemy = ctx.enemy.getEnemyById(targetId);
+      if (!enemy) return;
+      const effectCtx = createEnemyEffectContext(enemy);
+
+      // 按 stat 映射为 EffectType：corruption_dot → poison（持续伤害）
+      const effectType = mapBuffStatToEffectType(effect.stat);
+      if (!effectType) {
+        addCombatLog({
+          actorType: 'system', actorId: 'player', actorName: ctx.character.name,
+          eventType: 'passive_effect', isCrit: false, isDodge: false,
+          message: `附加效果未识别：${effect.stat || '未知'}`,
+        });
+        return;
+      }
+
+      // value 语义：按本次伤害百分比转换为 DOT 数值（与腐蚀术设计一致）
+      // 若无 damage 上下文（如 on_combat_start 触发），用 1 作为最小值避免 0 DOT
+      const baseDamage = context?.damage && context.damage > 0 ? context.damage : 1;
+      const dotValue = Math.max(1, Math.floor(baseDamage * effect.value));
+
+      const newEffect: Effect = {
+        id: generateEffectId(),
+        type: effectType,
+        remainingTurns: 3,  // DOT 持续 3 回合（与术士腐蚀术设计一致）
+        value: dotValue,
+        source: 'passive',
+        sourceName: '被动：腐蚀术',
+      };
+      addEffectToContainer(container, newEffect);
+      effectRegistry.get(effectType)?.onApply?.(newEffect, effectCtx);
+
+      addCombatLog({
+        actorType: 'system', actorId: 'player', actorName: ctx.character.name,
+        eventType: 'passive_effect', isCrit: false, isDodge: false,
+        targetType: 'enemy', targetId, targetName: enemy.name,
+        message: `附加效果：${effect.stat} 对 ${enemy.name} 造成持续伤害（${dotValue}/回合）`,
+      });
+      return;
+    }
+
+    // target === 'self'：自身 buff（暂未配置此类被动，预留扩展点）
     addCombatLog({
-      actorType: 'system',
-      actorId: 'player',
-      actorName: ctx.character.name,
-      eventType: 'passive_effect',
-      isCrit: false,
-      isDodge: false,
+      actorType: 'system', actorId: 'player', actorName: ctx.character.name,
+      eventType: 'passive_effect', isCrit: false, isDodge: false,
       message: `附加效果：${effect.stat || '未知'} ${Math.round(effect.value * 100)}%`,
     });
+  }
+
+  /**
+   * 将被动 buff 的 stat 字段映射为 EffectType
+   *
+   * P3-146：目前仅支持 `corruption_dot` → `poison`（持续伤害）。
+   * 后续新增 buff 类被动时在此扩展映射。
+   */
+  function mapBuffStatToEffectType(stat: string | undefined): EffectType | undefined {
+    if (stat === 'corruption_dot') return 'poison';
+    return undefined;
   }
 
   // ==================== 战斗计算接入方法（BIZ-5） ====================

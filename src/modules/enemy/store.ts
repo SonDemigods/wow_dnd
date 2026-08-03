@@ -16,6 +16,7 @@ import type { EnemyInstance } from './types';
 import type { Skill } from '@/modules/skill/types';
 import { createEnemyInstance, calculateEnemyDamage } from './service';
 import { enemyDbService } from './db';
+import { resolveEnemyId } from './alias-map';
 import { useSkillStore } from '@/modules/skill/store';
 import { errorHandler } from '@/services/ErrorHandler';
 
@@ -72,14 +73,20 @@ export const useEnemyStore = defineStore('enemies', () => {
    * bossCreateFn 回退到 Boss 表（阶段四：不再静态依赖 boss 模块）。
    * 命中后将实例存入缓存并加入活跃列表；均未命中或创建失败时返回 null。
    *
-   * @param dataId - 敌人数据 ID
+   * 入口处经 resolveEnemyId 规范化 ID（P3-137 别名层）：
+   * 旧存档/旧备份中的旧 ID 透明转换为新 ID，新 ID 原样保留。
+   *
+   * @param dataId - 敌人数据 ID（可能为旧 ID，内部规范化）
    * @param level - 敌人等级，默认 1
    * @returns 创建的敌人实例，失败时返回 null
    */
   async function createEnemy(dataId: string, level: number = 1): Promise<EnemyInstance | null> {
     try {
+      // P3-137：入口处规范化 ID（旧 → 新），别名层为空时原样返回
+      const resolvedId = resolveEnemyId(dataId);
+
       // 优先从普通怪物表查找
-      let template = await enemyDbService.getEnemyTemplate(dataId);
+      let template = await enemyDbService.getEnemyTemplate(resolvedId);
       if (template) {
         const enemy = createEnemyInstance(template, level);
         activeEnemyIds.value.push(enemy.id);
@@ -89,7 +96,7 @@ export const useEnemyStore = defineStore('enemies', () => {
 
       // 回退到 Boss 表查找（通过注入的回调，避免静态依赖 boss 模块）
       if (bossCreateFn) {
-        const boss = await bossCreateFn(dataId, level);
+        const boss = await bossCreateFn(resolvedId, level);
         if (boss) {
           activeEnemyIds.value.push(boss.id);
           enemiesCache.value[boss.id] = { ...boss };

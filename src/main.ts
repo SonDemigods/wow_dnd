@@ -11,7 +11,6 @@ import VueVirtualScroller from 'vue-virtual-scroller'
 import App from './App.vue'
 import { db, dataInitializer } from '@/modules/data'
 import { initConsole } from '@/modules/console'
-import { audioService } from '@/modules/audio'
 import { errorReporter } from '@/utils/errorReport'
 import './styles/popup.less'
 import './styles/animations.less'
@@ -94,8 +93,35 @@ async function initApp() {
   // 挂载开发控制台命令到 window.cmd
   initConsole()
 
-  // 初始化音频服务（Tone.js 会在用户首次交互后自动启动 AudioContext）
-  audioService.init()
+  // P3-141：音频服务延迟到首次用户交互时动态加载
+  // Tone.js（gzip 后约 50KB+）非首屏必需，AudioContext 也必须等用户交互才能启动，
+  // 改为动态 import 后首屏不再下载/解析 Tone，TTI 显著提升。
+  setupLazyAudioInit()
+}
+
+/**
+ * 延迟初始化音频服务
+ *
+ * 监听首次 pointerdown / keydown 事件，动态 import 音频模块并调用 init()。
+ * 使用一次性监听器（{ once: true }），避免重复加载。失败时静默降级，
+ * 不影响游戏核心逻辑（音频非核心路径）。
+ */
+function setupLazyAudioInit(): void {
+  const startAudio = async () => {
+    try {
+      // P3-141：直接动态 import service.ts，避免通过 @/modules/audio 入口
+      // （入口已不再 export audioService，避免静态引用拉入 Tone.js）
+      const { audioService } = await import('@/modules/audio/service')
+      await audioService.init()
+    } catch (error) {
+      // 音频失败不阻断游戏，仅记录
+      errorReporter.report(error, 'manual', { context: '音频服务延迟初始化失败' })
+    }
+  }
+
+  // 浏览器 AudioContext 必须由用户手势触发，监听首次交互
+  window.addEventListener('pointerdown', startAudio, { once: true })
+  window.addEventListener('keydown', startAudio, { once: true })
 }
 
 initApp()

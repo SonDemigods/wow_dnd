@@ -21,6 +21,7 @@ import { rollPlayerCrit, computeThornsDamage } from './helpers/critCalc';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
 import type { useInitiative } from './useInitiative';
+import type { usePassiveSkills } from './usePassiveSkills';
 import type { useBossMechanics } from './useBossMechanics';
 
 export function usePlayerItem(
@@ -31,6 +32,8 @@ export function usePlayerItem(
   initiative: ReturnType<typeof useInitiative>,
   endCombat: (result: CombatResult) => void,
   boss: ReturnType<typeof useBossMechanics>,
+  // P3-146：注入被动技能，用于读取 stat_modifier 接入伤害管线与暴击判定
+  passive: ReturnType<typeof usePassiveSkills>,
 ) {
   const { addCombatLog, createPlayerEffectContext, createEnemyEffectContext } = log;
   const { aliveEnemies, currentTarget, playerEffects, enemyEffects, effectRegistry } = state;
@@ -57,6 +60,9 @@ export function usePlayerItem(
 
         const damageType: DamageType = type === 'magic_damage' ? 'magical' : 'physical';
 
+        // P3-146：读取 stat_modifier 类被动
+        const statModifiers = passive.getStatModifiers();
+
         const pipeResult = processDamagePipeline(
           effectRegistry,
           playerEffects.value,
@@ -64,11 +70,14 @@ export function usePlayerItem(
           createPlayerEffectContext(),
           createEnemyEffectContext(target),
           damageType,
-          value  // baseDamageOverride：物品基础伤害直接传入
+          value,  // baseDamageOverride：物品基础伤害直接传入
+          undefined,
+          statModifiers,
         );
 
         // 暴击判定
-        const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes);
+        // P3-146：传入 statModifiers 让 crit_chance / crit_damage_multiplier 生效
+        const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
         const finalDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
 
         // BIZ-2：应用 BOSS 防御机制（无敌/护盾）

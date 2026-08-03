@@ -12,7 +12,7 @@ import type { EnemyData } from '../modules/enemy/types';
  */
 export const MOBS: EnemyData[] = [
   {
-    id: 'gnoll',
+    id: 'mob_gnoll',
     name: '豺狼人',
     icon: 'game-icons:hyena-head',
     maxHp: 25,
@@ -28,7 +28,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 3
   },
   {
-    id: 'kobold',
+    id: 'mob_kobold',
     name: '狗头人',
     icon: 'game-icons:candle-holder',
     maxHp: 20,
@@ -44,7 +44,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 5
   },
   {
-    id: 'murloc',
+    id: 'mob_murloc',
     name: '蛙人',
     icon: 'game-icons:fish-monster',
     maxHp: 22,
@@ -60,7 +60,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 4
   },
   {
-    id: 'skeleton',
+    id: 'mob_skeleton',
     name: '骷髅',
     icon: 'game-icons:death-skull',
     maxHp: 30,
@@ -76,7 +76,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 2
   },
   {
-    id: 'orc',
+    id: 'mob_orc_grunt',
     name: '兽人战士',
     icon: 'game-icons:orc-head',
     maxHp: 45,
@@ -92,7 +92,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 4
   },
   {
-    id: 'spider',
+    id: 'mob_poison_spider',
     name: '剧毒蜘蛛',
     icon: 'game-icons:spider-face',
     maxHp: 35,
@@ -108,7 +108,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 8
   },
   {
-    id: 'bandit',
+    id: 'mob_shadow_bandit',
     name: '暗影强盗',
     icon: 'game-icons:robber',
     maxHp: 40,
@@ -124,7 +124,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 8
   },
   {
-    id: 'troll',
+    id: 'mob_jungle_troll',
     name: '丛林巨魔',
     icon: 'game-icons:troll',
     maxHp: 80,
@@ -140,7 +140,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 5
   },
   {
-    id: 'wolf',
+    id: 'mob_gray_wolf',
     name: '灰狼',
     icon: 'game-icons:wolf-head',
     maxHp: 28,
@@ -156,7 +156,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 10
   },
   {
-    id: 'ghoul',
+    id: 'mob_ghoul',
     name: '食尸鬼',
     icon: 'game-icons:shambling-zombie',
     maxHp: 32,
@@ -172,7 +172,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 4
   },
   {
-    id: 'iron_dwarf',
+    id: 'mob_iron_dwarf',
     name: '铁矮人',
     icon: 'game-icons:dwarf-face',
     maxHp: 70,
@@ -188,7 +188,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 3
   },
   {
-    id: 'elemental',
+    id: 'mob_elemental',
     name: '元素生物',
     icon: 'game-icons:spark-spirit',
     maxHp: 65,
@@ -205,7 +205,7 @@ export const MOBS: EnemyData[] = [
     attackType: 'magical'
   },
   {
-    id: 'nerubian',
+    id: 'mob_nerubian',
     name: '虫族战士',
     icon: 'game-icons:spider-web',
     maxHp: 75,
@@ -221,7 +221,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 8
   },
   {
-    id: 'vrykul',
+    id: 'mob_vrykul',
     name: '北境蛮族',
     icon: 'game-icons:viking-head',
     maxHp: 78,
@@ -237,7 +237,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 4
   },
   {
-    id: 'undead',
+    id: 'mob_undead',
     name: '亡灵',
     icon: 'game-icons:death-zone',
     maxHp: 35,
@@ -253,7 +253,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 3
   },
   {
-    id: 'bear',
+    id: 'mob_brown_bear',
     name: '棕熊',
     icon: 'game-icons:bear-head',
     maxHp: 50,
@@ -269,7 +269,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 4
   },
   {
-    id: 'boar',
+    id: 'mob_boar',
     name: '野猪',
     icon: 'game-icons:boar-tusks',
     maxHp: 38,
@@ -285,7 +285,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 3
   },
   {
-    id: 'centaur',
+    id: 'mob_centaur',
     name: '半人马',
     icon: 'game-icons:centaur',
     maxHp: 60,
@@ -301,7 +301,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 6
   },
   {
-    id: 'harpy',
+    id: 'mob_harpy',
     name: '鹰身人',
     icon: 'game-icons:harpy',
     maxHp: 42,
@@ -317,7 +317,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 12
   },
   {
-    id: 'naga',
+    id: 'mob_naga',
     name: '蛇身海妖',
     icon: 'game-icons:mermaid',
     maxHp: 85,
@@ -333,7 +333,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 8
   },
   {
-    id: 'ogre',
+    id: 'mob_ogre',
     name: '食人魔',
     icon: 'game-icons:giant',
     maxHp: 90,
@@ -349,7 +349,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 3
   },
   {
-    id: 'quilboar',
+    id: 'mob_quilboar',
     name: '猪面人',
     icon: 'game-icons:pig-face',
     maxHp: 48,
@@ -365,7 +365,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 5
   },
   {
-    id: 'scorpid',
+    id: 'mob_scorpid',
     name: '蝎子',
     icon: 'game-icons:scorpion',
     maxHp: 36,
@@ -381,7 +381,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 6
   },
   {
-    id: 'silithid',
+    id: 'mob_silithid',
     name: '异种虫',
     icon: 'game-icons:insect-jaws',
     maxHp: 95,
@@ -397,23 +397,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 10
   },
   {
-    id: 'gnoll_raider',
-    name: '豺狼人劫掠者',
-    icon: 'game-icons:hyena-head',
-    maxHp: 33,
-    damage: [6, 11],
-    xp: 24,
-    gold: 10,
-    dangerLevel: '普通',
-    physicalAttack: 11,
-    physicalDefense: 4,
-    magicAttack: 3,
-    magicDefense: 3,
-    critChance: 6,
-    dodgeChance: 5
-  },
-  {
-    id: 'tiger',
+    id: 'mob_tiger',
     name: '猛虎',
     icon: 'game-icons:tiger-head',
     maxHp: 75,
@@ -429,7 +413,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 12
   },
   {
-    id: 'dark_iron_dwarf',
+    id: 'mob_dark_iron_dwarf',
     name: '暗炉矮人',
     icon: 'game-icons:dwarf-face',
     maxHp: 65,
@@ -445,7 +429,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 4
   },
   {
-    id: 'dragon',
+    id: 'mob_young_dragon',
     name: '幼龙',
     icon: 'game-icons:dragon-head',
     maxHp: 80,
@@ -461,7 +445,7 @@ export const MOBS: EnemyData[] = [
     dodgeChance: 5
   },
   {
-    id: 'imp',
+    id: 'mob_imp',
     name: '小恶魔',
     icon: 'game-icons:imp',
     maxHp: 45,

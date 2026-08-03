@@ -201,6 +201,20 @@ function makeHelpersMock(): SkillHelpers {
   };
 }
 
+/**
+ * P3-146：usePlayerSkill 新增 passive 参数，构造 mock 注入
+ * 默认返回空 stat_modifier 数组，使管线退化为原始行为。
+ */
+function makePassiveMock() {
+  return {
+    onDamaged: vi.fn(),
+    onAttack: vi.fn(),
+    onKill: vi.fn(),
+    getDamageReduction: vi.fn(() => 0),
+    getStatModifiers: vi.fn(() => []),
+  } as never;
+}
+
 function makeMockCtx(): ICombatContext {
   return {
     character: {
@@ -268,6 +282,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       vi.fn(),
       makeBossMock(),
       makeHelpersMock(),
+      makePassiveMock(),
     );
     expect(typeof skill.playerSkill).toBe('function');
   });
@@ -285,7 +300,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       state.resourceSystems.value = [resourceSys];
 
       const result = await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(result.success).toBe(false);
@@ -298,7 +313,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       skillStoreMock.castSkill.mockResolvedValue({ success: false, message: '法力不足' });
 
       const result = await usePlayerSkill(
-        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(),
+        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(result.success).toBe(false);
@@ -320,7 +335,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
 
       const result = await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(result.success).toBe(true);
@@ -344,7 +359,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       const helpers = makeHelpersMock();
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers,
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers, makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(helpers.applySkillBuffs).toHaveBeenCalledWith(skillData, 'all_enemies');
@@ -367,7 +382,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
 
       const endCombat = vi.fn();
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makeBossMock(), makeHelpersMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makeBossMock(), makeHelpersMock(), makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(endCombat).toHaveBeenCalledWith('victory');
@@ -388,7 +403,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
                          .mockReturnValueOnce({ isCrit: false, multiplier: 1 });
 
       const result = await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(rollPlayerCritMock).toHaveBeenCalledTimes(2);
@@ -407,7 +422,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       });
 
       const result = await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(result.success).toBe(false);
@@ -424,7 +439,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       });
 
       const result = await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(result.success).toBe(false);
@@ -444,7 +459,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       pipeResultMock.finalDamage = 25;
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(enemyStoreMock.takeDamage).toHaveBeenCalledWith('e1', 25);
@@ -465,7 +480,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
 
       const endCombat = vi.fn();
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makeBossMock(), makeHelpersMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makeBossMock(), makeHelpersMock(), makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(endCombat).toHaveBeenCalledWith('victory');
@@ -487,7 +502,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       const helpers = makeHelpersMock();
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers,
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers, makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(helpers.applySkillBuffs).toHaveBeenCalledWith(skillData, 'single');
@@ -510,7 +525,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(characterMock.takeDamage).toHaveBeenCalledWith(7);
@@ -528,7 +543,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       });
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
       ).playerSkill('sk1');
 
       const { eventBus, GameEvents } = await import('@/modules/bus');
@@ -551,7 +566,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       const helpers = makeHelpersMock();
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers,
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers, makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(helpers.applyDebuffToEnemy).toHaveBeenCalledTimes(2);
@@ -571,7 +586,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       const helpers = makeHelpersMock();
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers,
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers, makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(helpers.applyDebuffToEnemy).toHaveBeenCalledTimes(1);
@@ -589,7 +604,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       const helpers = makeHelpersMock();
 
       const result = await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers,
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers, makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(result.success).toBe(false);
@@ -609,7 +624,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       const initiative = makeInitiativeMock();
 
       const result = await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), initiative, vi.fn(), makeBossMock(), makeHelpersMock(),
+        state, makeLogMock(), makeMockCtx(), initiative, vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(result.success).toBe(true);
@@ -624,7 +639,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       } as never);
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
       ).playerSkill('sk1');
 
       const { eventBus, GameEvents } = await import('@/modules/bus');
@@ -650,7 +665,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       state.resourceSystems.value = [resourceSys];
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(resourceSys.consume).toHaveBeenCalledWith(10);
@@ -666,7 +681,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       } as never);
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
       ).playerSkill('sk1');
 
       expect(state.resourceSystems.value.length).toBe(0);

@@ -35,7 +35,7 @@
  * equipment.value 类型为 Record<EquipmentSlot, ...>，键已由类型保证为 EquipmentSlot，断言是合理的。
  */
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, shallowRef, triggerRef } from 'vue';
 import type { EquipmentItem, EquipmentSlot, EquippedItem } from './types';
 import type { Stats } from '@/modules/character/types';
 import { equipmentDbService } from './db';
@@ -155,8 +155,13 @@ export const useEquipmentStore = defineStore('equipment', () => {
   /** 当前角色装备状态：Record<槽位, 已装备物品 | null> */
   const equipment = ref<Record<EquipmentSlot, EquippedItem | null>>(getDefaultEquipment());
 
-  /** 装备模板缓存：Map<装备ID, 装备完整数据>，从 config_equipmentItems 表加载 */
-  const equipmentTemplates = ref<Map<string, EquipmentItem>>(new Map());
+  /**
+   * 装备模板缓存：Map<装备ID, 装备完整数据>，从 config_equipmentItems 表加载
+   *
+   * P3-144 修复：改用 shallowRef。原地 set/delete 调用点（addEquipmentTemplate/removeEquipmentTemplate）
+   * 通过 triggerRef 显式触发响应式更新，避免深度追踪 Map 内部。
+   */
+  const equipmentTemplates = shallowRef<Map<string, EquipmentItem>>(new Map());
 
   /** DB-1/DB-2 修复：装备持久化错误状态，供 UI 监听并提示用户重试（null 表示无错误） */
   const persistError = ref<string | null>(null);
@@ -773,10 +778,14 @@ export const useEquipmentStore = defineStore('equipment', () => {
    */
   function addEquipmentTemplate(item: EquipmentItem): void {
     equipmentTemplates.value.set(item.id, item);
+    // P3-144：shallowRef 原地 mutate 后显式触发响应式更新
+    triggerRef(equipmentTemplates);
     // P1-17 修复：添加错误处理，避免 unhandled promise rejection 导致内存与持久化状态不一致
     equipmentDbService.saveEquipmentTemplate(item).catch(err => {
       console.error('[EquipmentStore] saveEquipmentTemplate 失败:', err);
       equipmentTemplates.value.delete(item.id);
+      // P3-144：回滚后同样需要触发响应式更新
+      triggerRef(equipmentTemplates);
     });
   }
 
@@ -787,6 +796,8 @@ export const useEquipmentStore = defineStore('equipment', () => {
    */
   function removeEquipmentTemplate(itemId: string): void {
     equipmentTemplates.value.delete(itemId);
+    // P3-144：shallowRef 原地 mutate 后显式触发响应式更新
+    triggerRef(equipmentTemplates);
     // P1-17 修复：添加错误处理，失败时回滚内存缓存
     equipmentDbService.deleteEquipmentTemplate(itemId).catch(err => {
       console.error('[EquipmentStore] deleteEquipmentTemplate 失败:', err);

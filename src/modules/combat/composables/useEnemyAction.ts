@@ -12,6 +12,7 @@ import type { ICombatContext } from '../combatContext';
 import { eventBus, GameEvents } from '../../bus';
 import { rollDodge } from '../service';
 import { AggressiveStrategy, DefensiveStrategy, BalancedStrategy, BossPhaseStrategy } from '../ai/strategies';
+import { ENEMY_AOE_DAMAGE_MULTIPLIER } from '@/config/combat';
 import {
   createEmptyContainer,
   addEffectToContainer,
@@ -289,8 +290,8 @@ export function useEnemyAction(
         ? ctx.character.attributes.magicDefense
         : ctx.character.attributes.physicalDefense;
       const rawDamage = ctx.enemy.calculateDamage(e, aoePlayerDef);
-      const aoeMultiplier = 1.3;
-      const aoeDamage = Math.round(rawDamage * aoeMultiplier);
+      // P3-147：敌方 AOE 倍率从 1.3（反向加强）改为 0.8（与玩家 0.7 对齐，略高保留 Boss 威胁感）
+      const aoeDamage = Math.round(rawDamage * ENEMY_AOE_DAMAGE_MULTIPLIER);
 
       // 检查玩家闪避
       const dodgeChance = ctx.character.attributes.dodgeChance / 100;

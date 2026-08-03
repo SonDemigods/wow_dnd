@@ -50,10 +50,9 @@ export function usePlayerAction(
   passive: ReturnType<typeof usePassiveSkills>,
   boss: ReturnType<typeof useBossMechanics>,
 ) {
-  // P3-82 修复说明：passive 参数为预留扩展点（未来玩家攻击触发 onAttack/onKill 被动钩子）。
-  // 当前玩家行动不直接触发被动，被动触发集中在 useEnemyAction/useInitiative。
-  // 保留参数而非移除，避免未来扩展时需修改函数签名和所有调用方。
-  void passive;
+  // P3-146：passive.getStatModifiers() 用于将 stat_modifier 类被动接入伤害管线与暴击判定。
+  // P3-82 修复说明：passive 参数原本为预留扩展点，现已用于 stat_modifier 接入。
+  // onAttack/onKill 等触发钩子仍由 store.ts 在玩家行动完成后调用。
   const { addCombatLog, createPlayerEffectContext, createEnemyEffectContext } = log;
   const { aliveEnemies, currentTarget, playerEffects, enemyEffects, effectRegistry, hasBossEnemy } = state;
 
@@ -196,6 +195,9 @@ export function usePlayerAction(
     const attackerCtx = createPlayerEffectContext();
     const defenderCtx = createEnemyEffectContext(target);
 
+    // P3-146：读取 stat_modifier 类被动（如法师奥术精通 +10% 魔攻、猎手精准 +8% 暴击率）
+    const statModifiers = passive.getStatModifiers();
+
     // 使用新管线计算伤害
     const pipeResult = processDamagePipeline(
       effectRegistry,
@@ -203,11 +205,15 @@ export function usePlayerAction(
       enemyEffects.value[target.id] || createEmptyContainer(),
       attackerCtx,
       defenderCtx,
-      'physical'
+      'physical',
+      undefined,
+      undefined,
+      statModifiers,
     );
 
     // 暴击判定（在管线之后应用）
-    const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes);
+    // P3-146：传入 statModifiers 让 crit_chance / crit_damage_multiplier 生效
+    const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
     const finalDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
 
     // 造成伤害
@@ -369,6 +375,7 @@ export function usePlayerAction(
     endCombat,
     boss,
     { applySkillBuffs, applyDebuffToEnemy },
+    passive,
   );
 
   const itemComposable = usePlayerItem(
@@ -378,6 +385,7 @@ export function usePlayerAction(
     initiative,
     endCombat,
     boss,
+    passive,
   );
 
   const lootComposable = useLootHandler(log, ctx);

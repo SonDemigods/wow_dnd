@@ -82,7 +82,7 @@ export function getObjectiveText(
  *
  * 从 ENEMY_NAME_MAP 中按 enemyId 查找。
  *
- * @param enemyId - 敌人ID（如 "spider"、"gnoll"）
+ * @param enemyId - 敌人ID（如 "mob_poison_spider"、"mob_gnoll"）
  * @returns 敌人中文名称（如 "剧毒蜘蛛"、"豺狼人"），找不到时返回 enemyId 本身
  */
 export function getEnemyName(enemyId: string): string {

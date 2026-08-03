@@ -11,6 +11,7 @@ import { formatLogMessage } from './service';
 import { adventureLogDbService } from './db';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { errorHandler } from '@/services/ErrorHandler';
+import { errorReporter } from '@/utils/errorReport';
 import { PAGE_SIZE, MAX_LOG_ENTRIES } from '@/config/log';
 
 export const useLogStore = defineStore('log', () => {
@@ -54,8 +55,12 @@ export const useLogStore = defineStore('log', () => {
     logs.value = entries;
     // 仅在确实发生截断时持久化，避免无意义写入
     if (truncated) {
+      // P3-151：原 console.error 改为 errorReporter 统一上报，便于全局监测
       saveToDb().catch(err => {
-        console.error('[LogStore] initialize 截断后持久化失败:', err);
+        errorReporter.report(err, 'manual', {
+          context: '日志截断后持久化失败',
+          characterId: currentCharacterId.value,
+        });
       });
     }
   }

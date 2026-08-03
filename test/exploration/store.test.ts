@@ -43,6 +43,11 @@ const mocks = vi.hoisted(() => ({
   logStore: {
     addLogEntry: vi.fn(),
   },
+  // P3-153：exploration currentCharacterId 改为 gameStore 只读 computed 代理，
+  // 测试通过 mocks.gameStore.currentCharacterId 控制持久化触发条件
+  gameStore: {
+    currentCharacterId: null as string | null,
+  },
 }));
 
 // ==================== Mock：exploration db ====================
@@ -119,6 +124,10 @@ vi.mock('@/modules/inventory/store', () => ({
 vi.mock('@/modules/log/store', () => ({
   useLogStore: () => mocks.logStore,
 }));
+// P3-153：mock useGameStore，currentCharacterId 由 mocks.gameStore 控制
+vi.mock('@/modules/game', () => ({
+  useGameStore: () => mocks.gameStore,
+}));
 
 // ==================== 取出 spy 引用 ====================
 import { explorationDbService } from '@/modules/exploration/db';
@@ -162,6 +171,8 @@ describe('useExplorationStore - 探索 Store', () => {
     eventBus.clearAll();
     // 重置 characterStore hp
     mocks.characterStore.hp = 100;
+    // P3-153：重置 gameStore.currentCharacterId（默认未登录状态）
+    mocks.gameStore.currentCharacterId = null;
   });
 
   // -------------------- State 初始值 --------------------
@@ -294,7 +305,7 @@ describe('useExplorationStore - 探索 Store', () => {
       });
     });
 
-    it('boss 格子：triggerBattle 使用 dragon_whelp 兜底 id', async () => {
+    it('boss 格子：triggerBattle 使用 boss_dragon_whelp 兜底 id（P3-137 阶段 3：新命名规范）', async () => {
       const battleSpy = vi.fn();
       eventBus.on(GameEvents.EXPLORATION_BATTLE_TRIGGERED, battleSpy);
 
@@ -307,9 +318,9 @@ describe('useExplorationStore - 探索 Store', () => {
 
       await store.revealGrid(0, 0);
 
-      // boss 无 monsterId 时兜底为 dragon_whelp
+      // P3-137 阶段 3：boss 无 monsterId 时兜底为 boss_dragon_whelp
       expect(battleSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ eventData: expect.objectContaining({ monsterId: 'dragon_whelp' }) })
+        expect.objectContaining({ eventData: expect.objectContaining({ monsterId: 'boss_dragon_whelp' }) })
       );
     });
 
@@ -544,7 +555,8 @@ describe('useExplorationStore - 探索 Store', () => {
     it('campUsed 为 false 时调用 dispatchCellEvent，结果 campUsed=true 则更新状态', async () => {
       vi.mocked(dispatchCellEvent).mockResolvedValueOnce({ completed: true, campUsed: true });
       const store = useExplorationStore();
-      // init 设置 currentCharacterId，否则 persistState 会跳过持久化
+      // P3-153：通过 gameStore 设置 currentCharacterId，否则 persistState 会跳过持久化
+      mocks.gameStore.currentCharacterId = 'char_1';
       await store.init('char_1');
       store.$patch({ campUsed: false, currentAreaId: 'forest' });
 
@@ -612,7 +624,8 @@ describe('useExplorationStore - 探索 Store', () => {
 
     it('有激活区域时：所有格子标记 explored/visited、visitedCells=GRID_SIZE*GRID_SIZE', async () => {
       const store = useExplorationStore();
-      // init 设置 currentCharacterId，否则 persistState 会跳过持久化
+      // P3-153：通过 gameStore 设置 currentCharacterId，否则 persistState 会跳过持久化
+      mocks.gameStore.currentCharacterId = 'char_1';
       await store.init('char_1');
       const cell = makeCell({ x: 0, y: 0, type: 'empty', explored: false });
       store.$patch({
@@ -843,7 +856,7 @@ describe('useExplorationStore - 探索 Store', () => {
 
   // -------------------- Actions：revealGrid 怪物兜底 id --------------------
   describe('Actions：revealGrid - monster 兜底 id', () => {
-    it('monster 格子无 monsterId 时 triggerBattle 使用 goblin 兜底', async () => {
+    it('monster 格子无 monsterId 时 triggerBattle 使用 mob_gnoll 兜底（P3-137 阶段 3：新命名规范）', async () => {
       const battleSpy = vi.fn();
       eventBus.on(GameEvents.EXPLORATION_BATTLE_TRIGGERED, battleSpy);
 
@@ -856,9 +869,10 @@ describe('useExplorationStore - 探索 Store', () => {
 
       await store.revealGrid(0, 0);
 
-      // monster 无 monsterId 时兜底为 goblin
+      // P3-137 阶段 3：兜底改为 areaConfig.monsterPool[0] ?? 'mob_gnoll'
+      // currentAreaId='forest' 但未设置 currentAreaConfig 时，monsterPool 为空，回退到 'mob_gnoll'
       expect(battleSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ eventData: expect.objectContaining({ monsterId: 'goblin' }) })
+        expect.objectContaining({ eventData: expect.objectContaining({ monsterId: 'mob_gnoll' }) })
       );
     });
   });
@@ -1050,7 +1064,8 @@ describe('useExplorationStore - 探索 Store', () => {
       vi.mocked(dispatchCellEvent).mockResolvedValueOnce({ completed: false, campUsed: true });
 
       const store = useExplorationStore();
-      // init 设置 currentCharacterId 以触发 persistState
+      // P3-153：通过 gameStore 设置 currentCharacterId 以触发 persistState
+      mocks.gameStore.currentCharacterId = 'char_1';
       await store.init('char_1');
       const restCell = makeCell({ x: 0, y: 0, type: 'rest', accessible: true });
       store.$patch({

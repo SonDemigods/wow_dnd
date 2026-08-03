@@ -60,7 +60,7 @@ export type AiStrategyType = 'aggressive' | 'defensive' | 'balanced' | 'boss_pha
  * 兼作敌人模板（IndexedDB 读取）和运行时实例的基础类型。
  *
  * 数据来源流程：
- * 1. 敌人模板存储在 IndexedDB 的 `config_enemies` 表中
+ * 1. 敌人模板存储在 IndexedDB 的 `config_mobs` 表中
  * 2. 启动战斗时，根据模板创建 `EnemyInstance`（继承本接口并附加运行时状态）
  * 3. 普通敌人直接使用基础属性，Boss 敌人额外启用 `phases`、`intro` 等字段
  *
@@ -142,12 +142,12 @@ export interface EnemyDrop {
  * 并附加战斗状态（HP、等级、属性、奖励缩放等）。
  *
  * 创建流程：
- * 1. 从 `config_enemies` 表读取敌人模板
+ * 1. 从 `config_mobs` 表读取敌人模板
  * 2. 根据战斗需求确定 `level` 等级
  * 3. 计算等级缩放后的 `expReward`、`goldReward` 和 `stats` 属性
  * 4. 填充 Boss 专属的 `drops` 掉落配置
  *
- * @property {string} dataId - 关联的敌人模板 ID（指向 `config_enemies` 表中的原始数据）
+ * @property {string} dataId - 关联的敌人模板 ID（指向 `config_mobs` 表中的原始数据）
  * @property {number} level - 敌人等级（影响属性缩放和奖励计算）
  * @property {number} hp - 当前生命值（战斗中实时变化，初始值 = maxHp）
  * @property {Stats} stats - 敌人六维属性（由战斗属性推导，受等级加成影响）
@@ -178,7 +178,7 @@ export interface EnemyInstance extends EnemyData {
 /**
  * 敌人模板存储接口
  *
- * 敌人配置数据的持久化格式，存入 IndexedDB 的 `config_enemies` 表。
+ * 敌人配置数据的持久化格式，存入 IndexedDB 的 `config_mobs` 表。
  * 与 `EnemyData` 接口的区别：
  * - `EnemyStorage`：数据库存储层，可选数值字段使用 `number | null` 以兼容 IndexedDB 索引
  * - `EnemyData`：运行时对象，可选数值字段使用 `number | undefined`，便于逻辑判断

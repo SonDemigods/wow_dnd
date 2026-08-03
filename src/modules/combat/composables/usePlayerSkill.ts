@@ -16,6 +16,7 @@ import type { CombatActionResult, AoeHitInfo, CombatResult } from '../types';
 import type { EnemyInstance } from '@/modules/enemy';
 import type { ICombatContext } from '../combatContext';
 import { eventBus, GameEvents } from '@/modules/bus';
+import { PLAYER_AOE_DAMAGE_PENALTY } from '@/config/combat';
 import {
   processDamagePipeline,
   createEmptyContainer,
@@ -29,10 +30,12 @@ import { rollPlayerCrit, computeThornsDamage } from './helpers/critCalc';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
 import type { useInitiative } from './useInitiative';
+import type { usePassiveSkills } from './usePassiveSkills';
 import type { useBossMechanics } from './useBossMechanics';
 
-/** P3-1：AOE 技能对每个目标造成的伤害占面板值的比例（设计文档：AOE 每目标 70% 基础伤害） */
-const AOE_DAMAGE_PENALTY = 0.7;
+/** P3-1：AOE 技能对每个目标造成的伤害占面板值的比例（设计文档：AOE 每目标 70% 基础伤害）
+ * P3-147：常量已抽离至 @/config/combat，此处仅保留导入。 */
+
 
 /**
  * applySkillBuffs / applyDebuffToEnemy 注入接口
@@ -63,6 +66,8 @@ export function usePlayerSkill(
   endCombat: (result: CombatResult) => void,
   boss: ReturnType<typeof useBossMechanics>,
   helpers: SkillHelpers,
+  // P3-146：注入被动技能，用于读取 stat_modifier 接入伤害管线与暴击判定
+  passive: ReturnType<typeof usePassiveSkills>,
 ) {
   const { addCombatLog, createPlayerEffectContext, createEnemyEffectContext } = log;
   const { aliveEnemies, currentTarget, playerEffects, enemyEffects, effectRegistry, resourceSystems } = state;
@@ -128,10 +133,12 @@ export function usePlayerSkill(
         const livingEnemies = aliveEnemies.value;
         const damageType: DamageType = result.type === 'magic_damage' ? 'magical' : 'physical';
         const aoeHits: AoeHitInfo[] = [];
+        // P3-146：读取 stat_modifier 类被动，AOE 与单目标共用同一份 modifier（条件在战斗期间稳定）
+        const statModifiers = passive.getStatModifiers();
 
         for (const e of livingEnemies) {
           // AOE 惩罚在管线前应用，与攻防修正独立计算
-          const aoeBaseDamage = Math.round(result.damage * AOE_DAMAGE_PENALTY);
+          const aoeBaseDamage = Math.round(result.damage * PLAYER_AOE_DAMAGE_PENALTY);
           const pipeResult = processDamagePipeline(
             effectRegistry,
             playerEffects.value,
@@ -139,10 +146,13 @@ export function usePlayerSkill(
             createPlayerEffectContext(),
             createEnemyEffectContext(e),
             damageType,
-            aoeBaseDamage
+            aoeBaseDamage,
+            undefined,
+            statModifiers,
           );
           // BIZ-4：暴击判定（每个敌人独立判定，与 playerAttack 保持一致）
-          const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes);
+          // P3-146：传入 statModifiers 让 crit_chance / crit_damage_multiplier 生效
+          const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
           const aoeDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
           // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
           const { damage: actualAoeDamage } = boss.applyBossDefenseMechanics(e, aoeDamage);
@@ -241,6 +251,9 @@ export function usePlayerSkill(
 
         const damageType: DamageType = result.type === 'magic_damage' ? 'magical' : 'physical';
 
+        // P3-146：读取 stat_modifier 类被动
+        const statModifiers = passive.getStatModifiers();
+
         const pipeResult = processDamagePipeline(
           effectRegistry,
           playerEffects.value,
@@ -248,11 +261,14 @@ export function usePlayerSkill(
           createPlayerEffectContext(),
           createEnemyEffectContext(target),
           damageType,
-          result.damage  // baseDamageOverride：技能基础伤害直接传入
+          result.damage,  // baseDamageOverride：技能基础伤害直接传入
+          undefined,
+          statModifiers,
         );
 
         // BIZ-4：暴击判定（与 playerAttack 保持一致）
-        const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes);
+        // P3-146：传入 statModifiers 让 crit_chance / crit_damage_multiplier 生效
+        const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
         const skillDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
 
         // BIZ-6：应用 BOSS 防御机制（无敌/护盾）

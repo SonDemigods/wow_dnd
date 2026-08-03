@@ -33,6 +33,8 @@ export {
   processDamagePipeline,
   applyEffect,
 } from './pipeline';
+// P3-146：stat_modifier 接入管线所需的类型
+export type { StatModifierEntry } from './pipeline';
 
 // 处理器注册
 export { createDefaultRegistry } from './handlers/index';

@@ -425,7 +425,7 @@ describe('getDefaultQuests 默认任务模板', () => {
     const gnollQuest = quests.find(q => q.id === 'quest_kill_gnoll');
     expect(gnollQuest).toBeDefined();
     expect(gnollQuest!.type).toBe('kill');
-    expect(gnollQuest!.objectives[0].enemyId).toBe('gnoll');
+    expect(gnollQuest!.objectives[0].enemyId).toBe('mob_gnoll');
     expect(gnollQuest!.objectives[0].target).toBe(10);
   });
 

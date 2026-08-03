@@ -21,7 +21,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 5,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 1,
@@ -39,7 +39,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_gnoll',
         type: 'kill',
         target: 4,
-        enemyId: 'gnoll'
+        enemyId: 'mob_gnoll'
       }
     ],
     levelRequirement: 1,
@@ -57,7 +57,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 6,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 1,
@@ -75,7 +75,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_gnoll',
         type: 'kill',
         target: 3,
-        enemyId: 'gnoll'
+        enemyId: 'mob_gnoll'
       }
     ],
     levelRequirement: 1,
@@ -93,7 +93,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 5,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 5,
@@ -111,7 +111,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 4,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 5,
@@ -129,7 +129,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_gnoll',
         type: 'kill',
         target: 4,
-        enemyId: 'gnoll'
+        enemyId: 'mob_gnoll'
       }
     ],
     levelRequirement: 1,
@@ -147,7 +147,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_bandit',
         type: 'kill',
         target: 3,
-        enemyId: 'bandit'
+        enemyId: 'mob_shadow_bandit'
       }
     ],
     levelRequirement: 1,
@@ -165,7 +165,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_bandit',
         type: 'kill',
         target: 5,
-        enemyId: 'bandit'
+        enemyId: 'mob_shadow_bandit'
       }
     ],
     levelRequirement: 5,
@@ -183,7 +183,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_skeleton',
         type: 'kill',
         target: 3,
-        enemyId: 'skeleton'
+        enemyId: 'mob_skeleton'
       }
     ],
     levelRequirement: 5,
@@ -201,7 +201,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 4,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 8,
@@ -219,7 +219,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 3,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 8,
@@ -237,7 +237,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_skeleton',
         type: 'kill',
         target: 6,
-        enemyId: 'skeleton'
+        enemyId: 'mob_skeleton'
       }
     ],
     levelRequirement: 8,
@@ -255,7 +255,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 4,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 8,
@@ -273,7 +273,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_skeleton',
         type: 'kill',
         target: 5,
-        enemyId: 'skeleton'
+        enemyId: 'mob_skeleton'
       }
     ],
     levelRequirement: 8,
@@ -291,7 +291,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_wolf',
         type: 'kill',
         target: 4,
-        enemyId: 'wolf'
+        enemyId: 'mob_gray_wolf'
       }
     ],
     levelRequirement: 8,
@@ -309,7 +309,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_skeleton',
         type: 'kill',
         target: 4,
-        enemyId: 'skeleton'
+        enemyId: 'mob_skeleton'
       }
     ],
     levelRequirement: 1,
@@ -327,7 +327,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_ghoul',
         type: 'kill',
         target: 3,
-        enemyId: 'ghoul'
+        enemyId: 'mob_ghoul'
       }
     ],
     levelRequirement: 1,
@@ -345,7 +345,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_skeleton',
         type: 'kill',
         target: 5,
-        enemyId: 'skeleton'
+        enemyId: 'mob_skeleton'
       }
     ],
     levelRequirement: 15,
@@ -363,7 +363,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_imp',
         type: 'kill',
         target: 3,
-        enemyId: 'imp'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 15,
@@ -381,7 +381,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 4,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 10,
@@ -399,7 +399,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 3,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 10,
@@ -417,7 +417,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 5,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 8,
@@ -435,7 +435,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 4,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 8,
@@ -453,7 +453,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 4,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 12,
@@ -471,7 +471,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_skeleton',
         type: 'kill',
         target: 5,
-        enemyId: 'skeleton'
+        enemyId: 'mob_skeleton'
       }
     ],
     levelRequirement: 12,
@@ -489,7 +489,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 5,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 14,
@@ -507,7 +507,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_dragon',
         type: 'kill',
         target: 2,
-        enemyId: 'dragon'
+        enemyId: 'mob_young_dragon'
       }
     ],
     levelRequirement: 14,
@@ -525,7 +525,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 5,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 12,
@@ -543,7 +543,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_nerubian',
         type: 'kill',
         target: 4,
-        enemyId: 'nerubian'
+        enemyId: 'mob_nerubian'
       }
     ],
     levelRequirement: 12,
@@ -561,7 +561,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_dwarf',
         type: 'kill',
         target: 5,
-        enemyId: 'iron_dwarf'
+        enemyId: 'mob_iron_dwarf'
       }
     ],
     levelRequirement: 20,
@@ -579,7 +579,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_elemental',
         type: 'kill',
         target: 4,
-        enemyId: 'elemental'
+        enemyId: 'mob_elemental'
       }
     ],
     levelRequirement: 20,
@@ -597,7 +597,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_imp',
         type: 'kill',
         target: 6,
-        enemyId: 'imp'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 20,
@@ -615,7 +615,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_undead',
         type: 'kill',
         target: 5,
-        enemyId: 'undead'
+        enemyId: 'mob_undead'
       }
     ],
     levelRequirement: 20,
@@ -633,7 +633,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_murloc',
         type: 'kill',
         target: 6,
-        enemyId: 'murloc'
+        enemyId: 'mob_murloc'
       }
     ],
     levelRequirement: 5,
@@ -651,7 +651,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_bear',
         type: 'kill',
         target: 4,
-        enemyId: 'bear'
+        enemyId: 'mob_brown_bear'
       }
     ],
     levelRequirement: 5,
@@ -669,7 +669,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_gnoll',
         type: 'kill',
         target: 5,
-        enemyId: 'gnoll'
+        enemyId: 'mob_gnoll'
       }
     ],
     levelRequirement: 5,
@@ -687,7 +687,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_elemental',
         type: 'kill',
         target: 5,
-        enemyId: 'elemental'
+        enemyId: 'mob_elemental'
       }
     ],
     levelRequirement: 5,
@@ -705,7 +705,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_imp',
         type: 'kill',
         target: 2,
-        enemyId: 'imp'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 5,
@@ -723,7 +723,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_elemental',
         type: 'kill',
         target: 5,
-        enemyId: 'elemental'
+        enemyId: 'mob_elemental'
       }
     ],
     levelRequirement: 14,
@@ -741,7 +741,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_imp',
         type: 'kill',
         target: 3,
-        enemyId: 'imp'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 14,
@@ -759,7 +759,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_dragon',
         type: 'kill',
         target: 2,
-        enemyId: 'dragon'
+        enemyId: 'mob_young_dragon'
       }
     ],
     levelRequirement: 14,
@@ -777,7 +777,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_imp',
         type: 'kill',
         target: 4,
-        enemyId: 'imp'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 17,
@@ -795,7 +795,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_dragon',
         type: 'kill',
         target: 3,
-        enemyId: 'dragon'
+        enemyId: 'mob_young_dragon'
       }
     ],
     levelRequirement: 17,
@@ -813,7 +813,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_imp',
         type: 'kill',
         target: 4,
-        enemyId: 'imp'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 12,
@@ -831,7 +831,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 3,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 12,
@@ -849,7 +849,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_centaur',
         type: 'kill',
         target: 5,
-        enemyId: 'centaur'
+        enemyId: 'mob_centaur'
       }
     ],
     levelRequirement: 12,
@@ -867,7 +867,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_skeleton',
         type: 'kill',
         target: 6,
-        enemyId: 'skeleton'
+        enemyId: 'mob_skeleton'
       }
     ],
     levelRequirement: 12,
@@ -885,7 +885,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_boar',
         type: 'kill',
         target: 6,
-        enemyId: 'boar'
+        enemyId: 'mob_boar'
       }
     ],
     levelRequirement: 1,
@@ -903,7 +903,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_quilboar',
         type: 'kill',
         target: 4,
-        enemyId: 'quilboar'
+        enemyId: 'mob_quilboar'
       }
     ],
     levelRequirement: 1,
@@ -921,7 +921,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_wolf',
         type: 'kill',
         target: 5,
-        enemyId: 'wolf'
+        enemyId: 'mob_gray_wolf'
       }
     ],
     levelRequirement: 1,
@@ -939,7 +939,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_bear',
         type: 'kill',
         target: 4,
-        enemyId: 'bear'
+        enemyId: 'mob_brown_bear'
       }
     ],
     levelRequirement: 1,
@@ -957,7 +957,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_quilboar',
         type: 'kill',
         target: 5,
-        enemyId: 'quilboar'
+        enemyId: 'mob_quilboar'
       }
     ],
     levelRequirement: 5,
@@ -975,7 +975,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_centaur',
         type: 'kill',
         target: 4,
-        enemyId: 'centaur'
+        enemyId: 'mob_centaur'
       }
     ],
     levelRequirement: 5,
@@ -993,7 +993,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_centaur',
         type: 'kill',
         target: 5,
-        enemyId: 'centaur'
+        enemyId: 'mob_centaur'
       }
     ],
     levelRequirement: 10,
@@ -1011,7 +1011,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_harpy',
         type: 'kill',
         target: 4,
-        enemyId: 'harpy'
+        enemyId: 'mob_harpy'
       }
     ],
     levelRequirement: 10,
@@ -1029,7 +1029,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_silithid',
         type: 'kill',
         target: 4,
-        enemyId: 'silithid'
+        enemyId: 'mob_silithid'
       }
     ],
     levelRequirement: 18,
@@ -1047,7 +1047,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_imp',
         type: 'kill',
         target: 3,
-        enemyId: 'imp'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 18,
@@ -1065,7 +1065,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_undead',
         type: 'kill',
         target: 6,
-        enemyId: 'undead'
+        enemyId: 'mob_undead'
       }
     ],
     levelRequirement: 13,
@@ -1083,7 +1083,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_ghoul',
         type: 'kill',
         target: 5,
-        enemyId: 'ghoul'
+        enemyId: 'mob_ghoul'
       }
     ],
     levelRequirement: 13,
@@ -1101,7 +1101,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_kobold',
         type: 'kill',
         target: 6,
-        enemyId: 'kobold'
+        enemyId: 'mob_kobold'
       }
     ],
     levelRequirement: 5,
@@ -1119,7 +1119,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 4,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 5,
@@ -1137,7 +1137,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_murloc',
         type: 'kill',
         target: 6,
-        enemyId: 'murloc'
+        enemyId: 'mob_murloc'
       }
     ],
     levelRequirement: 7,
@@ -1155,7 +1155,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 3,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 7,
@@ -1173,7 +1173,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 5,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 10,
@@ -1191,7 +1191,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 4,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 10,
@@ -1209,7 +1209,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 4,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 6,
@@ -1227,7 +1227,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_bandit',
         type: 'kill',
         target: 5,
-        enemyId: 'bandit'
+        enemyId: 'mob_shadow_bandit'
       }
     ],
     levelRequirement: 6,
@@ -1245,7 +1245,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_imp',
         type: 'kill',
         target: 4,
-        enemyId: 'imp'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 16,
@@ -1263,7 +1263,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_undead',
         type: 'kill',
         target: 5,
-        enemyId: 'undead'
+        enemyId: 'mob_undead'
       }
     ],
     levelRequirement: 16,
@@ -1281,7 +1281,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 5,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 15,
@@ -1299,7 +1299,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_dragon',
         type: 'kill',
         target: 3,
-        enemyId: 'dragon'
+        enemyId: 'mob_young_dragon'
       }
     ],
     levelRequirement: 15,
@@ -1317,7 +1317,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_elemental',
         type: 'kill',
         target: 5,
-        enemyId: 'elemental'
+        enemyId: 'mob_elemental'
       }
     ],
     levelRequirement: 12,
@@ -1335,7 +1335,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 4,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 12,
@@ -1353,7 +1353,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_elemental',
         type: 'kill',
         target: 5,
-        enemyId: 'elemental'
+        enemyId: 'mob_elemental'
       }
     ],
     levelRequirement: 11,
@@ -1371,7 +1371,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_ogre',
         type: 'kill',
         target: 3,
-        enemyId: 'ogre'
+        enemyId: 'mob_ogre'
       }
     ],
     levelRequirement: 11,
@@ -1389,7 +1389,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_murloc',
         type: 'kill',
         target: 6,
-        enemyId: 'murloc'
+        enemyId: 'mob_murloc'
       }
     ],
     levelRequirement: 8,
@@ -1407,7 +1407,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 4,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 8,
@@ -1425,7 +1425,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 4,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 18,
@@ -1443,7 +1443,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_dragon',
         type: 'kill',
         target: 3,
-        enemyId: 'dragon'
+        enemyId: 'mob_young_dragon'
       }
     ],
     levelRequirement: 18,
@@ -1461,7 +1461,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 5,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 12,
@@ -1479,7 +1479,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_wolf',
         type: 'kill',
         target: 6,
-        enemyId: 'wolf'
+        enemyId: 'mob_gray_wolf'
       }
     ],
     levelRequirement: 12,
@@ -1497,7 +1497,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_vrykul',
         type: 'kill',
         target: 5,
-        enemyId: 'vrykul'
+        enemyId: 'mob_vrykul'
       }
     ],
     levelRequirement: 18,
@@ -1515,7 +1515,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_undead',
         type: 'kill',
         target: 6,
-        enemyId: 'undead'
+        enemyId: 'mob_undead'
       }
     ],
     levelRequirement: 18,
@@ -1533,7 +1533,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_vrykul',
         type: 'kill',
         target: 5,
-        enemyId: 'vrykul'
+        enemyId: 'mob_vrykul'
       }
     ],
     levelRequirement: 16,
@@ -1551,7 +1551,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 4,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 16,
@@ -1569,7 +1569,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_dragon',
         type: 'kill',
         target: 3,
-        enemyId: 'dragon'
+        enemyId: 'mob_young_dragon'
       }
     ],
     levelRequirement: 18,
@@ -1587,7 +1587,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_undead',
         type: 'kill',
         target: 6,
-        enemyId: 'undead'
+        enemyId: 'mob_undead'
       }
     ],
     levelRequirement: 18,
@@ -1605,7 +1605,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_bear',
         type: 'kill',
         target: 5,
-        enemyId: 'bear'
+        enemyId: 'mob_brown_bear'
       }
     ],
     levelRequirement: 16,
@@ -1623,7 +1623,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 4,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 16,
@@ -1641,7 +1641,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_tiger',
         type: 'kill',
         target: 4,
-        enemyId: 'tiger'
+        enemyId: 'mob_tiger'
       }
     ],
     levelRequirement: 18,
@@ -1659,7 +1659,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 5,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 18,
@@ -1677,7 +1677,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_elemental',
         type: 'kill',
         target: 5,
-        enemyId: 'elemental'
+        enemyId: 'mob_elemental'
       }
     ],
     levelRequirement: 20,
@@ -1695,7 +1695,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_dragon',
         type: 'kill',
         target: 3,
-        enemyId: 'dragon'
+        enemyId: 'mob_young_dragon'
       }
     ],
     levelRequirement: 20,

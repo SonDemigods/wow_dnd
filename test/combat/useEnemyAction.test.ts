@@ -521,7 +521,7 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
 
       expect(result.success).toBe(true);
       expect(result.type).toBe('attack');
-      // aoeDamage = round(10 * 1.3) = 13，actualDamage = pipeResult.finalDamage = 20
+      // aoeDamage = round(10 * 0.8) = 8（P3-147：从 1.3 改为 0.8），actualDamage = pipeResult.finalDamage = 20
       expect(result.damage).toBe(20);
       // aoeNextAttack 应被重置（runtime 字段）
       expect(state.bossInstances.get(enemy.id)!.runtime.aoeNextAttack).toBe(false);

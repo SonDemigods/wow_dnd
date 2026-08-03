@@ -11,9 +11,11 @@ import type { ExplorationCell, ExplorationState, AreaConfig, ExplorationUICallba
 import type { LocationData } from '@/modules/map/types';
 import { explorationDbService } from './db';
 import { crossModuleQuery } from '@/services/CrossModuleQuery';
+import { errorReporter } from '@/utils/errorReport';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useLogStore } from '@/modules/log/store';
 import { generateLogId } from '@/modules/log/service';
+import { useGameStore } from '@/modules/game';
 import { useCharacterStore } from '@/modules/character/store';
 import { useInventoryStore } from '@/modules/inventory/store';
 import {
@@ -26,9 +28,16 @@ import {
 } from './service';
 import { dispatchCellEvent, applyEventEffect } from './events';
 import { defaultRng, type Rng } from '@/utils/rng';
+import { migrateExplorationGrid } from '@/modules/enemy';
 
 export const useExplorationStore = defineStore('exploration', () => {
   // ==================== 响应式状态（Store 是唯一数据源） ====================
+
+  // P3-153 修复：currentCharacterId 收敛到 GameStore，explorationStore 通过只读 computed 代理访问。
+  // 所有修改必须通过 gameStore.setCurrentCharacterId() 完成（触发持久化），
+  // 不能直接赋值 currentCharacterId.value（只读 computed 会触发 Vue 警告且不生效）。
+  // 调用方（GameBootstrap/ExplorationView）在调用 init 前已通过 character 模块设置好 gameStore.currentCharacterId。
+  const gameStore = useGameStore();
 
   /** 当前探索区域 ID */
   const currentAreaId = ref<string | null>(null);
@@ -47,8 +56,8 @@ export const useExplorationStore = defineStore('exploration', () => {
   /** 探索是否完成 */
   const explorationComplete = ref(false);
 
-  /** 当前选中的角色 ID */
-  const currentCharacterId = ref<string | null>(null);
+  /** 当前选中的角色 ID（只读代理，由 GameStore 统一管理） */
+  const currentCharacterId = computed<string | null>(() => gameStore.currentCharacterId);
   /** 当前等待战斗结果的格子坐标 */
   const pendingBattleCell = ref<{ x: number; y: number } | null>(null);
   /** 本次探索随机选取的商店 ID */
@@ -94,14 +103,26 @@ export const useExplorationStore = defineStore('exploration', () => {
 
   // ==================== 内部辅助方法 ====================
 
-  /** 持久化当前探索状态到数据库 */
+  /**
+   * 持久化当前探索状态到数据库
+   *
+   * P3-151：补齐 try-catch + errorReporter 上报，参考 inventory/store.ts 的最佳实践。
+   * persist 失败时 UI 与 DB 状态可能不一致，需通过 errorReporter 记录便于监测。
+   */
   async function persistState(): Promise<void> {
     if (currentCharacterId.value) {
-      await explorationDbService.saveExplorationData(
-        currentCharacterId.value,
-        state.value,
-        assignedShopId.value
-      );
+      try {
+        await explorationDbService.saveExplorationData(
+          currentCharacterId.value,
+          state.value,
+          assignedShopId.value
+        );
+      } catch (err) {
+        errorReporter.report(err, 'manual', {
+          context: '探索数据持久化失败，UI 与 DB 状态可能不一致',
+          characterId: currentCharacterId.value,
+        });
+      }
     }
   }
 
@@ -214,10 +235,16 @@ export const useExplorationStore = defineStore('exploration', () => {
 
   /**
    * 初始化探索模块——从数据库加载角色探索状态
-   * @param characterId - 角色 ID
+   *
+   * P3-153 修复：currentCharacterId 已由 GameStore 统一管理（只读 computed 代理），
+   * 调用方（GameBootstrap/ExplorationView）在调用 init 前已通过 character 模块的
+   * selectCharacter/createCharacter 设置好 gameStore.currentCharacterId。
+   * 此处保留 characterId 参数用于从 DB 加载该角色的探索数据。
+   *
+   * @param characterId - 角色 ID（应与 gameStore.currentCharacterId 一致）
    */
   async function init(characterId: string): Promise<void> {
-    currentCharacterId.value = characterId;
+    // P3-153：currentCharacterId 为只读 computed，由 GameStore 代理，无需在此赋值
 
     // 日志、背包等依赖 Store 已由 GameBootstrap 预先初始化（EXP-5 修复），此处仅加载自身状态
     const stored = await explorationDbService.getExplorationData(characterId);
@@ -225,7 +252,8 @@ export const useExplorationStore = defineStore('exploration', () => {
     if (stored && stored.currentAreaId && stored.grid && stored.grid.length > 0) {
       // 从数据库恢复完整的探索状态
       currentAreaId.value = stored.currentAreaId;
-      grid.value = stored.grid;
+      // P3-137：迁移存档中的旧怪物 ID 到新 ID（别名层，旧 ID 原样保留）
+      grid.value = migrateExplorationGrid(stored.grid);
       campUsed.value = stored.campUsed;
       playerPosition.value = stored.playerPosition;
       visitedCells.value = stored.visitedCells;
@@ -350,7 +378,12 @@ export const useExplorationStore = defineStore('exploration', () => {
 
     // ===== 路径 1：怪物/BOSS 格子 → 触发战斗 =====
     if (cell.type === 'monster' || cell.type === 'boss') {
-      const battleId = cell.monsterId || (cell.type === 'boss' ? 'dragon_whelp' : 'goblin');
+      // P3-137 阶段 0.7 + 阶段 3：兜底 ID 使用新命名规范
+      // 优先取当前区域怪物池/Boss 池首个 ID 作为兜底，避免硬编码
+      const areaConfig = getAreaConfig();
+      const battleId = cell.monsterId || (cell.type === 'boss'
+        ? (areaConfig.bossPool[0] ?? 'boss_dragon_whelp')
+        : (areaConfig.monsterPool[0] ?? 'mob_gnoll'));
       triggerBattle(battleId);
       // 记录待处理的战斗格子，COMBAT_END 事件回调会消费此坐标
       pendingBattleCell.value = { x, y };

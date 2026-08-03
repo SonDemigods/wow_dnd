@@ -266,29 +266,36 @@ export class DataInitializer {
   /**
    * 初始化技能模板数据（含职业技能与怪物技能）
    *
+   * P3-143：使用 bulkPut 替代嵌套循环逐条 put，将数百次事务往返压缩为一次批量写入，
+   * 与 initTable/initBosses 模式保持一致，加速冷启动。
+   *
    * 注意：此处仍需 as unknown as SkillTemplateStorage 断言，因为 @/data 中的
    * CLASS_ABILITIES / MONSTER_ABILITIES 常量使用 typeof 推断类型，与 SkillTemplateStorage
    * 存在微妙的类型不匹配（如 classRestriction 字段由外层追加）。待 @/data 常量添加显式类型
    * 注解后可移除此断言。
    */
   private async initSkillTemplates(): Promise<void> {
-    // 1. 写入职业技能模板（usableBy 默认为 'player'）
+    const allSkills: SkillTemplateStorage[] = [];
+    // 1. 收集职业技能模板（usableBy 默认为 'player'）
     for (const entry of CLASS_ABILITIES) {
       for (const skill of entry.skills) {
-        await db.config_skills.put({
+        allSkills.push({
           ...skill,
           classRestriction: entry.class_id,
           usableBy: 'player'
         } as unknown as SkillTemplateStorage);
       }
     }
-    // 2. 写入怪物/首领技能模板（usableBy = 'enemy'）
+    // 2. 收集怪物/首领技能模板（usableBy = 'enemy'）
     for (const skill of MONSTER_ABILITIES) {
-      await db.config_skills.put({
+      allSkills.push({
         ...skill,
         classRestriction: null,
         usableBy: 'enemy'
       } as unknown as SkillTemplateStorage);
+    }
+    if (allSkills.length > 0) {
+      await db.config_skills.bulkPut(allSkills);
     }
   }
 

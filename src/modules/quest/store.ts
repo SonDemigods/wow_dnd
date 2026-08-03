@@ -54,9 +54,10 @@
  */
 
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, shallowRef } from 'vue';
 import type { QuestDefinition, QuestInstance } from './types';
 import { questDbService } from './db';
+import { errorReporter } from '@/utils/errorReport';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useLogStore } from '@/modules/log/store';
 import { generateLogId } from '@/modules/log/service';
@@ -130,8 +131,10 @@ export const useQuestStore = defineStore('quest', () => {
    * key: questId（如 "teldrassil_defense"）
    * 在 initialize() 时从 config_quests 表一次性加载，
    * 全局共享（所有角色看到同一份任务定义）。
+   *
+   * P3-144 修复：改用 shallowRef。更新模式为整体替换，无原地 mutate，避免深度响应式追踪开销。
    */
-  const questDefinitions = ref<Map<string, QuestDefinition>>(new Map());
+  const questDefinitions = shallowRef<Map<string, QuestDefinition>>(new Map());
 
   /**
    * 任务实例缓存
@@ -139,8 +142,10 @@ export const useQuestStore = defineStore('quest', () => {
    * key: questId
    * 在 initialize() 时从 char_quests 表按当前角色加载，
    * 每个角色独立（切换角色时重新加载）。
+   *
+   * P3-144 修复：同 questDefinitions，改用 shallowRef。
    */
-  const questInstances = ref<Map<string, QuestInstance>>(new Map());
+  const questInstances = shallowRef<Map<string, QuestInstance>>(new Map());
 
   /**
    * 当前选中的角色ID
@@ -233,12 +238,23 @@ export const useQuestStore = defineStore('quest', () => {
    * 从 currentCharacterId 或 characterStore 获取角色ID，
    * 调用 questDbService.saveQuestInstance() 写入 char_quests 表。
    *
+   * P3-151：补齐 try-catch + errorReporter 上报，参考 inventory/store.ts 的最佳实践。
+   * persist 失败时 UI 与 DB 状态可能不一致，需通过 errorReporter 记录便于监测。
+   *
    * @param instance - 需要持久化的任务实例
    */
   async function _persistInstance(instance: QuestInstance): Promise<void> {
     const cid = currentCharacterId.value || _getCharacterId();
     if (cid) {
-      await questDbService.saveQuestInstance(instance, cid);
+      try {
+        await questDbService.saveQuestInstance(instance, cid);
+      } catch (err) {
+        errorReporter.report(err, 'manual', {
+          context: '任务实例持久化失败，UI 与 DB 状态可能不一致',
+          characterId: cid,
+          questId: instance.questId,
+        });
+      }
     }
   }
 

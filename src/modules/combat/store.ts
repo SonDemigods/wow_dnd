@@ -364,7 +364,8 @@ export const useCombatStore = defineStore('combat', () => {
           if (result.success && !result.isDodge) {
             state.resourceSystems.value.forEach(sys => sys.onAttack?.());
             // 触发被动技能 onAttack 钩子（如战士嗜血吸血、术士腐蚀术）
-            passive.onAttack(result.damage || 0);
+            // P3-146：传入当前目标敌人 ID，供 buff 类被动（如腐蚀术 DOT）施加效果
+            passive.onAttack(result.damage || 0, state.currentTarget.value?.id);
           }
           return result;
         case 'skill':
@@ -377,7 +378,8 @@ export const useCombatStore = defineStore('combat', () => {
               sys.generate(1, 'skill');
             });
             // 触发被动技能 onAttack 钩子（技能也算攻击行为）
-            passive.onAttack(result.damage || 0);
+            // P3-146：传入当前目标敌人 ID，供 buff 类被动施加效果
+            passive.onAttack(result.damage || 0, state.currentTarget.value?.id);
           }
           return result;
         case 'item':

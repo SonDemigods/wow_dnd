@@ -48,6 +48,30 @@ export const DEFENSE_REDUCTION_COEFFICIENT = 0.3;
  */
 export const CRIT_DAMAGE_MULTIPLIER = 1.5;
 
+// ==================== AOE 伤害参数 ====================
+
+/**
+ * 玩家 AOE 技能每目标伤害占面板伤害的比例
+ *
+ * AOE 技能对每个目标造成的伤害 = floor(单体伤害 × 该比例)。
+ * 小于 1 表示 AOE 每目标伤害低于单体技能，符合"多目标换低单价"的常规设计。
+ *
+ * P3-147：与敌方 AOE 倍率保持口径一致（玩家 0.7 / 敌方 0.8），避免"敌方 AOE 比普攻还猛"的设计 bug。
+ *
+ * @see src/modules/combat/composables/usePlayerSkill.ts applySkillDamage
+ */
+export const PLAYER_AOE_DAMAGE_PENALTY = 0.7;
+
+/**
+ * 敌方 AOE 攻击每目标伤害占面板伤害的比例
+ *
+ * P3-147 修复：原值为 1.3（敌方 AOE 比普攻猛 30%，导致 Boss 一发 AOE 团灭的挫败感）。
+ * 现改为 0.8，略高于玩家 0.7 保留 Boss 威胁感，但低于 1.0 避免反向加强。
+ *
+ * @see src/modules/combat/composables/useEnemyAction.ts enemyAction
+ */
+export const ENEMY_AOE_DAMAGE_MULTIPLIER = 0.8;
+
 // ==================== 逃跑判定参数 ====================
 
 /**

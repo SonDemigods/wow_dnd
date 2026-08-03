@@ -992,7 +992,8 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(result.damage).toBe(25);
       expect(mocks.player!.playerAttack).toHaveBeenCalled();
       expect(sys.onAttack).toHaveBeenCalled();
-      expect(mocks.passive!.onAttack).toHaveBeenCalledWith(25);
+      // P3-146：onAttack 新增 targetId 参数
+      expect(mocks.passive!.onAttack).toHaveBeenCalledWith(25, 'enemy_1');
     });
 
     it('attack 闪避时不触发资源/被动钩子', async () => {
@@ -1059,7 +1060,8 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(sys.onAttack).toHaveBeenCalled();
       expect(sys.generate).toHaveBeenCalledWith(1, 'skill');
       // 触发被动技能 onAttack 钩子
-      expect(mocks.passive!.onAttack).toHaveBeenCalledWith(40);
+      // P3-146：onAttack 新增 targetId 参数
+      expect(mocks.passive!.onAttack).toHaveBeenCalledWith(40, 'enemy_1');
     });
 
     it('skill：闪避时不触发资源系统与被动钩子', async () => {
@@ -1089,7 +1091,8 @@ describe('useCombatStore - 战斗 Store', () => {
       await store.playerAction({ type: 'skill', skillId: 'buff_skill' });
 
       expect(sys.onAttack).toHaveBeenCalled();
-      expect(mocks.passive!.onAttack).toHaveBeenCalledWith(0);
+      // P3-146：onAttack 新增 targetId 参数
+      expect(mocks.passive!.onAttack).toHaveBeenCalledWith(0, 'enemy_1');
     });
 
     it('item：委托 player.playerUseItem 并返回结果', async () => {
@@ -1130,7 +1133,8 @@ describe('useCombatStore - 战斗 Store', () => {
       await store.playerAction({ type: 'attack' });
 
       expect(sys.onAttack).toHaveBeenCalled();
-      expect(mocks.passive!.onAttack).toHaveBeenCalledWith(0);
+      // P3-146：onAttack 新增 targetId 参数
+      expect(mocks.passive!.onAttack).toHaveBeenCalledWith(0, 'enemy_1');
     });
 
     it('playerAction 内部抛错时被 catch 并返回失败结果', async () => {

@@ -35,6 +35,6 @@ export const DB_SERVICE_CONFIG: DBServiceConfig = {
 export const BACKUP_CONFIG: BackupConfig = {
   autoBackupKey: 'wow_dnd_auto_backups',
   maxAutoBackups: 5,
-  backupVersion: 'v1.0',
-  supportedVersions: ['v1.0']
+  backupVersion: 'v1.1',
+  supportedVersions: ['v1.0', 'v1.1']
 };

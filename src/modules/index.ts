@@ -62,6 +62,9 @@ export {
 } from './animation';
 
 // ===== audio =====
+// P3-141：audioService 不再从聚合入口 re-export，避免通过 @/modules 静态引用时
+// 拉入 Tone.js（gzip 后约 50KB+）。audioService 只在 main.ts 中通过动态 import 加载。
+// useAudioStore / DEFAULT_AUDIO_SETTINGS / SFX_ROUTE_MAP 等不依赖 Tone，保留导出。
 export type {
   SfxType,
   SfxRoute,
@@ -73,7 +76,6 @@ export type {
 export {
   SFX_ROUTE_MAP,
   DEFAULT_AUDIO_SETTINGS,
-  audioService,
   useAudioStore
 } from './audio';
 

@@ -9,7 +9,7 @@
         <div class="boss-intro-content">
           <div ref="bossIntroIconRef" class="boss-intro-icon"><BaseIcon :name="bossIntroIcon" gradient="dragon" :size="48" /></div>
           <div ref="bossIntroNameRef" class="boss-intro-name">{{ bossIntroName }}</div>
-          <div v-for="(line, i) in bossIntroLines" :key="i" :ref="(el) => { if (el) bossIntroLineRefs[i] = el as HTMLElement }" :class="['boss-intro-line', 'line-' + i]">
+          <div v-for="(line, i) in bossIntroLines" :key="line + '-' + i" :ref="(el) => { if (el) bossIntroLineRefs[i] = el as HTMLElement }" :class="['boss-intro-line', 'line-' + i]">
             {{ line }}
           </div>
         </div>
@@ -123,7 +123,7 @@
 
       <!-- 战斗日志 -->
       <div class="combat-log" ref="logRef">
-        <div v-for="(log, i) in logsReversed" :key="i" :class="['log-entry', 'log-' + log.actorType]">
+        <div v-for="(log, i) in logsReversed" :key="log.timestamp + '-' + i" :class="['log-entry', 'log-' + log.actorType]">
           <span class="log-turn">[{{ log.turn }}]</span>
           <span class="log-msg">{{ log.message }}</span>
           <span v-if="log.damage && log.damage > 0" :class="['log-damage', getDamageTypeClass(log)]">
