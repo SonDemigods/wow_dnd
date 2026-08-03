@@ -5,9 +5,9 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 数据持久化架构设计文档 |
-| 版本 | v4.0 |
-| 生成日期 | 2026年7月10日 |
-| 更新说明 | 逐文件比对源码修正：表数量更正（27张表=15配置+6角色+6运行时，原文档误为25张=11+6+8）；新增 item-template 聚合层与 base 模块完整描述；补充 DBService/getTable/gameStateHelper/BaseDbService 工具层 API；补充 BackupService/ImportService 完整方法签名与 TABLES_TO_BACKUP 配置驱动机制；补充两套物品模板缓存（ItemTemplateCache 旧版 vs UnifiedItemTemplateCache 新版）的区别；更新模块目录结构与配置文件清单 |
+| 版本 | v5.0 |
+| 生成日期 | 2026年8月3日 |
+| 更新说明 | P3-116 全局状态收敛与持久化重构：新增 src/modules/game/ 模块（useGameStore 成为 currentCharacterId/currentShopId/gameSettings/lastPlayedAt/initializedAt 唯一持有者，经 gameStateHelper 持久化到 runtime_gameState 表）；GameStateStorage 新增 gameSettings 字段，settings/maxLevel 标记 @deprecated；audioDbService 移除，音频设置收敛到 GameStore（audio/store.ts 去除去抖定时器改异步持久化）；character/shop 的 currentCharacterId/currentShopId 改为 computed 代理 GameStore；删除旧版 services/ItemTemplateCache.ts（统一使用 UnifiedItemTemplateCache）；src/modules/index.ts 改为显式命名导出（ARCH-6） |
 
 ---
 
@@ -47,17 +47,17 @@
 | GameDatabase | `src/modules/data/core.ts` | 数据库初始化、表结构定义、版本管理（继承 Dexie，3 个 schema 版本） |
 | DBService | `src/modules/data/core.ts` | 带重试机制的数据库操作封装（withRetry 泛型方法） |
 | getTable\<T\> | `src/modules/data/core.ts` | 类型安全的表引用获取函数，收敛类型断言（CODE-5） |
-| dataInitializer | `src/modules/data/service.ts` | 游戏初始数据加载到 IndexedDB（DataInitializer 单例） |
-| backupService | `src/modules/data/service.ts` | 数据备份服务（BackupService 单例，含手动/自动备份） |
-| importService | `src/modules/data/service.ts` | 数据导入服务（ImportService 单例，含验证/导入/兼容性检查） |
-| gameStateHelper | `src/modules/data/gameStateHelper.ts` | 全局游戏状态读写辅助（getGameState/saveGameState，事务保证原子性） |
+| dataInitializer | `src/modules/data/initializer.ts` | 游戏初始数据加载到 IndexedDB（DataInitializer 单例，经 service.ts re-export） |
+| backupService | `src/modules/data/backup.ts` | 数据备份服务（BackupService 单例，含手动/自动备份，经 service.ts re-export） |
+| importService | `src/modules/data/service.ts` | 数据导入服务（ImportService 单例，实现拆分于 `importer.ts`，含验证/导入/兼容性检查） |
+| gameStateHelper | `src/modules/data/gameStateHelper.ts` | 全局游戏状态读写辅助（getGameState/saveGameState，事务保证原子性，由 useGameStore 统一调用） |
+| useGameStore | `src/modules/game/store.ts` | 全局游戏状态唯一持有者（P3-116）：currentCharacterId/currentShopId/gameSettings/lastPlayedAt/initializedAt，经 gameStateHelper 持久化到 runtime_gameState 表（id='gameState'） |
 | toRawData / generateId | `src/utils/db-helpers.ts` | Vue Proxy 剥离与唯一 ID 生成工具函数 |
 | BaseDbService | `src/utils/db-helpers.ts` | 通用数据层抽象基类，封装 CRUD + 重试模式（CODE-31） |
 | baseDbService | `src/modules/base/db.ts` | 阵营/种族/职业基础数据 CRUD 服务 |
 | itemTemplateDbService | `src/modules/item-template/db.ts` | 统一物品模板聚合层 DB 服务（消除 inventory ↔ equipment 循环依赖） |
-| unifiedItemTemplateCache | `src/modules/item-template/cache.ts` | 合并物品模板缓存（普通物品 + 装备，懒加载 + Promise 去重） |
-| itemTemplateCache | `src/services/ItemTemplateCache.ts` | 旧版物品模板缓存（仅普通物品，兼容期保留） |
-| 各模块 Store | `src/modules/*/store.ts` | Pinia Store，各模块独立管理自身状态 |
+| unifiedItemTemplateCache | `src/modules/item-template/cache.ts` | 合并物品模板缓存（普通物品 + 装备，懒加载 + Promise 去重，原 services/ItemTemplateCache 已删除） |
+| 各模块 Store | `src/modules/*/store.ts` | Pinia Store，各模块独立管理自身状态（character/shop/audio 的全局状态字段以只读 computed 代理 GameStore） |
 | 各模块 DB | `src/modules/*/db.ts` | 各模块独立的数据库 CRUD 操作 |
 | 各模块 Service | `src/modules/*/service.ts` | 各模块业务逻辑层 |
 
@@ -74,6 +74,7 @@
 ├─────────────────────────────────────────────────┤
 │                    状态管理层                     │
 │   src/modules/*/store.ts （Pinia Store）         │
+│   src/modules/game/store.ts （全局状态，P3-116） │
 ├─────────────────────────────────────────────────┤
 │                    数据持久层                     │
 │   src/modules/*/db.ts （IndexedDB CRUD 操作）    │
@@ -103,20 +104,21 @@
 data (数据库核心) ──── 被所有模块依赖（通过 db/dbService 单例）
 bus (事件总线) ────── 被所有模块依赖（通过 eventBus 单例）
 base (基础数据) ───── 依赖 data + bus；被 character 依赖
-character ────────── 依赖 base + data + bus；被 combat/quest/shop/skill/equipment 依赖
+character ────────── 依赖 base + data + bus + game；被 combat/quest/shop/skill/equipment 依赖
+game (全局游戏状态) ─ 依赖 data（经 gameStateHelper 读写 runtime_gameState）；被 character/shop/audio/exploration 依赖
 inventory ────────── 依赖 data + bus + item-template
 equipment ────────── 依赖 data + bus + item-template
 item-template ────── 依赖 inventory.db + equipment.db（单向，无循环，A1/G1 修复）
 enemy ────────────── 依赖 data + bus；被 combat 依赖
 boss ─────────────── 依赖 data + bus + enemy；被 combat、exploration 依赖
-exploration ──────── 依赖 data + bus + combat + shop + quest + item-template
+exploration ──────── 依赖 data + bus + combat + shop + quest + item-template + game
 combat ───────────── 依赖 data + bus + character + enemy + boss + skill
 skill ────────────── 依赖 data + bus + character
 quest ────────────── 依赖 data + bus + character
-shop ─────────────── 依赖 data + bus + character
+shop ─────────────── 依赖 data + bus + character + game
 map ──────────────── 依赖 data + bus
 log ──────────────── 依赖 data + bus
-audio ────────────── 依赖 data + bus
+audio ────────────── 依赖 bus + game（P3-116 起不再直接依赖 data，音频设置由 GameStore 持久化）
 animation ────────── 依赖 bus
 admin ────────────── 依赖 data + bus + 各配置表
 ```
@@ -143,8 +145,8 @@ export const DB_SERVICE_CONFIG: DBServiceConfig = {
 export const BACKUP_CONFIG: BackupConfig = {
   autoBackupKey: 'wow_dnd_auto_backups',
   maxAutoBackups: 5,
-  backupVersion: 'v1.0',
-  supportedVersions: ['v1.0']
+  backupVersion: 'v1.1',
+  supportedVersions: ['v1.0', 'v1.1']
 }
 ```
 
@@ -197,7 +199,7 @@ export const BACKUP_CONFIG: BackupConfig = {
 
 | 表名 | 索引字段 | 版本 | 说明 |
 |------|----------|------|------|
-| `runtime_gameState` | `id` | v1 | 全局游戏状态表，通过不同 `id` 值承载多类数据（`gameState` / `data_initialized` / `game_constants`），读写操作使用事务保证原子性 |
+| `runtime_gameState` | `id` | v1 | 全局游戏状态表，通过不同 `id` 值承载多类数据（`gameState` / `data_initialized` / `game_constants`），读写操作使用事务保证原子性。P3-116 起 `gameState` 记录由 useGameStore 管理，字段含 `gameSettings`（合并原 audio_settings 键），原 `settings`/`maxLevel` 字段标记 @deprecated 保留向后兼容 |
 | `runtime_combatLogs` | `combatId, timestamp` | v1 | 战斗日志（无显式主键，`battleLogId` 作为逻辑主键通过 `put` 写入） |
 | `runtime_adventureLogs` | `characterId, timestamp` | v1 | 冒险日志（以 `characterId` 为主键） |
 | `runtime_mapState` | `id` | v1 | 地图视图状态（以 `map_{characterId}` 为键） |
@@ -223,7 +225,7 @@ export const BACKUP_CONFIG: BackupConfig = {
 
 ### 3.5 数据库初始化钩子
 
-`GameDatabase` 构造函数中注册 `populate` 钩子，在数据库首次创建时自动写入初始游戏状态：
+`GameDatabase` 构造函数中注册 `populate` 钩子，在数据库首次创建时自动写入初始游戏状态（P3-116 起使用 `gameSettings` 字段替代原 `settings` 字段，合并音频设置默认值）：
 
 ```typescript
 // src/modules/data/core.ts
@@ -235,16 +237,22 @@ private async populateInitialData(): Promise<void> {
     currentCharacterId: null,
     currentShopId: null,
     lastPlayedAt: new Date().toISOString(),
-    settings: {
-      soundEnabled: true,
-      musicEnabled: true,
+    initializedAt: new Date().toISOString(),
+    gameSettings: {
+      masterVolume: 0.7,
+      sfxVolume: 0.8,
+      bgmVolume: 0.5,
+      muted: false,
+      sfxEnabled: true,
+      bgmEnabled: true,
       autoSave: true,
       difficulty: 'normal'
-    },
-    initializedAt: new Date().toISOString()
+    }
   });
 }
 ```
+
+该记录的后续读写由 `useGameStore.initialize()` 接管（App.vue 启动时调用）：先通过 `migrateAudioSettings()` 将旧 `audio_settings` 键数据合并迁移到 `gameSettings` 字段并删除旧键，再恢复状态到内存。
 
 ---
 
@@ -269,10 +277,10 @@ src/modules/{moduleName}/
 
 | 模块目录 | 模块名称 | 说明 |
 |----------|----------|------|
-| `modules/data/` | 数据核心 | 数据库初始化、游戏状态管理、备份导入（core.ts/gameStateHelper.ts/service.ts/types.ts） |
+| `modules/data/` | 数据核心 | 数据库初始化、游戏状态管理、备份导入（core.ts/types.ts/gameStateHelper.ts/backup.ts/importer.ts/initializer.ts/service.ts，service.ts 为 re-export 入口） |
 | `modules/bus/` | 事件总线 | 模块间解耦通信（core.ts/types.ts） |
 | `modules/base/` | 基础数据 | 阵营、种族、职业等基础数据管理（BaseDbService + useBaseStore） |
-| `modules/character/` | 角色 | 角色创建、属性管理、成长系统（含 `talents/` 子模块） |
+| `modules/character/` | 角色 | 角色创建、属性管理、成长系统（含 `talents/` 子模块；currentCharacterId 以只读 computed 代理 GameStore，P3-116） |
 | `modules/inventory/` | 背包 | 物品存储、使用、堆叠、排序 |
 | `modules/equipment/` | 装备 | 装备穿戴、属性加成、稀有度系统 |
 | `modules/item-template/` | 物品模板聚合层 | 聚合 config_items 与 config_equipmentItems 查询，消除循环依赖（A1/G1 修复） |
@@ -281,11 +289,12 @@ src/modules/{moduleName}/
 | `modules/quest/` | 任务 | 任务接受、进度追踪、交付奖励 |
 | `modules/shop/` | 商店 | 商品刷新、购买/出售、交易记录 |
 | `modules/map/` | 地图 | 地图视图、地点解锁、探索入口 |
-| `modules/exploration/` | 探索 | 探索网格、营地、事件触发（events.ts 含 registry 模式） |
+| `modules/exploration/` | 探索 | 探索网格、营地、事件触发（events.ts 含 registry 模式；依赖 game 读取全局状态） |
 | `modules/log/` | 冒险日志 | 游戏事件记录、日志查询（含分页与容量限制） |
 | `modules/enemy/` | 敌人 | 敌人实例管理和数据 |
 | `modules/boss/` | Boss | Boss 战斗引擎和入场逻辑（含 engine.ts/intro.ts/phaseManager.ts） |
-| `modules/audio/` | 音频 | 基于 Tone.js 的音频管理 |
+| `modules/game/` | 全局游戏状态 | P3-116 新增：useGameStore 唯一持有 currentCharacterId/currentShopId/gameSettings/lastPlayedAt/initializedAt，经 gameStateHelper 持久化到 runtime_gameState 表（types.ts/store.ts/index.ts） |
+| `modules/audio/` | 音频 | 基于 Tone.js 的音频管理（P3-116 起音频设置收敛到 GameStore，不再直接读写 IndexedDB） |
 | `modules/animation/` | 动画 | 战斗效果动画 |
 | `modules/admin/` | 后台管理 | 配置管理和数据管理 |
 
@@ -293,11 +302,10 @@ src/modules/{moduleName}/
 
 | 文件 | 说明 |
 |------|------|
-| `services/ItemTemplateCache.ts` | 旧版物品模板缓存（仅普通物品，兼容期保留，R1 风险缓解） |
 | `services/ErrorHandler.ts` | 全局错误处理服务 |
 | `services/GameBootstrap.ts` | 游戏启动流程编排 |
 | `services/CharacterLifecycleService.ts` | 角色生命周期管理（创建/删除/切换） |
-| `services/CrossModuleQuery.ts` | 跨模块查询服务 |
+| `services/CrossModuleQuery.ts` | 跨模块查询服务（物品模板查询统一走 unifiedItemTemplateCache，原 services/ItemTemplateCache 已删除） |
 | `services/AdminQueryService.ts` | 后台查询服务 |
 
 ---
@@ -422,22 +430,29 @@ export async function saveGameState(
 }
 ```
 
-使用事务确保读-改-写的原子性，避免与 character/shop/audio 等模块并发写入时丢失数据。
+使用事务确保读-改-写的原子性。P3-116 起 `runtime_gameState` 的 `gameState` 记录读写统一收敛到 `useGameStore`（`persist()` 内部调用 `saveGameState`），character/shop/audio 等模块不再直接调用本辅助模块，避免并发写入时丢失数据。
 
 ### 5.6 Vue Proxy 剥离与 ID 生成
 
 ```typescript
 // src/utils/db-helpers.ts
 export function toRawData<T>(data: T): T {
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(data);
+    } catch {
+      // Vue Proxy 嵌套响应式或不可克隆类型，回退到 JSON 序列化
+    }
+  }
   return JSON.parse(JSON.stringify(data));
 }
 
-export function generateId(prefix: string): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+export function generateId(prefix: string, rng: Rng = defaultRng): string {
+  return `${prefix}_${Date.now()}_${rng.next().toString(36).substring(2, 11)}`;
 }
 ```
 
-`toRawData` 通过 JSON 序列化往返剥离 Vue/Pinia 的 Proxy 包装，避免 IndexedDB 结构化克隆算法触发 `DataCloneError`。
+`toRawData` 优先使用 `structuredClone`（保留 Date/Map/Set 等特殊类型），不可用时回退到 JSON 序列化往返，剥离 Vue/Pinia 的 Proxy 包装，避免 IndexedDB 结构化克隆算法触发 `DataCloneError`。`generateId` 支持注入随机数生成器（`createSeededRng(seed)`），用于测试复现与战斗回放。
 
 ### 5.7 数据初始化
 
@@ -460,7 +475,7 @@ export function generateId(prefix: string): string {
 
 ### 6.1 功能概述
 
-数据备份与导入模块（`modules/data/service.ts`）允许用户在更换设备或重新安装应用时进行存档迁移。由三个服务类组成：
+数据备份与导入模块（`modules/data/`，实现拆分于 `backup.ts`/`importer.ts`/`initializer.ts`，`service.ts` 为 re-export 入口）允许用户在更换设备或重新安装应用时进行存档迁移。由三个服务类组成：
 - `DataInitializer`：数据初始化
 - `BackupService`：数据备份（实现 `IBackupService` 接口）
 - `ImportService`：数据导入（实现 `IImportService` 接口）
@@ -555,7 +570,7 @@ function calculateChecksum(data: unknown): string {
 
 ```typescript
 interface BackupFile {
-  version: string;           // 备份格式版本（当前 'v1.0'）
+  version: string;           // 备份格式版本（当前 'v1.1'）
   timestamp: number;         // 备份时间戳（毫秒，Date.now()）
   checksum: string;          // 简单哈希校验和
   gameVersion: string;       // 游戏版本号（当前 '1.0.0'）
@@ -648,21 +663,7 @@ export const unifiedItemTemplateCache = new UnifiedItemTemplateCacheService();
 - 加载失败后 `loaded` 保持 `false`、`loadingPromise` 重置为 `null`，下次调用自动重试
 - 并行加载普通物品与装备模板（`Promise.all`）减少总加载时间
 
-### 7.6 旧版 ItemTemplateCache（services/ItemTemplateCache.ts）
-
-```typescript
-class ItemTemplateCacheService {
-  async load(): Promise<Item[]>
-  async getById(itemId: string): Promise<Item | null>
-  async getAll(): Promise<Item[]>
-  invalidate(): void
-}
-export const itemTemplateCache = new ItemTemplateCacheService();
-```
-
-**与 UnifiedItemTemplateCache 的区别**：
-- `ItemTemplateCache`（旧）：仅缓存普通物品模板（`config_items` 表），保留做兼容期（R1 风险缓解）
-- `UnifiedItemTemplateCache`（新）：缓存合并后的模板（普通物品 + 装备），供 inventory/store 使用
+**使用方**：inventory/store、services/CrossModuleQuery。原 `services/ItemTemplateCache.ts` 已删除（ARCH-1，避免双重缓存数据不一致），统一使用本缓存。
 
 ---
 
@@ -763,8 +764,7 @@ export function filterClassesByFaction(classes: ClassData[], factionId: FactionT
 
 ### 9.5 内存缓存
 
-- `UnifiedItemTemplateCache`：合并物品模板内存缓存（懒加载 + Promise 去重）
-- `ItemTemplateCache`：普通物品模板内存缓存（旧版兼容）
+- `UnifiedItemTemplateCache`：合并物品模板内存缓存（懒加载 + Promise 去重，原 `ItemTemplateCache` 已删除）
 
 ### 9.6 索引优化
 
@@ -929,6 +929,7 @@ export function filterClassesByFaction(classes: ClassData[], factionId: FactionT
 | v3.0 | 2026-06-17 | 逐文件比对代码修正：运行时表索引字段、备份文件ISO命名格式、自动备份localStorage存储、校验和算法(简单哈希非SHA-256)、数据初始化流程描述 | System |
 | v3.1 | 2026-07-09 | 补充版本 2/3 新增表（runtime_shopSoldItems、config_class_*、config_item_sets）；新增 7.4 索引策略审计（完整索引清单 + 高频查询匹配 + 审计结论）和 7.5 查询性能基准章节 | System |
 | v4.0 | 2026-07-10 | 逐文件比对源码修正：表数量更正（27张表=15配置+6角色+6运行时，原文档误为25张=11+6+8）；新增 item-template 聚合层与 base 模块完整描述；补充 DBService/getTable/gameStateHelper/BaseDbService 工具层 API；补充 BackupService/ImportService 完整方法签名与 TABLES_TO_BACKUP 配置驱动机制；补充两套物品模板缓存（ItemTemplateCache 旧版 vs UnifiedItemTemplateCache 新版）的区别；更新模块目录结构与配置文件清单 | System |
+| v5.0 | 2026-08-03 | P3-116 全局状态收敛与持久化重构：新增 src/modules/game/ 模块（useGameStore 成为 currentCharacterId/currentShopId/gameSettings/lastPlayedAt/initializedAt 唯一持有者，经 gameStateHelper 持久化到 runtime_gameState 表）；GameStateStorage 新增 gameSettings 字段，settings/maxLevel 标记 @deprecated；audioDbService 移除，音频设置收敛到 GameStore（audio/store.ts 去除去抖定时器改异步持久化）；character/shop 的 currentCharacterId/currentShopId 改为 computed 代理 GameStore；删除旧版 services/ItemTemplateCache.ts（统一使用 UnifiedItemTemplateCache）；src/modules/index.ts 改为显式命名导出（ARCH-6） | System |
 
 ---
 

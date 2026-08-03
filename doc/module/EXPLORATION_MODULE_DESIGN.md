@@ -5,10 +5,10 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 探索模块设计文档 |
-| 版本 | v5.0 |
-| 生成日期 | 2026年7月10日 |
+| 版本 | v6.0 |
+| 生成日期 | 2026年8月3日 |
 | 所属模块 | `modules/exploration` |
-| 更新说明 | 严格对齐源码：移除不存在的 `remainingMoves` 移动步数系统与 `IExplorationService`/`movePlayer`/`canMove`/`handleEventChoice` 等旧接口；新增 `events.ts` 事件处理器注册表（`effectHandlers`/`cellEventHandlers`/`dispatchCellEvent`/`applyEventEffect`）；补充隐藏房间机制（`hidden` 字段与 `markHiddenRooms`）、多选项事件（`generateMultiOptionEvent`/`applyEventChoice`/`onMultiOptionEvent` 回调）、`dispose`/`applyEventChoice` Action；修正类型为 `CellType`/`ExplorationCell`/`EventChoice`/`MultiOptionEventResult`；修正商店交互为发射事件而非直接调用 `shopStore.openShop`；修正事件发布清单与依赖的 `crossModuleQuery` 调用 |
+| 更新说明 | 对齐 P3-153：`currentCharacterId` 由本地 ref 改为只读 computed 代理 `gameStore.currentCharacterId`（引入 `useGameStore`），`init` 移除该值赋值（保留 `characterId` 参数仅用于 DB 加载）；新增 `modules/game` 模块（P3-116，`useGameStore` 收敛全局游戏状态）及探索 Store 对其的依赖说明；`persistState` 补齐 try-catch + `errorReporter.report`（P3-151，参考 inventory/store.ts）；修正营地恢复量为 `Number.MAX_SAFE_INTEGER`（P3-132）、空事件概率基础值为 28（P3-133）；补充 `ExplorationContext.rng` 可选字段 |
 
 ---
 
@@ -16,7 +16,7 @@
 
 ### 模块定位
 
-探索模块负责管理玩家在探索区域中的探索过程，包括 10×10 网格生成、格子翻开、事件触发、营地恢复、商店/任务板交互、战斗触发等功能。该模块通过 Store 中心化架构直接调用其他模块的 Action，跨模块数据通信采用 UI 回调机制替代 EventBus 监听。格子事件结算逻辑通过 `events.ts` 的注册表模式（`effectHandlers` / `cellEventHandlers`）解耦，新增事件类型只需注册处理器而无需修改 store。
+探索模块负责管理玩家在探索区域中的探索过程，包括 10×10 网格生成、格子翻开、事件触发、营地恢复、商店/任务板交互、战斗触发等功能。该模块通过 Store 中心化架构直接调用其他模块的 Action，跨模块数据通信采用 UI 回调机制替代 EventBus 监听。格子事件结算逻辑通过 `events.ts` 的注册表模式（`effectHandlers` / `cellEventHandlers`）解耦，新增事件类型只需注册处理器而无需修改 store。角色归属标识 `currentCharacterId` 收敛至 game 模块（`useGameStore`）统一管理，探索 Store 通过只读 computed 代理访问（P3-116/P3-153）。
 
 ### 核心职责
 
@@ -35,6 +35,7 @@
 
 **探索模块**与以下模块交互:
 - 地图模块: 进入探索区域时通过 `crossModuleQuery.getLocationData` 获取地点数据
+- 游戏模块: 全局游戏状态收敛（`useGameStore`，P3-116），`currentCharacterId` 通过只读 computed 代理（P3-153），写入须经 `gameStore.setCurrentCharacterId`
 - 角色模块: 角色状态管理（`characterStore.takeDamage/receiveHeal/changeMp/gainGold/gainExp/handleDeath`）
 - 战斗模块: 怪物战斗（发射 `EXPLORATION_BATTLE_TRIGGERED` 事件，监听 `COMBAT_END`）
 - 商店模块: 通过 `crossModuleQuery.getAllShopConfigs` 随机选取商店，交互经事件通知 UI
@@ -84,7 +85,7 @@
 
 | 方法 | 签名 | 说明 |
 |------|------|------|
-| `init` | `(characterId: string) => Promise<void>` | 初始化探索模块，从数据库恢复状态，设置 `COMBAT_END` 监听 |
+| `init` | `(characterId: string) => Promise<void>` | 初始化探索模块，从数据库恢复状态，设置 `COMBAT_END` 监听（P3-153：不再赋值 `currentCharacterId`，`characterId` 参数仅用于 DB 加载） |
 | `enterArea` | `(areaId: string) => Promise<void>` | 进入区域开始探索（加载配置→选商店→生成网格→持久化） |
 | `revealGrid` | `(x: number, y: number) => Promise<boolean>` | 揭示指定坐标格子并触发对应事件 |
 | `revealAllCells` | `() => Promise<void>` | 揭示所有格子（调试命令专用） |
@@ -104,6 +105,7 @@
 | 属性 | 类型 | 说明 |
 |------|------|------|
 | `currentAreaId` | `Ref<string \| null>` | 当前探索区域ID |
+| `currentCharacterId` | `Computed<string \| null>` | 当前角色 ID（只读 computed，代理 `gameStore.currentCharacterId`，P3-153；修改须经 `gameStore.setCurrentCharacterId`，用于持久化与事件载荷） |
 | `grid` | `Ref<ExplorationCell[][]>` | 10×10 探索网格 |
 | `campUsed` | `Ref<boolean>` | 营地是否已使用 |
 | `isExploring` | `Ref<boolean>` | 是否正在探索中 |
@@ -237,6 +239,8 @@ export interface ExplorationContext {
   areaConfig: AreaConfig;
   uiCallbacks: ExplorationUICallbacks | null;
   characterId: string | null;
+  /** 可选的随机数生成器（用于确定性回放与测试注入，未提供时使用 defaultRng） */
+  rng?: Rng;
 }
 
 /** 格子事件处理器扩展上下文 */
@@ -293,9 +297,9 @@ export function dispatchCellEvent(cellType: CellType, ctx: CellEventContext): Pr
 ### 初始化流程
 
 1. 调用 `explorationStore.init(characterId)`
-2. 设置 `currentCharacterId`
+2. `currentCharacterId` 由 GameStore 统一管理（P3-153）：store 内为只读 computed（`computed(() => gameStore.currentCharacterId)`），调用方（GameBootstrap/ExplorationView）在调用 init 前已通过 character 模块设置好 `gameStore.currentCharacterId`；init 不再对该值赋值（只读 computed 不可赋值），保留 `characterId` 参数仅用于从 DB 加载该角色探索数据
 3. 从 `char_exploration` 表加载角色探索数据
-4. 如果存在有效探索数据（含 `currentAreaId` 且 `grid` 非空），恢复全部状态（`currentAreaId`、`grid`、`campUsed`、`playerPosition`、`visitedCells`、`bossDefeated`、`explorationComplete`、`assignedShopId`），设置 `isExploring=true`，并调用 `loadAreaConfig` 恢复区域配置
+4. 如果存在有效探索数据（含 `currentAreaId` 且 `grid` 非空），恢复全部状态（`currentAreaId`、`grid`、`campUsed`、`playerPosition`、`visitedCells`、`bossDefeated`、`explorationComplete`、`assignedShopId`），设置 `isExploring=true`，并调用 `loadAreaConfig` 恢复区域配置（网格经 `migrateExplorationGrid` 迁移旧怪物 ID）
 5. 如果不存在，重置为空状态（`visitedCells=1`）
 6. 调用 `setupCombatListener()` 设置 `COMBAT_END` 事件监听器（先 `clearGroup('exploration')` 清理旧监听，再 `onGroup` 订阅）
 
@@ -325,7 +329,7 @@ export function dispatchCellEvent(cellType: CellType, ctx: CellEventContext): Pr
 
 | 路径 | 类型 | 处理逻辑 |
 |------|------|----------|
-| 路径1 | `monster` / `boss` | 调用 `triggerBattle(monsterId)`（monsterId 缺失时 boss 用 `'dragon_whelp'`、monster 用 `'goblin'` 兜底），记录 `pendingBattleCell`，返回 true 等待 `COMBAT_END` |
+| 路径1 | `monster` / `boss` | 调用 `triggerBattle(monsterId)`（monsterId 缺失时优先取区域怪物池/Boss 池首个 ID，再兜底 boss 用 `'boss_dragon_whelp'`、monster 用 `'mob_gnoll'`），记录 `pendingBattleCell`，返回 true 等待 `COMBAT_END` |
 | 路径2 | `shop` / `board` | 标记 explored/visited，更新可访问格子，发射 `EXPLORATION_CELL_EXPLORED`（含 `interactionId`：shop 为 `assignedShopId`、board 为 `'board_main'`），通知 UI 回调 `onCellExplored` |
 | 路径3 | `treasure` / `trap` / `event` / `rest` | 标记 explored/visited，通过 `dispatchCellEvent` 分发到 `cellEventHandlers` 处理，根据返回结果设置 `completed`/`campUsed`/`shouldHandleDeath` |
 
@@ -336,8 +340,8 @@ export function dispatchCellEvent(cellType: CellType, ctx: CellEventContext): Pr
 
 营地格子通过 `dispatchCellEvent('rest', ctx)` 分发到 `cellEventHandlers.rest`：
 - 检查 `ctx.campUsed`，已使用则仅返回 `{ completed: true }`
-- 调用 `generateCampHeal(areaLevel)` 返回 `{ hp: 9999, mana: 9999 }`
-- 调用 `characterStore.receiveHeal(9999)` 和 `characterStore.changeMp(9999)`（由角色模块根据上限裁剪）
+- 调用 `generateCampHeal(areaLevel)` 返回 `{ hp: Number.MAX_SAFE_INTEGER, mana: Number.MAX_SAFE_INTEGER }`（P3-132：完全恢复标记，由角色模块按上限裁剪）
+- 调用 `characterStore.receiveHeal` 和 `characterStore.changeMp`（完全恢复量由角色模块根据上限裁剪）
 - 发射 `EXPLORATION_CAMP_USED` 事件，记录日志
 - 返回 `{ completed: true, campUsed: true }`，由 store 设置 `campUsed=true`
 - `useCamp()` Action 复用同一注册表处理器
@@ -395,7 +399,7 @@ export function dispatchCellEvent(cellType: CellType, ctx: CellEventContext): Pr
 | item | `max(15, 25 - 1 × avgLevel)` |
 | trap | `min(22, 12 + 1 × avgLevel)` |
 | event | `15`（固定） |
-| empty | `max(15, 30 - 1 × avgLevel)` |
+| empty | `max(15, 28 - 1 × avgLevel)`（P3-133：基础值 28，五项基础值之和恰为归一化基数 100） |
 
 归一化：各项 `round(原始值 / total × 100)`，最后一项 empty 用减法消除舍入误差。
 
@@ -407,7 +411,7 @@ export function dispatchCellEvent(cellType: CellType, ctx: CellEventContext): Pr
 | `buildItemPool` | `(allItems, minLevel, maxLevel, maxPoolSize?) => string[]` | 筛选等级匹配的物品池（Fisher-Yates 洗牌，空池兜底 `small_health_potion`） |
 | `determineCellEvent` | `(probability: GridEventProbability) => GridEventType` | 累积概率区间法选择事件类型 |
 | `generateTrapDamage` | `(areaLevel: number) => number` | 计算陷阱伤害（`areaLevel × 5 ± 5`，最小 1） |
-| `generateCampHeal` | `(_areaLevel: number) => { hp: 9999; mana: 9999 }` | 返回营地恢复量 |
+| `generateCampHeal` | `(_areaLevel: number) => { hp: Number.MAX_SAFE_INTEGER; mana: Number.MAX_SAFE_INTEGER }` | 返回营地恢复量（完全恢复标记，由角色上限裁剪，P3-132） |
 | `generateItemForCell` | `(itemPool: string[]) => string` | 从物品池随机选物品（空池返回空字符串） |
 | `generateEnemyForCell` | `(monsterPool: string[]) => string` | 从怪物池随机选怪物（空池返回空字符串） |
 | `generateRandomEvent` | `(areaLevel: number) => RandomEventResult` | 生成随机事件（累进概率区间） |
@@ -495,6 +499,7 @@ export function dispatchCellEvent(cellType: CellType, ctx: CellEventContext): Pr
 | 模块 | 交互方式 | 说明 |
 |------|----------|------|
 | 地图模块 | crossModuleQuery | `getLocationData(areaId)` 获取地点数据（含 enemies/bosses/levelRange） |
+| 游戏模块 | 直接调用 | `useGameStore` 只读代理 `currentCharacterId`（P3-116/P3-153），写入须经 `gameStore.setCurrentCharacterId` |
 | 角色模块 | 直接调用 | `takeDamage/receiveHeal/changeMp/gainGold/gainExp/handleDeath`（经 events.ts effectHandlers 与 store） |
 | 战斗模块 | 事件 | 发射 `EXPLORATION_BATTLE_TRIGGERED`，监听 `COMBAT_END`（分组 `'exploration'`） |
 | 商店模块 | crossModuleQuery + 事件 | `getAllShopConfigs()` 随机选商店，交互经 `EXPLORATION_CELL_EXPLORED` 事件通知 UI |
@@ -554,6 +559,7 @@ export function dispatchCellEvent(cellType: CellType, ctx: CellEventContext): Pr
 | 未注册的格子类型 | `dispatchCellEvent` 找不到 handler | 返回空结果 `{ completed: false }` |
 | 存储读取失败 | IndexedDB 解析错误 | 使用空状态初始化 |
 | 存储写入失败 | IndexedDB 写入异常 | `dbService.withRetry` 指数退避重试 |
+| 持久化失败 | IndexedDB 写入异常/序列化错误 | `persistState` try-catch 捕获并经 `errorReporter.report` 上报（P3-151，UI 与 DB 状态可能不一致） |
 
 ---
 
@@ -605,7 +611,7 @@ src/modules/exploration/
 | `db.ts` | IndexedDB 数据库操作：`ExplorationDbService` 类（`saveExplorationData`、`getExplorationData`、`deleteExplorationData`、`clearAllExplorationData`、`getAllExplorationData`），`toRawData` 剥离 Proxy，兼容旧数据迁移 |
 | `service.ts` | 纯函数层：`EVENT_TO_CELL_TYPE` 映射表、`computeEventProbability`、`buildItemPool`、`determineCellEvent`、`generateTrapDamage`、`generateCampHeal`、`generateItemForCell`、`generateEnemyForCell`、`generateRandomEvent`、`generateMultiOptionEvent`、`generateGrid`、`findStartPosition`、`updateAccessibleCells`、`markHiddenRooms`、`placeFixedEvents` 等 |
 | `events.ts` | 事件处理器注册表：`ExplorationContext`、`CellEventContext`、`CellEventResult` 接口；`effectHandlers`（heal/mana/exp/damage/mpLoss/gold 效果处理器）、`cellEventHandlers`（treasure/trap/event/rest 格子处理器）；`applyEventEffect`、`dispatchCellEvent` 分发函数；`grantFallbackReward` 兜底奖励 |
-| `store.ts` | Pinia Store 状态管理（`useExplorationStore`），编排业务逻辑：响应式状态、UI 回调注册、计算属性、`init`/`enterArea`/`revealGrid`/`onBattleResult`/`triggerBattle`/`useCamp`/`applyEventChoice`/`reset`/`dispose` 等 Action，`buildAreaConfig`/`loadAreaConfig`/`pickRandomShop`/`getQuestRequiredMonsters` 等内部方法 |
+| `store.ts` | Pinia Store 状态管理（`useExplorationStore`），编排业务逻辑：响应式状态、UI 回调注册、计算属性（含 `currentCharacterId` 只读代理 `gameStore`，P3-153）、`init`/`enterArea`/`revealGrid`/`onBattleResult`/`triggerBattle`/`useCamp`/`applyEventChoice`/`reset`/`dispose` 等 Action，`buildAreaConfig`/`loadAreaConfig`/`pickRandomShop`/`getQuestRequiredMonsters` 等内部方法 |
 
 ---
 
@@ -624,6 +630,7 @@ src/modules/exploration/
 | v3.0 | 2026-06-16 | 全面对齐实际代码：更新网格类型为 ExplorationCell 体系、添加起点/营地(rest)/宝物(treasure)等格子类型、更新 IExplorationService 接口（添加 generateGrid/movePlayer/canMove/handleEventChoice/onBattleResult）、添加 GridGenerationConfig（含 questNormalMonsters）、添加 UI 回调机制（registerUICallbacks）、更新存储结构（char_exploration）、更新固定事件放置规则（起点+商店+任务板+营地+Boss）、添加 completeQuest/remainingMoves 功能、更新纯函数列表 | System |
 | v4.0 | 2026-06-17 | 补充 ExplorationEventChoice/ExplorationEvent/MoveResult/EventChoiceResult/RandomEventResult/ExplorationUICallbacks 类型定义，修正 ExplorationStorage 字段可选性（assignedShopId/updatedAt 标记为可选）、添加 currentShopId 旧版本兼容字段 | System |
 | v5.0 | 2026-07-10 | 严格对齐源码重写：移除不存在的 remainingMoves 移动步数系统与 IExplorationService/movePlayer/canMove/handleEventChoice 等旧接口；新增 events.ts 事件处理器注册表（effectHandlers/cellEventHandlers/dispatchCellEvent/applyEventEffect）；补充隐藏房间机制、多选项事件、dispose/applyEventChoice Action；修正类型为 CellType/EventChoice/MultiOptionEventResult；修正商店交互为事件通知；补充完整事件发布与订阅清单 | System |
+| v6.0 | 2026-08-03 | 对齐 P3-116/P3-153：`currentCharacterId` 由本地 ref 改为只读 computed 代理 `gameStore.currentCharacterId`（引入 `useGameStore`），`init` 移除该值赋值（保留 `characterId` 参数仅用于 DB 加载）；新增 `modules/game` 模块依赖说明；`persistState` 补齐 try-catch + `errorReporter.report`（P3-151）；营地恢复量修正为 `Number.MAX_SAFE_INTEGER`（P3-132）；空事件概率基础值修正为 28（P3-133）；补充 `ExplorationContext.rng` 可选字段 | System |
 
 ---
 

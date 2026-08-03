@@ -5,10 +5,10 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 地图模块设计文档 |
-| 版本 | v5.0 |
-| 生成日期 | 2026年7月10日 |
+| 版本 | v6.0 |
+| 生成日期 | 2026年8月3日 |
 | 所属模块 | `modules/map` |
-| 更新说明 | 严格依据源码重写：补充 `MapState.unlockedZones?`/`completedZones?` 字段及 `MapStateStorage` 对应字段；修正 `MapZone.requiredGold`/`rewards` 为可选字段（旧文档写为必填）；补充 `LocationStorage` 统一存储类型定义（旧文档误称为 LocationDataStorage）；移除不存在的 `IMapService` 接口；移除不存在的 `isZoneExplored`/`getCurrentLocation` service 函数；补充 `clearMapState` DB 方法；补充 store 常量（`ZOOM_MIN/MAX`、`PAN_MIN/MAX`、`DEFAULT_MAP_VIEW`）、`clamp` 辅助函数、`safeSaveState`/`loadLocations` 内部函数；补充 state/locations/currentLocation/currentCharacterId/initialized 状态清单及 `getView`/`getCurrentLocation` 计算属性；补充 `getContinentLocations` 内部函数（导出别名为 `getLocationsByContinent`）；修正 `getZoneStatus` 优先级（completed > 手动 unlocked > 等级 unlocked > locked）；修正 `saveMapState` 使用事务确保读-改-写原子性；修正 `enterZone` 使用 `eventBus.emit(GameEvents.ZONE_ENTERED, { locationId, location })` |
+| 更新说明 | 严格依据源码更新：补充 P3-153 待办（`map/store.ts` 的 `currentCharacterId` 仍为本地 ref，尚未改为 gameStore 代理，且未在 setup store 返回值中暴露）；补充历史修复 5cfd074（`initialize` 先重置 `currentLocation` 为 null，避免角色切换时地图数据残留）；修正 `clamp`/`getMapStateKey`/`mapToLocationData` 定义位置（均位于 `service.ts` 纯函数层，由 `store.ts`/`db.ts` 导入使用）；补充 `service.ts` 纯函数清单（新增 `getMapStateKey`/`mapToLocationData`/`clamp`）；补充 `safeSaveState`/`enterZone` 持久化失败的 `errorReporter` 上报机制；补充 `CONTINENTS`（3 大陆）/`LOCATIONS`（46 地点）静态数据源及 DataInitializer 初始化说明；修正 `config_locations` 表主键字段为 `id`；补充 `char_exploration` 表归属说明（探索模块管理，地图模块不直接读写）；补充 `locations`/`currentCharacterId` 为内部状态说明及顶层 `src/modules/index.ts` 统一导出 |
 
 ---
 
@@ -32,7 +32,7 @@
 ### 模块边界
 
 **地图模块**与以下模块交互:
-- 探索模块: 进入区域时发射 `ZONE_ENTERED` 事件，探索模块监听后进入区域
+- 探索模块: 进入区域时发射 `ZONE_ENTERED` 事件，探索模块监听后进入区域（探索进度存于 `char_exploration` 表，由探索模块管理）
 - 角色模块: 获取玩家等级用于解锁判断（由调用方传入 `playerLevel`）
 - 事件总线: 发布 `ZONE_ENTERED` 事件
 
@@ -89,8 +89,8 @@
 | 状态 | 类型 | 说明 |
 |------|------|------|
 | `state` | `Ref<MapState>` | 当前地图状态（含 view、unlockedZones?、completedZones?） |
-| `locations` | `Ref<Map<string, LocationData>>` | 地点数据缓存（全局共享，所有角色共用） |
-| `currentCharacterId` | `Ref<string \| null>` | 当前角色 ID |
+| `locations` | `Ref<Map<string, LocationData>>` | 地点数据缓存（全局共享，所有角色共用）；内部状态，未在 setup store 返回值中暴露，仅供模块内部方法使用 |
+| `currentCharacterId` | `Ref<string \| null>` | 当前角色 ID；内部状态，未在返回值中暴露（P3-153 待办：仍为本地 ref，尚未改为 gameStore 代理） |
 | `currentLocation` | `Ref<LocationData \| null>` | 当前选中的地点 |
 | `initialized` | `Ref<boolean>` | 模块是否已完成初始化 |
 
@@ -105,7 +105,7 @@
 
 | 函数 | 说明 |
 |------|------|
-| `safeSaveState()` | 安全保存地图状态，捕获并记录错误避免影响调用方；`currentCharacterId` 为空时直接返回 |
+| `safeSaveState()` | 安全保存地图状态，捕获并记录错误避免影响调用方；`currentCharacterId` 为空时直接返回；失败时 `console.error` 并调用 `errorReporter.report` 上报 |
 | `loadLocations()` | 从数据库加载地点数据；跳过缺少 `mapX`/`mapY` 坐标的地点并打印警告 |
 
 ### Store 常量
@@ -120,9 +120,11 @@
 
 ### Store 辅助函数
 
+`clamp` 为数值钳制工具函数，定义于 `service.ts` 纯函数层（并非定义在 store.ts 内），`store.ts` 从 `./service` 导入使用：
+
 ```typescript
 /** 数值钳制到 [min, max] 区间 */
-function clamp(value: number, min: number, max: number): number {
+export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 ```
@@ -243,19 +245,20 @@ export interface LocationStorage {
 
 1. 调用 `mapStore.initialize(characterId)`
 2. 设置 `currentCharacterId`
-3. 从 `runtime_mapState` 表加载该角色的地图状态（键 `map_${characterId}`）：
+3. 重置 `currentLocation` 为 `null`（提交 5cfd074 修复：避免上一个角色的数据残留，新角色无保存的 locationId 时不会进入后续恢复分支）
+4. 从 `runtime_mapState` 表加载该角色的地图状态（键 `map_${characterId}`）：
    - 若存在 `savedState.view`，恢复 `view`、`unlockedZones`（默认 `[]`）、`completedZones`（默认 `[]`）
    - 否则使用 `DEFAULT_MAP_VIEW` 初始化
-4. 调用 `loadLocations()` 从 `config_locations` 表加载所有地点数据（仅 `type='location'`），写入 `locations` Map；跳过缺少 `mapX`/`mapY` 坐标的地点并打印警告
-5. 从数据库恢复上次选中的区域 ID（`getCurrentLocationId`），若存在则通过 `getLocationById` 查找并设置 `currentLocation`
-6. 标记 `initialized = true`
+5. 调用 `loadLocations()` 从 `config_locations` 表加载所有地点数据（仅 `type='location'`），写入 `locations` Map；跳过缺少 `mapX`/`mapY` 坐标的地点并打印警告
+6. 从数据库恢复上次选中的区域 ID（`getCurrentLocationId`），若存在则通过 `getLocationById` 查找并设置 `currentLocation`
+7. 标记 `initialized = true`
 
 ### 进入区域流程
 
 1. 调用 `mapStore.enterZone(zoneId)`
 2. 从 `locations` Map 查找地点数据（`getLocationById`），不存在则返回 `false`
 3. 设置 `currentLocation = location`
-4. 持久化当前区域 ID 到 `runtime_mapState`（按角色隔离，fire and forget，捕获错误避免影响调用方）
+4. 持久化当前区域 ID 到 `runtime_mapState`（按角色隔离，fire and forget，失败时 `.catch` 捕获、`console.error` 记录并调用 `errorReporter.report` 上报，不影响返回值）
 5. 发射 `ZONE_ENTERED` 事件（载荷 `{ locationId: zoneId, location }`）
 6. 返回 `true`
 7. 探索模块监听此事件后进入对应区域
@@ -304,6 +307,11 @@ export interface LocationStorage {
 | `isLocationAccessible` | `(location: LocationData, characterLevel: number) => boolean` | 检查等级是否满足最低要求（`characterLevel >= location.levelRange[0]`） |
 | `getZoneStatus` | `(state: MapState, zoneId: string, location: LocationData, characterLevel: number) => ZoneStatus` | 获取区域状态，优先级：completed > 手动 unlocked > 等级 unlocked > locked |
 | `getLocationsByContinent` | `(locations: Map<string, LocationData>, continentId: string) => LocationData[]` | 筛选指定大陆的地点列表（遍历 Map 匹配 `location.continent`） |
+| `getMapStateKey` | `(characterId: string) => string` | 根据角色 ID 生成地图状态存储键 `map_${characterId}` |
+| `mapToLocationData` | `(storage: LocationStorage) => LocationData` | 将存储格式转换为 LocationData 业务类型（缺省字段使用默认值：`continent=''`、`levelRange=[1,1]`、`color='#000000'`、`mapX=0`、`mapY=0`） |
+| `clamp` | `(value: number, min: number, max: number) => number` | 数值钳制到 [min, max] 区间 |
+
+> 说明：`getMapStateKey`/`mapToLocationData` 供 `db.ts` 导入使用；`clamp` 供 `store.ts` 导入使用。
 
 ---
 
@@ -321,12 +329,9 @@ export interface LocationStorage {
 | `saveCurrentTab(characterId, tab)` | `runtime_mapState` | 保存当前标签页（合并写入，使用事务确保原子性） |
 | `getCurrentTab(characterId)` | `runtime_mapState` | 获取指定角色的当前标签页 |
 
-### 私有辅助函数
+### 辅助函数来源
 
-| 函数 | 说明 |
-|------|------|
-| `getMapStateKey(characterId)` | 根据角色 ID 生成存储键 `map_${characterId}` |
-| `mapToLocationData(storage)` | 将 `LocationStorage` 转换为 `LocationData` 业务类型（缺省字段使用默认值：`continent=''`、`levelRange=[1,1]`、`color='#000000'`、`mapX=0`、`mapY=0`） |
+`getMapStateKey`（生成存储键 `map_${characterId}`）与 `mapToLocationData`（`LocationStorage` → `LocationData` 转换）均定义于 `service.ts` 纯函数层，由 `db.ts` 导入使用（详见「纯函数层 (service.ts)」）。
 
 ---
 
@@ -336,8 +341,19 @@ export interface LocationStorage {
 
 | 数据库 Store | Key | 数据结构 | 说明 |
 |--------------|-----|----------|------|
-| `config_locations` | `locationId` | `LocationStorage` | 地点/大陆数据（全局共享，通过 `type='location'` 筛选地点） |
+| `config_locations` | `id` | `LocationStorage` | 地点/大陆数据（全局共享，通过 `type='location'` 筛选地点、`type='continent'` 区分大陆） |
 | `runtime_mapState` | `map_${characterId}` | `MapStateStorage` | 地图视图状态（按角色隔离） |
+
+> 说明：探索进度存储于 `char_exploration` 表（键为角色 ID），由探索模块 `exploration/db.ts` 管理，地图模块不直接读写该表，仅通过 `ZONE_ENTERED` 事件与探索模块联动。
+
+### 地点/大陆静态数据源
+
+`src/data/config_locations.ts` 提供两组静态常量，由 data 模块 `DataInitializer` 在数据库初始化时依次写入 `config_locations` 表：
+
+| 常量 | 类型 | 数量 | 说明 |
+|------|------|------|------|
+| `CONTINENTS` | `ContinentData[]` | 3 | 大陆数据（暮光大陆/辉石大陆/寒霜废土），`type='continent'` |
+| `LOCATIONS` | `LocationData[]` | 46 | 世界地点数据，分属 3 个大陆，`type='location'`，含 `mapX`/`mapY` 坐标 |
 
 ### LocationStorage 存储内容 (config_locations)
 
@@ -391,12 +407,13 @@ const DEFAULT_MAP_VIEW = {
 
 - **事件总线**: `eventBus` + `GameEvents`（来自 `../bus`），发布 `ZONE_ENTERED` 事件
 - **数据层**: `dbService.withRetry`（来自 `../data/core`），`gameDb.runtime_mapState` 和 `gameDb.config_locations` 表
+- **错误上报**: `errorReporter`（来自 `@/utils/errorReport`），`safeSaveState` 与 `enterZone` 持久化失败时上报告警
 
 ### 交互模块
 
 | 模块 | 交互方式 | 说明 |
 |------|----------|------|
-| 探索模块 | 事件 | 发射 `ZONE_ENTERED` 事件，探索模块监听后进入区域 |
+| 探索模块 | 事件 | 发射 `ZONE_ENTERED` 事件，探索模块监听后进入区域（探索进度存于 `char_exploration` 表，由探索模块管理） |
 | 角色模块 | 调用方传参 | 调用方（如 UI 组件）传入 `playerLevel` 用于解锁判断 |
 | 事件总线 | 发布 | 发布 `ZONE_ENTERED` 事件 |
 
@@ -415,8 +432,8 @@ const DEFAULT_MAP_VIEW = {
 | 异常类型 | 触发条件 | 处理策略 |
 |----------|----------|----------|
 | 存储读取失败 | IndexedDB 解析错误 | `dbService.withRetry` 自动重试；`getMapState` 返回 null 时使用默认值初始化 |
-| 存储写入失败 | IndexedDB 写入异常 | `dbService.withRetry` 自动重试；`safeSaveState` 捕获并记录错误，不影响调用方 |
-| 当前区域保存失败 | `saveCurrentLocationId` 异常 | fire and forget，捕获并记录错误，不影响 `enterZone` 返回值 |
+| 存储写入失败 | IndexedDB 写入异常 | `dbService.withRetry` 自动重试；`safeSaveState` 捕获错误，`console.error` 记录并调用 `errorReporter.report(err, 'manual', { context, characterId })` 上报，不影响调用方 |
+| 当前区域保存失败 | `saveCurrentLocationId` 异常 | fire and forget，`.catch` 捕获错误，`console.error` 记录并调用 `errorReporter.report(err, 'manual', { context, characterId, zoneId })` 上报，不影响 `enterZone` 返回值 |
 | 地点不存在 | 操作不存在的地点 | `getLocationById` 返回 `undefined`；`enterZone` 返回 `false`；`isLocationUnlocked` 返回 `false` |
 | 地点缺少坐标 | `loadLocations` 时 `mapX`/`mapY` 为 null | 跳过该地点并打印警告 |
 | 等级不足 | 进入等级要求未满足的地点 | 不阻止，由调用方判断 |
@@ -441,7 +458,7 @@ const DEFAULT_MAP_VIEW = {
 | 输入验证 | 缩放和平移操作通过 `clamp` 进行边界限制 |
 | 数据隔离 | 使用 `map_${characterId}` 前缀隔离角色数据 |
 | 事务原子性 | `saveMapState`/`saveCurrentLocationId`/`saveCurrentTab` 使用 `gameDb.transaction('rw', ...)` 确保读-改-写原子性 |
-| 异常捕获 | 所有 IO 操作通过 `dbService.withRetry` 包裹；`safeSaveState` 捕获错误避免影响调用方 |
+| 异常捕获 | 所有 IO 操作通过 `dbService.withRetry` 包裹；`safeSaveState` 捕获错误避免影响调用方；`safeSaveState`/`enterZone` 失败时通过 `errorReporter` 上报告警 |
 | 重试机制 | `dbService.withRetry` 失败时自动重试 |
 
 ---
@@ -461,11 +478,11 @@ src/modules/map/
 
 | 文件 | 职责 |
 |------|------|
-| `index.ts` | 模块入口，统一导出 types（`ContinentData`/`MapView`/`MapState`/`LocationData`/`ZoneStatus`/`ZoneRewards`/`MapZone`/`MapStateStorage`/`LocationStorage`）、`mapDbService`、`useMapStore` |
+| `index.ts` | 模块入口，统一导出 types（`ContinentData`/`MapView`/`MapState`/`LocationData`/`ZoneStatus`/`ZoneRewards`/`MapZone`/`MapStateStorage`/`LocationStorage`）、`mapDbService`、`useMapStore`；并经顶层入口 `src/modules/index.ts`（map 段）再次统一导出 |
 | `types.ts` | TypeScript 类型定义：`ContinentData`、`MapView`、`MapState`、`LocationData`、`ZoneStatus`、`ZoneRewards`、`MapZone`，以及存储类型 `MapStateStorage`、`LocationStorage` |
-| `db.ts` | IndexedDB 数据库操作层（`MapDbService` 类），封装 `runtime_mapState` 和 `config_locations` 表的 CRUD，含私有 `getMapStateKey`/`mapToLocationData` 转换函数 |
-| `store.ts` | Pinia Store 状态管理（`useMapStore`），编排业务逻辑，定义常量（`ZOOM_MIN/MAX`、`PAN_MIN/MAX`、`DEFAULT_MAP_VIEW`）、辅助函数 `clamp`、内部函数 `safeSaveState`/`loadLocations`，跨模块调用 eventBus |
-| `service.ts` | 纯函数层：`getLocationById`、`isLocationAccessible`、`getZoneStatus`、`getLocationsByContinent` |
+| `db.ts` | IndexedDB 数据库操作层（`MapDbService` 类），封装 `runtime_mapState` 和 `config_locations` 表的 CRUD；存储键生成（`getMapStateKey`）与数据转换（`mapToLocationData`）复用 service.ts 纯函数 |
+| `store.ts` | Pinia Store 状态管理（`useMapStore`），编排业务逻辑，定义常量（`ZOOM_MIN/MAX`、`PAN_MIN/MAX`、`DEFAULT_MAP_VIEW`）、内部函数 `safeSaveState`/`loadLocations`，跨模块调用 eventBus 与 errorReporter；`currentCharacterId` 仍为本地 ref（P3-153 待办） |
+| `service.ts` | 纯函数层：`getLocationById`、`isLocationAccessible`、`getZoneStatus`、`getLocationsByContinent`、`getMapStateKey`、`mapToLocationData`、`clamp` |
 
 ---
 
@@ -481,6 +498,7 @@ src/modules/map/
 | v3.0 | 2026-06-16 | 全面对齐实际代码：ContinentData 添加 id/type 字段、LocationData 添加 id/bosses/type 字段（移除 displayName/region）、MapView 移除 showMarkers/activeMarkerId 字段、移除 LocationMarker 类型、添加 getZones/setCurrentContinent/saveCurrentTab/getCurrentTab/clearUIState 方法、enterLocation 改为 enterZone、数据表从 characterData 改为 runtime_mapState | System |
 | v4.0 | 2026-06-17 | 逐文件比对验证：类型定义与代码完全一致 | System |
 | v5.0 | 2026-07-10 | 严格依据源码重写：补充 MapState.unlockedZones?/completedZones? 字段及 MapStateStorage 对应字段；修正 MapZone.requiredGold/rewards 为可选字段；补充 LocationStorage 统一存储类型定义；移除不存在的 IMapService 接口；移除不存在的 isZoneExplored/getCurrentLocation service 函数；补充 clearMapState DB 方法；补充 store 常量、clamp 辅助函数、safeSaveState/loadLocations 内部函数；补充状态清单及计算属性；补充 getContinentLocations 内部函数（导出别名 getLocationsByContinent）；修正 getZoneStatus 优先级；修正 saveMapState 使用事务确保原子性；修正 enterZone 事件载荷 | System |
+| v6.0 | 2026-08-03 | 严格依据源码更新：补充 P3-153 待办（currentCharacterId 仍为本地 ref，尚未改为 gameStore 代理，且未在 setup store 返回值中暴露）；补充 5cfd074 历史修复（initialize 先重置 currentLocation 避免角色切换时地图数据残留）；修正 clamp/getMapStateKey/mapToLocationData 定义位置（均位于 service.ts，由 store.ts/db.ts 导入使用）；补充 service.ts 纯函数清单（新增 getMapStateKey/mapToLocationData/clamp）；补充 safeSaveState/enterZone 持久化失败的 errorReporter 上报机制；补充 CONTINENTS（3 大陆）/LOCATIONS（46 地点）静态数据源及 DataInitializer 初始化说明；修正 config_locations 表主键字段为 id；补充 char_exploration 表归属说明（探索模块管理，地图模块不直接读写）；补充 locations/currentCharacterId 为内部状态说明及顶层 src/modules/index.ts 统一导出 | System |
 
 ---
 

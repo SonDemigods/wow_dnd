@@ -5,10 +5,10 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | UI界面设计文档 - 弹窗界面 |
-| 版本 | v1.2 |
-| 生成日期 | 2026年7月10日 |
+| 版本 | v1.6 |
+| 生成日期 | 2026年8月3日 |
 | 适用平台 | PC端、移动端 |
-| 更新说明 | 比对 src/components/popup 全部 10 个弹窗组件、src/components/common 通用组件（BasePopup/ConfirmPopup/AlertPopup/Toast/ItemIcon/Tag/EffectTag/EmptyState/SkillTags/ResourceBar/ClassResourceBar）及 src/styles/popup.less 源码后重写：新增通用弹窗基础组件章节（BasePopup 容器/ConfirmPopup/AlertPopup/Toast 及 popup.less 通用样式）；补全原文档缺失的 CombatPopup 战斗弹窗（独立 combat-overlay 全屏覆盖，非 BasePopup 模式，含敌人 3x2 网格/玩家区域/战斗日志/行动按钮/结果弹窗/物品选择/Boss 演出/粒子特效）、SystemPopup 系统弹窗、AudioSettingsPopup 音量设置弹窗；修正商店弹窗为购买/出售双标签 + 8 分类 + 数量选择器 + 金币闪烁动画；修正任务看板为 DynamicScroller 虚拟滚动 + 可接取/可交付双标签；补全角色信息弹窗 6 核心属性 + 6 次级属性 + 6 装备槽 + Tag 组件；修正背包弹窗为 RecycleScroller 虚拟网格（useResponsiveGrid 48px/6gap）+ 整理背包 + 装备槽位选择子弹窗；修正技能弹窗为 4 格技能栏 + RecycleScroller 网格 + 记忆/遗忘机制；修正任务日志弹窗目标进度复选框 + 放弃确认；修正冒险日志 11 种日志类型颜色与图标映射；移除原文档不存在的"更换装备"按钮（角色面板仅"卸下"）+ 新增各弹窗 mermaid 布局草图 + 修复 mermaid 语法（ASCII ID/br标签）并对照 Vue 模板重写布局草图 |
+| 更新说明 | 依据 src/components/popup 全部 10 个弹窗组件最新源码逐项核查：第 1-8 章（通用弹窗/商店/任务看板/角色信息/背包/技能面板/任务日志/冒险日志）与源码一致，维持原描述；修复第 9 章（系统设置）界面布局草图 mermaid 截断问题并补全移动端设计与交互说明；新增第 10 章（音量设置弹窗 AudioSettingsPopup）：settings 为只读 computed 代理 gameStore.gameSettings（P3-116），主音量/音效/背景音乐三滑块 + 独立开/关 + 全局静音，修改经 setMasterVolume/updateSettings/toggleMute 异步委托 gameStore.updateGameSettings 即时持久化；新增第 11 章（战斗弹窗 CombatPopup）：全屏覆盖层（非 BasePopup）、3×2 敌人网格与稳定 key（row / row-col / 敌人 e.id，P3-145）、技能栏（最多 4 技能）/物品/跳过/逃跑、战斗日志倒序渲染（log.timestamp + '-' + i）、Boss 出场演出（line + '-' + i）与阶段转换特效、战斗结果自动关闭（victory 3 秒、defeat/fled 2 秒）与结果图标渐变（victory gold / defeat debuff / fled dodge）、4 个战斗 composables（useCombatSpeed/useCombatAutoClose/useBossIntroOverlay/useCombatAnimations）经 @/modules/combat 公共入口联动 |
 
 ## 版本历史
 
@@ -17,6 +17,10 @@
 | v1.0 | 2026-07-10 | 首版：比对全部弹窗组件源码后重写，补全 CombatPopup/SystemPopup/AudioSettingsPopup，修正商店/任务看板/角色信息/背包/技能/任务日志/冒险日志弹窗描述 | System |
 | v1.1 | 2026-07-10 | 新增各弹窗 mermaid 布局草图（共 16 张，覆盖 13 个弹窗，CombatPopup 含 3 子图、InventoryPopup 含 2 子图），同步顺延各弹窗小节编号 | System |
 | v1.2 | 2026-07-10 | 修复 mermaid 渲染问题并对照源码重写布局 | System |
+| v1.3 | 2026-08-03 | 依据最新源码修订：AudioSettingsPopup 音频设置收敛至 GameStore（P3-116）；CombatPopup v-for key 修复（P3-145）与战斗 composables 联动；修正战斗结果图标渐变与文案、补充 fled 自动关闭；补充各弹窗 EmptyState、ClassResourceBar、useResponsiveGrid 虚拟网格、稳定 key 与按钮禁用逻辑等源码细节 | System |
+| v1.4 | 2026-08-03 | 补齐技能面板/任务日志/冒险日志/系统设置/音量设置/战斗六章（依据源码）；细化 P3-116 音频收敛（GameStore 只读 computed 代理与即时持久化）、P3-145 v-for 稳定 key（bossIntroLines/logsReversed/敌人网格）、战斗 composables 联动（@/modules/combat 公共入口）、战斗结果自动关闭（victory 3 秒、defeat/fled 2 秒）与图标渐变（defeat debuff）、InventoryPopup/SkillsPopup 的 useResponsiveGrid 虚拟网格等源码细节 | System |
+| v1.5 | 2026-08-03 | 核查全部 10 个弹窗源码并补全正文第 6-11 章：修正 AdventureLogPopup 为滚动列表+清空日志（非分页）；补充 SkillsPopup 虚拟网格与 4 槽技能栏、QuestPopup 任务进度/放弃、SystemPopup 音量入口/退出、AudioSettingsPopup P3-116 GameStore 收敛、CombatPopup 稳定 key（P3-145）/composables 联动/Boss 演出/阶段转换/结果自动关闭；第 1-5 章与源码一致，维持原描述 | System |
+| v1.6 | 2026-08-03 | 对照全部 10 个弹窗组件源码核查：第 1-8 章维持原描述；修复第 9 章系统设置 mermaid 截断并补全移动端与交互说明；新增第 10 章音量设置弹窗（AudioSettingsPopup，P3-116 GameStore 收敛）与第 11 章战斗弹窗（CombatPopup，P3-145 稳定 key、Boss 出场演出/阶段转换、战斗结果自动关闭、4 个战斗 composables 联动） | System |
 
 ***
 
@@ -26,7 +30,7 @@
 
 ### 1.1 BasePopup 通用弹窗容器
 
-所有业务弹窗（商店/任务看板/角色信息/背包/技能/任务日志/冒险日志/系统/音量设置）均基于 BasePopup 容器组件。
+所有业务弹窗（商店/任务看板/角色信息/背包/技能/任务日志/冒险日志/系统/音量设置）均基于 BasePopup 容器组件（战斗弹窗 CombatPopup 为全屏覆盖层，不使用 BasePopup，详见第 11 章）。
 
 #### 1.1.1 组件接口
 
@@ -295,7 +299,6 @@ flowchart TB
 #### 1.4.5 动画
 
 Transition name="toast"：toast-enter-active（toast-in 0.3s）、toast-leave-active（toast-out 0.3s）。
-
 ***
 
 ## 2. 商店弹窗
@@ -304,7 +307,7 @@ Transition name="toast"：toast-enter-active（toast-in 0.3s）、toast-leave-ac
 
 ### 2.1 界面概述
 
-商品交易界面，提供购买/出售双标签页，支持 8 种分类筛选、数量选择、金币闪烁动画。标题来自 Shop Store 的商店配置名称。
+商品交易界面，提供购买/出售双标签页，支持 8 种分类筛选、数量选择、金币闪烁动画。标题来自 Shop Store 的商店配置名称（`shopStore.getShopConfig(currentShopId).name`，兜底为"商店"）。
 
 ### 2.2 PC端设计
 
@@ -319,7 +322,7 @@ BasePopup(title=shopName || '商店')
     │   ├── tab-btn "购买" [active: currentTab==='buy']
     │   └── tab-btn "出售" [active: currentTab==='sell']
     ├── category-tabs (8 个分类按钮)
-    ├── item-list (max-height: 320px, overflow-y: auto)
+    ├── item-list (max-height: 320px, overflow-y: auto, custom-scrollbar)
     │   └── item-card x N  [购买: displayShopItems / 出售: displaySellItems]
     │       ├── ItemIcon(size=md, rarity)
     │       ├── card-info (name / desc / quantity|count)
@@ -329,9 +332,10 @@ BasePopup(title=shopName || '商店')
         ├── detail-desc
         ├── detail-info (类型 / 单价|持有)
         ├── effect-info (效果文本)
-        └── detail-actions
-            ├── quantity-selector (- / input / +)
-            └── action-btn buy|sell (💰 购买xN / 出售xN)
+        ├── detail-actions
+        │   ├── quantity-selector (- / input / +)
+        │   └── action-btn buy|sell (💰 购买xN（总价） / 出售xN（总价）)  [buy disabled: 金币不足]
+        └── EmptyState(icon='chest', text='点击物品查看详情')  [v-if 未选中物品]
 ```
 
 #### 2.2.2 界面布局草图
@@ -366,6 +370,7 @@ flowchart TB
                         qty["quantity-selector -52x28+ qty-btn 28x28 qty-input 52x28"]
                         actionBtn["action-btn buy 购买绿渐变 / sell 出售橙渐变"]
                     end
+                    emptyState["EmptyState chest 点击物品查看详情"]
                 end
             end
         end
@@ -383,7 +388,7 @@ flowchart TB
 
     class overlay overlayCls
     class container,header,body containerCls
-    class tabs,catTabs,detailHead,detailInfo,effectInfo,detailAct regionCls
+    class tabs,catTabs,detailHead,detailInfo,effectInfo,detailAct,emptyState regionCls
     class gold goldCls
     class actionBtn buyCls
     class itemList listCls
@@ -444,9 +449,9 @@ flowchart TB
 |------|----------|------|
 | 切换购买/出售 | 点击 tab-btn | 切换 currentTab，清除选中和数量 |
 | 切换分类 | 点击 cat-btn | 筛选对应类别物品 |
-| 选择商品 | 点击 item-card | 选中物品，底部详情区显示信息 |
-| 调整数量 | 点击 -/＋ 或输入 qty-input | buyQuantity/sellQuantity 变更（受金币/库存/持有量限制） |
-| 购买 | 点击 action-btn.buy | shopStore.buyItem，成功后金币闪烁动画 |
+| 选择商品 | 点击 item-card | 选中物品，底部详情区显示信息（key 稳定：购买 entry.id / 出售 item.itemId） |
+| 调整数量 | 点击 -/＋ 或输入 qty-input | buyQuantity/sellQuantity 变更（受金币/库存/持有量限制，qty-btn 达边界时 disabled） |
+| 购买 | 点击 action-btn.buy | shopStore.buyItem，成功后金币闪烁动画（金币不足时按钮 disabled） |
 | 出售 | 点击 action-btn.sell | shopStore.sellItem，成功后金币闪烁动画 |
 
 ***
@@ -457,7 +462,7 @@ flowchart TB
 
 ### 3.1 界面概述
 
-区域任务板，提供"可接取任务"和"可交付任务"双标签页，使用 DynamicScroller 虚拟滚动渲染任务卡片。
+区域任务板，提供"可接取任务"和"可交付任务"双标签页，使用 DynamicScroller 虚拟滚动渲染任务卡片。任务板 ID 来源：props.boardId → 当前探索区域 ID → 'village' 兜底。
 
 ### 3.2 PC端设计
 
@@ -470,16 +475,19 @@ BasePopup(title='任务看板')
     │   ├── tab-btn "可接取任务" [active: currentTab==='available']
     │   └── tab-btn "可交付任务" [active: currentTab==='turnin']
     └── quest-list
-        └── DynamicScroller (min-item-size: 120|100, max-height: 400px)
-            └── quest-card.available|.turnin
-                ├── quest-icon (BaseIcon 34px, gradient=gold)
-                └── quest-content
-                    ├── quest-header-row (h3 + quest-level|quest-status)
-                    ├── quest-desc
-                    ├── quest-objectives [仅 available]
-                    │   └── objective (objective-text + objective-target)
-                    ├── quest-rewards (💰金币 + ⭐经验 + 📦物品数)
-                    └── accept-btn|claim-btn
+        ├── DynamicScroller (min-item-size: 120|100, max-height: 400px, key-field="id")
+        │   └── quest-card.available|.turnin
+        │       ├── quest-icon (BaseIcon 34px, gradient=gold)  [turnin 固定 laurel-crown]
+        │       └── quest-content
+        │           ├── quest-header-row (h3 + quest-level|quest-status)
+        │           ├── quest-desc
+        │           ├── quest-objectives [仅 available]  [objective key=obj.key]
+        │           │   └── objective (objective-text + objective-target)
+        │           ├── quest-rewards (💰金币 + ⭐经验 + 📦物品数)
+        │           └── accept-btn|claim-btn  [accept-btn disabled: 角色等级 < 任务等级]
+        └── EmptyState [v-if 列表为空]
+            ├── available: icon='notebook' text='暂无可接取的任务'
+            └── turnin: icon='laurel-crown' text='暂无可交付的任务'
 ```
 
 #### 3.2.2 界面布局草图
@@ -516,6 +524,7 @@ flowchart TB
                         end
                     end
                 end
+                emptyState["EmptyState notebook/laurel-crown 暂无可接取/交付的任务"]
             end
         end
     end
@@ -528,14 +537,14 @@ flowchart TB
 
     class overlay overlayCls
     class container,header,body containerCls
-    class tabs,headerRow,questDesc,questObj,questRewards,questContent regionCls
+    class tabs,headerRow,questDesc,questObj,questRewards,questContent,emptyState regionCls
     class questList,questCard listCls
     class acceptBtn acceptCls
     class questIcon containerCls
     class close regionCls
 ```
 
-> `available` 卡片边框 `@skill-blue`，`turnin` 卡片边框 `@heal-hp`；`accept-btn` 绿色渐变，`claim-btn` 金橙渐变。
+> `available` 卡片边框 `@skill-blue`，`turnin` 卡片边框 `@heal-hp`；`accept-btn` 绿色渐变，`claim-btn` 金橙渐变。列表与目标均使用稳定 key（DynamicScroller key-field="id"、objective key=obj.key）。
 
 #### 3.2.3 任务卡片样式
 
@@ -561,9 +570,8 @@ flowchart TB
 | 交互 | 触发方式 | 响应 |
 |------|----------|------|
 | 切换标签 | 点击 tab-btn | 切换 available/turnin 列表 |
-| 接取任务 | 点击 accept-btn | questStore.acceptQuestFromBoard，成功/失败显示 Toast |
+| 接取任务 | 点击 accept-btn | questStore.acceptQuestFromBoard，成功/失败显示 Toast（角色等级低于任务等级时按钮 disabled） |
 | 交付任务 | 点击 claim-btn | questStore.turnInQuestToBoard，成功/失败显示 Toast |
-
 ***
 
 ## 4. 角色信息弹窗
@@ -572,7 +580,7 @@ flowchart TB
 
 ### 4.1 界面概述
 
-角色完整属性面板，展示角色基本信息、3 个 Tag 标签（阵营/种族/职业）、HP/MP/EXP 资源条、6 项核心属性、6 项次级属性、6 个装备槽位及装备详情。
+角色完整属性面板，展示角色基本信息、3 个 Tag 标签（阵营/种族/职业）、HP/MP/EXP 资源条及职业专属资源条、6 项核心属性、6 项次级属性、6 个装备槽位及装备详情。
 
 ### 4.2 PC端设计
 
@@ -585,14 +593,18 @@ BasePopup(title='角色信息')
     │   ├── character-basic
     │   │   ├── char-row (char-avatar 52x52 + char-name + char-level)
     │   │   └── char-details (Tagx3: faction / race / class)
-    │   └── resource-bars (ResourceBarx3: HP / MP / EXP)
+    │   └── resource-bars
+    │       ├── ResourceBar HP (health-normal / blood)
+    │       ├── ResourceBar MP (magic-palm / mana)  [v-if showManaBar]
+    │       ├── ClassResourceBar x N (职业专属资源)  [仅替代型职业: 怒气/能量等]
+    │       └── ResourceBar EXP (star-formation / gold)
     ├── attributes-section (核心属性)
-    │   └── core-attributes (grid 2列, 6 项)
+    │   └── core-attributes (grid 2列, 6 项)  [key=属性键]
     ├── secondary-section (次级属性)
     │   ├── secondary-grid (grid 2列, 6 项 + border-left 颜色)
-    │   └── resource-stats (最大HP / 最大MP)
+    │   └── resource-stats (最大HP / 最大MP [v-if showManaBar])
     └── equipment-section (装备)
-        ├── equipment-grid (grid 3列, 6 槽位)
+        ├── equipment-grid (grid 3列, 6 槽位)  [key=slot.key 稳定]
         │   ├── weaponSlots: weapon1(主手) / weapon2(副手)
         │   └── armorSlots: armor1 / armor2 / armor3 / armor4
         └── equipment-detail (选中装备详情或 EmptyState)
@@ -619,7 +631,7 @@ flowchart TB
                         charRow["char-row char-avatar 52x52 char-name + char-level"]
                         charDetails["char-details Tagx3 faction/race/class"]
                     end
-                    resBars["resource-bars ResourceBarx3 HP/MP/EXP 液态波浪"]
+                    resBars["resource-bars ResourceBar HP/MP/EXP 液态波浪 + ClassResourceBarxN 职业专属"]
                 end
                 coreAttr["core-attributes grid 2列 6项 str/dex/con/int/wis/cha"]
                 subgraph secondary["secondary-section"]
@@ -721,8 +733,8 @@ BasePopup(title='背包')
 │   └── header-info (gold-display + inventory-count "X / 50")
 ├── slot#default → inventory-content
 │   ├── category-tabs (8 个分类按钮)
-│   ├── inventory-grid (RecycleScroller, useResponsiveGrid: 48px / gap 6)
-│   │   └── item-slot x N
+│   ├── inventory-grid (RecycleScroller, useResponsiveGrid: 48px / gap 6, key-field="id")
+│   │   └── item-slot x N  [条目 id 唯一: 物品 `item-${itemId}-${idx}` / 空槽 `empty-${i}`]
 │   │       ├── ItemIcon(size=sm, rarity)
 │   │       └── item-count [v-if count > 1]
 │   └── item-detail
@@ -731,7 +743,8 @@ BasePopup(title='背包')
 │       ├── detail-info (类型 / 数量 / 等级)
 │       ├── bonus-info (bonus 属性列表)
 │       ├── effect-info (EffectTag + effect-value)
-│       └── detail-actions (use / equip / drop)
+│       ├── detail-actions (use / equip|unequip / drop)
+│       └── EmptyState(icon='backpack', text='点击物品查看详情')  [v-if 未选中]
 └── slot#footer
     └── button.popup-footer-btn.organize "整理背包"
 
@@ -772,6 +785,7 @@ flowchart TB
                         equipBtn["equip 装备/卸下 蓝渐变 weapon/armor"]
                         dropBtn["drop 丢弃 红渐变 始终"]
                     end
+                    emptyState["EmptyState backpack 点击物品查看详情"]
                 end
             end
             subgraph footer["popup-footer"]
@@ -794,7 +808,7 @@ flowchart TB
 
     class overlay overlayCls
     class container,header,body,footer containerCls
-    class catTabs,detailHead,detailInfo,bonusInfo,effectInfo,detail,detailAct regionCls
+    class catTabs,detailHead,detailInfo,bonusInfo,effectInfo,detail,detailAct,emptyState regionCls
     class invGrid gridCls
     class organize organizeCls
     class useBtn useCls
@@ -874,7 +888,7 @@ flowchart TB
 
 ### 5.3 移动端设计
 
-useResponsiveGrid 根据容器宽度自动计算列数：cols = Math.max(1, Math.floor((width + gap) / (minItemSize + gap)))，移动端列数减少。
+useResponsiveGrid 根据容器宽度自动计算列数：cols = Math.max(1, Math.floor((width + gap) / (minItemSize + gap)))，移动端列数减少。实现通过 ResizeObserver 监听容器宽度，并以 requestAnimationFrame 节流（P3-123）避免布局抖动，卸载时自动断开观察并清理未执行的 raf。
 
 ### 5.4 交互说明
 
@@ -887,16 +901,15 @@ useResponsiveGrid 根据容器宽度自动计算列数：cols = Math.max(1, Math
 | 装备物品 | 点击"装备" | 单槽位直接装备；多槽位弹出选择弹窗 |
 | 选择槽位 | 点击 slot-option-btn | equipmentStore.equipItem，播放 equip-anim-fill 动画 |
 | 丢弃物品 | 点击"丢弃" | 弹出 ConfirmPopup 确认后 removeItemByIndex |
-
 ***
 
-## 6. 技能弹窗
+## 6. 技能面板弹窗
 
 来源：`src/components/popup/SkillsPopup.vue`
 
 ### 6.1 界面概述
 
-技能面板，展示 4 格战斗技能栏和已学习技能网格，支持将技能记忆/遗忘到战斗技能槽位。
+角色技能管理界面，展示已记忆技能（战斗技能栏，4 槽位）与已学习技能列表（RecycleScroller 虚拟网格），支持将技能"记忆"到战斗技能槽位或"遗忘"。状态来源：useSkillStore（skillBarSlots/skillBar.slots）、useCharacterStore（classId/level）、useSkillDisplay（效果文本）。
 
 ### 6.2 PC端设计
 
@@ -905,25 +918,35 @@ useResponsiveGrid 根据容器宽度自动计算列数：cols = Math.max(1, Math
 ```
 BasePopup(title='技能面板')
 └── slot#default → skills-content
-    ├── skill-bar-section (已记忆技能)
-    │   └── skill-bar (grid 4列)
-    │       └── bar-slot x 4
-    │           ├── BaseIcon(gradient=classId, size=24) + bar-name  [有技能]
-    │           └── bar-empty "+"  [空槽位]
-    ├── skills-grid-section (已学习技能)
-    │   └── skills-grid (RecycleScroller, useResponsiveGrid: 48px / gap 6)
-    │       └── skill-slot x N
-    │           ├── BaseIcon(gradient=classId, size=24)
-    │           ├── lock-badge (padlock)  [未解锁]
-    │           └── equipped-badge (check-mark, heal)  [已装备]
-    └── skill-detail
-        ├── detail-top
-        │   ├── detail-header (BaseIcon 36px + h3 + SkillTags)
-        │   └── detail-actions (遗忘|记忆 按钮)
-        ├── detail-desc
-        └── detail-bottom
-            ├── detail-effect (效果标签 + 效果值)
-            └── detail-level-req (解锁等级 / 需要等级)
+    ├── skill-bar-section
+    │   ├── h3 "已记忆技能 (战斗中使用)"
+    │   └── skill-bar (grid 4列, :key=barRenderKey 记忆/遗忘后强制重渲染)
+    │       └── bar-slot x 4  [key=index]
+    │           ├── 已记忆: BaseIcon(24, gradient=classId) + bar-name
+    │           └── 空槽: bar-empty "+"
+    │           [选中态: .selected 金色边框; 空槽: .empty 虚线边框]
+    ├── skills-grid-section
+    │   ├── h3 "已学习技能"
+    │   └── skills-grid → RecycleScroller (useResponsiveGrid: 48px / gap 6, key-field="id", max-height: 180px)
+    │       └── skill-slot x N  [item: {id, skill}]
+    │           ├── BaseIcon(24, gradient=classId)
+    │           ├── lock-badge (padlock)  [v-if 未解锁: 角色等级 < unlockLevel]
+    │           └── equipped-badge (check-mark, heal)  [v-if 已在技能栏]
+    │           [状态: .equipped 绿边框 / .locked 半透明 / .selected 金底]
+    └── skill-detail [选中技能详情, .locked 态整体变色]
+        ├── EmptyState(icon='sword-clash', text='点击技能查看详情')  [v-if 未选中]
+        └── 选中态
+            ├── detail-top
+            │   ├── detail-header (BaseIcon 36 + h3 + SkillTags)
+            │   └── detail-actions
+            │       ├── button.action-btn.forget "遗忘"  [v-if 已记忆, 红渐变]
+            │       └── button.action-btn.memorize "记忆"  [v-else-if 可解锁, 绿渐变]
+            ├── detail-desc
+            └── detail-bottom
+                ├── detail-effect (effect-label "效果:" + effect-value[type 配色])
+                └── detail-level-req
+                    ├── 未解锁: padlock + "需要等级 N" (红底)
+                    └── 已解锁: check-mark + "解锁等级 N" (绿底)
 ```
 
 #### 6.2.2 界面布局草图
@@ -940,25 +963,28 @@ flowchart TB
             end
             subgraph body["popup-body skills-content"]
                 direction TB
-                subgraph barSection["skill-bar-section 已记忆技能"]
-                    skillBar["skill-bar grid 4列 min-height:60px bar-slotx4 icon + name / +"]
-                end
-                subgraph gridSection["skills-grid-section 已学习技能"]
-                    skillsGrid["skills-grid RecycleScroller 48px/6gap skill-slotxN icon + lock-badge + equipped-badge"]
-                end
-                subgraph detail["skill-detail"]
+                subgraph barSec["skill-bar-section"]
                     direction TB
-                    subgraph detailTop["detail-top"]
+                    barTitle["h3 已记忆技能 (战斗中使用)"]
+                    subgraph skillBar["skill-bar grid 4列 barRenderKey"]
                         direction LR
-                        detailHead["detail-header BaseIcon 36px + h3 + SkillTags"]
-                        detailAct["detail-actions 遗忘红渐变 / 记忆绿渐变"]
+                        slot1["bar-slot 技能1/+" ]
+                        slot2["bar-slot 技能2/+"]
+                        slot3["bar-slot 技能3/+"]
+                        slot4["bar-slot 技能4/+"]
                     end
+                end
+                subgraph gridSec["skills-grid-section"]
+                    direction TB
+                    gridTitle["h3 已学习技能"]
+                    grid["skills-grid RecycleScroller useResponsiveGrid 48px/6gap key=id skill-slotxN 图标+锁徽章+已装备徽章"]
+                end
+                subgraph detail["skill-detail 详情"]
+                    direction TB
+                    detailTop["detail-top BaseIcon 36 + h3 + SkillTags + 记忆/遗忘按钮"]
                     detailDesc["detail-desc"]
-                    subgraph detailBottom["detail-bottom"]
-                        direction LR
-                        detailEffect["detail-effect 效果标签 + 效果值"]
-                        detailLevel["detail-level-req 解锁/需要等级"]
-                    end
+                    detailBottom["detail-bottom 效果文本 + 需要/解锁等级"]
+                    emptyState["EmptyState sword-clash 点击技能查看详情"]
                 end
             end
         end
@@ -972,68 +998,52 @@ flowchart TB
 
     class overlay overlayCls
     class container,header,body containerCls
-    class barSection,gridSection,detailHead,detailDesc,detailEffect,detailLevel,detail,detailTop,detailBottom regionCls
-    class skillBar,skillsGrid gridCls
-    class detailAct memoCls
+    class barSec,gridSec,detailTop,detailDesc,detailBottom,emptyState regionCls
+    class skillBar,grid listCls
+    class barTitle,gridTitle regionCls
+    class memorize memoCls
     class close regionCls
 ```
 
-> 技能栏 `bar-slot.empty` 虚线边框；`bar-slot.selected` 金色边框 + box-shadow；网格 `skill-slot.locked` opacity:0.5；`skill-slot.equipped` 绿色边框。
-
-#### 6.2.3 技能栏槽样式
+#### 6.2.3 技能槽样式
 
 | 类名 | 样式 |
 |------|------|
-| .bar-slot | min-height: 60px; animation: scaleIn 0.3s |
+| .bar-slot | min-height: 60px; background: @white-05; border: @border-card; animation: scaleIn 0.3s |
 | .bar-slot.selected | border-color: @accent-color; background: @gold-bg-hover; box-shadow: 0 0 10px @gold-border |
 | .bar-slot.empty | border-style: dashed; border-color: @color-dark-line |
-
-#### 6.2.4 技能网格槽样式
-
-| 类名 | 样式 |
-|------|------|
+| .skill-slot | background: @white-05; border: @border-card; border-radius: @radius-sm; position: relative |
 | .skill-slot.equipped | border-color: @heal-hp; background: @green-bg-hover |
 | .skill-slot.locked | opacity: @opacity-faded; cursor: not-allowed |
-| .skill-slot.selected | background: @gold-bg-active |
+| .skill-slot.selected | background: @gold-bg-active; border-color: transparent |
+| .lock-badge | position: absolute; top: -2px; right: -2px |
+| .equipped-badge | position: absolute; bottom: -2px; right: -2px; 圆形 @overlay-heavy 底 |
 
-#### 6.2.5 操作按钮样式
+#### 6.2.4 详情按钮与效果配色
 
-| 按钮 | 条件 | 背景色 |
-|------|------|--------|
-| 记忆 | canUnlock && !equipped | linear-gradient(135deg, @heal-hp, #45a049) |
-| 遗忘 | isEquipped | linear-gradient(135deg, @damage-physical, #ee5a24) |
-
-#### 6.2.6 等级要求样式
-
-| 状态 | 图标 | 文字色 | 背景 |
-|------|------|--------|------|
-| 已解锁 | check-mark (heal) | @heal-hp | @green-bg + border rgba(76,175,80,0.2) |
-| 未解锁 | padlock | @damage-physical | rgba(255,107,107,0.15) + border rgba(255,107,107,0.3) |
-
-#### 6.2.7 效果值颜色
-
-| 技能类型 | 颜色 |
-|----------|------|
-| physical_damage | @damage-physical |
-| magic_damage | @damage-magic |
-| heal | @heal-hp |
+| 元素 | 条件 | 样式 |
+|------|------|------|
+| .action-btn.memorize | 可解锁且未记忆 | linear-gradient(135deg, @heal-hp, #45a049) |
+| .action-btn.forget | 已记忆 | linear-gradient(135deg, @damage-physical, #ee5a24) |
+| .effect-value.physical_damage | 物理伤害技能 | @damage-physical |
+| .effect-value.magic_damage | 魔法伤害技能 | @damage-magic |
+| .effect-value.heal | 治疗技能 | @heal-hp |
+| .detail-level-req:has(.level-lock-icon) | 未解锁 | rgba(255,107,107,0.15) 底 + 红边框 |
+| .detail-level-req:has(.level-unlock-icon) | 已解锁 | @green-bg 底 + 绿边框 |
 
 ### 6.3 移动端设计
 
-| 元素 | PC | 移动端 (max-width: 600px) |
-|------|-----|--------------------------|
-| bar-slot min-height | 60px | 50px |
-| skills-scroller max-height | 180px | 130px |
-| bar-slot padding | @spacing-lg @spacing-sm | @spacing-md @spacing-xs |
+skill-bar 缩小 gap/padding，bar-slot min-height 降至 50px，skills-scroller max-height 降至 130px。
 
 ### 6.4 交互说明
 
 | 交互 | 触发方式 | 响应 |
 |------|----------|------|
-| 选择技能栏槽 | 点击 bar-slot | 选中槽位，显示该槽技能详情 |
-| 选择技能 | 点击 skill-slot | 选中技能，显示详情 |
-| 记忆技能 | 点击"记忆" | equipSkill 到选中槽位或空槽位（无空位时替换槽位0） |
-| 遗忘技能 | 点击"遗忘" | unequipSkill 从技能栏移除 |
+| 选择技能 | 点击 skill-slot | 选中技能显示详情（UI_CLICK source='skill_select'） |
+| 选择技能栏槽位 | 点击 bar-slot | 记录目标槽位，若槽内已有技能则同时选中该技能（source='skill_bar_slot'） |
+| 记忆技能 | 点击"记忆" | skillsStore.equipSkill 到选中槽或首个空槽；无空槽时自动替换技能栏第 1 槽；barRenderKey++ 重渲染（source='skill_memorize'） |
+| 遗忘技能 | 点击"遗忘" | skillsStore.unequipSkill，清除选中；barRenderKey++（source='skill_forget'） |
+| 数据加载 | onMounted | skillsStore.initialize(角色ID) + getSkillTemplatesByClass(classId) 按 unlockLevel 升序 |
 
 ***
 
@@ -1043,7 +1053,7 @@ flowchart TB
 
 ### 7.1 界面概述
 
-展示玩家当前进行中的任务列表（含进行中和可交付），支持查看目标进度和放弃任务。
+当前进行中任务列表，展示任务标题、状态、目标进度与奖励，支持放弃任务（ConfirmPopup 二次确认）。状态来源：useQuestStore（activeQuests/completedQuests/getQuestDefinition/getQuestInstance）。
 
 ### 7.2 PC端设计
 
@@ -1053,19 +1063,23 @@ flowchart TB
 BasePopup(title='任务日志')
 └── slot#default
     ├── quest-list
-    │   └── quest-card x N
-    │       ├── BaseIcon(34px, gradient)
+    │   └── quest-card x N  [key=quest.questId, 入场动画 card-slide-in]
+    │       ├── BaseIcon 34px (kill: sword-clash/physical; collect: treasure-map/gold; 默认: scroll-unfurled/gold)
     │       └── quest-content
     │           ├── quest-header-row (h3 + quest-status)
+    │           │   └── in_progress: "进行中" 蓝底 / completed: "可交付" 绿底
     │           ├── quest-desc
-    │           ├── objectives
-    │           │   └── objective (checkbox + text + progress) [.completed]
-    │           ├── quest-rewards (💰 + ⭐)
-    │           └── quest-actions [v-if status !== 'completed']
-    │               └── abandon-btn "放弃"
+    │           ├── objectives  [objective key=obj.key]
+    │           │   └── objective [.completed 绿底]
+    │           │       ├── objective-checkbox (完成: check-mark/heal / 未完成: empty-box)
+    │           │       ├── objective-text
+    │           │       └── objective-progress (current/target)
+    │           ├── quest-rewards (💰金币 + ⭐经验)
+    │           └── quest-actions  [v-if status !== 'completed']
+    │               └── abandon-btn "放弃" (红渐变)
     └── EmptyState(icon='notebook', text='暂无进行中的任务')  [v-if 无任务]
 
-ConfirmPopup(title='确认放弃', type='danger')  [放弃确认]
+ConfirmPopup(title='确认放弃', type='danger')  [放弃确认: "确定放弃此任务吗？放弃后任务进度将被清除。"]
 ```
 
 #### 7.2.2 界面布局草图
@@ -1084,16 +1098,16 @@ flowchart TB
                 direction TB
                 subgraph questList["quest-list"]
                     direction TB
-                    subgraph questCard["quest-cardxN"]
+                    subgraph questCard["quest-card"]
                         direction LR
-                        questIcon["BaseIcon 34px gradient"]
-                        subgraph questContent["quest-content"]
+                        qIcon["BaseIcon 34px 按类型"]
+                        subgraph qContent["quest-content"]
                             direction TB
-                            headerRow["quest-header-row h3 + quest-status in_progress 蓝 / completed 绿"]
-                            questDesc["quest-desc"]
-                            questObj["objectives objectivexN checkbox + text + progress completed 绿背景"]
-                            questRewards["quest-rewards 金币/经验"]
-                            abandonBtn["abandon-btn 放弃 红渐变"]
+                            qHeader["quest-header-row h3 + 进行中/可交付"]
+                            qDesc["quest-desc"]
+                            qObj["objectives 目标 checkbox+文本+进度"]
+                            qRewards["quest-rewards 金币/经验"]
+                            qActions["abandon-btn 放弃 红渐变"]
                         end
                     end
                 end
@@ -1105,48 +1119,22 @@ flowchart TB
     classDef overlayCls fill:#000000,stroke:#000,color:#fff
     classDef containerCls fill:#1a1a2e,stroke:#ffd700,color:#f0f0f0
     classDef regionCls fill:#2a2a3e,stroke:#ffd700,color:#ffd700
-    classDef progCls fill:#0099ff,stroke:#0099ff,color:#0099ff,opacity:0.2
     classDef abandonCls fill:#ff4444,stroke:#cc0000,color:#fff
 
     class overlay overlayCls
     class container,header,body containerCls
-    class questList,questContent,questDesc,questObj,questRewards,emptyState,questCard regionCls
-    class headerRow progCls
-    class abandonBtn abandonCls
-    class questIcon containerCls
+    class qHeader,qDesc,qObj,qRewards,qActions,emptyState regionCls
+    class questCard,questList listCls
+    class qActions abandonCls
     class close regionCls
 ```
 
-> 任务状态色：`in_progress` 蓝（@skill-blue）/ `completed` 绿（@heal-hp）；目标完成态 `.objective.completed` 绿背景。
+#### 7.2.3 任务状态配色
 
-**放弃任务确认子弹窗**（点击放弃后弹出 ConfirmPopup danger 类型，详见 1.2.3）。
-
-#### 7.2.3 任务状态样式
-
-| 状态 | 文本 | 背景 | 文字色 |
-|------|------|------|--------|
-| in_progress | 进行中 | rgba(0, 153, 255, 0.2) | @skill-blue |
-| completed | 可交付 | rgba(76, 175, 80, 0.2) | @heal-hp |
-
-#### 7.2.4 目标样式
-
-| 类名 | 样式 |
-|------|------|
-| .objective.completed | background: rgba(76, 175, 80, 0.2) |
-| .objective-checkbox (完成) | check-mark 图标 (heal) |
-| .objective-checkbox (未完成) | empty-box 图标 |
-
-#### 7.2.5 任务图标映射
-
-| 任务类型 | 图标名 | 渐变 |
-|----------|--------|------|
-| kill | sword-clash | physical |
-| collect | treasure-map | gold |
-| 默认 | scroll-unfurled | gold |
-
-#### 7.2.6 放弃按钮
-
-abandon-btn：linear-gradient(135deg, @danger-color, #cc0000)。
+| 状态 | 文本 | 背景/文字色 |
+|------|------|-------------|
+| in_progress | 进行中 | rgba(0, 153, 255, 0.2) 底 / @skill-blue |
+| completed | 可交付 | rgba(76, 175, 80, 0.2) 底 / @heal-hp |
 
 ### 7.3 移动端设计
 
@@ -1156,8 +1144,9 @@ abandon-btn：linear-gradient(135deg, @danger-color, #cc0000)。
 
 | 交互 | 触发方式 | 响应 |
 |------|----------|------|
-| 放弃任务 | 点击"放弃" | 弹出 ConfirmPopup 确认后 questStore.abandonQuest，Toast 提示 |
-
+| 放弃任务 | 点击"放弃" | 弹出 ConfirmPopup 确认（source='quest_abandon_btn'） |
+| 确认放弃 | 点击确认 | questStore.abandonQuest + Toast '已放弃任务'（⚠️）+ 刷新列表 |
+| 数据加载 | onMounted / 弹窗打开 | questStore.init() |
 ***
 
 ## 8. 冒险日志弹窗
@@ -1166,7 +1155,7 @@ abandon-btn：linear-gradient(135deg, @danger-color, #cc0000)。
 
 ### 8.1 界面概述
 
-展示当前区域冒险记录列表，支持按类型着色和清空日志。
+冒险记录展示界面，以滚动日志列表形式（非分页）按时间倒序/正序展示全部日志条目，支持按日志类型着色与清空日志（ConfirmPopup 二次确认）。状态来源：useLogStore（logs 计算属性直接引用 logStore.logs，日志变更即时刷新界面）。
 
 ### 8.2 PC端设计
 
@@ -1175,17 +1164,17 @@ abandon-btn：linear-gradient(135deg, @danger-color, #cc0000)。
 ```
 BasePopup(title='冒险日志')
 ├── slot#default
-│   ├── log-header [v-if currentArea]  ("{currentArea} - 冒险记录")
-│   └── log-container (overflow-y: auto, custom-scrollbar)
-│       └── log-entry x N  [class: log-type-{type}]
-│           ├── log-time (monospace, format: MM-DD HH:mm:ss)
-│           ├── log-icon (BaseIcon 16px)
-│           └── log-message
-│       └── EmptyState(icon='scroll-unfurled', text='暂无冒险记录')  [v-if 无日志]
+│   ├── log-header  [v-if currentArea: "{{ currentArea }} - 冒险记录"（currentArea 兜底为"未知区域"）]
+│   └── log-container (flex:1, overflow-y:auto, custom-scrollbar, 背景 #0f0f1a 边框 #3a3a5a)
+│       └── log-entry x N  [key=log.id, class=`log-type-${log.type}`]
+│           ├── log-time (MM-DD HH:mm:ss, monospace, min-width:110px, 色 #8a8aaa)
+│           ├── log-icon (BaseIcon 16px: log.icon || getDefaultIcon(log.type))
+│           └── log-message (flex:1, 色 #d0d0f0)
+│       └── EmptyState(icon='scroll-unfurled', text='暂无冒险记录')  [v-if logs.length === 0]
 └── slot#footer
-    └── button.popup-footer-btn.danger "清空日志"
+    └── button.popup-footer-btn.danger "清空日志"  [source='log_clear_btn']
 
-ConfirmPopup(title='清空日志', type='danger')  [清空确认]
+ConfirmPopup(title='清空日志', message='确定要清空所有冒险日志吗？此操作不可撤销。', type='danger')
 ```
 
 #### 8.2.2 界面布局草图
@@ -1202,15 +1191,20 @@ flowchart TB
             end
             subgraph body["popup-body"]
                 direction TB
-                logHeader["log-header v-if currentArea 区域名 - 冒险记录 背景 252540"]
-                subgraph logContainer["log-container overflow-y:auto 背景 0f0f1a 边框 3a3a5a"]
+                logHeader["log-header 当前区域 - 冒险记录"]
+                subgraph logContainer["log-container 滚动日志列表 custom-scrollbar"]
                     direction TB
-                    logEntry["log-entryxN log-type-type log-time monospace min-width:110px log-icon BaseIcon 16px log-message d0d0f0"]
+                    subgraph logEntry["log-entry log-type-xxx"]
+                        direction LR
+                        logTime["log-time MM-DD HH:mm:ss"]
+                        logIcon["log-icon BaseIcon 16px"]
+                        logMsg["log-message 日志文本"]
+                    end
                     emptyState["EmptyState scroll-unfurled 暂无冒险记录"]
                 end
             end
             subgraph footer["popup-footer"]
-                clearBtn["popup-footer-btn.danger 清空日志"]
+                clearBtn["popup-footer-btn.danger 清空日志 红底"]
             end
         end
     end
@@ -1218,388 +1212,96 @@ flowchart TB
     classDef overlayCls fill:#000000,stroke:#000,color:#fff
     classDef containerCls fill:#1a1a2e,stroke:#ffd700,color:#f0f0f0
     classDef regionCls fill:#2a2a3e,stroke:#ffd700,color:#ffd700
-    classDef logCls fill:#0f0f1a,stroke:#3a3a5a,color:#d0d0f0
-    classDef headerCls fill:#252540,stroke:#3a3a5a,color:#a0a0c0
+    classDef listCls fill:#0f0f1a,stroke:#3a3a5a,color:#d0d0f0
     classDef dangerCls fill:#ff4444,stroke:#cc0000,color:#fff
 
     class overlay overlayCls
     class container,header,body,footer containerCls
-    class logEntry,emptyState,logContainer logCls
-    class logHeader headerCls
+    class logHeader,logTime,logIcon,logMsg,emptyState regionCls
+    class logContainer,logEntry listCls
     class clearBtn dangerCls
     class close regionCls
 ```
 
-> 11 种日志类型对应不同背景色与图标（详见 8.2.3 日志类型颜色与图标）：info/combat/quest/item/level/death/resurrect/shop/skill/exploration/zone。
+#### 8.2.3 日志类型着色
 
-#### 8.2.3 日志类型颜色与图标
+| 类型 | 背景色 |
+|------|--------|
+| log-type-info | rgba(100, 100, 150, 0.1) |
+| log-type-combat | rgba(200, 80, 80, 0.1) |
+| log-type-quest | rgba(80, 150, 200, 0.1) |
+| log-type-item | rgba(150, 80, 200, 0.1) |
+| log-type-level | rgba(200, 180, 80, 0.1) |
+| log-type-death | rgba(180, 40, 40, 0.15) |
+| log-type-resurrect | rgba(80, 200, 180, 0.1) |
+| log-type-shop | rgba(200, 150, 80, 0.1) |
+| log-type-skill | rgba(80, 200, 80, 0.1) |
+| log-type-exploration | rgba(80, 120, 200, 0.1) |
+| log-type-zone | rgba(150, 100, 200, 0.1) |
 
-| 类型 | 图标名 | 渐变 | 背景色 |
-|------|--------|------|--------|
-| info | scroll-unfurled | earth | rgba(100, 100, 150, 0.1) |
-| combat | crossed-swords | physical | rgba(200, 80, 80, 0.1) |
-| quest | notebook | gold | rgba(80, 150, 200, 0.1) |
-| item | chest | gold | rgba(150, 80, 200, 0.1) |
-| level | level-up | gold | rgba(200, 180, 80, 0.1) |
-| death | death-skull | debuff | rgba(180, 40, 40, 0.15) |
-| resurrect | resurrection | gold | rgba(80, 200, 180, 0.1) |
-| shop | shop | gold | rgba(200, 150, 80, 0.1) |
-| skill | resurrection | gold | rgba(80, 200, 80, 0.1) |
-| exploration | treasure-map | nature | rgba(80, 120, 200, 0.1) |
-| zone | uncertainty | shadow | rgba(150, 100, 200, 0.1) |
+#### 8.2.4 默认图标映射（getDefaultIcon）
 
-#### 8.2.4 容器样式
-
-| 元素 | 样式 |
-|------|------|
-| .log-header | color: #a0a0c0; background: #252540; border-radius: @radius-sm |
-| .log-container | background: #0f0f1a; border: 1px solid #3a3a5a; border-radius: @radius-md |
-| .log-time | color: #8a8aaa; font-family: monospace; min-width: 110px |
-| .log-message | color: #d0d0f0 |
+| 日志类型 | 图标名 | 渐变色 |
+|----------|--------|--------|
+| info | scroll-unfurled | earth |
+| combat | crossed-swords | physical |
+| quest | notebook | gold |
+| item | chest | gold |
+| level | level-up | gold |
+| death | death-skull | debuff |
+| resurrect | resurrection | gold |
+| shop | shop | gold |
+| skill | resurrection | gold |
+| exploration | treasure-map | nature |
+| zone | uncertainty | shadow |
+| 其他/默认 | scroll-unfurled | earth |
 
 ### 8.3 移动端设计
 
-| 元素 | PC | 移动端 (max-width: 640px) |
-|------|-----|--------------------------|
-| log-entry font-size | @font-base | 12px |
-| log-time min-width | 110px | 95px |
-| log-time font-size | @font-sm | 11px |
+`@media (max-width: 640px)`：log-entry 字体降至 12px，log-time min-width 降至 95px、字体 11px。
 
 ### 8.4 交互说明
 
 | 交互 | 触发方式 | 响应 |
 |------|----------|------|
-| 清空日志 | 点击"清空日志" | 弹出 ConfirmPopup 确认后 logStore.clearLogs |
-| 关闭弹窗 | 点击关闭 | emit close |
+| 滚动查看日志 | 拖动 log-container | 任意滚动（非分页），custom-scrollbar 样式 |
+| 清空日志 | 点击"清空日志" | 弹出 ConfirmPopup 确认（source='log_clear_btn'） |
+| 确认清空 | 点击确认 | logStore.clearLogs()，关闭确认弹窗 |
+| 数据加载 | onMounted | nextTick 后 scrollToBottom 滚动到底部，展示最新日志 |
 
 ***
 
-## 9. 战斗弹窗
+## 9. 系统设置弹窗
 
-来源：`src/components/popup/CombatPopup.vue`
+来源：`src/components/popup/SystemPopup.vue`
 
 ### 9.1 界面概述
 
-回合制战斗全屏覆盖层，**不使用 BasePopup 容器**，采用独立的 combat-overlay 全屏遮罩。包含敌人 3x2 网格、玩家区域、战斗日志、行动按钮、战斗结果弹窗、物品选择弹窗，以及 Boss 出场演出、阶段转换、粒子特效等动画系统。
+游戏系统菜单，作为游戏主界面底部"系统"按钮的弹出面板，提供"音量设置"入口与"退出游戏"功能。基于 BasePopup 容器（max-width 340px，无底部"关闭"按钮自动生成，底部按钮由 slot#footer 提供）。状态来源：props.visible。
 
 ### 9.2 PC端设计
 
 #### 9.2.1 布局结构
 
 ```
-combat-overlay (全屏)
-└── combat-container (width: 95%, max-width: 700px, max-height: 95vh)
-    ├── screen-flash [v-show] (暴击闪白遮罩)
-    ├── boss-intro-overlay [v-if showBossIntro] (Boss 出场演出)
-    │   └── boss-intro-content (icon + name + lines)
-    ├── phase-transition [v-if showPhaseTransition] (Boss 阶段转换)
-    │   ├── phase-transition-backdrop
-    │   └── phase-transition-content (label + text)
-    ├── combat-header
-    │   ├── combat-title ("首领战斗！" | "遭遇战斗！")
-    │   ├── speed-toggle (1x | 2x)
-    │   └── combat-turn ("第 N 回合")
-    ├── combat-arena
-    │   ├── enemy-grid (flex 1.5)
-    │   │   └── enemy-row x 2 (back / front)
-    │   │       └── enemy-slot x 3 (min-height: 100px)
-    │   │           └── combatant.enemy-side [shake|crit-shake|dodge-blink|defeated|targeted]
-    │   │               ├── combatant-avatar (BaseIcon 28px)
-    │   │               ├── combatant-info (name + level + boss-badge)
-    │   │               ├── combatant-bars (ResourceBar HP)
-    │   │               ├── effects-indicator (effect-badge x N)
-    │   │               └── floating-damage [v-show]
-    │   ├── vs-divider [flash] (crossed-swords 20px)
-    │   └── combatant.player-side [shake|crit-shake|dodge-blink]
-    │       ├── combatant-avatar (BaseIcon 28px)
-    │       ├── combatant-info (name + level)
-    │       ├── combatant-bars
-    │       │   ├── ResourceBar HP
-    │       │   ├── ResourceBar MP
-    │       │   ├── ClassResourceBar x N (职业专属资源)
-    │       │   └── effects-indicator (effect-badge x N)
-    │       └── floating-damage [v-show]
-    ├── combat-log (log-entry x N)
-    │   └── log-entry [log-{actorType}] (turn + msg + damage|heal + crit|dodge)
-    └── combat-actions
-        ├── primary-actions
-        │   ├── attack-btn "普通攻击" (sword-clash)
-        │   ├── item-btn "物品" (potion-ball)
-        │   ├── skip-btn "跳过" (next-button)
-        │   └── flee-btn "逃跑" (run) [disabled: hasBossEnemy]
-        ├── skill-actions [v-if equippedSkills.length > 0]
-        │   └── skill-btn x N (icon + name + effect + cost + target + cooldown)
-        └── enemy-turn-overlay [v-if !isPlayerTurn && isFighting]
-
-result-overlay [v-if combatResult] → result-popup
-item-modal-overlay [v-if showItemModal] → item-modal
+BasePopup(title='系统', max-width='340px', show-footer-close=false)
+├── slot#default → system-body
+│   ├── button.system-btn.audio-btn  [source='system_audio' → emit close + open-audio]
+│   │   ├── BaseIcon(name='sound-on', gradient='gold', size=20)
+│   │   └── span.system-btn-label "音量设置"
+│   └── button.system-btn.exit-btn  [source='system_exit' → emit exit]
+│       ├── BaseIcon(name='exit-door', gradient='blood', size=20)
+│       └── span.system-btn-label "退出游戏"
+└── slot#footer
+    └── button.popup-footer-btn "关闭"  [source='system_close' → emit close]
 ```
 
 #### 9.2.2 界面布局草图
 
-**主战斗界面**（独立 combat-overlay，非 BasePopup）：
-
-```mermaid
-flowchart TB
-    subgraph overlay["combat-overlay 全屏 position:fixed width:100vw height:100vh background:rgba(0,0,0,0.92)"]
-        subgraph container["combat-container width:95% max-width:700px max-height:95vh"]
-            direction TB
-            screenFlash["screen-flash v-show 暴击闪白遮罩 z-index:50"]
-            bossIntro["boss-intro-overlay v-if showBossIntro boss-intro-icon + name + lines"]
-            phaseTrans["phase-transition v-if showPhaseTransition backdrop + label + text"]
-            subgraph header["combat-header"]
-                direction LR
-                combatTitle["combat-title 首领战斗/遭遇战斗"]
-                speedToggle["speed-toggle 1x/2x 金色"]
-                combatTurn["combat-turn 第N回合"]
-            end
-            subgraph arena["combat-arena"]
-                direction LR
-                subgraph enemyGrid["enemy-grid flex:1.5"]
-                    direction TB
-                    backRow["enemy-row back 3列 grid"]
-                    frontRow["enemy-row front 3列 grid"]
-                    enemySlot["enemy-slotx3 min-height:100px combatant.enemy-side avatar + name + level + boss-badge + ResourceBar HP + effects-indicator + floating-damage"]
-                end
-                vsDivider["vs-divider crossed-swords 20px flash"]
-                subgraph playerSide["combatant.player-side"]
-                    direction TB
-                    playerAvatar["combatant-avatar BaseIcon 28px"]
-                    playerInfo["combatant-info name + level"]
-                    playerBars["combatant-bars ResourceBar HP 红 + ResourceBar MP 蓝 + ClassResourceBarxN 职业 + effects-indicator"]
-                    playerFloat["floating-damage v-show"]
-                end
-            end
-            combatLog["combat-log max-height:160px log-entryxN log-actorType turn + msg + damage/heal + crit/dodge"]
-            subgraph actions["combat-actions"]
-                direction TB
-                subgraph primaryAct["primary-actions grid 4列"]
-                    direction LR
-                    atkBtn["attack-btn 普通攻击 物理渐变"]
-                    itemBtn["item-btn 物品 治疗渐变"]
-                    skipBtn["skip-btn 跳过 金属渐变"]
-                    fleeBtn["flee-btn 逃跑 闪避渐变"]
-                end
-                subgraph skillAct["skill-actions v-if equippedSkills.length>0 grid 4列"]
-                    direction LR
-                    skillBtn["skill-btnxN icon + name + effect + cost + target + cooldown"]
-                end
-                enemyTurn["enemy-turn-overlay v-if 非玩家回合 敌人行动中"]
-            end
-        end
-    end
-
-    classDef overlayCls fill:#000000,stroke:#000,color:#fff
-    classDef containerCls fill:#1a1a2e,stroke:#ffd700,color:#f0f0f0
-    classDef regionCls fill:#2a2a3e,stroke:#ffd700,color:#ffd700
-    classDef enemyCls fill:#3a1a1a,stroke:#e94560,color:#fff
-    classDef playerCls fill:#1a3a1a,stroke:#4caf50,color:#fff
-    classDef atkCls fill:#e94560,stroke:#e94560,color:#fff
-    classDef itemCls fill:#4caf50,stroke:#4caf50,color:#fff
-    classDef skipCls fill:#888,stroke:#bbb,color:#fff
-    classDef fleeCls fill:#888,stroke:#888,color:#fff
-    classDef skillCls fill:#8b5cf6,stroke:#a78bfa,color:#fff
-    classDef vsCls fill:#ffd700,stroke:#b8960f,color:#1a1a2e
-    classDef flashCls fill:#fff,stroke:#fff,color:#000
-
-    class overlay overlayCls
-    class container,header,arena,actions containerCls
-    class screenFlash flashCls
-    class bossIntro,phaseTrans overlayCls
-    class enemyGrid,backRow,frontRow,enemySlot enemyCls
-    class playerSide,playerAvatar,playerInfo,playerFloat playerCls
-    class playerBars playerCls
-    class vsDivider vsCls
-    class primaryAct regionCls
-    class atkBtn atkCls
-    class itemBtn itemCls
-    class skipBtn skipCls
-    class fleeBtn fleeCls
-    class skillBtn skillCls
-    class combatLog containerCls
-    class enemyTurn overlayCls
-    class speedToggle,combatTurn regionCls
-    class combatTitle enemyCls
-```
-
-**战斗结果弹窗**（v-if combatResult，叠加在主界面上）：
-
-```mermaid
-flowchart TB
-    subgraph resultOverlay["result-overlay 全屏 z-index:z-item-modal"]
-        subgraph resultPopup["result-popup min-width:300px padding:40px 50px"]
-            direction TB
-            resultIcon["result-icon BaseIcon 24px victory: laurel-crown gold defeat: death-skull blood fled: run dodge"]
-            resultText["result-text font-5xl victory: 战斗胜利 金色发光 defeat: 战斗失败 红色发光 fled: 成功逃跑"]
-            resultRewards["result-rewards v-if victory reward-item 经验 star-formation + reward-item 金币 two-coins"]
-            resultCountdown["result-countdown N秒后自动关闭 victory:3s defeat:2s"]
-            resultClose["result-close-btn 确定 金色边框"]
-        end
-    end
-
-    classDef resultOverlayCls fill:#000,stroke:#000,color:#fff
-    classDef victoryCls fill:#1a1a2e,stroke:#ffd700,color:#ffd700
-    classDef goldCls fill:#ffd700,stroke:#b8960f,color:#1a1a2e
-
-    class resultOverlay resultOverlayCls
-    class resultPopup victoryCls
-    class resultIcon,resultText,resultRewards,resultCountdown victoryCls
-    class resultClose goldCls
-```
-
-**物品选择子弹窗**（v-if showItemModal，叠加在主界面上）：
-
-```mermaid
-flowchart TB
-    subgraph itemOverlay["item-modal-overlay 全屏 z-index:z-combat-result"]
-        subgraph itemModal["item-modal max-width:400px max-height:60vh"]
-            direction TB
-            subgraph modalHeader["item-modal-header"]
-                direction LR
-                modalTitle["选择物品 accent-color"]
-                modalClose["item-modal-close x"]
-            end
-            subgraph modalBody["item-modal-body overflow-y:auto"]
-                direction TB
-                itemOpt["item-optionxN ItemIcon md + item-info + count hover white-10"]
-                itemEmpty["item-empty 没有可用的物品"]
-            end
-        end
-    end
-
-    classDef itemOverlayCls fill:#000,stroke:#000,color:#fff
-    classDef itemModalCls fill:#1a1a2e,stroke:#ffd700,color:#f0f0f0
-    classDef modalHeaderCls fill:#2a2a3e,stroke:#ffd700,color:#ffd700
-    classDef optCls fill:#0d1117,stroke:#3a3a5a,color:#d0d0f0
-
-    class itemOverlay itemOverlayCls
-    class itemModal itemModalCls
-    class modalHeader,modalTitle,modalClose modalHeaderCls
-    class itemOpt,itemEmpty optCls
-```
-
-> 主战斗布局要点：敌人 3x2 网格（back/front x 3列）；玩家区 HP 红/MP 蓝/ClassResourceBar 职业专属；4 个主行动按钮 + 至多 4 个技能按钮；战斗日志倒序显示（最新在最上）。
-
-#### 9.2.3 容器样式
-
-| 元素 | 样式 |
-|------|------|
-| .combat-container | width: 95%; max-width: 700px; max-height: 95vh; background: @gradient-panel; border-radius: 16px |
-| .result-popup | min-width: 300px; padding: 40px 50px |
-| .item-modal | max-width: 400px; max-height: 60vh |
-
-#### 9.2.4 战斗结果
-
-| 结果 | result-text | result-icon 渐变 | 自动关闭 | 倒计时 |
-|------|-------------|------------------|----------|--------|
-| victory | 胜利 | gold | 3 秒 | 显示 |
-| defeat | 失败 | blood | 2 秒 | 显示 |
-
-victory 时显示奖励：经验（star-formation）+ 金币（two-coins）。
-
-#### 9.2.5 行动按钮
-
-| 按钮 | 图标 | 渐变 | 禁用条件 |
-|------|------|------|----------|
-| 普通攻击 | sword-clash | physical | !canAct |
-| 物品 | potion-ball | heal | !canAct \|\| !hasConsumables |
-| 跳过 | next-button | metal | !canAct |
-| 逃跑 | run | dodge | !canAct \|\| hasBossEnemy |
-| 技能 | skill.icon | — | !canAct \|\| MP不足 \|\| 冷却中 |
-
-技能按钮额外显示：no-mp 类（MP不足）、on-cooldown 类（冷却中）、冷却剩余回合数。
-
-#### 9.2.6 动画系统
-
-来源：`src/modules/animation`（anime.js）
-
-| 动画函数 | 用途 |
-|----------|------|
-| animateShake | 敌人/玩家受击震动 |
-| animateCritShake | 暴击震动 |
-| animateDodgeBlink | 闪避闪烁 |
-| animateFloating | 浮动伤害数字 |
-| animateScreenFlash | 屏幕闪白 |
-| animateVsFlash | VS 分隔符闪光 |
-| animateBossIntro | Boss 出场演出 |
-| animatePhaseTransition | Boss 阶段转换 |
-| animateResultPopup | 结果弹窗弹入 |
-| animateMagicPulse | 魔法脉冲 |
-| animateHealGlow | 治疗发光 |
-| animateManaGlow | 法力发光 |
-| animateCritBorderFlash | 暴击边框闪光 |
-| createParticleBurst | 粒子爆发 |
-
-#### 9.2.7 粒子配置
-
-| 配置 | 用途 |
-|------|------|
-| PHYSICAL_PARTICLES | 物理伤害粒子 |
-| MAGIC_PARTICLES | 魔法伤害粒子 |
-| HEAL_PARTICLES | 治疗粒子 |
-| MANA_PARTICLES | 法力粒子 |
-| CRIT_PARTICLES | 暴击粒子 |
-
-#### 9.2.8 事件监听
-
-| 事件 | 响应 |
-|------|------|
-| COMBAT_CRITICAL_HIT | 暴击动画 |
-| COMBAT_DEAL_DAMAGE | 伤害浮动数字 |
-| COMBAT_DODGE | 闪避动画 |
-| COMBAT_BOSS_INTRO | Boss 出场演出 |
-| COMBAT_BOSS_PHASE | 阶段转换特效 |
-
-### 9.3 移动端设计
-
-| 元素 | PC | 移动端 (max-width: 600px) |
-|------|-----|--------------------------|
-| combat-arena | row 布局 | column 布局 |
-| vs-divider | 显示 | 隐藏 |
-| enemy-slot min-height | 100px | 80px |
-
-### 9.4 交互说明
-
-| 交互 | 触发方式 | 响应 |
-|------|----------|------|
-| 选择目标 | 点击 enemy-side | 设置 targetEnemyId |
-| 普通攻击 | 点击 attack-btn | doAction('attack') |
-| 使用物品 | 点击 item-btn | 打开 item-modal 选择物品 |
-| 跳过回合 | 点击 skip-btn | doSkip |
-| 逃跑 | 点击 flee-btn | doAction('flee') |
-| 释放技能 | 点击 skill-btn | doSkill(skillId) |
-| 切换速度 | 点击 speed-toggle | 1x ↔ 2x |
-| 关闭结果 | 点击"确定"或自动关闭 | emit close(result) |
-
-***
-
-## 10. 系统弹窗
-
-来源：`src/components/popup/SystemPopup.vue`
-
-### 10.1 界面概述
-
-系统菜单弹窗，提供音量设置入口和退出游戏功能。
-
-### 10.2 PC端设计
-
-#### 10.2.1 布局结构
-
-```
-BasePopup(title='系统', max-width=340px, show-footer-close=false)
-├── slot#default → system-body
-│   ├── button.system-btn.audio-btn "音量设置" (sound-on, gold)
-│   └── button.system-btn.exit-btn "退出游戏" (exit-door, blood)
-└── slot#footer
-    └── button.popup-footer-btn "关闭"
-```
-
-#### 10.2.2 界面布局草图
-
 ```mermaid
 flowchart TB
     subgraph overlay["popup-overlay 全屏遮罩"]
-        subgraph container["popup-content max-width:340px 标题=系统 show-footer-close=false"]
+        subgraph container["popup-content max-width:340px 标题=系统"]
             direction TB
             subgraph header["popup-header"]
                 direction LR
@@ -1608,8 +1310,16 @@ flowchart TB
             end
             subgraph body["popup-body system-body"]
                 direction TB
-                audioBtn["system-btn.audio-btn 音量设置 icon sound-on gold hover 金色边框+发光"]
-                exitBtn["system-btn.exit-btn 退出游戏 icon exit-door blood hover 红色边框+发光"]
+                subgraph audioBtn["system-btn audio-btn"]
+                    direction LR
+                    audioIcon["BaseIcon sound-on gold 20"]
+                    audioLabel["音量设置"]
+                end
+                subgraph exitBtn["system-btn exit-btn"]
+                    direction LR
+                    exitIcon["BaseIcon exit-door blood 20"]
+                    exitLabel["退出游戏"]
+                end
             end
             subgraph footer["popup-footer"]
                 closeBtn["popup-footer-btn 关闭"]
@@ -1620,82 +1330,81 @@ flowchart TB
     classDef overlayCls fill:#000000,stroke:#000,color:#fff
     classDef containerCls fill:#1a1a2e,stroke:#ffd700,color:#f0f0f0
     classDef regionCls fill:#2a2a3e,stroke:#ffd700,color:#ffd700
-    classDef audioCls fill:#0d1117,stroke:#ffd700,color:#ffd700
-    classDef exitCls fill:#0d1117,stroke:#ff4444,color:#ff6b6b
+    classDef audioCls fill:#b8960f,stroke:#ffd700,color:#ffd700
+    classDef exitCls fill:#5c1010,stroke:#ff4444,color:#ff6b6b
 
     class overlay overlayCls
     class container,header,body,footer containerCls
+    class audioLabel,exitLabel regionCls
     class audioBtn audioCls
     class exitBtn exitCls
     class close,closeBtn regionCls
-    class title regionCls
 ```
 
-> system-btn 通用样式：padding:4xl 24px font-size:lg border-radius:10px hover translateY(-2px)。
+#### 9.2.3 按钮样式
 
-#### 10.2.3 按钮样式
+| 元素 | 默认样式 | 悬停样式 |
+|------|----------|----------|
+| .system-btn | padding: @spacing-4xl 24px; border: @border-card; border-radius: 10px; background: rgba(255,255,255,0.04); color: #ccc; font-size: @font-lg; transition: all 0.25s | transform: translateY(-2px)（active 时归零） |
+| .system-btn.audio-btn | 同 .system-btn | border-color: @accent-color; background: rgba(255,215,0,0.08); color: @accent-color; box-shadow: 0 4px 16px @gold-bg |
+| .system-btn.exit-btn | 同 .system-btn; color: rgba(255,100,100,0.8) | border-color: @danger-color; background: rgba(255,68,68,0.1); color: #ff6b6b; box-shadow: 0 4px 16px rgba(255,68,68,0.1) |
+| .system-body | flex-col; gap: @spacing-3xl; padding: @spacing-md @spacing-xs | — |
 
-| 按钮 | 图标 | 渐变 | hover 样式 |
-|------|------|------|-----------|
-| 音量设置 | sound-on | gold | border-color: @accent-color; background: rgba(255,215,0,0.08); color: @accent-color; box-shadow: @gold-bg |
-| 退出游戏 | exit-door | blood | border-color: @danger-color; background: rgba(255,68,68,0.1); color: #ff6b6b; box-shadow: rgba(255,68,68,0.1) |
+### 9.3 移动端设计
 
-system-btn 通用样式：padding: @spacing-4xl 24px; font-size: @font-lg; border-radius: 10px; hover 时 translateY(-2px)。
+弹窗容器自适应（max-width 340px），按钮区域纵向排列，无额外移动端适配逻辑。
 
-### 10.3 移动端设计
-
-弹窗容器自适应，按钮垂直排列。
-
-### 10.4 交互说明
+### 9.4 交互说明
 
 | 交互 | 触发方式 | 响应 |
 |------|----------|------|
-| 打开音量设置 | 点击 audio-btn | emit close + emit open-audio |
-| 退出游戏 | 点击 exit-btn | emit exit |
-| 关闭 | 点击"关闭" | emit close |
-
+| 打开音量设置 | 点击"音量设置" | UI_CLICK(source='system_audio')，emit close 关闭系统弹窗并 emit open-audio 打开音量设置弹窗 |
+| 退出游戏 | 点击"退出游戏" | UI_CLICK(source='system_exit')，emit exit 交由父组件处理退出流程 |
+| 关闭弹窗 | 点击"关闭" / 遮罩 / x | UI_CLICK(source='system_close')，emit close |
 ***
 
-## 11. 音量设置弹窗
+## 10. 音量设置弹窗
 
 来源：`src/components/popup/AudioSettingsPopup.vue`
 
-### 11.1 界面概述
+### 10.1 界面概述
 
-音量控制弹窗，提供主音量、音效音量、背景音乐音量的滑块控制，音效和背景音乐带独立开关，支持全局静音。
+音频设置界面，提供主音量、音效音量、背景音乐音量三个滑块及音效/背景音乐独立开关，支持全局静音切换。状态来源：useAudioStore（P3-116 收敛：`store.settings` 为只读 computed 代理 `gameStore.gameSettings`，所有修改经 `setMasterVolume` / `updateSettings` / `toggleMute` 异步委托 `gameStore.updateGameSettings` 即时持久化，不再直接访问 IndexedDB）。
 
-### 11.2 PC端设计
+### 10.2 PC端设计
 
-#### 11.2.1 布局结构
+#### 10.2.1 布局结构
 
 ```
-BasePopup(title='音量设置', max-width=420px, show-footer-close=false)
+BasePopup(title='音量设置', max-width='420px', show-footer-close=false)
 ├── slot#default → audio-body
-│   ├── slider-group "主音量" (musical-notes, gold)
-│   │   ├── slider-label (icon + 名称 + 百分比)
-│   │   └── audio-slider [disabled: muted]
-│   ├── slider-group "音效音量" (musical-notes, gold)
-│   │   ├── slider-label (icon + 名称 + 百分比)
+│   ├── slider-group "主音量"
+│   │   ├── slider-label (BaseIcon musical-notes/gold 20 + "主音量" + slider-value XX%)
+│   │   └── input.audio-slider (range 0-100, :value=masterVolume*100, :disabled=muted, @input=onMasterVolumeChange)
+│   ├── slider-group "音效音量"
+│   │   ├── slider-label (BaseIcon musical-notes/gold 20 + "音效音量" + slider-value XX%)
 │   │   └── slider-row
-│   │       ├── audio-slider [disabled: !sfxEnabled || muted]
-│   │       └── toggle-btn "开"|"关" [active: sfxEnabled]
-│   ├── slider-group "背景音乐" (musical-notes, gold)
-│   │   ├── slider-label (icon + 名称 + 百分比)
+│   │       ├── input.audio-slider (range, :value=sfxVolume*100, :disabled=!sfxEnabled||muted, @input=onSfxVolumeChange)
+│   │       └── button.toggle-btn [active: sfxEnabled] "开|关"  [@click=toggleSfx]
+│   ├── slider-group "背景音乐"
+│   │   ├── slider-label (BaseIcon musical-notes/gold 20 + "背景音乐" + slider-value XX%)
 │   │   └── slider-row
-│   │       ├── audio-slider [disabled: !bgmEnabled || muted]
-│   │       └── toggle-btn "开"|"关" [active: bgmEnabled]
+│   │       ├── input.audio-slider (range, :value=bgmVolume*100, :disabled=!bgmEnabled||muted, @input=onBgmVolumeChange)
+│   │       └── button.toggle-btn [active: bgmEnabled] "开|关"  [@click=toggleBgm]
 │   └── mute-row
-│       └── mute-btn [muted] (sound-on|sound-off, gold)
+│       └── button.mute-btn [.muted: muted]  [@click=onMuteClick]
+│           ├── BaseIcon (muted ? sound-off : sound-on, gradient=gold, size=20)
+│           └── span "已静音|正常"
 └── slot#footer
-    └── button.popup-footer-btn.confirm "确定"
+    └── button.popup-footer-btn.confirm "确定"  [source='audio_settings_close']
 ```
 
-#### 11.2.2 界面布局草图
+#### 10.2.2 界面布局草图
 
 ```mermaid
 flowchart TB
     subgraph overlay["popup-overlay 全屏遮罩"]
-        subgraph container["popup-content max-width:420px 标题=音量设置 show-footer-close=false"]
+        subgraph container["popup-content max-width:420px 标题=音量设置"]
             direction TB
             subgraph header["popup-header"]
                 direction LR
@@ -1704,33 +1413,35 @@ flowchart TB
             end
             subgraph body["popup-body audio-body"]
                 direction TB
-                subgraph masterGroup["slider-group 主音量"]
+                subgraph master["slider-group 主音量"]
                     direction TB
-                    masterLabel["slider-label icon + 名称 + 百分比"]
-                    masterSlider["audio-slider disabled:muted thumb 18px accent-color"]
+                    masterLabel["slider-label musical-notes 主音量 XX%"]
+                    masterSlider["audio-slider range 0-100"]
                 end
-                subgraph sfxGroup["slider-group 音效音量"]
+                subgraph sfx["slider-group 音效音量"]
                     direction TB
-                    sfxLabel["slider-label icon + 名称 + 百分比"]
+                    sfxLabel["slider-label musical-notes 音效音量 XX%"]
                     subgraph sfxRow["slider-row"]
                         direction LR
-                        sfxSlider["audio-slider disabled:非sfxEnabled或muted"]
-                        sfxToggle["toggle-btn 开/关 active:sfxEnabled"]
+                        sfxSlider["audio-slider range"]
+                        sfxToggle["toggle-btn 开/关"]
                     end
                 end
-                subgraph bgmGroup["slider-group 背景音乐"]
+                subgraph bgm["slider-group 背景音乐"]
                     direction TB
-                    bgmLabel["slider-label icon + 名称 + 百分比"]
+                    bgmLabel["slider-label musical-notes 背景音乐 XX%"]
                     subgraph bgmRow["slider-row"]
                         direction LR
-                        bgmSlider["audio-slider disabled:非bgmEnabled或muted"]
-                        bgmToggle["toggle-btn 开/关 active:bgmEnabled"]
+                        bgmSlider["audio-slider range"]
+                        bgmToggle["toggle-btn 开/关"]
                     end
                 end
-                muteRow["mute-row border-top mute-btn muted sound-on/sound-off gold"]
+                subgraph mute["mute-row"]
+                    muteBtn["mute-btn sound-on/off 正常/已静音"]
+                end
             end
             subgraph footer["popup-footer"]
-                confirmBtn["popup-footer-btn.confirm 确定 accent-color"]
+                confirmBtn["popup-footer-btn.confirm 确定 金色"]
             end
         end
     end
@@ -1738,188 +1449,274 @@ flowchart TB
     classDef overlayCls fill:#000000,stroke:#000,color:#fff
     classDef containerCls fill:#1a1a2e,stroke:#ffd700,color:#f0f0f0
     classDef regionCls fill:#2a2a3e,stroke:#ffd700,color:#ffd700
-    classDef sliderCls fill:#0d1117,stroke:#ffd700,color:#ffd700
+    classDef sliderCls fill:#0f0f1a,stroke:#3a3a5a,color:#d0d0f0
+    classDef toggleCls fill:#0d1117,stroke:#888,color:#888
     classDef confirmCls fill:#ffd700,stroke:#b8960f,color:#1a1a2e
+    classDef mutedCls fill:#5c1010,stroke:#ff4444,color:#ff6b6b
 
     class overlay overlayCls
     class container,header,body,footer containerCls
-    class masterGroup,masterLabel,sfxGroup,sfxLabel,bgmGroup,bgmLabel,muteRow,title regionCls
-    class masterSlider,sfxRow,sfxSlider,sfxToggle,bgmRow,bgmSlider,bgmToggle sliderCls
-    class close regionCls
+    class masterLabel,sfxLabel,bgmLabel,sfxToggle,bgmToggle regionCls
+    class master,sfx,bgm,mute sliderCls
     class confirmBtn confirmCls
+    class close regionCls
 ```
 
-> toggle-btn active 态：`border-color: @accent-color; background: @gold-bg; color: @accent-color`；mute-btn muted 态：红色边框 + 红色文字。
-
-#### 11.2.3 滑块样式
+#### 10.2.3 滑块与按钮样式
 
 | 元素 | 样式 |
 |------|------|
-| .audio-slider | height: 6px; background: @white-15; border-radius: @radius-xs |
-| .audio-slider::-webkit-slider-thumb | width: 18px; height: 18px; border-radius: 50%; background: @accent-color; border: 2px solid #b8960f |
-| .audio-slider:disabled | opacity: 0.3; cursor: not-allowed |
-| .audio-slider:disabled thumb | background: @color-dim-gray; border-color: #444 |
-
-#### 11.2.4 开关按钮样式
-
-| 状态 | 样式 |
-|------|------|
-| .toggle-btn（默认） | min-width: 48px; background: @white-05; color: @color-dodge |
+| .audio-slider | flex: 1; height: 6px; background: @white-15; border-radius: @radius-xs; -webkit-appearance: none |
+| .audio-slider::-webkit-slider-thumb | 18px 圆形; background: @accent-color; border: 2px solid #b8960f; hover transform: scale(1.15) |
+| .audio-slider:disabled | opacity: 0.3; cursor: not-allowed; thumb 变灰（@color-dim-gray） |
+| .slider-label | flex; align-items: center; gap: @spacing-md; color: #ccc; font-size: @font-md |
+| .slider-value | margin-left: auto; color: @accent-color; font-weight: @font-weight-bold; min-width: 36px; text-align: right |
+| .toggle-btn | padding: @spacing-xs 14px; min-width: 48px; border: @border-sm; border-radius: @radius-sm; background: @white-05; color: @color-dodge; font-weight: @font-weight-bold |
 | .toggle-btn.active | border-color: @accent-color; background: @gold-bg; color: @accent-color |
-
-#### 11.2.5 静音按钮样式
-
-| 状态 | 样式 |
-|------|------|
-| .mute-btn（正常） | background: @white-05; color: #ccc |
+| .mute-btn | padding: @spacing-md 24px; border: @border-card; border-radius: @radius-lg; background: @white-05; color: #ccc; font-size: @font-md |
 | .mute-btn.muted | border-color: @danger-color; background: rgba(255,68,68,0.1); color: #ff6b6b |
+| .mute-row | flex; justify-content: center; padding-top: @spacing-xs; border-top: 1px solid rgba(255,255,255,0.06) |
 
-#### 11.2.6 Store 数据
+#### 10.2.4 状态读写方式（P3-116）
 
-来源：`useAudioStore`
-
-| 字段 | 类型 | 说明 |
+| 操作 | 调用 | 说明 |
 |------|------|------|
-| masterVolume | number | 主音量 (0~1) |
-| sfxVolume | number | 音效音量 (0~1) |
-| bgmVolume | number | 背景音乐音量 (0~1) |
-| sfxEnabled | boolean | 音效开关 |
-| bgmEnabled | boolean | 背景音乐开关 |
-| muted | boolean | 全局静音 |
+| 主音量 | store.setMasterVolume(value) | async，委托 gameStore.updateGameSettings 持久化，UI 事件中 fire-and-forget 调用（.catch 打印错误） |
+| 音效/背景音乐音量 | store.updateSettings({ sfxVolume \| bgmVolume }) | 同上，局部更新 + 即时持久化 |
+| 音效/背景音乐开关 | store.updateSettings({ sfxEnabled \| bgmEnabled }) | 同上 |
+| 全局静音 | store.toggleMute() | async，翻转 muted 并持久化 |
+| 读取 | store.settings | 只读 computed 代理 gameStore.gameSettings（P3 TS-14 使用 instanceof HTMLInputElement 守卫安全取值） |
+
+### 10.3 移动端设计
+
+弹窗容器自适应（max-width 420px），滑块纵向排列，无额外移动端适配逻辑。
+
+### 10.4 交互说明
+
+| 交互 | 触发方式 | 响应 |
+|------|----------|------|
+| 调整主音量 | 拖动主音量滑块 | setMasterVolume(value/100)，百分比实时显示；静音时滑块 disabled |
+| 调整音效/背景音乐 | 拖动对应滑块 | updateSettings 局部更新；对应开关关闭或全局静音时 disabled |
+| 切换音效/背景音乐 | 点击 toggle-btn | UI_CLICK(source='audio_toggle_sfx'/'audio_toggle_bgm') + updateSettings 翻转开关 |
+| 全局静音 | 点击 mute-btn | UI_CLICK(source='audio_mute') + toggleMute，按钮显示"已静音/正常"并切换图标 |
+| 关闭弹窗 | 点击"确定" / 遮罩 / x | UI_CLICK(source='audio_settings_close')，emit close |
+
+***
+
+## 11. 战斗弹窗
+
+来源：`src/components/popup/CombatPopup.vue`
+
+### 11.1 界面概述
+
+回合制战斗界面，独立全屏覆盖层（不使用 BasePopup）。支持普通攻击、技能释放、物品使用、跳过、逃跑等行动，包含 3×2 敌人网格、战斗日志、浮动伤害数字、Boss 出场演出与阶段转换特效及战斗结果展示。状态来源：useCombatStore（enemies/enemyPositions/enemyEffects/targetEnemyId/turn/turnCount/combatLogs/combatResult/resourceSystems/playerEffects/expGained/goldGained/currentTarget/hasBossEnemy）、useCharacterStore、useSkillStore、useInventoryStore；视觉逻辑抽离为 4 个 composables（useCombatSpeed/useCombatAutoClose/useBossIntroOverlay/useCombatAnimations），经 `@/modules/combat` 公共入口导入（QA-5 阶段四，符合 ARCH-4）。
+
+### 11.2 PC端设计
+
+#### 11.2.1 布局结构
+
+```
+div.combat-overlay (fixed 100vw×100vh, bg rgba(0,0,0,0.92), z-index @z-combat-overlay)
+└── div.combat-container (width 95%, max-width 700px, max-height 95vh, @gradient-panel, radius 16px)
+    ├── div.screen-flash [v-show=screenFlash, class=screenFlashType]  ← 暴击屏幕闪白
+    ├── div.boss-intro-overlay [v-if=showBossIntro]
+    │   └── div.boss-intro-content (BaseIcon dragon 48 + 名字 + 台词逐行 line-0/1/2)
+    ├── div.phase-transition [v-if=showPhaseTransition, class=phase-transition-{effect}]  ← Boss 阶段转换
+    ├── div.combat-header
+    │   ├── span.combat-title (hasBossEnemy ? "首领战斗！" : "遭遇战斗！")
+    │   ├── button.speed-toggle (1x: single-arrow / 2x: double-arrow, gradient=lightning)
+    │   └── span.combat-turn "第 X 回合"
+    ├── div.combat-arena
+    │   ├── div.enemy-grid (3×2 网格: row back/front × col 1-3)
+    │   │   └── div.enemy-slot [key=`${row}-${col}`]
+    │   │       ├── div.combatant.enemy-side [v-for=敌人, key=e.id]  ← 见 11.2.3
+    │   │       └── div.combatant.enemy-empty (⬛ 空位)  [v-if 无敌人]
+    │   ├── div.vs-divider [.flash] (BaseIcon crossed-swords/physical 20)
+    │   └── div.combatant.player-side
+    │       ├── avatar BaseIcon(playerIcon, 28) + name + Lv
+    │       ├── ResourceBar 生命(hp) + 法力(mp)[showManaBar] + ClassResourceBar x N
+    │       ├── effects-indicator (playerEffects Buff/Debuff 徽章)
+    │       └── floating-damage (玩家浮动数字)
+    ├── div.combat-log (倒序渲染 logsReversed, max-height 160px)
+    │   └── div.log-entry [key=log.timestamp+'-'+i, class=log-{actorType}]
+    └── div.combat-actions
+        ├── div.action-row.primary-actions (4 列 grid)
+        │   ├── attack-btn 普通攻击 [disabled=!canAct]
+        │   ├── item-btn 物品 [disabled=!canAct || !hasConsumables]
+        │   ├── skip-btn 跳过 [disabled=!canAct]
+        │   └── flee-btn 逃跑 [disabled=!canAct || hasBossEnemy]
+        ├── div.action-row.skill-actions [v-if=equippedSkills.length>0]  ← 技能按钮
+        └── div.enemy-turn-overlay [v-if=!isPlayerTurn && isFighting] "敌人行动中..."
+
+── 战斗结果弹窗 (combatStore.combatResult 时显示)
+div.result-overlay → div.result-popup (anime.js 入场动画)
+    ├── div.result-icon (victory: laurel-crown/gold, defeat: death-skull/debuff, fled: run/dodge)
+    ├── div.result-text (战斗胜利！/ 战斗失败... / 成功逃跑！, result-victory/defeat/fled 配色)
+    ├── div.result-rewards [v-if=victory] (经验 +expGained / 金币 +goldGained)
+    ├── div.result-countdown (X 秒后自动关闭, v-if=autoCloseCountdown>0)
+    └── button.result-close-btn "确定"
+
+── 物品选择弹窗 (showItemModal 时显示)
+div.item-modal-overlay → div.item-modal (max-width 400px, max-height 60vh)
+    ├── div.item-modal-header (选择物品 + 关闭按钮 cancel)
+    └── div.item-modal-body → item-option x N [key=item.itemId] (ItemIcon + 名称/描述 + x数量)
+```
+
+#### 11.2.2 界面布局草图
+
+```mermaid
+flowchart TB
+    subgraph overlay["combat-overlay 全屏覆盖 fixed z-index:z-combat-overlay"]
+        subgraph container["combat-container max-width:700px max-height:95vh"]
+            direction TB
+            subgraph header["combat-header"]
+                direction LR
+                title["combat-title 首领战斗!/遭遇战斗!"]
+                speed["speed-toggle 1x/2x 闪电图标"]
+                turn["combat-turn 第X回合"]
+            end
+            subgraph arena["combat-arena"]
+                direction LR
+                subgraph grid["enemy-grid 3x2网格 back/front行 x 3列"]
+                    direction TB
+                    subgraph backRow["enemy-row back"]
+                        direction LR
+                        b1["enemy-slot back-1 敌人/空位"]
+                        b2["enemy-slot back-2 敌人/空位"]
+                        b3["enemy-slot back-3 敌人/空位"]
+                    end
+                    subgraph frontRow["enemy-row front"]
+                        direction LR
+                        f1["enemy-slot front-1 敌人/空位"]
+                        f2["enemy-slot front-2 敌人/空位"]
+                        f3["enemy-slot front-3 敌人/空位"]
+                    end
+                end
+                vs["vs-divider crossed-swords"]
+                subgraph player["combatant player-side"]
+                    direction TB
+                    playerInfo["avatar+名称+Lv"]
+                    playerBars["ResourceBar 生命/法力 + ClassResourceBar"]
+                    playerEffects["effects-indicator Buff/Debuff"]
+                end
+            end
+            subgraph log["combat-log 倒序日志 log-timestamp-i"]
+                logEntry["log-entry [回合] 消息 伤害/治疗/暴击/闪避"]
+            end
+            subgraph actions["combat-actions"]
+                direction TB
+                subgraph primary["action-row primary-actions 4列"]
+                    direction LR
+                    attack["attack-btn 普通攻击"]
+                    item["item-btn 物品"]
+                    skip["skip-btn 跳过"]
+                    flee["flee-btn 逃跑"]
+                end
+                subgraph skills["action-row skill-actions 技能按钮xN"]
+                    skillBtn["skill-btn 图标+名称+效果+消耗+冷却"]
+                end
+                enemyTurn["enemy-turn-overlay 敌人行动中..."]
+            end
+        end
+        subgraph result["result-overlay 战斗结果弹窗"]
+            resultPopup["result-popup 图标+文字+奖励+倒计时+确定"]
+        end
+        subgraph itemModal["item-modal-overlay 物品选择弹窗"]
+            itemBody["item-option 图标+名称+数量"]
+        end
+    end
+
+    classDef overlayCls fill:#000000,stroke:#000,color:#fff
+    classDef containerCls fill:#1a1a2e,stroke:#ffd700,color:#f0f0f0
+    classDef regionCls fill:#2a2a3e,stroke:#ffd700,color:#ffd700
+    classDef gridCls fill:#0f0f1a,stroke:#e94560,color:#d0d0f0
+    classDef playerCls fill:#0f0f1a,stroke:#3a3a5a,color:#d0d0f0
+    classDef actionCls fill:#0d1117,stroke:#888,color:#ccc
+    classDef resultCls fill:#1a1a2e,stroke:#ffd700,color:#ffd700
+
+    class overlay overlayCls
+    class container containerCls
+    class header,log,actions,result,itemModal regionCls
+    class grid,backRow,frontRow gridCls
+    class player playerCls
+    class primary,skills,enemyTurn actionCls
+    class resultPopup resultCls
+```
+
+#### 11.2.3 敌人网格与稳定 key（P3-145）
+
+| 层级 | v-for | key |
+|------|-------|-----|
+| 行 | `v-for="row in (['back', 'front'] as const)"` | row |
+| 列 | `v-for="col in 3"` | `${row}-${col}` |
+| 敌人 | `v-for="e in getEnemiesInSlot(row, col - 1)"` | e.id |
+| Boss 演出台词 | `v-for="(line, i) in bossIntroLines"` | `line + '-' + i` |
+| 战斗日志 | `v-for="(log, i) in logsReversed"` | `log.timestamp + '-' + i` |
+| 技能栏 | `v-for="skill in equippedSkills"` | skill.id |
+| 职业资源条 | `v-for="(sys, idx) in combatStore.resourceSystems"` | `'class-res-' + idx` |
+
+敌人 combatant 状态类：`.shake`（受击震动）/ `.crit-shake`（暴击震动）/ `.dodge-blink`（闪避闪烁）/ `.defeated`（hp<=0，opacity 0.4 + grayscale）/ `.targeted`（targetEnemyId 命中且存活，金色边框发光）。空槽位 `.enemy-empty` 虚线边框显示"⬛ 空位"。Boss 敌人显示 `.boss-badge`（crowned-skull + "首领"）。效果徽章 `effect-{type}` 按增益（绿系）/减益（红系）分组着色，细分 poison/burn/stun/freeze/silence/vulnerable 等专属配色，展示剩余回合数。
+
+#### 11.2.4 战斗日志
+
+倒序渲染（logsReversed，带缓存的 computed：logs 引用未变时直接返回缓存数组），最新日志在最上，`watch(logs)` 后 nextTick 滚动到顶部。条目结构：`[回合]` + 消息 + 伤害（`-N`，physical-damage/magic-damage/crit-damage 配色与 pointy-sword/magic-swirl/sword-clash 图标）+ 治疗（`+N`，health-increase）+ "暴击！"/"闪避！"标记。消息按 actorType 着色：`log-player`/`log-enemy`/`log-system`。日志为空时显示"战斗即将开始..."。
+
+#### 11.2.5 行动按钮
+
+| 按钮 | 图标（渐变） | 禁用条件 |
+|------|--------------|----------|
+| 普通攻击 | sword-clash（physical） | !canAct |
+| 物品 | potion-ball（heal） | !canAct \|\| !hasConsumables |
+| 跳过 | next-button（metal） | !canAct |
+| 逃跑 | run（dodge） | !canAct \|\| combatStore.hasBossEnemy |
+| 技能 | skill.icon | !canAct \|\| !canCastSkill \|\| isOnCooldown |
+
+技能按钮展示：图标 + 名称 + 效果文本（`skill-effect-{type}` 配色）+ 消耗（`skill-cost`，专属资源名或 N MP）+ 目标类型（`skill-target`，非单体的 all_enemies/self/ally）+ 冷却剩余（`skill-cooldown` 橙色）。canCastSkill 同时检查 MP（mpCost 可选，undefined 视为 0）与专属资源（ResourceSystemFactory.hasEnough）。技能列表取 equippedSkills 前 4 个，无装备时用 unlockedSkills 前 4 个。敌人回合时显示 `.enemy-turn-overlay`（"敌人行动中..."，uncertainty/shadow 图标，pulse 动画）。
+
+#### 11.2.6 Boss 演出与阶段转换
+
+- **出场演出**（useBossIntroOverlay，COMBAT_BOSS_INTRO 事件触发）：`.boss-intro-overlay` 全屏暗色遮罩 + backdrop-filter blur，内容含 48px 图标（dragon 渐变）、名称（金色文字辉光）、逐行台词（line-0/1/2，逐行滑入），动画由 anime.js 驱动（初始 opacity 0 / scale 0 / translateY）。
+- **阶段转换**（useCombatAnimations，COMBAT_BOSS_PHASE 事件触发）：`.phase-transition-{effect}` 五种特效（darken 暗色 / flame 火焰 / freeze 冰冻 / lightning 雷电 / shake 震动），背景径向渐变遮罩 + "阶段转换"标签 + 阶段名称大字号（各特效专属配色与辉光），由 anime.js 驱动闪现与缩放进入。
+
+#### 11.2.7 战斗结果
+
+| 结果 | 文案 | 图标 | 渐变 | 文本配色 |
+|------|------|------|------|----------|
+| victory | 战斗胜利！ | laurel-crown | gold | @accent-color + 金色辉光 |
+| defeat | 战斗失败... | death-skull | debuff | @color-danger-accent + 红色辉光 |
+| fled | 成功逃跑！ | run | dodge | @color-dodge |
+
+胜利时展示奖励行（`+expGained 经验` star-formation / `+goldGained 金币` two-coins）。结果弹窗由 anime.js `animateResultPopup` 播放入场动画（图标弹跳、文字滑入、奖励逐行滑入）。`useCombatAutoClose` 自动关闭：`combatResult === 'victory'` 延迟 3 秒，defeat/fled 延迟 2 秒，倒计时显示"X 秒后自动关闭"；点击"确定"（handleClose）立即关闭并 emit close（携带 result）。onUnmounted 清理自动关闭定时器与全部动画定时器。
+
+#### 11.2.8 物品选择弹窗
+
+战斗中点击"物品"（hasConsumables 时）打开 `.item-modal`：列表为背包中可消耗物品（item-option，key=item.itemId，ItemIcon 稀有度 + 名称/描述 + x数量），空列表显示"没有可用的物品"。点击条目调用 playerAction({ type: 'item', itemId })，按 HP/MP 差值计算恢复量并播放治疗特效，伤害型物品（卷轴等）播放震动/闪避/浮动数字/粒子特效。关闭按钮与遮罩点击（source='combat_item_modal_close'）关闭弹窗。
+
+#### 11.2.9 战斗 composables 联动（QA-5 阶段四）
+
+| Composable | 职责 | 关键暴露 |
+|------------|------|----------|
+| useCombatSpeed | 战斗倍速 | combatSpeed（只读 computed，1 或 2）+ toggleSpeed |
+| useCombatAutoClose | 结果自动关闭 | autoCloseCountdown + scheduleAutoClose + clearAutoClose + handleClose（回调 emit close） |
+| useBossIntroOverlay | Boss 出场演出 | showBossIntro / bossIntroIcon / bossIntroName / bossIntroLines / onBossIntro / dispose |
+| useCombatAnimations | 战斗视觉特效 | 震动/闪避/浮动数字/屏幕闪白/VS 闪光/阶段转换状态与触发器 + onCritHit/onEnemyDealDamage/onDodge/onBossPhase/applyCombatDamageEffects |
+
+组件 onMounted 注册事件（COMBAT_CRITICAL_HIT / COMBAT_DEAL_DAMAGE / COMBAT_DODGE / COMBAT_BOSS_INTRO / COMBAT_BOSS_PHASE），onUnmounted 统一解绑并清理定时器。动画定时器经 setAnimTimer 统一登记，卸载时 clearAllAnimationTimers 防泄漏（isUnmounted 守卫异步回调）。
 
 ### 11.3 移动端设计
 
-弹窗容器自适应，滑块和按钮垂直排列。
+`@media (max-width: 600px)`：combat-arena 纵向排列、vs-divider 隐藏、敌人网格保持 3 列（gap 4px，槽位 min-height 80px）、combat-log max-height 降至 120px、action-row 保持 4 列（字体 11px，padding 8px 4px）、技能按钮缩小（图标 16px/名称 10px/效果与消耗 9px）、浮动数字 18px（crit 24px）。
 
 ### 11.4 交互说明
 
 | 交互 | 触发方式 | 响应 |
 |------|----------|------|
-| 调整主音量 | 拖动 audio-slider | store.setMasterVolume |
-| 调整音效音量 | 拖动 audio-slider | store.updateSettings({ sfxVolume }) |
-| 调整背景音乐 | 拖动 audio-slider | store.updateSettings({ bgmVolume }) |
-| 切换音效开关 | 点击 toggle-btn | store.updateSettings({ sfxEnabled }) |
-| 切换背景音乐开关 | 点击 toggle-btn | store.updateSettings({ bgmEnabled }) |
-| 全局静音 | 点击 mute-btn | store.toggleMute |
-| 关闭 | 点击"确定" | emit close |
-
-***
-
-## 12. 弹窗通用子组件
-
-### 12.1 ItemIcon 物品图标
-
-来源：`src/components/common/ItemIcon.vue`
-
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| icon | string | '' | 图标名 |
-| fallback | string | 'uncertainty' | 回退图标名 |
-| size | 'sm' \| 'md' \| 'lg' \| 'xl' | 'md' | 预设尺寸 |
-| px | number | — | 自定义像素尺寸（优先于 size） |
-| rarity | ItemRarity | — | 稀有度（边框颜色） |
-| gradient | string | — | 渐变主题（优先于 rarity） |
-
-尺寸映射：sm=20px, md=24px, lg=28px, xl=32px。
-
-稀有度边框颜色：common=@color-fallback, uncommon=#1eff00, rare=#0070dd, epic=#a335ee, legendary=#ff8000（含 legendary-glow 呼吸发光动画）。
-
-### 12.2 Tag 标签
-
-来源：`src/components/common/Tag.vue`
-
-| Prop | 类型 | 说明 |
-|------|------|------|
-| text | string | 标签文本 |
-| type | 'race' \| 'class' \| 'faction' | 标签类型 |
-| color | string | 自定义颜色（设置 --tag-color CSS 变量） |
-
-样式：tag-race 背景 @white-20；tag-class/tag-faction 背景 var(--tag-color)。padding: 3px @spacing-lg; font-size: @font-sm; min-width: 40px; max-width: 80px。
-
-### 12.3 EffectTag 效果标签
-
-来源：`src/components/common/EffectTag.vue`
-
-| Prop | 类型 | 说明 |
-|------|------|------|
-| type | string | 效果类型 |
-
-| 类型 | 背景色 | 文字色 |
-|------|--------|--------|
-| physical_damage | @damage-physical-bg | @damage-physical |
-| magic_damage | @damage-magic-bg | @damage-magic |
-| health_restore | @heal-hp-bg | @heal-hp |
-| mana_restore | @heal-mp-bg | @heal-mp |
-| buff | @buff-bg | @buff-color |
-| debuff | @debuff-bg | @debuff-color |
-
-### 12.4 EmptyState 空状态
-
-来源：`src/components/common/EmptyState.vue`
-
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| icon | string | — | 图标名 |
-| text | string | — | 占位文字 |
-| size | number | 32 | 图标尺寸 |
-| gradient | string | — | 渐变 |
-
-样式：padding: 32px; background: @overlay-mid; border: 2px dashed @popup-border-color; border-radius: @radius-md。
-
-### 12.5 SkillTags 技能标签
-
-来源：`src/components/common/SkillTags.vue`
-
-| Prop | 类型 | 说明 |
-|------|------|------|
-| skill | Skill | 技能对象 |
-
-展示内容：EffectTag(type) + MP 消耗标签 + 冷却时间标签 + 目标类型标签。
-
-| 标签 | 背景色 | 文字色 |
-|------|--------|--------|
-| MP 消耗 | rgba(110, 155, 255, 0.15) | #6e9bff |
-| 冷却时间 | rgba(255, 165, 0, 0.15) | #ffa500 |
-| 目标类型 | rgba(160, 100, 255, 0.15) | #a064ff |
-
-### 12.6 ResourceBar 资源条
-
-来源：`src/components/common/ResourceBar.vue`
-
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| icon | string | — | 图标名（旧字段） |
-| iconName | string | — | 图标名（新字段，优先） |
-| iconGradient | string | — | 图标渐变 |
-| name | string | — | 资源名称 |
-| current | number | — | 当前值 |
-| max | number | — | 最大值 |
-| percent | number | — | 百分比 |
-| type | string | 'hp' | 类型（hp/mp/exp） |
-
-轨道高度 20px，含液态波浪层（慢速/快速）和粒子光点。
-
-| 类型 | 填充渐变 |
-|------|----------|
-| hp | linear-gradient(90deg, #ff5252, #e53935) |
-| mp | linear-gradient(90deg, #448aff, #2962ff) |
-| exp | linear-gradient(90deg, #ffb300, #ff8f00) |
-
-### 12.7 ClassResourceBar 职业专属资源条
-
-来源：`src/components/common/ClassResourceBar.vue`
-
-| Prop | 类型 | 说明 |
-|------|------|------|
-| resourceSystem | ResourceSystem | 职业资源系统对象 |
-
-轨道高度 18px，含液态波浪层。
-
-| 资源类型 | 名称 | 图标 | 渐变 | 填充渐变 |
-|----------|------|------|------|----------|
-| rage | 怒气 | flame | physical | linear-gradient(90deg, #ff4500, #cc3700) |
-| energy | 能量 | lightning-bolt | gold | linear-gradient(90deg, #ffd700, #ffaa00) |
-| combo_point | 连击 | archery-target | gold | linear-gradient(90deg, #ff8c00, #ff6500) |
-| soul_shard | 碎片 | soul | debuff | linear-gradient(90deg, #9370db, #7b1fa2) |
-| chi | 真气 | fist | heal | linear-gradient(90deg, #00ff96, #00b870) |
-| mana | 法力 | magic-palm | mana | linear-gradient(90deg, #448aff, #2962ff) |
+| 选择目标 | 点击敌人 combatant | canAct 且存活时设置 targetEnemyId，金色高亮（source 无事件，仅状态） |
+| 普通攻击 | 点击"普通攻击" | UI_CLICK(source='combat_attack') + playerAction({type:'attack'})，applyCombatDamageEffects 播放特效 |
+| 使用技能 | 点击 skill-btn | UI_CLICK(source='combat_skill') + playerAction({type:'skill', skillId})，按技能类型播放物理/魔法特效，治疗技能触发 heal-glow 与粒子 |
+| 使用物品 | 点击"物品" → 选择条目 | UI_CLICK(source='combat_item_btn'/'combat_use_item') + playerAction({type:'item'})，HP/MP 恢复或伤害特效 |
+| 跳过回合 | 点击"跳过" | UI_CLICK(source='combat_skip') + skipTurn，内部 endPlayerTurn 自动调度敌人回合 |
+| 逃跑 | 点击"逃跑" | UI_CLICK(source='combat_flee') + playerAction({type:'flee'})，Boss 战时禁用 |
+| 倍速切换 | 点击 speed-toggle | toggleSpeed 在 1x/2x 间切换（图标 single-arrow/double-arrow） |
+| 战斗结束 | 自动 / 点击"确定" | 结果弹窗 anime.js 入场 + victory 3 秒 / defeat·fled 2 秒自动关闭，或点击"确定"立即 emit close(result) |
+| 回合恢复 | watch(turn) | 敌人回合结束切回 player 且无结果时恢复 isAnimating=false，可继续操作 |

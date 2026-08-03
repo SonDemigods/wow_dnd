@@ -5,10 +5,10 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 技能模块设计文档 |
-| 版本 | v4.2 |
-| 生成日期 | 2026年7月10日 |
+| 版本 | v4.3 |
+| 生成日期 | 2026年8月3日 |
 | 所属模块 | `modules/skill` |
-| 更新说明 | 严格对齐源码：移除不存在的 `ISkillsService` 接口（Store 即对外接口）；修正 `SkillsData.skills` 类型为 `string[]`（仅存 ID，运行时从模板缓存还原）；移除不存在的 `SkillQuery` 与 `SkillValidationResult` 接口；新增 `SkillTemplateStorage` 存储类型定义；补全 `Skill` 接口的 `resourceType`/`resourceCost` 字段（BIZ-11）；新增 `CanCastSkillOptions` 接口，修正 `canCastSkill` 签名（支持 `CanCastSkillOptions \| number`）；修正 `getSkillCoefficient` 第三参数类型包含 `'buff'`；修正 `unequipSkill` 入参为 `skillId: string`（按 ID 查找槽位，非按 slotIndex）；补全 Store 导出（`monsterSkillTemplates`、`skillCountByType`、`getSkillTemplatesByClass`、`addSkillTemplate`、`removeSkillTemplate`、`getCooldownRemaining`、`resetCooldowns`、`SKILL_TYPE_NAMES`）；移除不存在的 `checkManaCost` 纯函数；修正文件结构树为标准树形格式 |
+| 更新说明 | 严格对齐源码：skillTemplates/monsterSkillTemplates 改用 shallowRef（P3-144，原地 set/delete 后显式 triggerRef，clear 场景改为整体替换 new Map()）；技能模板初始化 initSkillTemplates 优化为一次性 bulkPut（P3-143），补全数据来源（CLASS_ABILITIES 13 个职业 + MONSTER_ABILITIES）；index.ts 纯函数导出由 7 个更正为 8 个（新增 isValidTargetType 类型守卫）；修正 Skill/SkillTemplateStorage 的 mpCost 为可选（P2-76）；castSkill 流程补充未加载角色校验（P1-19）与天赋治疗加成（P2-75，healingMultiplier）；getSkillTemplatesByClass 补充实现说明（P1-18：全量查询后内存过滤）；config_skills 索引补充 type 字段；loadTemplatesTo 描述更新为"查询 → 整体替换"；equipSkill「装备即学习」标注为设计保留（P3-102）；新增遗留待办记录（P3-153、P3-155） |
 
 ---
 
@@ -36,6 +36,7 @@
 **技能模块**与以下模块交互：
 
 - **角色模块**：消耗 MP、获取等级和职业、恢复 HP（通过直接调用 `useCharacterStore()` Action）
+- **天赋模块**：施放恢复类技能时读取天赋治疗加成（`useTalentStore().effectSummary.healingMultiplier`）
 - **战斗模块**：技能伤害/效果计算、冷却推进与重置（战斗模块直接调用 `useSkillStore()` Action）
 - **日志模块**：记录技能学习与使用的冒险日志
 - **事件总线**：仅发布 `SKILL_CAST`、`SKILL_LEARNED` 用于 UI 动画/音效通知
@@ -44,7 +45,8 @@
 
 技能模块遵循"直接 Store Action 调用"模式：
 
-- **技能模块 → 角色模块**：`castSkill()` 中直接调用 `characterStore.changeMp(-skill.mpCost)`、`characterStore.receiveHeal()`
+- **技能模块 → 角色模块**：`castSkill()` 中直接调用 `characterStore.changeMp(-mpCost)`、`characterStore.receiveHeal()`（P2-76：mpCost 为可选，`?? 0` 后仅当大于 0 时扣减）
+- **技能模块 → 天赋模块**：`castSkill()` 施放 `health_restore` 技能时读取 `talentStore.effectSummary.healingMultiplier` 计算最终治疗量（P2-75）
 - **其他模块 → 技能模块**：战斗模块通过 `useSkillStore().castSkill()`、`tickCooldowns()`、`resetCooldowns()`、`getSkill()` 等操作技能
 - **事件总线**：仅保留 `SKILL_CAST`、`SKILL_LEARNED` 用于 UI 动画/音效通知
 
@@ -60,7 +62,7 @@
 | FR-SKILL-002 | 支持技能遗忘（通过卸下技能栏间接实现，不删除已学技能） | 核心功能 |
 | FR-SKILL-003 | 支持技能使用（最大 4 个可使用技能） | 核心功能 |
 | FR-SKILL-004 | 支持技能栏配置（4 个槽位，可装备/卸下/交换） | 核心功能 |
-| FR-SKILL-005 | 支持职业技能模板加载（按 classRestriction 索引查询） | 职业系统 |
+| FR-SKILL-005 | 支持职业技能模板加载（职业专属技能 + classRestriction 为 null 的通用技能） | 职业系统 |
 | FR-SKILL-006 | 数据持久化存储（`char_skills` + `config_skills` 双表） | 存档系统 |
 | FR-SKILL-007 | 支持 6 种技能类型区分（物理伤害、魔法伤害、生命恢复、法力恢复、增益、减益） | 技能系统 |
 | FR-SKILL-008 | 支持技能冷却机制（按回合 tick） | 战斗限制 |
@@ -96,11 +98,11 @@ src/modules/skill/
 
 | 文件 | 职责 |
 |------|------|
-| `index.ts` | 模块入口，统一导出 types（10 项）、`skillsDbService` 实例、7 个纯函数、`useSkillStore` |
+| `index.ts` | 模块入口，统一导出 types（10 项）、`skillsDbService` 实例、8 个纯函数（含 `isValidTargetType` 类型守卫）、`useSkillStore` |
 | `types.ts` | TypeScript 类型定义（`SkillType`、`SkillSlotIndex`、`SkillEffect`、`SkillBuffEffect`、`Skill`、`AppliedEffectInfo`、`SkillUseResult`、`SkillBar`、`SkillsData`、`SkillTemplateStorage`） |
 | `db.ts` | IndexedDB 数据库操作层，封装 `char_skills` 和 `config_skills` 两表的读写（`SkillsDbService` 类，全局单例 `skillsDbService`） |
 | `store.ts` | Pinia Store（`defineStore('skills')`），技能状态唯一持有者，编排 Service 纯函数 → 更新状态 → 持久化 → 通知 UI |
-| `service.ts` | 纯函数服务层（无状态、无副作用、无异步），负责伤害计算、Buff 效果计算、施放校验、槽位校验等核心业务逻辑 |
+| `service.ts` | 纯函数服务层（无状态、无副作用、无异步），负责伤害计算、Buff 效果计算、施放校验、槽位校验、目标类型守卫等核心业务逻辑 |
 
 ---
 
@@ -126,7 +128,7 @@ export type {
 // 数据层
 export { skillsDbService } from './db';
 
-// 服务层纯函数
+// 服务层纯函数（8 个）
 export {
   calculateSkillDamage,
   getSkillCoefficient,
@@ -134,12 +136,15 @@ export {
   canLearnSkill,
   validateSkillBarSlot,
   isSkillEquipped,
-  canCastSkill
+  canCastSkill,
+  isValidTargetType
 } from './service';
 
 // Store
 export { useSkillStore } from './store';
 ```
+
+> 注：顶层聚合入口 `src/modules/index.ts` 的 skill 段仅导出 `isValidTargetType` 之外的 7 个纯函数（`skillsDbService`、`calculateSkillDamage`、`getSkillCoefficient`、`calculateBuffValue`、`canLearnSkill`、`validateSkillBarSlot`、`isSkillEquipped`、`canCastSkill`）及全部 10 个类型与 `useSkillStore`。
 
 ### 数据类型定义（types.ts）
 
@@ -166,7 +171,7 @@ export interface SkillEffect {
 
 /** Buff/Debuff 效果配置（type 引用 combat/effects 的 EffectType） */
 export interface SkillBuffEffect {
-  /** 效果类型（attack_up / poison / shield / stun / freeze / silence 等） */
+  /** 效果类型（attack_up / poison / shield / stun / freeze / silence 等 15 种） */
   type: EffectType;
   /** 效果基础值（含义因 type 而异） */
   value: number;
@@ -180,7 +185,8 @@ export interface Skill {
   name: string;
   icon: string;
   description: string;
-  mpCost: number;
+  /** 法力消耗值（P2-76：可选，资源型技能可不配置；消费方使用 `?? 0` 处理） */
+  mpCost?: number;
   type: SkillType;
   effect: SkillEffect;
   unlockLevel: number;
@@ -238,7 +244,8 @@ export interface SkillTemplateStorage {
   name: string;
   icon: string;
   description: string;
-  mpCost: number;
+  /** 法力消耗值（P2-76：可选） */
+  mpCost?: number;
   type: SkillType;
   effect: { type: SkillType; value: number; coefficient?: number };
   unlockLevel: number;
@@ -257,6 +264,15 @@ export interface SkillTemplateStorage {
 ### 服务层纯函数（service.ts）
 
 ```typescript
+/**
+ * 技能目标类型类型守卫
+ *
+ * 运行时校验 `data.targetType`（DB 中存储为 string）是否为合法的目标类型字面量
+ * （'single' | 'all_enemies' | 'self' | 'ally'），替代不安全的 `as` 类型断言（P2-56）。
+ * 在 `toSkill()` 的 DB → 运行时转换中调用。
+ */
+export function isValidTargetType(value: string | undefined | null): value is NonNullable<Skill['targetType']>;
+
 /**
  * canCastSkill 的扩展选项接口（BIZ-11）
  *
@@ -284,6 +300,7 @@ export interface CanCastSkillOptions {
  * - buff/debuff：固定返回 0（实际效果通过 calculateBuffValue 计算）
  *
  * 系数优先级：`skill.effect.coefficient`（手动指定） > `getSkillCoefficient(unlockLevel, type)`（自动计算）
+ * 结果统一 `Math.floor` 向下取整。
  */
 export function calculateSkillDamage(skill: Skill, stats: Stats): number;
 
@@ -299,6 +316,7 @@ export function calculateSkillDamage(skill: Skill, stats: Stats): number;
  * | 9-10     | 3    | 0.62        | 0.405     |
  *
  * @param type - 'damage'（伤害/法力恢复）| 'heal'（生命恢复）| 'buff'（固定返回 0）
+ * @remarks 模块内部辅助函数，外部应通过 calculateSkillDamage 间接使用
  */
 export function getSkillCoefficient(
   unlockLevel: number,
@@ -308,12 +326,13 @@ export function getSkillCoefficient(
 /**
  * 计算 Buff/Debuff 技能的实际效果值（受属性加成）
  *
- * 加成规则：
- * - 百分比类（attack_up/down、defense_up/down、vulnerable）：WIS × 系数
- * - 固定值类（poison/burn/regen/shield）：WIS × 系数
- * - 倍率类（thorn）：`min(0.60, value + WIS × 0.005)`
- * - 控制类（stun/freeze/silence）：直接返回 value（不缩放）
- * - 速度类（speed_up/down）：DEX × 0.30
+ * 加成规则（各效果类型系数精确值，与源码一致）：
+ * - 百分比类：attack_up / attack_down → `value + WIS × 0.30`；defense_up / defense_down → `value + WIS × 0.25`；vulnerable → `value + WIS × 0.20`
+ * - 固定值类：poison / regen → `value + WIS × 0.50`；burn → `value + WIS × 0.60`；shield → `value + WIS × 0.80`
+ * - 倍率类：thorn（荆棘反伤）→ `min(0.60, value + WIS × 0.005)`，上限 60%
+ * - 控制类：stun / freeze / silence → 直接返回 value（不缩放）
+ * - 速度类：speed_up / speed_down → `value + DEX × 0.30`
+ * - 未知效果类型：安全兜底返回原始 value
  */
 export function calculateBuffValue(buffEffect: SkillBuffEffect, stats: Stats): number;
 
@@ -333,11 +352,11 @@ export function isSkillEquipped(skillBar: SkillBar, skillId: string): boolean;
 /**
  * 校验技能是否可施放（BIZ-11 四维校验）
  *
- * 校验顺序（短路求值）：
- * 1. 沉默状态：isSilenced === true → 禁止施放
- * 2. 冷却时间：currentCooldown > 0 → 冷却中
- * 3. 法力值：currentMana < skill.mpCost → 法力不足
- * 4. 资源系统：skill 配置 resourceType + resourceCost 且 hasEnoughResource 返回 false → 资源不足
+ * 校验顺序（短路求值，命中即返回失败原因）：
+ * 1. 沉默状态：isSilenced === true → 返回「被沉默，无法施放技能」
+ * 2. 冷却时间：currentCooldown > 0 → 返回「技能冷却中」
+ * 3. 法力值：currentMana < (skill.mpCost ?? 0) → 返回「法力不足」
+ * 4. 资源系统：skill 配置 resourceType + resourceCost 且 hasEnoughResource 返回 false → 返回「资源不足」
  *
  * 向后兼容：第二个参数为 number 时视为 currentMana，等价于 `{ currentMana }`。
  */
@@ -352,8 +371,8 @@ export function canCastSkill(
 ```typescript
 export class SkillsDbService {
   // === 角色技能数据（char_skills 表） ===
-  async saveSkillsData(data: SkillsData): Promise<void>;
-  async getSkillsData(characterId: string): Promise<SkillsData>;
+  async saveSkillsData(data: SkillsData): Promise<void>;          // 经 toRawData 去除 undefined 后写入
+  async getSkillsData(characterId: string): Promise<SkillsData>;  // 防御性校验：skills/skillBar.slots 损坏时回退默认值
   async deleteSkillsData(characterId: string): Promise<void>;
 
   // === 技能模板（config_skills 表） ===
@@ -361,7 +380,10 @@ export class SkillsDbService {
   async getSkillTemplate(skillId: string): Promise<Skill | null>;
   async getAllSkillTemplates(): Promise<Skill[]>;
   async getSkillTemplatesByClass(classId: string): Promise<Skill[]>;
+  //   P1-18：IndexedDB 不索引 null 值，anyOf(classId, null) 会抛 DataError，
+  //   故改为查询全部后内存过滤（classRestriction 为 null/undefined 的通用技能 + 职业专属技能）
   async getMonsterSkillTemplates(): Promise<Skill[]>;
+  //   where('usableBy').anyOf('enemy', 'both') 索引查询
   async deleteSkillTemplate(skillId: string): Promise<void>;
 }
 
@@ -374,7 +396,7 @@ export const skillsDbService: SkillsDbService;
 
 | 事件名称 | 触发时机 | 事件数据 |
 |----------|----------|----------|
-| `SKILL_CAST` | 技能施放成功时 | `{ skill: Skill; success: boolean }` |
+| `SKILL_CAST` | 技能施放成功时 | `{ skill: Skill; success: true }` |
 | `SKILL_LEARNED` | 学习新技能时（手动学习或等级解锁） | `{ skill: Skill }` |
 
 > 注意：技能栏装备/卸下/交换、冷却推进等操作不再作为独立的 EventBus 事件发出，而是由 Store 的 computed 属性（如 `equippedSkills`、`unlockedSkills`、`skillBarSlots`）通过 Vue 响应式系统驱动 UI 更新。
@@ -386,26 +408,27 @@ export const skillsDbService: SkillsDbService;
 ### 技能施放流程（castSkill）
 
 1. 查找技能：优先 `skills` 列表，其次 `skillTemplates` 缓存（支持模板技能施放）
-2. 校验法力值：调用 `canCastSkill(skill, currentMana)` 检查法力是否充足
-3. 校验冷却：调用 `isOnCooldown(skillId)` 检查冷却中（返回失败原因含剩余回合数）
-4. 消耗法力值：`characterStore.changeMp(-skill.mpCost)`
-5. 计算效果值：`calculateSkillDamage(skill, characterStore.effectiveStats)`
-6. 按技能类型执行效果：
+2. 未加载角色校验（P1-19）：`characterStore.getCharacterData()` 为 null 时返回 `{ success: false, message: '未加载角色，无法施放技能' }`
+3. 校验法力值：调用 `canCastSkill(skill, charData.mana)` 检查法力是否充足
+4. 校验冷却：调用 `isOnCooldown(skillId)` 检查冷却中（返回失败原因含剩余回合数）
+5. 消耗法力值：`mpCost = skill.mpCost ?? 0`，仅当 `mpCost > 0` 时调用 `characterStore.changeMp(-mpCost)`（P2-76）
+6. 计算效果值：`calculateSkillDamage(skill, characterStore.effectiveStats)`
+7. 按技能类型执行效果：
    - `physical_damage` / `magic_damage`：返回 `damage` 值，由调用方（combatStore）应用到目标
-   - `health_restore`：返回 `heal` 并调用 `characterStore.receiveHeal(damageValue)`
+   - `health_restore`：读取天赋治疗加成 `talentStore.effectSummary.healingMultiplier`，最终治疗量 = `Math.floor(damageValue × (1 + healingMultiplier))`，返回 `heal` 并调用 `characterStore.receiveHeal(finalHeal)`（P2-75）
    - `mana_restore`：调用 `characterStore.changeMp(damageValue)`
    - `buff` / `debuff`：调用 `calculateBuffValue()` 计算每个效果值，通过 `appliedEffects` 传回调用方
-7. 触发 `SKILL_CAST` 事件（UI 动画/音效）
-8. 记录冒险日志（非战斗场景，由 `skipAdventureLog` 参数控制）
-9. 记录冷却：`cooldowns[skillId] = skill.cooldown`（仅当 `skill.cooldown > 0`）
-10. 返回 `SkillUseResult`
+8. 触发 `SKILL_CAST` 事件（UI 动画/音效）
+9. 记录冒险日志（非战斗场景，由 `skipAdventureLog` 参数控制）
+10. 记录冷却：`cooldowns[skillId] = skill.cooldown`（仅当 `skill.cooldown > 0`）
+11. 返回 `SkillUseResult`
 
 ### 技能栏装备流程（equipSkill）
 
 1. 校验槽位索引有效（0-3）：`validateSkillBarSlot(slotIndex)`
 2. 查找技能：优先 `skills` 列表，其次 `skillTemplates` 缓存
 3. 校验等级：`skill.unlockLevel <= characterStore.level`
-4. 如果技能不在 `skills` 列表中，自动添加（支持从模板直接装备）
+4. 如果技能不在 `skills` 列表中，自动添加（支持从模板直接装备）——「装备即学习」为产品意图，设计保留（P3-102）
 5. 直接覆盖目标槽位（无需先设为 null）
 6. 持久化到 IndexedDB
 
@@ -444,7 +467,7 @@ export const skillsDbService: SkillsDbService;
 
 ### 冷却管理流程
 
-1. **推进冷却**：每回合结束时调用 `tickCooldowns()`，遍历 `cooldowns` 中所有条目减 1，减到 0 自动删除
+1. **推进冷却**：每回合结束时调用 `tickCooldowns()`，遍历 `cooldowns` 中所有条目减 1，减到 0 自动删除（P3-99：构建新对象整体替换，保证响应式与不可变性语义）
 2. **重置冷却**：战斗开始时调用 `resetCooldowns()`，清空所有冷却状态（防止跨战斗冷却残留）
 3. **查询冷却**：`isOnCooldown(skillId)` 返回是否冷却中，`getCooldownRemaining(skillId)` 返回剩余回合数
 
@@ -462,10 +485,10 @@ export const skillsDbService: SkillsDbService;
 
 ### IndexedDB 存储结构
 
-| 数据库表 | Key | 数据结构 | 说明 |
-|----------|-----|----------|------|
-| `char_skills` | `characterId` | `SkillsData` | 角色技能数据（skills 仅存 ID 数组，按角色隔离） |
-| `config_skills` | `id` | `SkillTemplateStorage` | 技能模板（按 `classRestriction` 和 `usableBy` 索引查询） |
+| 数据库表 | Key | 索引 | 数据结构 | 说明 |
+|----------|-----|------|----------|------|
+| `char_skills` | `characterId` | `characterId` | `SkillsData` | 角色技能数据（skills 仅存 ID 数组，按角色隔离） |
+| `config_skills` | `id` | `id, classRestriction, type, usableBy` | `SkillTemplateStorage` | 技能模板（`getMonsterSkillTemplates` 走 `usableBy` 索引；`getSkillTemplatesByClass` 因 P1-18 走全量查询后内存过滤） |
 
 ### SkillsData 存储内容
 
@@ -485,7 +508,7 @@ export const skillsDbService: SkillsDbService;
 | `name` | string | 技能名称 |
 | `icon` | string | 技能图标（Iconify 格式） |
 | `description` | string | 技能描述 |
-| `mpCost` | number | 法力消耗 |
+| `mpCost` | number \| undefined | 法力消耗（P2-76：可选） |
 | `type` | SkillType | 技能类型 |
 | `effect` | `{ type; value; coefficient? }` | 技能效果 |
 | `unlockLevel` | number | 解锁等级 |
@@ -496,6 +519,21 @@ export const skillsDbService: SkillsDbService;
 | `buffs` | SkillBuffEffect[] | Buff/Debuff 效果列表 |
 | `resourceType` | string | 资源系统类型（BIZ-11） |
 | `resourceCost` | number | 资源消耗量（BIZ-11） |
+
+### 技能模板数据来源与初始化
+
+技能模板的静态数据定义于 `src/data/config_skills.ts`：
+
+- **`CLASS_ABILITIES`**：按职业分组的职业技能数据（13 个职业：warrior、mage、paladin、hunter、rogue、warlock、druid、priest、shaman、death_knight、monk、demon_hunter、evoker），每项 `{ class_id, skills: Skill[] }`
+- **`MONSTER_ABILITIES`**：怪物/首领技能数据（独立数组，如 dragon_breath、tail_swipe 等）
+
+初始化时由 `DataInitializer.initSkillTemplates()`（P3-143）一次性写入：
+
+1. 遍历 `CLASS_ABILITIES`，为每个技能追加 `classRestriction = class_id`、`usableBy = 'player'` 后收集
+2. 遍历 `MONSTER_ABILITIES`，为每个技能追加 `classRestriction = null`、`usableBy = 'enemy'` 后收集
+3. 全部收集完毕后调用 `db.config_skills.bulkPut(allSkills)` 一次性批量写入（替代逐条 put，减少事务开销）
+
+> 怪物技能虽在静态数据中自带 `usableBy: 'enemy'`，初始化时仍显式统一赋值，确保存储格式一致。
 
 ### 数据规范化设计
 
@@ -536,9 +574,9 @@ export const skillsDbService: SkillsDbService;
 |------|------|------|
 | `skills` | ref\<Skill[]\> | 已学技能列表（运行时完整对象，从 DB 加载时由模板 ID 解析） |
 | `skillBar` | ref\<SkillBar\> | 技能栏配置（4 个槽位，存储技能 ID 或 null） |
-| `skillTemplates` | ref\<Map\<string, Skill\>\> | 职业技能模板缓存（按职业加载） |
-| `monsterSkillTemplates` | ref\<Map\<string, Skill\>\> | 怪物/首领技能模板缓存（敌人 AI 专用） |
-| `currentCharacterId` | ref\<string \| null\> | 当前操作的角色 ID |
+| `skillTemplates` | shallowRef\<Map\<string, Skill\>\> | 职业技能模板缓存（按职业加载；P3-144 改用 shallowRef，原地 set/delete 后显式 triggerRef，clear 场景整体替换 new Map()） |
+| `monsterSkillTemplates` | shallowRef\<Map\<string, Skill\>\> | 怪物/首领技能模板缓存（敌人 AI 专用；P3-144 同 skillTemplates） |
+| `currentCharacterId` | ref\<string \| null\> | 当前操作的角色 ID（仍为本地 ref，未改为 gameStore 代理，见遗留待办 P3-153） |
 | `isLoading` | ref\<boolean\> | 加载状态 |
 | `cooldowns` | ref\<Record\<string, number\>\> | 冷却状态（key = skillId，value = 剩余回合数） |
 
@@ -558,22 +596,22 @@ export const skillsDbService: SkillsDbService;
 |------|------|------|
 | `initialize` | `(characterId?: string) => Promise<void>` | 初始化技能模块（加载模板 + 还原数据 + 等级解锁检查） |
 | `learnSkill` | `(skillId: string) => Promise<boolean>` | 学习新技能（含自动装备到空槽位） |
-| `castSkill` | `(skillId: string, skipAdventureLog?: boolean) => Promise<SkillUseResult>` | 施放技能（核心战斗操作） |
-| `equipSkill` | `(skillId: string, slotIndex: SkillSlotIndex) => Promise<boolean>` | 装备技能到指定槽位 |
+| `castSkill` | `(skillId: string, skipAdventureLog?: boolean) => Promise<SkillUseResult>` | 施放技能（核心战斗操作，含 P1-19 角色校验与 P2-75 天赋治疗加成） |
+| `equipSkill` | `(skillId: string, slotIndex: SkillSlotIndex) => Promise<boolean>` | 装备技能到指定槽位（未学习时自动学习，P3-102 设计保留） |
 | `unequipSkill` | `(skillId: string) => Promise<boolean>` | 卸下指定技能（按 ID 查找槽位） |
 | `swapSkills` | `(slotIndex1: SkillSlotIndex, slotIndex2: SkillSlotIndex) => Promise<boolean>` | 交换两个槽位的技能 |
 | `getSkill` | `(skillId: string) => Skill \| null` | 查询技能（已学 → 玩家模板 → 怪物模板） |
 | `getAvailableSkills` | `() => Skill[]` | 获取已解锁技能列表（代理到 `unlockedSkills`） |
 | `getSkillsByType` | `(type: SkillType) => Skill[]` | 按类型获取技能 |
-| `canUseSkill` | `(skillId: string) => boolean` | 综合校验（存在 + 等级 + MP + 冷却） |
-| `loadTemplatesForClass` | `(classId: string) => Promise<void>` | 加载指定职业的技能模板到缓存 |
+| `canUseSkill` | `(skillId: string) => boolean` | 综合校验（存在 + 等级 + MP + 冷却 + 角色已加载） |
+| `loadTemplatesForClass` | `(classId: string) => Promise<void>` | 加载指定职业的技能模板到缓存（classId 为空时短路清空） |
 | `loadMonsterSkillTemplates` | `() => Promise<void>` | 加载怪物/首领技能模板到缓存 |
 | `getSkillTemplatesByClass` | `(classId: string) => Promise<Skill[]>` | 直接查询 DB 获取职业模板（不修改 Store 状态） |
 | `checkLevelUnlocks` | `(shouldAutoEquip?: boolean) => Promise<void>` | 等级解锁检查（默认 true 自动装备） |
-| `addSkillTemplate` | `(skill: Skill) => Promise<void>` | 添加技能模板（同步缓存与 DB） |
-| `removeSkillTemplate` | `(skillId: string) => Promise<void>` | 删除技能模板（同步缓存与 DB） |
-| `reset` | `() => Promise<void>` | 重置技能数据到初始状态 |
-| `tickCooldowns` | `() => void` | 减少所有冷却回合数（每回合结束调用） |
+| `addSkillTemplate` | `(skill: Skill) => Promise<void>` | 添加技能模板（同步缓存与 DB，P3-144 后显式 triggerRef） |
+| `removeSkillTemplate` | `(skillId: string) => Promise<void>` | 删除技能模板（同步缓存与 DB，P3-144 后显式 triggerRef） |
+| `reset` | `() => Promise<void>` | 重置技能数据到初始状态（清空全部状态并持久化） |
+| `tickCooldowns` | `() => void` | 减少所有冷却回合数（每回合结束调用，P3-99 新对象整体替换） |
 | `resetCooldowns` | `() => void` | 重置所有冷却（战斗开始时调用） |
 | `isOnCooldown` | `(skillId: string) => boolean` | 检查技能是否冷却中 |
 | `getCooldownRemaining` | `(skillId: string) => number` | 获取冷却剩余回合数 |
@@ -604,6 +642,7 @@ export const skillsDbService: SkillsDbService;
 ### 依赖关系
 
 - **角色模块**：通过 `useCharacterStore()` 直接调用消耗 MP、获取等级和职业属性、恢复 HP
+- **天赋模块**：施放恢复类技能时通过 `useTalentStore().effectSummary.healingMultiplier` 应用天赋治疗加成（P2-75）
 - **战斗模块**：通过 `useSkillStore()` 直接调用 `castSkill()`、`tickCooldowns()`、`resetCooldowns()`、`getSkill()`
 - **日志模块**：通过 `useLogStore().addLogEntry()` 记录技能学习/使用的冒险日志
 - **事件总线**：仅发布 `SKILL_CAST`、`SKILL_LEARNED` UI 事件
@@ -613,6 +652,7 @@ export const skillsDbService: SkillsDbService;
 | 模块 | 交互方式 | 说明 |
 |------|----------|------|
 | 角色模块 | 直接 Action 调用 | `changeMp(-cost)` 消耗法力，`receiveHeal()` 恢复生命，`getCharacterData()` 获取角色数据，`effectiveStats` 获取属性，`level` 获取等级，`classId` 获取职业 |
+| 天赋模块 | 直接 Action 调用 | `effectSummary.healingMultiplier` 读取天赋治疗加成（health_restore 技能施放时） |
 | 战斗模块 | 直接 Action 调用 | `castSkill()` 返回 `SkillUseResult` 供战斗计算，`tickCooldowns()` 推进冷却，`resetCooldowns()` 重置冷却，`getSkill()` 查询技能数据 |
 | 日志模块 | 直接 Action 调用 | `addLogEntry()` 记录技能学习/使用的冒险日志 |
 | 事件总线 | `eventBus.emit` | `SKILL_CAST`、`SKILL_LEARNED` 用于 UI 动画/音效 |
@@ -624,12 +664,14 @@ export const skillsDbService: SkillsDbService;
 | 异常类型 | 触发条件 | 处理策略 |
 |----------|----------|----------|
 | 技能不存在 | 使用未解锁或未知的技能 ID | 返回 `{ success: false, message: '技能不存在' }` |
-| 法力不足 | MP < 技能消耗 | 返回 `{ success: false, message: '法力不足' }` |
+| 未加载角色 | `getCharacterData()` 返回 null 时施放技能（P1-19） | 返回 `{ success: false, message: '未加载角色，无法施放技能' }` |
+| 法力不足 | MP < 技能消耗 | `canCastSkill` 返回「法力不足」 |
+| 被沉默 | `canCastSkill` 传入 `isSilenced: true` | `canCastSkill` 返回「被沉默，无法施放技能」 |
 | 技能冷却中 | `isOnCooldown` 返回 true | 返回 `{ success: false, message: '技能冷却中（剩余 X 回合）' }` |
 | 等级不足 | `skill.unlockLevel > characterLevel` | `equipSkill` 返回 false；`canUseSkill` 返回 false |
 | 槽位无效 | `slotIndex` 不在 0-3 范围 | `equipSkill` 返回 false |
 | 存储读取失败 | IndexedDB 解析错误或数据损坏 | 防御性校验：`skills` 不是数组回退为 `[]`，`skillBar.slots` 不是数组回退为全空槽位 |
-| 存储写入失败 | IndexedDB 写入异常 | `dbService.withRetry` 自动重试 |
+| 存储写入失败 | IndexedDB 写入异常 | `dbService.withRetry` 自动重试；`persist()` 内 try-catch + `errorReporter.report` 上报（P3-151） |
 
 ---
 
@@ -640,11 +682,13 @@ export const skillsDbService: SkillsDbService;
 | 优化点 | 实现方式 | 预期效果 |
 |--------|----------|----------|
 | 双模板缓存 | `skillTemplates`（玩家职业）+ `monsterSkillTemplates`（怪物）内存 Map 缓存 | 快速访问，避免重复 DB 查询 |
+| shallowRef 模板缓存 | 模板 Map 使用 `shallowRef`（P3-144），仅顶层引用触发响应式，原地 set/delete 后显式 `triggerRef`，clear 场景整体替换 `new Map()` | 避免深层 Map 响应式开销，批量更新更高效 |
 | 计算属性缓存 | `computed` 缓存 `unlockedSkills`、`lockedSkills`、`equippedSkills`、`skillBarSlots`、`skillCountByType` | 减少重复计算 |
 | 数据规范化 | `char_skills.skills` 仅存 ID，运行时从模板缓存还原 | 减少 IndexedDB 存储空间，避免数据冗余 |
+| 模板批量初始化 | `initSkillTemplates()` 一次性 `bulkPut` 写入全部技能模板（P3-143） | 减少事务次数，加速首次初始化 |
 | 即时持久化 | Action 完成后异步调用 `persist()` 写 DB | 不阻塞 UI 主线程 |
 | 条件持久化 | `checkLevelUnlocks` 仅在有新技能解锁时才 `persist()` | 避免无效写入 |
-| 通用模板加载器 | `loadTemplatesTo` 封装"清空 → 查询 → 填充 Map"模式 | 避免代码重复 |
+| 通用模板加载器 | `loadTemplatesTo` 封装"查询 → 整体替换 new Map()"模式（P3-144） | 避免代码重复 |
 
 ### 数据安全
 
@@ -652,11 +696,20 @@ export const skillsDbService: SkillsDbService;
 |----------|----------|
 | 输入验证 | `validateSkillBarSlot` 检查槽位索引范围，`canCastSkill` 检查法力值/冷却/资源 |
 | 类型校验 | 技能类型使用 TypeScript 字面量联合类型确保编译期安全 |
-| 类型收窄 | `toSkill()` 集中处理 DB string → 运行时字面量联合类型的转换 |
-| 异常捕获 | `dbService.withRetry` 含重试机制 |
+| 类型收窄 | `toSkill()` 集中处理 DB string → 运行时字面量联合类型的转换；`targetType` 使用 `isValidTargetType` 类型守卫而非 `as` 断言（P2-56） |
+| 异常捕获 | `dbService.withRetry` 含重试机制；`persist()` 内 catch 后 `errorReporter` 上报（P3-151） |
 | 数据净化 | 写入前通过 `toRawData()` 去除 undefined 值，确保可被结构化克隆 |
-| 引用隔离 | 学习/装备技能时使用展开运算符 `{ ...template }` 防止引用共享 |
-| 防御性回退 | `effect` 缺失时默认为物理伤害；`cooldown` 缺失时默认 0；`buffs` 为 null 时转为 undefined |
+| 引用隔离 | 学习/装备技能时使用展开运算符 `{ ...template }` 防止引用共享；`buffs` 浅拷贝 |
+| 防御性回退 | `effect` 缺失时默认为物理伤害；`cooldown` 缺失时默认 0；`buffs` 为 null 时转为 undefined；`usableBy` 缺失时默认 'player' |
+
+---
+
+## 遗留待办
+
+| 编号 | 位置 | 说明 |
+|------|------|------|
+| P3-153 | `skill/store.ts` L92 | `currentCharacterId` 仍为本地 `ref<string \| null>`，尚未改为 `gameStore` 代理（与其他模块的角色 ID 来源保持一致） |
+| P3-155 | `skill/store.ts`（约 944 行） | 大型 Store 未拆分 composable，建议按职责拆分 `useSkillLearning` / `useSkillCasting` / `useSkillBar`，降低单文件复杂度 |
 
 ---
 
@@ -674,6 +727,7 @@ export const skillsDbService: SkillsDbService;
 | v3.0 | 2026-06-16 | 全面更新与代码对齐：技能类型扩展为 6 种；新增 SkillBuffEffect 定义；Skill 新增 cooldown/usableBy/targetType/buffs 字段；跨模块通信改为直接 Store Action 调用；新增冷却管理；新增怪物技能模板支持 | System |
 | v4.0 | 2026-06-17 | 逐文件比对验证：核心类型与代码一致 | System |
 | v4.2 | 2026-07-10 | 严格对齐源码：移除不存在的 ISkillsService/SkillQuery/SkillValidationResult 接口；修正 SkillsData.skills 为 string[]；新增 SkillTemplateStorage 类型；补全 Skill 的 resourceType/resourceCost 字段（BIZ-11）；新增 CanCastSkillOptions 接口，修正 canCastSkill 签名；修正 getSkillCoefficient 第三参数类型；修正 unequipSkill 入参为 skillId；补全 Store 导出（monsterSkillTemplates/skillCountByType/getSkillTemplatesByClass/addSkillTemplate/removeSkillTemplate/getCooldownRemaining/resetCooldowns/SKILL_TYPE_NAMES）；移除不存在的 checkManaCost 纯函数；修正文件结构树格式 | System |
+| v4.3 | 2026-08-03 | 对齐最新源码：模板 Map 改用 shallowRef（P3-144，triggerRef / 整体替换）；模板初始化优化为一次性 bulkPut（P3-143）并补充数据来源（CLASS_ABILITIES 13 职业 + MONSTER_ABILITIES）；纯函数导出更正为 8 个（新增 isValidTargetType）；修正 Skill/SkillTemplateStorage 的 mpCost 可选（P2-76）；castSkill 补充未加载角色校验（P1-19）与天赋治疗加成（P2-75）；getSkillTemplatesByClass 补充 P1-18 实现说明；config_skills 索引补充 type；equipSkill「装备即学习」标注设计保留（P3-102）；新增遗留待办 P3-153/P3-155 | System |
 
 ---
 

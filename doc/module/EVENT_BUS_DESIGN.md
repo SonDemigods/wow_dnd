@@ -5,10 +5,10 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 事件总线设计文档 |
-| 版本 | v5.0 |
-| 生成日期 | 2026年7月10日 |
+| 版本 | v6.0 |
+| 生成日期 | 2026年8月3日 |
 | 所属模块 | `modules/bus` |
-| 更新说明 | 严格对齐源码：修正 `EventCallback` 类型为 `(...args: unknown[]) => void`；修正 API 签名均使用泛型 `K extends keyof GameEventPayloadMap`；修正 `COMBAT_START`/`COMBAT_END` 载荷类型为 `EnemyInstance`；补充完整 `IEventBus` 接口与完整 `GameEventPayloadMap`（含全部 39 个事件映射）；补充 `emit` 快照遍历防监听器修改（P3-10）、`clearGroup` 使用 indexOf+splice 精确移除、`removeEvent` 同步清理 groups 等实现细节；补充枚举字符串值 |
+| 更新说明 | 新增 `INVENTORY_FULL` 事件（P2-42 背包已满 toast 提示），事件总数更新为 46；修正 `COMBAT_END` 载荷补充 `enemyCount`/`enemyNames` 摘要字段（P3-89）；修正 `once` 实现为 try/finally 保证回调异常时监听器仍被注销（P0 修复）；补充顶层聚合入口 `modules/index.ts`（bus 段）re-export 说明；核实 P3-116 新增 `modules/game` 模块未引入总线事件，bus 模块 API 无变化 |
 
 ---
 
@@ -44,7 +44,7 @@ src/modules/bus/
 
 | 文件 | 职责 |
 |------|------|
-| `index.ts` | 模块统一导出入口，导出类型（`EventCallback`、`GameEventPayloadMap`、`IEventBus`、`EventListeners`、`GroupListeners`）、`GameEvents` 枚举、`EventBus` 类与 `eventBus` 单例 |
+| `index.ts` | 模块统一导出入口，导出类型（`EventCallback`、`GameEventPayloadMap`、`IEventBus`、`EventListeners`、`GroupListeners`）、`GameEvents` 枚举、`EventBus` 类与 `eventBus` 单例；并被顶层聚合入口 `modules/index.ts`（bus 段）原样 re-export |
 | `core.ts` | `EventBus` 类实现（`on`/`off`/`emit`/`once`/`onGroup`/`clearGroup`/`clearAll`/`removeEvent`），导出 `eventBus: IEventBus` 单例 |
 | `types.ts` | `GameEvents` 枚举定义、`GameEventPayloadMap` 类型映射、`EventCallback` 类型、`IEventBus` 接口、`EventListeners`/`GroupListeners` 内部存储接口 |
 
@@ -96,7 +96,7 @@ export const eventBus: IEventBus = new EventBus();
 | `on` | 回调以 `as EventCallback` 断言后 push 到 `listeners[event]` 数组 |
 | `off` | 使用 `filter` 过滤掉指定回调引用 |
 | `emit` | 对 `listeners[event]` 调用 `slice()` 快照后遍历（P3-10），每个回调 try-catch 包裹，异常 `console.error` 不中断后续 |
-| `once` | 包装为 `onceCallback`：先执行原回调，再调用 `this.off` 取消自身 |
+| `once` | 包装为 `onceCallback`：try/finally 包裹，回调执行后（无论是否抛出异常）调用 `this.off` 注销自身（P0 修复，防止一次性监听器永久泄漏） |
 | `onGroup` | 同时向 `groups[groupName]` 推入 `{ event, callback }` 记录并调用 `on` 注册 |
 | `clearGroup` | 遍历分组记录，对每个 `{ event, callback }` 使用 `indexOf`+`splice` 精确移除（避免 filter 误删 on() 另行注册的同引用回调），数组清空时 `delete` 键，最后 `delete groups[groupName]` |
 | `removeEvent` | `delete listeners[event]`，并遍历 `groups` 过滤掉涉及该事件的记录，空分组自动 `delete` |
@@ -155,7 +155,7 @@ eventBus.emit(GameEvents.CHARACTER_LEVEL_UP, { oldLevel: 5, newLevel: 6 });
 | 事件名称 | 枚举值 | 触发时机 | Payload |
 |----------|--------|----------|---------|
 | `COMBAT_START` | `'combat_start'` | 战斗开始 | `{ enemy: EnemyInstance }` |
-| `COMBAT_END` | `'combat_end'` | 战斗结束 | `{ result: string; enemy: EnemyInstance \| null; expGained: number; goldGained?: number }` |
+| `COMBAT_END` | `'combat_end'` | 战斗结束 | `{ result: string; enemy: EnemyInstance \| null; enemyCount: number; enemyNames: string[]; expGained: number; goldGained?: number }` |
 | `COMBAT_PLAYER_TURN` | `'combat_player_turn'` | 玩家回合开始 | `null` |
 | `COMBAT_ENEMY_TURN` | `'combat_enemy_turn'` | 敌人回合开始 | `null` |
 | `COMBAT_DEAL_DAMAGE` | `'combat_deal_damage'` | 造成伤害（音效/特效） | `{ amount: number; damageType: 'physical' \| 'magic'; targetName: string; actorType?: 'player' \| 'enemy' }` |
@@ -236,6 +236,7 @@ eventBus.emit(GameEvents.CHARACTER_LEVEL_UP, { oldLevel: 5, newLevel: 6 });
 | 事件名称 | 枚举值 | 触发时机 | Payload |
 |----------|--------|----------|---------|
 | `ITEM_DROPPED` | `'item_dropped'` | 物品丢弃 | `{ itemId: string }` |
+| `INVENTORY_FULL` | `'inventory_full'` | 背包已满提示（战斗掉落等场景，P2-42） | `{ itemName: string; actualAmount: number; expectedAmount: number }` |
 
 ### 存档事件
 
@@ -258,6 +259,7 @@ eventBus.emit(GameEvents.CHARACTER_LEVEL_UP, { oldLevel: 5, newLevel: 6 });
 | 战斗模块 | `COMBAT_DODGE` | UI组件 | 闪避视觉特效 + 音效 |
 | 战斗模块 | `COMBAT_BOSS_INTRO` | UI组件 | Boss 出场动画 |
 | 战斗模块 | `COMBAT_BOSS_PHASE` | UI组件 | Boss 阶段转换特效 |
+| 战斗模块 | `INVENTORY_FULL` | UI组件（App.vue） | 背包已满 toast 提示（P2-42） |
 | 探索模块 | `EXPLORATION_BATTLE_TRIGGERED` | 战斗模块 | 启动战斗 |
 | 探索模块 | `EXPLORATION_ITEM_FOUND` | UI组件 | 物品发现提示 |
 | 探索模块 | `EXPLORATION_CELL_EXPLORED` | UI组件 | 格子翻开动画 |
@@ -362,6 +364,7 @@ export enum GameEvents {
 
   // ==================== 物品 ====================
   ITEM_DROPPED = 'item_dropped',
+  INVENTORY_FULL = 'inventory_full',
 
   // ==================== 战斗补充 ====================
   COMBAT_SKIP_TURN = 'combat_skip_turn',
@@ -385,7 +388,7 @@ export interface GameEventPayloadMap {
   [GameEvents.CHARACTER_DEATH]: { cause: string };
   [GameEvents.CHARACTER_RESURRECTED]: { newHp: number; newMp: number };
   [GameEvents.COMBAT_START]: { enemy: EnemyInstance };
-  [GameEvents.COMBAT_END]: { result: string; enemy: EnemyInstance | null; expGained: number; goldGained?: number };
+  [GameEvents.COMBAT_END]: { result: string; enemy: EnemyInstance | null; enemyCount: number; enemyNames: string[]; expGained: number; goldGained?: number };
   [GameEvents.COMBAT_PLAYER_TURN]: null;
   [GameEvents.COMBAT_ENEMY_TURN]: null;
   [GameEvents.COMBAT_DEAL_DAMAGE]: { amount: number; damageType: 'physical' | 'magic'; targetName: string; actorType?: 'player' | 'enemy' };
@@ -417,6 +420,7 @@ export interface GameEventPayloadMap {
   [GameEvents.CONFIRM_CONFIRMED]: { action: string };
   [GameEvents.CONFIRM_CANCELED]: { action: string };
   [GameEvents.ITEM_DROPPED]: { itemId: string };
+  [GameEvents.INVENTORY_FULL]: { itemName: string; actualAmount: number; expectedAmount: number };
   [GameEvents.COMBAT_SKIP_TURN]: null;
   [GameEvents.COMBAT_BOSS_INTRO]: { enemyId: string; enemyName: string; icon: string; effect: string; lines: string[]; duration: number };
   [GameEvents.COMBAT_BOSS_PHASE]: { enemyId: string; enemyName: string; phaseName: string; effect: string };
@@ -460,6 +464,7 @@ export interface GameEventPayloadMap {
 | v4.0 | 2026-06-16 | 全面重写：移除不存在的优先级/防抖/节流功能；修正事件列表为实际 GameEvents 枚举；修正 API 签名；新增 onGroup/clearGroup/removeEvent；修正交互矩阵 | System |
 | v4.1 | 2026-06-17 | 逐文件比对修正：探索事件 characterId 类型标注为 `string \| null` | System |
 | v5.0 | 2026-07-10 | 严格对齐源码重写：修正 EventCallback 类型为 unknown[]；修正 API 签名均使用泛型 K extends keyof GameEventPayloadMap；修正 COMBAT_START/COMBAT_END 载荷类型为 EnemyInstance；补充完整 IEventBus 接口与完整 GameEventPayloadMap（含全部 39 个事件映射）；补充 emit 快照遍历（P3-10）、clearGroup 精确移除、removeEvent 同步清理 groups 等实现细节；补充枚举字符串值 | System |
+| v6.0 | 2026-08-03 | 对齐源码增量更新：新增 INVENTORY_FULL 事件（P2-42），事件总数更新为 46；修正 COMBAT_END 载荷补充 enemyCount/enemyNames（P3-89）；修正 once 实现为 try/finally（P0 修复）；补充顶层聚合入口 modules/index.ts（bus 段）re-export 说明；核实 modules/game 模块（P3-116）未引入总线事件 | System |
 
 ---
 

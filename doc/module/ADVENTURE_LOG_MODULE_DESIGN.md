@@ -5,10 +5,10 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 冒险日志模块设计文档 |
-| 版本 | v5.0 |
-| 生成日期 | 2026年7月10日 |
+| 版本 | v6.0 |
+| 生成日期 | 2026年8月3日 |
 | 所属模块 | `modules/log` |
-| 更新说明 | 严格对齐源码：移除不存在的 `addLogByType`/`getLogCount`/`subscribe` 方法与 `ILogService`/`LogChangeCallback` 类型及 watch 订阅机制；新增 `getPaginatedLogs` 分页方法与 `logCount`/`totalPages` 计算属性；补充日志容量上限 `MAX_LOG_ENTRIES=1000` 尾部裁剪（BIZ-12）与分页 `PAGE_SIZE=50`（PERF-3）；修正图标映射为 Iconify 格式（`game-icons:*`）；修正 `generateLogId` 基于 `generateId('log')`；补充持久化失败经 `errorHandler.report` 处理；修正 `AdventureLogData.updatedAt` 为必填 |
+| 更新说明 | 补充 P3-116 新增 `src/modules/game/` 模块（`useGameStore` 收敛全局游戏状态 `currentCharacterId` 等）；核实 `log/store.ts` 仍使用本地 `currentCharacterId` ref（P3-153 遗留：skill/log/map/quest/equipment/inventory 6 个 Store 仍保留本地 ref，建议后续统一改为 gameStore 代理，为待办项）；补充初始化截断后 fire-and-forget 持久化（P3-112）与失败经 `errorReporter.report` 上报（P3-151）；区分持久化失败处理路径：用户操作触发（`addLogEntry`/`clearLogs`）经 `errorHandler.report`，后台 persist（初始化截断）经 `errorReporter.report` |
 
 ---
 
@@ -38,6 +38,12 @@
 - 商店模块: 调用 `logStore.addLogEntry()` 记录交易事件
 - 探索模块: 调用 `logStore.addLogEntry()` 记录探索事件
 - 技能模块: 调用 `logStore.addLogEntry()` 记录技能事件
+
+### 待办事项（P3-153 遗留）
+
+| 编号 | 内容 | 说明 |
+|------|------|------|
+| P3-153 | `log/store.ts` 仍持有本地 `currentCharacterId = ref<string \| null>(null)`（未在 Store 返回值中暴露，仅供内部 `saveToDb` 持久化使用） | 自 P3-116 起全局角色状态已收敛至 `useGameStore` 的 `currentCharacterId`（`src/modules/game/store.ts`）；skill/log/map/quest/equipment/inventory 6 个 Store 仍保留本地 ref，建议后续统一改为 gameStore 代理 |
 
 ---
 
@@ -72,7 +78,7 @@
 
 | 方法 | 签名 | 说明 |
 |------|------|------|
-| `initialize` | `(characterId: string) => Promise<void>` | 初始化日志模块，从数据库加载角色日志（超上限裁剪尾部） |
+| `initialize` | `(characterId: string) => Promise<void>` | 初始化日志模块，从数据库加载角色日志（超上限裁剪尾部，截断后异步持久化） |
 | `addLogEntry` | `(entry: LogEntry) => Promise<void>` | 添加日志条目（格式化 → 插入头部 → 裁剪超限尾部 → 持久化 → emit 事件） |
 | `getLogs` | `() => LogEntry[]` | 获取所有日志（时间倒序） |
 | `getLogsByType` | `(type: LogType) => LogEntry[]` | 按类型筛选日志 |
@@ -86,6 +92,8 @@
 | `logs` | `Ref<LogEntry[]>` | 日志条目列表（时间倒序，最新在前） |
 | `logCount` | `Computed<number>` | 日志总数量 |
 | `totalPages` | `Computed<number>` | 总页数（向上取整，空列表为 0） |
+
+> 注：`store.ts` 内部另有 `currentCharacterId = ref<string \| null>(null)`，未在 Store 返回值中暴露（P3-153 遗留，见「待办事项」）。
 
 ### 数据类型定义
 
@@ -146,11 +154,13 @@ export interface AdventureLogData {
 ### 初始化流程
 
 1. 调用 `logStore.initialize(characterId)`
-2. 传入的 `characterId` 保存到 `currentCharacterId`
+2. 传入的 `characterId` 保存到本地 `currentCharacterId` ref（P3-153 遗留：log 模块尚未接入 `gameStore` 代理）
 3. 从 `runtime_adventureLogs` 表加载该角色的日志数据
 4. 如果存在数据，取 `stored.entries`（不存在则空数组）
-5. BIZ-12：若条目数超过 `MAX_LOG_ENTRIES`（1000），裁剪尾部至容量上限
+5. BIZ-12：若条目数超过 `MAX_LOG_ENTRIES`（1000），裁剪尾部至容量上限，并标记 `truncated = true`
 6. 设置 `logs = entries`
+7. P3-112：仅在发生截断（`truncated = true`）时以 fire-and-forget 方式异步持久化截断结果，避免下次加载仍读到超量数据
+8. P3-151：截断后持久化失败时调用 `errorReporter.report(err, 'manual', ...)` 上报（后台 persist），不阻断初始化流程
 
 ### 添加日志流程
 
@@ -159,7 +169,7 @@ export interface AdventureLogData {
 3. 将格式化后的条目插入到新数组头部（`[formatted, ...logs]`，时间倒序）
 4. BIZ-12：若新数组长度超过 `MAX_LOG_ENTRIES`（1000），裁剪尾部最旧条目
 5. 调用 `saveToDb()` 持久化到 `runtime_adventureLogs` 表
-6. 持久化失败时调用 `errorHandler.report(e)` 记录错误，不阻断后续事件通知
+6. 持久化失败（用户操作触发）时调用 `errorHandler.report(e)` 记录错误，不阻断后续事件通知
 7. 发射 `LOG_ENTRY_ADDED` 事件（携带 `type`、`message`、`icon`）
 
 ### 清除日志流程
@@ -167,7 +177,7 @@ export interface AdventureLogData {
 1. 调用 `logStore.clearLogs()`
 2. 清空 `logs` 数组（`logs.value = []`）
 3. 调用 `saveToDb()` 持久化（写入空数组覆盖旧数据）
-4. 持久化失败时调用 `errorHandler.report(e)` 记录错误
+4. 持久化失败（用户操作触发）时调用 `errorHandler.report(e)` 记录错误
 
 ### 日志查询
 
@@ -183,7 +193,7 @@ export interface AdventureLogData {
 
 | 函数 | 签名 | 说明 |
 |------|------|------|
-| `generateLogId` | `() => string` | 生成唯一的日志ID，委托 `generateId('log')`（来自 `@/utils/db-helpers`） |
+| `generateLogId` | `() => string` | 生成唯一的日志ID，委托 `generateId('log')`（来自 `@/utils/db-helpers`，格式 `log_时间戳_随机串`） |
 | `formatLogMessage` | `(entry: LogEntry) => LogEntry` | 格式化日志条目（自动补全图标），返回新对象不修改原对象 |
 
 `LOG_TYPE_ICONS` 常量：`Record<LogType, string>`，11 种日志类型到 Iconify 图标的映射表。
@@ -210,10 +220,12 @@ export interface AdventureLogData {
 
 | 方法 | 签名 | 说明 |
 |------|------|------|
-| `saveAdventureLog` | `(characterId, logs: LogEntry[]) => Promise<void>` | 保存日志（`toRawData` 剥离 Proxy） |
+| `saveAdventureLog` | `(characterId, logs: LogEntry[]) => Promise<void>` | 保存日志（`toRawData` 剥离 Proxy，`dbService.withRetry` 重试） |
 | `getAdventureLog` | `(characterId) => Promise<AdventureLogData \| null>` | 读取日志数据，不存在返回 null |
 | `deleteAdventureLog` | `(characterId) => Promise<void>` | 删除指定角色日志 |
 | `clearAllAdventureLogs` | `() => Promise<void>` | 清除所有角色日志 |
+
+> 注：模块另导出单例实例 `adventureLogDbService`，`store.ts` 通过该单例调用数据层。
 
 ### 日志条目结构
 
@@ -256,9 +268,9 @@ export interface AdventureLogData {
 
 ### 依赖关系
 
-- **事件总线**: 发射 `LOG_ENTRY_ADDED` 事件供 UI 组件监听
+- **事件总线**: 发射 `LOG_ENTRY_ADDED` 事件供 UI 组件监听（`@/modules/bus` 的 `eventBus`/`GameEvents`）
 - **数据表**: `runtime_adventureLogs`
-- **错误处理**: `@/services/ErrorHandler` 的 `errorHandler.report`
+- **错误处理**: `@/services/ErrorHandler` 的 `errorHandler.report`（用户操作触发，`addLogEntry`/`clearLogs`）；`@/utils/errorReport` 的 `errorReporter.report`（后台 persist，初始化截断持久化，P3-151）
 - **工具函数**: `@/utils/db-helpers` 的 `generateId`、`@/utils` 的 `toRawData`
 - **配置**: `@/config/log` 的 `PAGE_SIZE`、`MAX_LOG_ENTRIES`
 
@@ -271,8 +283,9 @@ export interface AdventureLogData {
 | 异常类型 | 触发条件 | 处理策略 |
 |----------|----------|----------|
 | 存储读取失败 | IndexedDB 解析错误 | 使用空数组初始化 |
-| 存储写入失败（添加日志） | `saveToDb` 写入异常 | 调用 `errorHandler.report(e)` 记录错误，不阻断事件通知 |
-| 存储写入失败（清除日志） | `saveToDb` 写入异常 | 调用 `errorHandler.report(e)` 记录错误（内存已清空） |
+| 存储写入失败（添加日志） | `saveToDb` 写入异常（用户操作触发） | 调用 `errorHandler.report(e)` 记录错误，不阻断事件通知 |
+| 存储写入失败（清除日志） | `saveToDb` 写入异常（用户操作触发） | 调用 `errorHandler.report(e)` 记录错误（内存已清空） |
+| 截断后持久化失败（后台） | 初始化截断后 fire-and-forget 持久化异常（P3-112） | 调用 `errorReporter.report(err, 'manual', ...)` 上报（P3-151），不阻断初始化流程 |
 | 历史数据超量 | 加载的条目数超过 `MAX_LOG_ENTRIES` | 裁剪尾部至容量上限（BIZ-12） |
 
 ---
@@ -294,7 +307,8 @@ export interface AdventureLogData {
 | 安全措施 | 实现方式 |
 |----------|----------|
 | 数据隔离 | 使用 `characterId` 隔离角色数据 |
-| 异常捕获 | 持久化失败经 `errorHandler.report` 记录，不阻断业务 |
+| 异常捕获（用户操作） | `addLogEntry`/`clearLogs` 持久化失败经 `errorHandler.report` 记录，不阻断业务 |
+| 异常捕获（后台持久化） | 初始化截断后异步持久化失败经 `errorReporter.report` 上报（P3-151） |
 | 重试机制 | `dbService.withRetry` 失败时自动重试 |
 | 容量保护 | 添加与初始化时均执行容量上限裁剪 |
 
@@ -315,10 +329,10 @@ src/modules/log/
 
 | 文件 | 职责 |
 |------|------|
-| `index.ts` | 模块入口、统一导出类型（`LogType`、`LogEntry`、`AdventureLogData`）、`AdventureLogDbService`、纯函数（`generateLogId`、`LOG_TYPE_ICONS`）、`useLogStore` |
+| `index.ts` | 模块入口、统一导出类型（`LogType`、`LogEntry`、`AdventureLogData`）、`AdventureLogDbService` 及单例 `adventureLogDbService`、纯函数（`generateLogId`、`LOG_TYPE_ICONS`）、`useLogStore` |
 | `types.ts` | TypeScript 类型定义：`LogType`（11种）、`LogEntry`、`AdventureLogData` |
-| `db.ts` | IndexedDB 数据库操作：`AdventureLogDbService` 类（`saveAdventureLog`、`getAdventureLog`、`deleteAdventureLog`、`clearAllAdventureLogs`），`toRawData` 剥离 Proxy |
-| `store.ts` | Pinia Store 状态管理（`useLogStore`）：管理 `logs` 数组、`logCount`/`totalPages` 计算属性，提供 `initialize`/`addLogEntry`/`getLogs`/`getLogsByType`/`getPaginatedLogs`/`clearLogs` 操作，持久化失败经 `errorHandler.report` 处理 |
+| `db.ts` | IndexedDB 数据库操作：`AdventureLogDbService` 类（`saveAdventureLog`、`getAdventureLog`、`deleteAdventureLog`、`clearAllAdventureLogs`），`toRawData` 剥离 Proxy，`dbService.withRetry` 重试 |
+| `store.ts` | Pinia Store 状态管理（`useLogStore`）：管理 `logs` 数组、`logCount`/`totalPages` 计算属性，提供 `initialize`/`addLogEntry`/`getLogs`/`getLogsByType`/`getPaginatedLogs`/`clearLogs` 操作；用户操作触发持久化失败经 `errorHandler.report` 处理，后台 persist 失败经 `errorReporter.report` 处理；内部持有未暴露的 `currentCharacterId` ref（P3-153 遗留） |
 | `service.ts` | 纯函数层：`LOG_TYPE_ICONS` 图标映射常量、`generateLogId`（委托 `generateId('log')`）、`formatLogMessage`（日志格式化/图标补全） |
 
 ---
@@ -333,6 +347,7 @@ src/modules/log/
 | v3.0 | 2026-06-16 | 全面对齐实际代码：LogType 从 5 种扩展为 11 种（添加 death/resurrect/shop/skill/exploration/zone）、更新为 useLogStore 架构（addLogEntry/addLogByType）、添加 watch/subscribe 通知机制、添加 formatLogMessage 纯函数、更新图标映射表、存储表从 adventureLog 改为 runtime_adventureLogs、DB 层更新为 AdventureLogDbService 类 | System |
 | v4.0 | 2026-06-17 | 逐文件比对验证：核心类型与代码一致 | System |
 | v5.0 | 2026-07-10 | 严格对齐源码重写：移除不存在的 addLogByType/getLogCount/subscribe 方法与 ILogService/LogChangeCallback 类型及 watch 订阅机制；新增 getPaginatedLogs 分页方法与 logCount/totalPages 计算属性；补充容量上限 MAX_LOG_ENTRIES=1000 尾部裁剪（BIZ-12）与分页 PAGE_SIZE=50（PERF-3）；修正图标映射为 Iconify 格式；修正 generateLogId 基于 generateId('log')；补充持久化失败经 errorHandler.report 处理；修正 AdventureLogData.updatedAt 为必填 | System |
+| v6.0 | 2026-08-03 | 补充 P3-116 新增 `src/modules/game/` 模块（`useGameStore` 收敛全局游戏状态 `currentCharacterId` 等）；核实 `log/store.ts` 仍使用本地 `currentCharacterId` ref（P3-153 遗留：skill/log/map/quest/equipment/inventory 6 个 Store 建议后续统一改为 gameStore 代理，为待办项）；补充初始化截断后 fire-and-forget 持久化（P3-112）与失败经 `errorReporter.report` 上报（P3-151）；区分持久化失败处理路径（用户操作触发经 `errorHandler.report`，后台 persist 经 `errorReporter.report`） | System |
 
 ---
 

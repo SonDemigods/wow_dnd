@@ -5,10 +5,10 @@
 | 项目   | 内容                  |
 | ---- | ------------------- |
 | 标题   | 角色模块设计文档            |
-| 版本   | v4.3                |
-| 生成日期 | 2026年7月10日          |
+| 版本   | v4.4                |
+| 生成日期 | 2026年8月3日          |
 | 所属模块 | `modules/character` |
-| 更新说明 | 严格对照源码重写：补全 talents 子模块入口导出（talents/index.ts）与 TalentEffectSummary 类型定义；修正 CharacterDataStorage 默认值表（factionId/raceId/classId 为创建时设置而非 null）；补全 config_class_talents 导出清单（getTalentTreeById/CLASS_TALENT_TREES）；修正天赋学习流程说明（canLearnTalent 返回 {canLearn,reason}）；补全 gainGold 边界（amount===0 忽略）；补全 reset() 回满 HP/MP 行为说明 |
+| 更新说明 | 反映 P3-116「全局状态收敛与持久化重构」：currentCharacterId 收敛至 GameStore（characterStore 通过只读 computed 代理，修改一律经 gameStore.setCurrentCharacterId() 触发持久化）；db.ts 不再访问 runtime_gameState 表；补全 talents 类型定义（TalentEffect 可辨识联合、healing_multiplier/hp_multiplier、TalentEffectSummary 新字段）；补全 setRace/setClass 兼容性校验（isRaceFactionCompatible/isClassRaceCompatible）；修正死亡处理流程与级联删除（Promise.allSettled）描述 |
 
 ***
 
@@ -46,6 +46,7 @@
 - 背包模块：物品使用效果触发角色属性变更
 - 探索模块：玩家死亡时调用 `handleDeath()`
 - 天赋系统（模块内子模块）：天赋属性加成通过 `applyBonus` 应用到角色
+- 游戏状态模块（GameStore）：currentCharacterId 的读写（P3-116 收敛）
 
 ### 跨模块通信机制
 
@@ -55,6 +56,7 @@
 - **角色模块 → 其他模块**：
   - 通过 `eventBus.emit()` 发布角色生命周期事件（`CHARACTER_LEVEL_UP`、`CHARACTER_DEATH`、`CHARACTER_RESURRECTED`、`CHARACTER_CREATED`、`CHARACTER_DELETED`、`CHARACTER_LOGOUT`）供 UI 组件监听动画/音效
   - 创建/删除角色时，跨模块持久化逻辑通过 `CharacterLifecycleService`（`@/services/CharacterLifecycleService`）收口，Store 层不直接依赖其他模块 DbService
+  - **角色模块 → 游戏状态模块（GameStore）**：P3-116 后 `currentCharacterId` 收敛到 `useGameStore()`，characterStore 通过只读 computed 代理访问，角色创建/选择/登出/删除时一律经 `gameStore.setCurrentCharacterId()` 更新并持久化到 `runtime_gameState` 表
 
 ***
 
@@ -190,7 +192,10 @@ export { useTalentStore } from './store';
 ```typescript
 export const useCharacterStore = defineStore('character', () => {
   // ==================== 响应式状态 ====================
-  const currentCharacterId: Ref<string | null>;
+  // P3-116：currentCharacterId 收敛到 GameStore，此处为只读 computed 代理，
+  // 所有修改必须通过 gameStore.setCurrentCharacterId() 完成（触发持久化），
+  // 不能直接赋值 currentCharacterId.value（只读 computed 会触发 Vue 警告且不生效）
+  const currentCharacterId: ComputedRef<string | null>;
   const character: Ref<Character | null>;
   const characterList: Ref<CharacterListItem[]>;
   const bonusStats: Ref<Partial<Stats>>;
@@ -492,6 +497,9 @@ export interface CharacterDataStorage {
 ### 天赋系统类型定义（talents/types.ts）
 
 ```typescript
+/** 资源上限字段联合类型（resource_bonus 的 stat 字段限定为 `${ResourceType}_max`） */
+export type ResourceStatKey = `${ResourceType}_max`;
+
 /** 天赋效果类型枚举 */
 export type TalentEffectType =
   | 'stat_bonus'
@@ -500,16 +508,52 @@ export type TalentEffectType =
   | 'crit_bonus'
   | 'resource_bonus'
   | 'skill_enhance'
+  | 'healing_multiplier'
+  | 'hp_multiplier'
   | 'special';
 
-/** 天赋效果接口 */
-export interface TalentEffect {
-  type: TalentEffectType;
-  stat?: keyof Stats | string;
+/** 基础属性加成效果（stat_bonus，stat 限定为 keyof Stats） */
+export interface StatBonusEffect {
+  type: 'stat_bonus';
+  stat: keyof Stats;
   valuePerRank: number;
-  targetSkill?: string;
+}
+
+/** 资源上限加成效果（resource_bonus，stat 限定为 ResourceStatKey） */
+export interface ResourceBonusEffect {
+  type: 'resource_bonus';
+  stat: ResourceStatKey;
+  valuePerRank: number;
+}
+
+/** 技能增强效果（skill_enhance） */
+export interface SkillEnhanceEffect {
+  type: 'skill_enhance';
+  targetSkill: string;
+  valuePerRank: number;
+}
+
+/** 特殊效果（special，目前无消费方，仅为兼容保留） */
+export interface SpecialEffect {
+  type: 'special';
+  valuePerRank: number;
   description?: string;
 }
+
+/** 无 stat 字段的数值累加效果（damage_multiplier/damage_reduction/crit_bonus/healing_multiplier/hp_multiplier） */
+export interface SimpleMultiplierEffect {
+  type: 'damage_multiplier' | 'damage_reduction' | 'crit_bonus' | 'healing_multiplier' | 'hp_multiplier';
+  valuePerRank: number;
+  description?: string;
+}
+
+/** 天赋效果可辨识联合类型（P3-139 修复：stat 字段编译期收窄，消除 'hp_max' 等非法属性键） */
+export type TalentEffect =
+  | StatBonusEffect
+  | ResourceBonusEffect
+  | SkillEnhanceEffect
+  | SpecialEffect
+  | SimpleMultiplierEffect;
 
 /** 天赋节点接口 */
 export interface Talent {
@@ -571,6 +615,10 @@ export interface TalentEffectSummary {
   critBonus: number;
   /** 资源加成（resource_bonus），key 为资源键，value 为总加成值 */
   resourceBonuses: Record<string, number>;
+  /** 治疗倍率总和（healing_multiplier，P2-75 新增），如 0.24 表示治疗量提升 24% */
+  healingMultiplier: number;
+  /** 生命上限倍率总和（hp_multiplier，P3-139 新增），如 0.15 表示生命上限提升 15% */
+  hpMultiplier: number;
   /** 特殊效果列表（special） */
   specialEffects: Array<{ description: string; value: number }>;
   /** 技能增强列表（skill_enhance） */
@@ -756,9 +804,9 @@ export const useTalentStore = defineStore('talent', () => {
 1. 调用 `generateCharacterId()` 生成唯一角色 ID（格式：`char_时间戳_随机串`，委托 `@/utils/db-helpers` 的 `generateId('char')`）
 2. 校验职业与阵营兼容性：`isClassFactionCompatible(cls, factionIdParam)`，不兼容时抛出 `Error`（错误信息含职业名与阵营 ID）
 3. 调用 `createInitialCharacter(params, raceData, classData)` 纯函数创建角色数据（基础属性 10 + 种族/职业加成，HP/MP 上限按 `calculateMaxHp`/`calculateMaxMana` 计算，初始金币 50，等级 1，初始经验 0，`expToNextLevel` 取 `getExpForLevel(2)`=100）
-4. 更新 Store 状态（`character`、`currentCharacterId`、`raceBonus`、`classBonus`）
-5. 初始化技能数据：通过 `characterLifecycleService.initializeCharacterSkills(id, classIdParam)` 收口跨模块持久化（查询 `unlockLevel ≤ 1` 的技能模板，前 4 个自动装备到技能栏 slots，持久化到 `char_skills` 表）
-6. 持久化：保存 `CharacterListItem`（`saveCharacterListItem`，先读出已有数据避免覆盖）和完整 `CharacterDataStorage`（`persistCharacter` 调用 `toStorageFormat` + `saveCharacterData`）到 IndexedDB `char_data` 表
+4. 更新 Store 状态：`character` 设为新角色、`raceBonus`/`classBonus` 设为当前种族/职业加成；通过 `gameStore.setCurrentCharacterId(id)` 设置 `currentCharacterId`（P3-116：只读 computed 代理，不可直接赋值，设置即触发持久化）
+5. 持久化：保存 `CharacterListItem`（`saveCharacterListItem`，先读出已有数据避免覆盖）和完整 `CharacterDataStorage`（`persistCharacter` 调用 `toStorageFormat` + `saveCharacterData`）到 IndexedDB `char_data` 表（P2-51：先落盘基础数据，确保技能初始化失败时角色不丢失）
+6. 初始化技能数据：通过 `characterLifecycleService.initializeCharacterSkills(id, classIdParam)` 收口跨模块持久化（查询 `unlockLevel ≤ 1` 的技能模板，前 4 个自动装备到技能栏 slots，持久化到 `char_skills` 表）
 7. 触发 `CHARACTER_CREATED` 事件（携带 characterId、name）
 8. 刷新 `characterList`（`loadCharacterList`）
 
@@ -785,23 +833,23 @@ export const useTalentStore = defineStore('talent', () => {
 
 ### 种族/职业变更流程
 
-1. `setRace` / `setClass` 更新对应的 `raceBonus` / `classBonus`
-2. 调用 `computeInitialStats(raceBonus, classBonus)` 重新计算基础属性（基础值 10 + 种族加成 + 职业加成，clamp 到 [1, MAX_STAT]）
-3. 调用 `recalculateHpMp` 重新计算 HP/MP 上限（基于 effectiveStats）
-4. 持久化到 IndexedDB
+1. 校验兼容性（P3-100）：`setRace` 调用 `isRaceFactionCompatible` 校验所选种族的阵营必须等于角色当前阵营；`setClass` 调用 `isClassFactionCompatible` 与 `isClassRaceCompatible` 校验职业可选阵营与可选种族，不兼容时抛出 `Error`
+2. `setRace` / `setClass` 更新对应的 `raceBonus` / `classBonus`
+3. 调用 `computeInitialStats(raceBonus, classBonus)` 重新计算基础属性（基础值 10 + 种族加成 + 职业加成，clamp 到 [1, MAX_STAT]）
+4. 调用 `recalculateHpMp` 重新计算 HP/MP 上限（基于 effectiveStats）
+5. 持久化到 IndexedDB
 
 ### 死亡处理流程
 
 1. 外部模块（如战斗模块、探索模块）检测到 HP <= 0 后调用 `handleDeath()`
-2. 将当前级经验值清零（`exp = 0`）
-3. 触发 `CHARACTER_DEATH` 事件（携带 cause: 'death'）
-4. 持久化数据
-5. 自动调用 `resurrect()`
+2. 触发 `CHARACTER_DEATH` 事件（携带 cause: 'death'）
+3. 持久化数据
+4. 自动调用 `resurrect()`（经验清零与半血复活由 `computeResurrection` 统一处理，死亡惩罚为经验清零而非永久死亡）
 
 ### 复活流程
 
 1. 调用 `resurrect()` 方法
-2. 调用 `computeResurrection(character)` 纯函数：`exp = 0`，`hp = floor(maxHp * 0.5)`，`mana = floor(maxMana * 0.5)`
+2. 调用 `computeResurrection(character)` 纯函数：`exp = 0`，`hp = max(1, floor(maxHp * 0.5))`，`mana = max(1, floor(maxMana * 0.5))`（P1-23：确保复活后至少 1 HP，避免极端情况下复活为 0 形成无限循环）
 3. 触发 `CHARACTER_RESURRECTED` 事件（携带 newHp、newMp）
 4. 持久化数据
 
@@ -833,7 +881,7 @@ export const useTalentStore = defineStore('talent', () => {
 | 数据库 Store | Key           | 数据结构                 | 说明              |
 | ----------- | ------------- | -------------------- | --------------- |
 | char_data   | `characterId` | CharacterDataStorage | 角色完整数据（列表项 + 详细属性统一存储） |
-| runtime_gameState  | `id` | GameStateStorage | 当前选中角色ID（通过 `characterDbService.getGameState()` / `saveGameState()` 读写，底层调用 `@/modules/data/gameStateHelper`，键名默认 `gameState`） |
+| runtime_gameState  | `id` | GameStateStorage | 全局游戏状态（currentCharacterId/currentShopId/gameSettings/lastPlayedAt/initializedAt）。P3-116 后由 GameStore 通过 `gameStateHelper`（`getGameState`/`saveGameState`，键名默认 `gameState`）读写，character 模块经 `gameStore.setCurrentCharacterId()` 间接更新，不再直接访问该表 |
 
 ### CharacterDataStorage 存储内容
 
@@ -878,10 +926,11 @@ baseStats: {
 1. **角色列表缓存**：Store 中 `characterList` (reactive) 缓存所有角色的 `CharacterListItem`，支持快速列出所有角色。
 2. **角色详细数据存储**：每个角色的详细属性和状态数据以 `characterId` 为主键存储在 `char_data` 表中。
 3. **数据加载流程**：
-   - 选择角色时，通过 `characterDbService.getCharacterListItem()` 和 `getCharacterData()` 加载数据
+   - 选择角色时，通过 `characterDbService.getCharacterListItem()` 和 `getCharacterData()` 加载数据，再经 `gameStore.setCurrentCharacterId()` 持久化 `currentCharacterId`（P3-116）
    - Store 中通过 `fromStorageFormat()` 将存储格式转为 `Character` 接口
    - 切换角色时先发送 `CHARACTER_LOGOUT` 事件（`emitEvent=true` 时），再更新 Store 状态；`initialize` 中直接调用时传 `false` 避免无意义 UI 重绘
-   - 删除角色时，级联删除通过 `characterLifecycleService.cascadeDeleteCharacter()` 收口，使用 `Promise.all` 并行删除 6 个模块数据：技能（`char_skills`）、背包（`char_inventory`）、装备（`char_equipment`）、探索（`char_exploration`）、冒险日志（`runtime_adventureLogs`）、任务（`char_quests`）
+   - 登出（`logout`）与删除当前角色（`deleteCharacter`）时通过 `gameStore.setCurrentCharacterId(null)` 清空并触发持久化
+   - 删除角色时，级联删除通过 `characterLifecycleService.cascadeDeleteCharacter()` 收口，使用 `Promise.allSettled`（P2-69：原 `Promise.all` 会在任一 reject 时立即返回，导致部分删除状态）并行删除 6 个模块数据：技能（`char_skills`）、背包（`char_inventory`）、装备（`char_equipment`）、探索（`char_exploration`）、冒险日志（`runtime_adventureLogs`）、任务（`char_quests`）
 4. **角色数据隔离**：每个角色拥有独立的属性、背包、任务进度、装备配置、技能状态、探索进度等数据，完全隔离。
 
 ### 同步机制
@@ -900,6 +949,8 @@ baseStats: {
 | `computeEffectiveStats()` | 计算合并 baseStats + bonusStats 后的最终核心属性 |
 | `computeAttributes()`     | 计算衍生属性（委托给 calculations 函数） |
 | `isClassFactionCompatible()` | 校验职业与阵营兼容性（factionsIds.includes） |
+| `isRaceFactionCompatible()` | 校验种族与阵营兼容性（种族的 factionId 必须等于角色阵营，setRace 入口校验） |
+| `isClassRaceCompatible()` | 校验职业与种族兼容性（raceIds 为空数组表示无限制，setClass 入口校验） |
 | `createInitialCharacter()` | 创建初始角色数据（纯函数，初始金币 50） |
 | `applyHpChange()`         | 计算 HP 变更（clamp 到 [0, maxHp]） |
 | `applyMpChange()`         | 计算 MP 变更（clamp 到 [0, maxMana]） |
@@ -910,7 +961,7 @@ baseStats: {
 | `canAffordGold()`         | 检查金币是否足够（amount > 0 且 gold >= amount） |
 | `computeBonusChange()`    | 计算加成变更（isAdd 控制增减，true 用 clampStat，false 用 clampBonus） |
 | `recalculateHpMp()`       | 重新计算 HP/MP 上限并修正当前值（不超新上限） |
-| `computeResurrection()`   | 计算复活后角色数据（exp=0，HP/MP 恢复至 50%） |
+| `computeResurrection()`   | 计算复活后角色数据（exp=0，HP/MP 恢复至 50%，至少为 1） |
 
 ### 天赋系统纯函数（talents/service.ts）
 
@@ -941,7 +992,8 @@ baseStats: {
 - **工具函数 (`@/utils/db-helpers`)**：提供 `generateId` 生成唯一 ID
 - **工具函数 (`@/utils`)**：提供 `toRawData` 去除 Vue Proxy 包装
 - **基础数据 Store (`@/modules/base/store`)**：`useBaseStore` 提供 factions、races、classes 配置数据
-- **数据模块 (`@/modules/data`)**：提供 `dbService.withRetry`、`backupService`、`importService`、`dataInitializer`、`getGameState`/`saveGameState`（通过 `gameStateHelper`）
+- **游戏全局状态模块 (`@/modules/game`)**：`useGameStore` 持有 `currentCharacterId`（P3-116 收敛），characterStore 通过只读 computed 代理访问，所有修改经 `gameStore.setCurrentCharacterId()` 完成并触发持久化；GameStore 需在 characterStore.initialize 之前初始化（App.vue 中先行初始化）
+- **数据模块 (`@/modules/data`)**：提供 `dbService.withRetry`、`backupService`、`importService`、`dataInitializer`、`gameStateHelper`（`getGameState`/`saveGameState`，由 GameStore 调用）
 - **角色生命周期服务 (`@/services/CharacterLifecycleService`)**：收口角色创建/删除的跨模块持久化逻辑（`initializeCharacterSkills`、`cascadeDeleteCharacter`）
 - **天赋配置数据 (`@/data/config_class_talents`)**：提供 `CLASS_TALENT_TREES`、`getTalentById`、`getTalentTreeById`、`getTalentTreesByClassId` 天赋树定义
 - **被动技能配置数据 (`@/data/config_class_passives`)**：提供 `CLASS_PASSIVES`、`getPassivesByClassId` 职业被动技能定义
@@ -958,6 +1010,7 @@ baseStats: {
 | 商店模块 | 直接 Action 调用 | 购买时调用 `spendGold`，出售时调用 `gainGold`               |
 | 探索模块 | 直接 Action 调用 | 玩家死亡时调用 `handleDeath()`                           |
 | 天赋系统 | 模块内子模块 | 天赋 `statBonuses` 通过 `applyBonus` 应用到角色            |
+| 游戏状态模块 | Store 状态代理 | currentCharacterId 经 `gameStore.setCurrentCharacterId()` 读写（P3-116） |
 
 ### 事件发布清单
 
@@ -986,7 +1039,9 @@ baseStats: {
 | HP溢出   | 超出最大HP             | 自动截断到最大值    | 无提示        |
 | MP溢出   | 超出最大MP             | 自动截断到最大值    | 无提示        |
 | 职业阵营不兼容 | `createCharacter` 时职业不支持所选阵营 | 抛出 Error    | UI提示错误信息   |
+| 种族/职业不兼容 | `setRace`/`setClass` 时种族或职业与当前角色不兼容 | 抛出 Error    | UI提示错误信息   |
 | 天赋学习失败 | 可学习性校验未通过          | 返回 false    | UI提示原因     |
+| 级联删除失败 | `cascadeDeleteCharacter` 部分模块删除失败 | 主数据已删不回滚，错误上报 errorReporter | 控制台输出错误日志  |
 
 ***
 
@@ -999,7 +1054,7 @@ baseStats: {
 | 计算属性缓存 | 使用 `computed` 缓存 `effectiveStats`、`attributes`、`effectSummary` | 避免重复计算 |
 | 批量存储   | 仅在数据变更时异步持久化                            | 减少IO操作 |
 | 懒加载    | Store 初始化时才加载基础数据和角色数据                   | 加快启动速度 |
-| 并行级联删除 | `cascadeDeleteCharacter` 使用 `Promise.all` 并行删除 6 个模块数据 | 提升删除性能 |
+| 并行级联删除 | `cascadeDeleteCharacter` 使用 `Promise.allSettled` 并行删除 6 个模块数据（任一失败仍等待全部完成并汇总） | 提升删除性能 |
 
 ### 数据安全
 
@@ -1010,7 +1065,7 @@ baseStats: {
 | 异常捕获 | 数据库 IO 通过 `dbService.withRetry` 包裹，含重试机制 | 防止程序崩溃 |
 | 数据清理 | 使用 `toRawData()` 去除 Vue Proxy 包装 | 避免 DataCloneError |
 | 架构收口 | 跨模块持久化通过 `CharacterLifecycleService` 统一收口 | 避免模块间直接依赖 |
-| 事务安全 | `runtime_gameState` 读写通过 `gameStateHelper` 的 `db.transaction` 保证原子性 | 避免并发写入丢数据 |
+| 事务安全 | `runtime_gameState` 读写通过 `gameStateHelper` 的 `db.transaction` 保证原子性（由 GameStore 调用） | 避免并发写入丢数据 |
 
 ### 边界情况处理
 
@@ -1047,8 +1102,8 @@ src/modules/character/
 | ------------- | ----------------------------------- |
 | `index.ts`    | 模块入口，统一导出 types、db、service 和 useCharacterStore（不含 talents 子模块导出） |
 | `types.ts`    | TypeScript 类型定义，包含枚举（FactionType/RaceType/ClassType）、配置数据接口（FactionData/RaceData/ClassData）、核心数据接口（Stats/Attributes/Character）、运行时结果接口（ExpGainResult）、被动技能接口（PassiveSkill 等）、存储格式接口（FactionStorage/RaceStorage/ClassStorage/CharacterDataStorage） |
-| `db.ts`       | IndexedDB 数据库操作层，封装 `char_data` 表读写（CharacterDbService 类），包含 `toStorageFormat`/`fromStorageFormat` 格式转换，游戏状态读写委托 `@/modules/data/gameStateHelper` |
-| `store.ts`    | Pinia Store 状态管理，响应式数据维护，通过 `characterDbService` 做 CRUD，通过 `eventBus.emit()` 发布角色事件，跨模块持久化委托 `CharacterLifecycleService`，存档管理委托 data 模块 |
+| `db.ts`       | IndexedDB 数据库操作层，封装 `char_data` 表读写（CharacterDbService 类），包含 `toStorageFormat`/`fromStorageFormat` 格式转换；P3-116 后不再直接访问 `runtime_gameState` 表（GameState 操作已迁移至 GameStore） |
+| `store.ts`    | Pinia Store 状态管理，响应式数据维护，通过 `characterDbService` 做 CRUD，通过 `eventBus.emit()` 发布角色事件，跨模块持久化委托 `CharacterLifecycleService`，存档管理委托 data 模块；`currentCharacterId` 经 GameStore 只读 computed 代理（P3-116） |
 | `service.ts`  | 纯函数服务层，包含所有角色属性计算逻辑（委托给 `@/utils/calculations`），含 `clampStat`/`clampBonus` 边界约束 |
 | `talents/index.ts` | 天赋子模块入口，导出类型、常量（TALENT_POINT_RULES）、`calculateTotalTalentPoints`、纯函数和 Store |
 | `talents/types.ts` | 天赋类型定义，含 TalentEffectType、Talent、TalentTree、TalentAllocation、TalentState、TALENT_POINT_RULES 配置、`calculateTotalTalentPoints` 函数 |
@@ -1072,6 +1127,7 @@ src/modules/character/
 | v4.1 | 2026-06-17 | 逐文件比对修正：IndexedDB 存储表名 `game_state` → `runtime_gameState` | System |
 | v4.2 | 2026-07-10 | 严格对齐源码：补全 talents 子模块文件结构与接口；修正 Store Action 清单与命名；修正 Service 纯函数清单；修正 CharacterDataStorage 字段类型；补全 PassiveSkill/存储类型定义；跨模块持久化经由 CharacterLifecycleService 收口 | System |
 | v4.3 | 2026-07-10 | 对照源码重写：补全 talents/index.ts 入口导出与 TalentEffectSummary 类型定义；修正 CharacterDataStorage 默认值表（factionId/raceId/classId 为创建时设置）；补全 config_class_talents 导出（getTalentTreeById/CLASS_TALENT_TREES）与 config_class_passives 依赖；修正天赋学习流程（canLearnTalent 返回 {canLearn,reason}）；补全 gainGold amount===0 边界与 reset() 回满 HP/MP 行为 | System |
+| v4.4 | 2026-08-03 | 反映 P3-116「全局状态收敛与持久化重构」：currentCharacterId 收敛至 GameStore（characterStore 只读 computed 代理，修改经 gameStore.setCurrentCharacterId 触发持久化，GameStore 先行初始化）；db.ts 不再直接访问 runtime_gameState 表；补全 talents 类型（TalentEffect 可辨识联合、healing_multiplier/hp_multiplier、TalentEffectSummary 新字段）；补全 setRace/setClass 兼容性校验（isRaceFactionCompatible/isClassRaceCompatible）；修正死亡处理流程、创建流程持久化顺序（先落盘再初始化技能）与级联删除（Promise.allSettled）描述 | System |
 
 ***
 

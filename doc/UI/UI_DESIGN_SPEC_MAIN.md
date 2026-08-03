@@ -5,10 +5,10 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | UI界面设计文档 - 主界面 |
-| 版本 | v1.2 |
-| 生成日期 | 2026年7月10日 |
+| 版本 | v1.5 |
+| 生成日期 | 2026年8月3日 |
 | 适用平台 | PC端、移动端 |
-| 更新说明 | 比对 App.vue / CharacterSelect.vue / CharacterCreate.vue / GameMain.vue / MapView.vue / ExplorationView.vue / AdminLayout.vue / AdminTable.vue / AdminForm.vue / useResponsiveGrid.ts / useToast.ts 源码后重写：修正角色卡片为 220px 网格（高度 140px 移动 / 180px PC）并补全 Tag 组件与 4 个操作按钮（进入游戏/导出/导入/修复）；修正卡片选中边框使用 --class-color（职业色）而非阵营色；补全角色创建 4 步骤流程含属性预览/最终属性/次级属性/校验确认弹窗；新增 App.vue 根组件状态机与异步加载说明；新增 GameMain.vue 三段式布局（header/content-tabs/footer）与 10 个弹窗懒挂载机制；补全地图缩放（0.5~3）/拖拽平移/zone-info-panel/4 种标记状态；修正探索格子为 52px（PC）/44px（移动）并补全 10 种 cell 类型颜色与拖拽阈值 5px；新增后台管理 AdminLayout 侧边栏 + 仪表盘 + 配置管理章节；移除原"战斗界面"章节（CombatPopup 属弹窗，归入 POPUPS 文档）+ 新增各界面 mermaid 布局草图 + 修复 mermaid 语法（ASCII ID/br标签）并对照 Vue 模板重写布局草图 |
+| 更新说明 | 补全第6章探索视图（格子类型与图标、格子状态样式、拖拽点击交互、探索进度、初始化与生命周期）章节；新增第7章后台管理（AdminLayout 布局/仪表盘/AdminTable 表格/AdminForm 表单/ConfigManager 配置管理/useConfigTableMeta/useConfigCrud/admin 模块 types-db-service-store 五层结构与 11 张配置表）及第8章 useResponsiveGrid composable 章节 |
 
 ***
 
@@ -19,6 +19,9 @@
 | v1.0 | 2026-07-10 | 初始版本：完整梳理主界面各组件布局与交互规范 | System |
 | v1.1 | 2026-07-10 | 新增各界面 mermaid 布局草图 | System |
 | v1.2 | 2026-07-10 | 修复 mermaid 渲染问题并对照源码重写布局 | System |
+| v1.3 | 2026-08-03 | P3-116 后同步源码：更新 App.vue 初始化流程与进入游戏失败提示、GameMain 顶栏职业资源条与异步视图懒加载、后台管理 11 张配置表与 ConfigManager/useConfigTableMeta/useConfigCrud 章节、角色创建次级属性文案、探索 grid-wrapper 描述 | System |
+| v1.4 | 2026-08-03 | 补全角色创建步骤3（职业）/步骤4（角色名）章节并修正次级属性文案；新增游戏主界面（GameMain）、地图视图（MapView）、探索视图（ExplorationView）、后台管理（admin 模块）与 useResponsiveGrid 共 5 个章节 | System |
+| v1.5 | 2026-08-03 | 补全第6章探索视图（格子类型与图标、格子状态样式、拖拽点击交互、探索进度、初始化与生命周期）；新增第7章后台管理（AdminLayout/AdminTable/AdminForm/ConfigManager/useConfigTableMeta/useConfigCrud/admin 模块五层结构与 11 张配置表）及第8章 useResponsiveGrid 章节 | System |
 
 ***
 
@@ -26,7 +29,7 @@
 
 ### 1.1 组件概述
 
-应用根组件，管理三种游戏界面状态（`character-select` | `game` | `admin`），通过 `defineAsyncComponent` 懒加载 CharacterSelect / CharacterCreate / GameMain / AdminLayout 四个大型视图组件（delay=200ms，timeout=10000ms），首屏仅包含角色选择所需代码。初始化时先加载基础数据（阵营/种族/职业）再初始化角色模块，若有当前角色 ID 则直接进入游戏。
+应用根组件，管理三种游戏界面状态（`character-select` | `game` | `admin`），通过 `defineAsyncComponent` 懒加载 CharacterSelect / CharacterCreate / GameMain / AdminLayout 四个大型视图组件（delay=200ms，timeout=10000ms），首屏仅包含角色选择所需代码。初始化时按序执行 gameStore → baseStore → characterStore 三个 Store 的 initialize（P3-116 修复：GameStore 最先初始化，提供 currentCharacterId / currentShopId / gameSettings 等全局状态；characterStore.initialize 依赖 baseStore 的阵营/种族/职业数据，必须串行），随后从 GameStore 读取当前角色 ID，若存在则直接进入游戏。开发环境将 gameState 暴露到 window.__gameState 供控制台切换视图。页面切换通过 gameState 响应式变量驱动，配合 Vue Transition（view-forward / view-back）实现转场动画。
 
 ### 1.2 状态转换
 
@@ -139,7 +142,7 @@ flowchart TB
 
 | 交互 | 触发方式 | 响应 |
 |------|----------|------|
-| 选择角色进入游戏 | CharacterSelect emit select | transitionName='view-forward'，调用 characterStore.selectCharacter 后 gameState='game' |
+| 选择角色进入游戏 | CharacterSelect emit select | transitionName='view-forward'，调用 characterStore.selectCharacter（失败时 Toast 提示"角色加载失败，请重试"并停留在角色选择界面），成功后 gameState='game' |
 | 打开创建弹窗 | CharacterSelect emit create | showCreateModal=true |
 | 角色创建完成 | CharacterCreate emit created | 关闭弹窗，调用 characterSelectRef.refreshData() 刷新列表 |
 | 退出游戏 | GameMain emit exit | showExitConfirm=true |
@@ -377,7 +380,7 @@ flowchart TB
         subgraph footer["fixed-footer flex:0 0 auto"]
             direction TB
             attrPreview["步骤1-3: attribute-preview 3列网格<br>6项基础属性 力敏体智感魅"]
-            finalAttr["步骤4: final-attributes<br>3列基础属性 + 2列次级属性 8项<br>物攻/物防/魔攻/魔防/暴击/闪避/HP/MP"]
+            finalAttr["步骤4: final-attributes<br>3列基础属性 + 2列次级属性 8项<br>物攻/物防/魔攻/魔防/暴击/闪避/最大生命/最大法力"]
             navBtns["navigation-buttons space-between<br>上一步 + spacer + 下一步/创建角色"]
         end
     end
@@ -431,18 +434,17 @@ flowchart TB
 │  │card   │ │card   │ │card   │ │card   │                   │
 │  │[icon] │ │[icon] │ │[icon] │ │[icon] │                   │
 │  │种族名 │ │种族名 │ │种族名 │ │种族名 │                   │
-│  │+X属性 │ │+X属性 │ │+X属性 │ │+X属性 │                   │
+│  │+bonus │ │+bonus │ │+bonus │ │+bonus │                   │
 │  └───────┘ └───────┘ └───────┘ └───────┘                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-种族卡片 active 状态按阵营区分颜色：
-
-| 阵营 | active border-color | active box-shadow |
-|------|---------------------|-------------------|
-| alliance（光辉盟约） | #0078ff | 0 0 15px #0078ff |
-| horde（铁血盟约） | #ff4400 | 0 0 15px #ff4400 |
-| neutral（中立） | #4caf50 | 0 0 15px #4caf50 |
+- 种族列表按已选阵营过滤（`availableRaces = races.filter(r => r.factionId === selectedFaction)`）。
+- 种族卡 active 状态按阵营区分高亮色：
+  - `.race-grid.alliance`：border-color: #0078ff，box-shadow: 0 0 15px #0078ff
+  - `.race-grid.horde`：border-color: #ff4400，box-shadow: 0 0 15px #ff4400
+  - `.race-grid.neutral`：border-color: #4caf50，box-shadow: 0 0 15px #4caf50
+- 种族 bonus 显示为绿色文本（color: @heal-hp），如 `+2 力量`。
 
 ### 3.6 步骤3：选择职业
 
@@ -450,214 +452,72 @@ flowchart TB
 ┌─────────────────────────────────────────────────────────────┐
 │  .class-grid                                                │
 │  (grid: repeat(auto-fit, minmax(110px, 1fr)), gap: @spacing-lg) │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐           │
-│  │class-   │ │class-   │ │class-   │ │class-   │           │
-│  │card     │ │card     │ │card     │ │card     │           │
-│  │[icon]   │ │[icon]   │ │[icon]   │ │[icon]   │           │
-│  │职业名   │ │职业名   │ │职业名   │ │职业名   │           │
-│  │+X属性   │ │+X属性   │ │+X属性   │ │+X属性   │           │
-│  │(-X属性) │ │         │ │         │ │         │           │
-│  │(--class-color) │ │(... )  │ │(... )  │ │(... )  │           │
-│  └─────────┘ └─────────┘ └─────────┘ └─────────┘           │
+│  ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐                   │
+│  │class- │ │class- │ │class- │ │class- │                   │
+│  │card   │ │card   │ │card   │ │card   │                   │
+│  │[icon] │ │[icon] │ │[icon] │ │[icon] │                   │
+│  │职业名 │ │职业名 │ │职业名 │ │职业名 │                   │
+│  │+bonus │ │-bonus │ │+bonus │ │+bonus │                   │
+│  └───────┘ └───────┘ └───────┘ └───────┘                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-职业卡片 active 状态：border-color: var(--class-color)，background: @gold-bg，box-shadow: 0 0 15px var(--class-color)。负值属性加成显示为红色（#ff4444）。
+- 职业列表按已选种族 + 阵营过滤（`availableClasses = classes.filter(c => c.raceIds.includes(selectedRace) && c.factionsIds.includes(selectedFaction))`）。
+- 职业卡通过 inline style 注入 `--class-color`（职业色），active 状态：border-color: var(--class-color)，background: @gold-bg，box-shadow: 0 0 15px var(--class-color)。
+- 职业 bonus 显示属性加成，负值使用红色（.negative，color: #ff4444），正值绿色（color: @heal-hp）。
+- 选择职业后自动选中该职业的 `primaryStat`（主属性）。
 
-### 3.7 步骤4：输入角色名
+### 3.7 步骤4：输入角色名与最终属性
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  .character-preview (padding: @spacing-4xl)                 │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │ .preview-row (flex, gap: @spacing-xl)               │    │
-│  │   [preview-avatar]  [name-input-wrapper]            │    │
-│  │   BaseIcon size=40  input.name-input                │    │
-│  │                      placeholder="输入角色名..."     │    │
-│  └─────────────────────────────────────────────────────┘    │
-│  .preview-details (flex, gap: @spacing-xs)                  │
-│  [Tag阵营] [Tag种族] [Tag职业]                               │
+│  .character-preview (padding: @spacing-4xl, border: @border-card) │
+│  ┌───────────────────────────────────────────────────┐      │
+│  │  .preview-row                                     │      │
+│  │  [preview-avatar]  ┌───────────────────────────┐  │      │
+│  │  (种族图标 40px)   │ .name-input 输入角色名     │  │      │
+│  │                    │ placeholder: 最多8个汉字   │  │      │
+│  │                    │ 或16个英文字母             │  │      │
+│  │                    └───────────────────────────┘  │      │
+│  │  .preview-details                                 │      │
+│  │  [Tag阵营] [Tag种族] [Tag职业]                    │      │
+│  └───────────────────────────────────────────────────┘      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 3.8 底部固定区域
+- 名称校验规则（validateName）：
+  - 非空：`角色名不能为空`
+  - 仅允许中文/英文/数字：`角色名只能包含中文、英文和数字，不允许特殊符号`
+  - 长度限制（中文计 2、英文/数字计 1，上限 16）：`角色名过长，最多8个汉字或16个英文字母`
+- 校验失败弹出 error 弹窗（图标 caltrops，标题"角色名不符合要求"，按钮"返回修改"）。
+- 校验通过弹出 confirm 弹窗（图标 check-mark gradient=heal，标题"确认创建角色"，按钮"确认创建"），确认后调用 `characterStore.createCharacter(name, faction, race, class)` 并 emit created。
 
-#### 步骤 1-3：属性预览
+底部"最终属性"面板（.final-attributes）：
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  .attribute-preview (背景 @gradient-attr-panel)             │
-│  .preview-title "属性预览"                                   │
-│  .attr-list (grid: repeat(3, 1fr), gap: @spacing-xs)        │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐                    │
-│  │[icon]力量│ │[icon]敏捷│ │[icon]体质│                    │
-│  │  11      │ │  10      │ │  10      │                    │
-│  └──────────┘ └──────────┘ └──────────┘                    │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐                    │
-│  │[icon]智力│ │[icon]感知│ │[icon]魅力│                    │
-│  │  10      │ │  10      │ │  10      │                    │
-│  └──────────┘ └──────────┘ └──────────┘                    │
-└─────────────────────────────────────────────────────────────┘
-```
+| 区块 | 网格 | 内容 |
+|------|------|------|
+| 基础属性 | attr-grid（3 列） | 力量 / 敏捷 / 体质 / 智力 / 感知 / 魅力（BaseIcon + 名称 + 数值） |
+| 次级属性 | secondary-attrs（2 列） | 物理攻击 / 物理防御 / 魔法攻击 / 魔法防御 / 暴击率 / 闪避率 / 最大生命 / 最大法力（sword-clash / shield / magic-swirl / magic-shield / explosion-rays / dodge / health-normal / magic-palm 图标） |
 
-基础属性值均为 10，叠加种族与职业的 bonus。属性图标映射：
+次级属性由 `utils/calculations` 中的 8 个计算函数（calculatePhysicalAttack / calculatePhysicalDefense / calculateMagicAttack / calculateMagicDefense / calculateCritChance / calculateDodgeChance / calculateMaxHp / calculateMaxMana）基于基础属性实时派生。
 
-| 属性 | 图标 name | gradient |
-|------|-----------|----------|
-| str（力量） | biceps | physical |
-| dex（敏捷） | boot-kick | lightning |
-| con（体质） | heart-organ | blood |
-| int（智力） | brain | magic |
-| wis（感知） | eye-target | nature |
-| cha（魅力） | charm | gold |
+导航按钮：
 
-#### 步骤 4：最终属性
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  .final-attributes                                          │
-│  .final-title "最终属性"                                     │
-│  .attr-grid (grid: repeat(3, 1fr))                          │
-│  ┌────────┐ ┌────────┐ ┌────────┐                          │
-│  │[icon]  │ │[icon]  │ │[icon]  │                          │
-│  │ 力量   │ │ 敏捷   │ │ 体质   │                          │
-│  │  13    │ │  10    │ │  11    │                          │
-│  └────────┘ └────────┘ └────────┘                          │
-│  ┌────────┐ ┌────────┐ ┌────────┐                          │
-│  │ 智力   │ │ 感知   │ │ 魅力   │                          │
-│  │  9     │ │  10    │ │  10    │                          │
-│  └────────┘ └────────┘ └────────┘                          │
-│  ─── .divider ───                                          │
-│  .secondary-section                                         │
-│  .secondary-title "次级属性"                                 │
-│  .secondary-attrs (grid: repeat(2, 1fr))                    │
-│  ┌──────────────────┐ ┌──────────────────┐                 │
-│  │[icon] 物理攻击 26│ │[icon] 物理防御 16│                 │
-│  └──────────────────┘ └──────────────────┘                 │
-│  ┌──────────────────┐ ┌──────────────────┐                 │
-│  │[icon] 魔法攻击 18│ │[icon] 魔法防御 14│                 │
-│  └──────────────────┘ └──────────────────┘                 │
-│  ┌──────────────────┐ ┌──────────────────┐                 │
-│  │[icon] 暴击率 5%  │ │[icon] 闪避率 3%  │                 │
-│  └──────────────────┘ └──────────────────┘                 │
-│  ┌──────────────────┐ ┌──────────────────┐                 │
-│  │[icon] 最大HP 210 │ │[icon] 最大MP 98  │                 │
-│  └──────────────────┘ └──────────────────┘                 │
-└─────────────────────────────────────────────────────────────┘
-```
-
-次级属性图标映射：
-
-| 属性 | 图标 name | gradient |
-|------|-----------|----------|
-| 物理攻击 | sword-clash | physical |
-| 物理防御 | shield | earth |
-| 魔法攻击 | magic-swirl | magic |
-| 魔法防御 | magic-shield | magic |
-| 暴击率 | explosion-rays | crit |
-| 闪避率 | dodge | dodge |
-| 最大HP | health-normal | blood |
-| 最大MP | magic-palm | mana |
-
-#### 导航按钮
-
-```
-.navigation-buttons (flex, justify-content: space-between, gap: @spacing-xl)
-[上一步 .nav-btn.prev]  [spacer]  [下一步 .nav-btn.next / 创建角色 .nav-btn.create]
-```
-
-| 按钮 | class | 背景色 | 文本色 |
-|------|-------|--------|--------|
-| 上一步 | nav-btn.prev | @popup-border-color | @text-primary |
-| 下一步 | nav-btn.next | linear-gradient(135deg, #0078ff, #0056cc) | @popup-text-color |
-| 创建角色 | nav-btn.create | @gradient-gold-btn | @color-text-dark |
-
-### 3.9 元素尺寸
-
-| 元素 | 宽度 | 高度 | 说明 |
-|------|------|------|------|
-| character-create | 100% | 100% | padding: @spacing-3xl |
-| create-header h2 | - | - | font-size: @font-3xl，color: @accent-color |
-| step-title | - | - | font-size: @font-xl |
-| faction-card main-faction | - | min-height: 160px | padding: @spacing-4xl @spacing-xl |
-| faction-card neutral-faction | max 360px | - | - |
-| race-card | min 100px | - | padding: @spacing-2xl @spacing-md |
-| class-card | min 110px | - | padding: @spacing-2xl @spacing-md |
-| name-input | 100% | - | padding: @spacing-xl @spacing-2xl，font-size: @font-lg |
-| nav-btn | - | - | padding: @spacing-xl 24px，font-size: @font-base |
-
-### 3.10 角色名校验规则
-
-| 规则 | 说明 |
-|------|------|
-| 非空 | trim 后长度 > 0 |
-| 字符限制 | 仅允许中文（\u4e00-\u9fff）、英文（a-zA-Z）、数字（0-9） |
-| 长度计算 | 中文计 2 字符，英文/数字计 1 字符 |
-| 最大长度 | 16 字符（即最多 8 个汉字或 16 个英文字母） |
-
-### 3.11 内置校验/确认弹窗
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  .modal-overlay (z-index: @z-popup)                         │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │ .modal-box (max-width: 360px, border: 2px solid @accent-color) │
-│  │   [modal-icon] BaseIcon size=48                     │    │
-│  │   h3 标题                                            │    │
-│  │   p 消息                                             │    │
-│  │   .modal-buttons                                     │    │
-│  │     [modal-btn-cancel] [modal-btn-confirm]          │    │
-│  └─────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
-```
-
-| 弹窗类型 | modalType | 图标 | 标题 | 确认按钮文本 |
-|----------|-----------|------|------|--------------|
-| 错误提示 | error | caltrops (gradient=warning) | 角色名不符合要求 | 返回修改 |
-| 创建确认 | confirm | check-mark (gradient=heal) | 确认创建角色 | 确认创建 |
-
-### 3.12 交互说明
-
-| 交互 | 触发方式 | 响应 |
+| 按钮 | 显示条件 | 样式 |
 |------|----------|------|
-| 选择阵营 | 点击 faction-card | selectedFaction 更新，清空 selectedRace，发送 UI_CLICK |
-| 选择种族 | 点击 race-card | selectedRace 更新，发送 UI_CLICK |
-| 选择职业 | 点击 class-card | selectedClass 更新，发送 UI_CLICK |
-| 输入角色名 | 输入 name-input | name 实时更新 |
-| 上一步 | 点击上一步按钮（步骤 > 1） | currentStep-- |
-| 下一步 | 点击下一步按钮（步骤 < 4，需 canProceed） | currentStep++ |
-| 创建角色 | 点击创建角色按钮（步骤 4，需 canCreate） | 校验角色名 → 弹出确认弹窗 → 确认后 characterStore.createCharacter |
-| 关闭弹窗 | 点击遮罩 / 取消按钮 | 关闭弹窗 |
+| 上一步 | currentStep > 1 | nav-btn.prev，背景 @popup-border-color |
+| 下一步 | currentStep < 4 | nav-btn.next，蓝色渐变 linear-gradient(135deg, #0078ff, #0056cc)，canProceed=false 时禁用 |
+| 创建角色 | currentStep === 4 | nav-btn.create，金色渐变 @gradient-gold-btn，canCreate=false 时禁用 |
 
-> **交互规则1**：每一步点击卡片仅选择，不自动切换步骤，需点击"下一步"。
-> **交互规则2**：未选择当前步骤所需项时，"下一步"按钮禁用。
-> **交互规则3**：切换阵营会清空已选种族（selectedRace=null）。
-> **交互规则4**：可选职业受种族与阵营双重过滤（c.raceIds 包含 selectedRace 且 c.factionsIds 包含 selectedFaction）。
-> **交互规则5**：创建角色前先校验角色名，校验失败显示错误弹窗，通过后显示确认弹窗。
+### 3.8 移动端适配（max-width: 480px）
 
-### 3.13 状态转换
-
-```
-步骤1(阵营) ──选择阵营──→ 选中阵营 ──下一步──→ 步骤2(种族)
-                                              │
-                                              ├──选择种族──→ 选中种族 ──下一步──→ 步骤3(职业)
-                                                                            │
-                                                                            ├──选择职业──→ 选中职业 ──下一步──→ 步骤4(名字)
-                                                                                                          │
-                                                                                                          ├──输入角色名──→ 点击创建──→ 校验
-                                                                                                          │                          │
-                                                                                                          │                   ┌──────┴──────┐
-                                                                                                          │                   │             │
-                                                                                                          │              校验失败        校验通过
-                                                                                                          │                   │             │
-                                                                                                          │              错误弹窗        确认弹窗
-                                                                                                          │                   │             │
-                                                                                                          │              返回修改         确认创建
-                                                                                                          │                                  │
-                                                                                                          │                          characterStore.createCharacter
-                                                                                                          │                                  │
-                                                                                                          │                          emit created（App.vue 关闭弹窗）
-```
+| 元素 | 调整 |
+|------|------|
+| character-create | padding: 12px，max-height: calc(100vh - 40px) |
+| faction-grid | grid-template-columns: 1fr（单列），gap: 10px |
+| race-grid / class-grid | grid-template-columns: repeat(3, 1fr)，gap: 8px |
+| attr-list | grid-template-columns: repeat(2, 1fr) |
+| secondary-attrs | grid-template-columns: repeat(2, 1fr) |
 
 ***
 
@@ -665,395 +525,195 @@ flowchart TB
 
 ### 4.1 界面概述
 
-游戏核心枢纽页面，三段式布局：顶部 header（玩家信息 + 3 个资源条）、中部 content（地图/探索两个 tab + 视图区）、底部 footer（6 个导航按钮）。通过 `popupMounted` 响应式对象实现 10 个弹窗的懒挂载（首次打开时置 true 并保持）。监听 CHARACTER_LEVEL_UP 事件触发升级动画（1500ms 定时器复位）。
+游戏核心枢纽页面，采用三段式布局：顶部状态栏（角色信息 + 资源条）、中间内容区（地图/探索两个标签页）、底部功能菜单栏（角色/背包/技能/任务/日志/系统六入口）。MapView / ExplorationView 及 10 个弹窗组件均通过 defineAsyncComponent 懒加载（delay=200ms，timeout=10000ms，战斗弹窗 delay=0），首屏不包含弹窗代码。进入界面时由 gameBootstrap.initialize 统一初始化各模块，并按角色从数据库恢复上次标签页状态。
 
 ### 4.2 布局结构
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  .game-main (height: 100vh, flex-col)                       │
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │ .game-header (flex, justify-content: space-between)     ││
-│  │  ┌──────────────────────┐  ┌────────────────────────┐  ││
-│  │  │ .player-info         │  │ .player-resources       │  ││
-│  │  │  [avatar] 名称 Lv.X  │  │  [ResourceBar HP]       │  ││
-│  │  │          金币        │  │  [ResourceBar MP]       │  ││
-│  │  └──────────────────────┘  │  [ResourceBar EXP]      │  ││
-│  │                            └────────────────────────┘  ││
-│  ├─────────────────────────────────────────────────────────┤│
-│  │ .game-content (flex: 1, flex-col)                       ││
-│  │  .content-tabs (flex, gap: 16px)                        ││
-│  │  [地图 tab] [探索 tab]                  .area-info      ││
-│  │  ┌─────────────────────────────────────────────────┐    ││
-│  │  │ .content-view (flex: 1, padding: @spacing-3xl)  │    ││
-│  │  │  <MapView> 或 <ExplorationView>                 │    ││
-│  │  └─────────────────────────────────────────────────┘    ││
-│  ├─────────────────────────────────────────────────────────┤│
-│  │ .game-footer (flex, justify-content: space-around)      ││
-│  │  [角色] [背包] [技能] [任务] [日志] [系统]              ││
-│  └─────────────────────────────────────────────────────────┘│
+│  .game-main (flex-col, height: 100vh, overflow: hidden)     │
+│                                                             │
+│  .game-header (flex-wrap, padding: @spacing-xl 24px)        │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  .player-info                 .player-resources      │    │
+│  │  [player-avatar 48px]         [HP  生命 ResourceBar] │    │
+│  │  player-name                  [MP  法力 v-if showManaBar]│
+│  │  Lv.X  金币(two-coins)        [ClassResourceBar×N]   │    │
+│  │                               [EXP 经验 ResourceBar] │    │
+│  │                               (max-width: 400px)     │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  .game-content (flex: 1)                                    │
+│  ┌─ .content-tabs ──────────────────────────────────────┐   │
+│  │  [地图] [探索]                    区域: 当前区域      │   │
+│  │  (探索按钮 v-if hasCurrentLocation，否则禁用)          │   │
+│  └──────────────────────────────────────────────────────┘   │
+│  ┌─ .content-view (padding: @spacing-3xl) ──────────────┐   │
+│  │  [map]    → <MapView />                              │   │
+│  │  [explore]→ <ExplorationView />                      │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                                                             │
+│  .game-footer (flex, justify-content: space-around)         │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │ [角色] [背包] [技能] [任务] [日志] [系统]             │   │
+│  │  person  backpack  sword-spin notebook scroll cog     │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                                                             │
+│  [10 个懒加载弹窗]                                           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 4.3 界面布局草图
+### 4.3 顶栏资源条
 
-```mermaid
-flowchart TB
-    subgraph gameRoot["game-main height:100vh flex-col"]
-        direction TB
-        subgraph header["game-header flex space-between"]
-            direction LR
-            subgraph playerInfo["player-info flex gap"]
-                avatar["player-avatar 48×48<br>BaseIcon raceIcon size 28"]
-                playerDetail["player-name + player-meta<br>Lv.X + 金币"]
-            end
-            subgraph resourceBar["player-resources max-w400px flex-col"]
-                direction TB
-                hpBar["ResourceBar HP<br>health-normal / blood"]
-                mpBar["ResourceBar MP<br>magic-palm / mana"]
-                expBar["ResourceBar EXP<br>star-formation / gold"]
-            end
-        end
-        subgraph content["game-content flex:1 flex-col"]
-            direction TB
-            subgraph tabs["content-tabs flex gap:16px"]
-                direction LR
-                mapTab["地图 tab<br>treasure-map / nature"]
-                exploreTab["探索 tab<br>campfire / heal<br>无区域时 disabled"]
-                areaName["area-info 区域: xxx"]
-            end
-            viewArea["content-view flex:1 padding<br>MapView 或 ExplorationView"]
-        end
-        subgraph footer["game-footer flex space-around"]
-            direction LR
-            btnChar["footer-btn<br>person 角色"]
-            btnBag["footer-btn<br>backpack 背包"]
-            btnSkill["footer-btn<br>sword-spin 技能"]
-            btnQuest["footer-btn<br>notebook 任务"]
-            btnLog["footer-btn<br>scroll-unfurled 日志"]
-            btnSys["footer-btn<br>cog 系统"]
-        end
-    end
+| 资源条 | 组件 | 图标 | 渐变 | 说明 |
+|--------|------|------|------|------|
+| 生命 HP | ResourceBar type=hp | health-normal | blood | current=hp，max=maxHp，percent=hpPercentage |
+| 法力 MP | ResourceBar type=mp（v-if showManaBar） | magic-palm | mana | current=mana，max=maxMana；仅非替代型资源职业显示 |
+| 职业专属资源 | ClassResourceBar（v-for classResourceSystems） | - | - | 怒气/能量/集中值等替代型资源，由 ResourceSystemFactory.getManaReplacingSystems(classId) 派生，非战斗时携带初始值展示 |
+| 经验 EXP | ResourceBar type=exp | star-formation | gold | current=exp，max=expToNextLevel，percent=expPercentage |
 
-    classDef containerCls fill:#1a1a2e,stroke:#ffd700,color:#f0f0f0
-    classDef resourceCls fill:#2a2a3e,stroke:#4CAF50,color:#f0f0f0
-    classDef btnCls fill:#0d1117,stroke:#ffd700,color:#ffd700
+- `showManaBar = !ResourceSystemFactory.replacesMana(classId)`：战士/盗贼/猎人等使用替代型资源的职业隐藏 MP 条。
+- 角色信息区：player-avatar（BaseIcon 种族图标 28px，48×48 圆角容器）+ player-name + Lv 等级标签（.player-level，升级时触发 level-up 动画 class，1500ms 后复位）+ 金币（two-coins 图标，gradient=gold）。
+- 移动端（max-width: 768px）：player-resources 宽度 100%、order: 3 移至最下方。
 
-    class gameRoot,header,content,footer,playerInfo,tabs containerCls
-    class avatar,playerDetail,resourceBar,hpBar,mpBar,expBar,viewArea resourceCls
-    class mapTab,exploreTab,areaName,btnChar,btnBag,btnSkill,btnQuest,btnLog,btnSys btnCls
-```
+### 4.4 内容标签页
 
-### 4.4 顶部 Header
-
-#### player-info
-
-```
-┌─────────────────────────────────────┐
-│ .player-info (flex, gap: @spacing-xl)│
-│  ┌────────┐  ┌────────────────────┐ │
-│  │.player-│  │.player-details     │ │
-│  │avatar  │  │  .player-name      │ │
-│  │ 48x48  │  │  .player-meta      │ │
-│  │ BaseIcon│ │   Lv.X  金币       │ │
-│  └────────┘  └────────────────────┘ │
-└─────────────────────────────────────┘
-```
-
-| 元素 | 尺寸 | 说明 |
+| 标签 | 图标 | 行为 |
 |------|------|------|
-| player-avatar | 48x48（移动 40x40） | 背景 @gold-bg-hover，border 2px rgba(255,215,0,0.3)，border-radius 10px |
-| player-name | font-size: @font-xl（移动 15px） | color: @text-primary，font-weight: bold |
-| player-level | font-size: @font-sm（移动 11px） | 背景 @gold-bg，color: @accent-color |
-| player-gold | font-size: @font-sm（移动 16px） | color: @accent-color，BaseIcon two-coins gradient=gold size=14 |
-| player-resources | max-width: 400px（移动 100%） | flex-col，gap: @spacing-sm |
+| 地图 | treasure-map (gradient=nature) | currentContentTab='map'，mapStore.saveCurrentTab('map') |
+| 探索 | campfire (gradient=heal) | 无当前区域时 Toast"请先在地图上选择一个区域"且按钮禁用（.disabled）；否则切换至探索并 saveCurrentTab('explore') |
+| 区域信息 | - | 右侧 area-info 显示 mapStore.getCurrentLocation?.name，无则"未知区域" |
 
-升级动画：`.player-level.level-up` 应用 `level-up-text 0.6s ease` + `level-up-glow 1.5s ease` 动画，1500ms 后复位。
+- 地图视图 emit `enter-zone` 时自动切换到探索标签。
+- 初始化时从数据库恢复上次标签页：`mapStore.getCurrentTab()` 若为 'explore' 且有当前区域则恢复探索页。
 
-#### ResourceBar
+### 4.5 底栏功能菜单
 
-3 个 ResourceBar 组件，液态波浪资源条：
+| 按钮 | 图标 | 打开面板 | 说明 |
+|------|------|----------|------|
+| 角色 | person | CharacterInfoPopup | 角色信息 |
+| 背包 | backpack | InventoryPopup | 背包（虚拟网格） |
+| 技能 | sword-spin | SkillsPopup | 技能（虚拟网格） |
+| 任务 | notebook | QuestPopup | 任务面板 |
+| 日志 | scroll-unfurled | AdventureLogPopup | 冒险日志，传入当前区域 |
+| 系统 | cog | SystemPopup | 系统设置：退出游戏（emit exit）、打开音量设置（openAudioFromSystem） |
 
-| 资源 | icon | iconGradient | name | type |
-|------|------|--------------|------|------|
-| 生命 | health-normal | blood | HP | hp |
-| 法力 | magic-palm | mana | MP | mp |
-| 经验 | star-formation | gold | EXP | exp |
+按钮样式：flex-col-center，hover 时金色文字 + 底部金色下划线动画（.footer-btn::after width 0→70%）、translateY(-2px)，active 缩放 0.95。图标 size=16，gold 渐变。
 
-### 4.5 中部 Content
+### 4.6 弹窗列表（defineAsyncComponent 懒加载）
 
-#### content-tabs
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ .content-tabs (flex, gap: 16px, padding: @spacing-xl 24px)  │
-│  [content-tab 地图] [content-tab 探索]    .area-info        │
-│  BaseIcon treasure-map       BaseIcon campfire              │
-│  gradient=nature             gradient=heal                   │
-│  size=16                     size=16                         │
-└─────────────────────────────────────────────────────────────┘
-```
-
-| 元素 | 尺寸 | 说明 |
-|------|------|------|
-| content-tab | padding: @spacing-md 24px | 背景 @white-05，border @border-card，font-size: @font-md |
-| content-tab.active | - | border-color: @accent-color，background: @gold-bg，color: @accent-color |
-| content-tab.disabled | - | opacity: 0.4，cursor: not-allowed（探索 tab 无当前区域时禁用） |
-| area-info | - | margin-left: auto，color: @text-secondary |
-
-#### content-view
-
-| 元素 | 说明 |
-|------|------|
-| content-view | flex: 1，padding: @spacing-3xl，flex-col |
-| MapView | currentContentTab === 'map' 时渲染，emit enter-zone 切换到 explore |
-| ExplorationView | currentContentTab === 'explore' 时渲染 |
-
-### 4.6 底部 Footer
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ .game-footer (flex, justify-content: space-around)          │
-│  ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐            │
-│  │footer│ │footer│ │footer│ │footer│ │footer│ │footer│       │
-│  │-btn  │ │-btn  │ │-btn  │ │-btn  │ │-btn  │ │-btn  │       │
-│  │[icon]│ │[icon]│ │[icon]│ │[icon]│ │[icon]│ │[icon]│       │
-│  │ 角色 │ │ 背包 │ │ 技能 │ │ 任务 │ │ 日志 │ │ 系统 │       │
-│  └────┘  └────┘  └────┘  └────┘  └────┘  └────┘            │
-└─────────────────────────────────────────────────────────────┘
-```
-
-6 个 footer-btn，每个包含 BaseIcon（gradient=gold，size=16）+ footer-text：
-
-| 按钮 | BaseIcon name | 文本 | 打开弹窗 |
-|------|---------------|------|----------|
-| 角色 | person | 角色 | CharacterInfoPopup |
-| 背包 | backpack | 背包 | InventoryPopup |
-| 技能 | sword-spin | 技能 | SkillsPopup |
-| 任务 | notebook | 任务 | QuestPopup |
-| 日志 | scroll-unfurled | 日志 | AdventureLogPopup |
-| 系统 | cog | 系统 | SystemPopup |
-
-| 元素 | 尺寸 | 说明 |
-|------|------|------|
-| footer-btn | min-width: 52px（移动 48px / 480px 42px） | flex-col-center，gap: 5px |
-| footer-btn:hover | - | color: @accent-color，background: rgba(255,215,0,0.08)，translateY(-2px) |
-| footer-btn::after | - | 底部 2px 金色下划线，hover 时 width: 70% |
-| footer-text | font-size: @font-2xs | letter-spacing: 0.5px |
-
-### 4.7 弹窗懒挂载机制
-
-通过 `popupMounted` reactive 对象控制 10 个弹窗的 v-if 挂载，首次打开时置 true 并保持，配合 `defineAsyncComponent` 实现按需加载弹窗 chunk：
-
-| 弹窗组件 | popupMounted 键 | 触发方式 |
-|----------|-----------------|----------|
-| CharacterInfoPopup | characterInfo | footer 角色 |
-| InventoryPopup | inventory | footer 背包 |
-| SkillsPopup | skills | footer 技能 |
-| QuestPopup | quests | footer 任务 |
-| AdventureLogPopup | adventureLog | footer 日志 |
-| ShopPopup | shop | 探索格子 cellType='shop' |
-| QuestBoardPopup | questBoard | 探索格子 cellType='board' |
-| AudioSettingsPopup | audioSettings | SystemPopup emit open-audio |
-| SystemPopup | system | footer 系统 |
-| CombatPopup | -（用 showCombat 直接 v-if） | 探索战斗事件 |
-
-异步加载占位：`popup-async-loading`（min-height: 200px，文本"加载中..."）/ `popup-async-error`（color: #ff6b6b，文本"加载失败"）。
-
-### 4.8 交互说明
-
-| 交互 | 触发方式 | 响应 |
+| 弹窗 | 打开方式 | 说明 |
 |------|----------|------|
-| 切换地图 tab | 点击地图 tab | currentContentTab='map'，发送 UI_CLICK，mapStore.saveCurrentTab('map') |
-| 切换探索 tab | 点击探索 tab | 若无当前区域则 Toast 提示；否则 currentContentTab='explore'，发送 UI_CLICK，mapStore.saveCurrentTab('explore') |
-| 打开弹窗 | 点击 footer-btn | popupMounted[key]=true，showXxx=true，发送 UI_CLICK + UI_PANEL_OPENED |
-| 关闭弹窗 | 弹窗 emit close | showXxx=false，发送 UI_PANEL_CLOSED |
-| 进入商店 | 探索 cellType='shop' | shopStore.openShop，popupMounted.shop=true，showShop=true |
-| 进入任务板 | 探索 cellType='board' | popupMounted.questBoard=true，showQuestBoard=true |
-| 触发战斗 | 探索战斗事件 | enemyStore.createEnemy，combatStore.startCombat，showCombat=true |
-| 发现物品 | 探索物品事件 | Toast 提示"发现物品: xxx xN" |
-| 触发陷阱 | 探索陷阱事件 | Toast 提示"触发xxx，受到 N 点伤害"（danger） |
-| 随机事件 | 探索随机事件 | Toast 提示事件消息 |
-| 升级 | CHARACTER_LEVEL_UP 事件 | levelUpTriggered=true，Toast"升级了！"，1500ms 后复位 |
-| 退出游戏 | SystemPopup emit exit | emit exit（App.vue 处理） |
+| CharacterInfoPopup | 底栏"角色" | - |
+| InventoryPopup | 底栏"背包" | - |
+| SkillsPopup | 底栏"技能" | - |
+| QuestPopup | 底栏"任务" | - |
+| AdventureLogPopup | 底栏"日志" | 传入 current-area |
+| ShopPopup | 探索格子（cellType=shop） | shopStore.openShop(shopId) 后打开 |
+| QuestBoardPopup | 探索格子（cellType=board） | 任务看板 |
+| CombatPopup | 探索战斗触发 | 全屏遮罩（.combat-async-loading 与 .combat-overlay 一致），delay=0 |
+| AudioSettingsPopup | 系统菜单 → 打开音量设置 | - |
+| SystemPopup | 底栏"系统" | emit exit / open-audio |
 
-### 4.9 探索 UI 回调注册
+弹窗懒挂载机制：`popupMounted` reactive 标志记录每个弹窗是否首次打开，v-if 包裹的异步组件仅在用户实际需要时才挂载，避免进入游戏瞬间加载全部弹窗 chunk。面板打开/关闭通过事件总线发送 UI_PANEL_OPENED / UI_PANEL_CLOSED 事件。
 
-GameMain 在 onMounted 时通过 `explorationStore.registerUICallbacks` 注册 6 个回调：
+### 4.7 探索交互回调
 
-| 回调 | 说明 |
-|------|------|
-| onCellExplored | 处理 shop/board 类型格子，打开对应弹窗 |
-| onBattleTriggered | 创建敌人并打开 CombatPopup |
-| onItemFound | Toast 提示发现物品 |
-| onTrapTriggered | Toast 提示陷阱伤害 |
-| onRandomEvent | Toast 提示随机事件 |
-| onMultiOptionEvent | Toast 提示事件描述，自动应用第一个选项 |
+GameMain 在 onMounted 中通过 `explorationStore.registerUICallbacks` 注册探索 UI 回调：
+
+| 回调 | 处理逻辑 |
+|------|----------|
+| onCellExplored | cellType=shop → 打开商店；cellType=board → 打开任务看板 |
+| onBattleTriggered | useEnemyStore().createEnemy(monsterId, areaLevel) 创建敌人 → useCombatStore().startCombat([enemy]) → 打开 CombatPopup |
+| onItemFound | Toast"发现物品: {name} x{count}"（success） |
+| onTrapTriggered | Toast"触发{trapType}，受到 {damage} 点伤害"（danger） |
+| onRandomEvent | Toast 展示随机事件消息（info） |
+| onMultiOptionEvent | Toast 展示事件描述并自动应用第一个选项（applyEventChoice） |
+
+### 4.8 初始化与生命周期
+
+- onMounted：注册探索 UI 回调 → `gameBootstrap.initialize(cid)` 统一初始化所有角色相关模块（EXP-5）→ 恢复上次标签页 → 监听 CHARACTER_LEVEL_UP 升级事件。
+- 升级事件：levelUpTriggered=true + Toast"升级了！"，1500ms 后复位（定时器在 onUnmounted 清理）。
+- onUnmounted：移除升级监听、清理定时器、`gameBootstrap.dispose()` 按初始化逆序清理。
+- 组件暴露 `showNotif` 方法供外部调用。
+- 进入游戏失败/未选中区域等提示通过全局 Toast 单例展示。
 
 ***
 
-## 5. 大地图视图（MapView.vue）
+## 5. 地图视图（MapView.vue）
 
 ### 5.1 界面概述
 
-世界地图交互界面，背景图 worldBg.jpg（aspect-ratio 1201/800），支持鼠标/触摸拖拽平移和滚轮缩放（0.5~3）。区域标记有 4 种状态（locked/unlocked/high-risk/is-current），点击标记选中并显示右下角 zone-info-panel。进入探索前弹出 ConfirmPopup 确认。
+世界地图交互界面，支持滚轮缩放与拖拽平移，点击区域标记查看详情并可进入对应探索区域。区域列表依赖角色等级自动计算（`mapStore.getZones(characterStore.level)`）。地图尺寸按容器动态适配（宽高比 1201/800）。
 
 ### 5.2 布局结构
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  .map-view (flex-col, flex: 1, border-radius: @radius-xl)   │
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │ .map-container (flex: 1, min-height: 400px, cursor: grab)││
-│  │                                                         ││
-│  │  ┌─ .world-map (aspect-ratio: 1201/800) ──────────────┐ ││
-│  │  │  背景 worldBg.jpg                                   │ ││
-│  │  │                                                     │ ││
-│  │  │     ○ locked       ● unlocked                       │ ││
-│  │  │     (灰)           (绿)                              │ ││
-│  │  │                                                     │ ││
-│  │  │     ▲ high-risk    ★ is-current                     │ ││
-│  │  │     (红，Lv>=10)   (金)                              │ ││
-│  │  │                                                     │ ││
-│  │  └─────────────────────────────────────────────────────┘ ││
-│  │                                                         ││
-│  │  ┌─ .zoom-controls (absolute top:16 right:16) ────────┐ ││
-│  │  │  [+]                                              │ ││
-│  │  │  1.0x                                             │ ││
-│  │  │  [-]                                              │ ││
-│  │  └─────────────────────────────────────────────────────┘ ││
-│  │                                                         ││
-│  │  ┌─ .zone-info-panel (absolute bottom:16 right:16) ───┐ ││
-│  │  │  .panel-header: 区域名称                            │ ││
-│  │  │  .panel-body:                                       │ ││
-│  │  │    等级  N+                                         │ ││
-│  │  │    状态  已解锁/未解锁/已完成                       │ ││
-│  │  │    描述  xxx                                        │ ││
-│  │  │  .panel-actions: [进入探索] / [未解锁]              │ ││
-│  │  └─────────────────────────────────────────────────────┘ ││
-│  └─────────────────────────────────────────────────────────┘│
-│  <ConfirmPopup /> (切换区域确认)                             │
+│  .map-view (flex: 1, border-radius: @radius-xl)             │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │  .map-container (relative, min-height: 400px)         │  │
+│  │                                                       │  │
+│  │  .world-map (position: relative, 1201/800 比例)       │  │
+│  │    background: url(worldBg.jpg) cover center          │  │
+│  │    transform: translate(panX,panY) scale(zoom)        │  │
+│  │    ┌─ zone-marker (absolute) ─┐                       │  │
+│  │    │  [marker-icon BaseIcon]  │  ← 36×36 圆形标记      │  │
+│  │    └──────────────────────────┘                       │  │
+│  │                                                       │  │
+│  │  .zoom-controls (absolute top:16 right:16)            │  │
+│  │    [+] 2.0x [-]                                       │  │
+│  │                                                       │  │
+│  │  .zone-info-panel (absolute bottom:16 right:16, 280px)│  │
+│  │    区域名 / 等级 / 状态 / 描述 / [进入探索|未解锁]      │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                             │
+│  <ConfirmPopup /> 切换区域确认                                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 5.3 界面布局草图
+### 5.3 区域标记状态
 
-```mermaid
-flowchart TB
-    subgraph mapRoot["map-view flex-col flex:1"]
-        direction TB
-        subgraph mapContainer["map-container flex:1 min-h400px cursor:grab"]
-            direction TB
-            subgraph worldMap["world-map aspect-ratio 1201/800 背景 worldBg.jpg"]
-                direction TB
-                markerLocked["○ locked 灰色 边框 dim-gray"]
-                markerUnlocked["● unlocked 绿色 边框 ally"]
-                markerHighRisk["▲ high-risk 红色 等级10以上"]
-                markerCurrent["★ is-current 金色 边框 accent"]
-            end
-            subgraph zoomCtrl["zoom-controls absolute top:16 right:16"]
-                direction TB
-                zoomIn["+ 放大 36×36"]
-                zoomLevel["1.0x font-xs"]
-                zoomOut["- 缩小 36×36"]
-            end
-            subgraph infoPanel["zone-info-panel 280px absolute bottom:16 right:16"]
-                direction TB
-                panelHeader["panel-header 区域名称"]
-                panelBody["panel-body 等级 N+ / 状态 / 描述"]
-                panelActions["panel-actions 进入探索 或 未解锁"]
-            end
-        end
-        confirmPopup["ConfirmPopup 切换区域确认"]
-    end
+| 状态 | 触发条件 | 边框/样式 |
+|------|----------|-----------|
+| locked | 区域未解锁 | @color-dim-gray，半透明（opacity: @opacity-dimmed） |
+| unlocked | 区域已解锁 | @color-ally，box-shadow: 0 0 8px rgba(0,210,211,0.3) |
+| high-risk | requiredLevel >= 10 | @color-danger-accent，box-shadow: 0 0 8px rgba(233,69,96,0.3) |
+| is-current | 当前所在区域 | @accent-color，box-shadow: 0 0 10px rgba(255,215,0,0.4) |
 
-    classDef containerCls fill:#1a1a2e,stroke:#ffd700,color:#f0f0f0
-    classDef markerCls fill:#2a2a3e,stroke:#0078ff,color:#f0f0f0
-    classDef ctrlCls fill:#0d1117,stroke:#ffd700,color:#ffd700
+标记定位：`left/top = 坐标百分比`，`transform: translate(-50%,-50%) scale(1/zoom)` 反向抵消缩放。点击标记 → selectedZone 高亮并发送 UI_CLICK 事件。
 
-    class mapRoot,mapContainer,worldMap,zoomCtrl,infoPanel containerCls
-    class markerLocked,markerUnlocked,markerHighRisk,markerCurrent markerCls
-    class zoomIn,zoomLevel,zoomOut,panelActions,confirmPopup ctrlCls
-```
+### 5.4 区域信息面板
 
-### 5.4 区域标记状态
-
-| 状态 class | 条件 | 边框色 | 背景色 | box-shadow |
-|------------|------|--------|--------|------------|
-| locked | zone.status === 'locked' | @color-dim-gray | rgba(0,0,0,0.5) | - |
-| unlocked | zone.status === 'unlocked' | @color-ally (#00d2d3) | rgba(0,0,0,0.6) | 0 0 8px rgba(0,210,211,0.3) |
-| high-risk | zone.requiredLevel >= 10 | @color-danger-accent (#e94560) | rgba(0,0,0,0.6) | 0 0 8px rgba(233,69,96,0.3) |
-| is-current | zone.id === currentZoneId | @accent-color (#ffd700) | rgba(0,0,0,0.6) | 0 0 10px rgba(255,215,0,0.4) |
-
-标记图标：marker-icon 36x36，圆形，BaseIcon zone.icon gradient=metal size=20。标记位置使用百分比坐标，并应用反向缩放（1/zoomLevel）保持标记尺寸不变。
-
-### 5.5 元素尺寸
-
-| 元素 | 宽度 | 高度 | 说明 |
-|------|------|------|------|
-| map-container | 100% | flex:1 (min 400px / 移动 300px) | cursor: grab |
-| world-map | 动态计算 | 动态计算 | aspect-ratio: 1201/800 |
-| marker-icon | 36px | 36px | 圆形 border 2px |
-| zoom-controls | - | - | absolute top:16 right:16，padding: @spacing-xs |
-| zoom-btn | 36px | 36px | font-size: @font-2xl |
-| zoom-level | - | - | font-size: @font-xs，color: rgba(255,255,255,0.5) |
-| zone-info-panel | 280px（移动 calc(100% - 32px)） | - | absolute bottom:16 right:16，background: rgba(0,0,0,0.75) |
-
-### 5.6 zone-info-panel 结构
-
-```
-┌─ .zone-info-panel (280px) ──────────────┐
-│  .panel-header                           │
-│    .panel-name "区域名称"                │
-│  .panel-body                             │
-│    .panel-row  等级  N+                  │
-│    .panel-row  状态  已解锁/未解锁/已完成 │
-│    .panel-row  描述  xxx                 │
-│  .panel-actions                          │
-│    [进入探索] (status !== 'locked')      │
-│    [未解锁]   (status === 'locked')      │
-└──────────────────────────────────────────┘
-```
-
-状态文本颜色：
-
-| 状态 | 文本 | 颜色 |
-|------|------|------|
-| locked | 未解锁 | rgba(255,255,255,0.35) |
-| unlocked | 已解锁 | #58d68d |
-| completed | 已完成 | #f4d03f |
-
-未选中区域时显示空面板：`.panel-empty` "点击地图上的标记查看详情"。
-
-### 5.7 缩放与拖拽
-
-| 操作 | 触发 | 响应 |
-|------|------|------|
-| 放大 | 点击 [+] / 滚轮向上 | zoomLevel = Math.min(3, zoomLevel + 0.2) |
-| 缩小 | 点击 [-] / 滚轮向下 | zoomLevel = Math.max(0.5, zoomLevel - 0.2) |
-| 拖拽（鼠标） | mousedown + mousemove + mouseup | panX/panY 更新 |
-| 拖拽（触摸） | touchstart + touchmove + touchend | panX/panY 更新，touchmove 时 preventDefault |
-
-地图变换样式：`transform: translate(panX, panY) scale(zoomLevel)`，transformOrigin: '0 0'。
-
-### 5.8 交互说明
-
-| 交互 | 触发方式 | 响应 |
-|------|----------|------|
-| 选中区域 | 点击 zone-marker | selectedZone 更新，发送 UI_CLICK |
-| 进入探索 | 点击进入探索按钮 | showConfirm=true（弹出确认弹窗） |
-| 确认进入 | ConfirmPopup confirm | mapStore.enterZone，成功后 emit enter-zone（切换到 explore tab） |
-| 取消进入 | ConfirmPopup cancel | showConfirm=false |
-| 缩放 | 点击缩放按钮 / 滚轮 | 调整 zoomLevel（0.5~3） |
-| 平移 | 鼠标/触摸拖拽 | 更新 panX/panY |
-
-### 5.9 移动端适配（max-width: 768px）
-
-| 元素 | 调整 |
+| 元素 | 内容 |
 |------|------|
-| map-container | min-height: 300px，border-radius: 0 |
-| zone-info-panel | width: calc(100% - 32px)，left: 16，right: 16，bottom: 12 |
-| zoom-controls | top: 12，right: 12 |
+| panel-name | 区域名称（未选中时显示"区域信息"） |
+| panel-row 等级 | requiredLevel + "+" |
+| panel-row 状态 | 已解锁/未解锁/已完成（status-locked 灰 / status-unlocked 绿 #58d68d / status-completed 黄 #f4d03f） |
+| panel-row 描述 | zone.description |
+| 进入探索 | 未锁定区域显示"进入探索"按钮（金色 @accent-color 背景），点击弹出切换区域确认；锁定区域显示禁用"未解锁"按钮 |
+
+### 5.5 缩放与平移
+
+| 交互 | 操作 | 范围/步进 |
+|------|------|-----------|
+| 滚轮缩放 | onMapWheel（deltaY<0 放大 / >0 缩小） | zoomLevel 0.5 ~ 3.0，步进 0.2 |
+| 缩放按钮 | zoom-controls [+]/[-] | 同上，点击发送 UI_CLICK（map_zoom_in/map_zoom_out） |
+| 鼠标拖拽 | mousedown/mousemove/mouseup | panX/panY 跟随位移 |
+| 触摸拖拽 | touchstart/touchmove/touchend | 单指拖拽，preventDefault 阻止页面滚动 |
+
+地图尺寸自适应：ResizeObserver 监听容器尺寸变化（onUnmounted 断开），配合 rAF 兜底重算；优先按高度适配，宽度超出容器时改为按宽度适配。
+
+### 5.6 进入探索流程
+
+```
+点击区域标记 → 选中区域 → 点击"进入探索"
+    → ConfirmPopup "切换区域将清空当前探索进度，确定继续？"
+    → mapStore.enterZone(zoneId)（失败则停留在确认弹窗）
+    → emit('enter-zone') → GameMain 切换至探索标签页
+```
+
+> **交互规则**：移动端（max-width: 768px）zone-info-panel 宽度改为 calc(100% - 32px) 全宽铺底，map-container min-height 300px。
 
 ***
 
@@ -1061,514 +721,284 @@ flowchart TB
 
 ### 6.1 界面概述
 
-基于网格的探索界面，支持拖拽平移探索地图（DRAG_THRESHOLD=5px 区分点击/拖动）。格子有 3 种状态（hidden/accessible/revealed）和 10 种类型（empty/monster/treasure/shop/rest/boss/event/trap/start/board）。未选择区域时显示提示。
+基于网格的探索玩法界面，支持拖拽平移、点击翻开格子触发战斗/商店/任务板等交互事件。网格数据直接从 explorationStore.state.grid 响应式派生，切换区域时才重新生成。未选择区域时显示提示引导。
 
 ### 6.2 布局结构
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  .exploration-view (flex-col, height: 100%)                 │
+│  .exploration-view (flex-col, height: 100%, @primary-bg,    │
+│    border-radius: @radius-xl, border: @border-card)         │
 │                                                             │
-│  [无当前区域]                                                │
-│  .no-location-hint                                          │
-│    [BaseIcon treasure-map]                                  │
-│    "请先在地图上选择一个区域"                                │
-│    "点击地图标签，选择想要探索的区域后开始冒险"              │
+│  [未选择区域] .no-location-hint                              │
+│    treasure-map 图标 + "请先在地图上选择一个区域"             │
+│    + "点击地图标签，选择想要探索的区域后开始冒险"              │
 │                                                             │
-│  [有当前区域]                                                │
-│  .exploration-grid-container (flex: 1, cursor: grab)        │
-│    .grid-wrapper (transform: translate(panX, panY))         │
-│      .grid (flex-col, gap: 3px)                             │
-│        .grid-row (flex, gap: 3px)                           │
-│          .cell [.hidden/.accessible/.revealed] [.type]      │
-│          .cell ...                                          │
-│        .grid-row ...                                        │
-│  .exploration-footer                                        │
-│    "探索进度: NN%"                                          │
+│  [已选择区域]                                                │
+│  ┌─ .exploration-grid-container (flex:1, cursor: grab) ─┐   │
+│  │  .grid-wrapper (transform: translate(panX,panY))      │   │
+│  │    background: rgba(0,0,0,0.5)                        │   │
+│  │    padding: @spacing-xl, border-radius: 10px          │   │
+│  │    border: 2px solid @color-mid-gray                  │   │
+│  │    box-shadow: @shadow-card                           │   │
+│  │    ┌─ .grid (flex-col, gap: 3px) ──────────────────┐  │   │
+│  │    │  .grid-row (flex, gap: 3px)                   │  │   │
+│  │    │   [cell] [cell] [cell] ...  52×52px           │  │   │
+│  │    │   [cell] [cell] [cell] ...                    │  │   │
+│  │    └───────────────────────────────────────────────┘  │   │
+│  └───────────────────────────────────────────────────────┘   │
+│                                                             │
+│  .exploration-footer (padding: @spacing-lg @spacing-3xl)    │
+│    探索进度: XX%  (color: @color-ally)                       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 6.3 界面布局草图
+### 6.3 格子类型与图标
 
-```mermaid
-flowchart TB
-    subgraph exploreRoot["exploration-view flex-col height:100%"]
-        direction TB
-        subgraph noLocation["v-if 无当前区域"]
-            hintContent["no-location-hint<br>treasure-map icon<br>请先在地图上选择一个区域<br>点击地图标签选择区域"]
-        end
-        subgraph gridArea["v-else 有当前区域 exploration-grid-container flex:1 cursor:grab"]
-            direction TB
-            subgraph gridRows["grid-wrapper translate panX,panY + grid flex-col gap:3px"]
-                direction TB
-                row1["grid-row: cell×N 52px PC / 44px 移动"]
-                row2["grid-row: cell×N"]
-                rowN["grid-row: cell×N"]
-            end
-        end
-        subgraph cellTypes["cell 10种类型颜色 图例"]
-            direction LR
-            cellEmpty["empty 灰"]
-            cellMonster["monster 橙"]
-            cellTreasure["treasure 紫"]
-            cellShop["shop 蓝"]
-            cellRest["rest 绿"]
-            cellBoss["boss 红 pulse 动画"]
-            cellEvent["event 黄"]
-            cellTrap["trap 红"]
-            cellStart["start 青"]
-            cellBoard["board 青色"]
-        end
-        progress["exploration-footer 探索进度: NN%"]
-    end
+探索网格由 `ExplorationCell` 描述，每种格子类型对应不同的 BaseIcon 图标与渐变（`cellIcons` 映射）：
 
-    classDef containerCls fill:#1a1a2e,stroke:#ffd700,color:#f0f0f0
-    classDef cellCls fill:#2a2a3e,stroke:#0078ff,color:#f0f0f0
-    classDef typeCls fill:#0d1117,stroke:#ffd700,color:#ffd700
-
-    class exploreRoot,noLocation,gridArea,gridRows containerCls
-    class row1,row2,rowN cellCls
-    class cellEmpty,cellMonster,cellTreasure,cellShop,cellRest,cellBoss,cellEvent,cellTrap,cellStart,cellBoard,progress typeCls
-```
-
-### 6.4 格子状态与类型
-
-#### 格子状态（class）
-
-| 状态 class | 条件 | 背景 | 边框 | cursor |
-|------------|------|------|------|--------|
-| hidden | !cell.explored && !cell.accessible | @primary-bg | @bg-mid-dark | default |
-| accessible | !cell.explored && cell.accessible | @primary-bg | @popup-border-color | pointer |
-| revealed | cell.explored | @bg-mid-dark | @popup-border-color | - |
-
-accessible:hover：background: @bg-mid-dark，border-color: @color-ally，box-shadow: 0 0 8px rgba(0,210,211,0.3)。
-
-#### 格子类型颜色（已揭示且 !cell.completed && cell.type !== 'empty' 时添加类型 class）
-
-| 类型 | 背景 | 边框 | 图标 name | 图标 gradient | 说明 |
-|------|------|------|-----------|---------------|------|
-| empty | @primary-bg | - | plain-circle | metal | 空地 |
-| monster | rgba(255,152,0,0.3) | #FF9800 | sword-clash | physical | 怪物 |
-| treasure | rgba(156,39,176,0.3) | #9C27B0 | treasure-map | magic | 物品 |
-| shop | rgba(33,150,243,0.3) | #2196F3 | shop | gold | 商店 |
-| rest | rgba(76,175,80,0.3) | @heal-hp (#4CAF50) | campfire | heal | 营地 |
-| boss | rgba(244,67,54,0.3) | #F44336 | dragon-head | dragon | BOSS（boss-pulse 动画） |
-| event | rgba(255,193,7,0.3) | #FFC107 | perspective-dice-six | gold | 随机事件 |
-| trap | rgba(244,67,54,0.2) | #F44336 | caltrops | debuff | 陷阱 |
-| start | rgba(0,210,211,0.2) | @color-ally (#00d2d3) | entry-door | heal | 起点 |
-| board | rgba(0,188,212,0.3) | #00BCD4 | notebook | gold | 任务看板 |
-
-未探索格子显示 BaseIcon name="uncertainty" gradient="shadow" size=20。
-
-### 6.5 元素尺寸
-
-| 元素 | 宽度 | 高度 | 说明 |
+| 类型 | 图标 | 渐变 | 说明 |
 |------|------|------|------|
-| cell | 52px（移动 44px） | 52px（移动 44px） | border 1px，border-radius: @radius-md |
-| cell BaseIcon | - | - | size=20 |
-| grid-row gap | 3px | - | - |
-| grid gap | 3px | - | - |
-| grid-wrapper | - | - | padding: @spacing-xl，border 2px @color-mid-gray |
-| exploration-grid-container | 100% | flex:1 | padding: @spacing-xl，overflow: hidden |
+| empty | plain-circle | metal | 空地 |
+| monster | sword-clash | physical | 怪物（触发战斗） |
+| treasure | treasure-map | magic | 物品（触发物品发现） |
+| shop | shop | gold | 商店（打开商店弹窗） |
+| rest | campfire | heal | 营地 |
+| boss | dragon-head | dragon | BOSS（boss-pulse 脉冲动画） |
+| event | perspective-dice-six | gold | 随机事件 |
+| trap | caltrops | debuff | 陷阱 |
+| start | entry-door | heal | 起点 |
+| board | notebook | gold | 任务看板（打开任务看板弹窗） |
 
-### 6.6 拖拽与点击区分
+未探索格子统一显示 `uncertainty`（shadow 渐变）图标；已探索格子显示对应类型图标（图标 size=20）。
 
-| 操作 | 触发 | 响应 |
+### 6.4 格子状态样式
+
+`getCellClasses(cell)` 依据格子的 explored / accessible / completed / type 派生 class：
+
+| class | 状态 | 样式 |
 |------|------|------|
-| 开始拖拽 | mousedown / touchstart | 记录 startX/startY，isDragging=true |
-| 拖拽中 | mousemove / touchmove | 移动距离 > DRAG_THRESHOLD(5px) 时 hasDragged=true，更新 panX/panY |
-| 结束拖拽 | mouseup / touchend | 若 !hasDragged 则视为点击，找到 .cell 调用 handleCellClick |
+| hidden | 未探索且不可访问 | 底色 @primary-bg，边框 @bg-mid-dark，cursor: default |
+| accessible | 可访问的未探索格子 | 边框 @popup-border-color（金），hover 时边框 @color-ally + 光晕 0 0 8px rgba(0,210,211,0.3) |
+| revealed | 已探索 | 底色 @bg-mid-dark，边框 @popup-border-color |
+| 类型 class | 已探索未完成且非空地的格子 | 各类型高亮底色与边框色（见下表） |
 
-### 6.7 探索进度
+类型高亮色：
 
-```javascript
-explorationProgress = Math.round((explored / total) * 100)
-```
+| 类型 | 底色 | 边框色 |
+|------|------|--------|
+| rest 营地 | rgba(76,175,80,0.3) | @heal-hp |
+| shop 商店 | rgba(33,150,243,0.3) | #2196F3 |
+| event 随机事件 | rgba(255,193,7,0.3) | #FFC107 |
+| board 任务看板 | rgba(0,188,212,0.3) | #00BCD4 |
+| boss BOSS | rgba(244,67,54,0.3) | #F44336（boss-pulse 1.5s 无限动画） |
+| monster 怪物 | rgba(255,152,0,0.3) | #FF9800 |
+| treasure 物品 | rgba(156,39,176,0.3) | #9C27B0 |
+| trap 陷阱 | rgba(244,67,54,0.2) | #F44336 |
+| start 起点 | rgba(0,210,211,0.2) | @color-ally |
+| empty 空地 | @primary-bg | - |
 
-底部 `.exploration-footer` 显示"探索进度: NN%"，color: @color-ally，font-size: @font-md。
+> **交互规则**：已完成的事件格子褪色显示（不添加类型高亮 class），未完成（如战斗逃跑后）保留类型高亮色。
 
-### 6.8 交互说明
+### 6.5 拖拽与点击交互
 
-| 交互 | 触发方式 | 响应 |
-|------|----------|------|
-| 点击格子 | 点击 accessible 或已探索未完成格子 | explorationStore.revealGrid(x, y) |
-| 拖拽平移 | 鼠标/触摸拖拽（>5px） | 更新 panX/panY |
-| 商店交互 | cellType='shop' 回调 | GameMain 打开 ShopPopup |
-| 任务板交互 | cellType='board' 回调 | GameMain 打开 QuestBoardPopup |
-| 战斗触发 | 战斗事件回调 | GameMain 打开 CombatPopup |
-| 物品发现 | 物品事件回调 | GameMain Toast 提示 |
-| 陷阱触发 | 陷阱事件回调 | GameMain Toast 提示 |
-| 随机事件 | 随机事件回调 | GameMain Toast 提示 |
+| 交互 | 事件 | 说明 |
+|------|------|------|
+| 鼠标拖拽 | mousedown / mousemove / mouseup / mouseleave | startDrag 记录起点；onDrag 中移动超过 DRAG_THRESHOLD=5px 才视为拖动，panX/panY 更新（rAF 节流），e.preventDefault() |
+| 触摸拖拽 | touchstart / touchmove / touchend / touchcancel | 单指拖拽（touches.length===1），超过阈值后拖动并阻止页面滚动 |
+| 点击格子 | 拖拽未超过阈值时触发 | target.closest('.cell') 读取 data-x / data-y → handleCellClick → explorationStore.revealGrid(x, y) |
 
-> **交互规则1**：已完成的格子（cell.completed=true）不可再次点击。
-> **交互规则2**：hidden 格子不可点击（需先变为 accessible）。
-> **交互规则3**：已揭示但未完成的格子（如商店/任务板/未击败怪物）可再次点击。
-> **交互规则4**：切换区域时若 currentAreaId !== targetArea 才重新生成网格。
+点击有效性（handleCellClick）：
+- 允许点击 `accessible` 的格子（新探索）以及已探索但未完成的格子。
+- `completed` 格子不可再点击；未探索且不可访问的格子点击无效。
+
+### 6.6 探索进度
+
+底部 `.exploration-footer` 居中显示"探索进度: XX%"（`.exploration-progress`，color: @color-ally），由已探索格子数 / 总格子数百分比取整得出（`explorationProgress` computed）。
+
+### 6.7 初始化与生命周期
+
+- onMounted：`explorationStore.init(characterId)` 从数据库加载探索状态 → `initExploration()`。
+- initExploration：仅当 `explorationStore.currentAreaId` 与当前区域不一致时才 `explorationStore.enterArea(targetArea)` 重新生成网格（切换区域才重建）。
+- onUnmounted：清理拖拽 rAF（P2-68）。
+- 未选择区域时显示 no-location-hint 提示引导。
+- 移动端（max-width: 768px）：格子缩至 44×44px。
 
 ***
 
-## 7. 后台管理界面
+## 7. 后台管理（admin）
 
-### 7.1 AdminLayout.vue 布局概述
+### 7.1 模块概述
 
-经典左侧导航 + 右侧内容区布局，支持仪表盘（dashboard）和配置管理（config）两种视图切换。侧边栏 260px 宽，包含标题、仪表盘入口、10 个配置表导航、返回游戏按钮。
+后台管理是内嵌于单机游戏中的配置管理后台，由视图层与数据层两部分组成：
 
-### 7.2 布局结构
+- 视图层：`src/components/admin/`（AdminLayout.vue / AdminTable.vue / AdminForm.vue / ConfigManager.vue + composables/useConfigCrud.ts / useConfigTableMeta.ts）
+- 数据层：`src/modules/admin/`（index.ts / types.ts / db.ts / service.ts / store.ts）
+
+App.vue 中 `gameState === 'admin'` 时渲染 AdminLayout（懒加载），支持 `dashboard`（仪表盘）与 `config`（配置管理）两种视图（AdminView）切换。service 层不做权限校验是单机场景的设计意图（DISC-1），访问控制由 UI 路由层负责。
+
+### 7.2 布局结构（AdminLayout.vue）
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  .admin-layout (flex, height: 100vh)                        │
-│  ┌──────────────┐  ┌───────────────────────────────────────┐│
-│  │ .admin-      │  │ .admin-main (flex: 1, padding: 24px)  ││
-│  │ sidebar      │  │                                       ││
-│  │ (260px)      │  │  [dashboard-view]                     ││
-│  │              │  │   .page-title "仪表盘"                 ││
-│  │ .sidebar-    │  │   .stats-grid                         ││
-│  │  header      │  │    (grid: repeat(auto-fill,           ││
-│  │  "后台管理"   │  │     minmax(180px,1fr)), gap: 16px)    ││
-│  │              │  │    ┌─────────┐ ┌─────────┐           ││
-│  │ .sidebar-nav │  │    │stat-card│ │stat-card│           ││
-│  │  仪表盘      │  │    │  数值    │ │  数值    │           ││
-│  │  ─配置管理─  │  │    │  标签    │ │  标签    │           ││
-│  │  配置表1     │  │    └─────────┘ └─────────┘           ││
-│  │  配置表2     │  │                                       ││
-│  │  ...         │  │  [config-view]                       ││
-│  │  配置表10    │  │   <ConfigManager />                   ││
-│  │              │  │                                       ││
-│  │ .sidebar-    │  │                                       ││
-│  │  footer      │  │                                       ││
-│  │  [返回游戏]  │  │                                       ││
-│  └──────────────┘  └───────────────────────────────────────┘│
+│  ┌─ .admin-sidebar (260px) ──┐  ┌─ .admin-main (flex:1) ─┐ │
+│  │  sidebar-header "后台管理"  │  │  [dashboard]           │ │
+│  │  sidebar-nav               │  │    page-title 仪表盘    │ │
+│  │    仪表盘                  │  │    stats-grid          │ │
+│  │    配置管理 (分组标题)      │  │      11 张统计卡        │ │
+│  │    ├ 阵营 ├ 种族 ... └ 商店 │  │  [config]              │ │
+│  │  sidebar-footer            │  │    <ConfigManager />   │ │
+│  │    [返回游戏]               │  │                        │ │
+│  └────────────────────────────┘  └────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 7.3 界面布局草图
+- 侧边栏（260px，@secondary-bg）：导航项包括"仪表盘"与"配置管理"分组（.nav-group-title），分组下按 CONFIG_TABLES 遍历渲染 11 张配置表子项（.nav-item.nav-sub-item，显示 label + description）。
+- active 状态：背景 @gold-bg + 文字 @accent-color + 右侧 3px 金色边框（border-right: 3px solid @accent-color）。
+- 点击配置表 → `store.switchView('config')` + `store.selectConfigTable(key)`；底部"返回游戏"按钮 emit exit（App.vue 以 view-back 动画返回角色选择界面）。
+- onMounted 调用 `store.loadDashboardStats()`。
 
-```mermaid
-flowchart LR
-    subgraph adminRoot["admin-layout flex height:100vh"]
-        direction LR
-        subgraph sidebar["admin-sidebar 260px flex-col"]
-            direction TB
-            sidebarHeader["sidebar-header h2 后台管理 color:accent"]
-            subgraph navArea["sidebar-nav flex:1"]
-                direction TB
-                navDashboard["nav-item 仪表盘<br>active: gold-bg + border-right 3px"]
-                navGroupTitle["nav-group-title 配置管理<br>uppercase letter-spacing:1px"]
-                navConfig["nav-sub-item ×10<br>label + nav-desc<br>padding-left:36px"]
-            end
-            sidebarFooter["sidebar-footer exit-btn 返回游戏 width:100%"]
-        end
-        subgraph mainArea["admin-main flex:1 padding:24px"]
-            direction TB
-            subgraph dashboardView["v-if view=dashboard"]
-                direction TB
-                pageTitle["page-title 仪表盘 font-4xl color:accent"]
-                statsGrid["stats-grid auto-fill minmax 180px 1fr gap:16px"]
-                statCard["stat-card-small ×N<br>stat-value 数字 + stat-label<br>click 跳转配置表"]
-            end
-            subgraph configView["v-if view=config"]
-                configMgr["ConfigManager 组件<br>AdminTable + AdminForm"]
-            end
-        end
-    end
+### 7.3 仪表盘
 
-    classDef containerCls fill:#1a1a2e,stroke:#ffd700,color:#f0f0f0
-    classDef navCls fill:#2a2a3e,stroke:#0078ff,color:#f0f0f0
-    classDef btnCls fill:#0d1117,stroke:#ffd700,color:#ffd700
+stats-grid（grid: repeat(auto-fill, minmax(180px, 1fr)), gap: 16px）为每张配置表渲染一张统计卡（.stat-card.stat-card-small）：
 
-    class adminRoot,sidebar,mainArea,navArea,dashboardView,configView containerCls
-    class sidebarHeader,navDashboard,navGroupTitle,navConfig,pageTitle,statsGrid,statCard,configMgr navCls
-    class sidebarFooter btnCls
-```
+| 元素 | 内容 |
+|------|------|
+| stat-value | 表记录数（`store.dashboardStats.tableCounts[dbTable]`），font-size: @font-4xl，金色 |
+| stat-label | 表中文名（label） |
 
-### 7.4 侧边栏
+统计卡可点击（cursor: pointer，hover 时边框变金色），点击直接跳转到对应配置表管理视图。
 
-| 元素 | 尺寸 | 说明 |
-|------|------|------|
-| admin-sidebar | 260px (min-width: 260px) | background: @secondary-bg，border-right 1px |
-| sidebar-header | - | padding: @spacing-4xl，h2 color: @accent-color，font-size: @font-2xl |
-| nav-item | - | padding: @spacing-lg @spacing-4xl，color: @text-secondary |
-| nav-item.active | - | background: @gold-bg，color: @accent-color，border-right 3px @accent-color |
-| nav-sub-item | - | padding-left: 36px，flex-col，gap: 2px |
-| nav-sub-item .nav-desc | - | font-size: @font-xs，color: @text-secondary，opacity: 0.7 |
-| nav-group-title | - | padding: @spacing-3xl @spacing-4xl @spacing-sm，font-size: @font-xs，text-transform: uppercase |
-| sidebar-footer | - | padding: @spacing-3xl @spacing-4xl，border-top 1px |
-| exit-btn | 100% | padding: @spacing-lg，background: rgba(255,255,255,0.08) |
+### 7.4 通用表格（AdminTable.vue）
 
-### 7.5 仪表盘
-
-| 元素 | 尺寸 | 说明 |
-|------|------|------|
-| page-title | - | color: @accent-color，font-size: @font-4xl，margin: 0 0 24px |
-| stats-grid | - | grid: repeat(auto-fill, minmax(180px, 1fr))，gap: 16px |
-| stat-card | - | background: @secondary-bg，border 1px，border-radius: @radius-lg，padding: @spacing-4xl |
-| stat-card .stat-value | - | font-size: @font-4xl（小卡片），font-weight: bold，color: @accent-color |
-| stat-card .stat-label | - | font-size: @font-base，color: @text-secondary |
-| stat-card-small | - | cursor: pointer，hover border-color: @accent-color |
-
-仪表盘卡片显示每个配置表的记录数（store.dashboardStats.tableCounts[table.dbTable]），点击跳转到对应配置表。
-
-### 7.6 AdminTable.vue 通用表格
-
-#### 布局结构
+泛型组件（`generic="T extends Record<string, unknown>"`），提供搜索、数据展示与操作按钮：
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  .admin-table-container (height: calc(100vh - 100px))       │
-│  .table-toolbar (flex, justify-content: space-between)      │
-│    .toolbar-left: .search-input (max-width: 300px)          │
-│    .toolbar-right: [+ 新增] [刷新]                          │
-│  .table-wrapper (flex: 1, overflow-y: auto)                 │
-│    .data-table                                              │
-│      thead: 列标题 + 操作列（sticky top）                   │
-│      tbody: 数据行 + 编辑/删除按钮（actions 列 sticky right）│
-│  .table-footer: "共 N 条记录"                               │
-└─────────────────────────────────────────────────────────────┘
+┌─ .table-toolbar ────────────────────────────────────────┐
+│ [搜索输入框]                    [+ 新增] [刷新]          │
+├─ .table-wrapper (flex:1, overflow-y: auto) ─────────────┤
+│  thead: 列定义(columns) + 操作列（表头 sticky top:0）    │
+│  tbody: 单元格 + 操作列（编辑/删除，sticky right:0）     │
+│  空数据: "暂无数据"（colspan 合并整行，padding 40px）    │
+├─ .table-footer ─────────────────────────────────────────┤
+│  共 N 条记录                                            │
+└─────────────────────────────────────────────────────────┘
 ```
 
-#### Props
+- 列定义 `TableColumn { key, label, width?, format? }`。
+- 单元格格式化（formatCellValue）：null/undefined → '-'；boolean → 是/否；数组/对象 → JSON.stringify；定义 format 函数时优先使用。
+- 行 key（getRowKey）：`row.id ?? row.characterId ?? 'row-' + index`。
+- 事件：create / edit / delete / refresh / search；支持 `cell-{key}` 与 `actions` 插槽自定义单元格/操作列渲染。
+- 操作列 sticky（right: 0）与表头 sticky（top: 0），横向/纵向滚动时保持可见。
 
-| Prop | 类型 | 说明 |
-|------|------|------|
-| columns | TableColumn[] | 列定义（key/label/width/format） |
-| data | T[] | 表格数据 |
-| totalCount | number | 总记录数 |
-| hideCreate | boolean | 隐藏新增按钮 |
-| hideEdit | boolean | 隐藏编辑按钮 |
+### 7.5 通用表单（AdminForm.vue）
 
-#### Emits
+按字段配置动态渲染的表单弹窗（.form-dialog 宽 500px，max-height: 80vh），支持 8 种字段类型：
 
-| 事件 | 参数 | 说明 |
-|------|------|------|
-| create | - | 点击新增 |
-| edit | row | 点击编辑 |
-| delete | row | 点击删除 |
-| refresh | - | 点击刷新 |
-| search | keyword | 输入搜索 |
-
-#### 插槽
-
-| 插槽 | 作用域 | 说明 |
-|------|--------|------|
-| cell-{key} | { row, value } | 自定义单元格渲染 |
-| actions | { row } | 自定义操作列按钮 |
-
-#### 元素尺寸
-
-| 元素 | 尺寸 | 说明 |
-|------|------|------|
-| search-input | 100% (max 300px) | padding: @spacing-md @spacing-xl |
-| btn | - | padding: @spacing-md @spacing-3xl，font-size: @font-md |
-| btn-small | - | padding: @spacing-xs @spacing-lg，font-size: @font-sm |
-| btn-edit | - | background: rgba(0,153,255,0.15)，color: @skill-blue |
-| btn-delete | - | background: rgba(255,68,68,0.15)，color: @danger-color |
-| th/td | - | padding: @spacing-lg @spacing-xl，font-size: @font-base |
-
-#### 按钮样式
-
-| 按钮 | class | 背景色 | 文本色 |
-|------|-------|--------|--------|
-| 新增 | btn-primary | @accent-color | @primary-bg |
-| 刷新 | btn-secondary | transparent | @text-primary |
-| 编辑 | btn-small btn-edit | rgba(0,153,255,0.15) | @skill-blue (#0099ff) |
-| 删除 | btn-small btn-delete | rgba(255,68,68,0.15) | @danger-color (#ff4444) |
-
-### 7.7 AdminForm.vue 通用表单弹窗
-
-#### 布局结构
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  .form-overlay (z-index: 2000)                              │
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │ .form-dialog (width: 500px, max-height: 80vh)           ││
-│  │  .form-header: h3 标题 + [×] 关闭                       ││
-│  │  .form-body (overflow-y: auto)                          ││
-│  │    .form-group (margin-bottom: 16px)                    ││
-│  │      label                                              ││
-│  │      [input/textarea/select/switch/multiselect/color/json] ││
-│  │    <slot name="custom-fields" :formData="formData" />   ││
-│  │  .form-footer: [取消] [保存]                            ││
-│  └─────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────┘
-```
-
-#### Props
-
-| Prop | 类型 | 说明 |
-|------|------|------|
-| visible | boolean | 是否显示 |
-| title | string | 表单标题 |
-| fields | FormField[] | 字段定义 |
-| initialData | AdminRecord | null | 初始数据（编辑模式） |
-
-#### FormField 类型
-
-| type | 说明 | 默认值 |
-|------|------|--------|
-| text | 文本输入 | '' |
-| number | 数字输入 | 0 |
-| textarea | 多行文本（rows=3） | '' |
-| select | 下拉选择 | '' |
-| switch | 开关（44x24） | - |
-| multiselect | 多选（checkbox 列表） | [] |
-| color | 颜色选择（50x36） | '' |
-| json | JSON 编辑器（文本/键值对模式切换） | '' |
-
-#### Emits
-
-| 事件 | 参数 | 说明 |
-|------|------|------|
-| submit | AdminRecord | 保存（number 类型转数字，json 类型解析为对象） |
-| cancel | - | 取消 |
-
-#### 元素尺寸
-
-| 元素 | 尺寸 | 说明 |
-|------|------|------|
-| form-dialog | 500px | max-height: 80vh，border 2px @border-color，border-radius: @radius-xl |
-| form-header | - | padding: @spacing-3xl @spacing-4xl，h3 font-size: @font-xl |
-| close-btn | 28x28 | 圆形，background: @white-10 |
-| form-body | - | padding: @spacing-4xl |
-| form-input/textarea/select | 100% | padding: @spacing-md @spacing-xl，background: @white-05 |
-| form-color | 50x36 | - |
-| switch | 44x24 | position: relative |
-
-#### JSON 编辑器
-
-支持两种模式切换（按钮文本"键值对"/"文本"）：
-- 文本模式：textarea（rows=5，class: form-json）
-- 键值对模式：动态键值对行（key input + value input + 删除按钮）+ "添加属性"按钮
-
-解析失败时显示 `.json-error` "JSON 解析失败，请检查格式"。
-
-### 7.8 交互说明
-
-| 交互 | 触发方式 | 响应 |
+| 类型 | 渲染控件 | 说明 |
 |------|----------|------|
-| 切换视图 | 点击 nav-item | store.switchView('dashboard'/'config') |
-| 进入配置表 | 点击 nav-sub-item / stat-card | store.switchView('config') + store.selectConfigTable |
-| 返回游戏 | 点击 exit-btn | emit exit |
-| 搜索 | 输入 search-input | emit search(keyword) |
-| 新增 | 点击新增按钮 | emit create |
-| 编辑 | 点击编辑按钮 | emit edit(row) |
-| 删除 | 点击删除按钮 | emit delete(row) |
-| 刷新 | 点击刷新按钮 | emit refresh |
-| 保存表单 | 点击保存按钮 | 收集 formData，number/json 类型转换后 emit submit |
-| 取消表单 | 点击取消 / 遮罩 | emit cancel |
+| text / number | form-input | 单行输入 |
+| textarea | form-textarea | 多行文本（rows=3） |
+| select | form-select | 下拉选择（默认"-- 请选择 --"） |
+| multiselect | multiselect-group | 复选网格（2 列，max-height 240px 滚动），显示"是/否" |
+| switch | switch-container | 开关（44×24px 滑块），右侧文本"是/否" |
+| color | form-color | 颜色选择器（50×36px） |
+| json | json-editor | JSON 编辑器，支持"文本 / 键值对"两种模式切换，键值对模式可增删条目（.json-kv-row），解析失败显示"JSON 解析失败，请检查格式" |
 
-### 7.9 状态转换
+- 字段定义 `FormField { key, label, type, placeholder?, options?, disabled? }`；值类型 text/textarea/select/color/json(文本) 为 string、number 为 number、switch 为 boolean、multiselect 为 string[]。
+- 表单数据通过 watch initialData 初始化/重置（含 JSON 编辑器状态清空），multiselect 默认 []、number 默认 0。
+- 提交时 number 字段转为 Number，json 字段尝试 JSON.parse。
+- 事件：submit(data) / cancel；支持 `custom-fields` 插槽（透传 formData）。
+- 底部按钮：取消（btn-secondary）/ 保存（btn-primary 金色）。
 
-```
-dashboard ──点击配置表导航──→ config（selectedConfigTable=table.key）
-    │                              │
-    │                              ├──点击仪表盘──→ dashboard
-    │                              │
-    │                              └──点击其他配置表──→ config（切换 selectedConfigTable）
-    │
-    └──点击 stat-card──→ config（selectedConfigTable=table.key）
-```
+### 7.6 配置管理（ConfigManager.vue）
+
+根据当前选中的配置表动态切换表格列定义与表单字段，编排 AdminTable + AdminForm + 删除确认弹窗，实现全部 11 个配置表的统一管理：
+
+- 列定义、表单字段、字典翻译、CRUD 逻辑全部下沉至 composables（useConfigTableMeta / useConfigCrud），视图层仅保留绑定与编排。
+- AdminTable 的 create / edit / delete / refresh / search 分别接入 handleCreate / handleEdit / handleDelete / store.loadTableData / store.doSearch。
+- 删除流程：handleDelete 记录待删数据 → 删除确认弹窗（标题"确认删除"，文案"确定要删除此记录吗？此操作不可撤销。"，confirm-overlay + confirm-dialog）→ confirmDelete 执行 store.deleteRecord 并关闭弹窗。
+- 表单流程：handleCreate / handleEdit 调用 store.openCreateForm / openEditForm（标题如"新增阵营"/"编辑种族"）→ AdminForm 提交 → handleFormSubmit → store.saveRecord（按 formConfig.mode 调用 add 或 update）。
+- onMounted 调用 `store.loadReferenceData()` 加载参考数据（阵营/种族/职业/地点/大陆）供下拉选项使用。
+
+### 7.7 状态与数据层（modules/admin）
+
+| 文件 | 职责 |
+|------|------|
+| types.ts | 类型定义与 CONFIG_TABLES 常量（AdminView / ConfigTableName / ConfigTableMeta / AdminOperationResult / ReferenceOption / AdminRecord / FormMode / FormConfig） |
+| db.ts | AdminDbService：对任意 Dexie 表（tableName 受 keyof GameDatabaseSchema 约束）提供 getAll / getById / add / update / delete / count / clear / search；复用 gameDb 与 dbService.withRetry；写入前经 toRawData JSON 序列化去除 Proxy 包装；search 采用"name/id 索引 startsWithIgnoreCase + distinct"优先策略，索引缺失时回退全字段过滤 |
+| service.ts | AdminService：CRUD 业务封装（错误经 errorHandler 上报，返回 AdminOperationResult），searchTable、getDashboardStats（Promise.all 并发统计 11 张表记录数）；单机场景不做权限校验（DISC-1） |
+| store.ts | useAdminStore（Pinia）：currentView / selectedConfigTable（默认 'mobs'）/ tableData / isLoading / dashboardStats / formConfig / editingRecord / searchKeyword / 5 组参考数据（阵营/种族/职业/地点/大陆）；方法 switchView / selectConfigTable / loadDashboardStats / loadTableData / doSearch / openCreateForm / openEditForm / closeForm / saveRecord / deleteRecord / loadReferenceData |
+
+### 7.8 composables
+
+**useConfigTableMeta**（`src/components/admin/composables/useConfigTableMeta.ts`）：按 store.selectedConfigTable 动态分发当前表的元信息：
+
+| 返回值 | 说明 |
+|--------|------|
+| currentTable | 当前配置表名（ComputedRef\<ConfigTableName\>） |
+| currentDbTable | 当前表对应的 Dexie 表名（ComputedRef\<string\>） |
+| currentColumns | 当前表的列定义（注入字典翻译 format） |
+| currentFormFields | 当前表的表单字段定义（注入下拉/多选 options） |
+
+- 内置字典翻译映射：阵营（alliance 光辉盟约 / horde 铁血盟约 / neutral 中立）、属性（str 力量…cha 魅力）、稀有度（common 普通…legendary 传说）、物品类型（potion 药水…）、装备类型（weapon 武器/armor 护甲）、地点类型（location 地点/continent 大陆）、任务类型（kill 击杀/collect 收集）、技能类型（physical_damage 物理伤害…）、商店类型（general 杂货…）。
+- 根据 store 参考数据为 factionId / raceId / classId / factionsIds / raceIds / slots / classRestriction / boardId / continent / rarity / dangerLevel 等字段注入 select / multiselect 下拉选项（slots 含主手/副手/头部/胸部/腿部/鞋子六槽位）。
+
+**useConfigCrud**（`src/components/admin/composables/useConfigCrud.ts`）：封装配置表 CRUD 交互逻辑，通过依赖注入接收 currentDbTable：
+
+| 返回值 | 说明 |
+|--------|------|
+| showDeleteConfirm | 删除确认弹窗可见状态（内部 ref 管理） |
+| handleCreate / handleEdit | 打开创建/编辑表单（"新增XX"/"编辑XX"） |
+| handleDelete | 记录待删数据并打开删除确认 |
+| confirmDelete | 执行 store.deleteRecord（`id ?? characterId` 作为主键）并关闭弹窗 |
+| handleFormSubmit | 执行 store.saveRecord |
+
+### 7.9 配置表清单（CONFIG_TABLES）
+
+| key | 中文名 | 说明 | Dexie 表名 |
+|-----|--------|------|------------|
+| factions | 阵营 | 光辉盟约/铁血盟约/中立阵营 | config_factions |
+| races | 种族 | 26 个可选种族 | config_races |
+| classes | 职业 | 13 个职业定义 | config_classes |
+| items | 物品 | 消耗品/材料模板 | config_items |
+| equipmentItems | 装备 | 武器装备模板 | config_equipmentItems |
+| mobs | 普通怪物 | 普通怪物模板 | config_mobs |
+| bosses | Boss | Boss 模板 | config_bosses |
+| quests | 任务 | 任务定义 | config_quests |
+| skills | 技能 | 职业技能模板 | config_skills |
+| locations | 地点 | 大陆/地点数据 | config_locations |
+| shops | 商店 | 商店配置 | config_shops |
 
 ***
 
-## 8. 相关 Composables
+## 8. useResponsiveGrid（响应式网格）
 
-### 8.1 useResponsiveGrid.ts
+### 8.1 概述
 
-为 RecycleScroller 的 gridItems 模式提供响应式列数与单元格尺寸计算。
+`src/composables/useResponsiveGrid.ts`：为 vue-virtual-scroller 的 RecycleScroller gridItems 模式提供响应式列数与单元格尺寸计算。通过 ResizeObserver 监听容器宽度变化自动重算，使虚拟网格在不同屏幕尺寸下保持与 CSS auto-fill 网格相近的视觉效果。
 
-#### 函数签名
+### 8.2 参数与返回值
 
-```typescript
-useResponsiveGrid(
-  containerRef: Ref<HTMLElement | null>,
-  minItemSize: number,
-  gap: number
-): { gridItems: Ref<number>, itemSize: Ref<number> }
-```
+| 项 | 说明 |
+|----|------|
+| 参数 containerRef | 网格容器元素 ref（Ref\<HTMLElement \| null\>） |
+| 参数 minItemSize | 单元格最小边长（px），等价于 CSS minmax(Npx, 1fr) 的 N |
+| 参数 gap | 单元格间距（px），等价于 CSS gap |
+| 返回值 gridItems | 列数（默认 6） |
+| 返回值 itemSize | 单元格实际边长（含 gap，默认 minItemSize + gap） |
 
-#### 计算公式
+### 8.3 计算逻辑
 
-```
-cols = Math.max(1, Math.floor((width + gap) / (minItemSize + gap)))
-itemSize = Math.floor((width + gap) / cols)
-```
+- 读取容器 clientWidth 并经 getComputedStyle 减去左右 padding 得到内容区宽度（width <= 0 时直接返回）。
+- `totalSlot = minItemSize + gap`；`cols = max(1, floor((width + gap) / totalSlot))`；`itemSize = floor((width + gap) / cols)`（单元格实际边长 = 内容区宽度均分含 gap，保证网格填满容器）。
+- onMounted：首次 update 并建立 ResizeObserver；回调经 requestAnimationFrame 节流（P3-123 修复，避免高频触发导致布局抖动）。
+- onUnmounted：取消未执行的 rAF 并断开 observer（P3-123 修复）。
 
-其中 width = containerRef.clientWidth - paddingLeft - paddingRight。
+### 8.4 使用位置
 
-#### 行为
-
-| 时机 | 行为 |
-|------|------|
-| onMounted | 调用 update() 初始化计算 |
-| ResizeObserver | 监听容器尺寸变化，自动重算 |
-| onUnmounted | observer.disconnect() 清理 |
-
-#### 初始值
-
-| 字段 | 初始值 |
-|------|--------|
-| gridItems | 6 |
-| itemSize | minItemSize + gap |
-
-### 8.2 useToast.ts
-
-全局单例 Toast 提示，模块级共享状态（visible/message/type/icon 与 timer 均为模块级变量）。
-
-#### ToastOptions
-
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| message | string | - | 提示消息文本 |
-| type | 'info' | 'success' | 'warning' | 'danger' | 'info' | 提示类型 |
-| icon | string | '' | 自定义图标类名 |
-| duration | number | 2500 | 显示时长（毫秒） |
-
-#### 行为
-
-| 方法 | 说明 |
-|------|------|
-| show(options) | 支持 string 或 ToastOptions；先 clearTimeout 旧计时器，再设置新状态与计时器 |
-| close() | clearTimeout + visible=false |
-
-> **单例约束**：同一时刻仅展示一个 Toast，新 Toast 会覆盖旧 Toast（先 clearTimeout 旧计时器），无法同时显示多个 Toast。
-
-### 8.3 useSkillDisplay.ts
-
-技能展示公共 composable，提供技能类型、目标类型、效果文本等展示工具函数，供 SkillsPopup 和 CombatPopup 共用。
-
-#### 函数列表
-
-| 函数 | 参数 | 返回 | 说明 |
-|------|------|------|------|
-| getSkillTypeName | type: string | string | 技能类型中文名 |
-| getSkillTypeIcon | type: string | string | 技能类型图标类名 |
-| getTargetTypeName | type: string | string | 目标类型中文名 |
-| getEffectTypeName | type: string | string | 效果类型中文名 |
-| getSkillEffectText | skill: Skill | string | 技能效果描述（详细版） |
-| getSkillEffectBrief | skill: Skill | string | 技能效果简述（紧凑版） |
-
-#### 映射表
-
-**技能类型**：
-
-| type | 中文名 | 图标 |
-|------|--------|------|
-| physical_damage | 物理伤害 | game-icons:sword-clash |
-| magic_damage | 魔法伤害 | game-icons:magic-swirl |
-| health_restore | 生命恢复 | game-icons:health-increase |
-| mana_restore | 法力恢复 | game-icons:magic-palm |
-| buff | 增益 | game-icons:upgrade |
-| debuff | 减益 | game-icons:armor-downgrade |
-
-**目标类型**：
-
-| type | 中文名 |
-|------|--------|
-| single | 单体 |
-| all_enemies | 多目标 |
-| self | 自身 |
-| ally | 友方 |
-
-**效果类型**：poison(中毒)/burn(灼烧)/stun(眩晕)/freeze(冰冻)/silence(沉默)/shield(护盾)/attack_up(加攻)/attack_down(降攻)/defense_up(加防)/defense_down(降防)/speed_up(加速)/speed_down(减速)/regen(回复)/thorn(荆棘)/vulnerable(易伤)
+| 组件 | 调用参数 | 用途 |
+|------|----------|------|
+| InventoryPopup.vue | useResponsiveGrid(gridContainerRef, 48, 6) | 背包物品 RecycleScroller 虚拟网格列数 |
+| SkillsPopup.vue | useResponsiveGrid(skillsGridContainerRef, 48, 6) | 技能列表 RecycleScroller 虚拟网格列数 |

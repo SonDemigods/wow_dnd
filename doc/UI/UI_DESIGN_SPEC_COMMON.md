@@ -5,10 +5,10 @@
 | 项目   | 内容                                                                 |
 | ------ | -------------------------------------------------------------------- |
 | 标题   | UI界面设计文档 - 通用规范                                            |
-| 版本   | v1.2                                                                 |
-| 生成日期 | 2026年7月10日                                                      |
+| 版本   | v1.3                                                                 |
+| 生成日期 | 2026年8月3日                                                      |
 | 适用平台 | PC端、移动端                                                         |
-| 更新说明 | 比对 src/styles 全部样式文件、config 与 data 配置、common 通用组件后重写：修正阵营铁血盟约为 #ff4400（与 config_factions.ts 及组件渲染一致）；新增龙脉术士职业色 #33937F；修正稀有度倍率为价格倍率（来自 RARITY_PRICE_MULTIPLIER）；补全战斗色、Buff/Debuff 色、遮罩、圆角、动画、Mixin、弹窗通用样式、图标渐变体系及通用组件说明；字体/间距改为源码 Token 精确值；+ 新增通用组件 mermaid 布局草图；+ 修复 mermaid 语法（ASCII ID/br标签）并对照 Vue 模板重写布局草图 |
+| 更新说明 | 依据 2026-08-03 源码复核通用组件与样式：ClassResourceBar 职业资源类型由 6 种扩展为 13 种，补充完整配置表与 Props（resourceSystem）；BaseIcon 补充 name 简写自动补前缀、SVG 净化与全局唯一渐变 ID 说明；ConfirmPopup 补充 UI_CLICK 音效事件；EffectTag 补充 type 类型收窄与 stat 特殊处理；SkillTags 补充 skill Prop 说明；ItemIcon 补充 fallback/px 与渐变优先级；新增"公共组合函数（Composables）"章节（useToast / useSkillDisplay / useResponsiveGrid）；核实 P3-116 为 GameState 迁移至 GameStore 的重构，对通用组件无影响 |
 
 ***
 
@@ -72,6 +72,16 @@
 | @log-player   | #60a5fa  | 玩家日志色   |
 | @log-enemy    | #f87171  | 敌人日志色   |
 | @log-system   | #fbbf24  | 系统日志色   |
+
+### 物品品质色
+
+| Less 变量             | 颜色值   | 说明           |
+| --------------------- | -------- | -------------- |
+| @quality-common       | #ffffff  | 普通品质       |
+| @quality-uncommon     | #1eff00  | 优秀品质       |
+| @quality-rare         | #0070dd  | 稀有品质       |
+| @quality-epic         | #a335ee  | 史诗品质       |
+| @quality-legendary    | #ff8000  | 传说品质       |
 
 ### 战斗伤害/恢复颜色
 
@@ -562,6 +572,10 @@
 
 来源：`src/components/common/`
 
+当前共 13 个组件：AlertPopup.vue、BaseIcon.vue、BasePopup.vue、ClassResourceBar.vue、ConfirmPopup.vue、EffectTag.vue、EmptyState.vue、ItemIcon.vue、ResourceBar.vue、RiskIndicator.vue、SkillTags.vue、Tag.vue、Toast.vue。
+
+> 注（P3-116 影响核实）：P3-116 为游戏状态（GameState）迁移至 GameStore 的重构，涉及 `modules/audio`、`modules/character`、`modules/shop`、`modules/game` 及 `App.vue` 初始化顺序，对 `src/components/common/` 通用组件（含 Toast 与弹出类组件）无接口与样式影响，本节描述均与 2026-08-03 源码一致。
+
 ### BasePopup.vue
 
 基础弹窗容器，提供标题栏、内容区、底部操作栏的插槽布局。
@@ -575,19 +589,23 @@
 | showFooterClose   | boolean | true      | 显示底部"关闭"按钮         |
 | bodyClass         | string  | ''        | 内容区自定义类名           |
 
-插槽：默认插槽（内容区）、`header-extra`（标题栏额外内容）、`footer`（底部操作区）。事件：`close`。
+插槽：默认插槽（内容区）、`header-extra`（标题栏额外内容）、`footer`（底部操作区）。事件：`close`。遮罩点击（`@click.self`）与关闭按钮均触发 `close`。
 
 ### AlertPopup.vue
 
-提示弹窗，基于 BasePopup，max-width 400px，无关闭按钮，仅底部"确定"按钮。Props：`visible`、`title`（默认"提示"）、`message`。
+提示弹窗，基于 BasePopup，max-width 400px，无关闭按钮，仅底部"确定"按钮（使用 confirm 变体样式）。Props：`visible`、`title`（默认"提示"）、`message`。事件：`close`。
 
 ### ConfirmPopup.vue
 
-确认弹窗，基于 BasePopup，max-width 400px，底部"取消"+"确认"双按钮。Props：`visible`、`title`（默认"确认"）、`message`、`type`（'normal' / 'danger'，默认 normal）、`action`（操作标识）。事件：`confirm`、`cancel`。确认时通过 eventBus 发送 `CONFIRM_CONFIRMED`，取消时发送 `CONFIRM_CANCELED`。
+确认弹窗，基于 BasePopup，max-width 400px，底部"取消"+"确认"双按钮。Props：`visible`、`title`（默认"确认"）、`message`、`type`（'normal' / 'danger'，默认 normal，danger 时确认按钮使用危险样式）、`action`（操作标识，默认 'unknown'，随事件广播）。事件：`confirm`、`cancel`。
+
+确认/取消时除触发对应事件外，还会通过 eventBus 发送：
+- 确认：`UI_CLICK`（source: 'confirm_ok'）+ `CONFIRM_CONFIRMED`（{ action }）
+- 取消：`UI_CLICK`（source: 'confirm_cancel'）+ `CONFIRM_CANCELED`（{ action }）
 
 ### Toast.vue
 
-顶部浮动消息提示，位于 top:120px，z-index 1100。Props：`visible`、`message`、`type`（info/success/warning/danger）、`icon`。
+顶部浮动消息提示，位于 top:120px，z-index 1100，pointer-events: none。Props：`visible`、`message`、`type`（info/success/warning/danger，默认 info）、`icon`（图标字符，默认 ''）。
 
 | 类型    | 背景色                       |
 | ------- | ---------------------------- |
@@ -596,13 +614,28 @@
 | warning | rgba(255, 152, 0, 0.9)       |
 | danger  | rgba(255, 87, 34, 0.9)       |
 
+进出场动画：`toast-in` / `toast-out`（0.3s）。
+
 ### BaseIcon.vue
 
-通用游戏图标组件，基于 @iconify/vue + game-icons 图标集。渐变色模式通过 loadIcon 加载 SVG 后注入 linearGradient，找不到时回退为 `game-icons:uncertainty`。Props：`name`（图标名）、`size`（默认 24）、`gradient`（渐变键名）、`color`（单色模式颜色）。
+通用游戏图标组件，基于 @iconify/vue + game-icons 图标集。
+
+| Prop     | 类型    | 默认值 | 说明                                             |
+| -------- | ------- | ------ | ------------------------------------------------ |
+| name     | string  | -      | 图标名，支持 'game-icons:xxx' 全名或 'xxx' 简写（自动补 game-icons: 前缀） |
+| size     | number  | 24     | 图标尺寸（像素）                                 |
+| gradient | string  | -      | 渐变色键名（对应 --icon-grad-xxx-start/end），不传则使用单色模式 |
+| color    | string  | -      | 单色模式颜色（仅在无 gradient 时生效）            |
+
+两种渲染模式：
+- **渐变模式**：通过 `loadIcon` 加载 SVG 后注入 `linearGradient`（defs 引用 `--icon-grad-${grad}-start/end`），每个实例分配全局唯一 `gradId`（`nextGradId`）避免多实例 SVG ID 冲突；SVG body 经 `sanitizeSvgBody` 净化（移除 script 标签、`on*` 事件属性、`javascript:` href 等）防 XSS。
+- **单色模式**：Iconify `Icon` 组件渲染，`color` 取 `currentColor`。
+
+viewBox 固定 0 0 512 512；图标找不到（空 name、loadIcon 失败）时回退为 `game-icons:uncertainty`（渐变模式失败则降级为单色）。
 
 ### ResourceBar.vue
 
-资源进度条组件，用于 HP/MP/EXP。包含液态波浪、粒子光效、外发光。Props：`icon`、`iconName`、`iconGradient`、`name`、`current`、`max`、`percent`、`type`（hp/mp/exp）。
+资源进度条组件，用于 HP/MP/EXP。包含液态波浪（wave-slow 4s 大浪 + wave-fast 2.5s 细浪）、粒子光点（p1/p2/p3，particle-float 动画）、外发光。轨道高度 20px。Props：`icon`、`iconName`（可选，优先于 icon）、`iconGradient`、`name`、`current`、`max`、`percent`、`type`（默认 'hp'）。
 
 | 类型 | 填充渐变                              | 图标色   |
 | ---- | ------------------------------------- | -------- |
@@ -610,17 +643,71 @@
 | mp   | linear-gradient(90deg, #448aff, #2962ff) | #448aff  |
 | exp  | linear-gradient(90deg, #ffb300, #ff8f00) | #ffb300  |
 
+### ClassResourceBar.vue
+
+职业专属资源条组件，与战斗职业资源系统对应（`@/modules/combat/resources`）。结构类似 ResourceBar 但轨道更矮（18px），无粒子层；数值取整显示（`Math.floor(currentValue)`）。Prop：`resourceSystem`（`ResourceSystem`，含 `type` / `currentValue` / `maxValue` 等字段）。
+
+内置 `RESOURCE_DISPLAY_CONFIG` 共 **13 种**资源类型配置（键名与 `ResourceType` 对齐）：
+
+| 类型          | 名称   | 图标                             | 渐变键      | 填充渐变                        |
+| ------------- | ------ | -------------------------------- | ----------- | ------------------------------- |
+| rage          | 怒气   | game-icons:flame                 | physical    | #ff4500 → #cc3700              |
+| energy        | 能量   | game-icons:lightning-bolt        | gold        | #ffd700 → #ffaa00              |
+| combo_point   | 连击   | game-icons:archery-target        | gold        | #ff8c00 → #ff6500              |
+| soul_shard    | 碎片   | game-icons:soul                  | debuff      | #9370db → #7b1fa2              |
+| chi           | 真气   | game-icons:fist                  | heal        | #00ff96 → #00b870              |
+| focus         | 集中   | game-icons:targeting             | physical    | #66bb6a → #43a047              |
+| holy_power    | 神圣   | game-icons:halo                  | holy        | #ffd700 → #ffec80              |
+| runic_power   | 符能   | game-icons:rune-sword            | blood       | #4a90d9 → #7bb3f0              |
+| rune          | 符文   | game-icons:rune-stone            | blood       | #2a4d8f → #4a6fb5              |
+| fury          | 怒火   | game-icons:demon-claw            | debuff      | #33cc33 → #66ff66              |
+| soul          | 灵魂   | game-icons:soul                  | debuff      | #9933cc → #cc66ff              |
+| essence       | 精华   | game-icons:dragon-orb            | mana        | #00ccff → #66e6ff              |
+| mana          | 法力   | game-icons:magic-palm            | mana        | #448aff → #2962ff              |
+
+> 未匹配到的资源类型回退为 mana 配置。
+
 ### 其他通用组件
 
 | 组件               | 说明                                       |
 | ------------------ | ------------------------------------------ |
-| Tag.vue            | 标签组件（faction/race/class 等类型）      |
-| ClassResourceBar.vue | 职业资源条                               |
-| EffectTag.vue      | 效果标签（Buff/Debuff）                    |
-| SkillTags.vue      | 技能标签                                   |
-| ItemIcon.vue       | 物品图标                                   |
-| EmptyState.vue     | 空状态占位                                 |
-| RiskIndicator.vue  | 风险指示器                                 |
+| Tag.vue            | 标签组件，Props：`text`、`type`（'race'/'class'/'faction'）、`color`（可选，通过 --tag-color 变量驱动 class/faction 背景） |
+| EffectTag.vue      | 效果标签（Buff/Debuff），Props：`type`（ItemEffectType，即 SkillType 各值或物品专属 'stat'）；'stat' 显示"属性加成"，其余经 useSkillDisplay 映射中文名；6 种效果样式（physical_damage/magic_damage/health_restore/mana_restore/buff/debuff） |
+| SkillTags.vue      | 技能标签组，Props：`skill`（Skill）；复用 EffectTag 展示技能类型，附加 MP 消耗（固定显示 `{{ skill.mpCost ?? 0 }} MP`）、冷却回合（可选）、目标类型（可选，经 useSkillDisplay.getTargetTypeName）三个标签 |
+| ItemIcon.vue       | 物品图标，Props：`icon`、`fallback`（默认 'uncertainty'）、`size`（sm/md/lg/xl，默认 md）、`px`（自定义像素，优先于 size）、`rarity`、`gradient`；渐变优先级：gradient > rarity（品质色渐变）> 'common' |
+| EmptyState.vue     | 空状态占位，Props：`icon`、`text`、`size`（默认 32）、`gradient` |
+| RiskIndicator.vue  | 风险指示器，Props：`cellType`、`areaLevel`；5 种风险等级（safe/low/medium/high/extreme） |
+
+***
+
+## 公共组合函数（Composables）
+
+来源：`src/composables/`
+
+### useToast.ts
+
+全局 Toast 提示组合函数，与 Toast.vue 配套。**单例设计**：同一时刻仅展示一个 Toast，新调用 `show()` 会清除旧计时器并覆盖。
+
+- 导出：`useToast()` 返回 `{ visible, message, type, icon, show, close }`；另有 `disposeToast()`（清理计时器，供 HMR 热替换使用）。
+- `show(options: ToastOptions | string)`：options 为字符串时按 info 类型提示；`ToastOptions = { message, type?, icon?, duration? }`，`duration` 默认 2500ms，超时自动关闭。
+
+### useSkillDisplay.ts
+
+技能展示公共工具函数，供 SkillsPopup、CombatPopup、EffectTag、SkillTags 等复用。
+
+- 导出：`useSkillDisplay()` 返回 `getSkillTypeName` / `getSkillTypeIcon` / `getTargetTypeName` / `getEffectTypeName` / `getSkillEffectText` / `getSkillEffectBrief`。
+- 内置映射表：
+  - 技能类型中文名与图标：physical_damage（物理伤害）、magic_damage（魔法伤害）、health_restore（生命恢复）、mana_restore（法力恢复）、buff（增益）、debuff（减益）
+  - 目标类型中文名：single（单体）/ all_enemies（多目标）/ self（自身）/ ally（友方）
+  - 效果类型中文名：poison（中毒）、burn（灼烧）、stun（眩晕）、freeze（冰冻）、silence（沉默）、shield（护盾）、attack_up/attack_down、defense_up/defense_down、speed_up/speed_down、regen（回复）、thorn（荆棘）、vulnerable（易伤）
+- `getSkillEffectText` 生成详细效果描述（用于技能详情面板）；`getSkillEffectBrief` 生成紧凑描述（用于战斗按钮）。
+
+### useResponsiveGrid.ts
+
+响应式虚拟网格列数计算 composable，为 RecycleScroller 的 gridItems 模式提供响应式列数与单元格尺寸，用于优化弹窗内长列表（如背包/商店列表）的渲染性能。
+
+- 导出：`useResponsiveGrid(containerRef, minItemSize, gap)` 返回 `{ gridItems, itemSize }`。
+- 通过 `ResizeObserver` 监听容器宽度变化自动重算列数（P3-123 起使用 `requestAnimationFrame` 节流避免布局抖动），使虚拟网格在不同屏幕尺寸下保持与 CSS auto-fill 网格相近的视觉效果；卸载时清理 observer 与未执行的 raf。
 
 ***
 
@@ -659,7 +746,7 @@ flowchart LR
 
 ### 2. ClassResourceBar 职业资源条
 
-职业专属资源条，结构与 ResourceBar 类似但轨道更矮（18px），用于战斗界面显示怒气/能量/连击点/灵魂碎片/真气/法力等整数型资源。共 6 种资源类型，每种对应独立图标、渐变键名与填充渐变色。
+职业专属资源条，结构与 ResourceBar 类似但轨道更矮（18px）、无粒子层，用于战斗界面显示怒气/能量/连击点/灵魂碎片/真气等整数型资源。共 13 种资源类型，每种对应独立图标、渐变键名与填充渐变色（详细配置见"通用组件"章节表格）。
 
 ```mermaid
 flowchart LR
@@ -668,18 +755,26 @@ flowchart LR
         icon["BaseIcon 图标<br>size:16<br>按资源类型切换"]
         subgraph track["resource-track 轨道 h:18px"]
             direction LR
-            fill["resource-fill 填充层<br>width: percent%<br>6种职业资源渐变"]
+            fill["resource-fill 填充层<br>width: percent%<br>13种职业资源渐变"]
+            wave["wave-layer 波浪层<br>wave-slow 4s 大浪<br>wave-fast 2.5s 细浪"]
             text["resource-text 文字层<br>label 名称 + value 当前/最大"]
         end
     end
 
-    subgraph types["6种职业资源配色"]
-        direction LR
-        rage["rage 怒气<br>#ff4500-#cc3700<br>flame 图标"]
+    subgraph types["13种职业资源配色"]
+        direction TB
+        rage["rage 怒气<br>#ff4500-#cc3700<br>flame"]
         energy["energy 能量<br>#ffd700-#ffaa00<br>lightning-bolt"]
         combo["combo_point 连击<br>#ff8c00-#ff6500<br>archery-target"]
         shard["soul_shard 碎片<br>#9370db-#7b1fa2<br>soul"]
         chi["chi 真气<br>#00ff96-#00b870<br>fist"]
+        focus["focus 集中<br>#66bb6a-#43a047<br>targeting"]
+        holy["holy_power 神圣<br>#ffd700-#ffec80<br>halo"]
+        runic["runic_power 符能<br>#4a90d9-#7bb3f0<br>rune-sword"]
+        rune["rune 符文<br>#2a4d8f-#4a6fb5<br>rune-stone"]
+        fury["fury 怒火<br>#33cc33-#66ff66<br>demon-claw"]
+        soul["soul 灵魂<br>#9933cc-#cc66ff<br>soul"]
+        essence["essence 精华<br>#00ccff-#66e6ff<br>dragon-orb"]
         mana["mana 法力<br>#448aff-#2962ff<br>magic-palm"]
     end
 
@@ -689,6 +784,13 @@ flowchart LR
     classDef comboCls fill:#ff8c00,stroke:#ff6500,color:#fff
     classDef shardCls fill:#9370db,stroke:#7b1fa2,color:#fff
     classDef chiCls fill:#00ff96,stroke:#00b870,color:#000
+    classDef focusCls fill:#66bb6a,stroke:#43a047,color:#fff
+    classDef holyCls fill:#ffd700,stroke:#ffec80,color:#000
+    classDef runicCls fill:#4a90d9,stroke:#7bb3f0,color:#fff
+    classDef runeCls fill:#2a4d8f,stroke:#4a6fb5,color:#fff
+    classDef furyCls fill:#33cc33,stroke:#66ff66,color:#000
+    classDef soulCls fill:#9933cc,stroke:#cc66ff,color:#fff
+    classDef essenceCls fill:#00ccff,stroke:#66e6ff,color:#000
     classDef manaCls fill:#448aff,stroke:#2962ff,color:#fff
     classDef textCls fill:#0d1117,stroke:#4a4a4a,color:#e0e0e0
 
@@ -699,8 +801,15 @@ flowchart LR
     class combo comboCls
     class shard shardCls
     class chi chiCls
+    class focus focusCls
+    class holy holyCls
+    class runic runicCls
+    class rune runeCls
+    class fury furyCls
+    class soul soulCls
+    class essence essenceCls
     class mana manaCls
-    class icon,text textCls
+    class icon,wave,text textCls
 ```
 
 ### 3. ItemIcon 物品图标
@@ -768,7 +877,7 @@ flowchart LR
 
 ### 5. EffectTag 效果标签
 
-效果类型徽章，纯展示组件，基于 `.tag-base()` Mixin（字号 11px，加粗，圆角 4px）。共 6 种效果类型，每种对应独立的前景色与半透明背景色，来源于 `variables.less` 的伤害/恢复/Buff/Debuff 色。
+效果类型徽章，纯展示组件，基于 `.tag-base()` Mixin（字号 11px，加粗，圆角 4px）。共 6 种效果类型，每种对应独立的前景色与半透明背景色，来源于 `variables.less` 的伤害/恢复/Buff/Debuff 色；物品专属类型 'stat' 显示"属性加成"。
 
 ```mermaid
 flowchart LR
@@ -855,7 +964,7 @@ flowchart TB
 flowchart TB
     subgraph base["BaseIcon 基础图标 viewBox:0 0 512 512"]
         direction TB
-        grad["gradient 渐变模式<br>SVG + linearGradient 注入<br>defs 引用 --icon-grad-xxx-start/end<br>唯一 gradId 避免冲突"]
+        grad["gradient 渐变模式<br>SVG + linearGradient 注入<br>defs 引用 --icon-grad-xxx-start/end<br>唯一 gradId 避免冲突<br>SVG body 净化防 XSS"]
         solid["单色模式<br>Iconify Icon 组件<br>color: currentColor<br>回退: game-icons:uncertainty"]
     end
 
@@ -929,3 +1038,4 @@ flowchart LR
 | v1.0   | 2026年7月10日 | 初始版本：比对 src/styles、config、data 与 common 组件后建立完整规范 |
 | v1.1   | 2026年7月14日 | 新增"通用组件布局草图"章节，为 9 个通用组件添加 mermaid 布局图       |
 | v1.2   | 2026年7月10日 | 修复 mermaid 渲染问题并对照源码重写布局草图                         |
+| v1.3   | 2026年8月3日 | 复核通用组件：ClassResourceBar 职业资源由 6 种扩展为 13 种并补充完整配置表与 Props；BaseIcon 补充 name 简写/SVG 净化/唯一渐变 ID 说明；ConfirmPopup 补充 UI_CLICK 音效事件；EffectTag、SkillTags、ItemIcon 描述修正；新增"公共组合函数（Composables）"章节（useToast/useSkillDisplay/useResponsiveGrid）；核实 P3-116 为 GameState 迁移 GameStore 重构，对通用组件无影响 |
