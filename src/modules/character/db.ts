@@ -10,6 +10,8 @@ import { db as gameDb, dbService } from '@/modules/data';
 import type { CharacterDataStorage } from './types';
 import type { Character, CharacterListItem, Stats, RaceType, ClassType, FactionType } from './types';
 import { toRawData } from '../../utils';
+import { POINTS_PER_LEVEL } from '@/config/character';
+import { computeEffectiveStats, recalculateHpMp } from './service';
 
 /**
  * 角色数据层服务
@@ -28,6 +30,7 @@ export class CharacterDbService {
       // （如历史遗留字段或意外写入的临时字段）。
       // 新建场景下 existing 不存在，使用合理默认值占位（随后 persistCharacter 会写入完整数据覆盖）。
       const defaultStats: Stats = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+      const defaultZeroStats: Stats = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
       await gameDb.char_data.put({
         characterId: character.id,
         name: character.name,
@@ -40,6 +43,10 @@ export class CharacterDbService {
         expToNextLevel: existing?.expToNextLevel ?? 100,
         gold: existing?.gold ?? 0,
         baseStats: existing?.baseStats ?? defaultStats,
+        // 四层属性新字段：existing 存在则保留，否则初始化为 0（新角色或旧存档由 fromStorageFormat 迁移）
+        potionStats: existing?.potionStats ?? defaultZeroStats,
+        allocatedStats: existing?.allocatedStats ?? defaultZeroStats,
+        unallocatedPoints: existing?.unallocatedPoints ?? 0,
         currentHp: existing?.currentHp ?? 100,
         maxHp: existing?.maxHp ?? 100,
         currentMp: existing?.currentMp ?? 50,
@@ -153,6 +160,10 @@ export class CharacterDbService {
       expToNextLevel: character.expToNextLevel,
       gold: character.gold,
       baseStats: character.stats,
+      // 四层属性：药剂层、升级层、未分配点数
+      potionStats: character.potionStats,
+      allocatedStats: character.allocatedStats,
+      unallocatedPoints: character.unallocatedPoints,
       currentHp: character.hp,
       maxHp: character.maxHp,
       currentMp: character.mana,
@@ -167,11 +178,41 @@ export class CharacterDbService {
   /**
    * 将存储格式转换为角色数据
    * 字段名映射：currentHp→hp、currentMp→mana、baseStats→stats（IndexedDB 命名 → UI 命名）
+   *
+   * 旧存档迁移（见 plan.md §7.1）：
+   * 当 storage.potionStats 缺失时判定为旧存档，执行一次性迁移：
+   * - baseStats：反推剥离等级加成 newBaseStats[key] = clamp(oldBaseStats[key] - (level - 1), 1)
+   *   （旧 applyLevelUp 每级全属性 +1，等级 N 时已加 N-1 次）
+   * - potionStats/allocatedStats：初始化全 0（旧存档未使用过药剂/升级分配）
+   * - unallocatedPoints：补发 (level - 1) * POINTS_PER_LEVEL（玩家可重新分配）
+   *
+   * 迁移说明：
+   * - 反推规则基于"每级全属性 +1"历史。若旧角色曾通过 setRace/setClass 重置 baseStats，
+   *   反推会过度扣减，但补发的 unallocatedPoints 可由玩家重新分配修正（plan §8 风险对策）。
+   * - 迁移后 effectiveStats 可能与旧存档不同（玩家可重新分配），这是预期行为。
+   * - 新存档（含 potionStats）不做反推，直接使用存储值。
+   *
    * @param storage - 存储格式数据
    * @returns 角色数据
    */
   fromStorageFormat(storage: CharacterDataStorage): Character {
-    return {
+    const defaultZeroStats: Stats = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+    const isOldSave = storage.potionStats === undefined;
+
+    // 旧存档反推 baseStats：剥离 (level - 1) 的等级加成
+    const levelBonus = storage.level - 1;
+    const migratedBaseStats: Stats = isOldSave
+      ? {
+          str: Math.max(1, storage.baseStats.str - levelBonus),
+          dex: Math.max(1, storage.baseStats.dex - levelBonus),
+          con: Math.max(1, storage.baseStats.con - levelBonus),
+          int: Math.max(1, storage.baseStats.int - levelBonus),
+          wis: Math.max(1, storage.baseStats.wis - levelBonus),
+          cha: Math.max(1, storage.baseStats.cha - levelBonus)
+        }
+      : storage.baseStats;
+
+    const character: Character = {
       name: storage.name,
       factionId: storage.factionId as FactionType,
       raceId: storage.raceId as RaceType,
@@ -183,11 +224,29 @@ export class CharacterDbService {
       maxHp: storage.maxHp,
       mana: storage.currentMp,
       maxMana: storage.maxMp,
-      stats: storage.baseStats,
+      stats: migratedBaseStats,
+      // 四层属性：旧存档迁移为默认值，新存档直接使用
+      potionStats: storage.potionStats ?? defaultZeroStats,
+      allocatedStats: storage.allocatedStats ?? defaultZeroStats,
+      unallocatedPoints: storage.unallocatedPoints ?? levelBonus * POINTS_PER_LEVEL,
       gold: storage.gold,
       // P1-16 修复：保留 createdTime，避免重新加载角色时被 Date.now() 覆盖
       createdTime: storage.createdTime
     };
+
+    // 旧存档迁移后 baseStats 变化，存储的 maxHp/maxMana 基于旧 con/int 已失效，需重算
+    // 重算后当前 HP/MP 按原 recalculateHpMp 规则截断到新上限（plan §7.2）
+    if (isOldSave) {
+      const effStats = computeEffectiveStats(
+        character.stats,
+        character.potionStats,
+        character.allocatedStats,
+        storage.bonusStats
+      );
+      return recalculateHpMp(character, effStats);
+    }
+
+    return character;
   }
 }
 

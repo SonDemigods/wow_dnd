@@ -30,6 +30,7 @@ import { generateLogId } from '@/modules/log/service';
 import { useCharacterStore } from '@/modules/character/store';
 import { errorReporter } from '@/utils/errorReport';
 import { RARITY_CONFIG } from '../../config/inventory';
+import { ATTRIBUTE_POTION_IDS } from '@/data/config_items';
 import {
   computeStackResult,
   findItemIndex,
@@ -497,18 +498,25 @@ export const useInventoryStore = defineStore('inventory', () => {
     }
 
     // 应用属性加成（bonus 字段，独立于 effect）
-    // P2-53 修复：消耗品的 bonus 是永久叠加到 bonusStats，使用 10 瓶"力量药水"会永久获得 +50 力量。
-    // 设计原则：bonus 字段不应配置在 consumable 物品上，应仅用于装备；
-    //           消耗品的临时增益应通过 buff 系统（combat/effects）实现。
-    // 此处保留 applyBonus 调用作为向后兼容，但开发期会输出警告提示配置问题。
+    // 四层属性模型（见 plan.md §3.5）：
+    // - 属性药剂（ATTRIBUTE_POTION_IDS 命中）：bonus 永久叠加到药剂层 potionStats（不可重置），
+    //   调用 characterStore.applyPotionBonus，与升级层/装备层完全隔离。
+    // - 其他带 bonus 的消耗品（如龙息辣椒等食物）：保留原 applyBonus 路径走装备/天赋层 bonusStats。
+    //   P2-53 设计原则：消耗品的 bonus 不应进入 bonusStats（与装备混淆），未来应迁移到 buff 系统。
+    //   此处保留 applyBonus 调用作为向后兼容，开发期输出警告。
     if (itemTemplate.bonus && Object.keys(itemTemplate.bonus).length > 0) {
-      if (import.meta.env.DEV) {
-        console.warn(
-          `[InventoryStore] 消耗品 ${itemTemplate.id} (${itemTemplate.name}) 配置了 bonus 字段，` +
-          `使用时将永久叠加到 bonusStats。建议改为 buff 系统实现临时增益。`
-        );
+      if (ATTRIBUTE_POTION_IDS.has(itemTemplate.id)) {
+        // 属性药剂：永久叠加到药剂层（不可逆），con/int/wis 影响 HP/MP 上限时由 store 重算
+        await characterStore.applyPotionBonus(itemTemplate.bonus);
+      } else {
+        if (import.meta.env.DEV) {
+          console.warn(
+            `[InventoryStore] 消耗品 ${itemTemplate.id} (${itemTemplate.name}) 配置了 bonus 字段，` +
+            `使用时将永久叠加到 bonusStats。建议改为 buff 系统实现临时增益。`
+          );
+        }
+        await characterStore.applyBonus(itemTemplate.bonus);
       }
-      await characterStore.applyBonus(itemTemplate.bonus);
     }
 
     // 消耗物品：堆叠物品 count-1，单件物品移除槽位

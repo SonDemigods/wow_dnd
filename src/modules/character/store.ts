@@ -6,7 +6,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { Character, CharacterListItem, Stats, Attributes, FactionType, RaceType, ClassType, FactionData, RaceData, ClassData, CreateCharacterParams } from './types';
+import type { Character, CharacterListItem, Stats, Attributes, FactionType, RaceType, ClassType, FactionData, RaceData, ClassData, CreateCharacterParams, StatSource } from './types';
 import { characterDbService } from './db';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useBaseStore } from '@/modules/base/store';
@@ -30,9 +30,14 @@ import {
   computeResurrection,
   isClassFactionCompatible,
   isRaceFactionCompatible,
-  isClassRaceCompatible
+  isClassRaceCompatible,
+  // 四层属性纯函数（as 重命名避免与下方 Action 同名冲突）
+  allocateStat as allocateStatPure,
+  resetAllocatedStats as resetAllocatedStatsPure,
+  applyPotionBonus as applyPotionBonusPure
 } from './service';
 import { getExpForLevel } from '@/utils/calculations';
+import { BASE_STAT_VALUE } from '@/config/character';
 import { errorReporter } from '@/utils/errorReport';
 import { backupService, importService, dataInitializer } from '../data';
 import type { ImportResult, ValidationResult } from '../data';
@@ -62,7 +67,58 @@ export const useCharacterStore = defineStore('character', () => {
 
   const effectiveStats = computed<Stats>(() => {
     if (!character.value) return { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
-    return computeEffectiveStats(character.value.stats, bonusStats.value);
+    return computeEffectiveStats(
+      character.value.stats,
+      character.value.potionStats,
+      character.value.allocatedStats,
+      bonusStats.value
+    );
+  });
+
+  /**
+   * 属性来源明细（plan.md §阶段四）
+   *
+   * 将每个核心属性按四层模型拆解为来源明细，供 UI 组件 hover tooltip 展示，
+   * 提升属性构成透明度，辅助玩家做出分配决策。
+   *
+   * 各层来源与 effectiveStats 的关系：
+   *   effectiveStats[key] = clamp(sum(breakdown[key].value), [1, MAX_STAT])
+   *
+   * 各层来源说明：
+   * - `base`：基础值 BASE_STAT_VALUE（固定 10）
+   * - `race`：种族加成（raceBonus，固定）
+   * - `class`：职业加成（classBonus，固定）
+   * - `potion`：药剂层（potionStats，不可重置）
+   * - `allocated`：升级层（allocatedStats，可重置）
+   * - `bonus`：装备/天赋层（bonusStats，外部加成）
+   *
+   * UI 渲染建议：value 为 0 的层显示为灰色或隐藏；负值（如职业调整 -1）需正确展示。
+   *
+   * 响应式依赖：character.value（含 stats/potionStats/allocatedStats）、
+   *              raceBonus、classBonus、bonusStats 任一变化时自动重算。
+   */
+  const statsBreakdown = computed<Record<keyof Stats, StatSource[]>>(() => {
+    const empty: Stats = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+    const char = character.value;
+    const potion = char?.potionStats ?? empty;
+    const allocated = char?.allocatedStats ?? empty;
+    const bonus = bonusStats.value;
+    const race = raceBonus.value;
+    const cls = classBonus.value;
+
+    const keys: (keyof Stats)[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+    const result = {} as Record<keyof Stats, StatSource[]>;
+    keys.forEach(key => {
+      result[key] = [
+        { label: '基础', value: BASE_STAT_VALUE, layer: 'base' },
+        { label: '种族', value: race[key] || 0, layer: 'race' },
+        { label: '职业', value: cls[key] || 0, layer: 'class' },
+        { label: '药剂', value: potion[key], layer: 'potion' },
+        { label: '升级', value: allocated[key], layer: 'allocated' },
+        { label: '装备/天赋', value: bonus[key] || 0, layer: 'bonus' }
+      ];
+    });
+    return result;
   });
 
   const attributes = computed<Attributes>(() => computeAttributes(effectiveStats.value));
@@ -399,7 +455,12 @@ export const useCharacterStore = defineStore('character', () => {
     bonusStats.value = computeBonusChange(bonusStats.value, delta, true);
     // P3-6：仅当影响 HP/MP 的属性（体质/智力/感知）变化时才重算（HP←con，MP←int/wis，cha 不影响）
     if (delta.con || delta.int || delta.wis) {
-      const effStats = computeEffectiveStats(character.value.stats, bonusStats.value);
+      const effStats = computeEffectiveStats(
+        character.value.stats,
+        character.value.potionStats,
+        character.value.allocatedStats,
+        bonusStats.value
+      );
       character.value = recalculateHpMp(character.value, effStats);
     }
     await persistCharacter();
@@ -411,9 +472,94 @@ export const useCharacterStore = defineStore('character', () => {
     bonusStats.value = computeBonusChange(bonusStats.value, delta, false);
     // P3-6：与 applyBonus 保持对称，仅当影响 HP/MP 的属性（体质/智力/感知）变化时才重算
     if (delta.con || delta.int || delta.wis) {
-      const effStats = computeEffectiveStats(character.value.stats, bonusStats.value);
+      const effStats = computeEffectiveStats(
+        character.value.stats,
+        character.value.potionStats,
+        character.value.allocatedStats,
+        bonusStats.value
+      );
       character.value = recalculateHpMp(character.value, effStats);
     }
+    await persistCharacter();
+  }
+
+  // ==================== Action：四层属性（药剂层 / 升级层） ====================
+  // 三个 Action 均委托 service.ts 中的纯函数（已 as 重命名为 *Pure）。
+  // HP/MP 上限变更统一由本段 Action 调用 recalculateHpMp 处理，
+  // 遵循"纯函数只更新对应层级字段，Store 统一重算"的分层约定（见 service.ts §四层属性注释）。
+
+  /**
+   * 永久叠加药剂属性到药剂层（不可重置）
+   *
+   * 四层属性模型（见 plan.md §3.5）：
+   * - 属性药剂的 `bonus` 通过 inventory.useItem 识别后调用本 Action
+   * - 永久叠加到 `potionStats`，不提供对应的 remove 接口（不可逆设计）
+   * - 与升级层 `allocatedStats` 隔离，`resetAllocatedStats` 不影响药剂层
+   *
+   * HP/MP 重算规则：当 `delta` 含 con/int/wis 时触发（HP←con，MP←int/wis）。
+   * 当前 HP/MP 不超新上限；上限提升时不自动回满（避免"喝药剂=免费回血"的 exploit）。
+   *
+   * @param delta - 药剂提供的属性加成（如 { str: 1 }）
+   */
+  async function applyPotionBonus(delta: Partial<Stats>): Promise<void> {
+    if (!character.value) return;
+    character.value = applyPotionBonusPure(character.value, delta);
+    // P3-6：与 applyBonus 保持一致，仅当影响 HP/MP 的属性（体质/智力/感知）变化时才重算
+    if (delta.con || delta.int || delta.wis) {
+      const effStats = computeEffectiveStats(
+        character.value.stats,
+        character.value.potionStats,
+        character.value.allocatedStats,
+        bonusStats.value
+      );
+      character.value = recalculateHpMp(character.value, effStats);
+    }
+    await persistCharacter();
+  }
+
+  /**
+   * 分配 1 点升级点数到指定属性
+   *
+   * 四层属性模型（见 plan.md §3.6）：
+   * - `unallocatedPoints > 0` 时 `allocatedStats[stat]++`，`unallocatedPoints--`
+   * - 影响 con/int/wis 时重算 HP/MP 上限
+   * - 当前 HP/MP 不自动回满：分配 con 增加 maxHp 时当前 hp 不变（避免 exploit）
+   *
+   * @param stat - 目标属性键（str/dex/con/int/wis/cha）
+   * @returns 是否分配成功（点数不足或未登录返回 false）
+   */
+  async function allocateStat(stat: keyof Stats): Promise<boolean> {
+    if (!character.value || character.value.unallocatedPoints <= 0) return false;
+    const newChar = allocateStatPure(character.value, stat);
+    // P3-6：仅 con/int/wis 影响 HP/MP 上限（HP←con，MP←int/wis，str/dex/cha 不影响）
+    const needsRecalc = stat === 'con' || stat === 'int' || stat === 'wis';
+    character.value = needsRecalc
+      ? recalculateHpMp(
+          newChar,
+          computeEffectiveStats(newChar.stats, newChar.potionStats, newChar.allocatedStats, bonusStats.value)
+        )
+      : newChar;
+    await persistCharacter();
+    return true;
+  }
+
+  /**
+   * 重置升级层已分配点数（完全免费）
+   *
+   * 四层属性模型（见 plan.md §3.6）：
+   * - 将 `allocatedStats` 全部归零，已分配总量回收至 `unallocatedPoints`
+   * - 不影响药剂层 `potionStats`（不可重置）
+   * - 统一重算 HP/MP：玩家可能已分配 con/int/wis，重置后这些属性归零，maxHp/maxMana 可能降低
+   *   当前 HP/MP 按原 `recalculateHpMp` 规则截断到新上限
+   */
+  async function resetAllocatedStats(): Promise<void> {
+    if (!character.value) return;
+    const newChar = resetAllocatedStatsPure(character.value);
+    // 重置必然可能影响 con/int/wis（玩家可能点了这些属性），统一重算
+    character.value = recalculateHpMp(
+      newChar,
+      computeEffectiveStats(newChar.stats, newChar.potionStats, newChar.allocatedStats, bonusStats.value)
+    );
     await persistCharacter();
   }
 
@@ -437,7 +583,12 @@ export const useCharacterStore = defineStore('character', () => {
       raceId: race,
       stats: computeInitialStats(raceBonus.value, classBonus.value)
     };
-    const effStats = computeEffectiveStats(character.value.stats, bonusStats.value);
+    const effStats = computeEffectiveStats(
+      character.value.stats,
+      character.value.potionStats,
+      character.value.allocatedStats,
+      bonusStats.value
+    );
     character.value = recalculateHpMp(character.value, effStats);
     await persistCharacter();
   }
@@ -460,7 +611,12 @@ export const useCharacterStore = defineStore('character', () => {
       classId: classIdParam,
       stats: computeInitialStats(raceBonus.value, classBonus.value)
     };
-    const effStats = computeEffectiveStats(character.value.stats, bonusStats.value);
+    const effStats = computeEffectiveStats(
+      character.value.stats,
+      character.value.potionStats,
+      character.value.allocatedStats,
+      bonusStats.value
+    );
     character.value = recalculateHpMp(character.value, effStats);
     await persistCharacter();
   }
@@ -495,8 +651,17 @@ export const useCharacterStore = defineStore('character', () => {
       exp: 0,
       expToNextLevel: getExpForLevel(2),
       stats: computeInitialStats(raceBonus.value, classBonus.value),
+      // 四层属性：重置到 1 级角色状态（药剂层保留，因不可重置；升级层清零）
+      // 注：potionStats 不清零，遵循"药剂层不可重置"设计原则
+      allocatedStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+      unallocatedPoints: 0,
     };
-    const effStats = computeEffectiveStats(character.value.stats, bonusStats.value);
+    const effStats = computeEffectiveStats(
+      character.value.stats,
+      character.value.potionStats,
+      character.value.allocatedStats,
+      bonusStats.value
+    );
     character.value = recalculateHpMp(character.value, effStats);
     // 重置后回满 HP/MP（更新 maxHp/maxMpa 后同步当前值到上限）
     character.value = { ...character.value, hp: character.value.maxHp, mana: character.value.maxMana };
@@ -582,6 +747,7 @@ export const useCharacterStore = defineStore('character', () => {
     // 计算属性
     isLoggedIn,
     effectiveStats,
+    statsBreakdown,
     attributes,
     level, exp, expToNextLevel, expPercentage,
     hp, maxHp, hpPercentage,
@@ -609,6 +775,10 @@ export const useCharacterStore = defineStore('character', () => {
     spendGold,
     applyBonus,
     removeBonus,
+    // 四层属性 Action
+    applyPotionBonus,
+    allocateStat,
+    resetAllocatedStats,
     setRace,
     setClass,
     setName,

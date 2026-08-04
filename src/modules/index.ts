@@ -163,6 +163,10 @@ export {
   computeBonusChange,
   recalculateHpMp,
   computeResurrection,
+  // 四层属性：升级分配与药剂层纯函数
+  allocateStat,
+  resetAllocatedStats,
+  applyPotionBonus,
   useCharacterStore
 } from './character';
 

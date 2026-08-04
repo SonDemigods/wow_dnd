@@ -130,7 +130,13 @@ const MANA_POTIONS: Item[] = [
   }
 ];
 
-/** 属性药剂 - 永久提升属性 */
+/** 属性药剂 - 永久提升属性
+ *
+ * 四层属性模型（见 plan.md §3.5）：属性药剂的 `bonus` 字段不进入装备/天赋层 `bonusStats`，
+ * 而是永久叠加到药剂层 `potionStats`（不可重置）。inventory/store.ts 的 useItem 通过
+ * `ATTRIBUTE_POTION_IDS` 识别此类药剂并调用 `characterStore.applyPotionBonus(item.bonus)`，
+ * 与 HP/MP 恢复药剂（走 `effect` 字段）分支互斥。
+ */
 const ATTRIBUTE_POTIONS: Item[] = [
   {
     id: 'strength_potion',
@@ -217,6 +223,20 @@ const ATTRIBUTE_POTIONS: Item[] = [
     template: 'charisma_potion'
   }
 ];
+
+/**
+ * 属性药剂 ID 白名单
+ *
+ * 用于 inventory 模块在 useItem 中区分属性药剂（永久叠加到 `potionStats`）与
+ * HP/MP 恢复药剂（走 `effect` 即时效果）。基于 `ATTRIBUTE_POTIONS` 数组派生，
+ * 避免在 inventory 中硬编码 6 个字符串 ID，新增属性药剂只需在此处扩展。
+ *
+ * @see useInventoryStore.useItem 属性药剂识别入口
+ * @see useCharacterStore.applyPotionBonus 永久属性叠加 Action
+ */
+export const ATTRIBUTE_POTION_IDS: ReadonlySet<string> = new Set(
+  ATTRIBUTE_POTIONS.map(p => p.id)
+);
 
 // ============================================================================
 // 食物类物品

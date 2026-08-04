@@ -260,6 +260,32 @@ export interface Stats {
 }
 
 /**
+ * 属性来源明细项
+ *
+ * 用于角色面板"属性来源展示"功能（plan.md §阶段四），描述单个核心属性
+ * （如 str）的某一层贡献来源，供 UI 组件以 tooltip 形式展示属性构成明细。
+ *
+ * 四层属性模型分层（见 plan.md §3.1）：
+ * - `base`：基础值 10（固定，不可改）
+ * - `race`：种族加成（raceBonus，固定）
+ * - `class`：职业加成（classBonus，固定）
+ * - `potion`：药剂层（potionStats，不可重置）
+ * - `allocated`：升级层（allocatedStats，可重置）
+ * - `bonus`：装备/天赋层（bonusStats，外部加成）
+ *
+ * @property label - 来源显示名称（如 "基础"、"种族"、"职业"、"药剂"、"升级"、"装备/天赋"）
+ * @property value - 该层对该属性的贡献值（可为负，如职业调整的 -1）
+ * @property layer - 层级标识，用于 UI 着色或筛选零值层
+ *
+ * @see useCharacterStore.statsBreakdown 暴露给 UI 的属性来源明细
+ */
+export interface StatSource {
+  label: string;
+  value: number;
+  layer: 'base' | 'race' | 'class' | 'potion' | 'allocated' | 'bonus';
+}
+
+/**
  * 角色衍生属性接口
  *
  * 基于核心 `Stats` 计算得出的战斗和生存属性。每次 Stats 变化时通过 `computeAttributes`
@@ -319,7 +345,10 @@ export interface Attributes {
  * @property {number} maxHp - 最大生命值（由 `calculateMaxHp(effectiveStats)` 计算）
  * @property {number} mana - 当前法力值（范围 [0, maxMana]）
  * @property {number} maxMana - 最大法力值（由 `calculateMaxMana(effectiveStats)` 计算）
- * @property {Stats} stats - 核心六维属性（不含 bonusStats）
+ * @property {Stats} stats - 核心六维属性（10 基础 + 种族 + 职业；不再含等级加成）
+ * @property {Stats} potionStats - 药剂层累加属性（不可重置），初始全 0；使用 ATTRIBUTE_POTIONS 后永久叠加
+ * @property {Stats} allocatedStats - 升级层已分配属性（可重置），初始全 0；由 allocateStat 分配
+ * @property {number} unallocatedPoints - 升级层未分配点数池，初始 0，升级时 += POINTS_PER_LEVEL
  * @property {number} gold - 金币数量（无下限，花费时不能为负）
  *
  * @see CharacterListItem 角色列表项（仅展示用，不含完整数据）
@@ -339,6 +368,12 @@ export interface Character {
   mana: number;
   maxMana: number;
   stats: Stats;
+  /** 药剂层累加属性（不可重置），使用属性药剂后永久叠加 */
+  potionStats: Stats;
+  /** 升级层已分配属性（可重置），由 allocateStat 分配 */
+  allocatedStats: Stats;
+  /** 升级层未分配点数池，升级时累加 POINTS_PER_LEVEL */
+  unallocatedPoints: number;
   gold: number;
   /** 角色创建时间戳（毫秒），持久化用，不在 UI 中展示 */
   createdTime?: number;
@@ -623,7 +658,10 @@ export interface ClassStorage {
  * @property {number} exp - 当前经验值
  * @property {number} expToNextLevel - 升级所需经验值
  * @property {number} gold - 金币数量
- * @property {Stats} baseStats - 基础核心属性（对应 Character.stats）
+ * @property {Stats} baseStats - 基础核心属性（10 + 种族 + 职业；不含等级加成）
+ * @property {Stats} [potionStats] - 药剂层累加属性（可选，旧存档缺失时由 fromStorageFormat 迁移为全 0）
+ * @property {Stats} [allocatedStats] - 升级层已分配属性（可选，旧存档缺失时迁移为全 0）
+ * @property {number} [unallocatedPoints] - 升级层未分配点数（可选，旧存档缺失时按 (level-1)*POINTS_PER_LEVEL 补发）
  * @property {number} currentHp - 当前生命值（对应 Character.hp）
  * @property {number} maxHp - 最大生命值（对应 Character.maxHp）
  * @property {number} currentMp - 当前法力值（对应 Character.mana）
@@ -647,6 +685,12 @@ export interface CharacterDataStorage {
   expToNextLevel: number;
   gold: number;
   baseStats: Stats;
+  /** 药剂层累加属性（可选，旧存档缺失时迁移为全 0） */
+  potionStats?: Stats;
+  /** 升级层已分配属性（可选，旧存档缺失时迁移为全 0） */
+  allocatedStats?: Stats;
+  /** 升级层未分配点数（可选，旧存档缺失时按 (level-1)*POINTS_PER_LEVEL 补发） */
+  unallocatedPoints?: number;
   currentHp: number;
   maxHp: number;
   currentMp: number;

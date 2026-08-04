@@ -27,6 +27,33 @@ export type Level = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
 export const MAX_STAT = 999;
 
 /**
+ * 核心属性基础值（每个属性的起始固定值）
+ *
+ * 四层属性模型中基础层的固定起始值，与种族加成、职业加成叠加后构成 baseStats。
+ * 抽取为常量供 service.computeInitialStats 与 store.statsBreakdown 共享，
+ * 避免在多处硬编码字面量 10 导致规则不一致。
+ *
+ * @see computeInitialStats 基础值 + 种族 + 职业 → baseStats
+ * @see useCharacterStore.statsBreakdown 属性来源明细中的基础层
+ */
+export const BASE_STAT_VALUE = 10;
+
+// ==================== 升级点数 ====================
+
+/**
+ * 每级获得的可分配属性点数
+ *
+ * 四层属性模型中，角色升级不再自动全属性 +1，
+ * 而是获得本常量定义的可分配点数，由玩家自由分配到 6 个核心属性。
+ * 1 级角色无升级点数；升到 N 级累计获得 (N-1) * POINTS_PER_LEVEL 点。
+ *
+ * @see applyLevelUp 升级时累加 unallocatedPoints
+ * @see allocateStat 分配 1 点到指定属性
+ * @see resetAllocatedStats 重置升级层已分配点数（完全免费）
+ */
+export const POINTS_PER_LEVEL = 3;
+
+/**
  * 主属性名称映射表
  */
 export const STAT_NAMES = {

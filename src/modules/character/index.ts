@@ -24,7 +24,8 @@ export type {
   FactionStorage,
   RaceStorage,
   ClassStorage,
-  CharacterDataStorage
+  CharacterDataStorage,
+  StatSource
 } from './types';
 
 export { CharacterDbService, characterDbService } from './db';
@@ -45,7 +46,11 @@ export {
   canAffordGold,
   computeBonusChange,
   recalculateHpMp,
-  computeResurrection
+  computeResurrection,
+  // 四层属性：升级分配与药剂层纯函数
+  allocateStat,
+  resetAllocatedStats,
+  applyPotionBonus
 } from './service';
 
 /** 导出 Pinia 状态管理 Store（useCharacterStore）

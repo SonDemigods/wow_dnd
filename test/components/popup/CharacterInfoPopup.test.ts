@@ -65,6 +65,10 @@ describe('CharacterInfoPopup 角色信息弹窗组件', () => {
       mana: 30,
       maxMana: 50,
       stats: { str: 15, dex: 12, con: 14, int: 8, wis: 10, cha: 10 },
+      // 四层属性模型（plan.md §3.2）：1 级后角色可能已分配点数与喝过药剂
+      potionStats: { str: 1, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+      allocatedStats: { str: 2, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+      unallocatedPoints: 3,
       gold: 500,
     };
   }
@@ -182,5 +186,186 @@ describe('CharacterInfoPopup 角色信息弹窗组件', () => {
     });
     await wrapper.find('.popup-close-btn').trigger('click');
     expect(wrapper.emitted('close')).toHaveLength(1);
+  });
+
+  // ==================== 四层属性：升级点数分配 UI ====================
+  it('unallocatedPoints > 0 时显示剩余点数条与可用的 + 按钮', () => {
+    const pinia = createStubPinia();
+    const characterStore = useCharacterStore();
+    characterStore.$patch((state) => {
+      state.character = buildCharacter();
+    });
+    const wrapper = mount(CharacterInfoPopup, {
+      props: { visible: true },
+      global: { plugins: [pinia] },
+    });
+    // 剩余点数显示
+    const pointsBar = wrapper.find('.alloc-points');
+    expect(pointsBar.exists()).toBe(true);
+    expect(pointsBar.classes()).toContain('active');
+    expect(pointsBar.text()).toContain('3');
+    // + 按钮可点（未禁用）
+    const allocBtns = wrapper.findAll('.alloc-btn');
+    expect(allocBtns.length).toBeGreaterThan(0);
+    expect((allocBtns[0].element as HTMLButtonElement).disabled).toBe(false);
+    // 已分配点数显示（str 已分配 2）
+    const strBonus = wrapper.find('.alloc-bonus');
+    expect(strBonus.exists()).toBe(true);
+    expect(strBonus.text()).toBe('+2');
+  });
+
+  it('点击 + 按钮触发 characterStore.allocateStat 与 UI_CLICK 事件', async () => {
+    const pinia = createStubPinia();
+    const characterStore = useCharacterStore();
+    characterStore.$patch((state) => {
+      state.character = buildCharacter();
+    });
+    const uiClickSpy = vi.fn();
+    eventBus.on(GameEvents.UI_CLICK, uiClickSpy);
+
+    const wrapper = mount(CharacterInfoPopup, {
+      props: { visible: true },
+      global: { plugins: [pinia] },
+    });
+    // 点击第一个属性（str）的 + 按钮
+    const allocBtns = wrapper.findAll('.alloc-btn');
+    await allocBtns[0].trigger('click');
+    expect(characterStore.allocateStat).toHaveBeenCalledWith('str');
+    expect(uiClickSpy).toHaveBeenCalledWith({ source: 'allocate_stat' });
+  });
+
+  it('点击重置按钮触发 characterStore.resetAllocatedStats', async () => {
+    const pinia = createStubPinia();
+    const characterStore = useCharacterStore();
+    characterStore.$patch((state) => {
+      state.character = buildCharacter();
+    });
+    const wrapper = mount(CharacterInfoPopup, {
+      props: { visible: true },
+      global: { plugins: [pinia] },
+    });
+    const resetBtn = wrapper.find('.reset-alloc-btn');
+    expect(resetBtn.exists()).toBe(true);
+    await resetBtn.trigger('click');
+    expect(characterStore.resetAllocatedStats).toHaveBeenCalled();
+  });
+
+  // ==================== 阶段四：属性来源明细 tooltip ====================
+  it('默认无 hover 时不显示属性来源 tooltip', () => {
+    const pinia = createStubPinia();
+    const characterStore = useCharacterStore();
+    characterStore.$patch((state) => {
+      state.character = buildCharacter();
+    });
+    const wrapper = mount(CharacterInfoPopup, {
+      props: { visible: true },
+      global: { plugins: [pinia] },
+    });
+    expect(wrapper.find('.attr-breakdown').exists()).toBe(false);
+  });
+
+  it('hover 属性项时显示来源明细 tooltip，包含 6 层来源', async () => {
+    const pinia = createStubPinia();
+    const characterStore = useCharacterStore();
+    characterStore.$patch((state) => {
+      state.character = buildCharacter();
+      // 注入种族/职业加成，使明细非全 0
+      state.raceBonus = { str: 2, con: 2 };
+      state.classBonus = { str: 3, dex: 2, con: 2, int: -2 };
+    });
+    const wrapper = mount(CharacterInfoPopup, {
+      props: { visible: true },
+      global: { plugins: [pinia] },
+    });
+
+    // hover 第一个属性项（str）
+    const attrItems = wrapper.findAll('.core-attr-item');
+    expect(attrItems.length).toBeGreaterThan(0);
+    await attrItems[0].trigger('mouseenter');
+
+    // tooltip 显示
+    const tooltip = wrapper.find('.attr-breakdown');
+    expect(tooltip.exists()).toBe(true);
+    // 包含 6 行来源明细
+    const rows = tooltip.findAll('.breakdown-row');
+    expect(rows).toHaveLength(6);
+    // 标题包含属性名与总值
+    expect(tooltip.find('.breakdown-title').text()).toContain('力量');
+    // 各层标签正确
+    const labels = rows.map(r => r.find('.breakdown-label').text());
+    expect(labels).toEqual(['基础', '种族', '职业', '药剂', '升级', '装备/天赋']);
+  });
+
+  it('mouseleave 后 tooltip 消失', async () => {
+    const pinia = createStubPinia();
+    const characterStore = useCharacterStore();
+    characterStore.$patch((state) => {
+      state.character = buildCharacter();
+    });
+    const wrapper = mount(CharacterInfoPopup, {
+      props: { visible: true },
+      global: { plugins: [pinia] },
+    });
+
+    const attrItem = wrapper.find('.core-attr-item');
+    await attrItem.trigger('mouseenter');
+    expect(wrapper.find('.attr-breakdown').exists()).toBe(true);
+
+    await attrItem.trigger('mouseleave');
+    expect(wrapper.find('.attr-breakdown').exists()).toBe(false);
+  });
+
+  it('tooltip 显示已分配点数与药剂层贡献（buildCharacter 注入的 potionStats/allocatedStats）', async () => {
+    const pinia = createStubPinia();
+    const characterStore = useCharacterStore();
+    characterStore.$patch((state) => {
+      state.character = buildCharacter();
+      // buildCharacter 中 potionStats.str=1, allocatedStats.str=2
+    });
+    const wrapper = mount(CharacterInfoPopup, {
+      props: { visible: true },
+      global: { plugins: [pinia] },
+    });
+
+    // hover str 属性项
+    const attrItems = wrapper.findAll('.core-attr-item');
+    await attrItems[0].trigger('mouseenter');
+
+    const rows = wrapper.findAll('.breakdown-row');
+    // 药剂层（str=1）
+    const potionRow = rows.find(r => r.classes().includes('layer-potion'));
+    expect(potionRow).toBeDefined();
+    expect(potionRow!.find('.breakdown-value').text()).toBe('+1');
+    // 升级层（str=2）
+    const allocatedRow = rows.find(r => r.classes().includes('layer-allocated'));
+    expect(allocatedRow).toBeDefined();
+    expect(allocatedRow!.find('.breakdown-value').text()).toBe('+2');
+    // 基础层（=10）
+    const baseRow = rows.find(r => r.classes().includes('layer-base'));
+    expect(baseRow).toBeDefined();
+    expect(baseRow!.find('.breakdown-value').text()).toBe('+10');
+  });
+
+  it('零值层显示 — 占位符，便于区分空贡献', async () => {
+    const pinia = createStubPinia();
+    const characterStore = useCharacterStore();
+    characterStore.$patch((state) => {
+      state.character = buildCharacter();
+      // 不设置 raceBonus/classBonus，种族/职业层为 0
+    });
+    const wrapper = mount(CharacterInfoPopup, {
+      props: { visible: true },
+      global: { plugins: [pinia] },
+    });
+
+    const attrItem = wrapper.find('.core-attr-item');
+    await attrItem.trigger('mouseenter');
+
+    const raceRow = wrapper.findAll('.breakdown-row').find(r => r.classes().includes('layer-race'));
+    expect(raceRow).toBeDefined();
+    // raceBonus 未设置，值为 0，显示 —
+    expect(raceRow!.find('.breakdown-value').text()).toBe('—');
+    // 零值层有 .zero class 标识
+    expect(raceRow!.classes()).toContain('zero');
   });
 });

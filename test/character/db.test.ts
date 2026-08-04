@@ -17,6 +17,7 @@ import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { characterDbService } from '@/modules/character/db';
 import { db } from '@/modules/data/core';
+import { POINTS_PER_LEVEL } from '@/config/character';
 import type {
   Character,
   CharacterListItem,
@@ -45,6 +46,10 @@ function makeCharacter(o: Partial<Character> = {}): Character {
     mana: 30,
     maxMana: 50,
     stats: { ...baseStats },
+    // 四层属性模型（plan.md §3.2）：默认新角色无药剂、无升级分配
+    potionStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    allocatedStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    unallocatedPoints: 0,
     gold: 250,
     ...o,
   };
@@ -76,6 +81,11 @@ function makeStorageData(o: Partial<CharacterDataStorage> = {}): CharacterDataSt
     expToNextLevel: 1000,
     gold: 250,
     baseStats: { ...baseStats },
+    // 四层属性新字段：默认新格式（含字段，不触发旧存档迁移）
+    // 单独的"旧存档迁移"测试用例通过 ...o 覆盖为 undefined 验证迁移行为
+    potionStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    allocatedStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    unallocatedPoints: 0,
     currentHp: 80,
     maxHp: 100,
     currentMp: 30,
@@ -357,6 +367,77 @@ describe('CharacterDbService - 角色数据层（fake-indexeddb 真实 CRUD）',
       expect(restored.maxMana).toBe(original.maxMana);
       expect(restored.stats).toEqual(original.stats);
       expect(restored.gold).toBe(original.gold);
+    });
+  });
+
+  // -------------------- 四层属性：旧存档迁移 --------------------
+  describe('fromStorageFormat：旧存档迁移（plan.md §7.1）', () => {
+    it('旧存档（无 potionStats）：反推 baseStats 并补发 unallocatedPoints', () => {
+      // 旧存档 5 级，baseStats 含等级加成（每级全属性 +1，5 级已加 4 次）
+      // baseStats = { str: 14, dex: 12, con: 13, int: 11, wis: 11, cha: 11 }
+      // 反推后 = baseStats - 4 = { str: 10, dex: 8, con: 9, int: 7, wis: 7, cha: 7 }
+      const storage = makeStorageData({
+        level: 5,
+        baseStats: { str: 14, dex: 12, con: 13, int: 11, wis: 11, cha: 11 },
+        // 通过设为 undefined 触发旧存档迁移分支
+        potionStats: undefined,
+        allocatedStats: undefined,
+        unallocatedPoints: undefined,
+      } as Partial<CharacterDataStorage>);
+
+      const character = characterDbService.fromStorageFormat(storage as CharacterDataStorage);
+
+      // 反推剥离等级加成
+      expect(character.stats).toEqual({ str: 10, dex: 8, con: 9, int: 7, wis: 7, cha: 7 });
+      // 旧存档无药剂/无升级分配，初始化为全 0
+      expect(character.potionStats).toEqual({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
+      expect(character.allocatedStats).toEqual({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
+      // 补发 (level - 1) * POINTS_PER_LEVEL = 4 * 3 = 12 点
+      expect(character.unallocatedPoints).toBe(12);
+    });
+
+    it('旧存档迁移后 maxHp/maxMana 基于反推后的 con/int 重算', () => {
+      // 旧存档 5 级，baseStats.con = 13 → 反推后 con = 9 → maxHp = 100 + 9*10 = 190
+      const storage = makeStorageData({
+        level: 5,
+        baseStats: { str: 14, dex: 12, con: 13, int: 11, wis: 11, cha: 11 },
+        maxHp: 230, // 旧 maxHp 基于旧 con=13 算出（100+13*10=230），迁移后失效
+        currentHp: 200,
+        maxMp: 100,
+        currentMp: 80,
+        potionStats: undefined,
+        allocatedStats: undefined,
+        unallocatedPoints: undefined,
+      } as Partial<CharacterDataStorage>);
+
+      const character = characterDbService.fromStorageFormat(storage as CharacterDataStorage);
+
+      // con 反推为 9，maxHp = 100 + 9*10 = 190；currentHp 截断到新上限
+      expect(character.maxHp).toBe(190);
+      expect(character.hp).toBe(190); // 200 > 190，截断为 190
+    });
+
+    it('新存档（含 potionStats）：不触发迁移，字段直接透传', () => {
+      const storage = makeStorageData({
+        level: 8,
+        baseStats: { str: 15, dex: 12, con: 12, int: 10, wis: 10, cha: 10 },
+        potionStats: { str: 2, dex: 0, con: 1, int: 0, wis: 0, cha: 0 },
+        allocatedStats: { str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+        unallocatedPoints: 5,
+        maxHp: 220,
+        currentHp: 180,
+      });
+
+      const character = characterDbService.fromStorageFormat(storage);
+
+      // 直接透传，不反推
+      expect(character.stats).toEqual({ str: 15, dex: 12, con: 12, int: 10, wis: 10, cha: 10 });
+      expect(character.potionStats).toEqual({ str: 2, dex: 0, con: 1, int: 0, wis: 0, cha: 0 });
+      expect(character.allocatedStats).toEqual({ str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 });
+      expect(character.unallocatedPoints).toBe(5);
+      // 新存档不重算 maxHp（信任存储值）
+      expect(character.maxHp).toBe(220);
+      expect(character.hp).toBe(180);
     });
   });
 });

@@ -31,14 +31,22 @@ import {
   computeBonusChange,
   recalculateHpMp,
   computeResurrection,
+  allocateStat,
+  resetAllocatedStats,
+  applyPotionBonus,
 } from '@/modules/character/service';
 import type { Character, Stats, RaceData, ClassData, CreateCharacterParams } from '@/modules/character/types';
-import { MAX_LEVEL, MAX_STAT } from '@/config/character';
+import { MAX_LEVEL, MAX_STAT, POINTS_PER_LEVEL } from '@/config/character';
 import { calculateMaxHp, calculateMaxMana, getExpForLevel } from '@/utils/calculations';
 
 /** 构造测试用 Stats（全 10 的中庸属性） */
 function makeStats(overrides: Partial<Stats> = {}): Stats {
   return { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10, ...overrides };
+}
+
+/** 构造测试用全 0 Stats（药剂层/升级层默认值） */
+function makeZeroStats(overrides: Partial<Stats> = {}): Stats {
+  return { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0, ...overrides };
 }
 
 /** 构造测试用 Character */
@@ -57,6 +65,10 @@ function makeCharacter(overrides: Partial<Character> = {}): Character {
     mana: calculateMaxMana(stats),
     maxMana: calculateMaxMana(stats),
     stats,
+    // 四层属性默认值：药剂层/升级层全 0，无未分配点数
+    potionStats: makeZeroStats(),
+    allocatedStats: makeZeroStats(),
+    unallocatedPoints: 0,
     gold: 100,
     ...overrides,
   };
@@ -140,31 +152,52 @@ describe('computeInitialStats 初始属性计算', () => {
 });
 
 describe('computeEffectiveStats 有效属性计算', () => {
-  it('baseStats + bonusStats 叠加', () => {
+  it('四层叠加：baseStats + potionStats + allocatedStats + bonusStats', () => {
     const base = makeStats({ str: 15, con: 12 });
-    const bonus = { str: 5, dex: 3 };
-    const effective = computeEffectiveStats(base, bonus);
-    expect(effective.str).toBe(20);
-    expect(effective.dex).toBe(13);
-    expect(effective.con).toBe(12); // 无加成
+    const potion = makeZeroStats({ str: 2 });
+    const allocated = makeZeroStats({ dex: 3 });
+    const bonus = { str: 5 };
+    const effective = computeEffectiveStats(base, potion, allocated, bonus);
+    expect(effective.str).toBe(22); // 15 + 2 + 0 + 5
+    expect(effective.dex).toBe(13); // 10 + 0 + 3 + 0
+    expect(effective.con).toBe(12); // 12 + 0 + 0 + 0
   });
 
   it('不超过 MAX_STAT', () => {
     const base = makeStats({ str: 990 });
+    const potion = makeZeroStats({ str: 5 });
+    const allocated = makeZeroStats({ str: 5 });
     const bonus = { str: 50 };
-    expect(computeEffectiveStats(base, bonus).str).toBe(MAX_STAT);
+    expect(computeEffectiveStats(base, potion, allocated, bonus).str).toBe(MAX_STAT);
   });
 
   it('不低于 1', () => {
     const base = makeStats({ str: 2 });
+    const potion = makeZeroStats();
+    const allocated = makeZeroStats();
     const bonus = { str: -100 };
-    expect(computeEffectiveStats(base, bonus).str).toBe(1);
+    expect(computeEffectiveStats(base, potion, allocated, bonus).str).toBe(1);
   });
 
   it('不修改原始 baseStats（返回新对象）', () => {
     const base = makeStats({ str: 10 });
-    computeEffectiveStats(base, { str: 5 });
+    computeEffectiveStats(base, makeZeroStats(), makeZeroStats(), { str: 5 });
     expect(base.str).toBe(10);
+  });
+
+  it('各层独立加和（验证四层分离）', () => {
+    const base = makeStats({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 });
+    const potion = makeZeroStats({ str: 1, dex: 1, con: 1, int: 1, wis: 1, cha: 1 });
+    const allocated = makeZeroStats({ str: 2, dex: 2, con: 2, int: 2, wis: 2, cha: 2 });
+    const bonus = { str: 3, dex: 3, con: 3, int: 3, wis: 3, cha: 3 };
+    const effective = computeEffectiveStats(base, potion, allocated, bonus);
+    // 每层独立贡献：10 + 1 + 2 + 3 = 16
+    expect(effective.str).toBe(16);
+    expect(effective.dex).toBe(16);
+    expect(effective.con).toBe(16);
+    expect(effective.int).toBe(16);
+    expect(effective.wis).toBe(16);
+    expect(effective.cha).toBe(16);
   });
 });
 
@@ -323,11 +356,15 @@ describe('applyLevelUp 升级', () => {
     expect(result.level).toBe(2);
   });
 
-  it('每级全属性 +1', () => {
-    const char = makeCharacter({ stats: makeStats({ str: 10, dex: 10 }) });
+  it('每级累加 POINTS_PER_LEVEL 点未分配点数（不再自动 +1 全属性）', () => {
+    // 四层属性模型（plan.md §3.4）：升级不再 stats.str + 1，改为 unallocatedPoints += POINTS_PER_LEVEL
+    const char = makeCharacter({ stats: makeStats({ str: 10, dex: 10 }), unallocatedPoints: 0 });
     const result = applyLevelUp(char, 2);
-    expect(result.stats.str).toBe(11);
-    expect(result.stats.dex).toBe(11);
+    // stats 不变（玩家通过 allocateStat 自由分配）
+    expect(result.stats.str).toBe(10);
+    expect(result.stats.dex).toBe(10);
+    // 未分配点数累加 POINTS_PER_LEVEL（=3）
+    expect(result.unallocatedPoints).toBe(POINTS_PER_LEVEL);
   });
 
   it('升级后 HP/MP 回满', () => {
@@ -337,11 +374,12 @@ describe('applyLevelUp 升级', () => {
     expect(result.mana).toBe(result.maxMana);
   });
 
-  it('升级后 maxHp/maxMana 随属性增长', () => {
+  it('升级后 maxHp/maxMana 不变（con/int 不再自动增长）', () => {
+    // 四层属性模型变更：因 con/int 未自动涨，maxHp/maxMana 维持升级前的值
     const char = makeCharacter({ stats: makeStats({ con: 10, int: 10 }) });
     const result = applyLevelUp(char, 2);
-    expect(result.maxHp).toBeGreaterThan(char.maxHp);
-    expect(result.maxMana).toBeGreaterThan(char.maxMana);
+    expect(result.maxHp).toBe(char.maxHp);
+    expect(result.maxMana).toBe(char.maxMana);
   });
 
   it('升级后 expToNextLevel 更新为下一级所需', () => {
@@ -350,7 +388,7 @@ describe('applyLevelUp 升级', () => {
     expect(result.expToNextLevel).toBe(getExpForLevel(3));
   });
 
-  it('属性不超过 MAX_STAT', () => {
+  it('属性不超过 MAX_STAT（升级层通过 allocateStat 单独 clamp，applyLevelUp 不动 stats）', () => {
     const char = makeCharacter({ stats: makeStats({ str: MAX_STAT }) });
     const result = applyLevelUp(char, 2);
     expect(result.stats.str).toBe(MAX_STAT);
@@ -537,7 +575,7 @@ describe('|| 兜底分支覆盖', () => {
     const base = makeStats({ str: 10 });
     const bonus = { str: 0 };
     // Act
-    const effective = computeEffectiveStats(base, bonus);
+    const effective = computeEffectiveStats(base, makeZeroStats(), makeZeroStats(), bonus);
     // Assert：10 + 0 = 10
     expect(effective.str).toBe(10);
   });
@@ -547,7 +585,7 @@ describe('|| 兜底分支覆盖', () => {
     const base = makeStats({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 });
     const bonus = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
     // Act
-    const effective = computeEffectiveStats(base, bonus);
+    const effective = computeEffectiveStats(base, makeZeroStats(), makeZeroStats(), bonus);
     // Assert：所有属性保持原值
     expect(effective.str).toBe(10);
     expect(effective.dex).toBe(10);

@@ -145,7 +145,16 @@ vi.mock('@/modules/character/service', () => ({
     stats: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
     gold: 50,
   })),
-  computeEffectiveStats: vi.fn((base: Stats, bonus: Partial<Stats>) => ({ ...base, ...bonus })),
+  computeEffectiveStats: vi.fn(
+    (base: Stats, potion: Stats, allocated: Stats, bonus: Partial<Stats>) => ({
+      str: base.str + potion.str + allocated.str + (bonus.str || 0),
+      dex: base.dex + potion.dex + allocated.dex + (bonus.dex || 0),
+      con: base.con + potion.con + allocated.con + (bonus.con || 0),
+      int: base.int + potion.int + allocated.int + (bonus.int || 0),
+      wis: base.wis + potion.wis + allocated.wis + (bonus.wis || 0),
+      cha: base.cha + potion.cha + allocated.cha + (bonus.cha || 0),
+    })
+  ),
   computeAttributes: vi.fn(() => ({
     maxHp: 100,
     maxMana: 50,
@@ -200,6 +209,30 @@ vi.mock('@/modules/character/service', () => ({
   isClassFactionCompatible: vi.fn(() => true),
   isRaceFactionCompatible: vi.fn(() => true),
   isClassRaceCompatible: vi.fn(() => true),
+  // 四层属性纯函数（store 通过 as 重命名为 *Pure 调用）
+  allocateStat: vi.fn((char: Character, stat: keyof Stats) => {
+    if (char.unallocatedPoints <= 0) return char;
+    return {
+      ...char,
+      allocatedStats: { ...char.allocatedStats, [stat]: char.allocatedStats[stat] + 1 },
+      unallocatedPoints: char.unallocatedPoints - 1,
+    };
+  }),
+  resetAllocatedStats: vi.fn((char: Character) => {
+    const spent = (Object.values(char.allocatedStats) as number[]).reduce((a, b) => a + b, 0);
+    return {
+      ...char,
+      allocatedStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+      unallocatedPoints: char.unallocatedPoints + spent,
+    };
+  }),
+  applyPotionBonus: vi.fn((char: Character, delta: Partial<Stats>) => {
+    const newPotion = { ...char.potionStats };
+    (Object.keys(delta) as (keyof Stats)[]).forEach(k => {
+      newPotion[k] = newPotion[k] + (delta[k] || 0);
+    });
+    return { ...char, potionStats: newPotion };
+  }),
 }));
 
 // ==================== Mock：跨 store 依赖（baseStore，仅 initialize 使用） ====================
@@ -243,6 +276,10 @@ import {
   isClassFactionCompatible,
   isRaceFactionCompatible,
   isClassRaceCompatible,
+  // 四层属性纯函数（store 通过 as 重命名为 *Pure 调用）
+  allocateStat,
+  resetAllocatedStats,
+  applyPotionBonus,
 } from '@/modules/character/service';
 import { useBaseStore } from '@/modules/base/store';
 import { getExpForLevel } from '@/utils/calculations';
@@ -266,6 +303,10 @@ function makeChar(o: Partial<Character> = {}): Character {
     mana: 30,
     maxMana: 50,
     stats: { str: 12, dex: 11, con: 10, int: 10, wis: 10, cha: 10 },
+    // 四层属性模型（plan.md §3.2）：默认无药剂、无升级分配、无未分配点数
+    potionStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    allocatedStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    unallocatedPoints: 0,
     gold: 100,
     ...o,
   };
@@ -457,9 +498,15 @@ describe('useCharacterStore - 角色 Store', () => {
       store.$patch({ character: char, bonusStats: { str: 5 } });
       // computed 懒求值，先访问触发计算再断言调用
       const result = store.effectiveStats;
-      expect(computeEffectiveStats).toHaveBeenCalledWith(char.stats, { str: 5 });
-      // mock 实现：{ ...base, ...bonus } -> str 被覆盖为 5
-      expect(result).toEqual({ ...char.stats, str: 5 });
+      // 四层签名：computeEffectiveStats(baseStats, potionStats, allocatedStats, bonusStats)
+      expect(computeEffectiveStats).toHaveBeenCalledWith(
+        char.stats,
+        char.potionStats,
+        char.allocatedStats,
+        { str: 5 }
+      );
+      // mock 实现：四层叠加，str = 12 + 0 + 0 + 5 = 17
+      expect(result).toEqual({ ...char.stats, str: 17 });
     });
 
     it('attributes 调用 computeAttributes 并返回其结果', () => {
@@ -470,6 +517,103 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(computeAttributes).toHaveBeenCalled();
       expect(attrs.maxHp).toBe(100);
       expect(attrs.physicalAttack).toBe(20);
+    });
+  });
+
+  // -------------------- Getters：statsBreakdown（阶段四：属性来源明细） --------------------
+  describe('Getters：statsBreakdown 属性来源明细（plan.md §阶段四）', () => {
+    it('character 为 null 时返回基础层 10 + 其他层全 0', () => {
+      const store = useCharacterStore();
+      const breakdown = store.statsBreakdown;
+      // 6 个属性均有明细
+      expect(Object.keys(breakdown).sort()).toEqual(['cha', 'con', 'dex', 'int', 'str', 'wis']);
+      // 每个属性的明细包含 6 层
+      const strSources = breakdown.str;
+      expect(strSources).toHaveLength(6);
+      // 基础层固定 10
+      expect(strSources.find(s => s.layer === 'base')).toEqual({ label: '基础', value: 10, layer: 'base' });
+      // 其他层全 0
+      expect(strSources.find(s => s.layer === 'race')!.value).toBe(0);
+      expect(strSources.find(s => s.layer === 'class')!.value).toBe(0);
+      expect(strSources.find(s => s.layer === 'potion')!.value).toBe(0);
+      expect(strSources.find(s => s.layer === 'allocated')!.value).toBe(0);
+      expect(strSources.find(s => s.layer === 'bonus')!.value).toBe(0);
+    });
+
+    it('注入 character 与 raceBonus/classBonus/bonusStats 后正确反映各层贡献', () => {
+      const store = useCharacterStore();
+      const char = makeChar({
+        stats: { str: 15, dex: 12, con: 14, int: 8, wis: 10, cha: 10 },
+        potionStats: { str: 1, dex: 0, con: 2, int: 0, wis: 0, cha: 0 },
+        allocatedStats: { str: 2, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+      });
+      store.$patch({
+        character: char,
+        raceBonus: { str: 2, con: 2 },
+        classBonus: { str: 3, dex: 2, con: 2, int: -2 },
+        bonusStats: { str: 4 },
+      });
+      const strSources = store.statsBreakdown.str;
+      // base(10) + race(2) + class(3) + potion(1) + allocated(2) + bonus(4) = 22
+      // 与 effectiveStats 的 mock 实现一致（mock 不做 clamp）
+      const sumStr = strSources.reduce((a, b) => a + b.value, 0);
+      expect(sumStr).toBe(22);
+      // 各层值正确
+      expect(strSources.find(s => s.layer === 'base')!.value).toBe(10);
+      expect(strSources.find(s => s.layer === 'race')!.value).toBe(2);
+      expect(strSources.find(s => s.layer === 'class')!.value).toBe(3);
+      expect(strSources.find(s => s.layer === 'potion')!.value).toBe(1);
+      expect(strSources.find(s => s.layer === 'allocated')!.value).toBe(2);
+      expect(strSources.find(s => s.layer === 'bonus')!.value).toBe(4);
+      // 负值层正确展示（classBonus 的 int = -2）
+      const intSources = store.statsBreakdown.int;
+      expect(intSources.find(s => s.layer === 'class')!.value).toBe(-2);
+    });
+
+    it('响应式：allocateStat 后 allocated 层值同步更新', async () => {
+      const store = setupLoggedInStore(
+        makeChar({ unallocatedPoints: 2, allocatedStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } })
+      );
+      // 初始 allocated.str = 0
+      expect(store.statsBreakdown.str.find(s => s.layer === 'allocated')!.value).toBe(0);
+      // 分配 1 点到 str
+      await store.allocateStat('str');
+      // statsBreakdown 响应式更新
+      expect(store.statsBreakdown.str.find(s => s.layer === 'allocated')!.value).toBe(1);
+    });
+
+    it('响应式：applyPotionBonus 后 potion 层值同步更新', async () => {
+      const store = setupLoggedInStore(makeChar());
+      // 初始 potion.con = 0
+      expect(store.statsBreakdown.con.find(s => s.layer === 'potion')!.value).toBe(0);
+      // 喝下 constitution 药剂 +1 con
+      await store.applyPotionBonus({ con: 1 });
+      // statsBreakdown 响应式更新
+      expect(store.statsBreakdown.con.find(s => s.layer === 'potion')!.value).toBe(1);
+    });
+
+    it('响应式：resetAllocatedStats 后 allocated 层归零，其他层不变', async () => {
+      const store = setupLoggedInStore(
+        makeChar({
+          unallocatedPoints: 0,
+          allocatedStats: { str: 2, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+          potionStats: { str: 1, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+        })
+      );
+      // 初始 str: allocated=2, potion=1
+      expect(store.statsBreakdown.str.find(s => s.layer === 'allocated')!.value).toBe(2);
+      expect(store.statsBreakdown.str.find(s => s.layer === 'potion')!.value).toBe(1);
+      // 重置升级层
+      await store.resetAllocatedStats();
+      // allocated 归零，potion 不变（不可重置）
+      expect(store.statsBreakdown.str.find(s => s.layer === 'allocated')!.value).toBe(0);
+      expect(store.statsBreakdown.str.find(s => s.layer === 'potion')!.value).toBe(1);
+    });
+
+    it('label 字段为中文展示名称，便于 UI 直接渲染', () => {
+      const store = useCharacterStore();
+      const labels = store.statsBreakdown.str.map(s => s.label);
+      expect(labels).toEqual(['基础', '种族', '职业', '药剂', '升级', '装备/天赋']);
     });
   });
 
@@ -960,6 +1104,125 @@ describe('useCharacterStore - 角色 Store', () => {
       const store = useCharacterStore();
       await store.removeBonus({ str: 5 });
       expect(computeBonusChange).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------- Actions：四层属性（药剂层 / 升级层） --------------------
+  describe('Actions：applyPotionBonus / allocateStat / resetAllocatedStats', () => {
+    it('applyPotionBonus：永久叠加到 potionStats 并持久化', async () => {
+      const store = setupLoggedInStore(makeChar());
+      await store.applyPotionBonus({ str: 2 });
+      expect(applyPotionBonus).toHaveBeenCalledWith(expect.any(Object), { str: 2 });
+      expect(store.character?.potionStats.str).toBe(2);
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('applyPotionBonus：影响 con 时重算 HP/MP（recalculateHpMp 被调用）', async () => {
+      const store = setupLoggedInStore(makeChar());
+      await store.applyPotionBonus({ con: 3 });
+      expect(applyPotionBonus).toHaveBeenCalledWith(expect.any(Object), { con: 3 });
+      expect(store.character?.potionStats.con).toBe(3);
+      // 重算 HP/MP 需要四层 computeEffectiveStats
+      expect(computeEffectiveStats).toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('applyPotionBonus：仅 str 变化时不重算 HP/MP（仍持久化）', async () => {
+      const store = setupLoggedInStore(makeChar());
+      // clearAllMocks 已在 beforeEach 调用，这里仅验证不触发 recalc
+      await store.applyPotionBonus({ str: 1 });
+      // computeEffectiveStats 仅在 con/int/wis 变化时调用
+      // 由于 mock 中 computeEffectiveStats 在 applyPotionBonus 路径中仅在 recalc 分支调用，
+      // str 单独变化时该 mock 不应被调用
+      expect(computeEffectiveStats).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('applyPotionBonus：未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.applyPotionBonus({ str: 1 });
+      expect(applyPotionBonus).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('allocateStat：unallocatedPoints > 0 时分配成功，返回 true', async () => {
+      const store = setupLoggedInStore(makeChar({ unallocatedPoints: 3 }));
+      const ok = await store.allocateStat('str');
+      expect(ok).toBe(true);
+      expect(allocateStat).toHaveBeenCalledWith(expect.any(Object), 'str');
+      expect(store.character?.allocatedStats.str).toBe(1);
+      expect(store.character?.unallocatedPoints).toBe(2);
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('allocateStat：分配 con 时重算 HP/MP', async () => {
+      const store = setupLoggedInStore(makeChar({ unallocatedPoints: 3 }));
+      await store.allocateStat('con');
+      expect(allocateStat).toHaveBeenCalledWith(expect.any(Object), 'con');
+      expect(computeEffectiveStats).toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('allocateStat：分配 str 时不重算 HP/MP（仍持久化）', async () => {
+      const store = setupLoggedInStore(makeChar({ unallocatedPoints: 3 }));
+      await store.allocateStat('str');
+      expect(computeEffectiveStats).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('allocateStat：unallocatedPoints = 0 时返回 false，不调用纯函数', async () => {
+      const store = setupLoggedInStore(makeChar({ unallocatedPoints: 0 }));
+      const ok = await store.allocateStat('str');
+      expect(ok).toBe(false);
+      expect(allocateStat).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('allocateStat：未登录时返回 false', async () => {
+      const store = useCharacterStore();
+      const ok = await store.allocateStat('str');
+      expect(ok).toBe(false);
+      expect(allocateStat).not.toHaveBeenCalled();
+    });
+
+    it('resetAllocatedStats：allocatedStats 全置 0，点数回收，HP/MP 重算', async () => {
+      const store = setupLoggedInStore(
+        makeChar({
+          unallocatedPoints: 1,
+          allocatedStats: { str: 2, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+        })
+      );
+      await store.resetAllocatedStats();
+      expect(resetAllocatedStats).toHaveBeenCalledWith(expect.any(Object));
+      expect(store.character?.allocatedStats).toEqual({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
+      // 已分配 3 点回收：1 + 3 = 4
+      expect(store.character?.unallocatedPoints).toBe(4);
+      // 重置统一重算 HP/MP（无论是否影响 con/int/wis）
+      expect(computeEffectiveStats).toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('resetAllocatedStats：不影响药剂层 potionStats（不可重置）', async () => {
+      const store = setupLoggedInStore(
+        makeChar({
+          potionStats: { str: 5, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+          allocatedStats: { str: 2, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+          unallocatedPoints: 0,
+        })
+      );
+      await store.resetAllocatedStats();
+      // 药剂层保留
+      expect(store.character?.potionStats.str).toBe(5);
+      // 升级层归零、点数回收
+      expect(store.character?.allocatedStats.str).toBe(0);
+      expect(store.character?.unallocatedPoints).toBe(2);
+    });
+
+    it('resetAllocatedStats：未登录时不调用纯函数', async () => {
+      const store = useCharacterStore();
+      await store.resetAllocatedStats();
+      expect(resetAllocatedStats).not.toHaveBeenCalled();
       expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
     });
   });

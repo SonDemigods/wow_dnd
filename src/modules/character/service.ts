@@ -20,7 +20,7 @@ import {
   calculateHealBonus,
   getExpForLevel
 } from '@/utils/calculations';
-import { MAX_LEVEL, MAX_STAT } from '@/config/character';
+import { MAX_LEVEL, MAX_STAT, POINTS_PER_LEVEL, BASE_STAT_VALUE } from '@/config/character';
 import { generateId } from '@/utils/db-helpers';
 
 // ==================== ID 生成 ====================
@@ -32,15 +32,15 @@ export function generateCharacterId(): string {
 
 // ==================== 属性计算 ====================
 
-/** 根据种族和职业加成计算初始六大属性（基础值固定为 10，加成叠加后 clamp 到 [1, MAX_STAT]） */
+/** 根据种族和职业加成计算初始六大属性（基础值固定为 BASE_STAT_VALUE，加成叠加后 clamp 到 [1, MAX_STAT]） */
 export function computeInitialStats(raceBonus: Partial<Stats>, classBonus: Partial<Stats>): Stats {
   return {
-    str: clampStat(10 + (raceBonus.str || 0) + (classBonus.str || 0)),
-    dex: clampStat(10 + (raceBonus.dex || 0) + (classBonus.dex || 0)),
-    con: clampStat(10 + (raceBonus.con || 0) + (classBonus.con || 0)),
-    int: clampStat(10 + (raceBonus.int || 0) + (classBonus.int || 0)),
-    wis: clampStat(10 + (raceBonus.wis || 0) + (classBonus.wis || 0)),
-    cha: clampStat(10 + (raceBonus.cha || 0) + (classBonus.cha || 0))
+    str: clampStat(BASE_STAT_VALUE + (raceBonus.str || 0) + (classBonus.str || 0)),
+    dex: clampStat(BASE_STAT_VALUE + (raceBonus.dex || 0) + (classBonus.dex || 0)),
+    con: clampStat(BASE_STAT_VALUE + (raceBonus.con || 0) + (classBonus.con || 0)),
+    int: clampStat(BASE_STAT_VALUE + (raceBonus.int || 0) + (classBonus.int || 0)),
+    wis: clampStat(BASE_STAT_VALUE + (raceBonus.wis || 0) + (classBonus.wis || 0)),
+    cha: clampStat(BASE_STAT_VALUE + (raceBonus.cha || 0) + (classBonus.cha || 0))
   };
 }
 
@@ -49,15 +49,39 @@ function clampStat(value: number): number {
   return Math.min(MAX_STAT, Math.max(1, value));
 }
 
-/** 计算合并 baseStats + bonusStats 后的最终核心属性（用于装备、buff 等外部加成生效） */
-export function computeEffectiveStats(baseStats: Stats, bonusStats: Partial<Stats>): Stats {
+/**
+ * 计算四层叠加后的最终核心属性
+ *
+ * 四层属性模型（见 plan.md §3.1）：
+ *   最终属性 = clamp(
+ *     基础层(baseStats: 10 + 种族 + 职业)
+ *     + 药剂层(potionStats, 不可重置)
+ *     + 升级层(allocatedStats, 可重置)
+ *     + 装备/天赋层(bonusStats)
+ *   , [1, MAX_STAT])
+ *
+ * 破坏性变更说明：原签名为 (baseStats, bonusStats)，重构为四层签名后所有调用方
+ * （store.ts 的 effectiveStats computed / applyBonus / removeBonus / setRace / setClass / reset
+ * 以及 useItem 中的药剂分支）需同步更新。影响面仅限 character 模块内部与 inventory.useItem。
+ *
+ * @param baseStats - 基础层（10 + 种族 + 职业，不含等级加成）
+ * @param potionStats - 药剂层（永久叠加，不可重置）
+ * @param allocatedStats - 升级层（玩家自由分配，可重置）
+ * @param bonusStats - 装备/天赋层（外部加成）
+ */
+export function computeEffectiveStats(
+  baseStats: Stats,
+  potionStats: Stats,
+  allocatedStats: Stats,
+  bonusStats: Partial<Stats>
+): Stats {
   return {
-    str: clampStat(baseStats.str + (bonusStats.str || 0)),
-    dex: clampStat(baseStats.dex + (bonusStats.dex || 0)),
-    con: clampStat(baseStats.con + (bonusStats.con || 0)),
-    int: clampStat(baseStats.int + (bonusStats.int || 0)),
-    wis: clampStat(baseStats.wis + (bonusStats.wis || 0)),
-    cha: clampStat(baseStats.cha + (bonusStats.cha || 0))
+    str: clampStat(baseStats.str + potionStats.str + allocatedStats.str + (bonusStats.str || 0)),
+    dex: clampStat(baseStats.dex + potionStats.dex + allocatedStats.dex + (bonusStats.dex || 0)),
+    con: clampStat(baseStats.con + potionStats.con + allocatedStats.con + (bonusStats.con || 0)),
+    int: clampStat(baseStats.int + potionStats.int + allocatedStats.int + (bonusStats.int || 0)),
+    wis: clampStat(baseStats.wis + potionStats.wis + allocatedStats.wis + (bonusStats.wis || 0)),
+    cha: clampStat(baseStats.cha + potionStats.cha + allocatedStats.cha + (bonusStats.cha || 0))
   };
 }
 
@@ -138,6 +162,10 @@ export function createInitialCharacter(params: CreateCharacterParams, raceData: 
     mana: calculateMaxMana(baseStats),
     maxMana: calculateMaxMana(baseStats),
     stats: baseStats,
+    // 四层属性模型：1 级角色无药剂、无升级分配、无未分配点数
+    potionStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    allocatedStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    unallocatedPoints: 0,
     gold: 50
   };
 }
@@ -213,28 +241,25 @@ export function applyExpGain(character: Character, amount: number): ExpGainResul
   };
 }
 
-/** 计算升级后的角色数据（每级全属性+1，HP/MP 重新计算并回满以体现体质/智力成长） */
+/**
+ * 计算升级后的角色数据
+ *
+ * 四层属性模型变更（见 plan.md §3.4）：
+ * - 不再自动全属性 +1（移除 stats.str + 1 等 6 行）
+ * - 改为 unallocatedPoints += POINTS_PER_LEVEL，玩家自由分配
+ * - 因 con/int 不再自动增长，maxHp/maxMana 不变；但升级本身仍回满 HP/MP 作为升级奖励
+ *
+ * @param character - 当前角色数据
+ * @param newLevel - 升级后的等级
+ */
 export function applyLevelUp(character: Character, newLevel: number): Character {
-  const updatedStats: Stats = {
-    str: clampStat(character.stats.str + 1),
-    dex: clampStat(character.stats.dex + 1),
-    con: clampStat(character.stats.con + 1),
-    int: clampStat(character.stats.int + 1),
-    wis: clampStat(character.stats.wis + 1),
-    cha: clampStat(character.stats.cha + 1)
-  };
-
-  const newMaxHp = calculateMaxHp(updatedStats);
-  const newMaxMana = calculateMaxMana(updatedStats);
-
   return {
     ...character,
     level: newLevel,
-    stats: updatedStats,
-    maxHp: newMaxHp,
-    hp: newMaxHp,
-    maxMana: newMaxMana,
-    mana: newMaxMana,
+    unallocatedPoints: character.unallocatedPoints + POINTS_PER_LEVEL,
+    // con/int 未自动增长，maxHp/maxMana 不变；升级奖励：回满 HP/MP
+    hp: character.maxHp,
+    mana: character.maxMana,
     expToNextLevel: getExpForLevel(newLevel + 1)
   };
 }
@@ -288,6 +313,78 @@ export function recalculateHpMp(character: Character, effectiveStats: Stats): Ch
     maxMana: newMaxMana,
     mana: Math.min(character.mana, newMaxMana)
   };
+}
+
+// ==================== 四层属性：升级分配与药剂层 ====================
+// 三个纯函数均只更新对应层级字段，不在此重算 HP/MP 上限。
+// HP/MP 重算由 Store Action 统一调用 recalculateHpMp 处理（含装备/天赋 bonusStats），
+// 避免纯函数层与 store 层重复 recalc 导致语义混乱。
+
+/**
+ * 分配 1 点升级点数到指定属性（纯函数）
+ *
+ * 行为：
+ * - `unallocatedPoints <= 0` 时返回原 character 不变（点数不足）
+ * - 否则 allocatedStats[stat]++（受 clampStat 限制 [1, MAX_STAT]），unallocatedPoints--
+ * - 不重算 HP/MP：若 stat 为 con/int/wis，由 Store Action 调用 recalculateHpMp
+ *
+ * 边界：allocatedStats[stat] 已达 MAX_STAT 时仍消耗点数（clampStat 兜底），上层应校验。
+ *
+ * @param character - 当前角色数据
+ * @param stat - 目标属性键
+ */
+export function allocateStat(character: Character, stat: keyof Stats): Character {
+  if (character.unallocatedPoints <= 0) return character;
+  return {
+    ...character,
+    allocatedStats: {
+      ...character.allocatedStats,
+      [stat]: clampStat(character.allocatedStats[stat] + 1)
+    },
+    unallocatedPoints: character.unallocatedPoints - 1
+  };
+}
+
+/**
+ * 重置升级层已分配点数（完全免费，纯函数）
+ *
+ * 行为：
+ * - 将 allocatedStats 全部归零
+ * - 已分配总量回收至 unallocatedPoints（玩家可重新分配）
+ * - 不重算 HP/MP：con/int/wis 可能变化，由 Store Action 调用 recalculateHpMp
+ *
+ * 不可逆性说明：本函数仅重置升级层（allocatedStats），不影响药剂层（potionStats）。
+ *
+ * @param character - 当前角色数据
+ */
+export function resetAllocatedStats(character: Character): Character {
+  const spent = Object.values(character.allocatedStats).reduce((a, b) => a + b, 0);
+  return {
+    ...character,
+    allocatedStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    unallocatedPoints: character.unallocatedPoints + spent
+  };
+}
+
+/**
+ * 将药剂属性加成永久叠加到药剂层（纯函数，不可逆）
+ *
+ * 行为：
+ * - 遍历 delta，将每个属性叠加到 potionStats（受 clampStat 限制）
+ * - 不提供对应的 removePotionBonus，确保药剂层永久不可重置
+ * - 不重算 HP/MP：若 delta 含 con/int/wis，由 Store Action 调用 recalculateHpMp
+ *
+ * @param character - 当前角色数据
+ * @param delta - 药剂提供的属性加成（如 { str: 1 }）
+ */
+export function applyPotionBonus(character: Character, delta: Partial<Stats>): Character {
+  const newPotionStats = { ...character.potionStats };
+  // Object.keys 返回 string[]，TS 语言限制无法静态推断为 (keyof Stats)[]。
+  // delta 类型为 Partial<Stats>，键已由类型保证为 keyof Stats，断言是合理 workaround。
+  (Object.keys(delta) as (keyof Stats)[]).forEach(key => {
+    newPotionStats[key] = clampStat(newPotionStats[key] + (delta[key] || 0));
+  });
+  return { ...character, potionStats: newPotionStats };
 }
 
 // ==================== 死亡与复活 ====================

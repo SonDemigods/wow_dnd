@@ -32,6 +32,8 @@ const mocks = vi.hoisted(() => ({
     receiveHeal: vi.fn().mockResolvedValue(undefined),
     changeMp: vi.fn().mockResolvedValue(undefined),
     applyBonus: vi.fn().mockResolvedValue(undefined),
+    // 四层属性：属性药剂永久叠加到药剂层（plan.md §3.5）
+    applyPotionBonus: vi.fn().mockResolvedValue(undefined),
   },
   logStore: {
     addLogEntry: vi.fn(),
@@ -389,6 +391,65 @@ describe('useInventoryStore - 背包 Store', () => {
       const result = await store.useItem('p2');
       expect(result).toBe(true);
       expect(mocks.characterStore.applyBonus).toHaveBeenCalledWith({ str: 2 });
+    });
+
+    it('属性药剂(strength_potion)：调用 applyPotionBonus 而非 applyBonus，堆叠数 -1', async () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('strength_potion', 2)],
+        itemTemplates: mapOf(makeItem({
+          id: 'strength_potion',
+          name: '巨人之力药剂',
+          consumable: true,
+          bonus: { str: 1 },
+        })),
+      });
+      const result = await store.useItem('strength_potion');
+      expect(result).toBe(true);
+      // 属性药剂走四层属性模型的药剂层（永久叠加，不可重置）
+      expect(mocks.characterStore.applyPotionBonus).toHaveBeenCalledWith({ str: 1 });
+      expect(mocks.characterStore.applyBonus).not.toHaveBeenCalled();
+      expect(store.inventory).toEqual([inv('strength_potion', 1)]);
+    });
+
+    it('属性药剂(constitution_potion)：调用 applyPotionBonus（con 影响 maxHp 由 store 重算）', async () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('constitution_potion', 1)],
+        itemTemplates: mapOf(makeItem({
+          id: 'constitution_potion',
+          name: '坚韧药剂',
+          consumable: true,
+          bonus: { con: 1 },
+        })),
+      });
+      const result = await store.useItem('constitution_potion');
+      expect(result).toBe(true);
+      expect(mocks.characterStore.applyPotionBonus).toHaveBeenCalledWith({ con: 1 });
+      expect(mocks.characterStore.applyBonus).not.toHaveBeenCalled();
+      // 单件消耗品使用后槽位移除
+      expect(store.inventory).toEqual([]);
+    });
+
+    it('属性药剂与 HP 恢复药剂互不干扰：strength_potion 不触发 receiveHeal', async () => {
+      const store = useInventoryStore();
+      store.$patch({
+        currentCharacterId: 'char-1',
+        inventory: [inv('strength_potion', 1)],
+        itemTemplates: mapOf(makeItem({
+          id: 'strength_potion',
+          name: '巨人之力药剂',
+          consumable: true,
+          bonus: { str: 1 },
+          // 故意不配置 effect，验证属性药剂分支不依赖 effect
+        })),
+      });
+      await store.useItem('strength_potion');
+      // 属性药剂无 HP 恢复效果
+      expect(mocks.characterStore.receiveHeal).not.toHaveBeenCalled();
+      expect(mocks.characterStore.changeMp).not.toHaveBeenCalled();
     });
 
     it('成功使用后记录日志', async () => {

@@ -73,12 +73,30 @@
 
         <!-- 核心属性 -->
         <div class="attributes-section">
-          <h3>核心属性</h3>
+          <div class="attr-header">
+            <h3>核心属性</h3>
+            <!-- 四层属性：升级点数分配入口（有未分配点数或已分配点数时显示） -->
+            <div v-if="showAllocationBar" class="allocation-bar">
+              <span class="alloc-points" :class="{ active: unallocatedPoints > 0 }">
+                剩余点数：{{ unallocatedPoints }}
+              </span>
+              <button
+                class="reset-alloc-btn"
+                :disabled="!canResetAllocations"
+                @click="onResetAllocations"
+                title="重置已分配的升级点数（不影响药剂层）"
+              >
+                重置
+              </button>
+            </div>
+          </div>
           <div class="core-attributes">
             <div
               class="core-attr-item"
               v-for="(value, key) in stats"
               :key="key"
+              @mouseenter="onAttrHover(key as keyof Stats)"
+              @mouseleave="onAttrHoverEnd"
             >
               <BaseIcon
                 :name="getAttrIcon(key).name"
@@ -87,7 +105,39 @@
               />
               <div class="core-attr-content">
                 <span class="core-attr-name">{{ getAttrName(key) }}</span>
-                <span class="core-attr-value">{{ value }}</span>
+                <span class="core-attr-value">
+                  {{ value }}
+                  <span
+                    v-if="allocatedStats[key as keyof Stats] > 0"
+                    class="alloc-bonus"
+                  >+{{ allocatedStats[key as keyof Stats] }}</span>
+                </span>
+              </div>
+              <button
+                class="alloc-btn"
+                :disabled="!canAllocate"
+                @click="onAllocate(key as keyof Stats)"
+                :title="canAllocate ? `分配 1 点到${getAttrName(key)}` : '无可用点数'"
+              >+</button>
+
+              <!-- 阶段四：属性来源明细 tooltip（hover 时显示） -->
+              <div
+                v-if="hoveredAttrKey === (key as keyof Stats)"
+                class="attr-breakdown"
+                role="tooltip"
+              >
+                <div class="breakdown-title">
+                  {{ getAttrName(key) }} · 总值 {{ value }}
+                </div>
+                <div
+                  v-for="src in statsBreakdown[key as keyof Stats]"
+                  :key="src.layer"
+                  class="breakdown-row"
+                  :class="['layer-' + src.layer, { zero: src.value === 0 }]"
+                >
+                  <span class="breakdown-label">{{ src.label }}</span>
+                  <span class="breakdown-value">{{ formatSourceValue(src.value) }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -301,7 +351,7 @@ import { useBaseStore } from '@/modules/base';
 import { ResourceSystemFactory } from '@/modules/combat/resources';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useToast } from '@/composables/useToast';
-import type { Stats, Attributes } from '@/modules/character';
+import type { Stats, Attributes, StatSource } from '@/modules/character';
 import type { EquipmentSlot, EquipmentItem } from '@/modules/equipment';
 import Tag from '../common/Tag.vue';
 import BasePopup from '../common/BasePopup.vue';
@@ -334,6 +384,64 @@ const baseStore = useBaseStore();
 const character = computed(() => characterStore.character);
 const stats = computed<Stats>(() => characterStore.effectiveStats);
 const attributes = computed<Attributes>(() => characterStore.attributes);
+
+// ==================== 四层属性：升级点数分配 UI 状态 ====================
+// 升级层：allocatedStats（可重置，完全免费）+ unallocatedPoints（待分配池）
+// 药剂层 potionStats 不可重置，UI 不暴露重置入口
+const ZERO_STATS: Stats = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+const allocatedStats = computed<Stats>(() => character.value?.allocatedStats ?? ZERO_STATS);
+const unallocatedPoints = computed<number>(() => character.value?.unallocatedPoints ?? 0);
+
+/** 是否显示分配条：有未分配点数或已分配点数时显示（1 级新角色隐藏） */
+const showAllocationBar = computed<boolean>(() => unallocatedPoints.value > 0 || hasAllocatedStats.value);
+const hasAllocatedStats = computed<boolean>(() =>
+  (Object.keys(allocatedStats.value) as (keyof Stats)[]).some(k => allocatedStats.value[k] > 0)
+);
+/** 是否可分配：有未消耗的点数 */
+const canAllocate = computed<boolean>(() => unallocatedPoints.value > 0);
+/** 是否可重置：至少已分配过 1 点（无分配时点击无意义） */
+const canResetAllocations = computed<boolean>(() => hasAllocatedStats.value);
+
+/** 分配 1 点到指定属性 */
+async function onAllocate(stat: keyof Stats): Promise<void> {
+  if (!canAllocate.value) return;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'allocate_stat' });
+  await characterStore.allocateStat(stat);
+}
+
+/** 重置升级层已分配点数（完全免费，不影响药剂层） */
+async function onResetAllocations(): Promise<void> {
+  if (!canResetAllocations.value) return;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'reset_allocations' });
+  await characterStore.resetAllocatedStats();
+}
+
+// ==================== 阶段四：属性来源明细 tooltip ====================
+// 鼠标 hover 属性项时显示该属性的各层来源构成（基础/种族/职业/药剂/升级/装备/天赋）
+// 数据来源：characterStore.statsBreakdown（见 store.ts §statsBreakdown）
+const statsBreakdown = computed<Record<keyof Stats, StatSource[]>>(() => characterStore.statsBreakdown);
+
+/** 当前 hover 的属性键（null 表示无 hover） */
+const hoveredAttrKey = ref<keyof Stats | null>(null);
+
+/** 鼠标进入属性项：记录 hover 状态 */
+function onAttrHover(key: keyof Stats): void {
+  hoveredAttrKey.value = key;
+}
+
+/** 鼠标离开属性项：清除 hover 状态 */
+function onAttrHoverEnd(): void {
+  hoveredAttrKey.value = null;
+}
+
+/**
+ * 格式化来源数值：正数前缀 "+"，负数前缀 "-"，0 显示 "—"
+ * @param value - 该层贡献值
+ */
+function formatSourceValue(value: number): string {
+  if (value === 0) return '—';
+  return value > 0 ? `+${value}` : `${value}`;
+}
 
 const factions = computed(() => baseStore.factions);
 const races = computed(() => baseStore.races);
@@ -616,6 +724,61 @@ onUnmounted(() => {
   font-weight: @font-weight-bold;
 }
 
+/* 四层属性：升级点数分配条 */
+.attr-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: @spacing-lg;
+}
+
+.attr-header h3 {
+  margin: 0;
+}
+
+.allocation-bar {
+  display: flex;
+  align-items: center;
+  gap: @spacing-md;
+}
+
+.alloc-points {
+  font-size: @font-sm;
+  color: @text-secondary;
+  padding: @spacing-2xs @spacing-md;
+  background: @white-05;
+  border-radius: @radius-sm;
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.alloc-points.active {
+  color: @accent-color;
+  background: @gold-bg;
+  border-color: rgba(255, 215, 0, 0.5);
+  font-weight: @font-weight-bold;
+}
+
+.reset-alloc-btn {
+  padding: @spacing-2xs @spacing-md;
+  border: 1px solid rgba(255, 100, 100, 0.4);
+  border-radius: @radius-sm;
+  background: rgba(255, 100, 100, 0.1);
+  color: #ff8888;
+  font-size: @font-xs;
+  cursor: pointer;
+  transition: all @transition-quick;
+}
+
+.reset-alloc-btn:hover:not(:disabled) {
+  background: rgba(255, 100, 100, 0.25);
+  border-color: rgba(255, 100, 100, 0.7);
+}
+
+.reset-alloc-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .core-attributes {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -630,6 +793,8 @@ onUnmounted(() => {
   background: @white-05;
   border-radius: @radius-md;
   border: 1px solid rgba(255, 215, 0, 0.3);
+  /* 阶段四：作为 .attr-breakdown tooltip 的定位上下文 */
+  position: relative;
 }
 
 .core-attr-icon {
@@ -653,6 +818,135 @@ onUnmounted(() => {
   font-size: @font-lg;
   color: @popup-text-color;
   font-weight: @font-weight-bold;
+  display: flex;
+  align-items: baseline;
+  gap: @spacing-xs;
+}
+
+/* 升级层已分配点数（绿色 +N 标识） */
+.alloc-bonus {
+  font-size: @font-sm;
+  color: @heal-hp;
+  font-weight: @font-weight-bold;
+}
+
+/* 分配按钮（"+"） */
+.alloc-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255, 215, 0, 0.5);
+  border-radius: @radius-sm;
+  background: @gold-bg;
+  color: @accent-color;
+  font-size: @font-lg;
+  font-weight: @font-weight-bold;
+  cursor: pointer;
+  transition: all @transition-quick;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+}
+
+.alloc-btn:hover:not(:disabled) {
+  background: @gold-bg-strong;
+  transform: scale(1.1);
+}
+
+.alloc-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  background: @white-05;
+}
+
+/* ==================== 阶段四：属性来源明细 tooltip ==================== */
+/* hover 属性项时浮在上方，展示四层属性各层贡献 */
+.attr-breakdown {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  min-width: 160px;
+  padding: @spacing-sm @spacing-md;
+  background: @popup-bg;
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  border-radius: @radius-sm;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  user-select: none;
+  /* 入场动画 */
+  animation: attr-breakdown-fade-in 0.15s ease-out;
+}
+
+@keyframes attr-breakdown-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.breakdown-title {
+  font-size: @font-sm;
+  color: @accent-color;
+  font-weight: @font-weight-bold;
+  padding-bottom: @spacing-xs;
+  margin-bottom: @spacing-xs;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+  white-space: nowrap;
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: @spacing-md;
+  padding: 2px 0;
+  font-size: @font-xs;
+}
+
+.breakdown-label {
+  color: @text-secondary;
+}
+
+.breakdown-value {
+  font-weight: @font-weight-bold;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 各层颜色区分（与 effectiveStats 各层语义对应） */
+.breakdown-row.layer-base .breakdown-value {
+  color: @text-secondary;
+}
+
+.breakdown-row.layer-race .breakdown-value,
+.breakdown-row.layer-class .breakdown-value {
+  color: @accent-color;
+}
+
+.breakdown-row.layer-potion .breakdown-value {
+  color: #b388ff; /* 药剂层：紫色，标识永久不可重置 */
+}
+
+.breakdown-row.layer-allocated .breakdown-value {
+  color: @heal-hp; /* 升级层：绿色，与 +N alloc-bonus 颜色一致 */
+}
+
+.breakdown-row.layer-bonus .breakdown-value {
+  color: #4fc3f7; /* 装备/天赋层：蓝色 */
+}
+
+/* 零值层灰色弱化（仍保留展示，便于玩家了解全部来源） */
+.breakdown-row.zero .breakdown-label,
+.breakdown-row.zero .breakdown-value {
+  color: @color-dim-gray;
+  opacity: 0.6;
 }
 
 /* 次级属性 */
