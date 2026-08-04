@@ -11,8 +11,9 @@ import {
   generateShopItems,
 } from '@/modules/shop/service';
 import type { ShopConfig, ShopType } from '@/modules/shop/types';
-import type { Item, ItemRarity, ItemType } from '@/modules/inventory/types';
+import type { Item, ItemRarity } from '@/modules/inventory/types';
 import type { Character } from '@/modules/character/types';
+import { RARITY_PRICE_MULTIPLIER, RARITY_SELL_DISCOUNT } from '@/config/inventory';
 
 /** 创建测试用物品模板 */
 function makeItem(overrides: Partial<Item> = {}): Item {
@@ -48,7 +49,7 @@ function makeCharacter(gold: number): Character {
 
 describe('SHOP_TYPE_ITEM_TYPE_MAP', () => {
   it('包含所有商店类型的物品类型映射', () => {
-    const expectedTypes: ShopType[] = ['general', 'potion', 'scroll', 'food', 'material'];
+    const expectedTypes: ShopType[] = ['general', 'potion', 'scroll', 'food', 'material', 'equipment'];
     for (const type of expectedTypes) {
       expect(SHOP_TYPE_ITEM_TYPE_MAP[type]).toBeDefined();
       expect(Array.isArray(SHOP_TYPE_ITEM_TYPE_MAP[type])).toBe(true);
@@ -64,42 +65,73 @@ describe('SHOP_TYPE_ITEM_TYPE_MAP', () => {
   it('potion 商店只售药水', () => {
     expect(SHOP_TYPE_ITEM_TYPE_MAP.potion).toEqual(['potion']);
   });
+
+  it('equipment 商店可售武器和护甲', () => {
+    expect(SHOP_TYPE_ITEM_TYPE_MAP.equipment).toEqual(
+      expect.arrayContaining(['weapon', 'armor'])
+    );
+  });
 });
 
 describe('calculatePrice', () => {
-  it('普通稀有度倍率为 1.0', () => {
+  it('普通稀有度倍率为 1', () => {
     const item = makeItem({ value: 100, rarity: 'common' });
     expect(calculatePrice(item)).toBe(100);
   });
 
-  it('优秀稀有度倍率为 2.0', () => {
+  it('优秀稀有度倍率为 2.5（读取 RARITY_PRICE_MULTIPLIER）', () => {
     const item = makeItem({ value: 100, rarity: 'uncommon' });
-    expect(calculatePrice(item)).toBe(200);
+    expect(calculatePrice(item)).toBe(250);
   });
 
-  it('稀有稀有度倍率为 5.0', () => {
+  it('稀有稀有度倍率为 5', () => {
     const item = makeItem({ value: 100, rarity: 'rare' });
     expect(calculatePrice(item)).toBe(500);
   });
 
-  it('史诗稀有度倍率为 10.0', () => {
+  it('史诗稀有度倍率为 15（读取 RARITY_PRICE_MULTIPLIER）', () => {
     const item = makeItem({ value: 100, rarity: 'epic' });
-    expect(calculatePrice(item)).toBe(1000);
+    expect(calculatePrice(item)).toBe(1500);
   });
 
-  it('传说稀有度倍率为 20.0', () => {
+  it('传说稀有度倍率为 50（读取 RARITY_PRICE_MULTIPLIER）', () => {
     const item = makeItem({ value: 100, rarity: 'legendary' });
-    expect(calculatePrice(item)).toBe(2000);
+    expect(calculatePrice(item)).toBe(5000);
   });
 
-  it('出售价为购买价的一半（向下取整）', () => {
+  it('出售价按 RARITY_SELL_DISCOUNT 折扣计算（uncommon=0.4）', () => {
     const item = makeItem({ value: 100, rarity: 'uncommon' });
-    expect(calculatePrice(item, false)).toBe(100); // 200 * 0.5 = 100
+    // 购买价 = 100 * 2.5 = 250，出售价 = 250 * 0.4 = 100
+    expect(calculatePrice(item, false)).toBe(100);
+  });
+
+  it('出售价按 RARITY_SELL_DISCOUNT 折扣计算（rare=0.35）', () => {
+    const item = makeItem({ value: 100, rarity: 'rare' });
+    // 购买价 = 100 * 5 = 500，出售价 = 500 * 0.35 = 175
+    expect(calculatePrice(item, false)).toBe(175);
+  });
+
+  it('出售价按 RARITY_SELL_DISCOUNT 折扣计算（epic=0.3）', () => {
+    const item = makeItem({ value: 100, rarity: 'epic' });
+    // 购买价 = 100 * 15 = 1500，出售价 = 1500 * 0.3 = 450
+    expect(calculatePrice(item, false)).toBe(450);
+  });
+
+  it('出售价按 RARITY_SELL_DISCOUNT 折扣计算（legendary=0.25）', () => {
+    const item = makeItem({ value: 100, rarity: 'legendary' });
+    // 购买价 = 100 * 50 = 5000，出售价 = 5000 * 0.25 = 1250
+    expect(calculatePrice(item, false)).toBe(1250);
   });
 
   it('未识别的稀有度使用默认倍率 1.0', () => {
     const item = makeItem({ value: 100, rarity: 'unknown' as ItemRarity });
     expect(calculatePrice(item)).toBe(100);
+  });
+
+  it('未识别的稀有度出售价使用默认折扣 0.5', () => {
+    const item = makeItem({ value: 100, rarity: 'unknown' as ItemRarity });
+    // 购买价 = 100 * 1.0 = 100，出售价 = 100 * 0.5 = 50
+    expect(calculatePrice(item, false)).toBe(50);
   });
 
   it('value 为 0 时价格返回 0', () => {
@@ -112,24 +144,66 @@ describe('calculatePrice', () => {
     expect(calculatePrice(item)).toBe(0);
   });
 
-  it('四舍五入取整', () => {
-    // 33 * 2.0 = 66（无小数）
+  it('四舍五入取整（Math.round）', () => {
+    // 33 * 2.5 = 82.5 → Math.round(82.5) = 83
     const item = makeItem({ value: 33, rarity: 'uncommon' });
-    expect(calculatePrice(item)).toBe(66);
+    expect(calculatePrice(item)).toBe(83);
+  });
+});
+
+describe('calculatePrice 与 config 常量联动', () => {
+  // P3-158 验证：calculatePrice 输出必须与 RARITY_PRICE_MULTIPLIER / RARITY_SELL_DISCOUNT 一致，
+  // 证明 service 层无硬编码，平衡性调整只需改 config。
+  it('购买价 = Math.round(value × RARITY_PRICE_MULTIPLIER)', () => {
+    const rarities: ItemRarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    for (const rarity of rarities) {
+      const item = makeItem({ value: 100, rarity });
+      const expected = Math.round(100 * RARITY_PRICE_MULTIPLIER[rarity]);
+      expect(calculatePrice(item, true)).toBe(expected);
+    }
+  });
+
+  it('出售价 = Math.round(购买价 × RARITY_SELL_DISCOUNT)', () => {
+    const rarities: ItemRarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    for (const rarity of rarities) {
+      const item = makeItem({ value: 100, rarity });
+      const buyPrice = Math.round(100 * RARITY_PRICE_MULTIPLIER[rarity]);
+      const expected = Math.round(buyPrice * RARITY_SELL_DISCOUNT[rarity]);
+      expect(calculatePrice(item, false)).toBe(expected);
+    }
+  });
+
+  it('修改 config 常量后 calculatePrice 输出随之变化（证明无硬编码）', async () => {
+    const item = makeItem({ value: 100, rarity: 'epic' });
+    // 修改前：100 * 15 = 1500
+    expect(calculatePrice(item, true)).toBe(1500);
+
+    // 临时修改 config 常量
+    const original = RARITY_PRICE_MULTIPLIER.epic;
+    RARITY_PRICE_MULTIPLIER.epic = 20;
+    try {
+      // 修改后：100 * 20 = 2000
+      expect(calculatePrice(item, true)).toBe(2000);
+    } finally {
+      // 恢复原值，避免污染其他测试
+      RARITY_PRICE_MULTIPLIER.epic = original;
+    }
+    // 恢复后回到原值
+    expect(calculatePrice(item, true)).toBe(1500);
   });
 });
 
 describe('computeSellPrice', () => {
-  it('等于购买价的一半', () => {
+  it('等于购买价 × RARITY_SELL_DISCOUNT', () => {
     const item = makeItem({ value: 100, rarity: 'rare' });
     const buyPrice = calculatePrice(item, true);
-    expect(computeSellPrice(item)).toBe(Math.round(buyPrice * 0.5));
+    expect(computeSellPrice(item)).toBe(Math.round(buyPrice * RARITY_SELL_DISCOUNT.rare));
   });
 
-  it('传说物品出售价', () => {
+  it('传说物品出售价（legendary 折扣 0.25）', () => {
     const item = makeItem({ value: 100, rarity: 'legendary' });
-    // 购买价 = 100 * 20 = 2000，出售价 = 2000 * 0.5 = 1000
-    expect(computeSellPrice(item)).toBe(1000);
+    // 购买价 = 100 * 50 = 5000，出售价 = 5000 * 0.25 = 1250
+    expect(computeSellPrice(item)).toBe(1250);
   });
 });
 
@@ -263,5 +337,36 @@ describe('generateShopItems', () => {
     for (const si of shopItems) {
       expect(si.maxPurchaseCount).toBeUndefined();
     }
+  });
+
+  // P3-161：装备商店用例
+  it('equipment 商店正确上架武器和护甲', () => {
+    const shop = makeShopConfig({ type: 'equipment' });
+    const items = [
+      makeItem({ id: 'w1', type: 'weapon', rarity: 'common', value: 100 }),
+      makeItem({ id: 'a1', type: 'armor', rarity: 'common', value: 100 }),
+    ];
+    const shopItems = generateShopItems(shop, items);
+    const itemIds = shopItems.map(si => si.itemId);
+    expect(itemIds).toEqual(expect.arrayContaining(['w1', 'a1']));
+  });
+
+  it('equipment 商店不会上架药水/卷轴等消耗品', () => {
+    const shop = makeShopConfig({ type: 'equipment' });
+    const items = [
+      makeItem({ id: 'w1', type: 'weapon', rarity: 'common', value: 100 }),
+      makeItem({ id: 'p1', type: 'potion', rarity: 'common', value: 100 }),
+      makeItem({ id: 's1', type: 'scroll', rarity: 'common', value: 100 }),
+      makeItem({ id: 'f1', type: 'food', rarity: 'common', value: 100 }),
+      makeItem({ id: 'm1', type: 'material', rarity: 'common', value: 100 }),
+    ];
+    const shopItems = generateShopItems(shop, items);
+    // 装备商店只应上架 weapon，potion/scroll/food/material 均被过滤
+    const itemIds = shopItems.map(si => si.itemId);
+    expect(itemIds).toContain('w1');
+    expect(itemIds).not.toContain('p1');
+    expect(itemIds).not.toContain('s1');
+    expect(itemIds).not.toContain('f1');
+    expect(itemIds).not.toContain('m1');
   });
 });

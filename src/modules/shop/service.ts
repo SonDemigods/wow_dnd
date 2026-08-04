@@ -14,6 +14,7 @@
 import type { Item, ItemType } from '@/modules/inventory/types';
 import type { ShopConfig, ShopItem, ShopType } from './types';
 import type { Character } from '@/modules/character/types';
+import { RARITY_PRICE_MULTIPLIER, RARITY_SELL_DISCOUNT } from '@/config/inventory';
 import { defaultRng, type Rng } from '@/utils/rng';
 
 /**
@@ -29,23 +30,32 @@ export const SHOP_TYPE_ITEM_TYPE_MAP: Record<ShopType, ItemType[]> = {
   scroll: ['scroll'],
   food: ['food'],
   material: ['material'],
+  // P3-161：装备商店售卖武器和护甲，补全装备获取渠道
+  equipment: ['weapon', 'armor'],
 };
 
 /**
  * 计算物品在商店中的标准价格
  *
- * 公式：`Math.round(基价 × 稀有度倍率)`，购买价 = 标准价，出售价 = 标准价 × 0.5。
- * 稀有度倍率从高到低：传说(20x) > 史诗(10x) > 稀有(5x) > 优秀(2x) > 普通(1x)。
+ * 公式：
+ * - 购买价 = `Math.round(基价 × RARITY_PRICE_MULTIPLIER)`
+ * - 出售价 = `Math.round(购买价 × RARITY_SELL_DISCOUNT)`
+ *
+ * 倍率与折扣均来源于 `config/inventory.ts` 的常量，service 层无硬编码，
+ * 平衡性调整只需修改 config，无需改动本函数。
  *
  * @param itemTemplate - 物品模板（来自 inventory 模块）
- * @param isBuyPrice   - `true` 返回购买价，`false` 返回出售价（半价），默认为 `true`
+ * @param isBuyPrice   - `true` 返回购买价，`false` 返回出售价，默认为 `true`
  * @returns 计算后的整数价格
  */
 export function calculatePrice(itemTemplate: Item, isBuyPrice = true): number {
   const baseValue = itemTemplate.value || 0;
   const rarityMultiplier = getRarityMultiplier(itemTemplate.rarity);
-  const price = Math.round(baseValue * rarityMultiplier);
-  return isBuyPrice ? price : Math.round(price * 0.5);
+  const buyPrice = Math.round(baseValue * rarityMultiplier);
+  if (isBuyPrice) return buyPrice;
+
+  const sellDiscount = getSellDiscount(itemTemplate.rarity);
+  return Math.round(buyPrice * sellDiscount);
 }
 
 /**
@@ -56,7 +66,7 @@ export function calculatePrice(itemTemplate: Item, isBuyPrice = true): number {
  * 避免多处硬编码 false 参数。
  *
  * @param itemTemplate - 物品模板
- * @returns 出售价格（标准价 × 0.5 后取整）
+ * @returns 出售价格（购买价 × RARITY_SELL_DISCOUNT 后取整）
  */
 export function computeSellPrice(itemTemplate: Item): number {
   return calculatePrice(itemTemplate, false);
@@ -76,20 +86,31 @@ export function canAffordItem(character: Character, price: number): boolean {
 }
 
 /**
- * 根据稀有度返回价格倍率
+ * 根据稀有度返回购买价格倍率
+ *
+ * 倍率来源于 `config/inventory.ts` 的 `RARITY_PRICE_MULTIPLIER`，
+ * 平衡性调整只需修改 config，service 层无硬编码。
  *
  * @param rarity - 稀有度字符串（common / uncommon / rare / epic / legendary）
  * @returns 对应的倍率，未识别的稀有度返回 1.0 作为容错
  */
 function getRarityMultiplier(rarity: string): number {
-  const multipliers: Record<string, number> = {
-    common: 1.0,
-    uncommon: 2.0,
-    rare: 5.0,
-    epic: 10.0,
-    legendary: 20.0,
-  };
+  const multipliers = RARITY_PRICE_MULTIPLIER as Record<string, number>;
   return multipliers[rarity] ?? 1.0;
+}
+
+/**
+ * 根据稀有度返回出售折扣率
+ *
+ * 折扣来源于 `config/inventory.ts` 的 `RARITY_SELL_DISCOUNT`，
+ * 稀有度越高折扣越低，避免玩家靠出售稀有装备套利。
+ *
+ * @param rarity - 稀有度字符串（common / uncommon / rare / epic / legendary）
+ * @returns 对应的折扣率，未识别的稀有度返回 0.5 作为容错
+ */
+function getSellDiscount(rarity: string): number {
+  const discounts = RARITY_SELL_DISCOUNT as Record<string, number>;
+  return discounts[rarity] ?? 0.5;
 }
 
 /**

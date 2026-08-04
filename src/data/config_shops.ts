@@ -52,5 +52,20 @@ export const SHOPS: ShopConfig[] = [
     type: 'general',
     icon: 'game-icons:hooded-figure',
     refreshInterval: 1800000,
+  },
+  // P3-161：新增装备商店，补全装备获取渠道（配合怪物 drops 与职业专属装备）
+  {
+    id: 'weapon_shop',
+    name: '铁匠铺',
+    type: 'equipment',
+    icon: 'game-icons:anvil-impact',
+    refreshInterval: 600000,
+  },
+  {
+    id: 'armor_shop',
+    name: '防具商行',
+    type: 'equipment',
+    icon: 'game-icons:breastplate',
+    refreshInterval: 600000,
   }
 ];

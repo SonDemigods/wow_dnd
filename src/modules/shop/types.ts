@@ -14,13 +14,14 @@ import type { ItemRarity, ItemType, ItemEffect } from '@/modules/inventory/types
  * 决定商店可售物品的类别范围，与 {@link SHOP_TYPE_ITEM_TYPE_MAP} 一一对应。
  * 外部新增商店配置时，必须使用此联合类型中的值，编译期即可校验。
  *
- * - `general`   — 杂货类（武器、护甲、材料、杂物）
+ * - `general`   — 杂货类（药水、卷轴、食物、材料）
  * - `potion`    — 药水类（药水、消耗品）
  * - `scroll`    — 卷轴类（卷轴、消耗品）
  * - `food`      — 食品类（食物、消耗品）
  * - `material`  — 材料类（材料、消耗品）
+ * - `equipment` — 装备类（武器、护甲）
  */
-export type ShopType = 'general' | 'potion' | 'scroll' | 'food' | 'material';
+export type ShopType = 'general' | 'potion' | 'scroll' | 'food' | 'material' | 'equipment';
 
 /**
  * 商店配置

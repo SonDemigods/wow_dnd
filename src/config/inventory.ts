@@ -22,7 +22,7 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeData> = {
   quest: { id: 'quest', name: '任务物品', stackable: false, maxStack: 1 },
   weapon: { id: 'weapon', name: '武器', stackable: false, maxStack: 1 },
   armor: { id: 'armor', name: '护甲', stackable: false, maxStack: 1 },
-  misc: { id: 'misc', name: '杂项', stackable: true, maxStack: 1 }
+  misc: { id: 'misc', name: '杂项', stackable: true, maxStack: 99 }
 };
 
 /**
