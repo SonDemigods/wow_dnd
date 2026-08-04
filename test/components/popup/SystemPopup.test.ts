@@ -154,4 +154,27 @@ describe('SystemPopup 系统弹窗组件', () => {
       expect(wrapper.emitted('close')).toHaveLength(1);
     });
   });
+
+  describe('showExitButton prop', () => {
+    it('默认（未传 showExitButton）渲染"退出游戏"按钮', () => {
+      const wrapper = mount(SystemPopup, { props: { visible: true } });
+      expect(wrapper.find('.system-btn.exit-btn').exists()).toBe(true);
+    });
+
+    it('showExitButton=true 时渲染"退出游戏"按钮', () => {
+      const wrapper = mount(SystemPopup, { props: { visible: true, showExitButton: true } });
+      expect(wrapper.find('.system-btn.exit-btn').exists()).toBe(true);
+    });
+
+    it('showExitButton=false 时不渲染"退出游戏"按钮', () => {
+      const wrapper = mount(SystemPopup, { props: { visible: true, showExitButton: false } });
+      expect(wrapper.find('.system-btn.exit-btn').exists()).toBe(false);
+    });
+
+    it('showExitButton=false 时仍渲染"音量设置"按钮与关于区块', () => {
+      const wrapper = mount(SystemPopup, { props: { visible: true, showExitButton: false } });
+      expect(wrapper.find('.system-btn.audio-btn').exists()).toBe(true);
+      expect(wrapper.find('.about-section').exists()).toBe(true);
+    });
+  });
 });

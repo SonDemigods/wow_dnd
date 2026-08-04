@@ -10,7 +10,6 @@
  *   APP_VERSION 与 DATA_VERSION 解耦——发版可能不改数据格式，
  *   也可能一个版本内多次数据格式变更。
  *
- *   版本演进约定见 plan.md 第八章「版本演进约定（未来）」。
  */
 /** 应用版本号（语义化版本，与 package.json 同步） */
 export const APP_VERSION = '1.0.0';

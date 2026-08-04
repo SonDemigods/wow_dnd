@@ -40,8 +40,8 @@
 
     <ConfirmPopup 
       :visible="showExitConfirm"
-      title="退出游戏"
-      message="确定要退出游戏吗？"
+      title="返回主菜单"
+      message="确定要返回主菜单吗？"
       type="danger"
       @confirm="confirmExit"
       @cancel="cancelExit"

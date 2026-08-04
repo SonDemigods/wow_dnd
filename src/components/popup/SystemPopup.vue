@@ -11,25 +11,25 @@
         <BaseIcon name="sound-on" gradient="gold" :size="20" />
         <span class="system-btn-label">音量设置</span>
       </button>
-      <button class="system-btn exit-btn" @click="handleExit">
+      <button v-if="showExitButton" class="system-btn exit-btn" @click="handleExit">
         <BaseIcon name="exit-door" gradient="blood" :size="20" />
-        <span class="system-btn-label">退出游戏</span>
+        <span class="system-btn-label">返回主菜单</span>
       </button>
 
-      <!-- 关于区块：显示三层版本号 -->
+      <!-- 版本信息区块：显示三层版本号 -->
       <div class="about-section">
-        <div class="about-title">关于</div>
+        <div class="about-title">版本信息</div>
         <div class="about-info">
           <div class="info-row">
-            <span class="info-label">应用版本</span>
+            <span class="info-label">应用</span>
             <span class="info-value">{{ appVersion }}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">数据版本</span>
+            <span class="info-label">数据</span>
             <span class="info-value">v{{ dataVersion }}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">数据库版本</span>
+            <span class="info-label">数据库</span>
             <span class="info-value">v{{ dbSchemaVersion }}</span>
           </div>
         </div>
@@ -56,9 +56,13 @@ import BasePopup from '../common/BasePopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import { APP_VERSION, DATA_VERSION, DB_SCHEMA_VERSION } from '@/config/version';
 
-defineProps<{
+withDefaults(defineProps<{
   visible: boolean;
-}>();
+  /** 是否显示"返回主菜单"按钮：主菜单复用时传 false 隐藏，游戏内默认 true */
+  showExitButton?: boolean;
+}>(), {
+  showExitButton: true,
+});
 
 const emit = defineEmits<{
   (e: 'close'): void;
