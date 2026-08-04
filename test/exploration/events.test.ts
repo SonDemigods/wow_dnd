@@ -542,7 +542,8 @@ describe('exploration/events - 事件处理器注册表', () => {
         const result = await cellEventHandlers.event!(ctx);
 
         // Assert
-        expect(generateRandomEvent).toHaveBeenCalledWith(ctx.areaConfig.level, expect.objectContaining({ next: expect.any(Function) }));
+        // 阶段四：generateRandomEvent 新增第三参数 areaEvents（ctx.areaConfig.areaEvents ?? []）
+        expect(generateRandomEvent).toHaveBeenCalledWith(ctx.areaConfig.level, expect.objectContaining({ next: expect.any(Function) }), []);
         expect(mocks.characterStore.receiveHeal).toHaveBeenCalledWith(15);
         expect(eventSpy).toHaveBeenCalledWith(
           expect.objectContaining({ message: '发现神秘泉水', icon: 'game-icons:water-drop' })

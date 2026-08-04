@@ -79,6 +79,30 @@ export type RandomEventEffectType = 'heal' | 'mana' | 'exp' | 'damage' | 'mpLoss
 // ============================================================================
 
 /**
+ * 四面墙位结构（迷宫化后的通行约束）
+ *
+ * 每个布尔位表示该方向是否存在墙（true=有墙阻挡，false=无墙可通行）。
+ * 默认全开放（全 false）；旧存档 `walls` 缺失时视为全开放，保证旧存档可玩。
+ *
+ * 墙数据采用四方向冗余存储：给 `(x,y)` 设置 `right: true` 时，
+ * 须同步给 `(x+1,y)` 设置 `left: true`，保持双向一致性。
+ * 10×10 网格仅 100 格，冗余存储开销可忽略，换取 ExplorationCell 自描述性与调试便利。
+ *
+ * @see generateMazeWalls 生成墙结构的纯函数（service.ts）
+ * @see isPassable 基于墙位的通行判定（service.ts）
+ */
+export interface WallSet {
+  /** 上侧有墙（阻挡向上移动） */
+  top: boolean
+  /** 右侧有墙 */
+  right: boolean
+  /** 下侧有墙 */
+  bottom: boolean
+  /** 左侧有墙 */
+  left: boolean
+}
+
+/**
  * 探索单元格接口
  *
  * 网格中每个格子的完整状态快照，由 `generateGrid` 创建，
@@ -92,6 +116,10 @@ export type RandomEventEffectType = 'heal' | 'mana' | 'exp' | 'damage' | 'mpLoss
  * @property {boolean} visited - 是否已被玩家踩过（踩过后标记，影响移动计数）
  * @property {boolean} [completed] - 事件是否已完成（战斗胜利、宝箱已开等），已完成则 UI 褪色显示
  * @property {string} [monsterId] - 分配的怪物 ID（仅在 monster/boss 类型时有值）
+ * @property {WallSet} [walls] - 四面墙位（迷宫化后存在，旧存档缺失视为全开放）
+ * @property {boolean} [discovered] - 被视线发现但未到达（阶段一仅声明，阶段三接入视线逻辑）
+ * @property {boolean} [sealed] - Boss 封印门（阶段四，true 时无法触发战斗直至解锁条件达成）
+ * @property {boolean} [hint] - 陷阱视觉线索（阶段四，true 时 discovered 层显示"可疑地面"弱提示）
  *
  * @see generateGrid 网格生成的纯函数
  * @see updateAccessibleCells 可访问性扩散算法
@@ -109,6 +137,14 @@ export interface ExplorationCell {
   monsterId?: string
   /** 是否为隐藏房间（相邻格被探索后自动揭示，含更丰厚的奖励） */
   hidden?: boolean
+  /** 四面墙位（迷宫化后存在，旧存档缺失视为全开放） */
+  walls?: WallSet
+  /** 被视线发现但未到达（阶段一仅声明、不参与逻辑，阶段三接入视线揭示） */
+  discovered?: boolean
+  /** Boss 封印门（阶段四）：true 时无法触发 Boss 战，直至 isBossSealBroken 解锁；旧存档缺失视为 false */
+  sealed?: boolean
+  /** 陷阱视觉线索（阶段四）：true 时 discovered 层显示"可疑地面"弱提示图标；旧存档缺失视为 false */
+  hint?: boolean
 }
 
 /**
@@ -184,6 +220,7 @@ export interface GridEventProbability {
  * @property {string[]} monsterPool - 普通怪物池（怪物 ID 列表，供 random 分配）
  * @property {string[]} bossPool - Boss 怪物池（Boss ID 列表，随机选一个放置）
  * @property {string[]} itemPool - 物品池（物品 ID 列表，宝箱和兜底奖励从中选取）
+ * @property {AreaEventTemplate[]} [areaEvents] - 区域专属事件模板列表（阶段四，为空时全部走通用事件）
  *
  * @see buildAreaConfig 从 Location 数据构建此配置（store.ts）
  */
@@ -195,6 +232,8 @@ export interface AreaConfig {
   monsterPool: string[]
   bossPool: string[]
   itemPool: string[]
+  /** 区域专属事件模板列表（阶段四）：事件格触发时按 AREA_EVENT_MIX_PROBABILITY 从中选取，为空时走通用事件 */
+  areaEvents?: AreaEventTemplate[]
 }
 
 /**
@@ -214,6 +253,21 @@ export interface RandomEventResult {
   icon: string;
   effect: { type: RandomEventEffectType; amount: number };
 }
+
+/**
+ * 区域专属事件模板（阶段四）
+ *
+ * 接收区域等级返回完整事件结果，支持按等级缩放奖励/伤害数值。
+ * 区域专属事件以 `RandomEventResult` 形态结算，复用现有 `effectHandlers` 注册表，
+ * 不新增效果类型（仍为 heal/mana/exp/damage/mpLoss/gold 六类）。
+ *
+ * 数据存储于 `src/data/config_area_events.ts`，按 areaId 索引；
+ * `generateRandomEvent` 在 `areaEvents` 非空时按 `AREA_EVENT_MIX_PROBABILITY` 选取。
+ *
+ * @see generateRandomEvent areaEvents 参数
+ * @see AREA_EVENT_TEMPLATES 区域专属事件数据（src/data/config_area_events.ts）
+ */
+export type AreaEventTemplate = (areaLevel: number) => RandomEventResult;
 
 /**
  * 事件选项接口

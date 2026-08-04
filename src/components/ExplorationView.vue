@@ -31,15 +31,23 @@
               class="grid-row"
             >
               <div 
-                v-for="(cell, x) in row"
-                :key="x"
-                :class="getCellClasses(cell)"
-                :data-x="x"
-                :data-y="y"
-              >
-                <BaseIcon v-if="cell.explored" :name="getCellIcon(cell.type).name" :gradient="getCellIcon(cell.type).gradient" :size="20" />
-                <BaseIcon v-else name="uncertainty" gradient="shadow" :size="20" />
-              </div>
+              v-for="(cell, x) in row"
+              :key="x"
+              :class="[...getCellClasses(cell, x, y), ...getWallClasses(cell)]"
+              :data-x="x"
+              :data-y="y"
+            >
+              <!-- 玩家位置标记（金色人物图标，叠加在原格图标之上） -->
+              <BaseIcon v-if="isPlayerPosition(x, y)" name="player-token" gradient="gold" :size="24" class="player-marker" />
+              <!-- 阶段四：封印门 Boss 格（sealed=true 且未解锁），无论 discovered/explored 都显示锁形图标 -->
+              <BaseIcon v-else-if="isBossSealed(cell)" name="padlock" gradient="dragon" :size="20" class="sealed-icon" />
+              <BaseIcon v-else-if="cell.explored" :name="getCellIcon(cell.type).name" :gradient="getCellIcon(cell.type).gradient" :size="20" />
+              <!-- 阶段三：discovered 层模糊图标（问号/黑影），危险格由 .danger class 叠加警告色 -->
+              <!-- 阶段四：discovered 陷阱格 hint=true 显示暗色裂纹图标（弱提示），其余显示模糊问号 -->
+              <BaseIcon v-else-if="cell.discovered && cell.type === 'trap' && cell.hint" name="caltrops" gradient="shadow" :size="20" class="discovered-icon hint-icon" />
+              <BaseIcon v-else-if="cell.discovered" name="uncertainty" gradient="shadow" :size="20" class="discovered-icon" />
+              <BaseIcon v-else name="uncertainty" gradient="shadow" :size="20" />
+            </div>
             </div>
           </div>
         </div>
@@ -60,15 +68,17 @@
  */
 
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useExplorationStore } from '@/modules/exploration';
+import { useExplorationStore, isPassable, shouldShowEnemyAlert } from '@/modules/exploration';
 import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
+import { useToast } from '@/composables/useToast';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import type { ExplorationCell } from '@/modules/exploration';
 
 const explorationStore = useExplorationStore();
 const characterStore = useCharacterStore();
 const mapStore = useMapStore();
+const toast = useToast();
 
 /** 探索网格，直接从 Store 响应式数据派生 */
 const grid = computed(() => {
@@ -78,6 +88,63 @@ const grid = computed(() => {
 });
 
 const hasCurrentLocation = computed(() => !!mapStore.getCurrentLocation);
+
+/** 玩家当前位置（阶段二：实体化移动） */
+const playerPosition = computed(() => explorationStore.playerPosition);
+
+/** 是否为玩家当前所在格 */
+function isPlayerPosition(x: number, y: number): boolean {
+  return playerPosition.value.x === x && playerPosition.value.y === y;
+}
+
+/**
+ * 是否为可移动目标格（阶段二：4 邻域 + isPassable）
+ * 战斗挂起时禁止移动，避免状态错乱
+ */
+function isMovableTarget(x: number, y: number): boolean {
+  if (explorationStore.pendingBattleCell) return false;
+  if (isPlayerPosition(x, y)) return false;
+  return isPassable(grid.value, playerPosition.value, { x, y });
+}
+
+// ==================== 阶段四：封印门 / 陷阱线索 / 怪物索敌 ====================
+
+/**
+ * Boss 封印是否已解除（从 Store 读取，由 visitedCells >= BOSS_SEAL_REQUIRED_CELLS 推导）
+ * 用于 UI 决定是否显示封印门图标与红色警告色。
+ */
+const bossSealBroken = computed(() => explorationStore.bossSealBroken);
+
+/**
+ * 判断 Boss 格是否处于封印状态（阶段四）
+ * 仅当 cell.sealed=true 且封印未解除时显示锁形图标与封印色。
+ */
+function isBossSealed(cell: ExplorationCell): boolean {
+  return cell.type === 'boss' && cell.sealed === true && !bossSealBroken.value;
+}
+
+/**
+ * 判断 discovered 怪物格是否触发索敌警告（阶段四）
+ * 委托 service.shouldShowEnemyAlert 纯函数：曼哈顿距离 ≤ ENEMY_ALERT_RANGE
+ * 且怪物格已被发现但未击败。
+ */
+function isEnemyAlert(x: number, y: number): boolean {
+  return shouldShowEnemyAlert(grid.value, { x, y }, playerPosition.value);
+}
+
+/**
+ * 根据 walls 字段生成墙线 class（阶段二：墙体线条）
+ * walls 缺失（旧存档）时不加墙线 class，视为全开放
+ */
+function getWallClasses(cell: ExplorationCell): string[] {
+  if (!cell.walls) return [];
+  const classes: string[] = [];
+  if (cell.walls.top) classes.push('wall-top');
+  if (cell.walls.right) classes.push('wall-right');
+  if (cell.walls.bottom) classes.push('wall-bottom');
+  if (cell.walls.left) classes.push('wall-left');
+  return classes;
+}
 
 // 拖动相关状态
 const isDragging = ref(false);
@@ -118,13 +185,53 @@ function getCellIcon(type: string) {
   return cellIcons[type] || { name: 'plain-circle', gradient: 'metal' };
 }
 
-function getCellClasses(cell: ExplorationCell) {
+/**
+ * 判断是否为危险格（discovered 层叠加红色警告色轮廓）
+ * monster/trap/boss 类型在 discovered 状态下显示警告色，其余为中性色
+ */
+function isDangerousCell(type: string): boolean {
+  return type === 'monster' || type === 'trap' || type === 'boss';
+}
+
+function getCellClasses(cell: ExplorationCell, x: number, y: number) {
   const classes = ['cell'];
+  // 玩家当前位置（金色描边，优先级最高）
+  if (isPlayerPosition(x, y)) {
+    classes.push('player-here');
+  }
+  // 可移动目标格（绿色虚线高亮，阶段二移动式交互）
+  if (isMovableTarget(x, y)) {
+    classes.push('movable');
+  }
+  // 阶段三：三层状态（互斥）
   if (cell.explored) {
     classes.push('revealed');
-    // 已完成的事件褪色显示，未完成（如逃跑后）保留类型高亮色
-    if (!cell.completed && cell.type !== 'empty') {
+    // 阶段四：封印 Boss 格单独走 sealed 配色，不叠加 boss 类型色（避免 boss-pulse 动画冲突）
+    if (isBossSealed(cell)) {
+      classes.push('sealed');
+    } else if (!cell.completed && cell.type !== 'empty') {
+      // 已完成的事件褪色显示，未完成（如逃跑后）保留类型高亮色
       classes.push(cell.type);
+    }
+  } else if (cell.discovered) {
+    // discovered 层：被视线扫到但未到达，模糊可见
+    classes.push('discovered');
+    // 阶段四：封印 Boss 格单独走 sealed 配色，不叠加 danger（避免红色冲突）
+    if (isBossSealed(cell)) {
+      classes.push('sealed');
+    } else {
+      // 危险格（monster/trap/boss）叠加红色警告色轮廓
+      if (isDangerousCell(cell.type)) {
+        classes.push('danger');
+      }
+      // 阶段四：discovered 陷阱格带 hint=true 时叠加线索 class（暗色裂纹图标）
+      if (cell.type === 'trap' && cell.hint === true) {
+        classes.push('hint');
+      }
+      // 阶段四：discovered 怪物格触发索敌警告时叠加强警告动画
+      if (isEnemyAlert(x, y)) {
+        classes.push('enemy-alert');
+      }
     }
   } else if (cell.accessible) {
     classes.push('accessible');
@@ -234,12 +341,21 @@ async function initExploration() {
 }
 
 async function handleCellClick(cell: ExplorationCell) {
-  // 允许点击 accessible 的格子（新探索）以及已探索但未完成的格子（商店/任务板/未击败怪物）
-  if (!cell.accessible && !cell.explored) return;
-  if (cell.completed) return;
-  
-  await explorationStore.revealGrid(cell.x, cell.y);
-}
+    // 阶段四：封印 Boss 格点击提示——解锁前不触发战斗，toast 提示"封印尚未解除"
+    // isBossSealed 判定 cell.sealed && !bossSealBroken（基于 visitedCells >= BOSS_SEAL_REQUIRED_CELLS）
+    if (isBossSealed(cell)) {
+      toast.show({
+        message: '封印尚未解除，继续探索以解锁 Boss 挑战',
+        type: 'warning',
+        icon: 'game-icons:padlock',
+        duration: 2500,
+      });
+      return;
+    }
+    // 阶段二：改为移动式交互，由 movePlayer 校验 4 邻域 + isPassable
+    // movePlayer 内部处理驻留格（商店/任务板/营地）打开面板、战斗落点等逻辑
+    await explorationStore.movePlayer(cell.x, cell.y);
+  }
 
 onMounted(async () => {
   // 确保探索服务已从数据库加载状态
@@ -348,6 +464,79 @@ onUnmounted(() => {
   box-shadow: 0 0 8px rgba(0, 210, 211, 0.3);
 }
 
+/* 阶段三：discovered 层 - 被视线扫到但未到达，模糊可见 */
+.cell.discovered {
+  background: @bg-mid-dark;
+  border-color: @color-dark-line;
+}
+
+.cell.discovered .discovered-icon {
+  opacity: 0.45;
+  filter: blur(1px);
+}
+
+/* 危险格（monster/trap/boss）discovered 时叠加红色警告色轮廓 */
+.cell.discovered.danger {
+  border-color: #F44336;
+  box-shadow: 0 0 6px rgba(244, 67, 54, 0.3);
+}
+
+.cell.discovered.danger .discovered-icon {
+  opacity: 0.7;
+  filter: drop-shadow(0 0 3px rgba(244, 67, 54, 0.5));
+}
+
+/* ===== 阶段四：封印门 / 陷阱线索 / 怪物索敌警告 ===== */
+
+/* 封印门：sealed Boss 格（discovered 或 explored 状态下未解锁）
+   深红封印色 + 紫黑封印光环，区别于普通 Boss 的红色脉动 */
+.cell.sealed {
+  background: rgba(40, 0, 0, 0.6);
+  border-color: #8B0000;
+  box-shadow: 0 0 8px rgba(139, 0, 0, 0.6), inset 0 0 6px rgba(0, 0, 0, 0.4);
+}
+
+.cell.sealed .sealed-icon {
+  filter: drop-shadow(0 0 4px rgba(139, 0, 0, 0.8));
+  animation: sealed-pulse 2s ease-in-out infinite;
+}
+
+@keyframes sealed-pulse {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+/* 陷阱线索：discovered hint trap 格显示暗色裂纹图标（弱提示）
+   不叠加红色警告色，保留"可疑但不明确"的视觉张力 */
+.cell.discovered.hint .hint-icon {
+  opacity: 0.55;
+  filter: drop-shadow(0 0 2px rgba(120, 60, 0, 0.6));
+}
+
+.cell.discovered.hint {
+  border-color: #6D4C41;
+  box-shadow: 0 0 4px rgba(109, 76, 65, 0.4);
+}
+
+/* 怪物索敌警告：discovered monster 格玩家进入 ENEMY_ALERT_RANGE 时
+   叠加红色跳动强警告动画，提示玩家近身风险 */
+.cell.discovered.enemy-alert {
+  border-color: #FF1744;
+  box-shadow: 0 0 10px rgba(255, 23, 68, 0.7), inset 0 0 6px rgba(255, 23, 68, 0.3);
+  animation: enemy-alert-shake 0.6s ease-in-out infinite;
+}
+
+.cell.discovered.enemy-alert .discovered-icon {
+  opacity: 0.9;
+  filter: drop-shadow(0 0 4px rgba(255, 23, 68, 0.8));
+}
+
+@keyframes enemy-alert-shake {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-1px, 0); }
+  75% { transform: translate(1px, 0); }
+}
+
 /* 已揭示格子 */
 .cell.revealed {
   background: @bg-mid-dark;
@@ -413,6 +602,67 @@ onUnmounted(() => {
   background: rgba(0, 210, 211, 0.2);
   border-color: @color-ally;
 }
+
+/* ===== 阶段二：玩家位置 / 移动高亮 / 墙线 ===== */
+
+/* 玩家当前位置 - 金色描边 + 光晕 */
+.cell.player-here {
+  border-color: @accent-color;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.6), inset 0 0 8px rgba(255, 215, 0, 0.2);
+  z-index: @z-base;
+}
+
+.cell.player-here:hover {
+  border-color: @accent-color;
+  transform: scale(1.05);
+}
+
+/* 玩家位置标记图标 - 轻微浮动动画 */
+.player-marker {
+  animation: player-bob 1.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.8));
+}
+
+@keyframes player-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+/* 可移动目标格 - 绿色虚线高亮 */
+.cell.movable {
+  border-color: @heal-hp;
+  border-style: dashed;
+  cursor: pointer;
+  animation: movable-pulse 1.5s ease-in-out infinite;
+}
+
+.cell.movable:hover {
+  background: @green-bg-hover;
+  border-color: @heal-hp;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
+  transform: scale(1.05);
+}
+
+@keyframes movable-pulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(76, 175, 80, 0.2); }
+  50% { box-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
+}
+
+/* 墙体线条 - 比格线亮一档，加粗显眼 */
+.cell.wall-top { border-top: 3px solid @color-mid-gray; }
+.cell.wall-right { border-right: 3px solid @color-mid-gray; }
+.cell.wall-bottom { border-bottom: 3px solid @color-mid-gray; }
+.cell.wall-left { border-left: 3px solid @color-mid-gray; }
+
+/* 墙线在玩家位置/移动高亮上仍保留（墙是结构，优先级最高） */
+.cell.player-here.wall-top,
+.cell.movable.wall-top { border-top: 3px solid @color-mid-gray; }
+.cell.player-here.wall-right,
+.cell.movable.wall-right { border-right: 3px solid @color-mid-gray; }
+.cell.player-here.wall-bottom,
+.cell.movable.wall-bottom { border-bottom: 3px solid @color-mid-gray; }
+.cell.player-here.wall-left,
+.cell.movable.wall-left { border-left: 3px solid @color-mid-gray; }
 
 .cell-icon {
   font-size: @font-4xl;

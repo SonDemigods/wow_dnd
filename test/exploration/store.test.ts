@@ -32,6 +32,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createTestPinia } from '../utils/setup';
 import { eventBus, GameEvents } from '@/modules/bus';
 import type { ExplorationCell } from '@/modules/exploration/types';
+import { BOSS_SEAL_REQUIRED_CELLS } from '@/config/exploration';
 
 // ==================== vi.hoisted：跨 store stub 持有对象 ====================
 const mocks = vi.hoisted(() => ({
@@ -85,6 +86,18 @@ vi.mock('@/modules/exploration/service', () => ({
   updateAccessibleCells: vi.fn((grid: ExplorationCell[][]) => grid.map(row => row.map(c => ({ ...c })))),
   computeEventProbability: vi.fn(() => ({ monster: 25, item: 20, trap: 15, event: 15, empty: 25 })),
   buildItemPool: vi.fn(() => ['small_health_potion']),
+  // 阶段二：isPassable 默认返回 true（可通行），测试中按需 mockReturnValue(false) 模拟穿墙/对角
+  isPassable: vi.fn(() => true),
+  // 阶段三：computeVision 默认仅返回玩家所在格（最小可见范围），
+  // 测试中按需 mockReturnValue 扩展视线范围以验证 discovered 标记
+  computeVision: vi.fn((_grid: ExplorationCell[][], pos: { x: number; y: number }) => [{ x: pos.x, y: pos.y }]),
+  // 阶段三：applyVision 默认仅标记视线内格子 discovered=true，其余不变（与真实逻辑一致的最小化版本）
+  applyVision: vi.fn((grid: ExplorationCell[][], visionCells: { x: number; y: number }[]) =>
+    grid.map(row => row.map(c => {
+      const inVision = visionCells.some(v => v.x === c.x && v.y === c.y);
+      return inVision ? { ...c, discovered: true } : { ...c };
+    }))
+  ),
 }));
 
 // ==================== Mock：events 模块 ====================
@@ -137,6 +150,7 @@ import {
   updateAccessibleCells,
   computeEventProbability,
   buildItemPool,
+  isPassable,
 } from '@/modules/exploration/service';
 import { dispatchCellEvent, applyEventEffect } from '@/modules/exploration/events';
 import { crossModuleQuery } from '@/services/CrossModuleQuery';
@@ -941,6 +955,220 @@ describe('useExplorationStore - 探索 Store', () => {
     });
   });
 
+  // -------------------- Actions：movePlayer（阶段二：玩家实体化移动） --------------------
+  describe('Actions：movePlayer - 玩家实体化移动', () => {
+    /** 构造 1×2 测试网格：起点 + 右侧目标格 */
+    function makeMoveGrid(rightType: ExplorationCell['type'] = 'empty'): ExplorationCell[][] {
+      return [
+        [
+          makeCell({ x: 0, y: 0, type: 'start', explored: true, accessible: true }),
+          makeCell({ x: 1, y: 0, type: rightType, accessible: true, monsterId: rightType === 'monster' ? 'goblin' : undefined }),
+        ],
+      ];
+    }
+
+    it('合法移动到 4 邻域空地：更新 playerPosition 并触发 revealGrid', async () => {
+      // Arrange
+      const store = useExplorationStore();
+      const testGrid = makeMoveGrid('empty');
+      store.$patch({ grid: testGrid, currentAreaId: 'forest', playerPosition: { x: 0, y: 0 } });
+      vi.mocked(isPassable).mockReturnValue(true);
+
+      // Act
+      const result = await store.movePlayer(1, 0);
+
+      // Assert：位置推进到目标格
+      expect(result).toBe(true);
+      expect(store.playerPosition).toEqual({ x: 1, y: 0 });
+      expect(isPassable).toHaveBeenCalledWith(testGrid, { x: 0, y: 0 }, { x: 1, y: 0 });
+    });
+
+    it('isPassable 返回 false（穿墙/对角/越界方向）时拒绝移动', async () => {
+      // Arrange
+      const store = useExplorationStore();
+      store.$patch({ grid: makeMoveGrid('empty'), currentAreaId: 'forest', playerPosition: { x: 0, y: 0 } });
+      vi.mocked(isPassable).mockReturnValue(false);
+
+      // Act
+      const result = await store.movePlayer(1, 0);
+
+      // Assert：位置不变
+      expect(result).toBe(false);
+      expect(store.playerPosition).toEqual({ x: 0, y: 0 });
+    });
+
+    it('目标格越界（不存在）时拒绝', async () => {
+      // Arrange
+      const store = useExplorationStore();
+      store.$patch({
+        grid: [[makeCell({ x: 0, y: 0, type: 'start', explored: true })]],
+        currentAreaId: 'forest',
+        playerPosition: { x: 0, y: 0 },
+      });
+
+      // Act & Assert：(5,5) 不在网格内
+      const result = await store.movePlayer(5, 5);
+      expect(result).toBe(false);
+    });
+
+    it('战斗挂起时拒绝新移动', async () => {
+      // Arrange：先移动到怪物格触发战斗挂起
+      const store = useExplorationStore();
+      store.$patch({ grid: makeMoveGrid('monster'), currentAreaId: 'forest', playerPosition: { x: 0, y: 0 } });
+      vi.mocked(isPassable).mockReturnValue(true);
+      await store.movePlayer(1, 0);
+
+      // Act：战斗挂起中尝试再移动
+      const result = await store.movePlayer(0, 0);
+
+      // Assert：被拒，位置保持怪物格
+      expect(result).toBe(false);
+      expect(store.playerPosition).toEqual({ x: 1, y: 0 });
+    });
+
+    it('移动到怪物格：立即推进 playerPosition 并触发战斗', async () => {
+      // Arrange
+      const store = useExplorationStore();
+      store.$patch({ grid: makeMoveGrid('monster'), currentAreaId: 'forest', playerPosition: { x: 0, y: 0 } });
+      vi.mocked(isPassable).mockReturnValue(true);
+
+      // Act
+      const result = await store.movePlayer(1, 0);
+
+      // Assert：位置立即推进到怪物格
+      expect(result).toBe(true);
+      expect(store.playerPosition).toEqual({ x: 1, y: 0 });
+      // 战斗已触发（EXPLORATION_BATTLE_TRIGGERED 事件已 emit）
+      expect(eventBus).toBeTruthy();
+    });
+
+    it('移动到怪物格战斗胜利：保持怪物格位置', async () => {
+      // Arrange
+      const store = useExplorationStore();
+      store.$patch({ grid: makeMoveGrid('monster'), currentAreaId: 'forest', playerPosition: { x: 0, y: 0 } });
+      vi.mocked(isPassable).mockReturnValue(true);
+
+      // Act：移动触发战斗 → 胜利
+      await store.movePlayer(1, 0);
+      await store.onBattleResult(true);
+
+      // Assert：胜利保持怪物格位置，且怪物格标记 completed
+      expect(store.playerPosition).toEqual({ x: 1, y: 0 });
+      expect(store.getGridCell(1, 0)?.completed).toBe(true);
+    });
+
+    it('移动到怪物格战斗失败：回退到原位', async () => {
+      // Arrange
+      const store = useExplorationStore();
+      store.$patch({ grid: makeMoveGrid('monster'), currentAreaId: 'forest', playerPosition: { x: 0, y: 0 } });
+      vi.mocked(isPassable).mockReturnValue(true);
+
+      // Act：移动触发战斗 → 失败
+      await store.movePlayer(1, 0);
+      expect(store.playerPosition).toEqual({ x: 1, y: 0 }); // 推进
+      await store.onBattleResult(false);
+
+      // Assert：失败回退到原位
+      expect(store.playerPosition).toEqual({ x: 0, y: 0 });
+      // 怪物格被揭示但未完成，允许再次挑战
+      expect(store.getGridCell(1, 0)?.explored).toBe(true);
+      expect(store.getGridCell(1, 0)?.completed).toBe(false);
+    });
+
+    it('点击当前驻留格（商店）：打开面板不消耗移动', async () => {
+      // Arrange：玩家在商店格
+      const store = useExplorationStore();
+      store.$patch({
+        grid: [[makeCell({ x: 0, y: 0, type: 'shop', explored: true, visited: true })]],
+        currentAreaId: 'forest',
+        playerPosition: { x: 0, y: 0 },
+      });
+
+      // Act
+      const result = await store.movePlayer(0, 0);
+
+      // Assert：成功打开面板，位置不变，未校验 isPassable
+      expect(result).toBe(true);
+      expect(store.playerPosition).toEqual({ x: 0, y: 0 });
+      expect(isPassable).not.toHaveBeenCalled();
+    });
+
+    it('点击当前驻留格（营地）：允许打开面板', async () => {
+      // Arrange
+      const store = useExplorationStore();
+      store.$patch({
+        grid: [[makeCell({ x: 0, y: 0, type: 'rest', explored: true, visited: true })]],
+        currentAreaId: 'forest',
+        playerPosition: { x: 0, y: 0 },
+      });
+
+      // Act & Assert
+      const result = await store.movePlayer(0, 0);
+      expect(result).toBe(true);
+      expect(store.playerPosition).toEqual({ x: 0, y: 0 });
+    });
+
+    it('点击当前非驻留格（空地）：拒绝', async () => {
+      // Arrange：玩家在已探索空地格
+      const store = useExplorationStore();
+      store.$patch({
+        grid: [[makeCell({ x: 0, y: 0, type: 'empty', explored: true })]],
+        currentAreaId: 'forest',
+        playerPosition: { x: 0, y: 0 },
+      });
+
+      // Act & Assert：空地非驻留格，拒绝
+      const result = await store.movePlayer(0, 0);
+      expect(result).toBe(false);
+    });
+
+    it('已击败的怪物格可穿过：位置推进但不触发战斗', async () => {
+      // Arrange：右侧怪物格已 completed
+      // 阶段二决策：completed 格作为路径可通行，movePlayer 推进位置后 revealGrid
+      // 入口 completed 守卫拦截（无事件），玩家可穿过已清理区域
+      const battleSpy = vi.fn();
+      eventBus.on(GameEvents.EXPLORATION_BATTLE_TRIGGERED, battleSpy);
+
+      const store = useExplorationStore();
+      store.$patch({
+        grid: [
+          [
+            makeCell({ x: 0, y: 0, type: 'start', explored: true }),
+            makeCell({ x: 1, y: 0, type: 'monster', monsterId: 'goblin', completed: true }),
+          ],
+        ],
+        currentAreaId: 'forest',
+        playerPosition: { x: 0, y: 0 },
+      });
+      vi.mocked(isPassable).mockReturnValue(true);
+
+      // Act：穿过已击败的怪物格
+      const result = await store.movePlayer(1, 0);
+
+      // Assert：位置推进成功，但不触发战斗（revealGrid 入口 completed 守卫拦截）
+      expect(result).toBe(true);
+      expect(store.playerPosition).toEqual({ x: 1, y: 0 });
+      expect(battleSpy).not.toHaveBeenCalled();
+    });
+
+    it('旧路径 revealGrid 触发的战斗（无 previousPosition）：失败时位置不变', async () => {
+      // Arrange：兼容旧路径——直接调 revealGrid 触发战斗，无 previousPosition
+      const store = useExplorationStore();
+      store.$patch({
+        grid: [[makeCell({ x: 0, y: 0, type: 'monster', accessible: true, monsterId: 'goblin' })]],
+        currentAreaId: 'forest',
+        playerPosition: { x: 0, y: 0 },
+      });
+      await store.revealGrid(0, 0); // 旧路径触发战斗
+
+      // Act：失败
+      await store.onBattleResult(false);
+
+      // Assert：无 previousPosition → 位置不变（不回退到无效值）
+      expect(store.playerPosition).toEqual({ x: 0, y: 0 });
+    });
+  });
+
   // -------------------- Actions：revealGrid 已访问 shop/board 不累加 visitedCells --------------------
   describe('Actions：revealGrid - shop/board 已访问守卫', () => {
     it('shop 格子已访问过时 visitedCells 不重复累加', async () => {
@@ -1152,6 +1380,133 @@ describe('useExplorationStore - 探索 Store', () => {
 
       // Assert：第二守卫触发，返回 false
       expect(result).toBe(false);
+    });
+  });
+
+  // -------------------- Actions：阶段四 Boss 封印判定 --------------------
+  describe('Actions：bossSealBroken + movePlayer 封印判定（阶段四）', () => {
+    it('bossSealBroken：visitedCells < BOSS_SEAL_REQUIRED_CELLS 时为 false', () => {
+      const store = useExplorationStore();
+      store.$patch({ visitedCells: BOSS_SEAL_REQUIRED_CELLS - 1 });
+      expect(store.bossSealBroken).toBe(false);
+    });
+
+    it('bossSealBroken：visitedCells >= BOSS_SEAL_REQUIRED_CELLS 时为 true', () => {
+      const store = useExplorationStore();
+      store.$patch({ visitedCells: BOSS_SEAL_REQUIRED_CELLS });
+      expect(store.bossSealBroken).toBe(true);
+    });
+
+    it('movePlayer：Boss 格 sealed 且未解锁时拒绝移动，不触发战斗', async () => {
+      // Arrange
+      const store = useExplorationStore();
+      store.$patch({
+        grid: [[
+          makeCell({ x: 0, y: 0, type: 'start', explored: true }),
+          makeCell({ x: 1, y: 0, type: 'boss', sealed: true, monsterId: 'dragon' }),
+        ]],
+        currentAreaId: 'forest',
+        playerPosition: { x: 0, y: 0 },
+        visitedCells: 0, // 未解锁
+      });
+      vi.mocked(isPassable).mockReturnValue(true);
+      const battleSpy = vi.fn();
+      eventBus.on(GameEvents.EXPLORATION_BATTLE_TRIGGERED, battleSpy);
+
+      // Act
+      const result = await store.movePlayer(1, 0);
+
+      // Assert：拒绝移动，位置不变，不触发战斗
+      expect(result).toBe(false);
+      expect(store.playerPosition).toEqual({ x: 0, y: 0 });
+      expect(battleSpy).not.toHaveBeenCalled();
+    });
+
+    it('movePlayer：Boss 格 sealed 但已解锁时允许移动并触发战斗', async () => {
+      // Arrange
+      const store = useExplorationStore();
+      store.$patch({
+        grid: [[
+          makeCell({ x: 0, y: 0, type: 'start', explored: true }),
+          makeCell({ x: 1, y: 0, type: 'boss', sealed: true, monsterId: 'dragon' }),
+        ]],
+        currentAreaId: 'forest',
+        playerPosition: { x: 0, y: 0 },
+        visitedCells: BOSS_SEAL_REQUIRED_CELLS, // 已解锁
+      });
+      vi.mocked(isPassable).mockReturnValue(true);
+
+      // Act
+      const result = await store.movePlayer(1, 0);
+
+      // Assert：允许移动，位置推进到 Boss 格
+      expect(result).toBe(true);
+      expect(store.playerPosition).toEqual({ x: 1, y: 0 });
+    });
+
+    it('movePlayer：Boss 格未 sealed 时正常移动（兼容旧存档）', async () => {
+      // Arrange：Boss 格无 sealed 字段（旧存档），无论 visitedCells 多少都可移动
+      const store = useExplorationStore();
+      store.$patch({
+        grid: [[
+          makeCell({ x: 0, y: 0, type: 'start', explored: true }),
+          makeCell({ x: 1, y: 0, type: 'boss', monsterId: 'dragon' }), // 无 sealed
+        ]],
+        currentAreaId: 'forest',
+        playerPosition: { x: 0, y: 0 },
+        visitedCells: 0,
+      });
+      vi.mocked(isPassable).mockReturnValue(true);
+
+      // Act
+      const result = await store.movePlayer(1, 0);
+
+      // Assert：正常移动
+      expect(result).toBe(true);
+      expect(store.playerPosition).toEqual({ x: 1, y: 0 });
+    });
+
+    it('revealGrid：直接调 revealGrid 点击封印 Boss 格时不触发战斗（防御性二次拦截）', async () => {
+      // Arrange：revealGrid 作为公共入口（revealAllCells/控制台）可能被直接调用，
+      // 即使绕过 movePlayer 的封印判定，revealGrid 路径 1 也应二次拦截
+      const store = useExplorationStore();
+      store.$patch({
+        grid: [[
+          makeCell({ x: 0, y: 0, type: 'boss', sealed: true, accessible: true, monsterId: 'dragon' }),
+        ]],
+        currentAreaId: 'forest',
+        visitedCells: 0, // 未解锁
+      });
+      const battleSpy = vi.fn();
+      eventBus.on(GameEvents.EXPLORATION_BATTLE_TRIGGERED, battleSpy);
+
+      // Act
+      const result = await store.revealGrid(0, 0);
+
+      // Assert：防御性拦截，返回 false，不触发战斗
+      expect(result).toBe(false);
+      expect(battleSpy).not.toHaveBeenCalled();
+    });
+
+    it('revealGrid：Boss 格 sealed 但已解锁时正常触发战斗', async () => {
+      // Arrange
+      const store = useExplorationStore();
+      store.$patch({
+        grid: [[
+          makeCell({ x: 0, y: 0, type: 'boss', sealed: true, accessible: true, monsterId: 'dragon' }),
+        ]],
+        currentAreaId: 'forest',
+        visitedCells: BOSS_SEAL_REQUIRED_CELLS, // 已解锁
+      });
+      const battleSpy = vi.fn();
+      eventBus.on(GameEvents.EXPLORATION_BATTLE_TRIGGERED, battleSpy);
+
+      // Act
+      const result = await store.revealGrid(0, 0);
+
+      // Assert：解锁后 revealGrid 不再拦截，触发战斗
+      expect(result).toBe(true);
+      expect(battleSpy).toHaveBeenCalledTimes(1);
     });
   });
 });

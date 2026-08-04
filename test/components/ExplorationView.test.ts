@@ -258,7 +258,7 @@ describe('ExplorationView 探索视图组件', () => {
   });
 
   describe('单元格点击交互', () => {
-    it('点击 accessible 单元格触发 explorationStore.revealGrid(x, y)', async () => {
+    it('点击 accessible 单元格触发 explorationStore.movePlayer(x, y)', async () => {
       const mapStore = useMapStore(pinia);
       mapStore.$patch((state) => {
         state.currentLocation = makeLocation() as any;
@@ -279,10 +279,11 @@ describe('ExplorationView 探索视图组件', () => {
       await cell.trigger('mousedown', { clientX: 100, clientY: 100 });
       await cell.trigger('mouseup');
 
-      expect(explorationStore.revealGrid).toHaveBeenCalledWith(1, 0);
+      // 阶段二：handleCellClick 改调 movePlayer（移动式交互），不再直接调 revealGrid
+      expect(explorationStore.movePlayer).toHaveBeenCalledWith(1, 0);
     });
 
-    it('点击已 completed 单元格不触发 revealGrid', async () => {
+    it('点击已 completed 单元格经 movePlayer 处理（不直接调 revealGrid）', async () => {
       const mapStore = useMapStore(pinia);
       mapStore.$patch((state) => {
         state.currentLocation = makeLocation() as any;
@@ -306,10 +307,12 @@ describe('ExplorationView 探索视图组件', () => {
       await cell.trigger('mousedown', { clientX: 100, clientY: 100 });
       await cell.trigger('mouseup');
 
+      // 阶段二：点击统一走 movePlayer 入口；completed 拒绝逻辑由 movePlayer 内部处理
+      expect(explorationStore.movePlayer).toHaveBeenCalledWith(0, 0);
       expect(explorationStore.revealGrid).not.toHaveBeenCalled();
     });
 
-    it('拖动超过阈值后释放不触发 revealGrid', async () => {
+    it('拖动超过阈值后释放不触发 movePlayer', async () => {
       vi.useFakeTimers();
       const mapStore = useMapStore(pinia);
       mapStore.$patch((state) => {
@@ -335,7 +338,8 @@ describe('ExplorationView 探索视图组件', () => {
       vi.runAllTimers();
       await container.trigger('mouseup');
 
-      expect(explorationStore.revealGrid).not.toHaveBeenCalled();
+      // 阶段二：拖动不触发 movePlayer（移动入口）
+      expect(explorationStore.movePlayer).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
   });

@@ -295,7 +295,8 @@ export const cellEventHandlers: Partial<Record<CellType, CellEventHandler>> = {
     }
 
     // 普通随机事件：生成效果 → 通过注册表分发应用
-    const eventResult = generateRandomEvent(ctx.areaConfig.level, rng);
+    // 阶段四：传入区域专属事件池，generateRandomEvent 按 AREA_EVENT_MIX_PROBABILITY 混合
+    const eventResult = generateRandomEvent(ctx.areaConfig.level, rng, ctx.areaConfig.areaEvents ?? []);
     const shouldHandleDeath = await applyEventEffect(
       eventResult.effect.type,
       ctx,

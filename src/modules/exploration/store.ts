@@ -24,8 +24,13 @@ import {
   updateAccessibleCells,
   computeEventProbability,
   buildItemPool,
+  isPassable,
+  computeVision,
+  applyVision,
   GRID_SIZE
 } from './service';
+import { VISION_RANGE, BOSS_SEAL_REQUIRED_CELLS } from '@/config/exploration';
+import { AREA_EVENT_TEMPLATES } from '@/data/config_area_events';
 import { dispatchCellEvent, applyEventEffect } from './events';
 import { defaultRng, type Rng } from '@/utils/rng';
 import { migrateExplorationGrid } from '@/modules/enemy';
@@ -60,6 +65,14 @@ export const useExplorationStore = defineStore('exploration', () => {
   const currentCharacterId = computed<string | null>(() => gameStore.currentCharacterId);
   /** 当前等待战斗结果的格子坐标 */
   const pendingBattleCell = ref<{ x: number; y: number } | null>(null);
+  /**
+   * 战斗前玩家原位置（阶段二：战斗落点回退）
+   *
+   * movePlayer 移动到怪物/Boss 格时立即推进 playerPosition 并记录原位到此；
+   * onBattleResult 胜利时清空（保持怪物格），失败/逃跑时用此回退 playerPosition。
+   * 仅在战斗挂起期间有值，不持久化（运行时态）。
+   */
+  const previousPosition = ref<{ x: number; y: number } | null>(null);
   /** 本次探索随机选取的商店 ID */
   const assignedShopId = ref('');
   /** 当前区域配置（缓存） */
@@ -95,6 +108,21 @@ export const useExplorationStore = defineStore('exploration', () => {
 
   /** 是否已开始探索 */
   const hasStartedExploration = computed(() => currentAreaId.value !== null);
+
+  /**
+   * Boss 封印是否已解除（阶段四）
+   *
+   * 解锁条件A：visitedCells >= BOSS_SEAL_REQUIRED_CELLS（约 1/3 网格，强制充分探索）。
+   * 解锁条件B（选配）：守卫怪击败数 >= GUARD_MONSTER_COUNT；GUARD_MONSTER_COUNT=0 时不启用。
+   * 未解锁时 Boss 格 sealed=true，movePlayer 拒绝推进、不触发战斗。
+   */
+  const bossSealBroken = computed<boolean>(() => {
+    // 条件A：已探索格数达标
+    if (visitedCells.value >= BOSS_SEAL_REQUIRED_CELLS) return true;
+    // 条件B（选配）：守卫怪击败数达标。GUARD_MONSTER_COUNT=0 表示不启用守卫怪方案
+    // 启用该方案时需额外维护 guardsDefeated 计数并持久化（本阶段默认不启用）
+    return false;
+  });
 
   /** 获取指定坐标的格子数据 */
   function getGridCell(x: number, y: number): ExplorationCell | null {
@@ -135,6 +163,23 @@ export const useExplorationStore = defineStore('exploration', () => {
   }
 
   /**
+   * 阶段三：刷新探索网格（视线 + 可访问性）
+   *
+   * 调用顺序固定为"先视线后扩散"：
+   * 1. `applyVision`：基于玩家当前位置计算视线，标记 discovered（只增不减），
+   *    被扫到的隐藏房间清除 hidden 标志（允许通行）。
+   * 2. `updateAccessibleCells`：扩散 accessible，此时被视线扫到的隐藏房间 hidden 已清除，
+   *    `isPassable` 不再阻止其被标记为可访问。
+   *
+   * 必须在 `playerPosition` 更新后调用，确保视线基于最新位置。
+   */
+  function refreshGrid(): void {
+    const visionCells = computeVision(grid.value, playerPosition.value, VISION_RANGE);
+    const visionedGrid = applyVision(grid.value, visionCells);
+    grid.value = updateAccessibleCells(visionedGrid);
+  }
+
+  /**
    * 根据地点数据构建区域配置（含 DB 查询）
    * @param location - 地点数据
    * @returns 区域配置对象
@@ -161,7 +206,9 @@ export const useExplorationStore = defineStore('exploration', () => {
       eventProbability,
       monsterPool,
       bossPool,
-      itemPool
+      itemPool,
+      // 阶段四：区域专属事件池，按 location.id 查找；未命中时为空（走通用事件）
+      areaEvents: AREA_EVENT_TEMPLATES[location.id] ?? []
     };
   }
 
@@ -264,6 +311,11 @@ export const useExplorationStore = defineStore('exploration', () => {
 
       // 恢复区域配置
       await loadAreaConfig(stored.currentAreaId);
+
+      // 阶段三：恢复后基于玩家当前位置刷新视线与可访问性
+      // 旧存档可能无 discovered 字段，db.ts 读取时已兼容（discovered ?? explored）；
+      // 此处 refreshGrid 基于当前 playerPosition 重新计算视线，确保 discovered 状态正确。
+      refreshGrid();
     } else {
       currentAreaId.value = null;
       grid.value = [];
@@ -321,7 +373,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     isExploring.value = true;
 
     // 6. 更新可访问状态
-    grid.value = updateAccessibleCells(grid.value);
+    refreshGrid();
 
     // 7. 持久化
     await persistState();
@@ -378,6 +430,11 @@ export const useExplorationStore = defineStore('exploration', () => {
 
     // ===== 路径 1：怪物/BOSS 格子 → 触发战斗 =====
     if (cell.type === 'monster' || cell.type === 'boss') {
+      // 阶段四：Boss 封印防御——movePlayer 已检查，但 revealGrid 作为公共入口
+      // （revealAllCells/控制台）可能被直接调用，此处二次拦截避免绕过封印
+      if (cell.type === 'boss' && cell.sealed && !bossSealBroken.value) {
+        return false;
+      }
       // P3-137 阶段 0.7 + 阶段 3：兜底 ID 使用新命名规范
       // 优先取当前区域怪物池/Boss 池首个 ID 作为兜底，避免硬编码
       const areaConfig = getAreaConfig();
@@ -399,7 +456,7 @@ export const useExplorationStore = defineStore('exploration', () => {
         visitedCells.value++;
       }
 
-      grid.value = updateAccessibleCells(grid.value);
+      refreshGrid();
 
       const interactionId = cell.type === 'shop' ? assignedShopId.value : 'board_main';
       eventBus.emit(GameEvents.EXPLORATION_CELL_EXPLORED, {
@@ -453,14 +510,14 @@ export const useExplorationStore = defineStore('exploration', () => {
     if (cellResult.shouldHandleDeath) {
       // BIZ-9 修复：探索中死亡需手动触发 handleDeath（战斗中由 endCombat 统一处理）
       // 先更新网格状态以反映 cell.completed，再触发死亡处理
-      grid.value = updateAccessibleCells(grid.value);
+      refreshGrid();
       await persistState();
       await characterStore.handleDeath();
       return true;
     }
 
     // 更新可访问格子（浅拷贝会将上面设置的 completed 状态同步到新网格）
-    grid.value = updateAccessibleCells(grid.value);
+    refreshGrid();
 
     // 发射格子探索事件
     eventBus.emit(GameEvents.EXPLORATION_CELL_EXPLORED, {
@@ -477,14 +534,78 @@ export const useExplorationStore = defineStore('exploration', () => {
     return true;
   }
 
+  // ==================== Action：玩家移动（阶段二） ====================
+
+  /**
+   * 玩家实体化移动到 4 邻域可通行格（阶段二主入口）。
+   *
+   * 校验链：目标格存在 → 非战斗挂起 → 4 邻域 + isPassable → 目标格类型分发。
+   * 落点决策（用户确认：立即推进，失败时回退）：
+   *   - 怪物/Boss：先记录 previousPosition 并推进 playerPosition 到目标格，再调 revealGrid
+   *     触发战斗；胜利保持位置，失败/逃跑由 onBattleResult 回退到 previousPosition。
+   *   - 商店/任务板/营地/宝箱/陷阱/事件/空地：推进 playerPosition 后调 revealGrid 结算。
+   *   - 点击玩家当前格：仅驻留格（商店/任务板/营地）允许打开面板，不消耗移动。
+   *
+   * revealGrid 保留旧 accessible||explored 校验作为兼容入口（revealAllCells/控制台），
+   * movePlayer 通过 isPassable 把关后确保目标格 accessible=true 以通过 revealGrid 入口。
+   *
+   * @param x - 目标格 X 坐标
+   * @param y - 目标格 Y 坐标
+   * @returns 是否成功移动（触发战斗/结算事件）
+   */
+  async function movePlayer(x: number, y: number): Promise<boolean> {
+    const cell = grid.value[y]?.[x];
+    if (!cell) return false;
+
+    // 战斗未结束时拒绝新移动，防止状态错乱
+    if (pendingBattleCell.value) return false;
+
+    // 点击玩家当前格：仅驻留格（商店/任务板/营地）允许打开面板，不消耗移动
+    if (x === playerPosition.value.x && y === playerPosition.value.y) {
+      if (cell.type === 'shop' || cell.type === 'board' || cell.type === 'rest') {
+        return revealGrid(x, y);
+      }
+      return false;
+    }
+
+    // 移动校验：4 邻域 + isPassable（墙判断 + 隐藏房间未揭示拦截）
+    if (!isPassable(grid.value, playerPosition.value, { x, y })) return false;
+
+    // 阶段四：Boss 封印判定——未解锁时不推进位置、不触发战斗
+    // UI 层（ExplorationView）通过 bossSealBroken computed 判断是否显示封印提示
+    if (cell.type === 'boss' && cell.sealed && !bossSealBroken.value) {
+      return false;
+    }
+
+    // 未击败的怪物/Boss：立即推进，记录 previousPosition 供战斗落点回退
+    if ((cell.type === 'monster' || cell.type === 'boss') && !cell.completed) {
+      previousPosition.value = { ...playerPosition.value };
+      playerPosition.value = { x, y };
+      // 确保 revealGrid 入口校验通过（isPassable 已确认可通行）
+      cell.accessible = true;
+      await revealGrid(x, y); // 触发战斗，设置 pendingBattleCell
+      return true;
+    }
+
+    // 其他格（含已击败怪物/已开宝箱等 completed 格）：推进位置后结算
+    // completed 格 revealGrid 入口拒绝（无事件），但位置推进成功，玩家可穿过已清理区域
+    playerPosition.value = { x, y };
+    cell.accessible = true;
+    await revealGrid(x, y);
+    return true;
+  }
+
   // ==================== Action：战斗结果 ====================
 
   /**
    * 处理战斗结果（供 COMBAT_END 事件监听调用）。
    *
-   * 两条分支：
-   * - 胜利 → 格子标记已完成/不可访问，Boss 格额外设置 bossDefeated 标志
-   * - 失败/逃跑 → 仅揭示格子内容，保留 monsterId 允许玩家再次挑战
+   * 三条分支（阶段二新增位置回退）：
+   * - 胜利 → 格子标记已完成/不可访问，Boss 格额外设置 bossDefeated 标志；
+   *   playerPosition 保持怪物格（movePlayer 已推进），清空 previousPosition。
+   * - 失败/逃跑 → 揭示格子内容，保留 monsterId 允许再次挑战；
+   *   playerPosition 回退到 previousPosition（原位），清空 previousPosition。
+   * - 无 previousPosition（兼容旧路径直接调 revealGrid 触发的战斗）→ 位置不变。
    *
    * @param victory - 是否胜利
    */
@@ -497,6 +618,7 @@ export const useExplorationStore = defineStore('exploration', () => {
 
     if (!cell) {
       pendingBattleCell.value = null;
+      previousPosition.value = null;
       return;
     }
 
@@ -512,8 +634,10 @@ export const useExplorationStore = defineStore('exploration', () => {
       }
       cell.completed = true; // 击败后标记为已完成，前端显示褪色
       cell.accessible = false;
+      // 胜利保持 playerPosition（已在怪物格），清空 previousPosition
+      previousPosition.value = null;
 
-      grid.value = updateAccessibleCells(grid.value);
+      refreshGrid();
       checkCompletion();
       await persistState();
     } else {
@@ -523,7 +647,12 @@ export const useExplorationStore = defineStore('exploration', () => {
         cell.visited = true;
         visitedCells.value++;
       }
-      grid.value = updateAccessibleCells(grid.value);
+      // 失败/逃跑：回退到 previousPosition（movePlayer 记录的原位）
+      if (previousPosition.value) {
+        playerPosition.value = { ...previousPosition.value };
+        previousPosition.value = null;
+      }
+      refreshGrid();
       await persistState();
     }
 
@@ -561,6 +690,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     bossDefeated.value = false;
     explorationComplete.value = false;
     pendingBattleCell.value = null;
+    previousPosition.value = null;
     currentAreaConfig.value = null;
     assignedShopId.value = '';
 
@@ -710,8 +840,9 @@ export const useExplorationStore = defineStore('exploration', () => {
     // 2. 清理 UI 回调
     uiCallbacks.value = null;
 
-    // 3. 重置挂起的战斗格子坐标
+    // 3. 重置挂起的战斗格子坐标与战斗前位置
     pendingBattleCell.value = null;
+    previousPosition.value = null;
   }
 
   // ==================== 导出 ====================
@@ -730,12 +861,14 @@ export const useExplorationStore = defineStore('exploration', () => {
     // 计算属性
     state,
     hasStartedExploration,
+    bossSealBroken,
     getGridCell,
 
     // Action（核心流程）
     init,
     enterArea,
     revealGrid,
+    movePlayer,
     revealAllCells,
     onBattleResult,
     triggerBattle,

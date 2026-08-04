@@ -3,7 +3,7 @@
  * @description 提供探索相关的纯计算函数，不持有状态、不调用 DB、不 emit 事件
  * @module exploration
  */
-import type { GridEventType, GridEventProbability, ExplorationCell, RandomEventResult, MultiOptionEventResult, GridGenerationConfig, CellType } from './types';
+import type { GridEventType, GridEventProbability, ExplorationCell, RandomEventResult, MultiOptionEventResult, GridGenerationConfig, CellType, WallSet, AreaEventTemplate } from './types';
 import { defaultRng, type Rng } from '@/utils/rng';
 import {
   GRID_SIZE,
@@ -47,7 +47,13 @@ import {
   ITEM_POOL_FALLBACK_ID,
   RARITY_LEVEL_MAP,
   HIDDEN_ROOM_MIN_COUNT,
-  HIDDEN_ROOM_MAX_COUNT
+  HIDDEN_ROOM_MAX_COUNT,
+  MAZE_WALL_DENSITY,
+  MAZE_MAX_RETRY,
+  VISION_RANGE,
+  TRAP_HINT_PROBABILITY,
+  ENEMY_ALERT_RANGE,
+  AREA_EVENT_MIX_PROBABILITY
 } from '@/config/exploration';
 
 /**
@@ -223,11 +229,26 @@ export function generateEnemyForCell(monsterPool: string[], rng: Rng = defaultRn
  * 区间大小即为该事件的触发概率。分支按概率从高到低排列，
  * 最后一个分支作为兜底。
  *
+ * 阶段四扩展：区域专属事件混合。`areaEvents` 非空时，按 `AREA_EVENT_MIX_PROBABILITY`
+ * 概率从区域专属事件池中选取模板（用 areaLevel 构造），否则走通用事件。
+ * `areaEvents` 为空时短路（不消耗 rng），行为与阶段三前完全一致，保证向后兼容。
+ * 区域专属事件复用 `RandomEventResult` 结构与 `effectHandlers` 结算，不新增效果类型。
+ *
  * @param areaLevel - 区域等级
  * @param rng - 随机数生成器，默认使用基于 Math.random 的 defaultRng
+ * @param areaEvents - 区域专属事件模板数组（阶段四，为空时走通用事件）
  * @returns 随机事件的结果，包含消息、图标和效果
  */
-export function generateRandomEvent(areaLevel: number, rng: Rng = defaultRng): RandomEventResult {
+export function generateRandomEvent(
+  areaLevel: number,
+  rng: Rng = defaultRng,
+  areaEvents: AreaEventTemplate[] = []
+): RandomEventResult {
+  // 阶段四：区域专属事件混合。areaEvents 为空时短路，不消耗 rng，保持向后兼容。
+  if (areaEvents.length > 0 && rng.next() < AREA_EVENT_MIX_PROBABILITY) {
+    return rng.pick(areaEvents)(areaLevel);
+  }
+
   const random = rng.next();
 
   // [0, 0.3) → 30% 概率恢复生命值
@@ -418,7 +439,21 @@ export function generateGrid(config: GridGenerationConfig, rng: Rng = defaultRng
   // 第三步：随机选取 2~3 个宝箱格标记为隐藏房间（含更丰厚奖励，相邻格探索后揭示）
   markHiddenRooms(grid, size, rng);
 
-  return grid;
+  // 第四步：生成迷宫墙结构（DFS 完美迷宫骨架 + 密度捷径 + 隐藏房间三墙留入口）
+  // 返回新网格（仅墙结构变化，事件类型与位置不变），保证全网格连通与旧存档兼容
+  const mazeGrid = generateMazeWalls(grid, size, rng);
+
+  // 阶段四：标记 Boss 封印门 + 陷阱视觉线索（仅设置标志，不依赖视线，在视线之前执行）
+  markBossSeal(mazeGrid, size);
+  markTrapHints(mazeGrid, size, rng);
+
+  // 第五步：初始化起点视线（阶段三）
+  // 从起点向 4 正方向发射射线，扫到的格子标记 discovered，隐藏房间被扫到后清除 hidden。
+  // store.ts 的 enterArea 后续会调用 updateAccessibleCells 扩散 accessible，
+  // 此时被视线扫到的隐藏房间 hidden 已清除，isPassable 不再阻止其被标记为可访问。
+  const startPos = findStartPosition(mazeGrid);
+  const visionCells = computeVision(mazeGrid, startPos, VISION_RANGE);
+  return applyVision(mazeGrid, visionCells);
 }
 
 /**
@@ -457,6 +492,91 @@ function markHiddenRooms(grid: ExplorationCell[][], size: number, rng: Rng): voi
   }
 }
 
+// ============================================================
+// 阶段四：内容丰富与平衡（Boss 封印 / 陷阱线索 / 怪物索敌）
+// ============================================================
+
+/**
+ * 标记 Boss 格为封印状态（阶段四，原地修改）
+ *
+ * 给所有 `boss` 类型格打 `sealed=true`，触发战斗前需经 `isBossSealBroken` 解锁
+ * （`store.ts` 的 `revealGrid` 路径 1 检查）。解锁前点击 Boss 格不触发战斗，
+ * UI 显示锁形图标 + 红色警告色，制造"看得见打不到"的目标感。
+ *
+ * @param grid - 探索网格（原地修改 sealed 字段）
+ * @param size - 网格尺寸
+ */
+function markBossSeal(grid: ExplorationCell[][], size: number): void {
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (grid[y][x].type === 'boss') {
+        grid[y][x].sealed = true;
+      }
+    }
+  }
+}
+
+/**
+ * 按概率给陷阱格标记视觉线索（阶段四，原地修改）
+ *
+ * 遍历所有 `trap` 类型格，按 `TRAP_HINT_PROBABILITY` 概率打 `hint=true`。
+ * `discovered` 层：hint 格显示"可疑地面"暗色裂纹图标（弱提示，不明确揭示"陷阱"）；
+ * 非 hint 陷阱格完全无提示。落入陷阱的伤害结算逻辑不变（`generateTrapDamage` 不区分 hint）。
+ *
+ * 设计意图：给读图玩家"技巧空间"，但保留 `1 - TRAP_HINT_PROBABILITY` 的未知风险，
+ * 避免陷阱退化为纯信息题。
+ *
+ * @param grid - 探索网格（原地修改 hint 字段）
+ * @param size - 网格尺寸
+ * @param rng - 随机数生成器（可注入确定性 RNG 用于测试）
+ */
+function markTrapHints(grid: ExplorationCell[][], size: number, rng: Rng): void {
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (grid[y][x].type === 'trap' && rng.bool(TRAP_HINT_PROBABILITY)) {
+        grid[y][x].hint = true;
+      }
+    }
+  }
+}
+
+/**
+ * 判断怪物格是否触发索敌警告（阶段四，纯函数）
+ *
+ * monster 格 `discovered` 或 `explored` 后，若玩家与怪物的曼哈顿距离
+ * ≤ `ENEMY_ALERT_RANGE`，UI 显示红色跳动警告框。玩家可据此选择绕路还是硬刚，
+ * 强化"探索路径选择"。
+ *
+ * 判定规则：
+ * 1. 目标格存在且 `type === 'monster'`（boss 不触发索敌警告，由封印门单独处理）
+ * 2. 怪物格已被发现（`discovered` 或 `explored`），未发现的不剧透
+ * 3. 怪物格未 `completed`（已击败的不再警告）
+ * 4. 玩家与怪物曼哈顿距离 ≤ `ENEMY_ALERT_RANGE`
+ *
+ * 注：plan.md 提及"且路径可通行"，此处简化为仅距离判定（索敌警告是感知层提示，
+ * 墙体阻挡声音/气味不合理）。UI 层调用时可按需用 `isPassable` 进一步过滤。
+ *
+ * @param grid - 探索网格
+ * @param monsterPos - 怪物格坐标
+ * @param playerPos - 玩家坐标
+ * @returns 是否显示索敌警告
+ */
+export function shouldShowEnemyAlert(
+  grid: ExplorationCell[][],
+  monsterPos: { x: number; y: number },
+  playerPos: { x: number; y: number }
+): boolean {
+  const monsterCell = grid[monsterPos.y]?.[monsterPos.x];
+  if (!monsterCell || monsterCell.type !== 'monster') return false;
+  // 未发现的怪物格不剧透
+  if (!monsterCell.discovered && !monsterCell.explored) return false;
+  // 已击败的怪物格不再警告
+  if (monsterCell.completed) return false;
+  // 曼哈顿距离判定
+  const distance = Math.abs(monsterPos.x - playerPos.x) + Math.abs(monsterPos.y - playerPos.y);
+  return distance <= ENEMY_ALERT_RANGE;
+}
+
 /**
  * 从生成的网格中找到起点位置
  * @param grid - 探索网格
@@ -475,41 +595,31 @@ export function findStartPosition(grid: ExplorationCell[][]): { x: number; y: nu
 
 /**
  * 更新网格中所有格子的可访问状态（返回新数组，不修改原数组）
- * 已探索格子周围的未探索格子标记为可访问
+ *
+ * 阶段三职责拆分后，本函数仅负责 `accessible` 扩散，不再管理 `discovered`：
+ * - `accessible` 扩散：已探索格的 4 邻域未探索格，仅当 `isPassable`（无墙 且 非未揭示隐藏房间）
+ *   时标记为可访问。语义不变（"下一步可走到的格子"），对 UI 透明。
+ * - `discovered` 由 `applyVision` 独立维护（基于视线计算），调用方须在 `updateAccessibleCells`
+ *   之前先调用 `applyVision` 清除被视线扫到的隐藏房间 `hidden` 标志，否则 `isPassable` 会
+ *   继续阻止这些格子被标记为 accessible。
+ *
+ * 隐藏房间揭示规则（阶段三变更）：原"相邻格探索后自动揭示"逻辑已移除，
+ * 改为"被视线扫到即清除 hidden 标志"（由 `applyVision` 处理）。
+ *
+ * 旧存档 `walls` 缺失时 `isPassable` 视为全开放，行为近似原版 4 邻域扩散。
+ *
  * @param grid - 需要更新的网格
- * @returns 更新后的网格副本
+ * @returns 更新后的网格副本（浅拷贝，explored 状态同步到新网格）
  */
 export function updateAccessibleCells(grid: ExplorationCell[][]): ExplorationCell[][] {
   const size = grid.length;
   const colSize = grid[0]?.length ?? 0;
 
   // 深拷贝网格
-  // [性能敏感] 对 8x8 网格（64 个 cell）做全文浅拷贝，每次状态更新都触发。
+  // [性能敏感] 对 10x10 网格（100 个 cell）做全文浅拷贝，每次状态更新都触发。
   // 当前规模下开销可接受（~0.1ms 级别）。若未来扩展至 16x16（256 cell）以上，
   // 可考虑改为按需更新（dirty flag + 仅更新变化的 cell）。
   const newGrid: ExplorationCell[][] = grid.map(row => row.map(cell => ({ ...cell })));
-
-  // 揭示隐藏房间：当任意相邻格已被探索时，隐藏房间变为可见
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < colSize; x++) {
-      if (newGrid[y][x].hidden && !newGrid[y][x].explored) {
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            const nx = x + dx;
-            const ny = y + dy;
-            if (nx >= 0 && nx < colSize && ny >= 0 && ny < size && newGrid[ny][nx].explored) {
-              // 相邻格已探索，揭示隐藏房间
-              newGrid[y][x].hidden = false;
-              newGrid[y][x].explored = true;
-              break;
-            }
-          }
-          if (!newGrid[y][x].hidden) break;
-        }
-      }
-    }
-  }
 
   // 先将所有未探索格子标记为不可访问
   for (let y = 0; y < size; y++) {
@@ -520,25 +630,441 @@ export function updateAccessibleCells(grid: ExplorationCell[][]): ExplorationCel
     }
   }
 
-  // 遍历所有已探索格子，将其周围未探索格子标记为可访问
+  // 遍历所有已探索格子，将其 4 邻域未探索且可通行的格子标记为可访问
+  // [迷宫化] 从 8 邻域收敛为 4 邻域 + isPassable 墙判断
+  const fourDirs = [
+    { dx: 0, dy: -1 }, // 上
+    { dx: 1, dy: 0 },  // 右
+    { dx: 0, dy: 1 },  // 下
+    { dx: -1, dy: 0 }, // 左
+  ];
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < colSize; x++) {
-      if (newGrid[y][x].explored) {
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            const nx = x + dx;
-            const ny = y + dy;
-            if (nx >= 0 && nx < colSize && ny >= 0 && ny < size && !newGrid[ny][nx].explored) {
-              newGrid[ny][nx].accessible = true;
-            }
-          }
+      if (!newGrid[y][x].explored) continue;
+      for (const { dx, dy } of fourDirs) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || nx >= colSize || ny < 0 || ny >= size) continue;
+        if (newGrid[ny][nx].explored) continue; // 仅扩散到未探索格
+        // isPassable 检查墙位与隐藏房间（未揭示隐藏房间不可通行）
+        if (isPassable(newGrid, { x, y }, { x: nx, y: ny })) {
+          newGrid[ny][nx].accessible = true;
         }
       }
     }
   }
 
   return newGrid;
+}
+
+// ============================================================
+// 视线与分层揭示（阶段三）
+// ============================================================
+
+/**
+ * 计算玩家当前位置的可见格子集合（纯函数）
+ *
+ * 从玩家位置向上下左右四个正方向发射直线射线（卡丁视线）：
+ * - 每步推进前检查"从当前格到下一格是否被墙阻挡"（仅墙判定，不检查隐藏房间标志），
+ *   有墙则终止该方向——这与 `isPassable` 不同，`isPassable` 会额外阻止视线到达未揭示
+ *   隐藏房间，导致"被视线扫到即 revealed"无法实现。
+ * - 无墙时下一格被扫到（加入可见坐标）；若下一格是未揭示隐藏房间，视线停止推进
+ *   （扫到但不穿过），形成"从入口方向发现密室"的体验。
+ * - 玩家所在格本身始终可见。
+ * - 超出 range 或越界时终止该方向。
+ *
+ * 纯函数不直接修改网格，结果坐标数组供 `applyVision` 使用。
+ *
+ * @param grid - 网格
+ * @param playerPosition - 玩家坐标
+ * @param range - 视线最大距离（格数）
+ * @returns 被扫到的格子坐标数组（含玩家所在格）
+ */
+export function computeVision(
+  grid: ExplorationCell[][],
+  playerPosition: { x: number; y: number },
+  range: number
+): { x: number; y: number }[] {
+  const size = grid.length;
+  const colSize = grid[0]?.length ?? 0;
+  const visible: { x: number; y: number }[] = [];
+
+  // 玩家所在格始终可见
+  visible.push({ x: playerPosition.x, y: playerPosition.y });
+
+  // range ≤ 0 时仅玩家所在格可见
+  if (range <= 0) return visible;
+
+  // 4 正方向射线（上/右/下/左）
+  const dirs = [
+    { dx: 0, dy: -1 }, // 上
+    { dx: 1, dy: 0 },  // 右
+    { dx: 0, dy: 1 },  // 下
+    { dx: -1, dy: 0 }, // 左
+  ];
+
+  for (const dir of dirs) {
+    let cur = { x: playerPosition.x, y: playerPosition.y };
+    for (let step = 0; step < range; step++) {
+      const next = { x: cur.x + dir.dx, y: cur.y + dir.dy };
+      // 边界检查
+      if (next.x < 0 || next.x >= colSize || next.y < 0 || next.y >= size) break;
+      // 墙判定：仅检查结构可通行性（不检查隐藏房间标志），墙后格子不可见
+      if (!isStructurallyPassable(grid, cur, next)) break;
+      // 下一格被视线扫到
+      visible.push(next);
+      // 未揭示隐藏房间：视线扫到但不穿过（停止该方向）
+      const nextCell = grid[next.y]?.[next.x];
+      if (nextCell?.hidden && !nextCell.explored) break;
+      cur = next;
+    }
+  }
+
+  return visible;
+}
+
+/**
+ * 将视线扫到的格子标记为 discovered（纯函数，返回新网格）
+ *
+ * 处理规则：
+ * 1. `discovered` 只增不减：已发现的格保持可见，不因玩家远离而回退。
+ *    符合地牢探索直觉，避免"反复走动重新记忆"的挫败。
+ * 2. 隐藏房间被视线扫到后清除 `hidden` 标志（不再隐藏），但保持 `explored=false`：
+ *    - 清除 hidden 使 `isPassable` 不再阻止通行，后续 `updateAccessibleCells` 可将其
+ *      标记为 accessible，玩家可走入。
+ *    - 保持 explored=false 确保 UI 仍显示模糊图标（discovered 层），玩家走入后才
+ *      完全揭示（explored 层）。
+ * 3. `explored` 恒蕴含 `discovered`：已到达的格自然已发现。
+ *
+ * @param grid - 原始网格（不会被修改）
+ * @param visionCells - 视线扫到的格子坐标数组（由 `computeVision` 返回）
+ * @returns 新网格（discovered/hidden 状态已更新）
+ */
+export function applyVision(
+  grid: ExplorationCell[][],
+  visionCells: { x: number; y: number }[]
+): ExplorationCell[][] {
+  const newGrid = grid.map(row => row.map(cell => ({ ...cell })));
+  for (const { x, y } of visionCells) {
+    const cell = newGrid[y]?.[x];
+    if (!cell) continue;
+    // discovered 只增不减
+    cell.discovered = true;
+    // 隐藏房间被视线扫到后清除 hidden 标志（允许通行），但保持 explored=false
+    if (cell.hidden && !cell.explored) {
+      cell.hidden = false;
+    }
+  }
+  return newGrid;
+}
+
+// ============================================================
+// 迷宫生成（墙结构与通行判定）
+// ============================================================
+
+/** 四方向位移常量（上/右/下/左），附带墙位字段名映射 */
+const FOUR_DIRECTIONS = [
+  { dx: 0, dy: -1, wall: 'top' as const, opposite: 'bottom' as const },
+  { dx: 1, dy: 0, wall: 'right' as const, opposite: 'left' as const },
+  { dx: 0, dy: 1, wall: 'bottom' as const, opposite: 'top' as const },
+  { dx: -1, dy: 0, wall: 'left' as const, opposite: 'right' as const },
+];
+
+/**
+ * 判断两个相邻格子之间是否可通行（纯函数）
+ *
+ * 迷宫化后的通行判定规则：
+ * 1. 仅允许上下左右四方向移动（曼哈顿距离为 1），对角线与原地不可通行
+ * 2. 目标格必须在网格内
+ * 3. 墙判定：from.walls[方向] 或 to.walls[反方向] 任一为 true 即阻挡；
+ *    walls 缺失（旧存档）视为全开放，保证旧存档可玩
+ * 4. 隐藏房间格（hidden && !explored）不可通行——需先经相邻格揭示后方可进入
+ *
+ * @param grid - 网格
+ * @param from - 起点坐标
+ * @param to - 终点坐标
+ * @returns 是否可通行
+ */
+export function isPassable(
+  grid: ExplorationCell[][],
+  from: { x: number; y: number },
+  to: { x: number; y: number }
+): boolean {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  // 规则 1：仅允许四方向（曼哈顿距离为 1），禁止对角与原地
+  if (Math.abs(dx) + Math.abs(dy) !== 1) return false;
+
+  // 规则 2：边界检查
+  const size = grid.length;
+  const colSize = grid[0]?.length ?? 0;
+  if (to.x < 0 || to.x >= colSize || to.y < 0 || to.y >= size) return false;
+
+  const fromCell = grid[from.y]?.[from.x];
+  const toCell = grid[to.y]?.[to.x];
+  if (!fromCell || !toCell) return false;
+
+  // 规则 4：隐藏房间未揭示时不可通行
+  if (toCell.hidden && !toCell.explored) return false;
+
+  // 规则 3：墙判定（walls 缺失视为无墙=开放，兼容旧存档）
+  const dir = FOUR_DIRECTIONS.find(d => d.dx === dx && d.dy === dy);
+  if (!dir) return false;
+  if (fromCell.walls?.[dir.wall] || toCell.walls?.[dir.opposite]) return false;
+
+  return true;
+}
+
+/**
+ * 生成迷宫墙结构（纯函数）
+ *
+ * 在已放置固定事件与随机事件的网格上追加墙结构，将"格子集合"转化为"迷宫通道"。
+ *
+ * 生成流程：
+ *   A. DFS 骨架：从起点出发的深度优先生成树。全墙起步，沿树边雕刻通路，
+ *      保证全网格连通（任意两格至少一条路径）。
+ *   B. 保护格开放：起点/商店/任务板邻接边强制开放（永不封墙）。
+ *   C. 密度捷径：对剩余封墙的非树边，按 MAZE_WALL_DENSITY 概率开通为捷径（环路）。
+ *      density=0 → 完美迷宫（最多死路）；density=0.15 → 约 85% 非树边保持封墙。
+ *   D. 隐藏房间三墙留入口：每个隐藏房间保留 1 个开放方向作为入口，其余开放方向
+ *      尝试封墙（BFS 校验连通性，失败则回退）。树叶位置的隐藏房间天然达成 3 墙 + 1 入口。
+ *   E. 连通性兜底：BFS 校验全网格连通，失败则回退到全开放并 console.warn。
+ *
+ * 墙数据四方向冗余存储：给 (x,y) 设 right 墙时同步给 (x+1,y) 设 left 墙。
+ * walls 缺失（旧存档）视为全开放。
+ *
+ * @param grid - 已放置固定事件与随机事件的网格（不会被修改）
+ * @param size - 网格尺寸
+ * @param rng - 随机数生成器
+ * @returns 新网格（仅墙结构变化，事件类型与位置不变）
+ */
+export function generateMazeWalls(
+  grid: ExplorationCell[][],
+  size: number,
+  rng: Rng
+): ExplorationCell[][] {
+  // 深拷贝网格并初始化四面墙（全封闭），后续步骤逐步雕刻开放
+  const newGrid: ExplorationCell[][] = grid.map(row =>
+    row.map(cell => ({
+      ...cell,
+      walls: { top: true, right: true, bottom: true, left: true } as WallSet,
+    }))
+  );
+
+  const start = findStartPosition(newGrid);
+
+  // ---------- 步骤 A：DFS 生成树（全墙起步，沿树边雕刻通路） ----------
+  const treeEdges = new Set<string>();
+  const visited = new Set<string>();
+  visited.add(`${start.x},${start.y}`);
+  const stack: { x: number; y: number }[] = [start];
+  // 防御性迭代上限（DFS 自然受格子数约束，此处仅兜底，避免极端情况死循环）
+  const iterCap = Math.max(size * size * 4, MAZE_MAX_RETRY);
+  let iterations = 0;
+  while (stack.length > 0 && iterations < iterCap) {
+    iterations++;
+    const current = stack[stack.length - 1];
+    const unvisited = getFourNeighbors(current, size).filter(n => !visited.has(`${n.x},${n.y}`));
+    if (unvisited.length === 0) {
+      stack.pop();
+      continue;
+    }
+    const next = rng.pick(unvisited);
+    treeEdges.add(edgeKey(current, next));
+    carvePassage(newGrid, current, next);
+    visited.add(`${next.x},${next.y}`);
+    stack.push(next);
+  }
+
+  // ---------- 步骤 B：保护格邻接边强制开放（起点/商店/任务板不封墙） ----------
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (!isProtectedCell(newGrid[y][x])) continue;
+      for (const n of getFourNeighbors({ x, y }, size)) {
+        carvePassage(newGrid, { x, y }, n);
+      }
+    }
+  }
+
+  // ---------- 步骤 C：密度捷径（按概率开通封墙的非树边） ----------
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const cell = newGrid[y][x];
+      // 遍历右、下两个方向避免重复处理
+      for (const dir of [{ dx: 1, dy: 0 }, { dx: 0, dy: 1 }]) {
+        const nx = x + dir.dx;
+        const ny = y + dir.dy;
+        if (nx >= size || ny >= size) continue;
+        const neighbor = newGrid[ny][nx];
+        // 跳过保护格与隐藏房间邻接边（保护格已在 B 步开放；隐藏房间在 D 步处理）
+        if (isProtectedCell(cell) || isProtectedCell(neighbor)) continue;
+        if (isHiddenRoom(cell) || isHiddenRoom(neighbor)) continue;
+        // 跳过树边（已在 A 步开放）
+        if (treeEdges.has(edgeKey({ x, y }, { x: nx, y: ny }))) continue;
+        // 当前为封墙状态（A 步未雕刻的非树边），按密度概率开通为捷径
+        if (hasWallBetween(newGrid, { x, y }, { x: nx, y: ny }) && rng.bool(MAZE_WALL_DENSITY)) {
+          carvePassage(newGrid, { x, y }, { x: nx, y: ny });
+        }
+      }
+    }
+  }
+
+  // ---------- 步骤 D：隐藏房间三墙留入口 ----------
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const cell = newGrid[y][x];
+      if (!isHiddenRoom(cell)) continue;
+
+      // 收集当前开放方向（无墙的 4 邻域）
+      const openDirs = getFourNeighbors({ x, y }, size).filter(
+        n => !hasWallBetween(newGrid, { x, y }, n)
+      );
+      if (openDirs.length <= 1) continue; // 已是 1 入口或无入口，无需封闭
+
+      // 随机保留 1 个开放方向作为入口，其余尝试封墙
+      const entrance = rng.pick(openDirs);
+      for (const dir of openDirs) {
+        if (dir.x === entrance.x && dir.y === entrance.y) continue;
+        // 不封保护格方向的墙
+        if (isProtectedCell(newGrid[dir.y][dir.x])) continue;
+        // 试探性封墙，BFS 校验全网格连通，失败则回退
+        buildWall(newGrid, { x, y }, dir);
+        if (!isFullyConnected(newGrid, start, size)) {
+          carvePassage(newGrid, { x, y }, dir); // 回退
+        }
+      }
+    }
+  }
+
+  // ---------- 步骤 E：连通性兜底 ----------
+  if (!isFullyConnected(newGrid, start, size)) {
+    console.warn('[exploration] 迷宫连通性校验失败，回退到全开放');
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        newGrid[y][x].walls = { top: false, right: false, bottom: false, left: false };
+      }
+    }
+  }
+
+  return newGrid;
+}
+
+// ============================================================
+// 内部辅助：迷宫生成工具函数
+// ============================================================
+
+/** 获取网格内 4 邻域坐标（上/右/下/左，不含越界） */
+function getFourNeighbors(pos: { x: number; y: number }, size: number): { x: number; y: number }[] {
+  const dirs = [
+    { x: pos.x, y: pos.y - 1 }, // 上
+    { x: pos.x + 1, y: pos.y }, // 右
+    { x: pos.x, y: pos.y + 1 }, // 下
+    { x: pos.x - 1, y: pos.y }, // 左
+  ];
+  return dirs.filter(p => p.x >= 0 && p.x < size && p.y >= 0 && p.y < size);
+}
+
+/** 生成两格间的规范边键（坐标排序后拼接，确保 a-b 与 b-a 得到相同 key） */
+function edgeKey(a: { x: number; y: number }, b: { x: number; y: number }): string {
+  const p1 = a.x < b.x || (a.x === b.x && a.y <= b.y) ? a : b;
+  const p2 = p1 === a ? b : a;
+  return `${p1.x},${p1.y}-${p2.x},${p2.y}`;
+}
+
+/** 判断格子是否为受保护格（起点/商店/任务板，邻接边永不封墙） */
+function isProtectedCell(cell: ExplorationCell): boolean {
+  return cell.type === 'start' || cell.type === 'shop' || cell.type === 'board';
+}
+
+/** 判断格子是否为未揭示的隐藏房间 */
+function isHiddenRoom(cell: ExplorationCell): boolean {
+  return !!cell.hidden && !cell.explored;
+}
+
+/** 判断两相邻格之间是否有墙（任一侧墙位为 true 即视为有墙；非四方向视为有墙） */
+function hasWallBetween(
+  grid: ExplorationCell[][],
+  a: { x: number; y: number },
+  b: { x: number; y: number }
+): boolean {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const dir = FOUR_DIRECTIONS.find(d => d.dx === dx && d.dy === dy);
+  if (!dir) return true; // 非四方向视为有墙（不可通行）
+  const aCell = grid[a.y]?.[a.x];
+  const bCell = grid[b.y]?.[b.x];
+  if (!aCell?.walls || !bCell?.walls) return false; // walls 缺失视为无墙
+  return !!aCell.walls[dir.wall] || !!bCell.walls[dir.opposite];
+}
+
+/** 雕刻通路：移除两相邻格之间的墙（双向同步） */
+function carvePassage(
+  grid: ExplorationCell[][],
+  a: { x: number; y: number },
+  b: { x: number; y: number }
+): void {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const dir = FOUR_DIRECTIONS.find(d => d.dx === dx && d.dy === dy);
+  if (!dir) return;
+  const aCell = grid[a.y]?.[a.x];
+  const bCell = grid[b.y]?.[b.x];
+  if (!aCell?.walls || !bCell?.walls) return;
+  aCell.walls[dir.wall] = false;
+  bCell.walls[dir.opposite] = false;
+}
+
+/** 建墙：在两相邻格之间设置墙（双向同步） */
+function buildWall(
+  grid: ExplorationCell[][],
+  a: { x: number; y: number },
+  b: { x: number; y: number }
+): void {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const dir = FOUR_DIRECTIONS.find(d => d.dx === dx && d.dy === dy);
+  if (!dir) return;
+  const aCell = grid[a.y]?.[a.x];
+  const bCell = grid[b.y]?.[b.x];
+  if (!aCell?.walls || !bCell?.walls) return;
+  aCell.walls[dir.wall] = true;
+  bCell.walls[dir.opposite] = true;
+}
+
+/** 判定两相邻格之间是否结构可通行（仅墙判定，忽略隐藏房间标志；用于生成期连通性校验） */
+function isStructurallyPassable(
+  grid: ExplorationCell[][],
+  from: { x: number; y: number },
+  to: { x: number; y: number }
+): boolean {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (Math.abs(dx) + Math.abs(dy) !== 1) return false;
+  return !hasWallBetween(grid, from, to);
+}
+
+/** BFS 校验从起点出发能否结构可达全部格子（仅墙判定，忽略隐藏房间标志） */
+function isFullyConnected(
+  grid: ExplorationCell[][],
+  start: { x: number; y: number },
+  size: number
+): boolean {
+  if (size === 0) return true;
+  const total = size * size;
+  const visited = new Set<string>();
+  const queue: { x: number; y: number }[] = [start];
+  visited.add(`${start.x},${start.y}`);
+  while (queue.length > 0) {
+    const cur = queue.shift()!;
+    for (const n of getFourNeighbors(cur, size)) {
+      const key = `${n.x},${n.y}`;
+      if (visited.has(key)) continue;
+      if (!isStructurallyPassable(grid, cur, n)) continue;
+      visited.add(key);
+      queue.push(n);
+    }
+  }
+  return visited.size === total;
 }
 
 // ============================================================

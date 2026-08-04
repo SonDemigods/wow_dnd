@@ -32,9 +32,15 @@ import {
   generateGrid,
   findStartPosition,
   updateAccessibleCells,
+  isPassable,
+  generateMazeWalls,
+  computeVision,
+  applyVision,
+  shouldShowEnemyAlert,
   GRID_SIZE,
 } from '@/modules/exploration/service';
-import type { GridEventProbability, GridGenerationConfig } from '@/modules/exploration/types';
+import type { GridEventProbability, GridGenerationConfig, ExplorationCell, AreaEventTemplate } from '@/modules/exploration/types';
+import { createSeededRng } from '@/utils/rng';
 import {
   CAMP_HEAL_HP,
   CAMP_HEAL_MANA,
@@ -43,6 +49,9 @@ import {
   ITEM_POOL_FALLBACK_ID,
   HIDDEN_ROOM_MIN_COUNT,
   HIDDEN_ROOM_MAX_COUNT,
+  VISION_RANGE,
+  TRAP_HINT_PROBABILITY,
+  AREA_EVENT_MIX_PROBABILITY,
 } from '@/config/exploration';
 
 afterEach(() => {
@@ -692,7 +701,10 @@ describe('updateAccessibleCells 可访问性扩散', () => {
     expect(newGrid[0][3].accessible).toBe(false);
   });
 
-  it('隐藏房间在相邻格被探索后揭示', () => {
+  it('隐藏房间在相邻格被探索后不自动揭示（阶段三：改由视线揭示）', () => {
+    // 阶段三变更：隐藏房间揭示职责从 updateAccessibleCells 移至 applyVision（视线扫到即揭示）。
+    // updateAccessibleCells 仅负责 accessible 扩散，不再清除 hidden 标志；
+    // 隐藏房间未揭示时 isPassable 返回 false，故不会被标记为 accessible。
     const grid: import('@/modules/exploration/types').ExplorationCell[][] = [
       [
         { x: 0, y: 0, type: 'start', explored: true, accessible: true, visited: true },
@@ -700,11 +712,16 @@ describe('updateAccessibleCells 可访问性扩散', () => {
       ],
     ];
     const newGrid = updateAccessibleCells(grid);
-    expect(newGrid[0][1].hidden).toBe(false);
-    expect(newGrid[0][1].explored).toBe(true);
+    // 隐藏房间保持 hidden=true，需 applyVision 视线扫到后才清除（见 applyVision 测试组）
+    expect(newGrid[0][1].hidden).toBe(true);
+    expect(newGrid[0][1].explored).toBe(false);
+    // 未揭示隐藏房间不可通行，故不标记 accessible
+    expect(newGrid[0][1].accessible).toBe(false);
   });
 
-  it('对角相邻也算相邻（8 邻域）', () => {
+  it('对角相邻不再扩散（4 邻域语义）', () => {
+    // [迷宫化] updateAccessibleCells 已从 8 邻域收敛为 4 邻域 + isPassable 墙判断
+    // 对角格 (1,1) 不在 (0,0) 的 4 邻域内，不应被标记为 accessible
     const grid: import('@/modules/exploration/types').ExplorationCell[][] = [
       [
         { x: 0, y: 0, type: 'start', explored: true, accessible: true, visited: true },
@@ -716,10 +733,38 @@ describe('updateAccessibleCells 可访问性扩散', () => {
       ],
     ];
     const newGrid = updateAccessibleCells(grid);
-    // (0,0) 已探索 → (1,0)、(0,1)、(1,1) 都应可访问
+    // (0,0) 已探索 → 4 邻域 (1,0)、(0,1) 可访问；对角 (1,1) 不可访问
     expect(newGrid[0][1].accessible).toBe(true);
     expect(newGrid[1][0].accessible).toBe(true);
-    expect(newGrid[1][1].accessible).toBe(true);
+    expect(newGrid[1][1].accessible).toBe(false);
+  });
+
+  it('墙阻挡扩散：isPassable=false 的方向不标记 accessible', () => {
+    // Arrange：(0,0) 已探索，右侧 (1,0) 与 from 之间有墙 → 不可通行 → 不应 accessible
+    const grid: import('@/modules/exploration/types').ExplorationCell[][] = [
+      [
+        { x: 0, y: 0, type: 'start', explored: true, accessible: true, visited: true, walls: { top: false, right: true, bottom: false, left: false } },
+        { x: 1, y: 0, type: 'empty', explored: false, accessible: false, visited: false, walls: { top: false, right: false, bottom: false, left: true } },
+      ],
+    ];
+    // Act
+    const newGrid = updateAccessibleCells(grid);
+    // Assert：右侧有墙 → (1,0) 不可访问
+    expect(newGrid[0][1].accessible).toBe(false);
+  });
+
+  it('墙缺失（旧存档）视为全开放，4 邻域正常扩散', () => {
+    // Arrange：walls 缺失 → isPassable 视为无墙 → 4 邻域扩散
+    const grid: import('@/modules/exploration/types').ExplorationCell[][] = [
+      [
+        { x: 0, y: 0, type: 'start', explored: true, accessible: true, visited: true },
+        { x: 1, y: 0, type: 'empty', explored: false, accessible: false, visited: false },
+      ],
+    ];
+    // Act
+    const newGrid = updateAccessibleCells(grid);
+    // Assert：无墙 → (1,0) 可访问
+    expect(newGrid[0][1].accessible).toBe(true);
   });
 
   it('隐藏房间在左上角(0,0)且无已探索邻居时遍历到 dx=0&&dy=0 continue 分支', () => {
@@ -935,5 +980,883 @@ describe('updateAccessibleCells 空数组兜底分支覆盖', () => {
     const newGrid = updateAccessibleCells(grid);
     // Assert：返回空数组，不报错
     expect(newGrid).toEqual([]);
+  });
+});
+
+// ============================================================
+// 迷宫化阶段一：isPassable 通行判定（纯函数）
+// ============================================================
+
+/** 构造带 walls 的测试网格（2×2），便于通行判定测试 */
+function makeWalledGrid(): ExplorationCell[][] {
+  return [
+    [
+      { x: 0, y: 0, type: 'start', explored: true, accessible: true, visited: true, walls: { top: false, right: false, bottom: false, left: false } },
+      { x: 1, y: 0, type: 'empty', explored: false, accessible: false, visited: false, walls: { top: false, right: false, bottom: false, left: false } },
+    ],
+    [
+      { x: 0, y: 1, type: 'empty', explored: false, accessible: false, visited: false, walls: { top: false, right: false, bottom: false, left: false } },
+      { x: 1, y: 1, type: 'empty', explored: false, accessible: false, visited: false, walls: { top: false, right: false, bottom: false, left: false } },
+    ],
+  ];
+}
+
+describe('isPassable 通行判定', () => {
+  it('四方向（上/右/下/左）在无墙时均可通行', () => {
+    // Arrange：3×3 网格中心 (1,1)，四面均无墙
+    const grid: ExplorationCell[][] = Array.from({ length: 3 }, (_, y) =>
+      Array.from({ length: 3 }, (_, x) => ({
+        x, y, type: 'empty' as const, explored: false, accessible: false, visited: false,
+        walls: { top: false, right: false, bottom: false, left: false },
+      }))
+    );
+    // Act & Assert：四方向均可通行
+    expect(isPassable(grid, { x: 1, y: 1 }, { x: 1, y: 0 })).toBe(true); // 上
+    expect(isPassable(grid, { x: 1, y: 1 }, { x: 2, y: 1 })).toBe(true); // 右
+    expect(isPassable(grid, { x: 1, y: 1 }, { x: 1, y: 2 })).toBe(true); // 下
+    expect(isPassable(grid, { x: 1, y: 1 }, { x: 0, y: 1 })).toBe(true); // 左
+  });
+
+  it('对角线移动不可通行', () => {
+    // Arrange
+    const grid = makeWalledGrid();
+    // Act & Assert：四条对角线方向均不可通行
+    expect(isPassable(grid, { x: 0, y: 0 }, { x: 1, y: 1 })).toBe(false);
+    expect(isPassable(grid, { x: 1, y: 1 }, { x: 0, y: 0 })).toBe(false);
+    expect(isPassable(grid, { x: 1, y: 0 }, { x: 0, y: 1 })).toBe(false);
+    expect(isPassable(grid, { x: 0, y: 1 }, { x: 1, y: 0 })).toBe(false);
+  });
+
+  it('原地（from === to）不可通行', () => {
+    // Arrange
+    const grid = makeWalledGrid();
+    // Act & Assert
+    expect(isPassable(grid, { x: 0, y: 0 }, { x: 0, y: 0 })).toBe(false);
+  });
+
+  it('目标格越界不可通行', () => {
+    // Arrange
+    const grid = makeWalledGrid();
+    // Act & Assert：(0,0) 向上/向左越界
+    expect(isPassable(grid, { x: 0, y: 0 }, { x: 0, y: -1 })).toBe(false);
+    expect(isPassable(grid, { x: 0, y: 0 }, { x: -1, y: 0 })).toBe(false);
+  });
+
+  it('from.walls[方向]=true 时不可通行', () => {
+    // Arrange：(0,0) 右侧有墙
+    const grid = makeWalledGrid();
+    grid[0][0].walls = { top: false, right: true, bottom: false, left: false };
+    // Act & Assert：(0,0) → (1,0) 被 from 的右墙阻挡
+    expect(isPassable(grid, { x: 0, y: 0 }, { x: 1, y: 0 })).toBe(false);
+  });
+
+  it('to.walls[反方向]=true 时不可通行', () => {
+    // Arrange：(1,0) 左侧有墙（to 方向墙位）
+    const grid = makeWalledGrid();
+    grid[0][1].walls = { top: false, right: false, bottom: false, left: true };
+    // Act & Assert：(0,0) → (1,0) 被 to 的左墙阻挡
+    expect(isPassable(grid, { x: 0, y: 0 }, { x: 1, y: 0 })).toBe(false);
+  });
+
+  it('walls 缺失（旧存档）视为全开放', () => {
+    // Arrange：无 walls 字段（模拟旧存档）
+    const grid: ExplorationCell[][] = [
+      [
+        { x: 0, y: 0, type: 'start', explored: true, accessible: true, visited: true },
+        { x: 1, y: 0, type: 'empty', explored: false, accessible: false, visited: false },
+      ],
+    ];
+    // Act & Assert：四方向无墙位数据 → 视为无墙 → 可通行
+    expect(isPassable(grid, { x: 0, y: 0 }, { x: 1, y: 0 })).toBe(true);
+  });
+
+  it('隐藏房间未揭示时不可通行', () => {
+    // Arrange：(1,0) 为未揭示隐藏房间
+    const grid = makeWalledGrid();
+    grid[0][1].hidden = true;
+    grid[0][1].explored = false;
+    // Act & Assert：未揭示隐藏房间不可通行（即使无墙）
+    expect(isPassable(grid, { x: 0, y: 0 }, { x: 1, y: 0 })).toBe(false);
+  });
+
+  it('隐藏房间已揭示（hidden=false）后可正常通行', () => {
+    // Arrange：(1,0) 已揭示（hidden=false），无墙
+    const grid = makeWalledGrid();
+    grid[0][1].hidden = false;
+    grid[0][1].explored = true;
+    // Act & Assert：已揭示 → 墙判定通过 → 可通行
+    expect(isPassable(grid, { x: 0, y: 0 }, { x: 1, y: 0 })).toBe(true);
+  });
+});
+
+// ============================================================
+// 迷宫化阶段一：generateMazeWalls 墙结构生成（纯函数）
+// ============================================================
+
+/** 从起点 BFS 校验全网格结构连通性（仅墙判定，忽略隐藏房间标志） */
+function bfsReachableCount(grid: ExplorationCell[][], start: { x: number; y: number }): number {
+  const size = grid.length;
+  if (size === 0) return 0;
+  const colSize = grid[0]?.length ?? 0;
+  const visited = new Set<string>();
+  const queue: { x: number; y: number }[] = [start];
+  visited.add(`${start.x},${start.y}`);
+  while (queue.length > 0) {
+    const cur = queue.shift()!;
+    const dirs = [
+      { dx: 0, dy: -1, wall: 'top' as const, opp: 'bottom' as const },
+      { dx: 1, dy: 0, wall: 'right' as const, opp: 'left' as const },
+      { dx: 0, dy: 1, wall: 'bottom' as const, opp: 'top' as const },
+      { dx: -1, dy: 0, wall: 'left' as const, opp: 'right' as const },
+    ];
+    for (const d of dirs) {
+      const nx = cur.x + d.dx;
+      const ny = cur.y + d.dy;
+      if (nx < 0 || nx >= colSize || ny < 0 || ny >= size) continue;
+      const key = `${nx},${ny}`;
+      if (visited.has(key)) continue;
+      const a = grid[cur.y][cur.x];
+      const b = grid[ny][nx];
+      // walls 缺失视为无墙
+      const blocked = (!!a.walls?.[d.wall]) || (!!b.walls?.[d.opp]);
+      if (blocked) continue;
+      visited.add(key);
+      queue.push({ x: nx, y: ny });
+    }
+  }
+  return visited.size;
+}
+
+describe('generateMazeWalls 迷宫墙生成', () => {
+  it('返回新数组，不修改原网格', () => {
+    // Arrange
+    const rng = createSeededRng(12345);
+    const grid = generateGrid(makeGridConfig({ size: 5 }));
+    const snapshot = JSON.parse(JSON.stringify(grid));
+    // Act
+    const mazeGrid = generateMazeWalls(grid, 5, rng);
+    // Assert：原网格未被修改（事件类型与位置不变）
+    expect(grid).toEqual(snapshot);
+    // 返回的是新数组实例
+    expect(mazeGrid).not.toBe(grid);
+  });
+
+  it('每个格子都被赋予 walls 字段（四面墙位）', () => {
+    // Arrange
+    const rng = createSeededRng(1);
+    const grid = generateGrid(makeGridConfig({ size: 5 }));
+    // Act
+    const mazeGrid = generateMazeWalls(grid, 5, rng);
+    // Assert：每个 cell 的 walls 字段存在且为对象
+    for (const row of mazeGrid) {
+      for (const cell of row) {
+        expect(cell.walls).toBeDefined();
+        expect(cell.walls).toHaveProperty('top');
+        expect(cell.walls).toHaveProperty('right');
+        expect(cell.walls).toHaveProperty('bottom');
+        expect(cell.walls).toHaveProperty('left');
+      }
+    }
+  });
+
+  it('墙位双向一致性：a.right === b.left 等', () => {
+    // Arrange
+    const rng = createSeededRng(7);
+    const grid = generateGrid(makeGridConfig({ size: 6 }));
+    // Act
+    const mazeGrid = generateMazeWalls(grid, 6, rng);
+    // Assert：横向邻居 right/left 一致；纵向邻居 bottom/top 一致
+    for (let y = 0; y < 6; y++) {
+      for (let x = 0; x < 6; x++) {
+        const cell = mazeGrid[y][x];
+        if (x + 1 < 6) {
+          const right = mazeGrid[y][x + 1];
+          expect(cell.walls!.right).toBe(right.walls!.left);
+        }
+        if (y + 1 < 6) {
+          const bottom = mazeGrid[y + 1][x];
+          expect(cell.walls!.bottom).toBe(bottom.walls!.top);
+        }
+      }
+    }
+  });
+
+  it('全网格连通：从起点 BFS 可达所有非隐藏格', () => {
+    // Arrange
+    const rng = createSeededRng(42);
+    const grid = generateGrid(makeGridConfig({ size: 8 }));
+    // Act
+    const mazeGrid = generateMazeWalls(grid, 8, rng);
+    const start = findStartPosition(mazeGrid);
+    const reachable = bfsReachableCount(mazeGrid, start);
+    // Assert：隐藏房间因 isPassable 视为不可通行，但 BFS 用结构连通性（仅墙判定）
+    // 步骤 E 兜底保证全网格结构连通 → 可达数 === 总格数
+    expect(reachable).toBe(8 * 8);
+  });
+
+  it('多次不同 seed 生成的迷宫均保持连通（连通性硬约束）', () => {
+    // Arrange & Act：用 5 个不同 seed 生成迷宫
+    for (const seed of [1, 100, 9999, 55555, 888888]) {
+      const rng = createSeededRng(seed);
+      const grid = generateGrid(makeGridConfig({ size: 7 }));
+      const mazeGrid = generateMazeWalls(grid, 7, rng);
+      const start = findStartPosition(mazeGrid);
+      const reachable = bfsReachableCount(mazeGrid, start);
+      // Assert：每个 seed 均保证全网格连通
+      expect(reachable).toBe(7 * 7);
+    }
+  });
+
+  it('保护格（起点/商店/任务板）邻接边不封墙', () => {
+    // Arrange
+    const rng = createSeededRng(2026);
+    const grid = generateGrid(makeGridConfig({ size: 8 }));
+    // Act
+    const mazeGrid = generateMazeWalls(grid, 8, rng);
+    // Assert：遍历所有保护格，其 4 邻域邻接边均应开放（无墙）
+    const isProtected = (t: string) => t === 'start' || t === 'shop' || t === 'board';
+    for (let y = 0; y < 8; y++) {
+      for (let x = 0; x < 8; x++) {
+        const cell = mazeGrid[y][x];
+        if (!isProtected(cell.type)) continue;
+        const dirs = [
+          { dx: 0, dy: -1, wall: 'top' as const, opp: 'bottom' as const },
+          { dx: 1, dy: 0, wall: 'right' as const, opp: 'left' as const },
+          { dx: 0, dy: 1, wall: 'bottom' as const, opp: 'top' as const },
+          { dx: -1, dy: 0, wall: 'left' as const, opp: 'right' as const },
+        ];
+        for (const d of dirs) {
+          const nx = x + d.dx;
+          const ny = y + d.dy;
+          if (nx < 0 || nx >= 8 || ny < 0 || ny >= 8) continue;
+          const neighbor = mazeGrid[ny][nx];
+          // 保护格邻接边永不封墙
+          expect(cell.walls![d.wall]).toBe(false);
+          expect(neighbor.walls![d.opp]).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('隐藏房间保留至少 1 个开放方向作为入口（非全封闭死路）', () => {
+    // Arrange：高 item 概率 + 大网格确保生成隐藏房间
+    const rng = createSeededRng(314);
+    const grid = generateGrid(makeGridConfig({
+      size: 10,
+      eventProbability: makeProbability({
+        monster: 0, item: 80, trap: 0, event: 0, empty: 20,
+      }),
+    }));
+    // Act
+    const mazeGrid = generateMazeWalls(grid, 10, rng);
+    // Assert：每个隐藏房间至少 1 个开放方向（保证揭示后可进入，非全封闭死路）
+    // 注：实现会尝试封到 1 个入口，但保护格方向不封、BFS 失败回退的方向不封，
+    // 故实际可能保留 1~2 个入口。未揭示时 isPassable 仍拦截进入 → 不可达密室语义成立。
+    const hiddenCells = mazeGrid.flat().filter(c => c.hidden);
+    expect(hiddenCells.length).toBeGreaterThan(0);
+    for (const cell of hiddenCells) {
+      const openDirs = [
+        { wall: 'top' as const, dx: 0, dy: -1 },
+        { wall: 'right' as const, dx: 1, dy: 0 },
+        { wall: 'bottom' as const, dx: 0, dy: 1 },
+        { wall: 'left' as const, dx: -1, dy: 0 },
+      ].filter(d => !cell.walls![d.wall]);
+      // 至少 1 个入口（非全封闭），且不超过 2 个（封墙逻辑生效）
+      expect(openDirs.length).toBeGreaterThanOrEqual(1);
+      expect(openDirs.length).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('网格尺寸 1×1 时不抛错（边界防御）', () => {
+    // Arrange：1×1 网格，唯一格子作为起点
+    const grid: ExplorationCell[][] = [[
+      { x: 0, y: 0, type: 'start', explored: true, accessible: true, visited: true },
+    ]];
+    const rng = createSeededRng(0);
+    // Act：不应抛错
+    const mazeGrid = generateMazeWalls(grid, 1, rng);
+    // Assert：返回网格尺寸不变，walls 字段存在
+    expect(mazeGrid).toHaveLength(1);
+    expect(mazeGrid[0]).toHaveLength(1);
+    expect(mazeGrid[0][0].walls).toBeDefined();
+  });
+
+  it('网格尺寸 2×2 时不抛错且保持连通', () => {
+    // Arrange
+    const rng = createSeededRng(2);
+    const grid = generateGrid(makeGridConfig({ size: 2 }));
+    // Act
+    const mazeGrid = generateMazeWalls(grid, 2, rng);
+    const start = findStartPosition(mazeGrid);
+    // Assert：2×2 全部 4 格结构连通
+    expect(bfsReachableCount(mazeGrid, start)).toBe(4);
+  });
+
+  it('相同 seed 生成结果完全一致（确定性）', () => {
+    // Arrange & Act：相同 seed 的 rng 同时驱动 generateGrid 与 generateMazeWalls
+    // 注意：generateGrid 默认用 defaultRng(Math.random) 非确定性，需显式注入 seeded rng
+    const makeMaze = () => {
+      const rng = createSeededRng(13579);
+      const grid = generateGrid(makeGridConfig({ size: 6 }), rng);
+      return generateMazeWalls(grid, 6, rng);
+    };
+    const maze1 = makeMaze();
+    const maze2 = makeMaze();
+    // Assert：事件布局与墙结构完全一致
+    expect(JSON.stringify(maze1)).toBe(JSON.stringify(maze2));
+  });
+
+  it('旧存档兼容：grid 无 walls 字段也能正常生成迷宫', () => {
+    // Arrange：构造无 walls 字段的简单网格（模拟旧存档）
+    const grid: ExplorationCell[][] = [
+      [
+        { x: 0, y: 0, type: 'start', explored: true, accessible: true, visited: true },
+        { x: 1, y: 0, type: 'empty', explored: false, accessible: false, visited: false },
+      ],
+      [
+        { x: 0, y: 1, type: 'empty', explored: false, accessible: false, visited: false },
+        { x: 1, y: 1, type: 'empty', explored: false, accessible: false, visited: false },
+      ],
+    ];
+    const rng = createSeededRng(11);
+    // Act
+    const mazeGrid = generateMazeWalls(grid, 2, rng);
+    // Assert：返回网格每个格子都有 walls，且保持连通
+    for (const row of mazeGrid) {
+      for (const cell of row) {
+        expect(cell.walls).toBeDefined();
+      }
+    }
+    expect(bfsReachableCount(mazeGrid, { x: 0, y: 0 })).toBe(4);
+  });
+});
+
+// ============================================================
+// 迷宫化阶段一：generateGrid 集成迷宫生成
+// ============================================================
+
+describe('generateGrid 集成迷宫生成', () => {
+  it('生成的网格每个格子都带有 walls 字段', () => {
+    // Arrange
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    // Act
+    const grid = generateGrid(makeGridConfig({ size: 5 }));
+    // Assert：generateGrid 末尾调用 generateMazeWalls → 每格有 walls
+    for (const row of grid) {
+      for (const cell of row) {
+        expect(cell.walls).toBeDefined();
+      }
+    }
+  });
+
+  it('生成的网格从起点 BFS 全网格连通', () => {
+    // Arrange
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    // Act
+    const grid = generateGrid(makeGridConfig({ size: 6 }));
+    const start = findStartPosition(grid);
+    // Assert
+    expect(bfsReachableCount(grid, start)).toBe(6 * 6);
+  });
+});
+
+// ============================================================
+// 阶段三：视线与分层揭示（computeVision / applyVision）
+// ============================================================
+
+/** 构造 size×size 全开放网格（walls 全 false），可选覆盖部分 cell */
+function makeVisionGrid(size: number, overrides: Record<string, Partial<ExplorationCell>> = {}): ExplorationCell[][] {
+  const grid: ExplorationCell[][] = [];
+  for (let y = 0; y < size; y++) {
+    grid[y] = [];
+    for (let x = 0; x < size; x++) {
+      const key = `${x},${y}`;
+      grid[y][x] = {
+        x, y,
+        type: 'empty',
+        explored: false,
+        accessible: false,
+        visited: false,
+        completed: false,
+        walls: { top: false, right: false, bottom: false, left: false },
+        ...(overrides[key] || {}),
+      };
+    }
+  }
+  return grid;
+}
+
+/** 在相邻两格之间设置墙（双向同步），hasWall=true 建墙，false 拆墙 */
+function setWallBetween(grid: ExplorationCell[][], a: { x: number; y: number }, b: { x: number; y: number }, hasWall: boolean): void {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const aCell = grid[a.y][a.x];
+  const bCell = grid[b.y][b.x];
+  if (!aCell.walls || !bCell.walls) return;
+  if (dx === 0 && dy === -1) { aCell.walls.top = hasWall; bCell.walls.bottom = hasWall; }
+  else if (dx === 1 && dy === 0) { aCell.walls.right = hasWall; bCell.walls.left = hasWall; }
+  else if (dx === 0 && dy === 1) { aCell.walls.bottom = hasWall; bCell.walls.top = hasWall; }
+  else if (dx === -1 && dy === 0) { aCell.walls.left = hasWall; bCell.walls.right = hasWall; }
+}
+
+/** 判断坐标是否在视线结果数组中 */
+function isVisible(visible: { x: number; y: number }[], x: number, y: number): boolean {
+  return visible.some(v => v.x === x && v.y === y);
+}
+
+describe('computeVision 视线计算', () => {
+  it('玩家所在格始终可见', () => {
+    const grid = makeVisionGrid(5);
+    const visible = computeVision(grid, { x: 2, y: 2 }, VISION_RANGE);
+    expect(isVisible(visible, 2, 2)).toBe(true);
+  });
+
+  it('4 正方向直线视线：range 内无墙时各方向均被扫到', () => {
+    // 7×7 网格，玩家在中心 (3,3)，range=3，全开放
+    const grid = makeVisionGrid(7);
+    const visible = computeVision(grid, { x: 3, y: 3 }, 3);
+
+    // 上方向：(3,2), (3,1), (3,0)
+    expect(isVisible(visible, 3, 2)).toBe(true);
+    expect(isVisible(visible, 3, 1)).toBe(true);
+    expect(isVisible(visible, 3, 0)).toBe(true);
+    // 右方向：(4,3), (5,3), (6,3)
+    expect(isVisible(visible, 4, 3)).toBe(true);
+    expect(isVisible(visible, 5, 3)).toBe(true);
+    expect(isVisible(visible, 6, 3)).toBe(true);
+    // 下方向：(3,4), (3,5), (3,6)
+    expect(isVisible(visible, 3, 4)).toBe(true);
+    expect(isVisible(visible, 3, 5)).toBe(true);
+    expect(isVisible(visible, 3, 6)).toBe(true);
+    // 左方向：(2,3), (1,3), (0,3)
+    expect(isVisible(visible, 2, 3)).toBe(true);
+    expect(isVisible(visible, 1, 3)).toBe(true);
+    expect(isVisible(visible, 0, 3)).toBe(true);
+    // 对角格不在视线内（仅 4 正方向）
+    expect(isVisible(visible, 4, 4)).toBe(false);
+    expect(isVisible(visible, 2, 2)).toBe(false);
+  });
+
+  it('墙阻挡：有墙方向视线截止，墙后格子不可见', () => {
+    // 7×7 网格，玩家在 (3,3)，在 (3,2) 与 (3,1) 之间建墙
+    const grid = makeVisionGrid(7);
+    setWallBetween(grid, { x: 3, y: 2 }, { x: 3, y: 1 }, true);
+    const visible = computeVision(grid, { x: 3, y: 3 }, 3);
+
+    // 上方向：(3,2) 可见（无墙），(3,1) 不可见（有墙阻挡）
+    expect(isVisible(visible, 3, 2)).toBe(true);
+    expect(isVisible(visible, 3, 1)).toBe(false);
+    expect(isVisible(visible, 3, 0)).toBe(false);
+    // 其他方向不受影响
+    expect(isVisible(visible, 4, 3)).toBe(true);
+    expect(isVisible(visible, 3, 4)).toBe(true);
+    expect(isVisible(visible, 2, 3)).toBe(true);
+  });
+
+  it('距离衰减：超出 range 的格子不可见', () => {
+    // 9×9 网格，玩家在中心 (4,4)，range=2
+    const grid = makeVisionGrid(9);
+    const visible = computeVision(grid, { x: 4, y: 4 }, 2);
+
+    // 上方向 2 格内可见
+    expect(isVisible(visible, 4, 3)).toBe(true);
+    expect(isVisible(visible, 4, 2)).toBe(true);
+    // 第 3 格不可见（超出 range）
+    expect(isVisible(visible, 4, 1)).toBe(false);
+    expect(isVisible(visible, 4, 0)).toBe(false);
+  });
+
+  it('range ≤ 0：仅玩家所在格可见', () => {
+    const grid = makeVisionGrid(5);
+    const visible = computeVision(grid, { x: 2, y: 2 }, 0);
+    expect(visible).toHaveLength(1);
+    expect(visible[0]).toEqual({ x: 2, y: 2 });
+  });
+
+  it('边缘/角落：视线向出界方向自然截断', () => {
+    // 5×5 网格，玩家在角落 (0,0)，range=3
+    const grid = makeVisionGrid(5);
+    const visible = computeVision(grid, { x: 0, y: 0 }, 3);
+
+    // 右方向：(1,0), (2,0), (3,0) 可见（range=3，但只有 4 格）
+    expect(isVisible(visible, 1, 0)).toBe(true);
+    expect(isVisible(visible, 2, 0)).toBe(true);
+    expect(isVisible(visible, 3, 0)).toBe(true);
+    // 第 4 格超出 range
+    expect(isVisible(visible, 4, 0)).toBe(false);
+    // 下方向：(0,1), (0,2), (0,3) 可见
+    expect(isVisible(visible, 0, 1)).toBe(true);
+    expect(isVisible(visible, 0, 2)).toBe(true);
+    expect(isVisible(visible, 0, 3)).toBe(true);
+    // 上/左方向出界，不抛异常
+    expect(isVisible(visible, 0, -1)).toBe(false);
+  });
+
+  it('隐藏房间：视线扫到但不穿过（停止该方向）', () => {
+    // 7×7 网格，玩家在 (3,3)，(3,1) 为未揭示隐藏房间
+    const grid = makeVisionGrid(7, {
+      '3,1': { hidden: true, explored: false },
+    });
+    const visible = computeVision(grid, { x: 3, y: 3 }, 3);
+
+    // 上方向：(3,2) 可见，(3,1) 可见（被扫到），(3,0) 不可见（视线穿过隐藏房间后停止）
+    expect(isVisible(visible, 3, 2)).toBe(true);
+    expect(isVisible(visible, 3, 1)).toBe(true);
+    expect(isVisible(visible, 3, 0)).toBe(false);
+  });
+
+  it('视线起点被墙包围：四方向均截断，仅玩家所在格可见', () => {
+    // 5×5 网格，玩家在 (2,2)，四周全建墙
+    const grid = makeVisionGrid(5);
+    setWallBetween(grid, { x: 2, y: 2 }, { x: 2, y: 1 }, true); // 上墙
+    setWallBetween(grid, { x: 2, y: 2 }, { x: 3, y: 2 }, true); // 右墙
+    setWallBetween(grid, { x: 2, y: 2 }, { x: 2, y: 3 }, true); // 下墙
+    setWallBetween(grid, { x: 2, y: 2 }, { x: 1, y: 2 }, true); // 左墙
+    const visible = computeVision(grid, { x: 2, y: 2 }, 3);
+
+    expect(visible).toHaveLength(1);
+    expect(visible[0]).toEqual({ x: 2, y: 2 });
+  });
+});
+
+describe('applyVision 视线应用', () => {
+  it('视线扫到的格子标记 discovered=true', () => {
+    const grid = makeVisionGrid(5);
+    const visionCells = [{ x: 2, y: 2 }, { x: 3, y: 2 }, { x: 1, y: 2 }];
+    const result = applyVision(grid, visionCells);
+
+    expect(result[2][2].discovered).toBe(true);
+    expect(result[2][3].discovered).toBe(true);
+    expect(result[2][1].discovered).toBe(true);
+    // 未扫到的格子 discovered 仍为 undefined
+    expect(result[0][0].discovered).toBeFalsy();
+  });
+
+  it('discovered 只增不减：已发现的格保持可见', () => {
+    // 初始网格中 (2,2) 已 discovered=true
+    const grid = makeVisionGrid(5, {
+      '2,2': { discovered: true },
+    });
+    // 新视线不包含 (2,2)
+    const visionCells = [{ x: 3, y: 2 }];
+    const result = applyVision(grid, visionCells);
+
+    // (2,2) 仍 discovered=true（不因未在新视线中而回退）
+    expect(result[2][2].discovered).toBe(true);
+    expect(result[2][3].discovered).toBe(true);
+  });
+
+  it('隐藏房间被视线扫到后清除 hidden 标志（允许通行）', () => {
+    const grid = makeVisionGrid(5, {
+      '3,2': { hidden: true, explored: false },
+    });
+    const visionCells = [{ x: 2, y: 2 }, { x: 3, y: 2 }];
+    const result = applyVision(grid, visionCells);
+
+    // (3,2) hidden 被清除，但 explored 保持 false
+    expect(result[2][3].hidden).toBe(false);
+    expect(result[2][3].explored).toBe(false);
+    expect(result[2][3].discovered).toBe(true);
+  });
+
+  it('已 explored 的隐藏房间不被重置（explored 恒蕴含 discovered）', () => {
+    const grid = makeVisionGrid(5, {
+      '3,2': { hidden: false, explored: true, discovered: true },
+    });
+    const visionCells = [{ x: 3, y: 2 }];
+    const result = applyVision(grid, visionCells);
+
+    expect(result[2][3].explored).toBe(true);
+    expect(result[2][3].discovered).toBe(true);
+  });
+
+  it('不修改原网格（纯函数）', () => {
+    const grid = makeVisionGrid(5, {
+      '3,2': { hidden: true, explored: false },
+    });
+    const visionCells = [{ x: 2, y: 2 }, { x: 3, y: 2 }];
+    const result = applyVision(grid, visionCells);
+
+    // 原网格未被修改
+    expect(grid[2][3].discovered).toBeFalsy();
+    expect(grid[2][3].hidden).toBe(true);
+    // 新网格已修改
+    expect(result[2][3].discovered).toBe(true);
+    expect(result[2][3].hidden).toBe(false);
+  });
+});
+
+describe('computeVision + applyVision 集成', () => {
+  it('移动后视线重新计算：discovered 只增不减', () => {
+    // 7×7 网格，玩家初始在 (3,3)
+    const grid = makeVisionGrid(7);
+    const pos1 = { x: 3, y: 3 };
+
+    // 第一次视线
+    const vision1 = computeVision(grid, pos1, VISION_RANGE);
+    const grid1 = applyVision(grid, vision1);
+
+    // (3,2) 在第一次视线中
+    expect(grid1[2][3].discovered).toBe(true);
+
+    // 玩家移动到 (3,4)，新视线不包含 (3,2)（距离=2，在 range=3 内，实际包含）
+    // 改为移动到 (5,5)，新视线不包含 (3,2)
+    const pos2 = { x: 5, y: 5 };
+    const vision2 = computeVision(grid1, pos2, VISION_RANGE);
+    const grid2 = applyVision(grid1, vision2);
+
+    // (3,2) 仍 discovered=true（只增不减）
+    expect(grid2[2][3].discovered).toBe(true);
+    // (6,5) 在新视线中
+    expect(grid2[5][6].discovered).toBe(true);
+  });
+
+  it('隐藏房间被视线扫到后可通过 isPassable（hidden 已清除）', () => {
+    // 5×5 网格，玩家在 (2,2)，(2,1) 为未揭示隐藏房间（无墙）
+    const grid = makeVisionGrid(5, {
+      '2,1': { hidden: true, explored: false, type: 'treasure' },
+    });
+    const pos = { x: 2, y: 2 };
+
+    // 视线扫到 (2,1)
+    const vision = computeVision(grid, pos, VISION_RANGE);
+    expect(isVisible(vision, 2, 1)).toBe(true);
+
+    // 应用视线前：isPassable 返回 false（hidden && !explored）
+    expect(isPassable(grid, pos, { x: 2, y: 1 })).toBe(false);
+
+    // 应用视线后：hidden 清除，isPassable 返回 true
+    const result = applyVision(grid, vision);
+    expect(isPassable(result, pos, { x: 2, y: 1 })).toBe(true);
+  });
+});
+
+// ============================================================
+// 阶段四：内容丰富与平衡（Boss 封印 / 陷阱线索 / 怪物索敌 / 区域事件）
+// ============================================================
+
+/** 构造测试用单元格（默认 empty 类型，可覆盖字段） */
+function makeAlertCell(x: number, y: number, type: ExplorationCell['type'], overrides: Partial<ExplorationCell> = {}): ExplorationCell {
+  return { x, y, type, explored: false, accessible: false, visited: false, ...overrides };
+}
+
+/** 构造 5×5 测试网格，按 monsterCell.x/y 放置可定制的怪物/Boss 格，其余为 empty */
+function makeAlertGrid(monsterCell: ExplorationCell): ExplorationCell[][] {
+  const grid: ExplorationCell[][] = [];
+  for (let y = 0; y < 5; y++) {
+    grid[y] = [];
+    for (let x = 0; x < 5; x++) {
+      grid[y][x] = makeAlertCell(x, y, 'empty');
+    }
+  }
+  // 按 monsterCell 自身的 x/y 字段放置，确保坐标与网格位置一致
+  grid[monsterCell.y][monsterCell.x] = monsterCell;
+  return grid;
+}
+
+describe('shouldShowEnemyAlert 怪物索敌警告判定（阶段四）', () => {
+  it('未发现的怪物格不剧透 → false', () => {
+    const grid = makeAlertGrid(makeAlertCell(1, 1, 'monster', { discovered: false, explored: false }));
+    expect(shouldShowEnemyAlert(grid, { x: 1, y: 1 }, { x: 1, y: 1 })).toBe(false);
+  });
+
+  it('discovered 怪物格且距离 ≤ ENEMY_ALERT_RANGE → true', () => {
+    const grid = makeAlertGrid(makeAlertCell(1, 1, 'monster', { discovered: true }));
+    // 玩家在 (2,1)，距离=1 ≤ 2
+    expect(shouldShowEnemyAlert(grid, { x: 1, y: 1 }, { x: 2, y: 1 })).toBe(true);
+  });
+
+  it('discovered 怪物格但距离 > ENEMY_ALERT_RANGE → false', () => {
+    const grid = makeAlertGrid(makeAlertCell(1, 1, 'monster', { discovered: true }));
+    // 玩家在 (4,1)，距离=3 > 2
+    expect(shouldShowEnemyAlert(grid, { x: 1, y: 1 }, { x: 4, y: 1 })).toBe(false);
+  });
+
+  it('距离恰好等于 ENEMY_ALERT_RANGE → true（边界包含）', () => {
+    const grid = makeAlertGrid(makeAlertCell(1, 1, 'monster', { discovered: true }));
+    // 玩家在 (3,1)，距离=2 = ENEMY_ALERT_RANGE
+    expect(shouldShowEnemyAlert(grid, { x: 1, y: 1 }, { x: 3, y: 1 })).toBe(true);
+  });
+
+  it('explored 怪物格且距离 ≤ ENEMY_ALERT_RANGE → true', () => {
+    const grid = makeAlertGrid(makeAlertCell(1, 1, 'monster', { explored: true }));
+    expect(shouldShowEnemyAlert(grid, { x: 1, y: 1 }, { x: 1, y: 2 })).toBe(true);
+  });
+
+  it('已击败（completed）的怪物格 → false', () => {
+    const grid = makeAlertGrid(makeAlertCell(1, 1, 'monster', { discovered: true, completed: true }));
+    expect(shouldShowEnemyAlert(grid, { x: 1, y: 1 }, { x: 1, y: 1 })).toBe(false);
+  });
+
+  it('Boss 格不触发索敌警告 → false（由封印门单独处理）', () => {
+    const grid = makeAlertGrid(makeAlertCell(1, 1, 'boss', { discovered: true }));
+    expect(shouldShowEnemyAlert(grid, { x: 1, y: 1 }, { x: 1, y: 1 })).toBe(false);
+  });
+
+  it('非怪物格（empty） → false', () => {
+    const grid = makeAlertGrid(makeAlertCell(1, 1, 'empty', { discovered: true }));
+    expect(shouldShowEnemyAlert(grid, { x: 1, y: 1 }, { x: 1, y: 1 })).toBe(false);
+  });
+
+  it('越界坐标 → false', () => {
+    const grid = makeAlertGrid(makeAlertCell(1, 1, 'monster', { discovered: true }));
+    // (5,5) 越界（5×5 网格索引 0~4）
+    expect(shouldShowEnemyAlert(grid, { x: 5, y: 5 }, { x: 1, y: 1 })).toBe(false);
+  });
+
+  it('曼哈顿距离计算：斜向距离正确', () => {
+    const grid = makeAlertGrid(makeAlertCell(2, 2, 'monster', { discovered: true }));
+    // 玩家在 (1,1)，曼哈顿距离=|2-1|+|2-1|=2 ≤ 2 → true
+    expect(shouldShowEnemyAlert(grid, { x: 2, y: 2 }, { x: 1, y: 1 })).toBe(true);
+    // 玩家在 (0,0)，曼哈顿距离=4 > 2 → false
+    expect(shouldShowEnemyAlert(grid, { x: 2, y: 2 }, { x: 0, y: 0 })).toBe(false);
+  });
+});
+
+describe('generateGrid 阶段四：Boss 封印标记', () => {
+  it('生成的网格中 Boss 格 sealed=true', () => {
+    const rng = createSeededRng(42);
+    const grid = generateGrid(makeGridConfig({ size: 5 }), rng);
+    for (const row of grid) {
+      for (const cell of row) {
+        if (cell.type === 'boss') {
+          expect(cell.sealed).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('非 Boss 格 sealed 不为 true', () => {
+    const rng = createSeededRng(42);
+    const grid = generateGrid(makeGridConfig({ size: 5 }), rng);
+    for (const row of grid) {
+      for (const cell of row) {
+        if (cell.type !== 'boss') {
+          expect(cell.sealed).not.toBe(true);
+        }
+      }
+    }
+  });
+});
+
+describe('generateGrid 阶段四：陷阱视觉线索标记', () => {
+  it('陷阱格 hint 字段为 true 或 undefined（按概率标记）', () => {
+    // 大网格 + 高 trap 概率，确保有足够 trap 格采样
+    const rng = createSeededRng(2026);
+    const grid = generateGrid(makeGridConfig({
+      size: 10,
+      eventProbability: makeProbability({
+        monster: 0, item: 0, trap: 80, event: 0, empty: 20,
+      }),
+    }), rng);
+
+    const trapCells = grid.flat().filter(c => c.type === 'trap');
+    expect(trapCells.length).toBeGreaterThan(0);
+    // 每个 trap 格 hint 只能是 true 或 undefined（markTrapHints 仅在命中概率时设 true）
+    for (const cell of trapCells) {
+      expect(cell.hint === true || cell.hint === undefined).toBe(true);
+    }
+  });
+
+  it('非陷阱格 hint 不为 true', () => {
+    const rng = createSeededRng(2026);
+    const grid = generateGrid(makeGridConfig({ size: 5 }), rng);
+    for (const row of grid) {
+      for (const cell of row) {
+        if (cell.type !== 'trap') {
+          expect(cell.hint).not.toBe(true);
+        }
+      }
+    }
+  });
+
+  it('大样本下 hint=true 比例近似 TRAP_HINT_PROBABILITY', () => {
+    // 统计多个种子的 trap 格 hint 比例，验证概率配置生效
+    let totalTraps = 0;
+    let hintedTraps = 0;
+    for (let seed = 0; seed < 20; seed++) {
+      const rng = createSeededRng(seed);
+      const grid = generateGrid(makeGridConfig({
+        size: 10,
+        eventProbability: makeProbability({
+          monster: 0, item: 0, trap: 80, event: 0, empty: 20,
+        }),
+      }), rng);
+      for (const row of grid) {
+        for (const cell of row) {
+          if (cell.type === 'trap') {
+            totalTraps++;
+            if (cell.hint === true) hintedTraps++;
+          }
+        }
+      }
+    }
+    expect(totalTraps).toBeGreaterThan(50); // 确保样本足够
+    const ratio = hintedTraps / totalTraps;
+    // 允许 ±0.15 误差（小样本统计波动）
+    expect(ratio).toBeGreaterThan(TRAP_HINT_PROBABILITY - 0.15);
+    expect(ratio).toBeLessThan(TRAP_HINT_PROBABILITY + 0.15);
+  });
+});
+
+describe('generateRandomEvent 区域专属事件混合（阶段四）', () => {
+  /** 构造 mock 区域专属事件模板 */
+  function makeMockAreaEvents(): AreaEventTemplate[] {
+    return [
+      (lv) => ({
+        message: `区域专属事件 lv${lv}`,
+        icon: 'game-icons:test',
+        effect: { type: 'exp', amount: lv * 10 },
+      }),
+    ];
+  }
+
+  it('areaEvents 为空时走通用事件（向后兼容）', () => {
+    // mockReturnValue(0.1)：areaEvents 为空时短路不消耗 rng，第一次 next()=0.1 < 0.3 → heal
+    vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    const result = generateRandomEvent(5, undefined, []);
+    expect(result.effect.type).toBe('heal');
+    expect(result.message).toContain('生命值');
+  });
+
+  it('areaEvents 非空且命中混合概率时返回区域专属事件', () => {
+    // mockReturnValue(0.3)：第一次 next()=0.3 < AREA_EVENT_MIX_PROBABILITY(0.5) → 走区域事件
+    // rng.pick(areaEvents) 调用 random()=0.3，单元素数组直接返回该元素
+    vi.spyOn(Math, 'random').mockReturnValue(0.3);
+    const result = generateRandomEvent(5, undefined, makeMockAreaEvents());
+    expect(result.message).toBe('区域专属事件 lv5');
+    expect(result.effect.type).toBe('exp');
+    expect(result.effect.amount).toBe(50);
+  });
+
+  it('areaEvents 非空但未命中混合概率时走通用事件', () => {
+    // mockReturnValue(0.6)：第一次 next()=0.6 ≥ 0.5 → 不走区域事件
+    // 第二次 next()=0.6 → 0.5 ≤ 0.6 < 0.65 → exp 通用事件
+    vi.spyOn(Math, 'random').mockReturnValue(0.6);
+    const result = generateRandomEvent(5, undefined, makeMockAreaEvents());
+    expect(result.effect.type).toBe('exp');
+    expect(result.message).toContain('经验值');
+    // 确保不是区域专属事件
+    expect(result.message).not.toContain('区域专属事件');
+  });
+
+  it('区域专属事件复用 RandomEventResult 结构（含 message/icon/effect）', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.3);
+    const result = generateRandomEvent(3, undefined, makeMockAreaEvents());
+    expect(typeof result.message).toBe('string');
+    expect(result.message.length).toBeGreaterThan(0);
+    expect(typeof result.icon).toBe('string');
+    expect(result.effect).toHaveProperty('type');
+    expect(result.effect).toHaveProperty('amount');
+    expect(Number.isInteger(result.effect.amount)).toBe(true);
+  });
+
+  it('混合概率边界：next() 恰好等于 AREA_EVENT_MIX_PROBABILITY 时不走区域事件', () => {
+    // next() < AREA_EVENT_MIX_PROBABILITY 才走区域事件，等于时不走
+    vi.spyOn(Math, 'random').mockReturnValue(AREA_EVENT_MIX_PROBABILITY);
+    const result = generateRandomEvent(5, undefined, makeMockAreaEvents());
+    // 走通用事件：0.5 ≤ 0.5 < 0.65 → exp
+    expect(result.effect.type).toBe('exp');
+    expect(result.message).toContain('经验值');
   });
 });

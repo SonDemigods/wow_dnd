@@ -36,6 +36,10 @@ export {
   generateGrid,
   findStartPosition,
   updateAccessibleCells,
+  isPassable,
+  computeVision,
+  applyVision,
+  shouldShowEnemyAlert,
   GRID_SIZE
 } from './service';
 
