@@ -116,14 +116,16 @@ describe('data/backup 子模块独立测试', () => {
   });
 
   describe('实例方法存在', () => {
-    it('暴露 createBackup / exportBackup / getAutoBackups / deleteBackup / clearAutoBackups / createAutoBackup', () => {
+    it('暴露 createBackup / exportBackup / collectAllData（自动备份方法已移除）', () => {
       const service = new BackupService();
       expect(typeof service.createBackup).toBe('function');
       expect(typeof service.exportBackup).toBe('function');
-      expect(typeof service.getAutoBackups).toBe('function');
-      expect(typeof service.deleteBackup).toBe('function');
-      expect(typeof service.clearAutoBackups).toBe('function');
-      expect(typeof service.createAutoBackup).toBe('function');
+      expect(typeof service.collectAllData).toBe('function');
+      // 版本基线重构后自动备份方法已删除
+      expect((service as unknown as Record<string, unknown>).getAutoBackups).toBeUndefined();
+      expect((service as unknown as Record<string, unknown>).deleteBackup).toBeUndefined();
+      expect((service as unknown as Record<string, unknown>).clearAutoBackups).toBeUndefined();
+      expect((service as unknown as Record<string, unknown>).createAutoBackup).toBeUndefined();
     });
   });
 });

@@ -14,10 +14,13 @@ import type {
 
 /**
  * 数据库连接配置
+ *
+ * 数据库名改名（wow_dnd_game → wow_dnd_game_v1）让旧库自然废弃：
+ * Dexie 不允许版本降级，若保留原名则必须保留 version(1/2/3) 链；
+ * 改名后旧库不被读取，新库从 version(1) 干净开始。
  */
 export const DATABASE_CONFIG: DatabaseConfig = {
-  name: 'wow_dnd_game',
-  version: 1
+  name: 'wow_dnd_game_v1'
 };
 
 /**
@@ -31,10 +34,13 @@ export const DB_SERVICE_CONFIG: DBServiceConfig = {
 
 /**
  * 数据备份配置
+ *
+ * 版本基线重置：backupVersion 与 supportedVersions 统一从 v1.0 重新开始，
+ * 旧 v1.1 备份将被 checkVersionCompatibility 拒绝（不再兼容历史备份）。
+ * 自动备份 localStorage 功能已移除（autoBackupKey / maxAutoBackups 删除），
+ * 仅保留手动导出/导入（JSON 文件下载/上传）。
  */
 export const BACKUP_CONFIG: BackupConfig = {
-  autoBackupKey: 'wow_dnd_auto_backups',
-  maxAutoBackups: 5,
-  backupVersion: 'v1.1',
-  supportedVersions: ['v1.0', 'v1.1']
+  backupVersion: 'v1.0',
+  supportedVersions: ['v1.0']
 };

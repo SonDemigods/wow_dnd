@@ -252,13 +252,11 @@ export interface CompatibilityResult {
  * 定义 IndexedDB 数据库的基本连接参数，由 @/config/database 提供具体值。
  *
  * @property {string} name - 数据库名称（用于 IndexedDB.open()）
- * @property {number} version - 数据库版本号（Dexie schema 版本，变更时触发升级）
  *
  * @see GameDatabase 使用此配置初始化 Dexie 实例
  */
 export interface DatabaseConfig {
   name: string;
-  version: number;
 }
 
 /**
@@ -284,8 +282,8 @@ export interface DBServiceConfig {
  *
  * 定义 BackupService 的所有可配置参数，由 @/config/database 提供具体值。
  *
- * @property {string} autoBackupKey - localStorage 中自动备份列表的存储键名
- * @property {number} maxAutoBackups - 最大自动备份数量（超出时移除最旧的备份）
+ * 版本基线重构后移除了 autoBackupKey / maxAutoBackups（自动备份 localStorage 功能删除）。
+ *
  * @property {string} backupVersion - 当前备份格式版本号（写入 BackupFile.version）
  * @property {string[]} supportedVersions - 支持的备份版本列表（用于兼容性检查）
  *
@@ -293,8 +291,6 @@ export interface DBServiceConfig {
  * @see ImportService.checkVersionCompatibility 使用 supportedVersions 判断兼容性
  */
 export interface BackupConfig {
-  autoBackupKey: string;
-  maxAutoBackups: number;
   backupVersion: string;
   supportedVersions: string[];
 }
@@ -357,20 +353,17 @@ export interface InitData {
  * 定义 BackupService 的公共 API 契约，用于依赖注入和测试 Mock。
  * 所有方法均以异步方式操作，createBackup/exportBackup 涉及 IndexedDB 全量读取。
  *
+ * 版本基线重构后移除了自动备份相关方法（getAutoBackups / deleteBackup /
+ * clearAutoBackups / createAutoBackup），仅保留手动导出/导入。
+ *
  * @property {() => Promise<BackupFile>} createBackup - 创建当前游戏的完整备份
  * @property {() => Promise<void>} exportBackup - 触发浏览器下载备份 JSON 文件
- * @property {() => Promise<BackupFile[]>} getAutoBackups - 获取 localStorage 中的自动备份列表
- * @property {(timestamp: number) => Promise<void>} deleteBackup - 按时间戳删除指定备份
- * @property {() => Promise<void>} clearAutoBackups - 清除所有自动备份
  *
  * @see BackupService 具体实现
  */
 export interface IBackupService {
   createBackup(): Promise<BackupFile>;
   exportBackup(): Promise<void>;
-  getAutoBackups(): Promise<BackupFile[]>;
-  deleteBackup(timestamp: number): Promise<void>;
-  clearAutoBackups(): Promise<void>;
 }
 
 /**

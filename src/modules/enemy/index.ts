@@ -26,7 +26,3 @@ export {
 } from './service';
 
 export { useEnemyStore, setBossCreateFn } from './store';
-
-export { ENEMY_ID_ALIAS, resolveEnemyId, isLegacyEnemyId } from './alias-map';
-
-export { migrateExplorationGrid, migrateEnemyId, migrateEnemyIdArray } from './migration';

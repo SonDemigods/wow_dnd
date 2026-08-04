@@ -13,7 +13,7 @@ import { useExplorationStore } from '@/modules/exploration';
 import { useQuestStore, setQuestExternalCallbacks, clearQuestExternalCallbacks } from '@/modules/quest';
 import { useCombatStore } from '@/modules/combat';
 import { useAudioStore } from '@/modules/audio';
-import { setBossCreateFn, resolveEnemyId } from '@/modules/enemy';
+import { setBossCreateFn } from '@/modules/enemy';
 import { bossDbService, createBossInstance } from '@/modules/boss';
 import type { BossEnemyInstance } from '@/modules/boss';
 
@@ -105,9 +105,7 @@ export class GameBootstrapService {
     // enemy store 接收时 widened 为 EnemyInstance，wrapAsBossInstance 通过
     // isBossEnemyInstance 类型守卫收窄后读取 phases/intro
     setBossCreateFn(async (dataId, level): Promise<BossEnemyInstance | null> => {
-      // 规范化 ID：旧存档/旧备份中的旧 Boss ID 透明转换为新 ID（P3-137 别名层）
-      const resolvedId = resolveEnemyId(dataId);
-      const template = await bossDbService.getBossTemplate(resolvedId);
+      const template = await bossDbService.getBossTemplate(dataId);
       if (!template) return null;
       const boss = createBossInstance(template, level);
       return {

@@ -607,7 +607,6 @@ describe('BackupService 数据备份服务', () => {
 
   beforeEach(async () => {
     await clearAllTables();
-    localStorage.removeItem(BACKUP_CONFIG.autoBackupKey);
     backupService = new BackupService();
     initializer = new DataInitializer();
     eventBus.clearAll();
@@ -760,129 +759,6 @@ describe('BackupService 数据备份服务', () => {
       expect(parsed.version).toBe(BACKUP_CONFIG.backupVersion);
       expect(parsed.checksum).toBeDefined();
       expect(parsed.data).toBeDefined();
-    });
-  });
-
-  // ==================== getAutoBackups ====================
-
-  describe('getAutoBackups 获取自动备份列表', () => {
-    it('localStorage 无数据时返回空数组', async () => {
-      // Act
-      const result = await backupService.getAutoBackups();
-
-      // Assert
-      expect(result).toEqual([]);
-    });
-
-    it('localStorage 有数据时返回解析后的备份列表', async () => {
-      // Arrange：向 localStorage 写入两条备份
-      const backups: BackupFile[] = [
-        { version: BACKUP_CONFIG.backupVersion, timestamp: 1000, checksum: 'a', gameVersion: '1.0.0', data: createMinimalBackupData() },
-        { version: BACKUP_CONFIG.backupVersion, timestamp: 2000, checksum: 'b', gameVersion: '1.0.0', data: createMinimalBackupData() },
-      ];
-      localStorage.setItem(BACKUP_CONFIG.autoBackupKey, JSON.stringify(backups));
-
-      // Act
-      const result = await backupService.getAutoBackups();
-
-      // Assert
-      expect(result).toHaveLength(2);
-      expect(result[0].timestamp).toBe(1000);
-      expect(result[1].timestamp).toBe(2000);
-    });
-
-    it('localStorage 数据解析失败时进入 catch 返回空数组', async () => {
-      // Arrange：写入非法 JSON 触发 JSON.parse 抛错
-      localStorage.setItem(BACKUP_CONFIG.autoBackupKey, '{invalid json}');
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      // Act
-      const result = await backupService.getAutoBackups();
-
-      // Assert
-      expect(result).toEqual([]);
-      expect(errorSpy).toHaveBeenCalled();
-    });
-  });
-
-  // ==================== deleteBackup ====================
-
-  describe('deleteBackup 删除指定备份', () => {
-    it('按时间戳删除对应备份，保留其他备份', async () => {
-      // Arrange：写入两条备份
-      const backups: BackupFile[] = [
-        { version: BACKUP_CONFIG.backupVersion, timestamp: 1000, checksum: 'a', gameVersion: '1.0.0', data: createMinimalBackupData() },
-        { version: BACKUP_CONFIG.backupVersion, timestamp: 2000, checksum: 'b', gameVersion: '1.0.0', data: createMinimalBackupData() },
-      ];
-      localStorage.setItem(BACKUP_CONFIG.autoBackupKey, JSON.stringify(backups));
-
-      // Act：删除 timestamp=1000 的备份
-      await backupService.deleteBackup(1000);
-
-      // Assert
-      const remaining = await backupService.getAutoBackups();
-      expect(remaining).toHaveLength(1);
-      expect(remaining[0].timestamp).toBe(2000);
-    });
-  });
-
-  // ==================== clearAutoBackups ====================
-
-  describe('clearAutoBackups 清除所有自动备份', () => {
-    it('清空 localStorage 中的自动备份列表', async () => {
-      // Arrange：写入备份数据
-      localStorage.setItem(
-        BACKUP_CONFIG.autoBackupKey,
-        JSON.stringify([{ version: BACKUP_CONFIG.backupVersion, timestamp: 1, checksum: 'x', gameVersion: '1.0.0', data: createMinimalBackupData() }])
-      );
-      expect(await backupService.getAutoBackups()).toHaveLength(1);
-
-      // Act
-      await backupService.clearAutoBackups();
-
-      // Assert
-      expect(await backupService.getAutoBackups()).toEqual([]);
-      expect(localStorage.getItem(BACKUP_CONFIG.autoBackupKey)).toBeNull();
-    });
-  });
-
-  // ==================== createAutoBackup ====================
-
-  describe('createAutoBackup 创建自动备份', () => {
-    it('创建备份并添加到自动备份列表头部', async () => {
-      // Arrange
-      await initializer.initializeData();
-
-      // Act
-      await backupService.createAutoBackup();
-
-      // Assert
-      const backups = await backupService.getAutoBackups();
-      expect(backups).toHaveLength(1);
-      expect(backups[0].version).toBe(BACKUP_CONFIG.backupVersion);
-    });
-
-    it('超过最大数量时移除最旧的备份', async () => {
-      // Arrange：预填 MAX_AUTO_BACKUPS 条备份（最新在前、最旧在末尾，与 unshift+pop 语义一致）
-      const preloaded: BackupFile[] = [];
-      for (let i = BACKUP_CONFIG.maxAutoBackups - 1; i >= 0; i--) {
-        preloaded.push({
-          version: BACKUP_CONFIG.backupVersion,
-          timestamp: 1000 + i,
-          checksum: 'c' + i,
-          gameVersion: '1.0.0',
-          data: createMinimalBackupData(),
-        });
-      }
-      localStorage.setItem(BACKUP_CONFIG.autoBackupKey, JSON.stringify(preloaded));
-
-      // Act：再创建一条，超出上限触发 pop 移除最旧备份（末尾元素）
-      await backupService.createAutoBackup();
-
-      // Assert：数量不超过上限，最旧的（timestamp=1000，位于末尾）被移除
-      const backups = await backupService.getAutoBackups();
-      expect(backups).toHaveLength(BACKUP_CONFIG.maxAutoBackups);
-      expect(backups.find((b) => b.timestamp === 1000)).toBeUndefined();
     });
   });
 

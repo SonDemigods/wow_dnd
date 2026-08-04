@@ -12,8 +12,6 @@ import type { Table } from 'dexie';
 import { db, getTable } from './core';
 import type { AdventureLogData, LogEntry } from '../log/types';
 import { BACKUP_CONFIG } from '@/config/database';
-import { resolveEnemyId } from '@/modules/enemy/alias-map';
-import { migrateExplorationGrid } from '@/modules/enemy/migration';
 
 import type {
   BackupFile,
@@ -24,59 +22,6 @@ import type {
   IImportService
 } from './types';
 import { calculateChecksum, TABLES_TO_BACKUP } from './backup';
-
-/**
- * 迁移备份数据中的旧怪物 ID（P3-137 阶段 4.2）
- *
- * 对 v1.0 备份中的怪物 ID 应用 resolveEnemyId 转换，确保旧 ID 入库前被规范为新 ID。
- * 对 v1.1 备份无副作用（新 ID 不在别名映射表中，原样返回）。
- *
- * 迁移范围：
- * - mobs[].id：普通怪物主键
- * - bosses[].id：Boss 主键
- * - map[].enemies[]/bosses[]：地点怪物分布池
- * - exploration[].grid[][].monsterId：角色探索存档嵌套的怪物 ID
- *
- * @param data - 备份数据（会被原地修改）
- */
-export function migrateBackupEnemyIds(data: BackupData): void {
-  // 普通怪物主键
-  if (data.mobs) {
-    for (const mob of data.mobs) {
-      if (mob.id) {
-        mob.id = resolveEnemyId(mob.id);
-      }
-    }
-  }
-  // Boss 主键
-  if (data.bosses) {
-    for (const boss of data.bosses) {
-      if (boss.id) {
-        boss.id = resolveEnemyId(boss.id);
-      }
-    }
-  }
-  // 地点怪物分布池
-  if (data.map) {
-    for (const loc of data.map) {
-      if (loc.enemies) {
-        loc.enemies = loc.enemies.map(id => resolveEnemyId(id));
-      }
-      if (loc.bosses) {
-        loc.bosses = loc.bosses.map(id => resolveEnemyId(id));
-      }
-    }
-  }
-  // 角色探索存档网格
-  if (data.exploration) {
-    for (const key of Object.keys(data.exploration)) {
-      const exploration = data.exploration[key];
-      if (exploration.grid) {
-        migrateExplorationGrid(exploration.grid);
-      }
-    }
-  }
-}
 
 /**
  * 导入服务类
@@ -195,6 +140,9 @@ export class ImportService implements IImportService {
   /**
    * 检查版本兼容性
    *
+   * 版本号基线重构后：message 包含具体版本信息，便于用户排查导入失败原因
+   * （如备份文件版本 v1.1 不受支持，当前支持版本：v1.0）。
+   *
    * @param backupVersion - 备份版本号
    * @returns CompatibilityResult - 兼容性检查结果
    */
@@ -210,7 +158,7 @@ export class ImportService implements IImportService {
     }
     return {
       compatible: false,
-      message: '备份文件版本过旧，请更新游戏',
+      message: `备份文件版本 ${backupVersion} 不受支持，当前支持版本：${this.SUPPORTED_VERSIONS.join(', ')}`,
       requiresMigration: false
     };
   }
@@ -218,17 +166,21 @@ export class ImportService implements IImportService {
   /**
    * 导入数据到数据库
    *
-   * 将备份数据写入数据库的各个表
+   * 将备份数据写入数据库的各个表。
+   *
+   * 可见性说明：原为 private，版本号基线重构后改为 public，
+   * 供 MigrationService.runStartupMigration 复用（写回迁移后的全量数据）。
+   *
    * @param data - 备份数据
    * @returns ImportResult - 导入结果
    */
-  private async importData(data: BackupData): Promise<ImportResult> {
+  async importData(data: BackupData): Promise<ImportResult> {
     const importedStores: string[] = [];
     const skippedStores: string[] = [];
 
-    // P3-137 阶段 4.2：导入前迁移旧怪物 ID（v1.0 → v1.1）
-    // 对 v1.1 备份无副作用（新 ID 原样返回），故无条件执行
-    migrateBackupEnemyIds(data);
+    // 版本号基线重构后：DATA_VERSION = 1 为基线，导入的备份无需迁移。
+    // 未来版本变更时，此处调用 runMigrations(data, backup.dataVersion)，
+    // 由 migrations/index.ts 中的注册表驱动数据格式升级。
 
     try {
       await db.transaction(

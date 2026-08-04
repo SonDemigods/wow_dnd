@@ -366,14 +366,13 @@ export interface ExplorationUICallbacks {
  * 所有字段由 `persistState()` 每次状态变更时自动写入，
  * 页面刷新后通过 `getExplorationData()` 恢复完整的探索会话。
  *
- * 兼容性处理：
- * - `assignedShopId` / `currentShopId` 为商店分配的 ID，新旧两个字段共存以确保升级兼容
+ * 版本基线重构后存档字段完整，不再保留旧字段兼容：
+ * - `assignedShopId` 为商店分配的 ID，由 saveExplorationData 写入
  * - `updatedAt` 为可选的更新时间戳，用于判断存档新鲜度
  *
  * @property {string} characterId - 角色 ID（主键，一个角色仅保存一份探索进度）
  * @property {string | null} currentAreaId - 当前区域 ID
- * @property {string} [assignedShopId] - 当前探索网格中分配的商店 ID（新字段）
- * @property {string} [currentShopId] - 旧版本兼容字段（读取时自动迁移到 assignedShopId）
+ * @property {string} [assignedShopId] - 当前探索网格中分配的商店 ID
  * @property {ExplorationCell[][]} grid - 完整网格数据
  * @property {{ x: number; y: number }} playerPosition - 玩家位置坐标
  * @property {number} visitedCells - 已访问单元格数量
@@ -389,7 +388,6 @@ export interface ExplorationStorage {
   characterId: string;
   currentAreaId: string | null;
   assignedShopId?: string;
-  currentShopId?: string;
   grid: ExplorationCell[][];
   playerPosition: { x: number; y: number };
   visitedCells: number;

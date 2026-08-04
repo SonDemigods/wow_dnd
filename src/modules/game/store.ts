@@ -13,13 +13,14 @@
  * @module game
  */
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { getGameState, saveGameState, db } from '@/modules/data';
 import type { GameStateStorage } from '@/modules/data';
 import type { GameSettings } from './types';
 import { DEFAULT_GAME_SETTINGS } from './types';
 import { errorReporter } from '@/utils/errorReport';
 import { toRawData } from '@/utils';
+import { APP_VERSION, CURRENT_DATA_VERSION } from '@/config/version';
 
 /** runtime_gameState 中存储音频设置的旧键名（迁移用） */
 const LEGACY_AUDIO_SETTINGS_KEY = 'audio_settings';
@@ -58,6 +59,35 @@ export const useGameStore = defineStore('game', () => {
   const initializedAt = ref<string>('');
   const gameSettings = ref<GameSettings>({ ...DEFAULT_GAME_SETTINGS });
 
+  /**
+   * 当前存档的数据版本戳（响应式镜像 runtime_gameState.dataVersion）
+   *
+   * - 初始为 null：尚未从 DB 读取
+   * - initialize 后赋值为 state.dataVersion ?? null
+   * - 迁移服务完成后重新调用 initialize 会刷新此值，触发 versionMismatch 重算
+   *
+   * 用 ref 镜像而非直接读 DB，是因为 IndexedDB 读取是异步的，模板无法直接订阅。
+   * versionMismatch computed 依赖此 ref，迁移完成后重新 initialize 即可解锁 UI。
+   */
+  const currentDataVersion = ref<number | null>(null);
+
+  /**
+   * 版本不匹配标志（只读 computed）
+   *
+   * 当存档 dataVersion 缺失或与 CURRENT_DATA_VERSION 不一致时返回 true。
+   * App.vue onMounted 据此拦截自动进入游戏，CharacterSelect 据此显示警告横幅
+   * 与"数据迁移"按钮。
+   *
+   * 判定逻辑：
+   * - isInitialized === false：尚未 initialize 完成，返回 false（App.vue loading 期间不读取）
+   * - isInitialized === true：比较 currentDataVersion 与 CURRENT_DATA_VERSION，
+   *   null（旧存档缺失 dataVersion 字段）或不等均视为不匹配
+   */
+  const versionMismatch = computed<boolean>(() => {
+    if (!isInitialized.value) return false;
+    return currentDataVersion.value !== CURRENT_DATA_VERSION;
+  });
+
   /** 是否已初始化 */
   const isInitialized = ref(false);
 
@@ -67,6 +97,10 @@ export const useGameStore = defineStore('game', () => {
    * 将当前状态持久化到 DB
    *
    * 使用 saveGameState 的事务性读-改-写，确保原子性。
+   *
+   * 版本号基线重构：持久化时同步写入 appVersion / dataVersion 版本戳，
+   * 确保首次 persist（state 不存在时）也带版本字段，避免 dataVersion 缺失
+   * 被 versionMismatch 误判为不匹配。
    */
   async function persist(): Promise<void> {
     try {
@@ -76,6 +110,8 @@ export const useGameStore = defineStore('game', () => {
         currentShopId: currentShopId.value,
         lastPlayedAt: lastPlayedAt.value,
         initializedAt: initializedAt.value,
+        appVersion: APP_VERSION,
+        dataVersion: CURRENT_DATA_VERSION,
         gameSettings: toRawData(gameSettings.value),
       });
     } catch (err) {
@@ -135,9 +171,12 @@ export const useGameStore = defineStore('game', () => {
    * 流程：
    * 1. 迁移旧 audio_settings 键（如有）
    * 2. 从 DB 加载 gameState 记录
-   * 3. 恢复状态到内存
+   * 3. 恢复状态到内存（含 dataVersion 版本戳镜像）
    *
    * 应在 characterStore.initialize 之前调用，因为 characterStore 依赖 currentCharacterId。
+   *
+   * 版本号基线重构：initialize 同时刷新 currentDataVersion ref，
+   * 驱动 versionMismatch computed 重新计算。迁移服务完成后重新调用本方法即可解锁 UI。
    */
   async function initialize(): Promise<void> {
     // 1. 迁移旧格式数据
@@ -153,13 +192,18 @@ export const useGameStore = defineStore('game', () => {
       lastPlayedAt.value = state.lastPlayedAt ?? new Date().toISOString();
       initializedAt.value = state.initializedAt ?? new Date().toISOString();
       gameSettings.value = extractGameSettings(state);
+      // 镜像版本戳，驱动 versionMismatch computed
+      currentDataVersion.value = state.dataVersion ?? null;
     } else {
       // 首次初始化
       const now = new Date().toISOString();
       lastPlayedAt.value = now;
       initializedAt.value = now;
       gameSettings.value = { ...DEFAULT_GAME_SETTINGS };
+      // persist 内部会写入 dataVersion = CURRENT_DATA_VERSION
       await persist();
+      // persist 后存档已是当前版本
+      currentDataVersion.value = CURRENT_DATA_VERSION;
     }
 
     isInitialized.value = true;
@@ -228,6 +272,26 @@ export const useGameStore = defineStore('game', () => {
     return { ...gameSettings.value };
   }
 
+  /**
+   * 获取当前存档的数据版本戳（同步）
+   *
+   * 返回 currentDataVersion ref 的当前值。null 表示尚未 initialize 完成。
+   * 供 CharacterSelect 警告横幅显示"v{当前版本}"使用。
+   */
+  function getCurrentDataVersion(): number | null {
+    return currentDataVersion.value;
+  }
+
+  /**
+   * 获取当前代码期望的数据版本（同步）
+   *
+   * 返回 CURRENT_DATA_VERSION 常量。供 CharacterSelect 警告横幅显示
+   * "需迁移至 v{期望版本}"使用。
+   */
+  function getExpectedDataVersion(): number {
+    return CURRENT_DATA_VERSION;
+  }
+
   return {
     // 状态
     currentCharacterId,
@@ -236,6 +300,8 @@ export const useGameStore = defineStore('game', () => {
     initializedAt,
     gameSettings,
     isInitialized,
+    // 版本检测（只读 computed）
+    versionMismatch,
 
     // Action
     initialize,
@@ -248,5 +314,7 @@ export const useGameStore = defineStore('game', () => {
     getCurrentCharacterId,
     getCurrentShopId,
     getGameSettings,
+    getCurrentDataVersion,
+    getExpectedDataVersion,
   };
 });

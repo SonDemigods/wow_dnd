@@ -56,6 +56,13 @@ export {
   importService
 } from './service';
 
+/** 导出数据迁移服务（版本号基线重构后新增） */
+export {
+  MigrationService,
+  migrationService
+} from './migrations/service';
+export type { Migration, MigrationResult } from './migrations/types';
+
 /** 导出游戏状态辅助模块 */
 export {
   getGameState,

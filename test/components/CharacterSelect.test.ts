@@ -61,8 +61,9 @@ describe('CharacterSelect 角色选择组件', () => {
     eventBus.clearAll();
   });
 
-  const mountComp = () =>
+  const mountComp = (props: Record<string, unknown> = {}) =>
     shallowMount(CharacterSelect, {
+      props,
       global: { plugins: [pinia], directives: { motion: motionDirective } }
     });
 
@@ -198,6 +199,63 @@ describe('CharacterSelect 角色选择组件', () => {
       await wrapper.find('.add-character').trigger('click');
 
       expect(wrapper.emitted('create')).toHaveLength(1);
+    });
+  });
+
+  describe('版本不匹配拦截（versionMismatch prop）', () => {
+    it('默认（versionMismatch 未传）不渲染警告横幅与迁移按钮', () => {
+      const wrapper = mountComp();
+      expect(wrapper.find('.version-mismatch-banner').exists()).toBe(false);
+      expect(wrapper.find('.action-btn-migrate').exists()).toBe(false);
+    });
+
+    it('versionMismatch=true 时渲染警告横幅与迁移按钮', () => {
+      const wrapper = mountComp({ versionMismatch: true });
+      expect(wrapper.find('.version-mismatch-banner').exists()).toBe(true);
+      expect(wrapper.find('.action-btn-migrate').exists()).toBe(true);
+      expect(wrapper.find('.action-btn-migrate').text()).toContain('数据迁移');
+    });
+
+    it('versionMismatch=true 时"进入游戏"按钮始终禁用（即使选中角色）', async () => {
+      const characterStore = useCharacterStore(pinia);
+      characterStore.characterList = characterList;
+      const wrapper = mountComp({ versionMismatch: true });
+      await wrapper.vm.$nextTick();
+
+      // 选中角色
+      await wrapper.findAll('.character-card')[0].trigger('click');
+
+      // 即使选中角色，进入游戏按钮仍应禁用
+      expect(
+        wrapper.find('.action-btn-primary').attributes('disabled')
+      ).toBeDefined();
+    });
+
+    it('versionMismatch=false 时选中角色后"进入游戏"按钮可用', async () => {
+      const characterStore = useCharacterStore(pinia);
+      characterStore.characterList = characterList;
+      const wrapper = mountComp({ versionMismatch: false });
+      await wrapper.vm.$nextTick();
+
+      await wrapper.findAll('.character-card')[0].trigger('click');
+      expect(
+        wrapper.find('.action-btn-primary').attributes('disabled')
+      ).toBeUndefined();
+    });
+
+    it('点击"数据迁移"按钮弹出迁移确认弹窗', async () => {
+      const wrapper = mountComp({ versionMismatch: true });
+      expect(wrapper.find('.confirm-modal-overlay').exists()).toBe(false);
+
+      await wrapper.find('.action-btn-migrate').trigger('click');
+
+      // 弹出迁移确认弹窗（可能同时存在多个 overlay，取第一个）
+      const overlays = wrapper.findAll('.confirm-modal-overlay');
+      expect(overlays.length).toBeGreaterThan(0);
+      // 确认弹窗标题为"确认数据迁移"
+      const titles = wrapper.findAll('.confirm-modal h3');
+      const migrationTitle = titles.filter(h => h.text().includes('确认数据迁移'));
+      expect(migrationTitle.length).toBe(1);
     });
   });
 });

@@ -23,7 +23,6 @@ import type {
   QuestInstance,
   QuestObjectiveProgress
 } from './types';
-import { resolveEnemyId } from '@/modules/enemy';
 
 /**
  * 检查任务进度
@@ -63,11 +62,10 @@ export function checkQuestProgress(
 
   // 遍历任务定义中的所有目标，检查是否匹配当前事件
   for (const objective of definition.objectives) {
-    // P3-137：双向规范化 enemyId 后比较
-    // 兼容旧存档/旧备份中的 enemyId（旧 ID）与新配置中的 enemyId（新 ID）混合匹配
+    // 直接比较原始 enemyId（版本号基线重构后配置 ID 已统一，无需别名映射）
     const isKillMatch = relevantData.enemyId && objective.type === 'kill'
       && objective.enemyId !== undefined
-      && resolveEnemyId(objective.enemyId) === resolveEnemyId(relevantData.enemyId);
+      && objective.enemyId === relevantData.enemyId;
     const isCollectMatch = relevantData.itemId && objective.type === 'collect' && objective.itemId === relevantData.itemId;
 
     if (isKillMatch || isCollectMatch) {

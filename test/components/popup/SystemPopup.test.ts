@@ -63,6 +63,38 @@ describe('SystemPopup 系统弹窗组件', () => {
     });
   });
 
+  describe('关于区块（版本号展示）', () => {
+    it('渲染 .about-section 区块与"关于"标题', () => {
+      const wrapper = mount(SystemPopup, { props: { visible: true } });
+      expect(wrapper.find('.about-section').exists()).toBe(true);
+      expect(wrapper.find('.about-title').text()).toBe('关于');
+    });
+
+    it('展示三层版本号：应用版本、数据版本、数据库版本', () => {
+      const wrapper = mount(SystemPopup, { props: { visible: true } });
+      const labels = wrapper.findAll('.info-label').map(el => el.text());
+      expect(labels).toContain('应用版本');
+      expect(labels).toContain('数据版本');
+      expect(labels).toContain('数据库版本');
+    });
+
+    it('应用版本值为 1.0.0（与 APP_VERSION 同步）', () => {
+      const wrapper = mount(SystemPopup, { props: { visible: true } });
+      const rows = wrapper.findAll('.info-row');
+      const appVersionRow = rows.find(r => r.find('.info-label').text() === '应用版本');
+      expect(appVersionRow?.find('.info-value').text()).toBe('1.0.0');
+    });
+
+    it('数据版本与数据库版本以 v 前缀展示', () => {
+      const wrapper = mount(SystemPopup, { props: { visible: true } });
+      const rows = wrapper.findAll('.info-row');
+      const dataVersionRow = rows.find(r => r.find('.info-label').text() === '数据版本');
+      const dbVersionRow = rows.find(r => r.find('.info-label').text() === '数据库版本');
+      expect(dataVersionRow?.find('.info-value').text()).toBe('v1');
+      expect(dbVersionRow?.find('.info-value').text()).toBe('v1');
+    });
+  });
+
   describe('音量设置交互', () => {
     it('点击"音量设置"触发 close 与 open-audio 事件', async () => {
       const wrapper = mount(SystemPopup, { props: { visible: true } });

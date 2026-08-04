@@ -15,6 +15,25 @@
         <BaseIcon name="exit-door" gradient="blood" :size="20" />
         <span class="system-btn-label">退出游戏</span>
       </button>
+
+      <!-- 关于区块：显示三层版本号 -->
+      <div class="about-section">
+        <div class="about-title">关于</div>
+        <div class="about-info">
+          <div class="info-row">
+            <span class="info-label">应用版本</span>
+            <span class="info-value">{{ appVersion }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">数据版本</span>
+            <span class="info-value">v{{ dataVersion }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">数据库版本</span>
+            <span class="info-value">v{{ dbSchemaVersion }}</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <template #footer>
@@ -27,11 +46,15 @@
 /**
  * @fileoverview 系统弹窗组件
  * @description 提供音量设置入口和退出游戏功能，作为游戏主界面底部"系统"按钮的弹出面板
+ *
+ * 版本号基线重构后新增"关于"区块，展示三层版本号（APP_VERSION / DATA_VERSION / DB_SCHEMA_VERSION），
+ * 便于用户反馈问题时提供版本信息。
  */
 
 import { eventBus, GameEvents } from '@/modules/bus';
 import BasePopup from '../common/BasePopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { APP_VERSION, DATA_VERSION, DB_SCHEMA_VERSION } from '@/config/version';
 
 defineProps<{
   visible: boolean;
@@ -42,6 +65,11 @@ const emit = defineEmits<{
   (e: 'exit'): void;
   (e: 'open-audio'): void;
 }>();
+
+/** 关于区块显示的版本号（来源于 version.ts 统一版本源） */
+const appVersion = APP_VERSION;
+const dataVersion = DATA_VERSION;
+const dbSchemaVersion = DB_SCHEMA_VERSION;
 
 function openAudioSettings() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'system_audio' });
@@ -116,5 +144,46 @@ function handleClose() {
   background: rgba(255, 68, 68, 0.1);
   color: #ff6b6b;
   box-shadow: 0 4px 16px rgba(255, 68, 68, 0.1);
+}
+
+/* 关于区块：显示三层版本号 */
+.about-section {
+  margin-top: @spacing-md;
+  padding: @spacing-3xl @spacing-2xl;
+  border: @border-card;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.about-title {
+  color: @color-dodge;
+  font-size: @font-md;
+  font-weight: @font-weight-bold;
+  margin-bottom: @spacing-xl;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.about-info {
+  display: flex;
+  flex-direction: column;
+  gap: @spacing-md;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: @font-sm;
+}
+
+.info-label {
+  color: #888;
+}
+
+.info-value {
+  color: @accent-color;
+  font-weight: @font-weight-bold;
+  font-family: monospace;
 }
 </style>

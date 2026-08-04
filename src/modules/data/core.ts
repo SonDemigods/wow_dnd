@@ -9,6 +9,7 @@
  */
 import Dexie, { Table } from 'dexie';
 import { DATABASE_CONFIG, DB_SERVICE_CONFIG } from '@/config/database';
+import { APP_VERSION, DATA_VERSION } from '@/config/version';
 // P2-80 修复：类型直接从 data/types 导入，避免经 config/database.ts 再导出
 import type { DBServiceConfig } from '@/modules/data/types';
 
@@ -32,9 +33,13 @@ import type { AdventureLogData } from '@/modules/log/types';
  * 属于 data 模块自身的运行时状态，不归属任何业务模块
  *
  * P3-116 修复：
- * - 新增 gameSettings 字段（合并原 audio_settings 键的音频设置数据）
- * - settings 字段标记 @deprecated（已被 gameSettings 替代），保留为可选供向后兼容旧存档
- * - maxLevel 字段标记 @deprecated（从未使用），保留为可选供向后兼容
+ * - gameSettings 字段（合并原 audio_settings 键的音频设置数据）
+ *
+ * 版本号基线重构：
+ * - 新增 appVersion 字段：写入时的 APP_VERSION（语义化版本）
+ * - 新增 dataVersion 字段：写入时的 DATA_VERSION（数据格式版本，整数递增）
+ * - 启动时通过 dataVersion 与 CURRENT_DATA_VERSION 比较判断是否需要迁移
+ * - 删除 settings / maxLevel 废弃字段（放弃历史版本兼容，新库从 v1 重新开始）
  */
 export interface GameStateStorage {
   id: string;
@@ -42,6 +47,10 @@ export interface GameStateStorage {
   currentShopId?: string | null;
   lastPlayedAt?: string;
   initializedAt?: string;
+  /** 写入时的 APP_VERSION（语义化版本，UI 展示与备份文件头使用） */
+  appVersion?: string;
+  /** 写入时的 DATA_VERSION（数据格式版本，整数递增，迁移服务据此判断是否需要迁移） */
+  dataVersion?: number;
   /** P3-116：游戏设置（含音频设置），合并原 audio_settings 键的数据 */
   gameSettings?: {
     masterVolume: number;
@@ -53,10 +62,6 @@ export interface GameStateStorage {
     autoSave?: boolean;
     difficulty?: string;
   };
-  /** @deprecated 已被 gameSettings 替代，保留供向后兼容旧存档 */
-  settings?: { soundEnabled: boolean; musicEnabled: boolean; autoSave: boolean; difficulty: string };
-  /** @deprecated 从未使用，保留供向后兼容 */
-  maxLevel?: number;
   [key: string]: unknown;
 }
 
@@ -155,7 +160,15 @@ export class GameDatabase extends Dexie {
     super(DATABASE_CONFIG.name);
 
     /**
-     * 版本 1：按配置/角色/运行时分类的表结构
+     * 版本 1：全量表结构（合并原 v1+v2+v3）
+     *
+     * 版本号基线重构：放弃历史版本兼容，数据库名改为 wow_dnd_game_v1 让旧库自然废弃，
+     * 新库从 version(1) 干净开始。原 v1/v2/v3 三段增量声明合并为单段，包含全部 27 张表。
+     *
+     * 表分类：
+     * - 配置表（config_*）：游戏定义数据，所有角色共享
+     * - 角色表（char_*）：绑定角色 ID，每个角色独立
+     * - 运行时表（runtime_*）：日志和临时状态
      */
     this.version(1).stores({
       // 配置表
@@ -170,7 +183,12 @@ export class GameDatabase extends Dexie {
       config_skills: 'id, classRestriction, type, usableBy',
       config_locations: 'id, type, continent',
       config_shops: 'id',
-      
+      // 职业专属数据持久化表（原 v3，DATA-4：供 admin 后台编辑）
+      config_class_items: 'id, name, type, rarity',
+      config_class_passives: 'id, classId, trigger',
+      config_class_talents: 'id, classId',
+      config_item_sets: 'id, classRestriction',
+
       // 角色表
       char_data: 'characterId',
       char_inventory: 'characterId',
@@ -178,37 +196,15 @@ export class GameDatabase extends Dexie {
       char_skills: 'characterId',
       char_quests: '[characterId+questId], characterId, status',
       char_exploration: 'characterId, currentAreaId',
-      
+
       // 运行时表
       runtime_combatLogs: 'combatId, timestamp',
       runtime_adventureLogs: 'characterId, timestamp',
       runtime_gameState: 'id',
       runtime_mapState: 'id',
-      runtime_shopItems: 'shopId'
-    });
-
-    /**
-     * 版本 2：新增商店回购列表持久化表（BIZ-16）
-     *
-     * 仅声明新增的表，现有表结构保持不变（Dexie 增量 schema 声明：
-     * 未在此声明的表会沿用上一版本的 schema，不会被删除）。
-     */
-    this.version(2).stores({
+      runtime_shopItems: 'shopId',
+      // 商店回购列表持久化表（原 v2，BIZ-16）
       runtime_shopSoldItems: 'shopId'
-    });
-
-    /**
-     * 版本 3：新增职业专属配置数据表（DATA-4）
-     *
-     * 将原本仅以静态常量形式存在的职业专属装备/被动/天赋树/套装数据
-     * 持久化到 IndexedDB，供 admin 后台编辑。
-     * 业务模块仍直接 import 静态常量保持同步访问，DB 仅作为可编辑副本。
-     */
-    this.version(3).stores({
-      config_class_items: 'id, name, type, rarity',
-      config_class_passives: 'id, classId, trigger',
-      config_class_talents: 'id, classId',
-      config_item_sets: 'id, classRestriction'
     });
 
     /**
@@ -224,6 +220,9 @@ export class GameDatabase extends Dexie {
    *
    * P3-116 修复：使用 gameSettings 字段替代原 settings 字段，
    * 合并原 audio_settings 键的音频设置默认值。
+   *
+   * 版本号基线重构：写入 appVersion / dataVersion 版本戳，
+   * 启动时据此判断存档是否需要迁移。
    */
   private async populateInitialData(): Promise<void> {
     await this.runtime_gameState.put({
@@ -232,6 +231,9 @@ export class GameDatabase extends Dexie {
       currentShopId: null,
       lastPlayedAt: new Date().toISOString(),
       initializedAt: new Date().toISOString(),
+      // 版本戳：记录写入时的 APP_VERSION / DATA_VERSION
+      appVersion: APP_VERSION,
+      dataVersion: DATA_VERSION,
       // P3-116：使用 gameSettings 替代原 settings 字段，合并音频设置默认值
       gameSettings: {
         masterVolume: 0.7,

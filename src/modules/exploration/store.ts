@@ -33,7 +33,6 @@ import { VISION_RANGE, BOSS_SEAL_REQUIRED_CELLS } from '@/config/exploration';
 import { AREA_EVENT_TEMPLATES } from '@/data/config_area_events';
 import { dispatchCellEvent, applyEventEffect } from './events';
 import { defaultRng, type Rng } from '@/utils/rng';
-import { migrateExplorationGrid } from '@/modules/enemy';
 
 export const useExplorationStore = defineStore('exploration', () => {
   // ==================== 响应式状态（Store 是唯一数据源） ====================
@@ -299,8 +298,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     if (stored && stored.currentAreaId && stored.grid && stored.grid.length > 0) {
       // 从数据库恢复完整的探索状态
       currentAreaId.value = stored.currentAreaId;
-      // P3-137：迁移存档中的旧怪物 ID 到新 ID（别名层，旧 ID 原样保留）
-      grid.value = migrateExplorationGrid(stored.grid);
+      grid.value = stored.grid;
       campUsed.value = stored.campUsed;
       playerPosition.value = stored.playerPosition;
       visitedCells.value = stored.visitedCells;
@@ -312,9 +310,8 @@ export const useExplorationStore = defineStore('exploration', () => {
       // 恢复区域配置
       await loadAreaConfig(stored.currentAreaId);
 
-      // 阶段三：恢复后基于玩家当前位置刷新视线与可访问性
-      // 旧存档可能无 discovered 字段，db.ts 读取时已兼容（discovered ?? explored）；
-      // 此处 refreshGrid 基于当前 playerPosition 重新计算视线，确保 discovered 状态正确。
+      // 恢复后基于玩家当前位置刷新视线与可访问性
+      // refreshGrid 基于当前 playerPosition 重新计算视线，确保 discovered 状态正确。
       refreshGrid();
     } else {
       currentAreaId.value = null;

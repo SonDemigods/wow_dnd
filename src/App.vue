@@ -12,8 +12,10 @@
           </div>
           <CharacterSelect
             ref="characterSelectRef"
+            :version-mismatch="gameStore.versionMismatch"
             @select="handleCharacterSelect"
             @create="showCreateModal = true"
+            @migrated="handleMigrated"
           />
         </div>
 
@@ -154,15 +156,42 @@ onMounted(async () => {
   // 注意：characterStore.initialize 依赖 baseStore 的 factions/races/classes 数据，必须串行
   await baseStore.initialize();
   await characterStore.initialize();
-  // 检查是否有当前角色（直接从 GameStore 读取，明确数据源）
-  const currentCharacterId = gameStore.getCurrentCharacterId();
-  if (currentCharacterId) {
-    // 如果有当前角色ID，直接进入游戏
-    gameState.value = 'game';
+
+  // 版本检测拦截：dataVersion 与 CURRENT_DATA_VERSION 不匹配时，
+  // 强制停留在主菜单（character-select），即使存在 currentCharacterId 也不自动进入游戏。
+  // 用户需在主菜单点击"数据迁移"按钮触发 MigrationService.runStartupMigration，
+  // 迁移成功后由 handleMigrated 重新初始化各 Store 并清除 versionMismatch 状态。
+  if (!gameStore.versionMismatch) {
+    const currentCharacterId = gameStore.getCurrentCharacterId();
+    if (currentCharacterId) {
+      // 如果有当前角色ID，直接进入游戏
+      gameState.value = 'game';
+    }
   }
+  // versionMismatch 为 true 时，gameState 保持初始值 'character-select'
+
   // 初始化完成，解除加载状态
   loading.value = false;
 });
+
+/**
+ * 数据迁移成功后回调
+ *
+ * CharacterSelect 在 MigrationService.runStartupMigration 成功后会 emit('migrated')。
+ * 此处重新初始化各 Store，刷新 gameStore.versionMismatch 状态（迁移服务已将
+ * runtime_gameState.dataVersion 更新为 CURRENT_DATA_VERSION），并刷新角色列表。
+ *
+ * 不在此处自动进入游戏：迁移完成后用户仍在主菜单，需手动选择角色并点击"进入游戏"，
+ * 避免迁移后立即进入游戏导致用户对数据变更无感知。
+ */
+async function handleMigrated() {
+  await gameStore.initialize();
+  await baseStore.initialize();
+  await characterStore.initialize();
+  if (characterSelectRef.value?.refreshData) {
+    await characterSelectRef.value.refreshData();
+  }
+}
 
 // P2-42 修复：监听 INVENTORY_FULL 事件，统一显示背包已满 toast 提示
 // 替代 usePlayerAction 等 Composable 中直接调用 useToast 的副作用

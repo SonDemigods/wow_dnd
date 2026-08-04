@@ -19,6 +19,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import { useGameStore } from '@/modules/game/store';
 import { DEFAULT_GAME_SETTINGS } from '@/modules/game/types';
 import { db } from '@/modules/data';
+import { CURRENT_DATA_VERSION } from '@/config/version';
 
 describe('useGameStore', () => {
   beforeEach(async () => {
@@ -212,6 +213,69 @@ describe('useGameStore', () => {
       // 验证返回的是副本
       settings.masterVolume = 0.01;
       expect(store.gameSettings.masterVolume).toBe(DEFAULT_GAME_SETTINGS.masterVolume);
+    });
+  });
+
+  describe('版本检测（versionMismatch / getCurrentDataVersion / getExpectedDataVersion）', () => {
+    it('首次初始化后 versionMismatch 为 false（dataVersion = CURRENT_DATA_VERSION）', async () => {
+      const store = useGameStore();
+      await store.initialize();
+
+      expect(store.versionMismatch).toBe(false);
+      expect(store.getCurrentDataVersion()).toBe(CURRENT_DATA_VERSION);
+    });
+
+    it('DB 中 dataVersion 与 CURRENT_DATA_VERSION 不匹配时 versionMismatch 为 true', async () => {
+      // 预置旧版本存档（dataVersion = 0，低于 CURRENT_DATA_VERSION）
+      await db.runtime_gameState.put({
+        id: 'gameState',
+        currentCharacterId: 'char_old',
+        lastPlayedAt: '2026-01-01T00:00:00.000Z',
+        dataVersion: 0,
+      });
+
+      const store = useGameStore();
+      await store.initialize();
+
+      expect(store.versionMismatch).toBe(true);
+      expect(store.getCurrentDataVersion()).toBe(0);
+    });
+
+    it('DB 中 dataVersion 缺失时 versionMismatch 为 true（旧存档无版本戳）', async () => {
+      // 预置无 dataVersion 字段的存档（模拟旧基线存档）
+      await db.runtime_gameState.put({
+        id: 'gameState',
+        currentCharacterId: 'char_legacy',
+        lastPlayedAt: '2026-01-01T00:00:00.000Z',
+      });
+
+      const store = useGameStore();
+      await store.initialize();
+
+      expect(store.versionMismatch).toBe(true);
+      expect(store.getCurrentDataVersion()).toBeNull();
+    });
+
+    it('getExpectedDataVersion 返回 CURRENT_DATA_VERSION', async () => {
+      const store = useGameStore();
+      await store.initialize();
+
+      expect(store.getExpectedDataVersion()).toBe(CURRENT_DATA_VERSION);
+    });
+
+    it('未初始化时 versionMismatch 为 false（避免 loading 期间误判）', async () => {
+      const store = useGameStore();
+      // 不调用 initialize，直接读取 versionMismatch
+      expect(store.versionMismatch).toBe(false);
+    });
+
+    it('initialize 后 persist 写入的存档包含 appVersion 和 dataVersion 字段', async () => {
+      const store = useGameStore();
+      await store.initialize();
+
+      const persisted = await db.runtime_gameState.get('gameState');
+      expect(persisted!.appVersion).toBeTruthy();
+      expect(persisted!.dataVersion).toBe(CURRENT_DATA_VERSION);
     });
   });
 });

@@ -1,5 +1,13 @@
 <template>
   <div class="character-select">
+    <!-- 版本不匹配警告横幅 -->
+    <div v-if="versionMismatch" class="version-mismatch-banner">
+      <BaseIcon name="warning" gradient="fire" :size="20" />
+      <span>
+        检测到旧版存档（v{{ currentDataVersion }}），需迁移至 v{{ expectedDataVersion }} 才能进入游戏
+      </span>
+    </div>
+
     <!-- 删除确认弹窗 -->
     <div v-if="showConfirmModal" class="confirm-modal-overlay" @click="cancelDelete">
       <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
@@ -63,6 +71,31 @@
       </div>
     </div>
 
+    <!-- 数据迁移确认弹窗 -->
+    <div v-if="showMigrationModal" class="confirm-modal-overlay" @click="cancelMigration">
+      <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
+        <div class="confirm-icon"><BaseIcon name="arrow-up" gradient="fire" :size="32" /></div>
+        <h3>确认数据迁移</h3>
+        <p>将把存档从 v{{ currentDataVersion }} 迁移至 v{{ expectedDataVersion }}。建议迁移前先导出存档备份，避免迁移失败导致数据丢失。确定要继续吗？</p>
+        <div class="confirm-buttons">
+          <button class="confirm-btn-cancel" @click="cancelMigration">取消</button>
+          <button class="confirm-btn-delete" @click="confirmMigration">迁移</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 数据迁移结果弹窗 -->
+    <div v-if="showMigrationResultModal" class="confirm-modal-overlay" @click="closeMigrationResult">
+      <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
+        <div class="confirm-icon"><BaseIcon :name="migrationSuccess ? 'check-mark' : 'cancel'" :gradient="migrationSuccess ? 'heal' : 'debuff'" :size="32" /></div>
+        <h3>{{ migrationSuccess ? '迁移成功' : '迁移失败' }}</h3>
+        <p>{{ migrationMessage }}</p>
+        <div class="confirm-buttons">
+          <button class="confirm-btn-cancel" @click="closeMigrationResult">确定</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 隐藏的文件选择输入 -->
     <input
       ref="fileInputRef"
@@ -106,12 +139,19 @@
 
     <div class="action-bar">
       <div class="action-buttons">
-        <button 
-          class="action-btn action-btn-primary" 
-          :disabled="!selectedId"
+        <button
+          class="action-btn action-btn-primary"
+          :disabled="!selectedId || versionMismatch"
           @click="confirmSelect"
         >
           进入游戏
+        </button>
+        <button
+          v-if="versionMismatch"
+          class="action-btn action-btn-migrate"
+          @click="triggerMigration"
+        >
+          <BaseIcon name="arrow-up" :size="16" /> 数据迁移
         </button>
         <button class="action-btn action-btn-export" @click="handleExport">
           <BaseIcon name="cloud-upload" :size="16" /> 导出存档
@@ -139,15 +179,36 @@ import { eventBus, GameEvents } from '@/modules/bus';
 import Tag from './common/Tag.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import { useBaseStore } from '@/modules/base';
+import { useGameStore } from '@/modules/game';
+import { migrationService } from '@/modules/data';
 import type { ImportResult } from '@/modules/data';
+
+const props = defineProps<{
+  /** 版本不匹配标志：true 时禁用"进入游戏"按钮并显示警告横幅与"数据迁移"按钮 */
+  versionMismatch?: boolean;
+}>();
 
 const emit = defineEmits<{
   (e: 'select', id: string): void;
   (e: 'create'): void;
+  /** 数据迁移成功后通知父组件（App.vue）重新初始化各 Store */
+  (e: 'migrated'): void;
 }>();
 
 const baseStore = useBaseStore();
 const characterStore = useCharacterStore();
+const gameStore = useGameStore();
+
+/**
+ * 当前存档的数据版本戳（用于警告横幅显示 v{当前版本}）
+ *
+ * 从 gameStore 读取（initialize 时镜像自 runtime_gameState.dataVersion）。
+ * null 表示尚未初始化完成，此时 versionMismatch 必为 false，不会进入此分支。
+ */
+const currentDataVersion = computed(() => gameStore.getCurrentDataVersion() ?? '?');
+
+/** 当前代码期望的数据版本（用于警告横幅显示 v{期望版本}） */
+const expectedDataVersion = computed(() => gameStore.getExpectedDataVersion());
 
 /** 直接从 Store 读取的响应式角色列表 */
 const characters = computed(() => characterStore.characterList);
@@ -170,6 +231,12 @@ const showRepairModal = ref(false);
 const showRepairResultModal = ref(false);
 const repairSuccess = ref(false);
 const repairMessage = ref('');
+
+// 数据迁移相关状态
+const showMigrationModal = ref(false);
+const showMigrationResultModal = ref(false);
+const migrationSuccess = ref(false);
+const migrationMessage = ref('');
 
 async function loadData() {
   await baseStore.loadAllData();
@@ -366,6 +433,66 @@ function closeRepairResult() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'repair_result_close' });
 }
 
+// ==================== 数据迁移功能 ====================
+
+/**
+ * 触发数据迁移：弹出确认弹窗
+ *
+ * 仅在 versionMismatch=true 时按钮可见（模板 v-if 控制）。
+ * 迁移流程参照 confirmRepair 模式：确认弹窗 → 执行 → 结果弹窗。
+ */
+function triggerMigration() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'migration_btn' });
+  showMigrationModal.value = true;
+}
+
+/** 取消迁移 */
+function cancelMigration() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'cancel_migration' });
+  showMigrationModal.value = false;
+}
+
+/**
+ * 确认迁移：调用 MigrationService.runStartupMigration 执行全量迁移
+ *
+ * 迁移成功后：
+ * - 通知父组件（App.vue）重新初始化各 Store，刷新 gameStore.versionMismatch
+ * - emit('migrated') 触发父组件 handleMigrated，重新加载角色列表
+ * - 不在此处自动进入游戏，由用户手动选择角色后点击"进入游戏"
+ *
+ * 迁移失败：显示错误信息，保留 versionMismatch 状态，用户可重试或导出存档后重装。
+ */
+async function confirmMigration() {
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'confirm_migration' });
+  showMigrationModal.value = false;
+
+  try {
+    const result = await migrationService.runStartupMigration();
+    if (result.success) {
+      migrationSuccess.value = true;
+      migrationMessage.value = `存档已从 v${result.fromVersion} 迁移至 v${result.toVersion}`;
+      // 通知父组件重新初始化各 Store，刷新 versionMismatch 状态
+      emit('migrated');
+      // 刷新本组件的角色列表（迁移可能改写角色数据）
+      await loadData();
+      await loadCharacters();
+    } else {
+      migrationSuccess.value = false;
+      migrationMessage.value = result.error || '迁移失败，请尝试导出存档后重新安装';
+    }
+  } catch (error) {
+    migrationSuccess.value = false;
+    migrationMessage.value = (error as Error).message || '迁移过程中发生未知错误';
+  }
+  showMigrationResultModal.value = true;
+}
+
+/** 关闭迁移结果弹窗 */
+function closeMigrationResult() {
+  showMigrationResultModal.value = false;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'migration_result_close' });
+}
+
 onMounted(async () => {
   await loadData();
   await loadCharacters();
@@ -386,6 +513,35 @@ defineExpose({
   max-width: 800px;
   margin: 0 auto;
   padding: 24px;
+}
+
+/* 版本不匹配警告横幅 */
+.version-mismatch-banner {
+  display: flex;
+  align-items: center;
+  gap: @spacing-md;
+  padding: @spacing-xl @spacing-3xl;
+  margin-bottom: @spacing-3xl;
+  background: rgba(255, 68, 0, 0.12);
+  border: 1px solid rgba(255, 68, 0, 0.5);
+  border-radius: @radius-md;
+  color: #ff7a4d;
+  font-size: @font-md;
+  font-weight: @font-weight-bold;
+  animation: version-banner-pulse 2s ease-in-out infinite;
+}
+
+.version-mismatch-banner :deep(svg) {
+  flex-shrink: 0;
+}
+
+@keyframes version-banner-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(255, 68, 0, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(255, 68, 0, 0.4);
+  }
 }
 
 .character-list {
@@ -646,6 +802,30 @@ defineExpose({
   border-color: #ffa500;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
+}
+
+/* 数据迁移 - 红橙警告色（区别于修复按钮的橙色） */
+.action-btn-migrate {
+  background: rgba(255, 80, 0, 0.2);
+  border-color: rgba(255, 80, 0, 0.5);
+  color: #ff6b35;
+  animation: migrate-btn-pulse 1.5s ease-in-out infinite;
+}
+
+.action-btn-migrate:hover {
+  background: rgba(255, 80, 0, 0.3);
+  border-color: #ff6b35;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 80, 0, 0.4);
+}
+
+@keyframes migrate-btn-pulse {
+  0%, 100% {
+    box-shadow: 0 0 6px rgba(255, 80, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(255, 80, 0, 0.6);
+  }
 }
 
 /* 确认弹窗 */

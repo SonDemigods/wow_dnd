@@ -4,9 +4,9 @@
  * 提供游戏数据的备份功能，包括：
  * - 创建备份
  * - 导出备份文件
- * - 自动备份管理
  *
- * 从 service.ts 拆分而来（QA-11），保持原逻辑与公开 API 完全不变。
+ * 从 service.ts 拆分而来（QA-11）。版本基线重构后移除了自动备份管理功能，
+ * 仅保留手动导出/导入；collectAllData 改为 public 供 MigrationService 复用。
  */
 import type { Table } from 'dexie';
 import { db, getTable } from './core';
@@ -22,6 +22,7 @@ import type { SkillTemplateStorage } from '../skill/types';
 import type { CombatLogStorage } from '../combat/types';
 import type { LogEntry } from '../log/types';
 import { BACKUP_CONFIG } from '@/config/database';
+import { APP_VERSION } from '@/config/version';
 import { downloadBlob } from '@/utils/fileDownload';
 
 import type {
@@ -119,13 +120,11 @@ export async function calculateChecksum(data: unknown): Promise<string> {
  * 提供游戏数据的备份功能，包括：
  * - 创建备份
  * - 导出备份文件
- * - 自动备份管理
+ *
+ * 版本基线重构后移除了基于 localStorage 的自动备份管理（getAutoBackups /
+ * deleteBackup / clearAutoBackups / createAutoBackup），仅保留手动导出/导入。
  */
 export class BackupService implements IBackupService {
-  /** 自动备份存储键名 */
-  private readonly AUTO_BACKUP_KEY = BACKUP_CONFIG.autoBackupKey;
-  /** 最大自动备份数量 */
-  private readonly MAX_AUTO_BACKUPS = BACKUP_CONFIG.maxAutoBackups;
   /** 备份版本号 */
   private readonly BACKUP_VERSION = BACKUP_CONFIG.backupVersion;
 
@@ -145,7 +144,8 @@ export class BackupService implements IBackupService {
       version: this.BACKUP_VERSION,
       timestamp,
       checksum,
-      gameVersion: '1.0.0',
+      // 从 APP_VERSION 注入，避免硬编码字符串与 package.json 脱节
+      gameVersion: APP_VERSION,
       data
     };
   }
@@ -165,56 +165,6 @@ export class BackupService implements IBackupService {
   }
 
   /**
-   * 获取所有自动备份
-   * @returns BackupFile[] - 自动备份列表
-   */
-  async getAutoBackups(): Promise<BackupFile[]> {
-    try {
-      const stored = localStorage.getItem(this.AUTO_BACKUP_KEY);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (error) {
-      console.error('加载自动备份失败:', error);
-    }
-    return [];
-  }
-
-  /**
-   * 删除指定备份
-   * @param timestamp - 备份时间戳
-   */
-  async deleteBackup(timestamp: number): Promise<void> {
-    const backups = await this.getAutoBackups();
-    const filtered = backups.filter((b) => b.timestamp !== timestamp);
-    localStorage.setItem(this.AUTO_BACKUP_KEY, JSON.stringify(filtered));
-  }
-
-  /**
-   * 清除所有自动备份
-   */
-  async clearAutoBackups(): Promise<void> {
-    localStorage.removeItem(this.AUTO_BACKUP_KEY);
-  }
-
-  /**
-   * 创建自动备份
-   *
-   * 将最新备份添加到自动备份列表，超过最大数量时移除最旧的备份
-   */
-  async createAutoBackup(): Promise<void> {
-    const backup = await this.createBackup();
-    const backups = await this.getAutoBackups();
-    backups.unshift(backup);
-
-    if (backups.length > this.MAX_AUTO_BACKUPS) {
-      backups.pop();
-    }
-
-    localStorage.setItem(this.AUTO_BACKUP_KEY, JSON.stringify(backups));
-  }
-
-  /**
    * 收集所有游戏数据
    *
    * 从数据库中读取所有需要备份的数据表，包括运行时数据和完整配置表。
@@ -226,9 +176,12 @@ export class BackupService implements IBackupService {
    * - CODE-5：配置表的 Table 类型断言收敛在 getTable<T> 内部，调用方无需
    *   `as unknown as XXX` 双重断言。
    *
+   * 可见性说明：原为 private，版本号基线重构后改为 public，
+   * 供 MigrationService.runStartupMigration 复用（收集全量数据做迁移）。
+   *
    * @returns BackupData - 备份数据对象
    */
-  private async collectAllData(): Promise<BackupData> {
+  async collectAllData(): Promise<BackupData> {
     // PERF-2：互不依赖的表用 Promise.all 并行读取，避免串行阻塞主线程
     const [
       characterRecords, inventoryRecords, questsRecords, equipmentRecords,
