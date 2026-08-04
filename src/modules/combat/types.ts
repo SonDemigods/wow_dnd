@@ -181,7 +181,7 @@ export interface CombatActionResult {
  * @property {string} battleLogId - 日志条目唯一标识
  * @property {number} timestamp - 时间戳（毫秒）
  * @property {number} turn - 所在回合数（从 1 开始）
- * @property {'player' | 'enemy' | 'system'} actorType - 行动者类型（系统消息如 DOT/tick 也属此类）
+ * @property {'player' | 'enemy' | 'system' | 'pet'} actorType - 行动者类型（系统消息如 DOT/tick 也属此类，'pet' 为召唤物）
  * @property {string} actorId - 行动者 ID
  * @property {string} actorName - 行动者显示名称
  * @property {CombatEventType} eventType - 事件类型
@@ -205,7 +205,7 @@ export interface CombatLog {
   battleLogId: string;
   timestamp: number;
   turn: number;
-  actorType: 'player' | 'enemy' | 'system';
+  actorType: 'player' | 'enemy' | 'system' | 'pet';
   actorId: string;
   actorName: string;
   eventType: CombatEventType;

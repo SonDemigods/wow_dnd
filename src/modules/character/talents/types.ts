@@ -7,6 +7,7 @@
 import type { ClassType } from '../../character/types';
 import type { Stats } from '../../character/types';
 import type { ResourceType } from '@/modules/combat/resources/types';
+import type { PetType } from '@/modules/combat/pets/types';
 
 // ============================================================================
 // 天赋效果类型
@@ -32,6 +33,7 @@ export type ResourceStatKey = `${ResourceType}_max`;
  * - `skill_enhance`：技能增强（特定技能效果提升）
  * - `healing_multiplier`：治疗倍率（治疗效果百分比提升，P2-75 新增，替代 special 的"治疗效果提升"语义）
  * - `hp_multiplier`：生命上限倍率（每级提升 X% 生命上限，P3-139 新增，修复原 stat_bonus+hp_max 配置 bug）
+ * - `unlock_pet`：解锁宠物（P3-156 新增，学习该天赋后解锁指定宠物，由天赋系统在加点时调用 petStore.unlockPet）
  * - `special`：特殊效果（需自定义处理逻辑，目前无消费方，仅为兼容保留）
  */
 export type TalentEffectType =
@@ -43,6 +45,7 @@ export type TalentEffectType =
   | 'skill_enhance'
   | 'healing_multiplier'
   | 'hp_multiplier'
+  | 'unlock_pet'
   | 'special';
 
 /**
@@ -98,6 +101,22 @@ export interface SpecialEffect {
 }
 
 /**
+ * 解锁宠物效果（unlock_pet，P3-156 新增）
+ *
+ * 学习该天赋后解锁指定宠物。此效果为"一次性解锁"语义，不参与数值累加，
+ * 由天赋系统在 learnTalent 时读取天赋定义并调用 petStore.unlockPet(petType)。
+ *
+ * 典型用途：猎人"野兽掌握"天赋树 T4-T6 节点，解锁猎豹/野猪/魔暴龙。
+ *
+ * @property {PetType} petType - 要解锁的宠物类型 ID（如 'cat' / 'boar' / 'devilsaur'）
+ */
+export interface UnlockPetEffect {
+  type: 'unlock_pet';
+  /** 要解锁的宠物类型 ID（HunterPetType 或 WarlockPetType） */
+  petType: PetType;
+}
+
+/**
  * 无 stat 字段的数值累加效果
  *
  * 涵盖 damage_multiplier / damage_reduction / crit_bonus / healing_multiplier / hp_multiplier，
@@ -124,6 +143,7 @@ export type TalentEffect =
   | ResourceBonusEffect
   | SkillEnhanceEffect
   | SpecialEffect
+  | UnlockPetEffect
   | SimpleMultiplierEffect;
 
 // ============================================================================
@@ -139,8 +159,8 @@ export type TalentEffect =
  * @property {string} name - 天赋名称
  * @property {string} description - 天赋描述
  * @property {string} icon - 图标（Iconify 格式）
- * @property {number} tier - 天赋层级（1-3，需逐层解锁）
- * @property {number} maxRank - 最大等级（通常为 3-5）
+ * @property {number} tier - 天赋层级（1-6，需逐层解锁；T4-T6 为 P3-156 扩展，用于宠物解锁等特殊节点）
+ * @property {number} maxRank - 最大等级（通常为 3-5，解锁型节点为 1）
  * @property {string[]} [requires] - 前置天赋 ID 列表（需全部学习到指定等级才可学习）
  * @property {TalentEffect[]} effects - 天赋效果列表
  */
@@ -149,7 +169,7 @@ export interface Talent {
   name: string;
   description: string;
   icon: string;
-  tier: 1 | 2 | 3;
+  tier: 1 | 2 | 3 | 4 | 5 | 6;
   maxRank: number;
   requires?: string[];
   effects: TalentEffect[];
@@ -213,6 +233,10 @@ export interface TalentState {
  * 天赋点数获取规则
  *
  * 角色每升 X 级获得 1 点天赋点数。
+ *
+ * P3-156 扩展：新增 tier4/5/6 解锁阈值，用于猎人"野兽掌握"天赋树的宠物解锁节点。
+ * 阈值递增设计：T1-T3 满级（9 点）解锁 T4，之后每投入 1 点解锁下一层，
+ * 确保玩家在 level 18（9 点天赋）解锁猎豹，level 20 解锁野猪，level 22 解锁魔暴龙。
  */
 export const TALENT_POINT_RULES = {
   /** 每 N 级获得 1 点天赋点 */
@@ -225,6 +249,12 @@ export const TALENT_POINT_RULES = {
   tier2Requirement: 3,
   /** 解锁第 3 层天赋所需该系投入点数 */
   tier3Requirement: 6,
+  /** 解锁第 4 层天赋所需该系投入点数（P3-156 新增，T1-T3 满级 9 点） */
+  tier4Requirement: 9,
+  /** 解锁第 5 层天赋所需该系投入点数（P3-156 新增） */
+  tier5Requirement: 10,
+  /** 解锁第 6 层天赋所需该系投入点数（P3-156 新增） */
+  tier6Requirement: 11,
 } as const;
 
 /**

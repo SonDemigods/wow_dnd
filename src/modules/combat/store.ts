@@ -33,6 +33,9 @@ import type { Rng } from '@/utils/rng';
 import { useInitiative } from './composables/useInitiative';
 import { usePlayerAction } from './composables/usePlayerAction';
 import { usePassiveSkills } from './composables/usePassiveSkills';
+import { usePetAction, type PetSummonResult } from './composables/usePetAction';
+import type { PetType, PetOwner } from './pets';
+import { useTalentStore } from '@/modules/character/talents';
 
 /**
  * 战斗状态存储
@@ -71,6 +74,9 @@ export const useCombatStore = defineStore('combat', () => {
 
   // 5. 被动技能层（需在 enemy 之前创建以便注入）
   const passive = usePassiveSkills(state, log, ctx);
+
+  // P3-156：宠物行动层（术士/猎人战斗循环接入，作为战斗与宠物 Store 的唯一桥接点）
+  const pet = usePetAction(state, log, ctx);
 
   // 6. 敌人行动层（注入 passive 以便在玩家受伤时触发 onDamaged 被动）
   const enemy = useEnemyAction(state, log, ctx, passive);
@@ -244,11 +250,14 @@ export const useCombatStore = defineStore('combat', () => {
     } catch (e) {
       console.error('[CombatStore] 结束战斗异常:', e);
       state.cleanup();
+    } finally {
+      // P3-156：无论战斗结果如何，都重置宠物系统（清理激活的召唤物、冷却、日志回调）
+      pet.petStore.reset();
     }
   }
 
   // 7. 先攻/调度层（依赖 endCombat）
-  const initiative = useInitiative(state, log, ctx, enemy, boss, endCombat, passive);
+  const initiative = useInitiative(state, log, ctx, enemy, boss, endCombat, passive, pet);
 
   // P2-35 修复：initiative 已就位，绑定到 initiativeHolder 供 bossCtx.rebuildInitiativeOrder 使用
   initiativeHolder.current = initiative;
@@ -256,7 +265,8 @@ export const useCombatStore = defineStore('combat', () => {
   // 8. 玩家行动层（注入 endCombat 和 passive，消除 (state as any) 依赖）
   // BIZ-5：注入 passive 以便在伤害计算中应用 stat_modifier 和 buff 效果
   // 阶段九：注入 boss 以便调用 Boss 防御/反击/复活机制（已从 usePlayerAction 迁出到 useBossMechanics）
-  const player = usePlayerAction(state, log, ctx, initiative, endCombat, passive, boss);
+  // P3-156 M4-4：注入 pet 以便 usePlayerSkill 处理狩猎指令宠物联动与召唤/解散技能
+  const player = usePlayerAction(state, log, ctx, initiative, endCombat, passive, boss, pet);
 
   // P2-36 修复：player 已就位，绑定到 playerHolder 供 endCombat.handleLoot 使用
   playerHolder.current = player;
@@ -291,6 +301,31 @@ export const useCombatStore = defineStore('combat', () => {
     // 加载当前职业的被动技能并触发战斗开始钩子（Phase 5.2）
     passive.loadPassives();
     passive.onCombatStart();
+
+    // P3-156：初始化宠物系统（术士/猎人战斗循环接入）
+    // 根据职业 classId 决定加载哪套宠物数据；非宠物职业 initialize 也安全：
+    // 仅重置状态为空，buildInitiativeOrder 会通过 hasActivePet 守卫跳过
+    const petOwner: PetOwner = ctx.character.classId === 'hunter' ? 'hunter' : 'warlock';
+    // petStore.initialize 的 logCallback 签名为 (message: string) => void，
+    // 而 addCombatLog 接收完整 CombatLog 对象，此处包装为系统日志写入
+    pet.petStore.initialize(
+      ctx.character.level,
+      (msg: string) => log.addCombatLog({
+        actorType: 'system', actorId: 'system', actorName: '系统',
+        eventType: 'combat_event', isCrit: false, isDodge: false,
+        message: msg,
+      }),
+      petOwner,
+    );
+
+    // P3-156 M4-2：从天赋系统同步宠物解锁状态
+    // hunter_beast T4-T6 天赋通过 unlock_pet 效果解锁猎豹/野猪/魔暴龙，
+    // 此处在战斗开始时从 effectSummary.unlockedPets 重新同步，确保状态一致
+    // （天赋可能在非战斗时学习，petStore.initialize 会重置状态，需重新应用）
+    const talentStore = useTalentStore();
+    for (const petType of talentStore.effectSummary.unlockedPets) {
+      pet.petStore.unlockPet(petType as PetType);
+    }
 
     boss.initBossFeatures(enemiesData);
     initiative.assignEnemyPositions(enemiesData);
@@ -410,6 +445,46 @@ export const useCombatStore = defineStore('combat', () => {
     initiative.endPlayerTurn();
   }
 
+  // ==================== Action：宠物召唤/解散（P3-156） ====================
+
+  /**
+   * 召唤宠物（消耗灵魂碎片或集中值，术士/猎人战斗循环接入）
+   *
+   * 调用 usePetAction.summon 完成资源校验、消耗与实例创建，
+   * 召唤成功后重建先攻顺序让宠物加入回合调度。
+   *
+   * @param petType - 目标宠物（术士或猎人）
+   * @returns 召唤结果（含成功标志与提示消息）
+   */
+  function summonPet(petType: PetType): PetSummonResult {
+    if (state.state.value !== 'fighting' || state.turn.value !== 'player') {
+      return { success: false, message: '不是你的回合，无法召唤' };
+    }
+    const result = pet.summon(petType);
+    if (result.success) {
+      // 召唤成功后重建先攻顺序，让宠物加入回合调度
+      initiative.buildInitiativeOrder();
+    }
+    return result;
+  }
+
+  /**
+   * 解散当前宠物
+   *
+   * 解散后重建先攻顺序，将宠物从回合调度中移除。
+   * @returns 解散结果
+   */
+  function dismissPet(): PetSummonResult {
+    if (state.state.value !== 'fighting') {
+      return { success: false, message: '未在战斗中' };
+    }
+    const result = pet.dismiss();
+    if (result.success) {
+      initiative.buildInitiativeOrder();
+    }
+    return result;
+  }
+
   // ==================== 资源系统辅助方法 ====================
 
   /**
@@ -486,6 +561,10 @@ export const useCombatStore = defineStore('combat', () => {
     hasBossEnemy: state.hasBossEnemy,
     bossIntros: state.bossIntros,
     currentTarget: state.currentTarget,
+    // P3-156：宠物系统状态（术士/猎人战斗循环）
+    hasActivePet: pet.petStore.hasActivePet,
+    activePet: pet.petStore.activePet,
+    unlockedPets: pet.petStore.unlockedPets,
 
     // Action
     startCombat,
@@ -499,6 +578,9 @@ export const useCombatStore = defineStore('combat', () => {
     // 资源系统辅助方法
     canCastSkill,
     consumeSkillResource,
+    // P3-156：宠物召唤/解散
+    summonPet,
+    dismissPet,
     // 资源释放
     dispose,
   };

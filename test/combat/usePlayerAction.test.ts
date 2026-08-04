@@ -235,6 +235,35 @@ function makePassiveMock() {
 }
 
 /**
+ * P3-156 M4-4：构造 usePetAction 返回值的 mock
+ *
+ * usePlayerSkill 新增 pet 参数，用于狩猎指令宠物联动与召唤/解散技能。
+ * 默认行为：无激活宠物（hasActivePet=false），避免干扰非宠物技能的现有测试。
+ */
+function makePetMock(opts: { hasActivePet?: boolean; activePet?: unknown } = {}) {
+  return {
+    petStore: {
+      hasActivePet: opts.hasActivePet ?? false,
+      activePet: opts.activePet ?? null,
+      getSummonable: vi.fn(() => []),
+    },
+    summon: vi.fn(() => ({ success: false, message: 'mock' })),
+    dismiss: vi.fn(() => ({ success: false, message: 'mock' })),
+    petTakeTurn: vi.fn(),
+    petTakeDamage: vi.fn(),
+    petTickTurn: vi.fn(),
+    selectPetTarget: vi.fn(() => null),
+    createPetEffectContext: vi.fn(() => ({
+      ownerId: 'pet-mock',
+      ownerType: 'player',
+      baseStats: { physicalAttack: 0, physicalDefense: 0, magicAttack: 0, magicDefense: 0, speed: 0 },
+      currentHp: 0,
+      maxHp: 0,
+    })),
+  } as never;
+}
+
+/**
  * 构造 useBossMechanics 返回值的 mock
  *
  * 阶段九新增：Boss 防御/反击/复活机制已从 usePlayerAction 迁出到 useBossMechanics，
@@ -790,7 +819,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       state.bossInstances.get(boss.id)!.runtime.invulnerable = true;
       enemyStoreMock.getEnemyById.mockReturnValue(boss);
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()));
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()), makePetMock());
 
       action.playerAttack();
 
@@ -806,7 +835,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.getEnemyById.mockReturnValue(boss);
       pipeResultMock.finalDamage = 20;
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()));
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()), makePetMock());
 
       action.playerAttack();
 
@@ -825,7 +854,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 20;
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()));
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()), makePetMock());
 
       action.playerAttack();
 
@@ -841,7 +870,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 20;
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       action.playerAttack();
 
@@ -861,7 +890,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 20;
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()));
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()), makePetMock());
 
       action.playerAttack();
 
@@ -878,7 +907,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 20;
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()));
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()), makePetMock());
 
       action.playerAttack();
 
@@ -899,7 +928,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.getEnemyById.mockReturnValue(boss);
       pipeResultMock.finalDamage = 20;
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       action.playerAttack();
 
@@ -924,7 +953,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
 
       const endCombat = vi.fn();
       const initiative = makeInitiativeMock();
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), initiative, endCombat, makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()));
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), initiative, endCombat, makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()), makePetMock());
 
       action.playerAttack();
 
@@ -943,7 +972,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       state.aliveEnemies.value = [];
 
       const endCombat = vi.fn();
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makePassiveMock(), makeBossMock(), makePetMock());
 
       action.playerAttack();
 
@@ -962,7 +991,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.finalDamage = 20;
       pipeResultMock.thorns = 5;
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       action.playerAttack();
 
@@ -978,7 +1007,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.thorns = 5;
       rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       action.playerAttack();
 
@@ -1003,7 +1032,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.finalDamage = 20;
       enemyStoreMock.takeDamage.mockReturnValue(false);
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       const result = await action.playerSkill('sk1');
 
@@ -1027,7 +1056,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.finalDamage = 20;
       enemyStoreMock.takeDamage.mockReturnValue(false);
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1054,7 +1083,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       });
 
       const endCombat = vi.fn();
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1070,7 +1099,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
         success: true, type: 'physical_damage', damage: 30,
       });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       const result = await action.playerSkill('sk1');
 
@@ -1087,7 +1116,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
         success: true, type: 'physical_damage', damage: 30,
       });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       const result = await action.playerSkill('sk1');
 
@@ -1108,7 +1137,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 25;
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       const result = await action.playerSkill('sk1');
 
@@ -1130,7 +1159,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       state.aliveEnemies.value = [];
 
       const endCombat = vi.fn();
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1151,7 +1180,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 20;
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1169,7 +1198,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       });
       const initialLength = state.playerEffects.value.effects.length;
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1187,7 +1216,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
         success: true, type: 'debuff', appliedEffects: [{ type: 'attack_down', value: 5, turns: 2 }],
       });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1205,7 +1234,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
         success: true, type: 'debuff', appliedEffects: [{ type: 'poison', value: 5, turns: 2 }],
       });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1222,7 +1251,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
         success: true, type: 'debuff', appliedEffects: [{ type: 'poison', value: 5, turns: 2 }],
       });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       const result = await action.playerSkill('sk1');
 
@@ -1240,7 +1269,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       });
       const initiative = makeInitiativeMock();
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), initiative, vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), initiative, vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       const result = await action.playerSkill('sk1');
 
@@ -1261,7 +1290,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       };
       state.resourceSystems.value = [resourceSys];
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1282,7 +1311,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 40;
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       const result = await action.playerUseItem('item1');
 
@@ -1303,7 +1332,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.finalDamage = 40;
       rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       const result = await action.playerUseItem('item1');
 
@@ -1322,7 +1351,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 35;
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerUseItem('item1');
 
@@ -1335,7 +1364,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
         name: '法力药水', effect: { type: 'mana_restore', value: 20 },
       });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerUseItem('item1');
 
@@ -1352,7 +1381,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
         name: '生命药水', effect: { type: 'health_restore', value: 30 },
       });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerUseItem('item1');
 
@@ -1373,7 +1402,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       state.aliveEnemies.value = [];
 
       const endCombat = vi.fn();
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerUseItem('item1');
 
@@ -1393,7 +1422,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
 
       const endCombat = vi.fn();
       const initiative = makeInitiativeMock();
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), initiative, endCombat, makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()));
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), initiative, endCombat, makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()), makePetMock());
 
       await action.playerUseItem('item1');
 
@@ -1407,7 +1436,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const state = makeStateMock();
       inventoryStoreMock.getItemInfo.mockReturnValue(null);
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       const result = await action.playerUseItem('item1');
 
@@ -1428,7 +1457,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       inventoryStoreMock.getItemInfo.mockReturnValue({ name: '药水' });
       inventoryStoreMock.addItem.mockReturnValue(2);
 
-      const action = usePlayerAction(makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       action.handleLoot(enemy);
 
@@ -1445,7 +1474,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
         drops: [{ itemId: 'item1', dropRate: 1, minAmount: 0, maxAmount: 0 }],
       } as Partial<EnemyInstance>);
 
-      const action = usePlayerAction(makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       action.handleLoot(enemy);
 
@@ -1461,7 +1490,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       inventoryStoreMock.getItemInfo.mockReturnValue({ name: '材料' });
       inventoryStoreMock.addItem.mockReturnValue(3);
 
-      const action = usePlayerAction(makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       action.handleLoot(enemy);
 
@@ -1483,7 +1512,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       } as Partial<EnemyInstance>);
       inventoryStoreMock.getItemInfo.mockReturnValue(null);
 
-      const action = usePlayerAction(makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       action.handleLoot(enemy);
 
@@ -1496,7 +1525,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
         drops: [{ itemId: 'item1', dropRate: 0, minAmount: 2, maxAmount: 2 }],
       } as Partial<EnemyInstance>);
 
-      const action = usePlayerAction(makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       action.handleLoot(enemy);
 
@@ -1514,7 +1543,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       inventoryStoreMock.getItemInfo.mockReturnValue({ name: '物品' });
       inventoryStoreMock.addItem.mockReturnValue(99);
 
-      const action = usePlayerAction(makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       action.handleLoot(enemy);
 
@@ -1541,7 +1570,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.thorns = 5;
       enemyStoreMock.takeDamage.mockReturnValue(false);
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1568,7 +1597,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
 
       const endCombat = vi.fn();
       const initiative = makeInitiativeMock();
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), initiative, endCombat, makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()));
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), initiative, endCombat, makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1594,7 +1623,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       pipeResultMock.finalDamage = 40;
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       const result = await action.playerUseItem('item1');
 
@@ -1613,7 +1642,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       inventoryStoreMock.getItemInfo.mockReturnValue({ name: '' });
       inventoryStoreMock.addItem.mockReturnValue(1);
 
-      const action = usePlayerAction(makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       action.handleLoot(enemy);
 
@@ -1643,7 +1672,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.finalDamage = 25;
       pipeResultMock.thorns = 5;
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1666,7 +1695,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.finalDamage = 25;
       rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1688,7 +1717,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.finalDamage = 40;
       pipeResultMock.thorns = 6;
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerUseItem('item1');
 
@@ -1709,7 +1738,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.thorns = 6;
       rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerUseItem('item1');
 
@@ -1732,7 +1761,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
       rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1755,7 +1784,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.finalDamage = 20;
       rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       action.playerAttack();
 
@@ -1787,7 +1816,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       rollPlayerCritMock.mockReturnValueOnce({ isCrit: true, multiplier: 1.5 }).mockReturnValueOnce({ isCrit: false, multiplier: 1 });
 
       const log = makeLogMock();
-      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1828,7 +1857,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       const log = makeLogMock();
-      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1876,7 +1905,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       rollPlayerCritMock.mockReturnValue({ isCrit: false, multiplier: 1 });
 
       const log = makeLogMock();
-      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1903,7 +1932,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       } as never);
 
       const log = makeLogMock();
-      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1933,7 +1962,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       } as never);
 
       const log = makeLogMock();
-      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -1966,7 +1995,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.finalDamage = 35;
       rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerUseItem('item1');
 
@@ -1989,7 +2018,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.finalDamage = 40;
       rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerUseItem('item1');
 
@@ -2012,7 +2041,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       const log = makeLogMock();
-      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerUseItem('item1');
 
@@ -2043,7 +2072,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       });
 
       const log = makeLogMock();
-      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, log, makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerUseItem('item1');
 
@@ -2072,7 +2101,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
         success: true, type: 'health_restore', heal: 20,
       } as never);
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -2096,7 +2125,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.finalDamage = 20;
       enemyStoreMock.takeDamage.mockReturnValue(false);
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()));
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(state, makeLogMock(), makeMockCtx()), makePetMock());
 
       await action.playerSkill('sk1');
 
@@ -2114,7 +2143,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
         success: true, type: 'unknown', appliedEffects: [{ type: 'custom', value: 5, turns: 2 }],
       } as never);
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       const result = await action.playerSkill('sk1');
 
@@ -2133,7 +2162,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       } as never);
 
       const initiative = makeInitiativeMock();
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), initiative, vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), initiative, vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       const result = await action.playerSkill('sk1');
 
@@ -2154,7 +2183,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       state.enemyEffects.value['e1'] = createEmptyContainer();
       const initialContainer = state.enemyEffects.value['e1'];
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       // 第二次调用：容器已存在，不创建新容器
       action.applyDebuffToEnemy(enemy, [{ type: 'attack_down', value: 5, turns: 2 }], '毒击');
@@ -2175,7 +2204,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
         ],
       };
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       // isSelfBuff 为 true（attack_up），进入自身增益路径
       // poison 不在自身增益列表中，跳过
@@ -2194,7 +2223,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
         buffs: [{ type: 'poison', value: 5, turns: 2 }],
       };
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       // targetType 非 self/all_enemies，currentTarget 为 null
       action.applySkillBuffs(skill, 'single');
@@ -2215,7 +2244,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.finalDamage = 1;
       rollPlayerCritMock.mockReturnValue({ isCrit: false, multiplier: 1 });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       action.playerAttack();
 
@@ -2235,7 +2264,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       pipeResultMock.finalDamage = 1;
       rollPlayerCritMock.mockReturnValue({ isCrit: false, multiplier: 1 });
 
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock());
+      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
 
       action.playerAttack();
 

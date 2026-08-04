@@ -62,7 +62,9 @@ export const WARLOCK_PETS: Record<WarlockPetType, WarlockPet> = {
       }
     ],
     soulShardCost: 1,
-    duration: 0
+    duration: 0,
+    owner: 'warlock',
+    resourceType: 'soul_shard'
   },
 
   // ============================================================
@@ -111,7 +113,9 @@ export const WARLOCK_PETS: Record<WarlockPetType, WarlockPet> = {
       }
     ],
     soulShardCost: 1,
-    duration: 0
+    duration: 0,
+    owner: 'warlock',
+    resourceType: 'soul_shard'
   },
 
   // ============================================================
@@ -160,7 +164,9 @@ export const WARLOCK_PETS: Record<WarlockPetType, WarlockPet> = {
       }
     ],
     soulShardCost: 2,
-    duration: 0
+    duration: 0,
+    owner: 'warlock',
+    resourceType: 'soul_shard'
   },
 
   // ============================================================
@@ -209,7 +215,9 @@ export const WARLOCK_PETS: Record<WarlockPetType, WarlockPet> = {
       }
     ],
     soulShardCost: 2,
-    duration: 0
+    duration: 0,
+    owner: 'warlock',
+    resourceType: 'soul_shard'
   },
 
   // ============================================================
@@ -258,7 +266,9 @@ export const WARLOCK_PETS: Record<WarlockPetType, WarlockPet> = {
       }
     ],
     soulShardCost: 3,
-    duration: 10
+    duration: 10,
+    owner: 'warlock',
+    resourceType: 'soul_shard'
   }
 };
 

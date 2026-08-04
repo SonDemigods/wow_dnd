@@ -21,6 +21,30 @@ import type { Stats } from '@/modules/character/types';
  */
 export type WarlockPetType = 'imp' | 'voidwalker' | 'succubus' | 'felhunter' | 'doomguard';
 
+/**
+ * 猎人野兽宠物类型（P3-156 扩展）
+ *
+ * - `wolf`：荒野之狼，近战输出，aggressive
+ * - `bear`：战熊，坦克型，defensive
+ * - `cat`：猎豹，高速输出，aggressive
+ * - `boar`：野猪，控制型，controller
+ * - `devilsaur`：魔暴龙，终极输出，aggressive（限时）
+ */
+export type HunterPetType = 'wolf' | 'bear' | 'cat' | 'boar' | 'devilsaur';
+
+/**
+ * 宠物所有者类型
+ *
+ * - `warlock`：术士召唤物（消耗灵魂碎片）
+ * - `hunter`：猎人野兽宠物（消耗集中值）
+ */
+export type PetOwner = 'warlock' | 'hunter';
+
+/**
+ * 通用宠物类型 ID（术士 + 猎人）
+ */
+export type PetType = WarlockPetType | HunterPetType;
+
 // ============================================================================
 // 召唤物定义接口
 // ============================================================================
@@ -90,6 +114,8 @@ export interface PetSkill {
  * @property {PetSkill[]} skills - 可用技能列表
  * @property {number} soulShardCost - 召唤所需灵魂碎片
  * @property {number} duration - 持续回合数（0 表示永久，直到被解散或死亡）
+ * @property {PetOwner} owner - 所有者职业（术士固定为 'warlock'）
+ * @property {'soul_shard'} resourceType - 资源类型（术士固定为灵魂碎片）
  */
 export interface WarlockPet {
   id: WarlockPetType;
@@ -101,7 +127,48 @@ export interface WarlockPet {
   skills: PetSkill[];
   soulShardCost: number;
   duration: number;
+  owner: PetOwner;
+  resourceType: 'soul_shard';
 }
+
+/**
+ * 猎人野兽宠物定义接口（P3-156 扩展）
+ *
+ * 与 WarlockPet 结构类似，但消耗集中值（focus）而非灵魂碎片。
+ *
+ * @property {HunterPetType} id - 宠物 ID
+ * @property {string} name - 宠物名称
+ * @property {string} icon - 宠物图标
+ * @property {string} description - 宠物描述
+ * @property {PetAIBehavior} aiBehavior - AI 行为类型
+ * @property {PetBaseAttributes} attributes - 基础属性
+ * @property {PetSkill[]} skills - 可用技能列表
+ * @property {number} focusCost - 召唤所需集中值
+ * @property {number} duration - 持续回合数（0 表示永久）
+ * @property {PetOwner} owner - 所有者职业（猎人固定为 'hunter'）
+ * @property {'focus'} resourceType - 资源类型（猎人固定为集中值）
+ */
+export interface HunterPet {
+  id: HunterPetType;
+  name: string;
+  icon: string;
+  description: string;
+  aiBehavior: PetAIBehavior;
+  attributes: PetBaseAttributes;
+  skills: PetSkill[];
+  focusCost: number;
+  duration: number;
+  owner: PetOwner;
+  resourceType: 'focus';
+}
+
+/**
+ * 通用宠物定义联合类型（术士 + 猎人）
+ *
+ * 在需要同时处理两种宠物的场景中使用（如 PetSummonPopup 通用 UI）。
+ * 使用时通过 `owner` 字段进行类型收窄。
+ */
+export type Pet = WarlockPet | HunterPet;
 
 // ============================================================================
 // 召唤物运行时状态接口
@@ -113,9 +180,9 @@ export interface WarlockPet {
  * 召唤物在战斗中的实际状态，由 base 属性 + 等级加成计算得出。
  *
  * @property {string} instanceId - 实例唯一 ID（用于战斗中区分多个召唤物）
- * @property {WarlockPetType} petId - 召唤物类型 ID
+ * @property {PetType} petId - 宠物类型 ID（术士或猎人）
  * @property {string} name - 显示名称
- * @property {number} level - 召唤物等级（通常等于术士等级）
+ * @property {number} level - 召唤物等级（通常等于主人等级）
  * @property {number} hp - 当前生命值
  * @property {number} maxHp - 最大生命值
  * @property {number} damage - 伤害值
@@ -126,10 +193,11 @@ export interface WarlockPet {
  * @property {PetAIBehavior} aiBehavior - AI 行为类型
  * @property {number} durationRemaining - 持续剩余回合数
  * @property {Map<string, number>} skillCooldowns - 技能冷却映射（技能 ID → 剩余冷却）
+ * @property {PetOwner} owner - 所有者职业（'warlock' 或 'hunter'）
  */
 export interface PetInstance {
   instanceId: string;
-  petId: WarlockPetType;
+  petId: PetType;
   name: string;
   level: number;
   hp: number;
@@ -142,17 +210,18 @@ export interface PetInstance {
   aiBehavior: PetAIBehavior;
   durationRemaining: number;
   skillCooldowns: Map<string, number>;
+  owner: PetOwner;
 }
 
 /**
  * 召唤系统状态接口
  *
  * @property {PetInstance | null} activePet - 当前激活的召唤物（无则 null）
- * @property {WarlockPetType[]} unlockedPets - 已解锁的召唤物列表
+ * @property {PetType[]} unlockedPets - 已解锁的宠物列表（术士或猎人）
  */
 export interface PetSystemState {
   activePet: PetInstance | null;
-  unlockedPets: WarlockPetType[];
+  unlockedPets: PetType[];
 }
 
 // ============================================================================

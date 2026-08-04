@@ -47,6 +47,9 @@ export function getTreeSpentPoints(tree: TalentTree, allocations: TalentAllocati
  * - tier 1：始终解锁
  * - tier 2：该天赋树已投入 >= tier2Requirement（默认 3）点
  * - tier 3：该天赋树已投入 >= tier3Requirement（默认 6）点
+ * - tier 4：该天赋树已投入 >= tier4Requirement（默认 9）点（P3-156 新增）
+ * - tier 5：该天赋树已投入 >= tier5Requirement（默认 10）点（P3-156 新增）
+ * - tier 6：该天赋树已投入 >= tier6Requirement（默认 11）点（P3-156 新增）
  *
  * @param talent - 目标天赋
  * @param tree - 所属天赋树
@@ -61,13 +64,20 @@ export function isTierUnlocked(
   if (talent.tier === 1) return true;
 
   const spent = getTreeSpentPoints(tree, allocations);
-  if (talent.tier === 2) {
-    return spent >= TALENT_POINT_RULES.tier2Requirement;
+  switch (talent.tier) {
+    case 2:
+      return spent >= TALENT_POINT_RULES.tier2Requirement;
+    case 3:
+      return spent >= TALENT_POINT_RULES.tier3Requirement;
+    case 4:
+      return spent >= TALENT_POINT_RULES.tier4Requirement;
+    case 5:
+      return spent >= TALENT_POINT_RULES.tier5Requirement;
+    case 6:
+      return spent >= TALENT_POINT_RULES.tier6Requirement;
+    default:
+      return false;
   }
-  if (talent.tier === 3) {
-    return spent >= TALENT_POINT_RULES.tier3Requirement;
-  }
-  return false;
 }
 
 /**
@@ -156,6 +166,8 @@ export interface TalentEffectSummary {
   specialEffects: Array<{ description: string; value: number }>;
   /** 技能增强列表（skill_enhance） */
   skillEnhancements: Array<{ skillId: string; value: number }>;
+  /** 已解锁宠物列表（unlock_pet，P3-156 新增），记录所有通过天赋解锁的宠物类型 ID */
+  unlockedPets: string[];
 }
 
 /**
@@ -171,7 +183,8 @@ export function createEmptyEffectSummary(): TalentEffectSummary {
     healingMultiplier: 0,
     hpMultiplier: 0,
     specialEffects: [],
-    skillEnhancements: []
+    skillEnhancements: [],
+    unlockedPets: []
   };
 }
 
@@ -187,6 +200,17 @@ export function createEmptyEffectSummary(): TalentEffectSummary {
  */
 function accumulateEffect(summary: TalentEffectSummary, effect: TalentEffect, rank: number): void {
   if (rank <= 0) return;
+
+  // P3-156 新增：unlock_pet 是一次性解锁效果，不参与数值累加，
+  // 仅将 petType 收集到 unlockedPets 列表供调用方读取。
+  // 此处提前返回，避免后续访问 effect.valuePerRank（UnlockPetEffect 无该字段）
+  if (effect.type === 'unlock_pet') {
+    if (!summary.unlockedPets.includes(effect.petType)) {
+      summary.unlockedPets.push(effect.petType);
+    }
+    return;
+  }
+
   const totalValue = effect.valuePerRank * rank;
 
   switch (effect.type) {

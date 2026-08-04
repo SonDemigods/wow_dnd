@@ -111,6 +111,8 @@ export interface SkillBuffEffect {
  * @property {SkillBuffEffect[]} [buffs] - Buff/Debuff 效果列表（仅 buff/debuff 类型技能有意义）
  * @property {string} [resourceType] - 资源系统类型（BIZ-11：'rage'/'energy'/'combo_point' 等，扩展 mpCost 之外的消耗）
  * @property {number} [resourceCost] - 资源消耗量（与 resourceType 配合使用）
+ * @property {boolean} [requiresActivePet] - P3-156：是否需要激活宠物才能施放（如 hunter_kill_command）
+ * @property {'summon_pet'|'dismiss_pet'} [specialAction] - P3-156：特殊动作类型，触发宠物召唤/解散而非伤害/恢复
  *
  * @see SkillTemplateStorage 数据库模板对应的存储类型
  * @see toSkill 模板 → 运行时对象的转换逻辑
@@ -130,6 +132,8 @@ export interface Skill {
   buffs?: SkillBuffEffect[];
   resourceType?: string;
   resourceCost?: number;
+  requiresActivePet?: boolean;
+  specialAction?: 'summon_pet' | 'dismiss_pet';
 }
 
 // ============================================================================
@@ -258,6 +262,8 @@ export interface SkillsData {
  * @property {SkillBuffEffect[]} [buffs] - Buff/Debuff 效果列表
  * @property {string} [resourceType] - 资源系统类型（BIZ-11）
  * @property {number} [resourceCost] - 资源消耗量（BIZ-11）
+ * @property {boolean} [requiresActivePet] - P3-156：是否需要激活宠物才能施放
+ * @property {'summon_pet'|'dismiss_pet'} [specialAction] - P3-156：特殊动作类型（召唤/解散宠物）
  *
  * @see toSkill 存储类型 → 运行时类型的转换逻辑
  */
@@ -277,4 +283,6 @@ export interface SkillTemplateStorage {
   buffs?: SkillBuffEffect[];
   resourceType?: string;
   resourceCost?: number;
+  requiresActivePet?: boolean;
+  specialAction?: 'summon_pet' | 'dismiss_pet';
 }

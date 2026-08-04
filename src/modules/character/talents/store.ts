@@ -18,7 +18,8 @@ import {
   getTalentStatBonuses,
   type TalentEffectSummary
 } from './service';
-import { getTalentTreesByClassId } from '@/data/config_class_talents';
+import { getTalentTreesByClassId, getTalentById } from '@/data/config_class_talents';
+import { usePetStore } from '@/modules/combat/pets';
 
 /**
  * 天赋 Store
@@ -80,7 +81,8 @@ export const useTalentStore = defineStore('talent', () => {
         healingMultiplier: 0,
         hpMultiplier: 0,
         specialEffects: [],
-        skillEnhancements: []
+        skillEnhancements: [],
+        unlockedPets: []
       };
     }
     return calculateTalentEffects(currentClassId.value, allocations.value);
@@ -155,7 +157,37 @@ export const useTalentStore = defineStore('talent', () => {
     }
 
     allocations.value = learnTalent(allocations.value, talentId);
+
+    // P3-156 M4-2：学习含 unlock_pet 效果的天赋时，即时调用 petStore.unlockPet
+    applyUnlockPetEffects(talentId);
+
     return true;
+  }
+
+  /**
+   * 检查并应用天赋的 unlock_pet 效果
+   *
+   * P3-156 M4-2 新增：学习含 unlock_pet 效果的天赋时，调用 petStore.unlockPet 解锁对应宠物。
+   *
+   * 设计说明：
+   * - 此处的即时调用用于战斗中学习天赋的即时反馈
+   * - 非战斗时 petStore 可能未初始化（owner 默认 'warlock'），unlockPet 仍会执行但
+   *   添加的猎人宠物不会影响当前 owner 的可用列表
+   * - 战斗开始时 petStore.initialize 会重置状态，combat/store.ts 会从
+   *   effectSummary.unlockedPets 重新同步，确保状态一致
+   *
+   * @param talentId - 刚学习的天赋 ID
+   */
+  function applyUnlockPetEffects(talentId: string): void {
+    const found = getTalentById(talentId);
+    if (!found) return;
+
+    for (const effect of found.talent.effects) {
+      if (effect.type === 'unlock_pet') {
+        const petStore = usePetStore();
+        petStore.unlockPet(effect.petType);
+      }
+    }
   }
 
   /**

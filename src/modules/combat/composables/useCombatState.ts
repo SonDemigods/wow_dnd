@@ -48,8 +48,8 @@ export function useCombatState(ctx: ICombatContext) {
   /** 敌人位置映射（enemyId -> { row: 'front'|'back', col: 0-2 }），3×2 网格布局 */
   const enemyPositions = ref<Record<string, { row: 'front' | 'back'; col: number }>>({});
 
-  /** 当前回合 */
-  const turn = ref<'player' | 'enemy'>('player');
+  /** 当前回合（'pet' 为召唤物回合，玩家不可操作） */
+  const turn = ref<'player' | 'enemy' | 'pet'>('player');
 
   /** 当前回合数 */
   const turnCount = ref(0);

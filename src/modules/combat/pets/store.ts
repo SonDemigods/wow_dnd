@@ -6,10 +6,10 @@
  */
 import { defineStore } from 'pinia';
 import { computed, ref, shallowRef } from 'vue';
-import type { PetInstance, PetSkill, PetSystemState, WarlockPet, WarlockPetType } from './types';
+import type { PetInstance, PetSkill, PetSystemState, Pet, PetType, PetOwner } from './types';
 import {
-  canDismissPet,
   canSummonPet,
+  canDismissPet,
   createInitialPetState,
   damagePet,
   dismissPet,
@@ -21,8 +21,11 @@ import {
   summonPet,
   tickPetTurn,
   unlockPet as unlockPetFn,
+  getPetDefinition,
+  getPetResourceCost,
 } from './service';
-import { WARLOCK_PETS, getPetByType, getSummonablePets } from './warlockPets';
+import { WARLOCK_PETS, getSummonablePets } from './warlockPets';
+import { HUNTER_PETS, getSummonableHunterPets } from './hunterPets';
 
 /**
  * 术士召唤系统 Store
@@ -41,8 +44,10 @@ export const usePetStore = defineStore('warlock-pets', () => {
   // ============================================================
 
   const state = ref<PetSystemState>(createInitialPetState());
-  /** 当前术士等级（用于创建召唤物实例） */
+  /** 当前主人等级（用于创建宠物实例） */
   const currentLevel = ref<number>(1);
+  /** 当前所有者职业（决定加载哪套宠物数据） */
+  const currentOwner = ref<PetOwner>('warlock');
   /** 战斗日志回调（由战斗 Store 注入） */
   // P1-12 修复：函数引用不需要深度响应式，改用 shallowRef 避免不必要的响应式追踪
   const logCallback = shallowRef<((message: string) => void) | null>(null);
@@ -51,25 +56,27 @@ export const usePetStore = defineStore('warlock-pets', () => {
   // 计算属性
   // ============================================================
 
-  /** 当前激活的召唤物实例 */
+  /** 当前激活的宠物实例 */
   const activePet = computed<PetInstance | null>(() => state.value.activePet);
 
-  /** 当前召唤物是否存活 */
+  /** 当前宠物是否存活 */
   const hasActivePet = computed<boolean>(() => {
     const pet = state.value.activePet;
     return pet !== null && !isPetDead(pet);
   });
 
-  /** 已解锁的召唤物列表 */
-  const unlockedPets = computed<WarlockPet[]>(() =>
-    state.value.unlockedPets.map(id => getPetByType(id))
+  /** 已解锁的宠物列表（通用，术士返回 WarlockPet[]，猎人返回 HunterPet[]） */
+  const unlockedPets = computed<Pet[]>(() =>
+    state.value.unlockedPets.map(id => getPetDefinition(id))
   );
 
-  /** 全部召唤物定义 */
-  const allPets = computed<WarlockPet[]>(() => Object.values(WARLOCK_PETS));
+  /** 全部宠物定义（根据当前所有者职业返回对应数据） */
+  const allPets = computed<Pet[]>(() =>
+    currentOwner.value === 'warlock' ? Object.values(WARLOCK_PETS) : Object.values(HUNTER_PETS)
+  );
 
-  /** 当前激活召唤物的定义 */
-  const activePetDefinition = computed<WarlockPet | null>(() =>
+  /** 当前激活宠物的定义 */
+  const activePetDefinition = computed<Pet | null>(() =>
     getActivePetDefinition(state.value)
   );
 
@@ -108,22 +115,26 @@ export const usePetStore = defineStore('warlock-pets', () => {
   // ============================================================
 
   /**
-   * 初始化召唤系统
+   * 初始化宠物系统
    *
-   * @param level - 术士等级
+   * 根据主人职业加载对应的宠物数据（术士/猎人）。
+   *
+   * @param level - 主人等级
    * @param logFn - 战斗日志回调（可选）
+   * @param owner - 所有者职业（默认 'warlock'，猎人传 'hunter'）
    */
-  function initialize(level: number, logFn?: (message: string) => void): void {
-    state.value = createInitialPetState();
+  function initialize(level: number, logFn?: (message: string) => void, owner: PetOwner = 'warlock'): void {
+    currentOwner.value = owner;
+    state.value = createInitialPetState(owner);
     currentLevel.value = level;
     if (logFn) logCallback.value = logFn;
   }
 
   /**
-   * 重置召唤系统（战斗结束时调用）
+   * 重置宠物系统（战斗结束时调用）
    */
   function reset(): void {
-    state.value = createInitialPetState();
+    state.value = createInitialPetState(currentOwner.value);
     currentLevel.value = 1;
     logCallback.value = null;
   }
@@ -143,41 +154,43 @@ export const usePetStore = defineStore('warlock-pets', () => {
   }
 
   /**
-   * 解锁新召唤物
+   * 解锁新宠物
    */
-  function unlockPet(petType: WarlockPetType): void {
+  function unlockPet(petType: PetType): void {
     updateState(unlockPetFn(state.value, petType));
   }
 
   /**
    * 检查是否可以召唤
    */
-  function canSummon(petType: WarlockPetType, soulShards: number) {
-    return canSummonPet(petType, state.value, soulShards);
+  function canSummon(petType: PetType, resourceAmount: number) {
+    return canSummonPet(petType, state.value, resourceAmount);
   }
 
   /**
-   * 召唤恶魔
+   * 召唤宠物
    *
-   * 此方法不直接消耗灵魂碎片，由调用方负责扣除资源。
+   * 此方法不直接消耗资源，由调用方负责扣除资源。
    * 调用方应先调用 `canSummon` 检查可召唤性。
    *
-   * @param petType - 目标召唤物
-   * @param soulShards - 当前灵魂碎片数量（用于校验）
+   * @param petType - 目标宠物
+   * @param resourceAmount - 当前资源数量（灵魂碎片或集中值，用于校验）
    * @returns 是否召唤成功
    */
-  function summon(petType: WarlockPetType, soulShards: number): boolean {
-    const check = canSummonPet(petType, state.value, soulShards);
+  function summon(petType: PetType, resourceAmount: number): boolean {
+    const check = canSummonPet(petType, state.value, resourceAmount);
     if (!check.canSummon) {
       log(`召唤失败：${check.reason}`);
       return false;
     }
 
-    const petDef = getPetByType(petType);
+    const petDef = getPetDefinition(petType);
     const newState = summonPet(state.value, petType, currentLevel.value);
     updateState(newState);
 
-    log(`召唤了 ${petDef.name}！消耗 ${petDef.soulShardCost} 个灵魂碎片`);
+    const resourceName = petDef.resourceType === 'soul_shard' ? '灵魂碎片' : '集中值';
+    const cost = getPetResourceCost(petDef);
+    log(`召唤了 ${petDef.name}！消耗 ${cost} 个${resourceName}`);
     return true;
   }
 
@@ -260,10 +273,13 @@ export const usePetStore = defineStore('warlock-pets', () => {
   }
 
   /**
-   * 获取可召唤的召唤物列表（根据当前灵魂碎片数量）
+   * 获取可召唤的宠物列表（根据当前资源数量）
    */
-  function getSummonable(soulShards: number): WarlockPet[] {
-    return getSummonablePets(soulShards).filter(pet =>
+  function getSummonable(resourceAmount: number): Pet[] {
+    const summonable = currentOwner.value === 'warlock'
+      ? getSummonablePets(resourceAmount)
+      : getSummonableHunterPets(resourceAmount);
+    return summonable.filter(pet =>
       state.value.unlockedPets.includes(pet.id)
     );
   }
@@ -272,6 +288,7 @@ export const usePetStore = defineStore('warlock-pets', () => {
     // 状态
     state,
     currentLevel,
+    currentOwner,
     // 计算属性
     activePet,
     hasActivePet,

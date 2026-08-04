@@ -24,6 +24,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createTestPinia } from '../../utils/setup';
 import type { TalentTree } from '@/modules/character/talents/types';
 
+// P3-156 M4-2：mock 宠物 Store，使用 hoisted 确保单例引用可断言
+const { mockPetStore } = vi.hoisted(() => ({
+  mockPetStore: { unlockPet: vi.fn() },
+}));
+
 /** mock 天赋 service 纯函数层 */
 vi.mock('@/modules/character/talents/service', () => ({
   canLearnTalent: vi.fn(),
@@ -37,6 +42,12 @@ vi.mock('@/modules/character/talents/service', () => ({
 /** mock 天赋树配置数据源 */
 vi.mock('@/data/config_class_talents', () => ({
   getTalentTreesByClassId: vi.fn(),
+  getTalentById: vi.fn(),
+}));
+
+/** mock 宠物 Store（P3-156 M4-2：learn 方法会调用 petStore.unlockPet） */
+vi.mock('@/modules/combat/pets', () => ({
+  usePetStore: vi.fn(() => mockPetStore),
 }));
 
 /** 从 mock 中取出 spy 引用，便于断言 */
@@ -48,7 +59,7 @@ import {
   resetAllocations,
   getTalentStatBonuses,
 } from '@/modules/character/talents/service';
-import { getTalentTreesByClassId } from '@/data/config_class_talents';
+import { getTalentTreesByClassId, getTalentById } from '@/data/config_class_talents';
 import { useTalentStore } from '@/modules/character/talents/store';
 
 // ==================== 测试数据构造 helper ====================
@@ -157,12 +168,13 @@ describe('useTalentStore - 天赋 Store', () => {
         hpMultiplier: 0,
         specialEffects: [],
         skillEnhancements: [],
+        unlockedPets: [],
       });
     });
 
     it('effectSummary：有 classId 时委托 calculateTalentEffects', () => {
       const summary = { statBonuses: { str: 2 }, damageMultiplier: 0.1, damageReduction: 0,
-        critBonus: 0, resourceBonuses: {}, healingMultiplier: 0, hpMultiplier: 0, specialEffects: [], skillEnhancements: [] };
+        critBonus: 0, resourceBonuses: {}, healingMultiplier: 0, hpMultiplier: 0, specialEffects: [], skillEnhancements: [], unlockedPets: [] };
       vi.mocked(calculateTalentEffects).mockReturnValue(summary);
       const store = useTalentStore();
       store.$patch({ currentClassId: 'warrior', allocations: { t1: 1 } });
@@ -247,6 +259,47 @@ describe('useTalentStore - 天赋 Store', () => {
       expect(canLearnTalent).toHaveBeenCalledWith('t1', 'warrior', {}, 5);
       expect(learnTalent).toHaveBeenCalledWith({}, 't1');
       expect(store.allocations).toEqual({ t1: 1 });
+    });
+
+    // P3-156 M4-2：unlock_pet 效果接入测试
+    it('学习含 unlock_pet 效果的天赋时调用 petStore.unlockPet', () => {
+      vi.mocked(canLearnTalent).mockReturnValue({ canLearn: true, reason: '' });
+      vi.mocked(learnTalent).mockReturnValue({ hunter_beast_t4: 1 });
+      vi.mocked(calculateSpentPoints).mockReturnValueOnce(0);
+      vi.mocked(getTalentById).mockReturnValue({
+        talent: {
+          id: 'hunter_beast_t4', name: '驯服猎豹', description: '解锁猎豹',
+          icon: 'game-icons:cat', tier: 4, maxRank: 1, requires: ['hunter_beast_t3'],
+          effects: [{ type: 'unlock_pet', petType: 'cat' }]
+        } as never,
+        tree: {} as never
+      });
+
+      const store = useTalentStore();
+      store.initialize('hunter', 20);
+
+      expect(store.learn('hunter_beast_t4')).toBe(true);
+      expect(mockPetStore.unlockPet).toHaveBeenCalledWith('cat');
+    });
+
+    it('学习不含 unlock_pet 效果的天赋时不调用 petStore.unlockPet', () => {
+      vi.mocked(canLearnTalent).mockReturnValue({ canLearn: true, reason: '' });
+      vi.mocked(learnTalent).mockReturnValue({ hunter_beast_t1: 1 });
+      vi.mocked(calculateSpentPoints).mockReturnValueOnce(0);
+      vi.mocked(getTalentById).mockReturnValue({
+        talent: {
+          id: 'hunter_beast_t1', name: '野兽训练', description: '提升敏捷',
+          icon: 'game-icons:paw', tier: 1, maxRank: 3,
+          effects: [{ type: 'stat_bonus', stat: 'dex', valuePerRank: 3 }]
+        } as never,
+        tree: {} as never
+      });
+
+      const store = useTalentStore();
+      store.initialize('hunter', 10);
+
+      expect(store.learn('hunter_beast_t1')).toBe(true);
+      expect(mockPetStore.unlockPet).not.toHaveBeenCalled();
     });
   });
 

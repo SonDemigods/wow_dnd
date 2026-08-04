@@ -32,6 +32,8 @@ import type { useCombatLog } from './useCombatLog';
 import type { useInitiative } from './useInitiative';
 import type { usePassiveSkills } from './usePassiveSkills';
 import type { useBossMechanics } from './useBossMechanics';
+import type { usePetAction } from './usePetAction';
+import type { PetType } from '../pets';
 
 /** P3-1：AOE 技能对每个目标造成的伤害占面板值的比例（设计文档：AOE 每目标 70% 基础伤害）
  * P3-147：常量已抽离至 @/config/combat，此处仅保留导入。 */
@@ -68,6 +70,8 @@ export function usePlayerSkill(
   helpers: SkillHelpers,
   // P3-146：注入被动技能，用于读取 stat_modifier 接入伤害管线与暴击判定
   passive: ReturnType<typeof usePassiveSkills>,
+  // P3-156 M4-4：注入宠物行动层，用于狩猎指令宠物联动与召唤/解散技能
+  pet: ReturnType<typeof usePetAction>,
 ) {
   const { addCombatLog, createPlayerEffectContext, createEnemyEffectContext } = log;
   const { aliveEnemies, currentTarget, playerEffects, enemyEffects, effectRegistry, resourceSystems } = state;
@@ -79,6 +83,26 @@ export function usePlayerSkill(
    */
   async function playerSkill(skillId: string): Promise<CombatActionResult> {
     const skill = ctx.skill.getSkill(skillId);
+
+    // P3-156 M4-4：需要激活宠物才能施放的技能（如 hunter_kill_command）
+    // 无激活宠物时直接拒绝，不消耗资源与回合
+    if (skill?.requiresActivePet && !pet.petStore.hasActivePet) {
+      return {
+        success: false,
+        type: 'skill',
+        message: '需要激活的宠物才能施放此技能！'
+      };
+    }
+
+    // P3-156 M4-4：特殊动作前置校验（在 castSkill 之前，避免浪费冷却）
+    // - summon_pet：已有激活宠物时拒绝
+    // - dismiss_pet：无激活宠物时拒绝
+    if (skill?.specialAction === 'summon_pet' && pet.petStore.hasActivePet) {
+      return { success: false, type: 'skill', message: '已有激活的召唤物！' };
+    }
+    if (skill?.specialAction === 'dismiss_pet' && !pet.petStore.hasActivePet) {
+      return { success: false, type: 'skill', message: '当前没有激活的召唤物！' };
+    }
 
     // BIZ-10：检查专属资源（怒气/能量/连击点等）是否足够（MP 由 castSkill 内部检查）
     if (skill?.resourceType && skill?.resourceCost) {
@@ -108,6 +132,51 @@ export function usePlayerSkill(
       if (resourceSys) {
         resourceSys.consume(skill.resourceCost);
       }
+    }
+
+    // P3-156 M4-4：特殊动作技能（召唤/解散宠物）
+    // 此类技能不走伤害/buff/heal 分支，独立处理后直接结束回合
+    if (skill?.specialAction === 'summon_pet') {
+      // 获取当前集中值，筛选可召唤宠物
+      const focusSys = resourceSystems.value.find(sys => sys.type === 'focus');
+      const currentFocus = focusSys?.currentValue ?? 0;
+      const summonable = pet.petStore.getSummonable(currentFocus);
+      if (summonable.length === 0) {
+        return { success: false, type: 'skill', message: '没有可召唤的宠物（资源不足或未解锁）！' };
+      }
+      // M4 阶段：直接召唤第一个可召唤宠物
+      // 阶段 3 将改为发射 COMBAT_OPEN_PET_SUMMON 事件弹出 PetSummonPopup 供玩家选择
+      const summonResult = pet.summon(summonable[0].id as PetType);
+      if (!summonResult.success) {
+        return { success: false, type: 'skill', message: summonResult.message };
+      }
+      // 召唤后重建先攻顺序，让宠物加入回合调度
+      initiative.buildInitiativeOrder();
+      addCombatLog({
+        actorType: 'player', actorId: 'player', actorName: ctx.character.name,
+        eventType: 'combat_skill_cast', skillId, skillName: skill?.name || '',
+        isCrit: false, isDodge: false,
+        message: `${ctx.character.name} 使用了 ${skill?.name || '技能'}，${summonResult.message}！`
+      });
+      initiative.endPlayerTurn();
+      return { success: true, type: 'skill', message: summonResult.message };
+    }
+
+    if (skill?.specialAction === 'dismiss_pet') {
+      const dismissResult = pet.dismiss();
+      if (!dismissResult.success) {
+        return { success: false, type: 'skill', message: dismissResult.message };
+      }
+      // 解散后重建先攻顺序，移除宠物
+      initiative.buildInitiativeOrder();
+      addCombatLog({
+        actorType: 'player', actorId: 'player', actorName: ctx.character.name,
+        eventType: 'combat_skill_cast', skillId, skillName: skill?.name || '',
+        isCrit: false, isDodge: false,
+        message: `${ctx.character.name} 使用了 ${skill?.name || '技能'}，${dismissResult.message}！`
+      });
+      initiative.endPlayerTurn();
+      return { success: true, type: 'skill', message: dismissResult.message };
     }
 
     // 读取技能目标类型，默认单目标
@@ -334,6 +403,51 @@ export function usePlayerSkill(
         // 附带 buff/debuff 效果（在 endCombat/endPlayerTurn 之前施加，防止效果添加到已清空的容器）
         if (skill?.buffs && skill.buffs.length > 0) {
           applySkillBuffs(skill, targetType);
+        }
+
+        // P3-156 M4-4：狩猎指令宠物联动 —— 需要宠物的技能施放后，宠物额外发动一次撕咬
+        // 仅当目标未被玩家技能击杀时触发，避免攻击尸体
+        if (skill?.requiresActivePet && !isDead && updatedTarget && updatedTarget.hp > 0) {
+          const petInst = pet.petStore.activePet;
+          if (petInst) {
+            // 宠物撕咬伤害基数 = pet.damage × 1.5（致命撕咬倍率）
+            const petBaseDamage = Math.floor(petInst.damage * 1.5);
+            const petPipeResult = processDamagePipeline(
+              effectRegistry,
+              createEmptyContainer(),
+              enemyEffects.value[updatedTarget.id] || createEmptyContainer(),
+              pet.createPetEffectContext(petInst),
+              createEnemyEffectContext(updatedTarget),
+              'physical',
+              petBaseDamage,
+              undefined,
+              undefined,
+            );
+            const petDamage = petPipeResult.finalDamage;
+            if (petDamage > 0) {
+              const petKill = ctx.enemy.takeDamage(updatedTarget.id, petDamage);
+              addCombatLog({
+                actorType: 'pet',
+                actorId: petInst.instanceId,
+                actorName: petInst.name,
+                eventType: 'combat_damage',
+                targetType: 'enemy',
+                targetId: updatedTarget.id,
+                targetName: updatedTarget.name,
+                skillId,
+                skillName: `${skill?.name || ''}（宠物撕咬）`,
+                damage: petDamage,
+                isCrit: false,
+                isDodge: false,
+                message: `${petInst.name} 受狩猎指令激发，对 ${updatedTarget.name} 额外造成 ${petDamage} 点撕咬伤害！`,
+              });
+              if (petKill) isDead = true;
+              // 荆棘反伤对宠物
+              if (petPipeResult.thorns > 0) {
+                pet.petTakeDamage(petPipeResult.thorns);
+              }
+            }
+          }
         }
 
         if (isDead || !updatedTarget || aliveEnemies.value.length === 0) {

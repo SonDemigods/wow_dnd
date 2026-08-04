@@ -201,7 +201,10 @@ export class SkillsDbService {
       buffs: data.buffs ? data.buffs.map(b => ({ type: b.type, value: b.value, turns: b.turns })) : undefined,
       // BIZ-11: 资源系统字段原样传递
       resourceType: data.resourceType,
-      resourceCost: data.resourceCost
+      resourceCost: data.resourceCost,
+      // P3-156：宠物联动字段原样传递（requiresActivePet / specialAction 仅在特定技能上配置）
+      requiresActivePet: data.requiresActivePet,
+      specialAction: data.specialAction
     };
   }
 

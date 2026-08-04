@@ -297,6 +297,26 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
         icon: 'game-icons:werewolf', tier: 3, maxRank: 3,
         requires: ['hunter_beast_t2'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.05 }]
+      },
+      // P3-156 新增：T4-T6 宠物解锁节点，通过 unlock_pet 效果解锁猎人野兽宠物
+      // 解锁链：T3 满级（9 点）→ T4 解锁猎豹 → T5 解锁野猪 → T6 解锁魔暴龙
+      {
+        id: 'hunter_beast_t4', name: '驯服猎豹', description: '解锁可召唤的猎豹宠物，速度极快的近战输出',
+        icon: 'game-icons:cat', tier: 4, maxRank: 1,
+        requires: ['hunter_beast_t3'],
+        effects: [{ type: 'unlock_pet', petType: 'cat' }]
+      },
+      {
+        id: 'hunter_beast_t5', name: '驯服野猪', description: '解锁可召唤的野猪宠物，擅长冲撞控制敌人',
+        icon: 'game-icons:boar-tusk', tier: 5, maxRank: 1,
+        requires: ['hunter_beast_t4'],
+        effects: [{ type: 'unlock_pet', petType: 'boar' }]
+      },
+      {
+        id: 'hunter_beast_t6', name: '驯服魔暴龙', description: '解锁可召唤的魔暴龙宠物，远古终极掠食者',
+        icon: 'game-icons:t-rex-skull', tier: 6, maxRank: 1,
+        requires: ['hunter_beast_t5'],
+        effects: [{ type: 'unlock_pet', petType: 'devilsaur' }]
       }
     ]
   },

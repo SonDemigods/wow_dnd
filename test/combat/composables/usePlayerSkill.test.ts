@@ -16,6 +16,7 @@ import { ref } from 'vue';
 import { usePlayerSkill, type SkillHelpers } from '@/modules/combat/composables/usePlayerSkill';
 import {
   createEmptyContainer,
+  processDamagePipeline,
   type EffectContainer,
 } from '@/modules/combat/effects';
 import type { ICombatContext } from '@/modules/combat/combatContext';
@@ -180,7 +181,7 @@ function makeLogMock() {
 }
 
 function makeInitiativeMock() {
-  return { endPlayerTurn: vi.fn() } as never;
+  return { endPlayerTurn: vi.fn(), buildInitiativeOrder: vi.fn() } as never;
 }
 
 function makeBossMock() {
@@ -212,6 +213,33 @@ function makePassiveMock() {
     onKill: vi.fn(),
     getDamageReduction: vi.fn(() => 0),
     getStatModifiers: vi.fn(() => []),
+  } as never;
+}
+
+/**
+ * P3-156 M4-4：usePlayerSkill 新增 pet 参数，构造 mock 注入
+ * 默认无激活宠物，避免干扰非宠物技能的现有测试。
+ */
+function makePetMock(opts: { hasActivePet?: boolean; activePet?: unknown } = {}) {
+  return {
+    petStore: {
+      hasActivePet: opts.hasActivePet ?? false,
+      activePet: opts.activePet ?? null,
+      getSummonable: vi.fn(() => []),
+    },
+    summon: vi.fn(() => ({ success: false, message: 'mock' })),
+    dismiss: vi.fn(() => ({ success: false, message: 'mock' })),
+    petTakeTurn: vi.fn(),
+    petTakeDamage: vi.fn(),
+    petTickTurn: vi.fn(),
+    selectPetTarget: vi.fn(() => null),
+    createPetEffectContext: vi.fn(() => ({
+      ownerId: 'pet-mock',
+      ownerType: 'player',
+      baseStats: { physicalAttack: 0, physicalDefense: 0, magicAttack: 0, magicDefense: 0, speed: 0 },
+      currentHp: 0,
+      maxHp: 0,
+    })),
   } as never;
 }
 
@@ -282,7 +310,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       vi.fn(),
       makeBossMock(),
       makeHelpersMock(),
-      makePassiveMock(),
+      makePassiveMock(), makePetMock(),
     );
     expect(typeof skill.playerSkill).toBe('function');
   });
@@ -300,7 +328,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       state.resourceSystems.value = [resourceSys];
 
       const result = await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(result.success).toBe(false);
@@ -313,7 +341,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       skillStoreMock.castSkill.mockResolvedValue({ success: false, message: '法力不足' });
 
       const result = await usePlayerSkill(
-        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(result.success).toBe(false);
@@ -335,7 +363,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       enemyStoreMock.takeDamage.mockReturnValue(false);
 
       const result = await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(result.success).toBe(true);
@@ -359,7 +387,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       const helpers = makeHelpersMock();
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers, makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers, makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(helpers.applySkillBuffs).toHaveBeenCalledWith(skillData, 'all_enemies');
@@ -382,7 +410,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
 
       const endCombat = vi.fn();
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(endCombat).toHaveBeenCalledWith('victory');
@@ -403,7 +431,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
                          .mockReturnValueOnce({ isCrit: false, multiplier: 1 });
 
       const result = await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(rollPlayerCritMock).toHaveBeenCalledTimes(2);
@@ -422,7 +450,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       });
 
       const result = await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(result.success).toBe(false);
@@ -439,7 +467,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       });
 
       const result = await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(result.success).toBe(false);
@@ -459,7 +487,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       pipeResultMock.finalDamage = 25;
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(enemyStoreMock.takeDamage).toHaveBeenCalledWith('e1', 25);
@@ -480,7 +508,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
 
       const endCombat = vi.fn();
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), endCombat, makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(endCombat).toHaveBeenCalledWith('victory');
@@ -502,7 +530,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       const helpers = makeHelpersMock();
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers, makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers, makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(helpers.applySkillBuffs).toHaveBeenCalledWith(skillData, 'single');
@@ -525,7 +553,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(characterMock.takeDamage).toHaveBeenCalledWith(7);
@@ -543,7 +571,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       });
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       const { eventBus, GameEvents } = await import('@/modules/bus');
@@ -566,7 +594,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       const helpers = makeHelpersMock();
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers, makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers, makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(helpers.applyDebuffToEnemy).toHaveBeenCalledTimes(2);
@@ -586,7 +614,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       const helpers = makeHelpersMock();
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers, makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers, makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(helpers.applyDebuffToEnemy).toHaveBeenCalledTimes(1);
@@ -604,7 +632,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       const helpers = makeHelpersMock();
 
       const result = await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers, makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), helpers, makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(result.success).toBe(false);
@@ -624,7 +652,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       const initiative = makeInitiativeMock();
 
       const result = await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), initiative, vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), initiative, vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(result.success).toBe(true);
@@ -639,7 +667,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       } as never);
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       const { eventBus, GameEvents } = await import('@/modules/bus');
@@ -665,7 +693,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       state.resourceSystems.value = [resourceSys];
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(resourceSys.consume).toHaveBeenCalledWith(10);
@@ -681,10 +709,215 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       } as never);
 
       await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
       ).playerSkill('sk1');
 
       expect(state.resourceSystems.value.length).toBe(0);
+    });
+  });
+
+  // ==================== P3-156 M4-4：宠物联动技能 ====================
+  describe('P3-156 M4-4：宠物联动技能', () => {
+    /** 构造激活宠物实例 mock */
+    function makeActivePetMock() {
+      return {
+        instanceId: 'pet-1',
+        name: '荒野之狼',
+        damage: 30,
+        defense: 4,
+        speed: 14,
+        hp: 45,
+        maxHp: 45,
+      } as never;
+    }
+
+    it('requiresActivePet 技能无激活宠物时返回失败且不调用 castSkill', async () => {
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'hunter_kill_command', name: '狩猎指令',
+        requiresActivePet: true, resourceType: 'focus', resourceCost: 25,
+        type: 'physical_damage', effect: { type: 'physical_damage', value: 48 },
+      } as never);
+
+      const result = await usePlayerSkill(
+        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(),
+        makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        makePetMock({ hasActivePet: false }),
+      ).playerSkill('hunter_kill_command');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('宠物');
+      expect(skillStoreMock.castSkill).not.toHaveBeenCalled();
+    });
+
+    it('requiresActivePet 技能有激活宠物时正常施放并触发宠物联动撕咬', async () => {
+      const enemy = makeEnemy({ id: 'e1', hp: 200, maxHp: 200 });
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
+      enemyStoreMock.takeDamage.mockReturnValue(false);
+      pipeResultMock.finalDamage = 48;
+
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'hunter_kill_command', name: '狩猎指令',
+        requiresActivePet: true, resourceType: 'focus', resourceCost: 25,
+        type: 'physical_damage', effect: { type: 'physical_damage', value: 48 },
+        targetType: 'single',
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'physical_damage', damage: 48, message: '使用了 狩猎指令',
+      } as never);
+
+      const petMock = makePetMock({ hasActivePet: true, activePet: makeActivePetMock() });
+      const logMock = makeLogMock();
+
+      await usePlayerSkill(
+        state, logMock, makeMockCtx(), makeInitiativeMock(), vi.fn(),
+        makeBossMock(), makeHelpersMock(), makePassiveMock(), petMock,
+      ).playerSkill('hunter_kill_command');
+
+      // 玩家技能伤害 + 宠物撕咬伤害 = 2 次 takeDamage
+      expect(enemyStoreMock.takeDamage).toHaveBeenCalledTimes(2);
+      // 验证宠物撕咬走管线时 baseDamage = pet.damage 30 × 1.5 = 45
+      // processDamagePipeline 第 7 个参数（index 6）为 baseDamage
+      const pipelineCalls = vi.mocked(processDamagePipeline).mock.calls;
+      expect(pipelineCalls.length).toBeGreaterThanOrEqual(2);
+      expect(pipelineCalls[1][6]).toBe(45);
+      // 战斗日志中存在 actorType='pet' 的记录
+      const petLogs = logMock.addCombatLog.mock.calls.filter(
+        (c: unknown[]) => (c[0] as { actorType: string }).actorType === 'pet'
+      );
+      expect(petLogs.length).toBeGreaterThan(0);
+    });
+
+    it('requiresActivePet 技能目标被玩家伤害击杀时不触发宠物联动', async () => {
+      const enemy = makeEnemy({ id: 'e1', hp: 10, maxHp: 10 });
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
+      enemyStoreMock.takeDamage.mockReturnValue(true); // 玩家伤害击杀
+      pipeResultMock.finalDamage = 48;
+
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'hunter_kill_command', name: '狩猎指令',
+        requiresActivePet: true, resourceType: 'focus', resourceCost: 25,
+        type: 'physical_damage', effect: { type: 'physical_damage', value: 48 },
+        targetType: 'single',
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'physical_damage', damage: 48, message: '使用了 狩猎指令',
+      } as never);
+
+      const petMock = makePetMock({ hasActivePet: true, activePet: makeActivePetMock() });
+
+      await usePlayerSkill(
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(),
+        makeBossMock(), makeHelpersMock(), makePassiveMock(), petMock,
+      ).playerSkill('hunter_kill_command');
+
+      // 仅玩家伤害 1 次，宠物未攻击尸体
+      expect(enemyStoreMock.takeDamage).toHaveBeenCalledTimes(1);
+    });
+
+    it('summon_pet 已有激活宠物时返回失败', async () => {
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'hunter_summon_pet', name: '召唤宠物',
+        specialAction: 'summon_pet', type: 'buff', effect: { type: 'buff', value: 0 },
+      } as never);
+
+      const result = await usePlayerSkill(
+        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(),
+        makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        makePetMock({ hasActivePet: true }),
+      ).playerSkill('hunter_summon_pet');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('已有');
+      expect(skillStoreMock.castSkill).not.toHaveBeenCalled();
+    });
+
+    it('summon_pet 无可召唤宠物时返回失败', async () => {
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'hunter_summon_pet', name: '召唤宠物',
+        specialAction: 'summon_pet', type: 'buff', effect: { type: 'buff', value: 0 },
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'buff', message: '使用了 召唤宠物',
+      } as never);
+
+      const petMock = makePetMock({ hasActivePet: false });
+      petMock.petStore.getSummonable.mockReturnValue([]);
+
+      const result = await usePlayerSkill(
+        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(),
+        makeBossMock(), makeHelpersMock(), makePassiveMock(), petMock,
+      ).playerSkill('hunter_summon_pet');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('没有可召唤');
+    });
+
+    it('summon_pet 成功召唤时重建先攻并结束回合', async () => {
+      const initiative = makeInitiativeMock();
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'hunter_summon_pet', name: '召唤宠物',
+        specialAction: 'summon_pet', type: 'buff', effect: { type: 'buff', value: 0 },
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'buff', message: '使用了 召唤宠物',
+      } as never);
+
+      const petMock = makePetMock({ hasActivePet: false });
+      petMock.petStore.getSummonable.mockReturnValue([{ id: 'wolf', name: '荒野之狼' }]);
+      petMock.summon.mockReturnValue({ success: true, message: '召唤了 荒野之狼' });
+
+      const result = await usePlayerSkill(
+        makeStateMock(), makeLogMock(), makeMockCtx(), initiative, vi.fn(),
+        makeBossMock(), makeHelpersMock(), makePassiveMock(), petMock,
+      ).playerSkill('hunter_summon_pet');
+
+      expect(result.success).toBe(true);
+      expect(petMock.summon).toHaveBeenCalledWith('wolf');
+      expect(initiative.buildInitiativeOrder).toHaveBeenCalled();
+      expect(initiative.endPlayerTurn).toHaveBeenCalled();
+    });
+
+    it('dismiss_pet 无激活宠物时返回失败', async () => {
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'hunter_dismiss_pet', name: '解散宠物',
+        specialAction: 'dismiss_pet', type: 'buff', effect: { type: 'buff', value: 0 },
+      } as never);
+
+      const result = await usePlayerSkill(
+        makeStateMock(), makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(),
+        makeBossMock(), makeHelpersMock(), makePassiveMock(),
+        makePetMock({ hasActivePet: false }),
+      ).playerSkill('hunter_dismiss_pet');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('没有');
+      expect(skillStoreMock.castSkill).not.toHaveBeenCalled();
+    });
+
+    it('dismiss_pet 成功解散时重建先攻并结束回合', async () => {
+      const initiative = makeInitiativeMock();
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'hunter_dismiss_pet', name: '解散宠物',
+        specialAction: 'dismiss_pet', type: 'buff', effect: { type: 'buff', value: 0 },
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'buff', message: '使用了解散宠物',
+      } as never);
+
+      const petMock = makePetMock({ hasActivePet: true, activePet: makeActivePetMock() });
+      petMock.dismiss.mockReturnValue({ success: true, message: '已解散召唤物' });
+
+      const result = await usePlayerSkill(
+        makeStateMock(), makeLogMock(), makeMockCtx(), initiative, vi.fn(),
+        makeBossMock(), makeHelpersMock(), makePassiveMock(), petMock,
+      ).playerSkill('hunter_dismiss_pet');
+
+      expect(result.success).toBe(true);
+      expect(petMock.dismiss).toHaveBeenCalled();
+      expect(initiative.buildInitiativeOrder).toHaveBeenCalled();
+      expect(initiative.endPlayerTurn).toHaveBeenCalled();
     });
   });
 });

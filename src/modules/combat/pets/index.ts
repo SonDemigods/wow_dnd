@@ -1,16 +1,21 @@
 /**
- * @fileoverview 术士召唤系统模块入口（Phase 6.4）
- * @description 集中导出召唤物系统的类型、数据、服务函数和 Store。
+ * @fileoverview 宠物系统模块入口（Phase 6.4 + P3-156 扩展）
+ * @description 集中导出术士召唤物和猎人野兽宠物的类型、数据、服务函数和 Store。
  * @module combat/pets
  */
 
 // 类型
 export type {
   WarlockPetType,
+  HunterPetType,
+  PetOwner,
+  PetType,
   PetAIBehavior,
   PetBaseAttributes,
   PetSkill,
   WarlockPet,
+  HunterPet,
+  Pet,
   PetInstance,
   PetSystemState,
 } from './types';
@@ -18,7 +23,7 @@ export type {
 // 常量
 export { PET_SUMMON_CONFIG, PET_AI_TARGET_PRIORITY } from './types';
 
-// 数据
+// 术士宠物数据
 export {
   WARLOCK_PETS,
   DEFAULT_UNLOCKED_PETS,
@@ -26,6 +31,15 @@ export {
   getAllPets,
   getSummonablePets,
 } from './warlockPets';
+
+// 猎人宠物数据（P3-156 扩展）
+export {
+  HUNTER_PETS,
+  DEFAULT_UNLOCKED_HUNTER_PETS,
+  getHunterPetByType,
+  getAllHunterPets,
+  getSummonableHunterPets,
+} from './hunterPets';
 
 // 服务层纯函数
 export {
@@ -50,6 +64,10 @@ export {
   tickPetTurn,
   getActivePetDefinition,
   getActivePetSoulShardCost,
+  // P3-156 扩展：通用宠物查询辅助
+  getPetDefinition,
+  getPetResourceCost,
+  getDefaultUnlockedPets,
 } from './service';
 
 // Store

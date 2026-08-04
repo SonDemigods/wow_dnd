@@ -99,6 +99,7 @@ function makeEffect(o: Partial<TalentEffect> = {}): TalentEffect {
     crit_bonus: {},
     healing_multiplier: {},
     hp_multiplier: {},
+    unlock_pet: { petType: 'cat' },
   };
   return {
     type: 'stat_bonus',
@@ -243,7 +244,56 @@ describe('talents/service - 天赋纯函数服务层', () => {
       expect(isTierUnlocked(talent, tree, { t1: 7 })).toBe(true);
     });
 
-    it('未知 tier（非 1/2/3）返回 false', () => {
+    // P3-156 新增：tier 4/5/6 解锁阈值边界测试
+    it('tier 4：已投入点数 < 阈值（9）时未解锁', () => {
+      const tree = makeTree({
+        talents: [makeTalent({ id: 't1', tier: 1 })],
+      });
+      const talent = makeTalent({ tier: 4 });
+      expect(isTierUnlocked(talent, tree, { t1: 8 })).toBe(false);
+    });
+
+    it('tier 4：已投入点数 = 阈值（9）时解锁（边界）', () => {
+      const tree = makeTree({
+        talents: [makeTalent({ id: 't1', tier: 1 })],
+      });
+      const talent = makeTalent({ tier: 4 });
+      expect(isTierUnlocked(talent, tree, { t1: 9 })).toBe(true);
+    });
+
+    it('tier 5：已投入点数 < 阈值（10）时未解锁', () => {
+      const tree = makeTree({
+        talents: [makeTalent({ id: 't1', tier: 1 })],
+      });
+      const talent = makeTalent({ tier: 5 });
+      expect(isTierUnlocked(talent, tree, { t1: 9 })).toBe(false);
+    });
+
+    it('tier 5：已投入点数 = 阈值（10）时解锁（边界）', () => {
+      const tree = makeTree({
+        talents: [makeTalent({ id: 't1', tier: 1 })],
+      });
+      const talent = makeTalent({ tier: 5 });
+      expect(isTierUnlocked(talent, tree, { t1: 10 })).toBe(true);
+    });
+
+    it('tier 6：已投入点数 < 阈值（11）时未解锁', () => {
+      const tree = makeTree({
+        talents: [makeTalent({ id: 't1', tier: 1 })],
+      });
+      const talent = makeTalent({ tier: 6 });
+      expect(isTierUnlocked(talent, tree, { t1: 10 })).toBe(false);
+    });
+
+    it('tier 6：已投入点数 = 阈值（11）时解锁（边界）', () => {
+      const tree = makeTree({
+        talents: [makeTalent({ id: 't1', tier: 1 })],
+      });
+      const talent = makeTalent({ tier: 6 });
+      expect(isTierUnlocked(talent, tree, { t1: 11 })).toBe(true);
+    });
+
+    it('未知 tier（非 1/2/3/4/5/6）返回 false', () => {
       const tree = makeTree();
       const talent = makeTalent({ tier: 99 as never });
       expect(isTierUnlocked(talent, tree, { t1: 100 })).toBe(false);
@@ -337,6 +387,7 @@ describe('talents/service - 天赋纯函数服务层', () => {
         hpMultiplier: 0,
         specialEffects: [],
         skillEnhancements: [],
+        unlockedPets: [],
       });
     });
 
@@ -585,6 +636,75 @@ describe('talents/service - 天赋纯函数服务层', () => {
       expect(summary.skillEnhancements).toEqual([{ skillId: 'fireball', value: 0.3 }]);
     });
 
+    // P3-156 新增：unlock_pet 效果聚合测试
+    it('unlock_pet 收集 petType 到 unlockedPets', () => {
+      const tree = makeTree({
+        talents: [
+          makeTalent({
+            id: 't1',
+            effects: [makeEffect({ type: 'unlock_pet', petType: 'cat' })],
+          }),
+        ],
+      });
+      vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
+      const summary = calculateTalentEffects('hunter', { t1: 1 });
+      expect(summary.unlockedPets).toEqual(['cat']);
+    });
+
+    it('unlock_pet 多天赋累加不同 petType', () => {
+      const tree = makeTree({
+        talents: [
+          makeTalent({
+            id: 't1',
+            effects: [makeEffect({ type: 'unlock_pet', petType: 'cat' })],
+          }),
+          makeTalent({
+            id: 't2',
+            effects: [makeEffect({ type: 'unlock_pet', petType: 'boar' })],
+          }),
+          makeTalent({
+            id: 't3',
+            effects: [makeEffect({ type: 'unlock_pet', petType: 'devilsaur' })],
+          }),
+        ],
+      });
+      vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
+      const summary = calculateTalentEffects('hunter', { t1: 1, t2: 1, t3: 1 });
+      expect(summary.unlockedPets).toEqual(['cat', 'boar', 'devilsaur']);
+    });
+
+    it('unlock_pet 相同 petType 不重复收集（去重）', () => {
+      const tree = makeTree({
+        talents: [
+          makeTalent({
+            id: 't1',
+            effects: [makeEffect({ type: 'unlock_pet', petType: 'cat' })],
+          }),
+          makeTalent({
+            id: 't2',
+            effects: [makeEffect({ type: 'unlock_pet', petType: 'cat' })],
+          }),
+        ],
+      });
+      vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
+      const summary = calculateTalentEffects('hunter', { t1: 1, t2: 1 });
+      expect(summary.unlockedPets).toEqual(['cat']);
+    });
+
+    it('unlock_pet rank=0 时不收集', () => {
+      const tree = makeTree({
+        talents: [
+          makeTalent({
+            id: 't1',
+            effects: [makeEffect({ type: 'unlock_pet', petType: 'cat' })],
+          }),
+        ],
+      });
+      vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
+      const summary = calculateTalentEffects('hunter', { t1: 0 });
+      expect(summary.unlockedPets).toEqual([]);
+    });
+
     it('多天赋树效果跨树累加', () => {
       const tree1 = makeTree({
         id: 'arms',
@@ -815,6 +935,19 @@ describe('talents/service - 天赋纯函数服务层', () => {
 
     it('tier3Requirement 为 6', () => {
       expect(TALENT_POINT_RULES.tier3Requirement).toBe(6);
+    });
+
+    // P3-156 新增：tier4/5/6 阈值验证
+    it('tier4Requirement 为 9', () => {
+      expect(TALENT_POINT_RULES.tier4Requirement).toBe(9);
+    });
+
+    it('tier5Requirement 为 10', () => {
+      expect(TALENT_POINT_RULES.tier5Requirement).toBe(10);
+    });
+
+    it('tier6Requirement 为 11', () => {
+      expect(TALENT_POINT_RULES.tier6Requirement).toBe(11);
     });
   });
 });

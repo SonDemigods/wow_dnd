@@ -105,6 +105,8 @@
               :key="'class-res-' + idx"
               :resource-system="sys"
             />
+            <!-- P3-156：宠物 HP 条（仅当有激活的召唤物时显示） -->
+            <PetHpBar v-if="combatStore.hasActivePet && combatStore.activePet" :pet="combatStore.activePet" />
             <!-- Buff/Debuff 效果指示器 -->
             <template v-if="combatStore.playerEffects.effects.length > 0">
               <div class="effects-indicator">
@@ -141,6 +143,10 @@
         <div class="action-row primary-actions">
           <button class="action-btn attack-btn" @click="doAction('attack')" :disabled="!canAct">
             <BaseIcon name="sword-clash" gradient="physical" :size="16" /> 普通攻击
+          </button>
+          <!-- P3-156：召唤宠物按钮（仅术士显示） -->
+          <button v-if="isPetClass" class="action-btn pet-btn" @click="openPetSummonModal" :disabled="!canAct">
+            <BaseIcon name="game-icons:imp" gradient="buff" :size="16" /> {{ hasActivePet ? '宠物' : '召唤' }}
           </button>
           <button class="action-btn item-btn" @click="openItemModal" :disabled="!canAct || !hasConsumables">
             <BaseIcon name="potion-ball" gradient="heal" :size="16" /> 物品
@@ -221,6 +227,20 @@
         </div>
       </div>
     </div>
+
+    <!-- P3-156：宠物召唤选择弹窗 -->
+    <PetSummonPopup
+      v-if="showPetSummonModal"
+      :unlocked-pets="unlockedWarlockPets"
+      :current-resource="petResourceCurrent"
+      :max-resource="petResourceMax"
+      :resource-name="petResourceName"
+      :has-active-pet="!!combatStore.hasActivePet"
+      :active-pet-id="combatStore.activePet?.petId ?? null"
+      @summon="handlePetSummon"
+      @dismiss="handlePetDismiss"
+      @close="showPetSummonModal = false"
+    />
   </div>
 </template>
 
@@ -244,8 +264,10 @@ import type { Skill } from '@/modules/skill';
 import type { ItemRarity } from '@/modules/inventory';
 import ResourceBar from '@/components/common/ResourceBar.vue';
 import ClassResourceBar from '@/components/common/ClassResourceBar.vue';
+import PetHpBar from '@/components/common/PetHpBar.vue';
 import ItemIcon from '@/components/common/ItemIcon.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import PetSummonPopup from '@/components/popup/PetSummonPopup.vue';
 import { animateResultPopup } from '@/modules/animation';
 // QA-5 阶段四：抽离的 4 个 composable（通过 combat 模块公共入口导入，符合 ARCH-4 规范）
 import { useCombatSpeed, useCombatAutoClose, useBossIntroOverlay, useCombatAnimations } from '@/modules/combat';
@@ -294,6 +316,8 @@ const combatStore = useCombatStore();
 const logRef = ref<HTMLElement | null>(null);
 const isAnimating = ref(false);
 const showItemModal = ref(false);
+// P3-156：宠物召唤弹窗状态
+const showPetSummonModal = ref(false);
 // ==================== QA-5 阶段四：Composable 调用 ====================
 
 // 倍速切换（combatSpeed + toggleSpeed）
@@ -519,6 +543,57 @@ const consumableItems = computed(() => {
 });
 
 const hasConsumables = computed(() => consumableItems.value.length > 0);
+
+// ==================== P3-156：宠物系统 UI 辅助 ====================
+
+/** 当前职业是否为宠物职业（术士或猎人） */
+const isPetClass = computed(() => characterStore.classId === 'warlock' || characterStore.classId === 'hunter');
+
+/** 当前是否有激活的宠物 */
+const hasActivePet = computed(() => !!combatStore.hasActivePet);
+
+/** 已解锁的宠物列表（供 PetSummonPopup 展示，术士/猎人通用） */
+const unlockedWarlockPets = computed(() => combatStore.unlockedPets || []);
+
+/** 宠物召唤资源类型（术士=灵魂碎片，猎人=集中值） */
+const petResourceType = computed(() => characterStore.classId === 'hunter' ? 'focus' : 'soul_shard');
+
+/** 宠物召唤资源系统 */
+const petResourceSystem = computed(() =>
+  combatStore.resourceSystems.find(sys => sys.type === petResourceType.value)
+);
+
+/** 当前资源数量 */
+const petResourceCurrent = computed(() => petResourceSystem.value?.currentValue ?? 0);
+
+/** 资源上限 */
+const petResourceMax = computed(() => petResourceSystem.value?.maxValue ?? 0);
+
+/** 资源名称 */
+const petResourceName = computed(() => characterStore.classId === 'hunter' ? '集中值' : '灵魂碎片');
+
+/** 打开宠物召唤弹窗 */
+function openPetSummonModal(): void {
+  if (!canAct.value) return;
+  showPetSummonModal.value = true;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_pet_summon_btn' });
+}
+
+/** 处理宠物召唤 */
+function handlePetSummon(petType: import('@/modules/combat/pets').PetType): void {
+  const result = combatStore.summonPet(petType);
+  if (result.success) {
+    showPetSummonModal.value = false;
+  }
+}
+
+/** 处理宠物解散 */
+function handlePetDismiss(): void {
+  const result = combatStore.dismissPet();
+  if (result.success) {
+    showPetSummonModal.value = false;
+  }
+}
 
 function buildItemDescription(info: { effect?: { type: string; value: unknown }; description?: string }): string {
   const { effect, description } = info;
@@ -1068,6 +1143,7 @@ onUnmounted(() => {
 .log-player .log-msg { color: @log-player; }
 .log-enemy .log-msg { color: @log-enemy; }
 .log-system .log-msg { color: @log-system; }
+.log-pet .log-msg { color: @log-pet; }
 
 .log-turn { color: @color-dim-gray; font-size: @font-xs; }
 .log-damage { font-weight: @font-weight-bold; font-size: @font-md; }
@@ -1115,6 +1191,7 @@ onUnmounted(() => {
 .item-btn:hover:not(:disabled) { border-color: @heal-hp; background: rgba(76, 175, 80, 0.15); }
 .skip-btn:hover:not(:disabled) { border-color: @log-system; background: rgba(251, 191, 36, 0.15); }
 .flee-btn:hover:not(:disabled) { border-color: @color-dodge; background: rgba(136, 136, 136, 0.15); }
+.pet-btn:hover:not(:disabled) { border-color: @log-pet; background: rgba(74, 222, 128, 0.15); }
 
 .skill-btn {
   border-color: @skill-purple;

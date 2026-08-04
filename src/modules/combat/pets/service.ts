@@ -8,13 +8,58 @@ import type {
   PetInstance,
   PetSkill,
   PetSystemState,
-  WarlockPet,
+  Pet,
+  PetType,
+  PetOwner,
   WarlockPetType,
+  HunterPetType,
 } from './types';
 import { PET_SUMMON_CONFIG } from './types';
 import { DEFAULT_UNLOCKED_PETS, getPetByType } from './warlockPets';
+import { DEFAULT_UNLOCKED_HUNTER_PETS, getHunterPetByType } from './hunterPets';
 import type { Stats } from '@/modules/character/types';
 import { generateId } from '@/utils/db-helpers';
+
+// ============================================================
+// 通用宠物定义查询（P3-156 扩展：术士 + 猎人）
+// ============================================================
+
+/**
+ * 根据宠物类型 ID 获取定义（通用版，支持术士和猎人）
+ *
+ * @param petType - 宠物类型 ID
+ * @returns 宠物定义
+ */
+export function getPetDefinition(petType: PetType): Pet {
+  const warlockTypes: WarlockPetType[] = ['imp', 'voidwalker', 'succubus', 'felhunter', 'doomguard'];
+  if (warlockTypes.includes(petType as WarlockPetType)) {
+    return getPetByType(petType as WarlockPetType);
+  }
+  return getHunterPetByType(petType as HunterPetType);
+}
+
+/**
+ * 获取宠物的资源消耗量（通用版）
+ *
+ * @param pet - 宠物定义
+ * @returns 资源消耗数量
+ */
+export function getPetResourceCost(pet: Pet): number {
+  if (pet.resourceType === 'soul_shard') {
+    return pet.soulShardCost;
+  }
+  return pet.focusCost;
+}
+
+/**
+ * 获取默认已解锁宠物列表（按所有者职业）
+ *
+ * @param owner - 所有者职业
+ * @returns 默认已解锁的宠物类型列表
+ */
+export function getDefaultUnlockedPets(owner: PetOwner): PetType[] {
+  return owner === 'warlock' ? [...DEFAULT_UNLOCKED_PETS] : [...DEFAULT_UNLOCKED_HUNTER_PETS];
+}
 
 // ============================================================
 // 召唤物实例创建与属性计算
@@ -37,12 +82,12 @@ export function generatePetInstanceId(): string {
  * 召唤物属性 = 基础属性 × (1 + 等级加成系数 × 等级)
  * 属性加成包含：生命、伤害、防御和六维属性
  *
- * @param petType - 召唤物类型
- * @param level - 召唤物等级（等于术士等级）
+ * @param petType - 宠物类型（术士或猎人）
+ * @param level - 召唤物等级（等于主人等级）
  * @returns 计算后的实例属性
  */
 export function calculatePetAttributes(
-  petType: WarlockPetType,
+  petType: PetType,
   level: number
 ): {
   maxHp: number;
@@ -51,7 +96,7 @@ export function calculatePetAttributes(
   speed: number;
   stats: Stats;
 } {
-  const pet = getPetByType(petType);
+  const pet = getPetDefinition(petType);
   const attrs = pet.attributes;
 
   // 等级加成系数（level 1 时为 0，level 10 时为 9×系数）
@@ -92,14 +137,14 @@ export function calculatePetAttributes(
 /**
  * 创建召唤物实例
  *
- * 根据召唤物定义和术士等级创建运行时实例。
+ * 根据召唤物定义和主人等级创建运行时实例。
  *
- * @param petType - 召唤物类型
+ * @param petType - 宠物类型（术士或猎人）
  * @param level - 召唤物等级
  * @returns 召唤物实例
  */
-export function createPetInstance(petType: WarlockPetType, level: number): PetInstance {
-  const pet = getPetByType(petType);
+export function createPetInstance(petType: PetType, level: number): PetInstance {
+  const pet = getPetDefinition(petType);
   const attrs = calculatePetAttributes(petType, level);
 
   // 初始化技能冷却映射（所有技能初始冷却为 0）
@@ -123,6 +168,7 @@ export function createPetInstance(petType: WarlockPetType, level: number): PetIn
     aiBehavior: pet.aiBehavior,
     durationRemaining: pet.duration,
     skillCooldowns,
+    owner: pet.owner,
   };
 }
 
@@ -131,40 +177,42 @@ export function createPetInstance(petType: WarlockPetType, level: number): PetIn
 // ============================================================
 
 /**
- * 检查是否可以召唤指定召唤物
+ * 检查是否可以召唤指定宠物
  *
  * 校验项：
- * 1. 召唤物必须已解锁
- * 2. 灵魂碎片必须足够
- * 3. 当前没有其他激活的召唤物（一次只能有一个召唤物）
+ * 1. 宠物必须已解锁
+ * 2. 资源（灵魂碎片/集中值）必须足够
+ * 3. 当前没有其他激活的宠物（一次只能有一个宠物）
  *
- * @param petType - 目标召唤物
+ * @param petType - 目标宠物
  * @param state - 当前召唤系统状态
- * @param soulShards - 当前灵魂碎片数量
+ * @param resourceAmount - 当前资源数量（灵魂碎片或集中值）
  * @returns 校验结果
  */
 export function canSummonPet(
-  petType: WarlockPetType,
+  petType: PetType,
   state: PetSystemState,
-  soulShards: number
+  resourceAmount: number
 ): { canSummon: boolean; reason: string } {
   // 1. 检查是否已解锁
   if (!state.unlockedPets.includes(petType)) {
-    return { canSummon: false, reason: '该召唤物尚未解锁' };
+    return { canSummon: false, reason: '该宠物尚未解锁' };
   }
 
-  // 2. 检查灵魂碎片是否足够
-  const pet = getPetByType(petType);
-  if (soulShards < pet.soulShardCost) {
+  // 2. 检查资源是否足够
+  const pet = getPetDefinition(petType);
+  const cost = getPetResourceCost(pet);
+  if (resourceAmount < cost) {
+    const resourceName = pet.resourceType === 'soul_shard' ? '灵魂碎片' : '集中值';
     return {
       canSummon: false,
-      reason: `灵魂碎片不足（需要 ${pet.soulShardCost}，当前 ${soulShards}）`,
+      reason: `${resourceName}不足（需要 ${cost}，当前 ${resourceAmount}）`,
     };
   }
 
-  // 3. 检查是否已有激活的召唤物
+  // 3. 检查是否已有激活的宠物
   if (state.activePet !== null) {
-    return { canSummon: false, reason: '已有激活的召唤物，请先解散' };
+    return { canSummon: false, reason: '已有激活的宠物，请先解散' };
   }
 
   return { canSummon: true, reason: '' };
@@ -193,16 +241,16 @@ export function canDismissPet(
  * 执行召唤（纯函数，返回新状态）
  *
  * 注意：此函数不检查可召唤性，调用方应先调用 canSummonPet。
- * 此函数也不消耗灵魂碎片，由调用方负责。
+ * 此函数也不消耗资源，由调用方负责。
  *
  * @param state - 当前召唤系统状态
- * @param petType - 目标召唤物
- * @param level - 召唤物等级
+ * @param petType - 目标宠物
+ * @param level - 宠物等级
  * @returns 新的召唤系统状态
  */
 export function summonPet(
   state: PetSystemState,
-  petType: WarlockPetType,
+  petType: PetType,
   level: number
 ): PetSystemState {
   const instance = createPetInstance(petType, level);
@@ -373,27 +421,29 @@ export function selectPetAction(pet: PetInstance): PetSkill {
 /**
  * 创建初始召唤系统状态
  *
- * 默认无激活召唤物，已解锁小鬼和虚空行者。
+ * 默认无激活宠物，已解锁默认宠物列表。
+ * 术士默认解锁小鬼和虚空行者；猎人默认解锁荒野之狼和战熊。
  *
+ * @param owner - 所有者职业（默认 'warlock'）
  * @returns 初始召唤系统状态
  */
-export function createInitialPetState(): PetSystemState {
+export function createInitialPetState(owner: PetOwner = 'warlock'): PetSystemState {
   return {
     activePet: null,
-    unlockedPets: [...DEFAULT_UNLOCKED_PETS],
+    unlockedPets: getDefaultUnlockedPets(owner),
   };
 }
 
 /**
- * 解锁新召唤物（纯函数，返回新状态）
+ * 解锁新宠物（纯函数，返回新状态）
  *
  * @param state - 当前状态
- * @param petType - 要解锁的召唤物
+ * @param petType - 要解锁的宠物
  * @returns 新状态
  */
 export function unlockPet(
   state: PetSystemState,
-  petType: WarlockPetType
+  petType: PetType
 ): PetSystemState {
   if (state.unlockedPets.includes(petType)) return state;
   return {
@@ -438,23 +488,23 @@ export function tickPetTurn(state: PetSystemState): PetSystemState {
 }
 
 /**
- * 获取当前召唤物定义
+ * 获取当前宠物定义
  *
  * @param state - 召唤系统状态
- * @returns 召唤物定义（无激活召唤物时返回 null）
+ * @returns 宠物定义（无激活宠物时返回 null）
  */
-export function getActivePetDefinition(state: PetSystemState): WarlockPet | null {
+export function getActivePetDefinition(state: PetSystemState): Pet | null {
   if (state.activePet === null) return null;
-  return getPetByType(state.activePet.petId);
+  return getPetDefinition(state.activePet.petId);
 }
 
 /**
- * 获取当前激活召唤物的灵魂碎片消耗
+ * 获取当前激活宠物的资源消耗
  *
  * @param state - 召唤系统状态
- * @returns 灵魂碎片消耗（无激活召唤物时返回 0）
+ * @returns 资源消耗（无激活宠物时返回 0）
  */
 export function getActivePetSoulShardCost(state: PetSystemState): number {
   const def = getActivePetDefinition(state);
-  return def?.soulShardCost ?? 0;
+  return def ? getPetResourceCost(def) : 0;
 }

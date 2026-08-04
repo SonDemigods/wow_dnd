@@ -16,6 +16,7 @@ import type { useCombatLog } from './useCombatLog';
 import type { useEnemyAction } from './useEnemyAction';
 import type { useBossMechanics } from './useBossMechanics';
 import type { usePassiveSkills } from './usePassiveSkills';
+import type { usePetAction } from './usePetAction';
 
 export function useInitiative(
   state: ReturnType<typeof useCombatState>,
@@ -26,6 +27,8 @@ export function useInitiative(
   boss: ReturnType<typeof useBossMechanics>,
   endCombat: (result: CombatResult) => void,
   passive?: ReturnType<typeof usePassiveSkills>,
+  // P3-156：宠物行动层（可选，术士/猎人战斗中注入）
+  pet?: ReturnType<typeof usePetAction>,
 ) {
   // ==================== 内部辅助：先攻排序 ====================
 
@@ -64,10 +67,12 @@ export function useInitiative(
   }
 
   /**
-   * 构建先攻顺序（玩家 + 所有敌人按速度降序排列）
+   * 构建先攻顺序（玩家 + 宠物 + 所有敌人，按速度降序排列）
    *
    * 玩家速度与敌人速度均通过 effectRegistry.reduceSum 应用 getSpeedMod 效果修正，
    * 使减速/冰冻效果能正确影响先攻顺序（P2-1）。
+   *
+   * P3-156：若宠物行动层已注入且有激活的召唤物，将 'pet' 插入先攻序列。
    */
   function buildInitiativeOrder(): void {
     const units: { id: string; speed: number }[] = [];
@@ -78,6 +83,14 @@ export function useInitiative(
     // P2-45 修复：统一使用 ?? 操作符，避免 dex=0 时被 || 吞掉
     const playerSpeed = (ctx.character.effectiveStats.dex ?? 0) + speedMod;
     units.push({ id: 'player', speed: playerSpeed });
+
+    // P3-156：宠物先攻（仅当有激活的召唤物时插入）
+    if (pet?.petStore.hasActivePet) {
+      const petInstance = pet.petStore.activePet;
+      if (petInstance) {
+        units.push({ id: 'pet', speed: petInstance.speed });
+      }
+    }
 
     // 所有敌人速度（P2-1：与玩家侧一致，应用 getSpeedMod 效果修正，使减速/冰冻影响先攻顺序）
     for (const e of state.enemies.value) {
@@ -125,8 +138,10 @@ export function useInitiative(
 
   /**
    * 推进到先攻序列中的下一个行动者
-   * 如果是玩家则设置玩家回合，否则延迟调用敌人回合。
+   * 如果是玩家则设置玩家回合；'pet' 走宠物回合；否则延迟调用敌人回合。
    * 当先攻索引回绕到 0（新一轮开始）时，对所有效果执行一次 tick。
+   *
+   * P3-156：新增 'pet' 分支，调用 singlePetTurn 执行宠物行动。
    */
   function advanceToNextUnit(): void {
     if (state.state.value !== 'fighting') return;
@@ -135,9 +150,11 @@ export function useInitiative(
     // 新一轮开始时，对所有效果执行一次 tick（不再每个敌人回合 tick）
     if (state.currentInitiativeIndex.value === 0) {
       tickAllEffects();
+      // P3-156：宠物状态推进（技能冷却、持续时间、死亡清理），与效果 tick 同步
+      pet?.petTickTurn();
     }
 
-    if (next.isPlayer) {
+    if (next.unitId === 'player') {
       state.turn.value = 'player';
       ctx.skill.tickCooldowns();
       // 玩家回合开始时触发资源系统 onTurnStart 钩子（如怒气/能量回复）
@@ -145,6 +162,13 @@ export function useInitiative(
       // 触发被动技能 onTurnStart 钩子（如法师法力涌动、德鲁伊自然治愈、牧师神圣冥想）
       passive?.onTurnStart();
       eventBus.emit(GameEvents.COMBAT_PLAYER_TURN, null);
+    } else if (next.unitId === 'pet') {
+      // P3-156：宠物回合
+      state.turn.value = 'pet';
+      state.turnTimerId.value = window.setTimeout(() => {
+        state.turnTimerId.value = null;
+        singlePetTurn();
+      }, Math.round(500 / Math.max(0.1, state.combatSpeed.value)));
     } else {
       state.turn.value = 'enemy';
       state.turnTimerId.value = window.setTimeout(() => {
@@ -247,6 +271,69 @@ export function useInitiative(
       endCombat('victory');
       // P2-37 修复：移除重复的 saveLogs 调用，endCombat 内部已调用 log.saveLogs()
       return;
+    }
+  }
+
+  /**
+   * 宠物回合（P3-156 新增）
+   *
+   * 执行该宠物的行动，然后推进到下一个行动者。
+   * 结构参照 singleEnemyTurn 但简化（无 Boss 阶段、无 AI 策略注册表）。
+   *
+   * 宠物死亡/被解散时从先攻序列移除并推进，与敌人死亡清理逻辑一致。
+   */
+  function singlePetTurn(): void {
+    if (state.state.value !== 'fighting') return;
+
+    // 宠物已死亡或被解散，从先攻序列移除
+    if (!pet?.petStore.hasActivePet) {
+      const removedIndex = state.initiativeOrder.value.indexOf('pet');
+      if (removedIndex !== -1) {
+        state.initiativeOrder.value = state.initiativeOrder.value.filter(id => id !== 'pet');
+        // P3-11：若移除位置在当前索引之前，递减当前索引防止跳过下一个单位回合
+        if (removedIndex < state.currentInitiativeIndex.value) {
+          state.currentInitiativeIndex.value--;
+        }
+        if (state.currentInitiativeIndex.value >= state.initiativeOrder.value.length) {
+          state.currentInitiativeIndex.value = 0;
+        }
+      }
+      advanceToNextUnit();
+      return;
+    }
+
+    const petInstance = pet.petStore.activePet;
+    if (!petInstance) {
+      advanceToNextUnit();
+      return;
+    }
+
+    // 记录宠物回合开始
+    log.addCombatLog({
+      actorType: 'system',
+      actorId: 'system',
+      actorName: '系统',
+      eventType: 'combat_turn_start',
+      isCrit: false,
+      isDodge: false,
+      message: `${petInstance.name} 的回合`,
+    });
+
+    // 执行宠物行动
+    pet.petTakeTurn();
+
+    // 检查敌人是否全部死亡（宠物击杀触发胜利判定）
+    const allEnemiesDead = state.enemies.value.length > 0 && state.enemies.value.every(e => e.hp <= 0);
+    if (allEnemiesDead) {
+      endCombat('victory');
+      return;
+    }
+
+    // 推进到下一个行动者
+    advanceToNextUnit();
+    // 与 singleEnemyTurn 保持一致：仅在仍在战斗中时保存日志
+    if (state.state.value === 'fighting') {
+      log.saveLogs();
     }
   }
 

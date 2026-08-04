@@ -39,6 +39,7 @@ import type { useCombatLog } from './useCombatLog';
 import type { useInitiative } from './useInitiative';
 import type { usePassiveSkills } from './usePassiveSkills';
 import type { useBossMechanics } from './useBossMechanics';
+import type { usePetAction } from './usePetAction';
 
 export function usePlayerAction(
   state: ReturnType<typeof useCombatState>,
@@ -49,6 +50,8 @@ export function usePlayerAction(
   endCombat: (result: CombatResult) => void,
   passive: ReturnType<typeof usePassiveSkills>,
   boss: ReturnType<typeof useBossMechanics>,
+  // P3-156 M4-4：注入宠物行动层，传递给 usePlayerSkill 用于狩猎指令联动与召唤/解散技能
+  pet: ReturnType<typeof usePetAction>,
 ) {
   // P3-146：passive.getStatModifiers() 用于将 stat_modifier 类被动接入伤害管线与暴击判定。
   // P3-82 修复说明：passive 参数原本为预留扩展点，现已用于 stat_modifier 接入。
@@ -376,6 +379,7 @@ export function usePlayerAction(
     boss,
     { applySkillBuffs, applyDebuffToEnemy },
     passive,
+    pet,
   );
 
   const itemComposable = usePlayerItem(
