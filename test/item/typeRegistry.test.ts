@@ -94,14 +94,14 @@ describe('TYPE_REGISTRY 完整性', () => {
     expectedKinds.forEach(k => expect(kinds.has(k)).toBe(true));
   });
 
-  it('覆盖全部 11 个武器子类型 + 5 个护甲子类型', () => {
+  it('覆盖全部 10 个武器子类型 + 5 个护甲子类型', () => {
     const equipmentSubtypes = TYPE_REGISTRY
       .filter(m => m.kind === 'equipment')
       .map(m => m.subtype) as string[];
-    // 11 武器 + 5 护甲 = 16
-    expect(equipmentSubtypes).toHaveLength(16);
-    ['sword', 'axe', 'hammer', 'dagger', 'staff', 'shield', 'off_dagger',
-     'greatsword', 'greataxe', 'greatbow', 'greatstaff',
+    // 10 武器 + 5 护甲 = 15
+    expect(equipmentSubtypes).toHaveLength(15);
+    ['sword', 'axe', 'hammer', 'dagger', 'staff', 'shield',
+     'greatsword', 'greataxe', 'greatbow', 'polearm',
      'helm', 'chest', 'gloves', 'legs', 'boots'].forEach(st => {
       expect(equipmentSubtypes).toContain(st);
     });

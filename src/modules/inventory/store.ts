@@ -216,7 +216,7 @@ export const useInventoryStore = defineStore('inventory', () => {
    *
    * 通过 item-template 聚合层获取合并后的物品模板（A1/G1 修复）：
    * - 普通物品模板（config_items 表）
-   * - 装备模板（config_equipmentItems 表，已转换为 Item 格式）
+   * - 装备模板（config_equipment_items 表，已转换为 Item 格式）
    *
    * 合并策略由 item-template/service.ts 的 mergeItemTemplates 实现：
    * 普通物品优先，装备模板仅在 ID 不冲突时插入。

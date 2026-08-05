@@ -540,16 +540,16 @@ describe('useEquipmentStore - 装备 Store', () => {
     it('装备 2 件同套装时应用套装奖励', async () => {
       const store = useEquipmentStore();
       store.$patch({ currentCharacterId: 'char-1' });
-      // P3.3b：使用真实套装装备 ID（warrior_might 套装 parts 指定 itemId）
-      // warrior_might 2 件套奖励：stat str+5 + trigger rage_gen_on_hit_1
+      // P3.3b：使用真实套装装备 ID（warrior_t1 套装 parts 指定 itemId）
+      // warrior_t1 2 件套奖励：stat str+5 + trigger rage_gen_on_hit_1
       // 装备自身 bonus 用 con 避免与套装奖励 str+5 混淆
       const setHelm = makeArmor({
-        id: 'warrior_helm_rage', name: '愤怒之盔', subtype: 'helm', slots: ['helm'], occupies: ['helm'],
-        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 3 },
+        id: 'warrior_helm_t1', name: '愤怒之盔', subtype: 'helm', slots: ['helm'], occupies: ['helm'],
+        classRestriction: ['warrior'], setId: 'warrior_t1', bonus: { con: 3 },
       });
       const setChest = makeArmor({
-        id: 'warrior_chest_might', name: '力量胸甲', subtype: 'chest',
-        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 5 },
+        id: 'warrior_chest_t1', name: '力量胸甲', subtype: 'chest',
+        classRestriction: ['warrior'], setId: 'warrior_t1', bonus: { con: 5 },
       });
 
       await store.equipItem('helm', setHelm);
@@ -566,12 +566,12 @@ describe('useEquipmentStore - 装备 Store', () => {
       const store = useEquipmentStore();
       store.$patch({ currentCharacterId: 'char-1' });
       const setHelm = makeArmor({
-        id: 'warrior_helm_rage', name: '愤怒之盔', subtype: 'helm', slots: ['helm'], occupies: ['helm'],
-        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 3 },
+        id: 'warrior_helm_t1', name: '愤怒之盔', subtype: 'helm', slots: ['helm'], occupies: ['helm'],
+        classRestriction: ['warrior'], setId: 'warrior_t1', bonus: { con: 3 },
       });
       const setChest = makeArmor({
-        id: 'warrior_chest_might', name: '力量胸甲', subtype: 'chest',
-        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 5 },
+        id: 'warrior_chest_t1', name: '力量胸甲', subtype: 'chest',
+        classRestriction: ['warrior'], setId: 'warrior_t1', bonus: { con: 5 },
       });
       // 先装备两件激活套装
       await store.equipItem('helm', setHelm);
@@ -590,12 +590,12 @@ describe('useEquipmentStore - 装备 Store', () => {
       const store = useEquipmentStore();
       store.$patch({ currentCharacterId: 'char-1' });
       const setHelm = makeArmor({
-        id: 'warrior_helm_rage', name: '愤怒之盔', subtype: 'helm', slots: ['helm'], occupies: ['helm'],
-        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 3 },
+        id: 'warrior_helm_t1', name: '愤怒之盔', subtype: 'helm', slots: ['helm'], occupies: ['helm'],
+        classRestriction: ['warrior'], setId: 'warrior_t1', bonus: { con: 3 },
       });
       const setChest = makeArmor({
-        id: 'warrior_chest_might', name: '力量胸甲', subtype: 'chest',
-        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 5 },
+        id: 'warrior_chest_t1', name: '力量胸甲', subtype: 'chest',
+        classRestriction: ['warrior'], setId: 'warrior_t1', bonus: { con: 5 },
       });
       // 先装备两件激活套装
       await store.equipItem('helm', setHelm);

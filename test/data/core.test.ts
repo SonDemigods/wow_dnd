@@ -171,9 +171,9 @@ describe('getTable 强类型表引用获取', () => {
     // 验证所有合法表名都能通过类型检查
     const tableNames: Array<keyof GameDatabaseSchema> = [
       'config_factions', 'config_races', 'config_classes', 'config_items',
-      'config_equipmentItems', 'config_mobs', 'config_bosses', 'config_quests',
-      'config_skills', 'config_locations', 'config_shops', 'config_class_items',
-      'config_class_passives', 'config_class_talents', 'config_item_sets',
+      'config_equipment_items', 'config_mobs', 'config_bosses', 'config_quests',
+      'config_skills', 'config_locations', 'config_shops', 'config_class_equipment',
+      'config_class_passives', 'config_class_talents', 'config_set_definitions',
       'char_data', 'char_inventory', 'char_equipment', 'char_skills',
       'char_quests', 'char_exploration', 'runtime_gameState', 'runtime_combatLogs',
       'runtime_adventureLogs', 'runtime_mapState', 'runtime_shopItems', 'runtime_shopSoldItems'

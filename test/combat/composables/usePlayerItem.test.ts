@@ -517,14 +517,14 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
         name: '橡木法杖',
         kind: 'equipment' as const,
         subtype: 'staff',
-        grip: 'one_handed',
+        grip: 'two_handed',
         stackable: false,
         consumable: false,
         capabilities: ['describable', 'equippable', 'usable', 'sellable', 'enchantable'],
         effects: [{ type: 'magic_damage', value: 50 }],
         bonus: { int: 10 },
-        slots: ['weapon1', 'weapon2'],
-        occupies: [],
+        slots: ['weapon1'],
+        occupies: ['weapon1', 'weapon2'],
       };
     }
 

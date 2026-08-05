@@ -14,7 +14,7 @@ import { MOBS } from '@/data/config_mobs';
 import { BOSSES } from '@/data/config_bosses';
 import { QUESTS } from '@/data/config_quests';
 import { LOOT_ITEMS } from '@/data/config_items';
-import { ITEM_SETS } from '@/data/config_item_sets';
+import { SET_DEFINITIONS } from '@/data/config_set_definitions';
 
 describe('validateLocationData 地点数据引用完整性校验', () => {
   it('返回值在合理范围内（0 ~ LOCATIONS.length）', () => {
@@ -122,12 +122,12 @@ describe('validateQuestData 任务数据引用完整性校验（真实数据）'
 // ==================== validateItemSets 真实数据 happy path ====================
 
 describe('validateItemSets 套装 ID 唯一性校验（真实数据）', () => {
-  it('无重复 ID 时返回 ITEM_SETS.length', () => {
-    expect(validateItemSets()).toBe(ITEM_SETS.length);
+  it('无重复 ID 时返回 SET_DEFINITIONS.length', () => {
+    expect(validateItemSets()).toBe(SET_DEFINITIONS.length);
   });
 
-  it('ITEM_SETS 数据非空', () => {
-    expect(ITEM_SETS.length).toBeGreaterThan(0);
+  it('SET_DEFINITIONS 数据非空', () => {
+    expect(SET_DEFINITIONS.length).toBeGreaterThan(0);
   });
 
   it('多次调用结果一致（纯函数）', () => {
@@ -160,7 +160,7 @@ async function importValidateWith(overrides: {
     }>;
   }>;
   LOOT_ITEMS?: ReadonlyArray<{ id: string }>;
-  ITEM_SETS?: ReadonlyArray<{ id: string; name: string }>;
+  SET_DEFINITIONS?: ReadonlyArray<{ id: string; name: string }>;
 }): Promise<typeof import('@/data/validate')> {
   vi.resetModules();
   vi.doMock('@/data/config_mobs', () => ({ MOBS: overrides.MOBS ?? [] }));
@@ -168,7 +168,7 @@ async function importValidateWith(overrides: {
   vi.doMock('@/data/config_locations', () => ({ LOCATIONS: overrides.LOCATIONS ?? [] }));
   vi.doMock('@/data/config_quests', () => ({ QUESTS: overrides.QUESTS ?? [] }));
   vi.doMock('@/data/config_items', () => ({ LOOT_ITEMS: overrides.LOOT_ITEMS ?? [] }));
-  vi.doMock('@/data/config_item_sets', () => ({ ITEM_SETS: overrides.ITEM_SETS ?? [] }));
+  vi.doMock('@/data/config_set_definitions', () => ({ SET_DEFINITIONS: overrides.SET_DEFINITIONS ?? [] }));
   return await import('@/data/validate');
 }
 
@@ -396,7 +396,7 @@ describe('validateItemSets 错误分支', () => {
   it('套装 ID 重复时返回去重后的数量并输出错误日志', async () => {
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { validateItemSets } = await importValidateWith({
-      ITEM_SETS: [
+      SET_DEFINITIONS: [
         { id: 'set_a', name: '套装A' },
         { id: 'set_a', name: '套装A重复' },
         { id: 'set_b', name: '套装B' },
@@ -414,7 +414,7 @@ describe('validateItemSets 错误分支', () => {
   it('套装 ID 全部唯一时输出校验通过日志', async () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { validateItemSets } = await importValidateWith({
-      ITEM_SETS: [
+      SET_DEFINITIONS: [
         { id: 'set_a', name: '套装A' },
         { id: 'set_b', name: '套装B' },
       ],
@@ -430,7 +430,7 @@ describe('validateItemSets 错误分支', () => {
   it('无套装数据时返回 0 且输出校验通过日志', async () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { validateItemSets } = await importValidateWith({
-      ITEM_SETS: [],
+      SET_DEFINITIONS: [],
     });
 
     const count = validateItemSets();
@@ -459,7 +459,7 @@ describe('import.meta.env.DEV 分支', () => {
     vi.doMock('@/data/config_locations', () => ({ LOCATIONS: [] }));
     vi.doMock('@/data/config_quests', () => ({ QUESTS: [] }));
     vi.doMock('@/data/config_items', () => ({ LOOT_ITEMS: [] }));
-    vi.doMock('@/data/config_item_sets', () => ({ ITEM_SETS: [] }));
+    vi.doMock('@/data/config_set_definitions', () => ({ SET_DEFINITIONS: [] }));
 
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

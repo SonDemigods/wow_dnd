@@ -4,12 +4,12 @@
  * 使用 fake-indexeddb 在内存中真实执行 Dexie 操作，覆盖：
  *  - saveEquipment / getEquipment / deleteEquipment：装备表 char_equipment 的 CRUD
  *  - saveEquipmentTemplate / getEquipmentTemplate / getAllEquipmentTemplates / deleteEquipmentTemplate：
- *    装备模板表 config_equipmentItems 的 CRUD + mapTemplateToEquipmentItem 字段映射
+ *    装备模板表 config_equipment_items 的 CRUD + mapTemplateToEquipmentItem 字段映射
  *  - 空数据兜底：getEquipment 角色不存在时返回全 null 的默认槽位映射
  *
  * 设计说明（遵循 code_rule 红线）：
  *  - 顶部 `import 'fake-indexeddb/auto'` 注入 IndexedDB shim
- *  - beforeEach 清空 char_equipment 与 config_equipmentItems 两张表
+ *  - beforeEach 清空 char_equipment 与 config_equipment_items 两张表
  *  - 不 mock db service，确保 put/get/delete/toArray 真实执行
  */
 import 'fake-indexeddb/auto';
@@ -54,7 +54,7 @@ describe('EquipmentDbService - 装备数据层（fake-indexeddb 真实 CRUD）',
   beforeEach(async () => {
     await Promise.all([
       db.char_equipment.clear(),
-      db.config_equipmentItems.clear(),
+      db.config_equipment_items.clear(),
     ]);
   });
 
@@ -157,7 +157,7 @@ describe('EquipmentDbService - 装备数据层（fake-indexeddb 真实 CRUD）',
     });
   });
 
-  // -------------------- config_equipmentItems 表 --------------------
+  // -------------------- config_equipment_items 表 --------------------
 
   describe('saveEquipmentTemplate / getEquipmentTemplate：模板读写与字段映射', () => {
     it('保存模板后可读回，字段类型被 mapTemplateToEquipmentItem 正确转换', async () => {
@@ -236,7 +236,7 @@ describe('EquipmentDbService - 装备数据层（fake-indexeddb 真实 CRUD）',
 
     it('bonus 为 null 时 mapTemplateToEquipmentItem 返回空对象（|| 兜底分支）', async () => {
       // 直接写入 bonus 为 null 的损坏数据，验证 || {} 兜底
-      await db.config_equipmentItems.put({
+      await db.config_equipment_items.put({
         id: 'null-bonus',
         name: '无加成装备',
         type: 'weapon',
@@ -258,7 +258,7 @@ describe('EquipmentDbService - 装备数据层（fake-indexeddb 真实 CRUD）',
 
     it('DB slots 字段损坏时由 subtype 派生 slots（P3.1：slots 始终由 subtype 派生，忽略 DB slots）', async () => {
       // 直接写入 slots 为非数组的损坏数据，验证 slots 由 subtype 派生而非读 DB
-      await db.config_equipmentItems.put({
+      await db.config_equipment_items.put({
         id: 'bad-slots',
         name: '损坏槽位装备',
         type: 'weapon',

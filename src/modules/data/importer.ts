@@ -201,7 +201,7 @@ export class ImportService implements IImportService {
           db.config_races,
           db.config_classes,
           db.config_items,
-          db.config_equipmentItems,
+          db.config_equipment_items,
           db.config_mobs,
           db.config_bosses,
           db.config_skills,

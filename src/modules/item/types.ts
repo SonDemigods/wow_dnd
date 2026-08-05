@@ -271,9 +271,16 @@ export type WeaponGrip = 'one_handed' | 'off_hand' | 'two_handed';
  * 武器子类型
  *
  * 按握持方式分组，与 `WeaponGrip` 一一对应：
- * - 单手武器（grip: 'one_handed'）：剑/斧/锤/匕首/法杖
- * - 副手武器（grip: 'off_hand'）：盾牌/副手匕首
- * - 双手武器（grip: 'two_handed'）：双手剑/双手斧/长弓/双手法杖
+ * - 单手武器（grip: 'one_handed'）：剑/斧/锤/匕首（可装主手或副手）
+ * - 副手武器（grip: 'off_hand'）：盾牌（仅副手）
+ * - 双手武器（grip: 'two_handed'）：双手剑/双手斧/长弓/法杖/长柄（占主+副两槽）
+ *
+ * 设计变更：
+ * - 法杖（staff）从单手改为双手（与长柄/双手剑等同列），保留 C3 复合物品的
+ *   `usable` 主动技能语义（持杖施法，双手握持不影响主动技能触发）
+ * - 删除 `off_dagger`（副手匕首）：单手武器（dagger）本身可装副手，无需独立子类型
+ * - 删除 `greatstaff`：与 staff 双手语义重复
+ * - 新增 `polearm`（长柄武器）：双手武器，占主+副两槽
  */
 export type WeaponSubtype =
   | 'sword'
@@ -282,11 +289,10 @@ export type WeaponSubtype =
   | 'dagger'
   | 'staff'
   | 'shield'
-  | 'off_dagger'
   | 'greatsword'
   | 'greataxe'
   | 'greatbow'
-  | 'greatstaff';
+  | 'polearm';
 
 /**
  * 护甲子类型：与 5 个护甲槽位一一对应

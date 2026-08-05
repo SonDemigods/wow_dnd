@@ -132,15 +132,14 @@ export const SUBTYPE_SLOTS: Record<EquipmentSubtype, EquipmentSlot[]> = {
   axe: ['weapon1', 'weapon2'],
   hammer: ['weapon1', 'weapon2'],
   dagger: ['weapon1', 'weapon2'],
-  staff: ['weapon1', 'weapon2'],
   // 副手武器：只能副手
   shield: ['weapon2'],
-  off_dagger: ['weapon2'],
   // 双手武器：只能装主手（占用副手见 SUBTYPE_OCCUPIES）
+  staff: ['weapon1'],
   greatsword: ['weapon1'],
   greataxe: ['weapon1'],
   greatbow: ['weapon1'],
-  greatstaff: ['weapon1'],
+  polearm: ['weapon1'],
   // 护甲：一部位一槽
   helm: ['helm'],
   chest: ['chest'],
@@ -156,10 +155,11 @@ export const SUBTYPE_SLOTS: Record<EquipmentSubtype, EquipmentSlot[]> = {
  * 未列出的子类型：`occupies` = 装备时选定的单个目标槽。
  */
 export const SUBTYPE_OCCUPIES: Partial<Record<EquipmentSubtype, EquipmentSlot[]>> = {
+  staff: ['weapon1', 'weapon2'],
   greatsword: ['weapon1', 'weapon2'],
   greataxe: ['weapon1', 'weapon2'],
   greatbow: ['weapon1', 'weapon2'],
-  greatstaff: ['weapon1', 'weapon2']
+  polearm: ['weapon1', 'weapon2']
 };
 
 /**
@@ -173,15 +173,14 @@ export const WEAPON_SUBTYPE_GRIP: Record<WeaponSubtype, WeaponGrip> = {
   axe: 'one_handed',
   hammer: 'one_handed',
   dagger: 'one_handed',
-  staff: 'one_handed',
   // 副手
   shield: 'off_hand',
-  off_dagger: 'off_hand',
   // 双手
+  staff: 'two_handed',
   greatsword: 'two_handed',
   greataxe: 'two_handed',
   greatbow: 'two_handed',
-  greatstaff: 'two_handed'
+  polearm: 'two_handed'
 };
 
 // ============================================================================

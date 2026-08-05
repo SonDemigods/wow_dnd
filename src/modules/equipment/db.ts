@@ -7,7 +7,7 @@
  * 采用 ID 引用 + 模板分离的存储策略：
  *
  * ```
- * char_equipment 表          config_equipmentItems 表
+ * char_equipment 表          config_equipment_items 表
  * ┌─────────────────┐       ┌──────────────────────────┐
  * │ characterId (PK)│       │ id (PK)                   │
  * │ equipment: {    │       │ name, type, rarity, ...   │
@@ -21,7 +21,7 @@
  * ```
  *
  * char_equipment 仅存装备 ID 映射（7 槽：weapon1/weapon2/helm/chest/gloves/legs/boots），
- * 完整属性从 config_equipmentItems 模板表获取。
+ * 完整属性从 config_equipment_items 模板表获取。
  * 好处：装备属性变更只需更新模板表，无需遍历所有角色数据。
  *
  * ## 方法分类
@@ -29,7 +29,7 @@
  * | 分类 | 方法 | 操作的表 |
  * |------|------|---------|
  * | 装备状态读写 | `saveEquipment`, `getEquipment`, `deleteEquipment` | char_equipment |
- * | 装备模板管理 | `saveEquipmentTemplate`, `getEquipmentTemplate`, `getAllEquipmentTemplates`, `deleteEquipmentTemplate` | config_equipmentItems |
+ * | 装备模板管理 | `saveEquipmentTemplate`, `getEquipmentTemplate`, `getAllEquipmentTemplates`, `deleteEquipmentTemplate` | config_equipment_items |
  * | 内部工具 | `mapTemplateToEquipmentItem`, `getDefaultEquipment` | - |
  */
 import { db as gameDb, dbService } from '@/modules/data';
@@ -48,7 +48,7 @@ import { deriveSlots, deriveGrip, SUBTYPE_OCCUPIES, isWeaponSubtype } from './sl
  * 旧 DB 数据的 slots 字段可能仍为 'armor1'-'armor4'（已废弃的旧槽位），
  * 此映射用于在缺失 subtype 列时反推护甲子类型。
  *
- * 映射关系（与 config_equipmentItems.ts 旧版数据约定一致）：
+ * 映射关系（与 config_equipment_items.ts 旧版数据约定一致）：
  * - armor1 → helm（头部）
  * - armor2 → chest（胸部）
  * - armor3 → legs（腿部）
@@ -242,7 +242,7 @@ export class EquipmentDbService {
     });
   }
 
-  // ==================== config_equipmentItems 表操作 ====================
+  // ==================== config_equipment_items 表操作 ====================
 
   /**
    * 保存装备模板到数据库
@@ -257,7 +257,7 @@ export class EquipmentDbService {
    */
   async saveEquipmentTemplate(item: EquipmentItem): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.config_equipmentItems.put({
+      await gameDb.config_equipment_items.put({
         id: item.id,
         name: item.name,
         // P3.3：DB 旧 type 列由 subtype 反推（weapon/armor），运行时 EquipmentItem 无 type 字段
@@ -295,7 +295,7 @@ export class EquipmentDbService {
    */
   async getEquipmentTemplate(itemId: string): Promise<EquipmentItem | null> {
     return dbService.withRetry(async () => {
-      const data = await gameDb.config_equipmentItems.get(itemId);
+      const data = await gameDb.config_equipment_items.get(itemId);
       if (!data) return null;
       return this.mapTemplateToEquipmentItem(data);
     });
@@ -312,7 +312,7 @@ export class EquipmentDbService {
    */
   async getAllEquipmentTemplates(): Promise<EquipmentItem[]> {
     return dbService.withRetry(async () => {
-      const items = await gameDb.config_equipmentItems.toArray();
+      const items = await gameDb.config_equipment_items.toArray();
       return items.map(data => this.mapTemplateToEquipmentItem(data));
     });
   }
@@ -324,7 +324,7 @@ export class EquipmentDbService {
    */
   async deleteEquipmentTemplate(itemId: string): Promise<void> {
     await dbService.withRetry(async () => {
-      await gameDb.config_equipmentItems.delete(itemId);
+      await gameDb.config_equipment_items.delete(itemId);
     });
   }
 }

@@ -64,7 +64,7 @@ describe('executeSetBonus 分派逻辑', () => {
   });
 });
 
-// ==================== 6 个内置执行器 ====================
+// ==================== 33 个内置执行器 ====================
 
 describe('内置执行器效果意图', () => {
   it('mp_regen_5_percent 在 on_turn_start 下发 5% 法力恢复', () => {
@@ -107,6 +107,112 @@ describe('内置执行器效果意图', () => {
     executeSetBonus('soul_shard_on_kill_20_percent', ctx);
     expect(intents).toHaveLength(0);
   });
+
+  // ==================== P3 新增触发器（T2/T3 级别 + 7 个新职业） ====================
+
+  it.each([
+    ['rage_gen_on_hit_2', 2],
+    ['rage_gen_on_hit_3', 3],
+  ] as const)('战士 %s 在 on_hit 下发 +%d 怒气', (triggerId, amount) => {
+    const { ctx, intents } = makeCtx('on_hit');
+    executeSetBonus(triggerId, ctx);
+    expect(intents[0]).toEqual({ kind: 'resource', resource: 'rage', amount });
+  });
+
+  it.each([
+    ['fury_gen_on_hit_1', 1],
+    ['fury_gen_on_hit_2', 2],
+    ['fury_gen_on_hit_3', 3],
+  ] as const)('恶魔猎手 %s 在 on_hit 下发 +%d 怒气', (triggerId, amount) => {
+    const { ctx, intents } = makeCtx('on_hit');
+    executeSetBonus(triggerId, ctx);
+    expect(intents[0]).toEqual({ kind: 'resource', resource: 'fury', amount });
+  });
+
+  it.each([
+    ['energy_regen_3', 3],
+    ['energy_regen_4', 4],
+  ] as const)('潜行者 %s 在 on_turn_start 下发 +%d 能量', (triggerId, amount) => {
+    const { ctx, intents } = makeCtx('on_turn_start');
+    executeSetBonus(triggerId, ctx);
+    expect(intents[0]).toEqual({ kind: 'resource', resource: 'energy', amount });
+  });
+
+  it.each([
+    ['chi_regen_1', 1],
+    ['chi_regen_2', 2],
+    ['chi_regen_3', 3],
+  ] as const)('武僧 %s 在 on_turn_start 下发 +%d 真气', (triggerId, amount) => {
+    const { ctx, intents } = makeCtx('on_turn_start');
+    executeSetBonus(triggerId, ctx);
+    expect(intents[0]).toEqual({ kind: 'resource', resource: 'chi', amount });
+  });
+
+  it.each([
+    ['rune_regen_1', 1],
+    ['rune_regen_2', 2],
+    ['rune_regen_3', 3],
+  ] as const)('死亡骑士 %s 在 on_turn_start 下发 +%d 符文', (triggerId, amount) => {
+    const { ctx, intents } = makeCtx('on_turn_start');
+    executeSetBonus(triggerId, ctx);
+    expect(intents[0]).toEqual({ kind: 'resource', resource: 'rune', amount });
+  });
+
+  it.each([
+    ['essence_regen_1', 1],
+    ['essence_regen_2', 2],
+    ['essence_regen_3', 3],
+  ] as const)('唤魔者 %s 在 on_turn_start 下发 +%d 精华', (triggerId, amount) => {
+    const { ctx, intents } = makeCtx('on_turn_start');
+    executeSetBonus(triggerId, ctx);
+    expect(intents[0]).toEqual({ kind: 'resource', resource: 'essence', amount });
+  });
+
+  it.each([
+    ['mp_regen_7_percent', 0.07],
+    ['mp_regen_10_percent', 0.10],
+  ] as const)('法师/牧师 %s 在 on_turn_start 下发 %d 法力恢复', (triggerId, percent) => {
+    const { ctx, intents } = makeCtx('on_turn_start');
+    executeSetBonus(triggerId, ctx);
+    expect(intents[0]).toEqual({ kind: 'percent_regen', resource: 'mp', percent });
+  });
+
+  it.each([
+    ['heal_bonus_15_percent', 0.15],
+    ['heal_bonus_20_percent', 0.20],
+  ] as const)('圣骑士/德鲁伊 %s 在 passive 下发治疗修正 %d', (triggerId, value) => {
+    const { ctx, intents } = makeCtx('passive');
+    executeSetBonus(triggerId, ctx);
+    expect(intents[0]).toEqual({ kind: 'modifier', modifier: 'heal', value });
+  });
+
+  it.each([
+    ['crit_bonus_5_percent', 0.05],
+    ['crit_bonus_7_percent', 0.07],
+  ] as const)('猎人 %s 在 passive 下发暴击修正 %d', (triggerId, value) => {
+    const { ctx, intents } = makeCtx('passive');
+    executeSetBonus(triggerId, ctx);
+    expect(intents[0]).toEqual({ kind: 'modifier', modifier: 'crit', value });
+  });
+
+  it.each([
+    ['elemental_damage_5_percent', 0.05],
+    ['elemental_damage_8_percent', 0.08],
+    ['elemental_damage_12_percent', 0.12],
+  ] as const)('萨满 %s 在 passive 下发元素伤害修正 %d', (triggerId, value) => {
+    const { ctx, intents } = makeCtx('passive');
+    executeSetBonus(triggerId, ctx);
+    expect(intents[0]).toEqual({ kind: 'modifier', modifier: 'elemental_damage', value });
+  });
+
+  it.each([
+    ['soul_shard_on_kill_30_percent', 0.3],
+    ['soul_shard_on_kill_40_percent', 0.4],
+  ] as const)('术士 %s 在 on_kill 下发概率 %d +1 灵魂碎片', (triggerId, chance) => {
+    const { ctx, intents } = makeCtx('on_kill');
+    executeSetBonus(triggerId, ctx);
+    expect(intents[0]).toEqual({ kind: 'chance_grant', resource: 'soul_shard', chance, amount: 1 });
+  });
 });
 
 // ==================== 查询函数 ====================
@@ -132,14 +238,21 @@ describe('isTriggerRegistered / getTriggerSources', () => {
     expect(getTriggerSources('unknown')).toEqual([]);
   });
 
-  it('注册表覆盖全部 6 个旧版套装效果字符串', () => {
-    expect(Object.keys(SET_BONUS_EXECUTORS)).toHaveLength(6);
+  it('注册表覆盖全部 33 个触发器（6 个旧版 T1 + 27 个 P3 新增）', () => {
+    expect(Object.keys(SET_BONUS_EXECUTORS)).toHaveLength(33);
+    // 旧版 6 个 T1 触发器
     expect(Object.keys(SET_BONUS_EXECUTORS)).toContain('rage_gen_on_hit_1');
     expect(Object.keys(SET_BONUS_EXECUTORS)).toContain('mp_regen_5_percent');
     expect(Object.keys(SET_BONUS_EXECUTORS)).toContain('heal_bonus_10_percent');
     expect(Object.keys(SET_BONUS_EXECUTORS)).toContain('crit_bonus_3_percent');
     expect(Object.keys(SET_BONUS_EXECUTORS)).toContain('energy_regen_2');
     expect(Object.keys(SET_BONUS_EXECUTORS)).toContain('soul_shard_on_kill_20_percent');
+    // P3 新增触发器示例
+    expect(Object.keys(SET_BONUS_EXECUTORS)).toContain('fury_gen_on_hit_1');
+    expect(Object.keys(SET_BONUS_EXECUTORS)).toContain('chi_regen_1');
+    expect(Object.keys(SET_BONUS_EXECUTORS)).toContain('rune_regen_1');
+    expect(Object.keys(SET_BONUS_EXECUTORS)).toContain('essence_regen_1');
+    expect(Object.keys(SET_BONUS_EXECUTORS)).toContain('elemental_damage_5_percent');
   });
 });
 

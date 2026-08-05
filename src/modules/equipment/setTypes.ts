@@ -10,7 +10,7 @@
  *   - S6：配套 setService 的 `SetProgress` API 供 UI 展示套装进度
  *
  *   阶段定位：P3.3b 已完成迁移。本文件类型已覆盖 equipment/types.ts 的旧 `ItemSet`，
- *   config_item_sets.ts 已迁移到新版 `ItemSet`（parts + bonusTiers），
+ *   config_set_definitions.ts 已迁移到新版 `ItemSet`（parts + bonusTiers），
  *   service.ts 的旧版 countSetPieces/getActiveSetBonuses 已删除，由 setService 替代。
  *
  * @module equipment

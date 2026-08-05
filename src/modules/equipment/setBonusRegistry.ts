@@ -125,40 +125,183 @@ function maybeGrant(
  * triggerId 与 `SetBonusEffect`（kind: 'trigger'）的 `triggerId` 字段对应。
  * 新增触发效果在此注册一行即可。
  *
- * 当前注册项覆盖 config_item_sets.ts 旧版 6 个套装的 effect 字符串：
- * - `rage_gen_on_hit_1`：攻击时 +1 怒气（战士力量套）
- * - `mp_regen_5_percent`：每回合恢复 5% 最大法力（法师奥术套）
- * - `heal_bonus_10_percent`：治疗效果 +10%（圣骑士正义套，持续生效）
- * - `crit_bonus_3_percent`：暴击率 +3%（猎人捕食者套，持续生效）
- * - `energy_regen_2`：每回合 +2 能量（潜行者暗影套）
- * - `soul_shard_on_kill_20_percent`：击杀时 20% 概率 +1 灵魂碎片（术士恶魔套）
+ * 当前注册项覆盖 13 职业 × 3 套 = 39 套套装的全部触发效果（含旧版 6 套的 T1 效果）：
+ *
+ * 资源生成（on_hit）：
+ * - `rage_gen_on_hit_1/2/3`：攻击时 +1/+2/+3 怒气（战士 T1/T2/T3）
+ * - `fury_gen_on_hit_1/2/3`：攻击时 +1/+2/+3 怒气（恶魔猎手 T1/T2/T3）
+ *
+ * 资源生成（on_turn_start）：
+ * - `energy_regen_2/3/4`：每回合 +2/+3/+4 能量（潜行者 T1/T2/T3）
+ * - `chi_regen_1/2/3`：每回合 +1/+2/+3 真气（武僧 T1/T2/T3）
+ * - `rune_regen_1/2/3`：每回合 +1/+2/+3 符文（死亡骑士 T1/T2/T3）
+ * - `essence_regen_1/2/3`：每回合 +1/+2/+3 精华（唤魔者 T1/T2/T3）
+ *
+ * 百分比法力恢复（on_turn_start）：
+ * - `mp_regen_5/7/10_percent`：每回合恢复 5%/7%/10% 最大法力（法师+牧师 T1/T2/T3）
+ *
+ * 百分比修正（passive）：
+ * - `heal_bonus_10/15/20_percent`：治疗效果 +10%/+15%/+20%（圣骑士+德鲁伊 T1/T2/T3）
+ * - `crit_bonus_3/5/7_percent`：暴击率 +3%/+5%/+7%（猎人 T1/T2/T3）
+ * - `elemental_damage_5/8/12_percent`：元素伤害 +5%/+8%/+12%（萨满 T1/T2/T3）
+ *
+ * 概率生成资源（on_kill）：
+ * - `soul_shard_on_kill_20/30/40_percent`：击杀时 20%/30%/40% 概率 +1 灵魂碎片（术士 T1/T2/T3）
  */
 export const SET_BONUS_EXECUTORS: Record<string, SetBonusExecutorEntry> = {
+  // ==================== 战士：怒气生成（on_hit） ====================
   rage_gen_on_hit_1: {
     executor: ctx => grantResource(ctx, 'rage', 1),
     sources: ['on_hit']
   },
-  mp_regen_5_percent: {
-    executor: ctx => regenPercent(ctx, 'mp', 0.05),
-    sources: ['on_turn_start']
+  rage_gen_on_hit_2: {
+    executor: ctx => grantResource(ctx, 'rage', 2),
+    sources: ['on_hit']
   },
-  heal_bonus_10_percent: {
-    executor: ctx => applyModifier(ctx, 'heal', 0.10),
-    sources: ['passive']
+  rage_gen_on_hit_3: {
+    executor: ctx => grantResource(ctx, 'rage', 3),
+    sources: ['on_hit']
   },
-  crit_bonus_3_percent: {
-    executor: ctx => applyModifier(ctx, 'crit', 0.03),
-    sources: ['passive']
+
+  // ==================== 恶魔猎手：怒气生成（on_hit） ====================
+  fury_gen_on_hit_1: {
+    executor: ctx => grantResource(ctx, 'fury', 1),
+    sources: ['on_hit']
   },
+  fury_gen_on_hit_2: {
+    executor: ctx => grantResource(ctx, 'fury', 2),
+    sources: ['on_hit']
+  },
+  fury_gen_on_hit_3: {
+    executor: ctx => grantResource(ctx, 'fury', 3),
+    sources: ['on_hit']
+  },
+
+  // ==================== 潜行者：能量恢复（on_turn_start） ====================
   energy_regen_2: {
     executor: ctx => grantResource(ctx, 'energy', 2),
     sources: ['on_turn_start']
   },
+  energy_regen_3: {
+    executor: ctx => grantResource(ctx, 'energy', 3),
+    sources: ['on_turn_start']
+  },
+  energy_regen_4: {
+    executor: ctx => grantResource(ctx, 'energy', 4),
+    sources: ['on_turn_start']
+  },
+
+  // ==================== 武僧：真气恢复（on_turn_start） ====================
+  chi_regen_1: {
+    executor: ctx => grantResource(ctx, 'chi', 1),
+    sources: ['on_turn_start']
+  },
+  chi_regen_2: {
+    executor: ctx => grantResource(ctx, 'chi', 2),
+    sources: ['on_turn_start']
+  },
+  chi_regen_3: {
+    executor: ctx => grantResource(ctx, 'chi', 3),
+    sources: ['on_turn_start']
+  },
+
+  // ==================== 死亡骑士：符文恢复（on_turn_start） ====================
+  rune_regen_1: {
+    executor: ctx => grantResource(ctx, 'rune', 1),
+    sources: ['on_turn_start']
+  },
+  rune_regen_2: {
+    executor: ctx => grantResource(ctx, 'rune', 2),
+    sources: ['on_turn_start']
+  },
+  rune_regen_3: {
+    executor: ctx => grantResource(ctx, 'rune', 3),
+    sources: ['on_turn_start']
+  },
+
+  // ==================== 唤魔者：精华恢复（on_turn_start） ====================
+  essence_regen_1: {
+    executor: ctx => grantResource(ctx, 'essence', 1),
+    sources: ['on_turn_start']
+  },
+  essence_regen_2: {
+    executor: ctx => grantResource(ctx, 'essence', 2),
+    sources: ['on_turn_start']
+  },
+  essence_regen_3: {
+    executor: ctx => grantResource(ctx, 'essence', 3),
+    sources: ['on_turn_start']
+  },
+
+  // ==================== 法师 + 牧师：法力百分比恢复（on_turn_start） ====================
+  mp_regen_5_percent: {
+    executor: ctx => regenPercent(ctx, 'mp', 0.05),
+    sources: ['on_turn_start']
+  },
+  mp_regen_7_percent: {
+    executor: ctx => regenPercent(ctx, 'mp', 0.07),
+    sources: ['on_turn_start']
+  },
+  mp_regen_10_percent: {
+    executor: ctx => regenPercent(ctx, 'mp', 0.10),
+    sources: ['on_turn_start']
+  },
+
+  // ==================== 圣骑士 + 德鲁伊：治疗百分比修正（passive） ====================
+  heal_bonus_10_percent: {
+    executor: ctx => applyModifier(ctx, 'heal', 0.10),
+    sources: ['passive']
+  },
+  heal_bonus_15_percent: {
+    executor: ctx => applyModifier(ctx, 'heal', 0.15),
+    sources: ['passive']
+  },
+  heal_bonus_20_percent: {
+    executor: ctx => applyModifier(ctx, 'heal', 0.20),
+    sources: ['passive']
+  },
+
+  // ==================== 猎人：暴击百分比修正（passive） ====================
+  crit_bonus_3_percent: {
+    executor: ctx => applyModifier(ctx, 'crit', 0.03),
+    sources: ['passive']
+  },
+  crit_bonus_5_percent: {
+    executor: ctx => applyModifier(ctx, 'crit', 0.05),
+    sources: ['passive']
+  },
+  crit_bonus_7_percent: {
+    executor: ctx => applyModifier(ctx, 'crit', 0.07),
+    sources: ['passive']
+  },
+
+  // ==================== 萨满：元素伤害百分比修正（passive） ====================
+  elemental_damage_5_percent: {
+    executor: ctx => applyModifier(ctx, 'elemental_damage', 0.05),
+    sources: ['passive']
+  },
+  elemental_damage_8_percent: {
+    executor: ctx => applyModifier(ctx, 'elemental_damage', 0.08),
+    sources: ['passive']
+  },
+  elemental_damage_12_percent: {
+    executor: ctx => applyModifier(ctx, 'elemental_damage', 0.12),
+    sources: ['passive']
+  },
+
+  // ==================== 术士：灵魂碎片概率生成（on_kill） ====================
   soul_shard_on_kill_20_percent: {
     executor: ctx => maybeGrant(ctx, 'soul_shard', 0.2),
     sources: ['on_kill']
+  },
+  soul_shard_on_kill_30_percent: {
+    executor: ctx => maybeGrant(ctx, 'soul_shard', 0.3),
+    sources: ['on_kill']
+  },
+  soul_shard_on_kill_40_percent: {
+    executor: ctx => maybeGrant(ctx, 'soul_shard', 0.4),
+    sources: ['on_kill']
   }
-  // 新增触发效果在此注册一行
 };
 
 // ============================================================================

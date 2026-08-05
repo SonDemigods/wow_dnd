@@ -168,7 +168,7 @@ export const CONFIG_TABLES: ConfigTableMeta[] = [
   { key: 'races', label: '种族', description: '26个可选种族', dbTable: 'config_races' },
   { key: 'classes', label: '职业', description: '13个职业定义', dbTable: 'config_classes' },
   { key: 'items', label: '物品', description: '消耗品/材料模板', dbTable: 'config_items' },
-  { key: 'equipmentItems', label: '装备', description: '武器装备模板', dbTable: 'config_equipmentItems' },
+  { key: 'equipmentItems', label: '装备', description: '武器装备模板', dbTable: 'config_equipment_items' },
   { key: 'mobs', label: '普通怪物', description: '普通怪物模板', dbTable: 'config_mobs' },
   { key: 'bosses', label: 'Boss', description: 'Boss 模板', dbTable: 'config_bosses' },
   { key: 'quests', label: '任务', description: '任务定义', dbTable: 'config_quests' },

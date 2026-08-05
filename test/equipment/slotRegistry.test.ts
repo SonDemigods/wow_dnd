@@ -158,8 +158,10 @@ describe('SUBTYPE_SLOTS 子类型可装备槽位', () => {
     expect(SUBTYPE_SLOTS.shield).toEqual(['weapon2']);
   });
 
-  it('双手武器（双手剑）只能主手', () => {
+  it('双手武器（法杖/双手剑/长柄）只能主手', () => {
+    expect(SUBTYPE_SLOTS.staff).toEqual(['weapon1']);
     expect(SUBTYPE_SLOTS.greatsword).toEqual(['weapon1']);
+    expect(SUBTYPE_SLOTS.polearm).toEqual(['weapon1']);
   });
 
   it('护甲一部位一槽（修正旧版手套装头部 bug）', () => {
@@ -177,10 +179,11 @@ describe('SUBTYPE_SLOTS 子类型可装备槽位', () => {
 
 describe('SUBTYPE_OCCUPIES 子类型占用槽位', () => {
   it('双手武器占用主+副两槽', () => {
+    expect(SUBTYPE_OCCUPIES.staff).toEqual(['weapon1', 'weapon2']);
     expect(SUBTYPE_OCCUPIES.greatsword).toEqual(['weapon1', 'weapon2']);
     expect(SUBTYPE_OCCUPIES.greataxe).toEqual(['weapon1', 'weapon2']);
     expect(SUBTYPE_OCCUPIES.greatbow).toEqual(['weapon1', 'weapon2']);
-    expect(SUBTYPE_OCCUPIES.greatstaff).toEqual(['weapon1', 'weapon2']);
+    expect(SUBTYPE_OCCUPIES.polearm).toEqual(['weapon1', 'weapon2']);
   });
 
   it('非双手武器未列出（occupies = 装备时选定的目标槽）', () => {
@@ -195,22 +198,22 @@ describe('WEAPON_SUBTYPE_GRIP 武器子类型握持方式', () => {
     expect(WEAPON_SUBTYPE_GRIP.sword).toBe('one_handed');
     expect(WEAPON_SUBTYPE_GRIP.axe).toBe('one_handed');
     expect(WEAPON_SUBTYPE_GRIP.dagger).toBe('one_handed');
-    expect(WEAPON_SUBTYPE_GRIP.staff).toBe('one_handed');
   });
 
   it('副手武器子类型 → off_hand', () => {
     expect(WEAPON_SUBTYPE_GRIP.shield).toBe('off_hand');
-    expect(WEAPON_SUBTYPE_GRIP.off_dagger).toBe('off_hand');
   });
 
   it('双手武器子类型 → two_handed', () => {
+    expect(WEAPON_SUBTYPE_GRIP.staff).toBe('two_handed');
     expect(WEAPON_SUBTYPE_GRIP.greatsword).toBe('two_handed');
+    expect(WEAPON_SUBTYPE_GRIP.greataxe).toBe('two_handed');
     expect(WEAPON_SUBTYPE_GRIP.greatbow).toBe('two_handed');
-    expect(WEAPON_SUBTYPE_GRIP.greatstaff).toBe('two_handed');
+    expect(WEAPON_SUBTYPE_GRIP.polearm).toBe('two_handed');
   });
 
-  it('覆盖全部 11 个武器子类型', () => {
-    expect(Object.keys(WEAPON_SUBTYPE_GRIP)).toHaveLength(11);
+  it('覆盖全部 10 个武器子类型', () => {
+    expect(Object.keys(WEAPON_SUBTYPE_GRIP)).toHaveLength(10);
   });
 });
 

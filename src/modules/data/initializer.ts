@@ -29,10 +29,10 @@ import {
   MONSTER_ABILITIES,
   RACES,
   FACTIONS,
-  CLASS_SPECIFIC_ITEMS,
+  CLASS_EQUIPMENT,
   CLASS_PASSIVES,
   CLASS_TALENT_TREES,
-  ITEM_SETS
+  SET_DEFINITIONS
 } from '@/data';
 // P1-30 修复：MAX_LEVEL 改为从 @/config/character 直接导入，不再通过 @/data 越层导出
 import { MAX_LEVEL } from '@/config/character';
@@ -77,17 +77,17 @@ export class DataInitializer {
           db.config_races,
           db.config_classes,
           db.config_items,
-          db.config_equipmentItems,
+          db.config_equipment_items,
           db.config_mobs,
           db.config_bosses,
           db.config_locations,
           db.config_shops,
           db.config_quests,
           db.config_skills,
-          db.config_class_items,
+          db.config_class_equipment,
           db.config_class_passives,
           db.config_class_talents,
-          db.config_item_sets,
+          db.config_set_definitions,
           db.runtime_gameState,
           db.runtime_mapState,
         ],
@@ -191,7 +191,7 @@ export class DataInitializer {
    * 初始化装备数据
    */
   private async initEquipment(): Promise<void> {
-    await this.initTable(db.config_equipmentItems, EQUIPMENT_ITEMS);
+    await this.initTable(db.config_equipment_items, EQUIPMENT_ITEMS);
   }
 
   /**
@@ -312,11 +312,11 @@ export class DataInitializer {
   /**
    * 初始化职业专属装备数据（DATA-4）
    *
-   * 将静态常量 CLASS_SPECIFIC_ITEMS 写入 config_class_items 表，
+   * 将静态常量 CLASS_EQUIPMENT 写入 config_class_equipment 表，
    * 供 admin 后台编辑。业务模块仍直接 import 静态常量保持同步访问。
    */
   private async initClassItems(): Promise<void> {
-    await this.initTable(db.config_class_items, CLASS_SPECIFIC_ITEMS);
+    await this.initTable(db.config_class_equipment, CLASS_EQUIPMENT);
   }
 
   /**
@@ -337,7 +337,7 @@ export class DataInitializer {
    * 初始化套装定义数据（DATA-4）
    */
   private async initItemSets(): Promise<void> {
-    await this.initTable(db.config_item_sets, ITEM_SETS);
+    await this.initTable(db.config_set_definitions, SET_DEFINITIONS);
   }
 
   /**
@@ -367,17 +367,17 @@ export class DataInitializer {
           db.config_races,
           db.config_classes,
           db.config_items,
-          db.config_equipmentItems,
+          db.config_equipment_items,
           db.config_mobs,
           db.config_bosses,
           db.config_locations,
           db.config_shops,
           db.config_quests,
           db.config_skills,
-          db.config_class_items,
+          db.config_class_equipment,
           db.config_class_passives,
           db.config_class_talents,
-          db.config_item_sets,
+          db.config_set_definitions,
           db.runtime_gameState,
           db.runtime_mapState,
         ],
@@ -387,17 +387,17 @@ export class DataInitializer {
           await db.config_races.clear();
           await db.config_classes.clear();
           await db.config_items.clear();
-          await db.config_equipmentItems.clear();
+          await db.config_equipment_items.clear();
           await db.config_mobs.clear();
           await db.config_bosses.clear();
           await db.config_locations.clear();
           await db.config_shops.clear();
           await db.config_quests.clear();
           await db.config_skills.clear();
-          await db.config_class_items.clear();
+          await db.config_class_equipment.clear();
           await db.config_class_passives.clear();
           await db.config_class_talents.clear();
-          await db.config_item_sets.clear();
+          await db.config_set_definitions.clear();
 
           // 重新导入所有基础数据
           await this.initFactions();

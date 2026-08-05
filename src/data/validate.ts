@@ -11,8 +11,8 @@ import { MOBS } from './config_mobs';
 import { BOSSES } from './config_bosses';
 import { QUESTS } from './config_quests';
 import { LOOT_ITEMS } from './config_items';
-import { ITEM_SETS } from './config_item_sets';
-import { CLASS_SPECIFIC_ITEMS } from './config_class_items';
+import { SET_DEFINITIONS } from './config_set_definitions';
+import { CLASS_EQUIPMENT } from './config_class_equipment';
 import { CLASS_ABILITIES } from './config_skills';
 import type { EffectType } from '@/modules/combat/effects';
 
@@ -122,7 +122,7 @@ export function validateItemSets(): number {
   const seenIds = new Set<string>();
   let duplicateCount = 0;
 
-  for (const set of ITEM_SETS) {
+  for (const set of SET_DEFINITIONS) {
     if (seenIds.has(set.id)) {
       errors.push(`套装 ID "${set.id}" 重复定义`);
       duplicateCount++;
@@ -134,10 +134,10 @@ export function validateItemSets(): number {
     console.error(`[数据校验] 套装数据存在 ${errors.length} 处问题:`);
     errors.forEach(e => console.error(`  - ${e}`));
   } else {
-    console.log(`[数据校验] 套装数据校验通过：${ITEM_SETS.length} 个套装 ID 均唯一`);
+    console.log(`[数据校验] 套装数据校验通过：${SET_DEFINITIONS.length} 个套装 ID 均唯一`);
   }
 
-  return ITEM_SETS.length - duplicateCount;
+  return SET_DEFINITIONS.length - duplicateCount;
 }
 
 /**
@@ -181,23 +181,23 @@ export function validateBossPhasesOrder(): number {
 }
 
 /**
- * 校验装备的 setId 引用是否存在于 ITEM_SETS 定义
+ * 校验装备的 setId 引用是否存在于 SET_DEFINITIONS 定义
  *
- * P2-79：装备的 setId 必须能在 ITEM_SETS 中找到对应套装，
+ * P2-79：装备的 setId 必须能在 SET_DEFINITIONS 中找到对应套装，
  * 否则 setService.getAllSetProgresses 计算时会被静默忽略，玩家穿戴后无法激活套装奖励。
  *
- * 校验范围：CLASS_SPECIFIC_ITEMS 中所有带 setId 的装备。
+ * 校验范围：CLASS_EQUIPMENT 中所有带 setId 的装备。
  *
  * @returns 校验通过的装备数量；若存在无效引用，会在控制台输出错误日志
  */
 export function validateItemSetReferences(): number {
-  const setIds = new Set(ITEM_SETS.map(s => s.id));
+  const setIds = new Set(SET_DEFINITIONS.map(s => s.id));
   const errors: string[] = [];
   let validCount = 0;
 
-  for (const item of CLASS_SPECIFIC_ITEMS) {
+  for (const item of CLASS_EQUIPMENT) {
     if (item.setId && !setIds.has(item.setId)) {
-      errors.push(`装备 ${item.id} (${item.name}) 的 setId "${item.setId}" 不存在于 ITEM_SETS`);
+      errors.push(`装备 ${item.id} (${item.name}) 的 setId "${item.setId}" 不存在于 SET_DEFINITIONS`);
     } else {
       validCount++;
     }
@@ -207,7 +207,7 @@ export function validateItemSetReferences(): number {
     console.error(`[数据校验] 装备 setId 引用存在 ${errors.length} 处无效:`);
     errors.forEach(e => console.error(`  - ${e}`));
   } else {
-    console.log(`[数据校验] 装备 setId 引用校验通过：${validCount}/${CLASS_SPECIFIC_ITEMS.length} 件装备的 setId 均有效`);
+    console.log(`[数据校验] 装备 setId 引用校验通过：${validCount}/${CLASS_EQUIPMENT.length} 件装备的 setId 均有效`);
   }
 
   return validCount;

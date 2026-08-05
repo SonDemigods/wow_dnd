@@ -35,7 +35,7 @@ describe('useConfigTableMeta 配置表元信息 composable', () => {
         { table: 'races', dbTable: 'config_races' },
         { table: 'classes', dbTable: 'config_classes' },
         { table: 'items', dbTable: 'config_items' },
-        { table: 'equipmentItems', dbTable: 'config_equipmentItems' },
+        { table: 'equipmentItems', dbTable: 'config_equipment_items' },
         { table: 'bosses', dbTable: 'config_bosses' },
         { table: 'quests', dbTable: 'config_quests' },
         { table: 'skills', dbTable: 'config_skills' },

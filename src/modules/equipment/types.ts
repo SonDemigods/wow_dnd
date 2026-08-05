@@ -36,7 +36,7 @@ import type { Capability } from '../item/capabilityTypes';
 /**
  * 装备配置草稿类型（P3.3 升级）
  *
- * 配置层（config_equipmentItems.ts）的装备条目使用此类型，
+ * 配置层（config_equipment_items.ts）的装备条目使用此类型，
  * 条目只需声明业务字段（不含判别字面量与派生字段），
  * 在导出时通过 map 补全 `kind/subtype/grip/stackable/consumable/capabilities` 并派生 `slots/occupies`。
  *
@@ -70,10 +70,10 @@ export type EquipmentItemDraft = Omit<
  * 装备数据行存储接口（char_equipment 表）
  *
  * 以角色 ID 为主键，equipment 字段仅存装备 ID 映射（而非完整数据），
- * 完整装备属性通过 `config_equipmentItems` 模板表按 ID 查询获得。
+ * 完整装备属性通过 `config_equipment_items` 模板表按 ID 查询获得。
  *
  * 设计原则（数据规范化）：
- * - 避免数据冗余：同一装备的配置信息仅在 `config_equipmentItems` 表中存储一份
+ * - 避免数据冗余：同一装备的配置信息仅在 `config_equipment_items` 表中存储一份
  * - 兼容性：模板更新后，所有角色的装备属性自动同步
  * - 存储效率：char_equipment 表仅存 7 个字符串键值对
  *
@@ -91,7 +91,7 @@ export interface EquipmentDataStorage {
 }
 
 /**
- * 装备模板存储接口（config_equipmentItems 表）
+ * 装备模板存储接口（config_equipment_items 表）
  *
  * 装备的完整属性定义，以装备 ID 为主键。
  * 与 char_equipment 表配合使用：char_equipment 存 ID 引用，此处存完整定义。
@@ -167,7 +167,7 @@ export interface EquipmentTemplateStorage {
  * 用于跨角色或跨存档的装备数据迁移，为 JSON 序列化友好格式。
  * 与 `EquipmentDataStorage` 的区别：`updatedAt` 为可选字段，更灵活的 JSON 兼容性。
  *
- * equipment 字段仅存装备 ID，导入时需配合 `config_equipmentItems` 模板表解析为完整装备对象。
+ * equipment 字段仅存装备 ID，导入时需配合 `config_equipment_items` 模板表解析为完整装备对象。
  *
  * @property {string} characterId - 角色 ID
  * @property {Record<import('../item/types').EquipmentSlot, string | null>} equipment - 装备 ID 映射。导入时若缺少某些槽位的键，Store 层会使用 getDefaultEquipment() 补齐

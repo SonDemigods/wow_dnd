@@ -84,15 +84,14 @@ export const TYPE_REGISTRY: ItemTypeMeta[] = [
   { kind: 'equipment', subtype: 'axe', displayName: '斧', category: 'equipment', stackable: false, maxStack: 1 },
   { kind: 'equipment', subtype: 'hammer', displayName: '锤', category: 'equipment', stackable: false, maxStack: 1 },
   { kind: 'equipment', subtype: 'dagger', displayName: '匕首', category: 'equipment', stackable: false, maxStack: 1 },
-  { kind: 'equipment', subtype: 'staff', displayName: '法杖', category: 'equipment', stackable: false, maxStack: 1 },
   // 装备 - 副手武器
   { kind: 'equipment', subtype: 'shield', displayName: '盾牌', category: 'equipment', stackable: false, maxStack: 1 },
-  { kind: 'equipment', subtype: 'off_dagger', displayName: '副手匕首', category: 'equipment', stackable: false, maxStack: 1 },
   // 装备 - 双手武器
+  { kind: 'equipment', subtype: 'staff', displayName: '法杖', category: 'equipment', stackable: false, maxStack: 1 },
   { kind: 'equipment', subtype: 'greatsword', displayName: '双手剑', category: 'equipment', stackable: false, maxStack: 1 },
   { kind: 'equipment', subtype: 'greataxe', displayName: '双手斧', category: 'equipment', stackable: false, maxStack: 1 },
   { kind: 'equipment', subtype: 'greatbow', displayName: '长弓', category: 'equipment', stackable: false, maxStack: 1 },
-  { kind: 'equipment', subtype: 'greatstaff', displayName: '双手法杖', category: 'equipment', stackable: false, maxStack: 1 },
+  { kind: 'equipment', subtype: 'polearm', displayName: '长柄武器', category: 'equipment', stackable: false, maxStack: 1 },
   // 装备 - 护甲5部位
   { kind: 'equipment', subtype: 'helm', displayName: '头盔', category: 'equipment', stackable: false, maxStack: 1 },
   { kind: 'equipment', subtype: 'chest', displayName: '胸甲', category: 'equipment', stackable: false, maxStack: 1 },

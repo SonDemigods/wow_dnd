@@ -105,7 +105,7 @@ export class InventoryDbService {
       case 'quest':
         return 'quest';
       case 'equipment':
-        // 装备通常不在 config_items 表（在 config_equipmentItems），此处兜底
+        // 装备通常不在 config_items 表（在 config_equipment_items），此处兜底
         return isWeaponSubtype(item.subtype) ? 'weapon' : 'armor';
       default:
         return 'misc';
@@ -199,7 +199,7 @@ export class InventoryDbService {
    * - `type` → `kind`+`subtype`（potion/scroll/food → consumable+subtype；material → material；...）
    * - `effect`+`bonus` → `effects[]`（旧单 effect 包装为数组首元素，旧 bonus 转为 stat 效果）
    * - `consumable`/`stackable`：由 kind/type 推导为字面量
-   * - 装备（weapon/armor）不应出现在 config_items 表（在 config_equipmentItems），兜底为 material
+   * - 装备（weapon/armor）不应出现在 config_items 表（在 config_equipment_items），兜底为 material
    *
    * @param data - DB 读取的原始数据
    * @returns 转换后的 Item 实例（判别联合）
@@ -270,7 +270,7 @@ export class InventoryDbService {
       case 'weapon':
       case 'armor':
         // 装备通常不在 config_items 表，兜底按 material 处理（避免运行时崩溃）
-        // 装备模板的权威来源是 config_equipmentItems 表（equipment/db.ts）
+        // 装备模板的权威来源是 config_equipment_items 表（equipment/db.ts）
         return {
           ...base,
           kind: 'material',

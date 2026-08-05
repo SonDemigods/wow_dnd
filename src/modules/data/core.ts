@@ -83,7 +83,7 @@ export interface GameDatabaseSchema {
   config_races: Table<RaceStorage, string>;
   config_classes: Table<ClassStorage, string>;
   config_items: Table<ItemStorage, string>;
-  config_equipmentItems: Table<EquipmentTemplateStorage, string>;
+  config_equipment_items: Table<EquipmentTemplateStorage, string>;
   config_mobs: Table<EnemyStorage, string>;
   config_bosses: Table<BossStorage, string>;
   config_quests: Table<QuestDefinitionStorage, string>;
@@ -91,10 +91,10 @@ export interface GameDatabaseSchema {
   config_locations: Table<LocationStorage, string>;
   config_shops: Table<ShopConfig, string>;
   // 以下为 DATA-4：职业专属数据持久化表（供 admin 后台编辑）
-  config_class_items: Table<EquipmentItem, string>;
+  config_class_equipment: Table<EquipmentItem, string>;
   config_class_passives: Table<PassiveSkill, string>;
   config_class_talents: Table<TalentTree, string>;
-  config_item_sets: Table<ItemSet, string>;
+  config_set_definitions: Table<ItemSet, string>;
 
   // ==================== 角色表（char_*）====================
   char_data: Table<CharacterDataStorage, string>;
@@ -125,7 +125,7 @@ export class GameDatabase extends Dexie {
   config_races!: Table<RaceStorage, string>;
   config_classes!: Table<ClassStorage, string>;
   config_items!: Table<ItemStorage, string>;
-  config_equipmentItems!: Table<EquipmentTemplateStorage, string>;
+  config_equipment_items!: Table<EquipmentTemplateStorage, string>;
   config_mobs!: Table<EnemyStorage, string>;
   config_bosses!: Table<BossStorage, string>;
   config_quests!: Table<QuestDefinitionStorage, string>;
@@ -133,10 +133,10 @@ export class GameDatabase extends Dexie {
   config_locations!: Table<LocationStorage, string>;
   config_shops!: Table<ShopConfig, string>;
   // DATA-4：职业专属数据持久化表（供 admin 后台编辑）
-  config_class_items!: Table<EquipmentItem, string>;
+  config_class_equipment!: Table<EquipmentItem, string>;
   config_class_passives!: Table<PassiveSkill, string>;
   config_class_talents!: Table<TalentTree, string>;
-  config_item_sets!: Table<ItemSet, string>;
+  config_set_definitions!: Table<ItemSet, string>;
 
   // ==================== 角色表（char_*）====================
   char_data!: Table<CharacterDataStorage, string>;
@@ -177,7 +177,7 @@ export class GameDatabase extends Dexie {
       config_races: 'id, name, factionId',
       config_classes: 'id, name, primaryStat',
       config_items: 'id, name, type, rarity',
-      config_equipmentItems: 'id, name, type, rarity',
+      config_equipment_items: 'id, name, type, rarity',
       config_mobs: 'id, name, dangerLevel',
       config_bosses: 'id, name, dangerLevel',
       config_quests: 'id, boardId, type',
@@ -185,10 +185,10 @@ export class GameDatabase extends Dexie {
       config_locations: 'id, type, continent',
       config_shops: 'id',
       // 职业专属数据持久化表（原 v3，DATA-4：供 admin 后台编辑）
-      config_class_items: 'id, name, type, rarity',
+      config_class_equipment: 'id, name, type, rarity',
       config_class_passives: 'id, classId, trigger',
       config_class_talents: 'id, classId',
-      config_item_sets: 'id, classRestriction',
+      config_set_definitions: 'id, classRestriction',
 
       // 角色表
       char_data: 'characterId',

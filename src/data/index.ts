@@ -26,11 +26,14 @@ export { MONSTER_ABILITIES } from './config_skills';
 // 导出职业被动技能数据（Phase 5.2）
 export { CLASS_PASSIVES, getPassivesByClassId } from './config_class_passives';
 
-// 导出职业专属装备数据（Phase 5.3）
-export { CLASS_SPECIFIC_ITEMS, getClassSpecificItems } from './config_class_items';
+// 导出职业专属装备数据（Phase 5.3，P3.1 升级：仅武器，不含护甲）
+export { CLASS_EQUIPMENT, getClassEquipment } from './config_class_equipment';
 
-// 导出套装定义数据（Phase 5.3）
-export { ITEM_SETS, getItemSetById, getItemSetsByClassId } from './config_item_sets';
+// 导出套装定义数据（Phase 5.3，P3 套装扩展）
+export { SET_DEFINITIONS, getSetDefinitionById, getSetDefinitionsByClassId } from './config_set_definitions';
+
+// 导出套装部件数据（P3 套装扩展）
+export { SET_PARTS } from './config_set_parts';
 
 // 导出职业天赋树数据（Phase 6.2）
 export { CLASS_TALENT_TREES, getTalentTreesByClassId, getTalentTreeById, getTalentById } from './config_class_talents';
@@ -39,7 +42,7 @@ export { CLASS_TALENT_TREES, getTalentTreesByClassId, getTalentTreeById, getTale
 export { LOOT_ITEMS } from './config_items';
 
 // 导出装备数据
-export { EQUIPMENT_ITEMS } from './config_equipmentItems';
+export { EQUIPMENT_ITEMS } from './config_equipment_items';
 
 // 导出普通怪物数据
 export { MOBS } from './config_mobs';

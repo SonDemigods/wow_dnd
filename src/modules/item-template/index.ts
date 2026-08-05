@@ -4,7 +4,7 @@
  *   物品模板聚合层（A1/G1 修复），消除 inventory ↔ equipment 双向依赖。
  *
  *   职责：
- *   - 聚合 config_items（普通物品）与 config_equipmentItems（装备）查询
+ *   - 聚合 config_items（普通物品）与 config_equipment_items（装备）查询
  *   - 提供统一的 Item 格式缓存（合并普通物品与装备模板）
  *   - 提供 convertEquipmentToItem / mergeItemTemplates 纯函数
  *

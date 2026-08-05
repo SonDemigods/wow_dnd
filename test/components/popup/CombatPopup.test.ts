@@ -217,7 +217,7 @@ describe('CombatPopup 战斗弹窗组件', () => {
 
   // ==================== C3：复合物品（已装备魔法武器主动技能）====================
 
-  /** 构造法杖 EquipmentItem（equippable + usable 复合物品） */
+  /** 构造法杖 EquipmentItem（equippable + usable 复合物品，双手武器） */
   function buildStaff(): EquipmentItem {
     return {
       id: 'oak_staff',
@@ -228,12 +228,12 @@ describe('CombatPopup 战斗弹窗组件', () => {
       value: 10,
       kind: 'equipment',
       subtype: 'staff',
-      grip: 'one_handed',
+      grip: 'two_handed',
       stackable: false,
       consumable: false,
       bonus: { int: 10 },
-      slots: ['weapon1', 'weapon2'],
-      occupies: [],
+      slots: ['weapon1'],
+      occupies: ['weapon1', 'weapon2'],
       capabilities: ['describable', 'equippable', 'usable', 'sellable', 'enchantable'],
       effects: [{ type: 'magic_damage', value: 15 }],
       levelRequirement: 1,

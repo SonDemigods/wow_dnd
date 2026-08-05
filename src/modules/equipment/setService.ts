@@ -5,7 +5,7 @@
  *   下一档待激活等查询，供 UI 装备面板展示与战斗模块判断触发（plan.md S6 解决）。
  *
  *   设计：依赖注入。本模块不直接 import 配置数据，而是由调用方传入 `sets: ItemSet[]`。
- *   调用方（如 equipment/store.ts）传入新版 `ITEM_SETS`（config_item_sets.ts 已迁移到新类型）。
+ *   调用方（如 equipment/store.ts）传入新版 `SET_DEFINITIONS`（config_set_definitions.ts 已迁移到新类型）。
  *   这样可脱离具体配置数据独立测试进度计算逻辑。
  *
  *   阶段定位：P3.3b 已完成迁移。equipment/service.ts 的旧版 `countSetPieces` /

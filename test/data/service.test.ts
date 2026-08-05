@@ -143,9 +143,9 @@ const { mockSeedData } = vi.hoisted(() => {
       CLASS_ABILITIES: classAbilities,
       MONSTER_ABILITIES: monsterAbilities,
       CLASS_PASSIVES: classPassives,
-      CLASS_SPECIFIC_ITEMS: classSpecificItems,
+      CLASS_EQUIPMENT: classSpecificItems,
       CLASS_TALENT_TREES: classTalentTrees,
-      ITEM_SETS: itemSets,
+      SET_DEFINITIONS: itemSets,
       MAX_LEVEL: 60,
     },
   };
@@ -175,10 +175,10 @@ import { downloadBlob } from '@/utils/fileDownload';
 /** 需要在 beforeEach 中清空的数据库表列表 */
 const TABLES_TO_CLEAR = [
   db.config_factions, db.config_races, db.config_classes,
-  db.config_items, db.config_equipmentItems, db.config_mobs,
+  db.config_items, db.config_equipment_items, db.config_mobs,
   db.config_bosses, db.config_locations, db.config_shops,
-  db.config_quests, db.config_skills, db.config_class_items,
-  db.config_class_passives, db.config_class_talents, db.config_item_sets,
+  db.config_quests, db.config_skills, db.config_class_equipment,
+  db.config_class_passives, db.config_class_talents, db.config_set_definitions,
   db.char_data, db.char_inventory, db.char_quests, db.char_equipment,
   db.char_skills, db.char_exploration, db.runtime_combatLogs,
   db.runtime_adventureLogs, db.runtime_gameState, db.runtime_mapState,
@@ -342,7 +342,7 @@ describe('DataInitializer 数据初始化服务', () => {
       expect(await db.config_races.count()).toBe(mockSeedData.RACES.length);
       expect(await db.config_classes.count()).toBe(mockSeedData.CLASSES.length);
       expect(await db.config_items.count()).toBe(mockSeedData.LOOT_ITEMS.length);
-      expect(await db.config_equipmentItems.count()).toBe(mockSeedData.EQUIPMENT_ITEMS.length);
+      expect(await db.config_equipment_items.count()).toBe(mockSeedData.EQUIPMENT_ITEMS.length);
       expect(await db.config_mobs.count()).toBe(mockSeedData.MOBS.length);
       expect(await db.config_bosses.count()).toBe(mockSeedData.BOSSES.length);
       expect(await db.config_shops.count()).toBe(mockSeedData.SHOPS.length);
@@ -351,10 +351,10 @@ describe('DataInitializer 数据初始化服务', () => {
         mockSeedData.LOCATIONS.length + mockSeedData.CONTINENTS.length
       );
       // 职业专属数据表（DATA-4）
-      expect(await db.config_class_items.count()).toBe(mockSeedData.CLASS_SPECIFIC_ITEMS.length);
+      expect(await db.config_class_equipment.count()).toBe(mockSeedData.CLASS_EQUIPMENT.length);
       expect(await db.config_class_passives.count()).toBe(mockSeedData.CLASS_PASSIVES.length);
       expect(await db.config_class_talents.count()).toBe(mockSeedData.CLASS_TALENT_TREES.length);
-      expect(await db.config_item_sets.count()).toBe(mockSeedData.ITEM_SETS.length);
+      expect(await db.config_set_definitions.count()).toBe(mockSeedData.SET_DEFINITIONS.length);
       // 技能模板：CLASS_ABILITIES 的 skills + MONSTER_ABILITIES
       const expectedSkills =
         mockSeedData.CLASS_ABILITIES.reduce((sum, entry) => sum + entry.skills.length, 0) +

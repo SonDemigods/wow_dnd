@@ -41,7 +41,7 @@ export function convertEquipmentToItem(equip: EquipmentItem): Item {
  * 此函数不修改入参数组，返回新的 Map 实例。
  *
  * @param items - 普通物品模板列表（来自 config_items 表）
- * @param equipment - 装备模板列表（来自 config_equipmentItems 表）
+ * @param equipment - 装备模板列表（来自 config_equipment_items 表）
  * @returns 合并后的 Map<itemId, Item>，key 为物品 ID，value 为统一 Item 格式
  */
 export function mergeItemTemplates(items: Item[], equipment: EquipmentItem[]): Map<string, Item> {

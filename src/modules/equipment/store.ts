@@ -44,7 +44,7 @@ import { generateLogId } from '@/modules/log/service';
 import { useCharacterStore } from '@/modules/character/store';
 import { validateSlot, computeEquipBonus, canEquipItem, getEquipmentBySlot, createEmptySlotMap, checkClassRestriction, SLOT_CONFIG, isSlotLockedByTwoHanded } from './service';
 import { getAllSetProgresses, getActiveBonusEffects } from './setService';
-import { ITEM_SETS } from '@/data/config_item_sets';
+import { SET_DEFINITIONS } from '@/data/config_set_definitions';
 import { errorReporter } from '@/utils/errorReport';
 
 /**
@@ -158,7 +158,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
   const equipment = ref<Record<EquipmentSlot, EquippedItem | null>>(getDefaultEquipment());
 
   /**
-   * 装备模板缓存：Map<装备ID, 装备完整数据>，从 config_equipmentItems 表加载
+   * 装备模板缓存：Map<装备ID, 装备完整数据>，从 config_equipment_items 表加载
    *
    * P3-144 修复：改用 shallowRef。原地 set/delete 调用点（addEquipmentTemplate/removeEquipmentTemplate）
    * 通过 triggerRef 显式触发响应式更新，避免深度追踪 Map 内部。
@@ -242,7 +242,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
   /**
    * 当前已激活的套装进度列表（P3.3b 升级）
    *
-   * 根据当前 equipment 状态结合 ITEM_SETS 配置计算所有在穿套装的进度。
+   * 根据当前 equipment 状态结合 SET_DEFINITIONS 配置计算所有在穿套装的进度。
    * 响应式依赖 equipment，装备变化时自动重新计算。
    * UI 可据此展示套装进度（已穿件数 / 总件数 / 已激活档位 / 下一档）。
    *
@@ -250,7 +250,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
    * activeTiers/nextTier/partsStatus，比旧版扁平的激活奖励列表信息更完整。
    */
   const activeSetBonuses = computed(() => {
-    return getAllSetProgresses(equipment.value, ITEM_SETS);
+    return getAllSetProgresses(equipment.value, SET_DEFINITIONS);
   });
 
   /**
@@ -282,7 +282,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
    */
   async function reapplySetBonuses(): Promise<void> {
     const characterStore = useCharacterStore();
-    const progresses = getAllSetProgresses(equipment.value, ITEM_SETS);
+    const progresses = getAllSetProgresses(equipment.value, SET_DEFINITIONS);
 
     // 收集所有已激活的 stat 类型加成
     const currentStats: Array<{ setId: string; stat: keyof Stats; value: number }> = [];
@@ -809,7 +809,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
   /**
    * 添加装备模板到内存缓存并持久化
    *
-   * 同时更新 equipmentTemplates Map 和 config_equipmentItems 表。
+   * 同时更新 equipmentTemplates Map 和 config_equipment_items 表。
    *
    * @param item - 装备模板数据
    */

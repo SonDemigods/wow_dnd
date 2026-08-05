@@ -186,12 +186,14 @@ describe('describeItem 物品描述', () => {
 
   it('C3 法杖：同时展示装备信息与主动技能（复合物品核心价值）', () => {
     // 法杖：equippable + usable 复合，两分支独立触发
+    // P3 升级后法杖为双手武器（grip: 'two_handed'，slots: ['weapon1']，占用主+副两槽）
     const item: Item = makeEquipment({
       id: 'oak_staff',
       name: '橡木法杖',
       subtype: 'staff',
-      grip: 'one_handed',
-      slots: ['weapon1', 'weapon2'],
+      grip: 'two_handed',
+      slots: ['weapon1'],
+      occupies: ['weapon1', 'weapon2'],
       bonus: { int: 10 },
       capabilities: ['describable', 'equippable', 'usable', 'sellable', 'enchantable'],
       effects: [{ type: 'magic_damage', value: 15 }],
@@ -199,9 +201,10 @@ describe('describeItem 物品描述', () => {
     const lines = describeItem(item);
     // 首行：稀有度 · 类型名
     expect(lines[0]).toBe('普通 · 法杖');
-    // equippable 分支：装备信息
-    expect(lines).toContain('单手武器');
-    expect(lines).toContain('可装备槽位：主手、副手');
+    // equippable 分支：装备信息（双手武器）
+    expect(lines).toContain('双手武器');
+    expect(lines).toContain('占用：主手 + 副手（双槽）');
+    expect(lines).toContain('可装备槽位：主手');
     expect(lines).toContain('智力 +10');
     // usable 分支（equipment 路径）：主动技能
     expect(lines).toContain('主动技能：');
@@ -212,7 +215,9 @@ describe('describeItem 物品描述', () => {
     // 边界：声明了 usable 能力但 effects 为空/缺省，不应触发主动技能分支
     const item: Item = makeEquipment({
       subtype: 'staff',
-      grip: 'one_handed',
+      grip: 'two_handed',
+      slots: ['weapon1'],
+      occupies: ['weapon1', 'weapon2'],
       bonus: { int: 10 },
       capabilities: ['describable', 'equippable', 'usable', 'sellable', 'enchantable'],
       // 无 effects 字段
