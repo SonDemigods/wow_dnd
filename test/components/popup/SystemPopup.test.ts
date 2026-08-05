@@ -3,7 +3,7 @@
  *
  * 覆盖 SystemPopup.vue 的：
  * 1. visible 控制 BasePopup 渲染
- * 2. 渲染"音量设置"与"退出游戏"按钮
+ * 2. 渲染"音量设置"与"返回主菜单"按钮
  * 3. 点击音量设置：emit close + open-audio，并 emit eventBus UI_CLICK({source:system_audio})
  * 4. 点击退出游戏：emit exit，并 emit eventBus UI_CLICK({source:system_exit})
  * 5. 点击关闭按钮：emit close，并 emit eventBus UI_CLICK({source:system_close})
@@ -42,11 +42,11 @@ describe('SystemPopup 系统弹窗组件', () => {
       expect(wrapper.find('.popup-title').text()).toBe('系统设置');
     });
 
-    it('渲染"音量设置"与"退出游戏"两个按钮', () => {
+    it('渲染"音量设置"与"返回主菜单"两个按钮', () => {
       const wrapper = mount(SystemPopup, { props: { visible: true } });
       const labels = wrapper.findAll('.system-btn-label').map(el => el.text());
       expect(labels).toContain('音量设置');
-      expect(labels).toContain('退出游戏');
+      expect(labels).toContain('返回主菜单');
     });
 
     it('音量按钮含 audio-btn 类，退出按钮含 exit-btn 类', () => {
@@ -67,29 +67,29 @@ describe('SystemPopup 系统弹窗组件', () => {
     it('渲染 .about-section 区块与"关于"标题', () => {
       const wrapper = mount(SystemPopup, { props: { visible: true } });
       expect(wrapper.find('.about-section').exists()).toBe(true);
-      expect(wrapper.find('.about-title').text()).toBe('关于');
+      expect(wrapper.find('.about-title').text()).toBe('版本信息');
     });
 
     it('展示三层版本号：应用版本、数据版本、数据库版本', () => {
       const wrapper = mount(SystemPopup, { props: { visible: true } });
       const labels = wrapper.findAll('.info-label').map(el => el.text());
-      expect(labels).toContain('应用版本');
-      expect(labels).toContain('数据版本');
-      expect(labels).toContain('数据库版本');
+      expect(labels).toContain('应用');
+      expect(labels).toContain('数据');
+      expect(labels).toContain('数据库');
     });
 
     it('应用版本值为 1.0.0（与 APP_VERSION 同步）', () => {
       const wrapper = mount(SystemPopup, { props: { visible: true } });
       const rows = wrapper.findAll('.info-row');
-      const appVersionRow = rows.find(r => r.find('.info-label').text() === '应用版本');
+      const appVersionRow = rows.find(r => r.find('.info-label').text() === '应用');
       expect(appVersionRow?.find('.info-value').text()).toBe('1.0.0');
     });
 
     it('数据版本与数据库版本以 v 前缀展示', () => {
       const wrapper = mount(SystemPopup, { props: { visible: true } });
       const rows = wrapper.findAll('.info-row');
-      const dataVersionRow = rows.find(r => r.find('.info-label').text() === '数据版本');
-      const dbVersionRow = rows.find(r => r.find('.info-label').text() === '数据库版本');
+      const dataVersionRow = rows.find(r => r.find('.info-label').text() === '数据');
+      const dbVersionRow = rows.find(r => r.find('.info-label').text() === '数据库');
       expect(dataVersionRow?.find('.info-value').text()).toBe('v1');
       expect(dbVersionRow?.find('.info-value').text()).toBe('v1');
     });

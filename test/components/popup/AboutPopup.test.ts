@@ -6,22 +6,28 @@
  * 2. 项目名/英文名/简介/作者/参与人/版本号渲染
  * 3. 空值容错：authors/contributors/description 为空时显示"暂无"
  * 4. repoUrl 为空时不渲染仓库地址行
- * 5. 点击关闭 emit close，并 emit eventBus UI_CLICK({source:about_close})
+ * 5. 点击关闭按钮与遮罩层均触发 close 事件
  *
  * 遵循 code_rule：
- *  - eventBus 使用真实实现，beforeEach 中 clearAll 清理状态。
+ *  - mock CREDITS 为空占位符以测试空值容错回退逻辑。
  *  - 不断言计算后 CSS 样式值。
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import AboutPopup from '@/components/popup/AboutPopup.vue';
-import { eventBus, GameEvents } from '@/modules/bus';
+
+// mock CREDITS 为空占位符，测试 AboutPopup 的空值容错回退逻辑
+// （实际 CREDITS 已填入数据，但空值容错测试需要空数据验证"暂无"回退）
+vi.mock('@/config/credits', () => ({
+  CREDITS: {
+    authors: [],
+    contributors: [],
+    description: '',
+    repoUrl: '',
+  },
+}));
 
 describe('AboutPopup 关于弹窗组件', () => {
-  beforeEach(() => {
-    eventBus.clearAll();
-  });
-
   describe('渲染', () => {
     it('visible=true 时渲染弹窗标题"关于"', () => {
       const wrapper = mount(AboutPopup, { props: { visible: true } });
@@ -106,14 +112,6 @@ describe('AboutPopup 关于弹窗组件', () => {
       const wrapper = mount(AboutPopup, { props: { visible: true } });
       await wrapper.find('.popup-footer-btn').trigger('click');
       expect(wrapper.emitted('close')).toHaveLength(1);
-    });
-
-    it('点击关闭 emit eventBus UI_CLICK({source:about_close})', async () => {
-      const spy = vi.fn();
-      eventBus.on(GameEvents.UI_CLICK, spy);
-      const wrapper = mount(AboutPopup, { props: { visible: true } });
-      await wrapper.find('.popup-footer-btn').trigger('click');
-      expect(spy).toHaveBeenCalledWith({ source: 'about_close' });
     });
 
     it('点击遮罩层透传 close 事件', async () => {

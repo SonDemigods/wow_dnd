@@ -54,7 +54,6 @@
         </div>
       </div>
     </div>
-
   </BasePopup>
 </template>
 
@@ -69,17 +68,12 @@
  */
 
 import { computed } from 'vue';
-import { eventBus, GameEvents } from '@/modules/bus';
 import BasePopup from '../common/BasePopup.vue';
 import { CREDITS } from '@/config/credits';
 import { APP_VERSION, DATA_VERSION, DB_SCHEMA_VERSION } from '@/config/version';
 
 defineProps<{
   visible: boolean;
-}>();
-
-const emit = defineEmits<{
-  (e: 'close'): void;
 }>();
 
 /** 作者名单（空数组时显示"暂无"） */
@@ -96,7 +90,6 @@ const contributorsText = computed(() =>
 const descriptionText = computed(() =>
   CREDITS.description || '暂无'
 );
-
 </script>
 
 <style lang="less" scoped>
