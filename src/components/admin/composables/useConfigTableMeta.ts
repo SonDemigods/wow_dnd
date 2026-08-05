@@ -54,8 +54,9 @@ const STAT_NAMES: Record<string, string> = {
   str: '力量', dex: '敏捷', con: '体质', int: '智力', wis: '感知', cha: '魅力',
 };
 
+// 稀有度名称与 src/config/inventory.ts 的 RARITY_CONFIG 保持一致
 const RARITY_NAMES: Record<string, string> = {
-  common: '普通', uncommon: '优秀', rare: '精良', epic: '史诗', legendary: '传说',
+  common: '普通', uncommon: '优秀', rare: '稀有', epic: '史诗', legendary: '传说',
 };
 
 const ITEM_TYPE_NAMES: Record<string, string> = {
