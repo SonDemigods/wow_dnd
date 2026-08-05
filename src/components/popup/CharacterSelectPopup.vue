@@ -1,7 +1,7 @@
 <template>
   <BasePopup
     :visible="visible"
-    title="开始游戏"
+    title="角色选择"
     max-width="720px"
     @close="$emit('close')"
   >

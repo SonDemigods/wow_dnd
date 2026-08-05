@@ -37,9 +37,9 @@ describe('SystemPopup 系统弹窗组件', () => {
   });
 
   describe('渲染', () => {
-    it('visible=true 时渲染弹窗标题"系统"', () => {
+    it('visible=true 时渲染弹窗标题"系统设置"', () => {
       const wrapper = mount(SystemPopup, { props: { visible: true } });
-      expect(wrapper.find('.popup-title').text()).toBe('系统');
+      expect(wrapper.find('.popup-title').text()).toBe('系统设置');
     });
 
     it('渲染"音量设置"与"退出游戏"两个按钮', () => {

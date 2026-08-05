@@ -1,7 +1,7 @@
 <template>
   <BasePopup
     :visible="visible"
-    title="系统"
+    title="系统设置"
     max-width="340px"
     :show-footer-close="false"
     @close="$emit('close')"

@@ -76,9 +76,9 @@ describe('CharacterSelectPopup 角色选择弹窗组件', () => {
     });
 
   describe('渲染', () => {
-    it('visible=true 时渲染弹窗标题"开始游戏"', () => {
+    it('visible=true 时渲染弹窗标题"角色选择"', () => {
       const wrapper = mountComp({ visible: true });
-      expect(wrapper.find('.popup-title').text()).toBe('开始游戏');
+      expect(wrapper.find('.popup-title').text()).toBe('角色选择');
     });
 
     it('visible=false 时不渲染弹窗内容', () => {
