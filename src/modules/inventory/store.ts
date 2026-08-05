@@ -22,7 +22,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed, shallowRef } from 'vue';
-import type { Item, InventoryItem, SortField, SortOrder, ItemFilters, ItemType, ItemRarity } from './types';
+import type { Item, InventoryItem, SortField, SortOrder, ItemFilters, ItemRarity, ItemKind } from './types';
 import { inventoryDbService } from './db';
 import { unifiedItemTemplateCache } from '@/modules/item-template';
 import { useLogStore } from '@/modules/log/store';
@@ -36,11 +36,12 @@ import {
   findItemIndex,
   sortAndFilterInventory,
   computeUseEffect,
-  ITEM_TYPE_NAMES,
+  computeStatBonus,
   MAX_STACK,
   INVENTORY_SIZE,
   RARITY_ORDER
 } from './service';
+import { getItemDisplayName } from '../item/typeRegistry';
 
 /**
  * 物品收集通知回调类型（ARCH-2 修复：回调注入替代 inventory → quest 静态依赖）
@@ -98,8 +99,8 @@ export const useInventoryStore = defineStore('inventory', () => {
   const itemTemplates = shallowRef<Map<string, Item>>(new Map());
   /** 当前筛选条件（所有字段可选，全部为空表示不筛选） */
   const filters = ref<ItemFilters>({});
-  /** 当前排序字段，默认按类型排序 */
-  const sortBy = ref<SortField>('type');
+  /** 当前排序字段，默认按大类（kind）排序 */
+  const sortBy = ref<SortField>('kind');
   /** 当前排序顺序，默认升序 */
   const sortOrder = ref<SortOrder>('asc');
   /** 搜索关键词（实时响应输入） */
@@ -156,26 +157,45 @@ export const useInventoryStore = defineStore('inventory', () => {
     return total;
   });
 
-  /** 按物品类型的数量统计（Record<ItemType, number>，所有类型均有条目） */
-  const itemCountByType = computed(() => {
-    const counts: Record<ItemType, number> = {
-      gold: 0, potion: 0, scroll: 0, food: 0,
-      material: 0, quest: 0, weapon: 0, armor: 0, misc: 0
+  /**
+   * 按物品大类的数量统计（Record<ItemKind, number>，所有大类均有条目）
+   *
+   * P3.3：旧 `itemCountByType`（Record<ItemType, number>）改为按判别字段 `kind` 统计，
+   * 替代旧版扁平 `type`。subclass 细分（如药水/食物/卷轴）由 UI 通过 typeRegistry 自行聚合。
+   */
+  const itemCountByKind = computed(() => {
+    const counts: Record<ItemKind, number> = {
+      consumable: 0, material: 0, equipment: 0,
+      quest: 0, currency: 0, misc: 0
     };
     inventory.value.forEach(invItem => {
       const item = itemTemplates.value.get(invItem.itemId);
       if (item) {
-        counts[item.type] += invItem.count;
+        counts[item.kind] += invItem.count;
       }
     });
     return counts;
   });
 
-  /** 所有物品类型列表（供筛选下拉组件使用） */
-  const allItemTypes = computed(() => {
-    return Object.entries(ITEM_TYPE_NAMES).map(([key, value]) => ({
-      id: key as ItemType,
-      name: value
+  /**
+   * 所有物品大类列表（供筛选下拉组件使用）
+   *
+   * P3.3：旧 `allItemTypes`（基于 ITEM_TYPE_NAMES）改为基于 ItemKind 的列表。
+   * 展示名使用 kind 级别映射（消耗品/材料/装备/任务物品/货币/杂项），
+   * 与 typeRegistry 的 subtype 精确名（如"药水"/"剑"）区分。
+   */
+  const allItemKinds = computed(() => {
+    const kindNames: Record<ItemKind, string> = {
+      consumable: '消耗品',
+      material: '材料',
+      equipment: '装备',
+      quest: '任务物品',
+      currency: '货币',
+      misc: '杂项'
+    };
+    return (Object.keys(kindNames) as ItemKind[]).map(kind => ({
+      id: kind,
+      name: kindNames[kind]
     }));
   });
 
@@ -493,29 +513,30 @@ export const useInventoryStore = defineStore('inventory', () => {
       } else if (type === 'magic_damage' && typeof value === 'number' && value > 0) {
         // 伤害型物品由战斗系统处理（见 usePlayerAction.playerUseItem），此处仅消耗物品数量
       } else if (type === 'stat') {
-        // stat 类型效果通过 bonus 字段处理，见下方 bonus 应用逻辑
+        // stat 类型效果（属性加成）通过下方 computeStatBonus 提取并应用
       }
     }
 
-    // 应用属性加成（bonus 字段，独立于 effect）
+    // 应用属性加成（P3.3：从 effects[] 的 stat 效果提取，替代旧版 itemTemplate.bonus）
     // 四层属性模型（见 plan.md §3.5）：
-    // - 属性药剂（ATTRIBUTE_POTION_IDS 命中）：bonus 永久叠加到药剂层 potionStats（不可重置），
+    // - 属性药剂（ATTRIBUTE_POTION_IDS 命中）：stat 加成永久叠加到药剂层 potionStats（不可重置），
     //   调用 characterStore.applyPotionBonus，与升级层/装备层完全隔离。
-    // - 其他带 bonus 的消耗品（如龙息辣椒等食物）：保留原 applyBonus 路径走装备/天赋层 bonusStats。
-    //   P2-53 设计原则：消耗品的 bonus 不应进入 bonusStats（与装备混淆），未来应迁移到 buff 系统。
+    // - 其他带 stat 效果的消耗品（如龙息辣椒等食物）：保留原 applyBonus 路径走装备/天赋层 bonusStats。
+    //   P2-53 设计原则：消耗品的 stat 加成不应进入 bonusStats（与装备混淆），未来应迁移到 buff 系统。
     //   此处保留 applyBonus 调用作为向后兼容，开发期输出警告。
-    if (itemTemplate.bonus && Object.keys(itemTemplate.bonus).length > 0) {
+    const statBonus = computeStatBonus(itemTemplate);
+    if (statBonus && Object.keys(statBonus).length > 0) {
       if (ATTRIBUTE_POTION_IDS.has(itemTemplate.id)) {
         // 属性药剂：永久叠加到药剂层（不可逆），con/int/wis 影响 HP/MP 上限时由 store 重算
-        await characterStore.applyPotionBonus(itemTemplate.bonus);
+        await characterStore.applyPotionBonus(statBonus);
       } else {
         if (import.meta.env.DEV) {
           console.warn(
-            `[InventoryStore] 消耗品 ${itemTemplate.id} (${itemTemplate.name}) 配置了 bonus 字段，` +
+            `[InventoryStore] 消耗品 ${itemTemplate.id} (${itemTemplate.name}) 配置了 stat 效果，` +
             `使用时将永久叠加到 bonusStats。建议改为 buff 系统实现临时增益。`
           );
         }
-        await characterStore.applyBonus(itemTemplate.bonus);
+        await characterStore.applyBonus(statBonus);
       }
     }
 
@@ -577,7 +598,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     const invItem = inventory.value[index];
     // P1-15 修复：任务物品不可丢弃，防止玩家误操作导致任务卡死
     const itemTemplate = itemTemplates.value.get(invItem.itemId);
-    if (itemTemplate?.type === 'quest') return false;
+    if (itemTemplate?.kind === 'quest') return false;
 
     const dropCount = count ?? invItem.count;
 
@@ -628,7 +649,7 @@ export const useInventoryStore = defineStore('inventory', () => {
       if (index < 0 || index >= inventory.value.length) return false;
       const invItem = inventory.value[index];
       const itemTemplate = itemTemplates.value.get(invItem.itemId);
-      return itemTemplate?.type !== 'quest';
+      return itemTemplate?.kind !== 'quest';
     });
     if (validIndices.length === 0) return false;
 
@@ -689,16 +710,17 @@ export const useInventoryStore = defineStore('inventory', () => {
       }
     });
 
-    // 第三步：排序（品质降序 → 类型升序）
+    // 第三步：排序（品质降序 → 类型名升序）
+    // P3.3：旧 ITEM_TYPE_NAMES[item.type] 改为 getItemDisplayName(item)（typeRegistry 单一来源）
     newInventory.sort((a, b) => {
       const itemA = itemTemplates.value.get(a.itemId);
       const itemB = itemTemplates.value.get(b.itemId);
       const rarityA = RARITY_ORDER[itemA?.rarity || 'common'];
       const rarityB = RARITY_ORDER[itemB?.rarity || 'common'];
       if (rarityA !== rarityB) return rarityB - rarityA; // 稀有度降序
-      return ITEM_TYPE_NAMES[itemA?.type || 'misc'].localeCompare(
-        ITEM_TYPE_NAMES[itemB?.type || 'misc']
-      );
+      const nameA = itemA ? getItemDisplayName(itemA) : '杂项';
+      const nameB = itemB ? getItemDisplayName(itemB) : '杂项';
+      return nameA.localeCompare(nameB);
     });
 
     inventory.value = newInventory;
@@ -863,8 +885,8 @@ export const useInventoryStore = defineStore('inventory', () => {
     emptySlots,
     isFull,
     totalValue,
-    itemCountByType,
-    allItemTypes,
+    itemCountByKind,
+    allItemKinds,
     allRarities,
 
     // Action：初始化

@@ -329,6 +329,7 @@ export type {
   ItemEffectType,
   ItemEffect,
   Item,
+  ItemKind,
   InventoryItem,
   SortField,
   SortOrder,
@@ -343,7 +344,6 @@ export {
   inventoryDbService,
   INVENTORY_SIZE,
   MAX_STACK,
-  ITEM_TYPE_NAMES,
   RARITY_ORDER,
   canStackItem,
   computeStackResult,
@@ -352,6 +352,7 @@ export {
   filterItems,
   sortAndFilterInventory,
   computeUseEffect,
+  computeStatBonus,
   useInventoryStore
 } from './inventory';
 

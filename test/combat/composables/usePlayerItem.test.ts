@@ -286,7 +286,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
   describe('伤害型物品', () => {
     it('无目标时返回 success=false', async () => {
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', effect: { type: 'physical_damage', value: 50 },
+        name: '炸弹', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
       });
       const state = makeStateMock({ target: null, alive: [] });
 
@@ -303,7 +303,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', effect: { type: 'physical_damage', value: 50 },
+        name: '炸弹', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
@@ -323,7 +323,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '魔法卷轴', effect: { type: 'magic_damage', value: 50 },
+        name: '魔法卷轴', kind: 'consumable', effects: [{ type: 'magic_damage', value: 50 }],
       });
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       pipeResultMock.finalDamage = 35;
@@ -339,7 +339,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', effect: { type: 'physical_damage', value: 50 },
+        name: '炸弹', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       pipeResultMock.finalDamage = 40;
@@ -358,7 +358,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', effect: { type: 'physical_damage', value: 50 },
+        name: '炸弹', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       pipeResultMock.finalDamage = 40;
@@ -377,7 +377,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', effect: { type: 'physical_damage', value: 50 },
+        name: '炸弹', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.takeDamage.mockReturnValue(true);
       state.aliveEnemies.value = [];
@@ -396,7 +396,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       state.bossInstances.set(boss.id, wrapAsBossInstance(boss));
       state.bossInstances.get(boss.id)!.runtime.canRevive = true;
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', effect: { type: 'physical_damage', value: 50 },
+        name: '炸弹', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.takeDamage.mockReturnValue(true);
       state.aliveEnemies.value = [];
@@ -426,7 +426,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
   describe('恢复型物品', () => {
     it('mana_restore 物品触发 healType=mana 事件', async () => {
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '法力药水', effect: { type: 'mana_restore', value: 20 },
+        name: '法力药水', kind: 'consumable', effects: [{ type: 'mana_restore', value: 20 }],
       });
 
       await usePlayerItem(
@@ -442,7 +442,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
 
     it('health_restore 物品触发 healType=health 事件', async () => {
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '生命药水', effect: { type: 'health_restore', value: 30 },
+        name: '生命药水', kind: 'consumable', effects: [{ type: 'health_restore', value: 30 }],
       });
 
       await usePlayerItem(
@@ -474,7 +474,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '', effect: { type: 'physical_damage', value: 50 },
+        name: '', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       pipeResultMock.finalDamage = 40;
@@ -489,7 +489,7 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
 
     it('非伤害/恢复型 effect 时仅记录物品使用日志', async () => {
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '神秘物品', effect: { type: 'custom', value: 50 },
+        name: '神秘物品', kind: 'consumable', effects: [{ type: 'custom', value: 50 }],
       });
 
       const result = await usePlayerItem(

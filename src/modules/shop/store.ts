@@ -572,7 +572,7 @@ export const useShopStore = defineStore('shop', () => {
     if (!itemTemplate) return false;
 
     // P1-15 修复：任务物品不可出售，防止玩家出售后无法找回导致存档损坏
-    if (itemTemplate.type === 'quest') return false;
+    if (itemTemplate.kind === 'quest') return false;
 
     // 2. 计算售价（复用已获取的 itemTemplate，避免重复查询）
     const unitPrice = computeSellPrice(itemTemplate);

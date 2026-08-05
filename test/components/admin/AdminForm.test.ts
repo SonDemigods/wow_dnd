@@ -101,7 +101,7 @@ describe('AdminForm 通用表单弹窗组件', () => {
           key: 'slots', label: '槽位', type: 'multiselect',
           options: [
             { value: 'weapon1', label: '主手' },
-            { value: 'armor1', label: '头部' },
+            { value: 'helm', label: '头部' },
           ],
         },
       ];

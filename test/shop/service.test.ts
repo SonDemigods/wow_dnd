@@ -4,30 +4,74 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
-  SHOP_TYPE_ITEM_TYPE_MAP,
+  SHOP_CATEGORIES,
   calculatePrice,
   computeSellPrice,
   canAffordItem,
   generateShopItems,
 } from '@/modules/shop/service';
 import type { ShopConfig, ShopType } from '@/modules/shop/types';
-import type { Item, ItemRarity } from '@/modules/inventory/types';
+import type { Item, ItemKind, ItemRarity } from '@/modules/inventory/types';
 import type { Character } from '@/modules/character/types';
 import { RARITY_PRICE_MULTIPLIER, RARITY_SELL_DISCOUNT } from '@/config/inventory';
 
-/** 创建测试用物品模板 */
-function makeItem(overrides: Partial<Item> = {}): Item {
-  return {
+/**
+ * 旧 ItemType → 新判别联合字段的映射表
+ *
+ * P3.3：旧扁平 `type` 已删除，测试用 `type` 参数仅作 helper 输入，
+ * 内部映射到 `kind`+`subtype`+判别字面量字段，调用处保持原 `type: 'potion'` 风格。
+ */
+const TYPE_TO_KIND: Record<string, Partial<Item> & { kind: ItemKind }> = {
+  potion: {
+    kind: 'consumable', subtype: 'potion', stackable: true, consumable: true,
+    effects: [], useMode: 'instant',
+  },
+  scroll: {
+    kind: 'consumable', subtype: 'scroll', stackable: true, consumable: true,
+    effects: [], useMode: 'instant',
+  },
+  food: {
+    kind: 'consumable', subtype: 'food', stackable: true, consumable: true,
+    effects: [], useMode: 'instant',
+  },
+  material: {
+    kind: 'material', stackable: true, consumable: false, effects: [],
+  },
+  weapon: {
+    kind: 'equipment', subtype: 'sword', grip: 'one_handed',
+    stackable: false, consumable: false, bonus: {},
+    slots: ['weapon1', 'weapon2'], occupies: ['weapon1'],
+  },
+  armor: {
+    kind: 'equipment', subtype: 'chest',
+    stackable: false, consumable: false, bonus: {},
+    slots: ['chest'], occupies: ['chest'],
+  },
+};
+
+/** 创建测试用物品模板（P3.3：按旧 type 映射到新判别联合） */
+function makeItem(overrides: {
+  id?: string;
+  name?: string;
+  rarity?: ItemRarity;
+  value?: number;
+  icon?: string;
+  description?: string;
+  /** 旧 ItemType，helper 内部映射到 kind+subtype+判别字段 */
+  type?: 'potion' | 'scroll' | 'food' | 'material' | 'weapon' | 'armor';
+  [key: string]: unknown;
+} = {}): Item {
+  const { type: oldType, ...rest } = overrides;
+  const kindData = TYPE_TO_KIND[oldType ?? 'potion'];
+  const base = {
     id: 'item_001',
     name: '测试物品',
-    type: 'potion',
-    rarity: 'common',
     icon: 'game-icons:potion',
     description: '测试用物品',
+    rarity: 'common' as ItemRarity,
     value: 100,
-    stackable: true,
-    ...overrides,
   };
+  return { ...base, ...kindData, ...rest } as Item;
 }
 
 /** 创建测试用商店配置 */
@@ -47,29 +91,41 @@ function makeCharacter(gold: number): Character {
   return { gold } as unknown as Character;
 }
 
-describe('SHOP_TYPE_ITEM_TYPE_MAP', () => {
-  it('包含所有商店类型的物品类型映射', () => {
+describe('SHOP_CATEGORIES', () => {
+  it('包含所有商店类型的分类映射', () => {
     const expectedTypes: ShopType[] = ['general', 'potion', 'scroll', 'food', 'material', 'equipment'];
     for (const type of expectedTypes) {
-      expect(SHOP_TYPE_ITEM_TYPE_MAP[type]).toBeDefined();
-      expect(Array.isArray(SHOP_TYPE_ITEM_TYPE_MAP[type])).toBe(true);
+      expect(SHOP_CATEGORIES[type]).toBeDefined();
+      expect(Array.isArray(SHOP_CATEGORIES[type])).toBe(true);
     }
   });
 
   it('general 商店可售药水、卷轴、食物、材料', () => {
-    expect(SHOP_TYPE_ITEM_TYPE_MAP.general).toEqual(
+    const ids = SHOP_CATEGORIES.general.map(c => c.id);
+    expect(ids).toEqual(
       expect.arrayContaining(['potion', 'scroll', 'food', 'material'])
     );
   });
 
   it('potion 商店只售药水', () => {
-    expect(SHOP_TYPE_ITEM_TYPE_MAP.potion).toEqual(['potion']);
+    const ids = SHOP_CATEGORIES.potion.map(c => c.id);
+    expect(ids).toEqual(['potion']);
   });
 
   it('equipment 商店可售武器和护甲', () => {
-    expect(SHOP_TYPE_ITEM_TYPE_MAP.equipment).toEqual(
+    const ids = SHOP_CATEGORIES.equipment.map(c => c.id);
+    expect(ids).toEqual(
       expect.arrayContaining(['weapon', 'armor'])
     );
+  });
+
+  it('每个分类都含 id/name/match 谓词（P3.3：match 替代旧 type 列表）', () => {
+    const allCats = Object.values(SHOP_CATEGORIES).flat();
+    for (const cat of allCats) {
+      expect(typeof cat.id).toBe('string');
+      expect(typeof cat.name).toBe('string');
+      expect(typeof cat.match).toBe('function');
+    }
   });
 });
 

@@ -26,91 +26,47 @@
 import type { EquipmentItem, EquipmentSlot, EquippedItem, SetBonus, ItemSet } from './types';
 import type { Stats } from '../character/types';
 import { ITEM_SETS } from '@/data/config_item_sets';
+import { validateSubtypeSlot } from './slotRegistry';
 
-// ==================== 槽位基础设施 ====================
-
-/**
- * 所有装备槽位列表（定义顺序即 UI 展示顺序）
- *
- * 共 6 个槽位：2 个武器（主手、副手） + 4 个护甲（头、胸、腿、鞋）。
- * 此列表是 `createEmptySlotMap<T>()` 的遍历源，也是所有槽位相关操作的唯一权威定义。
- */
-export const ALL_EQUIPMENT_SLOTS: EquipmentSlot[] = [
-  'weapon1', 'weapon2', 'armor1', 'armor2', 'armor3', 'armor4'
-];
+// ==================== 槽位基础设施（P3.1：从 slotRegistry re-export） ====================
 
 /**
- * 槽位配置（UI 展示用）
+ * 槽位基础设施 re-export
  *
- * 定义每个装备槽位的展示名称和图标。
- * 与 ALL_EQUIPMENT_SLOTS 共同构成槽位定义的完整视角。
+ * P3.1 升级：槽位设施统一收口到 slotRegistry.ts，本文件 re-export 保持外部导入路径不变。
+ * - ALL_EQUIPMENT_SLOTS：7 槽列表（weapon1/weapon2/helm/chest/gloves/legs/boots）
+ * - SLOT_CONFIG：槽位展示配置（名称/图标/组别）
+ * - createEmptySlotMap：空槽位映射工厂
+ * - SLOT_GROUP / getSlotGroup：槽位组别查询（替代旧版 getSlotType）
  *
- * P3-101 修复：原定义位于 store.ts，与 ALL_EQUIPMENT_SLOTS（service.ts）分离，
- * 两者维护不同步风险高。现统一收口到 service.ts 维护，store.ts 通过 import 引用。
+ * 外部模块仍可从 service.ts 导入这些符号，无需改导入路径。
  */
-export const SLOT_CONFIG: Record<EquipmentSlot, { name: string; icon: string }> = {
-  weapon1: { name: '主手', icon: 'game-icons:broadsword' },
-  weapon2: { name: '副手', icon: 'game-icons:checked-shield' },
-  armor1: { name: '头部', icon: 'game-icons:visored-helm' },
-  armor2: { name: '胸部', icon: 'game-icons:chest-armor' },
-  armor3: { name: '腿部', icon: 'game-icons:leg-armor' },
-  armor4: { name: '鞋子', icon: 'game-icons:leather-boot' }
-};
-
-/**
- * 创建空槽位映射（泛型工厂函数）
- *
- * 生成一个包含全部 6 个槽位键、每个键值为 defaultValue 的记录对象。
- * 泛型参数 T 允许适配不同的值类型：
- * - `createEmptySlotMap<string | null>(null)` → 用于 DB 层的 ID 映射
- * - `createEmptySlotMap<EquippedItem | null>(null)` → 用于 Store 层的装备状态
- *
- * @param defaultValue - 每个槽位的默认值
- * @returns 包含全部槽位键的映射对象
- */
-export function createEmptySlotMap<T>(defaultValue: T): Record<EquipmentSlot, T> {
-  const map = {} as Record<EquipmentSlot, T>;
-  for (const slot of ALL_EQUIPMENT_SLOTS) {
-    map[slot] = defaultValue;
-  }
-  return map;
-}
+export {
+  ALL_EQUIPMENT_SLOTS,
+  SLOT_CONFIG,
+  createEmptySlotMap,
+  SLOT_GROUP,
+  getSlotGroup
+} from './slotRegistry';
 
 // ==================== 装备槽位校验 ====================
 
 /**
- * 根据槽位命名规则推导槽位类型
+ * 校验装备是否适配指定槽位（P3.1：基于 subtype 校验）
  *
- * 约定：所有以 "weapon" 开头的槽位为武器槽，其余为护甲槽。
- * 新增武器槽位（如 weapon3）时会自动归类为武器，无需修改代码。
+ * 替代旧版基于 `getSlotType` 前缀判断 + `slots.includes` 的双重校验。
+ * 新版直接查 SUBTYPE_SLOTS 表，规则由数据派生：
+ * - 单手武器可装主手或副手
+ * - 副手武器只能副手
+ * - 双手武器只能主手（占用副手见 SUBTYPE_OCCUPIES，P3.2 实现联动）
+ * - 护甲一部位一槽（修复旧版"手套装头部"bug）
  *
- * @param slot - 任意装备槽位
- * @returns 'weapon'（武器槽）或 'armor'（护甲槽）
- */
-function getSlotType(slot: EquipmentSlot): 'weapon' | 'armor' {
-  return slot.startsWith('weapon') ? 'weapon' : 'armor';
-}
-
-/**
- * 校验装备是否适配指定槽位
- *
- * 双重校验：
- * 1. 类型匹配 —— 武器只能放武器槽，护甲只能放护甲槽
- * 2. 槽位兼容 —— 装备的 slots 列表必须包含目标槽位
- *    例如：只声明了 ['weapon1'] 的武器不能装到 weapon2 上
- *
- * @param itemTemplate - 装备模板
+ * @param itemTemplate - 装备模板（需含 subtype 字段）
  * @param slot - 目标槽位
  * @returns 槽位是否有效
  */
 export function validateSlot(itemTemplate: EquipmentItem, slot: EquipmentSlot): boolean {
-  if (getSlotType(slot) !== itemTemplate.type) {
-    return false;
-  }
-  if (!itemTemplate.slots.includes(slot)) {
-    return false;
-  }
-  return true;
+  return validateSubtypeSlot(itemTemplate.subtype, slot);
 }
 
 // ==================== 槽位占用检查 ====================
@@ -155,9 +111,11 @@ export function computeEquipBonus(itemTemplate: EquipmentItem): Partial<Stats> {
  *
  * 综合判断逻辑：
  * 1. 筛选装备的兼容槽位（通过 validateSlot 校验）
- * 2. 若无兼容槽位 → 不可装备
- * 3. 若所有兼容槽位都已被占用 → 不可装备
- * 4. 否则可装备（至少有一个空闲的兼容槽位）
+ * 2. 双手武器联动过滤：若 weapon1 已装备双手武器，weapon2 被锁定，从候选中排除
+ * 3. 双手武器额外校验：双手武器需要 weapon2 也空闲（占用主+副两槽）
+ * 4. 若无兼容槽位 → 不可装备
+ * 5. 若所有兼容槽位都已被占用 → 不可装备
+ * 6. 否则可装备（至少有一个空闲的兼容槽位）
  *
  * @param itemTemplate - 装备模板
  * @param equipment - 当前装备状态
@@ -167,7 +125,19 @@ export function canEquipItem(
   itemTemplate: EquipmentItem,
   equipment: Record<EquipmentSlot, EquippedItem | null>
 ): { canEquip: boolean; reason: string } {
-  const compatibleSlots = itemTemplate.slots.filter(slot => validateSlot(itemTemplate, slot));
+  // 双手武器额外校验：装入 weapon1 时需要 weapon2 也空闲
+  if (itemTemplate.grip === 'two_handed' && equipment.weapon2) {
+    return { canEquip: false, reason: '双手武器需要主副手槽位都空闲' };
+  }
+
+  const compatibleSlots = itemTemplate.slots.filter(slot => {
+    if (!validateSlot(itemTemplate, slot)) return false;
+    // 双手武器联动：weapon1 装备双手武器时，weapon2 被锁定，不可作为候选槽位
+    if (slot === 'weapon2' && equipment.weapon1?.item.grip === 'two_handed') {
+      return false;
+    }
+    return true;
+  });
   if (compatibleSlots.length === 0) {
     return { canEquip: false, reason: '该装备没有可用的槽位' };
   }
@@ -178,6 +148,29 @@ export function canEquipItem(
   }
 
   return { canEquip: true, reason: '' };
+}
+
+// ==================== 双手武器槽位锁定查询 ====================
+
+/**
+ * 检查指定槽位是否被双手武器锁定（P3.2 新增）
+ *
+ * 双手武器联动规则：当 weapon1 装备双手武器（grip === 'two_handed'）时，
+ * weapon2 槽位被锁定为"被双手武器占用"状态，不可独立装备/卸下。
+ * UI 据此渲染锁定遮罩，store 据此拦截装备/卸下操作。
+ *
+ * @param equipment - 当前装备状态
+ * @param slot - 目标槽位
+ * @returns 是否被双手武器锁定
+ */
+export function isSlotLockedByTwoHanded(
+  equipment: Record<EquipmentSlot, EquippedItem | null>,
+  slot: EquipmentSlot
+): boolean {
+  if (slot === 'weapon2') {
+    return equipment.weapon1?.item.grip === 'two_handed';
+  }
+  return false;
 }
 
 // ==================== 槽位查询 ====================

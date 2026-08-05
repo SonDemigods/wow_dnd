@@ -8,22 +8,44 @@
  *   - ItemStorage：写入 IndexedDB 时的数据类型（用于引用其字段类型进行类型断言）
  *   - InventoryStorage：导入/导出存档时背包数据的序列化格式
  */
-import type { Stats } from '../character/types';
-import type { SkillType } from '../skill/types';
+import type { ItemKind, ItemRarity } from '../item/types';
+
+// ==================== 共享类型 re-export（P3.3：从 item/types 迁移） ====================
+// P3.3 类型覆盖：旧扁平 Item/ItemType 已删除，统一使用 item/types.ts 的判别联合。
+// ItemRarity/ItemEffectType/ItemEffect 的定义已迁移到 item/types.ts（消除循环依赖），
+// 此处 re-export 保持消费方导入路径不变。
+export type {
+  Item,
+  ItemKind,
+  ItemBase,
+  ConsumableItem,
+  ConsumableSubtype,
+  ConsumableUseMode,
+  MaterialItem,
+  CurrencyItem,
+  CurrencySubtype,
+  QuestItem,
+  EquipmentItem,
+  EquipmentSubtype,
+  WeaponSubtype,
+  ArmorSubtype,
+  WeaponGrip,
+  EquipmentSlot,
+  EquippedItem,
+  EquipmentState,
+  ItemRarity,
+  ItemEffectType,
+  ItemEffect,
+} from '../item/types';
 
 // ==================== 基础类型定义 ====================
 
 /**
- * 物品类型枚举
- * - gold: 货币（不可堆叠，直接累加到角色金币）
- * - potion: 药水（消耗品，提供即时效果）
- * - scroll: 卷轴（消耗品，提供魔法效果）
- * - food: 食物（消耗品，提供持续效果）
- * - material: 材料（可堆叠，用于合成/任务）
- * - quest: 任务物品（不可堆叠、不可丢弃）
- * - weapon: 武器（可装备，提供攻击加成）
- * - armor: 护甲（可装备，提供防御加成）
- * - misc: 杂项（兜底类型，不可分类物品）
+ * 旧版物品大类扁平联合（@deprecated P3.3 过渡类型，P3.3b 删除）
+ *
+ * 新代码应使用 {@link ItemKind} + `subtype` 表达物品分类。
+ * 本类型仅保留供 `config/inventory.ts` 的 `ITEM_TYPES` 配置表与既有测试过渡使用，
+ * 不再作为 `Item` 的字段类型（新 `Item` 判别联合无 `type` 字段）。
  */
 export type ItemType =
   | 'gold'
@@ -37,25 +59,13 @@ export type ItemType =
   | 'misc';
 
 /**
- * 物品稀有度枚举
- * - common: 普通（灰色品质）
- * - uncommon: 优秀（绿色品质）
- * - rare: 稀有（蓝色品质）
- * - epic: 史诗（紫色品质）
- * - legendary: 传说（橙色品质）
- */
-export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-
-/**
- * 物品类型元数据（用于配置表，描述每种 ItemType 的行为特征）
- * @property {ItemType} id - 物品类型标识
- * @property {string} name - 显示名称
- * @property {boolean} stackable - 此类型物品默认是否可堆叠
- * @property {number} maxStack - 此类型物品的最大堆叠数
- * @property {boolean} [usable] - 此类型物品是否可被角色使用
+ * 旧版物品类型元数据（@deprecated P3.3 过渡类型，P3.3b 删除）
+ *
+ * 新代码应使用 `item/typeRegistry.ts` 的 `ItemTypeMeta`（单一来源）。
+ * 本接口仅保留供 `ITEM_TYPES` 配置表过渡使用。
  */
 export interface ItemTypeData {
-  id: ItemType;
+  id: string;
   name: string;
   stackable: boolean;
   maxStack: number;
@@ -70,76 +80,6 @@ export interface ItemTypeData {
 export interface RarityConfig {
   name: string;
   color: string;
-}
-
-/**
- * 物品效果类型枚举
- *
- * 组合了技能效果类型（SkillType）与物品特有效果（stat），使物品既可造成技能伤害，
- * 也可提供属性加成。当前支持的效果类型包括：
- * - physical_damage: 物理伤害
- * - magic_damage: 法术伤害
- * - health_restore: 生命恢复
- * - mana_restore: 法力恢复
- * - stat: 属性加成（通过 bonus 字段生效）
- */
-export type ItemEffectType = SkillType | 'stat';
-
-/**
- * 物品效果接口
- *
- * 描述使用物品时触发的效果。effect 与 bonus 是独立字段：
- * - effect 描述"使用物品时发生什么"（恢复/伤害等即时效果）
- * - bonus 描述"物品提供的属性加成"（可独立存在，允许纯属性加成物品如属性药水）
- *
- * @property {ItemEffectType} type - 效果类型，决定 value 的语义
- * @property {number | Partial<Stats>} value - 效果值：
- *   - 当 type 为 health_restore / mana_restore / physical_damage / magic_damage 时，value 为数值
- *   - 当 type 为 stat 时，value 为属性加成对象
- */
-export interface ItemEffect {
-  type: ItemEffectType;
-  value: number | Partial<Stats>;
-}
-
-/**
- * 物品基础类型接口
- *
- * 每个物品实例的完整数据模型。注意以下字段的语义区别：
- * - level：物品本身的等级（影响基础属性数值），如"等级 5 的回复药水"
- * - levelRequirement：使用/装备此物品所需的角色等级，如"需要角色等级 10"
- * - template：模板 ID（用于动态生成物品时追溯其来源模板）
- *
- * @property {string} id - 物品唯一标识
- * @property {string} name - 物品名称
- * @property {ItemType} type - 物品类型
- * @property {ItemRarity} rarity - 物品稀有度
- * @property {string} icon - 物品图标（Iconify 图标 ID）
- * @property {string} description - 物品描述文本
- * @property {Partial<Stats>} [bonus] - 属性加成（装备/使用后生效）
- * @property {ItemEffect} [effect] - 使用效果（消耗品才需要）
- * @property {number} value - 物品售价/价值
- * @property {boolean} stackable - 是否可堆叠（同一 itemId 的物品可放入同一槽位）
- * @property {boolean} [consumable] - 是否为消耗品（使用后消失）
- * @property {string} [template] - 来源模板 ID（动态生成物品时使用）
- * @property {number} [levelRequirement] - 使用/装备所需的角色等级
- * @property {number} [level] - 物品自身等级
- */
-export interface Item {
-  id: string;
-  name: string;
-  type: ItemType;
-  rarity: ItemRarity;
-  icon: string;
-  description: string;
-  bonus?: Partial<Stats>;
-  effect?: ItemEffect;
-  value: number;
-  stackable: boolean;
-  consumable?: boolean;
-  template?: string;
-  levelRequirement?: number;
-  level?: number;
 }
 
 /**
@@ -159,12 +99,12 @@ export interface InventoryItem {
 
 /**
  * 排序字段类型
- * - type: 按物品类型（中文名称拼音排序）
+ * - kind: 按物品大类（判别字段，P3.3 替代旧 type）
  * - rarity: 按稀有度（common=0 → legendary=4）
  * - level: 按物品等级
  * - name: 按物品名称（中文拼音排序）
  */
-export type SortField = 'type' | 'rarity' | 'level' | 'name';
+export type SortField = 'kind' | 'rarity' | 'level' | 'name';
 
 /**
  * 排序顺序类型
@@ -179,12 +119,14 @@ export type SortOrder = 'asc' | 'desc';
  * 所有字段均为可选，未设置的条件不做过滤。
  * 多个条件之间为 AND 关系（同时满足）。
  *
- * @property {ItemType[]} [types] - 要显示的类型列表
+ * P3.3：`types` 改为 `kinds`（按判别字段 ItemKind 筛选，替代旧 ItemType）。
+ *
+ * @property {ItemKind[]} [kinds] - 要显示的大类列表
  * @property {ItemRarity[]} [rarities] - 要显示的稀有度列表
  * @property {boolean} [stackable] - 是否只显示可/不可堆叠物品
  */
 export interface ItemFilters {
-  types?: ItemType[];
+  kinds?: ItemKind[];
   rarities?: ItemRarity[];
   stackable?: boolean;
 }

@@ -6,5 +6,5 @@
 export type { ShopConfig, ShopItem, ShopDisplayItem, SoldItemEntry, ShopItemsStorage, ShopSoldItemsStorage } from './types';
 export { shopDbService } from './db';
 export { useShopStore } from './store';
-// P3-161：导出商店类型映射供 UI 层按商店类型动态生成分类，避免穿透到 service 内部
-export { SHOP_TYPE_ITEM_TYPE_MAP } from './service';
+// P3.3：导出商店分类映射供 UI 层按商店类型动态生成分类标签与筛选
+export { SHOP_CATEGORIES, type ShopCategory } from './service';

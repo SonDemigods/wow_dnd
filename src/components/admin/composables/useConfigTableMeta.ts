@@ -484,13 +484,15 @@ export function useConfigTableMeta(): UseConfigTableMetaReturn {
         return {
           ...field,
           type: 'multiselect' as const,
+          // P3.1：7 槽（weapon1/weapon2/helm/chest/gloves/legs/boots）
           options: [
             { value: 'weapon1', label: '主手 (weapon1)' },
             { value: 'weapon2', label: '副手 (weapon2)' },
-            { value: 'armor1', label: '头部 (armor1)' },
-            { value: 'armor2', label: '胸部 (armor2)' },
-            { value: 'armor3', label: '腿部 (armor3)' },
-            { value: 'armor4', label: '鞋子 (armor4)' },
+            { value: 'helm', label: '头部 (helm)' },
+            { value: 'chest', label: '胸部 (chest)' },
+            { value: 'gloves', label: '手套 (gloves)' },
+            { value: 'legs', label: '腿部 (legs)' },
+            { value: 'boots', label: '鞋子 (boots)' },
           ],
         };
       }

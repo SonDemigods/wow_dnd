@@ -17,7 +17,7 @@ import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { inventoryDbService } from '@/modules/inventory/db';
 import { db } from '@/modules/data/core';
-import type { Item, InventoryItem } from '@/modules/inventory/types';
+import type { Item, InventoryItem, ConsumableItem } from '@/modules/inventory/types';
 
 // ==================== 测试数据构造 helper ====================
 
@@ -25,12 +25,16 @@ function makeItem(o: Partial<Item> = {}): Item {
   return {
     id: 'item-1',
     name: '回复药水',
-    type: 'potion',
+    kind: 'consumable',
+    subtype: 'potion',
     rarity: 'common',
     icon: 'game-icons:potion',
     description: '恢复 50 点生命',
     value: 10,
     stackable: true,
+    consumable: true,
+    effects: [],
+    useMode: 'instant',
     ...o,
   } as Item;
 }
@@ -152,11 +156,13 @@ describe('InventoryDbService - 背包数据层（fake-indexeddb 真实 CRUD）',
       const item = makeItem({
         id: 'potion-hp',
         name: '治疗药水',
-        type: 'potion',
         rarity: 'common',
-        bonus: { str: 5 },
-        effect: { type: 'health_restore', value: 50 },
-        consumable: true,
+        // P3.3：旧 type/effect/bonus 三字段统一为 kind/subtype/effects[]
+        // health_restore 即时效果 + stat 属性加成（旧 bonus）合并为 effects 数组
+        effects: [
+          { type: 'health_restore', value: 50 },
+          { type: 'stat', value: { str: 5 } },
+        ],
         levelRequirement: 5,
       });
       await inventoryDbService.saveItemTemplate(item);
@@ -165,11 +171,15 @@ describe('InventoryDbService - 背包数据层（fake-indexeddb 真实 CRUD）',
       expect(result).not.toBeNull();
       expect(result!.id).toBe('potion-hp');
       expect(result!.name).toBe('治疗药水');
-      expect(result!.type).toBe('potion');
+      expect(result!.kind).toBe('consumable');
       expect(result!.rarity).toBe('common');
-      expect(result!.bonus).toEqual({ str: 5 });
-      expect(result!.effect).toEqual({ type: 'health_restore', value: 50 });
-      expect(result!.consumable).toBe(true);
+      // 判别联合收窄：kind === 'consumable' 后可安全访问 subtype/effects/consumable
+      expect((result as ConsumableItem).subtype).toBe('potion');
+      expect((result as ConsumableItem).effects).toEqual([
+        { type: 'health_restore', value: 50 },
+        { type: 'stat', value: { str: 5 } },
+      ]);
+      expect((result as ConsumableItem).consumable).toBe(true);
       expect(result!.levelRequirement).toBe(5);
     });
 
@@ -179,22 +189,29 @@ describe('InventoryDbService - 背包数据层（fake-indexeddb 真实 CRUD）',
     });
 
     it('可选字段缺失时使用默认值（bonus={}、consumable=undefined、levelRequirement=undefined）', async () => {
+      // P3.3：旧 type='misc' 在 mapToItem 中兜底为 material（misc 类型不在 config_items 表）
+      // material 的字面量字段：stackable=true、consumable=false、effects=[]
       const item: Item = {
         id: 'plain',
         name: '普通物品',
-        type: 'misc',
+        kind: 'material',
         rarity: 'common',
         icon: 'icon',
         description: '',
         value: 0,
-        stackable: false,
+        stackable: true,
+        consumable: false,
+        effects: [],
       };
       await inventoryDbService.saveItemTemplate(item);
 
       const result = await inventoryDbService.getItemTemplate('plain');
       expect(result).not.toBeNull();
-      expect(result!.bonus).toEqual({});
-      expect(result!.consumable).toBeUndefined();
+      expect(result!.kind).toBe('material');
+      // material 的字面量默认值：consumable=false、effects=[]
+      expect((result as { consumable: boolean }).consumable).toBe(false);
+      expect((result as { effects: unknown[] }).effects).toEqual([]);
+      // levelRequirement 为可选字段，未设置时为 undefined（mapToItem 用 ?? 兜底）
       expect(result!.levelRequirement).toBeUndefined();
     });
 
@@ -208,6 +225,8 @@ describe('InventoryDbService - 背包数据层（fake-indexeddb 真实 CRUD）',
 
     it('bonus 为 null 时 mapToItem 返回空对象作为 bonus（|| 兜底）', async () => {
       // 直接写入 bonus 为 null 的损坏数据，验证 mapToItem 的 || {} 兜底
+      // P3.3：新模型下旧 bonus 字段被合并到 effects[]（stat 类型效果），
+      // bonus=null 时不推入 effects，最终 effects 为空数组（兼容旧"空 bonus"语义）
       await db.config_items.put({
         id: 'null-bonus',
         name: '无加成物品',
@@ -226,7 +245,9 @@ describe('InventoryDbService - 背包数据层（fake-indexeddb 真实 CRUD）',
       });
       const result = await inventoryDbService.getItemTemplate('null-bonus');
       expect(result).not.toBeNull();
-      expect(result!.bonus).toEqual({});
+      // misc 类型在 mapToItem 中兜底为 material，effects 为空数组（替代旧"bonus={}"语义）
+      expect(result!.kind).toBe('material');
+      expect((result as { effects: unknown[] }).effects).toEqual([]);
     });
 
     it('覆盖保存：相同 ID 再次保存，新数据替换旧数据', async () => {

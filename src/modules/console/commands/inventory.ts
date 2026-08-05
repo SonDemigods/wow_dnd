@@ -49,7 +49,8 @@ registerCommand({
       logTag('item', '═══ 装备 ═══');
       for (const item of equipItems) {
         const rc = rarityColorKey(item.rarity || 'common');
-        console.log(`  %c${item.id.padEnd(24)}%c ${item.name} %c[${item.type}]`, STYLE.label, rc, STYLE.hint);
+        // P3.3：旧 item.type（weapon/armor）已移除，改用 subtype 显示装备子类型
+        console.log(`  %c${item.id.padEnd(24)}%c ${item.name} %c[${item.subtype}]`, STYLE.label, rc, STYLE.hint);
       }
       return { success: true, message: '已在上方列出所有可用物品' };
     }
@@ -153,7 +154,7 @@ registerCommand({
 
     const slotNames: Record<string, string> = {
       weapon1: '主手武器', weapon2: '副手武器',
-      armor1: '头部', armor2: '肩部', armor3: '胸甲', armor4: '腿部'
+      helm: '头部', chest: '胸部', gloves: '手套', legs: '腿部', boots: '鞋子'
     };
 
     logTag('equips', '═══ 当前装备 ═══');

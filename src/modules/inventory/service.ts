@@ -8,8 +8,15 @@
  * - 纯函数：相同输入始终产生相同输出，无副作用
  * - 不可变：所有函数返回新数组，不修改传入的参数
  * - 无依赖：不导入 Store、DB 或其他有状态模块
+ *
+ * ## P3.3 升级
+ * - 删除旧 `ITEM_TYPE_NAMES`（Record<ItemType, string>），改用 typeRegistry 的 `getItemDisplayName`
+ * - sortItems/filterItems 按 `kind`（判别字段）排序/筛选，替代旧 `type`
+ * - computeUseEffect 从 `effects[]` 提取首个非 stat 效果；新增 computeStatBonus 提取属性加成
  */
-import type { Item, InventoryItem, SortField, SortOrder, ItemFilters, ItemType, ItemRarity, ItemEffect } from './types';
+import type { Item, InventoryItem, SortField, SortOrder, ItemFilters, ItemRarity, ItemEffect } from './types';
+import type { Stats } from '../character/types';
+import { getItemDisplayName } from '../item/typeRegistry';
 
 // ==================== 常量 ====================
 
@@ -28,26 +35,6 @@ export const INVENTORY_SIZE = 50;
  * 不可堆叠物品（如武器、护甲）在 addItem 中通过 perSlot = 1 独立处理。
  */
 export const MAX_STACK = 10;
-
-/**
- * 物品类型名称映射（Record<ItemType, string>）
- *
- * 用途：
- * 1. sortItems 中按 type 排序时使用中文名称进行拼音排序
- * 2. UI 组件通过 allItemTypes 计算属性获取类型下拉选项
- * 3. organizeInventory 整理背包时作为分类排序依据
- */
-export const ITEM_TYPE_NAMES: Record<ItemType, string> = {
-  gold: '货币',
-  potion: '药水',
-  scroll: '卷轴',
-  food: '食物',
-  material: '材料',
-  quest: '任务物品',
-  weapon: '武器',
-  armor: '护甲',
-  misc: '杂项'
-};
 
 /**
  * 稀有度排序权重映射
@@ -131,16 +118,15 @@ export function findItemIndex(inventory: InventoryItem[], itemId: string): numbe
  * 排序物品列表（返回新数组，不修改原数组）
  *
  * 通过 itemTemplates 查询每个槽位对应物品的完整信息，再按指定字段排序。
- * 排序策略：
- * - type：按中文类型名称拼音排序（ITEM_TYPE_NAMES 映射）
+ * 排序策略（P3.3：`type` 字段已改为 `kind`）：
+ * - kind：按类型显示名称拼音排序（typeRegistry 的 getItemDisplayName，含 subtype 精确名）
  * - rarity：按稀有度权重排序（RARITY_ORDER 映射）
  * - name：按物品名称拼音排序
  * - level：按物品等级数值排序
  *
  * 当 itemTemplates 中找不到对应物品时（itemA/itemB 为 undefined），
- * 使用安全的回退值保证排序不中断：
- *   type → 'misc'（杂项排最后）、rarity → 'common'（普通排最前）、
- *   name → ''（无名称排前）、level → 0
+ * 使用安全的回退值保证排序不中断：kind → '杂项'、rarity → 'common'、
+ * name → ''、level → 0
  *
  * @param items - 物品列表
  * @param itemTemplates - 物品模板映射
@@ -164,9 +150,9 @@ export function sortItems(
     let comparison = 0;
 
     switch (sortBy) {
-      case 'type':
-        comparison = ITEM_TYPE_NAMES[itemA?.type || 'misc'].localeCompare(
-          ITEM_TYPE_NAMES[itemB?.type || 'misc']
+      case 'kind':
+        comparison = (itemA ? getItemDisplayName(itemA) : '杂项').localeCompare(
+          itemB ? getItemDisplayName(itemB) : '杂项'
         );
         break;
       case 'rarity':
@@ -194,12 +180,14 @@ export function sortItems(
  *
  * 支持四种筛选条件，按顺序依次执行（链式过滤）：
  * 1. 关键词搜索（匹配物品名称和描述，不区分大小写）
- * 2. 类型筛选（filters.types）
+ * 2. 大类筛选（filters.kinds，按判别字段 ItemKind）
  * 3. 稀有度筛选（filters.rarities）
  * 4. 可堆叠筛选（filters.stackable）
  *
  * 每步过滤都创建新数组，最终返回的是全新数组实例。
  * 空条件的步骤会被跳过（不执行无意义的遍历）。
+ *
+ * P3.3：旧 `filters.types`（ItemType）已改为 `filters.kinds`（ItemKind）。
  *
  * @param items - 物品列表
  * @param itemTemplates - 物品模板映射
@@ -227,12 +215,12 @@ export function filterItems(
     });
   }
 
-  // 类型筛选：物品类型必须在指定列表中
-  if (filters.types && filters.types.length > 0) {
-    const types = filters.types;
+  // 大类筛选：物品 kind 必须在指定列表中
+  if (filters.kinds && filters.kinds.length > 0) {
+    const kinds = filters.kinds;
     result = result.filter(invItem => {
       const item = itemTemplates.get(invItem.itemId);
-      return item && types.includes(item.type);
+      return item && kinds.includes(item.kind);
     });
   }
 
@@ -291,18 +279,38 @@ export function sortAndFilterInventory(
 // ==================== 纯函数：物品使用 ====================
 
 /**
- * 获取物品的使用效果
+ * 获取物品的即时使用效果（非属性加成类）
  *
- * 从物品模板中提取 effect 字段。当前实现简单地返回 effect 或 null，
- * 作为命名抽象存在，为将来可能的"多效果合并"或"效果条件判断"预留扩展点。
+ * P3.3 升级：从消耗品的 `effects[]` 中提取首个非 stat 效果
+ * （health_restore / mana_restore / physical_damage / magic_damage 等）。
+ * stat 类型效果（属性加成）由 {@link computeStatBonus} 单独提取，
+ * 在 useItem 中走属性加成分支（applyPotionBonus / applyBonus）。
  *
- * 注意：effect 与 bonus 是独立字段。此函数只处理 effect（即时效果），
- * bonus（属性加成）由 useItem 中的 bonus 分支直接调用 characterStore.applyBonus。
+ * 非消耗品无使用效果，返回 null。
  *
  * @param itemTemplate - 物品模板
- * @returns 物品效果对象，无可使用效果返回 null
+ * @returns 首个即时效果，无可使用效果返回 null
  */
 export function computeUseEffect(itemTemplate: Item): ItemEffect | null {
-  if (!itemTemplate.effect) return null;
-  return itemTemplate.effect;
+  if (itemTemplate.kind !== 'consumable') return null;
+  return itemTemplate.effects.find(e => e.type !== 'stat') ?? null;
+}
+
+/**
+ * 获取消耗品的属性加成（stat 效果）
+ *
+ * P3.3 升级：旧版属性药剂通过 `bonus` 字段表达属性加成，新版统一为 `effects[]`
+ * 中的 `type:'stat'` 效果（plan.md T6，消除 ATTRIBUTE_POTION_IDS 白名单的根因）。
+ * 本函数从 effects 提取 stat 效果的 value（Partial<Stats>），供 useItem 的属性加成分支使用。
+ *
+ * 非消耗品或无 stat 效果时返回 null。
+ *
+ * @param itemTemplate - 物品模板
+ * @returns 属性加成对象，无属性加成返回 null
+ */
+export function computeStatBonus(itemTemplate: Item): Partial<Stats> | null {
+  if (itemTemplate.kind !== 'consumable') return null;
+  const statEffect = itemTemplate.effects.find(e => e.type === 'stat');
+  if (!statEffect || typeof statEffect.value !== 'object') return null;
+  return statEffect.value as Partial<Stats>;
 }

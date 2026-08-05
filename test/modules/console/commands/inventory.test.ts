@@ -211,7 +211,7 @@ describe('console/commands/inventory - 物品类命令', () => {
     it('无装备时返回提示', async () => {
       equipmentMock.equipment = {
         weapon1: null, weapon2: null,
-        armor1: null, armor2: null, armor3: null, armor4: null,
+        helm: null, chest: null, gloves: null, legs: null, boots: null,
       };
       const result = await exec('equips');
       expect(result).toEqual({ success: true, message: '当前没有装备任何物品' });
@@ -220,7 +220,7 @@ describe('console/commands/inventory - 物品类命令', () => {
     it('有装备时显示装备信息', async () => {
       equipmentMock.equipment = {
         weapon1: { item: { name: '铁剑', rarity: 'common', level: 5 } },
-        armor3: { item: { name: '皮甲', rarity: 'uncommon', level: 3 } },
+        chest: { item: { name: '皮甲', rarity: 'uncommon', level: 3 } },
       };
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const result = await exec('equips');

@@ -1,34 +1,51 @@
 /**
- * @fileoverview 职业专属装备数据（Phase 5.3）
+ * @fileoverview 职业专属装备数据（Phase 5.3，P3.1 升级）
  * @description 为 6 个核心职业各定义 3-5 件专属装备，含职业限制和套装归属。
  *              装备时由 equipment/service.ts 的 checkClassRestriction 检查职业限制。
  *              套装效果由 config_item_sets.ts 定义，由 equipment/store.ts 的 getActiveSetBonuses 计算。
+ *
+ *              P3.1 升级：条目改为草稿声明（含 subtype/grip，不含 slots/occupies），
+ *              slots/occupies 由 slotRegistry 的 deriveSlots/SUBTYPE_OCCUPIES 统一派生，
+ *              消除旧版手填 armor1-4 槽位的问题。
  * @module data
  */
 import type { EquipmentItem } from '@/modules/equipment/types';
+import { deriveSlots, SUBTYPE_OCCUPIES } from '@/modules/equipment/slotRegistry';
 
 /**
- * 全职业专属装备列表
+ * 职业专属装备草稿类型（P3.1 新增）
+ *
+ * 与 EquipmentItemDraft 的差异：本类型保留 subtype/grip（因职业装备按条目内联声明，
+ * 非按子类型分组 map），仅省略 slots/occupies（由派生填充）。
+ */
+type ClassItemDraft = Omit<EquipmentItem, 'kind' | 'slots' | 'occupies' | 'stackable' | 'consumable'>;
+
+/**
+ * 全职业专属装备草稿列表
  *
  * 设计原则：
  * 1. 每个职业 3 件专属装备（武器 + 头部 + 胸部），覆盖核心槽位
  * 2. 2 件来自套装（setId 标识），1 件独立装备
  * 3. 装备强度高于同等级普通装备 30%-50%
  * 4. classRestriction 字段强制职业限制
+ *
+ * P3.1：每个条目声明 subtype（武器额外声明 grip），slots/occupies 在导出时派生。
+ * - 头部护甲：subtype: 'helm'
+ * - 胸部护甲：subtype: 'chest'
+ * - 单手武器：subtype: 'sword'/'hammer'/'dagger'/'staff', grip: 'one_handed'
+ * - 双手武器（弓）：subtype: 'greatbow', grip: 'two_handed'（占用主+副两槽）
  */
-export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
+const CLASS_SPECIFIC_DRAFTS: ClassItemDraft[] = [
   // ==================== 战士专属 ====================
   {
     id: 'warrior_helm_rage',
     name: '愤怒之盔',
     icon: 'game-icons:knight-helmet',
-    type: 'armor',
-    slots: ['armor1'],
+    subtype: 'helm',
     bonus: { str: 5, con: 3 },
     rarity: 'rare',
     description: '传说中战士首领的战盔，盔顶的红色羽饰染满了敌人的鲜血',
     value: 80,
-    stackable: false,
     template: 'warrior_helm_rage',
     levelRequirement: 8,
     classRestriction: ['warrior'],
@@ -38,13 +55,11 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'warrior_chest_might',
     name: '力量胸甲',
     icon: 'game-icons:breastplate',
-    type: 'armor',
-    slots: ['armor2'],
+    subtype: 'chest',
     bonus: { str: 8, con: 5 },
     rarity: 'epic',
     description: '由矮人铁匠用黑铁锻造的厚重胸甲，扛住过无数次致命打击',
     value: 150,
-    stackable: false,
     template: 'warrior_chest_might',
     levelRequirement: 12,
     classRestriction: ['warrior'],
@@ -54,13 +69,12 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'warrior_blade_bloodlust',
     name: '嗜血巨刃',
     icon: 'game-icons:broad-dagger',
-    type: 'weapon',
-    slots: ['weapon1'],
+    subtype: 'sword',
+    grip: 'one_handed',
     bonus: { str: 15, con: 5 },
     rarity: 'epic',
     description: '刀刃上刻有嗜血符文，每次挥舞都渴望敌人的鲜血',
     value: 200,
-    stackable: false,
     template: 'warrior_blade_bloodlust',
     levelRequirement: 15,
     classRestriction: ['warrior'],
@@ -71,13 +85,11 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'mage_hat_arcane',
     name: '奥术之冠',
     icon: 'game-icons:wizard-face',
-    type: 'armor',
-    slots: ['armor1'],
+    subtype: 'helm',
     bonus: { int: 8, wis: 3 },
     rarity: 'rare',
     description: '镶嵌着奥术宝石的法帽，能增幅佩戴者的法术威力',
     value: 80,
-    stackable: false,
     template: 'mage_hat_arcane',
     levelRequirement: 8,
     classRestriction: ['mage'],
@@ -87,13 +99,11 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'mage_robe_mystic',
     name: '神秘法袍',
     icon: 'game-icons:witch-cloak',
-    type: 'armor',
-    slots: ['armor2'],
+    subtype: 'chest',
     bonus: { int: 12, wis: 5 },
     rarity: 'epic',
     description: '织入了魔法丝线的长袍，能抵御魔法攻击并提升法力恢复',
     value: 150,
-    stackable: false,
     template: 'mage_robe_mystic',
     levelRequirement: 12,
     classRestriction: ['mage'],
@@ -103,13 +113,12 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'mage_staff_eternal',
     name: '永恒法杖',
     icon: 'game-icons:staff',
-    type: 'weapon',
-    slots: ['weapon1'],
+    subtype: 'staff',
+    grip: 'one_handed',
     bonus: { int: 18, wis: 8 },
     rarity: 'epic',
     description: '由永恒之木制成的法杖，顶端的水晶蕴含着无尽的奥术能量',
     value: 200,
-    stackable: false,
     template: 'mage_staff_eternal',
     levelRequirement: 15,
     classRestriction: ['mage'],
@@ -120,13 +129,11 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'paladin_helm_holy',
     name: '圣光之盔',
     icon: 'game-icons:visored-helm',
-    type: 'armor',
-    slots: ['armor1'],
+    subtype: 'helm',
     bonus: { str: 4, con: 4, wis: 3 },
     rarity: 'rare',
     description: '经过圣光祝福的头盔，能抵御邪恶力量的侵蚀',
     value: 80,
-    stackable: false,
     template: 'paladin_helm_holy',
     levelRequirement: 8,
     classRestriction: ['paladin'],
@@ -136,13 +143,11 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'paladin_chest_guardian',
     name: '守护者胸甲',
     icon: 'game-icons:chest-armor',
-    type: 'armor',
-    slots: ['armor2'],
+    subtype: 'chest',
     bonus: { str: 6, con: 8, wis: 4 },
     rarity: 'epic',
     description: '刻有圣典经文的胸甲，是圣骑士团的标志性装备',
     value: 150,
-    stackable: false,
     template: 'paladin_chest_guardian',
     levelRequirement: 12,
     classRestriction: ['paladin'],
@@ -152,13 +157,12 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'paladin_hammer_judgment',
     name: '审判之锤',
     icon: 'game-icons:warhammer',
-    type: 'weapon',
-    slots: ['weapon1'],
+    subtype: 'hammer',
+    grip: 'one_handed',
     bonus: { str: 12, wis: 8 },
     rarity: 'epic',
     description: '一锤定音的神圣战锤，挥舞时伴随圣光绽放',
     value: 200,
-    stackable: false,
     template: 'paladin_hammer_judgment',
     levelRequirement: 15,
     classRestriction: ['paladin'],
@@ -169,13 +173,11 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'hunter_cap_tracker',
     name: '追踪者之帽',
     icon: 'game-icons:archer',
-    type: 'armor',
-    slots: ['armor1'],
+    subtype: 'helm',
     bonus: { dex: 6, wis: 3 },
     rarity: 'rare',
     description: '轻便的皮帽，能让猎人在野外保持敏锐的感知',
     value: 80,
-    stackable: false,
     template: 'hunter_cap_tracker',
     levelRequirement: 8,
     classRestriction: ['hunter'],
@@ -185,13 +187,11 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'hunter_tunic_swift',
     name: '迅捷外衣',
     icon: 'game-icons:leather-vest',
-    type: 'armor',
-    slots: ['armor2'],
+    subtype: 'chest',
     bonus: { dex: 10, con: 4 },
     rarity: 'epic',
     description: '由精灵工匠缝制的轻甲，不影响动作的灵活性',
     value: 150,
-    stackable: false,
     template: 'hunter_tunic_swift',
     levelRequirement: 12,
     classRestriction: ['hunter'],
@@ -201,13 +201,12 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'hunter_bow_eagle',
     name: '鹰眼长弓',
     icon: 'game-icons:perspective-dice-six-faces-random',
-    type: 'weapon',
-    slots: ['weapon1'],
+    subtype: 'greatbow',
+    grip: 'two_handed',
     bonus: { dex: 18, wis: 6 },
     rarity: 'epic',
     description: '由上古神木制成的长弓，箭无虚发的传说之弓',
     value: 200,
-    stackable: false,
     template: 'hunter_bow_eagle',
     levelRequirement: 15,
     classRestriction: ['hunter'],
@@ -218,13 +217,11 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'rogue_mask_shadow',
     name: '暗影面罩',
     icon: 'game-icons:ninja-mask',
-    type: 'armor',
-    slots: ['armor1'],
+    subtype: 'helm',
     bonus: { dex: 7, cha: 3 },
     rarity: 'rare',
     description: '遮住面容的黑色面罩，是潜行者的标志性装备',
     value: 80,
-    stackable: false,
     template: 'rogue_mask_shadow',
     levelRequirement: 8,
     classRestriction: ['rogue'],
@@ -234,13 +231,11 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'rogue_tunic_silent',
     name: '无声外衣',
     icon: 'game-icons:vest',
-    type: 'armor',
-    slots: ['armor2'],
+    subtype: 'chest',
     bonus: { dex: 11, con: 4 },
     rarity: 'epic',
     description: '特殊材质制成的轻甲，行动时不会发出任何声响',
     value: 150,
-    stackable: false,
     template: 'rogue_tunic_silent',
     levelRequirement: 12,
     classRestriction: ['rogue'],
@@ -250,13 +245,12 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'rogue_dagger_venom',
     name: '剧毒匕首',
     icon: 'game-icons:curved-knife',
-    type: 'weapon',
-    slots: ['weapon1', 'weapon2'],
+    subtype: 'dagger',
+    grip: 'one_handed',
     bonus: { dex: 14, cha: 5 },
     rarity: 'epic',
     description: '刀刃涂有致命毒药的匕首，可双持使用',
     value: 180,
-    stackable: false,
     template: 'rogue_dagger_venom',
     levelRequirement: 15,
     classRestriction: ['rogue'],
@@ -267,13 +261,11 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'warlock_hood_demon',
     name: '恶魔之兜',
     icon: 'game-icons:hood',
-    type: 'armor',
-    slots: ['armor1'],
+    subtype: 'helm',
     bonus: { int: 7, cha: 3 },
     rarity: 'rare',
     description: '与恶魔签订契约时穿戴的兜帽，浸透了黑暗力量',
     value: 80,
-    stackable: false,
     template: 'warlock_hood_demon',
     levelRequirement: 8,
     classRestriction: ['warlock'],
@@ -283,13 +275,11 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'warlock_robe_corrupt',
     name: '腐蚀法袍',
     icon: 'game-icons:robe',
-    type: 'armor',
-    slots: ['armor2'],
+    subtype: 'chest',
     bonus: { int: 11, con: 4 },
     rarity: 'epic',
     description: '用腐蚀能量织就的法袍，能增强术士的诅咒效果',
     value: 150,
-    stackable: false,
     template: 'warlock_robe_corrupt',
     levelRequirement: 12,
     classRestriction: ['warlock'],
@@ -299,18 +289,34 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = [
     id: 'warlock_staff_soul',
     name: '灵魂权杖',
     icon: 'game-icons:gnome',
-    type: 'weapon',
-    slots: ['weapon1'],
+    subtype: 'staff',
+    grip: 'one_handed',
     bonus: { int: 16, cha: 8 },
     rarity: 'epic',
     description: '顶端的灵魂宝石中封印着无数受害者的灵魂',
     value: 200,
-    stackable: false,
     template: 'warlock_staff_soul',
     levelRequirement: 15,
     classRestriction: ['warlock'],
   },
 ];
+
+/**
+ * 全职业专属装备列表（派生 slots/occupies 后的完整 EquipmentItem）
+ *
+ * P3.1：由 CLASS_SPECIFIC_DRAFTS 经 slotRegistry 派生槽位信息：
+ * - slots：由 subtype 经 deriveSlots 派生（可装备的候选槽位）
+ * - occupies：由 SUBTYPE_OCCUPIES 派生（双手武器占主+副两槽，其余同 slots）
+ */
+export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = CLASS_SPECIFIC_DRAFTS.map(item => ({
+  ...item,
+  // P3.3：补全判别联合字面量（草稿 Omit 了 kind/stackable/consumable）
+  kind: 'equipment' as const,
+  stackable: false as const,
+  consumable: false as const,
+  slots: deriveSlots(item.subtype),
+  occupies: SUBTYPE_OCCUPIES[item.subtype] ?? deriveSlots(item.subtype)
+}));
 
 /**
  * 根据职业 ID 获取其专属装备列表

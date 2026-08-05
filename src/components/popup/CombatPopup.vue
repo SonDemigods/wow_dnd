@@ -261,7 +261,8 @@ import { useSkillDisplay } from '@/composables/useSkillDisplay';
 import { eventBus, GameEvents } from '@/modules/bus';
 import type { CombatLog, CombatResult, CombatActionType } from '@/modules/combat';
 import type { Skill } from '@/modules/skill';
-import type { ItemRarity } from '@/modules/inventory';
+import type { ItemRarity, ItemEffect } from '@/modules/inventory';
+import { describeEffect } from '@/modules/item/descriptors';
 import ResourceBar from '@/components/common/ResourceBar.vue';
 import ClassResourceBar from '@/components/common/ClassResourceBar.vue';
 import PetHpBar from '@/components/common/PetHpBar.vue';
@@ -595,15 +596,10 @@ function handlePetDismiss(): void {
   }
 }
 
-function buildItemDescription(info: { effect?: { type: string; value: unknown }; description?: string }): string {
-  const { effect, description } = info;
-  if (!effect || typeof effect.value !== 'number') return description || '';
-  const parts: string[] = [];
-  if (effect.type === 'health_restore' && effect.value > 0) parts.push(`HP+${effect.value}`);
-  if (effect.type === 'mana_restore' && effect.value > 0) parts.push(`MP+${effect.value}`);
-  if (effect.type === 'physical_damage' && effect.value > 0) parts.push(`物理伤害 ${effect.value}`);
-  if (effect.type === 'magic_damage' && effect.value > 0) parts.push(`法术伤害 ${effect.value}`);
-  return parts.length > 0 ? parts.join(' ') : (description || '');
+/** 构建消耗品描述（委托 describeEffect 统一效果描述，无效果时回退到物品描述） */
+function buildItemDescription(info: { effect?: ItemEffect | null; description?: string }): string {
+  if (!info.effect) return info.description || '';
+  return describeEffect(info.effect);
 }
 
 const { getSkillEffectBrief, getTargetTypeName } = useSkillDisplay();

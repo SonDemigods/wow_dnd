@@ -11,27 +11,66 @@
  * - ❌ 数据持久化（由 DB 层负责）
  */
 
-import type { Item, ItemType } from '@/modules/inventory/types';
+import type { Item } from '@/modules/inventory/types';
 import type { ShopConfig, ShopItem, ShopType } from './types';
 import type { Character } from '@/modules/character/types';
 import { RARITY_PRICE_MULTIPLIER, RARITY_SELL_DISCOUNT } from '@/config/inventory';
 import { defaultRng, type Rng } from '@/utils/rng';
+import { isWeaponSubtype } from '../equipment/slotRegistry';
 
 /**
- * 商店类型 → 可售物品类型映射表
+ * 商店分类（P3.3：替代旧 SHOP_TYPE_ITEM_TYPE_MAP）
  *
- * `Record<ShopType, ItemType[]>` 确保每种商店类型都有对应的物品池，
- * 新增 ShopType 时 TypeScript 会强制要求补充映射，编译期防止遗漏。
+ * 每个分类含 `id`（唯一标识，供 UI 选中态使用）、`name`（展示名）、
+ * `match`（物品匹配谓词，基于判别联合 `kind`+`subtype` 精确匹配）。
+ *
+ * P3.3 升级：旧版按扁平 `ItemType`（potion/scroll/food/material/weapon/armor）筛选，
+ * 新版按判别字段 `kind`+`subtype` 筛选（如 `consumable`+`potion`）。
+ * 装备商店区分武器/护甲两组，通过 `isWeaponSubtype` 判定。
  */
-export const SHOP_TYPE_ITEM_TYPE_MAP: Record<ShopType, ItemType[]> = {
-  // P1-2：general 杂货商店售卖消耗品（药水/卷轴/食物/材料），与 SHOP_MODULE_DESIGN.md 一致
-  general: ['potion', 'scroll', 'food', 'material'],
-  potion: ['potion'],
-  scroll: ['scroll'],
-  food: ['food'],
-  material: ['material'],
-  // P3-161：装备商店售卖武器和护甲，补全装备获取渠道
-  equipment: ['weapon', 'armor'],
+export interface ShopCategory {
+  /** 分类唯一标识（供 UI selectedCategory 使用） */
+  id: string;
+  /** 分类展示名 */
+  name: string;
+  /** 物品匹配谓词：返回 true 表示该物品属于此分类 */
+  match: (item: Item) => boolean;
+}
+
+/**
+ * 商店类型 → 分类列表映射表
+ *
+ * `Record<ShopType, ShopCategory[]>` 确保每种商店类型都有对应的分类列表，
+ * 新增 ShopType 时 TypeScript 会强制要求补充映射，编译期防止遗漏。
+ *
+ * UI 的分类标签从此表派生（加 "全部" 前缀），物品筛选也复用 `match` 谓词，
+ * 消除旧版 ShopPopup 中 `type === selectedCategory` 的硬编码。
+ */
+export const SHOP_CATEGORIES: Record<ShopType, ShopCategory[]> = {
+  // P1-2：general 杂货商店售卖消耗品（药水/卷轴/食物/材料）
+  general: [
+    { id: 'potion', name: '药水', match: i => i.kind === 'consumable' && i.subtype === 'potion' },
+    { id: 'scroll', name: '卷轴', match: i => i.kind === 'consumable' && i.subtype === 'scroll' },
+    { id: 'food', name: '食物', match: i => i.kind === 'consumable' && i.subtype === 'food' },
+    { id: 'material', name: '材料', match: i => i.kind === 'material' },
+  ],
+  potion: [
+    { id: 'potion', name: '药水', match: i => i.kind === 'consumable' && i.subtype === 'potion' },
+  ],
+  scroll: [
+    { id: 'scroll', name: '卷轴', match: i => i.kind === 'consumable' && i.subtype === 'scroll' },
+  ],
+  food: [
+    { id: 'food', name: '食物', match: i => i.kind === 'consumable' && i.subtype === 'food' },
+  ],
+  material: [
+    { id: 'material', name: '材料', match: i => i.kind === 'material' },
+  ],
+  // P3-161：装备商店售卖武器和护甲，按子类型分组
+  equipment: [
+    { id: 'weapon', name: '武器', match: i => i.kind === 'equipment' && isWeaponSubtype(i.subtype) },
+    { id: 'armor', name: '护甲', match: i => i.kind === 'equipment' && !isWeaponSubtype(i.subtype) },
+  ],
 };
 
 /**
@@ -117,12 +156,15 @@ function getSellDiscount(rarity: string): number {
  * 为指定商店生成商品列表
  *
  * 算法流程：
- * 1. 通过 {@link SHOP_TYPE_ITEM_TYPE_MAP} 获取该商店可售的物品类型
- * 2. 从物品池中筛选匹配类型的模板
+ * 1. 通过 {@link SHOP_CATEGORIES} 获取该商店的分类列表（含 match 谓词）
+ * 2. 从物品池中筛选匹配任一分类的模板
  * 3. 随机抽取 6~12 件物品（不足时全取）
  * 4. 每件物品调用 {@link calculatePrice} 计算购买价
  * 5. 随机生成 1~5 的库存数量
  * 6. BIZ-21：稀有及以上商品携带 `maxPurchaseCount` 限制购买次数，`purchasedCount` 初始化为 0
+ *
+ * P3.3：旧版用 `SHOP_TYPE_ITEM_TYPE_MAP[type].includes(item.type)` 按扁平 ItemType 筛选，
+ * 新版用 `SHOP_CATEGORIES[type].some(cat => cat.match(item))` 按判别联合 kind+subtype 筛选。
  *
  * @param shopConfig - 商店配置
  * @param allItems   - 所有物品模板列表
@@ -130,10 +172,12 @@ function getSellDiscount(rarity: string): number {
  * @returns 生成的商品列表，物品池为空时返回空数组
  */
 export function generateShopItems(shopConfig: ShopConfig, allItems: Item[], rng: Rng = defaultRng): ShopItem[] {
-  const allowedTypes = SHOP_TYPE_ITEM_TYPE_MAP[shopConfig.type];
+  const categories = SHOP_CATEGORIES[shopConfig.type];
 
-  // 筛选出该商店可售类型的物品模板
-  const availableItems = allItems.filter(item => allowedTypes.includes(item.type));
+  // 筛选出该商店可售分类的物品模板（匹配任一分类即入选）
+  const availableItems = allItems.filter(item =>
+    categories.some(cat => cat.match(item))
+  );
 
   // 随机选择 6-12 件商品
   const count = Math.min(rng.int(6, 12), availableItems.length);

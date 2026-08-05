@@ -42,7 +42,7 @@ import { equipmentDbService } from './db';
 import { useLogStore } from '@/modules/log/store';
 import { generateLogId } from '@/modules/log/service';
 import { useCharacterStore } from '@/modules/character/store';
-import { validateSlot, computeEquipBonus, canEquipItem, getEquipmentBySlot, createEmptySlotMap, checkClassRestriction, getActiveSetBonuses, SLOT_CONFIG } from './service';
+import { validateSlot, computeEquipBonus, canEquipItem, getEquipmentBySlot, createEmptySlotMap, checkClassRestriction, getActiveSetBonuses, SLOT_CONFIG, isSlotLockedByTwoHanded } from './service';
 import { errorReporter } from '@/utils/errorReport';
 
 /**
@@ -206,7 +206,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     return stats;
   });
 
-  /** 已装备的槽位数（0-6） */
+  /** 已装备的槽位数（0-7，P3.1 升级为 7 槽） */
   const equippedCount = computed(() => {
     return Object.values(equipment.value).filter(Boolean).length;
   });
@@ -232,7 +232,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     return slotList.value.filter(slot => slot.isWeapon);
   });
 
-  /** 护甲槽位列表（头部 + 胸部 + 腿部 + 鞋子） */
+  /** 护甲槽位列表（头部 + 胸部 + 手套 + 腿部 + 鞋子，P3.1 升级为 5 部位） */
   const armorSlots = computed(() => {
     return slotList.value.filter(slot => !slot.isWeapon);
   });
@@ -476,8 +476,9 @@ export const useEquipmentStore = defineStore('equipment', () => {
   /**
    * 将物品装备到指定槽位
    *
-   * 完整的装备流程（8 步）：
+   * 完整的装备流程（9 步）：
    * 1. 槽位校验 —— validateSlot
+   * 1.5 双手武器联动校验（P3.2）—— 双手武器需 weapon2 空闲；weapon1 双手时 weapon2 锁定
    * 2. 等级校验 —— 检查 levelRequirement
    * 3. 从背包移除 —— inventoryRemoveItemCallback（失败则直接返回）
    * 4. 卸下旧装备 —— doUnequip（try/catch 含回滚，防止装备丢失）
@@ -488,6 +489,11 @@ export const useEquipmentStore = defineStore('equipment', () => {
    *
    * 第 3 步（背包移除）在第 4 步（卸旧装）之前执行，
    * 若第 4 步异常则通过 catch 块将装备放回背包，保证数据一致性。
+   *
+   * 双手武器联动（P3.2）：
+   * - 双手武器（grip='two_handed'）装入 weapon1 时，weapon2 被锁定（保持 null）
+   * - weapon1 装备双手武器后，weapon2 不可独立装备（由 step 1.5 拦截）
+   * - 卸下双手武器时，weapon2 自然释放（本就为 null）
    *
    * 背包操作通过回调注入完成（A1/G1 修复：消除 equipment → inventory 静态依赖）。
    *
@@ -500,6 +506,16 @@ export const useEquipmentStore = defineStore('equipment', () => {
 
     // 1. 校验槽位
     if (!validateSlot(item, slot)) {
+      return false;
+    }
+
+    // 1.5 双手武器联动校验（P3.2 新增）
+    // - 双手武器装到 weapon1 时，weapon2 必须空闲（否则无法双手握持）
+    // - weapon1 已装备双手武器时，weapon2 被锁定，禁止装入任何物品
+    if (item.grip === 'two_handed' && slot === 'weapon1' && equipment.value.weapon2) {
+      return false;
+    }
+    if (slot === 'weapon2' && isSlotLockedByTwoHanded(equipment.value, 'weapon2')) {
       return false;
     }
 
@@ -730,7 +746,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
    *
    * 检查逻辑：
    * - 若装备有等级限制，检查角色等级是否满足
-   * - 若传入 slot 参数，检查该槽位是否兼容
+   * - 若传入 slot 参数，检查该槽位是否兼容（含双手武器联动校验）
    * - 若未传入 slot，检查是否存在至少一个空闲的兼容槽位
    *
    * @param item - 装备物品
@@ -752,11 +768,32 @@ export const useEquipmentStore = defineStore('equipment', () => {
     }
 
     if (slot) {
-      return validateSlot(item, slot);
+      if (!validateSlot(item, slot)) return false;
+      // P3.2 双手武器联动校验
+      if (item.grip === 'two_handed' && slot === 'weapon1' && equipment.value.weapon2) {
+        return false;
+      }
+      if (slot === 'weapon2' && isSlotLockedByTwoHanded(equipment.value, 'weapon2')) {
+        return false;
+      }
+      return true;
     }
 
     const result = canEquipItem(item, equipment.value);
     return result.canEquip;
+  }
+
+  /**
+   * 检查指定槽位是否被双手武器锁定（P3.2 新增）
+   *
+   * 当 weapon1 装备双手武器时，weapon2 槽位被锁定（不可独立装备/卸下）。
+   * UI 据此渲染锁定遮罩。
+   *
+   * @param slot - 目标槽位
+   * @returns 是否被双手武器锁定
+   */
+  function isSlotLocked(slot: EquipmentSlot): boolean {
+    return isSlotLockedByTwoHanded(equipment.value, slot);
   }
 
   /**
@@ -873,6 +910,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     getEquipment,
     getEquippedItem,
     canEquip,
+    isSlotLocked,
     getEquipmentTemplate,
 
     // 模板管理

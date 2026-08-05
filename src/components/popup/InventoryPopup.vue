@@ -73,41 +73,38 @@
             </div>
             <p class="detail-desc">{{ selectedEntry.info?.description }}</p>
             <div class="detail-info">
-              <span
-                >类型:
-                {{ getTypeName(selectedEntry.info?.type || 'misc') }}</span
-              >
+              <span>类型: {{ selectedEntry.info ? getItemDisplayName(selectedEntry.info) : '未知' }}</span>
               <span>数量: {{ selectedEntry.item.count }}</span>
               <span v-if="selectedEntry.info?.levelRequirement"
                 >等级: {{ selectedEntry.info.levelRequirement }}</span
               >
             </div>
-            <div v-if="selectedEntry.info?.bonus" class="bonus-info">
+            <div v-if="selectedBonus.length" class="bonus-info">
               <div
-                v-for="(value, stat) in selectedEntry.info?.bonus"
-                :key="stat"
+                v-for="item in selectedBonus"
+                :key="item.stat"
                 class="bonus-item"
               >
-                <span class="bonus-name">{{ getStatName(stat) }}</span>
-                <span class="bonus-value">+{{ value }}</span>
+                <span class="bonus-name">{{ getStatName(item.stat) }}</span>
+                <span class="bonus-value">{{ item.value > 0 ? '+' : '' }}{{ item.value }}</span>
               </div>
             </div>
-            <div v-if="selectedEntry.info?.effect" class="effect-info">
-              <EffectTag :type="selectedEntry.info.effect.type" />
-              <span class="effect-value">{{
-                getEffectValueText(selectedEntry.info.effect)
-              }}</span>
+            <div v-if="selectedEffects.length" class="effect-list">
+              <div v-for="(eff, i) in selectedEffects" :key="i" class="effect-info">
+                <EffectTag :type="eff.type" />
+                <span class="effect-value">{{ describeEffect(eff) }}</span>
+              </div>
             </div>
             <div class="detail-actions">
               <button
-                v-if="selectedEntry.info?.consumable"
+                v-if="selectedEntry.info?.kind === 'consumable'"
                 class="action-btn use"
                 @click="useItem(selectedEntry.item.itemId)"
               >
                 使用
               </button>
               <button
-                v-if="isEquipment(selectedEntry.info?.type)"
+                v-if="selectedEntry.info?.kind === 'equipment'"
                 class="action-btn equip"
                 @click="equipItem(selectedEntry.item.itemId)"
               >
@@ -163,7 +160,7 @@
           <span class="slot-icon"
             ><BaseIcon :name="getSlotIcon(slot)" gradient="metal" :size="18"
           /></span>
-          <span class="slot-name">{{ SLOT_NAMES[slot] }}</span>
+          <span class="slot-name">{{ SLOT_CONFIG[slot].name }}</span>
         </button>
       </div>
     </div>
@@ -193,26 +190,26 @@ import { useResponsiveGrid } from '@/composables/useResponsiveGrid';
 import type {
   InventoryItem,
   Item,
-  ItemType,
-  ItemRarity,
   ItemEffect
 } from '@/modules/inventory';
-import type { EquipmentSlot, EquipmentItem } from '@/modules/equipment';
+import type { Stats } from '@/modules/character';
+import { SLOT_CONFIG, type EquipmentSlot, type EquipmentItem } from '@/modules/equipment';
+import { getRarityName, describeEffect, getStatName } from '@/modules/item/descriptors';
+import {
+  getItemDisplayName,
+  getItemCategory,
+  CATEGORY_ORDER,
+  CATEGORY_NAMES,
+  type ItemCategory
+} from '@/modules/item/typeRegistry';
 
 interface ItemEntry {
   item: InventoryItem;
   info: Item | null;
 }
 
-// 槽位中文名称映射
-const SLOT_NAMES: Record<EquipmentSlot, string> = {
-  weapon1: '主手武器',
-  weapon2: '副手武器',
-  armor1: '护甲槽1',
-  armor2: '护甲槽2',
-  armor3: '护甲槽3',
-  armor4: '护甲槽4'
-};
+// P3.1：槽位中文名直接复用 SLOT_CONFIG，避免重复维护 7 槽映射
+// SLOT_CONFIG 定义于 slotRegistry.ts，包含 name/icon/group 三元数据
 
 // P2 BIZ-9 修复：跟踪待清理的 animationend 监听器，弹窗卸载时主动移除
 // 避免 { once: true } 在动画未触发时残留（如弹窗快速关闭）
@@ -237,7 +234,7 @@ const equipmentStore = useEquipmentStore();
 const toast = useToast();
 const gold = computed(() => characterStore.gold);
 
-const selectedCategory = ref<'all' | ItemType>('all');
+const selectedCategory = ref<'all' | ItemCategory>('all');
 const selectedEntry = ref<ItemEntry | null>(null);
 
 // 丢弃确认弹窗状态
@@ -266,93 +263,20 @@ const maxSlots = 50;
 const gridContainerRef = ref<HTMLElement | null>(null);
 const { gridItems, itemSize } = useResponsiveGrid(gridContainerRef, 48, 6);
 
+// P3.3：分类标签从 typeRegistry 的 CATEGORY_ORDER 派生（消耗品/装备/材料/其他），
+// 替代旧版平铺 9 个 ItemType 的认知负担（plan.md U5）
 const categories = [
   { id: 'all' as const, name: '全部' },
-  { id: 'potion' as const, name: '药水' },
-  { id: 'scroll' as const, name: '卷轴' },
-  { id: 'food' as const, name: '食物' },
-  { id: 'material' as const, name: '材料' },
-  { id: 'weapon' as const, name: '武器' },
-  { id: 'armor' as const, name: '护甲' },
-  { id: 'misc' as const, name: '杂项' }
+  ...CATEGORY_ORDER.map(cat => ({ id: cat, name: CATEGORY_NAMES[cat] }))
 ];
 
-const rarityNames: Record<ItemRarity, string> = {
-  common: '普通',
-  uncommon: '优秀',
-  rare: '稀有',
-  epic: '史诗',
-  legendary: '传说'
-};
-
-const typeNames: Record<ItemType, string> = {
-  gold: '货币',
-  potion: '药水',
-  scroll: '卷轴',
-  food: '食物',
-  material: '材料',
-  quest: '任务物品',
-  weapon: '武器',
-  armor: '护甲',
-  misc: '杂项'
-};
-
-function getRarityName(rarity: ItemRarity) {
-  return rarityNames[rarity] || rarity;
-}
-
-function getTypeName(type: ItemType) {
-  return typeNames[type] || type;
-}
-
-function getStatName(stat: string) {
-  const statMap: Record<string, string> = {
-    str: '力量',
-    dex: '敏捷',
-    con: '体质',
-    int: '智力',
-    wis: '感知',
-    cha: '魅力'
-  };
-  return statMap[stat] || stat;
-}
-
-/** 获取效果数值文本（用于 EffectTag 标签旁显示） */
-function getEffectValueText(effect: ItemEffect): string {
-  const { type, value } = effect;
-  if (typeof value !== 'number') return '';
-  switch (type) {
-    case 'health_restore':
-      return `恢复 ${value} 点`;
-    case 'mana_restore':
-      return `恢复 ${value} 点`;
-    case 'physical_damage':
-      return `伤害 ${value}`;
-    case 'magic_damage':
-      return `伤害 ${value}`;
-    default:
-      return `${value}`;
-  }
-}
-
+/** 使用物品时的 toast 文案（委托 describeEffect 统一效果描述） */
 function getEffectToast(info: Item): string {
-  if (!info.effect) return `使用了 ${info.name}`;
-  const { type, value } = info.effect;
-  switch (type) {
-    case 'health_restore':
-      return `恢复了 ${value} 点生命值`;
-    case 'mana_restore':
-      return `恢复了 ${value} 点法力值`;
-    case 'physical_damage':
-    case 'magic_damage':
-      return `造成了 ${value} 点伤害`;
-    default:
-      return `使用了 ${info.name}`;
+  // P3.3：消耗品用 effects[] 表达多效果，非消耗品无使用效果
+  if (info.kind === 'consumable' && info.effects.length > 0) {
+    return info.effects.map(describeEffect).join('，');
   }
-}
-
-function isEquipment(type?: ItemType) {
-  return type === 'weapon' || type === 'armor';
+  return `使用了 ${info.name}`;
 }
 
 function isEquipped(itemId: string): boolean {
@@ -365,16 +289,17 @@ function isEquipped(itemId: string): boolean {
   return !stillInInventory;
 }
 
-/** 根据槽位名称返回对应的图标名称 */
-function getSlotIcon(slot: string) {
-  return slot.startsWith('weapon') ? 'broadsword' : 'checked-shield';
+/** 根据槽位返回对应的图标名称（P3.1：复用 SLOT_CONFIG，替代旧版 startsWith 硬编码） */
+function getSlotIcon(slot: EquipmentSlot): string {
+  return SLOT_CONFIG[slot].icon;
 }
 
 const filteredItems = computed(() => {
   if (selectedCategory.value === 'all') return inventoryItems.value;
+  // P3.3：用 getItemCategory（基于 kind+subtype）替代旧 info?.type 比较
   return inventoryItems.value.filter((item) => {
     const info = useInventoryStore().getItemInfo(item.itemId);
-    return info?.type === selectedCategory.value;
+    return info !== null && getItemCategory(info) === selectedCategory.value;
   });
 });
 
@@ -383,6 +308,34 @@ const displayItems = computed<ItemEntry[]>(() => {
     item,
     info: useInventoryStore().getItemInfo(item.itemId)
   }));
+});
+
+/**
+ * 选中装备的属性加成列表（仅装备类物品有 bonus）
+ * P3.3：bonus 下沉为 EquipmentItem 专有字段，需 kind 收窄后访问。
+ * 按固定属性顺序输出非零项，支持负值显示。
+ */
+const selectedBonus = computed<Array<{ stat: keyof Stats; value: number }>>(() => {
+  const info = selectedEntry.value?.info;
+  if (!info || info.kind !== 'equipment') return [];
+  return (Object.keys(info.bonus) as (keyof Stats)[])
+    .filter(stat => {
+      const v = info.bonus[stat];
+      return v !== undefined && v !== 0;
+    })
+    .map(stat => ({ stat, value: info.bonus[stat] as number }));
+});
+
+/**
+ * 选中物品的使用效果列表
+ * P3.3：消耗品 effects 为必填数组，装备 effects 为可选（被动效果），其余类别无效果。
+ */
+const selectedEffects = computed<ItemEffect[]>(() => {
+  const info = selectedEntry.value?.info;
+  if (!info) return [];
+  if (info.kind === 'consumable') return info.effects;
+  if (info.kind === 'equipment') return info.effects ?? [];
+  return [];
 });
 
 const emptySlots = computed(() => {
@@ -405,7 +358,7 @@ const gridData = computed(() => {
 
 function selectCategory(catId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_category' });
-  selectedCategory.value = catId as 'all' | ItemType;
+  selectedCategory.value = catId as 'all' | ItemCategory;
 }
 
 /**
@@ -450,7 +403,8 @@ async function useItem(itemId: string) {
 
   const invItem = inventoryItems.value[index];
   const info = useInventoryStore().getItemInfo(itemId);
-  if (!info?.consumable) return;
+  // P3.3：consumable 下沉为判别字面量，用 kind 收窄替代旧 info.consumable 布尔
+  if (!info || info.kind !== 'consumable') return;
 
   // 使用物品（内部处理HP/MP恢复和堆叠数量递减）
   const success = await useInventoryStore().useItemByIndex(index);
@@ -492,15 +446,22 @@ function equipItem(itemId: string) {
     return;
   }
 
+  // P3.2：过滤掉被双手武器锁定的槽位（weapon1 双手时 weapon2 不可选）
+  const usableSlots = slots.filter(slot => !equipmentStore.isSlotLocked(slot));
+  if (usableSlots.length === 0) {
+    toast.show({ message: '副手槽被双手武器占用，无法装备', type: 'warning' });
+    return;
+  }
+
   // 如果只有一个可用槽位，直接装备
-  if (slots.length === 1) {
-    doEquip(equipTemplate, slots[0]);
+  if (usableSlots.length === 1) {
+    doEquip(equipTemplate, usableSlots[0]);
     return;
   }
 
   // 多个可用槽位时，弹出选择框
   pendingEquipItem.value = equipTemplate;
-  availableSlots.value = slots;
+  availableSlots.value = usableSlots;
   showSlotSelect.value = true;
 }
 
@@ -518,7 +479,7 @@ async function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
       });
     }
     toast.show({
-      message: `已装备 ${item.name} 到 ${SLOT_NAMES[slot]}`,
+      message: `已装备 ${item.name} 到 ${SLOT_CONFIG[slot].name}`,
       type: 'success',
       icon: '🛡️'
     });
@@ -837,11 +798,17 @@ onUnmounted(() => {
   font-weight: @font-weight-bold;
 }
 
+/* P3.3：多效果列表容器，每个效果一行 */
+.effect-list {
+  .flex-col();
+  gap: @spacing-xs;
+  margin-bottom: @spacing-md;
+}
+
 .effect-info {
   display: flex;
   align-items: center;
   gap: @spacing-md;
-  margin-bottom: @spacing-md;
 }
 
 .effect-info .effect-value {

@@ -46,7 +46,7 @@ const mocks = vi.hoisted(() => ({
   equipmentDb: {
     saveEquipment: vi.fn().mockResolvedValue(undefined),
     getEquipment: vi.fn().mockResolvedValue({
-      weapon1: null, weapon2: null, armor1: null, armor2: null, armor3: null, armor4: null,
+      weapon1: null, weapon2: null, helm: null, chest: null, gloves: null, legs: null, boots: null,
     }),
     deleteEquipment: vi.fn().mockResolvedValue(undefined),
     saveEquipmentTemplate: vi.fn().mockResolvedValue(undefined),
@@ -80,12 +80,15 @@ function makeWeapon(o: Partial<EquipmentItem> = {}): EquipmentItem {
     id: 'w1',
     name: '铁剑',
     type: 'weapon',
+    subtype: 'sword',
+    grip: 'one_handed',
     rarity: 'common',
     icon: 'game-icons:broadsword',
     description: '一把铁剑',
     value: 100,
     stackable: false,
     slots: ['weapon1'],
+    occupies: ['weapon1'],
     bonus: { str: 5 },
     ...o,
   } as EquipmentItem;
@@ -96,19 +99,21 @@ function makeArmor(o: Partial<EquipmentItem> = {}): EquipmentItem {
     id: 'a1',
     name: '铁甲',
     type: 'armor',
+    subtype: 'chest',
     rarity: 'uncommon',
     icon: 'game-icons:chest-armor',
     description: '一件铁甲',
     value: 200,
     stackable: false,
-    slots: ['armor2'],
+    slots: ['chest'],
+    occupies: ['chest'],
     bonus: { con: 3 },
     ...o,
   } as EquipmentItem;
 }
 
 function emptyEquipment(): Record<EquipmentSlot, EquippedItem | null> {
-  return { weapon1: null, weapon2: null, armor1: null, armor2: null, armor3: null, armor4: null };
+  return { weapon1: null, weapon2: null, helm: null, chest: null, gloves: null, legs: null, boots: null };
 }
 
 function buildEquipment(slots: Partial<Record<EquipmentSlot, EquippedItem>>): Record<EquipmentSlot, EquippedItem | null> {
@@ -122,6 +127,12 @@ describe('useEquipmentStore - 装备 Store', () => {
     // 重置 characterStore 状态
     mocks.characterStore.level = 10;
     mocks.characterStore.classId = 'warrior';
+    // P3.2 修复：clearAllMocks 不清除 mockRejectedValueOnce 队列，
+    // 需显式 reset removeBonus/applyBonus 避免跨用例的 rejection 污染
+    mocks.characterStore.applyBonus.mockReset();
+    mocks.characterStore.applyBonus.mockResolvedValue(undefined);
+    mocks.characterStore.removeBonus.mockReset();
+    mocks.characterStore.removeBonus.mockResolvedValue(undefined);
     mocks.inventoryCallbacks.removeItem.mockReturnValue(1);
     // A1/G1 修复：通过回调注入替代 useInventoryStore 直接依赖
     setInventoryCallbacks(mocks.inventoryCallbacks.addItem, mocks.inventoryCallbacks.removeItem);
@@ -134,7 +145,7 @@ describe('useEquipmentStore - 装备 Store', () => {
 
   // -------------------- State 初始值 --------------------
   describe('State 初始值', () => {
-    it('equipment 6 个槽位初始全为 null', () => {
+    it('equipment 7 个槽位初始全为 null', () => {
       const store = useEquipmentStore();
       expect(store.equipment).toEqual(emptyEquipment());
     });
@@ -169,7 +180,7 @@ describe('useEquipmentStore - 装备 Store', () => {
       store.$patch({
         equipment: buildEquipment({
           weapon1: { item: weapon, equippedAt: 1 },
-          armor2: { item: armor, equippedAt: 2 },
+          chest: { item: armor, equippedAt: 2 },
         }),
       });
       expect(store.totalStats).toEqual({ str: 5, dex: 2, con: 3, int: 0, wis: 0, cha: 0 });
@@ -185,17 +196,17 @@ describe('useEquipmentStore - 装备 Store', () => {
       expect(store.equippedCount).toBe(1);
     });
 
-    it('slotList 返回 6 个槽位且包含 UI 信息', () => {
+    it('slotList 返回 7 个槽位且包含 UI 信息', () => {
       const store = useEquipmentStore();
-      expect(store.slotList).toHaveLength(6);
+      expect(store.slotList).toHaveLength(7);
       expect(store.slotList[0]).toEqual(expect.objectContaining({ id: 'weapon1', isWeapon: true }));
-      expect(store.slotList[2]).toEqual(expect.objectContaining({ id: 'armor1', isWeapon: false }));
+      expect(store.slotList[2]).toEqual(expect.objectContaining({ id: 'helm', isWeapon: false }));
     });
 
-    it('weaponSlots 返回 2 个武器槽，armorSlots 返回 4 个护甲槽', () => {
+    it('weaponSlots 返回 2 个武器槽，armorSlots 返回 5 个护甲槽', () => {
       const store = useEquipmentStore();
       expect(store.weaponSlots).toHaveLength(2);
-      expect(store.armorSlots).toHaveLength(4);
+      expect(store.armorSlots).toHaveLength(5);
     });
 
     it('activeSetBonuses 无套装装备时返回空数组', () => {
@@ -215,7 +226,7 @@ describe('useEquipmentStore - 装备 Store', () => {
     it('槽位不匹配（武器装到护甲槽）返回 false', async () => {
       const store = useEquipmentStore();
       store.$patch({ currentCharacterId: 'char-1' });
-      const result = await store.equipItem('armor1', makeWeapon());
+      const result = await store.equipItem('helm', makeWeapon());
       expect(result).toBe(false);
       // 未触达背包移除
       expect(mocks.inventoryCallbacks.removeItem).not.toHaveBeenCalled();
@@ -367,7 +378,7 @@ describe('useEquipmentStore - 装备 Store', () => {
       const store = useEquipmentStore();
       const weapon = makeWeapon({ slots: ['weapon1'] });
       // 武器不能装护甲槽
-      expect(store.canEquip(weapon, 'armor1')).toBe(false);
+      expect(store.canEquip(weapon, 'helm')).toBe(false);
       // 武器装主手槽
       expect(store.canEquip(weapon, 'weapon1')).toBe(true);
     });
@@ -451,7 +462,7 @@ describe('useEquipmentStore - 装备 Store', () => {
       vi.mocked(equipmentDbService.getAllEquipmentTemplates).mockResolvedValueOnce([weapon, armor]);
       // 角色已装备 w1，a1 未装备
       vi.mocked(equipmentDbService.getEquipment).mockResolvedValueOnce({
-        weapon1: 'w1', weapon2: null, armor1: null, armor2: null, armor3: null, armor4: null,
+        weapon1: 'w1', weapon2: null, helm: null, chest: null, gloves: null, legs: null, boots: null,
       });
 
       const store = useEquipmentStore();
@@ -470,7 +481,7 @@ describe('useEquipmentStore - 装备 Store', () => {
     it('DB 中不存在的装备 ID 会被忽略', async () => {
       vi.mocked(equipmentDbService.getAllEquipmentTemplates).mockResolvedValueOnce([]);
       vi.mocked(equipmentDbService.getEquipment).mockResolvedValueOnce({
-        weapon1: 'missing', weapon2: null, armor1: null, armor2: null, armor3: null, armor4: null,
+        weapon1: 'missing', weapon2: null, helm: null, chest: null, gloves: null, legs: null, boots: null,
       });
 
       const store = useEquipmentStore();
@@ -502,7 +513,7 @@ describe('useEquipmentStore - 装备 Store', () => {
       // 持久化空映射
       expect(equipmentDbService.saveEquipment).toHaveBeenCalledWith(
         'char-1',
-        { weapon1: null, weapon2: null, armor1: null, armor2: null, armor3: null, armor4: null }
+        { weapon1: null, weapon2: null, helm: null, chest: null, gloves: null, legs: null, boots: null }
       );
     });
 
@@ -532,7 +543,7 @@ describe('useEquipmentStore - 装备 Store', () => {
         classRestriction: ['warrior'], setId: 'warrior_might', bonus: { str: 3 },
       });
       const setArmor = makeArmor({
-        id: 'set_a', name: '力量之甲', slots: ['armor2'],
+        id: 'set_a', name: '力量之甲',
         classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 2 },
       });
 
@@ -540,7 +551,7 @@ describe('useEquipmentStore - 装备 Store', () => {
       // 第一件装备后套装未激活（仅 1 件），applyBonus 不含套装 str+5
       expect(mocks.characterStore.applyBonus).not.toHaveBeenCalledWith({ str: 5 });
 
-      await store.equipItem('armor2', setArmor);
+      await store.equipItem('chest', setArmor);
 
       // 第二件装备后套装激活，applyBonus 收到套装奖励 { str: 5 }
       expect(mocks.characterStore.applyBonus).toHaveBeenCalledWith({ str: 5 });
@@ -554,12 +565,12 @@ describe('useEquipmentStore - 装备 Store', () => {
         classRestriction: ['warrior'], setId: 'warrior_might', bonus: { str: 3 },
       });
       const setArmor = makeArmor({
-        id: 'set_a', name: '力量之甲', slots: ['armor2'],
+        id: 'set_a', name: '力量之甲',
         classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 2 },
       });
       // 先装备两件激活套装
       await store.equipItem('weapon1', setWeapon);
-      await store.equipItem('armor2', setArmor);
+      await store.equipItem('chest', setArmor);
       mocks.characterStore.removeBonus.mockClear();
 
       // 卸下武器，套装件数降为 1，套装失效
@@ -578,21 +589,21 @@ describe('useEquipmentStore - 装备 Store', () => {
         classRestriction: ['warrior'], setId: 'warrior_might', bonus: { str: 3 },
       });
       const setArmor = makeArmor({
-        id: 'set_a', name: '力量之甲', slots: ['armor2'],
+        id: 'set_a', name: '力量之甲',
         classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 2 },
       });
       // 先装备两件激活套装
       await store.equipItem('weapon1', setWeapon);
-      await store.equipItem('armor2', setArmor);
+      await store.equipItem('chest', setArmor);
       // 清除调用记录
       mocks.characterStore.applyBonus.mockClear();
       mocks.characterStore.removeBonus.mockClear();
 
-      // 再装备一件非套装物品（armor1 槽位），套装仍激活
+      // 再装备一件非套装物品（helm 槽位），套装仍激活
       const nonSetArmor = makeArmor({
-        id: 'non_set', name: '皮甲', slots: ['armor1'], bonus: { dex: 1 },
+        id: 'non_set', name: '皮甲', subtype: 'helm', slots: ['helm'], occupies: ['helm'], bonus: { dex: 1 },
       });
-      await store.equipItem('armor1', nonSetArmor);
+      await store.equipItem('helm', nonSetArmor);
 
       // 套装奖励已在 appliedSetBonuses 中：
       // - 行 272 falsy：appliedSetBonuses 中的条目仍在 currentKeys 中 → 不调用 removeBonus
@@ -774,6 +785,242 @@ describe('useEquipmentStore - 装备 Store', () => {
         equipment: buildEquipment({ weapon1: { item: weapon, equippedAt: 1 } }),
       });
       expect(store.totalStats).toEqual({ str: 0, dex: 3, con: 0, int: 0, wis: 0, cha: 0 });
+    });
+  });
+
+  // -------------------- P3.2：双手武器联动 --------------------
+  describe('P3.2 双手武器联动', () => {
+    /** 构造双手武器（greatsword，占主+副两槽） */
+    function makeTwoHandedWeapon(o: Partial<EquipmentItem> = {}): EquipmentItem {
+      return makeWeapon({
+        id: 'two_handed_w',
+        name: '双手巨剑',
+        subtype: 'greatsword',
+        grip: 'two_handed',
+        slots: ['weapon1'],
+        occupies: ['weapon1', 'weapon2'],
+        bonus: { str: 20 },
+        ...o,
+      });
+    }
+
+    // ---------- equipItem 双手武器装备 ----------
+    describe('equipItem 双手武器装备', () => {
+      it('双手武器在 weapon1/weapon2 都空闲时成功装备', async () => {
+        const store = useEquipmentStore();
+        store.$patch({ currentCharacterId: 'char-1' });
+        const weapon = makeTwoHandedWeapon();
+
+        const result = await store.equipItem('weapon1', weapon);
+
+        expect(result).toBe(true);
+        expect(store.equipment.weapon1?.item.id).toBe('two_handed_w');
+        // weapon2 保持 null（被锁定但无实际数据）
+        expect(store.equipment.weapon2).toBeNull();
+        // 应用了 bonus
+        expect(mocks.characterStore.applyBonus).toHaveBeenCalledWith({ str: 20 });
+      });
+
+      it('双手武器在 weapon2 已占用时拒绝装备', async () => {
+        const store = useEquipmentStore();
+        const shield = makeWeapon({
+          id: 'shield', name: '铁盾', subtype: 'shield', grip: 'off_hand',
+          slots: ['weapon2'], occupies: ['weapon2'], bonus: { con: 5 },
+        });
+        store.$patch({
+          currentCharacterId: 'char-1',
+          equipment: buildEquipment({ weapon2: { item: shield, equippedAt: 1 } }),
+        });
+        const twoHanded = makeTwoHandedWeapon();
+
+        const result = await store.equipItem('weapon1', twoHanded);
+
+        expect(result).toBe(false);
+        // 装备未写入
+        expect(store.equipment.weapon1).toBeNull();
+        // 未触达背包移除
+        expect(mocks.inventoryCallbacks.removeItem).not.toHaveBeenCalled();
+      });
+
+      it('weapon1 装备双手武器后，单手武器不可装到 weapon2', async () => {
+        const store = useEquipmentStore();
+        const twoHanded = makeTwoHandedWeapon();
+        store.$patch({
+          currentCharacterId: 'char-1',
+          equipment: buildEquipment({ weapon1: { item: twoHanded, equippedAt: 1 } }),
+        });
+        const oneHanded = makeWeapon({
+          id: 'sword2', name: '短剑', slots: ['weapon1', 'weapon2'], occupies: ['weapon2'],
+        });
+
+        const result = await store.equipItem('weapon2', oneHanded);
+
+        expect(result).toBe(false);
+        // 装备未写入
+        expect(store.equipment.weapon2).toBeNull();
+        // 未触达背包移除
+        expect(mocks.inventoryCallbacks.removeItem).not.toHaveBeenCalled();
+      });
+
+      it('weapon1 装备双手武器后，盾牌不可装到 weapon2', async () => {
+        const store = useEquipmentStore();
+        const twoHanded = makeTwoHandedWeapon();
+        store.$patch({
+          currentCharacterId: 'char-1',
+          equipment: buildEquipment({ weapon1: { item: twoHanded, equippedAt: 1 } }),
+        });
+        const shield = makeWeapon({
+          id: 'shield', name: '铁盾', subtype: 'shield', grip: 'off_hand',
+          slots: ['weapon2'], occupies: ['weapon2'],
+        });
+
+        const result = await store.equipItem('weapon2', shield);
+
+        expect(result).toBe(false);
+        expect(store.equipment.weapon2).toBeNull();
+      });
+    });
+
+    // ---------- unequipItem 双手武器卸下 ----------
+    describe('unequipItem 双手武器卸下', () => {
+      it('卸下双手武器后 weapon1 清空、weapon2 保持 null', async () => {
+        const store = useEquipmentStore();
+        const twoHanded = makeTwoHandedWeapon({ bonus: { str: 20 } });
+        store.$patch({
+          currentCharacterId: 'char-1',
+          equipment: buildEquipment({ weapon1: { item: twoHanded, equippedAt: 1 } }),
+        });
+
+        const result = await store.unequipItem('weapon1');
+
+        expect(result).not.toBeNull();
+        expect(result?.item.id).toBe('two_handed_w');
+        // weapon1 已清空
+        expect(store.equipment.weapon1).toBeNull();
+        // weapon2 本就为 null（双手武器占用期间保持空）
+        expect(store.equipment.weapon2).toBeNull();
+        // 移除了 bonus
+        expect(mocks.characterStore.removeBonus).toHaveBeenCalledWith({ str: 20 });
+        // 装备放回背包
+        expect(mocks.inventoryCallbacks.addItem).toHaveBeenCalledWith('two_handed_w', 1);
+      });
+
+      it('卸下双手武器后 weapon2 解锁，可正常装备', async () => {
+        const store = useEquipmentStore();
+        const twoHanded = makeTwoHandedWeapon();
+        store.$patch({
+          currentCharacterId: 'char-1',
+          equipment: buildEquipment({ weapon1: { item: twoHanded, equippedAt: 1 } }),
+        });
+
+        // 卸下双手武器
+        await store.unequipItem('weapon1');
+
+        // weapon2 已解锁，盾牌可装备
+        const shield = makeWeapon({
+          id: 'shield', name: '铁盾', subtype: 'shield', grip: 'off_hand',
+          slots: ['weapon2'], occupies: ['weapon2'], bonus: { con: 5 },
+        });
+        const equipResult = await store.equipItem('weapon2', shield);
+
+        expect(equipResult).toBe(true);
+        expect(store.equipment.weapon2?.item.id).toBe('shield');
+      });
+    });
+
+    // ---------- canEquip 双手武器校验 ----------
+    describe('canEquip 双手武器校验', () => {
+      it('双手武器在 weapon2 空闲时可装备到 weapon1', () => {
+        const store = useEquipmentStore();
+        const twoHanded = makeTwoHandedWeapon();
+        expect(store.canEquip(twoHanded, 'weapon1')).toBe(true);
+      });
+
+      it('双手武器在 weapon2 已占用时不可装备到 weapon1', () => {
+        const store = useEquipmentStore();
+        const shield = makeWeapon({
+          id: 'shield', subtype: 'shield', grip: 'off_hand',
+          slots: ['weapon2'], occupies: ['weapon2'],
+        });
+        store.$patch({
+          equipment: buildEquipment({ weapon2: { item: shield, equippedAt: 1 } }),
+        });
+        const twoHanded = makeTwoHandedWeapon();
+        expect(store.canEquip(twoHanded, 'weapon1')).toBe(false);
+      });
+
+      it('weapon1 装备双手武器后 canEquip 单手武器到 weapon2 返回 false', () => {
+        const store = useEquipmentStore();
+        const twoHanded = makeTwoHandedWeapon();
+        store.$patch({
+          equipment: buildEquipment({ weapon1: { item: twoHanded, equippedAt: 1 } }),
+        });
+        const oneHanded = makeWeapon({ slots: ['weapon1', 'weapon2'] });
+        expect(store.canEquip(oneHanded, 'weapon2')).toBe(false);
+      });
+
+      it('weapon1 装备双手武器后 canEquip（不指定槽位）单手武器返回 false', () => {
+        const store = useEquipmentStore();
+        const twoHanded = makeTwoHandedWeapon();
+        store.$patch({
+          equipment: buildEquipment({ weapon1: { item: twoHanded, equippedAt: 1 } }),
+        });
+        const oneHanded = makeWeapon({ slots: ['weapon1', 'weapon2'] });
+        // weapon1 被占用、weapon2 被锁定 → 无可用槽位
+        expect(store.canEquip(oneHanded)).toBe(false);
+      });
+    });
+
+    // ---------- isSlotLocked 槽位锁定查询 ----------
+    describe('isSlotLocked 槽位锁定查询', () => {
+      it('weapon1 无装备时 weapon2 未锁定', () => {
+        const store = useEquipmentStore();
+        expect(store.isSlotLocked('weapon2')).toBe(false);
+      });
+
+      it('weapon1 装备单手武器时 weapon2 未锁定', () => {
+        const store = useEquipmentStore();
+        const oneHanded = makeWeapon({ grip: 'one_handed' });
+        store.$patch({
+          equipment: buildEquipment({ weapon1: { item: oneHanded, equippedAt: 1 } }),
+        });
+        expect(store.isSlotLocked('weapon2')).toBe(false);
+      });
+
+      it('weapon1 装备双手武器时 weapon2 被锁定', () => {
+        const store = useEquipmentStore();
+        const twoHanded = makeTwoHandedWeapon();
+        store.$patch({
+          equipment: buildEquipment({ weapon1: { item: twoHanded, equippedAt: 1 } }),
+        });
+        expect(store.isSlotLocked('weapon2')).toBe(true);
+      });
+
+      it('卸下双手武器后 weapon2 解锁', async () => {
+        const store = useEquipmentStore();
+        const twoHanded = makeTwoHandedWeapon();
+        store.$patch({
+          currentCharacterId: 'char-1',
+          equipment: buildEquipment({ weapon1: { item: twoHanded, equippedAt: 1 } }),
+        });
+        // 装备时锁定
+        expect(store.isSlotLocked('weapon2')).toBe(true);
+
+        // 卸下后解锁
+        await store.unequipItem('weapon1');
+        expect(store.isSlotLocked('weapon2')).toBe(false);
+      });
+
+      it('非 weapon2 槽位永远不锁定', () => {
+        const store = useEquipmentStore();
+        const twoHanded = makeTwoHandedWeapon();
+        store.$patch({
+          equipment: buildEquipment({ weapon1: { item: twoHanded, equippedAt: 1 } }),
+        });
+        expect(store.isSlotLocked('weapon1')).toBe(false);
+        expect(store.isSlotLocked('helm')).toBe(false);
+        expect(store.isSlotLocked('chest')).toBe(false);
+      });
     });
   });
 });

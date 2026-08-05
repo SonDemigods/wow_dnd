@@ -6,7 +6,8 @@
  * @module shop
  */
 
-import type { ItemRarity, ItemType, ItemEffect } from '@/modules/inventory/types';
+import type { ItemRarity, ItemEffect } from '@/modules/inventory/types';
+import type { ItemKind } from '@/modules/item/types';
 
 /**
  * 商店类型（联合类型字面量）
@@ -89,16 +90,21 @@ export interface ShopItem {
  * 供 ShopPopup 等组件直接渲染，无需额外查询物品详情。
  * 由 {@link mergeItems} 函数生成，不在 DB 中单独存储。
  *
+ * P3.3 升级：旧 `type: ItemType` 改为 `kind: ItemKind` + `typeName: string`
+ * （预计算的显示名，UI 直接渲染无需再查 typeRegistry）；旧 `effect?: ItemEffect`
+ * （单效果）改为 `effects?: ItemEffect[]`（多效果数组）。
+ *
  * @property {string} id - 展示唯一标识（用于 v-for key，通常等于 itemId）
  * @property {string} itemId - 物品ID
  * @property {string} name - 物品名称
- * @property {ItemType} type - 物品分类，复用 inventory 的 ItemType
+ * @property {ItemKind} kind - 物品大类（判别字段，P3.3 替代旧 type）
+ * @property {string} typeName - 物品类型显示名（预计算，供 UI 直接渲染）
  * @property {ItemRarity} quality - 稀有度，复用 inventory 的 ItemRarity
  * @property {string} icon - 物品图标
  * @property {string} description - 物品描述文本
  * @property {number} price - 当前售价
  * @property {number} quantity - 库存数量
- * @property {ItemEffect} [effect] - 物品效果（可选），复用 inventory 的 ItemEffect
+ * @property {ItemEffect[]} [effects] - 物品效果列表（可选，P3.3 替代旧单 effect）
  *
  * @see mergeItems 生成此类型的函数
  */
@@ -106,13 +112,14 @@ export interface ShopDisplayItem {
   id: string;
   itemId: string;
   name: string;
-  type: ItemType;
+  kind: ItemKind;
+  typeName: string;
   quality: ItemRarity;
   icon: string;
   description: string;
   price: number;
   quantity: number;
-  effect?: ItemEffect;
+  effects?: ItemEffect[];
 }
 
 // ============================================================================

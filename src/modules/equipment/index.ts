@@ -24,6 +24,7 @@ export type {
   EquipmentSlot,
   EquipmentType,
   EquipmentItem,
+  EquipmentItemDraft,
   SetBonus,
   SetBonusEffect,
   ItemSet,
@@ -33,6 +34,24 @@ export type {
   EquipmentTemplateStorage,
   EquipmentStorage
 } from './types';
+
+// P3.1：槽位基础设施从 slotRegistry 统一导出
+// service.ts 仍 re-export 这些符号保持向后兼容，外部新代码建议从 barrel 导入
+export {
+  ALL_EQUIPMENT_SLOTS,
+  SLOT_CONFIG,
+  SLOT_GROUP,
+  createEmptySlotMap,
+  getSlotGroup,
+  deriveSlots,
+  deriveGrip,
+  SUBTYPE_SLOTS,
+  SUBTYPE_OCCUPIES,
+  WEAPON_SUBTYPE_GRIP,
+  validateSubtypeSlot,
+  isWeaponSubtype,
+  isArmorSubtype
+} from './slotRegistry';
 
 export { EquipmentDbService, equipmentDbService } from './db';
 

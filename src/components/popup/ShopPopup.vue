@@ -82,11 +82,11 @@
             </div>
             <p class="detail-desc">{{ selectedBuyEntry.description }}</p>
             <div class="detail-info">
-              <span>类型: {{ getTypeName(selectedBuyEntry.type) }}</span>
+              <span>类型: {{ selectedBuyEntry.typeName }}</span>
               <span>单价: <BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ selectedBuyEntry.price }}</span>
             </div>
-            <div v-if="selectedBuyEntry.effect" class="effect-info">
-              <span>{{ getEffectText(selectedBuyEntry.effect) }}</span>
+            <div v-if="selectedBuyEntry.effects?.length" class="effect-info">
+              <span v-for="(eff, i) in selectedBuyEntry.effects" :key="i">{{ describeEffect(eff) }}</span>
             </div>
             <div class="detail-actions">
               <div class="quantity-selector">
@@ -119,12 +119,12 @@
             </div>
             <p class="detail-desc">{{ selectedSellEntry.info?.description }}</p>
             <div class="detail-info">
-              <span>类型: {{ getTypeName(selectedSellEntry.info?.type || 'misc') }}</span>
+              <span>类型: {{ getSellItemTypeName(selectedSellEntry.info) }}</span>
               <span>持有: {{ selectedSellEntry.item.count }}</span>
               <span>单价: <BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ getSellPrice(selectedSellEntry.item.itemId) }}</span>
             </div>
-            <div v-if="selectedSellEntry.info?.effect" class="effect-info">
-              <span>{{ getEffectText(selectedSellEntry.info.effect) }}</span>
+            <div v-if="getItemEffects(selectedSellEntry.info).length" class="effect-info">
+              <span v-for="(eff, i) in getItemEffects(selectedSellEntry.info)" :key="i">{{ describeEffect(eff) }}</span>
             </div>
             <div class="detail-actions">
               <div class="quantity-selector">
@@ -168,9 +168,11 @@ import { useCharacterStore } from '@/modules/character';
 import { useInventoryStore } from '@/modules/inventory';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { errorHandler } from '@/services/ErrorHandler';
-import { SHOP_TYPE_ITEM_TYPE_MAP } from '@/modules/shop';
+import { SHOP_CATEGORIES } from '@/modules/shop';
 import type { ShopDisplayItem } from '@/modules/shop';
-import type { ItemType, ItemRarity, ItemEffect } from '@/modules/inventory';
+import type { Item, ItemEffect } from '@/modules/inventory';
+import { getRarityName, describeEffect } from '@/modules/item/descriptors';
+import { getItemDisplayName } from '@/modules/item/typeRegistry';
 import BasePopup from '../common/BasePopup.vue';
 import ItemIcon from '../common/ItemIcon.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
@@ -213,68 +215,96 @@ function switchTab(tab: 'buy' | 'sell') {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_tab' });
 }
 
-const selectedCategory = ref<'all' | ItemType>('all');
+const selectedCategory = ref<'all' | string>('all');
 function selectShopCategory(catId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_category' });
-  selectedCategory.value = catId as 'all' | ItemType;
+  selectedCategory.value = catId;
 }
 
 const currentShopId = computed(() => shopStore.currentShopId || '');
 const shopName = computed(() => shopStore.getShopConfig(currentShopId.value)?.name || '商店');
 
-// ==================== 图标/名称映射与工具函数 ====================
+// ==================== 辅助函数（P3.3：从 Item 判别联合提取展示数据） ====================
 
-const rarityNames: Record<ItemRarity, string> = { common: '普通', uncommon: '优秀', rare: '稀有', epic: '史诗', legendary: '传说' };
-const typeNames: Record<ItemType, string> = {
-  gold: '货币', potion: '药水', scroll: '卷轴', food: '食物',
-  material: '材料', quest: '任务物品', weapon: '武器', armor: '护甲', misc: '杂项'
-};
-
-function getRarityName(rarity: ItemRarity) { return rarityNames[rarity] || rarity; }
-function getTypeName(type: ItemType | string) { return typeNames[type as ItemType] || type; }
-function getEffectText(effect: ItemEffect | { type: string; value: number | Partial<Record<string, number>> }) {
-  if (!effect) return '';
-  if (effect.type === 'health_restore') return `恢复 ${effect.value} 点生命值`;
-  if (effect.type === 'mana_restore') return `恢复 ${effect.value} 点法力值`;
-  if (effect.type === 'physical_damage') return `造成 ${effect.value} 点物理伤害`;
-  if (effect.type === 'magic_damage') return `造成 ${effect.value} 点魔法伤害`;
-  if (effect.type === 'stat') return '提升属性';
-  return '';
+/** 从 Item 提取效果列表（供模板展示，窄化判别联合） */
+function getItemEffects(info: Item | null): ItemEffect[] {
+  if (!info) return [];
+  if (info.kind === 'consumable') return info.effects;
+  if (info.kind === 'equipment') return info.effects ?? [];
+  return [];
 }
 
-// ==================== 分类（P3-161：按商店类型动态生成，消除死分类） ====================
+/** 获取出售物品的类型展示名 */
+function getSellItemTypeName(info: Item | null): string {
+  return info ? getItemDisplayName(info) : '杂项';
+}
+
+// ==================== 分类（P3.3：按 SHOP_CATEGORIES 动态生成） ====================
 
 const categories = computed(() => {
   const base = [{ id: 'all' as const, name: '全部' }];
   const config = shopStore.getShopConfig(currentShopId.value);
   if (!config) return base;
-  const allowedTypes = SHOP_TYPE_ITEM_TYPE_MAP[config.type];
-  return [...base, ...allowedTypes.map(t => ({ id: t, name: typeNames[t] }))];
+  const shopCats = SHOP_CATEGORIES[config.type];
+  return [...base, ...shopCats.map(c => ({ id: c.id, name: c.name }))];
 });
 
 // ==================== 商品列表（UI 派生数据：富化 + 按分类筛选） ====================
 
-/** 将 store 的 ShopItem[] 富化为 ShopDisplayItem[]（注入物品模板信息），并按分类筛选 */
+/**
+ * 将 store 的 ShopItem[] 富化为 ShopDisplayItem[]（注入物品模板信息），并按分类筛选
+ *
+ * P3.3：富化时从 Item 判别联合提取 kind/typeName/effects，替代旧版 type/effect。
+ * 分类筛选复用 SHOP_CATEGORIES 的 match 谓词，替代旧版 type === selectedCategory。
+ */
 const displayShopItems = computed<ShopDisplayItem[]>(() => {
+  const config = shopStore.getShopConfig(currentShopId.value);
+  const shopCats = config ? SHOP_CATEGORIES[config.type] : [];
+
   const enriched = shopStore.currentItems.map(shopItem => {
     const itemInfo = inventoryStore.getItemInfo(shopItem.itemId);
     if (!itemInfo) return null;
+    // P3.3：从 Item 提取 kind/typeName/effects（替代旧 type/effect）
+    const effects = itemInfo.kind === 'consumable' ? itemInfo.effects
+      : itemInfo.kind === 'equipment' ? itemInfo.effects
+      : undefined;
     return {
-      id: itemInfo.id, itemId: shopItem.itemId, name: itemInfo.name, type: itemInfo.type,
-      quality: itemInfo.rarity, icon: itemInfo.icon, description: itemInfo.description,
-      price: shopItem.price, quantity: shopItem.quantity, effect: itemInfo.effect
+      id: itemInfo.id,
+      itemId: shopItem.itemId,
+      name: itemInfo.name,
+      kind: itemInfo.kind,
+      typeName: getItemDisplayName(itemInfo),
+      quality: itemInfo.rarity,
+      icon: itemInfo.icon,
+      description: itemInfo.description,
+      price: shopItem.price,
+      quantity: shopItem.quantity,
+      effects,
     } as ShopDisplayItem;
   }).filter((item): item is ShopDisplayItem => item !== null);
 
   if (selectedCategory.value === 'all') return enriched;
-  return enriched.filter(item => inventoryStore.getItemInfo(item.itemId)?.type === selectedCategory.value);
+  // P3.3：用 match 谓词筛选（替代旧 type === selectedCategory）
+  const selectedCat = shopCats.find(c => c.id === selectedCategory.value);
+  if (!selectedCat) return enriched;
+  return enriched.filter(item => {
+    const info = inventoryStore.getItemInfo(item.itemId);
+    return info ? selectedCat.match(info) : false;
+  });
 });
 
 const displaySellItems = computed<SellItemEntry[]>(() => {
+  const config = shopStore.getShopConfig(currentShopId.value);
+  const shopCats = config ? SHOP_CATEGORIES[config.type] : [];
   const invItems = inventoryStore.inventory;
   const filtered = selectedCategory.value === 'all'
     ? invItems
-    : invItems.filter(item => inventoryStore.getItemInfo(item.itemId)?.type === selectedCategory.value);
+    : invItems.filter(item => {
+        const info = inventoryStore.getItemInfo(item.itemId);
+        if (!info) return false;
+        const cat = shopCats.find(c => c.id === selectedCategory.value);
+        return cat ? cat.match(info) : false;
+      });
   return filtered.map(item => ({ item, info: inventoryStore.getItemInfo(item.itemId) }));
 });
 

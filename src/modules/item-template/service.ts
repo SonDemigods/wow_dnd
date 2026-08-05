@@ -15,31 +15,19 @@ import type { EquipmentItem } from '../equipment/types';
 /**
  * 将装备模板转换为统一的 Item 格式
  *
- * 装备模板字段映射到 Item 接口：
- * - 保留：id/name/type/rarity/level/icon/description/bonus/value/stackable/levelRequirement
- * - 丢弃：slots/classRestriction/setId（装备专有字段，在统一 Item 视图中不适用）
- * - 不映射：effect/consumable/template（装备上下文中不适用）
+ * P3.3 升级：EquipmentItem 已是 Item 判别联合的成员（kind='equipment'），
+ * 不再需要"丢字段"转换。本函数现作为 identity 保留，供 mergeItemTemplates 调用，
+ * 保持调用方接口不变。
  *
- * 注意：装备的 type 字段为 EquipmentType（'weapon' | 'armor'），
- * 是 ItemType 的子集，可直接赋值给 Item.type。
+ * 旧版问题（plan.md T3）：显式丢弃 slots/classRestriction/setId，导致统一 Map 视图中
+ * 装备退化为普通 Item，形成"双源数据"。判别联合彻底消除此问题——UI 通过
+ * `item.kind === 'equipment'` 窄化即可安全访问全部装备专有字段。
  *
- * @param equip - 装备模板（EquipmentItem 格式）
+ * @param equip - 装备模板（EquipmentItem，已是 Item 联合成员）
  * @returns 统一物品格式（Item）
  */
 export function convertEquipmentToItem(equip: EquipmentItem): Item {
-  return {
-    id: equip.id,
-    name: equip.name,
-    type: equip.type,
-    rarity: equip.rarity,
-    level: equip.level,
-    icon: equip.icon,
-    description: equip.description,
-    bonus: equip.bonus,
-    value: equip.value,
-    stackable: equip.stackable || false,
-    levelRequirement: equip.levelRequirement
-  };
+  return equip;
 }
 
 /**

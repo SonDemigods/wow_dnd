@@ -48,8 +48,20 @@ export function usePlayerItem(
     let damageResult: { damage: number; isCrit: boolean } | null = null;
     let itemKilledEnemy = false;
 
-    if (itemInfo?.effect) {
-      const { type, value } = itemInfo.effect;
+    // P3.3：从 effects[] 提取伤害型和恢复型效果（替代旧 item.effect 单效果）
+    // 消耗品 effects 为必填数组，装备 effects 为可选（被动效果），其余类别无效果
+    const itemEffects = itemInfo?.kind === 'consumable' ? itemInfo.effects
+                      : itemInfo?.kind === 'equipment' ? (itemInfo.effects ?? [])
+                      : [];
+    const damageEffect = itemEffects.find(e =>
+      (e.type === 'magic_damage' || e.type === 'physical_damage') && typeof e.value === 'number' && e.value > 0
+    );
+    const restoreEffect = itemEffects.find(e =>
+      (e.type === 'health_restore' || e.type === 'mana_restore') && typeof e.value === 'number' && e.value > 0
+    );
+
+    if (damageEffect) {
+      const { type, value } = damageEffect;
 
       if ((type === 'magic_damage' || type === 'physical_damage') && typeof value === 'number' && value > 0) {
         // 伤害型物品：对当前目标造成伤害
@@ -130,8 +142,8 @@ export function usePlayerItem(
     await ctx.inventory.useItem(itemId);
 
     // 生命/法力恢复音效事件
-    if (itemInfo?.effect) {
-      const { type, value } = itemInfo.effect;
+    if (restoreEffect) {
+      const { type, value } = restoreEffect;
       if ((type === 'health_restore' || type === 'mana_restore') && typeof value === 'number' && value > 0) {
         eventBus.emit(GameEvents.COMBAT_CAST_HEAL, {
           amount: value,

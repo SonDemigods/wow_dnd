@@ -39,7 +39,7 @@ const mocks = vi.hoisted(() => ({
   equipmentDb: {
     saveEquipment: vi.fn().mockResolvedValue(undefined),
     getEquipment: vi.fn().mockResolvedValue({
-      weapon1: null, weapon2: null, armor1: null, armor2: null, armor3: null, armor4: null,
+      weapon1: null, weapon2: null, helm: null, chest: null, gloves: null, legs: null, boots: null,
     }),
     deleteEquipment: vi.fn().mockResolvedValue(undefined),
     saveEquipmentTemplate: vi.fn().mockResolvedValue(undefined),
@@ -76,12 +76,15 @@ function makeWeapon(o: Partial<EquipmentItem> = {}): EquipmentItem {
     id: 'w1',
     name: '铁剑',
     type: 'weapon',
+    subtype: 'sword',
+    grip: 'one_handed',
     rarity: 'common',
     icon: 'game-icons:broadsword',
     description: '一把铁剑',
     value: 100,
     stackable: false,
-    slots: ['weapon1'],
+    slots: ['weapon1', 'weapon2'],
+    occupies: ['weapon1'],
     bonus: { str: 5 },
     ...o,
   } as EquipmentItem;
@@ -92,19 +95,21 @@ function makeArmor(o: Partial<EquipmentItem> = {}): EquipmentItem {
     id: 'a1',
     name: '铁甲',
     type: 'armor',
+    subtype: 'chest',
     rarity: 'uncommon',
     icon: 'game-icons:chest-armor',
     description: '一件铁甲',
     value: 200,
     stackable: false,
-    slots: ['armor2'],
+    slots: ['chest'],
+    occupies: ['chest'],
     bonus: { con: 3 },
     ...o,
   } as EquipmentItem;
 }
 
 function emptyEquipment(): Record<EquipmentSlot, EquippedItem | null> {
-  return { weapon1: null, weapon2: null, armor1: null, armor2: null, armor3: null, armor4: null };
+  return { weapon1: null, weapon2: null, helm: null, chest: null, gloves: null, legs: null, boots: null };
 }
 
 function buildEquipment(slots: Partial<Record<EquipmentSlot, EquippedItem>>): Record<EquipmentSlot, EquippedItem | null> {

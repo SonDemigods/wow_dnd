@@ -15,7 +15,6 @@ import { describe, it, expect } from 'vitest';
 import {
   INVENTORY_SIZE,
   MAX_STACK,
-  ITEM_TYPE_NAMES,
   RARITY_ORDER,
   canStackItem,
   computeStackResult,
@@ -25,21 +24,31 @@ import {
   sortAndFilterInventory,
   computeUseEffect,
 } from '@/modules/inventory/service';
+import { getItemDisplayName } from '@/modules/item/typeRegistry';
 import type { Item, InventoryItem, ItemFilters } from '@/modules/inventory/types';
 
-/** 构造测试用 Item */
+/**
+ * 构造测试用 Item（P3.3：默认为消耗品药水，使用判别联合格式）
+ *
+ * 新模型以 `kind` 为判别字段，消耗品需提供 subtype/effects/useMode 等字面量字段。
+ * 通过 Partial<Item> 覆盖可改写为其他子类型（如 equipment/material）。
+ */
 function makeItem(overrides: Partial<Item> = {}): Item {
   return {
     id: 'item_p1',
     name: '治疗药水',
-    type: 'potion',
+    kind: 'consumable',
+    subtype: 'potion',
     rarity: 'common',
     icon: 'game-icons:potion',
     description: '恢复 50 点生命值',
     value: 10,
     stackable: true,
+    consumable: true,
+    effects: [],
+    useMode: 'instant',
     ...overrides,
-  };
+  } as Item;
 }
 
 /** 构造测试用 InventoryItem */
@@ -61,11 +70,13 @@ describe('常量定义', () => {
     expect(MAX_STACK).toBe(10);
   });
 
-  it('ITEM_TYPE_NAMES 覆盖全部 ItemType', () => {
-    expect(ITEM_TYPE_NAMES.potion).toBe('药水');
-    expect(ITEM_TYPE_NAMES.weapon).toBe('武器');
-    expect(ITEM_TYPE_NAMES.armor).toBe('护甲');
-    expect(ITEM_TYPE_NAMES.misc).toBe('杂项');
+  it('getItemDisplayName 返回各 ItemKind/Subtype 的中文名（替代旧 ITEM_TYPE_NAMES）', () => {
+    // P3.3：旧 ITEM_TYPE_NAMES（Record<ItemType, string>）已删除，
+    // 改用 typeRegistry 的 getItemDisplayName（基于 kind+subtype 的单一来源）
+    expect(getItemDisplayName(makeItem({ kind: 'consumable', subtype: 'potion' } as Partial<Item>))).toBe('药水');
+    expect(getItemDisplayName(makeItem({ kind: 'equipment', subtype: 'sword' } as Partial<Item>))).toBe('剑');
+    expect(getItemDisplayName(makeItem({ kind: 'equipment', subtype: 'chest' } as Partial<Item>))).toBe('胸甲');
+    expect(getItemDisplayName(makeItem({ kind: 'misc' } as Partial<Item>))).toBe('杂项');
   });
 
   it('RARITY_ORDER 按品质递增', () => {
@@ -169,10 +180,12 @@ describe('findItemIndex 物品查找', () => {
 });
 
 describe('sortItems 排序', () => {
+  // P3.3：mock 数据使用判别联合格式（kind/subtype），替代旧扁平 type
+  // a=equipment/sword(剑)、b=consumable/potion(药水)、c=consumable/scroll(卷轴)
   const items: Item[] = [
-    makeItem({ id: 'a', name: '史诗剑', type: 'weapon', rarity: 'epic', level: 10 }),
-    makeItem({ id: 'b', name: '普通药水', type: 'potion', rarity: 'common', level: 1 }),
-    makeItem({ id: 'c', name: '稀有卷轴', type: 'scroll', rarity: 'rare', level: 5 }),
+    makeItem({ id: 'a', name: '史诗剑', kind: 'equipment', subtype: 'sword', rarity: 'epic', level: 10 } as Partial<Item>),
+    makeItem({ id: 'b', name: '普通药水', rarity: 'common', level: 1 }),
+    makeItem({ id: 'c', name: '稀有卷轴', kind: 'consumable', subtype: 'scroll', rarity: 'rare', level: 5 }),
   ];
   const templates = makeTemplateMap(items);
 
@@ -220,12 +233,13 @@ describe('sortItems 排序', () => {
     expect(sortItems([], templates, 'rarity', 'asc')).toEqual([]);
   });
 
-  it('按 type 升序（拼音序：卷轴 < 武器 < 药水）', () => {
-    // 覆盖 case 'type' 分支（行 166-171）及 ITEM_TYPE_NAMES[itemA?.type || 'misc'] 正常路径
+  it('按 kind 升序（typeRegistry 中文名拼音序：剑 < 卷轴 < 药水）', () => {
+    // P3.3：sortBy 从 'type' 改为 'kind'，覆盖 case 'kind' 分支
+    // getItemDisplayName 返回：a=剑(jiàn)、b=药水(yào)、c=卷轴(juǎn)
+    // 拼音序：jiàn < juǎn < yào，即 剑 < 卷轴 < 药水
     const inv = [makeInvItem('a', 1), makeInvItem('b', 1), makeInvItem('c', 1)];
-    const sorted = sortItems(inv, templates, 'type', 'asc');
-    // 卷轴(scroll, juǎn) < 武器(weapon, wǔ) < 药水(potion, yào)
-    expect(sorted.map(i => i.itemId)).toEqual(['c', 'a', 'b']);
+    const sorted = sortItems(inv, templates, 'kind', 'asc');
+    expect(sorted.map(i => i.itemId)).toEqual(['a', 'c', 'b']);
   });
 
   it('按 type 降序（药水 > 武器 > 卷轴）', () => {
@@ -361,16 +375,19 @@ describe('sortItems 排序', () => {
 });
 
 describe('filterItems 筛选', () => {
+  // P3.3：mock 数据使用判别联合格式，a/b=消耗品，c=装备
   const items: Item[] = [
-    makeItem({ id: 'a', name: '治疗药水', type: 'potion', rarity: 'common', description: '恢复生命', stackable: true }),
-    makeItem({ id: 'b', name: '铁剑', type: 'weapon', rarity: 'rare', description: '锋利的剑', stackable: false }),
-    makeItem({ id: 'c', name: '魔法卷轴', type: 'scroll', rarity: 'epic', description: '施法材料', stackable: true }),
+    makeItem({ id: 'a', name: '治疗药水', rarity: 'common', description: '恢复生命', stackable: true }),
+    makeItem({ id: 'b', name: '铁剑', kind: 'equipment', subtype: 'sword', rarity: 'rare', description: '锋利的剑', stackable: false, consumable: false, bonus: {}, slots: ['weapon1'], occupies: ['weapon1'] } as Partial<Item>),
+    makeItem({ id: 'c', name: '魔法卷轴', kind: 'consumable', subtype: 'scroll', rarity: 'epic', description: '施法材料', stackable: true }),
   ];
   const templates = makeTemplateMap(items);
 
   it('按类型筛选', () => {
+    // P3.3：filters.types 改为 filters.kinds（按判别字段 ItemKind 筛选）
+    // a/c 为 consumable，b 为 equipment
     const inv = [makeInvItem('a', 1), makeInvItem('b', 1), makeInvItem('c', 1)];
-    const filters: ItemFilters = { types: ['potion', 'scroll'] };
+    const filters: ItemFilters = { kinds: ['consumable'] };
     const result = filterItems(inv, templates, filters, '');
     expect(result.map(i => i.itemId)).toEqual(['a', 'c']);
   });
@@ -441,23 +458,25 @@ describe('filterItems 筛选', () => {
 });
 
 describe('sortAndFilterInventory 组合筛选排序', () => {
+  // P3.3：mock 数据使用判别联合格式，a=装备，b/c=消耗品药水
   const items: Item[] = [
-    makeItem({ id: 'a', name: '史诗剑', type: 'weapon', rarity: 'epic', level: 10, stackable: false }),
-    makeItem({ id: 'b', name: '普通药水', type: 'potion', rarity: 'common', level: 1, stackable: true }),
-    makeItem({ id: 'c', name: '稀有药水', type: 'potion', rarity: 'rare', level: 5, stackable: true }),
+    makeItem({ id: 'a', name: '史诗剑', kind: 'equipment', subtype: 'sword', rarity: 'epic', level: 10, stackable: false, consumable: false, bonus: {}, slots: ['weapon1'], occupies: ['weapon1'] } as Partial<Item>),
+    makeItem({ id: 'b', name: '普通药水', rarity: 'common', level: 1, stackable: true }),
+    makeItem({ id: 'c', name: '稀有药水', rarity: 'rare', level: 5, stackable: true }),
   ];
   const templates = makeTemplateMap(items);
 
   it('先筛选再排序', () => {
     const inv = [makeInvItem('a', 1), makeInvItem('b', 1), makeInvItem('c', 1)];
-    // 筛选 potion 类型，按 rarity 升序
-    const result = sortAndFilterInventory(inv, templates, { types: ['potion'] }, 'rarity', 'asc', '');
+    // P3.3：filters.types 改为 filters.kinds，筛选 consumable（b/c），按 rarity 升序
+    const result = sortAndFilterInventory(inv, templates, { kinds: ['consumable'] }, 'rarity', 'asc', '');
     expect(result.map(i => i.itemId)).toEqual(['b', 'c']);
   });
 
   it('筛选后无结果时返回空数组', () => {
     const inv = [makeInvItem('a', 1)];
-    const result = sortAndFilterInventory(inv, templates, { types: ['scroll'] }, 'rarity', 'asc', '');
+    // P3.3：kinds 改为 'quest'（mock 数据中无 quest 类型物品）
+    const result = sortAndFilterInventory(inv, templates, { kinds: ['quest'] }, 'rarity', 'asc', '');
     expect(result).toEqual([]);
   });
 
@@ -471,12 +490,14 @@ describe('sortAndFilterInventory 组合筛选排序', () => {
 
 describe('computeUseEffect 物品使用效果', () => {
   it('有 effect 字段时返回 effect', () => {
-    const item = makeItem({ effect: { type: 'health_restore', value: 50 } });
+    // P3.3：旧单 effect 字段改为 effects[] 数组，computeUseEffect 提取首个非 stat 效果
+    const item = makeItem({ effects: [{ type: 'health_restore', value: 50 }] } as Partial<Item>);
     expect(computeUseEffect(item)).toEqual({ type: 'health_restore', value: 50 });
   });
 
   it('无 effect 字段时返回 null', () => {
-    const item = makeItem({ effect: undefined });
+    // P3.3：effects 为空数组时返回 null
+    const item = makeItem({ effects: [] } as Partial<Item>);
     expect(computeUseEffect(item)).toBeNull();
   });
 });

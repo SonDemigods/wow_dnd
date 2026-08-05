@@ -25,13 +25,18 @@ function makeEquipmentItem(o: Partial<EquipmentItem> = {}): EquipmentItem {
   return {
     id: 'eq-1',
     name: '铁剑',
-    type: 'weapon',
+    // P3.3：判别联合字面量（装备恒为 kind='equipment'，非消耗品）
+    kind: 'equipment',
+    subtype: 'sword',
+    grip: 'one_handed',
     rarity: 'common',
     icon: 'game-icons:sword',
     description: '一把普通的铁剑',
     value: 50,
     stackable: false,
+    consumable: false,
     slots: ['weapon1'],
+    occupies: ['weapon1'],
     bonus: { str: 3 },
     levelRequirement: 1,
     ...o,
@@ -59,24 +64,24 @@ describe('EquipmentDbService - 装备数据层（fake-indexeddb 真实 CRUD）',
       const equipment: Record<EquipmentSlot, string | null> = {
         ...makeEmptyEquipment(),
         weapon1: 'sword-1',
-        armor1: 'helmet-1',
+        helm: 'helmet-1',
       };
       await equipmentDbService.saveEquipment('char-1', equipment);
 
       const result = await equipmentDbService.getEquipment('char-1');
       expect(result).toEqual(equipment);
       expect(result.weapon1).toBe('sword-1');
-      expect(result.armor1).toBe('helmet-1');
+      expect(result.helm).toBe('helmet-1');
       expect(result.weapon2).toBeNull();
-      expect(result.armor4).toBeNull();
+      expect(result.boots).toBeNull();
     });
 
     it('角色不存在时 getEquipment 返回默认全 null 槽位映射（不返回 null）', async () => {
       const result = await equipmentDbService.getEquipment('non-existent');
       expect(result).toEqual(makeEmptyEquipment());
-      expect(Object.keys(result)).toHaveLength(6);
+      expect(Object.keys(result)).toHaveLength(7);
       expect(result.weapon1).toBeNull();
-      expect(result.armor4).toBeNull();
+      expect(result.boots).toBeNull();
     });
 
     it('覆盖保存：相同 characterId 再次保存，新数据替换旧数据', async () => {
@@ -158,7 +163,7 @@ describe('EquipmentDbService - 装备数据层（fake-indexeddb 真实 CRUD）',
       const item = makeEquipmentItem({
         id: 'iron-sword',
         name: '铁剑',
-        type: 'weapon',
+        subtype: 'sword',
         rarity: 'common',
         bonus: { str: 5, dex: 2 },
         slots: ['weapon1', 'weapon2'],
@@ -171,13 +176,19 @@ describe('EquipmentDbService - 装备数据层（fake-indexeddb 真实 CRUD）',
       expect(result).not.toBeNull();
       expect(result!.id).toBe('iron-sword');
       expect(result!.name).toBe('铁剑');
-      expect(result!.type).toBe('weapon');
+      // P3.3：旧 type 字段已删除，改为 kind='equipment' + subtype='sword'
+      expect(result!.kind).toBe('equipment');
+      expect(result!.subtype).toBe('sword');
+      expect(result!.grip).toBe('one_handed');
+      expect(result!.consumable).toBe(false);
       expect(result!.rarity).toBe('common');
       expect(result!.icon).toBe('game-icons:sword');
       expect(result!.description).toBe('一把普通的铁剑');
       expect(result!.bonus).toEqual({ str: 5, dex: 2 });
       expect(result!.value).toBe(50);
+      // P3.1：slots 始终由 subtype='sword' 派生为 ['weapon1','weapon2']，忽略输入 slots
       expect(result!.slots).toEqual(['weapon1', 'weapon2']);
+      expect(result!.occupies).toEqual(['weapon1']);
       expect(result!.levelRequirement).toBe(5);
       expect(result!.stackable).toBe(false);
     });
@@ -191,13 +202,17 @@ describe('EquipmentDbService - 装备数据层（fake-indexeddb 真实 CRUD）',
       const item: EquipmentItem = {
         id: 'plain',
         name: '普通装备',
-        type: 'armor',
+        kind: 'equipment',
+        subtype: 'chest',
+        grip: undefined,
         rarity: 'common',
         icon: 'icon',
         description: '',
         value: 0,
         stackable: false,
-        slots: ['armor1'],
+        consumable: false,
+        slots: ['chest'],
+        occupies: ['chest'],
       };
       await equipmentDbService.saveEquipmentTemplate(item);
 
@@ -238,12 +253,13 @@ describe('EquipmentDbService - 装备数据层（fake-indexeddb 真实 CRUD）',
       expect(result!.bonus).toEqual({});
     });
 
-    it('slots 不是数组时 mapTemplateToEquipmentItem 返回空数组（Array.isArray 兜底分支）', async () => {
-      // 直接写入 slots 为非数组的损坏数据，验证 Array.isArray 兜底
+    it('DB slots 字段损坏时由 subtype 派生 slots（P3.1：slots 始终由 subtype 派生，忽略 DB slots）', async () => {
+      // 直接写入 slots 为非数组的损坏数据，验证 slots 由 subtype 派生而非读 DB
       await db.config_equipmentItems.put({
         id: 'bad-slots',
         name: '损坏槽位装备',
         type: 'weapon',
+        subtype: 'sword',
         rarity: 'common',
         icon: 'icon',
         description: '',
@@ -256,7 +272,8 @@ describe('EquipmentDbService - 装备数据层（fake-indexeddb 真实 CRUD）',
       });
       const result = await equipmentDbService.getEquipmentTemplate('bad-slots');
       expect(result).not.toBeNull();
-      expect(result!.slots).toEqual([]);
+      // slots 由 subtype='sword' 派生为 ['weapon1','weapon2']，忽略损坏的 DB slots
+      expect(result!.slots).toEqual(['weapon1', 'weapon2']);
     });
 
     it('覆盖保存：相同 ID 再次保存，新数据替换旧数据', async () => {

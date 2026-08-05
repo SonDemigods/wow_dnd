@@ -63,31 +63,52 @@ import { unifiedItemTemplateCache } from '@/modules/item-template/cache';
 
 // ==================== 测试数据 helper ====================
 
+/**
+ * 构造测试用消耗品 Item（P3.3：默认为药水，使用判别联合格式）
+ *
+ * 新模型以 `kind` 为判别字段，消耗品需提供 subtype/effects/useMode 等字面量字段。
+ * 通过 Partial<Item> 覆盖可改写 effects（如 health_restore/stat 效果）。
+ */
 function makeItem(o: Partial<Item> = {}): Item {
   return {
     id: 'p1',
     name: '生命药水',
-    type: 'potion',
+    kind: 'consumable',
+    subtype: 'potion',
     rarity: 'common',
     icon: 'game-icons:potion-ball',
     description: '恢复 50 点生命值',
     value: 10,
     stackable: true,
+    consumable: true,
+    effects: [],
+    useMode: 'instant',
     ...o,
   } as Item;
 }
 
+/**
+ * 构造测试用装备 Item（P3.3：默认为铁剑，使用判别联合格式）
+ *
+ * EquipmentItem 必须提供 subtype/bonus/slots/occupies 等专有字段。
+ */
 function makeWeaponItem(o: Partial<Item> = {}): Item {
   return makeItem({
     id: 'w1',
     name: '铁剑',
-    type: 'weapon',
+    kind: 'equipment',
+    subtype: 'sword',
     rarity: 'rare',
     description: '一把铁剑',
     value: 50,
     stackable: false,
+    consumable: false,
+    bonus: {},
+    slots: ['weapon1'],
+    occupies: ['weapon1'],
+    effects: [],
     ...o,
-  });
+  } as Partial<Item>);
 }
 
 function inv(itemId: string, count: number): InventoryItem {
@@ -116,10 +137,11 @@ describe('useInventoryStore - 背包 Store', () => {
       expect(store.itemTemplates.size).toBe(0);
     });
 
-    it('filters 初始为空对象，sortBy=type，sortOrder=asc，searchKeyword=空', () => {
+    it('filters 初始为空对象，sortBy=kind，sortOrder=asc，searchKeyword=空', () => {
+      // P3.3：sortBy 默认值从 'type' 改为 'kind'（判别字段）
       const store = useInventoryStore();
       expect(store.filters).toEqual({});
-      expect(store.sortBy).toBe('type');
+      expect(store.sortBy).toBe('kind');
       expect(store.sortOrder).toBe('asc');
       expect(store.searchKeyword).toBe('');
     });
@@ -165,16 +187,17 @@ describe('useInventoryStore - 背包 Store', () => {
       expect(store.totalValue).toBe(70);
     });
 
-    it('itemCountByType 按类型统计数量', () => {
+    it('itemCountByKind 按大类统计数量', () => {
+      // P3.3：itemCountByType 改为 itemCountByKind，按判别字段 ItemKind 统计
       const store = useInventoryStore();
       store.$patch({
         inventory: [inv('p1', 2), inv('w1', 1)],
         itemTemplates: mapOf(makeItem(), makeWeaponItem()),
       });
-      const counts = store.itemCountByType;
-      expect(counts.potion).toBe(2);
-      expect(counts.weapon).toBe(1);
-      expect(counts.gold).toBe(0);
+      const counts = store.itemCountByKind;
+      expect(counts.consumable).toBe(2); // p1 为消耗品
+      expect(counts.equipment).toBe(1); // w1 为装备
+      expect(counts.currency).toBe(0); // 无货币
     });
 
     it('filteredInventory 按搜索关键词过滤', () => {
@@ -195,7 +218,8 @@ describe('useInventoryStore - 背包 Store', () => {
         inventory: [inv('p1', 1), inv('w1', 1)],
         itemTemplates: mapOf(makeItem({ name: '生命药水' }), makeWeaponItem({ name: '铁剑' })),
       });
-      store.setFilters({ types: ['weapon'] });
+      // P3.3：filters.types 改为 filters.kinds（按判别字段 ItemKind 筛选）
+      store.setFilters({ kinds: ['equipment'] });
       expect(store.filteredInventory).toHaveLength(1);
       expect(store.filteredInventory[0].itemId).toBe('w1');
 
@@ -206,10 +230,12 @@ describe('useInventoryStore - 背包 Store', () => {
       expect(ordered).toEqual(['w1', 'p1']);
     });
 
-    it('allItemTypes 返回 9 种类型', () => {
+    it('allItemKinds 返回 6 种大类', () => {
+      // P3.3：allItemTypes（基于旧 ItemType 9 种）改为 allItemKinds（基于 ItemKind 6 种）
+      // 6 种大类：consumable/material/equipment/quest/currency/misc
       const store = useInventoryStore();
-      expect(store.allItemTypes).toHaveLength(9);
-      expect(store.allItemTypes[0]).toEqual(expect.objectContaining({ id: expect.any(String), name: expect.any(String) }));
+      expect(store.allItemKinds).toHaveLength(6);
+      expect(store.allItemKinds[0]).toEqual(expect.objectContaining({ id: expect.any(String), name: expect.any(String) }));
     });
 
     it('allRarities 返回全部 5 种稀有度', () => {
@@ -360,7 +386,8 @@ describe('useInventoryStore - 背包 Store', () => {
       store.$patch({
         currentCharacterId: 'char-1',
         inventory: [inv('p1', 2)],
-        itemTemplates: mapOf(makeItem({ consumable: true, effect: { type: 'health_restore', value: 50 } })),
+        // P3.3：旧 effect 字段改为 effects[] 数组
+        itemTemplates: mapOf(makeItem({ effects: [{ type: 'health_restore', value: 50 }] } as Partial<Item>)),
       });
       const result = await store.useItem('p1');
       expect(result).toBe(true);
@@ -373,7 +400,8 @@ describe('useInventoryStore - 背包 Store', () => {
       store.$patch({
         currentCharacterId: 'char-1',
         inventory: [inv('p1', 1)],
-        itemTemplates: mapOf(makeItem({ consumable: true, effect: { type: 'mana_restore', value: 20 } })),
+        // P3.3：旧 effect 字段改为 effects[] 数组
+        itemTemplates: mapOf(makeItem({ effects: [{ type: 'mana_restore', value: 20 }] } as Partial<Item>)),
       });
       const result = await store.useItem('p1');
       expect(result).toBe(true);
@@ -386,7 +414,9 @@ describe('useInventoryStore - 背包 Store', () => {
       store.$patch({
         currentCharacterId: 'char-1',
         inventory: [inv('p2', 1)],
-        itemTemplates: mapOf(makeItem({ id: 'p2', name: '力量药水', consumable: true, bonus: { str: 2 } })),
+        // P3.3：旧 bonus 字段改为 effects[] 中的 stat 类型效果
+        // p2 不在 ATTRIBUTE_POTION_IDS 白名单中，走 applyBonus 路径
+        itemTemplates: mapOf(makeItem({ id: 'p2', name: '力量药水', effects: [{ type: 'stat', value: { str: 2 } }] } as Partial<Item>)),
       });
       const result = await store.useItem('p2');
       expect(result).toBe(true);
@@ -398,12 +428,13 @@ describe('useInventoryStore - 背包 Store', () => {
       store.$patch({
         currentCharacterId: 'char-1',
         inventory: [inv('strength_potion', 2)],
+        // P3.3：旧 bonus 字段改为 effects[] 中的 stat 类型效果
+        // strength_potion 在 ATTRIBUTE_POTION_IDS 白名单中，走 applyPotionBonus 路径
         itemTemplates: mapOf(makeItem({
           id: 'strength_potion',
           name: '巨人之力药剂',
-          consumable: true,
-          bonus: { str: 1 },
-        })),
+          effects: [{ type: 'stat', value: { str: 1 } }],
+        } as Partial<Item>)),
       });
       const result = await store.useItem('strength_potion');
       expect(result).toBe(true);
@@ -418,12 +449,12 @@ describe('useInventoryStore - 背包 Store', () => {
       store.$patch({
         currentCharacterId: 'char-1',
         inventory: [inv('constitution_potion', 1)],
+        // P3.3：旧 bonus 字段改为 effects[] 中的 stat 类型效果
         itemTemplates: mapOf(makeItem({
           id: 'constitution_potion',
           name: '坚韧药剂',
-          consumable: true,
-          bonus: { con: 1 },
-        })),
+          effects: [{ type: 'stat', value: { con: 1 } }],
+        } as Partial<Item>)),
       });
       const result = await store.useItem('constitution_potion');
       expect(result).toBe(true);
@@ -655,7 +686,8 @@ describe('useInventoryStore - 背包 Store', () => {
       store.$patch({
         currentCharacterId: 'char-1',
         inventory: [inv('p1', 2)],
-        itemTemplates: mapOf(makeItem({ consumable: true, effect: { type: 'health_restore', value: 30 } })),
+        // P3.3：旧 effect 字段改为 effects[] 数组
+        itemTemplates: mapOf(makeItem({ effects: [{ type: 'health_restore', value: 30 }] } as Partial<Item>)),
       });
       const result = await store.useItemByIndex(0);
       expect(result).toBe(true);
@@ -936,11 +968,11 @@ describe('useInventoryStore - 背包 Store', () => {
       store.$patch({
         currentCharacterId: 'char-1',
         inventory: [inv('p1', 1)],
+        // P3.3：旧 effect.type=stat + bonus 字段统一为 effects[] 中的 stat 类型效果
+        // p1 不在 ATTRIBUTE_POTION_IDS 白名单中，走 applyBonus 路径
         itemTemplates: mapOf(makeItem({
-          consumable: true,
-          effect: { type: 'stat', value: { str: 2 } },
-          bonus: { str: 2 },
-        })),
+          effects: [{ type: 'stat', value: { str: 2 } }],
+        } as Partial<Item>)),
       });
       const result = await store.useItem('p1');
       expect(result).toBe(true);
@@ -995,16 +1027,17 @@ describe('useInventoryStore - 背包 Store', () => {
       expect(store.totalValue).toBe(20);
     });
 
-    it('itemCountByType 中物品模板缺失时跳过该物品（if (item) FALSE 分支）', () => {
+    it('itemCountByKind 中物品模板缺失时跳过该物品（if (item) FALSE 分支）', () => {
+      // P3.3：itemCountByType 改为 itemCountByKind
       // 覆盖 line 106: if (item) 的 FALSE 分支
       const store = useInventoryStore();
       store.$patch({
         inventory: [inv('p1', 2), inv('unknown', 5)],
-        itemTemplates: mapOf(makeItem({ type: 'potion' })),
+        itemTemplates: mapOf(makeItem()),
       });
-      const counts = store.itemCountByType;
-      // unknown 无模板 → 跳过，只计 p1
-      expect(counts.potion).toBe(2);
+      const counts = store.itemCountByKind;
+      // unknown 无模板 → 跳过，只计 p1（consumable）
+      expect(counts.consumable).toBe(2);
     });
 
     it('removeItem 物品不在背包时 removed=0 不触发持久化（if (removed > 0) FALSE 分支）', () => {

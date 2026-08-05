@@ -222,7 +222,8 @@
                 'equip-slot',
                 {
                   equipped: slot.equipment,
-                  selected: selectedSlot?.key === slot.key
+                  selected: selectedSlot?.key === slot.key,
+                  locked: slot.locked
                 },
                 slot.equipment
                   ? 'rarity-' + (slot.equipment?.rarity || 'common')
@@ -230,7 +231,12 @@
               ]"
               @click="selectEquipment(slot)"
             >
-              <template v-if="slot.equipment">
+              <!-- P3.2：双手武器锁定遮罩 -->
+              <div v-if="slot.locked" class="slot-lock-overlay" title="被双手武器占用">
+                <BaseIcon name="padlock" gradient="metal" :size="20" />
+                <span class="lock-text">占用</span>
+              </div>
+              <template v-else-if="slot.equipment">
                 <ItemIcon
                   :icon="slot.equipment?.icon"
                   :rarity="slot.equipment?.rarity"
@@ -466,41 +472,56 @@ interface SlotInfo {
   key: EquipmentSlot;
   name: string;
   equipment: EquipmentItem | null;
+  /** P3.2：是否被双手武器锁定（weapon1 双手时 weapon2 锁定） */
+  locked: boolean;
 }
 
 const weaponSlots = computed<SlotInfo[]>(() => [
   {
     key: 'weapon1',
     name: '主手武器',
-    equipment: equipmentStore.equipment.weapon1?.item || null
+    equipment: equipmentStore.equipment.weapon1?.item || null,
+    locked: false
   },
   {
     key: 'weapon2',
     name: '副手武器',
-    equipment: equipmentStore.equipment.weapon2?.item || null
+    equipment: equipmentStore.equipment.weapon2?.item || null,
+    // P3.2：weapon1 装备双手武器时 weapon2 被锁定
+    locked: equipmentStore.isSlotLocked('weapon2')
   }
 ]);
 
 const armorSlots = computed<SlotInfo[]>(() => [
   {
-    key: 'armor1',
-    name: '护甲槽1',
-    equipment: equipmentStore.equipment.armor1?.item || null
+    key: 'helm',
+    name: '头部',
+    equipment: equipmentStore.equipment.helm?.item || null,
+    locked: false
   },
   {
-    key: 'armor2',
-    name: '护甲槽2',
-    equipment: equipmentStore.equipment.armor2?.item || null
+    key: 'chest',
+    name: '胸部',
+    equipment: equipmentStore.equipment.chest?.item || null,
+    locked: false
   },
   {
-    key: 'armor3',
-    name: '护甲槽3',
-    equipment: equipmentStore.equipment.armor3?.item || null
+    key: 'gloves',
+    name: '手套',
+    equipment: equipmentStore.equipment.gloves?.item || null,
+    locked: false
   },
   {
-    key: 'armor4',
-    name: '护甲槽4',
-    equipment: equipmentStore.equipment.armor4?.item || null
+    key: 'legs',
+    name: '腿部',
+    equipment: equipmentStore.equipment.legs?.item || null,
+    locked: false
+  },
+  {
+    key: 'boots',
+    name: '鞋子',
+    equipment: equipmentStore.equipment.boots?.item || null,
+    locked: false
   }
 ]);
 
@@ -586,6 +607,15 @@ function getRarityName(rarity: string) {
 }
 
 function selectEquipment(slot: SlotInfo) {
+  // P3.2：被双手武器锁定的槽位不可选中
+  if (slot.locked) {
+    useToast().show({
+      message: '该槽位被双手武器占用，无法操作',
+      type: 'warning',
+      icon: '🔒'
+    });
+    return;
+  }
   selectedSlot.value = slot;
   eventBus.emit(GameEvents.UI_CLICK, { source: 'equip_slot' });
 }
@@ -1095,6 +1125,32 @@ onUnmounted(() => {
 
 .equip-slot.equipped.selected {
   background: @gold-bg-strong;
+}
+
+/* P3.2：双手武器锁定槽位样式 */
+.equip-slot.locked {
+  background: @overlay-deep;
+  border: 1px dashed @color-dim-gray;
+  cursor: not-allowed;
+  opacity: 0.6;
+  position: relative;
+}
+
+.equip-slot.locked:hover {
+  background: @overlay-deep;
+  transform: none;
+}
+
+.slot-lock-overlay {
+  .flex-col-center();
+  gap: @spacing-2xs;
+  color: @color-dim-gray;
+}
+
+.slot-lock-overlay .lock-text {
+  font-size: @font-2xs;
+  color: @text-secondary;
+  font-weight: @font-weight-bold;
 }
 
 .slot-name {

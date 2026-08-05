@@ -223,8 +223,9 @@ describe('useConfigTableMeta 配置表元信息 composable', () => {
       const slotsField = currentFormFields.value.find(f => f.key === 'slots');
       expect(slotsField?.type).toBe('multiselect');
       expect(slotsField?.options).toBeDefined();
+      // P3.1：7 槽（weapon1/weapon2/helm/chest/gloves/legs/boots）
       expect(slotsField!.options!.map(o => o.value)).toEqual(
-        expect.arrayContaining(['weapon1', 'armor1', 'armor4'])
+        expect.arrayContaining(['weapon1', 'helm', 'boots'])
       );
     });
 
