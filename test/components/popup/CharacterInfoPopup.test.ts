@@ -79,6 +79,7 @@ describe('CharacterInfoPopup 角色信息弹窗组件', () => {
       id: 'sword_01',
       name: '铁剑',
       type: 'weapon',
+      capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
       rarity: 'common',
       icon: 'broadsword',
       description: '一把普通的铁剑',

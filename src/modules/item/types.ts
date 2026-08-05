@@ -4,10 +4,9 @@
  *   物品系统升级（plan.md §3.2）的全新类型层。采用判别联合（Discriminated Union）
  *   替代旧版扁平接口继承，以 `kind` 作为判别字段，每个物品类别独立定义专有字段。
  *
- *   阶段定位：P1（纯新增）。本文件不替换 inventory/types.ts 的旧 `Item` 类型，
- *   旧代码继续使用旧类型；P3 阶段才会用本文件的 `Item` 直接覆盖旧 `Item`。
- *   因此 P1 期间存在两套类型并行：旧 `Item`（inventory/types.ts）与新 `Item`（本文件），
- *   新增的 typeRegistry / descriptors / slotRegistry / setTypes / setService 仅依赖本文件。
+ *   阶段定位：P3.3 已完成迁移。本文件的判别联合 `Item` 已直接覆盖 inventory/types.ts 的旧 `Item`，
+ *   旧版扁平 `ItemType` / `ItemTypeData` 已删除。typeRegistry / descriptors / slotRegistry /
+ *   setTypes / setService 均依赖本文件作为类型单一来源。
  *
  *   设计目标（plan.md §3.1）：
  *   1. 开闭原则：新增物品类型/子类型/效果类型，只新增文件、不改现有 switch/if。
@@ -24,6 +23,7 @@
  */
 import type { Stats } from '../character/types';
 import type { SkillType } from '../skill/types';
+import type { Capability } from './capabilityTypes';
 
 // ============================================================================
 // 共享基础类型（P3.3 从 inventory/types.ts 迁移至此，消除循环依赖）
@@ -102,6 +102,10 @@ export type ItemKind = 'consumable' | 'material' | 'equipment' | 'quest' | 'curr
  * @property level - 物品自身等级（影响基础数值），可选
  * @property levelRequirement - 使用/装备所需角色等级，可选
  * @property template - 来源模板 ID（动态生成物品时追溯），可选
+ * @property capabilities - 能力标签集合（必填，配置层显式声明，无派生兜底）
+ *   行为归属维度，与 kind（数据维度）正交。调用方按能力查询分发
+ *   （`getCapability(item, cap)`），而非按 kind switch。一个物品可挂多个能力
+ *   （复合物品，如魔法武器 = equippable + usable）。见 plan.md §3.4。
  */
 export interface ItemBase {
   id: string;
@@ -113,6 +117,7 @@ export interface ItemBase {
   level?: number;
   levelRequirement?: number;
   template?: string;
+  capabilities: Capability[];
 }
 
 // ============================================================================
@@ -242,8 +247,8 @@ export interface QuestItem extends ItemBase {
  * - `legs`：裤子
  * - `boots`：鞋子
  *
- * 阶段定位：P1 期间与旧 `EquipmentSlot`（equipment/types.ts，6 槽）并行存在，
- * 新增的 slotRegistry/setTypes/setService 仅依赖本类型；P3 用本类型覆盖旧 `EquipmentSlot`。
+ * 阶段定位：P3.3 已完成迁移。本类型已覆盖 equipment/types.ts 的旧 `EquipmentSlot`（6 槽），
+ * slotRegistry/setTypes/setService 均依赖本类型作为槽位单一来源。
  */
 export type EquipmentSlot =
   | 'weapon1'
@@ -359,8 +364,8 @@ export type Item =
  *
  * 将装备模板与装备时间戳绑定，记录"哪个槽位装着哪件装备、何时装备的"。
  *
- * 阶段定位：P1 期间与旧 `EquippedItem`（equipment/types.ts，引用旧 EquipmentItem）并行。
- * 新增的 slotRegistry/setService 仅依赖本类型；P3 用本类型覆盖旧 `EquippedItem`。
+ * 阶段定位：P3.3 已完成迁移。本类型已覆盖 equipment/types.ts 的旧 `EquippedItem`，
+ * slotRegistry/setService 均依赖本类型。
  *
  * @property item - 被装备的物品模板（新 EquipmentItem）
  * @property equippedAt - 装备时的 Unix 时间戳（毫秒）

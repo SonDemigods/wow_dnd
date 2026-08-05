@@ -20,7 +20,6 @@
  */
 export type {
   Item,
-  ItemType,
   ItemRarity,
   ItemEffect,
   ItemEffectType,

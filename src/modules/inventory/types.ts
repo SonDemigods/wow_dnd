@@ -9,6 +9,7 @@
  *   - InventoryStorage：导入/导出存档时背包数据的序列化格式
  */
 import type { ItemKind, ItemRarity } from '../item/types';
+import type { Capability } from '../item/capabilityTypes';
 
 // ==================== 共享类型 re-export（P3.3：从 item/types 迁移） ====================
 // P3.3 类型覆盖：旧扁平 Item/ItemType 已删除，统一使用 item/types.ts 的判别联合。
@@ -39,38 +40,6 @@ export type {
 } from '../item/types';
 
 // ==================== 基础类型定义 ====================
-
-/**
- * 旧版物品大类扁平联合（@deprecated P3.3 过渡类型，P3.3b 删除）
- *
- * 新代码应使用 {@link ItemKind} + `subtype` 表达物品分类。
- * 本类型仅保留供 `config/inventory.ts` 的 `ITEM_TYPES` 配置表与既有测试过渡使用，
- * 不再作为 `Item` 的字段类型（新 `Item` 判别联合无 `type` 字段）。
- */
-export type ItemType =
-  | 'gold'
-  | 'potion'
-  | 'scroll'
-  | 'food'
-  | 'material'
-  | 'quest'
-  | 'weapon'
-  | 'armor'
-  | 'misc';
-
-/**
- * 旧版物品类型元数据（@deprecated P3.3 过渡类型，P3.3b 删除）
- *
- * 新代码应使用 `item/typeRegistry.ts` 的 `ItemTypeMeta`（单一来源）。
- * 本接口仅保留供 `ITEM_TYPES` 配置表过渡使用。
- */
-export interface ItemTypeData {
-  id: string;
-  name: string;
-  stackable: boolean;
-  maxStack: number;
-  usable?: boolean;
-}
 
 /**
  * 稀有度配置（UI 展示用）
@@ -186,6 +155,8 @@ export interface ItemDataStorage {
   consumable: boolean;
   template: string | null;
   levelRequirement?: number | null;
+  /** 能力标签集合（plan.md §3.4，配置层显式声明，mapToItem 透传至 Item.capabilities） */
+  capabilities: Capability[];
 }
 
 /**
@@ -199,7 +170,7 @@ export interface ItemDataStorage {
  *
  * @property {string} id - 物品唯一标识
  * @property {string} name - 物品名称
- * @property {string} type - 物品类型（ItemType 的字符串形式）
+ * @property {string} type - 物品类型（DB 旧扁平字段，运行时已由 Item.kind + subtype 替代）
  * @property {string} rarity - 稀有度（ItemRarity 的字符串形式）
  * @property {string} icon - 物品图标 ID
  * @property {string} description - 物品描述文本
@@ -227,6 +198,8 @@ export interface ItemStorage {
   template?: string | null;
   levelRequirement?: number | null;
   level?: number;
+  /** 能力标签集合（plan.md §3.4，saveItemTemplate 写入 DB，mapToItem 读取还原） */
+  capabilities: Capability[];
 }
 
 /**

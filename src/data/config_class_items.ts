@@ -2,7 +2,7 @@
  * @fileoverview 职业专属装备数据（Phase 5.3，P3.1 升级）
  * @description 为 6 个核心职业各定义 3-5 件专属装备，含职业限制和套装归属。
  *              装备时由 equipment/service.ts 的 checkClassRestriction 检查职业限制。
- *              套装效果由 config_item_sets.ts 定义，由 equipment/store.ts 的 getActiveSetBonuses 计算。
+ *              套装效果由 config_item_sets.ts 定义，由 equipment/setService.ts 的 getAllSetProgresses 计算进度。
  *
  *              P3.1 升级：条目改为草稿声明（含 subtype/grip，不含 slots/occupies），
  *              slots/occupies 由 slotRegistry 的 deriveSlots/SUBTYPE_OCCUPIES 统一派生，
@@ -10,15 +10,49 @@
  * @module data
  */
 import type { EquipmentItem } from '@/modules/equipment/types';
+import type { Capability } from '@/modules/item/capabilityTypes';
 import { deriveSlots, SUBTYPE_OCCUPIES } from '@/modules/equipment/slotRegistry';
+
+// ============================================================================
+// 职业装备能力组合（plan.md §3.4/§3.5）
+// ============================================================================
+
+/**
+ * 普通职业装备能力组合：可描述 + 可装备 + 可出售 + 可附魔
+ *
+ * 无 setId 的职业专属装备使用此组合（独立装备，如 warrior_blade_bloodlust）。
+ */
+const CLASS_EQUIPMENT_CAPABILITIES: Capability[] = [
+  'describable',
+  'equippable',
+  'sellable',
+  'enchantable',
+];
+
+/**
+ * 套装部件能力组合：在普通装备基础上追加 setMember（计入套装进度）
+ *
+ * 有 setId 的职业专属装备使用此组合。setMember 能力使套装进度计算从隐式 setId 字段
+ * 改为显式能力查询（C2 接入）。
+ */
+const CLASS_SET_MEMBER_CAPABILITIES: Capability[] = [
+  'describable',
+  'equippable',
+  'setMember',
+  'sellable',
+  'enchantable',
+];
 
 /**
  * 职业专属装备草稿类型（P3.1 新增）
  *
  * 与 EquipmentItemDraft 的差异：本类型保留 subtype/grip（因职业装备按条目内联声明，
- * 非按子类型分组 map），仅省略 slots/occupies（由派生填充）。
+ * 非按子类型分组 map），仅省略 slots/occupies/capabilities（由派生/注入填充）。
  */
-type ClassItemDraft = Omit<EquipmentItem, 'kind' | 'slots' | 'occupies' | 'stackable' | 'consumable'>;
+type ClassItemDraft = Omit<
+  EquipmentItem,
+  'kind' | 'slots' | 'occupies' | 'stackable' | 'consumable' | 'capabilities'
+>;
 
 /**
  * 全职业专属装备草稿列表
@@ -314,6 +348,9 @@ export const CLASS_SPECIFIC_ITEMS: EquipmentItem[] = CLASS_SPECIFIC_DRAFTS.map(i
   kind: 'equipment' as const,
   stackable: false as const,
   consumable: false as const,
+  // plan.md §3.4：套装部件（有 setId）追加 setMember 能力；独立装备用普通装备能力组合。
+  // 配置层按 setId 显式选择能力常量，非运行期派生。
+  capabilities: item.setId ? CLASS_SET_MEMBER_CAPABILITIES : CLASS_EQUIPMENT_CAPABILITIES,
   slots: deriveSlots(item.subtype),
   occupies: SUBTYPE_OCCUPIES[item.subtype] ?? deriveSlots(item.subtype)
 }));

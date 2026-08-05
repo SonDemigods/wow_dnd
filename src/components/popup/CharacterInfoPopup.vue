@@ -312,7 +312,7 @@
                   :key="stat"
                   class="stat-item"
                 >
-                  <span class="stat-name">{{ getStatName(String(stat)) }}</span>
+                  <span class="stat-name">{{ getStatName(stat as keyof Stats) }}</span>
                   <span class="stat-value">+{{ value }}</span>
                 </div>
               </div>
@@ -359,6 +359,7 @@ import { eventBus, GameEvents } from '@/modules/bus';
 import { useToast } from '@/composables/useToast';
 import type { Stats, Attributes, StatSource } from '@/modules/character';
 import type { EquipmentSlot, EquipmentItem } from '@/modules/equipment';
+import { getRarityName, getStatName } from '@/modules/item/descriptors';
 import Tag from '../common/Tag.vue';
 import BasePopup from '../common/BasePopup.vue';
 import ResourceBar from '../common/ResourceBar.vue';
@@ -536,23 +537,6 @@ const attrIcons: Record<string, { name: string; gradient: string }> = {
   cha: { name: 'charm', gradient: 'gold' }
 };
 
-const attrNames: Record<string, string> = {
-  str: '力量',
-  dex: '敏捷',
-  con: '体质',
-  int: '智力',
-  wis: '感知',
-  cha: '魅力'
-};
-
-const rarityNames: Record<string, string> = {
-  common: '普通',
-  uncommon: '优秀',
-  rare: '稀有',
-  epic: '史诗',
-  legendary: '传说'
-};
-
 async function loadData() {
   await baseStore.loadAllData();
 }
@@ -587,23 +571,8 @@ function getAttrIcon(key: string) {
 }
 
 function getAttrName(key: string) {
-  return attrNames[key] || key;
-}
-
-function getStatName(stat: string) {
-  const statMap: Record<string, string> = {
-    str: '力量',
-    dex: '敏捷',
-    con: '体质',
-    int: '智力',
-    wis: '感知',
-    cha: '魅力'
-  };
-  return statMap[stat] || stat;
-}
-
-function getRarityName(rarity: string) {
-  return rarityNames[rarity] || '';
+  // P3.3b：属性名称统一从 descriptors.getStatName 获取（消除本地 attrNames 映射）
+  return getStatName(key as keyof Stats) || key;
 }
 
 function selectEquipment(slot: SlotInfo) {

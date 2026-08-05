@@ -38,7 +38,6 @@ import {
 import {
   RARITY_SELL_DISCOUNT,
   RARITY_PRICE_MULTIPLIER,
-  ITEM_TYPES,
   RARITY_CONFIG
 } from '@/config/inventory';
 
@@ -319,7 +318,6 @@ export interface BackupConfig {
  * @property {typeof CLASS_ABILITIES} classAbilities - 职业技能数据常量引用
  * @property {typeof RACES} races - 种族数据常量引用
  * @property {typeof FACTIONS} factions - 阵营数据常量引用
- * @property {typeof ITEM_TYPES} itemTypes - 物品类型常量引用
  * @property {typeof RARITY_CONFIG} rarityConfig - 稀有度配置常量引用
  * @property {typeof RARITY_PRICE_MULTIPLIER} rarityPriceMultiplier - 稀有度价格倍率常量引用
  * @property {typeof RARITY_SELL_DISCOUNT} raritySellDiscount - 稀有度出售折扣常量引用
@@ -341,7 +339,6 @@ export interface InitData {
   classAbilities: typeof CLASS_ABILITIES;
   races: typeof RACES;
   factions: typeof FACTIONS;
-  itemTypes: typeof ITEM_TYPES;
   rarityConfig: typeof RARITY_CONFIG;
   rarityPriceMultiplier: typeof RARITY_PRICE_MULTIPLIER;
   raritySellDiscount: typeof RARITY_SELL_DISCOUNT;

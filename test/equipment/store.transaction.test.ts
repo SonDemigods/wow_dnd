@@ -11,7 +11,7 @@
  *  - equipmentDbService 全量 mock，saveEquipment 按用例注入 reject 模拟写入失败。
  *  - useCharacterStore / useLogStore / errorReporter 用 vi.hoisted stub 隔离。
  *  - 背包操作通过 setInventoryCallbacks 注入回调 stub（A1/G1 修复后的依赖注入方式）。
- *  - service 层使用真实实现，仅 getActiveSetBonuses 包装为 vi.fn 以便控制套装奖励行为。
+ *  - service 层使用真实实现，setService 层仅 getAllSetProgresses 包装为 vi.fn 以便控制套装奖励行为。
  *  - generateLogId mock 为固定值。
  */
 import 'fake-indexeddb/auto';
@@ -58,12 +58,12 @@ vi.mock('@/modules/log/store', () => ({ useLogStore: () => mocks.logStore }));
 vi.mock('@/modules/log/service', () => ({ generateLogId: vi.fn().mockReturnValue('log-id') }));
 vi.mock('@/utils/errorReport', () => ({ errorReporter: mocks.errorReporter }));
 
-// service 层使用真实实现，仅 getActiveSetBonuses 包装为 vi.fn 以便单测覆盖防御性分支
-vi.mock('@/modules/equipment/service', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/modules/equipment/service')>();
+// P3.3b：setService 层使用真实实现，仅 getAllSetProgresses 包装为 vi.fn 以便控制套装奖励行为
+vi.mock('@/modules/equipment/setService', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/modules/equipment/setService')>();
   return {
     ...actual,
-    getActiveSetBonuses: vi.fn(actual.getActiveSetBonuses),
+    getAllSetProgresses: vi.fn(actual.getAllSetProgresses),
   };
 });
 
@@ -86,24 +86,7 @@ function makeWeapon(o: Partial<EquipmentItem> = {}): EquipmentItem {
     slots: ['weapon1', 'weapon2'],
     occupies: ['weapon1'],
     bonus: { str: 5 },
-    ...o,
-  } as EquipmentItem;
-}
-
-function makeArmor(o: Partial<EquipmentItem> = {}): EquipmentItem {
-  return {
-    id: 'a1',
-    name: '铁甲',
-    type: 'armor',
-    subtype: 'chest',
-    rarity: 'uncommon',
-    icon: 'game-icons:chest-armor',
-    description: '一件铁甲',
-    value: 200,
-    stackable: false,
-    slots: ['chest'],
-    occupies: ['chest'],
-    bonus: { con: 3 },
+    capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
     ...o,
   } as EquipmentItem;
 }

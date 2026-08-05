@@ -29,6 +29,7 @@ function makeItem(overrides: Partial<Item> = {}): Item {
     description: '测试用物品',
     value: 100,
     stackable: true,
+    capabilities: ['describable', 'usable', 'stackable', 'sellable'],
     ...overrides,
   };
 }

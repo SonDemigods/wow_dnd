@@ -165,7 +165,9 @@ export class EquipmentDbService {
       template: data.template || undefined,
       // P3.1 新增可选字段直传（undefined 表示无限制/无套装）
       classRestriction: data.classRestriction,
-      setId: data.setId
+      setId: data.setId,
+      // plan.md §3.4：能力标签集合透传（配置层显式声明，无派生兜底）
+      capabilities: data.capabilities
     };
   }
 
@@ -275,7 +277,9 @@ export class EquipmentDbService {
         template: item.template || '',
         // P3.1 新增可选字段（undefined 不会写入 IndexedDB，读取时按 undefined 处理）
         classRestriction: item.classRestriction,
-        setId: item.setId
+        setId: item.setId,
+        // plan.md §3.4：能力标签集合落库（必填字段，配置层显式声明）
+        capabilities: item.capabilities
       });
     });
   }

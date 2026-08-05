@@ -9,9 +9,9 @@
  *   - S5：`classRestriction` 单一来源（仅在 ItemSet 声明，部件继承不重复）
  *   - S6：配套 setService 的 `SetProgress` API 供 UI 展示套装进度
  *
- *   阶段定位：P1（纯新增）。本文件不替换 equipment/types.ts 的旧 `ItemSet` 类型，
- *   旧代码（含 config_item_sets.ts、service.ts 的 countSetPieces/getActiveSetBonuses）
- *   继续使用旧类型；P5 阶段才用本文件类型覆盖旧 `ItemSet` 并重构配置数据。
+ *   阶段定位：P3.3b 已完成迁移。本文件类型已覆盖 equipment/types.ts 的旧 `ItemSet`，
+ *   config_item_sets.ts 已迁移到新版 `ItemSet`（parts + bonusTiers），
+ *   service.ts 的旧版 countSetPieces/getActiveSetBonuses 已删除，由 setService 替代。
  *
  * @module equipment
  */

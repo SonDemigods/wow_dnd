@@ -22,9 +22,11 @@ import { mount, flushPromises } from '@vue/test-utils';
 import CombatPopup from '@/components/popup/CombatPopup.vue';
 import { useCombatStore } from '@/modules/combat/store';
 import { useCharacterStore } from '@/modules/character';
+import { useEquipmentStore } from '@/modules/equipment';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { createStubPinia } from '../../utils/setup';
 import type { Character } from '@/modules/character/types';
+import type { EquipmentItem, EquippedItem } from '@/modules/item/types';
 
 vi.mock('@iconify/vue', async () => {
   const { defineComponent, h } = await import('vue');
@@ -211,5 +213,147 @@ describe('CombatPopup 战斗弹窗组件', () => {
     await wrapper.find('.result-close-btn').trigger('click');
     expect(wrapper.emitted('close')).toHaveLength(1);
     expect(wrapper.emitted('close')![0]).toEqual(['victory']);
+  });
+
+  // ==================== C3：复合物品（已装备魔法武器主动技能）====================
+
+  /** 构造法杖 EquipmentItem（equippable + usable 复合物品） */
+  function buildStaff(): EquipmentItem {
+    return {
+      id: 'oak_staff',
+      name: '橡木法杖',
+      icon: 'game-icons:crystal-wand',
+      description: '由月辉林地千年橡木削成的法杖',
+      rarity: 'common',
+      value: 10,
+      kind: 'equipment',
+      subtype: 'staff',
+      grip: 'one_handed',
+      stackable: false,
+      consumable: false,
+      bonus: { int: 10 },
+      slots: ['weapon1', 'weapon2'],
+      occupies: [],
+      capabilities: ['describable', 'equippable', 'usable', 'sellable', 'enchantable'],
+      effects: [{ type: 'magic_damage', value: 15 }],
+      levelRequirement: 1,
+      template: 'oak_staff',
+    };
+  }
+
+  /** 构造普通剑 EquipmentItem（仅 equippable，无 usable） */
+  function buildSword(): EquipmentItem {
+    return {
+      id: 'iron_sword',
+      name: '铁剑',
+      icon: 'game-icons:broadsword',
+      description: '标准长剑',
+      rarity: 'common',
+      value: 10,
+      kind: 'equipment',
+      subtype: 'sword',
+      grip: 'one_handed',
+      stackable: false,
+      consumable: false,
+      bonus: { str: 8 },
+      slots: ['weapon1', 'weapon2'],
+      occupies: [],
+      capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
+      levelRequirement: 1,
+      template: 'iron_sword',
+    };
+  }
+
+  it('C3 装备法杖后物品菜单展示"装备技能"分区', async () => {
+    const pinia = createStubPinia();
+    const { combatStore } = setupFightState();
+    const equipmentStore = useEquipmentStore();
+
+    // 法杖装备到主手槽位
+    const staff = buildStaff();
+    const equipped: EquippedItem = { item: staff, equippedAt: Date.now() };
+    equipmentStore.$patch((state) => {
+      state.equipment.weapon1 = equipped;
+    });
+    // mock playerAction 返回成功结果避免 result.success 报错
+    vi.mocked(combatStore.playerAction).mockResolvedValue({
+      success: true,
+      type: 'item',
+      message: '施放主动技能',
+    });
+
+    const wrapper = mount(CombatPopup, {
+      global: { plugins: [pinia] },
+    });
+
+    // 物品按钮应可用（hasConsumables 因装备技能而 true）
+    const itemBtn = wrapper.find('.item-btn');
+    expect(itemBtn.attributes('disabled')).toBeUndefined();
+
+    // 点击打开物品菜单
+    await itemBtn.trigger('click');
+    await flushPromises();
+
+    // 装备技能分区应出现
+    expect(wrapper.find('.item-section-label').text()).toBe('装备技能');
+    // 法杖条目应展示名称与"已装备"标记
+    const equippedOption = wrapper.find('.item-option-equipped');
+    expect(equippedOption.exists()).toBe(true);
+    expect(equippedOption.find('.item-name').text()).toBe('橡木法杖');
+    expect(equippedOption.find('.item-count-equipped').text()).toBe('已装备');
+  });
+
+  it('C3 装备普通武器（无 usable 能力）时物品菜单不展示"装备技能"分区', async () => {
+    const pinia = createStubPinia();
+    setupFightState();
+    const equipmentStore = useEquipmentStore();
+
+    // 普通铁剑装备到主手（无 usable 能力）
+    const sword = buildSword();
+    const equipped: EquippedItem = { item: sword, equippedAt: Date.now() };
+    equipmentStore.$patch((state) => {
+      state.equipment.weapon1 = equipped;
+    });
+
+    const wrapper = mount(CombatPopup, {
+      global: { plugins: [pinia] },
+    });
+
+    // 物品按钮应禁用（无消耗品也无装备技能）
+    const itemBtn = wrapper.find('.item-btn');
+    expect(itemBtn.attributes('disabled')).toBeDefined();
+  });
+
+  it('C3 点击装备技能条目触发 playerAction({type:"item", itemId})', async () => {
+    const pinia = createStubPinia();
+    const { combatStore } = setupFightState();
+    const equipmentStore = useEquipmentStore();
+
+    const staff = buildStaff();
+    const equipped: EquippedItem = { item: staff, equippedAt: Date.now() };
+    equipmentStore.$patch((state) => {
+      state.equipment.weapon1 = equipped;
+    });
+    vi.mocked(combatStore.playerAction).mockResolvedValue({
+      success: true,
+      type: 'item',
+      damage: 15,
+      message: '造成 15 点伤害',
+    });
+
+    const wrapper = mount(CombatPopup, {
+      global: { plugins: [pinia] },
+    });
+
+    // 打开物品菜单
+    await wrapper.find('.item-btn').trigger('click');
+    await flushPromises();
+
+    // 点击法杖条目
+    await wrapper.find('.item-option-equipped').trigger('click');
+    await flushPromises();
+
+    // 应以法杖 ID 调用 playerAction
+    expect(combatStore.playerAction).toHaveBeenCalledWith({ type: 'item', itemId: 'oak_staff' });
   });
 });

@@ -42,7 +42,9 @@ import { equipmentDbService } from './db';
 import { useLogStore } from '@/modules/log/store';
 import { generateLogId } from '@/modules/log/service';
 import { useCharacterStore } from '@/modules/character/store';
-import { validateSlot, computeEquipBonus, canEquipItem, getEquipmentBySlot, createEmptySlotMap, checkClassRestriction, getActiveSetBonuses, SLOT_CONFIG, isSlotLockedByTwoHanded } from './service';
+import { validateSlot, computeEquipBonus, canEquipItem, getEquipmentBySlot, createEmptySlotMap, checkClassRestriction, SLOT_CONFIG, isSlotLockedByTwoHanded } from './service';
+import { getAllSetProgresses, getActiveBonusEffects } from './setService';
+import { ITEM_SETS } from '@/data/config_item_sets';
 import { errorReporter } from '@/utils/errorReport';
 
 /**
@@ -238,86 +240,84 @@ export const useEquipmentStore = defineStore('equipment', () => {
   });
 
   /**
-   * 当前已激活的套装奖励列表（Phase 5.3）
+   * 当前已激活的套装进度列表（P3.3b 升级）
    *
-   * 根据当前 equipment 状态计算所有已激活的套装奖励。
+   * 根据当前 equipment 状态结合 ITEM_SETS 配置计算所有在穿套装的进度。
    * 响应式依赖 equipment，装备变化时自动重新计算。
-   * UI 可据此展示套装进度和激活效果。
+   * UI 可据此展示套装进度（已穿件数 / 总件数 / 已激活档位 / 下一档）。
+   *
+   * 返回 SetProgress[]，每个元素含 setId/setName/category/totalPieces/equippedPieces/
+   * activeTiers/nextTier/partsStatus，比旧版扁平的激活奖励列表信息更完整。
    */
   const activeSetBonuses = computed(() => {
-    return getActiveSetBonuses(equipment.value);
+    return getAllSetProgresses(equipment.value, ITEM_SETS);
   });
 
   /**
-   * 已应用的套装奖励标记列表（BIZ-13）
+   * 已应用的套装属性加成标记列表（BIZ-13）
    *
-   * 跟踪当前已应用到角色属性上的套装奖励，用于装备变化时 diff 计算：
+   * 跟踪当前已应用到角色属性上的套装 stat 加成，用于装备变化时 diff 计算：
    * 移除不再激活的加成，应用新激活的加成。
+   *
+   * P3.3b：移除 requiredPieces 字段（新版 SetBonusEffect 判别联合不再需要它作为唯一键）。
+   * 仅跟踪 kind:'stat' 类型，其他类型（percent_stat/resource/trigger）由战斗模块 P5 接入。
    */
-  const appliedSetBonuses = ref<Array<{ setId: string; requiredPieces: number; stat: keyof Stats; value: number }>>([]);
+  const appliedSetBonuses = ref<Array<{ setId: string; stat: keyof Stats; value: number }>>([]);
 
   // ==================== 辅助方法 ====================
 
   /**
-   * 重新应用套装奖励（BIZ-13）
+   * 重新应用套装奖励（BIZ-13，P3.3b 升级到新版 setService）
    *
-   * 对比当前激活的套装奖励与已应用的套装奖励：
-   * 1. 移除不再激活的套装属性加成（调用 characterStore.removeBonus）
-   * 2. 应用新激活的套装属性加成（调用 characterStore.applyBonus）
-   * 3. 更新 appliedSetBonuses 列表
+   * 对比当前激活的套装 stat 加成与已应用的套装 stat 加成：
+   * 1. 通过 setService.getAllSetProgresses 获取所有在穿套装的进度
+   * 2. 通过 getActiveBonusEffects 扁平化所有已激活档位的效果
+   * 3. 过滤 kind:'stat' 类型（其他类型由战斗模块 P5 接入）
+   * 4. 移除不再激活的加成（调用 characterStore.removeBonus）
+   * 5. 应用新激活的加成（调用 characterStore.applyBonus）
+   * 6. 更新 appliedSetBonuses 列表
    *
    * 在 equipItem / unequipItem / initialize / reset 中调用，
    * 确保装备变化后套装奖励正确同步到角色属性。
    */
   async function reapplySetBonuses(): Promise<void> {
     const characterStore = useCharacterStore();
-    const currentActive = getActiveSetBonuses(equipment.value);
+    const progresses = getAllSetProgresses(equipment.value, ITEM_SETS);
 
-    // 唯一键：setId + requiredPieces + stat + value
-    const buildKey = (setId: string, pieces: number, stat: string, value: number) =>
-      `${setId}:${pieces}:${stat}:${value}`;
+    // 收集所有已激活的 stat 类型加成
+    const currentStats: Array<{ setId: string; stat: keyof Stats; value: number }> = [];
+    for (const progress of progresses) {
+      for (const effect of getActiveBonusEffects(progress)) {
+        if (effect.kind === 'stat') {
+          currentStats.push({ setId: progress.setId, stat: effect.stat, value: effect.value });
+        }
+      }
+    }
 
-    const currentKeys = new Set(
-      currentActive
-        // P2-48 修复：使用 != null 显式检查，避免 value=0 的套装奖励被吞掉
-        // P3 TS-15 修复：使用类型守卫 predicate 收窄类型，消除非空断言 !
-        .filter((b): b is typeof b & { bonus: { bonus: { stat: string; value: number } } } =>
-          b.bonus.bonus.stat != null && b.bonus.bonus.value != null)
-        .map(b => buildKey(b.setId, b.bonus.requiredPieces, b.bonus.bonus.stat, b.bonus.bonus.value))
-    );
-    const appliedKeys = new Set(
-      appliedSetBonuses.value.map(b => buildKey(b.setId, b.requiredPieces, b.stat, b.value))
-    );
+    // 唯一键：setId + stat + value
+    const buildKey = (setId: string, stat: keyof Stats, value: number) =>
+      `${setId}:${stat}:${value}`;
+
+    const currentKeys = new Set(currentStats.map(s => buildKey(s.setId, s.stat, s.value)));
+    const appliedKeys = new Set(appliedSetBonuses.value.map(b => buildKey(b.setId, b.stat, b.value)));
 
     // 移除不再激活的加成
     for (const b of appliedSetBonuses.value) {
-      if (!currentKeys.has(buildKey(b.setId, b.requiredPieces, b.stat, b.value))) {
+      if (!currentKeys.has(buildKey(b.setId, b.stat, b.value))) {
         await characterStore.removeBonus({ [b.stat]: b.value } as Partial<Stats>);
       }
     }
 
     // 应用新激活的加成
-    for (const b of currentActive) {
-      const bonus = b.bonus.bonus;
-      if (!bonus.stat || !bonus.value) continue;
-      const key = buildKey(b.setId, b.bonus.requiredPieces, bonus.stat, bonus.value);
+    for (const s of currentStats) {
+      const key = buildKey(s.setId, s.stat, s.value);
       if (!appliedKeys.has(key)) {
-        await characterStore.applyBonus({ [bonus.stat]: bonus.value } as Partial<Stats>);
+        await characterStore.applyBonus({ [s.stat]: s.value } as Partial<Stats>);
       }
     }
 
     // 更新已应用列表
-    appliedSetBonuses.value = currentActive
-      // P2-48 修复：使用 != null 显式检查，避免 value=0 的套装奖励被吞掉
-      // P3 TS-15 修复：使用类型守卫 predicate 收窄类型，消除非空断言 ! 和 as keyof Stats
-      .filter((b): b is typeof b & { bonus: { bonus: { stat: string; value: number } } } =>
-        b.bonus.bonus.stat != null && b.bonus.bonus.value != null)
-      .map(b => ({
-        setId: b.setId,
-        requiredPieces: b.bonus.requiredPieces,
-        stat: b.bonus.bonus.stat as keyof Stats,
-        value: b.bonus.bonus.value
-      }));
+    appliedSetBonuses.value = currentStats;
   }
 
   /**

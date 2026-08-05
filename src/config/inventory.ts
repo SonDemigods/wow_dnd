@@ -1,29 +1,13 @@
 /**
  * 背包/物品相关配置
  *
- * 包含物品类型、稀有度的所有配置常量。
+ * 包含稀有度相关的所有配置常量。
  * 类型定义已移至 modules/inventory/types.ts，此处只保留配置数据。
  */
 
-import type { ItemType, ItemRarity, ItemTypeData, RarityConfig } from '../modules/inventory/types';
+import type { ItemRarity, RarityConfig } from '../modules/inventory/types';
 
 // ==================== 配置常量 ====================
-
-/**
- * 物品类型配置表
- */
-export const ITEM_TYPES: Record<ItemType, ItemTypeData> = {
-  gold: { id: 'gold', name: '货币', stackable: true, maxStack: 999999 },
-  potion: { id: 'potion', name: '药水', stackable: true, maxStack: 20, usable: true },
-  scroll: { id: 'scroll', name: '卷轴', stackable: true, maxStack: 10, usable: true },
-  food: { id: 'food', name: '食物', stackable: true, maxStack: 20, usable: true },
-  material: { id: 'material', name: '材料', stackable: true, maxStack: 99 },
-  // P2-72 修复：任务物品不可堆叠（stackable 与 maxStack=1 矛盾，且设计上不可堆叠）
-  quest: { id: 'quest', name: '任务物品', stackable: false, maxStack: 1 },
-  weapon: { id: 'weapon', name: '武器', stackable: false, maxStack: 1 },
-  armor: { id: 'armor', name: '护甲', stackable: false, maxStack: 1 },
-  misc: { id: 'misc', name: '杂项', stackable: true, maxStack: 99 }
-};
 
 /**
  * 稀有度配置表

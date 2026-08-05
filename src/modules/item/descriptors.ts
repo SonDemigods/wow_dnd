@@ -8,7 +8,8 @@
  *
  *   新增效果类型只需在 `EFFECT_DESCRIBERS` 追加一行，无需改任何弹窗（开闭原则）。
  *
- *   阶段定位：P1（纯新增）。本文件不修改旧弹窗；P2 切换 UI 到本描述器后删除旧映射。
+ *   阶段定位：P3.3 已完成迁移。UI 弹窗（InventoryPopup / CharacterInfoPopup / CombatPopup）
+ *   已切换到本描述器，旧版散落的 `rarityNames` / `getStatName` / `getEffectToast` 本地映射已删除。
  *
  * @module item
  */
@@ -16,6 +17,7 @@ import type { Stats } from '../character/types';
 import type { ItemRarity, ItemEffect } from '../inventory/types';
 import type { Item, WeaponGrip } from './types';
 import { getItemDisplayName } from './typeRegistry';
+import { hasCapability } from './capabilityRegistry';
 import { SLOT_CONFIG } from '../equipment/slotRegistry';
 import type { SetBonusEffect } from '../equipment/setTypes';
 import type { SetProgress } from '../equipment/setService';
@@ -114,6 +116,16 @@ export function describeEffect(effect: ItemEffect): string {
 /**
  * 描述物品为多行文本（供物品详情面板一次性获得全部展示行）
  *
+ * C2 改造（plan.md §3.6）：分发轴从 `item.kind` 改为 `hasCapability` 查询。
+ * - equippable 能力 → 展示装备信息（握持/槽位/职业限制/套装/属性加成）
+ * - usable 能力 → 展示使用效果
+ * kind 收窄仅在分支内部用于访问专有字段（如 item.grip / item.effects），
+ * 分发轴本身已是能力，不泄漏到调用方。
+ *
+ * 行为兼容性：C1 配置中仅 equipment 声明 equippable、仅 consumable 声明 usable，
+ * 因此 C2 改造后输出与 C1 完全一致。C3 引入复合物品（如魔法武器 equippable+usable）
+ * 时，两分支会同时触发，天然支持"装备信息 + 使用效果"共展示。
+ *
  * 输出内容：
  * - 首行：`稀有度 · 类型名`
  * - 装备：握持方式 / 占用槽位提示 / 可装备槽位 / 职业限制 / 所属套装 / 属性加成
@@ -125,7 +137,9 @@ export function describeItem(item: Item): string[] {
   const lines: string[] = [];
   lines.push(`${RARITY_NAMES[item.rarity]} · ${getItemDisplayName(item)}`);
 
-  if (item.kind === 'equipment') {
+  // C2：按 equippable 能力查询分发（替代旧 item.kind === 'equipment'）
+  // kind 收窄用于访问 grip/slots/classRestriction/bonus 等装备专有字段
+  if (hasCapability(item, 'equippable') && item.kind === 'equipment') {
     // 武器展示握持方式与占用槽位
     if (item.grip) {
       lines.push(`${GRIP_NAMES[item.grip]}武器`);
@@ -137,13 +151,21 @@ export function describeItem(item: Item): string[] {
     if (item.classRestriction?.length) {
       lines.push(`职业限制：${item.classRestriction.join('、')}`);
     }
-    if (item.setId) {
+    // C2：按 setMember 能力查询判断套装成员（替代旧 item.setId 隐式判断）
+    if (hasCapability(item, 'setMember') && item.setId) {
       lines.push(`所属套装：${item.setId}`);
     }
     lines.push(...formatStatBonus(item.bonus));
   }
 
-  if (item.kind === 'consumable') {
+  // C2：按 usable 能力查询分发（替代旧 item.kind === 'consumable'）
+  // kind 收窄用于访问 effects 等消耗品专有字段
+  if (hasCapability(item, 'usable') && item.kind === 'consumable') {
+    lines.push(...item.effects.map(describeEffect));
+  } else if (hasCapability(item, 'usable') && item.kind === 'equipment' && item.effects?.length) {
+    // C3：魔法武器主动技能（持杖施法）
+    // 复合物品场景：equippable + usable 同时声明，装备信息分支与主动技能分支独立触发
+    lines.push('主动技能：');
     lines.push(...item.effects.map(describeEffect));
   }
 
@@ -157,7 +179,7 @@ export function describeItem(item: Item): string[] {
 /**
  * 物品 ID → 名称解析器（describeSetProgress 用）
  *
- * P1 阶段尚无统一物品模板 Map（P3 构建），故由调用方注入名称解析器。
+ * 当前阶段尚无统一物品模板 Map，故由调用方注入名称解析器。
  * 未提供时，部件行仅展示槽位名。
  */
 export type ItemNameResolver = (itemId: string) => string | undefined;

@@ -5,8 +5,6 @@
  *
  *              P3.3 升级：核心类型（EquipmentItem/EquippedItem/EquipmentState/EquipmentSlot 等）
  *              已迁移至 `item/types.ts` 的判别联合体系，本文件 re-export 保持消费方导入路径不变。
- *              保留 `EquipmentType`（'weapon'|'armor'）仅用于 DB 存储层（EquipmentTemplateStorage.type）
- *              的旧数据兼容，运行时不再作为 EquipmentItem 的字段。
  * @module equipment
  */
 
@@ -29,21 +27,7 @@ export type {
   EquipmentState
 } from '../item/types';
 
-// ============================================================================
-// 枚举类型（DB 存储层过渡用）
-// ============================================================================
-
-/**
- * 装备类型枚举（@deprecated P3.3 过渡保留，仅供 DB 存储层 `EquipmentTemplateStorage.type` 使用）
- *
- * 运行时装备分类已由 `EquipmentItem.kind='equipment'` + `subtype` 表达，
- * 此类型仅用于旧 DB 数据的 `type` 列（'weapon' | 'armor'）兼容。
- * `equipment/db.ts` 的 `mapTemplateToEquipmentItem` 读取时按 subtype 推导，
- * 写入时由 subtype 反推 type 落库。
- *
- * @see equipment/db.ts saveEquipmentTemplate 写入时由 subtype 反推
- */
-export type EquipmentType = 'weapon' | 'armor';
+import type { Capability } from '../item/capabilityTypes';
 
 // ============================================================================
 // 配置草稿类型
@@ -54,70 +38,29 @@ export type EquipmentType = 'weapon' | 'armor';
  *
  * 配置层（config_equipmentItems.ts）的装备条目使用此类型，
  * 条目只需声明业务字段（不含判别字面量与派生字段），
- * 在导出时通过 map 补全 `kind/subtype/grip/stackable/consumable` 并派生 `slots/occupies`。
+ * 在导出时通过 map 补全 `kind/subtype/grip/stackable/consumable/capabilities` 并派生 `slots/occupies`。
  *
  * Omit 的字段说明：
  * - `kind`/`stackable`/`consumable`：恒定字面量（'equipment'/false/false），由 map 补全
  * - `subtype`/`grip`：由配置层的分组 map 注入（按 SWORDS→sword 等约定）
  * - `slots`/`occupies`：由 subtype 经 slotRegistry 的 `deriveSlots`/`SUBTYPE_OCCUPIES` 派生
+ * - `capabilities`：能力组合（plan.md §3.4），由配置层 map 注入静态常量（非运行期派生）
  *
  * 这样配置层无需逐条手填字面量与派生字段，由 slotRegistry 统一派生。
  */
 export type EquipmentItemDraft = Omit<
   import('../item/types').EquipmentItem,
-  'kind' | 'subtype' | 'grip' | 'occupies' | 'slots' | 'stackable' | 'consumable'
+  'kind' | 'subtype' | 'grip' | 'occupies' | 'slots' | 'stackable' | 'consumable' | 'capabilities'
 >;
 
 // ============================================================================
 // 套装系统类型（Phase 5.3 新增）
 // ============================================================================
-
-/**
- * 套装奖励接口
- *
- * 描述穿戴指定数量套装件数后激活的奖励效果。
- *
- * @property {number} requiredPieces - 激活所需件数（如 2、4、6）
- * @property {SetBonusEffect} bonus - 奖励效果配置
- */
-export interface SetBonus {
-  requiredPieces: number;
-  bonus: SetBonusEffect;
-}
-
-/**
- * 套装奖励效果接口
- *
- * @property {string} [stat] - 受影响的属性键（如 'str'、'rage_max'）
- * @property {number} [value] - 数值加成（stat 为基础属性时为整数，百分比效果时为小数）
- * @property {string} [effect] - 特殊效果标识（如 'rage_on_crit_10'、'damage_bonus_30_when_full_rage'）
- * @property {string} [description] - 效果描述（UI 展示用）
- */
-export interface SetBonusEffect {
-  stat?: string;
-  value?: number;
-  effect?: string;
-  description?: string;
-}
-
-/**
- * 套装定义接口
- *
- * 一个套装包含多个装备部件，穿戴达到指定件数时激活对应奖励。
- *
- * @property {string} id - 套装唯一标识（如 'warrior_might'）
- * @property {string} name - 套装显示名称
- * @property {number} pieces - 套装总件数
- * @property {string} classRestriction - 套装所属职业（如 'warrior'），未定义表示无职业限制
- * @property {SetBonus[]} setBonuses - 套装奖励列表，按 requiredPieces 升序
- */
-export interface ItemSet {
-  id: string;
-  name: string;
-  pieces: number;
-  classRestriction?: string;
-  setBonuses: SetBonus[];
-}
+//
+// P3.3b 升级：套装类型层已迁移至 setTypes.ts（基于判别联合的新版模型）。
+// 旧版 ItemSet / SetBonus / SetBonusEffect（松散接口）已删除。
+// 新版提供：ItemSet（parts + bonusTiers + category）/ SetBonusTier / SetBonusEffect（判别联合）/
+// SetPartSpec / SetCategory / SetId。配套 setService 提供进度查询，setBonusRegistry 提供触发执行器。
 
 // ============================================================================
 // 存储/持久化接口
@@ -210,6 +153,8 @@ export interface EquipmentTemplateStorage {
   classRestriction?: string[];
   /** 所属套装 ID（可空，P3.1 新增） */
   setId?: string;
+  /** 能力标签集合（plan.md §3.4，配置层显式声明，mapTemplateToEquipmentItem 透传） */
+  capabilities: Capability[];
 }
 
 // ============================================================================

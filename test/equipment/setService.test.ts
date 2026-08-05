@@ -58,6 +58,7 @@ function makeEquippedItem(
       rarity: 'common',
       value: 10,
       kind: 'equipment',
+      capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
       subtype,
       stackable: false,
       consumable: false,

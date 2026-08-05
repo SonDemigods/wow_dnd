@@ -5,8 +5,8 @@
  *   `ITEM_TYPE_NAMES` / `rarityNames` / `typeNames` / `isEquipment` / 分类分组为一张注册表，
  *   新增物品类型/子类型只需在此追加一行（开闭原则）。
  *
- *   阶段定位：P1（纯新增）。本文件不替换 equipment/service.ts 的旧 `ITEM_TYPE_NAMES`，
- *   旧 UI 仍用旧映射；P2 切换 UI 到 `lookupTypeMeta` 后删除旧映射。
+ *   阶段定位：P3.3 已完成迁移。旧版 `ITEM_TYPES` 配置表与 `ITEM_TYPE_NAMES` 映射已删除，
+ *   UI 已切换到 `lookupTypeMeta` / `getItemDisplayName` 等查询入口。
  *
  * @module item
  */

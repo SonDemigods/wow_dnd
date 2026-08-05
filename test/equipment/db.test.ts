@@ -39,6 +39,7 @@ function makeEquipmentItem(o: Partial<EquipmentItem> = {}): EquipmentItem {
     occupies: ['weapon1'],
     bonus: { str: 3 },
     levelRequirement: 1,
+    capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
     ...o,
   } as EquipmentItem;
 }
@@ -213,6 +214,7 @@ describe('EquipmentDbService - 装备数据层（fake-indexeddb 真实 CRUD）',
         consumable: false,
         slots: ['chest'],
         occupies: ['chest'],
+        capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
       };
       await equipmentDbService.saveEquipmentTemplate(item);
 
@@ -246,7 +248,8 @@ describe('EquipmentDbService - 装备数据层（fake-indexeddb 真实 CRUD）',
         slots: ['weapon1'],
         levelRequirement: null,
         stackable: false,
-        template: ''
+        template: '',
+        capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
       });
       const result = await equipmentDbService.getEquipmentTemplate('null-bonus');
       expect(result).not.toBeNull();
@@ -268,7 +271,8 @@ describe('EquipmentDbService - 装备数据层（fake-indexeddb 真实 CRUD）',
         slots: 'not-an-array' as unknown as string[],
         levelRequirement: null,
         stackable: false,
-        template: ''
+        template: '',
+        capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
       });
       const result = await equipmentDbService.getEquipmentTemplate('bad-slots');
       expect(result).not.toBeNull();

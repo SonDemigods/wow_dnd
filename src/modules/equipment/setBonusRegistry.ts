@@ -7,13 +7,14 @@
  *
  *   设计：执行器不直接修改战斗状态，而是通过 `ctx.emit(intent)` 下发"效果意图"
  *   （`SetBonusIntent`）。战斗模块在 P5 接入时，提供 `emit` 回调将意图实际应用到角色/敌人。
- *   这样 P1 阶段可脱离战斗系统独立测试执行器分派逻辑（注入 mock emit 收集意图）。
+ *   当前阶段可脱离战斗系统独立测试执行器分派逻辑（注入 mock emit 收集意图）。
  *
  *   新增触发效果类型：在 `SET_BONUS_EXECUTORS` 注册一行 `{ executor, sources }` 即可，
  *   无需改战斗逻辑（开闭原则）。
  *
- *   阶段定位：P1（纯新增）。本文件不接入战斗模块；P5 在 on_hit/on_kill/on_turn_start 等时机
- *   遍历已激活套装触发效果并调用 `executeSetBonus`。
+ *   阶段定位：套装类型层与配置数据已迁移完成（P3.3b），6 个执行器已注册。
+ *   战斗模块尚未接入 trigger 类型效果的实际执行（待 P5 在 on_hit/on_kill/on_turn_start
+ *   等时机遍历已激活套装触发效果并调用 `executeSetBonus`）。
  *
  * @module equipment
  */

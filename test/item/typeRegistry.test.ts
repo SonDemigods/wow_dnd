@@ -60,7 +60,8 @@ function makeEquipment(o: Partial<EquipmentItem> = {}): EquipmentItem {
   return {
     id: 'w1', name: '剑', icon: '', description: '', rarity: 'common', value: 100,
     kind: 'equipment', subtype: 'sword', grip: 'one_handed', stackable: false, consumable: false,
-    bonus: {}, slots: ['weapon1', 'weapon2'], occupies: [], ...o,
+    bonus: {}, slots: ['weapon1', 'weapon2'], occupies: [],
+    capabilities: ['describable', 'equippable', 'sellable', 'enchantable'], ...o,
   };
 }
 

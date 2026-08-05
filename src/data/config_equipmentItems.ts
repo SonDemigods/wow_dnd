@@ -5,7 +5,41 @@
  */
 
 import type { EquipmentItem, EquipmentItemDraft } from '../modules/equipment/types';
+import type { Capability } from '../modules/item/capabilityTypes';
 import { deriveSlots, SUBTYPE_OCCUPIES } from '../modules/equipment/slotRegistry';
+
+// ============================================================================
+// 装备能力组合（plan.md §3.4/§3.5）
+// ============================================================================
+
+/**
+ * 普通装备能力组合：可描述 + 可装备 + 可出售 + 可附魔
+ *
+ * config_equipmentItems 中的装备均为普通装备（无 setId / 无主动技能），
+ * 能力组合固定，在导出 map 注入（与 kind/stackable/consumable 同属配置层显式声明）。
+ * 套装部件（setMember）/ 魔法武器（usable）见 config_class_items 与 C3 复合物品。
+ */
+const EQUIPMENT_CAPABILITIES: Capability[] = [
+  'describable',
+  'equippable',
+  'sellable',
+  'enchantable',
+];
+
+/**
+ * 法杖能力组合：可描述 + 可装备 + 可使用 + 可出售 + 可附魔
+ *
+ * C3 复合物品：法杖是首个 equippable + usable 复合装备。
+ * 'usable' 能力 + effects 主动技能（magic_damage）实现"持杖施法"语义：
+ * 法杖必须装备到武器槽后，战斗中方可通过物品菜单施放主动技能，且不消耗物品。
+ */
+const STAFF_CAPABILITIES: Capability[] = [
+  'describable',
+  'equippable',
+  'usable',
+  'sellable',
+  'enchantable',
+];
 
 // ============================================================================
 // 武器类装备
@@ -266,7 +300,9 @@ const STAVES: EquipmentItemDraft[] = [
     description: '由月辉林地千年橡木削成的法杖，手感温润，能稳定地引导魔法',
     value: 10,
     template: 'oak_staff',
-    levelRequirement: 1
+    levelRequirement: 1,
+    // C3：魔法武器主动技能（持杖施法，可重复使用不消耗）
+    effects: [{ type: 'magic_damage', value: 15 }]
   },
   {
     id: 'crystal_staff',
@@ -277,7 +313,9 @@ const STAVES: EquipmentItemDraft[] = [
     description: '顶端镶嵌着从水晶废墟中开采的魔力水晶，能将平庸的法术聚焦成致命光束',
     value: 28,
     template: 'crystal_staff',
-    levelRequirement: 5
+    levelRequirement: 5,
+    // C3：魔法武器主动技能（持杖施法，可重复使用不消耗）
+    effects: [{ type: 'magic_damage', value: 25 }]
   },
   {
     id: 'arcane_staff',
@@ -288,7 +326,9 @@ const STAVES: EquipmentItemDraft[] = [
     description: '奥法学院奥术议会授予高阶奥术师的荣誉法杖，杖身流淌着紫罗兰色的奥术之力',
     value: 55,
     template: 'arcane_staff',
-    levelRequirement: 10
+    levelRequirement: 10,
+    // C3：魔法武器主动技能（持杖施法，可重复使用不消耗）
+    effects: [{ type: 'magic_damage', value: 40 }]
   },
   {
     id: 'jordan_staff',
@@ -299,7 +339,9 @@ const STAVES: EquipmentItemDraft[] = [
     description: '奥术大师乔丹生前最后一件遗作，杖内封印着他毕生钻研的奥术真理',
     value: 150,
     template: 'jordan_staff',
-    levelRequirement: 15
+    levelRequirement: 15,
+    // C3：魔法武器主动技能（持杖施法，可重复使用不消耗）
+    effects: [{ type: 'magic_damage', value: 60 }]
   },
   {
     id: 'atiesh',
@@ -310,7 +352,9 @@ const STAVES: EquipmentItemDraft[] = [
     description: '星界守护者的传说法杖，蕴含跨越次元的无上奥术之力，顶端的乌鸦雕饰仿佛仍在低语着观星之塔的秘密',
     value: 400,
     template: 'atiesh',
-    levelRequirement: 20
+    levelRequirement: 20,
+    // C3：魔法武器主动技能（持杖施法，可重复使用不消耗）
+    effects: [{ type: 'magic_damage', value: 90 }]
   }
 ];
 
@@ -723,6 +767,9 @@ export const EQUIPMENT_ITEMS: EquipmentItem[] = [
   kind: 'equipment' as const,
   stackable: false as const,
   consumable: false as const,
+  // plan.md §3.4：装备能力组合（配置层注入静态常量，非运行期派生）
+  // C3：法杖（staff）为复合物品，注入含 usable 的 STAFF_CAPABILITIES；其他装备注入普通能力组合
+  capabilities: item.subtype === 'staff' ? STAFF_CAPABILITIES : EQUIPMENT_CAPABILITIES,
   slots: deriveSlots(item.subtype),
   occupies: SUBTYPE_OCCUPIES[item.subtype] ?? deriveSlots(item.subtype)
 }));

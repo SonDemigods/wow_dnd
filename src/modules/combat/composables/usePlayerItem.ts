@@ -18,6 +18,7 @@ import {
   type DamageType,
 } from '../effects';
 import { rollPlayerCrit, computeThornsDamage } from './helpers/critCalc';
+import { hasCapability } from '@/modules/item/capabilityRegistry';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
 import type { useInitiative } from './useInitiative';
@@ -49,9 +50,11 @@ export function usePlayerItem(
     let itemKilledEnemy = false;
 
     // P3.3：从 effects[] 提取伤害型和恢复型效果（替代旧 item.effect 单效果）
-    // 消耗品 effects 为必填数组，装备 effects 为可选（被动效果），其余类别无效果
-    const itemEffects = itemInfo?.kind === 'consumable' ? itemInfo.effects
-                      : itemInfo?.kind === 'equipment' ? (itemInfo.effects ?? [])
+    // C2：按能力查询分发效果提取（替代旧 item.kind 判断，与 describeItem 分发轴保持一致）
+    // usable 能力（消耗品）→ effects 必填；equippable 能力（装备）→ effects 可选（被动效果）
+    // kind 收窄用于访问 effects 等专有字段，分发轴本身已是能力，不泄漏到调用方
+    const itemEffects = (itemInfo && hasCapability(itemInfo, 'usable') && itemInfo.kind === 'consumable') ? itemInfo.effects
+                      : (itemInfo && hasCapability(itemInfo, 'equippable') && itemInfo.kind === 'equipment') ? (itemInfo.effects ?? [])
                       : [];
     const damageEffect = itemEffects.find(e =>
       (e.type === 'magic_damage' || e.type === 'physical_damage') && typeof e.value === 'number' && e.value > 0

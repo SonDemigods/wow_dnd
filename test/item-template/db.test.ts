@@ -43,6 +43,7 @@ function makeItem(id: string): Item {
     icon: '',
     value: 10,
     stackable: true,
+    capabilities: ['describable', 'usable', 'stackable', 'sellable'],
   } as Item;
 }
 
@@ -59,6 +60,7 @@ function makeEquipment(id: string): EquipmentItem {
     stackable: false,
     slots: ['weapon1'],
     bonus: { str: 5 },
+    capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
   } as EquipmentItem;
 }
 

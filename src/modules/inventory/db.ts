@@ -182,7 +182,9 @@ export class InventoryDbService {
         consumable: item.kind === 'consumable',
         template: item.template || null,
         // 用 ?? 而非 ||，0 是合法的等级要求（mapToItem 读取端亦用 ??）
-        levelRequirement: item.levelRequirement ?? null
+        levelRequirement: item.levelRequirement ?? null,
+        // plan.md §3.4：能力标签集合落库（必填字段，配置层显式声明）
+        capabilities: item.capabilities
       });
     });
   }
@@ -214,6 +216,8 @@ export class InventoryDbService {
       value: data.value,
       levelRequirement: data.levelRequirement ?? undefined,
       template: data.template || undefined,
+      // plan.md §3.4：能力标签集合透传（配置层显式声明，无派生兜底）
+      capabilities: data.capabilities,
     };
 
     // 旧 effect + bonus → 新 effects[]（plan.md T5/T6：统一为多效果数组）

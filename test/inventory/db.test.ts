@@ -35,6 +35,7 @@ function makeItem(o: Partial<Item> = {}): Item {
     consumable: true,
     effects: [],
     useMode: 'instant',
+    capabilities: ['describable', 'usable', 'stackable', 'sellable'],
     ...o,
   } as Item;
 }
@@ -202,6 +203,7 @@ describe('InventoryDbService - 背包数据层（fake-indexeddb 真实 CRUD）',
         stackable: true,
         consumable: false,
         effects: [],
+        capabilities: ['describable', 'stackable', 'sellable'],
       };
       await inventoryDbService.saveItemTemplate(item);
 
@@ -241,7 +243,8 @@ describe('InventoryDbService - 背包数据层（fake-indexeddb 真实 CRUD）',
         stackable: false,
         consumable: false,
         template: null,
-        levelRequirement: null
+        levelRequirement: null,
+        capabilities: ['describable', 'stackable', 'sellable'],
       });
       const result = await inventoryDbService.getItemTemplate('null-bonus');
       expect(result).not.toBeNull();

@@ -25,27 +25,33 @@ const TYPE_TO_KIND: Record<string, Partial<Item> & { kind: ItemKind }> = {
   potion: {
     kind: 'consumable', subtype: 'potion', stackable: true, consumable: true,
     effects: [], useMode: 'instant',
+    capabilities: ['describable', 'usable', 'stackable', 'sellable'],
   },
   scroll: {
     kind: 'consumable', subtype: 'scroll', stackable: true, consumable: true,
     effects: [], useMode: 'instant',
+    capabilities: ['describable', 'usable', 'stackable', 'sellable'],
   },
   food: {
     kind: 'consumable', subtype: 'food', stackable: true, consumable: true,
     effects: [], useMode: 'instant',
+    capabilities: ['describable', 'usable', 'stackable', 'sellable'],
   },
   material: {
     kind: 'material', stackable: true, consumable: false, effects: [],
+    capabilities: ['describable', 'stackable', 'sellable'],
   },
   weapon: {
     kind: 'equipment', subtype: 'sword', grip: 'one_handed',
     stackable: false, consumable: false, bonus: {},
     slots: ['weapon1', 'weapon2'], occupies: ['weapon1'],
+    capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
   },
   armor: {
     kind: 'equipment', subtype: 'chest',
     stackable: false, consumable: false, bonus: {},
     slots: ['chest'], occupies: ['chest'],
+    capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
   },
 };
 

@@ -113,7 +113,7 @@ export function validateQuestData(): number {
 /**
  * 校验套装定义的 ID 唯一性
  *
- * P3-2：防止套装 ID 重复定义导致 getActiveSetBonuses 计算错误。
+ * P3-2：防止套装 ID 重复定义导致 setService.getAllSetProgresses 计算错误。
  *
  * @returns 校验通过的套装数量；若存在重复 ID，会在控制台输出错误日志
  */
@@ -184,7 +184,7 @@ export function validateBossPhasesOrder(): number {
  * 校验装备的 setId 引用是否存在于 ITEM_SETS 定义
  *
  * P2-79：装备的 setId 必须能在 ITEM_SETS 中找到对应套装，
- * 否则 getActiveSetBonuses 计算时会被静默忽略，玩家穿戴后无法激活套装奖励。
+ * 否则 setService.getAllSetProgresses 计算时会被静默忽略，玩家穿戴后无法激活套装奖励。
  *
  * 校验范围：CLASS_SPECIFIC_ITEMS 中所有带 setId 的装备。
  *

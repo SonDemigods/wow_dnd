@@ -39,6 +39,7 @@ function makeEquipment(o: Partial<EquipmentItem> = {}): EquipmentItem {
     levelRequirement: 5,
     classRestriction: ['warrior'],
     setId: 'warrior_set',
+    capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
     ...o,
   } as EquipmentItem;
 }
@@ -57,6 +58,7 @@ function makeItem(o: Partial<Item> = {}): Item {
     consumable: true,
     effects: [],
     useMode: 'instant',
+    capabilities: ['describable', 'usable', 'stackable', 'sellable'],
     ...o,
   } as Item;
 }
@@ -107,6 +109,7 @@ describe('convertEquipmentToItem：装备模板 → Item 格式', () => {
       levelRequirement: 5,
       classRestriction: ['warrior'],
       setId: 'warrior_set',
+      capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
     });
   });
 

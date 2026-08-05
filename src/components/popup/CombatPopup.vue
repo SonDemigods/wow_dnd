@@ -210,20 +210,41 @@
           <button class="item-modal-close" @click="showItemModal = false; eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_item_modal_close' })"><BaseIcon name="cancel" :size="16" /></button>
         </div>
         <div class="item-modal-body">
-          <div
-            v-for="item in consumableItems"
-            :key="item.itemId"
-            class="item-option"
-            @click="useItem(item.itemId, item.index)"
-          >
-            <ItemIcon :icon="item.icon" :rarity="item.rarity" size="md" />
-            <div class="item-info">
-              <span class="item-name">{{ item.name }}</span>
-              <span class="item-desc">{{ item.description }}</span>
+          <!-- C3：装备技能分区（已装备魔法武器主动技能） -->
+          <template v-if="equippedUsableItems.length > 0">
+            <div class="item-section-label">装备技能</div>
+            <div
+              v-for="item in equippedUsableItems"
+              :key="'eq_' + item.itemId"
+              class="item-option item-option-equipped"
+              @click="useItem(item.itemId, item.index)"
+            >
+              <ItemIcon :icon="item.icon" :rarity="item.rarity" size="md" />
+              <div class="item-info">
+                <span class="item-name">{{ item.name }}</span>
+                <span class="item-desc">{{ item.description }}</span>
+              </div>
+              <span class="item-count item-count-equipped">已装备</span>
             </div>
-            <span class="item-count">x{{ item.count }}</span>
-          </div>
-          <div v-if="consumableItems.length === 0" class="item-empty">没有可用的物品</div>
+          </template>
+          <!-- 消耗品分区 -->
+          <template v-if="consumableItems.length > 0">
+            <div class="item-section-label">消耗品</div>
+            <div
+              v-for="item in consumableItems"
+              :key="item.itemId"
+              class="item-option"
+              @click="useItem(item.itemId, item.index)"
+            >
+              <ItemIcon :icon="item.icon" :rarity="item.rarity" size="md" />
+              <div class="item-info">
+                <span class="item-name">{{ item.name }}</span>
+                <span class="item-desc">{{ item.description }}</span>
+              </div>
+              <span class="item-count">x{{ item.count }}</span>
+            </div>
+          </template>
+          <div v-if="itemMenuEntries.length === 0" class="item-empty">没有可用的物品</div>
         </div>
       </div>
     </div>
@@ -257,12 +278,14 @@ import { ResourceSystemFactory } from '@/modules/combat/resources';
 import { useCharacterStore } from '@/modules/character';
 import { useSkillStore } from '@/modules/skill';
 import { useInventoryStore } from '@/modules/inventory';
+import { useEquipmentStore } from '@/modules/equipment';
 import { useSkillDisplay } from '@/composables/useSkillDisplay';
 import { eventBus, GameEvents } from '@/modules/bus';
 import type { CombatLog, CombatResult, CombatActionType } from '@/modules/combat';
 import type { Skill } from '@/modules/skill';
-import type { ItemRarity, ItemEffect } from '@/modules/inventory';
+import type { ItemRarity, Item } from '@/modules/inventory';
 import { describeEffect } from '@/modules/item/descriptors';
+import { hasCapability } from '@/modules/item/capabilityRegistry';
 import ResourceBar from '@/components/common/ResourceBar.vue';
 import ClassResourceBar from '@/components/common/ClassResourceBar.vue';
 import PetHpBar from '@/components/common/PetHpBar.vue';
@@ -313,6 +336,7 @@ function clearAllAnimationTimers(): void {
 const characterStore = useCharacterStore();
 const skillsStore = useSkillStore();
 const inventoryStore = useInventoryStore();
+const equipmentStore = useEquipmentStore();
 const combatStore = useCombatStore();
 const logRef = ref<HTMLElement | null>(null);
 const isAnimating = ref(false);
@@ -543,7 +567,47 @@ const consumableItems = computed(() => {
   }
 });
 
-const hasConsumables = computed(() => consumableItems.value.length > 0);
+/**
+ * 已装备的可使用物品（C3：复合物品 — 魔法武器主动技能）
+ *
+ * 从 equipmentStore.equipment 读取所有已装备物品，过滤声明了 'usable' 能力的
+ * （当前仅法杖）。这些物品不在背包中，但可在战斗中通过物品菜单施放主动技能。
+ * 设计语义：持杖施法 — 法杖必须装备到武器槽后才能在战斗中使用。
+ * 与 consumableItems 的差异：来源 equipmentStore（不在背包）；数量恒为 1；使用不消耗。
+ */
+const equippedUsableItems = computed(() => {
+  try {
+    const result: { index: number; itemId: string; count: number; name: string; icon: string; description: string; rarity: ItemRarity }[] = [];
+    Object.values(equipmentStore.equipment).forEach((equippedItem) => {
+      if (!equippedItem) return;
+      const item = equippedItem.item;
+      if (!hasCapability(item, 'usable')) return;
+      result.push({
+        index: -1,  // 装备不在背包索引中，useItem 函数已 _ 前缀忽略此参数
+        itemId: item.id,
+        count: 1,
+        name: item.name,
+        icon: item.icon || 'backpack',
+        description: item.effects?.map(describeEffect).join('，') || item.description,
+        rarity: item.rarity,
+      });
+    });
+    return result;
+  } catch (e) {
+    console.error(e);
+    errorHandler.report(e);
+    return [];
+  }
+});
+
+/** 物品菜单条目（合并已装备可使用物品 + 消耗品，装备技能优先展示） */
+const itemMenuEntries = computed(() => [
+  ...equippedUsableItems.value,
+  ...consumableItems.value,
+]);
+
+// C3：含已装备可使用物品或消耗品时均可打开物品菜单
+const hasConsumables = computed(() => itemMenuEntries.value.length > 0);
 
 // ==================== P3-156：宠物系统 UI 辅助 ====================
 
@@ -597,9 +661,12 @@ function handlePetDismiss(): void {
 }
 
 /** 构建消耗品描述（委托 describeEffect 统一效果描述，无效果时回退到物品描述） */
-function buildItemDescription(info: { effect?: ItemEffect | null; description?: string }): string {
-  if (!info.effect) return info.description || '';
-  return describeEffect(info.effect);
+function buildItemDescription(info: Item): string {
+  // P3.3b：适配 effects[] 多效果模型（旧版 effect 单字段已移除）
+  if (info.kind === 'consumable' && info.effects.length > 0) {
+    return info.effects.map(describeEffect).join('，');
+  }
+  return info.description || '';
 }
 
 const { getSkillEffectBrief, getTargetTypeName } = useSkillDisplay();
@@ -1363,6 +1430,19 @@ onUnmounted(() => {
 .item-option .item-desc { font-size: @font-sm; color: @color-dodge; }
 .item-option .item-count { font-size: 13px; color: @accent-color; font-weight: @font-weight-bold; flex-shrink: 0; }
 .item-empty { text-align: center; padding: 24px; color: @color-mid-gray; font-style: italic; }
+
+// C3：装备技能分区样式
+.item-section-label {
+  padding: 4px 8px;
+  font-size: @font-sm;
+  color: @color-dodge;
+  font-weight: @font-weight-bold;
+  border-top: 1px solid @white-10;
+  &:first-child { border-top: none; }
+}
+.item-option-equipped { background: rgba(168, 85, 247, 0.08); }
+.item-option-equipped:hover { background: rgba(168, 85, 247, 0.16); }
+.item-count-equipped { font-size: @font-sm; color: #a855f7; }
 
 /* 动画 —— 战斗动画已迁移至 @/modules/animation/combat-effects.ts (anime.js) */
 

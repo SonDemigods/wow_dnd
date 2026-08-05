@@ -17,9 +17,7 @@
  * @module inventory
  */
 export type {
-  ItemType,
   ItemRarity,
-  ItemTypeData,
   RarityConfig,
   ItemEffectType,
   ItemEffect,

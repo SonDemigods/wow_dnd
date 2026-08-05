@@ -23,9 +23,8 @@
  * | 可装备性 | `canEquipItem` | - | 综合判断物品是否可装备 |
  * | 槽位查询 | `getEquipmentBySlot` | - | 按槽位查询已装备物品 |
  */
-import type { EquipmentItem, EquipmentSlot, EquippedItem, SetBonus, ItemSet } from './types';
+import type { EquipmentItem, EquipmentSlot, EquippedItem } from './types';
 import type { Stats } from '../character/types';
-import { ITEM_SETS } from '@/data/config_item_sets';
 import { validateSubtypeSlot } from './slotRegistry';
 
 // ==================== 槽位基础设施（P3.1：从 slotRegistry re-export） ====================
@@ -213,76 +212,8 @@ export function checkClassRestriction(item: EquipmentItem, classId: string): boo
 }
 
 // ==================== 套装效果计算（Phase 5.3 新增） ====================
-
-/**
- * 统计当前装备状态中各套装的穿戴件数
- *
- * 遍历所有槽位的装备，按 setId 字段聚合统计。
- * 无 setId 的装备不计入任何套装。
- *
- * @param equipment - 当前装备状态
- * @returns 套装 ID → 穿戴件数的映射
- */
-export function countSetPieces(
-  equipment: Record<EquipmentSlot, EquippedItem | null>
-): Map<string, number> {
-  const counts = new Map<string, number>();
-  Object.values(equipment).forEach(equippedItem => {
-    if (equippedItem?.item.setId) {
-      const setId = equippedItem.item.setId;
-      counts.set(setId, (counts.get(setId) || 0) + 1);
-    }
-  });
-  return counts;
-}
-
-/**
- * 计算当前装备状态激活的所有套装奖励
- *
- * 计算逻辑：
- * 1. 统计各套装的穿戴件数
- * 2. 对每个有穿戴的套装，查找其套装定义
- * 3. 筛选 requiredPieces <= 当前穿戴件数的奖励
- * 4. 返回所有激活的奖励列表
- *
- * @param equipment - 当前装备状态
- * @returns 激活的套装奖励数组（含套装 ID 和奖励详情）
- */
-export function getActiveSetBonuses(
-  equipment: Record<EquipmentSlot, EquippedItem | null>
-): Array<{ setId: string; setName: string; piecesEquipped: number; bonus: SetBonus }> {
-  const pieceCounts = countSetPieces(equipment);
-  const activeBonuses: Array<{ setId: string; setName: string; piecesEquipped: number; bonus: SetBonus }> = [];
-
-  pieceCounts.forEach((count, setId) => {
-    const itemSet: ItemSet | undefined = ITEM_SETS.find(set => set.id === setId);
-    if (!itemSet) return;
-
-    itemSet.setBonuses.forEach(setBonus => {
-      if (count >= setBonus.requiredPieces) {
-        activeBonuses.push({
-          setId,
-          setName: itemSet.name,
-          piecesEquipped: count,
-          bonus: setBonus
-        });
-      }
-    });
-  });
-
-  return activeBonuses;
-}
-
-/**
- * 获取指定套装的当前穿戴件数
- *
- * @param equipment - 当前装备状态
- * @param setId - 套装 ID
- * @returns 该套装的穿戴件数
- */
-export function getSetPieceCount(
-  equipment: Record<EquipmentSlot, EquippedItem | null>,
-  setId: string
-): number {
-  return countSetPieces(equipment).get(setId) || 0;
-}
+//
+// P3.3b 升级：套装进度查询已迁移至 setService.ts（基于新版 ItemSet 类型）。
+// 旧版 countSetPieces / getActiveSetBonuses / getSetPieceCount 已删除，
+// 调用方改用 setService.getAllSetProgresses / getSetProgressById / getActiveBonusEffects。
+// 套装触发效果执行器在 setBonusRegistry.ts。

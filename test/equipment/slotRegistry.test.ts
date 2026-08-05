@@ -46,6 +46,7 @@ function makeEquipment(o: Partial<EquipmentItem> = {}): EquipmentItem {
     bonus: { str: 5 },
     slots: ['weapon1', 'weapon2'],
     occupies: [],
+    capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
     ...o,
   };
 }

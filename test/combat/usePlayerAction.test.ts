@@ -653,7 +653,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
     it('伤害型物品无目标时返回 success=false', async () => {
       inventoryStoreMock.getItemInfo.mockReturnValue({
         name: '炸弹',
-        kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
+        kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'physical_damage', value: 50 }],
       });
       const state = makeStateMock({ target: null, alive: [] });
 
@@ -677,7 +677,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
     it('非伤害型物品正常使用，调用 inventoryStore.useItem', async () => {
       inventoryStoreMock.getItemInfo.mockReturnValue({
         name: '生命药水',
-        kind: 'consumable', effects: [{ type: 'health_restore', value: 30 }],
+        kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'health_restore', value: 30 }],
       });
       const initiative = makeInitiativeMock();
 
@@ -1305,7 +1305,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
+        name: '炸弹', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
@@ -1325,7 +1325,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
+        name: '炸弹', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
@@ -1345,7 +1345,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '魔法卷轴', kind: 'consumable', effects: [{ type: 'magic_damage', value: 50 }],
+        name: '魔法卷轴', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'magic_damage', value: 50 }],
       });
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
@@ -1361,7 +1361,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
     it('恢复型物品触发 COMBAT_CAST_HEAL 事件', async () => {
       const state = makeStateMock();
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '法力药水', kind: 'consumable', effects: [{ type: 'mana_restore', value: 20 }],
+        name: '法力药水', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'mana_restore', value: 20 }],
       });
 
       const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
@@ -1378,7 +1378,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
     it('生命恢复型物品触发 healType=health 事件', async () => {
       const state = makeStateMock();
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '生命药水', kind: 'consumable', effects: [{ type: 'health_restore', value: 30 }],
+        name: '生命药水', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'health_restore', value: 30 }],
       });
 
       const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
@@ -1396,7 +1396,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
+        name: '炸弹', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.takeDamage.mockReturnValue(true);
       state.aliveEnemies.value = [];
@@ -1415,7 +1415,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       state.bossInstances.set(boss.id, wrapAsBossInstance(boss));
       state.bossInstances.get(boss.id)!.runtime.canRevive = true;
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
+        name: '炸弹', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.takeDamage.mockReturnValue(true);
       state.aliveEnemies.value = [];
@@ -1617,7 +1617,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
+        name: '', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
@@ -1710,7 +1710,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
+        name: '炸弹', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
@@ -1730,7 +1730,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
+        name: '炸弹', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
@@ -1988,7 +1988,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '魔法卷轴', kind: 'consumable', effects: [{ type: 'magic_damage', value: 50 }],
+        name: '魔法卷轴', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'magic_damage', value: 50 }],
       });
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
@@ -2011,7 +2011,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const enemy = makeEnemy({ id: 'e1', name: '' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
+        name: '炸弹', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
@@ -2033,7 +2033,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
+        name: '', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);
@@ -2059,7 +2059,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
       const state = makeStateMock({ target: enemy, alive: [enemy] });
       inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', kind: 'consumable', effects: [{ type: 'physical_damage', value: 50 }],
+        name: '炸弹', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'physical_damage', value: 50 }],
       });
       enemyStoreMock.getEnemyById.mockReturnValue(enemy);
       enemyStoreMock.takeDamage.mockReturnValue(false);

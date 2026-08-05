@@ -36,14 +36,16 @@ function makeConsumable(o: Partial<ConsumableItem> = {}): ConsumableItem {
   return {
     id: 'p1', name: '生命药水', icon: '', description: '', rarity: 'common', value: 10,
     kind: 'consumable', subtype: 'potion', stackable: true, consumable: true,
-    effects: [{ type: 'health_restore', value: 50 }], useMode: 'instant', ...o,
+    effects: [{ type: 'health_restore', value: 50 }], useMode: 'instant',
+    capabilities: ['describable', 'usable', 'stackable', 'sellable'], ...o,
   };
 }
 
 function makeMaterial(o: Partial<MaterialItem> = {}): MaterialItem {
   return {
     id: 'm1', name: '铁矿', icon: '', description: '', rarity: 'common', value: 5,
-    kind: 'material', stackable: true, consumable: false, effects: [], ...o,
+    kind: 'material', stackable: true, consumable: false, effects: [],
+    capabilities: ['describable', 'stackable', 'sellable'], ...o,
   };
 }
 
@@ -51,7 +53,8 @@ function makeEquipment(o: Partial<EquipmentItem> = {}): EquipmentItem {
   return {
     id: 'w1', name: '铁剑', icon: '', description: '', rarity: 'common', value: 100,
     kind: 'equipment', subtype: 'sword', grip: 'one_handed', stackable: false, consumable: false,
-    bonus: { str: 5 }, slots: ['weapon1', 'weapon2'], occupies: [], ...o,
+    bonus: { str: 5 }, slots: ['weapon1', 'weapon2'], occupies: [],
+    capabilities: ['describable', 'equippable', 'sellable', 'enchantable'], ...o,
   };
 }
 
@@ -142,6 +145,8 @@ describe('describeItem 物品描述', () => {
   it('装备含职业限制与套装归属', () => {
     const item: Item = makeEquipment({
       classRestriction: ['warrior', 'paladin'], setId: 'warrior_might',
+      // C2：套装成员需显式声明 setMember 能力（替代旧 setId 隐式判断）
+      capabilities: ['describable', 'equippable', 'setMember', 'sellable', 'enchantable'],
     });
     const lines = describeItem(item);
     expect(lines).toContain('职业限制：warrior、paladin');
@@ -175,6 +180,45 @@ describe('describeItem 物品描述', () => {
     const item: Item = makeMaterial();
     const lines = describeItem(item);
     expect(lines).toEqual(['普通 · 材料']);
+  });
+
+  // ==================== C3：复合物品（魔法武器 equippable + usable）====================
+
+  it('C3 法杖：同时展示装备信息与主动技能（复合物品核心价值）', () => {
+    // 法杖：equippable + usable 复合，两分支独立触发
+    const item: Item = makeEquipment({
+      id: 'oak_staff',
+      name: '橡木法杖',
+      subtype: 'staff',
+      grip: 'one_handed',
+      slots: ['weapon1', 'weapon2'],
+      bonus: { int: 10 },
+      capabilities: ['describable', 'equippable', 'usable', 'sellable', 'enchantable'],
+      effects: [{ type: 'magic_damage', value: 15 }],
+    });
+    const lines = describeItem(item);
+    // 首行：稀有度 · 类型名
+    expect(lines[0]).toBe('普通 · 法杖');
+    // equippable 分支：装备信息
+    expect(lines).toContain('单手武器');
+    expect(lines).toContain('可装备槽位：主手、副手');
+    expect(lines).toContain('智力 +10');
+    // usable 分支（equipment 路径）：主动技能
+    expect(lines).toContain('主动技能：');
+    expect(lines).toContain('造成 15 点法术伤害');
+  });
+
+  it('C3 法杖无 effects 时不展示主动技能行', () => {
+    // 边界：声明了 usable 能力但 effects 为空/缺省，不应触发主动技能分支
+    const item: Item = makeEquipment({
+      subtype: 'staff',
+      grip: 'one_handed',
+      bonus: { int: 10 },
+      capabilities: ['describable', 'equippable', 'usable', 'sellable', 'enchantable'],
+      // 无 effects 字段
+    });
+    const lines = describeItem(item);
+    expect(lines.some(l => l.includes('主动技能'))).toBe(false);
   });
 });
 

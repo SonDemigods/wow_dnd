@@ -11,11 +11,9 @@
  *   - `WEAPON_SUBTYPE_GRIP`：武器子类型 → 握持方式（单手/副手/双手）
  *   - `SLOT_GROUP` / `SLOT_CONFIG`：槽位 → 组别/展示元数据
  *
- *   阶段定位：P1（纯新增）。本文件不替换 equipment/service.ts 的旧 6 槽设施
+ *   阶段定位：P3.3 已完成迁移。本文件已替代 equipment/service.ts 的旧 6 槽设施
  *   （`ALL_EQUIPMENT_SLOTS` / `SLOT_CONFIG` / `createEmptySlotMap` / `validateSlot` / `canEquipItem`），
- *   旧代码继续使用旧设施；P3 用本文件覆盖旧设施并修复"手套装头部"等 bug。
- *   因此 P1 期间 equipment 模块内存在同名的两套槽位设施（旧 6 槽 + 新 7 槽），
- *   消费方按文件路径区分导入；equipment/index.ts barrel 不导出本文件，避免同名冲突。
+ *   并修复了"手套装头部"等 bug。equipment/service.ts 现复用本文件的映射表。
  *
  * @module equipment
  */

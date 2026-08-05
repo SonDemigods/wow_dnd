@@ -260,11 +260,7 @@ export {
 // ===== equipment =====
 export type {
   EquipmentSlot,
-  EquipmentType,
   EquipmentItem,
-  SetBonus,
-  SetBonusEffect,
-  ItemSet,
   EquippedItem,
   EquipmentState,
   EquipmentDataStorage,
@@ -322,9 +318,7 @@ export { DEFAULT_GAME_SETTINGS, useGameStore } from './game';
 
 // ===== inventory =====
 export type {
-  ItemType,
   ItemRarity,
-  ItemTypeData,
   RarityConfig,
   ItemEffectType,
   ItemEffect,

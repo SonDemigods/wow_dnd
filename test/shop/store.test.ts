@@ -201,6 +201,7 @@ function makeItem(o: Partial<Item> = {}): Item {
     description: '恢复 50 点生命值',
     value: 100,
     stackable: true,
+    capabilities: ['describable', 'usable', 'stackable', 'sellable'],
     ...o,
   };
 }

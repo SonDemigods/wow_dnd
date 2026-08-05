@@ -39,6 +39,7 @@ import { SHOPS } from '@/data/config_shops';
 import { errorHandler } from '@/services/ErrorHandler';
 import { errorReporter } from '@/utils/errorReport';
 import { useGameStore } from '@/modules/game';
+import { hasCapability } from '@/modules/item/capabilityRegistry';
 
 /**
  * 商店 Pinia Store
@@ -572,7 +573,10 @@ export const useShopStore = defineStore('shop', () => {
     if (!itemTemplate) return false;
 
     // P1-15 修复：任务物品不可出售，防止玩家出售后无法找回导致存档损坏
-    if (itemTemplate.kind === 'quest') return false;
+    // C2：按 sellable 能力查询分发（替代旧 itemTemplate.kind === 'quest' 判断）
+    // C1 配置中任务物品不声明 sellable，行为与旧 kind === 'quest' 等价；
+    // C3 引入复合物品时，能力查询天然支持"任务物品即便有其他能力也不可出售"
+    if (!hasCapability(itemTemplate, 'sellable')) return false;
 
     // 2. 计算售价（复用已获取的 itemTemplate，避免重复查询）
     const unitPrice = computeSellPrice(itemTemplate);

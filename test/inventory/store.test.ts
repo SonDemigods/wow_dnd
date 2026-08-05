@@ -83,6 +83,7 @@ function makeItem(o: Partial<Item> = {}): Item {
     consumable: true,
     effects: [],
     useMode: 'instant',
+    capabilities: ['describable', 'usable', 'stackable', 'sellable'],
     ...o,
   } as Item;
 }
@@ -107,6 +108,7 @@ function makeWeaponItem(o: Partial<Item> = {}): Item {
     slots: ['weapon1'],
     occupies: ['weapon1'],
     effects: [],
+    capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
     ...o,
   } as Partial<Item>);
 }

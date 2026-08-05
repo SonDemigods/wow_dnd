@@ -8,8 +8,8 @@
  * 4. canEquipItem —— 可装备性综合判断
  * 5. getEquipmentBySlot —— 槽位查询（含兜底）
  * 6. checkClassRestriction —— 职业限制校验
- * 7. countSetPieces / getSetPieceCount —— 套装件数统计
- * 8. getActiveSetBonuses —— 激活的套装奖励
+ *
+ * P3.3b：套装件数统计与激活奖励计算已迁移至 setService.ts，对应测试在 setService.test.ts。
  */
 import { describe, it, expect } from 'vitest';
 import {
@@ -20,9 +20,6 @@ import {
   canEquipItem,
   getEquipmentBySlot,
   checkClassRestriction,
-  countSetPieces,
-  getSetPieceCount,
-  getActiveSetBonuses,
   isSlotLockedByTwoHanded,
 } from '@/modules/equipment/service';
 import type { EquipmentItem, EquippedItem, EquipmentSlot } from '@/modules/equipment/types';
@@ -43,6 +40,7 @@ function makeItem(overrides: Partial<EquipmentItem> = {}): EquipmentItem {
     slots: ['weapon1'],
     occupies: ['weapon1'],
     bonus: { str: 5 },
+    capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
     ...overrides,
   };
 }
@@ -221,70 +219,9 @@ describe('checkClassRestriction 职业限制', () => {
   });
 });
 
-describe('countSetPieces / getSetPieceCount 套装件数统计', () => {
-  it('无套装装备时返回空 Map', () => {
-    const equipment = emptyEquipment();
-    equipment.weapon1 = makeEquipped(makeItem({ setId: undefined }));
-    const counts = countSetPieces(equipment);
-    expect(counts.size).toBe(0);
-  });
-
-  it('统计同 setId 的装备件数', () => {
-    const equipment = emptyEquipment();
-    equipment.weapon1 = makeEquipped(makeItem({ id: 'a', setId: 'warrior_might' }));
-    equipment.helm = makeEquipped(makeItem({ id: 'b', type: 'armor', subtype: 'helm', grip: undefined, slots: ['helm'], occupies: ['helm'], setId: 'warrior_might' }));
-    const counts = countSetPieces(equipment);
-    expect(counts.get('warrior_might')).toBe(2);
-  });
-
-  it('不同 setId 分别统计', () => {
-    const equipment = emptyEquipment();
-    equipment.weapon1 = makeEquipped(makeItem({ id: 'a', setId: 'set_a' }));
-    equipment.helm = makeEquipped(makeItem({ id: 'b', type: 'armor', subtype: 'helm', grip: undefined, slots: ['helm'], occupies: ['helm'], setId: 'set_b' }));
-    const counts = countSetPieces(equipment);
-    expect(counts.get('set_a')).toBe(1);
-    expect(counts.get('set_b')).toBe(1);
-  });
-
-  it('getSetPieceCount 返回指定套装件数，不存在时返回 0', () => {
-    const equipment = emptyEquipment();
-    equipment.weapon1 = makeEquipped(makeItem({ setId: 'warrior_might' }));
-    expect(getSetPieceCount(equipment, 'warrior_might')).toBe(1);
-    expect(getSetPieceCount(equipment, 'not_exist')).toBe(0);
-  });
-});
-
-describe('getActiveSetBonuses 激活套装奖励', () => {
-  it('穿戴件数达到 requiredPieces 时激活奖励', () => {
-    const equipment = emptyEquipment();
-    equipment.weapon1 = makeEquipped(makeItem({ id: 'a', setId: 'warrior_might' }));
-    equipment.helm = makeEquipped(makeItem({ id: 'b', type: 'armor', subtype: 'helm', grip: undefined, slots: ['helm'], occupies: ['helm'], setId: 'warrior_might' }));
-    const bonuses = getActiveSetBonuses(equipment);
-    expect(bonuses).toHaveLength(1);
-    expect(bonuses[0].setId).toBe('warrior_might');
-    expect(bonuses[0].setName).toBe('力量套装');
-    expect(bonuses[0].piecesEquipped).toBe(2);
-    expect(bonuses[0].bonus.requiredPieces).toBe(2);
-  });
-
-  it('穿戴件数未达到 requiredPieces 时不激活奖励', () => {
-    const equipment = emptyEquipment();
-    equipment.weapon1 = makeEquipped(makeItem({ setId: 'warrior_might' }));
-    const bonuses = getActiveSetBonuses(equipment);
-    expect(bonuses).toHaveLength(0);
-  });
-
-  it('无套装装备时返回空数组', () => {
-    expect(getActiveSetBonuses(emptyEquipment())).toEqual([]);
-  });
-
-  it('setId 在 ITEM_SETS 中不存在时不返回奖励', () => {
-    const equipment = emptyEquipment();
-    equipment.weapon1 = makeEquipped(makeItem({ setId: 'unknown_set' }));
-    equipment.helm = makeEquipped(makeItem({ type: 'armor', subtype: 'helm', grip: undefined, slots: ['helm'], occupies: ['helm'], setId: 'unknown_set' }));
-    expect(getActiveSetBonuses(equipment)).toEqual([]);
-  });
-});
+// ============================================================================
+// 套装相关测试已迁移至 test/equipment/setService.test.ts
+// ============================================================================
 
 // ============================================================================
 // P3.2：双手武器联动测试

@@ -4,12 +4,13 @@
  *   物品系统升级（plan.md §3.4 §3）的套装进度查询层。提供套装穿戴进度、已激活档位、
  *   下一档待激活等查询，供 UI 装备面板展示与战斗模块判断触发（plan.md S6 解决）。
  *
- *   设计：依赖注入。本模块不直接 import 配置数据（旧版 config_item_sets.ts 仍是旧 `ItemSet`
- *   格式，类型不兼容），而是由调用方传入 `sets: ItemSet[]`。P5 配置层重构后，调用方传入
- *   新版 `ITEM_SETS` 即可。这样 P1 可脱离配置数据独立测试进度计算逻辑。
+ *   设计：依赖注入。本模块不直接 import 配置数据，而是由调用方传入 `sets: ItemSet[]`。
+ *   调用方（如 equipment/store.ts）传入新版 `ITEM_SETS`（config_item_sets.ts 已迁移到新类型）。
+ *   这样可脱离具体配置数据独立测试进度计算逻辑。
  *
- *   阶段定位：P1（纯新增）。本文件不替换 equipment/service.ts 的旧 `countSetPieces` /
- *   `getActiveSetBonuses`；P5 用本文件函数替换旧版并接入战斗模块。
+ *   阶段定位：P3.3b 已完成迁移。equipment/service.ts 的旧版 `countSetPieces` /
+ *   `getActiveSetBonuses` 已删除，由本文件函数替代。store.ts 的 reapplySetBonuses
+ *   已切换到本服务。战斗模块的 trigger 类型效果接入待 P5 完成。
  *
  * @module equipment
  */

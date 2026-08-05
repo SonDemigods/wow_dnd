@@ -42,6 +42,7 @@ import {
   RARITY_ORDER
 } from './service';
 import { getItemDisplayName } from '../item/typeRegistry';
+import { hasCapability } from '../item/capabilityRegistry';
 
 /**
  * 物品收集通知回调类型（ARCH-2 修复：回调注入替代 inventory → quest 静态依赖）
@@ -489,7 +490,9 @@ export const useInventoryStore = defineStore('inventory', () => {
 
     const invItem = inventory.value[idx];
     const itemTemplate = itemTemplates.value.get(itemId);
-    if (!itemTemplate || !itemTemplate.consumable) return false;
+    // C2：按 usable 能力查询分发（替代旧 !itemTemplate.consumable 判断）
+    // C1 配置中仅消耗品声明 usable，行为与旧 !consumable 等价；C3 引入复合物品时天然支持
+    if (!itemTemplate || !hasCapability(itemTemplate, 'usable')) return false;
 
     // 获取角色 Store（提升到顶部避免重复调用）
     const characterStore = useCharacterStore();

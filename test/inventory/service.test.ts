@@ -47,6 +47,7 @@ function makeItem(overrides: Partial<Item> = {}): Item {
     consumable: true,
     effects: [],
     useMode: 'instant',
+    capabilities: ['describable', 'usable', 'stackable', 'sellable'],
     ...overrides,
   } as Item;
 }

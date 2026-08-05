@@ -61,17 +61,17 @@ vi.mock('@/modules/character/store', () => ({ useCharacterStore: () => mocks.cha
 vi.mock('@/modules/log/store', () => ({ useLogStore: () => mocks.logStore }));
 vi.mock('@/modules/log/service', () => ({ generateLogId: vi.fn().mockReturnValue('log-id') }));
 
-// service 层使用真实实现，仅 getActiveSetBonuses 包装为 vi.fn 以便单测覆盖防御性 continue 分支
-vi.mock('@/modules/equipment/service', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/modules/equipment/service')>();
+// service 层使用真实实现；setService 层包装 getAllSetProgresses 为 vi.fn 以便单测覆盖防御性分支
+vi.mock('@/modules/equipment/setService', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/modules/equipment/setService')>();
   return {
     ...actual,
-    getActiveSetBonuses: vi.fn(actual.getActiveSetBonuses),
+    getAllSetProgresses: vi.fn(actual.getAllSetProgresses),
   };
 });
 
 import { equipmentDbService } from '@/modules/equipment/db';
-import { getActiveSetBonuses } from '@/modules/equipment/service';
+import { getAllSetProgresses } from '@/modules/equipment/setService';
 
 // ==================== 测试数据 helper ====================
 
@@ -90,6 +90,7 @@ function makeWeapon(o: Partial<EquipmentItem> = {}): EquipmentItem {
     slots: ['weapon1'],
     occupies: ['weapon1'],
     bonus: { str: 5 },
+    capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
     ...o,
   } as EquipmentItem;
 }
@@ -108,6 +109,7 @@ function makeArmor(o: Partial<EquipmentItem> = {}): EquipmentItem {
     slots: ['chest'],
     occupies: ['chest'],
     bonus: { con: 3 },
+    capabilities: ['describable', 'equippable', 'sellable', 'enchantable'],
     ...o,
   } as EquipmentItem;
 }
@@ -211,6 +213,7 @@ describe('useEquipmentStore - 装备 Store', () => {
 
     it('activeSetBonuses 无套装装备时返回空数组', () => {
       const store = useEquipmentStore();
+      // P3.3b：activeSetBonuses 现在返回 SetProgress[]（无套装装备时为空数组）
       expect(store.activeSetBonuses).toEqual([]);
     });
   });
@@ -537,21 +540,23 @@ describe('useEquipmentStore - 装备 Store', () => {
     it('装备 2 件同套装时应用套装奖励', async () => {
       const store = useEquipmentStore();
       store.$patch({ currentCharacterId: 'char-1' });
-      // 两件 warrior_might 套装（warrior_might 需要 2 件激活，奖励 str+5）
-      const setWeapon = makeWeapon({
-        id: 'set_w', name: '力量之剑', slots: ['weapon1'],
-        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { str: 3 },
+      // P3.3b：使用真实套装装备 ID（warrior_might 套装 parts 指定 itemId）
+      // warrior_might 2 件套奖励：stat str+5 + trigger rage_gen_on_hit_1
+      // 装备自身 bonus 用 con 避免与套装奖励 str+5 混淆
+      const setHelm = makeArmor({
+        id: 'warrior_helm_rage', name: '愤怒之盔', subtype: 'helm', slots: ['helm'], occupies: ['helm'],
+        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 3 },
       });
-      const setArmor = makeArmor({
-        id: 'set_a', name: '力量之甲',
-        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 2 },
+      const setChest = makeArmor({
+        id: 'warrior_chest_might', name: '力量胸甲', subtype: 'chest',
+        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 5 },
       });
 
-      await store.equipItem('weapon1', setWeapon);
+      await store.equipItem('helm', setHelm);
       // 第一件装备后套装未激活（仅 1 件），applyBonus 不含套装 str+5
       expect(mocks.characterStore.applyBonus).not.toHaveBeenCalledWith({ str: 5 });
 
-      await store.equipItem('chest', setArmor);
+      await store.equipItem('chest', setChest);
 
       // 第二件装备后套装激活，applyBonus 收到套装奖励 { str: 5 }
       expect(mocks.characterStore.applyBonus).toHaveBeenCalledWith({ str: 5 });
@@ -560,50 +565,50 @@ describe('useEquipmentStore - 装备 Store', () => {
     it('卸下套装中的一件时移除套装奖励', async () => {
       const store = useEquipmentStore();
       store.$patch({ currentCharacterId: 'char-1' });
-      const setWeapon = makeWeapon({
-        id: 'set_w', name: '力量之剑', slots: ['weapon1'],
-        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { str: 3 },
+      const setHelm = makeArmor({
+        id: 'warrior_helm_rage', name: '愤怒之盔', subtype: 'helm', slots: ['helm'], occupies: ['helm'],
+        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 3 },
       });
-      const setArmor = makeArmor({
-        id: 'set_a', name: '力量之甲',
-        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 2 },
+      const setChest = makeArmor({
+        id: 'warrior_chest_might', name: '力量胸甲', subtype: 'chest',
+        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 5 },
       });
       // 先装备两件激活套装
-      await store.equipItem('weapon1', setWeapon);
-      await store.equipItem('chest', setArmor);
+      await store.equipItem('helm', setHelm);
+      await store.equipItem('chest', setChest);
       mocks.characterStore.removeBonus.mockClear();
 
-      // 卸下武器，套装件数降为 1，套装失效
-      await store.unequipItem('weapon1');
+      // 卸下头盔，套装件数降为 1，套装失效
+      await store.unequipItem('helm');
 
       // removeBonus 收到套装奖励 { str: 5 }（移除已失效的套装加成）
       expect(mocks.characterStore.removeBonus).toHaveBeenCalledWith({ str: 5 });
-      expect(store.equipment.weapon1).toBeNull();
+      expect(store.equipment.helm).toBeNull();
     });
 
     it('套装已激活时再次调用 reapplySetBonuses 不重复应用/移除（行 272/281 falsy 分支）', async () => {
       const store = useEquipmentStore();
       store.$patch({ currentCharacterId: 'char-1' });
-      const setWeapon = makeWeapon({
-        id: 'set_w', name: '力量之剑', slots: ['weapon1'],
-        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { str: 3 },
+      const setHelm = makeArmor({
+        id: 'warrior_helm_rage', name: '愤怒之盔', subtype: 'helm', slots: ['helm'], occupies: ['helm'],
+        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 3 },
       });
-      const setArmor = makeArmor({
-        id: 'set_a', name: '力量之甲',
-        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 2 },
+      const setChest = makeArmor({
+        id: 'warrior_chest_might', name: '力量胸甲', subtype: 'chest',
+        classRestriction: ['warrior'], setId: 'warrior_might', bonus: { con: 5 },
       });
       // 先装备两件激活套装
-      await store.equipItem('weapon1', setWeapon);
-      await store.equipItem('chest', setArmor);
+      await store.equipItem('helm', setHelm);
+      await store.equipItem('chest', setChest);
       // 清除调用记录
       mocks.characterStore.applyBonus.mockClear();
       mocks.characterStore.removeBonus.mockClear();
 
-      // 再装备一件非套装物品（helm 槽位），套装仍激活
-      const nonSetArmor = makeArmor({
-        id: 'non_set', name: '皮甲', subtype: 'helm', slots: ['helm'], occupies: ['helm'], bonus: { dex: 1 },
+      // 再装备一件非套装物品（weapon1 槽位），套装仍激活
+      const nonSetWeapon = makeWeapon({
+        id: 'non_set', name: '普通铁剑', bonus: { dex: 1 },
       });
-      await store.equipItem('helm', nonSetArmor);
+      await store.equipItem('weapon1', nonSetWeapon);
 
       // 套装奖励已在 appliedSetBonuses 中：
       // - 行 272 falsy：appliedSetBonuses 中的条目仍在 currentKeys 中 → 不调用 removeBonus
@@ -612,28 +617,36 @@ describe('useEquipmentStore - 装备 Store', () => {
       expect(mocks.characterStore.applyBonus).not.toHaveBeenCalledWith({ str: 5 });
     });
 
-    it('套装奖励无 stat/value 时跳过应用（continue 分支 行 279）', async () => {
+    it('套装激活效果仅含 trigger 类型时跳过 stat 应用（reapplySetBonuses 过滤非 stat 类型）', async () => {
       const store = useEquipmentStore();
       store.$patch({ currentCharacterId: 'char-1' });
-      // Mock getActiveSetBonuses 返回无 stat/value 的奖励（仅 effect/description）
-      vi.mocked(getActiveSetBonuses).mockReturnValueOnce([
+      // P3.3b：Mock getAllSetProgresses 返回仅含 trigger 类型效果的进度（无 stat 加成）
+      vi.mocked(getAllSetProgresses).mockReturnValueOnce([
         {
           setId: 'test_set',
           setName: '测试套装',
-          piecesEquipped: 2,
-          bonus: {
-            requiredPieces: 2,
-            bonus: { effect: 'special_effect', description: '特殊效果' },
-          },
-        },
+          category: 'armor_set',
+          totalPieces: 2,
+          equippedPieces: 2,
+          activeTiers: [
+            {
+              requiredPieces: 2,
+              bonuses: [
+                { kind: 'trigger', triggerId: 'rage_gen_on_hit_1', description: '攻击时产生怒气' }
+              ]
+            }
+          ],
+          nextTier: null,
+          partsStatus: []
+        }
       ]);
 
       // 装备一件物品触发 reapplySetBonuses
       const weapon = makeWeapon({ id: 'w1', bonus: { str: 1 } });
       await store.equipItem('weapon1', weapon);
 
-      // 无 stat/value 的套装奖励被 continue 跳过：
-      // applyBonus 仅被调用 1 次（装备自身 bonus { str: 1 }），不包含套装奖励
+      // trigger 类型效果不进入 characterStore.applyBonus：
+      // applyBonus 仅被调用 1 次（装备自身 bonus { str: 1 }），不包含套装 stat 加成
       expect(mocks.characterStore.applyBonus).toHaveBeenCalledTimes(1);
       expect(mocks.characterStore.applyBonus).toHaveBeenCalledWith({ str: 1 });
     });

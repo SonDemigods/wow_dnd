@@ -1,37 +1,45 @@
 /**
- * @fileoverview 套装定义数据（Phase 5.3）
+ * @fileoverview 套装定义数据（Phase 5.3，P3.3b 升级到新版类型）
  * @description 定义 6 个核心职业的专属套装，每个套装含 2 件装备，穿戴 2 件激活套装奖励。
  *              套装 ID 与 config_class_items.ts 中装备的 setId 字段对应。
- *              套装奖励由 equipment/service.ts 的 getActiveSetBonuses 计算激活状态。
+ *              套装进度与激活效果由 equipment/setService.ts 的 getSetProgress / getAllSetProgresses 计算。
+ *
+ *              P3.3b 升级：从旧版 ItemSet（pieces + setBonuses 单档松散效果）迁移到
+ *              新版 ItemSet（parts 部件清单 + bonusTiers 多档判别联合效果）。
+ *              旧版 effect 字符串（rage_gen_on_hit_1 等）迁移为 kind:'trigger' + triggerId，
+ *              由 setBonusRegistry 的执行器映射到实际效果意图。
  * @module data
  */
-import type { ItemSet } from '@/modules/equipment/types';
+import type { ItemSet } from '@/modules/equipment/setTypes';
 
 /**
  * 全部套装定义列表
  *
  * 设计原则：
  * 1. 每个套装绑定一个职业，classRestriction 与装备的 classRestriction 一致
- * 2. 套装件数等于该职业专属套装装备的数量（当前为 2 件）
- * 3. 套装奖励按 requiredPieces 升序排列
- * 4. 奖励效果涵盖属性加成和特殊效果两种类型
+ * 2. parts 列出套装包含的具体部件（slot + itemId），与 config_class_items.ts 对应
+ * 3. bonusTiers 按 requiredPieces 升序排列，2 件套为一档
+ * 4. 每档可含多个 SetBonusEffect（如同时给属性加成 + 触发效果）
+ * 5. category 为 'armor_set'（6 个职业套装均为头部 + 胸部两件护甲）
  */
 export const ITEM_SETS: ItemSet[] = [
   // ==================== 战士：力量套装 ====================
   {
     id: 'warrior_might',
     name: '力量套装',
-    pieces: 2,
+    category: 'armor_set',
+    parts: [
+      { slot: 'helm', itemId: 'warrior_helm_rage' },
+      { slot: 'chest', itemId: 'warrior_chest_might' }
+    ],
     classRestriction: 'warrior',
-    setBonuses: [
+    bonusTiers: [
       {
         requiredPieces: 2,
-        bonus: {
-          stat: 'str',
-          value: 5,
-          effect: 'rage_gen_on_hit_1',
-          description: '2 件套：力量 +5，攻击时额外产生 1 点怒气'
-        }
+        bonuses: [
+          { kind: 'stat', stat: 'str', value: 5, description: '力量 +5' },
+          { kind: 'trigger', triggerId: 'rage_gen_on_hit_1', description: '攻击时额外产生 1 点怒气' }
+        ]
       }
     ]
   },
@@ -40,17 +48,19 @@ export const ITEM_SETS: ItemSet[] = [
   {
     id: 'mage_arcane',
     name: '奥术套装',
-    pieces: 2,
+    category: 'armor_set',
+    parts: [
+      { slot: 'helm', itemId: 'mage_hat_arcane' },
+      { slot: 'chest', itemId: 'mage_robe_mystic' }
+    ],
     classRestriction: 'mage',
-    setBonuses: [
+    bonusTiers: [
       {
         requiredPieces: 2,
-        bonus: {
-          stat: 'int',
-          value: 6,
-          effect: 'mp_regen_5_percent',
-          description: '2 件套：智力 +6，每回合额外恢复 5% 最大法力'
-        }
+        bonuses: [
+          { kind: 'stat', stat: 'int', value: 6, description: '智力 +6' },
+          { kind: 'trigger', triggerId: 'mp_regen_5_percent', description: '每回合额外恢复 5% 最大法力' }
+        ]
       }
     ]
   },
@@ -59,17 +69,19 @@ export const ITEM_SETS: ItemSet[] = [
   {
     id: 'paladin_righteous',
     name: '正义套装',
-    pieces: 2,
+    category: 'armor_set',
+    parts: [
+      { slot: 'helm', itemId: 'paladin_helm_holy' },
+      { slot: 'chest', itemId: 'paladin_chest_guardian' }
+    ],
     classRestriction: 'paladin',
-    setBonuses: [
+    bonusTiers: [
       {
         requiredPieces: 2,
-        bonus: {
-          stat: 'wis',
-          value: 5,
-          effect: 'heal_bonus_10_percent',
-          description: '2 件套：智慧 +5，治疗效果提升 10%'
-        }
+        bonuses: [
+          { kind: 'stat', stat: 'wis', value: 5, description: '智慧 +5' },
+          { kind: 'trigger', triggerId: 'heal_bonus_10_percent', description: '治疗效果提升 10%' }
+        ]
       }
     ]
   },
@@ -78,17 +90,19 @@ export const ITEM_SETS: ItemSet[] = [
   {
     id: 'hunter_predator',
     name: '捕食者套装',
-    pieces: 2,
+    category: 'armor_set',
+    parts: [
+      { slot: 'helm', itemId: 'hunter_cap_tracker' },
+      { slot: 'chest', itemId: 'hunter_tunic_swift' }
+    ],
     classRestriction: 'hunter',
-    setBonuses: [
+    bonusTiers: [
       {
         requiredPieces: 2,
-        bonus: {
-          stat: 'dex',
-          value: 5,
-          effect: 'crit_bonus_3_percent',
-          description: '2 件套：敏捷 +5，暴击率 +3%'
-        }
+        bonuses: [
+          { kind: 'stat', stat: 'dex', value: 5, description: '敏捷 +5' },
+          { kind: 'trigger', triggerId: 'crit_bonus_3_percent', description: '暴击率 +3%' }
+        ]
       }
     ]
   },
@@ -97,17 +111,19 @@ export const ITEM_SETS: ItemSet[] = [
   {
     id: 'rogue_shadow',
     name: '暗影套装',
-    pieces: 2,
+    category: 'armor_set',
+    parts: [
+      { slot: 'helm', itemId: 'rogue_mask_shadow' },
+      { slot: 'chest', itemId: 'rogue_tunic_silent' }
+    ],
     classRestriction: 'rogue',
-    setBonuses: [
+    bonusTiers: [
       {
         requiredPieces: 2,
-        bonus: {
-          stat: 'dex',
-          value: 6,
-          effect: 'energy_regen_2',
-          description: '2 件套：敏捷 +6，每回合额外恢复 2 点能量'
-        }
+        bonuses: [
+          { kind: 'stat', stat: 'dex', value: 6, description: '敏捷 +6' },
+          { kind: 'trigger', triggerId: 'energy_regen_2', description: '每回合额外恢复 2 点能量' }
+        ]
       }
     ]
   },
@@ -116,17 +132,19 @@ export const ITEM_SETS: ItemSet[] = [
   {
     id: 'warlock_demonic',
     name: '恶魔套装',
-    pieces: 2,
+    category: 'armor_set',
+    parts: [
+      { slot: 'helm', itemId: 'warlock_hood_demon' },
+      { slot: 'chest', itemId: 'warlock_robe_corrupt' }
+    ],
     classRestriction: 'warlock',
-    setBonuses: [
+    bonusTiers: [
       {
         requiredPieces: 2,
-        bonus: {
-          stat: 'int',
-          value: 5,
-          effect: 'soul_shard_on_kill_20_percent',
-          description: '2 件套：智力 +5，击杀敌人时 20% 概率额外产生 1 个灵魂碎片'
-        }
+        bonuses: [
+          { kind: 'stat', stat: 'int', value: 5, description: '智力 +5' },
+          { kind: 'trigger', triggerId: 'soul_shard_on_kill_20_percent', description: '击杀敌人时 20% 概率额外产生 1 个灵魂碎片' }
+        ]
       }
     ]
   }

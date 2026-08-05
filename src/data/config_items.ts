@@ -17,6 +17,7 @@
  */
 
 import type { ConsumableItem, MaterialItem } from '../modules/item/types';
+import type { Capability } from '../modules/item/capabilityTypes';
 import type { Item } from '../modules/inventory/types';
 
 // ============================================================================
@@ -24,19 +25,50 @@ import type { Item } from '../modules/inventory/types';
 // ============================================================================
 
 /**
+ * 消耗品能力组合（plan.md §3.4/§3.5）
+ *
+ * 消耗品（药水/食物/卷轴）能力组合固定为：可描述 + 可使用 + 可堆叠 + 可出售。
+ * 在 finalizeConsumable 注入，配置层无需逐条手填（与 kind/stackable/consumable
+ * 同属配置层显式声明的字面量，非运行期派生）。
+ */
+const CONSUMABLE_CAPABILITIES: Capability[] = [
+  'describable',
+  'usable',
+  'stackable',
+  'sellable',
+];
+
+/**
+ * 材料能力组合（plan.md §3.4/§3.5）
+ *
+ * 材料能力组合固定为：可描述 + 可堆叠 + 可出售（无使用效果）。
+ */
+const MATERIAL_CAPABILITIES: Capability[] = [
+  'describable',
+  'stackable',
+  'sellable',
+];
+
+/**
  * 消耗品配置草稿类型
  *
  * 条目只需声明 subtype / effects / useMode 等业务字段，
- * kind / stackable / consumable 恒定字面量在导出时由 map 补全。
+ * kind / stackable / consumable / capabilities 恒定字面量在导出时由 map 补全。
  */
-type ConsumableItemDraft = Omit<ConsumableItem, 'kind' | 'stackable' | 'consumable'>;
+type ConsumableItemDraft = Omit<
+  ConsumableItem,
+  'kind' | 'stackable' | 'consumable' | 'capabilities'
+>;
 
 /**
  * 材料配置草稿类型
  *
- * 条目只需声明基础字段，kind / stackable / consumable / effects 在导出时补全。
+ * 条目只需声明基础字段，kind / stackable / consumable / effects / capabilities 在导出时补全。
  */
-type MaterialItemDraft = Omit<MaterialItem, 'kind' | 'stackable' | 'consumable' | 'effects'>;
+type MaterialItemDraft = Omit<
+  MaterialItem,
+  'kind' | 'stackable' | 'consumable' | 'effects' | 'capabilities'
+>;
 
 // ============================================================================
 // 药水类物品
@@ -246,16 +278,19 @@ const ATTRIBUTE_POTIONS: ConsumableItemDraft[] = [
 ];
 
 /**
- * 属性药剂 ID 白名单（@deprecated P3.3b 删除）
+ * 属性药剂 ID 白名单
  *
  * 用于 inventory 模块在 useItem 中区分属性药剂（永久叠加到 `potionStats`）与
  * HP/MP 恢复药剂（走即时效果）。基于 `ATTRIBUTE_POTIONS` 数组派生，
  * 避免在 inventory 中硬编码 6 个字符串 ID。
  *
- * P3.3 升级后属性药剂由 `effects` 中 `type:'stat'` 效果表达，
- * 理论上可用 `computeStatBonus` 替代白名单判断。但 useItem 仍需区分
- * "属性药剂走 applyPotionBonus"与"其他带 stat 效果的消耗品走 applyBonus"，
- * 故白名单保留至 P3.3b 统一清理。
+ * 设计说明：P3.3 升级后属性药剂由 `effects` 中 `type:'stat'` 效果表达，
+ * `computeStatBonus` 可统一提取 stat 加成。但 useItem 仍需区分两种应用路径：
+ * - 属性药剂（命中本白名单）：永久叠加到药剂层 `potionStats`（不可重置）
+ * - 其他带 stat 效果的消耗品（如龙息辣椒等食物）：走装备/天赋层 `bonusStats`
+ * 仅靠 `effects[].type==='stat'` 无法区分两种语义，白名单是当前最简方案。
+ * 未来若引入 `useMode: 'permanent' | 'temporary'` 字段或 buff 系统统一管理临时增益，
+ * 可移除本白名单。
  *
  * @see useInventoryStore.useItem 属性药剂识别入口
  * @see useCharacterStore.applyPotionBonus 永久属性叠加 Action
@@ -577,9 +612,10 @@ const EPIC_MATERIALS: MaterialItemDraft[] = [
 // ============================================================================
 
 /**
- * 消耗品草稿 → 完整 ConsumableItem（补全 kind/stackable/consumable 字面量）
+ * 消耗品草稿 → 完整 ConsumableItem（补全 kind/stackable/consumable/capabilities 字面量）
  *
  * 消耗品恒为 kind='consumable'、stackable=true、consumable=true，
+ * 能力组合固定为 CONSUMABLE_CAPABILITIES（可描述/可使用/可堆叠/可出售），
  * 由判别联合类型在编译期约束，配置层无需逐条手填。
  */
 function finalizeConsumable(draft: ConsumableItemDraft): ConsumableItem {
@@ -588,14 +624,15 @@ function finalizeConsumable(draft: ConsumableItemDraft): ConsumableItem {
     kind: 'consumable' as const,
     stackable: true as const,
     consumable: true as const,
+    capabilities: CONSUMABLE_CAPABILITIES,
   };
 }
 
 /**
- * 材料草稿 → 完整 MaterialItem（补全 kind/stackable/consumable/effects 字面量）
+ * 材料草稿 → 完整 MaterialItem（补全 kind/stackable/consumable/effects/capabilities 字面量）
  *
  * 材料恒为 kind='material'、stackable=true、consumable=false、effects=[]，
- * 由判别联合类型在编译期约束。
+ * 能力组合固定为 MATERIAL_CAPABILITIES（可描述/可堆叠/可出售），由判别联合类型在编译期约束。
  */
 function finalizeMaterial(draft: MaterialItemDraft): MaterialItem {
   return {
@@ -604,6 +641,7 @@ function finalizeMaterial(draft: MaterialItemDraft): MaterialItem {
     stackable: true as const,
     consumable: false as const,
     effects: [] as [],
+    capabilities: MATERIAL_CAPABILITIES,
   };
 }
 

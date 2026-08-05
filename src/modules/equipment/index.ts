@@ -22,18 +22,24 @@
  */
 export type {
   EquipmentSlot,
-  EquipmentType,
   EquipmentItem,
   EquipmentItemDraft,
-  SetBonus,
-  SetBonusEffect,
-  ItemSet,
   EquippedItem,
   EquipmentState,
   EquipmentDataStorage,
   EquipmentTemplateStorage,
   EquipmentStorage
 } from './types';
+
+// P3.3b：套装系统类型统一从 setTypes 导出（旧版 SetBonus/SetBonusEffect/ItemSet 已删除）
+export type {
+  ItemSet,
+  SetBonusTier,
+  SetBonusEffect,
+  SetPartSpec,
+  SetCategory,
+  SetId
+} from './setTypes';
 
 // P3.1：槽位基础设施从 slotRegistry 统一导出
 // service.ts 仍 re-export 这些符号保持向后兼容，外部新代码建议从 barrel 导入
@@ -56,3 +62,34 @@ export {
 export { EquipmentDbService, equipmentDbService } from './db';
 
 export { useEquipmentStore, setInventoryCallbacks, clearInventoryCallbacks } from './store';
+
+// P3.3b：套装进度查询与触发效果执行器对外暴露，供 UI/战斗模块使用
+export {
+  getSetProgress,
+  getSetProgressById,
+  getAllSetProgresses,
+  getActiveBonusEffects,
+  getActiveTriggers,
+  hasActiveBonus
+} from './setService';
+
+export type {
+  SetProgress,
+  SetPartStatus
+} from './setService';
+
+export {
+  executeSetBonus,
+  isTriggerRegistered,
+  getTriggerSources,
+  registerSetBonusExecutor,
+  SET_BONUS_EXECUTORS
+} from './setBonusRegistry';
+
+export type {
+  SetBonusSource,
+  SetBonusIntent,
+  SetBonusContext,
+  SetBonusExecutor,
+  SetBonusExecutorEntry
+} from './setBonusRegistry';
