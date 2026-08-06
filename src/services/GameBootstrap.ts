@@ -10,9 +10,10 @@ import { useEquipmentStore, setInventoryCallbacks, clearInventoryCallbacks } fro
 import { useSkillStore } from '@/modules/skill';
 import { useMapStore } from '@/modules/map';
 import { useExplorationStore } from '@/modules/exploration';
-import { useQuestStore, setQuestExternalCallbacks, clearQuestExternalCallbacks } from '@/modules/quest';
+import { useQuestStore, setQuestExternalCallbacks, clearQuestExternalCallbacks, initEnemyNameMap } from '@/modules/quest';
 import { useCombatStore } from '@/modules/combat';
 import { useAudioStore } from '@/modules/audio';
+import { configCache } from '@/modules/config';
 import { setBossCreateFn } from '@/modules/enemy';
 import { bossDbService, createBossInstance } from '@/modules/boss';
 import type { BossEnemyInstance } from '@/modules/boss';
@@ -70,6 +71,14 @@ export class GameBootstrapService {
    * @param characterId - 角色 ID
    */
   async initialize(characterId: string): Promise<void> {
+    // ==================== Layer 0：预加载配置缓存 ====================
+    // 从 DB 加载天赋树/被动技能/套装定义/敌人名称到内存缓存，
+    // 确保后续各 Store 的同步查询（computed/getter）能命中缓存。
+    await Promise.all([
+      configCache.loadAll(),
+      initEnemyNameMap(),
+    ]);
+
     // ==================== Layer 1：log + inventory 并行 ====================
     // log 被探索/战斗依赖；inventory 被装备/任务依赖；两者互不依赖
     const inventoryStore = useInventoryStore();

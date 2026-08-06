@@ -30,7 +30,6 @@ import { generateLogId } from '@/modules/log/service';
 import { useCharacterStore } from '@/modules/character/store';
 import { errorReporter } from '@/utils/errorReport';
 import { RARITY_CONFIG } from '../../config/inventory';
-import { ATTRIBUTE_POTION_IDS } from '@/data/config_items';
 import {
   computeStackResult,
   findItemIndex,
@@ -529,7 +528,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     //   此处保留 applyBonus 调用作为向后兼容，开发期输出警告。
     const statBonus = computeStatBonus(itemTemplate);
     if (statBonus && Object.keys(statBonus).length > 0) {
-      if (ATTRIBUTE_POTION_IDS.has(itemTemplate.id)) {
+      if (hasCapability(itemTemplate, 'attribute_potion')) {
         // 属性药剂：永久叠加到药剂层（不可逆），con/int/wis 影响 HP/MP 上限时由 store 重算
         await characterStore.applyPotionBonus(statBonus);
       } else {

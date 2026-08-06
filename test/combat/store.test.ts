@@ -442,7 +442,7 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(alive.map(e => e.id)).toEqual(['e1', 'e3']);
     });
 
-    it('hasBossEnemy：包含 isBoss 敌人时为 true', () => {
+    it('hasBossEnemy：包含 isBoss 敌人时为 true', async () => {
       const store = useCombatStore();
       mocks.state!.enemies.value = [makeEnemy({ id: 'e1' })];
       expect(store.hasBossEnemy).toBe(false);
@@ -453,7 +453,7 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(store.hasBossEnemy).toBe(true);
     });
 
-    it('currentTarget：优先 targetEnemyId，其次第一个存活敌人', () => {
+    it('currentTarget：优先 targetEnemyId，其次第一个存活敌人', async () => {
       const store = useCombatStore();
       const e1 = makeEnemy({ id: 'e1', hp: 50 });
       const e2 = makeEnemy({ id: 'e2', hp: 30 });
@@ -465,7 +465,7 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(store.currentTarget?.id).toBe('e2');
     });
 
-    it('currentTarget：无敌人时返回 null', () => {
+    it('currentTarget：无敌人时返回 null', async () => {
       const store = useCombatStore();
       expect(store.currentTarget).toBeNull();
     });
@@ -473,7 +473,7 @@ describe('useCombatStore - 战斗 Store', () => {
 
   // -------------------- Actions：startCombat --------------------
   describe('Actions：startCombat', () => {
-    it('成功：设置 fighting 状态、combatId、emit COMBAT_START + COMBAT_PLAYER_TURN', () => {
+    it('成功：设置 fighting 状态、combatId、emit COMBAT_START + COMBAT_PLAYER_TURN', async () => {
       const startSpy = vi.fn();
       const turnSpy = vi.fn();
       eventBus.on(GameEvents.COMBAT_START, startSpy);
@@ -481,7 +481,7 @@ describe('useCombatStore - 战斗 Store', () => {
 
       const enemy = makeEnemy({ id: 'e1', name: '哥布林' });
       const store = useCombatStore();
-      store.startCombat([enemy]);
+      await store.startCombat([enemy]);
 
       expect(generateCombatId).toHaveBeenCalled();
       expect(store.state).toBe('fighting');
@@ -503,27 +503,27 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(turnSpy).toHaveBeenCalledWith(null);
     });
 
-    it('startCombat 时初始化资源系统并调用 reset 钩子（覆盖 forEach 回调 行 249）', () => {
+    it('startCombat 时初始化资源系统并调用 reset 钩子（覆盖 forEach 回调 行 249）', async () => {
       const sys = makeResourceSystem({ type: 'rage' });
       vi.mocked(ResourceSystemFactory).create.mockReturnValueOnce([sys]);
 
       const store = useCombatStore();
-      store.startCombat([makeEnemy()]);
+      await store.startCombat([makeEnemy()]);
 
       expect(sys.reset).toHaveBeenCalled();
     });
 
-    it('bossIntros 为空时不触发 COMBAT_BOSS_INTRO（跳过 setTimeout 分支）', () => {
+    it('bossIntros 为空时不触发 COMBAT_BOSS_INTRO（跳过 setTimeout 分支）', async () => {
       const introSpy = vi.fn();
       eventBus.on(GameEvents.COMBAT_BOSS_INTRO, introSpy);
 
       const store = useCombatStore();
-      store.startCombat([makeEnemy()]);
+      await store.startCombat([makeEnemy()]);
 
       expect(introSpy).not.toHaveBeenCalled();
     });
 
-    it('bossIntros 非空且 bossEnemy 存在时，300ms 后 emit COMBAT_BOSS_INTRO 并清空定时器', () => {
+    it('bossIntros 非空且 bossEnemy 存在时，300ms 后 emit COMBAT_BOSS_INTRO 并清空定时器', async () => {
       vi.useFakeTimers();
       const introSpy = vi.fn();
       eventBus.on(GameEvents.COMBAT_BOSS_INTRO, introSpy);
@@ -546,7 +546,7 @@ describe('useCombatStore - 战斗 Store', () => {
       });
 
       const store = useCombatStore();
-      store.startCombat([bossEnemy]);
+      await store.startCombat([bossEnemy]);
 
       // 定时器未触发前不 emit
       expect(introSpy).not.toHaveBeenCalled();
@@ -569,7 +569,7 @@ describe('useCombatStore - 战斗 Store', () => {
       vi.useRealTimers();
     });
 
-    it('bossIntros 中的 bossId 在 enemiesData 中不存在时不 emit（跳过内部分支）', () => {
+    it('bossIntros 中的 bossId 在 enemiesData 中不存在时不 emit（跳过内部分支）', async () => {
       vi.useFakeTimers();
       const introSpy = vi.fn();
       eventBus.on(GameEvents.COMBAT_BOSS_INTRO, introSpy);
@@ -582,7 +582,7 @@ describe('useCombatStore - 战斗 Store', () => {
       });
 
       const store = useCombatStore();
-      store.startCombat([makeEnemy({ id: 'other-enemy' })]);
+      await store.startCombat([makeEnemy({ id: 'other-enemy' })]);
 
       vi.advanceTimersByTime(300);
 

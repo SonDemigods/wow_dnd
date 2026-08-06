@@ -8,7 +8,7 @@
  */
 import { useExplorationStore } from '@/modules/exploration';
 import { useMapStore } from '@/modules/map';
-import { CONTINENTS } from '@/data/config_locations';
+import { db } from '@/modules/data';
 import { registerCommand, logTag, STYLE } from '../framework';
 
 /**
@@ -44,11 +44,12 @@ registerCommand({
   category: 'exploration',
   description: '传送到指定地点',
   usage: 'goto <地点ID>',
-  handler(args) {
+  async handler(args) {
     if (args.length === 0) {
-      // P3-117 修复：动态遍历所有大陆获取地点，不再硬编码 'kalimdor'/'eastern_kingdoms'/'northrend'
+      // 从 DB 查询所有大陆，再通过 mapStore 获取各地大陆下的地点
       const mapStore = useMapStore();
-      const allLocations = CONTINENTS.flatMap(
+      const continents = await db.config_locations.where('type').equals('continent').toArray();
+      const allLocations = continents.flatMap(
         continent => mapStore.getLocationsByContinent(continent.id)
       );
       logTag('goto', '═══ 可用地点 ═══');

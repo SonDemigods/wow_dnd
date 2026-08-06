@@ -59,7 +59,8 @@ export type Capability =
   | 'enchantable' // 可附魔（装备镶嵌宝石/附魔）
   | 'setMember' // 套装成员（计入套装进度）
   | 'usable_in_combat' // 可在战斗中使用（与 usable 区分：战斗内/外，纯声明标签）
-  | 'tradable'; // 可交易（与 sellable 区分：玩家间/商店，纯声明标签）
+  | 'tradable' // 可交易（与 sellable 区分：玩家间/商店，纯声明标签）
+  | 'attribute_potion'; // 属性药剂（永久 stat 加成，走 potionStats 层而非 bonusStats 层）
 
 // ============================================================================
 // 行为校验结果

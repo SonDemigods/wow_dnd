@@ -10,36 +10,44 @@
  *
  * ## 数据来源
  *
- * - 敌人名称：合并 MOBS（config_mobs.ts）和 BOSSES（config_bosses.ts）
+ * - 敌人名称：由 initEnemyNameMap() 从 IndexedDB（config_mobs + config_bosses）异步加载
  * - 物品名称：由调用方通过 itemNameProvider 回调提供
  *
  * @module quest/objective_utils
  */
 
 import type { QuestObjective } from './types';
-import { MOBS } from '@/data/config_mobs';
-import { BOSSES } from '@/data/config_bosses';
+import { db } from '@/modules/data';
 
 /**
  * 敌人ID → 名称映射表
  *
- * 模块加载时通过 IIFE 一次性构建，合并普通怪物和 Boss 数据源。
- * Boss 名称仅在 MOBS 中不存在同 ID 时才覆盖（保留普通怪优先）。
+ * 由 initEnemyNameMap() 从 IndexedDB 异步加载后填充。
+ * 加载完成前为空 Map，getEnemyName/getObjectiveText 降级返回 enemyId 本身。
  */
-const ENEMY_NAME_MAP: Map<string, string> = (() => {
-  const map = new Map<string, string>();
-  // 先加载普通怪物
-  for (const mob of MOBS) {
-    map.set(mob.id, mob.name);
+const ENEMY_NAME_MAP: Map<string, string> = new Map();
+
+/**
+ * 从 DB 加载敌人名称到映射表
+ *
+ * 合并 config_mobs 和 config_bosses 表，Boss 名称仅在 mobs 中不存在同 ID 时才覆盖。
+ * 应在 GameBootstrap.initialize 中调用，确保 UI 渲染前映射表已就绪。
+ */
+export async function initEnemyNameMap(): Promise<void> {
+  const [mobs, bosses] = await Promise.all([
+    db.config_mobs.toArray(),
+    db.config_bosses.toArray(),
+  ]);
+  ENEMY_NAME_MAP.clear();
+  for (const mob of mobs) {
+    ENEMY_NAME_MAP.set(mob.id, mob.name);
   }
-  // 再加载 Boss（不覆盖已存在的普通怪 ID）
-  for (const boss of BOSSES) {
-    if (!map.has(boss.id)) {
-      map.set(boss.id, boss.name);
+  for (const boss of bosses) {
+    if (!ENEMY_NAME_MAP.has(boss.id)) {
+      ENEMY_NAME_MAP.set(boss.id, boss.name);
     }
   }
-  return map;
-})();
+}
 
 /**
  * 根据任务目标生成 UI 显示文本

@@ -18,7 +18,7 @@ import {
   getTalentStatBonuses,
   type TalentEffectSummary
 } from './service';
-import { getTalentTreesByClassId, getTalentById } from '@/data/config_class_talents';
+import { configCache } from '@/modules/config';
 import { usePetStore } from '@/modules/combat/pets';
 
 /**
@@ -66,7 +66,7 @@ export const useTalentStore = defineStore('talent', () => {
   /** 当前职业的天赋树列表 */
   const talentTrees = computed(() => {
     if (!currentClassId.value) return [];
-    return getTalentTreesByClassId(currentClassId.value);
+    return configCache.getTalentTreesByClassId(currentClassId.value);
   });
 
   /** 天赋效果聚合（供战斗系统消费） */
@@ -103,7 +103,9 @@ export const useTalentStore = defineStore('talent', () => {
    * @param level - 角色 等级
    * @param savedAllocations - 可选，从存档恢复的天赋分配
    */
-  function initialize(classId: string, level: number, savedAllocations?: TalentAllocation): void {
+  async function initialize(classId: string, level: number, savedAllocations?: TalentAllocation): Promise<void> {
+    // 确保天赋树缓存已从 DB 加载（供 talentTrees computed 同步查询）
+    await configCache.loadTalentTrees();
     currentClassId.value = classId;
     currentLevel.value = level;
     allocations.value = savedAllocations ? { ...savedAllocations } : {};
@@ -179,7 +181,7 @@ export const useTalentStore = defineStore('talent', () => {
    * @param talentId - 刚学习的天赋 ID
    */
   function applyUnlockPetEffects(talentId: string): void {
-    const found = getTalentById(talentId);
+    const found = configCache.getTalentById(talentId);
     if (!found) return;
 
     for (const effect of found.talent.effects) {

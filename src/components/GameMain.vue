@@ -403,7 +403,7 @@ async function handleBattleTriggered(data: { eventData: { monsterId: string; are
   const enemy = await useEnemyStore().createEnemy(monsterId, areaLevel);
 
   if (enemy) {
-    useCombatStore().startCombat([enemy]);
+    await useCombatStore().startCombat([enemy]);
     showCombat.value = true;
   }
 }

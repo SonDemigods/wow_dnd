@@ -42,6 +42,6 @@ export {
   getDefaultQuests
 } from './service';
 
-export { getObjectiveText, getEnemyName } from './objective_utils';
+export { getObjectiveText, getEnemyName, initEnemyNameMap } from './objective_utils';
 
 export { useQuestStore, setQuestExternalCallbacks, clearQuestExternalCallbacks } from './store';

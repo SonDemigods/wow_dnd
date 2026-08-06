@@ -39,6 +39,17 @@ const CONSUMABLE_CAPABILITIES: Capability[] = [
 ];
 
 /**
+ * 属性药剂能力组合
+ *
+ * 在标准消耗品能力基础上增加 'attribute_potion' 标签，
+ * 供 inventory/store.useItem 识别为永久 stat 加成（走 potionStats 层而非 bonusStats 层）。
+ */
+const ATTRIBUTE_POTION_CAPABILITIES: Capability[] = [
+  ...CONSUMABLE_CAPABILITIES,
+  'attribute_potion',
+];
+
+/**
  * 材料能力组合（plan.md §3.4/§3.5）
  *
  * 材料能力组合固定为：可描述 + 可堆叠 + 可出售（无使用效果）。
@@ -629,6 +640,19 @@ function finalizeConsumable(draft: ConsumableItemDraft): ConsumableItem {
 }
 
 /**
+ * 属性药剂草稿 → 完整 ConsumableItem（含 attribute_potion 能力标签）
+ */
+function finalizeAttributePotion(draft: ConsumableItemDraft): ConsumableItem {
+  return {
+    ...draft,
+    kind: 'consumable' as const,
+    stackable: true as const,
+    consumable: true as const,
+    capabilities: ATTRIBUTE_POTION_CAPABILITIES,
+  };
+}
+
+/**
  * 材料草稿 → 完整 MaterialItem（补全 kind/stackable/consumable/effects/capabilities 字面量）
  *
  * 材料恒为 kind='material'、stackable=true、consumable=false、effects=[]，
@@ -657,7 +681,7 @@ export const LOOT_ITEMS: Item[] = [
   // 药水类
   ...HEALTH_POTIONS.map(finalizeConsumable),
   ...MANA_POTIONS.map(finalizeConsumable),
-  ...ATTRIBUTE_POTIONS.map(finalizeConsumable),
+  ...ATTRIBUTE_POTIONS.map(finalizeAttributePotion),
 
   // 食物类
   ...COMMON_FOOD.map(finalizeConsumable),

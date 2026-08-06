@@ -1,12 +1,13 @@
 /**
  * @fileoverview 天赋系统纯函数服务层（Phase 6.2）
  * @description 提供天赋点数分配校验、效果计算等纯函数。
- *              不持有状态、不调用 DB、不发射事件，可独立进行单元测试。
+ *              不持有状态、不发射事件，可独立进行单元测试。
+ *              天赋树数据通过 configCache 从 DB 加载，调用方需确保缓存已就绪。
  * @module character/talents
  */
 import type { Talent, TalentTree, TalentAllocation, TalentEffect } from './types';
 import { TALENT_POINT_RULES } from './types';
-import { getTalentById, getTalentTreesByClassId } from '@/data/config_class_talents';
+import { configCache } from '@/modules/config';
 import type { Stats } from '../types';
 
 // ============================================================
@@ -102,7 +103,7 @@ export function canLearnTalent(
   availablePoints: number
 ): { canLearn: boolean; reason: string } {
   // 1. 查找天赋定义
-  const found = getTalentById(talentId);
+  const found = configCache.getTalentById(talentId);
   if (!found) {
     return { canLearn: false, reason: '天赋不存在' };
   }
@@ -275,7 +276,7 @@ export function calculateTalentEffects(
   allocations: TalentAllocation
 ): TalentEffectSummary {
   const summary = createEmptyEffectSummary();
-  const trees = getTalentTreesByClassId(classId);
+  const trees = configCache.getTalentTreesByClassId(classId);
 
   for (const tree of trees) {
     for (const talent of tree.talents) {

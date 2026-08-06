@@ -16,18 +16,25 @@
  * 12. createInitialTalentState：按等级计算初始点数
  *
  * Mock 策略（遵循 code_rule 隔离原则）：
- *  - mock @/data/config_class_talents 的 getTalentById / getTalentTreesByClassId，
+ *  - mock @/modules/config 的 configCache.getTalentById / getTalentTreesByClassId，
  *    使 canLearnTalent / calculateTalentEffects / getTalentStatBonuses 在受控 fixture 下测试。
  *  - 纯函数无状态、无 DB、无 eventBus 依赖。
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { Talent, TalentTree, TalentAllocation, TalentEffect } from '@/modules/character/talents/types';
+import type { Talent, TalentTree, TalentEffect } from '@/modules/character/talents/types';
 import { TALENT_POINT_RULES } from '@/modules/character/talents/types';
 
-/** mock 天赋配置数据源，使 service 在受控 fixture 下测试 */
-vi.mock('@/data/config_class_talents', () => ({
-  getTalentById: vi.fn(),
-  getTalentTreesByClassId: vi.fn(),
+/** mock configCache，使 service 在受控 fixture 下测试（替代原 @/data/config_class_talents） */
+const getTalentByIdMock = vi.fn();
+const getTalentTreesByClassIdMock = vi.fn();
+vi.mock('@/modules/config', () => ({
+  configCache: {
+    getTalentById: (id: string) => getTalentByIdMock(id),
+    getTalentTreesByClassId: (id: string) => getTalentTreesByClassIdMock(id),
+    getSetDefinitions: vi.fn(() => []),
+    getPassivesByClassId: vi.fn(() => []),
+    loadAll: vi.fn(() => Promise.resolve()),
+  },
 }));
 
 import {
@@ -44,7 +51,9 @@ import {
   resetAllocations,
   createInitialTalentState,
 } from '@/modules/character/talents/service';
-import { getTalentById, getTalentTreesByClassId } from '@/data/config_class_talents';
+// 从 configCache mock 中取出 spy 引用
+const getTalentById = getTalentByIdMock;
+const getTalentTreesByClassId = getTalentTreesByClassIdMock;
 
 // ==================== Fixture 工厂 ====================
 

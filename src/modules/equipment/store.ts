@@ -44,7 +44,7 @@ import { generateLogId } from '@/modules/log/service';
 import { useCharacterStore } from '@/modules/character/store';
 import { validateSlot, computeEquipBonus, canEquipItem, getEquipmentBySlot, createEmptySlotMap, checkClassRestriction, SLOT_CONFIG, isSlotLockedByTwoHanded } from './service';
 import { getAllSetProgresses, getActiveBonusEffects } from './setService';
-import { SET_DEFINITIONS } from '@/data/config_set_definitions';
+import { configCache } from '@/modules/config';
 import { errorReporter } from '@/utils/errorReport';
 
 /**
@@ -250,7 +250,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
    * activeTiers/nextTier/partsStatus，比旧版扁平的激活奖励列表信息更完整。
    */
   const activeSetBonuses = computed(() => {
-    return getAllSetProgresses(equipment.value, SET_DEFINITIONS);
+    return getAllSetProgresses(equipment.value, configCache.getSetDefinitions());
   });
 
   /**
@@ -282,7 +282,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
    */
   async function reapplySetBonuses(): Promise<void> {
     const characterStore = useCharacterStore();
-    const progresses = getAllSetProgresses(equipment.value, SET_DEFINITIONS);
+    const progresses = getAllSetProgresses(equipment.value, configCache.getSetDefinitions());
 
     // 收集所有已激活的 stat 类型加成
     const currentStats: Array<{ setId: string; stat: keyof Stats; value: number }> = [];
@@ -361,6 +361,9 @@ export const useEquipmentStore = defineStore('equipment', () => {
 
     // 1. 先加载装备模板（后续解析 ID 需要）
     const templates = await equipmentDbService.getAllEquipmentTemplates();
+
+    // 确保套装定义缓存已就绪（供 activeSetBonuses computed 同步查询）
+    await configCache.loadSetDefinitions();
     const map = new Map<string, EquipmentItem>();
     templates.forEach(item => map.set(item.id, item));
     equipmentTemplates.value = map;

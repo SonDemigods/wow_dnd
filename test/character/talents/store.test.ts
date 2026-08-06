@@ -39,10 +39,16 @@ vi.mock('@/modules/character/talents/service', () => ({
   getTalentStatBonuses: vi.fn(),
 }));
 
-/** mock 天赋树配置数据源 */
-vi.mock('@/data/config_class_talents', () => ({
-  getTalentTreesByClassId: vi.fn(),
-  getTalentById: vi.fn(),
+/** mock 配置缓存层（替代原 @/data/config_class_talents mock） */
+const getTalentTreesByClassIdMock = vi.fn<(classId: string) => TalentTree[]>();
+const getTalentByIdMock = vi.fn<(talentId: string) => { talent: TalentTree['talents'][number]; tree: TalentTree } | undefined>();
+vi.mock('@/modules/config', () => ({
+  configCache: {
+    getTalentTreesByClassId: (classId: string) => getTalentTreesByClassIdMock(classId),
+    getTalentById: (talentId: string) => getTalentByIdMock(talentId),
+    loadTalentTrees: vi.fn(() => Promise.resolve()),
+    loadAll: vi.fn(() => Promise.resolve()),
+  },
 }));
 
 /** mock 宠物 Store（P3-156 M4-2：learn 方法会调用 petStore.unlockPet） */
@@ -59,8 +65,11 @@ import {
   resetAllocations,
   getTalentStatBonuses,
 } from '@/modules/character/talents/service';
-import { getTalentTreesByClassId, getTalentById } from '@/data/config_class_talents';
 import { useTalentStore } from '@/modules/character/talents/store';
+
+// 从 mock 中取出 spy 引用
+const getTalentTreesByClassId = getTalentTreesByClassIdMock;
+const getTalentById = getTalentByIdMock;
 
 // ==================== 测试数据构造 helper ====================
 
@@ -198,18 +207,18 @@ describe('useTalentStore - 天赋 Store', () => {
 
   // -------------------- Action: initialize --------------------
   describe('Action: initialize', () => {
-    it('设置 classId/level，未提供存档时 allocations 为空对象', () => {
+    it('设置 classId/level，未提供存档时 allocations 为空对象', async () => {
       const store = useTalentStore();
-      store.initialize('warrior', 10);
+      await store.initialize('warrior', 10);
       expect(store.currentClassId).toBe('warrior');
       expect(store.currentLevel).toBe(10);
       expect(store.allocations).toEqual({});
     });
 
-    it('提供 savedAllocations 时拷贝恢复', () => {
+    it('提供 savedAllocations 时拷贝恢复', async () => {
       const store = useTalentStore();
       const saved = { t1: 2, t2: 1 };
-      store.initialize('warrior', 10, saved);
+      await store.initialize('warrior', 10, saved);
       expect(store.allocations).toEqual(saved);
       // 应为拷贝，修改 store 不影响原对象
       store.$patch({ allocations: { t1: 3 } });
@@ -219,9 +228,9 @@ describe('useTalentStore - 天赋 Store', () => {
 
   // -------------------- Action: updateLevel --------------------
   describe('Action: updateLevel', () => {
-    it('更新等级并影响 totalPoints', () => {
+    it('更新等级并影响 totalPoints', async () => {
       const store = useTalentStore();
-      store.initialize('warrior', 4);
+      await store.initialize('warrior', 4);
       expect(store.totalPoints).toBe(2);
       store.updateLevel(10);
       expect(store.currentLevel).toBe(10);
@@ -237,10 +246,10 @@ describe('useTalentStore - 天赋 Store', () => {
       expect(canLearnTalent).not.toHaveBeenCalled();
     });
 
-    it('canLearnTalent 返回 canLearn=false 时返回 false 且不更新 allocations', () => {
+    it('canLearnTalent 返回 canLearn=false 时返回 false 且不更新 allocations', async () => {
       vi.mocked(canLearnTalent).mockReturnValue({ canLearn: false, reason: '没有可用点数' });
       const store = useTalentStore();
-      store.initialize('warrior', 10);
+      await store.initialize('warrior', 10);
       store.$patch({ allocations: { t1: 1 } });
 
       expect(store.learn('t2')).toBe(false);
@@ -248,12 +257,12 @@ describe('useTalentStore - 天赋 Store', () => {
       expect(store.allocations).toEqual({ t1: 1 });
     });
 
-    it('canLearnTalent 返回 canLearn=true 时调用 learnTalent、返回 true、更新 allocations', () => {
+    it('canLearnTalent 返回 canLearn=true 时调用 learnTalent、返回 true、更新 allocations', async () => {
       vi.mocked(canLearnTalent).mockReturnValue({ canLearn: true, reason: '' });
       vi.mocked(learnTalent).mockReturnValue({ t1: 1 });
       vi.mocked(calculateSpentPoints).mockReturnValueOnce(0);
       const store = useTalentStore();
-      store.initialize('warrior', 10);
+      await store.initialize('warrior', 10);
 
       expect(store.learn('t1')).toBe(true);
       expect(canLearnTalent).toHaveBeenCalledWith('t1', 'warrior', {}, 5);
@@ -262,7 +271,7 @@ describe('useTalentStore - 天赋 Store', () => {
     });
 
     // P3-156 M4-2：unlock_pet 效果接入测试
-    it('学习含 unlock_pet 效果的天赋时调用 petStore.unlockPet', () => {
+    it('学习含 unlock_pet 效果的天赋时调用 petStore.unlockPet', async () => {
       vi.mocked(canLearnTalent).mockReturnValue({ canLearn: true, reason: '' });
       vi.mocked(learnTalent).mockReturnValue({ hunter_beast_t4: 1 });
       vi.mocked(calculateSpentPoints).mockReturnValueOnce(0);
@@ -276,13 +285,13 @@ describe('useTalentStore - 天赋 Store', () => {
       });
 
       const store = useTalentStore();
-      store.initialize('hunter', 20);
+      await store.initialize('hunter', 20);
 
       expect(store.learn('hunter_beast_t4')).toBe(true);
       expect(mockPetStore.unlockPet).toHaveBeenCalledWith('cat');
     });
 
-    it('学习不含 unlock_pet 效果的天赋时不调用 petStore.unlockPet', () => {
+    it('学习不含 unlock_pet 效果的天赋时不调用 petStore.unlockPet', async () => {
       vi.mocked(canLearnTalent).mockReturnValue({ canLearn: true, reason: '' });
       vi.mocked(learnTalent).mockReturnValue({ hunter_beast_t1: 1 });
       vi.mocked(calculateSpentPoints).mockReturnValueOnce(0);
@@ -296,7 +305,7 @@ describe('useTalentStore - 天赋 Store', () => {
       });
 
       const store = useTalentStore();
-      store.initialize('hunter', 10);
+      await store.initialize('hunter', 10);
 
       expect(store.learn('hunter_beast_t1')).toBe(true);
       expect(mockPetStore.unlockPet).not.toHaveBeenCalled();
@@ -311,17 +320,17 @@ describe('useTalentStore - 天赋 Store', () => {
       expect(canLearnTalent).not.toHaveBeenCalled();
     });
 
-    it('委托 canLearnTalent 返回 canLearn 字段', () => {
+    it('委托 canLearnTalent 返回 canLearn 字段', async () => {
       vi.mocked(canLearnTalent).mockReturnValue({ canLearn: true, reason: '' });
       const store = useTalentStore();
-      store.initialize('warrior', 10);
+      await store.initialize('warrior', 10);
       expect(store.canLearn('t1')).toBe(true);
     });
 
-    it('canLearnTalent 返回 false 时 canLearn 返回 false', () => {
+    it('canLearnTalent 返回 false 时 canLearn 返回 false', async () => {
       vi.mocked(canLearnTalent).mockReturnValue({ canLearn: false, reason: '已达最大等级' });
       const store = useTalentStore();
-      store.initialize('warrior', 10);
+      await store.initialize('warrior', 10);
       expect(store.canLearn('t1')).toBe(false);
     });
   });
@@ -356,14 +365,14 @@ describe('useTalentStore - 天赋 Store', () => {
 
   // -------------------- Action: getTreeSpentPoints --------------------
   describe('Action: getTreeSpentPoints', () => {
-    it('treeId 不存在时返回 0', () => {
+    it('treeId 不存在时返回 0', async () => {
       vi.mocked(getTalentTreesByClassId).mockReturnValue([makeTree({ id: 'arms' })]);
       const store = useTalentStore();
-      store.initialize('warrior', 10);
+      await store.initialize('warrior', 10);
       expect(store.getTreeSpentPoints('fury')).toBe(0);
     });
 
-    it('累加该树下所有已学习天赋的等级', () => {
+    it('累加该树下所有已学习天赋的等级', async () => {
       const tree = makeTree({
         id: 'arms',
         talents: [
@@ -374,7 +383,7 @@ describe('useTalentStore - 天赋 Store', () => {
       });
       vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
       const store = useTalentStore();
-      store.initialize('warrior', 10);
+      await store.initialize('warrior', 10);
       store.$patch({ allocations: { t1: 2, t3: 1 } }); // t2 未学习
 
       expect(store.getTreeSpentPoints('arms')).toBe(3);
@@ -383,9 +392,9 @@ describe('useTalentStore - 天赋 Store', () => {
 
   // -------------------- Action: reset --------------------
   describe('Action: reset', () => {
-    it('清空 allocations/classId/level', () => {
+    it('清空 allocations/classId/level', async () => {
       const store = useTalentStore();
-      store.initialize('warrior', 10, { t1: 2 });
+      await store.initialize('warrior', 10, { t1: 2 });
 
       store.reset();
 

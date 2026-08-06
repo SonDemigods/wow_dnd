@@ -61,6 +61,20 @@ vi.mock('@/modules/character/store', () => ({ useCharacterStore: () => mocks.cha
 vi.mock('@/modules/log/store', () => ({ useLogStore: () => mocks.logStore }));
 vi.mock('@/modules/log/service', () => ({ generateLogId: vi.fn().mockReturnValue('log-id') }));
 
+// mock configCache.getSetDefinitions，返回真实 SET_DEFINITIONS（替代原直接 import @/data/config_set_definitions）
+vi.mock('@/modules/config', async () => {
+  const { SET_DEFINITIONS } = await import('@/data/config_set_definitions');
+  return {
+    configCache: {
+      getSetDefinitions: () => SET_DEFINITIONS,
+      loadSetDefinitions: vi.fn(() => Promise.resolve()),
+      loadAll: vi.fn(() => Promise.resolve()),
+      getTalentTreesByClassId: vi.fn(() => []),
+      getTalentById: vi.fn(),
+    },
+  };
+});
+
 // service 层使用真实实现；setService 层包装 getAllSetProgresses 为 vi.fn 以便单测覆盖防御性分支
 vi.mock('@/modules/equipment/setService', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/modules/equipment/setService')>();

@@ -23,7 +23,7 @@
  * @module combat/composables
  */
 import type { PassiveSkill, PassiveEffect } from '@/modules/character/types';
-import { getPassivesByClassId } from '@/data/config_class_passives';
+import { configCache } from '@/modules/config';
 import type { ICombatContext } from '../combatContext';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
@@ -64,8 +64,9 @@ export function usePassiveSkills(
    * 加载当前职业的被动技能
    * 应在 startCombat 中调用
    */
-  function loadPassives(): void {
-    passives = getPassivesByClassId(ctx.character.classId);
+  async function loadPassives(): Promise<void> {
+    await configCache.loadPassives();
+    passives = configCache.getPassivesByClassId(ctx.character.classId);
   }
 
   /**

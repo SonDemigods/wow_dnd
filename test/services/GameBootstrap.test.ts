@@ -93,6 +93,31 @@ vi.mock('@/modules/quest/store', () => ({
   clearQuestExternalCallbacks: hoisted.clearQuestExternalCallbacksMock,
 }));
 
+/** mock configCache.loadAll（Layer 0 预加载，避免触碰真实 IndexedDB） */
+vi.mock('@/modules/config', () => ({
+  configCache: {
+    loadAll: vi.fn().mockResolvedValue(undefined),
+    getSetDefinitions: vi.fn(() => []),
+    getTalentTreesByClassId: vi.fn(() => []),
+    getTalentById: vi.fn(),
+    getPassivesByClassId: vi.fn(() => []),
+    loadTalentTrees: vi.fn(() => Promise.resolve()),
+    loadPassives: vi.fn(() => Promise.resolve()),
+    loadSetDefinitions: vi.fn(() => Promise.resolve()),
+  },
+}));
+
+/** mock quest 的 initEnemyNameMap（Layer 0 预取，避免触碰真实 IndexedDB） */
+vi.mock('@/modules/quest/objective_utils', () => ({
+  getObjectiveText: vi.fn((obj: { enemyId?: string; itemId?: string; key: string }) => {
+    if (obj.enemyId) return `消灭${obj.enemyId}`;
+    if (obj.itemId) return `收集${obj.itemId}`;
+    return `未知目标: ${obj.key}`;
+  }),
+  getEnemyName: vi.fn((id: string) => id),
+  initEnemyNameMap: vi.fn().mockResolvedValue(undefined),
+}));
+
 const combatDisposeMock = vi.fn();
 vi.mock('@/modules/combat/store', () => ({
   useCombatStore: () => ({ dispose: combatDisposeMock }),

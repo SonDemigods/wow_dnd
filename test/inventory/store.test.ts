@@ -435,6 +435,7 @@ describe('useInventoryStore - 背包 Store', () => {
         itemTemplates: mapOf(makeItem({
           id: 'strength_potion',
           name: '巨人之力药剂',
+          capabilities: ['describable', 'usable', 'stackable', 'sellable', 'attribute_potion'],
           effects: [{ type: 'stat', value: { str: 1 } }],
         } as Partial<Item>)),
       });
@@ -455,6 +456,7 @@ describe('useInventoryStore - 背包 Store', () => {
         itemTemplates: mapOf(makeItem({
           id: 'constitution_potion',
           name: '坚韧药剂',
+          capabilities: ['describable', 'usable', 'stackable', 'sellable', 'attribute_potion'],
           effects: [{ type: 'stat', value: { con: 1 } }],
         } as Partial<Item>)),
       });

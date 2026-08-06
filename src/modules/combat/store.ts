@@ -273,7 +273,7 @@ export const useCombatStore = defineStore('combat', () => {
 
   // ==================== Action：开始战斗 ====================
 
-  function startCombat(enemiesData: EnemyInstance[]): void {
+  async function startCombat(enemiesData: EnemyInstance[]): Promise<void> {
     // P3-1：防御性重置，防止上一场战斗未正常 endCombat（组件异常卸载等）时
     // 旧的 turnTimerId/bossIntroTimerId 残留并向新战斗 UI 推送过期数据
     state.reset();
@@ -299,7 +299,7 @@ export const useCombatStore = defineStore('combat', () => {
     state.resourceSystems.value.forEach(sys => sys.reset());
 
     // 加载当前职业的被动技能并触发战斗开始钩子（Phase 5.2）
-    passive.loadPassives();
+    await passive.loadPassives();
     passive.onCombatStart();
 
     // P3-156：初始化宠物系统（术士/猎人战斗循环接入）

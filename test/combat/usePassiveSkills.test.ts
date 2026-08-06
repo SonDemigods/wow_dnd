@@ -37,10 +37,14 @@ vi.mock('@/modules/character/store', () => ({
   useCharacterStore: vi.fn(() => characterMock),
 }));
 
-// mock getPassivesByClassId
+// mock configCache（替代原 @/data/config_class_passives）
 const getPassivesByClassIdMock = vi.fn<(classId: string) => PassiveSkill[]>();
-vi.mock('@/data/config_class_passives', () => ({
-  getPassivesByClassId: (classId: string) => getPassivesByClassIdMock(classId),
+vi.mock('@/modules/config', () => ({
+  configCache: {
+    getPassivesByClassId: (classId: string) => getPassivesByClassIdMock(classId),
+    loadPassives: vi.fn(() => Promise.resolve()),
+    loadAll: vi.fn(() => Promise.resolve()),
+  },
 }));
 
 // ==================== 测试数据构造 helper ====================
@@ -138,34 +142,34 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
   // -------------------- loadPassives --------------------
 
   describe('loadPassives：加载当前职业被动', () => {
-    it('调用 getPassivesByClassId 传入 characterStore.classId', () => {
+    it('调用 getPassivesByClassId 传入 characterStore.classId', async () => {
       const passives = [makePassive({ id: 'p1' })];
       getPassivesByClassIdMock.mockReturnValue(passives);
 
       const passive = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      passive.loadPassives();
+      await passive.loadPassives();
 
       expect(getPassivesByClassIdMock).toHaveBeenCalledWith('warrior');
       expect(passive.getPassives()).toEqual(passives);
     });
 
-    it('未调用 loadPassives 时 getPassives 返回空数组', () => {
+    it('未调用 loadPassives 时 getPassives 返回空数组', async () => {
       const passive = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
       expect(passive.getPassives()).toEqual([]);
     });
 
-    it('不同职业加载不同被动', () => {
+    it('不同职业加载不同被动', async () => {
       const warriorPassives = [makePassive({ id: 'w1', classId: 'warrior' as never })];
       const magePassives = [makePassive({ id: 'm1', classId: 'mage' as never })];
       getPassivesByClassIdMock.mockReturnValueOnce(warriorPassives).mockReturnValueOnce(magePassives);
 
       const passive = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
       characterMock.classId = 'warrior' as never;
-      passive.loadPassives();
+      await passive.loadPassives();
       expect(passive.getPassives()).toEqual(warriorPassives);
 
       characterMock.classId = 'mage' as never;
-      passive.loadPassives();
+      await passive.loadPassives();
       expect(passive.getPassives()).toEqual(magePassives);
     });
   });
@@ -173,14 +177,14 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
   // -------------------- 触发时机 --------------------
 
   describe('onCombatStart：战斗开始触发', () => {
-    it('仅执行 trigger=on_combat_start 的被动', () => {
+    it('仅执行 trigger=on_combat_start 的被动', async () => {
       const combatPassive = makePassive({ id: 'cs', name: '战斗开始被动', trigger: 'on_combat_start' });
       const turnPassive = makePassive({ id: 'ts', name: '回合开始被动', trigger: 'on_turn_start' });
       getPassivesByClassIdMock.mockReturnValue([combatPassive, turnPassive]);
 
       const log = makeLogMock();
       const passive = usePassiveSkills(makeStateMock(), log, makeMockCtx());
-      passive.loadPassives();
+      await passive.loadPassives();
       log.addCombatLog.mockClear();
 
       passive.onCombatStart();
@@ -191,11 +195,11 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(triggerLogs[0][0].message).toContain('战斗开始被动');
     });
 
-    it('无对应 trigger 被动时不记录日志', () => {
+    it('无对应 trigger 被动时不记录日志', async () => {
       getPassivesByClassIdMock.mockReturnValue([makePassive({ trigger: 'on_turn_start' })]);
       const log = makeLogMock();
       const passive = usePassiveSkills(makeStateMock(), log, makeMockCtx());
-      passive.loadPassives();
+      await passive.loadPassives();
 
       passive.onCombatStart();
       expect(log.addCombatLog).not.toHaveBeenCalled();
@@ -203,7 +207,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
   });
 
   describe('onTurnStart：回合开始触发', () => {
-    it('执行 trigger=on_turn_start 的被动，并检查 on_low_hp', () => {
+    it('执行 trigger=on_turn_start 的被动，并检查 on_low_hp', async () => {
       const turnPassive = makePassive({ id: 'ts', name: '回合被动', trigger: 'on_turn_start' });
       const lowHpPassive = makePassive({
         id: 'lhp',
@@ -215,7 +219,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
 
       const log = makeLogMock();
       const passive = usePassiveSkills(makeStateMock(), log, makeMockCtx());
-      passive.loadPassives();
+      await passive.loadPassives();
 
       // hp=100/100，不触发 lowHp
       characterMock.hp = 100;
@@ -229,7 +233,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(triggerLogs[0][0].message).toContain('回合被动');
     });
 
-    it('hp < 30% 时触发 on_low_hp 被动', () => {
+    it('hp < 30% 时触发 on_low_hp 被动', async () => {
       const lowHpPassive = makePassive({
         id: 'lhp',
         name: '低血被动',
@@ -240,7 +244,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
 
       const log = makeLogMock();
       const passive = usePassiveSkills(makeStateMock(), log, makeMockCtx());
-      passive.loadPassives();
+      await passive.loadPassives();
 
       characterMock.hp = 20;
       characterMock.maxHp = 100;
@@ -255,7 +259,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
   });
 
   describe('onAttack：玩家攻击命中触发', () => {
-    it('执行 trigger=on_attack 的被动，传入 damage 用于吸血计算', () => {
+    it('执行 trigger=on_attack 的被动，传入 damage 用于吸血计算', async () => {
       const attackPassive = makePassive({
         id: 'ap',
         name: '吸血',
@@ -266,7 +270,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
 
       const log = makeLogMock();
       const passive = usePassiveSkills(makeStateMock(), log, makeMockCtx());
-      passive.loadPassives();
+      await passive.loadPassives();
       log.addCombatLog.mockClear();
 
       passive.onAttack(50);
@@ -278,7 +282,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(healLogs[0][0].heal).toBe(10);
     });
 
-    it('damage=0 时进入 else 分支按 maxHp 百分比治疗（源码当前行为，非 bug 修复范围）', () => {
+    it('damage=0 时进入 else 分支按 maxHp 百分比治疗（源码当前行为，非 bug 修复范围）', async () => {
       const attackPassive = makePassive({
         id: 'ap',
         trigger: 'on_attack',
@@ -287,7 +291,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       getPassivesByClassIdMock.mockReturnValue([attackPassive]);
 
       const passive = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      passive.loadPassives();
+      await passive.loadPassives();
 
       characterMock.maxHp = 100;
       passive.onAttack(0);
@@ -298,7 +302,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
   });
 
   describe('onDamaged：玩家受伤触发', () => {
-    it('执行 trigger=on_damaged 的被动，并检查 on_low_hp', () => {
+    it('执行 trigger=on_damaged 的被动，并检查 on_low_hp', async () => {
       const damagedPassive = makePassive({
         id: 'dp',
         name: '受伤被动',
@@ -309,7 +313,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
 
       const log = makeLogMock();
       const passive = usePassiveSkills(makeStateMock(), log, makeMockCtx());
-      passive.loadPassives();
+      await passive.loadPassives();
       log.addCombatLog.mockClear();
 
       characterMock.hp = 100;
@@ -322,7 +326,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(triggerLogs[0][0].message).toContain('受伤被动');
     });
 
-    it('受伤后 hp < 30% 时额外触发 on_low_hp', () => {
+    it('受伤后 hp < 30% 时额外触发 on_low_hp', async () => {
       const damagedPassive = makePassive({
         id: 'dp',
         name: '受伤被动',
@@ -339,7 +343,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
 
       const log = makeLogMock();
       const passive = usePassiveSkills(makeStateMock(), log, makeMockCtx());
-      passive.loadPassives();
+      await passive.loadPassives();
       log.addCombatLog.mockClear();
 
       characterMock.hp = 20;
@@ -353,13 +357,13 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
   });
 
   describe('onKill：击杀敌人触发', () => {
-    it('执行 trigger=on_kill 的被动', () => {
+    it('执行 trigger=on_kill 的被动', async () => {
       const killPassive = makePassive({ id: 'kp', name: '击杀被动', trigger: 'on_kill' });
       getPassivesByClassIdMock.mockReturnValue([killPassive]);
 
       const log = makeLogMock();
       const passive = usePassiveSkills(makeStateMock(), log, makeMockCtx());
-      passive.loadPassives();
+      await passive.loadPassives();
       log.addCombatLog.mockClear();
 
       passive.onKill();
@@ -373,7 +377,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
   // -------------------- applyHeal --------------------
 
   describe('applyHeal：治疗效果', () => {
-    it('on_attack 触发：按 damage × value 吸血（向下取整）', () => {
+    it('on_attack 触发：按 damage × value 吸血（向下取整）', async () => {
       const passive = makePassive({
         trigger: 'on_attack',
         effect: { type: 'heal', target: 'self', value: 0.15 },
@@ -381,14 +385,14 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       getPassivesByClassIdMock.mockReturnValue([passive]);
 
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       p.onAttack(33);
       // floor(33 × 0.15) = floor(4.95) = 4
       expect(characterMock.receiveHeal).toHaveBeenCalledWith(4);
     });
 
-    it('on_turn_start 触发：按 maxHp × value 百分比治疗', () => {
+    it('on_turn_start 触发：按 maxHp × value 百分比治疗', async () => {
       const passive = makePassive({
         trigger: 'on_turn_start',
         effect: { type: 'heal', target: 'self', value: 0.05 },
@@ -396,7 +400,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       getPassivesByClassIdMock.mockReturnValue([passive]);
 
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       characterMock.hp = 50;
       characterMock.maxHp = 200;
@@ -405,7 +409,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(characterMock.receiveHeal).toHaveBeenCalledWith(10);
     });
 
-    it('value=0 时不治疗', () => {
+    it('value=0 时不治疗', async () => {
       const passive = makePassive({
         trigger: 'on_combat_start',
         effect: { type: 'heal', target: 'self', value: 0 },
@@ -413,7 +417,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       getPassivesByClassIdMock.mockReturnValue([passive]);
 
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       p.onCombatStart();
       expect(characterMock.receiveHeal).not.toHaveBeenCalled();
@@ -423,7 +427,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
   // -------------------- applyResourceGen --------------------
 
   describe('applyResourceGen：资源生成', () => {
-    it('匹配资源类型时调用 generate', () => {
+    it('匹配资源类型时调用 generate', async () => {
       const generate = vi.fn();
       const state = makeStateMock();
       state.resourceSystems.value = [{ type: 'rage', generate } as never];
@@ -435,14 +439,14 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       getPassivesByClassIdMock.mockReturnValue([passive]);
 
       const p = usePassiveSkills(state, makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       p.onCombatStart();
       // P2-43 修复：被动资源生成使用 'passive' 来源，不受 skill 上限限制
       expect(generate).toHaveBeenCalledWith(30, 'passive');
     });
 
-    it('resourceType 缺失时不调用 generate', () => {
+    it('resourceType 缺失时不调用 generate', async () => {
       const generate = vi.fn();
       const state = makeStateMock();
       state.resourceSystems.value = [{ type: 'rage', generate } as never];
@@ -454,13 +458,13 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       getPassivesByClassIdMock.mockReturnValue([passive]);
 
       const p = usePassiveSkills(state, makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       p.onCombatStart();
       expect(generate).not.toHaveBeenCalled();
     });
 
-    it('amount <= 0 时不调用 generate', () => {
+    it('amount <= 0 时不调用 generate', async () => {
       const generate = vi.fn();
       const state = makeStateMock();
       state.resourceSystems.value = [{ type: 'rage', generate } as never];
@@ -472,13 +476,13 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       getPassivesByClassIdMock.mockReturnValue([passive]);
 
       const p = usePassiveSkills(state, makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       p.onCombatStart();
       expect(generate).not.toHaveBeenCalled();
     });
 
-    it('无匹配资源类型系统时不调用 generate', () => {
+    it('无匹配资源类型系统时不调用 generate', async () => {
       const generate = vi.fn();
       const state = makeStateMock();
       state.resourceSystems.value = [{ type: 'mana', generate } as never];
@@ -490,7 +494,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       getPassivesByClassIdMock.mockReturnValue([passive]);
 
       const p = usePassiveSkills(state, makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       p.onCombatStart();
       expect(generate).not.toHaveBeenCalled();
@@ -500,7 +504,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
   // -------------------- getDamageReduction --------------------
 
   describe('applyBuff：附加效果（仅记录日志）', () => {
-    it('buff 效果触发时记录 passive_effect 日志', () => {
+    it('buff 效果触发时记录 passive_effect 日志', async () => {
       const buffPassive = makePassive({
         id: 'bp',
         name: '附加效果被动',
@@ -511,7 +515,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
 
       const log = makeLogMock();
       const passive = usePassiveSkills(makeStateMock(), log, makeMockCtx());
-      passive.loadPassives();
+      await passive.loadPassives();
       log.addCombatLog.mockClear();
 
       passive.onCombatStart();
@@ -522,7 +526,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(effectLogs[0][0].message).toContain('poison');
     });
 
-    it('buff 效果 stat 缺失时日志显示未知', () => {
+    it('buff 效果 stat 缺失时日志显示未知', async () => {
       const buffPassive = makePassive({
         trigger: 'on_combat_start',
         effect: { type: 'buff', target: 'self', stat: undefined, value: 0.3 },
@@ -531,7 +535,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
 
       const log = makeLogMock();
       const passive = usePassiveSkills(makeStateMock(), log, makeMockCtx());
-      passive.loadPassives();
+      await passive.loadPassives();
       log.addCombatLog.mockClear();
 
       passive.onCombatStart();
@@ -543,39 +547,39 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
   });
 
   describe('getDamageReduction：减伤比例（取最大值）', () => {
-    it('无 damage_reduction 被动时返回 0', () => {
+    it('无 damage_reduction 被动时返回 0', async () => {
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({ effect: { type: 'stat_modifier', target: 'self', value: 0.2 } }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       expect(p.getDamageReduction()).toBe(0);
     });
 
-    it('单个 damage_reduction 被动返回其 value', () => {
+    it('单个 damage_reduction 被动返回其 value', async () => {
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({ effect: { type: 'damage_reduction', target: 'self', value: 0.2 } }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       expect(p.getDamageReduction()).toBe(0.2);
     });
 
-    it('多个 damage_reduction 被动取最大值（不叠加）', () => {
+    it('多个 damage_reduction 被动取最大值（不叠加）', async () => {
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({ id: 'd1', effect: { type: 'damage_reduction', target: 'self', value: 0.15 } }),
         makePassive({ id: 'd2', effect: { type: 'damage_reduction', target: 'self', value: 0.3 } }),
         makePassive({ id: 'd3', effect: { type: 'damage_reduction', target: 'self', value: 0.1 } }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       expect(p.getDamageReduction()).toBe(0.3);
     });
 
-    it('condition 不满足时跳过该被动', () => {
+    it('condition 不满足时跳过该被动', async () => {
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({
           id: 'd1',
@@ -587,7 +591,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
         }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       // hp=100/100，d1 的 condition 不满足，仅 d2 生效
       characterMock.hp = 100;
@@ -603,23 +607,23 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
   // -------------------- getStatModifiers --------------------
 
   describe('getStatModifiers：属性修正列表', () => {
-    it('无 stat_modifier 被动时返回空数组', () => {
+    it('无 stat_modifier 被动时返回空数组', async () => {
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({ effect: { type: 'damage_reduction', target: 'self', value: 0.2 } }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       expect(p.getStatModifiers()).toEqual([]);
     });
 
-    it('返回所有满足条件的 stat_modifier 被动', () => {
+    it('返回所有满足条件的 stat_modifier 被动', async () => {
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({ id: 's1', effect: { type: 'stat_modifier', target: 'self', stat: 'crit_damage', value: 0.5 } }),
         makePassive({ id: 's2', effect: { type: 'stat_modifier', target: 'self', stat: 'crit_chance', value: 0.1 } }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       const mods = p.getStatModifiers();
       expect(mods).toHaveLength(2);
@@ -627,7 +631,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(mods).toContainEqual({ stat: 'crit_chance', value: 0.1 });
     });
 
-    it('condition 不满足时跳过该被动', () => {
+    it('condition 不满足时跳过该被动', async () => {
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({
           id: 's1',
@@ -639,7 +643,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
         }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       characterMock.hp = 100;
       characterMock.maxHp = 100;
@@ -652,7 +656,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(modsLow).toHaveLength(2);
     });
 
-    it('stat 缺失的被动不加入结果', () => {
+    it('stat 缺失的被动不加入结果', async () => {
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({
           id: 's1',
@@ -660,7 +664,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
         }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       expect(p.getStatModifiers()).toEqual([]);
     });
@@ -669,7 +673,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
   // -------------------- evaluateCondition（通过 getDamageReduction 间接测试） --------------------
 
   describe('evaluateCondition：条件表达式运算符', () => {
-    it('`<=` 运算符：hpRatio <= 阈值时满足', () => {
+    it('`<=` 运算符：hpRatio <= 阈值时满足', async () => {
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({
           id: 'd1',
@@ -677,7 +681,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
         }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       // hp=30/100=0.3，0.3 <= 0.3 为 true → 减伤 0.3
       characterMock.hp = 30;
@@ -689,7 +693,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(p.getDamageReduction()).toBe(0);
     });
 
-    it('`>` 运算符：hpRatio > 阈值时满足', () => {
+    it('`>` 运算符：hpRatio > 阈值时满足', async () => {
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({
           id: 'd1',
@@ -697,7 +701,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
         }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       // hp=50/100=0.5，0.5 > 0.3 为 true → 减伤 0.3
       characterMock.hp = 50;
@@ -709,7 +713,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(p.getDamageReduction()).toBe(0);
     });
 
-    it('`>=` 运算符：hpRatio >= 阈值时满足', () => {
+    it('`>=` 运算符：hpRatio >= 阈值时满足', async () => {
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({
           id: 'd1',
@@ -717,7 +721,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
         }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       // hp=30/100=0.3，0.3 >= 0.3 为 true → 减伤 0.3
       characterMock.hp = 30;
@@ -729,7 +733,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(p.getDamageReduction()).toBe(0);
     });
 
-    it('`==` 运算符：hpRatio == 阈值时满足', () => {
+    it('`==` 运算符：hpRatio == 阈值时满足', async () => {
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({
           id: 'd1',
@@ -737,7 +741,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
         }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       // hp=30/100=0.3，0.3 == 0.3 为 true → 减伤 0.3
       characterMock.hp = 30;
@@ -749,7 +753,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(p.getDamageReduction()).toBe(0);
     });
 
-    it('`!=` 运算符：hpRatio != 阈值时满足', () => {
+    it('`!=` 运算符：hpRatio != 阈值时满足', async () => {
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({
           id: 'd1',
@@ -757,7 +761,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
         }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       // hp=50/100=0.5，0.5 != 0.3 为 true → 减伤 0.3
       characterMock.hp = 50;
@@ -769,7 +773,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(p.getDamageReduction()).toBe(0);
     });
 
-    it('未知运算符走 default 分支返回 true（条件恒满足）', () => {
+    it('未知运算符走 default 分支返回 true（条件恒满足）', async () => {
       // `<>` 匹配正则的 ([<>=!]+) 但不在 switch 已知 case 中
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({
@@ -778,7 +782,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
         }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       // default 返回 true，无论 hp 如何均满足
       characterMock.hp = 100;
@@ -789,7 +793,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(p.getDamageReduction()).toBe(0.3);
     });
 
-    it('条件不匹配正则时返回 true（条件恒满足）', () => {
+    it('条件不匹配正则时返回 true（条件恒满足）', async () => {
       // 无运算符的纯文本条件，不匹配 /(\w+)\s*([<>=!]+)\s*([\d.]+)/
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({
@@ -798,14 +802,14 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
         }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       characterMock.hp = 100;
       characterMock.maxHp = 100;
       expect(p.getDamageReduction()).toBe(0.3);
     });
 
-    it('非 hp 的 stat 名时 currentValue 保持 0', () => {
+    it('非 hp 的 stat 名时 currentValue 保持 0', async () => {
       // stat='mp' 不匹配 'hp'，currentValue 保持 0
       getPassivesByClassIdMock.mockReturnValue([
         makePassive({
@@ -814,7 +818,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
         }),
       ]);
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       // currentValue=0, 0 < 0.3 为 true → 减伤 0.3
       characterMock.hp = 100;
@@ -826,7 +830,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
   // -------------------- 边界分支补充：healAmount=0 与 stat 缺失 --------------------
 
   describe('边界分支补充：applyHeal 与 applyStatModifier falsy 路径', () => {
-    it('on_attack 吸血计算结果为 0 时不治疗', () => {
+    it('on_attack 吸血计算结果为 0 时不治疗', async () => {
       // 覆盖 usePassiveSkills.ts 第 193 行：if (healAmount > 0) falsy 分支
       // damage × value 向下取整为 0
       const passive = makePassive({
@@ -836,14 +840,14 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       getPassivesByClassIdMock.mockReturnValue([passive]);
 
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       // damage=5, value=0.1 → floor(0.5)=0，不治疗
       p.onAttack(5);
       expect(characterMock.receiveHeal).not.toHaveBeenCalled();
     });
 
-    it('on_turn_start 百分比治疗计算结果为 0 时不治疗', () => {
+    it('on_turn_start 百分比治疗计算结果为 0 时不治疗', async () => {
       // 覆盖 usePassiveSkills.ts 第 193 行：if (healAmount > 0) falsy 分支（else 路径）
       const passive = makePassive({
         trigger: 'on_turn_start',
@@ -852,7 +856,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       getPassivesByClassIdMock.mockReturnValue([passive]);
 
       const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       characterMock.hp = 50;
       characterMock.maxHp = 50;
@@ -861,7 +865,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(characterMock.receiveHeal).not.toHaveBeenCalled();
     });
 
-    it('stat_modifier 被动 stat 缺失时不记录日志', () => {
+    it('stat_modifier 被动 stat 缺失时不记录日志', async () => {
       // 覆盖 usePassiveSkills.ts 第 215 行：if (effect.stat) falsy 分支
       const passive = makePassive({
         trigger: 'on_combat_start',
@@ -871,7 +875,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
 
       const log = makeLogMock();
       const p = usePassiveSkills(makeStateMock(), log, makeMockCtx());
-      p.loadPassives();
+      await p.loadPassives();
 
       p.onCombatStart();
 

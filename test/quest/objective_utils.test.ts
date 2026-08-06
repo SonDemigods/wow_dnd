@@ -3,19 +3,35 @@
  *
  * 覆盖范围：
  * 1. getObjectiveText —— 根据目标类型生成中文描述
- *    - kill 目标：从 MOBS + BOSSES 合并表查找敌人名
+ *    - kill 目标：从 DB 加载的敌人名（config_mobs + config_bosses 合并）查找
  *    - collect 目标：通过 itemNameProvider 解析物品名，失败回退 itemId
  *    - 未知类型/缺失 ID 的防御性回退
  * 2. getEnemyName —— 按 enemyId 查询敌人中文名
- *    - 命中 MOBS / 命中 BOSSES / 未命中回退原 ID
- *    - MOBS 与 BOSSES 同 ID 时普通怪优先
- * 3. ENEMY_NAME_MAP IIFE 分支覆盖 —— boss.id 已存在于 MOBS 时跳过覆盖
+ *    - 命中 mobs / 命中 bosses / 未命中回退原 ID
+ *    - mob 与 boss 同 ID 时普通怪优先
+ *
+ * mock 策略：mock @/modules/data 的 db（config_mobs / config_bosses），
+ * 通过 initEnemyNameMap() 填充 ENEMY_NAME_MAP 后再断言。
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getObjectiveText, getEnemyName } from '@/modules/quest/objective_utils';
+import { getObjectiveText, getEnemyName, initEnemyNameMap } from '@/modules/quest/objective_utils';
 import type { QuestObjective } from '@/modules/quest/types';
-import { MOBS } from '@/data/config_mobs';
-import { BOSSES } from '@/data/config_bosses';
+
+/** mock db 数据源 */
+const mobsMock = [
+  { id: '_mob_shared', name: '普通怪名称' },
+  { id: '_mob_spider', name: '剧毒蜘蛛' },
+];
+const bossesMock = [
+  { id: '_mob_shared', name: 'Boss名称' },
+  { id: '_boss_dragon', name: '烈焰巨龙' },
+];
+vi.mock('@/modules/data', () => ({
+  db: {
+    config_mobs: { toArray: vi.fn(() => Promise.resolve(mobsMock)) },
+    config_bosses: { toArray: vi.fn(() => Promise.resolve(bossesMock)) },
+  },
+}));
 
 /** 构造测试用任务目标 */
 function makeObjective(overrides: Partial<QuestObjective> = {}): QuestObjective {
@@ -23,27 +39,25 @@ function makeObjective(overrides: Partial<QuestObjective> = {}): QuestObjective 
     key: 'obj_1',
     type: 'kill',
     target: 1,
-    enemyId: 'spider',
+    enemyId: '_mob_spider',
     ...overrides,
   };
 }
 
 describe('getObjectiveText 生成目标描述文本', () => {
+  beforeEach(async () => {
+    await initEnemyNameMap();
+  });
+
   describe('kill 目标', () => {
-    it('MOBS 中存在的敌人 → "消灭{敌人名}"', () => {
-      const firstMob = MOBS[0];
-      const obj = makeObjective({ type: 'kill', enemyId: firstMob.id });
-      expect(getObjectiveText(obj)).toBe(`消灭${firstMob.name}`);
+    it('mob 中存在的敌人 → "消灭{敌人名}"', () => {
+      const obj = makeObjective({ type: 'kill', enemyId: '_mob_spider' });
+      expect(getObjectiveText(obj)).toBe('消灭剧毒蜘蛛');
     });
 
-    it('仅在 BOSSES 中存在的敌人 → "消灭{Boss名}"', () => {
-      // 找一个不在 MOBS 中的 boss
-      const mobIds = new Set(MOBS.map(m => m.id));
-      const bossOnly = BOSSES.find(b => !mobIds.has(b.id));
-      if (bossOnly) {
-        const obj = makeObjective({ type: 'kill', enemyId: bossOnly.id });
-        expect(getObjectiveText(obj)).toBe(`消灭${bossOnly.name}`);
-      }
+    it('仅在 boss 中存在的敌人 → "消灭{Boss名}"', () => {
+      const obj = makeObjective({ type: 'kill', enemyId: '_boss_dragon' });
+      expect(getObjectiveText(obj)).toBe('消灭烈焰巨龙');
     });
 
     it('未知 enemyId → 回退为 "消灭{enemyId}"', () => {
@@ -92,28 +106,20 @@ describe('getObjectiveText 生成目标描述文本', () => {
 });
 
 describe('getEnemyName 敌人名称查询', () => {
-  it('MOBS 中存在的 ID → 返回怪物名', () => {
-    const firstMob = MOBS[0];
-    expect(getEnemyName(firstMob.id)).toBe(firstMob.name);
+  beforeEach(async () => {
+    await initEnemyNameMap();
   });
 
-  it('BOSSES 中存在但 MOBS 中不存在的 ID → 返回 Boss 名', () => {
-    const mobIds = new Set(MOBS.map(m => m.id));
-    const bossOnly = BOSSES.find(b => !mobIds.has(b.id));
-    if (bossOnly) {
-      expect(getEnemyName(bossOnly.id)).toBe(bossOnly.name);
-    }
+  it('mob 中存在的 ID → 返回怪物名', () => {
+    expect(getEnemyName('_mob_spider')).toBe('剧毒蜘蛛');
   });
 
-  it('MOBS 与 BOSSES 同 ID 时返回 MOBS 的名称（普通怪优先）', () => {
-    const mobIds = new Set(MOBS.map(m => m.id));
-    const bossIds = new Set(BOSSES.map(b => b.id));
-    // 找同时存在于两者的 ID
-    const overlapId = MOBS.find(m => bossIds.has(m.id))?.id;
-    if (overlapId) {
-      const mobName = MOBS.find(m => m.id === overlapId)!.name;
-      expect(getEnemyName(overlapId)).toBe(mobName);
-    }
+  it('boss 中存在但 mob 中不存在的 ID → 返回 boss 名', () => {
+    expect(getEnemyName('_boss_dragon')).toBe('烈焰巨龙');
+  });
+
+  it('mob 与 boss 同 ID 时返回 mob 的名称（普通怪优先）', () => {
+    expect(getEnemyName('_mob_shared')).toBe('普通怪名称');
   });
 
   it('未知 enemyId → 回退为原 ID', () => {
@@ -122,29 +128,5 @@ describe('getEnemyName 敌人名称查询', () => {
 
   it('空字符串 ID → 回退为空字符串', () => {
     expect(getEnemyName('')).toBe('');
-  });
-});
-
-// ==================== ENEMY_NAME_MAP IIFE 分支覆盖 ====================
-
-describe('ENEMY_NAME_MAP IIFE 分支：boss.id 已存在于 MOBS 时跳过覆盖', () => {
-  beforeEach(() => {
-    vi.resetModules();
-  });
-
-  it('boss.id 已存在于 MOBS 时保留 MOBS 名称（普通怪优先，跳过 boss 覆盖）', async () => {
-    // Arrange：构造 MOBS 和 BOSSES 有同 ID 的数据
-    vi.doMock('@/data/config_mobs', () => ({
-      MOBS: [{ id: 'shared_id', name: '普通怪名称' }]
-    }));
-    vi.doMock('@/data/config_bosses', () => ({
-      BOSSES: [{ id: 'shared_id', name: 'Boss名称' }]
-    }));
-
-    // Act：重新导入模块，触发 IIFE 构建 ENEMY_NAME_MAP
-    const { getEnemyName } = await import('@/modules/quest/objective_utils');
-
-    // Assert：MOBS 优先，boss.id 已存在于 MOBS → 跳过覆盖
-    expect(getEnemyName('shared_id')).toBe('普通怪名称');
   });
 });

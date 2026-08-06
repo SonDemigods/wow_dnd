@@ -33,14 +33,20 @@ vi.mock('@/modules/map/store', () => ({
   useMapStore: () => mapMock,
 }));
 
-vi.mock('@/data/config_locations', () => ({
-  CONTINENTS: [
-    { id: 'kalimdor', name: '卡利姆多' },
-    { id: 'eastern_kingdoms', name: '东部王国' },
-  ],
-  // validate.ts 在开发环境从 @/data/index 间接加载，会读取 LOCATIONS。
-  // 提供空数组避免 "No LOCATIONS export" 错误，本测试不依赖真实地点数据。
-  LOCATIONS: [],
+// mock db（替代原 @/data/config_locations CONTINENTS mock）
+vi.mock('@/modules/data', () => ({
+  db: {
+    config_locations: {
+      where: vi.fn(() => ({
+        equals: vi.fn(() => ({
+          toArray: vi.fn(() => Promise.resolve([
+            { id: 'kalimdor', name: '卡利姆多', type: 'continent' },
+            { id: 'eastern_kingdoms', name: '东部王国', type: 'continent' },
+          ])),
+        })),
+      })),
+    },
+  },
 }));
 
 const skillMock = {
