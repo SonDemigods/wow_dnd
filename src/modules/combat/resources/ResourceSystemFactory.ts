@@ -47,22 +47,22 @@ export class ResourceSystemFactory {
 
       case 'rogue':
         // 潜行者：能量 + 连击点双资源
-        return [new EnergySystem(50), new ComboPointSystem(0)];
+        return [new EnergySystem(100), new ComboPointSystem(0)];
 
       case 'warlock':
         // 术士：灵魂碎片（辅助，主资源为 MP）
-        return [new SoulShardSystem(1)];
+        return [new SoulShardSystem(0)];
 
       case 'monk':
         // 武僧：能量 + 真气双资源（能量替代 MP）
-        return [new EnergySystem(50), new ChiSystem(1)];
+        return [new EnergySystem(100), new ChiSystem(0)];
 
       case 'hunter':
         // 猎人：集中值
         return [new FocusSystem(100)];
 
       case 'paladin':
-        // 圣骑士：神圣（主伤害资源）+ MP（治疗辅助，P3-148 后伤害技能全部走 holy_power，治疗技能保留 MP）
+        // 圣骑士：神圣（辅助资源）+ MP（主资源，生成器技能积攒 holy_power）
         return [new HolyPowerSystem(0)];
 
       case 'death_knight':
@@ -74,8 +74,8 @@ export class ResourceSystemFactory {
         return [new FurySystem(0), new SoulSystem(0)];
 
       case 'evoker':
-        // 龙脉术士：精华（主资源，P3-148 后核心技能全部走 essence）+ MP（应急治疗辅助）
-        return [new EssenceSystem(1)];
+        // 龙脉术士：精华（辅助资源）+ MP（主资源，生成器技能积攒 essence）
+        return [new EssenceSystem(0)];
 
       default:
         // 以下职业使用默认 MP 系统（由战斗 Store 处理）：

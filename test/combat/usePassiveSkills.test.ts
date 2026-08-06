@@ -501,6 +501,88 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
     });
   });
 
+  // -------------------- probability（概率触发） --------------------
+
+  describe('probability：概率触发', () => {
+    it('probability 未设置时必定触发', async () => {
+      const generate = vi.fn();
+      const state = makeStateMock();
+      state.resourceSystems.value = [{ type: 'rage', generate } as never];
+
+      const passive = makePassive({
+        trigger: 'on_combat_start',
+        effect: { type: 'resource_gen', target: 'self', stat: 'rage', value: 30 },
+      });
+      getPassivesByClassIdMock.mockReturnValue([passive]);
+
+      const p = usePassiveSkills(state, makeLogMock(), makeMockCtx());
+      await p.loadPassives();
+
+      p.onCombatStart();
+      expect(generate).toHaveBeenCalledWith(30, 'passive');
+    });
+
+    it('probability=0.3 且 Math.random() < 0.3 时触发', async () => {
+      const generate = vi.fn();
+      const state = makeStateMock();
+      state.resourceSystems.value = [{ type: 'rage', generate } as never];
+
+      const passive = makePassive({
+        trigger: 'on_damaged',
+        effect: { type: 'resource_gen', target: 'self', stat: 'rage', value: 5, probability: 0.3 },
+      });
+      getPassivesByClassIdMock.mockReturnValue([passive]);
+
+      const p = usePassiveSkills(state, makeLogMock(), makeMockCtx());
+      await p.loadPassives();
+
+      vi.spyOn(Math, 'random').mockReturnValue(0.2); // < 0.3，触发
+      p.onDamaged(10);
+      expect(generate).toHaveBeenCalledWith(5, 'passive');
+
+      vi.restoreAllMocks();
+    });
+
+    it('probability=0.3 且 Math.random() >= 0.3 时不触发', async () => {
+      const generate = vi.fn();
+      const state = makeStateMock();
+      state.resourceSystems.value = [{ type: 'rage', generate } as never];
+
+      const passive = makePassive({
+        trigger: 'on_damaged',
+        effect: { type: 'resource_gen', target: 'self', stat: 'rage', value: 5, probability: 0.3 },
+      });
+      getPassivesByClassIdMock.mockReturnValue([passive]);
+
+      const p = usePassiveSkills(state, makeLogMock(), makeMockCtx());
+      await p.loadPassives();
+
+      vi.spyOn(Math, 'random').mockReturnValue(0.5); // >= 0.3，不触发
+      p.onDamaged(10);
+      expect(generate).not.toHaveBeenCalled();
+
+      vi.restoreAllMocks();
+    });
+
+    it('probability=1 时必定触发（跳过随机检查）', async () => {
+      const generate = vi.fn();
+      const state = makeStateMock();
+      state.resourceSystems.value = [{ type: 'rage', generate } as never];
+
+      const passive = makePassive({
+        trigger: 'on_combat_start',
+        effect: { type: 'resource_gen', target: 'self', stat: 'rage', value: 30, probability: 1 },
+      });
+      getPassivesByClassIdMock.mockReturnValue([passive]);
+
+      const p = usePassiveSkills(state, makeLogMock(), makeMockCtx());
+      await p.loadPassives();
+
+      p.onCombatStart();
+      expect(generate).toHaveBeenCalledWith(30, 'passive');
+    });
+  });
+
   // -------------------- getDamageReduction --------------------
 
   describe('applyBuff：附加效果（仅记录日志）', () => {
@@ -667,6 +749,80 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       await p.loadPassives();
 
       expect(p.getStatModifiers()).toEqual([]);
+    });
+
+    it('target_hp 条件：传 targetId 且目标低血时满足', async () => {
+      const enemyMock = { id: 'e1', hp: 10, maxHp: 100, name: '敌人' };
+      const ctx = makeMockCtx({
+        enemy: {
+          getEnemyById: vi.fn(() => enemyMock),
+          deleteEnemy: vi.fn(),
+          takeDamage: vi.fn(),
+          createEnemy: vi.fn(),
+          getAvailableSkills: vi.fn(),
+          useSkill: vi.fn(),
+          calculateDamage: vi.fn(),
+          tickCooldowns: vi.fn(),
+        },
+      });
+
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 's1',
+          effect: { type: 'stat_modifier', target: 'self', stat: 'physical_attack', value: 0.15, condition: 'target_hp < 0.2' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), ctx);
+      await p.loadPassives();
+
+      // 目标 hp=10/100=0.1 < 0.2，条件满足
+      const mods = p.getStatModifiers('e1');
+      expect(mods).toHaveLength(1);
+      expect(mods[0]).toEqual({ stat: 'physical_attack', value: 0.15 });
+    });
+
+    it('target_hp 条件：目标高血时不满足', async () => {
+      const enemyMock = { id: 'e1', hp: 50, maxHp: 100, name: '敌人' };
+      const ctx = makeMockCtx({
+        enemy: {
+          getEnemyById: vi.fn(() => enemyMock),
+          deleteEnemy: vi.fn(),
+          takeDamage: vi.fn(),
+          createEnemy: vi.fn(),
+          getAvailableSkills: vi.fn(),
+          useSkill: vi.fn(),
+          calculateDamage: vi.fn(),
+          tickCooldowns: vi.fn(),
+        },
+      });
+
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 's1',
+          effect: { type: 'stat_modifier', target: 'self', stat: 'physical_attack', value: 0.15, condition: 'target_hp < 0.2' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), ctx);
+      await p.loadPassives();
+
+      // 目标 hp=50/100=0.5 >= 0.2，条件不满足
+      const mods = p.getStatModifiers('e1');
+      expect(mods).toEqual([]);
+    });
+
+    it('target_hp 条件：不传 targetId 时返回 false', async () => {
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 's1',
+          effect: { type: 'stat_modifier', target: 'self', stat: 'physical_attack', value: 0.15, condition: 'target_hp < 0.2' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), makeMockCtx());
+      await p.loadPassives();
+
+      // 不传 targetId，target_hp 条件返回 false
+      const mods = p.getStatModifiers();
+      expect(mods).toEqual([]);
     });
   });
 

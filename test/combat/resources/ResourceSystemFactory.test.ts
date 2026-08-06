@@ -30,7 +30,7 @@ describe('ResourceSystemFactory 全职业映射', () => {
     const systems = ResourceSystemFactory.create('rogue');
     expect(systems).toHaveLength(2);
     expect(systems[0].type).toBe('energy');
-    expect(systems[0].currentValue).toBe(50);
+    expect(systems[0].currentValue).toBe(100);
     expect(systems[1].type).toBe('combo_point');
     expect(systems[1].currentValue).toBe(0);
     expect(ResourceSystemFactory.replacesMana('rogue')).toBe(true);
@@ -40,7 +40,7 @@ describe('ResourceSystemFactory 全职业映射', () => {
     const systems = ResourceSystemFactory.create('warlock');
     expect(systems).toHaveLength(1);
     expect(systems[0].type).toBe('soul_shard');
-    expect(systems[0].currentValue).toBe(1);
+    expect(systems[0].currentValue).toBe(0);
     expect(systems[0].maxValue).toBe(5);
     expect(ResourceSystemFactory.replacesMana('warlock')).toBe(false);
   });
@@ -59,7 +59,7 @@ describe('ResourceSystemFactory 全职业映射', () => {
     expect(systems).toHaveLength(1);
     expect(systems[0].type).toBe('holy_power');
     expect(systems[0].currentValue).toBe(0);
-    expect(systems[0].maxValue).toBe(5);
+    expect(systems[0].maxValue).toBe(4);
     expect(ResourceSystemFactory.replacesMana('paladin')).toBe(false);
   });
 
@@ -67,9 +67,10 @@ describe('ResourceSystemFactory 全职业映射', () => {
     const systems = ResourceSystemFactory.create('monk');
     expect(systems).toHaveLength(2);
     expect(systems[0].type).toBe('energy');
-    expect(systems[0].currentValue).toBe(50);
+    expect(systems[0].currentValue).toBe(100);
     expect(systems[1].type).toBe('chi');
-    expect(systems[1].currentValue).toBe(1);
+    expect(systems[1].currentValue).toBe(0);
+    expect(systems[1].maxValue).toBe(3);
     expect(ResourceSystemFactory.replacesMana('monk')).toBe(true);
   });
 
@@ -78,7 +79,7 @@ describe('ResourceSystemFactory 全职业映射', () => {
     expect(systems).toHaveLength(2);
     expect(systems[0].type).toBe('runic_power');
     expect(systems[0].currentValue).toBe(0);
-    expect(systems[0].maxValue).toBe(100);
+    expect(systems[0].maxValue).toBe(20);
     expect(systems[1].type).toBe('rune');
     expect(systems[1].currentValue).toBe(6);
     expect(systems[1].maxValue).toBe(6);
@@ -93,7 +94,7 @@ describe('ResourceSystemFactory 全职业映射', () => {
     expect(systems[0].maxValue).toBe(100);
     expect(systems[1].type).toBe('soul');
     expect(systems[1].currentValue).toBe(0);
-    expect(systems[1].maxValue).toBe(5);
+    expect(systems[1].maxValue).toBe(3);
     expect(ResourceSystemFactory.replacesMana('demon_hunter')).toBe(true);
   });
 
@@ -101,8 +102,8 @@ describe('ResourceSystemFactory 全职业映射', () => {
     const systems = ResourceSystemFactory.create('evoker');
     expect(systems).toHaveLength(1);
     expect(systems[0].type).toBe('essence');
-    expect(systems[0].currentValue).toBe(1);
-    expect(systems[0].maxValue).toBe(5);
+    expect(systems[0].currentValue).toBe(0);
+    expect(systems[0].maxValue).toBe(3);
     expect(ResourceSystemFactory.replacesMana('evoker')).toBe(false);
   });
 
@@ -118,7 +119,7 @@ describe('ResourceSystemFactory 全职业映射', () => {
     const b = ResourceSystemFactory.create('paladin');
     expect(a).not.toBe(b);
     expect(a[0]).not.toBe(b[0]);
-    a[0].generate(10, 'skill'); // 3
+    a[0].generate(10, 'skill'); // 4
     expect(b[0].currentValue).toBe(0); // 不受影响
   });
 });

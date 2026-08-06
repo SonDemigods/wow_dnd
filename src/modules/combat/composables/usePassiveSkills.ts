@@ -143,6 +143,15 @@ export function usePassiveSkills(
    * @param context - 触发上下文（含伤害值、目标敌人 ID 等信息）
    */
   function applyPassive(passive: PassiveSkill, context?: PassiveTriggerContext): void {
+    // 概率检查：probability 仅对即时触发型效果生效（resource_gen/heal/buff）
+    // stat_modifier/damage_reduction 不经过 applyPassive 实时触发，不受此字段影响
+    const { probability } = passive.effect;
+    if (probability !== undefined && probability < 1) {
+      if (Math.random() >= probability) {
+        return; // 未触发，静默跳过
+      }
+    }
+
     // 记录被动触发日志
     addCombatLog({
       actorType: 'system',
@@ -364,11 +373,13 @@ export function usePassiveSkills(
    * 评估条件表达式
    *
    * 支持简单格式如 'hp < 0.3'，比较角色当前 HP 百分比与阈值。
+   * 扩展支持 'target_hp < 0.2'，比较目标敌人 HP 百分比（需传入 targetId）。
    *
    * @param condition - 条件表达式字符串
+   * @param targetId  - 可选目标敌人 ID（用于 target_hp 条件评估）
    * @returns 是否满足条件
    */
-  function evaluateCondition(condition: string): boolean {
+  function evaluateCondition(condition: string, targetId?: string): boolean {
     const match = condition.match(/(\w+)\s*([<>=!]+)\s*([\d.]+)/);
     if (!match) return true;
     const [, stat, op, valueStr] = match;
@@ -379,6 +390,12 @@ export function usePassiveSkills(
     } else if (stat === 'mp') {
       // P1-9 修复：扩展支持 mp 属性条件判断
       currentValue = ctx.character.maxMana > 0 ? ctx.character.mana / ctx.character.maxMana : 0;
+    } else if (stat === 'target_hp') {
+      // 目标敌人生命百分比条件（如 'target_hp < 0.2' 用于战士斩杀本能）
+      if (!targetId) return false;
+      const target = ctx.enemy.getEnemyById(targetId);
+      if (!target || target.maxHp <= 0) return false;
+      currentValue = target.hp / target.maxHp;
     } else {
       // P1-9 修复：未知 stat 返回 false，避免基于初始值 0 误判（如 mp < 0.3 变成 0 < 0.3 = true）
       return false;
@@ -416,14 +433,16 @@ export function usePassiveSkills(
    * 获取当前激活的属性修正列表（BIZ-5）
    *
    * 返回所有满足条件的 stat_modifier 被动效果，供伤害计算和暴击判定使用。
+   * 传入 targetId 后，含 'target_hp' 条件的被动会按目标敌人生命百分比评估。
    *
+   * @param targetId - 可选目标敌人 ID（用于 target_hp 条件评估，AOE 场景应按每个目标传入）
    * @returns 属性修正数组（含 stat 和 value）
    */
-  function getStatModifiers(): Array<{ stat: string; value: number }> {
+  function getStatModifiers(targetId?: string): Array<{ stat: string; value: number }> {
     const result: Array<{ stat: string; value: number }> = [];
     for (const p of passives) {
       if (p.effect.type !== 'stat_modifier') continue;
-      if (p.effect.condition && !evaluateCondition(p.effect.condition)) continue;
+      if (p.effect.condition && !evaluateCondition(p.effect.condition, targetId)) continue;
       if (p.effect.stat) {
         result.push({ stat: p.effect.stat, value: p.effect.value });
       }

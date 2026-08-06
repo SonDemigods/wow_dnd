@@ -102,7 +102,7 @@ export interface ICombatCommand {
 
   /** 技能域（写入）：来自 useSkillStore 的状态变更方法 */
   skill: {
-    castSkill(skillId: string, skipAdventureLog?: boolean): Promise<SkillUseResult>;
+    castSkill(skillId: string, skipAdventureLog?: boolean, consumedAmount?: number): Promise<SkillUseResult>;
     tickCooldowns(): void;
     resetCooldowns(): void;
   };
@@ -188,7 +188,7 @@ export function createCombatContext(): ICombatContext {
       changeMp: (amount) => characterStore.changeMp(amount),
     },
     skill: {
-      castSkill: (skillId, skipAdventureLog) => skillStore.castSkill(skillId, skipAdventureLog),
+      castSkill: (skillId, skipAdventureLog, consumedAmount) => skillStore.castSkill(skillId, skipAdventureLog, consumedAmount),
       getSkill: (skillId) => skillStore.getSkill(skillId),
       tickCooldowns: () => skillStore.tickCooldowns(),
       resetCooldowns: () => skillStore.resetCooldowns(),

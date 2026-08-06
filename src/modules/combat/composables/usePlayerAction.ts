@@ -199,7 +199,8 @@ export function usePlayerAction(
     const defenderCtx = createEnemyEffectContext(target);
 
     // P3-146：读取 stat_modifier 类被动（如法师奥术精通 +10% 魔攻、猎手精准 +8% 暴击率）
-    const statModifiers = passive.getStatModifiers();
+    // 传 target.id 支持 target_hp 条件评估（如战士斩杀本能：目标低血时增伤）
+    const statModifiers = passive.getStatModifiers(target.id);
 
     // 使用新管线计算伤害
     const pipeResult = processDamagePipeline(

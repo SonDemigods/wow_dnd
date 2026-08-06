@@ -532,7 +532,10 @@ export type PassiveEffectType =
  *   - `stat_modifier`：百分比小数（如 value: 0.1 = 属性提升 10%）
  *   - `damage_reduction`：百分比小数（如 value: 0.2 = 减伤 20%）
  *   - `buff`：百分比小数（如 value: 0.08 = 8% 增益）
- * @property {string} [condition] - 触发条件表达式（如 'hp < 0.3'）
+ * @property {string} [condition] - 触发条件表达式（如 'hp < 0.3' 自身生命百分比、'target_hp < 0.2' 目标敌人生命百分比）
+ * @property {number} [probability] - 触发概率（0-1，如 0.3 = 30% 概率触发）。
+ *   仅对即时触发型效果（resource_gen/heal/buff）生效，在 applyPassive 入口校验；
+ *   stat_modifier/damage_reduction 通过 getStatModifiers/getDamageReduction 实时评估，不受此字段影响
  */
 export interface PassiveEffect {
   type: PassiveEffectType;
@@ -540,6 +543,7 @@ export interface PassiveEffect {
   stat?: string;
   value: number;
   condition?: string;
+  probability?: number;
 }
 
 /**

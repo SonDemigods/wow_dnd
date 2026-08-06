@@ -75,8 +75,8 @@ export function usePlayerItem(
 
         const damageType: DamageType = type === 'magic_damage' ? 'magical' : 'physical';
 
-        // P3-146：读取 stat_modifier 类被动
-        const statModifiers = passive.getStatModifiers();
+        // P3-146：读取 stat_modifier 类被动（传 target.id 支持 target_hp 条件评估）
+        const statModifiers = passive.getStatModifiers(target.id);
 
         const pipeResult = processDamagePipeline(
           effectRegistry,

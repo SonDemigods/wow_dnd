@@ -187,6 +187,115 @@ describe('calculateSkillDamage 技能伤害计算', () => {
     // 50 + 7 * 0.3 = 52.1 → floor = 52
     expect(calculateSkillDamage(skill, stats)).toBe(52);
   });
+
+  describe('statKey 自定义主属性', () => {
+    it('physical_damage 默认走 str', () => {
+      const skill = makeSkill({
+        type: 'physical_damage',
+        effect: { type: 'physical_damage', value: 20, coefficient: 0.5 },
+        unlockLevel: 1,
+      });
+      const stats = makeStats({ str: 10, dex: 20 });
+      // 默认 str：20 + 10 * 0.5 = 25
+      expect(calculateSkillDamage(skill, stats)).toBe(25);
+    });
+
+    it('statKey=dex 时 physical_damage 走 dex 而非 str', () => {
+      const skill = makeSkill({
+        type: 'physical_damage',
+        effect: { type: 'physical_damage', value: 20, coefficient: 0.5, statKey: 'dex' },
+        unlockLevel: 1,
+      });
+      const stats = makeStats({ str: 10, dex: 20 });
+      // statKey=dex：20 + 20 * 0.5 = 30
+      expect(calculateSkillDamage(skill, stats)).toBe(30);
+    });
+
+    it('statKey=cha 时 magic_damage 走 cha 而非 int', () => {
+      const skill = makeSkill({
+        type: 'magic_damage',
+        effect: { type: 'magic_damage', value: 15, coefficient: 0.5, statKey: 'cha' },
+        unlockLevel: 1,
+      });
+      const stats = makeStats({ int: 10, cha: 20 });
+      // statKey=cha：15 + 20 * 0.5 = 25
+      expect(calculateSkillDamage(skill, stats)).toBe(25);
+    });
+
+    it('statKey=wis 时 magic_damage 走 wis（healer 伤害技能）', () => {
+      const skill = makeSkill({
+        type: 'magic_damage',
+        effect: { type: 'magic_damage', value: 15, coefficient: 0.5, statKey: 'wis' },
+        unlockLevel: 1,
+      });
+      const stats = makeStats({ int: 10, wis: 20 });
+      // statKey=wis：15 + 20 * 0.5 = 25
+      expect(calculateSkillDamage(skill, stats)).toBe(25);
+    });
+  });
+
+  describe('终结技缩放（scalingResource）', () => {
+    it('consumedAmount 缩放伤害（×3）', () => {
+      const skill = makeSkill({
+        type: 'physical_damage',
+        effect: { type: 'physical_damage', value: 20, coefficient: 0.5, statKey: 'dex' },
+        unlockLevel: 1,
+        scalingResource: 'combo_point',
+      });
+      const stats = makeStats({ dex: 10 });
+      // base = 20 + 10 * 0.5 = 25，consumedAmount=3：25 * 3 * 1.0 = 75
+      expect(calculateSkillDamage(skill, stats, 3)).toBe(75);
+    });
+
+    it('consumedAmount=6 时达到最大缩放', () => {
+      const skill = makeSkill({
+        type: 'physical_damage',
+        effect: { type: 'physical_damage', value: 20, coefficient: 0.5, statKey: 'dex' },
+        unlockLevel: 1,
+        scalingResource: 'combo_point',
+      });
+      const stats = makeStats({ dex: 10 });
+      // base = 25，consumedAmount=6：25 * 6 * 1.0 = 150
+      expect(calculateSkillDamage(skill, stats, 6)).toBe(150);
+    });
+
+    it('scalingMultiplier 自定义倍率', () => {
+      const skill = makeSkill({
+        type: 'physical_damage',
+        effect: { type: 'physical_damage', value: 20, coefficient: 0.5, statKey: 'dex' },
+        unlockLevel: 1,
+        scalingResource: 'chi',
+        scalingMultiplier: 1.5,
+      });
+      const stats = makeStats({ dex: 10 });
+      // base = 25，consumedAmount=2：25 * 2 * 1.5 = 75
+      expect(calculateSkillDamage(skill, stats, 2)).toBe(75);
+    });
+
+    it('未传 consumedAmount 时不缩放（返回基础值）', () => {
+      const skill = makeSkill({
+        type: 'physical_damage',
+        effect: { type: 'physical_damage', value: 20, coefficient: 0.5, statKey: 'dex' },
+        unlockLevel: 1,
+        scalingResource: 'combo_point',
+      });
+      const stats = makeStats({ dex: 10 });
+      // base = 25，无 consumedAmount：返回 25
+      expect(calculateSkillDamage(skill, stats)).toBe(25);
+    });
+
+    it('consumedAmount=0 时不缩放', () => {
+      const skill = makeSkill({
+        type: 'physical_damage',
+        effect: { type: 'physical_damage', value: 20, coefficient: 0.5, statKey: 'dex' },
+        unlockLevel: 1,
+        scalingResource: 'combo_point',
+      });
+      const stats = makeStats({ dex: 10 });
+      // base = 25，consumedAmount=0：不缩放，返回 25
+      expect(calculateSkillDamage(skill, stats, 0)).toBe(25);
+    });
+  });
 });
 
 describe('getSkillCoefficient 等级分层系数', () => {
@@ -201,19 +310,29 @@ describe('getSkillCoefficient 等级分层系数', () => {
       expect(getSkillCoefficient(2, 'damage')).toBe(0.50);
     });
 
-    it('Lv 3-5 tier 1：0.54', () => {
-      expect(getSkillCoefficient(3, 'damage')).toBe(0.54);
-      expect(getSkillCoefficient(5, 'damage')).toBe(0.54);
+    it('Lv 3-5 tier 1：0.55', () => {
+      expect(getSkillCoefficient(3, 'damage')).toBe(0.55);
+      expect(getSkillCoefficient(5, 'damage')).toBe(0.55);
     });
 
-    it('Lv 6-8 tier 2：0.58', () => {
-      expect(getSkillCoefficient(6, 'damage')).toBe(0.58);
-      expect(getSkillCoefficient(8, 'damage')).toBe(0.58);
+    it('Lv 6-8 tier 2：0.62', () => {
+      expect(getSkillCoefficient(6, 'damage')).toBe(0.62);
+      expect(getSkillCoefficient(8, 'damage')).toBe(0.62);
     });
 
-    it('Lv 9-10 tier 3：0.62', () => {
-      expect(getSkillCoefficient(9, 'damage')).toBe(0.62);
-      expect(getSkillCoefficient(10, 'damage')).toBe(0.62);
+    it('Lv 9-12 tier 3：0.72', () => {
+      expect(getSkillCoefficient(9, 'damage')).toBe(0.72);
+      expect(getSkillCoefficient(12, 'damage')).toBe(0.72);
+    });
+
+    it('Lv 13-16 tier 4：0.84', () => {
+      expect(getSkillCoefficient(13, 'damage')).toBe(0.84);
+      expect(getSkillCoefficient(16, 'damage')).toBe(0.84);
+    });
+
+    it('Lv 17-20 tier 5：0.98', () => {
+      expect(getSkillCoefficient(17, 'damage')).toBe(0.98);
+      expect(getSkillCoefficient(20, 'damage')).toBe(0.98);
     });
   });
 
@@ -223,13 +342,29 @@ describe('getSkillCoefficient 等级分层系数', () => {
       expect(getSkillCoefficient(2, 'heal')).toBe(0.30);
     });
 
-    it('Lv 3-5 tier 1：0.335', () => {
-      expect(getSkillCoefficient(3, 'heal')).toBeCloseTo(0.335, 10);
+    it('Lv 3-5 tier 1：0.34', () => {
+      expect(getSkillCoefficient(3, 'heal')).toBe(0.34);
+      expect(getSkillCoefficient(5, 'heal')).toBe(0.34);
     });
 
-    it('Lv 9-10 tier 3：0.405', () => {
-      expect(getSkillCoefficient(9, 'heal')).toBeCloseTo(0.405, 10);
-      expect(getSkillCoefficient(10, 'heal')).toBeCloseTo(0.405, 10);
+    it('Lv 6-8 tier 2：0.38', () => {
+      expect(getSkillCoefficient(6, 'heal')).toBe(0.38);
+      expect(getSkillCoefficient(8, 'heal')).toBe(0.38);
+    });
+
+    it('Lv 9-12 tier 3：0.43', () => {
+      expect(getSkillCoefficient(9, 'heal')).toBe(0.43);
+      expect(getSkillCoefficient(12, 'heal')).toBe(0.43);
+    });
+
+    it('Lv 13-16 tier 4：0.49', () => {
+      expect(getSkillCoefficient(13, 'heal')).toBe(0.49);
+      expect(getSkillCoefficient(16, 'heal')).toBe(0.49);
+    });
+
+    it('Lv 17-20 tier 5：0.56', () => {
+      expect(getSkillCoefficient(17, 'heal')).toBe(0.56);
+      expect(getSkillCoefficient(20, 'heal')).toBe(0.56);
     });
   });
 });
@@ -613,8 +748,8 @@ describe('default 兜底分支覆盖', () => {
     });
     // Act
     const result = calculateSkillDamage(skill, makeStats());
-    // Assert：default 分支直接返回 effect.value
-    expect(result).toBe(42);
+    // Assert：default 分支用 int 属性 + damage 系数计算（42 + 10×0.50 = 47）
+    expect(result).toBe(47);
   });
 
   it('calculateBuffValue 未知效果类型时走 default 返回 value', () => {

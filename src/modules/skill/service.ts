@@ -6,7 +6,7 @@
  * @module skill
  */
 
-import type { Skill, SkillBar, SkillBuffEffect } from './types';
+import type { Skill, SkillBar, SkillBuffEffect, SkillType, StatKey } from './types';
 import type { Stats } from '@/modules/character/types';
 
 // ============================================================================
@@ -72,35 +72,41 @@ export function isValidTargetType(value: string | undefined | null): value is No
  * // 物理伤害技能：基础 50 + 力量 15 × 系数 0.5 = 57
  * calculateSkillDamage({ type: 'physical_damage', effect: { value: 50 } }, { str: 15 })
  */
-export function calculateSkillDamage(skill: Skill, stats: Stats): number {
-  switch (skill.type) {
-    // 物理伤害：力量 STR 加成
-    case 'physical_damage': {
-      const coef = skill.effect.coefficient ?? getSkillCoefficient(skill.unlockLevel, 'damage');
-      return Math.floor(skill.effect.value + stats.str * coef);
-    }
-    // 魔法伤害：智力 INT 加成
-    case 'magic_damage': {
-      const coef = skill.effect.coefficient ?? getSkillCoefficient(skill.unlockLevel, 'damage');
-      return Math.floor(skill.effect.value + stats.int * coef);
-    }
-    // 生命恢复：智慧 WIS 加成
-    case 'health_restore': {
-      const coef = skill.effect.coefficient ?? getSkillCoefficient(skill.unlockLevel, 'heal');
-      return Math.floor(skill.effect.value + stats.wis * coef);
-    }
-    // 法力恢复：智力 INT 加成
-    case 'mana_restore': {
-      const coef = skill.effect.coefficient ?? getSkillCoefficient(skill.unlockLevel, 'heal');
-      return Math.floor(skill.effect.value + stats.int * coef);
-    }
-    // buff/debuff：不通过此函数计算伤害，返回 0 占位
-    case 'buff':
-    case 'debuff':
-      return 0;
-    // 兜底：直接返回基础值（理论上不会到达，TypeScript 编译时已校验所有 SkillType 分支）
+export function calculateSkillDamage(skill: Skill, stats: Stats, consumedAmount?: number): number {
+  // buff/debuff：不通过此函数计算伤害，返回 0 占位
+  if (skill.type === 'buff' || skill.type === 'debuff') return 0;
+
+  const statKey = skill.effect.statKey ?? defaultStatForType(skill.type);
+  const isHeal = skill.type === 'health_restore' || skill.type === 'mana_restore';
+  const coef = skill.effect.coefficient ?? getSkillCoefficient(skill.unlockLevel, isHeal ? 'heal' : 'damage');
+  const base = skill.effect.value + stats[statKey] * coef;
+
+  // 终结技缩放：消耗全部副资源，效果按数量线性缩放
+  if (skill.scalingResource && consumedAmount && consumedAmount > 0) {
+    const multiplier = skill.scalingMultiplier ?? 1.0;
+    return Math.floor(base * consumedAmount * multiplier);
+  }
+
+  return Math.floor(base);
+}
+
+/**
+ * 按 SkillType 返回默认的加成属性键
+ *
+ * 未配置 `effect.statKey` 时使用此映射，保持向后兼容。
+ */
+function defaultStatForType(type: SkillType): StatKey {
+  switch (type) {
+    case 'physical_damage':
+      return 'str';
+    case 'magic_damage':
+      return 'int';
+    case 'health_restore':
+      return 'wis';
+    case 'mana_restore':
+      return 'int';
     default:
-      return skill.effect.value;
+      return 'int';
   }
 }
 
@@ -108,16 +114,21 @@ export function calculateSkillDamage(skill: Skill, stats: Stats): number {
  * 按解锁等级获取技能属性加成系数（分层缩放算法）
  *
  * 系数随技能解锁等级阶梯式提升，模拟"高级技能受属性影响更大"的 RPG 设计。
- * 分层规则（按解锁等级 `unlockLevel`）：
+ * 分层规则（按解锁等级 `unlockLevel`，覆盖 1-20 级）：
  *
- * | 等级区间 | Tier | damage 系数 | heal 系数 |
- * |----------|------|-------------|-----------|
- * | 1-2      | 0    | 0.50        | 0.30      |
- * | 3-5      | 1    | 0.54        | 0.335     |
- * | 6-8      | 2    | 0.58        | 0.37      |
- * | 9-10     | 3    | 0.62        | 0.405     |
+ * | 等级区间  | Tier | damage 系数 | heal 系数 |
+ * |-----------|------|-------------|-----------|
+ * | 1-2       | 0    | 0.50        | 0.30      |
+ * | 3-5       | 1    | 0.55        | 0.34      |
+ * | 6-8       | 2    | 0.62        | 0.38      |
+ * | 9-12      | 3    | 0.72        | 0.43      |
+ * | 13-16     | 4    | 0.84        | 0.49      |
+ * | 17-20     | 5    | 0.98        | 0.56      |
  *
- * @param unlockLevel - 技能解锁等级（1-10）
+ * 递增型曲线：高等级技能系数接近 1.0，保证 Lv20 大招伤害与主属性成长同步，
+ * 避免高等级技能因系数停滞导致伤害不足。
+ *
+ * @param unlockLevel - 技能解锁等级（1-20）
  * @param type - 计算类型（'damage' = 伤害/法力恢复，'heal' = 生命恢复，'buff' = 固定 0）
  * @returns 属性加成系数
  *
@@ -127,14 +138,19 @@ export function getSkillCoefficient(unlockLevel: number, type: 'damage' | 'heal'
   // buff 类型不受属性影响，固定返回 0
   if (type === 'buff') return 0;
 
-  // 基础系数：伤害类比恢复类高约 67%
-  const baseCoef = type === 'heal' ? 0.30 : 0.50;
-  // 每档增量：恢复类比伤害类平滑（更稳定的恢复节奏）
-  const tierBonus = type === 'heal' ? 0.035 : 0.040;
+  // 各区间系数表（递增型曲线）
+  const damageCoefficients = [0.50, 0.55, 0.62, 0.72, 0.84, 0.98];
+  const healCoefficients = [0.30, 0.34, 0.38, 0.43, 0.49, 0.56];
 
-  // 分层映射：Lv 1-2 / Lv 3-5 / Lv 6-8 / Lv 9-10
-  const tier = unlockLevel <= 2 ? 0 : unlockLevel <= 5 ? 1 : unlockLevel <= 8 ? 2 : 3;
-  return baseCoef + tier * tierBonus;
+  // 分层映射：Lv 1-2 / 3-5 / 6-8 / 9-12 / 13-16 / 17-20
+  const tier = unlockLevel <= 2 ? 0
+    : unlockLevel <= 5 ? 1
+    : unlockLevel <= 8 ? 2
+    : unlockLevel <= 12 ? 3
+    : unlockLevel <= 16 ? 4
+    : 5;
+
+  return type === 'heal' ? healCoefficients[tier] : damageCoefficients[tier];
 }
 
 /**
@@ -352,6 +368,13 @@ export function canCastSkill(
   ) {
     if (!opts.hasEnoughResource(skill.resourceType, skill.resourceCost)) {
       return { canCast: false, reason: '资源不足' };
+    }
+  }
+
+  // 5. 终结技校验（scalingResource 技能至少需要 1 点副资源才能施放）
+  if (skill.scalingResource && opts.hasEnoughResource) {
+    if (!opts.hasEnoughResource(skill.scalingResource, 1)) {
+      return { canCast: false, reason: '副资源不足' };
     }
   }
 

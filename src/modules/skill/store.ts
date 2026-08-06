@@ -369,7 +369,7 @@ export const useSkillStore = defineStore('skills', () => {
    * @see calculateSkillDamage 伤害/恢复值计算
    * @see calculateBuffValue Buff 效果值计算
    */
-  async function castSkill(skillId: string, skipAdventureLog: boolean = false): Promise<SkillUseResult> {
+  async function castSkill(skillId: string, skipAdventureLog: boolean = false, consumedAmount?: number): Promise<SkillUseResult> {
     const characterStore = useCharacterStore();
     const charData = characterStore.getCharacterData();
     // 查找技能：优先已学列表，其次模板缓存（支持模板技能施放）
@@ -423,8 +423,8 @@ export const useSkillStore = defineStore('skills', () => {
       await characterStore.changeMp(-mpCost);
     }
 
-    // 3. 计算技能效果值（属性加成后的最终数值）
-    const damageValue = calculateSkillDamage(skill, characterStore.effectiveStats);
+    // 3. 计算技能效果值（属性加成后的最终数值，终结技传入 consumedAmount 进行缩放）
+    const damageValue = calculateSkillDamage(skill, characterStore.effectiveStats, consumedAmount);
 
     // 4. 应用技能效果（按类型执行不同逻辑）
     let damage: number | undefined;

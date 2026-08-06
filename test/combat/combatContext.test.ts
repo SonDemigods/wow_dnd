@@ -222,7 +222,7 @@ describe('combatContext - 战斗上下文工厂（A2 读写分离）', () => {
     it('skill.castSkill 委托到 skillStore.castSkill 并透传可选参数', async () => {
       const ctx = createCombatContext();
       await ctx.skill.castSkill('fireball', true);
-      expect(skillStub.castSkill).toHaveBeenCalledWith('fireball', true);
+      expect(skillStub.castSkill).toHaveBeenCalledWith('fireball', true, undefined);
     });
 
     it('skill.tickCooldowns / resetCooldowns 委托到 skillStore', () => {

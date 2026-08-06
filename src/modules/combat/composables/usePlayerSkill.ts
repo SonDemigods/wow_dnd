@@ -116,7 +116,22 @@ export function usePlayerSkill(
       }
     }
 
-    const result = await ctx.skill.castSkill(skillId, true);
+    // 终结技校验：scalingResource 技能至少需要 1 点副资源
+    let consumedAmount: number | undefined;
+    if (skill?.scalingResource) {
+      const scalingSys = resourceSystems.value.find(sys => sys.type === skill.scalingResource);
+      if (!scalingSys || scalingSys.currentValue < 1) {
+        return {
+          success: false,
+          type: 'skill',
+          message: '副资源不足'
+        };
+      }
+      // 读取当前副资源数量，用于 castSkill 中的伤害缩放
+      consumedAmount = scalingSys.currentValue;
+    }
+
+    const result = await ctx.skill.castSkill(skillId, true, consumedAmount);
 
     if (!result.success) {
       return {
@@ -131,6 +146,22 @@ export function usePlayerSkill(
       const resourceSys = resourceSystems.value.find(sys => sys.type === skill.resourceType);
       if (resourceSys) {
         resourceSys.consume(skill.resourceCost);
+      }
+    }
+
+    // 终结技：消耗全部副资源（castSkill 已用 consumedAmount 计算缩放伤害）
+    if (skill?.scalingResource && consumedAmount !== undefined) {
+      const scalingSys = resourceSystems.value.find(sys => sys.type === skill.scalingResource);
+      if (scalingSys) {
+        scalingSys.consume(consumedAmount);
+      }
+    }
+
+    // 生成器：施放成功后生成副资源（paladin/warlock/evoker 的 MP 技能）
+    if (skill?.generatesResource) {
+      const genSys = resourceSystems.value.find(sys => sys.type === skill.generatesResource!.type);
+      if (genSys) {
+        genSys.generate(skill.generatesResource.amount, 'skill');
       }
     }
 
@@ -202,10 +233,10 @@ export function usePlayerSkill(
         const livingEnemies = aliveEnemies.value;
         const damageType: DamageType = result.type === 'magic_damage' ? 'magical' : 'physical';
         const aoeHits: AoeHitInfo[] = [];
-        // P3-146：读取 stat_modifier 类被动，AOE 与单目标共用同一份 modifier（条件在战斗期间稳定）
-        const statModifiers = passive.getStatModifiers();
 
         for (const e of livingEnemies) {
+          // P3-146：读取 stat_modifier 类被动，按目标独立评估含 target_hp 条件的被动（如斩杀本能）
+          const statModifiers = passive.getStatModifiers(e.id);
           // AOE 惩罚在管线前应用，与攻防修正独立计算
           const aoeBaseDamage = Math.round(result.damage * PLAYER_AOE_DAMAGE_PENALTY);
           const pipeResult = processDamagePipeline(
@@ -320,8 +351,8 @@ export function usePlayerSkill(
 
         const damageType: DamageType = result.type === 'magic_damage' ? 'magical' : 'physical';
 
-        // P3-146：读取 stat_modifier 类被动
-        const statModifiers = passive.getStatModifiers();
+        // P3-146：读取 stat_modifier 类被动（传 target.id 支持 target_hp 条件评估）
+        const statModifiers = passive.getStatModifiers(target.id);
 
         const pipeResult = processDamagePipeline(
           effectRegistry,

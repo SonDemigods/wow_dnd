@@ -204,7 +204,11 @@ export class SkillsDbService {
       resourceCost: data.resourceCost,
       // P3-156：宠物联动字段原样传递（requiresActivePet / specialAction 仅在特定技能上配置）
       requiresActivePet: data.requiresActivePet,
-      specialAction: data.specialAction
+      specialAction: data.specialAction,
+      // 终结技缩放与生成器字段透传（scalingResource / scalingMultiplier / generatesResource）
+      scalingResource: data.scalingResource,
+      scalingMultiplier: data.scalingMultiplier,
+      generatesResource: data.generatesResource
     };
   }
 

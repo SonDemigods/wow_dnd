@@ -1,12 +1,12 @@
 /**
  * @fileoverview 武僧真气资源系统
- * @description 真气是武僧的核心资源，通过特定技能生成，消耗于终结技。
+ * @description 真气是武僧的终结资源，通过生成器技能积累，终结技全部消耗并按数量缩放。
  *              设计要点：
- *              - 战斗开始时 1 真气
- *              - 攻击命中获取 1 真气
- *              - 每回合开始获取 1 真气
- *              - 上限 5 真气
- *              真气消耗于旭日踢、真气波等强力技能。
+ *              - 战斗开始时 0 真气
+ *              - 生成器技能直接生成（配置 generatesResource）
+ *              - 上限 3 真气
+ *              真气与能量（EnergySystem）配合：
+ *              生成器技能消耗能量并积攒真气，终结技全部消耗真气造成缩放伤害。
  * @module combat/resources
  */
 import { BaseResourceSystem } from './BaseResourceSystem';
@@ -15,35 +15,15 @@ import type { ResourceSource } from './types';
 export class ChiSystem extends BaseResourceSystem {
   readonly type = 'chi' as const;
 
-  constructor(initialValue: number = 1) {
-    super({ maxValue: 5, initialValue, isInteger: true });
+  constructor(initialValue: number = 0) {
+    super({ maxValue: 3, initialValue, isInteger: true });
   }
 
   generate(amount: number, source: ResourceSource): void {
-    // 真气按来源差异化生成
-    let actual = amount;
-    switch (source) {
-      case 'attack':
-        actual = Math.min(amount, 1); // 攻击命中获取 1 真气
-        break;
-      case 'turn':
-        actual = Math.min(amount, 1); // 回合开始获取 1 真气
-        break;
-      case 'skill':
-        actual = Math.min(amount, 2); // 技能直接生成（如猛虎掌）
-        break;
-      default:
-        // 受伤/击杀不生成真气
-        return;
+    if (source !== 'skill') {
+      // 真气仅通过生成器技能积攒（generatesResource 触发）
+      return;
     }
-    this.applyGeneration(actual);
-  }
-
-  onTurnStart(): void {
-    this.generate(1, 'turn');
-  }
-
-  onAttack(): void {
-    this.generate(1, 'attack');
+    this.applyGeneration(Math.min(amount, 3));
   }
 }

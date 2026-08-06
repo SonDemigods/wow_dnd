@@ -716,6 +716,122 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
     });
   });
 
+  // ==================== 终结技与生成器（scalingResource / generatesResource） ====================
+  describe('终结技与生成器（scalingResource / generatesResource）', () => {
+    it('终结技副资源不足时返回失败且不调用 castSkill', async () => {
+      const state = makeStateMock();
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '刺骨', targetType: 'single',
+        scalingResource: 'combo_point',
+      } as never);
+      const resourceSys = {
+        type: 'combo_point', currentValue: 0,
+        hasEnough: vi.fn(() => false), consume: vi.fn(), generate: vi.fn(),
+      };
+      state.resourceSystems.value = [resourceSys];
+
+      const result = await usePlayerSkill(
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(),
+        makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
+      ).playerSkill('sk1');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('副资源不足');
+      expect(skillStoreMock.castSkill).not.toHaveBeenCalled();
+      expect(resourceSys.consume).not.toHaveBeenCalled();
+    });
+
+    it('终结技无匹配副资源系统时返回失败', async () => {
+      const state = makeStateMock();
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '刺骨', targetType: 'single',
+        scalingResource: 'combo_point',
+      } as never);
+      // resourceSystems 为空，无匹配系统
+
+      const result = await usePlayerSkill(
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(),
+        makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
+      ).playerSkill('sk1');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('副资源不足');
+      expect(skillStoreMock.castSkill).not.toHaveBeenCalled();
+    });
+
+    it('终结技副资源充足时传递 consumedAmount 给 castSkill 并消耗全部副资源', async () => {
+      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
+      const state = makeStateMock({ target: enemy, alive: [enemy] });
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '刺骨', targetType: 'single',
+        scalingResource: 'combo_point',
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'physical_damage', damage: 75,
+      });
+      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
+      pipeResultMock.finalDamage = 75;
+      const resourceSys = {
+        type: 'combo_point', currentValue: 3,
+        hasEnough: vi.fn(() => true), consume: vi.fn(), generate: vi.fn(),
+      };
+      state.resourceSystems.value = [resourceSys];
+
+      await usePlayerSkill(
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(),
+        makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
+      ).playerSkill('sk1');
+
+      // castSkill 第三参数 consumedAmount = 3
+      expect(skillStoreMock.castSkill).toHaveBeenCalledWith('sk1', true, 3);
+      // 施放成功后消耗全部 3 点连击点
+      expect(resourceSys.consume).toHaveBeenCalledWith(3);
+    });
+
+    it('生成器技能施放成功后生成指定副资源', async () => {
+      const state = makeStateMock();
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '神圣制裁', targetType: 'self',
+        generatesResource: { type: 'holy_power', amount: 1 },
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'health_restore', heal: 30,
+      });
+      const resourceSys = {
+        type: 'holy_power', currentValue: 0,
+        hasEnough: vi.fn(() => true), consume: vi.fn(), generate: vi.fn(),
+      };
+      state.resourceSystems.value = [resourceSys];
+
+      await usePlayerSkill(
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(),
+        makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
+      ).playerSkill('sk1');
+
+      expect(resourceSys.generate).toHaveBeenCalledWith(1, 'skill');
+    });
+
+    it('生成器技能无匹配资源系统时不报错', async () => {
+      const state = makeStateMock();
+      skillStoreMock.getSkill.mockReturnValue({
+        id: 'sk1', name: '神圣制裁', targetType: 'self',
+        generatesResource: { type: 'holy_power', amount: 1 },
+      } as never);
+      skillStoreMock.castSkill.mockResolvedValue({
+        success: true, type: 'health_restore', heal: 30,
+      });
+      // resourceSystems 为空，无匹配系统
+
+      const result = await usePlayerSkill(
+        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(),
+        makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
+      ).playerSkill('sk1');
+
+      // 不报错，正常施放
+      expect(result.success).toBe(true);
+    });
+  });
+
   // ==================== P3-156 M4-4：宠物联动技能 ====================
   describe('P3-156 M4-4：宠物联动技能', () => {
     /** 构造激活宠物实例 mock */

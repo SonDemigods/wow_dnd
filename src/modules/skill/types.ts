@@ -6,6 +6,21 @@
  */
 
 import type { EffectType } from '@/modules/combat/effects';
+import type { ResourceType } from '@/modules/combat/resources/types';
+
+/**
+ * 主属性键类型
+ *
+ * 用于 SkillEffect.statKey，指定技能伤害加成依赖的主属性。
+ * 与 Stats 接口（@/modules/character）的属性名保持一致。
+ * - `str`：力量（战士/亡灵骑士主属性）
+ * - `dex`：敏捷（猎人/潜行者/武僧/影刃猎手主属性）
+ * - `con`：体质
+ * - `int`：智力（法师/术士/龙脉术士主属性）
+ * - `wis`：智慧（牧师/萨满/德鲁伊主属性）
+ * - `cha`：魅力（圣骑士主属性）
+ */
+export type StatKey = 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
 
 // ============================================================================
 // 枚举类型
@@ -58,6 +73,7 @@ export type SkillSlotIndex = 0 | 1 | 2 | 3;
  * @property {SkillType} type - 技能效果类型（实际使用中通常为数值型：damage/heal 系列）
  * @property {number} value - 基础效果值（受属性加成前的原始数值）
  * @property {number} [coefficient] - 自定义属性加成系数。如未提供，使用 `getSkillCoefficient` 按等级自动计算
+ * @property {StatKey} [statKey] - 伤害加成依赖的主属性。未指定时按 SkillType 默认（physical→str, magic→int, heal→wis）
  *
  * @see calculateSkillDamage 使用此接口计算实际伤害/恢复值
  */
@@ -65,6 +81,7 @@ export interface SkillEffect {
   type: SkillType;
   value: number;
   coefficient?: number;
+  statKey?: StatKey;
 }
 
 /**
@@ -113,6 +130,9 @@ export interface SkillBuffEffect {
  * @property {number} [resourceCost] - 资源消耗量（与 resourceType 配合使用）
  * @property {boolean} [requiresActivePet] - P3-156：是否需要激活宠物才能施放（如 hunter_kill_command）
  * @property {'summon_pet'|'dismiss_pet'} [specialAction] - P3-156：特殊动作类型，触发宠物召唤/解散而非伤害/恢复
+ * @property {ResourceType} [scalingResource] - 终结技标记：消耗全部该副资源，效果按消耗数量线性缩放（rogue combo_point / monk chi）
+ * @property {number} [scalingMultiplier] - 每点副资源的缩放倍率（默认 1.0，即效果 = baseValue × consumedAmount）
+ * @property {object} [generatesResource] - 生成器标记：技能施放成功后生成指定副资源（paladin/warlock/evoker 的 MP 技能）
  *
  * @see SkillTemplateStorage 数据库模板对应的存储类型
  * @see toSkill 模板 → 运行时对象的转换逻辑
@@ -134,6 +154,9 @@ export interface Skill {
   resourceCost?: number;
   requiresActivePet?: boolean;
   specialAction?: 'summon_pet' | 'dismiss_pet';
+  scalingResource?: ResourceType;
+  scalingMultiplier?: number;
+  generatesResource?: { type: ResourceType; amount: number };
 }
 
 // ============================================================================
@@ -264,6 +287,9 @@ export interface SkillsData {
  * @property {number} [resourceCost] - 资源消耗量（BIZ-11）
  * @property {boolean} [requiresActivePet] - P3-156：是否需要激活宠物才能施放
  * @property {'summon_pet'|'dismiss_pet'} [specialAction] - P3-156：特殊动作类型（召唤/解散宠物）
+ * @property {ResourceType} [scalingResource] - 终结技标记：消耗全部该副资源并按数量缩放
+ * @property {number} [scalingMultiplier] - 每点副资源的缩放倍率（默认 1.0）
+ * @property {object} [generatesResource] - 生成器标记：施放成功后生成指定副资源
  *
  * @see toSkill 存储类型 → 运行时类型的转换逻辑
  */
@@ -274,7 +300,7 @@ export interface SkillTemplateStorage {
   description: string;
   mpCost?: number;
   type: SkillType;
-  effect: { type: SkillType; value: number; coefficient?: number };
+  effect: { type: SkillType; value: number; coefficient?: number; statKey?: StatKey };
   unlockLevel: number;
   classRestriction: string | null;
   targetType?: string;
@@ -285,4 +311,7 @@ export interface SkillTemplateStorage {
   resourceCost?: number;
   requiresActivePet?: boolean;
   specialAction?: 'summon_pet' | 'dismiss_pet';
+  scalingResource?: ResourceType;
+  scalingMultiplier?: number;
+  generatesResource?: { type: ResourceType; amount: number };
 }
