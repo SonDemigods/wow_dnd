@@ -1,6 +1,10 @@
 /**
  * @fileoverview 区域专属事件模板数据（阶段四：内容丰富与平衡）
  *
+ * 【数据分层归属：A 层 · 编译期固定纯配置源】
+ * 不进 IndexedDB，admin 后台不可编辑。原因：事件模板为 `AreaEventTemplate` 函数形态
+ * （接收 areaLevel 返回 RandomEventResult），含行为逻辑不可序列化，运行时由探索模块直接 import 调用。
+ *
  * 为每个区域提供专属的随机事件模板，让"这个区域"有专属事件记忆点。
  * 事件以 `AreaEventTemplate`（接收 areaLevel 返回 `RandomEventResult`）形态存储，
  * 结算时复用 `effectHandlers` 注册表，不新增效果类型（仍为 heal/mana/exp/damage/mpLoss/gold）。

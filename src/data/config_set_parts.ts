@@ -1,6 +1,11 @@
 /**
  * @fileoverview 职业套装部件数据（P3 套装扩展）
- * @description 13 个职业 × 3 套 × 5 件 = 195 件套装部件。
+ * @description 【数据分层归属：A 层 · 编译期固定纯配置源 · 生成器输入】
+ *              不进 IndexedDB，admin 后台不可编辑。原因：本文件仅作为套装装备 ID 的生成器输入，
+ *              生成结果（EquipmentItem 实例）持久化进 B 层 `config_class_equipment` / `config_equipment_items` 表；
+ *              本身不持有运行时状态，运行时直接由装备模块 import 引用。
+ *
+ *              13 个职业 × 3 套 × 5 件 = 195 件套装部件。
  *              每套 5 件护甲（helm+chest+gloves+legs+boots），2 件套 stat 奖励 + 4 件套 trigger 奖励。
  *              套装定义在 config_set_definitions.ts，触发器在 setBonusRegistry.ts。
  *              本文件导出 SET_PARTS，作为独立套装部件数据供装备系统消费。

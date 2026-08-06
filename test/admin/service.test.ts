@@ -221,7 +221,7 @@ describe('AdminService - 后台管理服务层（fake-indexeddb 真实 CRUD）',
       const result = await adminService.getDashboardStats();
 
       expect(result.tableCounts).toBeDefined();
-      // CONFIG_TABLES 共 11 张表，tableCounts 应包含全部表名
+      // CONFIG_TABLES 共 15 张表，tableCounts 应包含全部表名
       expect(Object.keys(result.tableCounts)).toHaveLength(CONFIG_TABLES.length);
       for (const meta of CONFIG_TABLES) {
         expect(result.tableCounts[meta.dbTable]).toBe(0);

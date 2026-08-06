@@ -71,7 +71,7 @@ function makeClassData(o: Partial<ClassCreateUpdateData> = {}): ClassCreateUpdat
 
 // ==================== 测试用例 ====================
 
-describe('BaseDbService - 基础数据层（fake-indexeddb 真实 CRUD）', () => {
+describe('FoundationDbService - 基础数据层（fake-indexeddb 真实 CRUD）', () => {
   beforeEach(async () => {
     await Promise.all([
       db.config_factions.clear(),

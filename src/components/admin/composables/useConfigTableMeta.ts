@@ -170,6 +170,36 @@ const tableColumns: Record<ConfigTableName, TableColumn[]> = {
     { key: 'type', label: '类型' },
     { key: 'refreshInterval', label: '刷新间隔' },
   ],
+  // -------- DATA-4 职业扩展系统（2026-08-06 补入） --------
+  classEquipment: [
+    { key: 'id', label: 'ID', width: '180px' },
+    { key: 'name', label: '名称' },
+    { key: 'type', label: '类型' },
+    { key: 'rarity', label: '稀有度' },
+    { key: 'value', label: '价值' },
+    { key: 'classRestriction', label: '职业限制' },
+    { key: 'setId', label: '所属套装' },
+  ],
+  classPassives: [
+    { key: 'id', label: 'ID', width: '180px' },
+    { key: 'name', label: '名称' },
+    { key: 'classId', label: '职业' },
+    { key: 'trigger', label: '触发时机' },
+    { key: 'icon', label: '图标' },
+  ],
+  classTalents: [
+    { key: 'id', label: 'ID', width: '180px' },
+    { key: 'name', label: '名称' },
+    { key: 'classId', label: '职业' },
+    { key: 'icon', label: '图标' },
+  ],
+  setDefinitions: [
+    { key: 'id', label: 'ID', width: '180px' },
+    { key: 'name', label: '名称' },
+    { key: 'category', label: '分类' },
+    { key: 'classRestriction', label: '职业限制' },
+    { key: 'parts', label: '部件数' },
+  ],
 };
 
 // ========== 各配置表的表单字段定义 ==========
@@ -367,6 +397,57 @@ const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'type', label: '类型', type: 'text', placeholder: 'general/potion/equipment 等' },
     { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标' },
     { key: 'refreshInterval', label: '刷新间隔', type: 'number', placeholder: '刷新间隔（秒）' },
+  ],
+  // -------- DATA-4 职业扩展系统（2026-08-06 补入，字段对齐 EquipmentTemplateStorage / PassiveSkill / TalentTree / ItemSet） --------
+  classEquipment: [
+    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
+    { key: 'name', label: '名称', type: 'text', placeholder: '装备名称' },
+    { key: 'type', label: '类型', type: 'select', options: [
+      { value: 'weapon', label: '武器 (weapon)' },
+      { value: 'armor', label: '护甲 (armor)' },
+    ] },
+    { key: 'rarity', label: '稀有度', type: 'text', placeholder: 'common/uncommon/rare/epic/legendary' },
+    { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 或 Iconify 标识' },
+    { key: 'description', label: '描述', type: 'textarea', placeholder: '装备描述' },
+    { key: 'bonus', label: '属性加成', type: 'json', placeholder: '{"str": 3}' },
+    { key: 'value', label: '价值', type: 'number' },
+    { key: 'slots', label: '适用槽位', type: 'multiselect' },
+    { key: 'levelRequirement', label: '等级需求', type: 'number' },
+    { key: 'template', label: '模板', type: 'text', placeholder: '装备模板标识' },
+    { key: 'subtype', label: '子类型', type: 'text', placeholder: 'sword/bow/helm/chest 等' },
+    { key: 'grip', label: '握持方式', type: 'text', placeholder: 'one_hand/two_hand 等（武器专用）' },
+    { key: 'classRestriction', label: '职业限制', type: 'multiselect' },
+    { key: 'setId', label: '所属套装 ID', type: 'text', placeholder: '所属套装 ID，可空' },
+  ],
+  classPassives: [
+    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
+    { key: 'name', label: '名称', type: 'text', placeholder: '被动技能名称' },
+    { key: 'description', label: '描述', type: 'textarea', placeholder: '被动技能描述' },
+    { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 或 Iconify 标识' },
+    { key: 'classId', label: '职业', type: 'select' },
+    { key: 'trigger', label: '触发时机', type: 'text', placeholder: 'on_attack/on_hit/on_crit 等' },
+    { key: 'effect', label: '效果配置', type: 'json', placeholder: '{"type":"stat","stat":"str","value":5}' },
+  ],
+  classTalents: [
+    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识，如 warrior_arms' },
+    { key: 'name', label: '名称', type: 'text', placeholder: '天赋树名称，如 武器' },
+    { key: 'classId', label: '职业', type: 'select' },
+    { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 或 Iconify 标识' },
+    { key: 'description', label: '描述', type: 'textarea', placeholder: '天赋树描述' },
+    { key: 'talents', label: '天赋节点列表', type: 'json', placeholder: '[{"id":"t1","name":"剑专精","tier":1,"maxRank":5}]' },
+  ],
+  setDefinitions: [
+    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识，如 warrior_might' },
+    { key: 'name', label: '名称', type: 'text', placeholder: '套装名称' },
+    { key: 'category', label: '分类', type: 'select', options: [
+      { value: 'weapon_set', label: '武器套 (weapon_set)' },
+      { value: 'armor_set', label: '护甲套 (armor_set)' },
+      { value: 'mixed_set', label: '混合套 (mixed_set)' },
+      { value: 'accessory_set', label: '饰品套 (accessory_set)' },
+    ] },
+    { key: 'classRestriction', label: '职业限制', type: 'select' },
+    { key: 'parts', label: '部件清单', type: 'json', placeholder: '[{"slot":"helm","subtype":"cloth_helm"}]' },
+    { key: 'bonusTiers', label: '奖励档位', type: 'json', placeholder: '[{"requiredPieces":2,"bonuses":[...]}]' },
   ],
 };
 

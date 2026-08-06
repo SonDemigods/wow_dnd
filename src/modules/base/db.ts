@@ -24,8 +24,14 @@ function cast<T>(data: unknown): T {
 
 /**
  * 基础数据数据库服务类
+ *
+ * 命名说明（2026-08-06 重命名 BaseDbService → FoundationDbService）：
+ * 原类名 `BaseDbService` 与 `src/utils/db-helpers.ts` 中的抽象基类 `BaseDbService<T, S>`
+ * 同名，造成"基础数据模块的服务类"与"通用数据层基类"语义混淆。
+ * 重命名为 `FoundationDbService`（Foundation = 基础数据）以消除歧义，
+ * 实例名 `baseDbService` 保持不变（语义合理）。
  */
-export class BaseDbService {
+export class FoundationDbService {
   // ==================== 阵营操作 ====================
 
   /**
@@ -289,4 +295,4 @@ export class BaseDbService {
 /**
  * 基础数据数据库服务实例
  */
-export const baseDbService = new BaseDbService();
+export const baseDbService = new FoundationDbService();

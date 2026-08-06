@@ -69,9 +69,13 @@ export type AdminView = 'dashboard' | 'config';
 /**
  * 配置表名称联合类型
  *
- * 定义后台管理可操作的全部 11 张配置表的后缀标识。
+ * 定义后台管理可操作的全部 15 张配置表的后缀标识（B1 定义型 4 张 + B2 调参型 11 张）。
  * 注意：此为短名称（key），对应完整的 Dexie 表名需拼接 `config_` 前缀
  * （如 `factions` → `config_factions`）。
+ *
+ * 数据分层归属：本联合类型列举的表均属 B 层 Hybrid（源码默认值 + DB 可变副本，admin 可编辑）。
+ * DATA-4 新增的 4 张表（classEquipment / classPassives / classTalents / setDefinitions）
+ * 于 2026-08-06 补入，使 admin 通用 CRUD 覆盖全部 B 层表。
  *
  * @see CONFIG_TABLES key 字段使用此类型，dbTable 字段存储完整表名
  */
@@ -86,7 +90,11 @@ export type ConfigTableName =
   | 'quests'
   | 'skills'
   | 'locations'
-  | 'shops';
+  | 'shops'
+  | 'classEquipment'
+  | 'classPassives'
+  | 'classTalents'
+  | 'setDefinitions';
 
 /**
  * 配置表元信息接口
@@ -152,8 +160,11 @@ export interface FormConfig {
 /**
  * 所有配置表元信息列表
  *
- * 模块内配置表的唯一事实来源。包含全部 11 张配置表的元数据，
+ * 模块内配置表的唯一事实来源。包含全部 15 张配置表的元数据
+ * （B1 定义型 4 张 + B2 调参型 11 张，其中 4 张 DATA-4 表于 2026-08-06 补入），
  * 用于动态生成侧边栏导航、仪表盘统计和表名映射。
+ *
+ * 数据分层归属：所有表均属 B 层 Hybrid（源码默认值 + DB 可变副本，admin 可编辑）。
  *
  * 使用场景：
  * 1. `AdminLayout.vue` 使用此列表渲染侧边栏表选择器
@@ -164,15 +175,22 @@ export interface FormConfig {
  * @see useAdminStore.currentTableMeta 通过 key 从中查找当前选中表的元信息
  */
 export const CONFIG_TABLES: ConfigTableMeta[] = [
+  // -------- B1 定义型（低频变更，发版才改） --------
   { key: 'factions', label: '阵营', description: '光辉盟约/铁血盟约/中立阵营', dbTable: 'config_factions' },
   { key: 'races', label: '种族', description: '26个可选种族', dbTable: 'config_races' },
   { key: 'classes', label: '职业', description: '13个职业定义', dbTable: 'config_classes' },
+  { key: 'locations', label: '地点', description: '大陆/地点数据', dbTable: 'config_locations' },
+  // -------- B2 调参型（高频变更，平衡性调整，admin 优先） --------
   { key: 'items', label: '物品', description: '消耗品/材料模板', dbTable: 'config_items' },
   { key: 'equipmentItems', label: '装备', description: '武器装备模板', dbTable: 'config_equipment_items' },
   { key: 'mobs', label: '普通怪物', description: '普通怪物模板', dbTable: 'config_mobs' },
   { key: 'bosses', label: 'Boss', description: 'Boss 模板', dbTable: 'config_bosses' },
   { key: 'quests', label: '任务', description: '任务定义', dbTable: 'config_quests' },
   { key: 'skills', label: '技能', description: '职业技能模板', dbTable: 'config_skills' },
-  { key: 'locations', label: '地点', description: '大陆/地点数据', dbTable: 'config_locations' },
   { key: 'shops', label: '商店', description: '商店配置', dbTable: 'config_shops' },
+  // -------- DATA-4 职业扩展系统（2026-08-06 补入 admin 可编辑列表） --------
+  { key: 'classEquipment', label: '职业专属装备', description: '职业绑定装备模板（DATA-4）', dbTable: 'config_class_equipment' },
+  { key: 'classPassives', label: '职业被动', description: '职业被动技能定义（DATA-4）', dbTable: 'config_class_passives' },
+  { key: 'classTalents', label: '职业天赋', description: '职业天赋树定义（DATA-4）', dbTable: 'config_class_talents' },
+  { key: 'setDefinitions', label: '套装定义', description: '套装规则定义（DATA-4）', dbTable: 'config_set_definitions' },
 ];

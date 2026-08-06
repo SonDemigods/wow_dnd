@@ -296,4 +296,144 @@ describe('AdminDbService - 后台管理数据层（fake-indexeddb 真实 CRUD）
       expect(result[0].id).toBe('shop-weapon');
     });
   });
+
+  // -------------------- DATA-4 表 admin CRUD 验证 --------------------
+
+  /**
+   * DATA-4 新增的 4 张表（classEquipment / classPassives / classTalents / setDefinitions）
+   * 于 2026-08-06 补入 CONFIG_TABLES。本用例验证 adminDbService 对这 4 张表
+   * 的通用 CRUD 流程能正常工作（泛型 tableName 受 keyof GameDatabaseSchema 约束，
+   * 4 张表已在 core.ts schema 中声明）。
+   */
+  describe('DATA-4 表：admin 通用 CRUD 流程', () => {
+    beforeEach(async () => {
+      await Promise.all([
+        db.config_class_equipment.clear(),
+        db.config_class_passives.clear(),
+        db.config_class_talents.clear(),
+        db.config_set_definitions.clear(),
+      ]);
+    });
+
+    it('classEquipment（职业专属装备）完整 CRUD', async () => {
+      // schema: 'id, name, type, rarity'
+      const equip = {
+        id: 'warrior_sword_1',
+        name: '战士之剑',
+        type: 'weapon',
+        rarity: 'rare',
+        value: 100,
+        classRestriction: ['warrior'],
+      };
+      await adminDbService.add('config_class_equipment', equip, 'warrior_sword_1');
+
+      const got = await adminDbService.getById<typeof equip>('config_class_equipment', 'warrior_sword_1');
+      expect(got).not.toBeNull();
+      expect(got!.name).toBe('战士之剑');
+      expect(got!.rarity).toBe('rare');
+
+      await adminDbService.update('config_class_equipment', 'warrior_sword_1', { rarity: 'epic' });
+      const updated = await adminDbService.getById<typeof equip>('config_class_equipment', 'warrior_sword_1');
+      expect(updated!.rarity).toBe('epic');
+
+      await adminDbService.delete('config_class_equipment', 'warrior_sword_1');
+      const afterDelete = await adminDbService.getById<typeof equip>('config_class_equipment', 'warrior_sword_1');
+      expect(afterDelete).toBeUndefined();
+    });
+
+    it('classEquipment 索引搜索（name 索引存在）', async () => {
+      await adminDbService.add('config_class_equipment', { id: 'e1', name: '圣剑' }, 'e1');
+      await adminDbService.add('config_class_equipment', { id: 'e2', name: '圣盾' }, 'e2');
+
+      const result = await adminDbService.search('config_class_equipment', '圣');
+      expect(result).toHaveLength(2);
+    });
+
+    it('classPassives（职业被动技能）完整 CRUD', async () => {
+      // schema: 'id, classId, trigger'
+      const passive = {
+        id: 'warrior_passive_1',
+        name: '剑专精',
+        description: '增加剑类伤害',
+        classId: 'warrior',
+        trigger: 'on_attack',
+      };
+      await adminDbService.add('config_class_passives', passive, 'warrior_passive_1');
+
+      const got = await adminDbService.getById<typeof passive>('config_class_passives', 'warrior_passive_1');
+      expect(got).not.toBeNull();
+      expect(got!.classId).toBe('warrior');
+      expect(got!.trigger).toBe('on_attack');
+
+      await adminDbService.update('config_class_passives', 'warrior_passive_1', { description: '大幅增加剑类伤害' });
+      const updated = await adminDbService.getById<typeof passive>('config_class_passives', 'warrior_passive_1');
+      expect(updated!.description).toBe('大幅增加剑类伤害');
+
+      await adminDbService.delete('config_class_passives', 'warrior_passive_1');
+      const afterDelete = await adminDbService.getById<typeof passive>('config_class_passives', 'warrior_passive_1');
+      expect(afterDelete).toBeUndefined();
+    });
+
+    it('classPassives 无 name 索引时回退全字段搜索（通过 id 匹配）', async () => {
+      // schema: 'id, classId, trigger'，无 name 索引
+      await adminDbService.add('config_class_passives', { id: 'mage_passive_1', name: '法力涌动' }, 'mage_passive_1');
+
+      const result = await adminDbService.search('config_class_passives', 'mage_passive_1');
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('mage_passive_1');
+    });
+
+    it('classTalents（职业天赋树）完整 CRUD', async () => {
+      // schema: 'id, classId'
+      const talent = {
+        id: 'warrior_arms',
+        name: '武器',
+        classId: 'warrior',
+        icon: '⚔️',
+        description: '武器天赋树',
+        talents: [{ id: 't1', name: '剑专精', tier: 1, maxRank: 5 }],
+      };
+      await adminDbService.add('config_class_talents', talent, 'warrior_arms');
+
+      const got = await adminDbService.getById<typeof talent>('config_class_talents', 'warrior_arms');
+      expect(got).not.toBeNull();
+      expect(got!.classId).toBe('warrior');
+      expect(Array.isArray(got!.talents)).toBe(true);
+      expect(got!.talents).toHaveLength(1);
+
+      await adminDbService.update('config_class_talents', 'warrior_arms', { icon: '🗡️' });
+      const updated = await adminDbService.getById<typeof talent>('config_class_talents', 'warrior_arms');
+      expect(updated!.icon).toBe('🗡️');
+
+      await adminDbService.delete('config_class_talents', 'warrior_arms');
+      const afterDelete = await adminDbService.getById<typeof talent>('config_class_talents', 'warrior_arms');
+      expect(afterDelete).toBeUndefined();
+    });
+
+    it('setDefinitions（套装定义）完整 CRUD', async () => {
+      // schema: 'id, classRestriction'
+      const setDef = {
+        id: 'warrior_might',
+        name: '战士之力',
+        category: 'armor_set',
+        classRestriction: 'warrior',
+        parts: [{ slot: 'helm' }, { slot: 'chest' }],
+        bonusTiers: [{ requiredPieces: 2, bonuses: [] }],
+      };
+      await adminDbService.add('config_set_definitions', setDef, 'warrior_might');
+
+      const got = await adminDbService.getById<typeof setDef>('config_set_definitions', 'warrior_might');
+      expect(got).not.toBeNull();
+      expect(got!.category).toBe('armor_set');
+      expect(got!.parts).toHaveLength(2);
+
+      await adminDbService.update('config_set_definitions', 'warrior_might', { category: 'weapon_set' });
+      const updated = await adminDbService.getById<typeof setDef>('config_set_definitions', 'warrior_might');
+      expect(updated!.category).toBe('weapon_set');
+
+      await adminDbService.delete('config_set_definitions', 'warrior_might');
+      const afterDelete = await adminDbService.getById<typeof setDef>('config_set_definitions', 'warrior_might');
+      expect(afterDelete).toBeUndefined();
+    });
+  });
 });
