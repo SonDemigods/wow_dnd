@@ -435,7 +435,16 @@ export const useSkillStore = defineStore('skills', () => {
       case 'physical_damage':
       case 'magic_damage':
         // 伤害类：返回 damage 值，由调用方（combatStore）应用到目标
-        damage = damageValue;
+        // 天赋 skill_enhance：指定技能效果值放大
+        {
+          const talentStore = useTalentStore();
+          const enhanceValue = talentStore.effectSummary.skillEnhancements
+            .filter(e => e.skillId === skill.id)
+            .reduce((sum, e) => sum + e.value, 0);
+          damage = enhanceValue > 0
+            ? Math.floor(damageValue * (1 + enhanceValue))
+            : damageValue;
+        }
         break;
 
       case 'health_restore':

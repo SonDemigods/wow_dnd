@@ -8,18 +8,22 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { TalentAllocation } from './types';
-import { TALENT_POINT_RULES } from './types';
+import { calculateTotalTalentPoints } from './types';
 import {
   canLearnTalent,
   learnTalent,
+  unlearnTalent,
   calculateTalentEffects,
   calculateSpentPoints,
   resetAllocations,
   getTalentStatBonuses,
+  getColSpentPoints,
   type TalentEffectSummary
 } from './service';
 import { configCache } from '@/modules/config';
 import { usePetStore } from '@/modules/combat/pets';
+import { useCharacterStore } from '@/modules/character/store';
+import type { Stats } from '@/modules/character/types';
 
 /**
  * 天赋 Store
@@ -52,11 +56,8 @@ export const useTalentStore = defineStore('talent', () => {
   const spentPoints = computed(() => calculateSpentPoints(allocations.value));
 
   /** 总天赋点数（基于等级计算） */
-  // P3-110 修复：与 service.ts 中 calculateAvailablePoints / createInitialTalentState 保持一致，
-  // 使用 TALENT_POINT_RULES.pointsPerLevel 替代硬编码 2，确保规则变更时双方同步
-  const totalPoints = computed(() =>
-    Math.floor(currentLevel.value / TALENT_POINT_RULES.pointsPerLevel)
-  );
+  // 使用 calculateTotalTalentPoints 与 service.ts/types.ts 保持一致（10 级起每级 2 点）
+  const totalPoints = computed(() => calculateTotalTalentPoints(currentLevel.value));
 
   /** 剩余可用点数 */
   const availablePoints = computed(() =>
@@ -108,13 +109,36 @@ export const useTalentStore = defineStore('talent', () => {
     await configCache.loadTalentTrees();
     currentClassId.value = classId;
     currentLevel.value = level;
-    allocations.value = savedAllocations ? { ...savedAllocations } : {};
+    // 过滤无效 key（旧存档中可能存在当前树不存在的天赋 ID）
+    if (savedAllocations) {
+      const validKeys = new Set<string>();
+      const trees = configCache.getTalentTreesByClassId(classId);
+      for (const tree of trees) {
+        for (const talent of tree.talents) {
+          validKeys.add(talent.id);
+        }
+      }
+      const filtered: TalentAllocation = {};
+      for (const [key, value] of Object.entries(savedAllocations)) {
+        if (validKeys.has(key)) {
+          filtered[key] = value;
+        }
+      }
+      allocations.value = filtered;
+    } else {
+      allocations.value = {};
+    }
+
+    // 应用初始 stat_bonus 到角色（非战斗时直接加到 bonusStats）
+    applyStatBonusesToCharacter();
   }
 
   /**
    * 重置天赋系统状态（退出角色时调用）
    */
   function reset(): void {
+    // 重置前移除已应用的 stat_bonus
+    removeStatBonusesFromCharacter();
     allocations.value = {};
     currentClassId.value = '';
     currentLevel.value = 1;
@@ -163,6 +187,10 @@ export const useTalentStore = defineStore('talent', () => {
     // P3-156 M4-2：学习含 unlock_pet 效果的天赋时，即时调用 petStore.unlockPet
     applyUnlockPetEffects(talentId);
 
+    // 应用 stat_bonus 变化到角色
+    applyStatBonusesToCharacter();
+    syncAllocationsToCharacter();
+
     return true;
   }
 
@@ -192,6 +220,65 @@ export const useTalentStore = defineStore('talent', () => {
     }
   }
 
+  // ==================== stat_bonus 属性接入 ====================
+
+  /** 上次应用到角色的 stat_bonus 快照（用于计算 delta） */
+  let lastAppliedStats: Partial<Stats> = {};
+
+  /**
+   * 将当前天赋 stat_bonus 应用到角色
+   *
+   * 计算 delta（当前 - 上次），正数部分 applyBonus，负数部分 removeBonus。
+   * 跳过战斗状态（战斗中属性变更走 combat pipeline）。
+   */
+  function applyStatBonusesToCharacter(): void {
+    const current = statBonuses.value;
+    const delta: Partial<Stats> = {};
+    const removeDelta: Partial<Stats> = {};
+    const keys: (keyof Stats)[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+    for (const key of keys) {
+      const newVal = current[key] || 0;
+      const oldVal = lastAppliedStats[key] || 0;
+      const diff = newVal - oldVal;
+      if (diff > 0) delta[key] = diff;
+      else if (diff < 0) removeDelta[key] = -diff;
+    }
+    const characterStore = useCharacterStore();
+    if (Object.keys(removeDelta).length > 0) {
+      characterStore.removeBonus(removeDelta);
+    }
+    if (Object.keys(delta).length > 0) {
+      characterStore.applyBonus(delta);
+    }
+    lastAppliedStats = { ...current };
+  }
+
+  /**
+   * 移除所有已应用的天赋 stat_bonus
+   *
+   * 在 reset/logout 时调用，将天赋 bonus 从角色 bonusStats 中扣除。
+   */
+  function removeStatBonusesFromCharacter(): void {
+    if (Object.keys(lastAppliedStats).length === 0) return;
+    const characterStore = useCharacterStore();
+    characterStore.removeBonus(lastAppliedStats);
+    lastAppliedStats = {};
+  }
+
+  /**
+   * 同步天赋分配到角色数据（持久化用）
+   *
+   * talentStore.allocations 是运行时数据源，
+   * character.talentAllocations 用于持久化到 IndexedDB。
+   */
+  function syncAllocationsToCharacter(): void {
+    const characterStore = useCharacterStore();
+    const char = characterStore.getCharacterData();
+    if (char) {
+      characterStore.character = { ...char, talentAllocations: { ...allocations.value } };
+    }
+  }
+
   /**
    * 重置所有天赋分配
    *
@@ -200,6 +287,62 @@ export const useTalentStore = defineStore('talent', () => {
    */
   function resetAllAllocations(): void {
     allocations.value = resetAllocations();
+    // 重置后需移除所有已应用的 stat_bonus 并重新应用（此时为空 = 全部移除）
+    applyStatBonusesToCharacter();
+    syncAllocationsToCharacter();
+  }
+
+  // ==================== Action：取消学习天赋 ====================
+
+  /**
+   * 取消学习一级天赋（减点）
+   *
+   * 完整流程：
+   * 1. 校验天赋当前等级 > 0
+   * 2. 通过 unlearnTalent 纯函数更新分配状态
+   * 3. 如果是 unlock_pet 效果且等级降到 0，需要回退宠物解锁
+   *
+   * @param talentId - 要取消的天赋 ID
+   * @returns 是否取消成功
+   */
+  function unlearn(talentId: string): boolean {
+    if (!currentClassId.value) return false;
+    const currentRank = allocations.value[talentId] || 0;
+    if (currentRank <= 0) return false;
+
+    allocations.value = unlearnTalent(allocations.value, talentId);
+
+    // 如果 rank 降到 0 且天赋含 unlock_pet 效果，回退宠物解锁
+    if ((allocations.value[talentId] || 0) === 0) {
+      rollbackUnlockPetEffects(talentId);
+    }
+
+    // 应用 stat_bonus 变化到角色
+    applyStatBonusesToCharacter();
+    syncAllocationsToCharacter();
+
+    return true;
+  }
+
+  /**
+   * 回退天赋的 unlock_pet 效果
+   *
+   * 当含 unlock_pet 效果的天赋等级降到 0 时，需要从宠物解锁列表中移除。
+   * 实际宠物状态由战斗开始时从 effectSummary.unlockedPets 重新同步，
+   * 此处仅影响非战斗状态下的即时反馈。
+   *
+   * @param talentId - 被取消的天赋 ID
+   */
+  function rollbackUnlockPetEffects(talentId: string): void {
+    const found = configCache.getTalentById(talentId);
+    if (!found) return;
+
+    for (const effect of found.talent.effects) {
+      if (effect.type === 'unlock_pet') {
+        const petStore = usePetStore();
+        petStore.lockPet(effect.petType);
+      }
+    }
   }
 
   // ==================== 查询方法 ====================
@@ -245,6 +388,31 @@ export const useTalentStore = defineStore('talent', () => {
     );
   }
 
+  /**
+   * 获取指定列（系）已投入的点数
+   *
+   * 合并为 1 棵树后，UI 仍需展示单系投入。按 talent.col 过滤统计。
+   *
+   * @param col - 列号（1/2/3）
+   * @returns 该列已投入的总点数
+   */
+  function getColPoints(col: number): number {
+    const tree = talentTrees.value[0];
+    if (!tree) return 0;
+    return getColSpentPoints(tree, col, allocations.value);
+  }
+
+  /**
+   * 检查天赋是否可以取消学习
+   *
+   * @param talentId - 天赋 ID
+   * @returns 是否可取消
+   */
+  function canUnlearn(talentId: string): boolean {
+    if (!currentClassId.value) return false;
+    return (allocations.value[talentId] || 0) > 0;
+  }
+
   return {
     // 响应式状态
     allocations,
@@ -266,11 +434,14 @@ export const useTalentStore = defineStore('talent', () => {
 
     // 操作
     learn,
+    unlearn,
     resetAllAllocations,
 
     // 查询
     canLearn,
+    canUnlearn,
     getTalentRank,
-    getTreeSpentPoints
+    getTreeSpentPoints,
+    getColPoints
   };
 });

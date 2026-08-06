@@ -218,7 +218,12 @@ export function usePlayerAction(
     // 暴击判定（在管线之后应用）
     // P3-146：传入 statModifiers 让 crit_chance / crit_damage_multiplier 生效
     const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
-    const finalDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
+    // 天赋 damage_multiplier 加成（通过 ctx.talent 统一访问，保持测试隔离）
+    const talentDmgMult = ctx.talent.damageMultiplier;
+    const preCritDamage = talentDmgMult > 0
+      ? Math.floor(pipeResult.finalDamage * (1 + talentDmgMult))
+      : pipeResult.finalDamage;
+    const finalDamage = Math.floor(preCritDamage * critMultiplier);
 
     // 造成伤害
     // BIZ-6：应用 BOSS 防御机制（无敌/护盾）

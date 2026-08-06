@@ -297,6 +297,20 @@ export const useCombatStore = defineStore('combat', () => {
     state.resourceSystems.value = ResourceSystemFactory.create(ctx.character.classId);
     // 战斗开始钩子：重置资源到初始值
     state.resourceSystems.value.forEach(sys => sys.reset());
+    // 天赋 resource_bonus：叠加非 mana 类资源上限（rage_max/energy_max/soul_shard_max/chi_max 等）
+    {
+      const rb = ctx.talent.resourceBonuses;
+      const rbKeys = Object.keys(rb) as string[];
+      if (rbKeys.length > 0) {
+        for (const sys of state.resourceSystems.value) {
+          const maxKey = `${sys.type}_max`;
+          const bonus = rb[maxKey];
+          if (bonus !== undefined && bonus > 0) {
+            (sys as unknown as { _maxValue: { value: number } })._maxValue.value += bonus;
+          }
+        }
+      }
+    }
 
     // 加载当前职业的被动技能并触发战斗开始钩子（Phase 5.2）
     await passive.loadPassives();

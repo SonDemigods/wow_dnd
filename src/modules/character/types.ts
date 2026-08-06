@@ -390,6 +390,8 @@ export interface Character {
    * @see setMountChoice 修改单档选择
    */
   mountChoices: (string | null)[];
+  /** 天赋分配状态：key 为天赋 ID，value 为当前等级 */
+  talentAllocations?: Record<string, number>;
   /** 角色创建时间戳（毫秒），持久化用，不在 UI 中展示 */
   createdTime?: number;
 }
@@ -718,6 +720,8 @@ export interface CharacterDataStorage {
   bonusStats: Partial<Stats>;
   /** 坐骑配置（可选，旧存档缺失时迁移为 [null,null,null,null,null]） */
   mountChoices?: (string | null)[];
+  /** 天赋分配状态（可选，旧存档缺失时迁移为空对象） */
+  talentAllocations?: Record<string, number>;
   createdTime: number;
   lastPlayedTime: number;
   updatedAt: number;

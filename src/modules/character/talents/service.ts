@@ -6,7 +6,7 @@
  * @module character/talents
  */
 import type { Talent, TalentTree, TalentAllocation, TalentEffect } from './types';
-import { TALENT_POINT_RULES } from './types';
+import { TALENT_POINT_RULES, calculateTotalTalentPoints } from './types';
 import { configCache } from '@/modules/config';
 import type { Stats } from '../types';
 
@@ -42,15 +42,27 @@ export function getTreeSpentPoints(tree: TalentTree, allocations: TalentAllocati
 }
 
 /**
+ * 计算指定列（系）已投入的点数总和
+ *
+ * 合并为 1 棵树后，UI 仍需展示单系投入。按 talent.col 过滤统计。
+ *
+ * @param tree - 天赋树
+ * @param col - 列号（1/2/3）
+ * @param allocations - 当前天赋分配状态
+ * @returns 该列已投入的总点数
+ */
+export function getColSpentPoints(tree: TalentTree, col: number, allocations: TalentAllocation): number {
+  return tree.talents
+    .filter(t => t.col === col)
+    .reduce((sum, talent) => sum + (allocations[talent.id] || 0), 0);
+}
+
+/**
  * 检查天赋层级是否已解锁
  *
- * 解锁规则：
+ * 解锁规则（全树累计投入）：
  * - tier 1：始终解锁
- * - tier 2：该天赋树已投入 >= tier2Requirement（默认 3）点
- * - tier 3：该天赋树已投入 >= tier3Requirement（默认 6）点
- * - tier 4：该天赋树已投入 >= tier4Requirement（默认 9）点（P3-156 新增）
- * - tier 5：该天赋树已投入 >= tier5Requirement（默认 10）点（P3-156 新增）
- * - tier 6：该天赋树已投入 >= tier6Requirement（默认 11）点（P3-156 新增）
+ * - tier N：全树累计投入 >= rowUnlockRequirements[N-1] 点
  *
  * @param talent - 目标天赋
  * @param tree - 所属天赋树
@@ -65,20 +77,7 @@ export function isTierUnlocked(
   if (talent.tier === 1) return true;
 
   const spent = getTreeSpentPoints(tree, allocations);
-  switch (talent.tier) {
-    case 2:
-      return spent >= TALENT_POINT_RULES.tier2Requirement;
-    case 3:
-      return spent >= TALENT_POINT_RULES.tier3Requirement;
-    case 4:
-      return spent >= TALENT_POINT_RULES.tier4Requirement;
-    case 5:
-      return spent >= TALENT_POINT_RULES.tier5Requirement;
-    case 6:
-      return spent >= TALENT_POINT_RULES.tier6Requirement;
-    default:
-      return false;
-  }
+  return spent >= TALENT_POINT_RULES.rowUnlockRequirements[talent.tier - 1];
 }
 
 /**
@@ -341,7 +340,7 @@ export function calculateSpentPoints(allocations: TalentAllocation): number {
  * @returns 剩余可用点数
  */
 export function calculateAvailablePoints(level: number, allocations: TalentAllocation): number {
-  const total = Math.floor(level / TALENT_POINT_RULES.pointsPerLevel);
+  const total = calculateTotalTalentPoints(level);
   const spent = calculateSpentPoints(allocations);
   return Math.max(0, total - spent);
 }
@@ -366,6 +365,35 @@ export function learnTalent(
 }
 
 /**
+ * 取消学习天赋（纯函数，返回新的分配状态）
+ *
+ * 注意：此函数不检查是否可取消，调用方应先校验当前等级 > 0。
+ * 宠物解锁回退由 store 层处理（unlearn 后检查是否需要 lockPet）。
+ *
+ * @param allocations - 当前天赋分配状态
+ * @param talentId - 要取消的天赋 ID
+ * @returns 新的天赋分配状态
+ */
+export function unlearnTalent(
+  allocations: TalentAllocation,
+  talentId: string
+): TalentAllocation {
+  const currentRank = allocations[talentId] || 0;
+  if (currentRank <= 0) return allocations;
+
+  const newRank = currentRank - 1;
+  if (newRank === 0) {
+    const rest = { ...allocations };
+    delete rest[talentId];
+    return rest;
+  }
+  return {
+    ...allocations,
+    [talentId]: newRank
+  };
+}
+
+/**
  * 重置天赋分配（清空所有点数）
  *
  * @returns 空的天赋分配状态
@@ -385,7 +413,7 @@ export function createInitialTalentState(level: number): {
   totalPoints: number;
   availablePoints: number;
 } {
-  const total = Math.floor(level / TALENT_POINT_RULES.pointsPerLevel);
+  const total = calculateTotalTalentPoints(level);
   return {
     allocations: {},
     totalPoints: total,

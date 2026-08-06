@@ -147,7 +147,7 @@ export const CLASSES: ClassData[] = [
     id: 'evoker',
     name: '龙脉术士',
     icon: 'game-icons:spiked-dragon-head',
-    primaryStat: 'int',
+    primaryStat: 'cha',
     factionsIds: ['neutral'],
     raceIds: ['dracthyr'],
     description: '龙裔一族专属的龙裔施法者，继承了远古龙王的遗产与远古龙族议会的神圣使命。龙脉术士以龙翼翱翔战场，从口中喷吐毁灭性的火焰吐息，亦能反转时光以翡翠之花治愈盟友',

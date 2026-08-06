@@ -124,29 +124,31 @@ describe('useTalentStore - 天赋 Store', () => {
       expect(calculateSpentPoints).toHaveBeenCalledWith({ t1: 1, t2: 2 });
     });
 
-    it('totalPoints：按 floor(level/2) 计算', () => {
+    it('totalPoints：等级 < 10 时为 0', () => {
       const store = useTalentStore();
-      store.$patch({ currentLevel: 10 });
-      expect(store.totalPoints).toBe(5);
+      store.$patch({ currentLevel: 9 });
+      expect(store.totalPoints).toBe(0);
     });
 
-    it('totalPoints：奇数等级向下取整', () => {
+    it('totalPoints：等级 10 = 2，等级 20 = 22', () => {
       const store = useTalentStore();
-      store.$patch({ currentLevel: 11 });
-      expect(store.totalPoints).toBe(5);
+      store.$patch({ currentLevel: 10 });
+      expect(store.totalPoints).toBe(2);
+      store.$patch({ currentLevel: 20 });
+      expect(store.totalPoints).toBe(22);
     });
 
     it('availablePoints：totalPoints - spentPoints，最小为 0', () => {
-      vi.mocked(calculateSpentPoints).mockReturnValueOnce(2);
+      vi.mocked(calculateSpentPoints).mockReturnValueOnce(1);
       const store = useTalentStore();
-      store.$patch({ currentLevel: 10 }); // totalPoints = 5
-      expect(store.availablePoints).toBe(3);
+      store.$patch({ currentLevel: 10 }); // totalPoints = 2
+      expect(store.availablePoints).toBe(1);
     });
 
     it('availablePoints：spent 超过 total 时 clamp 为 0', () => {
       vi.mocked(calculateSpentPoints).mockReturnValueOnce(10);
       const store = useTalentStore();
-      store.$patch({ currentLevel: 4 }); // totalPoints = 2
+      store.$patch({ currentLevel: 4 }); // totalPoints = 0
       expect(store.availablePoints).toBe(0);
     });
 
@@ -230,11 +232,11 @@ describe('useTalentStore - 天赋 Store', () => {
   describe('Action: updateLevel', () => {
     it('更新等级并影响 totalPoints', async () => {
       const store = useTalentStore();
-      await store.initialize('warrior', 4);
-      expect(store.totalPoints).toBe(2);
+      await store.initialize('warrior', 9);
+      expect(store.totalPoints).toBe(0);
       store.updateLevel(10);
       expect(store.currentLevel).toBe(10);
-      expect(store.totalPoints).toBe(5);
+      expect(store.totalPoints).toBe(2);
     });
   });
 
@@ -265,7 +267,7 @@ describe('useTalentStore - 天赋 Store', () => {
       await store.initialize('warrior', 10);
 
       expect(store.learn('t1')).toBe(true);
-      expect(canLearnTalent).toHaveBeenCalledWith('t1', 'warrior', {}, 5);
+      expect(canLearnTalent).toHaveBeenCalledWith('t1', 'warrior', {}, 2);
       expect(learnTalent).toHaveBeenCalledWith({}, 't1');
       expect(store.allocations).toEqual({ t1: 1 });
     });

@@ -59,6 +59,10 @@
         <BaseIcon name="sword-spin" gradient="gold" :size="16" />
         <span class="footer-text">技能</span>
       </button>
+      <button class="footer-btn" @click="popupMounted.talents = true; showTalents = true; onClickPanel('talents')" title="天赋">
+        <BaseIcon name="star" gradient="gold" :size="16" />
+        <span class="footer-text">天赋</span>
+      </button>
       <button class="footer-btn" @click="popupMounted.quests = true; showQuests = true; onClickPanel('quests')" title="任务">
         <BaseIcon name="notebook" gradient="gold" :size="16" />
         <span class="footer-text">任务</span>
@@ -89,6 +93,12 @@
       v-if="popupMounted.skills"
       :visible="showSkills"
       @close="showSkills = false; onPanelClose('skills')"
+    />
+
+    <TalentPopup
+      v-if="popupMounted.talents"
+      :visible="showTalents"
+      @close="showTalents = false; onPanelClose('talents')"
     />
 
     <QuestPopup
@@ -200,6 +210,13 @@ const SkillsPopup = defineAsyncComponent({
   delay: 200,
   timeout: 10000,
 });
+const TalentPopup = defineAsyncComponent({
+  loader: () => import('./popup/TalentPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
 const QuestPopup = defineAsyncComponent({
   loader: () => import('./popup/QuestPopup.vue'),
   loadingComponent: AsyncPopupLoading,
@@ -272,6 +289,7 @@ const loading = ref(true);
 const showCharacterInfo = ref(false);
 const showInventory = ref(false);
 const showSkills = ref(false);
+const showTalents = ref(false);
 const showQuests = ref(false);
 const showAdventureLog = ref(false);
 const showShop = ref(false);
@@ -290,6 +308,7 @@ const popupMounted = reactive({
   characterInfo: false,
   inventory: false,
   skills: false,
+  talents: false,
   quests: false,
   adventureLog: false,
   shop: false,

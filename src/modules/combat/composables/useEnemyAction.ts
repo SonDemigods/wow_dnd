@@ -96,8 +96,8 @@ export function useEnemyAction(
     const shieldAbsorbed = pipeResult.absorbed;
 
     // BIZ-5：应用被动减伤效果（如战士钢铁意志：低血减伤 20%）
+    // 天赋 damage_reduction 由 combatContext.takeDamage 统一应用，此处仅处理被动
     const damageReduction = passive?.getDamageReduction() || 0;
-    // P1-13 修复：添加 Math.max(0, ...) 保护负数边界，防止 damageReduction > 1 时 finalDamage 变负数导致"回血"
     const finalDamage = damageReduction > 0
       ? Math.max(0, Math.floor(actualDamage * (1 - damageReduction)))
       : actualDamage;

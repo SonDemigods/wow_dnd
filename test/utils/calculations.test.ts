@@ -98,16 +98,22 @@ describe('calculateMagicDefense 魔法防御力', () => {
 });
 
 describe('calculateCritChance 暴击率', () => {
-  it('基础公式：min(50, floor(dex*0.5))', () => {
-    expect(calculateCritChance(makeStats({ dex: 10 }))).toBe(5);
+  it('基础公式：min(50, floor(primaryStat*0.5))', () => {
+    expect(calculateCritChance(makeStats({ str: 10 }), 'str')).toBe(5);
   });
 
   it('暴击率上限为 50%', () => {
-    expect(calculateCritChance(makeStats({ dex: 200 }))).toBe(50);
+    expect(calculateCritChance(makeStats({ str: 200 }), 'str')).toBe(50);
   });
 
-  it('低敏捷时暴击率较低', () => {
-    expect(calculateCritChance(makeStats({ dex: 4 }))).toBe(2);
+  it('低主属性时暴击率较低', () => {
+    expect(calculateCritChance(makeStats({ str: 4 }), 'str')).toBe(2);
+  });
+
+  it('不同 primaryStat 推导不同暴击率', () => {
+    const stats = makeStats({ str: 20, int: 30 });
+    expect(calculateCritChance(stats, 'str')).toBe(10);
+    expect(calculateCritChance(stats, 'int')).toBe(15);
   });
 });
 
@@ -138,7 +144,7 @@ describe('calculateHealBonus 生命恢复加成', () => {
 describe('calculateAllAttributes 聚合计算', () => {
   it('返回所有衍生属性字段', () => {
     const stats = makeStats();
-    const result = calculateAllAttributes(stats);
+    const result = calculateAllAttributes(stats, 'dex');
     expect(result).toHaveProperty('physicalAttack');
     expect(result).toHaveProperty('physicalDefense');
     expect(result).toHaveProperty('magicAttack');
@@ -153,14 +159,15 @@ describe('calculateAllAttributes 聚合计算', () => {
 
   it('聚合结果与单独调用一致', () => {
     const stats = makeStats({ str: 20, dex: 15, con: 18, int: 12, wis: 14, cha: 8 });
-    const all = calculateAllAttributes(stats);
+    const primaryStat = 'dex';
+    const all = calculateAllAttributes(stats, primaryStat);
     expect(all.maxHp).toBe(calculateMaxHp(stats));
     expect(all.maxMana).toBe(calculateMaxMana(stats));
     expect(all.physicalAttack).toBe(calculatePhysicalAttack(stats));
     expect(all.physicalDefense).toBe(calculatePhysicalDefense(stats));
     expect(all.magicAttack).toBe(calculateMagicAttack(stats));
     expect(all.magicDefense).toBe(calculateMagicDefense(stats));
-    expect(all.critChance).toBe(calculateCritChance(stats));
+    expect(all.critChance).toBe(calculateCritChance(stats, primaryStat));
     expect(all.dodgeChance).toBe(calculateDodgeChance(stats));
   });
 });

@@ -14,6 +14,7 @@ import { LOOT_ITEMS } from './config_items';
 import { SET_DEFINITIONS } from './config_set_definitions';
 import { CLASS_EQUIPMENT } from './config_class_equipment';
 import { CLASS_ABILITIES } from './config_skills';
+import { CLASS_TALENT_TREES } from './config_class_talents';
 import type { EffectType } from '@/modules/combat/effects';
 
 /**
@@ -262,6 +263,97 @@ export function validateSkillBuffs(): number {
   return validCount;
 }
 
+/**
+ * 校验天赋数据的结构完整性与效果合规性
+ *
+ * 校验范围：
+ * 1. 每个职业恰好 1 棵树、18 节点（6 行 × 3 列）
+ * 2. tier(1-6) 与 col(1-3) 范围合法
+ * 3. requires 引用的天赋 ID 必须存在
+ * 4. 效果字段完整性（stat_bonus 需 stat/value、resource_bonus 需 stat/value、skill_enhance 需 targetSkill/value 等）
+ * 5. 禁用效果类型（crit_bonus / hp_multiplier / special / mana_max）数量必须为 0（效果合规约束）
+ *
+ * @returns 校验通过的树数量；若存在问题，会在控制台输出错误日志
+ */
+export function validateTalentData(): number {
+  const errors: string[] = [];
+  const validEffectTypes: ReadonlySet<string> = new Set([
+    'stat_bonus', 'damage_multiplier', 'damage_reduction',
+    'healing_multiplier', 'resource_bonus', 'skill_enhance', 'unlock_pet',
+  ]);
+  // 禁用效果类型（违反 2.1 合规约束）：crit_bonus / hp_multiplier / special
+  const bannedEffectTypes: ReadonlySet<string> = new Set(['crit_bonus', 'hp_multiplier', 'special']);
+  let validCount = 0;
+
+  for (const tree of CLASS_TALENT_TREES) {
+    let treeValid = true;
+    const talentIds = new Set(tree.talents.map(t => t.id));
+
+    // 1. 节点数量：18 个
+    if (tree.talents.length !== 18) {
+      errors.push(`树 ${tree.id} (${tree.name}) 节点数为 ${tree.talents.length}，应为 18`);
+      treeValid = false;
+    }
+
+    for (const talent of tree.talents) {
+      // 2. tier/col 范围
+      if (![1, 2, 3, 4, 5, 6].includes(talent.tier)) {
+        errors.push(`天赋 ${talent.id} tier=${talent.tier} 非法（应为 1-6）`);
+        treeValid = false;
+      }
+      if (talent.col !== undefined && ![1, 2, 3].includes(talent.col)) {
+        errors.push(`天赋 ${talent.id} col=${talent.col} 非法（应为 1-3）`);
+        treeValid = false;
+      }
+
+      // 3. requires 引用有效性
+      if (talent.requires) {
+        for (const reqId of talent.requires) {
+          if (!talentIds.has(reqId)) {
+            errors.push(`天赋 ${talent.id} 的 requires 引用了不存在的天赋 ${reqId}`);
+            treeValid = false;
+          }
+        }
+      }
+
+      // 4. 效果字段完整性
+      for (const effect of talent.effects) {
+        const et = effect.type as string;
+        if (!validEffectTypes.has(et)) {
+          if (bannedEffectTypes.has(et)) {
+            errors.push(`天赋 ${talent.id} 使用禁用效果类型 ${et}（违反合规约束）`);
+          } else {
+            errors.push(`天赋 ${talent.id} 使用未知效果类型 ${et}`);
+          }
+          treeValid = false;
+          continue;
+        }
+        // stat_bonus / resource_bonus：需 stat 字段
+        if ((et === 'stat_bonus' || et === 'resource_bonus') && !('stat' in effect)) {
+          errors.push(`天赋 ${talent.id} 的 ${et} 效果缺少 stat 字段`);
+          treeValid = false;
+        }
+        // skill_enhance：需 targetSkill 字段
+        if (et === 'skill_enhance' && !('targetSkill' in effect)) {
+          errors.push(`天赋 ${talent.id} 的 skill_enhance 效果缺少 targetSkill 字段`);
+          treeValid = false;
+        }
+      }
+    }
+
+    if (treeValid) validCount++;
+  }
+
+  if (errors.length > 0) {
+    console.error(`[数据校验] 天赋数据存在 ${errors.length} 处问题:`);
+    errors.forEach(e => console.error(`  - ${e}`));
+  } else {
+    console.log(`[数据校验] 天赋数据校验通过：${validCount}/${CLASS_TALENT_TREES.length} 棵树结构完整且效果合规`);
+  }
+
+  return validCount;
+}
+
 // 开发环境自动执行校验（生产环境构建时 import.meta.env.DEV 为 false，整段会被 tree-shaking）
 if (import.meta.env.DEV) {
   validateLocationData();
@@ -270,4 +362,5 @@ if (import.meta.env.DEV) {
   validateBossPhasesOrder();
   validateItemSetReferences();
   validateSkillBuffs();
+  validateTalentData();
 }

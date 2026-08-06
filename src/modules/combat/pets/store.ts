@@ -21,6 +21,7 @@ import {
   summonPet,
   tickPetTurn,
   unlockPet as unlockPetFn,
+  lockPet as lockPetFn,
   getPetDefinition,
   getPetResourceCost,
 } from './service';
@@ -158,6 +159,11 @@ export const usePetStore = defineStore('warlock-pets', () => {
    */
   function unlockPet(petType: PetType): void {
     updateState(unlockPetFn(state.value, petType));
+  }
+
+  /** 锁定（移除解锁）宠物，天赋 unlearn 时回退 */
+  function lockPet(petType: PetType): void {
+    updateState(lockPetFn(state.value, petType));
   }
 
   /**
@@ -302,6 +308,7 @@ export const usePetStore = defineStore('warlock-pets', () => {
     setLogCallback,
     updateLevel,
     unlockPet,
+    lockPet,
     canSummon,
     summon,
     dismiss,

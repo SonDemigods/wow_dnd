@@ -100,11 +100,17 @@ export function calculateMagicDefense(stats: Stats): number {
 
 /**
  * 计算暴击率 (%)
+ *
+ * 暴击率由职业主属性（primaryStat）推导，而非固定使用 dex。
+ * 例如战士主属性为 str → 暴击率 = str * CRIT_DEX_COEFFICIENT。
+ * 系数沿用 CRIT_DEX_COEFFICIENT（历史命名保留），单位主属性收益不变。
+ *
  * @param {Stats} stats - 角色主属性对象
+ * @param {keyof Stats} primaryStat - 职业主属性键
  * @returns {number} 暴击率百分比
  */
-export function calculateCritChance(stats: Stats): number {
-  return Math.min(CRIT_CHANCE_CAP, Math.floor(stats.dex * CRIT_DEX_COEFFICIENT));
+export function calculateCritChance(stats: Stats, primaryStat: keyof Stats): number {
+  return Math.min(CRIT_CHANCE_CAP, Math.floor(stats[primaryStat] * CRIT_DEX_COEFFICIENT));
 }
 
 /**
@@ -155,15 +161,16 @@ export interface Attributes {
 /**
  * 计算所有衍生属性
  * @param {Stats} stats - 角色主属性对象
+ * @param {keyof Stats} primaryStat - 职业主属性键（决定暴击率推导来源）
  * @returns {Attributes} 包含所有衍生属性的对象
  */
-export function calculateAllAttributes(stats: Stats): Attributes {
+export function calculateAllAttributes(stats: Stats, primaryStat: keyof Stats): Attributes {
   return {
     physicalAttack: calculatePhysicalAttack(stats),
     physicalDefense: calculatePhysicalDefense(stats),
     magicAttack: calculateMagicAttack(stats),
     magicDefense: calculateMagicDefense(stats),
-    critChance: calculateCritChance(stats),
+    critChance: calculateCritChance(stats, primaryStat),
     dodgeChance: calculateDodgeChance(stats),
     maxHp: calculateMaxHp(stats),
     maxMana: calculateMaxMana(stats),

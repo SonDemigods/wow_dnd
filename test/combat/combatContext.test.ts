@@ -87,6 +87,7 @@ describe('combatContext - 战斗上下文工厂（A2 读写分离）', () => {
       expect(ctx).toHaveProperty('quest');
       expect(ctx).toHaveProperty('log');
       expect(ctx).toHaveProperty('inventory');
+      expect(ctx).toHaveProperty('talent');
     });
 
     it('character 域包含 6 个只读属性 + 6 个写入方法', () => {

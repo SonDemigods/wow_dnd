@@ -22,7 +22,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Talent, TalentTree, TalentEffect } from '@/modules/character/talents/types';
-import { TALENT_POINT_RULES } from '@/modules/character/talents/types';
+import { TALENT_POINT_RULES, calculateTotalTalentPoints } from '@/modules/character/talents/types';
 
 /** mock configCache，使 service 在受控 fixture 下测试（替代原 @/data/config_class_talents） */
 const getTalentByIdMock = vi.fn();
@@ -40,6 +40,7 @@ vi.mock('@/modules/config', () => ({
 import {
   meetsRequirements,
   getTreeSpentPoints,
+  getColSpentPoints,
   isTierUnlocked,
   canLearnTalent,
   createEmptyEffectSummary,
@@ -48,6 +49,7 @@ import {
   calculateSpentPoints,
   calculateAvailablePoints,
   learnTalent,
+  unlearnTalent,
   resetAllocations,
   createInitialTalentState,
 } from '@/modules/character/talents/service';
@@ -208,7 +210,7 @@ describe('talents/service - 天赋纯函数服务层', () => {
         talents: [makeTalent({ id: 't1', tier: 1 })],
       });
       const talent = makeTalent({ tier: 2 });
-      // tier2Requirement 默认 3，spent=2
+      // rowUnlockRequirements[1] = 3，spent=2
       expect(isTierUnlocked(talent, tree, { t1: 2 })).toBe(false);
     });
 
@@ -233,7 +235,7 @@ describe('talents/service - 天赋纯函数服务层', () => {
         talents: [makeTalent({ id: 't1', tier: 1 })],
       });
       const talent = makeTalent({ tier: 3 });
-      // tier3Requirement 默认 6，spent=5
+      // rowUnlockRequirements[2] = 6，spent=5
       expect(isTierUnlocked(talent, tree, { t1: 5 })).toBe(false);
     });
 
@@ -253,7 +255,7 @@ describe('talents/service - 天赋纯函数服务层', () => {
       expect(isTierUnlocked(talent, tree, { t1: 7 })).toBe(true);
     });
 
-    // P3-156 新增：tier 4/5/6 解锁阈值边界测试
+    // tier 4/5/6 解锁阈值边界测试（新规则：累计 9/12/15）
     it('tier 4：已投入点数 < 阈值（9）时未解锁', () => {
       const tree = makeTree({
         talents: [makeTalent({ id: 't1', tier: 1 })],
@@ -270,41 +272,42 @@ describe('talents/service - 天赋纯函数服务层', () => {
       expect(isTierUnlocked(talent, tree, { t1: 9 })).toBe(true);
     });
 
-    it('tier 5：已投入点数 < 阈值（10）时未解锁', () => {
+    it('tier 5：已投入点数 < 阈值（12）时未解锁', () => {
       const tree = makeTree({
         talents: [makeTalent({ id: 't1', tier: 1 })],
       });
       const talent = makeTalent({ tier: 5 });
-      expect(isTierUnlocked(talent, tree, { t1: 9 })).toBe(false);
+      expect(isTierUnlocked(talent, tree, { t1: 11 })).toBe(false);
     });
 
-    it('tier 5：已投入点数 = 阈值（10）时解锁（边界）', () => {
+    it('tier 5：已投入点数 = 阈值（12）时解锁（边界）', () => {
       const tree = makeTree({
         talents: [makeTalent({ id: 't1', tier: 1 })],
       });
       const talent = makeTalent({ tier: 5 });
-      expect(isTierUnlocked(talent, tree, { t1: 10 })).toBe(true);
+      expect(isTierUnlocked(talent, tree, { t1: 12 })).toBe(true);
     });
 
-    it('tier 6：已投入点数 < 阈值（11）时未解锁', () => {
+    it('tier 6：已投入点数 < 阈值（15）时未解锁', () => {
       const tree = makeTree({
         talents: [makeTalent({ id: 't1', tier: 1 })],
       });
       const talent = makeTalent({ tier: 6 });
-      expect(isTierUnlocked(talent, tree, { t1: 10 })).toBe(false);
+      expect(isTierUnlocked(talent, tree, { t1: 14 })).toBe(false);
     });
 
-    it('tier 6：已投入点数 = 阈值（11）时解锁（边界）', () => {
+    it('tier 6：已投入点数 = 阈值（15）时解锁（边界）', () => {
       const tree = makeTree({
         talents: [makeTalent({ id: 't1', tier: 1 })],
       });
       const talent = makeTalent({ tier: 6 });
-      expect(isTierUnlocked(talent, tree, { t1: 11 })).toBe(true);
+      expect(isTierUnlocked(talent, tree, { t1: 15 })).toBe(true);
     });
 
     it('未知 tier（非 1/2/3/4/5/6）返回 false', () => {
       const tree = makeTree();
       const talent = makeTalent({ tier: 99 as never });
+      // rowUnlockRequirements[98] 为 undefined，>= undefined 为 false
       expect(isTierUnlocked(talent, tree, { t1: 100 })).toBe(false);
     });
   });
@@ -826,32 +829,36 @@ describe('talents/service - 天赋纯函数服务层', () => {
 
   // -------------------- calculateAvailablePoints --------------------
   describe('calculateAvailablePoints - 剩余可用点数', () => {
-    it('等级 1、无 allocations：total=floor(1/2)=0，available=0', () => {
+    it('等级 1（< 10 级）：total=0，available=0', () => {
       expect(calculateAvailablePoints(1, {})).toBe(0);
     });
 
-    it('等级 2、无 allocations：total=1，available=1', () => {
-      expect(calculateAvailablePoints(2, {})).toBe(1);
+    it('等级 9（< 10 级）：total=0，available=0', () => {
+      expect(calculateAvailablePoints(9, {})).toBe(0);
     });
 
-    it('等级 10、无 allocations：total=5，available=5', () => {
-      expect(calculateAvailablePoints(10, {})).toBe(5);
+    it('等级 10：total=2，available=2', () => {
+      expect(calculateAvailablePoints(10, {})).toBe(2);
     });
 
-    it('奇数等级向下取整：等级 11 → total=5', () => {
-      expect(calculateAvailablePoints(11, {})).toBe(5);
+    it('等级 11：total=4，available=4', () => {
+      expect(calculateAvailablePoints(11, {})).toBe(4);
+    });
+
+    it('等级 20：total=22，available=22', () => {
+      expect(calculateAvailablePoints(20, {})).toBe(22);
     });
 
     it('已使用部分点数：total - spent', () => {
-      expect(calculateAvailablePoints(10, { t1: 2 })).toBe(3);
+      expect(calculateAvailablePoints(10, { t1: 1 })).toBe(1);
     });
 
     it('spent 超过 total 时 clamp 至 0', () => {
-      expect(calculateAvailablePoints(4, { t1: 5 })).toBe(0);
+      expect(calculateAvailablePoints(5, { t1: 5 })).toBe(0);
     });
 
     it('spent 等于 total 时返回 0', () => {
-      expect(calculateAvailablePoints(10, { t1: 5 })).toBe(0);
+      expect(calculateAvailablePoints(10, { t1: 2 })).toBe(0);
     });
   });
 
@@ -880,6 +887,33 @@ describe('talents/service - 天赋纯函数服务层', () => {
     });
   });
 
+  // -------------------- unlearnTalent --------------------
+  describe('unlearnTalent - 取消学习天赋（纯函数）', () => {
+    it('等级 > 1 时等级 -1', () => {
+      const result = unlearnTalent({ t1: 2, t2: 1 }, 't1');
+      expect(result).toEqual({ t1: 1, t2: 1 });
+    });
+
+    it('等级 = 1 时移除该 key', () => {
+      const result = unlearnTalent({ t1: 1, t2: 1 }, 't1');
+      expect(result).toEqual({ t2: 1 });
+      expect(result.t1).toBeUndefined();
+    });
+
+    it('等级 = 0（不存在）时返回原对象不变', () => {
+      const original = { t1: 1 };
+      const result = unlearnTalent(original, 't2');
+      expect(result).toBe(original);
+    });
+
+    it('不修改原 allocations 对象（返回新对象）', () => {
+      const original = { t1: 2 };
+      const result = unlearnTalent(original, 't1');
+      expect(original).toEqual({ t1: 2 });
+      expect(result).not.toBe(original);
+    });
+  });
+
   // -------------------- resetAllocations --------------------
   describe('resetAllocations - 重置分配', () => {
     it('返回空对象', () => {
@@ -897,7 +931,7 @@ describe('talents/service - 天赋纯函数服务层', () => {
 
   // -------------------- createInitialTalentState --------------------
   describe('createInitialTalentState - 初始天赋状态', () => {
-    it('等级 1：totalPoints=0、availablePoints=0、allocations 为空', () => {
+    it('等级 1（< 10）：totalPoints=0、availablePoints=0、allocations 为空', () => {
       const state = createInitialTalentState(1);
       expect(state).toEqual({
         allocations: {},
@@ -906,21 +940,28 @@ describe('talents/service - 天赋纯函数服务层', () => {
       });
     });
 
-    it('等级 2：totalPoints=1、availablePoints=1', () => {
-      const state = createInitialTalentState(2);
-      expect(state.totalPoints).toBe(1);
-      expect(state.availablePoints).toBe(1);
+    it('等级 9（< 10）：totalPoints=0、availablePoints=0', () => {
+      const state = createInitialTalentState(9);
+      expect(state.totalPoints).toBe(0);
+      expect(state.availablePoints).toBe(0);
     });
 
-    it('等级 10：totalPoints=5、availablePoints=5', () => {
+    it('等级 10：totalPoints=2、availablePoints=2', () => {
       const state = createInitialTalentState(10);
-      expect(state.totalPoints).toBe(5);
-      expect(state.availablePoints).toBe(5);
+      expect(state.totalPoints).toBe(2);
+      expect(state.availablePoints).toBe(2);
     });
 
-    it('奇数等级向下取整', () => {
-      const state = createInitialTalentState(11);
-      expect(state.totalPoints).toBe(5);
+    it('等级 15：totalPoints=12、availablePoints=12', () => {
+      const state = createInitialTalentState(15);
+      expect(state.totalPoints).toBe(12);
+      expect(state.availablePoints).toBe(12);
+    });
+
+    it('等级 20：totalPoints=22、availablePoints=22', () => {
+      const state = createInitialTalentState(20);
+      expect(state.totalPoints).toBe(22);
+      expect(state.availablePoints).toBe(22);
     });
 
     it('allocations 始终为空对象且独立', () => {
@@ -934,29 +975,66 @@ describe('talents/service - 天赋纯函数服务层', () => {
 
   // -------------------- 配置规则一致性（回归保护） --------------------
   describe('TALENT_POINT_RULES 规则常量', () => {
-    it('pointsPerLevel 为 2', () => {
-      expect(TALENT_POINT_RULES.pointsPerLevel).toBe(2);
+    it('pointsStartLevel 为 10', () => {
+      expect(TALENT_POINT_RULES.pointsStartLevel).toBe(10);
     });
 
-    it('tier2Requirement 为 3', () => {
-      expect(TALENT_POINT_RULES.tier2Requirement).toBe(3);
+    it('pointsPerLevelFrom 为 2', () => {
+      expect(TALENT_POINT_RULES.pointsPerLevelFrom).toBe(2);
     });
 
-    it('tier3Requirement 为 6', () => {
-      expect(TALENT_POINT_RULES.tier3Requirement).toBe(6);
+    it('rowUnlockRequirements 为 [0, 3, 6, 9, 12, 15]', () => {
+      expect(TALENT_POINT_RULES.rowUnlockRequirements).toEqual([0, 3, 6, 9, 12, 15]);
     });
 
-    // P3-156 新增：tier4/5/6 阈值验证
-    it('tier4Requirement 为 9', () => {
-      expect(TALENT_POINT_RULES.tier4Requirement).toBe(9);
+    it('maxPointsPerTalent 为 2', () => {
+      expect(TALENT_POINT_RULES.maxPointsPerTalent).toBe(2);
+    });
+  });
+
+  // -------------------- calculateTotalTalentPoints --------------------
+  describe('calculateTotalTalentPoints - 总天赋点数计算', () => {
+    it('等级 1-9：0 点', () => {
+      expect(calculateTotalTalentPoints(1)).toBe(0);
+      expect(calculateTotalTalentPoints(5)).toBe(0);
+      expect(calculateTotalTalentPoints(9)).toBe(0);
     });
 
-    it('tier5Requirement 为 10', () => {
-      expect(TALENT_POINT_RULES.tier5Requirement).toBe(10);
+    it('等级 10：2 点', () => {
+      expect(calculateTotalTalentPoints(10)).toBe(2);
     });
 
-    it('tier6Requirement 为 11', () => {
-      expect(TALENT_POINT_RULES.tier6Requirement).toBe(11);
+    it('等级 15：12 点', () => {
+      expect(calculateTotalTalentPoints(15)).toBe(12);
+    });
+
+    it('等级 20：22 点', () => {
+      expect(calculateTotalTalentPoints(20)).toBe(22);
+    });
+  });
+
+  // -------------------- getColSpentPoints --------------------
+  describe('getColSpentPoints - 按列统计已投入点数', () => {
+    it('正确统计指定列的点数', () => {
+      const tree = makeTree({
+        talents: [
+          makeTalent({ id: 'c1_t1', tier: 1, col: 1 }),
+          makeTalent({ id: 'c2_t1', tier: 1, col: 2 }),
+          makeTalent({ id: 'c3_t1', tier: 1, col: 3 }),
+          makeTalent({ id: 'c1_t2', tier: 2, col: 1 }),
+        ],
+      });
+      const allocations = { c1_t1: 2, c2_t1: 1, c3_t1: 0, c1_t2: 1 };
+      expect(getColSpentPoints(tree, 1, allocations)).toBe(3);
+      expect(getColSpentPoints(tree, 2, allocations)).toBe(1);
+      expect(getColSpentPoints(tree, 3, allocations)).toBe(0);
+    });
+
+    it('无节点匹配该列时返回 0', () => {
+      const tree = makeTree({
+        talents: [makeTalent({ id: 't1', tier: 1, col: 1 })],
+      });
+      expect(getColSpentPoints(tree, 2, { t1: 5 })).toBe(0);
     });
   });
 });

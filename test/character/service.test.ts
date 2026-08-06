@@ -208,7 +208,7 @@ describe('computeEffectiveStats 有效属性计算', () => {
 
 describe('computeAttributes 衍生属性聚合', () => {
   it('返回全部衍生属性字段', () => {
-    const attrs = computeAttributes(makeStats());
+    const attrs = computeAttributes(makeStats(), 'str');
     expect(attrs).toHaveProperty('maxHp');
     expect(attrs).toHaveProperty('maxMana');
     expect(attrs).toHaveProperty('physicalAttack');
@@ -223,9 +223,19 @@ describe('computeAttributes 衍生属性聚合', () => {
 
   it('与底层计算函数结果一致', () => {
     const stats = makeStats({ str: 20, dex: 15, con: 18, int: 12, wis: 14, cha: 8 });
-    const attrs = computeAttributes(stats);
+    const attrs = computeAttributes(stats, 'str');
     expect(attrs.maxHp).toBe(calculateMaxHp(stats));
     expect(attrs.maxMana).toBe(calculateMaxMana(stats));
+  });
+
+  it('primaryStat 影响暴击率推导', () => {
+    const stats = makeStats({ str: 20, dex: 10, int: 30 });
+    // str 职业暴击率 = str * CRIT_DEX_COEFFICIENT = 20 * 0.5 = 10
+    const strAttrs = computeAttributes(stats, 'str');
+    expect(strAttrs.critChance).toBe(10);
+    // int 职业暴击率 = int * 0.5 = 30 * 0.5 = 15
+    const intAttrs = computeAttributes(stats, 'int');
+    expect(intAttrs.critChance).toBe(15);
   });
 });
 

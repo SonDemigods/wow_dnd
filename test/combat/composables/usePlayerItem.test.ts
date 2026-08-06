@@ -256,6 +256,7 @@ function makeMockCtx(): ICombatContext {
       useItem: inventoryStoreMock.useItem,
       addItem: inventoryStoreMock.addItem,
     },
+    talent: { damageMultiplier: 0, damageReduction: 0, resourceBonuses: {}, skillEnhancements: [] },
   } as unknown as ICombatContext;
 }
 

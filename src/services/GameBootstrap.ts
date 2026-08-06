@@ -13,6 +13,8 @@ import { useExplorationStore } from '@/modules/exploration';
 import { useQuestStore, setQuestExternalCallbacks, clearQuestExternalCallbacks, initEnemyNameMap } from '@/modules/quest';
 import { useCombatStore } from '@/modules/combat';
 import { useAudioStore } from '@/modules/audio';
+import { useTalentStore } from '@/modules/character/talents';
+import { useCharacterStore } from '@/modules/character';
 import { configCache } from '@/modules/config';
 import { setBossCreateFn } from '@/modules/enemy';
 import { bossDbService, createBossInstance } from '@/modules/boss';
@@ -135,6 +137,13 @@ export class GameBootstrapService {
 
     // ==================== Layer 3：exploration（依赖 log + map） ====================
     await useExplorationStore().init(characterId);
+
+    // ==================== Layer 3.5：talent（依赖 character store 已加载） ====================
+    const characterStore = useCharacterStore();
+    const charData = characterStore.getCharacterData();
+    if (charData) {
+      await useTalentStore().initialize(charData.classId, charData.level, charData.talentAllocations);
+    }
 
     // ==================== Layer 4：quest（依赖 inventory 回调 + exploration） ====================
     await questStore.initialize(characterId);

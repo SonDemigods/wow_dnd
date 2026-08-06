@@ -453,6 +453,26 @@ export function unlockPet(
 }
 
 /**
+ * 锁定（移除解锁）宠物
+ *
+ * 天赋 unlearn 时回退宠物解锁。如果该宠物当前被召唤，一并解散。
+ */
+export function lockPet(
+  state: PetSystemState,
+  petType: PetType
+): PetSystemState {
+  if (!state.unlockedPets.includes(petType)) return state;
+  const newState: PetSystemState = {
+    ...state,
+    unlockedPets: state.unlockedPets.filter(p => p !== petType),
+  };
+  if (state.activePet?.petId === petType) {
+    newState.activePet = null;
+  }
+  return newState;
+}
+
+/**
  * 回合结束时更新召唤物状态
  *
  * 1. 减少技能冷却

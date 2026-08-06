@@ -138,7 +138,11 @@ export const useCharacterStore = defineStore('character', () => {
     return result;
   });
 
-  const attributes = computed<Attributes>(() => computeAttributes(effectiveStats.value));
+  const attributes = computed<Attributes>(() => {
+    const cls = classesData.value[classId.value];
+    const primaryStat = cls?.primaryStat ?? 'dex';
+    return computeAttributes(effectiveStats.value, primaryStat);
+  });
 
   const level = computed(() => character.value?.level || 1);
   const exp = computed(() => character.value?.exp || 0);

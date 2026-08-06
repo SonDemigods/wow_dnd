@@ -177,7 +177,11 @@ export function usePetAction(
       undefined,
     );
 
-    const finalDamage = pipeResult.finalDamage;
+    // 天赋 damage_multiplier 加成
+    const _talentDmgMult = ctx.talent.damageMultiplier;
+    const finalDamage = _talentDmgMult > 0
+      ? Math.floor(pipeResult.finalDamage * (1 + _talentDmgMult))
+      : pipeResult.finalDamage;
 
     if (finalDamage > 0) {
       ctx.enemy.takeDamage(target.id, finalDamage);

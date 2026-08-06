@@ -371,12 +371,14 @@ const currentAttributes = computed(() => {
 });
 
 const derivedAttributes = computed(() => {
+  const classData = baseStore.classes.find((c) => c.id === selectedClass.value);
+  const primaryStat = classData?.primaryStat ?? 'dex';
   return {
     physicalAttack: calculatePhysicalAttack(currentAttributes.value),
     physicalDefense: calculatePhysicalDefense(currentAttributes.value),
     magicAttack: calculateMagicAttack(currentAttributes.value),
     magicDefense: calculateMagicDefense(currentAttributes.value),
-    critChance: calculateCritChance(currentAttributes.value),
+    critChance: calculateCritChance(currentAttributes.value, primaryStat),
     dodgeChance: calculateDodgeChance(currentAttributes.value),
     maxHp: calculateMaxHp(currentAttributes.value),
     maxMana: calculateMaxMana(currentAttributes.value)

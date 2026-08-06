@@ -86,7 +86,7 @@ export function computeEffectiveStats(
 }
 
 /** 计算衍生属性 */
-export function computeAttributes(stats: Stats): Attributes {
+export function computeAttributes(stats: Stats, primaryStat: keyof Stats = 'dex'): Attributes {
   return {
     maxHp: calculateMaxHp(stats),
     maxMana: calculateMaxMana(stats),
@@ -94,7 +94,7 @@ export function computeAttributes(stats: Stats): Attributes {
     physicalDefense: calculatePhysicalDefense(stats),
     magicAttack: calculateMagicAttack(stats),
     magicDefense: calculateMagicDefense(stats),
-    critChance: calculateCritChance(stats),
+    critChance: calculateCritChance(stats, primaryStat),
     dodgeChance: calculateDodgeChance(stats),
     mpBonus: calculateMpBonus(stats),
     healBonus: calculateHealBonus(stats)
@@ -167,7 +167,9 @@ export function createInitialCharacter(params: CreateCharacterParams, raceData: 
     unallocatedPoints: 0,
     gold: 50,
     // 坐骑配置：5 档全 null（1 级仅解锁 common 档选择权，但初始不预选任何方向）
-    mountChoices: [null, null, null, null, null]
+    mountChoices: [null, null, null, null, null],
+    // 天赋分配：初始为空（10 级前无天赋点）
+    talentAllocations: {}
   };
 }
 

@@ -175,6 +175,7 @@ function makeMockCtx(overrides: Partial<ICombatContext> = {}): ICombatContext {
     quest: { onEnemyKilled: vi.fn() },
     log: { addLogEntry: vi.fn() },
     inventory: { useItem: vi.fn(), getItemInfo: vi.fn(), addItem: vi.fn() },
+    talent: { damageMultiplier: 0, damageReduction: 0, resourceBonuses: {}, skillEnhancements: [] },
     ...overrides,
   } as unknown as ICombatContext;
 }

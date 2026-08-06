@@ -253,7 +253,12 @@ export function usePlayerSkill(
           // BIZ-4：暴击判定（每个敌人独立判定，与 playerAttack 保持一致）
           // P3-146：传入 statModifiers 让 crit_chance / crit_damage_multiplier 生效
           const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
-          const aoeDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
+          // 天赋 damage_multiplier 加成
+          const _talentDmgMult = ctx.talent.damageMultiplier;
+          const _preCritDmg = _talentDmgMult > 0
+            ? Math.floor(pipeResult.finalDamage * (1 + _talentDmgMult))
+            : pipeResult.finalDamage;
+          const aoeDamage = Math.floor(_preCritDmg * critMultiplier);
           // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
           const { damage: actualAoeDamage } = boss.applyBossDefenseMechanics(e, aoeDamage);
           if (actualAoeDamage > 0) {
@@ -356,7 +361,12 @@ export function usePlayerSkill(
         // BIZ-4：暴击判定（与 playerAttack 保持一致）
         // P3-146：传入 statModifiers 让 crit_chance / crit_damage_multiplier 生效
         const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
-        const skillDamage = Math.floor(pipeResult.finalDamage * critMultiplier);
+        // 天赋 damage_multiplier 加成
+        const _talentDmgMult = ctx.talent.damageMultiplier;
+        const _preCritDmg = _talentDmgMult > 0
+          ? Math.floor(pipeResult.finalDamage * (1 + _talentDmgMult))
+          : pipeResult.finalDamage;
+        const skillDamage = Math.floor(_preCritDmg * critMultiplier);
 
         // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
         const { damage: actualSkillDamage } = boss.applyBossDefenseMechanics(target, skillDamage);

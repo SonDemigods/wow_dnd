@@ -170,6 +170,7 @@ export interface Talent {
   description: string;
   icon: string;
   tier: 1 | 2 | 3 | 4 | 5 | 6;
+  col?: 1 | 2 | 3;
   maxRank: number;
   requires?: string[];
   effects: TalentEffect[];
@@ -239,29 +240,24 @@ export interface TalentState {
  * 确保玩家在 level 18（9 点天赋）解锁猎豹，level 20 解锁野猪，level 22 解锁魔暴龙。
  */
 export const TALENT_POINT_RULES = {
-  /** 每 N 级获得 1 点天赋点 */
-  pointsPerLevel: 2,
-  /** 角色等级 1 时初始点数 */
-  basePoints: 0,
-  /** 单个天赋最大可分配点数（覆盖 Talent.maxRank） */
-  maxPointsPerTalent: 5,
-  /** 解锁第 2 层天赋所需该系投入点数 */
-  tier2Requirement: 3,
-  /** 解锁第 3 层天赋所需该系投入点数 */
-  tier3Requirement: 6,
-  /** 解锁第 4 层天赋所需该系投入点数（P3-156 新增，T1-T3 满级 9 点） */
-  tier4Requirement: 9,
-  /** 解锁第 5 层天赋所需该系投入点数（P3-156 新增） */
-  tier5Requirement: 10,
-  /** 解锁第 6 层天赋所需该系投入点数（P3-156 新增） */
-  tier6Requirement: 11,
+  /** 天赋点数起始等级：10 级起 */
+  pointsStartLevel: 10,
+  /** 起始等级后每级获得的天赋点数 */
+  pointsPerLevelFrom: 2,
+  /** 行解锁：全树累计投入点数阈值（索引 = tier-1） */
+  rowUnlockRequirements: [0, 3, 6, 9, 12, 15] as const,
+  /** 单个天赋最大可分配点数（上限保护） */
+  maxPointsPerTalent: 2,
 } as const;
 
 /**
  * 计算角色在指定等级时应拥有的总天赋点数
+ *
+ * 10 级起每级 2 点，20 级满级共 22 点。
  * @param level - 角色等级
  * @returns 总天赋点数
  */
 export function calculateTotalTalentPoints(level: number): number {
-  return TALENT_POINT_RULES.basePoints + Math.floor(level / TALENT_POINT_RULES.pointsPerLevel);
+  if (level < TALENT_POINT_RULES.pointsStartLevel) return 0;
+  return (level - TALENT_POINT_RULES.pointsStartLevel + 1) * TALENT_POINT_RULES.pointsPerLevelFrom;
 }

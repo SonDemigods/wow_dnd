@@ -15,3 +15,4 @@ import './exploration';
 import './quest';
 import './system';
 import './mount';
+import './talent';

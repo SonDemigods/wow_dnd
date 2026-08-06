@@ -25,6 +25,7 @@
  */
 import { useCharacterStore, type Stats, type Attributes } from '@/modules/character';
 import { useSkillStore, type Skill, type SkillUseResult } from '@/modules/skill';
+import { useTalentStore } from '@/modules/character/talents';
 import { useEnemyStore, type EnemyInstance } from '@/modules/enemy';
 import { useQuestStore } from '@/modules/quest';
 import { useLogStore, type LogEntry } from '@/modules/log';
@@ -72,6 +73,14 @@ export interface ICombatQuery {
   /** 背包域（只读）：来自 useInventoryStore 的查询方法 */
   inventory: {
     getItemInfo(itemId: string): Item | null;
+  };
+
+  /** 天赋域（只读）：来自 useTalentStore 的效果聚合 */
+  talent: {
+    readonly damageMultiplier: number;
+    readonly damageReduction: number;
+    readonly resourceBonuses: Record<string, number>;
+    readonly skillEnhancements: Array<{ skillId: string; value: number }>;
   };
 }
 
@@ -180,7 +189,13 @@ export function createCombatContext(): ICombatContext {
       get maxMana() { return characterStore.maxMana; },
       get attributes() { return characterStore.attributes; },
       get effectiveStats() { return characterStore.effectiveStats; },
-      takeDamage: (amount) => characterStore.takeDamage(amount),
+      takeDamage: (amount) => {
+        const reduction = useTalentStore().effectSummary.damageReduction;
+        const finalAmount = reduction > 0
+          ? Math.max(0, Math.floor(amount * (1 - Math.min(0.95, reduction))))
+          : amount;
+        return characterStore.takeDamage(finalAmount);
+      },
       gainExp: (amount) => characterStore.gainExp(amount),
       gainGold: (amount) => characterStore.gainGold(amount),
       handleDeath: () => characterStore.handleDeath(),
@@ -213,6 +228,12 @@ export function createCombatContext(): ICombatContext {
       useItem: (itemId) => inventoryStore.useItem(itemId),
       getItemInfo: (itemId) => inventoryStore.getItemInfo(itemId),
       addItem: (itemId, quantity) => inventoryStore.addItem(itemId, quantity),
+    },
+    talent: {
+      get damageMultiplier() { return useTalentStore().effectSummary.damageMultiplier; },
+      get damageReduction() { return useTalentStore().effectSummary.damageReduction; },
+      get resourceBonuses() { return useTalentStore().effectSummary.resourceBonuses; },
+      get skillEnhancements() { return useTalentStore().effectSummary.skillEnhancements; },
     },
   };
 }

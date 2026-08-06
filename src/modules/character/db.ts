@@ -54,6 +54,7 @@ export class CharacterDbService {
         bonusStats: existing?.bonusStats ?? {},
         // 坐骑配置：existing 存在则保留，否则初始化为全 null（旧存档由 fromStorageFormat 迁移）
         mountChoices: existing?.mountChoices ?? [null, null, null, null, null],
+        talentAllocations: existing?.talentAllocations ?? {},
         createdTime: character.createdTime,
         lastPlayedTime: character.lastPlayedTime,
         updatedAt: Date.now()
@@ -173,6 +174,7 @@ export class CharacterDbService {
       bonusStats,
       // 坐骑配置：直接写入（Character.mountChoices 必有值，由 createInitialCharacter/fromStorageFormat 保证）
       mountChoices: character.mountChoices,
+      talentAllocations: character.talentAllocations ?? {},
       createdTime: character.createdTime ?? Date.now(), // 兜底：createdTime 为可选字段
       lastPlayedTime: Date.now(),
       updatedAt: Date.now()
@@ -237,6 +239,8 @@ export class CharacterDbService {
       // 坐骑配置：旧存档缺失时迁移为全 null（5 档未选）；新存档直接使用
       // 旧存档即使有 mountChoices 也无需重算 bonus（store 加载时由 selectCharacter 重建 bonusStats）
       mountChoices: storage.mountChoices ?? [null, null, null, null, null],
+      // 天赋分配：旧存档缺失时迁移为空对象
+      talentAllocations: storage.talentAllocations ?? {},
       // P1-16 修复：保留 createdTime，避免重新加载角色时被 Date.now() 覆盖
       createdTime: storage.createdTime
     };
