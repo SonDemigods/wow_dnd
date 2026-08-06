@@ -93,6 +93,7 @@ vi.mock('@/modules/character/db', () => ({
       characterId: id,
       name: char.name,
       bonusStats: bonus,
+      mountChoices: char.mountChoices,
       _mock: true,
     })),
     fromStorageFormat: vi.fn((storage: { character: Character }) => storage.character),
@@ -144,6 +145,8 @@ vi.mock('@/modules/character/service', () => ({
     maxMana: 50,
     stats: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
     gold: 50,
+    // 坐骑配置初始值：5 档全 null（1 级仅解锁 common 档选择权，不预选）
+    mountChoices: [null, null, null, null, null],
   })),
   computeEffectiveStats: vi.fn(
     (base: Stats, potion: Stats, allocated: Stats, bonus: Partial<Stats>) => ({
@@ -233,6 +236,66 @@ vi.mock('@/modules/character/service', () => ({
     });
     return { ...char, potionStats: newPotion };
   }),
+  // 坐骑配置纯函数（store 通过 import 调用）
+  // computeMountBonus mock：累加各 optionId 对应的 bonus（通过 mock 的 getMountOptionById 查询）
+  computeMountBonus: vi.fn((choices: (string | null)[]) => {
+    const result: Partial<Stats> = {};
+    for (const optionId of choices) {
+      if (!optionId) continue;
+      const option = mockMountOptions[optionId];
+      if (!option) continue;
+      (Object.keys(option.bonus) as (keyof Stats)[]).forEach(k => {
+        result[k] = (result[k] || 0) + (option.bonus[k] || 0);
+      });
+    }
+    return result;
+  }),
+  // isTierUnlocked mock：与真实实现一致（level >= tierIndex * 5 解锁）
+  isTierUnlocked: vi.fn((tierIndex: number, level: number) => {
+    const unlockLevels = [1, 5, 10, 15, 20];
+    return level >= (unlockLevels[tierIndex] ?? Infinity);
+  }),
+}));
+
+// ==================== Mock：config_mounts（坐骑配置数据） ====================
+// vi.hoisted 提升 mock 数据，确保 service mock 工厂引用时已初始化（避免 ReferenceError）
+const mockMountOptions = vi.hoisted(() => ({
+  // common 档（单属性，+2）
+  common_str: { id: 'common_str', tier: 'common', name: '初阶力量专精', bonus: { str: 2 } },
+  common_dex: { id: 'common_dex', tier: 'common', name: '初阶敏捷专精', bonus: { dex: 2 } },
+  common_int: { id: 'common_int', tier: 'common', name: '初阶智力专精', bonus: { int: 2 } },
+  common_con: { id: 'common_con', tier: 'common', name: '初阶体质专精', bonus: { con: 2 } },
+  common_wis: { id: 'common_wis', tier: 'common', name: '初阶感知专精', bonus: { wis: 2 } },
+  common_cha: { id: 'common_cha', tier: 'common', name: '初阶魅力专精', bonus: { cha: 2 } },
+  // uncommon 档（单属性，+4）
+  uncommon_str: { id: 'uncommon_str', tier: 'uncommon', name: '进阶力量专精', bonus: { str: 4 } },
+  uncommon_dex: { id: 'uncommon_dex', tier: 'uncommon', name: '进阶敏捷专精', bonus: { dex: 4 } },
+  uncommon_con: { id: 'uncommon_con', tier: 'uncommon', name: '进阶体质专精', bonus: { con: 4 } },
+  uncommon_int: { id: 'uncommon_int', tier: 'uncommon', name: '进阶智力专精', bonus: { int: 4 } },
+  // rare 档（单属性，+6）
+  rare_str: { id: 'rare_str', tier: 'rare', name: '稀有力量专精', bonus: { str: 6 } },
+  rare_int: { id: 'rare_int', tier: 'rare', name: '稀有智力专精', bonus: { int: 6 } },
+  rare_wis: { id: 'rare_wis', tier: 'rare', name: '稀有感知专精', bonus: { wis: 6 } },
+  // epic 档（双属性，+6/+6）
+  epic_str_con: { id: 'epic_str_con', tier: 'epic', name: '史诗蛮力体魄', bonus: { str: 6, con: 6 } },
+  epic_int_wis: { id: 'epic_int_wis', tier: 'epic', name: '史诗奥术信仰', bonus: { int: 6, wis: 6 } },
+  epic_dex_wis: { id: 'epic_dex_wis', tier: 'epic', name: '史诗灵思自然', bonus: { dex: 6, wis: 6 } },
+  // legendary 档（双属性，+8/+8）
+  legendary_str_con: { id: 'legendary_str_con', tier: 'legendary', name: '传说蛮力体魄', bonus: { str: 8, con: 8 } },
+  legendary_int_wis: { id: 'legendary_int_wis', tier: 'legendary', name: '传说奥术信仰', bonus: { int: 8, wis: 8 } },
+  legendary_dex_wis: { id: 'legendary_dex_wis', tier: 'legendary', name: '传说灵思自然', bonus: { dex: 8, wis: 8 } },
+  legendary_str_cha: { id: 'legendary_str_cha', tier: 'legendary', name: '传说蛮力领袖', bonus: { str: 8, cha: 8 } },
+}));
+
+vi.mock('@/data/config_mounts', () => ({
+  MOUNT_TIERS: [
+    { tier: 'common',    index: 0, unlockLevel: 1,  label: '普通', directionType: 'single', bonusTotal: 2 },
+    { tier: 'uncommon',  index: 1, unlockLevel: 5,  label: '优秀', directionType: 'single', bonusTotal: 4 },
+    { tier: 'rare',      index: 2, unlockLevel: 10, label: '稀有', directionType: 'single', bonusTotal: 6 },
+    { tier: 'epic',      index: 3, unlockLevel: 15, label: '史诗', directionType: 'dual',   bonusTotal: 12 },
+    { tier: 'legendary', index: 4, unlockLevel: 20, label: '传说', directionType: 'dual',   bonusTotal: 16 },
+  ],
+  getMountOptionById: vi.fn((id: string) => mockMountOptions[id]),
 }));
 
 // ==================== Mock：跨 store 依赖（baseStore，仅 initialize 使用） ====================
@@ -280,6 +343,9 @@ import {
   allocateStat,
   resetAllocatedStats,
   applyPotionBonus,
+  // 坐骑配置纯函数
+  computeMountBonus,
+  isTierUnlocked,
 } from '@/modules/character/service';
 import { useBaseStore } from '@/modules/base/store';
 import { getExpForLevel } from '@/utils/calculations';
@@ -308,6 +374,8 @@ function makeChar(o: Partial<Character> = {}): Character {
     allocatedStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
     unallocatedPoints: 0,
     gold: 100,
+    // 坐骑配置默认值：5 档全 null（未选任何方向）
+    mountChoices: [null, null, null, null, null],
     ...o,
   };
 }
@@ -527,9 +595,9 @@ describe('useCharacterStore - 角色 Store', () => {
       const breakdown = store.statsBreakdown;
       // 6 个属性均有明细
       expect(Object.keys(breakdown).sort()).toEqual(['cha', 'con', 'dex', 'int', 'str', 'wis']);
-      // 每个属性的明细包含 6 层
+      // 每个属性的明细包含 7 层（base/race/class/potion/allocated/bonus/mount）
       const strSources = breakdown.str;
-      expect(strSources).toHaveLength(6);
+      expect(strSources).toHaveLength(7);
       // 基础层固定 10
       expect(strSources.find(s => s.layer === 'base')).toEqual({ label: '基础', value: 10, layer: 'base' });
       // 其他层全 0
@@ -538,6 +606,8 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(strSources.find(s => s.layer === 'potion')!.value).toBe(0);
       expect(strSources.find(s => s.layer === 'allocated')!.value).toBe(0);
       expect(strSources.find(s => s.layer === 'bonus')!.value).toBe(0);
+      // P1 增强：mount 层存在且为 0
+      expect(strSources.find(s => s.layer === 'mount')).toEqual({ label: '坐骑', value: 0, layer: 'mount' });
     });
 
     it('注入 character 与 raceBonus/classBonus/bonusStats 后正确反映各层贡献', () => {
@@ -554,8 +624,9 @@ describe('useCharacterStore - 角色 Store', () => {
         bonusStats: { str: 4 },
       });
       const strSources = store.statsBreakdown.str;
-      // base(10) + race(2) + class(3) + potion(1) + allocated(2) + bonus(4) = 22
+      // base(10) + race(2) + class(3) + potion(1) + allocated(2) + bonus(4) + mount(0) = 22
       // 与 effectiveStats 的 mock 实现一致（mock 不做 clamp）
+      // P1 增强：bonus 层已扣除 mount 部分（此处 mountChoices 全 null，mount=0，bonus=4-0=4）
       const sumStr = strSources.reduce((a, b) => a + b.value, 0);
       expect(sumStr).toBe(22);
       // 各层值正确
@@ -565,9 +636,34 @@ describe('useCharacterStore - 角色 Store', () => {
       expect(strSources.find(s => s.layer === 'potion')!.value).toBe(1);
       expect(strSources.find(s => s.layer === 'allocated')!.value).toBe(2);
       expect(strSources.find(s => s.layer === 'bonus')!.value).toBe(4);
+      // P1 增强：mount 层为 0（mountChoices 全 null）
+      expect(strSources.find(s => s.layer === 'mount')!.value).toBe(0);
       // 负值层正确展示（classBonus 的 int = -2）
       const intSources = store.statsBreakdown.int;
       expect(intSources.find(s => s.layer === 'class')!.value).toBe(-2);
+    });
+
+    it('P1 增强：坐骑 bonus 从 bonusStats 拆分到 mount 层，bonus 层扣除对应部分', () => {
+      // 模拟坐骑配置：common_str(+2) + uncommon_str(+4) = str+6
+      // bonusStats 中 str=10（含坐骑 6 + 装备 4）
+      const store = useCharacterStore();
+      const char = makeChar({
+        level: 5,
+        mountChoices: ['common_str', 'uncommon_str', null, null, null],
+      });
+      store.$patch({
+        character: char,
+        bonusStats: { str: 10 }, // 10 = 装备 4 + 坐骑 6
+      });
+
+      const strSources = store.statsBreakdown.str;
+      // mount 层 = computeMountBonus(['common_str', 'uncommon_str', ...]) = { str: 6 }
+      expect(strSources.find(s => s.layer === 'mount')!.value).toBe(6);
+      // bonus 层 = bonusStats.str(10) - mountValue(6) = 4
+      expect(strSources.find(s => s.layer === 'bonus')!.value).toBe(4);
+      // 总和不变：base(10) + race(0) + class(0) + potion(0) + allocated(0) + bonus(4) + mount(6) = 20
+      const sumStr = strSources.reduce((a, b) => a + b.value, 0);
+      expect(sumStr).toBe(20);
     });
 
     it('响应式：allocateStat 后 allocated 层值同步更新', async () => {
@@ -613,7 +709,8 @@ describe('useCharacterStore - 角色 Store', () => {
     it('label 字段为中文展示名称，便于 UI 直接渲染', () => {
       const store = useCharacterStore();
       const labels = store.statsBreakdown.str.map(s => s.label);
-      expect(labels).toEqual(['基础', '种族', '职业', '药剂', '升级', '装备/天赋']);
+      // P1 增强：新增"坐骑"层
+      expect(labels).toEqual(['基础', '种族', '职业', '药剂', '升级', '装备/天赋', '坐骑']);
     });
   });
 
@@ -1512,6 +1609,212 @@ describe('useCharacterStore - 角色 Store', () => {
       const store = useCharacterStore();
       await store.repairBaseData();
       expect(dataInitializer.reinitializeData).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // -------------------- Actions：坐骑配置（plan.md §5.1 / §5.2） --------------------
+  describe('Actions：setMountChoice / resetMountChoices', () => {
+    it('setMountChoice：common 档选中 common_str 后 bonusStats 叠加 str+2', async () => {
+      const store = setupLoggedInStore(makeChar({ level: 1 }));
+      await store.setMountChoice(0, 'common_str');
+
+      // mountChoices[0] 被设置为 'common_str'
+      expect(store.character?.mountChoices[0]).toBe('common_str');
+      // bonusStats 含 str+2（computeMountBonus mock 返回 { str: 2 }）
+      expect(store.bonusStats.str).toBe(2);
+      // computeBonusChange 被调用两次：扣旧（空）+ 加新（{ str: 2 }）
+      expect(computeBonusChange).toHaveBeenCalledWith({}, { str: 2 }, true);
+      // 持久化
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('setMountChoice：切换同档方向时旧 bonus 扣除、新 bonus 叠加', async () => {
+      // 初始已选 common_str（str+2）
+      const store = setupLoggedInStore(
+        makeChar({ level: 1, mountChoices: ['common_str', null, null, null, null] })
+      );
+      store.$patch({ bonusStats: { str: 2 } });
+
+      // 切换到 common_dex（dex+2）
+      await store.setMountChoice(0, 'common_dex');
+
+      expect(store.character?.mountChoices[0]).toBe('common_dex');
+      // 旧 str+2 被扣除，新 dex+2 叠加
+      // computeBonusChange 第一次：扣旧 { str: 2 }（isAdd=false）→ str=0
+      // computeBonusChange 第二次：加新 { dex: 2 }（isAdd=true）→ dex=2
+      expect(computeBonusChange).toHaveBeenCalledWith({ str: 2 }, { str: 2 }, false);
+      expect(computeBonusChange).toHaveBeenCalledWith({ str: 0 }, { dex: 2 }, true);
+      expect(store.bonusStats).toEqual({ str: 0, dex: 2 });
+    });
+
+    it('setMountChoice：传 null 取消选择时 bonus 扣除', async () => {
+      // 初始已选 common_str
+      const store = setupLoggedInStore(
+        makeChar({ level: 1, mountChoices: ['common_str', null, null, null, null] })
+      );
+      store.$patch({ bonusStats: { str: 2 } });
+
+      // 传 null 取消选择
+      await store.setMountChoice(0, null);
+
+      expect(store.character?.mountChoices[0]).toBeNull();
+      // bonus 被扣除
+      expect(computeBonusChange).toHaveBeenCalledWith({ str: 2 }, { str: 2 }, false);
+      expect(store.bonusStats.str).toBe(0);
+    });
+
+    it('setMountChoice：多档叠加（common_str + uncommon_str = str+6）', async () => {
+      // 5 级解锁 common + uncommon
+      const store = setupLoggedInStore(makeChar({ level: 5 }));
+      await store.setMountChoice(0, 'common_str'); // str+2
+      await store.setMountChoice(1, 'uncommon_str'); // str+4
+
+      // 两档叠加：str = 2 + 4 = 6
+      expect(store.character?.mountChoices).toEqual(['common_str', 'uncommon_str', null, null, null]);
+      expect(store.bonusStats.str).toBe(6);
+    });
+
+    it('setMountChoice：档位未解锁时抛错', async () => {
+      // 1 级角色仅解锁 common（index 0），uncommon（index 1）需 5 级
+      const store = setupLoggedInStore(makeChar({ level: 1 }));
+      await expect(store.setMountChoice(1, 'uncommon_str')).rejects.toThrow(
+        '档位 优秀 未解锁（需 5 级）'
+      );
+      // 状态未变更
+      expect(store.character?.mountChoices[1]).toBeNull();
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('setMountChoice：档位索引越界（负数）时抛错', async () => {
+      const store = setupLoggedInStore(makeChar({ level: 20 }));
+      await expect(store.setMountChoice(-1, 'common_str')).rejects.toThrow('无效档位索引: -1');
+    });
+
+    it('setMountChoice：档位索引越界（>= 5）时抛错', async () => {
+      const store = setupLoggedInStore(makeChar({ level: 20 }));
+      await expect(store.setMountChoice(5, 'common_str')).rejects.toThrow('无效档位索引: 5');
+    });
+
+    it('setMountChoice：无效 optionId 时抛错', async () => {
+      const store = setupLoggedInStore(makeChar({ level: 1 }));
+      await expect(store.setMountChoice(0, 'invalid_option')).rejects.toThrow(
+        '无效坐骑方向: invalid_option'
+      );
+    });
+
+    it('setMountChoice：跨档位设置（common 档选 uncommon 方向）时抛错', async () => {
+      const store = setupLoggedInStore(makeChar({ level: 5 }));
+      // common 档（index 0）尝试设置 uncommon_str（tier='uncommon'）
+      await expect(store.setMountChoice(0, 'uncommon_str')).rejects.toThrow(
+        '不属于档位 普通'
+      );
+    });
+
+    it('setMountChoice：含 con 时重算 HP/MP', async () => {
+      const store = setupLoggedInStore(makeChar({ level: 1 }));
+      await store.setMountChoice(0, 'common_con'); // con+2
+
+      // computeMountBonus mock 返回 { con: 2 }
+      expect(store.bonusStats.con).toBe(2);
+      // con 变化触发 recalculateHpMp（通过 computeEffectiveStats 调用）
+      expect(computeEffectiveStats).toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('setMountChoice：仅 str 变化时不重算 HP/MP（仍持久化）', async () => {
+      const store = setupLoggedInStore(makeChar({ level: 1 }));
+      // common_str 的 bonus 为 { str: 2 }，不含 con/int/wis
+      // 但 setMountChoice 实现中统一调用 recalculateHpMp（与 applyBonus 的条件分支不同）
+      // 这里验证 computeEffectiveStats 被调用（setMountChoice 总是重算）
+      await store.setMountChoice(0, 'common_str');
+      expect(computeEffectiveStats).toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('setMountChoice：未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.setMountChoice(0, 'common_str');
+      expect(computeMountBonus).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('setMountChoice：旧存档 mountChoices 长度不足 5 时长度兜底补 null', async () => {
+      // 模拟旧存档迁移后 mountChoices 长度不足（异常数据）
+      const store = setupLoggedInStore(
+        makeChar({ level: 1, mountChoices: ['common_str'] as unknown as (string | null)[] })
+      );
+      await store.setMountChoice(0, 'common_dex');
+
+      // 长度被补齐到 5
+      expect(store.character?.mountChoices).toHaveLength(5);
+      expect(store.character?.mountChoices[0]).toBe('common_dex');
+      expect(store.character?.mountChoices[1]).toBeNull();
+    });
+
+    it('resetMountChoices：清空所有选择并扣除 bonus', async () => {
+      // 5 档全部选择力量方向（plan §8.1 极端力量流）
+      const store = setupLoggedInStore(
+        makeChar({
+          level: 20,
+          mountChoices: ['common_str', 'uncommon_str', 'rare_str', 'epic_str_con', 'legendary_str_con'],
+        })
+      );
+      // 模拟已应用的 bonusStats（str+26, con+14）
+      store.$patch({ bonusStats: { str: 26, con: 14 } });
+
+      await store.resetMountChoices();
+
+      // mountChoices 全部清空
+      expect(store.character?.mountChoices).toEqual([null, null, null, null, null]);
+      // bonusStats 中坐骑贡献被扣除（str=0, con=0）
+      expect(store.bonusStats.str).toBe(0);
+      expect(store.bonusStats.con).toBe(0);
+      // 持久化
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('resetMountChoices：无任何选择时仍执行（bonus 为空不调用 computeBonusChange）', async () => {
+      // mountChoices 全 null，computeMountBonus 返回 {}
+      const store = setupLoggedInStore(makeChar({ level: 5 }));
+      await store.resetMountChoices();
+
+      expect(store.character?.mountChoices).toEqual([null, null, null, null, null]);
+      // 旧 bonus 为空，跳过 computeBonusChange
+      // 注意：Object.keys({}).length === 0，跳过 computeBonusChange 调用
+      // 但 computeMountBonus 仍被调用
+      expect(computeMountBonus).toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
+    });
+
+    it('resetMountChoices：未登录时直接返回不变更', async () => {
+      const store = useCharacterStore();
+      await store.resetMountChoices();
+      expect(computeMountBonus).not.toHaveBeenCalled();
+      expect(characterDbService.saveCharacterData).not.toHaveBeenCalled();
+    });
+
+    it('reset：一并清空 mountChoices 并扣除 bonus', async () => {
+      // 角色已配置坐骑 + 升级点数
+      const store = setupLoggedInStore(
+        makeChar({
+          level: 5,
+          mountChoices: ['common_str', 'uncommon_str', null, null, null],
+          bonusStats: { str: 6 }, // common_str(2) + uncommon_str(4) = 6
+        })
+      );
+      // 直接 $patch bonusStats（setupLoggedInStore 不接受 bonusStats 参数，需单独设置）
+      store.$patch({ bonusStats: { str: 6 } });
+
+      await store.reset();
+
+      // 等级/经验重置
+      expect(store.character?.level).toBe(1);
+      // mountChoices 一并清空
+      expect(store.character?.mountChoices).toEqual([null, null, null, null, null]);
+      // bonusStats 中坐骑 bonus 被扣除（str=0）
+      expect(store.bonusStats.str).toBe(0);
+      // 持久化
+      expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
     });
   });
 

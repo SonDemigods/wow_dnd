@@ -38,6 +38,19 @@ export { SET_PARTS } from './config_set_parts';
 // 导出职业天赋树数据（Phase 6.2）
 export { CLASS_TALENT_TREES, getTalentTreesByClassId, getTalentTreeById, getTalentById } from './config_class_talents';
 
+// 导出坐骑方向配置数据（坐骑系统）
+export {
+  MOUNT_OPTIONS,
+  MOUNT_TIERS,
+  SINGLE_DIRECTIONS,
+  DUAL_DIRECTIONS,
+  getMountOptionById,
+  getMountOptionsByTier,
+  getMountTierByIndex,
+  validateMountOptions,
+} from './config_mounts';
+export type { MountTier, MountDirection, MountOption, MountTierMeta } from './config_mounts';
+
 // 导出物品和战利品数据
 export { LOOT_ITEMS } from './config_items';
 

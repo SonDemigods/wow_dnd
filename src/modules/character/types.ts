@@ -271,9 +271,14 @@ export interface Stats {
  * - `class`：职业加成（classBonus，固定）
  * - `potion`：药剂层（potionStats，不可重置）
  * - `allocated`：升级层（allocatedStats，可重置）
- * - `bonus`：装备/天赋层（bonusStats，外部加成）
+ * - `bonus`：装备/天赋层（bonusStats 中扣除坐骑部分，避免与 mount 层重复计算）
+ * - `mount`：坐骑层（mountChoices 经 computeMountBonus 计算的加成，P1 增强）
  *
- * @property label - 来源显示名称（如 "基础"、"种族"、"职业"、"药剂"、"升级"、"装备/天赋"）
+ * 注：`bonus` 与 `mount` 均来自 bonusStats（坐骑 bonus 通过 setMountChoice 写入 bonusStats）。
+ * statsBreakdown 中将 bonusStats 拆分为"装备/天赋"（bonusStats - mountBonus）和"坐骑"（mountBonus）两层，
+ * 两者之和等于原 bonusStats，保证 effectiveStats 计算不变。
+ *
+ * @property label - 来源显示名称（如 "基础"、"种族"、"职业"、"药剂"、"升级"、"装备/天赋"、"坐骑"）
  * @property value - 该层对该属性的贡献值（可为负，如职业调整的 -1）
  * @property layer - 层级标识，用于 UI 着色或筛选零值层
  *
@@ -282,7 +287,7 @@ export interface Stats {
 export interface StatSource {
   label: string;
   value: number;
-  layer: 'base' | 'race' | 'class' | 'potion' | 'allocated' | 'bonus';
+  layer: 'base' | 'race' | 'class' | 'potion' | 'allocated' | 'bonus' | 'mount';
 }
 
 /**
@@ -350,6 +355,7 @@ export interface Attributes {
  * @property {Stats} allocatedStats - 升级层已分配属性（可重置），初始全 0；由 allocateStat 分配
  * @property {number} unallocatedPoints - 升级层未分配点数池，初始 0，升级时 += POINTS_PER_LEVEL
  * @property {number} gold - 金币数量（无下限，花费时不能为负）
+ * @property {(string|null)[]} mountChoices - 坐骑配置：5 档选择的方向 ID，null 表示未选；由 setMountChoice 维护
  *
  * @see CharacterListItem 角色列表项（仅展示用，不含完整数据）
  * @see CharacterDataStorage IndexedDB 持久化格式
@@ -375,6 +381,17 @@ export interface Character {
   /** 升级层未分配点数池，升级时累加 POINTS_PER_LEVEL */
   unallocatedPoints: number;
   gold: number;
+  /**
+   * 坐骑配置：5 档选择的方向 ID（长度固定 5，对应 common/uncommon/rare/epic/legendary）
+   *
+   * 元素为 MountOption.id（如 `common_str`、`epic_str_con`）或 null（未选）。
+   * 最终坐骑 bonus = 5 档选择叠加，由 computeMountBonus 计算，通过 applyBonus/removeBonus 应用。
+   * 仅记录选择 ID，方向定义集中在 data/config_mounts.ts，避免角色数据与配置耦合。
+   *
+   * @see computeMountBonus 计算总加成
+   * @see setMountChoice 修改单档选择
+   */
+  mountChoices: (string | null)[];
   /** 角色创建时间戳（毫秒），持久化用，不在 UI 中展示 */
   createdTime?: number;
 }
@@ -667,6 +684,7 @@ export interface ClassStorage {
  * @property {number} currentMp - 当前法力值（对应 Character.mana）
  * @property {number} maxMp - 最大法力值（对应 Character.maxMana）
  * @property {Partial<Stats>} bonusStats - 装备/buff 提供的属性加成
+ * @property {(string|null)[]} [mountChoices] - 坐骑配置（可选，旧存档缺失时迁移为全 null）
  * @property {number} createdTime - 角色创建时间戳（毫秒）
  * @property {number} lastPlayedTime - 最后游玩时间戳（毫秒）
  * @property {number} updatedAt - 数据最后更新时间戳（毫秒）
@@ -696,6 +714,8 @@ export interface CharacterDataStorage {
   currentMp: number;
   maxMp: number;
   bonusStats: Partial<Stats>;
+  /** 坐骑配置（可选，旧存档缺失时迁移为 [null,null,null,null,null]） */
+  mountChoices?: (string | null)[];
   createdTime: number;
   lastPlayedTime: number;
   updatedAt: number;

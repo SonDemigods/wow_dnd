@@ -339,6 +339,71 @@
             <EmptyState icon="shield" text="点击装备槽位查看详情" />
           </div>
         </div>
+
+        <!-- 坐骑配置区域（plan §6.1：单页滚动追加，沿用现有布局风格） -->
+        <div class="mount-section">
+          <div class="mount-header">
+            <h3>坐骑配置</h3>
+            <button
+              class="mount-reset-btn"
+              :disabled="!hasMountChoice"
+              @click="onMountReset"
+              title="重置所有坐骑选择（非战斗中免费）"
+            >
+              重置
+            </button>
+          </div>
+
+          <!-- 当前总加成（实时反映选择变化） -->
+          <div class="mount-bonus-summary">
+            <span class="bonus-label">当前总加成：</span>
+            <template v-if="Object.keys(mountBonus).length > 0">
+              <span
+                v-for="(value, key) in mountBonus"
+                :key="key"
+                class="bonus-tag"
+              >
+                +{{ value }} {{ getStatName(key as keyof Stats) }}
+              </span>
+            </template>
+            <span v-else class="bonus-empty">未配置坐骑加成</span>
+          </div>
+
+          <!-- 5 个档位（common → legendary） -->
+          <div
+            v-for="tier in mountTiers"
+            :key="tier.meta.tier"
+            class="mount-tier"
+            :class="['tier-' + tier.meta.tier, { locked: !tier.unlocked }]"
+          >
+            <div class="tier-header">
+              <span class="tier-label">{{ tier.meta.label }}档</span>
+              <span class="tier-info">
+                <template v-if="tier.unlocked">
+                  {{ tier.meta.directionType === 'single' ? '单属性' : '双属性' }} · 总 +{{ tier.meta.bonusTotal }}
+                </template>
+                <template v-else>
+                  🔒 需 {{ tier.meta.unlockLevel }} 级解锁
+                </template>
+              </span>
+            </div>
+            <div class="tier-options">
+              <button
+                v-for="opt in tier.options"
+                :key="opt.id"
+                class="mount-option"
+                :class="['rarity-' + tier.meta.tier, { selected: tier.selectedId === opt.id }]"
+                :disabled="!tier.unlocked"
+                @click="onMountSelect(tier.meta.index, opt.id)"
+                :title="opt.description"
+              >
+                <BaseIcon :name="opt.icon" :size="16" />
+                <span class="option-name">{{ opt.name }}</span>
+                <span class="option-bonus">{{ formatMountBonus(opt.bonus) }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </template>
   </BasePopup>
@@ -357,6 +422,7 @@ import { useBaseStore } from '@/modules/base';
 import { ResourceSystemFactory } from '@/modules/combat/resources';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useToast } from '@/composables/useToast';
+import { useCharacterMounts } from '@/composables/useCharacterMounts';
 import type { Stats, Attributes, StatSource } from '@/modules/character';
 import type { EquipmentSlot, EquipmentItem } from '@/modules/equipment';
 import { getRarityName, getStatName } from '@/modules/item/descriptors';
@@ -378,6 +444,8 @@ const emit = defineEmits<{
 
 const characterStore = useCharacterStore();
 const equipmentStore = useEquipmentStore();
+// 坐骑配置 Composable：封装档位视图、当前加成、选择/重置交互
+const { tiers: mountTiers, currentBonus: mountBonus, hasAnyChoice: hasMountChoice, setChoice: onMountSelect, resetAll: onMountReset } = useCharacterMounts();
 
 // P2 BIZ-10 修复：跟踪待清理的 animationend 监听器，弹窗卸载时主动移除
 const pendingAnimCleanup: Array<{ el: HTMLElement; handler: EventListenerOrEventListenerObject }> = [];
@@ -424,7 +492,7 @@ async function onResetAllocations(): Promise<void> {
 }
 
 // ==================== 阶段四：属性来源明细 tooltip ====================
-// 鼠标 hover 属性项时显示该属性的各层来源构成（基础/种族/职业/药剂/升级/装备/天赋）
+// 鼠标 hover 属性项时显示该属性的各层来源构成（基础/种族/职业/药剂/升级/装备天赋/坐骑）
 // 数据来源：characterStore.statsBreakdown（见 store.ts §statsBreakdown）
 const statsBreakdown = computed<Record<keyof Stats, StatSource[]>>(() => characterStore.statsBreakdown);
 
@@ -573,6 +641,19 @@ function getAttrIcon(key: string) {
 function getAttrName(key: string) {
   // P3.3b：属性名称统一从 descriptors.getStatName 获取（消除本地 attrNames 映射）
   return getStatName(key as keyof Stats) || key;
+}
+
+// ==================== 坐骑配置 ====================
+// 坐骑方向的 bonus 展示文本：{ str: 6, con: 6 } → "+6 力，+6 体"
+// 属性简写与 STAT_NAMES 完整名区分，避免在按钮内占用过多宽度
+const STAT_SHORT: Record<keyof Stats, string> = {
+  str: '力', dex: '敏', con: '体', int: '智', wis: '感', cha: '魅'
+};
+
+function formatMountBonus(bonus: Partial<Stats>): string {
+  return (Object.keys(bonus) as (keyof Stats)[])
+    .map(k => `+${bonus[k]} ${STAT_SHORT[k]}`)
+    .join('，');
 }
 
 function selectEquipment(slot: SlotInfo) {
@@ -941,6 +1022,10 @@ onUnmounted(() => {
   color: #4fc3f7; /* 装备/天赋层：蓝色 */
 }
 
+.breakdown-row.layer-mount .breakdown-value {
+  color: #ffb74d; /* 坐骑层：橙色，与坐骑配置区域主色调一致 */
+}
+
 /* 零值层灰色弱化（仍保留展示，便于玩家了解全部来源） */
 .breakdown-row.zero .breakdown-label,
 .breakdown-row.zero .breakdown-value {
@@ -1263,5 +1348,176 @@ onUnmounted(() => {
 .unequip {
   background: linear-gradient(135deg, #ff9800, #f57c00);
   color: @popup-text-color;
+}
+
+/* ==================== 坐骑配置区域 ==================== */
+/* plan §6.1：单页滚动追加，沿用 equipment-section 视觉风格 */
+.mount-section h3 {
+  font-size: @font-md;
+  color: @accent-color;
+  margin-bottom: @spacing-lg;
+  font-weight: @font-weight-bold;
+}
+
+.mount-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: @spacing-lg;
+}
+
+.mount-header h3 {
+  margin: 0;
+}
+
+.mount-reset-btn {
+  padding: @spacing-2xs @spacing-md;
+  border: 1px solid rgba(255, 100, 100, 0.4);
+  border-radius: @radius-sm;
+  background: rgba(255, 100, 100, 0.1);
+  color: #ff8888;
+  font-size: @font-xs;
+  cursor: pointer;
+  transition: all @transition-quick;
+}
+
+.mount-reset-btn:hover:not(:disabled) {
+  background: rgba(255, 100, 100, 0.25);
+  border-color: rgba(255, 100, 100, 0.7);
+}
+
+.mount-reset-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 当前总加成展示 */
+.mount-bonus-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: @spacing-xs;
+  padding: @spacing-md @spacing-lg;
+  background: @white-05;
+  border-radius: @radius-md;
+  margin-bottom: @spacing-xl;
+}
+
+.bonus-label {
+  font-size: @font-sm;
+  color: @text-secondary;
+}
+
+.bonus-tag {
+  font-size: @font-sm;
+  color: @heal-hp;
+  font-weight: @font-weight-bold;
+  padding: @spacing-2xs @spacing-sm;
+  background: @green-bg;
+  border-radius: @radius-sm;
+}
+
+.bonus-empty {
+  font-size: @font-sm;
+  color: @color-dim-gray;
+  font-style: italic;
+}
+
+/* 档位容器 */
+.mount-tier {
+  padding: @spacing-md @spacing-lg;
+  background: @white-05;
+  border-radius: @radius-md;
+  margin-bottom: @spacing-md;
+  border-left: 3px solid transparent;
+}
+
+/* 档位品质色（与装备 rarity 色一致） */
+.mount-tier.tier-common { border-left-color: #9d9d9d; }
+.mount-tier.tier-uncommon { border-left-color: #1eff00; }
+.mount-tier.tier-rare { border-left-color: #0070dd; }
+.mount-tier.tier-epic { border-left-color: #a335ee; }
+.mount-tier.tier-legendary { border-left-color: #ff8000; }
+
+.mount-tier.locked {
+  opacity: 0.55;
+}
+
+.tier-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: @spacing-md;
+}
+
+.tier-label {
+  font-size: @font-base;
+  color: @accent-color;
+  font-weight: @font-weight-bold;
+}
+
+.tier-info {
+  font-size: @font-xs;
+  color: @text-secondary;
+}
+
+/* 方向按钮容器（自适应换行） */
+.tier-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: @spacing-sm;
+}
+
+/* 方向按钮 */
+.mount-option {
+  display: flex;
+  align-items: center;
+  gap: @spacing-xs;
+  padding: @spacing-xs @spacing-md;
+  background: @white-05;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: @radius-sm;
+  cursor: pointer;
+  transition: all @transition-quick;
+  color: @text-primary;
+  font-size: @font-xs;
+}
+
+.mount-option:hover:not(:disabled) {
+  background: @white-10;
+  border-color: rgba(255, 215, 0, 0.4);
+}
+
+.mount-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* 选中状态：金色高亮 */
+.mount-option.selected {
+  background: @gold-bg-strong;
+  border-color: @accent-color;
+  box-shadow: 0 0 0 1px @accent-color;
+}
+
+/* 品质色文字（按钮边框/图标色） */
+.mount-option.rarity-common { border-color: rgba(157, 157, 157, 0.4); }
+.mount-option.rarity-uncommon { border-color: rgba(30, 255, 0, 0.4); }
+.mount-option.rarity-rare { border-color: rgba(0, 112, 221, 0.5); }
+.mount-option.rarity-epic { border-color: rgba(163, 51, 238, 0.5); }
+.mount-option.rarity-legendary { border-color: rgba(255, 128, 0, 0.5); }
+
+.option-name {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.option-bonus {
+  color: @text-secondary;
+  font-variant-numeric: tabular-nums;
+}
+
+.mount-option.selected .option-bonus {
+  color: @heal-hp;
 }
 </style>

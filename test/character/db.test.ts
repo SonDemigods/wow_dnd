@@ -51,6 +51,8 @@ function makeCharacter(o: Partial<Character> = {}): Character {
     allocatedStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
     unallocatedPoints: 0,
     gold: 250,
+    // 坐骑配置默认值：5 档全 null（未选任何方向，由 createInitialCharacter 保证必有值）
+    mountChoices: [null, null, null, null, null],
     ...o,
   };
 }
@@ -91,6 +93,9 @@ function makeStorageData(o: Partial<CharacterDataStorage> = {}): CharacterDataSt
     currentMp: 30,
     maxMp: 50,
     bonusStats: { str: 2 },
+    // 坐骑配置默认值：5 档全 null（新格式含字段，不触发旧存档迁移）
+    // 单独的"旧存档迁移"测试用例通过 ...o 覆盖为 undefined 验证迁移行为
+    mountChoices: [null, null, null, null, null],
     createdTime: 1700000000000,
     lastPlayedTime: 1700000001000,
     updatedAt: 1700000002000,
@@ -296,6 +301,26 @@ describe('CharacterDbService - 角色数据层（fake-indexeddb 真实 CRUD）',
       // lastPlayedTime 与 updatedAt 为运行时生成的时间戳
       expect(storage.lastPlayedTime).toBeTypeOf('number');
       expect(storage.updatedAt).toBeTypeOf('number');
+      // 坐骑配置：Character.mountChoices 透传到 storage.mountChoices
+      expect(storage.mountChoices).toEqual([null, null, null, null, null]);
+    });
+
+    it('toStorageFormat：mountChoices 含选择时完整透传到 storage', () => {
+      // 模拟满级玩家的极端力量流（plan §8.1）：5 档全部选择力量方向
+      const character = makeCharacter({
+        level: 20,
+        mountChoices: ['common_str', 'uncommon_str', 'rare_str', 'epic_str_con', 'legendary_str_con'],
+      });
+
+      const storage = characterDbService.toStorageFormat('char-mount', character, {});
+
+      expect(storage.mountChoices).toEqual([
+        'common_str',
+        'uncommon_str',
+        'rare_str',
+        'epic_str_con',
+        'legendary_str_con',
+      ]);
     });
 
     it('toStorageFormat：createdTime 缺失时兜底使用 Date.now()', () => {
@@ -367,6 +392,27 @@ describe('CharacterDbService - 角色数据层（fake-indexeddb 真实 CRUD）',
       expect(restored.maxMana).toBe(original.maxMana);
       expect(restored.stats).toEqual(original.stats);
       expect(restored.gold).toBe(original.gold);
+      // 坐骑配置往返一致
+      expect(restored.mountChoices).toEqual(original.mountChoices);
+    });
+
+    it('toStorageFormat → fromStorageFormat：mountChoices 含选择时往返一致', () => {
+      // 模拟混合流（plan §8.5 极端均衡流）：5 档分散选择
+      const original = makeCharacter({
+        level: 20,
+        mountChoices: ['common_str', 'uncommon_dex', 'rare_int', 'epic_int_con', 'legendary_dex_wis'],
+      });
+
+      const storage = characterDbService.toStorageFormat('char-rt-mount', original, {});
+      const restored = characterDbService.fromStorageFormat(storage);
+
+      expect(restored.mountChoices).toEqual([
+        'common_str',
+        'uncommon_dex',
+        'rare_int',
+        'epic_int_con',
+        'legendary_dex_wis',
+      ]);
     });
   });
 
@@ -438,6 +484,129 @@ describe('CharacterDbService - 角色数据层（fake-indexeddb 真实 CRUD）',
       // 新存档不重算 maxHp（信任存储值）
       expect(character.maxHp).toBe(220);
       expect(character.hp).toBe(180);
+    });
+  });
+
+  // -------------------- 坐骑配置：旧存档迁移与持久化（plan.md §3.2 / §10） --------------------
+  describe('mountChoices：旧存档迁移与持久化', () => {
+    it('旧存档（无 mountChoices 字段）：fromStorageFormat 迁移为全 null', () => {
+      // 模拟 P3 坐骑系统上线前的旧存档：CharacterDataStorage 不含 mountChoices
+      const storage = makeStorageData({
+        level: 12,
+        // 通过 ...o 注入 undefined 模拟字段缺失（实际旧存档通过 Dexie 读出时该字段为 undefined）
+        mountChoices: undefined,
+      } as Partial<CharacterDataStorage>);
+
+      const character = characterDbService.fromStorageFormat(storage as CharacterDataStorage);
+
+      // 迁移为 5 档全 null（长度固定 5，对齐 MOUNT_TIERS）
+      expect(character.mountChoices).toEqual([null, null, null, null, null]);
+      expect(character.mountChoices).toHaveLength(5);
+    });
+
+    it('旧存档（无 mountChoices 且无 potionStats）：双重迁移均生效', () => {
+      // 同时缺失 mountChoices 与 potionStats 的最旧存档
+      const storage = makeStorageData({
+        level: 5,
+        baseStats: { str: 14, dex: 12, con: 13, int: 11, wis: 11, cha: 11 },
+        potionStats: undefined,
+        allocatedStats: undefined,
+        unallocatedPoints: undefined,
+        mountChoices: undefined,
+      } as Partial<CharacterDataStorage>);
+
+      const character = characterDbService.fromStorageFormat(storage as CharacterDataStorage);
+
+      // potionStats 旧存档迁移：反推 baseStats + 补发 unallocatedPoints
+      expect(character.stats).toEqual({ str: 10, dex: 8, con: 9, int: 7, wis: 7, cha: 7 });
+      expect(character.unallocatedPoints).toBe(12);
+      // mountChoices 旧存档迁移：补默认值全 null
+      expect(character.mountChoices).toEqual([null, null, null, null, null]);
+    });
+
+    it('新存档（含 mountChoices）：fromStorageFormat 直接透传，不触发迁移', () => {
+      const storage = makeStorageData({
+        level: 20,
+        mountChoices: ['common_str', 'uncommon_con', 'rare_int', 'epic_dex_wis', 'legendary_str_cha'],
+      });
+
+      const character = characterDbService.fromStorageFormat(storage);
+
+      // 直接透传，不重置
+      expect(character.mountChoices).toEqual([
+        'common_str',
+        'uncommon_con',
+        'rare_int',
+        'epic_dex_wis',
+        'legendary_str_cha',
+      ]);
+    });
+
+    it('saveCharacterData → getCharacterData：mountChoices 完整持久化往返', async () => {
+      // 模拟满级玩家的纯法系输出流（plan §8.2）：5 档全部智力方向
+      const data = makeStorageData({
+        characterId: 'char-persist-mount',
+        level: 20,
+        mountChoices: ['common_int', 'uncommon_int', 'rare_int', 'epic_int_wis', 'legendary_int_wis'],
+      });
+
+      await characterDbService.saveCharacterData(data);
+      const result = await characterDbService.getCharacterData('char-persist-mount');
+
+      expect(result).not.toBeNull();
+      expect(result!.mountChoices).toEqual([
+        'common_int',
+        'uncommon_int',
+        'rare_int',
+        'epic_int_wis',
+        'legendary_int_wis',
+      ]);
+    });
+
+    it('saveCharacterData → getCharacterData：mountChoices 全 null 也能持久化', async () => {
+      // 新角色未选择任何方向
+      const data = makeStorageData({
+        characterId: 'char-persist-null',
+        mountChoices: [null, null, null, null, null],
+      });
+
+      await characterDbService.saveCharacterData(data);
+      const result = await characterDbService.getCharacterData('char-persist-null');
+
+      expect(result).not.toBeNull();
+      expect(result!.mountChoices).toEqual([null, null, null, null, null]);
+    });
+
+    it('saveCharacterListItem：existing 含 mountChoices 时保留，不覆盖', async () => {
+      // 先写入完整角色数据（含 5 档选择）
+      const fullData = makeStorageData({
+        characterId: 'char-merge-mount',
+        mountChoices: ['common_str', 'uncommon_dex', null, null, null],
+      });
+      await characterDbService.saveCharacterData(fullData);
+
+      // 再写入列表项（应保留 mountChoices 等详情字段）
+      await characterDbService.saveCharacterListItem(
+        makeListItem({ id: 'char-merge-mount', name: '更新名' })
+      );
+
+      const stored = await characterDbService.getCharacterData('char-merge-mount');
+      expect(stored).not.toBeNull();
+      // 列表字段被更新
+      expect(stored!.name).toBe('更新名');
+      // mountChoices 被保留
+      expect(stored!.mountChoices).toEqual(['common_str', 'uncommon_dex', null, null, null]);
+    });
+
+    it('saveCharacterListItem：existing 不存在时初始化 mountChoices 为全 null', async () => {
+      // 直接写入列表项（无 existing），应初始化 mountChoices 为全 null
+      await characterDbService.saveCharacterListItem(
+        makeListItem({ id: 'char-new-mount', name: '新角色' })
+      );
+
+      const stored = await characterDbService.getCharacterData('char-new-mount');
+      expect(stored).not.toBeNull();
+      expect(stored!.mountChoices).toEqual([null, null, null, null, null]);
     });
   });
 });

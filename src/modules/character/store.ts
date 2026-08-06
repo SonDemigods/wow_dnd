@@ -34,8 +34,12 @@ import {
   // 四层属性纯函数（as 重命名避免与下方 Action 同名冲突）
   allocateStat as allocateStatPure,
   resetAllocatedStats as resetAllocatedStatsPure,
-  applyPotionBonus as applyPotionBonusPure
+  applyPotionBonus as applyPotionBonusPure,
+  // 坐骑配置纯函数
+  computeMountBonus,
+  isTierUnlocked
 } from './service';
+import { getMountOptionById, MOUNT_TIERS } from '@/data/config_mounts';
 import { getExpForLevel } from '@/utils/calculations';
 import { BASE_STAT_VALUE } from '@/config/character';
 import { errorReporter } from '@/utils/errorReport';
@@ -90,11 +94,17 @@ export const useCharacterStore = defineStore('character', () => {
    * - `class`：职业加成（classBonus，固定）
    * - `potion`：药剂层（potionStats，不可重置）
    * - `allocated`：升级层（allocatedStats，可重置）
-   * - `bonus`：装备/天赋层（bonusStats，外部加成）
+   * - `bonus`：装备/天赋层（bonusStats 中扣除坐骑部分，避免与 mount 层重复计算）
+   * - `mount`：坐骑层（computeMountBonus(mountChoices) 计算的加成，P1 增强）
+   *
+   * bonus 与 mount 的拆分说明：
+   *   坐骑 bonus 通过 setMountChoice 写入 bonusStats，与装备/天赋 bonus 共享同一存储。
+   *   statsBreakdown 中将 bonusStats 拆分为"装备/天赋"（bonusStats - mountBonus）和"坐骑"（mountBonus）两层，
+   *   两者之和等于原 bonusStats，保证 effectiveStats 计算不变，同时让玩家能清晰看到坐骑贡献。
    *
    * UI 渲染建议：value 为 0 的层显示为灰色或隐藏；负值（如职业调整 -1）需正确展示。
    *
-   * 响应式依赖：character.value（含 stats/potionStats/allocatedStats）、
+   * 响应式依赖：character.value（含 stats/potionStats/allocatedStats/mountChoices）、
    *              raceBonus、classBonus、bonusStats 任一变化时自动重算。
    */
   const statsBreakdown = computed<Record<keyof Stats, StatSource[]>>(() => {
@@ -105,17 +115,24 @@ export const useCharacterStore = defineStore('character', () => {
     const bonus = bonusStats.value;
     const race = raceBonus.value;
     const cls = classBonus.value;
+    // P1 增强：从 bonusStats 中拆分出坐骑贡献，单独展示为 mount 层
+    // 防御 char.mountChoices 缺失（旧存档迁移前或测试 mock 不完整时可能为 undefined）
+    const mountBonus = char?.mountChoices ? computeMountBonus(char.mountChoices) : {};
 
     const keys: (keyof Stats)[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
     const result = {} as Record<keyof Stats, StatSource[]>;
     keys.forEach(key => {
+      const mountValue = mountBonus[key] || 0;
+      // 装备/天赋层 = bonusStats - 坐骑部分（避免重复计算）
+      const equipmentValue = (bonus[key] || 0) - mountValue;
       result[key] = [
         { label: '基础', value: BASE_STAT_VALUE, layer: 'base' },
         { label: '种族', value: race[key] || 0, layer: 'race' },
         { label: '职业', value: cls[key] || 0, layer: 'class' },
         { label: '药剂', value: potion[key], layer: 'potion' },
         { label: '升级', value: allocated[key], layer: 'allocated' },
-        { label: '装备/天赋', value: bonus[key] || 0, layer: 'bonus' }
+        { label: '装备/天赋', value: equipmentValue, layer: 'bonus' },
+        { label: '坐骑', value: mountValue, layer: 'mount' }
       ];
     });
     return result;
@@ -641,6 +658,13 @@ export const useCharacterStore = defineStore('character', () => {
   /** 重置角色 */
   async function reset(): Promise<void> {
     if (!character.value) return;
+    // plan §5.3：reset 一并清空 mountChoices，需先从 bonusStats 扣除当前坐骑 bonus
+    // 直接操作 bonusStats 避免多次 recalculateHpMp/persist，最终由本 Action 统一 recalc + persist
+    const oldMountBonus = computeMountBonus(character.value.mountChoices);
+    if (Object.keys(oldMountBonus).length > 0) {
+      bonusStats.value = computeBonusChange(bonusStats.value, oldMountBonus, false);
+    }
+
     const race = racesData.value[character.value.raceId];
     const cls = classesData.value[character.value.classId];
     raceBonus.value = race?.bonus || {};
@@ -655,6 +679,8 @@ export const useCharacterStore = defineStore('character', () => {
       // 注：potionStats 不清零，遵循"药剂层不可重置"设计原则
       allocatedStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
       unallocatedPoints: 0,
+      // 坐骑配置：一并清空（plan §5.3）；bonus 已在上方扣除
+      mountChoices: [null, null, null, null, null],
     };
     const effStats = computeEffectiveStats(
       character.value.stats,
@@ -665,6 +691,115 @@ export const useCharacterStore = defineStore('character', () => {
     character.value = recalculateHpMp(character.value, effStats);
     // 重置后回满 HP/MP（更新 maxHp/maxMpa 后同步当前值到上限）
     character.value = { ...character.value, hp: character.value.maxHp, mana: character.value.maxMana };
+    await persistCharacter();
+  }
+
+  // ==================== Action：坐骑配置 ====================
+  // plan §5.1/§5.2：setMountChoice/resetMountChoices 通过 applyBonus/removeBonus 机制应用坐骑 bonus。
+  // 战斗中校验已省略：CharacterInfoPopup 在战斗界面不展示，UI 层天然无法修改坐骑（用户确认）。
+  // 优化：直接操作 bonusStats.value 并统一 recalculateHpMp + persistCharacter，
+  //       避免调用 applyBonus/removeBonus 触发两次 persist。
+
+  /**
+   * 设置某档坐骑方向
+   *
+   * 流程：
+   * 1. 校验档位索引合法性、档位解锁、optionId 合法性、tier 匹配
+   * 2. 计算旧总 bonus 并从 bonusStats 扣除
+   * 3. 更新 mountChoices[tierIndex]
+   * 4. 计算新总 bonus 并叠加到 bonusStats
+   * 5. 重算 HP/MP（坐骑 bonus 可能含 con/int/wis）并持久化
+   *
+   * @param tierIndex - 档位索引（0-4，对应 common/uncommon/rare/epic/legendary）
+   * @param optionId - 方向 ID（如 `common_str`），传 null 表示取消该档选择
+   * @throws 档位索引越界、档位未解锁、optionId 无效、tier 不匹配时抛错
+   */
+  async function setMountChoice(tierIndex: number, optionId: string | null): Promise<void> {
+    if (!character.value) return;
+
+    // 校验档位索引合法性
+    if (tierIndex < 0 || tierIndex >= MOUNT_TIERS.length) {
+      throw new Error(`无效档位索引: ${tierIndex}`);
+    }
+    const tierMeta = MOUNT_TIERS[tierIndex];
+
+    // 校验档位解锁
+    if (!isTierUnlocked(tierIndex, character.value.level)) {
+      throw new Error(`档位 ${tierMeta.label} 未解锁（需 ${tierMeta.unlockLevel} 级）`);
+    }
+
+    // 校验方向合法性（optionId 为 null 表示取消选择，跳过此校验）
+    if (optionId !== null) {
+      const option = getMountOptionById(optionId);
+      if (!option) {
+        throw new Error(`无效坐骑方向: ${optionId}`);
+      }
+      if (option.tier !== tierMeta.tier) {
+        throw new Error(`方向 ${option.name}（${optionId}）不属于档位 ${tierMeta.label}`);
+      }
+    }
+
+    // 计算旧总 bonus 并扣除
+    const oldBonus = computeMountBonus(character.value.mountChoices);
+    if (Object.keys(oldBonus).length > 0) {
+      bonusStats.value = computeBonusChange(bonusStats.value, oldBonus, false);
+    }
+
+    // 更新选择
+    const newChoices = [...character.value.mountChoices];
+    // 长度兜底：旧存档迁移或异常数据可能导致 mountChoices 长度不足 5
+    while (newChoices.length < MOUNT_TIERS.length) newChoices.push(null);
+    newChoices[tierIndex] = optionId;
+    character.value = { ...character.value, mountChoices: newChoices };
+
+    // 计算新总 bonus 并叠加
+    const newBonus = computeMountBonus(newChoices);
+    if (Object.keys(newBonus).length > 0) {
+      bonusStats.value = computeBonusChange(bonusStats.value, newBonus, true);
+    }
+
+    // 重算 HP/MP（坐骑 bonus 可能含 con/int/wis）
+    const effStats = computeEffectiveStats(
+      character.value.stats,
+      character.value.potionStats,
+      character.value.allocatedStats,
+      bonusStats.value
+    );
+    character.value = recalculateHpMp(character.value, effStats);
+
+    await persistCharacter();
+  }
+
+  /**
+   * 重置所有坐骑选择
+   *
+   * 非战斗中随时可调用，无需消耗资源（plan §5.3）。
+   * 流程：扣除当前总 bonus → 清空 mountChoices → 重算 HP/MP → 持久化。
+   */
+  async function resetMountChoices(): Promise<void> {
+    if (!character.value) return;
+
+    // 扣除当前总 bonus
+    const oldBonus = computeMountBonus(character.value.mountChoices);
+    if (Object.keys(oldBonus).length > 0) {
+      bonusStats.value = computeBonusChange(bonusStats.value, oldBonus, false);
+    }
+
+    // 清空选择
+    character.value = {
+      ...character.value,
+      mountChoices: [null, null, null, null, null],
+    };
+
+    // 重算 HP/MP
+    const effStats = computeEffectiveStats(
+      character.value.stats,
+      character.value.potionStats,
+      character.value.allocatedStats,
+      bonusStats.value
+    );
+    character.value = recalculateHpMp(character.value, effStats);
+
     await persistCharacter();
   }
 
@@ -779,6 +914,9 @@ export const useCharacterStore = defineStore('character', () => {
     applyPotionBonus,
     allocateStat,
     resetAllocatedStats,
+    // 坐骑配置 Action
+    setMountChoice,
+    resetMountChoices,
     setRace,
     setClass,
     setName,

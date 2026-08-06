@@ -22,6 +22,7 @@ import {
 } from '@/utils/calculations';
 import { MAX_LEVEL, MAX_STAT, POINTS_PER_LEVEL, BASE_STAT_VALUE } from '@/config/character';
 import { generateId } from '@/utils/db-helpers';
+import { getMountOptionById, MOUNT_TIERS } from '@/data/config_mounts';
 
 // ==================== ID 生成 ====================
 
@@ -166,7 +167,9 @@ export function createInitialCharacter(params: CreateCharacterParams, raceData: 
     potionStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
     allocatedStats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
     unallocatedPoints: 0,
-    gold: 50
+    gold: 50,
+    // 坐骑配置：5 档全 null（1 级仅解锁 common 档选择权，但初始不预选任何方向）
+    mountChoices: [null, null, null, null, null]
   };
 }
 
@@ -313,6 +316,65 @@ export function recalculateHpMp(character: Character, effectiveStats: Stats): Ch
     maxMana: newMaxMana,
     mana: Math.min(character.mana, newMaxMana)
   };
+}
+
+// ==================== 坐骑配置 ====================
+// 坐骑系统纯函数（plan.md §3.3）：仅计算 bonus 与解锁状态，不修改 character 也不持久化。
+// 应用 bonus 由 Store Action（setMountChoice/resetMountChoices）通过 applyBonus/removeBonus 完成。
+
+/**
+ * 计算当前坐骑配置的总加成
+ *
+ * 遍历 mountChoices 数组，对每个非 null 的方向 ID 查询其 bonus 并累加。
+ * 无效 ID 静默跳过（防御性：配置表变更后旧存档可能残留失效 ID）。
+ *
+ * @param choices - 5 档选择的方向 ID 数组（null 表示未选）
+ * @returns 累加后的 Partial<Stats>；全 null 时返回空对象 {}（applyBonus/removeBonus 对空对象无副作用）
+ */
+export function computeMountBonus(choices: (string | null)[]): Partial<Stats> {
+  const result: Partial<Stats> = {};
+  for (const optionId of choices) {
+    if (!optionId) continue;
+    const option = getMountOptionById(optionId);
+    if (!option) continue;
+    // Object.keys 返回 string[]，TS 语言限制无法静态推断为 (keyof Stats)[]。
+    // option.bonus 类型为 Partial<Stats>，键已由类型保证为 keyof Stats，断言是合理 workaround。
+    const keys = Object.keys(option.bonus) as (keyof Stats)[];
+    for (const key of keys) {
+      result[key] = (result[key] ?? 0) + (option.bonus[key] ?? 0);
+    }
+  }
+  return result;
+}
+
+/**
+ * 获取当前已解锁的档位索引列表
+ *
+ * 解锁规则（plan.md §2.1）：档位 i 在 level >= i*5 时解锁
+ * - 0 级索引：1 级解锁（普通）
+ * - 1 级索引：5 级解锁（优秀）
+ * - 2 级索引：10 级解锁（稀有）
+ * - 3 级索引：15 级解锁（史诗）
+ * - 4 级索引：20 级解锁（传说）
+ *
+ * @param level - 角色当前等级
+ * @returns 已解锁的档位索引升序数组（如 12 级返回 [0, 1, 2]）
+ */
+export function getUnlockedTiers(level: number): number[] {
+  return MOUNT_TIERS.filter(t => level >= t.unlockLevel).map(t => t.index);
+}
+
+/**
+ * 判断指定档位是否已解锁
+ *
+ * @param tierIndex - 档位索引（0-4）
+ * @param level - 角色当前等级
+ * @returns true 表示已解锁
+ */
+export function isTierUnlocked(tierIndex: number, level: number): boolean {
+  const tierMeta = MOUNT_TIERS[tierIndex];
+  if (!tierMeta) return false;
+  return level >= tierMeta.unlockLevel;
 }
 
 // ==================== 四层属性：升级分配与药剂层 ====================

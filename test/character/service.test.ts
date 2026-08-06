@@ -34,6 +34,9 @@ import {
   allocateStat,
   resetAllocatedStats,
   applyPotionBonus,
+  computeMountBonus,
+  getUnlockedTiers,
+  isTierUnlocked,
 } from '@/modules/character/service';
 import type { Character, Stats, RaceData, ClassData, CreateCharacterParams } from '@/modules/character/types';
 import { MAX_LEVEL, MAX_STAT, POINTS_PER_LEVEL } from '@/config/character';
@@ -70,6 +73,8 @@ function makeCharacter(overrides: Partial<Character> = {}): Character {
     allocatedStats: makeZeroStats(),
     unallocatedPoints: 0,
     gold: 100,
+    // 坐骑配置默认值：5 档全 null（未选任何方向）
+    mountChoices: [null, null, null, null, null],
     ...overrides,
   };
 }
@@ -613,5 +618,139 @@ describe('|| 兜底分支覆盖', () => {
     const result = computeBonusChange(current, delta, false);
     // Assert：clampBonus(8 - 0) = 8（加成不变）
     expect(result.str).toBe(8);
+  });
+});
+
+// ============================================================
+// 坐骑配置纯函数：computeMountBonus / getUnlockedTiers / isTierUnlocked
+// ============================================================
+
+describe('computeMountBonus 坐骑总加成计算', () => {
+  it('全 null 选择返回空对象', () => {
+    expect(computeMountBonus([null, null, null, null, null])).toEqual({});
+  });
+
+  it('空数组返回空对象', () => {
+    expect(computeMountBonus([])).toEqual({});
+  });
+
+  it('单档单属性选择返回该档 bonus', () => {
+    // common_str → { str: 2 }
+    expect(computeMountBonus(['common_str', null, null, null, null])).toEqual({ str: 2 });
+  });
+
+  it('单档双属性选择返回该档 bonus', () => {
+    // epic_str_con → { str: 6, con: 6 }
+    expect(computeMountBonus([null, null, null, 'epic_str_con', null])).toEqual({ str: 6, con: 6 });
+  });
+
+  it('多档同属性叠加：前 3 档全选 str（2+4+6=12）', () => {
+    const choices = ['common_str', 'uncommon_str', 'rare_str', null, null];
+    expect(computeMountBonus(choices)).toEqual({ str: 12 });
+  });
+
+  it('多档双属性叠加：epic+legendary 同方向（6+8=14）', () => {
+    const choices = [null, null, null, 'epic_str_con', 'legendary_str_con'];
+    expect(computeMountBonus(choices)).toEqual({ str: 14, con: 14 });
+  });
+
+  it('极端力量流满级 str=26（前3档 12 + 后2档 14）', () => {
+    const choices = ['common_str', 'uncommon_str', 'rare_str', 'epic_str_con', 'legendary_str_con'];
+    expect(computeMountBonus(choices)).toEqual({ str: 26, con: 14 });
+  });
+
+  it('多档不同属性叠加：返回各属性分别累加', () => {
+    // common_str(2) + uncommon_dex(4) + rare_int(6) + epic_str_con(6,6) + legendary_dex_wis(8,8)
+    const choices = ['common_str', 'uncommon_dex', 'rare_int', 'epic_str_con', 'legendary_dex_wis'];
+    expect(computeMountBonus(choices)).toEqual({
+      str: 2 + 6,   // 8
+      dex: 4 + 8,   // 12
+      con: 6,       // 6
+      int: 6,       // 6
+      wis: 8,       // 8
+    });
+  });
+
+  it('无效 ID 静默跳过（不抛错）', () => {
+    const choices = ['common_str', 'invalid_id', null, null, null];
+    expect(computeMountBonus(choices)).toEqual({ str: 2 });
+  });
+
+  it('全无效 ID 返回空对象', () => {
+    const choices = ['invalid1', 'invalid2', 'invalid3', 'invalid4', 'invalid5'];
+    expect(computeMountBonus(choices)).toEqual({});
+  });
+});
+
+describe('getUnlockedTiers 档位解锁列表', () => {
+  it('1 级：仅 common 档解锁 [0]', () => {
+    expect(getUnlockedTiers(1)).toEqual([0]);
+  });
+
+  it('4 级：仍仅 common 档解锁（5 级才解锁 uncommon）', () => {
+    expect(getUnlockedTiers(4)).toEqual([0]);
+  });
+
+  it('5 级：common + uncommon [0, 1]', () => {
+    expect(getUnlockedTiers(5)).toEqual([0, 1]);
+  });
+
+  it('10 级：前三档 [0, 1, 2]', () => {
+    expect(getUnlockedTiers(10)).toEqual([0, 1, 2]);
+  });
+
+  it('15 级：前四档 [0, 1, 2, 3]', () => {
+    expect(getUnlockedTiers(15)).toEqual([0, 1, 2, 3]);
+  });
+
+  it('20 级（满级）：全部 5 档 [0, 1, 2, 3, 4]', () => {
+    expect(getUnlockedTiers(20)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it('0 级：无档位解锁（边界）', () => {
+    expect(getUnlockedTiers(0)).toEqual([]);
+  });
+
+  it('超过满级（25）：仍仅 5 档', () => {
+    expect(getUnlockedTiers(25)).toEqual([0, 1, 2, 3, 4]);
+  });
+});
+
+describe('isTierUnlocked 档位解锁判定', () => {
+  it('common 档（index 0）：1 级即解锁', () => {
+    expect(isTierUnlocked(0, 1)).toBe(true);
+    expect(isTierUnlocked(0, 0)).toBe(false);
+  });
+
+  it('uncommon 档（index 1）：5 级解锁', () => {
+    expect(isTierUnlocked(1, 4)).toBe(false);
+    expect(isTierUnlocked(1, 5)).toBe(true);
+  });
+
+  it('legendary 档（index 4）：20 级解锁', () => {
+    expect(isTierUnlocked(4, 19)).toBe(false);
+    expect(isTierUnlocked(4, 20)).toBe(true);
+  });
+
+  it('越界索引返回 false', () => {
+    expect(isTierUnlocked(-1, 20)).toBe(false);
+    expect(isTierUnlocked(5, 20)).toBe(false);
+    expect(isTierUnlocked(99, 20)).toBe(false);
+  });
+});
+
+describe('createInitialCharacter 坐骑配置初始化', () => {
+  it('新角色 mountChoices 初始化为 5 档全 null', () => {
+    const race = makeRaceData();
+    const cls = makeClassData();
+    const params: CreateCharacterParams = {
+      name: '测试',
+      factionId: 'alliance',
+      raceId: 'human',
+      classId: 'warrior',
+    };
+    const char = createInitialCharacter(params, race, cls);
+    expect(char.mountChoices).toEqual([null, null, null, null, null]);
+    expect(char.mountChoices).toHaveLength(5);
   });
 });

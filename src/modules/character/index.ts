@@ -50,7 +50,11 @@ export {
   // 四层属性：升级分配与药剂层纯函数
   allocateStat,
   resetAllocatedStats,
-  applyPotionBonus
+  applyPotionBonus,
+  // 坐骑配置纯函数
+  computeMountBonus,
+  getUnlockedTiers,
+  isTierUnlocked
 } from './service';
 
 /** 导出 Pinia 状态管理 Store（useCharacterStore）

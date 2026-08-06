@@ -14,3 +14,4 @@ import './skill';
 import './exploration';
 import './quest';
 import './system';
+import './mount';

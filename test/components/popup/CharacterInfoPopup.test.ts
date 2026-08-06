@@ -70,6 +70,8 @@ describe('CharacterInfoPopup 角色信息弹窗组件', () => {
       allocatedStats: { str: 2, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
       unallocatedPoints: 3,
       gold: 500,
+      // 坐骑配置：5 档全 null（buildCharacter 角色未选坐骑方向）
+      mountChoices: [null, null, null, null, null],
     };
   }
 
@@ -265,7 +267,7 @@ describe('CharacterInfoPopup 角色信息弹窗组件', () => {
     expect(wrapper.find('.attr-breakdown').exists()).toBe(false);
   });
 
-  it('hover 属性项时显示来源明细 tooltip，包含 6 层来源', async () => {
+  it('hover 属性项时显示来源明细 tooltip，包含 7 层来源', async () => {
     const pinia = createStubPinia();
     const characterStore = useCharacterStore();
     characterStore.$patch((state) => {
@@ -287,14 +289,14 @@ describe('CharacterInfoPopup 角色信息弹窗组件', () => {
     // tooltip 显示
     const tooltip = wrapper.find('.attr-breakdown');
     expect(tooltip.exists()).toBe(true);
-    // 包含 6 行来源明细
+    // 包含 7 行来源明细（基础/种族/职业/药剂/升级/装备天赋/坐骑）
     const rows = tooltip.findAll('.breakdown-row');
-    expect(rows).toHaveLength(6);
+    expect(rows).toHaveLength(7);
     // 标题包含属性名与总值
     expect(tooltip.find('.breakdown-title').text()).toContain('力量');
     // 各层标签正确
     const labels = rows.map(r => r.find('.breakdown-label').text());
-    expect(labels).toEqual(['基础', '种族', '职业', '药剂', '升级', '装备/天赋']);
+    expect(labels).toEqual(['基础', '种族', '职业', '药剂', '升级', '装备/天赋', '坐骑']);
   });
 
   it('mouseleave 后 tooltip 消失', async () => {
