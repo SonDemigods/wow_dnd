@@ -149,7 +149,7 @@ const skillBarSlots = computed(() => {
 const { getSkillEffectText } = useSkillDisplay();
 
 function getEffectText(skill: Skill): string {
-  return getSkillEffectText(skill);
+  return getSkillEffectText(skill, characterStore.effectiveStats);
 }
 
 function isSkillEquipped(skillId: string): boolean {

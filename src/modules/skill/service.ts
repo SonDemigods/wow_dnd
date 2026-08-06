@@ -171,9 +171,6 @@ export function getSkillCoefficient(unlockLevel: number, type: 'damage' | 'heal'
  * - regen（再生）：`value + WIS × 0.50`
  * - shield（护盾）：`value + WIS × 0.80`
  *
- * **倍率类（返回百分比值，有上限保护）**
- * - thorn（荆棘反伤）：`min(0.60, value + WIS × 0.005)` → 最高 60%
- *
  * **控制类（不随属性缩放，稳定控制收益）**
  * - stun / freeze / silence：直接返回 `value`
  *
@@ -215,10 +212,6 @@ export function calculateBuffValue(buffEffect: SkillBuffEffect, stats: Stats): n
 
     case 'shield':
       return Math.floor(value + stats.wis * 0.80);
-
-    // ===== 倍率类：微量 WIS 加成，上限保护防止反伤比例过高 =====
-    case 'thorn':
-      return Math.min(0.60, value + stats.wis * 0.005);
 
     // ===== 控制类：不缩放，保证控制效果的稳定性 =====
     case 'stun':

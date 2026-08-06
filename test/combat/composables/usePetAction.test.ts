@@ -2,7 +2,7 @@
  * @fileoverview 宠物行动 Composable（usePetAction）单元测试（P3-156）
  *
  * 覆盖 usePetAction 的：
- * 1. petTakeTurn：攻击造成伤害、敌人闪避、buff 类技能仅写日志、无目标、宠物未激活、荆棘反伤
+ * 1. petTakeTurn：攻击造成伤害、敌人闪避、buff 类技能仅写日志、无目标、宠物未激活
  * 2. petTakeDamage：包装 petStore.takeDamage
  * 3. petTickTurn：包装 petStore.tickTurn
  * 4. summon：成功、资源不足、未解锁、已有激活、灵魂碎片系统未初始化
@@ -91,7 +91,7 @@ vi.mock('@/modules/combat/service', () => ({
 }));
 
 // mock processDamagePipeline（控制伤害管线结果）
-const pipeResultMock = { expectedDamage: 15, actualDamage: 15, absorbed: 0, finalDamage: 15, thorns: 0 };
+const pipeResultMock = { expectedDamage: 15, actualDamage: 15, absorbed: 0, finalDamage: 15 };
 vi.mock('@/modules/combat/effects', async () => {
   const actual = await vi.importActual<typeof import('@/modules/combat/effects')>('@/modules/combat/effects');
   return {
@@ -187,7 +187,6 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
     petStoreMock.hasActivePet = false;
     petStoreMock.activePet = null;
     pipeResultMock.finalDamage = 15;
-    pipeResultMock.thorns = 0;
     vi.mocked(rollDodge).mockReturnValue(false);
     petStoreMock.petTakeAction.mockReturnValue(petSkillAttack);
   });
@@ -272,22 +271,6 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
 
       expect(ctx.enemy.takeDamage).not.toHaveBeenCalled();
       expect(petStoreMock.petTakeAction).not.toHaveBeenCalled();
-    });
-
-    it('荆棘反伤对宠物造成伤害', async () => {
-      const pet = makePetInstance();
-      petStoreMock.hasActivePet = true;
-      petStoreMock.activePet = pet;
-      pipeResultMock.thorns = 5;
-      const enemy = makeEnemy();
-      const state = makeStateMock([enemy], enemy);
-      const ctx = makeMockCtx();
-
-      const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx);
-      action.petTakeTurn();
-
-      expect(petStoreMock.takeDamage).toHaveBeenCalledWith(5);
     });
 
     it('伤害被护盾完全吸收时不调用 takeDamage', async () => {

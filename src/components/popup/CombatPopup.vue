@@ -672,7 +672,7 @@ function buildItemDescription(info: Item): string {
 const { getSkillEffectBrief, getTargetTypeName } = useSkillDisplay();
 
 function getSkillEffectText(skill: Skill): string {
-  return getSkillEffectBrief(skill);
+  return getSkillEffectBrief(skill, characterStore.effectiveStats);
 }
 
 /** 获取技能目标类型文本 */
@@ -713,7 +713,7 @@ const effectLabels: Record<string, string> = {
 
 /** 效果是否为增益 */
 function isBuffEffect(type: string): boolean {
-  return ['shield', 'attack_up', 'defense_up', 'speed_up', 'regen', 'thorn'].includes(type);
+  return ['shield', 'attack_up', 'defense_up', 'speed_up', 'regen'].includes(type);
 }
 
 /** 效果是否为减益 */

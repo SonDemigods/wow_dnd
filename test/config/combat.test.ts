@@ -11,7 +11,9 @@ import { describe, it, expect } from 'vitest';
 import {
   DAMAGE_BASE_COEFFICIENT,
   DAMAGE_RANDOM_RANGE,
-  DEFENSE_REDUCTION_COEFFICIENT,
+  PHYSICAL_DEFENSE_REDUCTION_COEFFICIENT,
+  MAGICAL_DEFENSE_REDUCTION_COEFFICIENT,
+  HEAL_BONUS_DIVISOR,
   FLEE_BASE_CHANCE,
   FLEE_DEX_COEFFICIENT,
   BOSS_INTRO_DELAY,
@@ -28,9 +30,19 @@ describe('战斗配置 - 伤害计算参数', () => {
     expect(DAMAGE_RANDOM_RANGE).toBeGreaterThan(0);
   });
 
-  it('DEFENSE_REDUCTION_COEFFICIENT 为 (0, 1] 区间的小数', () => {
-    expect(DEFENSE_REDUCTION_COEFFICIENT).toBeGreaterThan(0);
-    expect(DEFENSE_REDUCTION_COEFFICIENT).toBeLessThanOrEqual(1);
+  it('PHYSICAL_DEFENSE_REDUCTION_COEFFICIENT 为 (0, 1] 区间的小数', () => {
+    expect(PHYSICAL_DEFENSE_REDUCTION_COEFFICIENT).toBeGreaterThan(0);
+    expect(PHYSICAL_DEFENSE_REDUCTION_COEFFICIENT).toBeLessThanOrEqual(1);
+  });
+
+  it('MAGICAL_DEFENSE_REDUCTION_COEFFICIENT 为 (0, 1] 区间的小数', () => {
+    expect(MAGICAL_DEFENSE_REDUCTION_COEFFICIENT).toBeGreaterThan(0);
+    expect(MAGICAL_DEFENSE_REDUCTION_COEFFICIENT).toBeLessThanOrEqual(1);
+  });
+
+  it('HEAL_BONUS_DIVISOR 为正整数', () => {
+    expect(Number.isInteger(HEAL_BONUS_DIVISOR)).toBe(true);
+    expect(HEAL_BONUS_DIVISOR).toBeGreaterThan(0);
   });
 });
 

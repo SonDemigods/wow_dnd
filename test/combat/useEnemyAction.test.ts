@@ -73,7 +73,7 @@ vi.mock('@/modules/combat/service', () => ({
 }));
 
 // mock processDamagePipeline（控制伤害管线结果）
-const pipeResultMock = { finalDamage: 20, absorbed: 0, thorns: 0 };
+const pipeResultMock = { finalDamage: 20, absorbed: 0 };
 vi.mock('@/modules/combat/effects', async () => {
   const actual = await vi.importActual<typeof import('@/modules/combat/effects')>('@/modules/combat/effects');
   return {
@@ -198,7 +198,6 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
     characterMock.hp = 100;
     pipeResultMock.finalDamage = 20;
     pipeResultMock.absorbed = 0;
-    pipeResultMock.thorns = 0;
     // 显式重置 rollDodge（clearAllMocks 不会重置 mockReturnValue）
     vi.mocked(rollDodge).mockReturnValue(false);
   });
@@ -317,23 +316,6 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
 
       const logCall = log.addCombatLog.mock.calls[0][0];
       expect(logCall.message).toContain('护盾吸收');
-    });
-
-    it('荆棘反伤时调用 enemiesStore.takeDamage', () => {
-      pipeResultMock.thorns = 10;
-      const state = makeStateMock();
-      const log = makeLogMock();
-      const ctx = makeMockCtx();
-      const action = useEnemyAction(state, log, ctx);
-
-      const enemy = makeEnemy({ id: 'e1', name: '黑龙' });
-      action.applyEnemyDamageToPlayer(enemy, 30);
-
-      expect(ctx.enemy.takeDamage).toHaveBeenCalledWith('e1', 10);
-      // 荆棘反伤会额外记录 1 条日志
-      expect(log.addCombatLog).toHaveBeenCalledTimes(2);
-      const thornsLog = log.addCombatLog.mock.calls[1][0];
-      expect(thornsLog.message).toContain('荆棘反伤');
     });
 
     it('传入 skill 时日志 eventType 为 combat_skill_cast', () => {

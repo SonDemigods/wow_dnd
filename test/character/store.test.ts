@@ -167,7 +167,6 @@ vi.mock('@/modules/character/service', () => ({
     magicDefense: 15,
     critChance: 5,
     dodgeChance: 3,
-    hpBonus: 20,
     mpBonus: 10,
     healBonus: 1,
   })),

@@ -143,11 +143,10 @@ vi.mock('@/modules/combat/service', () => ({
 const rollPlayerCritMock = vi.hoisted(() => vi.fn(() => ({ isCrit: false, multiplier: 1 })));
 vi.mock('@/modules/combat/composables/helpers/critCalc', () => ({
   rollPlayerCrit: rollPlayerCritMock,
-  computeThornsDamage: (thorns: number, multiplier: number) => Math.floor(thorns * multiplier),
 }));
 
 // mock processDamagePipeline（控制伤害管线结果）
-const pipeResultMock = { finalDamage: 20, absorbed: 0, thorns: 0 };
+const pipeResultMock = { finalDamage: 20, absorbed: 0 };
 vi.mock('@/modules/combat/effects', async () => {
   const actual = await vi.importActual<typeof import('@/modules/combat/effects')>('@/modules/combat/effects');
   return {
@@ -365,7 +364,6 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
     characterMock.hp = 100;
     pipeResultMock.finalDamage = 20;
     pipeResultMock.absorbed = 0;
-    pipeResultMock.thorns = 0;
     rollDodgeMock.mockReturnValue(false);
     rollPlayerCritMock.mockReturnValue({ isCrit: false, multiplier: 1 });
     rollFleeSuccessMock.mockReturnValue(true);
@@ -980,42 +978,6 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
     });
   });
 
-  // -------------------- playerAttack：荆棘反伤 --------------------
-
-  describe('playerAttack：荆棘反伤', () => {
-    it('thorns>0 时对玩家造成荆棘反伤', () => {
-      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
-      const state = makeStateMock({ target: enemy, alive: [enemy] });
-      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
-      enemyStoreMock.takeDamage.mockReturnValue(false);
-      pipeResultMock.finalDamage = 20;
-      pipeResultMock.thorns = 5;
-
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
-
-      action.playerAttack();
-
-      expect(characterMock.takeDamage).toHaveBeenCalledWith(5);
-    });
-
-    it('暴击时荆棘反伤受暴击倍率影响', () => {
-      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
-      const state = makeStateMock({ target: enemy, alive: [enemy] });
-      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
-      enemyStoreMock.takeDamage.mockReturnValue(false);
-      pipeResultMock.finalDamage = 20;
-      pipeResultMock.thorns = 5;
-      rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
-
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
-
-      action.playerAttack();
-
-      // 暴击时 thorns * 1.5 = Math.floor(7.5) = 7
-      expect(characterMock.takeDamage).toHaveBeenCalledWith(7);
-    });
-  });
-
   // -------------------- playerSkill：技能目标类型与效果 --------------------
 
   describe('playerSkill：技能目标类型与效果', () => {
@@ -1552,33 +1514,9 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
     });
   });
 
-  // -------------------- playerSkill：边界分支补充（覆盖 AOE 荆棘反伤 / single BOSS 复活） --------------------
+  // -------------------- playerSkill：边界分支补充（覆盖 single BOSS 复活） --------------------
 
   describe('playerSkill：边界分支补充', () => {
-    it('AOE 伤害技能触发荆棘反伤时对玩家造成伤害', async () => {
-      // 覆盖 usePlayerAction.ts 第 510-511 行：AOE 循环中 pipeResult.thorns > 0 分支
-      const e1 = makeEnemy({ id: 'e1', name: '敌人1' });
-      const e2 = makeEnemy({ id: 'e2', name: '敌人2' });
-      const state = makeStateMock({ target: e1, alive: [e1, e2] });
-      skillStoreMock.getSkill.mockReturnValue({
-        id: 'sk1', name: '火球术', targetType: 'all_enemies',
-      });
-      skillStoreMock.castSkill.mockResolvedValue({
-        success: true, type: 'magic_damage', damage: 30,
-      });
-      pipeResultMock.finalDamage = 20;
-      pipeResultMock.thorns = 5;
-      enemyStoreMock.takeDamage.mockReturnValue(false);
-
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
-
-      await action.playerSkill('sk1');
-
-      // AOE 荆棘反伤：每个敌人触发一次 thorns=5，共 2 个敌人
-      expect(characterMock.takeDamage).toHaveBeenCalledWith(5);
-      expect(characterMock.takeDamage).toHaveBeenCalledTimes(2);
-    });
-
     it('single 伤害技能击杀 BOSS 且 canRevive 时复活并调用 endPlayerTurn', async () => {
       // 覆盖 usePlayerAction.ts 第 636 行：single 技能击杀 BOSS 后 checkBossRevive 返回 true 分支
       const boss = makeEnemy({ id: 'boss1', name: 'Boss', maxHp: 100 });
@@ -1654,32 +1592,9 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
     });
   });
 
-  // -------------------- 单数技能与物品的荆棘反伤/暴击分支补充 --------------------
+  // -------------------- 单数技能与物品的暴击分支补充 --------------------
 
-  describe('边界分支补充：single 技能荆棘反伤与暴击事件', () => {
-    it('single 伤害技能 thorns>0 时对玩家造成荆棘反伤', async () => {
-      // 覆盖 usePlayerAction.ts 第 628-637 行：single 技能 pipeResult.thorns > 0 分支
-      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
-      const state = makeStateMock({ target: enemy, alive: [enemy] });
-      skillStoreMock.getSkill.mockReturnValue({
-        id: 'sk1', name: '重击', targetType: 'single',
-      });
-      skillStoreMock.castSkill.mockResolvedValue({
-        success: true, type: 'physical_damage', damage: 30,
-      });
-      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
-      enemyStoreMock.takeDamage.mockReturnValue(false);
-      pipeResultMock.finalDamage = 25;
-      pipeResultMock.thorns = 5;
-
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
-
-      await action.playerSkill('sk1');
-
-      // single 技能荆棘反伤：thorns=5，非暴击倍率 1
-      expect(characterMock.takeDamage).toHaveBeenCalledWith(5);
-    });
-
+  describe('边界分支补充：single 技能与物品暴击事件', () => {
     it('single 伤害技能暴击时触发 COMBAT_CRITICAL_HIT 事件', async () => {
       // 覆盖 usePlayerAction.ts 第 649-655 行：single 技能 isCrit 分支
       const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
@@ -1703,47 +1618,6 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
       expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_CRITICAL_HIT, expect.objectContaining({
         actorType: 'player',
       }));
-    });
-
-    it('伤害型物品 thorns>0 时对玩家造成荆棘反伤', async () => {
-      // 覆盖 usePlayerAction.ts 第 847-857 行：playerUseItem 中 pipeResult.thorns > 0 分支
-      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
-      const state = makeStateMock({ target: enemy, alive: [enemy] });
-      inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'physical_damage', value: 50 }],
-      });
-      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
-      enemyStoreMock.takeDamage.mockReturnValue(false);
-      pipeResultMock.finalDamage = 40;
-      pipeResultMock.thorns = 6;
-
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
-
-      await action.playerUseItem('item1');
-
-      // 物品荆棘反伤：thorns=6，非暴击倍率 1
-      expect(characterMock.takeDamage).toHaveBeenCalledWith(6);
-    });
-
-    it('伤害型物品暴击时荆棘反伤受暴击倍率影响', async () => {
-      // 覆盖 usePlayerAction.ts 第 848 行：playerUseItem 暴击时 thorns × critMultiplier
-      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
-      const state = makeStateMock({ target: enemy, alive: [enemy] });
-      inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'physical_damage', value: 50 }],
-      });
-      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
-      enemyStoreMock.takeDamage.mockReturnValue(false);
-      pipeResultMock.finalDamage = 40;
-      pipeResultMock.thorns = 6;
-      rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
-
-      const action = usePlayerAction(state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makePassiveMock(), makeBossMock(), makePetMock());
-
-      await action.playerUseItem('item1');
-
-      // 暴击时 thorns * 1.5 = Math.floor(9) = 9
-      expect(characterMock.takeDamage).toHaveBeenCalledWith(9);
     });
 
     it('AOE 伤害技能暴击时触发 COMBAT_CRITICAL_HIT 事件', async () => {
@@ -1921,7 +1795,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
   });
 
   describe('边界分支补充：playerSkill heal mana_restore 与 buff 空名回退', () => {
-    it('heal 技能 type 为 mana_restore 时 healType 为 mana', async () => {
+    it('heal 技能 result.heal 时 healType 为 health', async () => {
       // 覆盖 usePlayerAction.ts 第 764, 774, 778 行
       const state = makeStateMock();
       skillStoreMock.getSkill.mockReturnValue({
@@ -1938,7 +1812,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
 
       const { eventBus, GameEvents } = await import('@/modules/bus');
       expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_CAST_HEAL, expect.objectContaining({
-        healType: 'mana',
+        healType: 'health',
         amount: 20,
       }));
       // 日志 skillName 为空字符串

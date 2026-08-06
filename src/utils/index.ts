@@ -13,7 +13,6 @@ export {
   calculateMagicDefense,
   calculateCritChance,
   calculateDodgeChance,
-  calculateHpBonus,
   calculateMpBonus,
   calculateHealBonus,
   calculateAllAttributes,

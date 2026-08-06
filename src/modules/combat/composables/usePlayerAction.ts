@@ -11,7 +11,7 @@
  *   handleLoot / applySkillBuffs / applyDebuffToEnemy
  *
  * 依赖 useCombatState()、useCombatLog() 和 useInitiative() 返回的状态对象。
- * 暴击判定 / 荆棘反伤统一使用 helpers/critCalc.ts（QA-12）。
+ * 暴击判定统一使用 helpers/critCalc.ts（QA-12）。
  */
 import type { CombatActionResult, CombatResult } from '../types';
 import type { EnemyInstance } from '@/modules/enemy';
@@ -30,7 +30,7 @@ import {
   type Effect,
   type EffectType,
 } from '../effects';
-import { rollPlayerCrit, computeThornsDamage } from './helpers/critCalc';
+import { rollPlayerCrit } from './helpers/critCalc';
 import { usePlayerSkill } from './usePlayerSkill';
 import { usePlayerItem } from './usePlayerItem';
 import { useLootHandler } from './useLootHandler';
@@ -104,14 +104,14 @@ export function usePlayerAction(
 
     const sourceName = skill.name;
     const isSelfBuff = skill.buffs.some(b =>
-      ['attack_up', 'defense_up', 'speed_up', 'regen', 'shield', 'thorn'].includes(b.type)
+      ['attack_up', 'defense_up', 'speed_up', 'regen', 'shield'].includes(b.type)
     );
 
     if (isSelfBuff || targetType === 'self') {
       // 自身增益：应用到玩家
       const playerCtx = createPlayerEffectContext();
       for (const be of skill.buffs) {
-        if (['attack_up', 'defense_up', 'speed_up', 'regen', 'shield', 'thorn'].includes(be.type)) {
+        if (['attack_up', 'defense_up', 'speed_up', 'regen', 'shield'].includes(be.type)) {
           const effect: Effect = {
             id: generateEffectId(),
             type: be.type as EffectType,
@@ -230,26 +230,6 @@ export function usePlayerAction(
 
     // BIZ-6：应用 BOSS 反击机制（反弹/反击）
     boss.applyBossCounterMechanics(target, actualDamage);
-
-    // 荆棘反伤：对攻击者自身造成反弹伤害
-    if (pipeResult.thorns > 0) {
-      // P2-2：荆棘反伤基于暴击后伤害，与 Boss 反击基数保持一致
-      const thornsDamage = computeThornsDamage(pipeResult.thorns, critMultiplier);
-      ctx.character.takeDamage(thornsDamage);
-      addCombatLog({
-        actorType: 'system',
-        actorId: 'system',
-        actorName: '系统',
-        eventType: 'combat_damage',
-        targetType: 'player',
-        targetId: 'player',
-        targetName: ctx.character.name,
-        damage: thornsDamage,
-        isCrit: false,
-        isDodge: false,
-        message: `荆棘反伤对 ${ctx.character.name} 造成 ${thornsDamage} 点伤害！`
-      });
-    }
 
     // 物理伤害音效事件
     eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {

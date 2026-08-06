@@ -470,7 +470,7 @@ export const useInventoryStore = defineStore('inventory', () => {
    * - stat：通过 bonus 字段处理（见下方 bonus 分支）
    *
    * 伤害型物品（physical_damage / magic_damage）的设计说明：
-   * 伤害计算依赖战斗上下文（目标、暴击、BOSS 防御机制、荆棘反伤等），
+   * 伤害计算依赖战斗上下文（目标、暴击、BOSS 防御机制等），
    * 由 combat/composables/usePlayerAction.ts 的 playerUseItem 先对目标造成伤害，
    * 再调用本方法仅消耗物品数量。本方法遇到伤害型效果时跳过（非战斗上下文使用伤害物品无意义）。
    *

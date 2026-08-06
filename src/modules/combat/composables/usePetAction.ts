@@ -104,7 +104,7 @@ export function usePetAction(
    * 2. 调用 petStore.petTakeAction() 获取 AI 选择的技能（自动设置冷却）
    * 3. 检查敌人闪避
    * 4. 走伤害管线计算最终伤害（受敌人 debuff/护盾影响）
-   * 5. 应用伤害、写日志、处理荆棘反伤
+   * 5. 应用伤害、写日志
    *
    * 注意：本方法不检查战斗结束（由 singlePetTurn 在调用后检查 aliveEnemies）
    */
@@ -194,21 +194,6 @@ export function usePetAction(
         isDodge: false,
         message: `${pet.name} 使用 ${skill.name} 对 ${target.name} 造成 ${finalDamage} 点伤害！`,
       }, pet);
-
-      // 荆棘反伤：敌人荆棘效果对宠物造成反弹伤害
-      if (pipeResult.thorns > 0) {
-        petStore.takeDamage(pipeResult.thorns);
-        addPetLog({
-          eventType: 'combat_damage',
-          targetType: 'enemy',
-          targetId: target.id,
-          targetName: target.name,
-          damage: pipeResult.thorns,
-          isCrit: false,
-          isDodge: false,
-          message: `荆棘反伤对 ${pet.name} 造成 ${pipeResult.thorns} 点伤害！`,
-        }, pet);
-      }
     } else {
       // 伤害被完全吸收（护盾）
       addPetLog({

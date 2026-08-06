@@ -29,7 +29,6 @@ import {
   CRIT_DEX_COEFFICIENT,
   DODGE_CHANCE_CAP,
   DODGE_DEX_COEFFICIENT,
-  HP_BONUS_CON_COEFFICIENT,
   HEAL_WIS_COEFFICIENT,
   HEAL_CHA_COEFFICIENT
 } from '@/config/character';
@@ -118,15 +117,6 @@ export function calculateDodgeChance(stats: Stats): number {
 }
 
 /**
- * 计算每级HP加成
- * @param {Stats} stats - 角色主属性对象
- * @returns {number} 每级HP加成
- */
-export function calculateHpBonus(stats: Stats): number {
-  return stats.con * HP_BONUS_CON_COEFFICIENT;
-}
-
-/**
  * 计算每级MP加成
  * @param {Stats} stats - 角色主属性对象
  * @returns {number} 每级MP加成
@@ -159,7 +149,6 @@ export interface Attributes {
   maxHp: number;
   maxMana: number;
   healBonus: number;
-  hpBonus: number;
   mpBonus: number;
 }
 
@@ -179,7 +168,6 @@ export function calculateAllAttributes(stats: Stats): Attributes {
     maxHp: calculateMaxHp(stats),
     maxMana: calculateMaxMana(stats),
     healBonus: calculateHealBonus(stats),
-    hpBonus: calculateHpBonus(stats),
     mpBonus: calculateMpBonus(stats)
   };
 }

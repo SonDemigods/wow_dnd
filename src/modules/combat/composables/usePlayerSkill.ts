@@ -10,13 +10,13 @@
  *   - state/log/ctx/initiative/endCombat/boss 五大上下文
  *   - applySkillBuffs/applyDebuffToEnemy 通过 helpers 参数注入（仍由 usePlayerAction 持有）
  *
- * 暴击判定 / 荆棘反伤统一使用 helpers/critCalc.ts（QA-12）。
+ * 暴击判定统一使用 helpers/critCalc.ts（QA-12）。
  */
 import type { CombatActionResult, AoeHitInfo, CombatResult } from '../types';
 import type { EnemyInstance } from '@/modules/enemy';
 import type { ICombatContext } from '../combatContext';
 import { eventBus, GameEvents } from '@/modules/bus';
-import { PLAYER_AOE_DAMAGE_PENALTY } from '@/config/combat';
+import { PLAYER_AOE_DAMAGE_PENALTY, HEAL_BONUS_DIVISOR } from '@/config/combat';
 import {
   processDamagePipeline,
   createEmptyContainer,
@@ -26,7 +26,7 @@ import {
   type EffectType,
   type DamageType,
 } from '../effects';
-import { rollPlayerCrit, computeThornsDamage } from './helpers/critCalc';
+import { rollPlayerCrit } from './helpers/critCalc';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
 import type { useInitiative } from './useInitiative';
@@ -263,19 +263,6 @@ export function usePlayerSkill(
           // BIZ-6：应用 BOSS 反击机制（反弹/反击）
           boss.applyBossCounterMechanics(e, actualAoeDamage);
 
-          // BIZ-1：荆棘反伤：对玩家自身造成反弹伤害（乘以暴击倍率，与 playerAttack 保持一致）
-          if (pipeResult.thorns > 0) {
-            const thornsDamage = computeThornsDamage(pipeResult.thorns, critMultiplier);
-            ctx.character.takeDamage(thornsDamage);
-            addCombatLog({
-              actorType: 'system', actorId: 'system', actorName: '系统',
-              eventType: 'combat_damage', targetType: 'player', targetId: 'player',
-              targetName: ctx.character.name, damage: thornsDamage,
-              isCrit: false, isDodge: false,
-              message: `荆棘反伤对 ${ctx.character.name} 造成 ${thornsDamage} 点伤害！`
-            });
-          }
-
           // P3-93 修复：补充 isCrit 字段，让 AOE 逐目标命中信息完整（供 UI 展示暴击特效/日志）
           aoeHits.push({ enemyId: e.id, enemyName: e.name, damage: actualAoeDamage, isCrit });
 
@@ -382,19 +369,6 @@ export function usePlayerSkill(
         // BIZ-6：应用 BOSS 反击机制（反弹/反击）
         boss.applyBossCounterMechanics(target, actualSkillDamage);
 
-        // BIZ-1：荆棘反伤（与 playerAttack 保持一致，乘以暴击倍率）
-        if (pipeResult.thorns > 0) {
-          const thornsDamage = computeThornsDamage(pipeResult.thorns, critMultiplier);
-          ctx.character.takeDamage(thornsDamage);
-          addCombatLog({
-            actorType: 'system', actorId: 'system', actorName: '系统',
-            eventType: 'combat_damage', targetType: 'player', targetId: 'player',
-            targetName: ctx.character.name, damage: thornsDamage,
-            isCrit: false, isDodge: false,
-            message: `荆棘反伤对 ${ctx.character.name} 造成 ${thornsDamage} 点伤害！`
-          });
-        }
-
         // 伤害类型音效事件
         eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
           amount: actualSkillDamage,
@@ -473,10 +447,6 @@ export function usePlayerSkill(
                 message: `${petInst.name} 受狩猎指令激发，对 ${updatedTarget.name} 额外造成 ${petDamage} 点撕咬伤害！`,
               });
               if (petKill) isDead = true;
-              // 荆棘反伤对宠物
-              if (petPipeResult.thorns > 0) {
-                pet.petTakeDamage(petPipeResult.thorns);
-              }
             }
           }
         }
@@ -561,12 +531,27 @@ export function usePlayerSkill(
         }
       }
     } else if (result.heal) {
-      // 生命恢复技能音效事件（skillsStore.castSkill 已通过 characterStore.receiveHeal 应用生命恢复）
+      // 生命恢复：castSkill 已计算基础治疗量（含天赋加成），此处应用 healBonus + 暴击
+      const statModifiers = passive.getStatModifiers();
+      const healBonus = ctx.character.attributes.healBonus ?? 0;
+      const { isCrit: healCrit, multiplier: healCritMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
+      const finalHeal = Math.floor(result.heal * (1 + healBonus / HEAL_BONUS_DIVISOR) * healCritMultiplier);
+      ctx.character.receiveHeal(finalHeal);
+
       eventBus.emit(GameEvents.COMBAT_CAST_HEAL, {
-        amount: result.heal,
-        healType: result.type === 'mana_restore' ? 'mana' : 'health',
+        amount: finalHeal,
+        healType: 'health',
         targetName: ctx.character.name
       });
+
+      if (healCrit) {
+        eventBus.emit(GameEvents.COMBAT_CRITICAL_HIT, {
+          amount: finalHeal,
+          damageType: 'physical',
+          targetName: ctx.character.name,
+          actorType: 'player'
+        });
+      }
 
       addCombatLog({
         actorType: 'player',
@@ -575,10 +560,12 @@ export function usePlayerSkill(
         eventType: 'combat_heal',
         skillId,
         skillName: skill?.name || '',
-        heal: result.heal,
-        isCrit: false,
+        heal: finalHeal,
+        isCrit: healCrit,
         isDodge: false,
-        message: `${skill?.name || '技能'} 恢复了 ${result.heal} 点生命值！`
+        message: healCrit
+          ? `${skill?.name || '技能'} 暴击！恢复了 ${finalHeal} 点生命值！`
+          : `${skill?.name || '技能'} 恢复了 ${finalHeal} 点生命值！`
       });
 
       initiative.endPlayerTurn();

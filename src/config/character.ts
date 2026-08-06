@@ -161,12 +161,6 @@ export const DODGE_CHANCE_CAP = 30;
 export const DODGE_DEX_COEFFICIENT = 0.3;
 
 /**
- * 每级生命值加成系数
- * 公式：con * HP_BONUS_CON_COEFFICIENT
- */
-export const HP_BONUS_CON_COEFFICIENT = 2;
-
-/**
  * 生命恢复加成系数
  * 公式：floor(wis * HEAL_WIS_COEFFICIENT + cha * HEAL_CHA_COEFFICIENT)
  */

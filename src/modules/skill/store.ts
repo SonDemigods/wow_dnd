@@ -439,8 +439,8 @@ export const useSkillStore = defineStore('skills', () => {
         break;
 
       case 'health_restore':
-        // 生命恢复：返回 heal 值并直接调用 characterStore 恢复 HP
-        // P2-75 修复：应用 healing_multiplier 天赋加成（如天赋提供 24% 治疗提升，则实际治疗量 = 基础 × 1.24）
+        // 生命恢复：返回 heal 值，由调用方（usePlayerSkill）应用 healBonus + 暴击后调用 receiveHeal
+        // P2-75：healing_multiplier 天赋加成在此层应用（如天赋提供 24% 治疗提升，则 heal = 基础 × 1.24）
         {
           const talentStore = useTalentStore();
           const healingMultiplier = talentStore.effectSummary.healingMultiplier;
@@ -448,7 +448,6 @@ export const useSkillStore = defineStore('skills', () => {
             ? Math.floor(damageValue * (1 + healingMultiplier))
             : damageValue;
           heal = finalHeal;
-          await characterStore.receiveHeal(finalHeal);
         }
         break;
 

@@ -1434,14 +1434,13 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       id: 'druid_thorns',
       name: '荆棘打击',
       icon: 'game-icons:thorned-arrow',
-      description: '召唤锋利的荆棘缠绕自身，攻击者将受到荆棘的反伤',
+      description: '召唤锋利的荆棘缠绕敌人，造成自然伤害',
       mpCost: 8,
       type: 'magic_damage',
       effect: { type: 'magic_damage', value: 12, statKey: 'wis' },
       unlockLevel: 5,
       cooldown: 2,
       targetType: 'single',
-      buffs: [{ type: 'thorn', value: 0.25, turns: 3 }]
     },
     {
       id: 'druid_barkskin',
@@ -1776,14 +1775,14 @@ export const CLASS_ABILITIES: { class_id: string; skills: Skill[] }[] = [
       id: 'shaman_lightning_shield',
       name: '闪电之盾',
       icon: 'game-icons:lightning-shield',
-      description: '召唤雷电结界环绕自身，吸收伤害并对攻击者反弹雷电',
+      description: '召唤雷电结界环绕自身，吸收伤害',
       mpCost: 8,
       type: 'buff',
       effect: { type: 'buff', value: 0 },
       unlockLevel: 2,
       cooldown: 3,
       targetType: 'self',
-      buffs: [{ type: 'shield', value: 25, turns: 3 }, { type: 'thorn', value: 0.2, turns: 3 }]
+      buffs: [{ type: 'shield', value: 25, turns: 3 }]
     },
     {
       id: 'shaman_chain_heal',

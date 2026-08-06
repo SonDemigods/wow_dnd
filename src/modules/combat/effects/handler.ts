@@ -41,12 +41,6 @@ export interface EffectHandler {
    */
   getDamageAbsorb?(effect: Effect, incomingDamage: number): number;
 
-  /**
-   * 反伤 — 受到攻击后调用
-   * 返回反弹给攻击方的伤害量
-   */
-  getThornDamage?(effect: Effect, incomingDamage: number): number;
-
   // ===== 控制效果 =====
 
   /** 返回被禁用的行动类型列表 */
@@ -121,11 +115,11 @@ export class EffectHandlerRegistry {
   }
 
   /**
-   * 遍历容器中所有效果，调用指定方法，累加结果（用于护盾、反伤）
+   * 遍历容器中所有效果，调用指定方法，累加结果（用于护盾吸收）
    */
   reduceSum(
     container: EffectContainer,
-    method: 'getDamageAbsorb' | 'getThornDamage',
+    method: 'getDamageAbsorb',
     ctx: EffectContext,
     extra: number
   ): number;
@@ -139,7 +133,7 @@ export class EffectHandlerRegistry {
   ): number;
   reduceSum(
     container: EffectContainer,
-    method: 'getDamageAbsorb' | 'getThornDamage' | 'getSpeedMod',
+    method: 'getDamageAbsorb' | 'getSpeedMod',
     _ctx: EffectContext,
     extra?: number
   ): number {

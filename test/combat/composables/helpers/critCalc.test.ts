@@ -3,14 +3,13 @@
  *
  * 覆盖：
  *   - rollPlayerCrit：各暴击几率边界（0/100/小数）+ RNG 注入 + 倍率常量
- *   - computeThornsDamage：基础计算 + 暴击倍率 + 向下取整 + 边界值
  *
  * 测试策略：
  *   rollPlayerCrit 直接依赖 Rng 接口，通过注入确定性 rng mock 控制判定结果，
  *   无需 mock service 模块，断言 rng.bool 调用入参即可验证归一化逻辑。
  */
 import { describe, it, expect, vi } from 'vitest';
-import { rollPlayerCrit, computeThornsDamage } from '@/modules/combat/composables/helpers/critCalc';
+import { rollPlayerCrit } from '@/modules/combat/composables/helpers/critCalc';
 import { CRIT_DAMAGE_MULTIPLIER } from '@/config/combat';
 import type { Rng } from '@/utils/rng';
 import type { Attributes } from '@/modules/character';
@@ -108,50 +107,6 @@ describe('critCalc helper（QA-12）', () => {
     it('未注入 RNG 时使用 defaultRng（不抛错）', () => {
       // 不传 rng 参数，应使用默认 defaultRng
       expect(() => rollPlayerCrit(makeAttrs(50))).not.toThrow();
-    });
-  });
-
-  // -------------------- computeThornsDamage --------------------
-
-  describe('computeThornsDamage', () => {
-    it('非暴击时 thorns × 1 = thorns 向下取整', () => {
-      expect(computeThornsDamage(10, 1)).toBe(10);
-    });
-
-    it('暴击时 thorns × CRIT_DAMAGE_MULTIPLIER 向下取整', () => {
-      // 10 × 1.5 = 15
-      expect(computeThornsDamage(10, CRIT_DAMAGE_MULTIPLIER)).toBe(15);
-    });
-
-    it('小数结果向下取整', () => {
-      // 7 × 1.5 = 10.5 → 10
-      expect(computeThornsDamage(7, CRIT_DAMAGE_MULTIPLIER)).toBe(10);
-      // 5 × 1.5 = 7.5 → 7
-      expect(computeThornsDamage(5, CRIT_DAMAGE_MULTIPLIER)).toBe(7);
-    });
-
-    it('thorns=0 时返回 0', () => {
-      expect(computeThornsDamage(0, CRIT_DAMAGE_MULTIPLIER)).toBe(0);
-      expect(computeThornsDamage(0, 1)).toBe(0);
-    });
-
-    it('multiplier=0 时返回 0（防御性边界）', () => {
-      expect(computeThornsDamage(100, 0)).toBe(0);
-    });
-
-    it('与 rollPlayerCrit 联动：暴击时荆棘反伤受倍率影响', () => {
-      // 模拟 playerAttack 中的实际使用模式：
-      //   const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(attrs);
-      //   const thornsDamage = computeThornsDamage(pipeResult.thorns, critMultiplier);
-      const rngCrit = makeRngMock({ boolResult: true });
-      const { multiplier: critMultiplier } = rollPlayerCrit(makeAttrs(50), rngCrit);
-      // thorns=6, 暴击倍率 1.5 → 9
-      expect(computeThornsDamage(6, critMultiplier)).toBe(9);
-
-      const rngNoCrit = makeRngMock({ boolResult: false });
-      const { multiplier: nonCritMultiplier } = rollPlayerCrit(makeAttrs(50), rngNoCrit);
-      // thorns=6, 非暴击倍率 1 → 6
-      expect(computeThornsDamage(6, nonCritMultiplier)).toBe(6);
     });
   });
 

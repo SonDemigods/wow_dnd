@@ -104,10 +104,9 @@ vi.mock('@/modules/combat/service', () => ({
 const rollPlayerCritMock = vi.hoisted(() => vi.fn(() => ({ isCrit: false, multiplier: 1 })));
 vi.mock('@/modules/combat/composables/helpers/critCalc', () => ({
   rollPlayerCrit: rollPlayerCritMock,
-  computeThornsDamage: (thorns: number, multiplier: number) => Math.floor(thorns * multiplier),
 }));
 
-const pipeResultMock = { finalDamage: 40, absorbed: 0, thorns: 0 };
+const pipeResultMock = { finalDamage: 40, absorbed: 0 };
 vi.mock('@/modules/combat/effects', async () => {
   const actual = await vi.importActual<typeof import('@/modules/combat/effects')>('@/modules/combat/effects');
   return {
@@ -268,7 +267,6 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
     characterMock.hp = 100;
     pipeResultMock.finalDamage = 40;
     pipeResultMock.absorbed = 0;
-    pipeResultMock.thorns = 0;
     rollPlayerCritMock.mockReturnValue({ isCrit: false, multiplier: 1 });
     enemyStoreMock.takeDamage.mockReturnValue(false);
     enemyStoreMock.getEnemyById.mockReturnValue(null);
@@ -352,25 +350,6 @@ describe('usePlayerItem - 玩家物品 Composable（QA-9）', () => {
       // finalDamage = 40 * 1.5 = 60
       expect(result.damage).toBe(60);
       expect(result.isCrit).toBe(true);
-    });
-
-    it('荆棘反伤使用 computeThornsDamage 计算（暴击时受倍率影响）', async () => {
-      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
-      const state = makeStateMock({ target: enemy, alive: [enemy] });
-      inventoryStoreMock.getItemInfo.mockReturnValue({
-        name: '炸弹', kind: 'consumable', capabilities: ['describable', 'usable', 'stackable', 'sellable'], effects: [{ type: 'physical_damage', value: 50 }],
-      });
-      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
-      pipeResultMock.finalDamage = 40;
-      pipeResultMock.thorns = 6;
-      rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
-
-      await usePlayerItem(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makePassiveMock(),
-      ).playerUseItem('item1');
-
-      // 暴击时 thorns * 1.5 = Math.floor(9) = 9
-      expect(characterMock.takeDamage).toHaveBeenCalledWith(9);
     });
 
     it('击杀所有敌人时调用 endCombat("victory")', async () => {

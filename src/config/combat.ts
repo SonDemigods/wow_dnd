@@ -13,7 +13,7 @@
  * 基础伤害 = floor(攻击属性 * 该系数) + floor(random * 伤害随机范围)。
  * 表示攻击属性转化为基础伤害的比例（0~1 之间的小数）。
  *
- * @see src/modules/combat/effects/pipeline.ts calcBaseDamage
+ * @see src/modules/combat/effects/pipeline.ts calcAttackDamage
  */
 export const DAMAGE_BASE_COEFFICIENT = 0.4;
 
@@ -22,19 +22,39 @@ export const DAMAGE_BASE_COEFFICIENT = 0.4;
  *
  * 基础伤害的随机浮动上限（整数，floor 后加到基础伤害上），模拟伤害的轻微随机性。
  *
- * @see src/modules/combat/effects/pipeline.ts calcBaseDamage
+ * @see src/modules/combat/effects/pipeline.ts calcAttackDamage
  */
 export const DAMAGE_RANDOM_RANGE = 10;
 
 /**
- * 防御减伤系数
+ * 物理减伤保底系数
  *
- * 防御方减伤量 = min(floor(基础伤害 * 该系数), 防御属性)。
- * 表示基础伤害中被防御属性抵扣的比例上限（0~1 之间的小数）。
+ * 物理减伤量 = max(floor(伤害 × 该系数), physicalDefense)。
+ * 防御可全额生效，该系数为最低保底减免比例（0~1 之间的小数）。
  *
- * @see src/modules/combat/effects/pipeline.ts calcBaseDamage
+ * @see src/modules/combat/effects/pipeline.ts applyDefenseReduction
  */
-export const DEFENSE_REDUCTION_COEFFICIENT = 0.3;
+export const PHYSICAL_DEFENSE_REDUCTION_COEFFICIENT = 0.3;
+
+/**
+ * 魔法减伤保底系数
+ *
+ * 魔法减伤量 = max(floor(伤害 × 该系数), magicDefense)。
+ * 防御可全额生效，该系数为最低保底减免比例（0~1 之间的小数）。
+ *
+ * @see src/modules/combat/effects/pipeline.ts applyDefenseReduction
+ */
+export const MAGICAL_DEFENSE_REDUCTION_COEFFICIENT = 0.3;
+
+/**
+ * 治疗加成换算除数
+ *
+ * 最终治疗量 = floor(原始治疗 × (1 + healBonus / 该值))。
+ * healBonus 为感知/魅力驱动的衍生值，除以该常数转换为百分比增量。
+ *
+ * @see src/modules/combat/composables/usePlayerSkill.ts 治疗分支
+ */
+export const HEAL_BONUS_DIVISOR = 100;
 
 // ==================== 暴击参数 ====================
 
@@ -42,9 +62,8 @@ export const DEFENSE_REDUCTION_COEFFICIENT = 0.3;
  * 暴击伤害倍率
  *
  * 暴击时最终伤害 = floor(管线最终伤害 × 该倍率)。
- * 该倍率同时作用于荆棘反伤（与玩家伤害保持口径一致，见 QA-12 / P2-2）。
  *
- * @see src/modules/combat/composables/helpers/critCalc.ts rollPlayerCrit / computeThornsDamage
+ * @see src/modules/combat/composables/helpers/critCalc.ts rollPlayerCrit
  */
 export const CRIT_DAMAGE_MULTIPLIER = 1.5;
 

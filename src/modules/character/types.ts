@@ -308,7 +308,6 @@ export interface StatSource {
  * @property {number} magicDefense - 魔法防御力（由 `calculateMagicDefense` 根据感知计算）
  * @property {number} critChance - 暴击率，百分比整数（由 `calculateCritChance` 根据敏捷计算）
  * @property {number} dodgeChance - 闪避率，百分比整数（由 `calculateDodgeChance` 根据敏捷计算）
- * @property {number} hpBonus - 生命值加成系数（由 `calculateHpBonus` 根据体质计算）
  * @property {number} mpBonus - 法力值加成系数（由 `calculateMpBonus` 根据智力计算）
  * @property {number} healBonus - 治疗加成系数（由 `calculateHealBonus` 根据感知计算）
  *
@@ -323,7 +322,6 @@ export interface Attributes {
   magicDefense: number;
   critChance: number;
   dodgeChance: number;
-  hpBonus: number;
   mpBonus: number;
   healBonus: number;
 }

@@ -18,7 +18,6 @@ export type EffectType =
   | 'speed_up'     // 速度上升
   | 'speed_down'   // 速度下降
   | 'regen'        // 恢复：每回合回血
-  | 'thorn'        // 荆棘：反弹伤害
   | 'vulnerable';  // 易伤：受到的伤害增加
 
 /** 叠加策略 */
@@ -83,8 +82,6 @@ export interface DamagePipelineResult {
   absorbed: number;
   /** 最终扣血量 */
   finalDamage: number;
-  /** 荆棘反弹伤害 */
-  thorns: number;
 }
 
 /** 伤害类型 */

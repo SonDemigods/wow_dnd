@@ -228,7 +228,7 @@ export function validateSkillBuffs(): number {
   const validEffectTypes: ReadonlySet<EffectType> = new Set<EffectType>([
     'poison', 'burn', 'stun', 'freeze', 'silence', 'shield',
     'attack_up', 'attack_down', 'defense_up', 'defense_down',
-    'speed_up', 'speed_down', 'regen', 'thorn', 'vulnerable',
+    'speed_up', 'speed_down', 'regen', 'vulnerable',
   ]);
 
   const errors: string[] = [];

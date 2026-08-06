@@ -488,7 +488,7 @@ describe('useSkillStore - 技能 Store', () => {
       expect(spy).toHaveBeenCalledWith({ skill: s1, success: true });
     });
 
-    it('health_restore 成功：返回 heal，调用 receiveHeal 恢复 HP', async () => {
+    it('health_restore 成功：返回 heal，不调用 receiveHeal（由调用方应用 healBonus + 暴击）', async () => {
       const s1 = makeSkill({ id: 's1', type: 'health_restore', mpCost: 5, name: '治疗术' });
       vi.mocked(calculateSkillDamage).mockReturnValue(60);
       const store = useSkillStore();
@@ -498,7 +498,7 @@ describe('useSkillStore - 技能 Store', () => {
 
       expect(result.success).toBe(true);
       expect(result.heal).toBe(60);
-      expect(mocks.characterStore.receiveHeal).toHaveBeenCalledWith(60);
+      expect(mocks.characterStore.receiveHeal).not.toHaveBeenCalled();
     });
 
     it('mana_restore 成功：调用 changeMp 两次（消耗 + 恢复）', async () => {

@@ -114,7 +114,6 @@ describe('useSkillDisplay - 技能展示工具函数', () => {
       ['speed_up', '加速'],
       ['speed_down', '减速'],
       ['regen', '回复'],
-      ['thorn', '荆棘'],
       ['vulnerable', '易伤'],
     ])('已知效果 %s 返回 %s', (type, expected) => {
       expect(getEffectTypeName(type)).toBe(expected);
@@ -143,6 +142,13 @@ describe('useSkillDisplay - 技能展示工具函数', () => {
       expect(getSkillEffectText(skill)).toBe('造成 50 点伤害');
     });
 
+    it('physical_damage 传入 stats 时显示含属性加成的预估值', () => {
+      const skill = makeSkill({ effect: { type: 'physical_damage', value: 50 } });
+      // unlockLevel=1 → coefficient=0.50, statKey=str
+      // floor(50 + 20 * 0.50) = 60
+      expect(getSkillEffectText(skill, { str: 20, dex: 10, con: 10, int: 10, wis: 10, cha: 10 })).toBe('造成 60 点伤害');
+    });
+
     it('magic_damage 返回 造成 {value} 点伤害', () => {
       const skill = makeSkill({ effect: { type: 'magic_damage', value: 80 } });
       expect(getSkillEffectText(skill)).toBe('造成 80 点伤害');
@@ -151,6 +157,13 @@ describe('useSkillDisplay - 技能展示工具函数', () => {
     it('health_restore 返回 恢复 {value} 点生命值', () => {
       const skill = makeSkill({ effect: { type: 'health_restore', value: 30 } });
       expect(getSkillEffectText(skill)).toBe('恢复 30 点生命值');
+    });
+
+    it('health_restore 传入 stats 时显示含属性加成的预估值', () => {
+      const skill = makeSkill({ type: 'health_restore', effect: { type: 'health_restore', value: 30 } });
+      // unlockLevel=1 → coefficient=0.30, statKey=wis
+      // floor(30 + 20 * 0.30) = 36
+      expect(getSkillEffectText(skill, { str: 10, dex: 10, con: 10, int: 10, wis: 20, cha: 10 })).toBe('恢复 36 点生命值');
     });
 
     it('mana_restore 返回 恢复 {value} 点法力值', () => {
@@ -236,9 +249,16 @@ describe('useSkillDisplay - 技能展示工具函数', () => {
       expect(getSkillEffectBrief(skill)).toBe('物理伤害50');
     });
 
-    it('physical_damage 有 coefficient 返回 物理伤害50x1.5', () => {
+    it('physical_damage 有 coefficient 返回 物理伤害50（不显示系数）', () => {
       const skill = makeSkill({ effect: { type: 'physical_damage', value: 50, coefficient: 1.5 } });
-      expect(getSkillEffectBrief(skill)).toBe('物理伤害50x1.5');
+      expect(getSkillEffectBrief(skill)).toBe('物理伤害50');
+    });
+
+    it('physical_damage 传入 stats 时显示含属性加成的预估值', () => {
+      const skill = makeSkill({ effect: { type: 'physical_damage', value: 50 } });
+      // unlockLevel=1 → coefficient=0.50, statKey=str
+      // floor(50 + 20 * 0.50) = 60
+      expect(getSkillEffectBrief(skill, { str: 20, dex: 10, con: 10, int: 10, wis: 10, cha: 10 })).toBe('物理伤害60');
     });
 
     it('magic_damage 无 coefficient 返回 魔法伤害80', () => {
@@ -246,9 +266,16 @@ describe('useSkillDisplay - 技能展示工具函数', () => {
       expect(getSkillEffectBrief(skill)).toBe('魔法伤害80');
     });
 
-    it('health_restore 有 coefficient 返回 生命恢复30x2', () => {
+    it('health_restore 有 coefficient 返回 生命恢复30（不显示系数）', () => {
       const skill = makeSkill({ effect: { type: 'health_restore', value: 30, coefficient: 2 } });
-      expect(getSkillEffectBrief(skill)).toBe('生命恢复30x2');
+      expect(getSkillEffectBrief(skill)).toBe('生命恢复30');
+    });
+
+    it('health_restore 传入 stats 时显示含属性加成的预估值', () => {
+      const skill = makeSkill({ type: 'health_restore', effect: { type: 'health_restore', value: 30 } });
+      // unlockLevel=1 → coefficient=0.30, statKey=wis
+      // floor(30 + 20 * 0.30) = 36
+      expect(getSkillEffectBrief(skill, { str: 10, dex: 10, con: 10, int: 10, wis: 20, cha: 10 })).toBe('生命恢复36');
     });
 
     it('mana_restore 无 coefficient 返回 法力恢复20', () => {

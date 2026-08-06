@@ -10,7 +10,7 @@ import type { EffectContainer, EffectContext, DamageType, DamagePipelineResult, 
 import { EffectHandlerRegistry } from './handler';
 import { addEffectToContainer } from './container';
 import { defaultRng, type Rng } from '@/utils/rng';
-import { DAMAGE_BASE_COEFFICIENT, DAMAGE_RANDOM_RANGE, DEFENSE_REDUCTION_COEFFICIENT } from '@/config/combat';
+import { DAMAGE_BASE_COEFFICIENT, DAMAGE_RANDOM_RANGE, PHYSICAL_DEFENSE_REDUCTION_COEFFICIENT, MAGICAL_DEFENSE_REDUCTION_COEFFICIENT } from '@/config/combat';
 
 /**
  * 被动 stat_modifier 条目
@@ -25,22 +25,39 @@ export interface StatModifierEntry {
 }
 
 /**
- * 计算基础伤害（按伤害类型选择攻防属性）
+ * 计算攻击方原始伤害（不含防御）
+ *
+ * 按伤害类型选择对应攻击属性（物攻/魔攻），不含防御减免。
+ * 防御减免由 applyDefenseReduction 独立处理，确保技能伤害也受防御影响。
  *
  * @param rng - 随机数生成器，用于伤害浮动（0~9 的整数增量）
  */
-function calcBaseDamage(
+function calcAttackDamage(
   attackerStats: EffectContext['baseStats'],
-  defenderStats: EffectContext['baseStats'],
   damageType: DamageType,
   rng: Rng
 ): number {
   const attack = damageType === 'physical' ? attackerStats.physicalAttack : attackerStats.magicAttack;
-  const defense = damageType === 'physical' ? defenderStats.physicalDefense : defenderStats.magicDefense;
+  return Math.floor(attack * DAMAGE_BASE_COEFFICIENT) + rng.int(0, DAMAGE_RANDOM_RANGE - 1);
+}
 
-  const baseDamage = Math.floor(attack * DAMAGE_BASE_COEFFICIENT) + rng.int(0, DAMAGE_RANDOM_RANGE - 1);
-  const defenseReduction = Math.min(Math.floor(baseDamage * DEFENSE_REDUCTION_COEFFICIENT), defense);
-  return Math.max(1, baseDamage - defenseReduction);
+/**
+ * 减伤公式：按伤害类型选择对应防御属性（物防/魔防），独立计算减伤
+ *
+ * 取大值：防御可全额生效，coefficient × 伤害 作为最低保底减免。
+ * 无论伤害来源是技能还是普攻，减伤公式始终应用。
+ */
+function applyDefenseReduction(
+  rawDamage: number,
+  defenderStats: EffectContext['baseStats'],
+  damageType: DamageType
+): number {
+  const defense = damageType === 'physical' ? defenderStats.physicalDefense : defenderStats.magicDefense;
+  const coefficient = damageType === 'physical'
+    ? PHYSICAL_DEFENSE_REDUCTION_COEFFICIENT
+    : MAGICAL_DEFENSE_REDUCTION_COEFFICIENT;
+  const defenseReduction = Math.max(Math.floor(rawDamage * coefficient), defense);
+  return Math.max(1, rawDamage - defenseReduction);
 }
 
 /**
@@ -76,14 +93,14 @@ function extractAttackerModifiers(
 /**
  * 执行完整伤害计算管线
  *
- * 阶段 0: 计算基础伤害（按 damageType 选择物攻/魔攻 vs 物防/魔防）
+ * 阶段 0: 计算原始伤害（技能传 baseDamageOverride 跳过，普攻打 calcAttackDamage）
+ * 阶段 0.5: 减伤公式（始终应用，无论来源是技能还是普攻）
  * 阶段 1: 攻击方效果修正 → 预期伤害
  *   - 1a: 应用 stat_modifier 的 attack_multiplier 到 baseDamage
  *   - 1b: 应用 effect 系统的 attackerMod（attack_up/attack_down 等）
  *   - 1c: 应用 stat_modifier 的 bonus_damage_percent
  * 阶段 2: 防御方修正 → 实际伤害
  * 阶段 3: 护盾吸收 → 最终伤害
- * 阶段 4: 荆棘反伤
  *
  * @param rng - 随机数生成器，默认 `defaultRng`。仅在未传 baseDamageOverride 时用于阶段 0 基础伤害浮动
  * @param attackerStatModifiers - 攻击方 stat_modifier 列表（来自被动技能），可选
@@ -95,17 +112,20 @@ export function processDamagePipeline(
   attackerCtx: EffectContext,
   defenderCtx: EffectContext,
   damageType: DamageType,
-  baseDamageOverride?: number,  // 技能伤害可直接传入跳过阶段 0
+  baseDamageOverride?: number,
   rng: Rng = defaultRng,
   attackerStatModifiers?: ReadonlyArray<StatModifierEntry>,
 ): DamagePipelineResult {
-  // 阶段 0: 基础伤害
-  const rawBaseDamage = baseDamageOverride ?? calcBaseDamage(attackerCtx.baseStats, defenderCtx.baseStats, damageType, rng);
+  // 阶段 0: 原始伤害（技能传 override，普攻打 calcAttackDamage）
+  const rawDamage = baseDamageOverride ?? calcAttackDamage(attackerCtx.baseStats, damageType, rng);
+
+  // 阶段 0.5: 减伤公式（始终应用，无论来源是技能还是普攻）
+  const defendedDamage = applyDefenseReduction(rawDamage, defenderCtx.baseStats, damageType);
 
   // 阶段 1: 攻击方修正 → 预期伤害
   // P3-146：先应用 stat_modifier 中的 attack_multiplier（影响"面板攻击力"层）
   const { attackMultiplier, bonusPercent } = extractAttackerModifiers(attackerStatModifiers, damageType);
-  const baseDamage = Math.floor(rawBaseDamage * attackMultiplier);
+  const baseDamage = Math.floor(defendedDamage * attackMultiplier);
 
   // 1b: effect 系统修正（attack_up/attack_down 等效果）
   const attackerMod = registry.reduceMultiplier(attackerEffects, 'getAttackerDamageMod', attackerCtx);
@@ -124,10 +144,7 @@ export function processDamagePipeline(
   const rawFinal = actualDamage - absorbed;
   const finalDamage = Number.isFinite(rawFinal) ? Math.max(0, rawFinal) : 0;
 
-  // 阶段 4: 荆棘反伤
-  const thorns = registry.reduceSum(defenderEffects, 'getThornDamage', defenderCtx, finalDamage);
-
-  return { expectedDamage, actualDamage, absorbed, finalDamage, thorns };
+  return { expectedDamage, actualDamage, absorbed, finalDamage };
 }
 
 /**

@@ -217,7 +217,6 @@ describe('computeAttributes 衍生属性聚合', () => {
     expect(attrs).toHaveProperty('magicDefense');
     expect(attrs).toHaveProperty('critChance');
     expect(attrs).toHaveProperty('dodgeChance');
-    expect(attrs).toHaveProperty('hpBonus');
     expect(attrs).toHaveProperty('mpBonus');
     expect(attrs).toHaveProperty('healBonus');
   });

@@ -3,13 +3,13 @@
  * @description 覆盖：
  * 1. 注册表基础 API：register / registerAll / get / registeredCount（含覆盖警告）
  * 2. reduceMultiplier：累乘攻击方/防御方修正
- * 3. reduceSum：累加护盾吸收 / 荆棘反伤 / 速度修正
+ * 3. reduceSum：累加护盾吸收 / 速度修正
  * 4. tickAll：推进回合、累计 dot/regen、过期清理、onRemove 钩子
  * 5. getDisabledActions：合并禁用类型 + skipTurn 自动判定
- * 6. 15 种内置处理器：poison / burn / stun / freeze / silence / shield /
+ * 6. 14 种内置处理器：poison / burn / stun / freeze / silence / shield /
  *    attack_up / attack_down / defense_up / defense_down / vulnerable /
- *    speed_up / speed_down / regen / thorn
- * 7. createDefaultRegistry：默认注册全部 15 种处理器
+ *    speed_up / speed_down / regen
+ * 7. createDefaultRegistry：默认注册全部 14 种处理器
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EffectHandlerRegistry } from '@/modules/combat/effects/handler';
@@ -29,7 +29,6 @@ import {
 } from '@/modules/combat/effects/handlers/defenseMod';
 import { speedUpHandler, speedDownHandler } from '@/modules/combat/effects/handlers/speedMod';
 import { regenHandler } from '@/modules/combat/effects/handlers/regen';
-import { thornHandler } from '@/modules/combat/effects/handlers/thorn';
 import { createEmptyContainer, addEffectToContainer } from '@/modules/combat/effects/container';
 import type { Effect, EffectContainer, EffectContext, EffectType } from '@/modules/combat/effects/types';
 
@@ -126,13 +125,13 @@ describe('EffectHandlerRegistry 注册表 API', () => {
     expect(registry.registeredCount).toBe(2);
   });
 
-  it('createDefaultRegistry 注册全部 15 种内置处理器', () => {
+  it('createDefaultRegistry 注册全部 14 种内置处理器', () => {
     createDefaultRegistry(registry);
-    expect(registry.registeredCount).toBe(15);
+    expect(registry.registeredCount).toBe(14);
     const allTypes: EffectType[] = [
       'poison', 'burn', 'stun', 'freeze', 'silence',
       'shield', 'attack_up', 'attack_down', 'defense_up', 'defense_down',
-      'vulnerable', 'speed_up', 'speed_down', 'regen', 'thorn',
+      'vulnerable', 'speed_up', 'speed_down', 'regen',
     ];
     for (const t of allTypes) {
       expect(registry.get(t)).toBeDefined();
@@ -210,7 +209,7 @@ describe('reduceMultiplier — 累乘伤害修正', () => {
 // reduceSum — 累加护盾/反伤/速度
 // ============================================================
 
-describe('reduceSum — 累加护盾/反伤/速度', () => {
+describe('reduceSum — 累加护盾/速度', () => {
   let registry: EffectHandlerRegistry;
   let ctx: EffectContext;
 
@@ -251,15 +250,6 @@ describe('reduceSum — 累加护盾/反伤/速度', () => {
     expect(registry.reduceSum(container, 'getDamageAbsorb', ctx, 60)).toBe(50);
   });
 
-  it('荆棘反伤累加', () => {
-    registry.register(thornHandler);
-    const container = createEmptyContainer();
-    addEffectToContainer(container, makeEffect('thorn', 0.3, 3, { stackStrategy: 'independent' }));
-    addEffectToContainer(container, makeEffect('thorn', 0.2, 3, { stackStrategy: 'independent' }));
-    // round(100*0.3) + round(100*0.2) = 30 + 20 = 50
-    expect(registry.reduceSum(container, 'getThornDamage', ctx, 100)).toBe(50);
-  });
-
   it('速度修正累加（speed_up + speed_down）', () => {
     registry.register(speedUpHandler);
     registry.register(speedDownHandler);
@@ -283,7 +273,6 @@ describe('reduceSum — 累加护盾/反伤/速度', () => {
     addEffectToContainer(container, makeEffect('poison', 10, 3));
     expect(registry.reduceSum(container, 'getSpeedMod', ctx)).toBe(0);
     expect(registry.reduceSum(container, 'getDamageAbsorb', ctx, 50)).toBe(0);
-    expect(registry.reduceSum(container, 'getThornDamage', ctx, 100)).toBe(0);
   });
 
   it('handler 存在但无 getSpeedMod 方法时跳过（reduceSum if (fn) 分支）', () => {
@@ -489,7 +478,7 @@ describe('getDisabledActions — 行动禁用', () => {
 // 15 种内置处理器 — 单元测试
 // ============================================================
 
-describe('内置效果处理器 — 15 种', () => {
+describe('内置效果处理器 — 14 种', () => {
   const ctx = makeCtx();
 
   // ---------- 持续伤害 ----------
@@ -731,30 +720,6 @@ describe('内置效果处理器 — 15 种', () => {
     it('不造成伤害', () => {
       const eff = makeEffect('regen', 5, 3);
       expect(regenHandler.onTick!(eff, ctx).dotDamage).toBe(0);
-    });
-  });
-
-  // ---------- 荆棘 ----------
-  describe('thorn 荆棘', () => {
-    it('返回 round(incoming × value)', () => {
-      const eff = makeEffect('thorn', 0.3, 3);
-      expect(thornHandler.getThornDamage!(eff, 100)).toBe(30);
-    });
-
-    it('incoming=50, value=0.25 → 12.5 round = 13（Math.round 行为）', () => {
-      // 注意 JS Math.round(12.5) = 13（向 +Inf 取整）
-      const eff = makeEffect('thorn', 0.25, 3);
-      expect(thornHandler.getThornDamage!(eff, 50)).toBe(13);
-    });
-
-    it('value=0 → 反伤 0', () => {
-      const eff = makeEffect('thorn', 0, 3);
-      expect(thornHandler.getThornDamage!(eff, 100)).toBe(0);
-    });
-
-    it('incoming=0 → 反伤 0', () => {
-      const eff = makeEffect('thorn', 0.5, 3);
-      expect(thornHandler.getThornDamage!(eff, 0)).toBe(0);
     });
   });
 });

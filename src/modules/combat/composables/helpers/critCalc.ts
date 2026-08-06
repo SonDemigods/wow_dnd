@@ -1,14 +1,13 @@
 /**
- * @fileoverview 玩家暴击与荆棘反伤计算 helper（QA-12）
+ * @fileoverview 玩家暴击计算 helper（QA-12）
  *
- * 抽离自 usePlayerAction.ts 中 4 处重复的暴击判定 + 荆棘反伤计算模式：
+ * 抽离自 usePlayerAction.ts 中 4 处重复的暴击判定模式：
  *   1. playerAttack（普通攻击）
  *   2. playerSkill AOE 分支（每个敌人独立判定）
  *   3. playerSkill single 分支
  *   4. playerUseItem 伤害型分支
  *
  * 统一收口暴击倍率常量（CRIT_DAMAGE_MULTIPLIER），避免散落的 1.5 魔法数字。
- * 荆棘反伤基于暴击后伤害计算（与 Boss 反击基数保持一致，见 P2-2）。
  *
  * P3-146：暴击判定接入 stat_modifier 类被动：
  *   - `crit_chance`：暴击率加成（value 为 0~1 小数，如 0.05 = +5% 暴击率）
@@ -91,17 +90,4 @@ export function rollPlayerCrit(
     ? CRIT_DAMAGE_MULTIPLIER * (1 + critDamageMultiplierBonus)
     : 1;
   return { isCrit, multiplier };
-}
-
-/**
- * 计算荆棘反伤数值
- *
- * 荆棘反伤基于暴击后伤害计算（与 Boss 反击基数口径一致，见 P2-2）：
- *   thornsDamage = floor(thorns × multiplier)
- *
- * @param thorns     - 管线返回的荆棘基础值（pipeResult.thorns）
- * @param multiplier - 暴击倍率（来自 rollPlayerCrit 返回的 multiplier）
- */
-export function computeThornsDamage(thorns: number, multiplier: number): number {
-  return Math.floor(thorns * multiplier);
 }

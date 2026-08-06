@@ -7,7 +7,7 @@
  *   - 通用：调用 inventory.useItem 扣减数量
  *
  * 依赖注入保持与 usePlayerAction 一致。
- * 暴击判定 / 荆棘反伤统一使用 helpers/critCalc.ts（QA-12）。
+ * 暴击判定统一使用 helpers/critCalc.ts（QA-12）。
  */
 import type { CombatActionResult, CombatResult } from '../types';
 import type { ICombatContext } from '../combatContext';
@@ -17,7 +17,7 @@ import {
   createEmptyContainer,
   type DamageType,
 } from '../effects';
-import { rollPlayerCrit, computeThornsDamage } from './helpers/critCalc';
+import { rollPlayerCrit } from './helpers/critCalc';
 import { hasCapability } from '@/modules/item/capabilityRegistry';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
@@ -107,19 +107,6 @@ export function usePlayerItem(
 
         // BIZ-2：应用 BOSS 反击机制（反弹/反击）
         boss.applyBossCounterMechanics(target, actualItemDamage);
-
-        // BIZ-3：荆棘反伤（与 playerAttack 保持一致）
-        if (pipeResult.thorns > 0) {
-          const thornsDamage = computeThornsDamage(pipeResult.thorns, critMultiplier);
-          ctx.character.takeDamage(thornsDamage);
-          addCombatLog({
-            actorType: 'system', actorId: 'system', actorName: '系统',
-            eventType: 'combat_damage', targetType: 'player', targetId: 'player',
-            targetName: ctx.character.name, damage: thornsDamage,
-            isCrit: false, isDodge: false,
-            message: `荆棘反伤对 ${ctx.character.name} 造成 ${thornsDamage} 点伤害！`
-          });
-        }
 
         // 伤害音效事件
         eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {

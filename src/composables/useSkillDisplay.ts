@@ -8,6 +8,8 @@
 
 import type { Skill, SkillType } from '@/modules/skill';
 import type { EffectType } from '@/modules/combat/effects';
+import type { Stats } from '@/modules/character';
+import { calculateSkillDamage } from '@/modules/skill';
 
 /**
  * 技能目标类型
@@ -49,7 +51,7 @@ const effectTypeNames: Record<EffectType, string> = {
   poison: '中毒', burn: '灼烧', stun: '眩晕', freeze: '冰冻',
   silence: '沉默', shield: '护盾', attack_up: '加攻', attack_down: '降攻',
   defense_up: '加防', defense_down: '降防', speed_up: '加速', speed_down: '减速',
-  regen: '回复', thorn: '荆棘', vulnerable: '易伤'
+  regen: '回复', vulnerable: '易伤'
 };
 
 export function useSkillDisplay() {
@@ -74,18 +76,27 @@ export function useSkillDisplay() {
   }
 
   /** 获取技能效果描述文本（详细版，用于技能详情面板） */
-  function getSkillEffectText(skill: Skill): string {
+  function getSkillEffectText(skill: Skill, stats?: Stats): string {
     if (!skill.effect) return '';
     const { type, value } = skill.effect;
-    if (type === 'physical_damage' || type === 'magic_damage') return `造成 ${value} 点伤害`;
-    if (type === 'health_restore') return `恢复 ${value} 点生命值`;
-    if (type === 'mana_restore') return `恢复 ${value} 点法力值`;
+    if (type === 'physical_damage' || type === 'magic_damage') {
+      const estimated = stats ? calculateSkillDamage(skill, stats) : value;
+      return `造成 ${estimated} 点伤害`;
+    }
+    if (type === 'health_restore') {
+      const estimated = stats ? calculateSkillDamage(skill, stats) : value;
+      return `恢复 ${estimated} 点生命值`;
+    }
+    if (type === 'mana_restore') {
+      const estimated = stats ? calculateSkillDamage(skill, stats) : value;
+      return `恢复 ${estimated} 点法力值`;
+    }
     if (type === 'buff' && skill.buffs) {
       return skill.buffs.map(b => {
         const names: Partial<Record<EffectType, string>> = {
           shield: `护盾 +${b.value}`, attack_up: `攻击 +${b.value}`,
           defense_up: `防御 +${b.value}`, speed_up: `速度 +${b.value}`,
-          regen: `每回合回复 ${b.value}`, thorn: `反弹 ${Math.round(b.value * 100)}% 伤害`
+          regen: `每回合回复 ${b.value}`
         };
         return `${names[b.type] ?? b.type} (${b.turns}回合)`;
       }).join('，');
@@ -105,16 +116,16 @@ export function useSkillDisplay() {
   }
 
   /** 获取技能效果简述（紧凑版，用于战斗按钮） */
-  function getSkillEffectBrief(skill: Skill): string {
+  function getSkillEffectBrief(skill: Skill, stats?: Stats): string {
     const effect = skill.effect;
     if (!effect) return '';
     const value = effect.value ?? 0;
-    const coeff = effect.coefficient ? `x${effect.coefficient}` : '';
+    const estimated = stats ? calculateSkillDamage(skill, stats) : value;
     switch (effect.type) {
-      case 'physical_damage': return `物理伤害${value}${coeff}`;
-      case 'magic_damage': return `魔法伤害${value}${coeff}`;
-      case 'health_restore': return `生命恢复${value}${coeff}`;
-      case 'mana_restore': return `法力恢复${value}${coeff}`;
+      case 'physical_damage': return `物理伤害${estimated}`;
+      case 'magic_damage': return `魔法伤害${estimated}`;
+      case 'health_restore': return `生命恢复${estimated}`;
+      case 'mana_restore': return `法力恢复${estimated}`;
       case 'buff': {
         if (skill.buffs && skill.buffs.length > 0) {
           const names = skill.buffs.map(b => getEffectTypeName(b.type));

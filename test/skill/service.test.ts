@@ -435,22 +435,6 @@ describe('calculateBuffValue Buff 效果值计算', () => {
     });
   });
 
-  describe('倍率类', () => {
-    it('thorn：min(0.60, value + WIS × 0.005)', () => {
-      const effect = makeBuffEffect({ type: 'thorn', value: 0.3 });
-      const stats = makeStats({ wis: 20 });
-      // 0.3 + 20 * 0.005 = 0.4
-      expect(calculateBuffValue(effect, stats)).toBe(0.4);
-    });
-
-    it('thorn 上限为 0.60', () => {
-      const effect = makeBuffEffect({ type: 'thorn', value: 0.5 });
-      const stats = makeStats({ wis: 50 });
-      // 0.5 + 50 * 0.005 = 0.75 → min(0.60, 0.75) = 0.60
-      expect(calculateBuffValue(effect, stats)).toBe(0.60);
-    });
-  });
-
   describe('控制类（不缩放）', () => {
     it('stun 直接返回 value', () => {
       const effect = makeBuffEffect({ type: 'stun', value: 1 });

@@ -108,11 +108,10 @@ vi.mock('@/modules/combat/service', () => ({
 const rollPlayerCritMock = vi.hoisted(() => vi.fn(() => ({ isCrit: false, multiplier: 1 })));
 vi.mock('@/modules/combat/composables/helpers/critCalc', () => ({
   rollPlayerCrit: rollPlayerCritMock,
-  computeThornsDamage: (thorns: number, multiplier: number) => Math.floor(thorns * multiplier),
 }));
 
 // mock processDamagePipeline（控制伤害管线结果）
-const pipeResultMock = { finalDamage: 20, absorbed: 0, thorns: 0 };
+const pipeResultMock = { finalDamage: 20, absorbed: 0 };
 vi.mock('@/modules/combat/effects', async () => {
   const actual = await vi.importActual<typeof import('@/modules/combat/effects')>('@/modules/combat/effects');
   return {
@@ -293,7 +292,6 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
     characterMock.hp = 100;
     pipeResultMock.finalDamage = 20;
     pipeResultMock.absorbed = 0;
-    pipeResultMock.thorns = 0;
     rollPlayerCritMock.mockReturnValue({ isCrit: false, multiplier: 1 });
     enemyStoreMock.takeDamage.mockReturnValue(false);
     enemyStoreMock.getEnemyById.mockReturnValue(null);
@@ -535,29 +533,6 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
 
       expect(helpers.applySkillBuffs).toHaveBeenCalledWith(skillData, 'single');
     });
-
-    it('single 伤害技能荆棘反伤使用 computeThornsDamage 计算', async () => {
-      const enemy = makeEnemy({ id: 'e1', name: '史莱姆' });
-      const state = makeStateMock({ target: enemy, alive: [enemy] });
-      skillStoreMock.getSkill.mockReturnValue({
-        id: 'sk1', name: '重击', targetType: 'single',
-      });
-      skillStoreMock.castSkill.mockResolvedValue({
-        success: true, type: 'physical_damage', damage: 30,
-      });
-      enemyStoreMock.getEnemyById.mockReturnValue(enemy);
-      enemyStoreMock.takeDamage.mockReturnValue(false);
-      pipeResultMock.finalDamage = 25;
-      pipeResultMock.thorns = 5;
-      // 暴击时 thorns × 1.5 = Math.floor(7.5) = 7
-      rollPlayerCritMock.mockReturnValue({ isCrit: true, multiplier: 1.5 });
-
-      await usePlayerSkill(
-        state, makeLogMock(), makeMockCtx(), makeInitiativeMock(), vi.fn(), makeBossMock(), makeHelpersMock(), makePassiveMock(), makePetMock(),
-      ).playerSkill('sk1');
-
-      expect(characterMock.takeDamage).toHaveBeenCalledWith(7);
-    });
   });
 
   describe('buff / debuff 分支', () => {
@@ -659,7 +634,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       expect(initiative.endPlayerTurn).toHaveBeenCalled();
     });
 
-    it('mana_restore 类型时 healType 为 mana', async () => {
+    it('result.heal 时 healType 为 health', async () => {
       const state = makeStateMock();
       skillStoreMock.getSkill.mockReturnValue({ id: 'sk1', name: '' });
       skillStoreMock.castSkill.mockResolvedValue({
@@ -672,7 +647,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
 
       const { eventBus, GameEvents } = await import('@/modules/bus');
       expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_CAST_HEAL, expect.objectContaining({
-        healType: 'mana',
+        healType: 'health',
         amount: 20,
       }));
     });

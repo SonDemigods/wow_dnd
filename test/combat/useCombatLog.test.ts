@@ -68,7 +68,6 @@ function makeMockCtx(overrides: Partial<{
         magicDefense: 8,
         critChance: 5,
         dodgeChance: 5,
-        hpBonus: 0,
         mpBonus: 0,
         healBonus: 0,
         ...overrides.attributes,

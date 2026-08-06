@@ -68,8 +68,8 @@ export function useEnemyAction(
   // ==================== 敌人行动 ====================
 
   /**
-   * 对玩家造成敌人伤害（公共逻辑：管线计算 → 扣血 → 事件 → 日志 → 荆棘）
-   * 使用 processDamagePipeline 统一处理伤害、护盾和荆棘反伤。
+   * 对玩家造成敌人伤害（公共逻辑：管线计算 → 扣血 → 事件 → 日志）
+   * 使用 processDamagePipeline 统一处理伤害和护盾。
    * @param damageType - 伤害类型（默认 'physical'，魔法技能应传入 'magical'）
    * @returns actualDamage 和 shieldAbsorbed，供调用方补充返回值
    */
@@ -137,24 +137,6 @@ export function useEnemyAction(
         ? `${e.name}${skill ? ' 使用 ' + skill.name : ''}对 ${ctx.character.name} 造成 ${finalDamage} 点伤害（护盾吸收 ${shieldAbsorbed}）！`
         : `${e.name}${skill ? ' 使用 ' + skill.name : ''}对 ${ctx.character.name} 造成 ${finalDamage} 点伤害！`
     });
-
-    // 荆棘反伤（管线已计算）
-    if (pipeResult.thorns > 0) {
-      ctx.enemy.takeDamage(e.id, pipeResult.thorns);
-      addCombatLog({
-        actorType: 'player',
-        actorId: 'player',
-        actorName: ctx.character.name,
-        eventType: 'combat_damage',
-        targetType: 'enemy',
-        targetId: e.id,
-        targetName: e.name,
-        damage: pipeResult.thorns,
-        isCrit: false,
-        isDodge: false,
-        message: `荆棘反伤对 ${e.name} 造成 ${pipeResult.thorns} 点伤害！`
-      });
-    }
 
     return { actualDamage: finalDamage, shieldAbsorbed };
   }
@@ -257,7 +239,7 @@ export function useEnemyAction(
       };
     }
 
-    // 通过管线计算实际伤害（管线统一处理攻防修正、护盾和荆棘）
+    // 通过管线计算实际伤害（管线统一处理攻防修正、护盾）
     // 根据技能类型动态决定伤害类型（魔法技能走魔法防御减免）
     const damageType = mapSkillTypeToDamageType(skill.type);
     const { actualDamage } = applyEnemyDamageToPlayer(e, damage, skill, damageType);
@@ -284,7 +266,7 @@ export function useEnemyAction(
     const isAoeAttack = bossInstance?.runtime.aoeNextAttack === true;
     if (isAoeAttack && bossInstance) {
       bossInstance.runtime.aoeNextAttack = false;
-      // 多目标攻击：使用管线统一处理伤害、护盾和荆棘反伤
+      // 多目标攻击：使用管线统一处理伤害、护盾
       // P3-95：根据敌人普攻类型选择对应玩家防御
       const aoePlayerDef = e.attackType === 'magical'
         ? ctx.character.attributes.magicDefense
@@ -310,7 +292,7 @@ export function useEnemyAction(
         return { success: true, type: 'attack', isDodge: true, message: '你闪避了敌人的范围攻击！' };
       }
 
-      // 通过管线统一处理伤害（含护盾吸收 + 荆棘反伤 + 攻防修正 + 日志）
+      // 通过管线统一处理伤害（含护盾吸收 + 攻防修正 + 日志）
       const { actualDamage: actualAoeDamage } = applyEnemyDamageToPlayer(e, aoeDamage);
 
       // 补充 AOE 特殊日志
