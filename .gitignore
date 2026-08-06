@@ -16,3 +16,4 @@ coverage/
 .playwright-browsers/
 benchmarks/
 test-results/
+.codely-cli/
