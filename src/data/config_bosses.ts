@@ -61,7 +61,7 @@ export const BOSSES: BossTemplate[] = [
     critChance: 15,
     dodgeChance: 8,
     aiStrategy: 'aggressive',
-    skillPool: ['demon_fire', 'cleave'],
+    skillPool: ['demon_fire', 'cleave', 'war_cry'],
     phases: [
       { hpThreshold: 0.3, name: '狂暴', aiStrategy: 'aggressive', mechanics: [{ type: 'enrage', intervalTurns: 1 }, { type: 'damage_shield', intervalTurns: 3, params: { shieldAmount: 50 } }], statMultipliers: { physicalAttack: 1.5, magicAttack: 1.3 }, transitionEffect: 'flame', dialogue: ['恶魔的力量开始失控！', '它的眼中闪烁着癫狂的光...'] },
       { hpThreshold: 0, name: '正常', aiStrategy: 'aggressive', mechanics: [], dialogue: [] }
@@ -119,7 +119,7 @@ export const BOSSES: BossTemplate[] = [
     critChance: 12,
     dodgeChance: 6,
     aiStrategy: 'balanced',
-    skillPool: ['death_grip', 'soul_drain'],
+    skillPool: ['death_grip', 'soul_drain', 'fear_roar'],
     phases: [
       { hpThreshold: 0.4, name: '亡者军团', aiStrategy: 'aggressive', mechanics: [{ type: 'summon_minions', intervalTurns: 3, params: { count: 2 } }], statMultipliers: { physicalAttack: 1.2 }, transitionEffect: 'darken', dialogue: ['亡灵骑士高举咒文剑！', '亡者从地底爬出...'] },
       { hpThreshold: 0, name: '正常', aiStrategy: 'balanced', mechanics: [], dialogue: [] }
@@ -178,7 +178,7 @@ export const BOSSES: BossTemplate[] = [
     critChance: 12,
     dodgeChance: 4,
     aiStrategy: 'aggressive',
-    skillPool: ['giant_stomp', 'frost_breath'],
+    skillPool: ['giant_stomp', 'frost_breath', 'stone_skin'],
     phases: [
       { hpThreshold: 0.4, name: '狂怒', aiStrategy: 'aggressive', mechanics: [{ type: 'enrage', intervalTurns: 1 }, { type: 'aoe_attack', intervalTurns: 3 }, { type: 'stun_player', intervalTurns: 4 }], statMultipliers: { physicalAttack: 1.4 }, transitionEffect: 'shake', dialogue: ['冰霜巨人彻底暴怒了！', '整个大地都在颤抖！'] },
       { hpThreshold: 0, name: '正常', aiStrategy: 'aggressive', mechanics: [{ type: 'aoe_attack', intervalTurns: 5 }], dialogue: [] }
@@ -208,7 +208,7 @@ export const BOSSES: BossTemplate[] = [
     critChance: 8,
     dodgeChance: 4,
     aiStrategy: 'boss_phase',
-    skillPool: ['cleave', 'war_stomp'],
+    skillPool: ['cleave', 'war_stomp', 'war_cry'],
     phases: [
       { hpThreshold: 0.5, name: '暴怒', aiStrategy: 'aggressive', mechanics: [{ type: 'enrage', intervalTurns: 1 }], statMultipliers: { physicalAttack: 1.3 }, transitionEffect: 'shake', dialogue: ['兽王发出野蛮的咆哮！'] },
       { hpThreshold: 0, name: '正常', aiStrategy: 'balanced', mechanics: [], dialogue: [] }
@@ -267,7 +267,7 @@ export const BOSSES: BossTemplate[] = [
     critChance: 10,
     dodgeChance: 6,
     aiStrategy: 'boss_phase',
-    skillPool: ['cleave', 'regenerate'],
+    skillPool: ['cleave', 'regenerate', 'war_cry'],
     phases: [
       { hpThreshold: 0.4, name: '嗜血', aiStrategy: 'aggressive', mechanics: [{ type: 'enrage', intervalTurns: 1 }, { type: 'damage_shield', intervalTurns: 3, params: { shieldAmount: 40 } }], statMultipliers: { physicalAttack: 1.3 }, transitionEffect: 'darken', dialogue: ['巨魔战王的伤口开始愈合...', '它进入嗜血状态！'] },
       { hpThreshold: 0, name: '正常', aiStrategy: 'balanced', mechanics: [], dialogue: [] }
@@ -326,7 +326,7 @@ export const BOSSES: BossTemplate[] = [
     critChance: 10,
     dodgeChance: 6,
     aiStrategy: 'aggressive',
-    skillPool: ['war_stomp', 'cleave', 'giant_stomp'],
+    skillPool: ['war_stomp', 'cleave', 'giant_stomp', 'fear_roar'],
     phases: [
       { hpThreshold: 0.35, name: '冲锋', aiStrategy: 'aggressive', mechanics: [{ type: 'aoe_attack', intervalTurns: 3 }, { type: 'stun_player', intervalTurns: 4 }], statMultipliers: { physicalAttack: 1.4 }, transitionEffect: 'shake', dialogue: ['半人马可汗扬起尘烟...', '铁蹄如雷鸣般践踏！'] },
       { hpThreshold: 0, name: '正常', aiStrategy: 'aggressive', mechanics: [{ type: 'aoe_attack', intervalTurns: 5 }], dialogue: [] }
@@ -356,7 +356,7 @@ export const BOSSES: BossTemplate[] = [
     critChance: 12,
     dodgeChance: 6,
     aiStrategy: 'boss_phase',
-    skillPool: ['demon_fire', 'inferno', 'cleave'],
+    skillPool: ['demon_fire', 'inferno', 'cleave', 'war_cry'],
     phases: [
       { hpThreshold: 0.5, name: '地狱之门', aiStrategy: 'aggressive', mechanics: [{ type: 'summon_minions', intervalTurns: 4, params: { count: 2 } }], statMultipliers: { physicalAttack: 1.2, magicAttack: 1.2 }, transitionEffect: 'flame', dialogue: ['恶魔领主撕开了地狱之门！', '低级恶魔蜂拥而出...'] },
       { hpThreshold: 0.25, name: '燃烧之血', aiStrategy: 'aggressive', mechanics: [{ type: 'enrage', intervalTurns: 1 }, { type: 'aoe_attack', intervalTurns: 2 }], statMultipliers: { physicalAttack: 1.4 }, transitionEffect: 'flame', dialogue: ['恶魔领主血液沸腾！', '地狱之火在它身后燃烧！'] },
@@ -386,7 +386,7 @@ export const BOSSES: BossTemplate[] = [
     critChance: 8,
     dodgeChance: 3,
     aiStrategy: 'boss_phase',
-    skillPool: ['rock_barrage', 'giant_stomp'],
+    skillPool: ['rock_barrage', 'giant_stomp', 'stone_skin'],
     phases: [
       { hpThreshold: 0.4, name: '山崩', aiStrategy: 'defensive', mechanics: [{ type: 'damage_shield', intervalTurns: 2, params: { shieldAmount: 80 } }, { type: 'stun_player', intervalTurns: 4 }], statMultipliers: { physicalDefense: 1.5, magicDefense: 1.3 }, transitionEffect: 'shake', dialogue: ['岩石之王硬化了外壳！', '大地在它脚下龟裂...'] },
       { hpThreshold: 0, name: '正常', aiStrategy: 'balanced', mechanics: [{ type: 'aoe_attack', intervalTurns: 4 }], dialogue: [] }
@@ -446,7 +446,7 @@ export const BOSSES: BossTemplate[] = [
     critChance: 12,
     dodgeChance: 6,
     aiStrategy: 'boss_phase',
-    skillPool: ['death_grip', 'plague_cloud', 'soul_drain', 'shadow_bolt'],
+    skillPool: ['death_grip', 'plague_cloud', 'soul_drain', 'shadow_bolt', 'fear_roar'],
     phases: [
       { hpThreshold: 0.6, name: '亡者大军', aiStrategy: 'aggressive', mechanics: [{ type: 'summon_minions', intervalTurns: 3, params: { count: 3 } }], statMultipliers: { physicalAttack: 1.2 }, transitionEffect: 'darken', dialogue: ['亡者领主召唤亡者大军！', '骷髅从地底爬出...'] },
       { hpThreshold: 0.3, name: '瘟疫降临', aiStrategy: 'defensive', mechanics: [{ type: 'debuff_aura', intervalTurns: 3, params: { debuffType: 'attack_down' } }, { type: 'aoe_attack', intervalTurns: 3 }], statMultipliers: { magicAttack: 1.3 }, transitionEffect: 'darken', dialogue: ['瘟疫弥漫战场...', '你的力量被腐蚀了！'] },
@@ -477,7 +477,7 @@ export const BOSSES: BossTemplate[] = [
     critChance: 15,
     dodgeChance: 8,
     aiStrategy: 'boss_phase',
-    skillPool: ['void_blast', 'shadow_bolt', 'curse', 'soul_drain'],
+    skillPool: ['void_blast', 'shadow_bolt', 'curse', 'soul_drain', 'weaken'],
     attackType: 'magical',
     phases: [
       { hpThreshold: 0.5, name: '虚空护盾', aiStrategy: 'defensive', mechanics: [{ type: 'damage_shield', intervalTurns: 3, params: { shieldAmount: 100 } }, { type: 'debuff_aura', intervalTurns: 4, params: { debuffType: 'attack_down' } }], statMultipliers: { magicDefense: 1.5 }, transitionEffect: 'darken', dialogue: ['虚空领主展开了护盾！', '现实在它身边扭曲...'] },

@@ -122,7 +122,7 @@ function makeStateMock() {
     aliveEnemies: { value: [] as EnemyInstance[] },
     currentTarget: { value: null as EnemyInstance | null },
     hasBossEnemy: { value: false },
-    effectRegistry: {},
+    effectRegistry: { get: vi.fn(() => undefined) },
     bossInstances: new Map(),
   } as never;
 }
@@ -924,6 +924,91 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
       // 日志应同时包含技能名和护盾吸收
       expect(logCall.message).toContain('火焰冲击');
       expect(logCall.message).toContain('护盾吸收');
+    });
+  });
+
+  // -------------------- P3-162：buff/defend 决策执行 --------------------
+
+  describe('P3-162 buff 决策执行', () => {
+    it('buff 技能（增益）→ 效果施加到敌人自身效果容器 enemyEffects', () => {
+      const mathSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      const state = makeStateMock();
+      state.effectRegistry = { get: vi.fn(() => undefined) };
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'sk1', name: '狂暴', isBuff: true }]);
+      ctx.enemy.useSkill.mockReturnValue({
+        success: true, damage: 0, isHeal: false,
+        isBuff: true, buffs: [{ type: 'attack_up', value: 10, turns: 3 }],
+      });
+      ctx.skill.getSkill.mockReturnValue({ type: 'buff' } as never);
+      const action = useEnemyAction(state, log, ctx);
+
+      // aggressive 开场回合（turnCount=0 <=2）且无已有增益 → 返回 buff 决策
+      const enemy = makeEnemy({ id: 'e1', name: '狂暴者', aiStrategy: 'aggressive' });
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.type).toBe('skill');
+      // 增益写入 enemyEffects[e1]
+      expect(state.enemyEffects.value['e1'].effects.length).toBe(1);
+      expect(state.enemyEffects.value['e1'].effects[0].type).toBe('attack_up');
+      mathSpy.mockRestore();
+    });
+
+    it('debuff 技能（减益）→ 效果施加到玩家效果容器 playerEffects', () => {
+      const mathSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      const state = makeStateMock();
+      state.effectRegistry = { get: vi.fn(() => undefined) };
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'sk1', name: '虚弱', isBuff: true }]);
+      ctx.enemy.useSkill.mockReturnValue({
+        success: true, damage: 0, isHeal: false,
+        isBuff: true, buffs: [{ type: 'attack_down', value: 5, turns: 2 }],
+      });
+      ctx.skill.getSkill.mockReturnValue({ type: 'debuff' } as never);
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '虚弱术士', aiStrategy: 'aggressive' });
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(true);
+      // 减益写入 playerEffects（不写入 enemyEffects）
+      expect(state.playerEffects.value.effects.length).toBe(1);
+      expect(state.playerEffects.value.effects[0].type).toBe('attack_down');
+      expect(state.enemyEffects.value['e1']).toBeUndefined();
+      mathSpy.mockRestore();
+    });
+  });
+
+  describe('P3-162 defend 决策执行', () => {
+    it('defend → 敌人自身获得 defense_up 效果，且不调用 useSkill', () => {
+      const mathSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      const state = makeStateMock();
+      state.effectRegistry = { get: vi.fn(() => undefined) };
+      const log = makeLogMock();
+      const ctx = makeMockCtx();
+      // defensive 策略：无技能 → 高血 branch 可直接命中 defend（bool(0.2)）
+      ctx.enemy.getAvailableSkills.mockReturnValue([]);
+      const action = useEnemyAction(state, log, ctx);
+
+      const enemy = makeEnemy({ id: 'e1', name: '守备巨像', aiStrategy: 'defensive' });
+      const result = action.enemyAction(enemy);
+
+      expect(result.success).toBe(true);
+      expect(result.type).toBe('defend');
+      // defense_up 写入 enemyEffects[e1]
+      expect(state.enemyEffects.value['e1'].effects.length).toBe(1);
+      expect(state.enemyEffects.value['e1'].effects[0].type).toBe('defense_up');
+      // defend 为非技能行为，不应调用 useSkill
+      expect(ctx.enemy.useSkill).not.toHaveBeenCalled();
+      // 日志包含"进入防御姿态"
+      const defendLog = log.addCombatLog.mock.calls.find(
+        (c: never[]) => (c[0] as { message: string }).message.includes('防御姿态')
+      );
+      expect(defendLog).toBeDefined();
+      mathSpy.mockRestore();
     });
   });
 });

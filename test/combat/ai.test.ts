@@ -27,6 +27,7 @@ import {
 import type { BattleContext, AiDecision } from '@/modules/combat/ai/types';
 import type { Combatant } from '@/modules/combat/ai/targetSelection';
 import type { EnemyInstance } from '@/modules/enemy/types';
+import { createRngFromFn, type Rng } from '@/utils/rng';
 
 // ============================================================
 // 工厂函数
@@ -44,7 +45,9 @@ function makeCtx(overrides: Partial<BattleContext> = {}): BattleContext {
     enemyHp: 100,
     enemyMaxHp: 100,
     availableSkills: [],
-    turnCount: 1,
+    turnCount: 5,
+    enemyHasBuff: false,
+    playerHasDebuff: false,
     ...overrides,
   };
 }
@@ -182,17 +185,17 @@ describe('DefensiveStrategy 防御型', () => {
     expect(strategy.decideAction(enemy, ctx).type).toBe('basic_attack');
   });
 
-  it('HP>=40% 且 random<0.2 → 技能', () => {
+  it('高血（>=60%）random<0.2 → 进入防御姿态 defend', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const ctx = makeCtx({
       enemyHp: 80,
       enemyMaxHp: 100,
       availableSkills: [attackSkill],
     });
-    expect(strategy.decideAction(enemy, ctx).type).toBe('skill');
+    expect(strategy.decideAction(enemy, ctx).type).toBe('defend');
   });
 
-  it('HP>=40% 且 random>=0.2 → 普通攻击', () => {
+  it('高血（>=60%）random>=0.2 且未命中防御/技能 → 普通攻击', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.3);
     const ctx = makeCtx({
       enemyHp: 80,
@@ -202,14 +205,15 @@ describe('DefensiveStrategy 防御型', () => {
     expect(strategy.decideAction(enemy, ctx).type).toBe('basic_attack');
   });
 
-  it('HP>=40% 但无攻击技能 → 普通攻击', () => {
+  it('高血（>=60%）无攻击技能但有治疗技能 → 不治疗，防御姿态', () => {
+    // 高血量不治疗；无 buff/attack 时 random<0.2 命中 defend
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const ctx = makeCtx({
       enemyHp: 80,
       enemyMaxHp: 100,
       availableSkills: [healSkill],
     });
-    expect(strategy.decideAction(enemy, ctx).type).toBe('basic_attack');
+    expect(strategy.decideAction(enemy, ctx).type).toBe('defend');
   });
 
   it('HP<40% 有治疗技能时优先治疗（忽略 random）', () => {
@@ -650,5 +654,239 @@ describe('getTargetSelector 工厂函数', () => {
     const a = getTargetSelector('threat_based');
     const b = getTargetSelector('threat_based');
     expect(a).toBe(b);
+  });
+});
+
+// ============================================================
+// P3-162 AI 决策扩展 — buff / defend
+// ============================================================
+
+/** 用预设随机数序列构造 Rng，实现确定性分支覆盖 */
+function rngFromSequence(values: number[]): Rng {
+  let i = 0;
+  return createRngFromFn(() => (i < values.length ? values[i++] : 0));
+}
+
+const warCry = { id: 'war_cry', name: '战吼', isBuff: true };
+
+describe('P3-162 AggressiveStrategy buff/defend', () => {
+  const enemy = makeEnemy();
+
+  it('开场回合（1-2）有 buff 技能且无已有增益 → 返回 buff', () => {
+    const strategy = new AggressiveStrategy(rngFromSequence([0.3]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      turnCount: 1,
+      availableSkills: [attackSkill, warCry],
+    })) as { type: 'buff'; skillId: string };
+    expect(decision.type).toBe('buff');
+    expect(decision.skillId).toBe('war_cry');
+  });
+
+  it('已有增益（enemyHasBuff）→ 开场不 buff', () => {
+    const strategy = new AggressiveStrategy(rngFromSequence([0.8]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      turnCount: 1,
+      enemyHasBuff: true,
+      availableSkills: [attackSkill, warCry],
+    }));
+    expect(decision.type).not.toBe('buff');
+  });
+
+  it('玩家残血（<25%）→ 不 buff，攻击终结', () => {
+    const strategy = new AggressiveStrategy(rngFromSequence([0.8]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      turnCount: 1,
+      playerHp: 20,
+      playerMaxHp: 100,
+      availableSkills: [attackSkill, warCry],
+    }));
+    expect(decision.type).not.toBe('buff');
+    expect(decision.type).toBe('basic_attack');
+  });
+
+  it('常规阶段（非开场）有 buff 技能 → 低概率返回 buff', () => {
+    const strategy = new AggressiveStrategy(rngFromSequence([0.8, 0.05]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      turnCount: 5,
+      availableSkills: [attackSkill, warCry],
+    })) as { type: 'buff'; skillId: string };
+    expect(decision.type).toBe('buff');
+    expect(decision.skillId).toBe('war_cry');
+  });
+
+  it('无 buff 技能时不返回 buff', () => {
+    const strategy = new AggressiveStrategy(rngFromSequence([0.1]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      turnCount: 1,
+      availableSkills: [attackSkill],
+    }));
+    expect(decision.type).not.toBe('buff');
+  });
+});
+
+describe('P3-162 DefensiveStrategy buff/defend', () => {
+  const enemy = makeEnemy();
+
+  it('高血（≥60%）有 buff 技能 → 返回 buff', () => {
+    const strategy = new DefensiveStrategy(rngFromSequence([0.1]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      enemyHp: 80,
+      enemyMaxHp: 100,
+      availableSkills: [warCry],
+    })) as { type: 'buff'; skillId: string };
+    expect(decision.type).toBe('buff');
+    expect(decision.skillId).toBe('war_cry');
+  });
+
+  it('高血（≥60%）无 buff 技能 → 可返回 defend', () => {
+    const strategy = new DefensiveStrategy(rngFromSequence([0.1]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      enemyHp: 80,
+      enemyMaxHp: 100,
+      availableSkills: [],
+    }));
+    expect(decision.type).toBe('defend');
+  });
+
+  it('中血（40%~60%）→ 可返回 defend', () => {
+    const strategy = new DefensiveStrategy(rngFromSequence([0.1]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      enemyHp: 50,
+      enemyMaxHp: 100,
+      availableSkills: [],
+    }));
+    expect(decision.type).toBe('defend');
+  });
+
+  it('低血（<40%）有治疗技能 → 治疗保命', () => {
+    const strategy = new DefensiveStrategy(rngFromSequence([0.1]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      enemyHp: 30,
+      enemyMaxHp: 100,
+      availableSkills: [healSkill],
+    }));
+    expect(decision.type).toBe('heal');
+  });
+
+  it('低血（<40%）无治疗技能 → 可返回 defend 苟活', () => {
+    const strategy = new DefensiveStrategy(rngFromSequence([0.1]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      enemyHp: 30,
+      enemyMaxHp: 100,
+      availableSkills: [],
+    }));
+    expect(decision.type).toBe('defend');
+  });
+});
+
+describe('P3-162 BalancedStrategy buff/defend', () => {
+  const enemy = makeEnemy();
+
+  it('高血（≥50%）有 buff 技能且非开场 → 可返回 buff', () => {
+    const strategy = new BalancedStrategy(rngFromSequence([0.9, 0.05]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      turnCount: 5,
+      availableSkills: [attackSkill, warCry],
+    })) as { type: 'buff'; skillId: string };
+    expect(decision.type).toBe('buff');
+    expect(decision.skillId).toBe('war_cry');
+  });
+
+  it('高血（≥50%）无技能 → 可返回 defend', () => {
+    const strategy = new BalancedStrategy(rngFromSequence([0.05]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      availableSkills: [],
+    }));
+    expect(decision.type).toBe('defend');
+  });
+
+  it('玩家残血（<25%）→ 优先攻击补刀', () => {
+    const strategy = new BalancedStrategy(rngFromSequence([0.1]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      playerHp: 20,
+      playerMaxHp: 100,
+      availableSkills: [attackSkill, warCry],
+    }));
+    expect(decision.type).toBe('skill');
+    expect((decision as { skillId: string }).skillId).toBe('fireball');
+  });
+
+  it('低血（<50%）有治疗技能 → 治疗优先', () => {
+    const strategy = new BalancedStrategy(rngFromSequence([0.1]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      enemyHp: 30,
+      enemyMaxHp: 100,
+      availableSkills: [healSkill],
+    }));
+    expect(decision.type).toBe('heal');
+  });
+});
+
+describe('P3-162 BossPhaseStrategy buff', () => {
+  const enemy = makeEnemy();
+
+  it('正常阶段开场（回合 1-3）有 buff 技能 → 返回 buff', () => {
+    const strategy = new BossPhaseStrategy(rngFromSequence([0.1]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      turnCount: 1,
+      availableSkills: [attackSkill, warCry],
+    })) as { type: 'buff'; skillId: string };
+    expect(decision.type).toBe('buff');
+    expect(decision.skillId).toBe('war_cry');
+  });
+
+  it('半血阶段（<50%）有 buff 技能 → 可返回 buff', () => {
+    const strategy = new BossPhaseStrategy(rngFromSequence([0.1]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      enemyHp: 40,
+      enemyMaxHp: 100,
+      availableSkills: [attackSkill, warCry],
+    })) as { type: 'buff'; skillId: string };
+    expect(decision.type).toBe('buff');
+    expect(decision.skillId).toBe('war_cry');
+  });
+
+  it('狂暴阶段（<20%）→ 不 buff，全力技能攻击', () => {
+    const strategy = new BossPhaseStrategy(rngFromSequence([0.0]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      enemyHp: 10,
+      enemyMaxHp: 100,
+      availableSkills: [attackSkill, warCry],
+    }));
+    expect(decision.type).not.toBe('buff');
+    expect(decision.type).toBe('skill');
+  });
+
+  it('已有增益（enemyHasBuff）→ 正常阶段不 buff', () => {
+    const strategy = new BossPhaseStrategy(rngFromSequence([0.9]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      turnCount: 1,
+      enemyHasBuff: true,
+      availableSkills: [attackSkill, warCry],
+    }));
+    expect(decision.type).not.toBe('buff');
+  });
+});
+
+describe('P3-162 BattleContext 扩展', () => {
+  const enemy = makeEnemy();
+
+  it('enemyHasBuff=true 时策略不返回 buff 决策', () => {
+    const strategy = new AggressiveStrategy(rngFromSequence([0.9]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      turnCount: 1,
+      enemyHasBuff: true,
+      availableSkills: [warCry],
+    }));
+    expect(decision.type).not.toBe('buff');
+  });
+
+  it('playerHasDebuff 不阻断攻击等正常决策', () => {
+    const strategy = new AggressiveStrategy(rngFromSequence([0.3]));
+    const decision = strategy.decideAction(enemy, makeCtx({
+      playerHasDebuff: true,
+      availableSkills: [attackSkill],
+    }));
+    expect(['skill', 'basic_attack']).toContain(decision.type);
   });
 });

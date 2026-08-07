@@ -12,12 +12,13 @@ import type { ICombatContext } from '../combatContext';
 import { eventBus, GameEvents } from '../../bus';
 import { rollDodge } from '../service';
 import { AggressiveStrategy, DefensiveStrategy, BalancedStrategy, BossPhaseStrategy } from '../ai/strategies';
-import { ENEMY_AOE_DAMAGE_MULTIPLIER } from '@/config/combat';
+import { ENEMY_AOE_DAMAGE_MULTIPLIER, DEFEND_DEFENSE_BONUS, DEFEND_DURATION_TURNS } from '@/config/combat';
 import {
   createEmptyContainer,
   addEffectToContainer,
   generateEffectId,
   processDamagePipeline,
+  hasEffect,
   type Effect,
   type EffectType,
   type DamageType,
@@ -309,6 +310,7 @@ export function useEnemyAction(
     const availableSkills = ctx.enemy.getAvailableSkills(e.id);
 
     // 构建战斗上下文
+    const enemyEffectContainer = enemyEffects.value[e.id] || createEmptyContainer();
     const context: BattleContext = {
       playerHp: ctx.character.hp,
       playerMaxHp: ctx.character.maxHp,
@@ -316,6 +318,11 @@ export function useEnemyAction(
       enemyMaxHp: e.maxHp,
       availableSkills,
       turnCount: state.turnCount.value,
+      enemyHasBuff: hasEffect(enemyEffectContainer, 'attack_up' as EffectType)
+                  || hasEffect(enemyEffectContainer, 'defense_up' as EffectType)
+                  || hasEffect(enemyEffectContainer, 'shield' as EffectType),
+      playerHasDebuff: hasEffect(playerEffects.value, 'attack_down' as EffectType)
+                    || hasEffect(playerEffects.value, 'vulnerable' as EffectType),
     };
 
     // 根据敌人 AI 策略类型选择策略
@@ -484,6 +491,107 @@ export function useEnemyAction(
           };
         }
         break;
+      }
+      case 'buff': {
+        // P3-162：主动施放 buff/debuff 技能
+        const result = ctx.enemy.useSkill(e.id, decision.skillId);
+        if (result.success && result.isBuff && result.buffs) {
+          const skillData = availableSkills.find(s => s.id === decision.skillId);
+          const skillName = skillData?.name || decision.skillId;
+          const fullSkill = ctx.skill.getSkill(decision.skillId);
+          const isDebuff = fullSkill?.type === 'debuff';
+
+          if (isDebuff) {
+            // 减益技能：效果施加到玩家身上
+            const playerCtx = createPlayerEffectContext();
+            for (const b of result.buffs) {
+              const debuffEffect: Effect = {
+                id: generateEffectId(),
+                type: b.type as EffectType,
+                remainingTurns: b.turns,
+                value: b.value,
+                source: 'enemy',
+                sourceName: e.name
+              };
+              addEffectToContainer(playerEffects.value, debuffEffect);
+              effectRegistry.get(debuffEffect.type as EffectType)?.onApply?.(debuffEffect, playerCtx);
+            }
+
+            addCombatLog({
+              actorType: 'enemy', actorId: e.id, actorName: e.name,
+              eventType: 'combat_skill_cast', skillId: decision.skillId, skillName,
+              isCrit: false, isDodge: false,
+              message: `${e.name} 使用了 ${skillName}，对 ${ctx.character.name} 施加了减益效果！`
+            });
+
+            return {
+              success: true, type: 'skill',
+              message: `${e.name} 使用了 ${skillName}！`
+            };
+          }
+
+          // 增益技能：效果施加到敌人自身
+          if (!enemyEffects.value[e.id]) {
+            enemyEffects.value[e.id] = createEmptyContainer();
+          }
+          const container = enemyEffects.value[e.id]!;
+          const enemyCtx = createEnemyEffectContext(e);
+
+          for (const b of result.buffs) {
+            const effect: Effect = {
+              id: generateEffectId(),
+              type: b.type as EffectType,
+              remainingTurns: b.turns,
+              value: b.value,
+              source: 'enemy',
+              sourceName: e.name
+            };
+            addEffectToContainer(container, effect);
+            effectRegistry.get(effect.type as EffectType)?.onApply?.(effect, enemyCtx);
+          }
+
+          addCombatLog({
+            actorType: 'enemy', actorId: e.id, actorName: e.name,
+            eventType: 'combat_skill_cast', skillId: decision.skillId, skillName,
+            isCrit: false, isDodge: false,
+            message: `${e.name} 使用了 ${skillName}，获得增益效果！`
+          });
+
+          return {
+            success: true, type: 'skill',
+            message: `${e.name} 使用了 ${skillName}！`
+          };
+        }
+        break;
+      }
+      case 'defend': {
+        // P3-162：非技能防御行为，不消耗冷却
+        if (!enemyEffects.value[e.id]) {
+          enemyEffects.value[e.id] = createEmptyContainer();
+        }
+        const container = enemyEffects.value[e.id]!;
+        const enemyCtx = createEnemyEffectContext(e);
+        const effect: Effect = {
+          id: generateEffectId(),
+          type: 'defense_up' as EffectType,
+          remainingTurns: DEFEND_DURATION_TURNS,
+          value: DEFEND_DEFENSE_BONUS,
+          source: 'enemy',
+          sourceName: e.name,
+        };
+        addEffectToContainer(container, effect);
+        effectRegistry.get(effect.type as EffectType)?.onApply?.(effect, enemyCtx);
+
+        addCombatLog({
+          actorType: 'enemy', actorId: e.id, actorName: e.name,
+          eventType: 'combat_defend', isCrit: false, isDodge: false,
+          message: `${e.name} 进入防御姿态，防御力提升！`,
+        });
+
+        return {
+          success: true, type: 'defend',
+          message: `${e.name} 进入防御姿态！`,
+        };
       }
       case 'basic_attack':
       default:

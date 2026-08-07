@@ -205,3 +205,82 @@ export const BOSS_HALF_SKILL_CHANCE = 0.6;
  * @see src/modules/combat/ai/strategies.ts BossPhaseStrategy
  */
 export const BOSS_NORMAL_SKILL_CHANCE = 0.3;
+
+// ==================== P3-162 新增 AI 参数 ====================
+
+/**
+ * 激进型策略使用 buff 技能的概率
+ *
+ * @see src/modules/combat/ai/strategies.ts AggressiveStrategy
+ */
+export const AGGRESSIVE_BUFF_CHANCE = 0.10;
+
+/**
+ * 防御型策略使用 buff 技能的概率
+ *
+ * @see src/modules/combat/ai/strategies.ts DefensiveStrategy
+ */
+export const DEFENSIVE_BUFF_CHANCE = 0.25;
+
+/**
+ * 防御型策略进入防御姿态的 HP 阈值（高于此值时考虑防御）
+ *
+ * @see src/modules/combat/ai/strategies.ts DefensiveStrategy
+ */
+export const DEFENSIVE_DEFEND_HP_THRESHOLD = 0.60;
+
+/**
+ * 防御型策略高血量时防御概率
+ *
+ * @see src/modules/combat/ai/strategies.ts DefensiveStrategy
+ */
+export const DEFENSIVE_DEFEND_CHANCE = 0.20;
+
+/**
+ * 防御型策略中血量时防御概率
+ *
+ * @see src/modules/combat/ai/strategies.ts DefensiveStrategy
+ */
+export const DEFENSIVE_DEFEND_CHANCE_LOW_HP = 0.25;
+
+/**
+ * 均衡型策略使用 buff 技能的概率
+ *
+ * @see src/modules/combat/ai/strategies.ts BalancedStrategy
+ */
+export const BALANCED_BUFF_CHANCE = 0.15;
+
+/**
+ * 均衡型策略防御概率
+ *
+ * @see src/modules/combat/ai/strategies.ts BalancedStrategy
+ */
+export const BALANCED_DEFEND_CHANCE = 0.10;
+
+/**
+ * Boss 正常阶段使用 buff 技能的概率
+ *
+ * @see src/modules/combat/ai/strategies.ts BossPhaseStrategy
+ */
+export const BOSS_BUFF_CHANCE = 0.15;
+
+/**
+ * Boss 半血阶段使用 buff 技能的概率
+ *
+ * @see src/modules/combat/ai/strategies.ts BossPhaseStrategy
+ */
+export const BOSS_HALF_BUFF_CHANCE = 0.20;
+
+/**
+ * 防御姿态提供的防御加成
+ *
+ * @see src/modules/combat/composables/useEnemyAction.ts defend case
+ */
+export const DEFEND_DEFENSE_BONUS = 10;
+
+/**
+ * 防御姿态持续回合数
+ *
+ * @see src/modules/combat/composables/useEnemyAction.ts defend case
+ */
+export const DEFEND_DURATION_TURNS = 2;

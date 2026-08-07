@@ -45,7 +45,7 @@ export type CombatResult = 'victory' | 'defeat' | 'fled';
  * @see store.ts playerAction 根据此值分发到不同的处理函数
  * @see CombatActionResult.type 此值在结果中回传，供 UI 层决策展示样式
  */
-export type CombatActionType = 'attack' | 'item' | 'flee' | 'skill';
+export type CombatActionType = 'attack' | 'item' | 'flee' | 'skill' | 'defend';
 
 /**
  * 战斗事件类型枚举
@@ -78,6 +78,7 @@ export type CombatEventType =
   | 'combat_flee'
   | 'combat_miss'
   | 'combat_critical'
+  | 'combat_defend'
   | 'combat_event'
   | 'passive_trigger'
   | 'passive_effect';

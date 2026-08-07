@@ -13,6 +13,10 @@ export interface BattleContext {
   enemyMaxHp: number;
   availableSkills: { id: string; name: string; isHeal?: boolean; isBuff?: boolean }[];
   turnCount: number;
+  /** 敌人是否已有激活的增益效果（避免重复 buff） */
+  enemyHasBuff: boolean;
+  /** 玩家是否已有激活的减益效果（避免重复 debuff） */
+  playerHasDebuff: boolean;
 }
 
 /** AI 策略接口 */
@@ -26,4 +30,6 @@ export interface IAiStrategy {
 export type AiDecision =
   | { type: 'basic_attack' }
   | { type: 'skill'; skillId: string }
-  | { type: 'heal'; skillId: string };
+  | { type: 'heal'; skillId: string }
+  | { type: 'buff'; skillId: string }
+  | { type: 'defend' };

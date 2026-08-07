@@ -3141,5 +3141,63 @@ export const MONSTER_ABILITIES: Skill[] = [
     cooldown: 2,
     targetType: 'single',
     usableBy: 'enemy'
+  },
+
+  // ========== P3-162 新增 buff/debuff 技能 ==========
+  {
+    id: 'war_cry',
+    name: '战吼',
+    icon: 'game-icons:war-pick',
+    description: '发出震天的怒吼，激昂的战意席卷全身，短时间内大幅提升攻击力',
+    mpCost: 0,
+    type: 'buff',
+    effect: { type: 'buff', value: 0 },
+    unlockLevel: 1,
+    cooldown: 3,
+    targetType: 'self',
+    buffs: [{ type: 'attack_up', value: 20, turns: 3 }],
+    usableBy: 'enemy'
+  },
+  {
+    id: 'fear_roar',
+    name: '恐惧咆哮',
+    icon: 'game-icons:terror',
+    description: '发出令人胆寒的咆哮，恐惧的气浪席卷敌人，大幅削弱其攻击力',
+    mpCost: 0,
+    type: 'debuff',
+    effect: { type: 'debuff', value: 0 },
+    unlockLevel: 1,
+    cooldown: 4,
+    targetType: 'single',
+    buffs: [{ type: 'attack_down', value: 15, turns: 3 }],
+    usableBy: 'enemy'
+  },
+  {
+    id: 'stone_skin',
+    name: '石化皮肤',
+    icon: 'game-icons:stone-block',
+    description: '使皮肤化为坚硬的岩石，大幅提升防御力并形成护盾',
+    mpCost: 0,
+    type: 'buff',
+    effect: { type: 'buff', value: 0 },
+    unlockLevel: 1,
+    cooldown: 3,
+    targetType: 'self',
+    buffs: [{ type: 'defense_up', value: 15, turns: 3 }, { type: 'shield', value: 20, turns: 3 }],
+    usableBy: 'enemy'
+  },
+  {
+    id: 'weaken',
+    name: '虚弱术',
+    icon: 'game-icons:weak-point',
+    description: '以暗影之力削弱目标的防御，使其受到的伤害大幅增加',
+    mpCost: 0,
+    type: 'debuff',
+    effect: { type: 'debuff', value: 0 },
+    unlockLevel: 1,
+    cooldown: 3,
+    targetType: 'single',
+    buffs: [{ type: 'vulnerable', value: 15, turns: 3 }],
+    usableBy: 'enemy'
   }
 ];

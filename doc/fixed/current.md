@@ -1,7 +1,7 @@
 # 当前待修复问题
 
 > 检查时间：2026-08-07
-> 最近整理：2026-08-07（P3-167 怪物/Boss 扩展完成并归档，清理已完成条目）
+> 最近整理：2026-08-07（P3-162 AI 决策类型扩展完成并归档，清理已完成条目）
 > tsc 状态：`tsc --noEmit --skipLibCheck` 通过（0 错误）
 > 历史归档目录：[doc/fixed/](file:///d:/openSource/wow_dnd/doc/fixed/)
 > 7月归档合并：[archive_2026_07.md](file:///d:/openSource/wow_dnd/doc/fixed/archive_2026_07.md)
@@ -31,15 +31,6 @@
 
 ---
 
-### P3-162（玩法·P2）：AI 决策类型仅 3 种，缺乏 buff/summon/defend
-- **状态**：待修复
-- **核实结果**（2026-08-07）：[src/modules/combat/ai/types.ts:26](file:///d:/openSource/wow_dnd/src/modules/combat/ai/types.ts#L26) `AiDecision = basic_attack | skill | heal`，仍 3 种。
-- **影响**：敌人不会主动施放 buff/debuff，4 种 AI 策略实际只在 3 种决策间调概率，差异感不强。
-- **修复建议**：扩展 AiDecision 联合类型，增加 `{ type: 'buff'; skillId }`、`{ type: 'defend' }` 等。
-- **风险**：中。需同步修改 4 种策略实现。
-
----
-
 ### P3-136（内容·P3）：补充 collect/talk/explore 任务
 - **状态**：待补齐，属内容创作类
 - **核实结果**（2026-08-07）：[config_quests.ts](file:///d:/openSource/wow_dnd/src/data/config_quests.ts) 188 处任务目标 `type` 全部为 `'kill'`，collect/talk/explore 为 0。
@@ -64,10 +55,10 @@
 | 类别 | 数量 |
 |------|------|
 | 待办问题（玩法·P1） | 1（P3-150） |
-| 待办问题（玩法·P2） | 2（P3-149 / P3-162） |
+| 待办问题（玩法·P2） | 1（P3-149） |
 | 待办问题（内容·P3） | 1（P3-136） |
 | 设计保留 | 2 |
-| **待办合计** | **4** |
+| **待办合计** | **3** |
 
 ### 已修复批次
 
@@ -80,5 +71,12 @@
 > | P2 中优修复 | [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md) | 7（P3-176/177/178/179/180/181/182）|
 > | P3 低优修复 | [fixed_20260807112730.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807112730.md) | 4（P3-183/184/185/186）|
 > | 测试补齐 | [fixed_20260807114900.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807114900.md) | 1（P3-187，+85 用例）|
+>
+> 玩法扩展批次（2026-08-07）：
+>
+> | 批次 | 归档 | 项数 |
+> |------|------|------|
+> | 怪物/Boss 扩展 | [fixed_20260807132900.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807132900.md) | 1（P3-167）|
+> | AI 决策扩展 | [fixed_20260807161000.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807161000.md) | 1（P3-162）|
 >
 > 早期修复批次见 [archive_2026_07.md](file:///d:/openSource/wow_dnd/doc/fixed/archive_2026_07.md) 及 `doc/fixed/` 目录下各 `fixed_*.md` 文件。
