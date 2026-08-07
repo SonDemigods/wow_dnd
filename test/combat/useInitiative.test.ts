@@ -163,6 +163,7 @@ function makeMockCtx(opts: {
       useSkill: vi.fn(() => ({ success: false, damage: 0, isHeal: false })),
       calculateDamage: vi.fn(() => 10),
       tickCooldowns: vi.fn(),
+      setAiStrategy: vi.fn(),
     },
     quest: { onEnemyKilled: vi.fn() },
     log: { addLogEntry: vi.fn() },
@@ -954,8 +955,8 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
 
       // 阶段切换时调用 applyPhaseStats
       expect(applyPhaseStats).toHaveBeenCalledWith(wrapAsBossInstance(bossEnemy), phase);
-      // aiStrategy 被更新
-      expect(bossEnemy.aiStrategy).toBe('aggressive');
+      // aiStrategy 被更新（P3-175：通过 ctx.enemy.setAiStrategy 调用）
+      expect(ctx.enemy.setAiStrategy).toHaveBeenCalledWith('boss1', 'aggressive');
       // 阶段转换日志
       expect(log.addCombatLog).toHaveBeenCalledWith(expect.objectContaining({
         eventType: 'combat_event',

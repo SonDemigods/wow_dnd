@@ -95,6 +95,12 @@ export interface ResourceSystem {
   /** 重置资源（战斗开始/结束时调用） */
   reset(): void;
 
+  /**
+   * 增加资源上限（P3-175：天赋 resource_bonus 叠加用）
+   * @param bonus - 增加的上限值（正数）
+   */
+  addMaxBonus(bonus: number): void;
+
   // ===== 战斗事件钩子（可选实现） =====
 
   /** 回合开始时触发 */

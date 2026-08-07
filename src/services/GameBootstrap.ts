@@ -12,6 +12,7 @@ import { useMapStore } from '@/modules/map';
 import { useExplorationStore } from '@/modules/exploration';
 import { useQuestStore, setQuestExternalCallbacks, clearQuestExternalCallbacks, initEnemyNameMap } from '@/modules/quest';
 import { useCombatStore } from '@/modules/combat';
+import { usePetStore } from '@/modules/combat/pets';
 import { useAudioStore } from '@/modules/audio';
 import { useBaseStore } from '@/modules/base';
 import { useTalentStore } from '@/modules/character/talents';
@@ -143,7 +144,14 @@ export class GameBootstrapService {
     const characterStore = useCharacterStore();
     const charData = characterStore.getCharacterData();
     if (charData) {
-      await useTalentStore().initialize(charData.classId, charData.level, charData.talentAllocations);
+      const talentStore = useTalentStore();
+      await talentStore.initialize(charData.classId, charData.level, charData.talentAllocations);
+      // P3-172：注入宠物回调，切断 talents → combat/pets 循环依赖
+      const petStore = usePetStore();
+      talentStore.setPetCallbacks(
+        (petType: string) => petStore.unlockPet(petType as never),
+        (petType: string) => petStore.lockPet(petType as never),
+      );
     }
 
     // ==================== Layer 4：quest（依赖 inventory 回调 + exploration） ====================

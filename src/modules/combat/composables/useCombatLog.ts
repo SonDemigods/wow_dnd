@@ -27,6 +27,14 @@ export function useCombatLog(state: ReturnType<typeof useCombatState>, ctx: ICom
   let savingPromise: Promise<void> | null = null;
 
   /**
+   * 已保存的日志索引指针（P3-174：增量保存）
+   *
+   * 每次 saveLogs 仅保存 combatLogs.value.slice(lastSavedIndex)，
+   * 避免长战斗中每回合全量重保存导致的 O(n) 性能劣化。
+   */
+  let lastSavedIndex = 0;
+
+  /**
    * 添加战斗日志（内部方法）
    * @param data - 日志数据（不含自动生成字段）
    */
@@ -44,19 +52,28 @@ export function useCombatLog(state: ReturnType<typeof useCombatState>, ctx: ICom
   /**
    * 持久化战斗日志（内部方法）
    *
-   * P3 BIZ-5 修复：防重入设计。
+   * P3-174 优化：增量保存。
    * - 首次调用启动持久化任务，savingPromise 被赋值
-   * - 并发调用直接返回同一 Promise，避免重复保存全量日志
-   * - 任务完成后清除引用，下次调用将启动新任务（保存新增日志）
+   * - 并发调用直接返回同一 Promise，避免重复保存
+   * - 任务完成后清除引用，下次调用将启动新任务
+   *
+   * P3 BIZ-5 修复：防重入设计，避免 IndexedDB 事务队列堆积与重复 put。
+   *
+   * @param forceAll - 是否全量保存剩余日志（endCombat/flush 时传 true）
    */
-  async function saveLogs(): Promise<void> {
+  async function saveLogs(forceAll: boolean = false): Promise<void> {
     if (savingPromise) {
       return savingPromise;
     }
     savingPromise = (async () => {
       try {
-        const logsToSave = [...state.combatLogs.value];
+        const logs = state.combatLogs.value;
+        // 增量：仅保存 [lastSavedIndex, length) 新增日志；forceAll 保存全部
+        const start = forceAll ? 0 : lastSavedIndex;
+        const logsToSave = logs.slice(start);
         await Promise.all(logsToSave.map(log => combatDbService.saveCombatLog(log)));
+        // 保存成功后推进指针（forceAll 时同步全部指针到末尾）
+        lastSavedIndex = forceAll ? logs.length : start + logsToSave.length;
       } catch (e) {
         console.error('[CombatStore] 保存战斗日志失败:', e);
       } finally {
@@ -114,5 +131,7 @@ export function useCombatLog(state: ReturnType<typeof useCombatState>, ctx: ICom
     saveLogs,
     createPlayerEffectContext,
     createEnemyEffectContext,
+    /** P3-174：重置增量指针（startCombat 清空日志时调用） */
+    resetSaveIndex: () => { lastSavedIndex = 0; },
   };
 }

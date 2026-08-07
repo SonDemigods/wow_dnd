@@ -52,6 +52,7 @@ import type { BossPhase, BossIntro, BossEnemyInstance } from '@/modules/boss/typ
 /** 构造 minimal state mock */
 function makeStateMock() {
   return {
+    state: ref('fighting'),
     bossPhaseManagers: new Map<string, unknown>(),
     bossInstances: new Map(),
     bossIntros: ref<Record<string, BossIntro>>({}),

@@ -88,4 +88,16 @@ export abstract class BaseResourceSystem implements ResourceSystem {
   reset(): void {
     this._value.value = this.initialValue;
   }
+
+  /**
+   * 增加资源上限（P3-175：替代 as unknown as 直接访问 _maxValue）
+   *
+   * 用于天赋 resource_bonus 叠加非 mana 类资源上限（rage_max/energy_max 等）。
+   * 不修改当前值，仅提升上限。
+   */
+  addMaxBonus(bonus: number): void {
+    if (bonus > 0) {
+      this._maxValue.value += bonus;
+    }
+  }
 }

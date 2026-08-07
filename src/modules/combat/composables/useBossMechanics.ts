@@ -197,6 +197,8 @@ export function useBossMechanics(
             try {
               for (let i = 0; i < count; i++) {
                 const minion = await bossCtx.createMinion('slime', base.level);
+                // P3-173：战斗在 createMinion 期间可能已结束（玩家逃跑/死亡），guard 防止写入已清理的状态
+                if (state.state.value !== 'fighting') return;
                 if (minion) {
                   // P2-41 修复：分配位置时优先前排，前排满时使用后排，避免位置重叠
                   const existingPos = Object.values(state.enemyPositions.value);

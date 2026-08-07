@@ -392,7 +392,8 @@ export function useInitiative(
           applyPhaseStats(bossInstance, currentPhase);
           // 同步更新 AI 策略为当前阶段的策略
           if (currentPhase.aiStrategy) {
-            e.aiStrategy = currentPhase.aiStrategy;
+            // P3-175：通过 Store action 修改，替代直接修改 e.aiStrategy
+            ctx.enemy.setAiStrategy(e.id, currentPhase.aiStrategy);
           }
           log.addCombatLog({
             actorType: 'system', actorId: 'system', actorName: '系统',

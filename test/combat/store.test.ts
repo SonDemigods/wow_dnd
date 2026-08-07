@@ -259,6 +259,7 @@ function createLogMock() {
     addCombatLog: vi.fn(),
     // P2-46：saveLogs 现在以 .catch() 链式调用，mock 需返回 resolved Promise
     saveLogs: vi.fn().mockResolvedValue(undefined),
+    resetSaveIndex: vi.fn(),
     createPlayerEffectContext: vi.fn(() => ({ ownerId: 'player', ownerType: 'player' })),
     createEnemyEffectContext: vi.fn(() => ({ ownerId: 'enemy', ownerType: 'enemy' })),
   };

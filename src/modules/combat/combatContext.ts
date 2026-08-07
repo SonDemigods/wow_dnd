@@ -27,6 +27,7 @@ import { useCharacterStore, type Stats, type Attributes } from '@/modules/charac
 import { useSkillStore, type Skill, type SkillUseResult } from '@/modules/skill';
 import { useTalentStore } from '@/modules/character/talents';
 import { useEnemyStore, type EnemyInstance } from '@/modules/enemy';
+import type { AiStrategyType } from '@/modules/enemy/types';
 import { useQuestStore } from '@/modules/quest';
 import { useLogStore, type LogEntry } from '@/modules/log';
 import { useInventoryStore, type Item } from '@/modules/inventory';
@@ -81,6 +82,8 @@ export interface ICombatQuery {
     readonly damageReduction: number;
     readonly resourceBonuses: Record<string, number>;
     readonly skillEnhancements: Array<{ skillId: string; value: number }>;
+    /** P3-172：已解锁宠物列表（替代 store.ts 直接 import useTalentStore） */
+    readonly unlockedPets: string[];
   };
 }
 
@@ -129,6 +132,8 @@ export interface ICombatCommand {
       buffs?: Array<{ type: string; value: number; turns: number }>;
     };
     tickCooldowns(enemyId?: string): void;
+    /** P3-175：设置敌人 AI 策略（替代直接修改 e.aiStrategy） */
+    setAiStrategy(enemyId: string, strategy: AiStrategyType): void;
   };
 
   /** 任务域（写入）：来自 useQuestStore */
@@ -217,6 +222,7 @@ export function createCombatContext(): ICombatContext {
       useSkill: (id, skillId) => enemyStore.useSkill(id, skillId),
       calculateDamage: (enemy) => enemyStore.calculateDamage(enemy),
       tickCooldowns: (enemyId) => enemyStore.tickCooldowns(enemyId),
+      setAiStrategy: (enemyId, strategy) => enemyStore.setAiStrategy(enemyId, strategy),
     },
     quest: {
       onEnemyKilled: (enemyId) => questStore.onEnemyKilled(enemyId),
@@ -234,6 +240,7 @@ export function createCombatContext(): ICombatContext {
       get damageReduction() { return useTalentStore().effectSummary.damageReduction; },
       get resourceBonuses() { return useTalentStore().effectSummary.resourceBonuses; },
       get skillEnhancements() { return useTalentStore().effectSummary.skillEnhancements; },
+      get unlockedPets() { return useTalentStore().effectSummary.unlockedPets; },
     },
   };
 }

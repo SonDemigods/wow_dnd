@@ -75,44 +75,17 @@
 
 ---
 
-### P3-172（架构·P1）：combat ↔ character/talents 循环依赖
-- **状态**：待修复（高）
-- **核实结果**（2026-08-07）：
-  - [store.ts:38](file:///d:/openSource/wow_dnd/src/modules/combat/store.ts#L38) 直接 `import { useTalentStore }`，仅用于读取 `effectSummary.unlockedPets`（[store.ts:339-342](file:///d:/openSource/wow_dnd/src/modules/combat/store.ts#L339-L342)）。
-  - [character/talents/store.ts:24](file:///d:/openSource/wow_dnd/src/modules/character/talents/store.ts#L24) 反向 `import usePetStore from combat/pets`。
-  - combatContext.ts:22 注释自称"combat 模块内唯一引用外部 Store 的位置"，但 store.ts:38 绕过此契约。
-- **问题表现**：违反 combatContext.ts 作为唯一外部 Store 引用点的架构契约，形成循环依赖。
-- **修复建议**：将 `unlockedPets` 加入 `ICombatQuery.talent` 接口，通过 `ctx.talent.unlockedPets` 访问；character/talents → combat/pets 的反向依赖改为 GameBootstrap 回调注入（参照 inventory↔quest 模式）。
-- **风险**：中。需修改接口定义与调用点。
+### P3-172（架构·P1）：~~combat ↔ character/talents 循环依赖~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807104831.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104831.md)）
 
----
+### P3-173（战斗·P1）：~~useBossMechanics 召唤小怪 IIFE 缺战斗状态守卫~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807104831.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104831.md)）
 
-### P3-173（战斗·P1）：useBossMechanics 召唤小怪 IIFE 缺战斗状态守卫
-- **状态**：待修复（高）
-- **核实结果**（2026-08-07）：[useBossMechanics.ts:195-255](file:///d:/openSource/wow_dnd/src/modules/combat/composables/useBossMechanics.ts#L195-L255) `summon_minions` 分支的异步 IIFE `(async () => { ... })()` 内每个 `await bossCtx.createMinion()` 之后无 `state.state.value !== 'fighting'` 守卫。
-- **问题表现**：若战斗在 `createMinion` 期间结束（玩家逃跑/死亡），IIFE 仍会 push enemyId/enemyPositions 到已清理的状态，导致下场战斗出现幽灵敌人。
-- **修复建议**：在 IIFE 内部每个 `await` 后增加 `if (state.state.value !== 'fighting') return;` 守卫，或使用 AbortController 模式。
-- **风险**：低。
+### P3-174（性能·P1）：~~saveLogs 每次全量重保存，长战斗性能劣化~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807104831.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104831.md)）
 
----
-
-### P3-174（性能·P1）：saveLogs 每次全量重保存，长战斗性能劣化
-- **状态**：待修复（高）
-- **核实结果**（2026-08-07）：[useCombatLog.ts:58-59](file:///d:/openSource/wow_dnd/src/modules/combat/composables/useCombatLog.ts#L58-L59) `const logsToSave = [...state.combatLogs.value]; await Promise.all(logsToSave.map(...))` 每次保存全量日志。
-- **问题表现**：50 回合 × 5 条/回合 = 250 条，每回合 3-5 次 saveLogs → 每次 250 次 put，战斗末期每回合产生 750-1250 次冗余 put 操作，性能 O(n) 增长。
-- **修复建议**：维护 `lastSavedIndex` 指针，每次只保存 `combatLogs.value.slice(lastSavedIndex)` 增量日志。
-- **风险**：低。需注意 endCombat 时保存全部剩余日志。
-
----
-
-### P3-175（架构·P1）：ResourceSystem 私有字段 as 穿透 + EnemyInstance 直接修改
-- **状态**：待修复（高）
-- **核实结果**（2026-08-07）：
-  - [store.ts:309](file:///d:/openSource/wow_dnd/src/modules/combat/store.ts#L309) `(sys as unknown as { _maxValue: { value: number } })._maxValue.value += bonus` 使用 `as unknown as` 破坏封装访问 protected 字段 `_maxValue`。
-  - [useInitiative.ts:393](file:///d:/openSource/wow_dnd/src/modules/combat/composables/useInitiative.ts#L393) `e.aiStrategy = currentPhase.aiStrategy` 直接修改 EnemyInstance 对象，未经 enemy store action。
-- **问题表现**：类型系统无法捕获重命名/重构，违反"状态修改应通过 store action"原则。
-- **修复建议**：在 `BaseResourceSystem` 新增 `addMaxBonus(bonus: number)` 公共方法；在 `ctx.enemy` 接口暴露 `setAiStrategy(enemyId, strategy)` 方法。
-- **风险**：低。
+### P3-175（架构·P1）：~~ResourceSystem as 穿透 + EnemyInstance 直接修改~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807104831.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104831.md)）
 
 ---
 
@@ -269,12 +242,12 @@
 | 待办问题（玩法·P2） | 2（P3-149 / P3-162） |
 | 待办问题（内容·P3） | 2（P3-136 / P3-167） |
 | 战斗系统·P0 严重 | 0（P3-168/169/170/171 已修复） |
-| 战斗系统·P1 高 | 4（P3-172 / 173 / 174 / 175） |
+| 战斗系统·P1 高 | 0（P3-172/173/174/175 已修复） |
 | 战斗系统·P2 中 | 7（P3-176 / 177 / 178 / 179 / 180 / 181 / 182） |
 | 战斗系统·P3 低 | 4（P3-183 / 184 / 185 / 186） |
 | 战斗系统·测试 | 1（P3-187） |
 | 设计保留 | 2 |
-| **待办合计** | **22** |
+| **待办合计** | **18** |
 
 ### 已修复批次
 
@@ -294,15 +267,12 @@
 | Store 拆分 composable | 2026-08-07 | [fixed_20260807091727.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807091727.md) | 1（P3-155，3 个 Store）|
 | 组件拆分 composable | 2026-08-07 | [fixed_20260807095516.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807095516.md) | 1（P3-163，3 个组件）|
 | 战斗系统 P0 严重修复 | 2026-08-07 | [fixed_20260807104011.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104011.md) | 4（P3-168/169/170/171）|
+| 战斗系统 P1 高优修复 | 2026-08-07 | [fixed_20260807104831.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104831.md) | 4（P3-172/173/174/175）|
 
 ### 待办优先级清单（建议下一批次处理）
 
 | 编号 | 维度 | 标题 | 优先级 |
 |------|------|------|--------|
-| P3-172 | 架构 | combat ↔ character/talents 循环依赖 | P1 |
-| P3-173 | 战斗 | useBossMechanics 召唤小怪 IIFE 缺状态守卫 | P1 |
-| P3-174 | 性能 | saveLogs 每次全量重保存，长战斗性能劣化 | P1 |
-| P3-175 | 架构 | ResourceSystem as 穿透 + EnemyInstance 直接修改 | P1 |
 | P3-150 | 玩法 | 死亡惩罚过严，无保险机制（需重新评估 P2-57） | P1 |
 | P3-176 | 战斗 | startCombat loadPassives 无异常处理 | P2 |
 | P3-177 | 架构 | COMBAT_END 事件载荷过度膨胀 | P2 |

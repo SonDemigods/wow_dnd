@@ -12,7 +12,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { EnemyInstance } from './types';
+import type { EnemyInstance, AiStrategyType } from './types';
 import type { Skill } from '@/modules/skill/types';
 import { createEnemyInstance, calculateEnemyDamage } from './service';
 import { enemyDbService } from './db';
@@ -294,6 +294,22 @@ export const useEnemyStore = defineStore('enemies', () => {
   }
 
   /**
+   * 设置敌人 AI 策略（P3-175：替代直接修改 e.aiStrategy）
+   *
+   * 通过 Store action 修改 enemy.aiStrategy，确保 Vue 响应式追踪。
+   * 用于 Boss 阶段切换时同步 AI 策略。
+   *
+   * @param enemyId - 敌人 ID
+   * @param strategy - 新的 AI 策略
+   */
+  function setAiStrategy(enemyId: string, strategy: AiStrategyType): void {
+    const enemy = enemiesCache.value[enemyId];
+    if (enemy) {
+      enemiesCache.value[enemyId] = { ...enemy, aiStrategy: strategy };
+    }
+  }
+
+  /**
    * 删除敌人实例
    *
    * 同时清理活跃 ID 列表、实例缓存和技能冷却记录，避免内存泄漏。
@@ -331,6 +347,7 @@ export const useEnemyStore = defineStore('enemies', () => {
     tickCooldowns,
     getCooldownRemaining,
     calculateDamage,
+    setAiStrategy,
     deleteEnemy,
     clearAll
   };

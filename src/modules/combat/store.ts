@@ -35,7 +35,6 @@ import { usePlayerAction } from './composables/usePlayerAction';
 import { usePassiveSkills } from './composables/usePassiveSkills';
 import { usePetAction, type PetSummonResult } from './composables/usePetAction';
 import type { PetType, PetOwner } from './pets';
-import { useTalentStore } from '@/modules/character/talents';
 
 /**
  * 战斗状态存储
@@ -221,7 +220,8 @@ export const useCombatStore = defineStore('combat', () => {
       }
 
       // P2-46 修复：await saveLogs，避免 dispose/角色切换时日志写入丢失
-      await log.saveLogs();
+      // P3-174：forceAll=true 保存全部剩余日志
+      await log.saveLogs(true);
 
       // P3-89 修复：COMBAT_END 事件载荷补充敌人摘要（enemyCount/enemyNames），
       // 同时保留首个敌人引用 `enemy` 以向后兼容既有消费者（仅读取首敌信息的 UI/音效）。
@@ -284,6 +284,8 @@ export const useCombatStore = defineStore('combat', () => {
     state.turn.value = 'player';
     state.turnCount.value = 1;
     state.combatLogs.value = [];
+    // P3-174：重置增量保存指针
+    log.resetSaveIndex();
     state.combatResult.value = null;
     state.expGained.value = 0;
     state.goldGained.value = 0;
@@ -306,7 +308,8 @@ export const useCombatStore = defineStore('combat', () => {
           const maxKey = `${sys.type}_max`;
           const bonus = rb[maxKey];
           if (bonus !== undefined && bonus > 0) {
-            (sys as unknown as { _maxValue: { value: number } })._maxValue.value += bonus;
+            // P3-175：使用公共方法替代 as unknown as 直接访问 _maxValue
+            sys.addMaxBonus(bonus);
           }
         }
       }
@@ -336,8 +339,9 @@ export const useCombatStore = defineStore('combat', () => {
     // hunter_beast T4-T6 天赋通过 unlock_pet 效果解锁猎豹/野猪/魔暴龙，
     // 此处在战斗开始时从 effectSummary.unlockedPets 重新同步，确保状态一致
     // （天赋可能在非战斗时学习，petStore.initialize 会重置状态，需重新应用）
-    const talentStore = useTalentStore();
-    for (const petType of talentStore.effectSummary.unlockedPets) {
+    // P3-172：通过 ctx.talent.unlockedPets 访问，替代直接 import useTalentStore
+    const talentStore = ctx.talent;
+    for (const petType of talentStore.unlockedPets) {
       pet.petStore.unlockPet(petType as PetType);
     }
 

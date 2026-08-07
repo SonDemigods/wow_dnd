@@ -21,7 +21,6 @@ import {
   type TalentEffectSummary
 } from './service';
 import { configCache } from '@/modules/config';
-import { usePetStore } from '@/modules/combat/pets';
 import { useCharacterStore } from '@/modules/character/store';
 import type { Stats } from '@/modules/character/types';
 
@@ -39,6 +38,26 @@ import type { Stats } from '@/modules/character/types';
  * | 查询 | `canLearn`, `getTalentRank`, `getTreeSpentPoints` | 纯查询 |
  */
 export const useTalentStore = defineStore('talent', () => {
+  // ==================== 回调注入（P3-172：消除 talents → combat/pets 循环依赖） ====================
+
+  /**
+   * 宠物解锁/锁定回调（由 GameBootstrap 注入）
+   *
+   * P3-172：talents → combat/pets 的反向依赖改为回调注入，
+   * 参照 inventory↔quest 模式。GameBootstrap 在启动时设置回调，
+   * talents store 不再直接 import usePetStore。
+   */
+  let onPetUnlock: ((petType: string) => void) | null = null;
+  let onPetLock: ((petType: string) => void) | null = null;
+
+  /**
+   * 设置宠物回调（由 GameBootstrap 调用）
+   */
+  function setPetCallbacks(unlock: (petType: string) => void, lock: (petType: string) => void): void {
+    onPetUnlock = unlock;
+    onPetLock = lock;
+  }
+
   // ==================== 响应式状态 ====================
 
   /** 天赋分配状态：key 为天赋 ID，value 为当前等级 */
@@ -214,8 +233,8 @@ export const useTalentStore = defineStore('talent', () => {
 
     for (const effect of found.talent.effects) {
       if (effect.type === 'unlock_pet') {
-        const petStore = usePetStore();
-        petStore.unlockPet(effect.petType);
+        // P3-172：通过回调注入替代直接 import usePetStore
+        onPetUnlock?.(effect.petType);
       }
     }
   }
@@ -339,8 +358,8 @@ export const useTalentStore = defineStore('talent', () => {
 
     for (const effect of found.talent.effects) {
       if (effect.type === 'unlock_pet') {
-        const petStore = usePetStore();
-        petStore.lockPet(effect.petType);
+        // P3-172：通过回调注入替代直接 import usePetStore
+        onPetLock?.(effect.petType);
       }
     }
   }
@@ -431,6 +450,9 @@ export const useTalentStore = defineStore('talent', () => {
     initialize,
     reset,
     updateLevel,
+
+    // P3-172：宠物回调注入（GameBootstrap 调用）
+    setPetCallbacks,
 
     // 操作
     learn,
