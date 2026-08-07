@@ -280,6 +280,7 @@ import { useSkillStore } from '@/modules/skill';
 import { useInventoryStore } from '@/modules/inventory';
 import { useEquipmentStore } from '@/modules/equipment';
 import { useSkillDisplay } from '@/composables/useSkillDisplay';
+import { useCombatUiHelpers } from '@/composables/useCombatUiHelpers';
 import { eventBus, GameEvents } from '@/modules/bus';
 import type { CombatLog, CombatResult, CombatActionType } from '@/modules/combat';
 import type { Skill } from '@/modules/skill';
@@ -468,59 +469,14 @@ const playerMpPercent = computed(() => Math.max(0, Math.min(100, (playerMp.value
 /** 是否显示 MP 资源条（战士/盗贼/猎人等替代型资源职业隐藏 MP 条） */
 const showManaBar = computed(() => !ResourceSystemFactory.replacesMana(characterStore.classId));
 
-/** 资源类型中文名映射 */
-const RESOURCE_TYPE_NAMES: Record<string, string> = {
-  rage: '怒气', energy: '能量', combo_point: '连击',
-  soul_shard: '碎片', chi: '真气', focus: '集中',
-  holy_power: '神圣', runic_power: '符能', rune: '符文',
-  fury: '怒火', soul: '灵魂', essence: '精华',
-  mana: '法力',
-};
-
-/** 获取技能消耗文本（专属资源或 MP） */
-function getSkillCostText(skill: Skill): string {
-  if (skill.resourceType && skill.resourceCost) {
-    return `${skill.resourceCost} ${RESOURCE_TYPE_NAMES[skill.resourceType] || ''}`;
-  }
-  // P2-76：mpCost 可选，undefined 时显示 0 MP
-  return `${skill.mpCost ?? 0} MP`;
-}
-
-/** 检查技能是否可施放（MP + 专属资源双重检查） */
-function canCastSkill(skill: Skill): boolean {
-  // P2-76：mpCost 可选，undefined 视为 0
-  if (playerMp.value < (skill.mpCost ?? 0)) return false;
-  if (skill.resourceType && skill.resourceCost) {
-    const sys = combatStore.resourceSystems.find(s => s.type === skill.resourceType);
-    if (sys && !sys.hasEnough(skill.resourceCost)) return false;
-  }
-  return true;
-}
-
-// currentTarget 已在 composable 调用前声明（animations 依赖注入需要）
-
-function getHpPercent(e: { hp: number; maxHp: number }): number {
-  return Math.max(0, Math.min(100, (e.hp / e.maxHp) * 100));
-}
-
-/** 获取指定位置（前后排 + 列）上的敌人列表 */
-function getEnemiesInSlot(row: 'front' | 'back', col: number) {
-  const positions = combatStore.enemyPositions;
-  return combatStore.enemies.filter(e => {
-    const pos = positions[e.id];
-    return pos && pos.row === row && pos.col === col;
-  });
-}
-
-/** 获取指定敌人的效果列表 */
-function getEnemyEffects(enemyId: string) {
-  return combatStore.enemyEffects[enemyId]?.effects || [];
-}
-
-/** 获取指定敌人的效果数量 */
-function getEnemyEffectCount(enemyId: string): number {
-  return getEnemyEffects(enemyId).length;
-}
+// P3-163：UI 辅助函数抽离到 useCombatUiHelpers composable
+const {
+  getSkillCostText, canCastSkill, getHpPercent,
+  getEnemiesInSlot, getEnemyEffects, getEnemyEffectCount,
+  buildItemDescription, getSkillEffectText, getTargetTypeText,
+  getDamageTypeClass, getDamageTypeIcon,
+  isBuffEffect, isDebuffEffect, formatEffectValue, getEffectIcon,
+} = useCombatUiHelpers();
 
 // 状态
 const isPlayerTurn = computed(() => turn.value === 'player');
@@ -660,49 +616,6 @@ function handlePetDismiss(): void {
   }
 }
 
-/** 构建消耗品描述（委托 describeEffect 统一效果描述，无效果时回退到物品描述） */
-function buildItemDescription(info: Item): string {
-  // P3.3b：适配 effects[] 多效果模型（旧版 effect 单字段已移除）
-  if (info.kind === 'consumable' && info.effects.length > 0) {
-    return info.effects.map(describeEffect).join('，');
-  }
-  return info.description || '';
-}
-
-const { getSkillEffectBrief, getTargetTypeName } = useSkillDisplay();
-
-function getSkillEffectText(skill: Skill): string {
-  return getSkillEffectBrief(skill, characterStore.effectiveStats);
-}
-
-/** 获取技能目标类型文本 */
-function getTargetTypeText(targetType?: 'single' | 'all_enemies' | 'self' | 'ally'): string {
-  if (!targetType || targetType === 'single') return '';
-  return getTargetTypeName(targetType);
-}
-
-// 根据日志事件类型获取伤害类型样式类
-function getDamageTypeClass(log: CombatLog): string {
-  if (log.eventType === 'combat_skill_cast') return 'magic-damage';
-  if (log.eventType === 'combat_critical') return 'crit-damage';
-  return 'physical-damage';
-}
-
-// 根据日志事件类型获取伤害类型图标
-function getDamageTypeIcon(log: CombatLog): string {
-  if (log.eventType === 'combat_skill_cast') return 'magic-swirl';
-  if (log.eventType === 'combat_critical') return 'sword-clash';
-  return 'pointy-sword';
-}
-
-/** 效果图标映射 */
-const effectIcons: Record<string, string> = {
-  poison: 'skull-poison', burn: 'flame', stun: 'stun-glow', freeze: 'snowflake', silence: 'silenced',
-  shield: 'shield', attack_up: 'sword-clash', attack_down: 'sword-clash', defense_up: 'shield',
-  defense_down: 'shield', speed_up: 'dodge', speed_down: 'turtle', regen: 'regeneration',
-  thorn: 'cactus', vulnerable: 'heart-organ',
-};
-
 /** 效果类型标签 */
 const effectLabels: Record<string, string> = {
   poison: '中毒', burn: '灼烧', stun: '眩晕', freeze: '冰冻', silence: '沉默',
@@ -710,28 +623,6 @@ const effectLabels: Record<string, string> = {
   defense_down: '防御↓', speed_up: '速度↑', speed_down: '速度↓', regen: '恢复',
   thorn: '反伤', vulnerable: '易伤',
 };
-
-/** 效果是否为增益 */
-function isBuffEffect(type: string): boolean {
-  return ['shield', 'attack_up', 'defense_up', 'speed_up', 'regen'].includes(type);
-}
-
-/** 效果是否为减益 */
-function isDebuffEffect(type: string): boolean {
-  return ['poison', 'burn', 'stun', 'freeze', 'silence', 'attack_down', 'defense_down', 'speed_down', 'vulnerable'].includes(type);
-}
-
-/** 效果数值格式化（增益正数，减益取绝对值） */
-function formatEffectValue(type: string, value: number): string {
-  if (isBuffEffect(type)) return `+${value}`;
-  if (isDebuffEffect(type)) return `+${value}`;
-  return `${value}`;
-}
-
-/** 获取效果对应的图标 */
-function getEffectIcon(type: string): string {
-  return effectIcons[type] || 'game-icons:sparkles';
-}
 
 const resultText = computed(() => {
   switch (combatStore.combatResult) {

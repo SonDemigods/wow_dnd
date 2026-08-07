@@ -110,7 +110,7 @@
         <div class="character-preview">
           <div class="preview-row">
             <div class="preview-avatar">
-              <BaseIcon :name="baseStore.getRaceIcon(selectedRace || '')" :gradient="selectedFaction === 'alliance' ? 'alliance' : selectedFaction === 'horde' ? 'horde' : 'neutral'" :size="40" />
+              <BaseIcon :name="getRaceIcon(selectedRace || '')" :gradient="selectedFaction === 'alliance' ? 'alliance' : selectedFaction === 'horde' ? 'horde' : 'neutral'" :size="40" />
             </div>
             <div class="name-input-wrapper">
               <input
@@ -124,17 +124,17 @@
           <div class="preview-details">
             <Tag
               type="faction"
-              :text="baseStore.getFactionName(selectedFaction || '')"
-              :color="baseStore.getFactionColor(selectedFaction || '')"
+              :text="getFactionName(selectedFaction || '')"
+              :color="getFactionColor(selectedFaction || '')"
             />
             <Tag
               type="race"
-              :text="baseStore.getRaceName(selectedRace || '')"
+              :text="getRaceName(selectedRace || '')"
             />
             <Tag
               type="class"
-              :text="baseStore.getClassName(selectedClass || '')"
-              :color="baseStore.getClassColor(selectedClass || '')"
+              :text="getClassName(selectedClass || '')"
+              :color="getClassColor(selectedClass || '')"
             />
           </div>
         </div>
@@ -254,301 +254,26 @@
  * @description 提供分步式的角色创建流程，依次选择阵营、种族、职业并输入角色名，实时预览属性加成和次级属性
  */
 
-import { ref, computed, onMounted } from 'vue';
-import { useCharacterStore } from '@/modules/character';
-import { useBaseStore } from '@/modules/base';
-import { eventBus, GameEvents } from '@/modules/bus';
+import { onMounted } from 'vue';
 import Tag from './common/Tag.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
-import type {
-  FactionType,
-  RaceType,
-  ClassType
-} from '@/modules/character';
-import { STAT_NAMES } from '@/config/character';
-import {
-  calculatePhysicalAttack,
-  calculatePhysicalDefense,
-  calculateMagicAttack,
-  calculateMagicDefense,
-  calculateCritChance,
-  calculateDodgeChance,
-  calculateMaxHp,
-  calculateMaxMana
-} from '@/utils/calculations';
-
-const characterStore = useCharacterStore();
-const baseStore = useBaseStore();
+import { useCharacterCreation } from '@/composables/useCharacterCreation';
 
 const emit = defineEmits<{
   created: [];
 }>();
 
-const currentStep = ref(1);
-const name = ref('');
-// P2 TS-3 修复：使用精确联合类型替代 string，消除下游 as 断言
-// 数据源均为 baseStore 的 faction.id / race.id / cls.id（已是 FactionType/RaceType/ClassType）
-const selectedFaction = ref<FactionType | null>(null);
-const selectedRace = ref<RaceType | null>(null);
-const selectedClass = ref<ClassType | null>(null);
-
-/** 弹窗状态 */
-const showModal = ref(false);
-const modalType = ref<'error' | 'confirm'>('error');
-const modalIcon = ref<{ name: string; gradient: string }>({ name: '', gradient: '' });
-const modalTitle = ref('');
-const modalMessage = ref('');
-const modalConfirmText = ref('');
-
-const currentStepTitle = computed(() => {
-  switch (currentStep.value) {
-    case 1:
-      return '请选择阵营';
-    case 2:
-      return `请选择种族 (${baseStore.getFactionName(selectedFaction.value || '')})`;
-    case 3:
-      return '请选择职业';
-    case 4:
-      return '请输入角色名';
-    default:
-      return '';
-  }
-});
-
-/** 展示阵营列表，排除中立阵营（中立单独渲染在下方） */
-const displayFactions = computed(() => baseStore.factions.filter((f) => f.id !== 'neutral'));
-
-const neutralFaction = computed(() => {
-  return baseStore.factions.find((f) => f.id === 'neutral');
-});
-
-const availableRaces = computed(() => {
-  if (!selectedFaction.value) return [];
-  return baseStore.races.filter(
-    (r) => r.factionId === selectedFaction.value
-  );
-});
-
-const availableClasses = computed(() => {
-  if (!selectedRace.value || !selectedFaction.value) return [];
-  return baseStore.classes.filter(
-    (c) =>
-      c.raceIds.includes(selectedRace.value) &&
-      c.factionsIds.includes(selectedFaction.value)
-  );
-});
-
-const currentAttributes = computed(() => {
-  const base = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
-
-  if (selectedRace.value) {
-    const raceData = baseStore.races.find(
-      (r) => r.id === selectedRace.value
-    );
-    if (raceData?.bonus) {
-      for (const [stat, value] of Object.entries(raceData.bonus)) {
-        if (stat in base) {
-          base[stat as keyof typeof base] += value;
-        }
-      }
-    }
-  }
-
-  if (selectedClass.value) {
-    const classData = baseStore.classes.find(
-      (c) => c.id === selectedClass.value
-    );
-    if (classData?.bonus) {
-      for (const [stat, value] of Object.entries(classData.bonus)) {
-        if (stat in base) {
-          base[stat as keyof typeof base] += value;
-        }
-      }
-    }
-  }
-
-  return base;
-});
-
-const derivedAttributes = computed(() => {
-  const classData = baseStore.classes.find((c) => c.id === selectedClass.value);
-  const primaryStat = classData?.primaryStat ?? 'dex';
-  return {
-    physicalAttack: calculatePhysicalAttack(currentAttributes.value),
-    physicalDefense: calculatePhysicalDefense(currentAttributes.value),
-    magicAttack: calculateMagicAttack(currentAttributes.value),
-    magicDefense: calculateMagicDefense(currentAttributes.value),
-    critChance: calculateCritChance(currentAttributes.value, primaryStat),
-    dodgeChance: calculateDodgeChance(currentAttributes.value),
-    maxHp: calculateMaxHp(currentAttributes.value),
-    maxMana: calculateMaxMana(currentAttributes.value)
-  };
-});
-
-const canProceed = computed(() => {
-  switch (currentStep.value) {
-    case 1:
-      return selectedFaction.value !== null;
-    case 2:
-      return selectedRace.value !== null;
-    case 3:
-      return selectedClass.value !== null;
-    default:
-      return true;
-  }
-});
-
-const canCreate = computed(() => {
-  return (
-    name.value.trim().length > 0 &&
-    selectedFaction.value &&
-    selectedRace.value &&
-    selectedClass.value
-  );
-});
-
-async function loadData() {
-  await baseStore.loadAllData();
-}
-
-function selectFaction(id: FactionType) {
-  selectedFaction.value = id;
-  selectedRace.value = null;
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'select_faction' });
-}
-
-function selectRace(id: RaceType) {
-  selectedRace.value = id;
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'select_race' });
-}
-
-function selectClass(id: ClassType) {
-  selectedClass.value = id;
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'select_class' });
-}
-
-function getFactionRaceNames(factionId: string) {
-  const factionRaces = baseStore.races.filter(
-    (r) => r.factionId === factionId
-  );
-  return factionRaces.map((r) => r.name).join(' · ');
-}
-
-function getStatName(stat: string) {
-  return STAT_NAMES[stat as keyof typeof STAT_NAMES] || stat;
-}
-
-function getStatIcon(stat: string): { name: string; gradient: string } {
-  const icons: Record<string, { name: string; gradient: string }> = {
-    str: { name: 'biceps', gradient: 'physical' },
-    dex: { name: 'boot-kick', gradient: 'lightning' },
-    con: { name: 'heart-organ', gradient: 'blood' },
-    int: { name: 'brain', gradient: 'magic' },
-    wis: { name: 'eye-target', gradient: 'nature' },
-    cha: { name: 'charm', gradient: 'gold' }
-  };
-  return icons[stat] || { name: 'uncertainty', gradient: 'shadow' };
-}
-
-function nextStep() {
-  if (currentStep.value < 4) {
-    currentStep.value++;
-    eventBus.emit(GameEvents.UI_CLICK, { source: 'create_next' });
-  }
-}
-
-function prevStep() {
-  if (currentStep.value > 1) {
-    currentStep.value--;
-    eventBus.emit(GameEvents.UI_CLICK, { source: 'create_prev' });
-  }
-}
-
-/** 计算名称的有效字符长度：中文计2，英文/数字计1 */
-function calcNameLength(str: string): number {
-  let len = 0;
-  for (const ch of str) {
-    len += /[\u4e00-\u9fff]/.test(ch) ? 2 : 1;
-  }
-  return len;
-}
-
-/** 校验角色名，返回错误信息，无错误返回 null */
-function validateName(input: string): string | null {
-  const trimmed = input.trim();
-  if (trimmed.length === 0) {
-    return '角色名不能为空';
-  }
-  if (!/^[\u4e00-\u9fffa-zA-Z0-9]+$/.test(trimmed)) {
-    return '角色名只能包含中文、英文和数字，不允许特殊符号';
-  }
-  const len = calcNameLength(trimmed);
-  if (len > 16) {
-    return '角色名过长，最多8个汉字或16个英文字母';
-  }
-  return null;
-}
-
-/** 显示错误弹窗 */
-function showErrorModal(msg: string) {
-  modalType.value = 'error';
-  modalIcon.value = { name: 'caltrops', gradient: 'warning' };
-  modalTitle.value = '角色名不符合要求';
-  modalMessage.value = msg;
-  modalConfirmText.value = '返回修改';
-  showModal.value = true;
-}
-
-/** 显示确认弹窗 */
-function showConfirmModal() {
-  modalType.value = 'confirm';
-  modalIcon.value = { name: 'check-mark', gradient: 'heal' };
-  modalTitle.value = '确认创建角色';
-  modalMessage.value = `确认创建角色「${name.value.trim()}」吗？`;
-  modalConfirmText.value = '确认创建';
-  showModal.value = true;
-}
-
-/** 关闭弹窗 */
-function cancelModal() {
-  showModal.value = false;
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'create_cancel_modal' });
-}
-
-/** 弹窗确认按钮回调 */
-function onModalConfirm() {
-  showModal.value = false;
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'create_confirm_modal' });
-  if (modalType.value === 'confirm') {
-    doCreate();
-  }
-}
-
-/** 执行实际创建逻辑 */
-async function doCreate() {
-  await characterStore.createCharacter(
-    name.value.trim(),
-    selectedFaction.value!,
-    selectedRace.value!,
-    selectedClass.value!
-  );
-
-  emit('created');
-}
-
-/** 点击创建角色：先校验，通过后弹出确认弹窗 */
-async function createCharacter() {
-  if (!canCreate.value) return;
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'create_btn' });
-
-  const error = validateName(name.value);
-  if (error) {
-    showErrorModal(error);
-    return;
-  }
-
-  showConfirmModal();
-}
+const {
+  currentStep, name, selectedFaction, selectedRace, selectedClass,
+  showModal, modalType, modalIcon, modalTitle, modalMessage, modalConfirmText,
+  currentStepTitle, displayFactions, neutralFaction,
+  availableRaces, availableClasses, currentAttributes, derivedAttributes,
+  canProceed, canCreate,
+  loadData, selectFaction, selectRace, selectClass,
+  getFactionRaceNames, getStatName, getStatIcon,
+  nextStep, prevStep, cancelModal, onModalConfirm, createCharacter,
+  getRaceIcon, getFactionName, getFactionColor, getRaceName, getClassName, getClassColor,
+} = useCharacterCreation(() => emit('created'));
 
 onMounted(async () => {
   await loadData();

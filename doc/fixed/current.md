@@ -1,7 +1,7 @@
 # 当前待修复问题
 
 > 检查时间：2026-08-07
-> 最近整理：2026-08-07（P3-155 已修复：3 个 Store 拆分 composable；P3-153 扩展已修复；P3-164 已修复；P3-160 经核实已不存在；移除已修复项 P3-135/157/159/165/166；P3-154 已修复：7月归档合并为 archive_2026_07.md）
+> 最近整理：2026-08-07（P3-163 已修复：3 个组件拆分 composable；P3-155 已修复；P3-153 扩展已修复；P3-164 已修复；P3-160 经核实已不存在；移除已修复项 P3-135/157/159/165/166；P3-154 已修复：7月归档合并为 archive_2026_07.md）
 > tsc 状态：`tsc --noEmit --skipLibCheck` 通过（0 错误）
 > 历史归档目录：[doc/fixed/](file:///d:/openSource/wow_dnd/doc/fixed/)
 > 7月归档合并：[archive_2026_07.md](file:///d:/openSource/wow_dnd/doc/fixed/archive_2026_07.md)
@@ -40,17 +40,6 @@
 
 ---
 
-### P3-163（代码·P2）：大组件未抽离业务 Composable
-- **状态**：部分修复（ShopPopup 已完成；CombatPopup/CharacterCreate/GameMain 仍待修复）
-- **核实结果**（2026-08-07）：CombatPopup script 1509 行、CharacterCreate 1095 行、GameMain 778 行。
-- **修复建议**：
-  - CombatPopup：抽离 `useCombatUiHelpers` + `useCombatResultPopup`
-  - CharacterCreate：抽离 `useCharacterCreation`
-  - GameMain：抽离 `useGameActions`
-- **风险**：低。纯重构，参考 combat 模块 composable 拆分模式。
-
----
-
 ### P3-136（内容·P3）：补充 collect/talk/explore 任务
 - **状态**：待补齐，属内容创作类
 - **核实结果**（2026-08-07）：[config_quests.ts](file:///d:/openSource/wow_dnd/src/data/config_quests.ts) 188 处任务目标 `type` 全部为 `'kill'`，collect/talk/explore 为 0。
@@ -81,10 +70,9 @@
 |------|------|
 | 待办问题（玩法·P1） | 1（P3-150） |
 | 待办问题（玩法·P2） | 2（P3-149 / P3-162） |
-| 待办问题（代码·P2） | 1（P3-163 部分） |
 | 待办问题（内容·P3） | 2（P3-136 / P3-167） |
 | 设计保留 | 2 |
-| **待办合计** | **6** |
+| **待办合计** | **5** |
 
 ### 已修复批次
 
@@ -102,6 +90,7 @@
 | 循环依赖修复 | 2026-08-07 | [fixed_20260807081906.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807081906.md) | 1（P3-164，3组全部消除）|
 | currentCharacterId 代理统一 | 2026-08-07 | [fixed_20260807084223.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807084223.md) | 1（P3-153 扩展，6 个 Store）|
 | Store 拆分 composable | 2026-08-07 | [fixed_20260807091727.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807091727.md) | 1（P3-155，3 个 Store）|
+| 组件拆分 composable | 2026-08-07 | [fixed_20260807095516.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807095516.md) | 1（P3-163，3 个组件）|
 
 ### 待办优先级清单（建议下一批次处理）
 
@@ -110,6 +99,5 @@
 | P3-150 | 玩法 | 死亡惩罚过严，无保险机制（需重新评估 P2-57） | P1 |
 | P3-162 | 玩法 | AI 决策类型仅 3 种，缺乏 buff/summon/defend | P2 |
 | P3-149 | 玩法 | 任务类型仅 kill/collect，目标类型枚举封闭 | P2 |
-| P3-163 | 代码 | 大组件未抽离业务 Composable | P2 |
 | P3-136 | 内容 | 任务类型全为 kill | P3 |
 | P3-167 | 内容 | 怪物/Boss 数量偏少 | P3 |

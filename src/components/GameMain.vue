@@ -2,7 +2,7 @@
   <div class="game-main">
     <div class="game-header">
       <div class="player-info">
-        <div class="player-avatar"><BaseIcon :name="characterStore.raceIcon || undefined" :size="28" /></div>
+        <div class="player-avatar"><BaseIcon :name="raceIcon || undefined" :size="28" /></div>
         <div class="player-details">
           <div class="player-name">{{ character.name }}</div>
           <div class="player-meta">
@@ -153,18 +153,8 @@
  * @description 游戏的核心枢纽页面，集成地图/探索两个标签页，以及底部导航栏的角色、背包、技能、任务、日志等弹出面板
  */
 
-import { ref, reactive, computed, defineAsyncComponent, h, onMounted, onUnmounted } from 'vue';
-import { useCharacterStore } from '@/modules/character';
-import { useMapStore } from '@/modules/map';
-import { useShopStore } from '@/modules/shop';
-import { useExplorationStore, type ExplorationUICallbacks, type MultiOptionEventResult } from '@/modules/exploration';
-import { gameBootstrap } from '@/services/GameBootstrap';
-import { eventBus, GameEvents } from '@/modules/bus';
-import { useEnemyStore } from '@/modules/enemy';
-import { useCombatStore } from '@/modules/combat';
-import { ResourceSystemFactory } from '@/modules/combat/resources';
-import { useToast } from '@/composables/useToast';
-import type { CombatResult } from '@/modules/combat';
+import { defineAsyncComponent, h, onMounted, onUnmounted } from 'vue';
+import { useGameActions } from '@/composables/useGameActions';
 import ResourceBar from './common/ResourceBar.vue';
 import ClassResourceBar from './common/ClassResourceBar.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
@@ -278,253 +268,22 @@ const emit = defineEmits<{
   (e: 'exit'): void;
 }>();
 
-const characterStore = useCharacterStore();
-const mapStore = useMapStore();
-const shopStore = useShopStore();
-const toast = useToast();
+const {
+  currentContentTab, loading,
+  showCharacterInfo, showInventory, showSkills, showTalents, showQuests,
+  showAdventureLog, showShop, showQuestBoard, showCombat, showAudioSettings, showSystem,
+  popupMounted, levelUpTriggered,
+  character, currentHp, maxHp, currentMp, maxMp, hpPercent, mpPercent,
+  showManaBar, classResourceSystems, exp, expToNext, expPercent, gold,
+  currentArea, hasCurrentLocation, raceIcon,
+  showNotif, handleExit, onClickPanel, onPanelOpen, onPanelClose,
+  openAudioFromSystem, handleMapTabClick, handleExploreTabClick,
+  handleCombatClose, handleShopClose,
+  init, cleanup,
+} = useGameActions(() => emit('exit'));
 
-const currentContentTab = ref('map');
-/** 是否正在初始化，初始化完成前不渲染内容区域，避免页面闪烁 */
-const loading = ref(true);
-const showCharacterInfo = ref(false);
-const showInventory = ref(false);
-const showSkills = ref(false);
-const showTalents = ref(false);
-const showQuests = ref(false);
-const showAdventureLog = ref(false);
-const showShop = ref(false);
-const showQuestBoard = ref(false);
-const showCombat = ref(false);
-const showAudioSettings = ref(false);
-const showSystem = ref(false);
-/**
- * 弹窗懒挂载标志（B1/B2：异步组件延迟加载）
- *
- * 每个弹窗首次打开时将对应标志置为 true 并保持，使 v-if 包裹的异步组件
- * 仅在用户实际需要时才挂载（触发 defineAsyncComponent 的 loader），
- * 避免进入游戏瞬间加载全部弹窗 chunk。
- */
-const popupMounted = reactive({
-  characterInfo: false,
-  inventory: false,
-  skills: false,
-  talents: false,
-  quests: false,
-  adventureLog: false,
-  shop: false,
-  questBoard: false,
-  audioSettings: false,
-  system: false,
-});
-/** 是否触发升级动画 */
-const levelUpTriggered = ref(false);
-/**
- * 升级动画定时器 ID（setup 作用域，onMounted/onUnmounted 闭包共享同一引用）
- *
- * CHARACTER_LEVEL_UP 事件回调中通过 setTimeout 延迟 1500ms 复位 levelUpTriggered，
- * 若组件在动画期间卸载，需在 onUnmounted 中清理该定时器，
- * 避免卸载后访问已卸载组件的响应式状态触发 Vue 警告。
- */
-let levelUpTimerId: ReturnType<typeof setTimeout> | null = null;
-
-const character = computed(() => characterStore.character || { name: '...', level: 1 });
-const currentHp = computed(() => characterStore.hp);
-const maxHp = computed(() => characterStore.maxHp);
-const currentMp = computed(() => characterStore.mana);
-const maxMp = computed(() => characterStore.maxMana);
-const hpPercent = computed(() => characterStore.hpPercentage);
-const mpPercent = computed(() => characterStore.manaPercentage);
-/** 是否显示 MP 资源条（战士/盗贼/猎人等替代型资源职业隐藏 MP 条） */
-const showManaBar = computed(() => !ResourceSystemFactory.replacesMana(characterStore.classId));
-/** 职业专属资源系统（仅替代型：怒气/能量/集中值），非战斗时携带初始值供展示 */
-const classResourceSystems = computed(() => ResourceSystemFactory.getManaReplacingSystems(characterStore.classId));
-const exp = computed(() => characterStore.exp);
-const expToNext = computed(() => characterStore.expToNextLevel);
-const expPercent = computed(() => characterStore.expPercentage);
-const gold = computed(() => characterStore.gold);
-const currentArea = computed(() => mapStore.getCurrentLocation?.name || '未知区域');
-const hasCurrentLocation = computed(() => !!mapStore.getCurrentLocation);
-
-function showNotif(message: string, type: 'info' | 'success' | 'warning' | 'danger' = 'info') {
-  toast.show({ message, type });
-}
-
-function handleExit() {
-  emit('exit');
-}
-
-/** 面板打开时发送总线事件和点击音效 */
-function onClickPanel(name: string) {
-  eventBus.emit(GameEvents.UI_CLICK, { source: `nav_${name}` });
-  onPanelOpen(name);
-}
-
-/** 面板打开时发送总线事件 */
-function onPanelOpen(name: string) {
-  eventBus.emit(GameEvents.UI_PANEL_OPENED, { panel: name });
-}
-
-/** 面板关闭时发送总线事件 */
-function onPanelClose(name: string) {
-  eventBus.emit(GameEvents.UI_PANEL_CLOSED, { panel: name });
-}
-
-/** 从系统菜单打开音量设置 */
-function openAudioFromSystem() {
-  popupMounted.audioSettings = true;
-  showAudioSettings.value = true;
-  onPanelOpen('audio_settings');
-}
-
-function handleMapTabClick() {
-  currentContentTab.value = 'map';
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'tab_map' });
-  mapStore.saveCurrentTab('map');
-}
-
-function handleExploreTabClick() {
-  if (!hasCurrentLocation.value) {
-    showNotif('请先在地图上选择一个区域', 'info');
-    return;
-  }
-  currentContentTab.value = 'explore';
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'tab_explore' });
-  mapStore.saveCurrentTab('explore');
-}
-
-// 监听探索格子翻开事件，处理交互
-async function handleCellExplored(data: { cellType?: string; interactionId?: string }) {
-  const cellType = data?.cellType;
-  if (cellType === 'shop') {
-    const shopId = data?.interactionId || '';
-    if (!shopId) {
-      console.warn('[GameMain] 商店交互ID为空，无法打开商店');
-      return;
-    }
-    await shopStore.openShop(shopId);
-    popupMounted.shop = true;
-    showShop.value = true;
-    onPanelOpen('shop');
-  } else if (cellType === 'board') {
-    popupMounted.questBoard = true;
-    showQuestBoard.value = true;
-    onPanelOpen('quest_board');
-  }
-}
-
-// 监听探索战斗事件
-// P2 TS-5 修复：参数类型与 ExplorationUICallbacks.onBattleTriggered 接口对齐，移除 as 断言
-// 接口契约保证 eventData.monsterId/areaLevel 必填，调用方（exploration/store.ts）负责保证
-async function handleBattleTriggered(data: { eventData: { monsterId: string; areaLevel: number } }) {
-  const { monsterId, areaLevel } = data.eventData;
-
-  // 从数据库获取敌人模板数据，传入地图等级
-  const enemy = await useEnemyStore().createEnemy(monsterId, areaLevel);
-
-  if (enemy) {
-    await useCombatStore().startCombat([enemy]);
-    showCombat.value = true;
-  }
-}
-
-// 监听物品发现事件
-// P2 TS-5 修复：参数类型与 ExplorationUICallbacks.onItemFound 接口对齐
-function handleItemFound(data: { itemId: string; count: number; itemName: string }) {
-  showNotif(`发现物品: ${data.itemName} x${data.count}`, 'success');
-}
-
-// 监听陷阱触发事件
-// P2 TS-5 修复：参数类型与 ExplorationUICallbacks.onTrapTriggered 接口对齐
-function handleTrapTriggered(data: { damage: number; trapType: string }) {
-  showNotif(`触发${data.trapType}，受到 ${data.damage} 点伤害`, 'danger');
-}
-
-// 监听随机事件
-// P2 TS-5 修复：参数类型与 ExplorationUICallbacks.onRandomEvent 接口对齐
-function handleRandomEvent(data: { message: string; icon: string }) {
-  showNotif(data.message, 'info');
-}
-
-// 监听多选项事件：展示事件描述，由玩家在弹窗中选择后调用 applyEventChoice
-// P2 TS-5 修复：使用 MultiOptionEventResult 类型替代手写类型
-function handleMultiOptionEvent(data: MultiOptionEventResult) {
-  // 展示事件描述（完整选项弹窗可后续扩展，当前以通知形式提示并自动选择第一项）
-  showNotif(data.message, 'info');
-  const explorationStore = useExplorationStore();
-  // 自动应用第一个选项（后续可替换为交互式弹窗）
-  if (data.choices.length > 0) {
-    explorationStore.applyEventChoice(data.choices[0]);
-  }
-}
-
-function handleCombatClose(_result?: CombatResult) {
-  showCombat.value = false;
-  onPanelClose('combat');
-}
-
-async function handleShopClose() {
-  showShop.value = false;
-  onPanelClose('shop');
-  await shopStore.closeShop();
-}
-
-onMounted(async () => {
-  const explorationStore = useExplorationStore();
-
-  // 注册探索 UI 回调（替代 EventBus 跨模块数据事件监听）
-  // P2 TS-5 修复：处理器参数类型已与 ExplorationUICallbacks 接口对齐，移除 as 断言
-  explorationStore.registerUICallbacks({
-    onCellExplored: handleCellExplored,
-    onBattleTriggered: handleBattleTriggered,
-    onItemFound: handleItemFound,
-    onTrapTriggered: handleTrapTriggered,
-    onRandomEvent: handleRandomEvent,
-    onMultiOptionEvent: handleMultiOptionEvent
-  });
-  
-  // 初始化所有角色相关模块（EXP-5：统一由 GameBootstrap 编排，避免探索模块隐式初始化其他 Store）
-  const cid = characterStore.currentCharacterId;
-  if (cid) {
-    await gameBootstrap.initialize(cid);
-
-    // 从数据库恢复上次的标签页状态（按角色隔离，通过 mapStore action 获取）
-    const savedTab = await mapStore.getCurrentTab();
-    if (savedTab === 'explore' && hasCurrentLocation.value) {
-      currentContentTab.value = 'explore';
-    }
-  }
-  // 初始化完成，解除加载状态
-  loading.value = false;
-
-  // 监听角色升级事件，触发升级动画
-  eventBus.on(GameEvents.CHARACTER_LEVEL_UP, onLevelUp);
-});
-
-/** 角色升级事件处理器：触发升级动画并延迟复位 */
-function onLevelUp(): void {
-  levelUpTriggered.value = true;
-  showNotif('升级了！', 'success');
-  // 清理上一次未触发的定时器，避免快速连续升级时定时器堆叠
-  if (levelUpTimerId !== null) {
-    clearTimeout(levelUpTimerId);
-  }
-  levelUpTimerId = setTimeout(() => {
-    levelUpTimerId = null;
-    levelUpTriggered.value = false;
-  }, 1500);
-}
-
-onUnmounted(() => {
-  // 移除升级事件监听并清理未触发的升级动画定时器，防止卸载后访问响应式状态
-  eventBus.off(GameEvents.CHARACTER_LEVEL_UP, onLevelUp);
-  if (levelUpTimerId !== null) {
-    clearTimeout(levelUpTimerId);
-    levelUpTimerId = null;
-  }
-  // 统一清理所有模块（EXP-5：按初始化逆序 dispose，清理监听器与状态）
-  gameBootstrap.dispose();
-});
-
+onMounted(async () => { await init(); });
+onUnmounted(() => cleanup());
 defineExpose({ showNotif });
 </script>
 
