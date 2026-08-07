@@ -1,7 +1,7 @@
 # 当前待修复问题
 
 > 检查时间：2026-08-07
-> 最近整理：2026-08-07（战斗系统专项全部修复：P3-168~187 共 20 项含测试补齐，仅剩 P3-150/149/162/136/167 玩法内容项）
+> 最近整理：2026-08-07（P3-167 怪物/Boss 扩展完成并归档，清理已完成条目）
 > tsc 状态：`tsc --noEmit --skipLibCheck` 通过（0 错误）
 > 历史归档目录：[doc/fixed/](file:///d:/openSource/wow_dnd/doc/fixed/)
 > 7月归档合并：[archive_2026_07.md](file:///d:/openSource/wow_dnd/doc/fixed/archive_2026_07.md)
@@ -48,88 +48,6 @@
 
 ---
 
-### P3-167（内容·P3）：怪物/Boss 数量偏少
-- **状态**：待补齐，属内容创作类
-- **核实结果**（2026-08-07）：[config_mobs.ts](file:///d:/openSource/wow_dnd/src/data/config_mobs.ts) 28 个怪物、[config_bosses.ts](file:///d:/openSource/wow_dnd/src/data/config_bosses.ts) 6 个 Boss。
-- **修复建议**：按区域/等级梯度分布补充（1-5/6-10/11-15/16-20 四区间各 8-12 种）。
-
----
-
-## 战斗系统专项检查问题（2026-08-07）
-
-> 检查范围：`src/modules/combat/` 全模块（store/service/db/composables/effects/ai/resources/pets/forms）+ 跨模块依赖
-> 检查方式：4 个子代理并行从架构、业务逻辑、代码质量、测试覆盖四个维度审查
-> 问题统计：严重 4 / 高 4 / 中 7 / 低 3 / 测试 2 = 20 项
-
-### P3-168（战斗·P0）：~~控制效果对敌人完全无效~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807104011.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104011.md)）
-
-### P3-169（战斗·P0）：~~敌人伤害计算双重减防 + damageType 不匹配~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807104011.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104011.md)）
-
-### P3-170（战斗·P0）：~~tickAllEffects 触发 endCombat 后 advanceToNextUnit 继续执行~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807104011.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104011.md)）
-
-### P3-171（战斗·P0）：~~usePassiveSkills 直接调用 Math.random() 违反 RNG 统一约束~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807104011.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104011.md)）
-
----
-
-### P3-172（架构·P1）：~~combat ↔ character/talents 循环依赖~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807104831.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104831.md)）
-
-### P3-173（战斗·P1）：~~useBossMechanics 召唤小怪 IIFE 缺战斗状态守卫~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807104831.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104831.md)）
-
-### P3-174（性能·P1）：~~saveLogs 每次全量重保存，长战斗性能劣化~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807104831.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104831.md)）
-
-### P3-175（架构·P1）：~~ResourceSystem as 穿透 + EnemyInstance 直接修改~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807104831.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104831.md)）
-
----
-
-### P3-176（战斗·P2）：~~startCombat 中 loadPassives 无异常处理~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md)）
-
-### P3-177（架构·P2）：~~COMBAT_END 事件载荷过度膨胀~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md)）
-
-### P3-178（战斗·P2）：~~伤害日志/事件 amount 与实际扣血不一致~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md)）
-
-### P3-179（战斗·P2）：~~specialAction 失败时不结束回合但已消耗资源~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md)）
-
-### P3-180（战斗·P2）：~~效果 additive/independent 叠加无层数上限~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md)）
-
-### P3-181（战斗·P2）：~~资源系统无差别 generate(1, 'skill') 导致双资源职业过快~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md)）
-
-### P3-182（战斗·P2）：~~宠物攻击绕过 Boss 防御/反击机制~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md)）
-
----
-
-### P3-183（代码质量·P3）：~~dispose 完整性 + useCombatAnimations 公开导出~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807112730.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807112730.md)）
-
-### P3-184（战斗·P3）：~~伤害回血/事件/Buff 等代码异味（合并项）~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807112730.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807112730.md)）
-
-### P3-185（代码质量·P3）：~~命名规范与操作符一致性~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807112730.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807112730.md)）
-
-### P3-186（战斗·P3）：~~buildInitiativeOrder 先手语义 + 空数组防御~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807112730.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807112730.md)）
-
----
-
-### P3-187（测试·P2）：~~战斗系统测试覆盖盲区~~
-- **状态**：已修复（2026-08-07，归档 [fixed_20260807114900.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807114900.md)）
-- **修复内容**：forms/store.ts（23 用例）、pets/store.ts（51 用例）、maxStacks 边界（6 用例）、target_hp 边界（5 用例）、替换 9 文件随机 ID 生成。e2e/职业平衡性测试暂不包含。
-
 ---
 
 ## 设计保留项（有意保留，非待办）
@@ -147,44 +65,20 @@
 |------|------|
 | 待办问题（玩法·P1） | 1（P3-150） |
 | 待办问题（玩法·P2） | 2（P3-149 / P3-162） |
-| 待办问题（内容·P3） | 2（P3-136 / P3-167） |
-| 战斗系统·P0 严重 | 0（P3-168/169/170/171 已修复） |
-| 战斗系统·P1 高 | 0（P3-172/173/174/175 已修复） |
-| 战斗系统·P2 中 | 0（P3-176/177/178/179/180/181/182 已修复） |
-| 战斗系统·P3 低 | 0（P3-183/184/185/186 已修复） |
-| 战斗系统·测试 | 0（P3-187 已修复） |
+| 待办问题（内容·P3） | 1（P3-136） |
 | 设计保留 | 2 |
-| **待办合计** | **5** |
+| **待办合计** | **4** |
 
 ### 已修复批次
 
-| 批次 | 时间 | 归档 | 项数 |
-|------|------|------|------|
-| 7月全部修复 | 2026-07 | [archive_2026_07.md](file:///d:/openSource/wow_dnd/doc/fixed/archive_2026_07.md) | ~210（19个归档合并）|
-| P0 优先级清单 | 2026-07-31 | [fixed_20260731165000.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260731165000.md) | 7（P3-141/142/143/146/147/151/152）|
-| P1 优先级清单 | 2026-07-31 | [fixed_20260801010000.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260801010000.md) | 3（P3-144/145/153）|
-| P3-148 单项修复 | 2026-07-31 | [fixed_20260731173228.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260731173228.md) | 1 |
-| P3-156 宝宝系统升级 | 2026-08-04 | [fixed_20260804152806.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260804152806.md) | 1 |
-| 商店系统升级 | 2026-08-04 | [fixed_20260804162342.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260804162342.md) | 3（P3-158/161 + P3-163 商店部分）|
-| 简单问题修复 | 2026-08-07 | — | 3（P3-157/159/165）|
-| 内容/数据修复 | 2026-08-07 | — | 2（P3-135/166，天赋系统重构时修复）|
-| 归档膨胀修复 | 2026-08-07 | — | 1（P3-154，7月归档合并）|
-| 循环依赖修复 | 2026-08-07 | [fixed_20260807081906.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807081906.md) | 1（P3-164，3组全部消除）|
-| currentCharacterId 代理统一 | 2026-08-07 | [fixed_20260807084223.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807084223.md) | 1（P3-153 扩展，6 个 Store）|
-| Store 拆分 composable | 2026-08-07 | [fixed_20260807091727.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807091727.md) | 1（P3-155，3 个 Store）|
-| 组件拆分 composable | 2026-08-07 | [fixed_20260807095516.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807095516.md) | 1（P3-163，3 个组件）|
-| 战斗系统 P0 严重修复 | 2026-08-07 | [fixed_20260807104011.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104011.md) | 4（P3-168/169/170/171）|
-| 战斗系统 P1 高优修复 | 2026-08-07 | [fixed_20260807104831.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104831.md) | 4（P3-172/173/174/175）|
-| 战斗系统 P2 中优修复 | 2026-08-07 | [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md) | 7（P3-176/177/178/179/180/181/182）|
-| 战斗系统 P3 低优修复 | 2026-08-07 | [fixed_20260807112730.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807112730.md) | 4（P3-183/184/185/186）|
-| 战斗系统测试补齐 | 2026-08-07 | [fixed_20260807114900.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807114900.md) | 1（P3-187，+85 用例）|
-
-### 待办优先级清单（建议下一批次处理）
-
-| 编号 | 维度 | 标题 | 优先级 |
-|------|------|------|--------|
-| P3-150 | 玩法 | 死亡惩罚过严，无保险机制（需重新评估 P2-57） | P1 |
-| P3-162 | 玩法 | AI 决策类型仅 3 种，缺乏 buff/summon/defend | P2 |
-| P3-149 | 玩法 | 任务类型仅 kill/collect，目标类型枚举封闭 | P2 |
-| P3-136 | 内容 | 任务类型全为 kill | P3 |
-| P3-167 | 内容 | 怪物/Boss 数量偏少 | P3 |
+> 战斗系统专项（P3-168~187）共 20 项于 2026-08-07 全部修复，分 5 批归档：
+>
+> | 批次 | 归档 | 项数 |
+> |------|------|------|
+> | P0 严重修复 | [fixed_20260807104011.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104011.md) | 4（P3-168/169/170/171）|
+> | P1 高优修复 | [fixed_20260807104831.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104831.md) | 4（P3-172/173/174/175）|
+> | P2 中优修复 | [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md) | 7（P3-176/177/178/179/180/181/182）|
+> | P3 低优修复 | [fixed_20260807112730.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807112730.md) | 4（P3-183/184/185/186）|
+> | 测试补齐 | [fixed_20260807114900.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807114900.md) | 1（P3-187，+85 用例）|
+>
+> 早期修复批次见 [archive_2026_07.md](file:///d:/openSource/wow_dnd/doc/fixed/archive_2026_07.md) 及 `doc/fixed/` 目录下各 `fixed_*.md` 文件。

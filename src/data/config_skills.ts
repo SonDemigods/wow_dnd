@@ -3005,5 +3005,141 @@ export const MONSTER_ABILITIES: Skill[] = [
     cooldown: 4,
     targetType: 'all_enemies',
     usableBy: 'enemy'
+  },
+
+  // ========== 兽王 ==========
+  {
+    id: 'war_stomp',
+    name: '战争践踏',
+    icon: 'game-icons:boot-stomp',
+    description: '猛踏地面引发冲击波，震伤所有敌人',
+    mpCost: 0,
+    type: 'physical_damage',
+    effect: { type: 'physical_damage', value: 25 },
+    unlockLevel: 1,
+    cooldown: 3,
+    targetType: 'all_enemies',
+    usableBy: 'enemy'
+  },
+
+  // ========== 蛙人酋长 ==========
+  {
+    id: 'tidal_wave',
+    name: '潮汐波',
+    icon: 'game-icons:wave-crest',
+    description: '掀起滔天巨浪席卷全场',
+    mpCost: 0,
+    type: 'magic_damage',
+    effect: { type: 'magic_damage', value: 20, coefficient: 1.1 },
+    unlockLevel: 1,
+    cooldown: 3,
+    targetType: 'all_enemies',
+    usableBy: 'enemy'
+  },
+
+  // ========== 巨魔战王 ==========
+  {
+    id: 'regenerate',
+    name: '再生',
+    icon: 'game-icons:health-increase',
+    description: '激发旺盛的生命力，恢复自身生命',
+    mpCost: 0,
+    type: 'health_restore',
+    effect: { type: 'health_restore', value: 30 },
+    unlockLevel: 1,
+    cooldown: 4,
+    targetType: 'self',
+    usableBy: 'enemy'
+  },
+
+  // ========== 海妖女巫 ==========
+  {
+    id: 'hex',
+    name: '妖术',
+    icon: 'game-icons:curse',
+    description: '对目标施加恶毒妖术，大幅降低其攻击力',
+    mpCost: 0,
+    type: 'debuff',
+    effect: { type: 'debuff', value: 0 },
+    unlockLevel: 1,
+    cooldown: 4,
+    targetType: 'single',
+    buffs: [{ type: 'attack_down', value: 20, turns: 3 }],
+    usableBy: 'enemy'
+  },
+
+  // ========== 暗影刺客 ==========
+  {
+    id: 'shadow_strike',
+    name: '暗影突袭',
+    icon: 'game-icons:backstab',
+    description: '从暗影中突袭目标要害，造成巨大物理伤害',
+    mpCost: 0,
+    type: 'physical_damage',
+    effect: { type: 'physical_damage', value: 35 },
+    unlockLevel: 1,
+    cooldown: 2,
+    targetType: 'single',
+    usableBy: 'enemy'
+  },
+
+  // ========== 恶魔领主 ==========
+  {
+    id: 'inferno',
+    name: '地狱火',
+    icon: 'game-icons:fire',
+    description: '召唤地狱烈焰焚烧全场敌人',
+    mpCost: 0,
+    type: 'magic_damage',
+    effect: { type: 'magic_damage', value: 30, coefficient: 1.2 },
+    unlockLevel: 1,
+    cooldown: 4,
+    targetType: 'all_enemies',
+    usableBy: 'enemy'
+  },
+
+  // ========== 岩石之王 ==========
+  {
+    id: 'rock_barrage',
+    name: '岩石弹幕',
+    icon: 'game-icons:rock',
+    description: '发射密集的岩石碎片轰炸全场',
+    mpCost: 0,
+    type: 'physical_damage',
+    effect: { type: 'physical_damage', value: 28 },
+    unlockLevel: 1,
+    cooldown: 3,
+    targetType: 'all_enemies',
+    usableBy: 'enemy'
+  },
+
+  // ========== 亡者领主 ==========
+  {
+    id: 'plague_cloud',
+    name: '瘟疫云',
+    icon: 'game-icons:poison-cloud',
+    description: '释放毒雾笼罩战场，腐蚀所有敌人',
+    mpCost: 0,
+    type: 'magic_damage',
+    effect: { type: 'magic_damage', value: 22, coefficient: 1.0 },
+    unlockLevel: 1,
+    cooldown: 3,
+    targetType: 'all_enemies',
+    usableBy: 'enemy'
+  },
+
+  // ========== 虚空领主 ==========
+  {
+    id: 'void_blast',
+    name: '虚空冲击',
+    icon: 'game-icons:orbital-rays',
+    description: '释放浓缩的虚空能量轰击目标',
+    mpCost: 0,
+    type: 'magic_damage',
+    effect: { type: 'magic_damage', value: 40, coefficient: 1.3 },
+    unlockLevel: 1,
+    cooldown: 2,
+    targetType: 'single',
+    usableBy: 'enemy'
   }
 ];
