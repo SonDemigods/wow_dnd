@@ -42,6 +42,7 @@ import { equipmentDbService } from './db';
 import { useLogStore } from '@/modules/log/store';
 import { generateLogId } from '@/modules/log/service';
 import { useCharacterStore } from '@/modules/character/store';
+import { useGameStore } from '@/modules/game';
 import { validateSlot, computeEquipBonus, canEquipItem, getEquipmentBySlot, createEmptySlotMap, checkClassRestriction, SLOT_CONFIG, isSlotLockedByTwoHanded } from './service';
 import { getAllSetProgresses, getActiveBonusEffects } from './setService';
 import { configCache } from '@/modules/config';
@@ -168,8 +169,9 @@ export const useEquipmentStore = defineStore('equipment', () => {
   /** DB-1/DB-2 修复：装备持久化错误状态，供 UI 监听并提示用户重试（null 表示无错误） */
   const persistError = ref<string | null>(null);
 
-  /** 当前活跃角色 ID，null 表示未进入角色 */
-  const currentCharacterId = ref<string | null>(null);
+  /** 当前活跃角色 ID（P3-153 扩展：收敛到 GameStore 只读 computed 代理） */
+  const gameStore = useGameStore();
+  const currentCharacterId = computed<string | null>(() => gameStore.currentCharacterId);
 
   /** 数据加载状态标识 */
   const isLoading = ref(false);
@@ -357,7 +359,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
    */
   async function initialize(characterId: string): Promise<void> {
     isLoading.value = true;
-    currentCharacterId.value = characterId;
+    // P3-153 扩展：currentCharacterId 为只读 computed，由 GameStore 代理，无需在此赋值
 
     // 1. 先加载装备模板（后续解析 ID 需要）
     const templates = await equipmentDbService.getAllEquipmentTemplates();
@@ -880,8 +882,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
       await equipmentDbService.saveEquipment(charId, emptyIdMap);
     }
 
-    // 清空 Store 状态
-    currentCharacterId.value = null;
+    // P3-153 扩展：currentCharacterId 为只读 computed，角色切换/登出由 gameStore 统一管理
     equipmentTemplates.value = new Map();
   }
 

@@ -7,7 +7,7 @@
  */
 
 import type { Skill, SkillType } from '@/modules/skill';
-import type { EffectType } from '@/modules/combat/effects';
+import type { EffectType } from '@/modules/combat/effects/effect-type';
 import type { Stats } from '@/modules/character';
 import { calculateSkillDamage } from '@/modules/skill';
 

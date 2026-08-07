@@ -2,7 +2,7 @@
  * @fileoverview Buff/Debuff 效果系统 — 统一导出入口
  */
 
-// 类型
+// 类型（EffectType 通过 types.ts 从 effect-type.ts 间接导出，P3-164）
 export type {
   EffectType,
   Effect,

@@ -11,6 +11,7 @@ import { getLocationById, isLocationAccessible, getLocationsByContinent, getZone
 import { mapDbService } from './db';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { errorReporter } from '@/utils/errorReport';
+import { useGameStore } from '@/modules/game';
 
 /** 缩放边界常量 */
 const ZOOM_MIN = 1;
@@ -41,8 +42,9 @@ export const useMapStore = defineStore('map', () => {
   /** 地点数据缓存（全局共享，所有角色共用） */
   const locations = ref<Map<string, LocationData>>(new Map());
 
-  /** 当前角色 ID */
-  const currentCharacterId = ref<string | null>(null);
+  /** 当前角色 ID（P3-153 扩展：收敛到 GameStore 只读 computed 代理） */
+  const gameStore = useGameStore();
+  const currentCharacterId = computed<string | null>(() => gameStore.currentCharacterId);
 
   /** 当前选中的地点 */
   const currentLocation = ref<LocationData | null>(null);
@@ -91,7 +93,7 @@ export const useMapStore = defineStore('map', () => {
    * 初始化地图模块 —— 加载地图状态和地点数据
    */
   async function initialize(characterId: string): Promise<void> {
-    currentCharacterId.value = characterId;
+    // P3-153 扩展：currentCharacterId 为只读 computed，由 GameStore 代理，无需在此赋值
 
     // 先重置 currentLocation，避免上一个角色的数据残留（新角色无保存的 locationId 时不会进入下面的恢复分支）
     currentLocation.value = null;

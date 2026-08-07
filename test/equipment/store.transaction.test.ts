@@ -50,6 +50,11 @@ const mocks = vi.hoisted(() => ({
   errorReporter: {
     report: vi.fn(),
   },
+  // P3-153：currentCharacterId 改为 gameStore 只读 computed 代理，
+  // 测试通过 mocks.gameStore.currentCharacterId 控制
+  gameStore: {
+    currentCharacterId: null as string | null,
+  },
 }));
 
 vi.mock('@/modules/equipment/db', () => ({ equipmentDbService: mocks.equipmentDb }));
@@ -57,6 +62,10 @@ vi.mock('@/modules/character/store', () => ({ useCharacterStore: () => mocks.cha
 vi.mock('@/modules/log/store', () => ({ useLogStore: () => mocks.logStore }));
 vi.mock('@/modules/log/service', () => ({ generateLogId: vi.fn().mockReturnValue('log-id') }));
 vi.mock('@/utils/errorReport', () => ({ errorReporter: mocks.errorReporter }));
+// P3-153：mock useGameStore，currentCharacterId 由 mocks.gameStore 控制
+vi.mock('@/modules/game', () => ({
+  useGameStore: () => mocks.gameStore,
+}));
 
 // P3.3b：setService 层使用真实实现，仅 getAllSetProgresses 包装为 vi.fn 以便控制套装奖励行为
 vi.mock('@/modules/equipment/setService', async (importOriginal) => {
@@ -68,6 +77,15 @@ vi.mock('@/modules/equipment/setService', async (importOriginal) => {
 });
 
 import { equipmentDbService } from '@/modules/equipment/db';
+import { ref } from 'vue';
+
+// P3-153：gameStore.currentCharacterId 需要 reactive 支持，使 computed 能追踪变化
+// 使用 ref + getter/setter 替代 plain object（computed 无法追踪非 reactive 属性变更）
+const _gameStoreCharId = ref<string | null>(null);
+mocks.gameStore = {
+  get currentCharacterId() { return _gameStoreCharId.value; },
+  set currentCharacterId(v: string | null) { _gameStoreCharId.value = v; },
+} as { currentCharacterId: string | null };
 
 // ==================== 测试数据 helper ====================
 
@@ -116,6 +134,8 @@ describe('useEquipmentStore - 阶段二 DB-1/DB-2 跨表事务保护', () => {
     mocks.equipmentDb.saveEquipment.mockResolvedValue(undefined);
     mocks.inventoryCallbacks.removeItem.mockReturnValue(1);
     mocks.inventoryCallbacks.addItem.mockReturnValue(1);
+    // P3-153：重置 gameStore.currentCharacterId（默认未登录状态）
+    mocks.gameStore.currentCharacterId = null;
     // A1/G1 修复：通过回调注入替代 useInventoryStore 直接依赖
     setInventoryCallbacks(mocks.inventoryCallbacks.addItem, mocks.inventoryCallbacks.removeItem);
   });
@@ -132,7 +152,7 @@ describe('useEquipmentStore - 阶段二 DB-1/DB-2 跨表事务保护', () => {
       mocks.equipmentDb.saveEquipment.mockRejectedValueOnce(persistError);
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       const weapon = makeWeapon({ bonus: { str: 5 } });
 
       // Act
@@ -168,8 +188,8 @@ describe('useEquipmentStore - 阶段二 DB-1/DB-2 跨表事务保护', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const store = useEquipmentStore();
       const oldWeapon = makeWeapon({ id: 'old', name: '旧剑', bonus: { str: 2 } });
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         equipment: buildEquipment({ weapon1: { item: oldWeapon, equippedAt: 1 } }),
       });
       const newWeapon = makeWeapon({ id: 'new', name: '新剑', bonus: { str: 6 } });
@@ -210,7 +230,7 @@ describe('useEquipmentStore - 阶段二 DB-1/DB-2 跨表事务保护', () => {
       mocks.characterStore.removeBonus.mockRejectedValueOnce(rollbackError);
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       const weapon = makeWeapon({ bonus: { str: 5 } });
 
       // Act
@@ -244,8 +264,8 @@ describe('useEquipmentStore - 阶段二 DB-1/DB-2 跨表事务保护', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const store = useEquipmentStore();
       const oldWeapon = makeWeapon({ id: 'old', name: '旧剑', bonus: { str: 2 } });
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         equipment: buildEquipment({ weapon1: { item: oldWeapon, equippedAt: 1 } }),
       });
       const newWeapon = makeWeapon({ id: 'new', name: '新剑', bonus: { str: 6 } });
@@ -276,8 +296,8 @@ describe('useEquipmentStore - 阶段二 DB-1/DB-2 跨表事务保护', () => {
       const store = useEquipmentStore();
       const weapon = makeWeapon({ bonus: { str: 5 } });
       const equipped: EquippedItem = { item: weapon, equippedAt: 123 };
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         equipment: buildEquipment({ weapon1: equipped }),
       });
 
@@ -323,8 +343,8 @@ describe('useEquipmentStore - 阶段二 DB-1/DB-2 跨表事务保护', () => {
       const store = useEquipmentStore();
       const weapon = makeWeapon({ bonus: { str: 5 } });
       const equipped: EquippedItem = { item: weapon, equippedAt: 123 };
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         equipment: buildEquipment({ weapon1: equipped }),
       });
 
@@ -351,7 +371,8 @@ describe('useEquipmentStore - 阶段二 DB-1/DB-2 跨表事务保护', () => {
     it('equipItem persist 成功后 persistError 为 null', async () => {
       // Arrange：先设置一个错误状态，验证成功后被重置
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1', persistError: '之前的错误' });
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({ persistError: '之前的错误' });
       const weapon = makeWeapon({ bonus: { str: 5 } });
 
       // Act
@@ -368,8 +389,8 @@ describe('useEquipmentStore - 阶段二 DB-1/DB-2 跨表事务保护', () => {
       const store = useEquipmentStore();
       const weapon = makeWeapon({ bonus: { str: 5 } });
       const equipped: EquippedItem = { item: weapon, equippedAt: 123 };
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         equipment: buildEquipment({ weapon1: equipped }),
         persistError: '之前的错误',
       });
@@ -386,7 +407,8 @@ describe('useEquipmentStore - 阶段二 DB-1/DB-2 跨表事务保护', () => {
     it('persist 跳过（无 currentCharacterId）时不重置 persistError', async () => {
       // Arrange：currentCharacterId 为 null 时 persist 不调用 saveEquipment，也不重置 persistError
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: null, persistError: '保留的错误' });
+      mocks.gameStore.currentCharacterId = null;
+      store.$patch({ persistError: '保留的错误' });
 
       // 直接调用内部 persist 通过 reset（reset 会清空状态）
       // 这里通过 reset 验证 persist 跳过逻辑：reset 内部 charId 为 null 时不调用 saveEquipment

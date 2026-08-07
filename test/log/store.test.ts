@@ -23,6 +23,17 @@ import { createTestPinia } from '../utils/setup';
 import { eventBus, GameEvents } from '@/modules/bus';
 import type { LogEntry, LogType } from '@/modules/log/types';
 
+/** P3-153 扩展：gameStore mock，currentCharacterId 由测试控制 */
+const mocks = vi.hoisted(() => ({
+  gameStore: {
+    currentCharacterId: null as string | null,
+  },
+}));
+
+vi.mock('@/modules/game', () => ({
+  useGameStore: () => mocks.gameStore,
+}));
+
 /** mock 日志 DB 层 */
 vi.mock('@/modules/log/db', () => ({
   adventureLogDbService: {
@@ -72,6 +83,7 @@ describe('useLogStore - 冒险日志 Store', () => {
     createTestPinia();
     vi.clearAllMocks();
     eventBus.clearAll();
+    mocks.gameStore.currentCharacterId = null;
   });
 
   // -------------------- State 初始值 --------------------
@@ -132,6 +144,7 @@ describe('useLogStore - 冒险日志 Store', () => {
         characterId: 'c1', entries, updatedAt: 1,
       });
       const store = useLogStore();
+      mocks.gameStore.currentCharacterId = 'c1';
       await store.initialize('c1');
 
       expect(adventureLogDbService.getAdventureLog).toHaveBeenCalledWith('c1');
@@ -141,6 +154,7 @@ describe('useLogStore - 冒险日志 Store', () => {
     it('DB 返回 null 时 logs 为空', async () => {
       vi.mocked(adventureLogDbService.getAdventureLog).mockResolvedValueOnce(null);
       const store = useLogStore();
+      mocks.gameStore.currentCharacterId = 'c1';
       await store.initialize('c1');
       expect(store.logs).toEqual([]);
     });
@@ -150,6 +164,7 @@ describe('useLogStore - 冒险日志 Store', () => {
         characterId: 'c1', entries: undefined as unknown as LogEntry[], updatedAt: 1,
       });
       const store = useLogStore();
+      mocks.gameStore.currentCharacterId = 'c1';
       await store.initialize('c1');
       expect(store.logs).toEqual([]);
     });
@@ -161,6 +176,7 @@ describe('useLogStore - 冒险日志 Store', () => {
         characterId: 'c1', entries: makeLogs(overflow), updatedAt: 1,
       });
       const store = useLogStore();
+      mocks.gameStore.currentCharacterId = 'c1';
       await store.initialize('c1');
 
       expect(store.logCount).toBe(MAX_LOG_ENTRIES);
@@ -177,7 +193,8 @@ describe('useLogStore - 冒险日志 Store', () => {
       eventBus.on(GameEvents.LOG_ENTRY_ADDED, spy);
 
       const store = useLogStore();
-      // 通过 initialize 设置 currentCharacterId 以触发持久化
+      // P3-153 扩展：通过 gameStore 设置 currentCharacterId 以触发持久化
+      mocks.gameStore.currentCharacterId = 'c1';
       vi.mocked(adventureLogDbService.getAdventureLog).mockResolvedValueOnce(null);
       await store.initialize('c1');
       // initialize 后再 patch logs，避免被 initialize 清空
@@ -218,6 +235,7 @@ describe('useLogStore - 冒险日志 Store', () => {
       vi.mocked(adventureLogDbService.saveAdventureLog).mockRejectedValueOnce(new Error('db fail'));
 
       const store = useLogStore();
+      mocks.gameStore.currentCharacterId = 'c1';
       vi.mocked(adventureLogDbService.getAdventureLog).mockResolvedValueOnce(null);
       await store.initialize('c1');
 
@@ -333,6 +351,7 @@ describe('useLogStore - 冒险日志 Store', () => {
   describe('Action: clearLogs', () => {
     it('清空 logs 并持久化', async () => {
       const store = useLogStore();
+      mocks.gameStore.currentCharacterId = 'c1';
       vi.mocked(adventureLogDbService.getAdventureLog).mockResolvedValueOnce(null);
       await store.initialize('c1');
       store.$patch({ logs: makeLogs(3) });
@@ -356,6 +375,7 @@ describe('useLogStore - 冒险日志 Store', () => {
     it('持久化失败时调用 errorHandler.report 且内存仍清空', async () => {
       vi.mocked(adventureLogDbService.saveAdventureLog).mockRejectedValueOnce(new Error('fail'));
       const store = useLogStore();
+      mocks.gameStore.currentCharacterId = 'c1';
       vi.mocked(adventureLogDbService.getAdventureLog).mockResolvedValueOnce(null);
       await store.initialize('c1');
       store.$patch({ logs: makeLogs(2) });

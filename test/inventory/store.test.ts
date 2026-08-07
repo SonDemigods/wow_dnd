@@ -21,6 +21,7 @@
  *    与常量（INVENTORY_SIZE / MAX_STACK / RARITY_ORDER）使用真实实现，与样板模式一致。
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { ref } from 'vue';
 import { useInventoryStore } from '@/modules/inventory/store';
 import { createTestPinia } from '../utils/setup';
 import { INVENTORY_SIZE, MAX_STACK } from '@/modules/inventory/service';
@@ -50,6 +51,10 @@ const mocks = vi.hoisted(() => ({
   unifiedCache: {
     getAll: vi.fn().mockResolvedValue([]),
   },
+  // P3-153 扩展：currentCharacterId 收敛到 GameStore 只读 computed 代理
+  gameStore: {
+    currentCharacterId: null as string | null,
+  },
 }));
 
 vi.mock('@/modules/inventory/db', () => ({ inventoryDbService: mocks.inventoryDb }));
@@ -57,6 +62,7 @@ vi.mock('@/modules/item-template/cache', () => ({ unifiedItemTemplateCache: mock
 vi.mock('@/modules/character/store', () => ({ useCharacterStore: () => mocks.characterStore }));
 vi.mock('@/modules/log/store', () => ({ useLogStore: () => mocks.logStore }));
 vi.mock('@/modules/log/service', () => ({ generateLogId: vi.fn().mockReturnValue('log-id') }));
+vi.mock('@/modules/game', () => ({ useGameStore: () => mocks.gameStore }));
 
 import { inventoryDbService } from '@/modules/inventory/db';
 import { unifiedItemTemplateCache } from '@/modules/item-template/cache';
@@ -125,6 +131,8 @@ describe('useInventoryStore - 背包 Store', () => {
   beforeEach(() => {
     createTestPinia();
     vi.clearAllMocks();
+    // P3-153 扩展：重置 gameStore.currentCharacterId
+    mocks.gameStore.currentCharacterId = null;
   });
 
   // -------------------- State 初始值 --------------------
@@ -260,21 +268,23 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('数量 <= 0 时返回 0', () => {
       const store = useInventoryStore();
-      store.$patch({ currentCharacterId: 'char-1', itemTemplates: mapOf(makeItem()) });
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({ itemTemplates: mapOf(makeItem()) });
       expect(store.addItem('p1', 0)).toBe(0);
       expect(store.addItem('p1', -3)).toBe(0);
     });
 
     it('物品模板不存在时返回 0', () => {
       const store = useInventoryStore();
-      store.$patch({ currentCharacterId: 'char-1', itemTemplates: mapOf() });
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({ itemTemplates: mapOf() });
       expect(store.addItem('nope', 1)).toBe(0);
     });
 
     it('可堆叠物品：先填满已有槽位，溢出部分新建槽位', () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 8)],
         itemTemplates: mapOf(makeItem()),
       });
@@ -286,8 +296,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('不可堆叠物品：每件占用独立槽位', () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [],
         itemTemplates: mapOf(makeWeaponItem()),
       });
@@ -299,8 +309,8 @@ describe('useInventoryStore - 背包 Store', () => {
     it('背包满时不可堆叠新物品返回 0，可堆叠物品仍可填入已有槽位', () => {
       const store = useInventoryStore();
       const full = Array.from({ length: INVENTORY_SIZE }, () => inv('w1', 1));
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: full,
         itemTemplates: mapOf(makeWeaponItem(), makeItem({ id: 'p2', stackable: true })),
       });
@@ -312,7 +322,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('成功添加后触发持久化与日志', async () => {
       const store = useInventoryStore();
-      store.$patch({ currentCharacterId: 'char-1', itemTemplates: mapOf(makeItem()) });
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({ itemTemplates: mapOf(makeItem()) });
       store.addItem('p1', 1);
       await Promise.resolve();
       expect(inventoryDbService.saveInventory).toHaveBeenCalledWith('char-1', expect.any(Array));
@@ -327,8 +338,8 @@ describe('useInventoryStore - 背包 Store', () => {
   describe('Actions: removeItem', () => {
     it('部分扣减：保留剩余数量', () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 10), inv('p1', 3)],
         itemTemplates: mapOf(makeItem()),
       });
@@ -339,8 +350,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('全部移除：数量不足时返回实际移除数', () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 10), inv('p1', 3)],
         itemTemplates: mapOf(makeItem()),
       });
@@ -369,14 +380,15 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('物品不在背包时返回 false', async () => {
       const store = useInventoryStore();
-      store.$patch({ currentCharacterId: 'char-1', itemTemplates: mapOf(makeItem({ consumable: true })) });
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({ itemTemplates: mapOf(makeItem({ consumable: true })) });
       expect(await store.useItem('p1')).toBe(false);
     });
 
     it('非消耗品返回 false', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('w1', 1)],
         itemTemplates: mapOf(makeWeaponItem()),
       });
@@ -385,8 +397,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('health_restore 效果：调用 receiveHeal，堆叠物品 count-1', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 2)],
         // P3.3：旧 effect 字段改为 effects[] 数组
         itemTemplates: mapOf(makeItem({ effects: [{ type: 'health_restore', value: 50 }] } as Partial<Item>)),
@@ -399,8 +411,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('单件消耗品使用后槽位移除', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 1)],
         // P3.3：旧 effect 字段改为 effects[] 数组
         itemTemplates: mapOf(makeItem({ effects: [{ type: 'mana_restore', value: 20 }] } as Partial<Item>)),
@@ -413,8 +425,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('bonus 字段：调用 applyBonus 应用属性加成', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p2', 1)],
         // P3.3：旧 bonus 字段改为 effects[] 中的 stat 类型效果
         // p2 不在 ATTRIBUTE_POTION_IDS 白名单中，走 applyBonus 路径
@@ -427,8 +439,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('属性药剂(strength_potion)：调用 applyPotionBonus 而非 applyBonus，堆叠数 -1', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('strength_potion', 2)],
         // P3.3：旧 bonus 字段改为 effects[] 中的 stat 类型效果
         // strength_potion 在 ATTRIBUTE_POTION_IDS 白名单中，走 applyPotionBonus 路径
@@ -449,8 +461,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('属性药剂(constitution_potion)：调用 applyPotionBonus（con 影响 maxHp 由 store 重算）', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('constitution_potion', 1)],
         // P3.3：旧 bonus 字段改为 effects[] 中的 stat 类型效果
         itemTemplates: mapOf(makeItem({
@@ -470,8 +482,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('属性药剂与 HP 恢复药剂互不干扰：strength_potion 不触发 receiveHeal', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('strength_potion', 1)],
         itemTemplates: mapOf(makeItem({
           id: 'strength_potion',
@@ -489,8 +501,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('成功使用后记录日志', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 1)],
         itemTemplates: mapOf(makeItem({ consumable: true, effect: { type: 'health_restore', value: 50 } })),
       });
@@ -576,8 +588,8 @@ describe('useInventoryStore - 背包 Store', () => {
   describe('Actions: organizeInventory', () => {
     it('合并同类物品、重新堆叠并按稀有度降序+类型升序排序', () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('a', 3), inv('b', 1), inv('a', 2)],
         itemTemplates: mapOf(
           makeItem({ id: 'a', name: '药水', type: 'potion', rarity: 'common', stackable: true, value: 5 }),
@@ -593,8 +605,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('可堆叠物品超过 MAX_STACK 时分拆到多个槽位', () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('a', MAX_STACK), inv('a', MAX_STACK), inv('a', 3)],
         itemTemplates: mapOf(makeItem({ id: 'a', stackable: true })),
       });
@@ -629,7 +641,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('resetInventory 清空背包并持久化', async () => {
       const store = useInventoryStore();
-      store.$patch({ currentCharacterId: 'char-1', inventory: [inv('p1', 1)] });
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({ inventory: [inv('p1', 1)] });
       store.resetInventory();
       expect(store.inventory).toEqual([]);
       await Promise.resolve();
@@ -646,6 +659,7 @@ describe('useInventoryStore - 背包 Store', () => {
       vi.mocked(unifiedItemTemplateCache.getAll).mockResolvedValueOnce(templates);
 
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       await store.initialize('char-1');
 
       expect(store.currentCharacterId).toBe('char-1');
@@ -665,7 +679,7 @@ describe('useInventoryStore - 背包 Store', () => {
       vi.mocked(inventoryDbService.getInventory).mockResolvedValueOnce([inv('p1', 5)]);
       vi.mocked(unifiedItemTemplateCache.getAll).mockResolvedValueOnce([makeItem()]);
       const store = useInventoryStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       await store.loadInventory();
       expect(store.inventory).toEqual([inv('p1', 5)]);
     });
@@ -675,20 +689,22 @@ describe('useInventoryStore - 背包 Store', () => {
   describe('Actions: useItemByIndex', () => {
     it('索引为负数时返回 false', async () => {
       const store = useInventoryStore();
-      store.$patch({ currentCharacterId: 'char-1', inventory: [inv('p1', 1)] });
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({ inventory: [inv('p1', 1)] });
       expect(await store.useItemByIndex(-1)).toBe(false);
     });
 
     it('索引越界（>= length）时返回 false', async () => {
       const store = useInventoryStore();
-      store.$patch({ currentCharacterId: 'char-1', inventory: [inv('p1', 1)] });
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({ inventory: [inv('p1', 1)] });
       expect(await store.useItemByIndex(1)).toBe(false);
     });
 
     it('正常索引时委托 useItem 执行', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 2)],
         // P3.3：旧 effect 字段改为 effects[] 数组
         itemTemplates: mapOf(makeItem({ effects: [{ type: 'health_restore', value: 30 }] } as Partial<Item>)),
@@ -704,20 +720,22 @@ describe('useInventoryStore - 背包 Store', () => {
   describe('Actions: dropItemByIndex', () => {
     it('索引为负数时返回 false', () => {
       const store = useInventoryStore();
-      store.$patch({ currentCharacterId: 'char-1', inventory: [inv('p1', 1)] });
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({ inventory: [inv('p1', 1)] });
       expect(store.dropItemByIndex(-1)).toBe(false);
     });
 
     it('索引越界（>= length）时返回 false', () => {
       const store = useInventoryStore();
-      store.$patch({ currentCharacterId: 'char-1', inventory: [inv('p1', 1)] });
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({ inventory: [inv('p1', 1)] });
       expect(store.dropItemByIndex(1)).toBe(false);
     });
 
     it('未提供 count 时丢弃整个槽位', () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 3), inv('w1', 1)],
         itemTemplates: mapOf(makeItem()),
       });
@@ -727,8 +745,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('count >= 槽位数量时丢弃整个槽位', () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 3)],
         itemTemplates: mapOf(makeItem()),
       });
@@ -738,8 +756,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('count < 槽位数量时部分丢弃', () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 5)],
         itemTemplates: mapOf(makeItem()),
       });
@@ -749,8 +767,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('count=0 时槽位保留原数量（使用 ?? 而非 ||）', () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 5)],
         itemTemplates: mapOf(makeItem()),
       });
@@ -761,8 +779,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('丢弃单个物品（dropCount=1）时日志不含 xN', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 3)],
         itemTemplates: mapOf(makeItem({ name: '生命药水' })),
       });
@@ -776,8 +794,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('丢弃多个物品（dropCount>1）时日志包含 xN', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 5)],
         itemTemplates: mapOf(makeItem({ name: '生命药水' })),
       });
@@ -790,8 +808,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('丢弃的物品模板不存在时不记录日志但返回 true', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('unknown', 1)],
         itemTemplates: mapOf(),
       });
@@ -802,8 +820,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('成功丢弃后触发持久化', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 2)],
         itemTemplates: mapOf(makeItem()),
       });
@@ -817,14 +835,15 @@ describe('useInventoryStore - 背包 Store', () => {
   describe('Actions: dropItemsByIndices', () => {
     it('空索引数组返回 false', () => {
       const store = useInventoryStore();
-      store.$patch({ currentCharacterId: 'char-1', inventory: [inv('p1', 1)] });
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({ inventory: [inv('p1', 1)] });
       expect(store.dropItemsByIndices([])).toBe(false);
     });
 
     it('批量删除多个索引（从大到小 splice 避免索引偏移）', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('a', 1), inv('b', 1), inv('c', 1), inv('d', 1)],
       });
       // 删除索引 0 和 2（a 和 c），保留 b 和 d
@@ -836,8 +855,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('包含越界索引（>= length）时仅删除有效索引', () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('a', 1), inv('b', 1)],
       });
       expect(store.dropItemsByIndices([1, 99])).toBe(true);
@@ -846,8 +865,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('包含负数索引时仅删除有效索引', () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('a', 1), inv('b', 1), inv('c', 1)],
       });
       expect(store.dropItemsByIndices([-1, 1])).toBe(true);
@@ -907,20 +926,22 @@ describe('useInventoryStore - 背包 Store', () => {
   describe('Actions: removeItemByIndex', () => {
     it('索引为负数时返回 0', () => {
       const store = useInventoryStore();
-      store.$patch({ currentCharacterId: 'char-1', inventory: [inv('p1', 1)] });
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({ inventory: [inv('p1', 1)] });
       expect(store.removeItemByIndex(-1)).toBe(0);
     });
 
     it('索引越界（>= length）时返回 0', () => {
       const store = useInventoryStore();
-      store.$patch({ currentCharacterId: 'char-1', inventory: [inv('p1', 1)] });
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({ inventory: [inv('p1', 1)] });
       expect(store.removeItemByIndex(1)).toBe(0);
     });
 
     it('正常移除时返回槽位数量并删除槽位', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 3), inv('w1', 1)],
       });
       expect(store.removeItemByIndex(0)).toBe(3);
@@ -934,8 +955,8 @@ describe('useInventoryStore - 背包 Store', () => {
   describe('Actions: useItem - 效果分支', () => {
     it('physical_damage 效果：进入分支但不报错（TODO 待战斗系统实现）', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 1)],
         itemTemplates: mapOf(makeItem({
           consumable: true,
@@ -953,8 +974,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('magic_damage 效果：进入分支但不报错（TODO 待战斗系统实现）', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 1)],
         itemTemplates: mapOf(makeItem({
           consumable: true,
@@ -969,8 +990,8 @@ describe('useInventoryStore - 背包 Store', () => {
 
     it('stat 效果：effect.type=stat 时不触发即时效果，bonus 通过 applyBonus 应用', async () => {
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 1)],
         // P3.3：旧 effect.type=stat + bonus 字段统一为 effects[] 中的 stat 类型效果
         // p1 不在 ATTRIBUTE_POTION_IDS 白名单中，走 applyBonus 路径
@@ -997,8 +1018,8 @@ describe('useInventoryStore - 背包 Store', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { /* 吞掉错误输出 */ });
 
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [],
         itemTemplates: mapOf(makeItem({ id: 'p1', stackable: true })),
       });
@@ -1047,8 +1068,8 @@ describe('useInventoryStore - 背包 Store', () => {
     it('removeItem 物品不在背包时 removed=0 不触发持久化（if (removed > 0) FALSE 分支）', () => {
       // 覆盖 line 308: if (removed > 0) 的 FALSE 分支
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 5)],
         itemTemplates: mapOf(makeItem()),
       });
@@ -1060,8 +1081,8 @@ describe('useInventoryStore - 背包 Store', () => {
     it('useItem 多物品背包中堆叠物品 count-1（ternary FALSE 分支）', async () => {
       // 覆盖 line 401: i === idx ? ... : item 中 : item 分支
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 2), inv('w1', 1)],
         itemTemplates: mapOf(makeItem({ consumable: true, effect: { type: 'health_restore', value: 50 } })),
       });
@@ -1073,8 +1094,8 @@ describe('useInventoryStore - 背包 Store', () => {
     it('dropItemByIndex 多物品背包中部分丢弃（ternary FALSE 分支）', () => {
       // 覆盖 line 463: i === index ? ... : item 中 : item 分支
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 5), inv('w1', 1)],
         itemTemplates: mapOf(makeItem()),
       });
@@ -1086,8 +1107,8 @@ describe('useInventoryStore - 背包 Store', () => {
     it('useItem effect.type 非 stat 且非已知类型时跳过所有效果分支', async () => {
       // 覆盖 line 387: else if (type === 'stat') 的 FALSE 分支
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('p1', 1)],
         itemTemplates: mapOf(makeItem({
           consumable: true,
@@ -1103,8 +1124,8 @@ describe('useInventoryStore - 背包 Store', () => {
     it('organizeInventory 物品模板缺失时排序回退为 common/misc', () => {
       // 覆盖 lines 557-561: RARITY_ORDER[itemA?.rarity || 'common'] 和 ITEM_TYPE_NAMES[itemA?.type || 'misc']
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('unknown', 1), inv('p1', 1)],
         itemTemplates: mapOf(makeItem({ id: 'p1', stackable: true })),
       });
@@ -1117,8 +1138,8 @@ describe('useInventoryStore - 背包 Store', () => {
       // 覆盖 line 557/560: itemB?.rarity || 'common' 和 itemB?.type || 'misc' 的 itemB 回退分支
       // 当所有物品模板均缺失时，comparator 任意配对都会触发 itemA 和 itemB 的 || 回退
       const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         inventory: [inv('unknown_a', 1), inv('unknown_b', 1)],
         itemTemplates: new Map(),
       });

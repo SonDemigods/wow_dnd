@@ -1,7 +1,7 @@
 # 当前待修复问题
 
 > 检查时间：2026-08-07
-> 最近整理：2026-08-07（P3-154 已修复：7月归档合并为 archive_2026_07.md；移除已修复项 P3-135/157/159/165/166；P3-164 更新为部分修复）
+> 最近整理：2026-08-07（P3-153 扩展已修复：6 个 Store currentCharacterId 收敛到 GameStore；P3-164 已修复；P3-160 经核实已不存在；移除已修复项 P3-135/157/159/165/166；P3-154 已修复：7月归档合并为 archive_2026_07.md）
 > tsc 状态：`tsc --noEmit --skipLibCheck` 通过（0 错误）
 > 历史归档目录：[doc/fixed/](file:///d:/openSource/wow_dnd/doc/fixed/)
 > 7月归档合并：[archive_2026_07.md](file:///d:/openSource/wow_dnd/doc/fixed/archive_2026_07.md)
@@ -18,24 +18,6 @@
 - **修复建议**：经验惩罚改为"损失本级经验 50%"或"损失固定 100 经验"；增加"回城满血复活"（额外扣金币）；探索中死亡时清除死亡格子周围 1 格怪物。
 - **风险**：低。改 `computeResurrection` 公式 + 增加复活方式选项。
 - **关联**：P2-57 标注"有意设计保留"，若采纳则同步更新 P2-57。
-
----
-
-### P3-153 扩展（代码·P1）：其他 6 个 Store currentCharacterId 代理统一
-- **状态**：待修复
-- **核实结果**（2026-08-07）：skill/log/map/quest/equipment/inventory 6 个 Store 仍有本地 `currentCharacterId = ref`，未收敛到 gameStore 只读 computed 代理。
-- **影响**：全局状态存在多个数据源，角色切换时可能出现状态不一致。
-- **修复建议**：参照 P3-153 修复模式，将 `currentCharacterId` 从 ref 改为 `computed(() => gameStore.currentCharacterId)`。
-- **风险**：低。模式已验证，逐个 Store 迁移即可。
-
----
-
-### P3-160（业务·P2）：setRace/setClass 重置 stats 丢失升级属性
-- **状态**：待修复
-- **核实结果**（2026-08-07）：[src/modules/character/store.ts:602-633](file:///d:/openSource/wow_dnd/src/modules/character/store.ts#L602) setRace/setClass 使用 `computeInitialStats(raceBonus, classBonus)` 整体重置 stats，未累加 `level - 1` 点升级属性。20 级角色切换种族/职业会丢失 19 点升级属性。
-- **影响**：当前 API 暂未被调用，一旦未来调用会导致高级角色属性大幅缩水。
-- **修复建议**：改为差值更新（旧种族加成→新种族加成的 diff），或重置后显式累加 `level - 1`。
-- **风险**：低。
 
 ---
 
@@ -66,17 +48,6 @@
   - CharacterCreate：抽离 `useCharacterCreation`
   - GameMain：抽离 `useGameActions`
 - **风险**：低。纯重构，参考 combat 模块 composable 拆分模式。
-
----
-
-### P3-164（架构·P2）：模块间类型循环依赖
-- **状态**：部分修复（3 组中 2 组已消除，1 组仍存在）
-- **核实结果**（2026-08-07）：
-  - ~~exploration ↔ enemy~~ ✅ 已消除
-  - ~~character ↔ data~~ ✅ 已消除
-  - skill ↔ combat ❌ 仍存在：`skill/types.ts` 导入 `EffectType` from `combat/effects`，`combat/combatContext.ts` 导入 `Skill/SkillUseResult` from `skill`
-- **修复建议**：将 `EffectType` 提取到独立类型文件。
-- **风险**：低。纯类型重构，无运行时影响。
 
 ---
 
@@ -120,14 +91,11 @@
 | 类别 | 数量 |
 |------|------|
 | 待办问题（玩法·P1） | 1（P3-150） |
-| 待办问题（代码·P1） | 1（P3-153 扩展） |
-| 待办问题（业务·P2） | 1（P3-160） |
 | 待办问题（玩法·P2） | 2（P3-149 / P3-162） |
 | 待办问题（代码·P2） | 2（P3-155 / P3-163 部分） |
-| 待办问题（架构·P2） | 1（P3-164 部分） |
 | 待办问题（内容·P3） | 2（P3-136 / P3-167） |
 | 设计保留 | 2 |
-| **待办合计** | **10** |
+| **待办合计** | **7** |
 
 ### 已修复批次
 
@@ -142,18 +110,17 @@
 | 简单问题修复 | 2026-08-07 | — | 3（P3-157/159/165）|
 | 内容/数据修复 | 2026-08-07 | — | 2（P3-135/166，天赋系统重构时修复）|
 | 归档膨胀修复 | 2026-08-07 | — | 1（P3-154，7月归档合并）|
+| 循环依赖修复 | 2026-08-07 | [fixed_20260807081906.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807081906.md) | 1（P3-164，3组全部消除）|
+| currentCharacterId 代理统一 | 2026-08-07 | [fixed_20260807084223.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807084223.md) | 1（P3-153 扩展，6 个 Store）|
 
 ### 待办优先级清单（建议下一批次处理）
 
 | 编号 | 维度 | 标题 | 优先级 |
 |------|------|------|--------|
 | P3-150 | 玩法 | 死亡惩罚过严，无保险机制（需重新评估 P2-57） | P1 |
-| P3-153 扩展 | 代码 | 其他 6 个 Store currentCharacterId 代理统一 | P1 |
-| P3-160 | 业务 | setRace/setClass 重置 stats 丢失升级属性 | P2 |
 | P3-162 | 玩法 | AI 决策类型仅 3 种，缺乏 buff/summon/defend | P2 |
 | P3-149 | 玩法 | 任务类型仅 kill/collect，目标类型枚举封闭 | P2 |
 | P3-163 | 代码 | 大组件未抽离业务 Composable | P2 |
-| P3-164 | 架构 | 模块间类型循环依赖（仅剩 skill↔combat） | P2 |
 | P3-155 | 代码 | 大型 Store 未拆分 composable | P2 |
 | P3-136 | 内容 | 任务类型全为 kill | P3 |
 | P3-167 | 内容 | 怪物/Boss 数量偏少 | P3 |

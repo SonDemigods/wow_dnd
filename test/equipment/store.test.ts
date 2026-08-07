@@ -54,12 +54,23 @@ const mocks = vi.hoisted(() => ({
     getAllEquipmentTemplates: vi.fn().mockResolvedValue([]),
     deleteEquipmentTemplate: vi.fn().mockResolvedValue(undefined),
   },
+  // P3-153：currentCharacterId 改为 gameStore 只读 computed 代理，
+  // 测试通过 mocks.gameStore.currentCharacterId 控制（使用 getter 保持响应式语义）
+  gameStore: {
+    _currentCharacterId: null as string | null,
+    get currentCharacterId() { return this._currentCharacterId; },
+    set currentCharacterId(v: string | null) { this._currentCharacterId = v; },
+  },
 }));
 
 vi.mock('@/modules/equipment/db', () => ({ equipmentDbService: mocks.equipmentDb }));
 vi.mock('@/modules/character/store', () => ({ useCharacterStore: () => mocks.characterStore }));
 vi.mock('@/modules/log/store', () => ({ useLogStore: () => mocks.logStore }));
 vi.mock('@/modules/log/service', () => ({ generateLogId: vi.fn().mockReturnValue('log-id') }));
+// P3-153：mock useGameStore，currentCharacterId 由 mocks.gameStore 控制
+vi.mock('@/modules/game', () => ({
+  useGameStore: () => mocks.gameStore,
+}));
 
 // mock configCache.getSetDefinitions，返回真实 SET_DEFINITIONS（替代原直接 import @/data/config_set_definitions）
 vi.mock('@/modules/config', async () => {
@@ -86,6 +97,15 @@ vi.mock('@/modules/equipment/setService', async (importOriginal) => {
 
 import { equipmentDbService } from '@/modules/equipment/db';
 import { getAllSetProgresses } from '@/modules/equipment/setService';
+import { ref } from 'vue';
+
+// P3-153：gameStore.currentCharacterId 需要 reactive 支持，使 computed 能追踪变化
+// 使用 ref + getter/setter 替代 plain object（computed 无法追踪非 reactive 属性变更）
+const _gameStoreCharId = ref<string | null>(null);
+mocks.gameStore = {
+  get currentCharacterId() { return _gameStoreCharId.value; },
+  set currentCharacterId(v: string | null) { _gameStoreCharId.value = v; },
+} as { currentCharacterId: string | null };
 
 // ==================== 测试数据 helper ====================
 
@@ -150,6 +170,8 @@ describe('useEquipmentStore - 装备 Store', () => {
     mocks.characterStore.removeBonus.mockReset();
     mocks.characterStore.removeBonus.mockResolvedValue(undefined);
     mocks.inventoryCallbacks.removeItem.mockReturnValue(1);
+    // P3-153：重置 gameStore.currentCharacterId（默认未登录状态）
+    mocks.gameStore.currentCharacterId = null;
     // A1/G1 修复：通过回调注入替代 useInventoryStore 直接依赖
     setInventoryCallbacks(mocks.inventoryCallbacks.addItem, mocks.inventoryCallbacks.removeItem);
   });
@@ -242,7 +264,7 @@ describe('useEquipmentStore - 装备 Store', () => {
 
     it('槽位不匹配（武器装到护甲槽）返回 false', async () => {
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       const result = await store.equipItem('helm', makeWeapon());
       expect(result).toBe(false);
       // 未触达背包移除
@@ -251,7 +273,7 @@ describe('useEquipmentStore - 装备 Store', () => {
 
     it('等级不足返回 false', async () => {
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       mocks.characterStore.level = 3;
       const weapon = makeWeapon({ levelRequirement: 5 });
       const result = await store.equipItem('weapon1', weapon);
@@ -260,7 +282,7 @@ describe('useEquipmentStore - 装备 Store', () => {
 
     it('职业限制不匹配返回 false', async () => {
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       mocks.characterStore.classId = 'warrior';
       const weapon = makeWeapon({ classRestriction: ['mage'] });
       const result = await store.equipItem('weapon1', weapon);
@@ -270,7 +292,7 @@ describe('useEquipmentStore - 装备 Store', () => {
 
     it('背包无该物品（removeItem 返回 0）返回 false', async () => {
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       mocks.inventoryCallbacks.removeItem.mockReturnValue(0);
       const result = await store.equipItem('weapon1', makeWeapon());
       expect(result).toBe(false);
@@ -278,7 +300,7 @@ describe('useEquipmentStore - 装备 Store', () => {
 
     it('成功装备：写入槽位、应用 bonus、持久化、记录日志、返回 true', async () => {
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       const weapon = makeWeapon({ bonus: { str: 5 } });
 
       const result = await store.equipItem('weapon1', weapon);
@@ -302,8 +324,8 @@ describe('useEquipmentStore - 装备 Store', () => {
     it('成功装备到已有装备的槽位时先卸下旧装备', async () => {
       const store = useEquipmentStore();
       const oldWeapon = makeWeapon({ id: 'old', name: '旧剑', bonus: { str: 2 } });
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         equipment: buildEquipment({ weapon1: { item: oldWeapon, equippedAt: 1 } }),
       });
       const newWeapon = makeWeapon({ id: 'new', name: '新剑', bonus: { str: 6 } });
@@ -323,13 +345,13 @@ describe('useEquipmentStore - 装备 Store', () => {
 
     it('装备过程中 currentCharacterId 被清空时 persist 跳过持久化（行 307 falsy 分支）', async () => {
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       const weapon = makeWeapon({ bonus: { str: 1 } });
 
       // 模拟并发竞态：applyBonus 执行期间 currentCharacterId 被清空，
       // 导致后续 persist() 读取到 null 走 falsy 分支（不调用 saveEquipment）
       mocks.characterStore.applyBonus.mockImplementationOnce(async () => {
-        store.$patch({ currentCharacterId: null });
+        mocks.gameStore.currentCharacterId = null;
       });
 
       await store.equipItem('weapon1', weapon);
@@ -348,7 +370,7 @@ describe('useEquipmentStore - 装备 Store', () => {
 
     it('空槽位返回 null', async () => {
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       const result = await store.unequipItem('weapon1');
       expect(result).toBeNull();
     });
@@ -357,8 +379,8 @@ describe('useEquipmentStore - 装备 Store', () => {
       const store = useEquipmentStore();
       const weapon = makeWeapon({ bonus: { str: 5 } });
       const equipped: EquippedItem = { item: weapon, equippedAt: 123 };
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         equipment: buildEquipment({ weapon1: equipped }),
       });
 
@@ -483,6 +505,7 @@ describe('useEquipmentStore - 装备 Store', () => {
       });
 
       const store = useEquipmentStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       await store.initialize('char-1');
 
       expect(store.currentCharacterId).toBe('char-1');
@@ -502,6 +525,7 @@ describe('useEquipmentStore - 装备 Store', () => {
       });
 
       const store = useEquipmentStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       await store.initialize('char-1');
 
       // 模板不存在时该槽位保持空
@@ -514,8 +538,8 @@ describe('useEquipmentStore - 装备 Store', () => {
     it('清空装备、移除所有 bonus、持久化空映射、清状态', async () => {
       const weapon = makeWeapon({ bonus: { str: 5 } });
       const store = useEquipmentStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         equipment: buildEquipment({ weapon1: { item: weapon, equippedAt: 1 } }),
         equipmentTemplates: new Map([['w1', weapon]]),
       });
@@ -523,7 +547,7 @@ describe('useEquipmentStore - 装备 Store', () => {
       await store.reset();
 
       expect(store.equipment).toEqual(emptyEquipment());
-      expect(store.currentCharacterId).toBeNull();
+      // P3-153：currentCharacterId 为只读 computed 代理，reset 不再清除（由 gameStore 管理）
       expect(store.equipmentTemplates.size).toBe(0);
       // 卸下时移除了 bonus
       expect(mocks.characterStore.removeBonus).toHaveBeenCalledWith({ str: 5 });
@@ -537,8 +561,8 @@ describe('useEquipmentStore - 装备 Store', () => {
     it('无角色 ID 时不持久化但清空状态', async () => {
       const store = useEquipmentStore();
       const weapon = makeWeapon();
+      // currentCharacterId 默认为 null（未登录状态）
       store.$patch({
-        currentCharacterId: null,
         equipment: buildEquipment({ weapon1: { item: weapon, equippedAt: 1 } }),
       });
 
@@ -553,7 +577,7 @@ describe('useEquipmentStore - 装备 Store', () => {
   describe('Actions: 套装奖励 reapplySetBonuses', () => {
     it('装备 2 件同套装时应用套装奖励', async () => {
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       // P3.3b：使用真实套装装备 ID（warrior_t1 套装 parts 指定 itemId）
       // warrior_t1 2 件套奖励：stat str+5 + trigger rage_gen_on_hit_1
       // 装备自身 bonus 用 con 避免与套装奖励 str+5 混淆
@@ -578,7 +602,7 @@ describe('useEquipmentStore - 装备 Store', () => {
 
     it('卸下套装中的一件时移除套装奖励', async () => {
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       const setHelm = makeArmor({
         id: 'warrior_helm_t1', name: '愤怒之盔', subtype: 'helm', slots: ['helm'], occupies: ['helm'],
         classRestriction: ['warrior'], setId: 'warrior_t1', bonus: { con: 3 },
@@ -602,7 +626,7 @@ describe('useEquipmentStore - 装备 Store', () => {
 
     it('套装已激活时再次调用 reapplySetBonuses 不重复应用/移除（行 272/281 falsy 分支）', async () => {
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       const setHelm = makeArmor({
         id: 'warrior_helm_t1', name: '愤怒之盔', subtype: 'helm', slots: ['helm'], occupies: ['helm'],
         classRestriction: ['warrior'], setId: 'warrior_t1', bonus: { con: 3 },
@@ -633,7 +657,7 @@ describe('useEquipmentStore - 装备 Store', () => {
 
     it('套装激活效果仅含 trigger 类型时跳过 stat 应用（reapplySetBonuses 过滤非 stat 类型）', async () => {
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       // P3.3b：Mock getAllSetProgresses 返回仅含 trigger 类型效果的进度（无 stat 加成）
       vi.mocked(getAllSetProgresses).mockReturnValueOnce([
         {
@@ -672,7 +696,7 @@ describe('useEquipmentStore - 装备 Store', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       clearInventoryCallbacks();
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
 
       const result = await store.equipItem('weapon1', makeWeapon());
 
@@ -687,8 +711,8 @@ describe('useEquipmentStore - 装备 Store', () => {
       const store = useEquipmentStore();
       // 旧装备带有 bonus，removeBonusesFromSlot 会调用 removeBonus
       const oldWeapon = makeWeapon({ id: 'old', name: '旧剑', bonus: { str: 2 } });
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         equipment: buildEquipment({ weapon1: { item: oldWeapon, equippedAt: 1 } }),
       });
       // 让 removeBonus 抛错，使 doUnequip 内部 removeBonusesFromSlot 抛出
@@ -709,8 +733,8 @@ describe('useEquipmentStore - 装备 Store', () => {
       setInventoryCallbacks(null, mocks.inventoryCallbacks.removeItem);
       const store = useEquipmentStore();
       const oldWeapon = makeWeapon({ id: 'old', name: '旧剑', bonus: { str: 2 } });
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         equipment: buildEquipment({ weapon1: { item: oldWeapon, equippedAt: 1 } }),
       });
       mocks.characterStore.removeBonus.mockRejectedValueOnce(new Error('boom'));
@@ -723,7 +747,7 @@ describe('useEquipmentStore - 装备 Store', () => {
 
     it('装备无 bonus 的物品时不调用 applyBonus', async () => {
       const store = useEquipmentStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       mocks.characterStore.applyBonus.mockClear();
       const noBonusWeapon = makeWeapon({ id: 'nobonus', bonus: undefined });
 
@@ -741,8 +765,8 @@ describe('useEquipmentStore - 装备 Store', () => {
       clearInventoryCallbacks();
       const store = useEquipmentStore();
       const weapon = makeWeapon({ bonus: { str: 5 } });
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         equipment: buildEquipment({ weapon1: { item: weapon, equippedAt: 1 } }),
       });
 
@@ -759,8 +783,8 @@ describe('useEquipmentStore - 装备 Store', () => {
     it('卸下无 bonus 的装备时不调用 removeBonus', async () => {
       const store = useEquipmentStore();
       const noBonusWeapon = makeWeapon({ id: 'nobonus', bonus: undefined });
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         equipment: buildEquipment({ weapon1: { item: noBonusWeapon, equippedAt: 1 } }),
       });
       mocks.characterStore.removeBonus.mockClear();
@@ -835,7 +859,7 @@ describe('useEquipmentStore - 装备 Store', () => {
     describe('equipItem 双手武器装备', () => {
       it('双手武器在 weapon1/weapon2 都空闲时成功装备', async () => {
         const store = useEquipmentStore();
-        store.$patch({ currentCharacterId: 'char-1' });
+        mocks.gameStore.currentCharacterId = 'char-1';
         const weapon = makeTwoHandedWeapon();
 
         const result = await store.equipItem('weapon1', weapon);
@@ -854,8 +878,8 @@ describe('useEquipmentStore - 装备 Store', () => {
           id: 'shield', name: '铁盾', subtype: 'shield', grip: 'off_hand',
           slots: ['weapon2'], occupies: ['weapon2'], bonus: { con: 5 },
         });
+        mocks.gameStore.currentCharacterId = 'char-1';
         store.$patch({
-          currentCharacterId: 'char-1',
           equipment: buildEquipment({ weapon2: { item: shield, equippedAt: 1 } }),
         });
         const twoHanded = makeTwoHandedWeapon();
@@ -872,8 +896,8 @@ describe('useEquipmentStore - 装备 Store', () => {
       it('weapon1 装备双手武器后，单手武器不可装到 weapon2', async () => {
         const store = useEquipmentStore();
         const twoHanded = makeTwoHandedWeapon();
+        mocks.gameStore.currentCharacterId = 'char-1';
         store.$patch({
-          currentCharacterId: 'char-1',
           equipment: buildEquipment({ weapon1: { item: twoHanded, equippedAt: 1 } }),
         });
         const oneHanded = makeWeapon({
@@ -892,8 +916,8 @@ describe('useEquipmentStore - 装备 Store', () => {
       it('weapon1 装备双手武器后，盾牌不可装到 weapon2', async () => {
         const store = useEquipmentStore();
         const twoHanded = makeTwoHandedWeapon();
+        mocks.gameStore.currentCharacterId = 'char-1';
         store.$patch({
-          currentCharacterId: 'char-1',
           equipment: buildEquipment({ weapon1: { item: twoHanded, equippedAt: 1 } }),
         });
         const shield = makeWeapon({
@@ -913,8 +937,8 @@ describe('useEquipmentStore - 装备 Store', () => {
       it('卸下双手武器后 weapon1 清空、weapon2 保持 null', async () => {
         const store = useEquipmentStore();
         const twoHanded = makeTwoHandedWeapon({ bonus: { str: 20 } });
+        mocks.gameStore.currentCharacterId = 'char-1';
         store.$patch({
-          currentCharacterId: 'char-1',
           equipment: buildEquipment({ weapon1: { item: twoHanded, equippedAt: 1 } }),
         });
 
@@ -935,8 +959,8 @@ describe('useEquipmentStore - 装备 Store', () => {
       it('卸下双手武器后 weapon2 解锁，可正常装备', async () => {
         const store = useEquipmentStore();
         const twoHanded = makeTwoHandedWeapon();
+        mocks.gameStore.currentCharacterId = 'char-1';
         store.$patch({
-          currentCharacterId: 'char-1',
           equipment: buildEquipment({ weapon1: { item: twoHanded, equippedAt: 1 } }),
         });
 
@@ -1026,8 +1050,8 @@ describe('useEquipmentStore - 装备 Store', () => {
       it('卸下双手武器后 weapon2 解锁', async () => {
         const store = useEquipmentStore();
         const twoHanded = makeTwoHandedWeapon();
+        mocks.gameStore.currentCharacterId = 'char-1';
         store.$patch({
-          currentCharacterId: 'char-1',
           equipment: buildEquipment({ weapon1: { item: twoHanded, equippedAt: 1 } }),
         });
         // 装备时锁定

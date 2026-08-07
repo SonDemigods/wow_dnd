@@ -5,7 +5,8 @@
  * @module skill
  */
 
-import type { EffectType } from '@/modules/combat/effects';
+// P3-164：从独立文件导入 EffectType，消除 skill ↔ combat 模块间类型循环依赖
+import type { EffectType } from '@/modules/combat/effects/effect-type';
 import type { ResourceType } from '@/modules/combat/resources/types';
 
 /**

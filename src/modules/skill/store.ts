@@ -35,6 +35,7 @@ import { useCharacterStore } from '@/modules/character/store';
 import { useTalentStore } from '@/modules/character/talents/store';
 import { useLogStore } from '@/modules/log/store';
 import { generateLogId } from '@/modules/log/service';
+import { useGameStore } from '@/modules/game';
 import {
   calculateSkillDamage,
   calculateBuffValue,
@@ -88,8 +89,9 @@ export const useSkillStore = defineStore('skills', () => {
    */
   const monsterSkillTemplates = shallowRef<Map<string, Skill>>(new Map());
 
-  /** 当前操作的角色 ID（初始化时设置，用于持久化时自动关联） */
-  const currentCharacterId = ref<string | null>(null);
+  /** 当前操作的角色 ID（P3-153 扩展：收敛到 GameStore 只读 computed 代理） */
+  const gameStore = useGameStore();
+  const currentCharacterId = computed<string | null>(() => gameStore.currentCharacterId);
 
   /** 加载状态（初始化时为 true，完成后为 false，UI 可绑定此状态显示加载指示器） */
   const isLoading = ref(false);
@@ -269,7 +271,7 @@ export const useSkillStore = defineStore('skills', () => {
       return;
     }
 
-    currentCharacterId.value = charId;
+    // P3-153 扩展：currentCharacterId 为只读 computed，由 GameStore 代理，无需在此赋值
 
     // 1. 先加载技能模板（后续解析 ID 需要）
     await loadTemplatesForClass(characterStore.classId);
@@ -896,7 +898,8 @@ export const useSkillStore = defineStore('skills', () => {
     skillTemplates.value = new Map();
     monsterSkillTemplates.value = new Map();
     cooldowns.value = {};
-    currentCharacterId.value = null;
+    // P3-153 扩展：currentCharacterId 为只读 computed，不能直接赋值
+    // 角色切换/登出由 gameStore.setCurrentCharacterId(null) 统一管理
     await persist();
   }
 

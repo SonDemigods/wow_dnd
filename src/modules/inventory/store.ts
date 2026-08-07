@@ -28,6 +28,7 @@ import { unifiedItemTemplateCache } from '@/modules/item-template';
 import { useLogStore } from '@/modules/log/store';
 import { generateLogId } from '@/modules/log/service';
 import { useCharacterStore } from '@/modules/character/store';
+import { useGameStore } from '@/modules/game';
 import { errorReporter } from '@/utils/errorReport';
 import { RARITY_CONFIG } from '../../config/inventory';
 import {
@@ -105,8 +106,9 @@ export const useInventoryStore = defineStore('inventory', () => {
   const sortOrder = ref<SortOrder>('asc');
   /** 搜索关键词（实时响应输入） */
   const searchKeyword = ref('');
-  /** 当前活跃角色 ID（null 表示未初始化） */
-  const currentCharacterId = ref<string | null>(null);
+  /** 当前活跃角色 ID（P3-153 扩展：收敛到 GameStore 只读 computed 代理） */
+  const gameStore = useGameStore();
+  const currentCharacterId = computed<string | null>(() => gameStore.currentCharacterId);
   /** 加载状态标识（用于 UI 显示加载动画） */
   const isLoading = ref(false);
   /**
@@ -304,7 +306,7 @@ export const useInventoryStore = defineStore('inventory', () => {
    */
   async function initialize(characterId: string): Promise<void> {
     isLoading.value = true;
-    currentCharacterId.value = characterId;
+    // P3-153 扩展：currentCharacterId 为只读 computed，由 GameStore 代理，无需在此赋值
 
     if (characterId) {
       inventory.value = await inventoryDbService.getInventory(characterId);

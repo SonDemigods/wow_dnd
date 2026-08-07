@@ -59,6 +59,11 @@ const mocks = vi.hoisted(() => ({
   logStore: {
     addLogEntry: vi.fn(),
   },
+  // P3-153：skill currentCharacterId 改为 gameStore 只读 computed 代理，
+  // 测试通过 mocks.gameStore.currentCharacterId 控制持久化触发条件
+  gameStore: {
+    currentCharacterId: null as string | null,
+  },
 }));
 
 // ==================== Mock：skill db ====================
@@ -102,6 +107,10 @@ vi.mock('@/modules/character/store', () => ({
 }));
 vi.mock('@/modules/log/store', () => ({
   useLogStore: () => mocks.logStore,
+}));
+// P3-153：mock useGameStore，currentCharacterId 由 mocks.gameStore 控制
+vi.mock('@/modules/game', () => ({
+  useGameStore: () => mocks.gameStore,
 }));
 
 // ==================== 取出 spy 引用 ====================
@@ -164,6 +173,8 @@ describe('useSkillStore - 技能 Store', () => {
     mocks.characterStore.getCharacterId.mockReturnValue('char_1');
     mocks.characterStore.changeMp.mockResolvedValue(undefined);
     mocks.characterStore.receiveHeal.mockResolvedValue(undefined);
+    // P3-153：重置 gameStore.currentCharacterId（默认未登录状态）
+    mocks.gameStore.currentCharacterId = null;
     // 重置 db service 默认返回值（确保 once-mock 不受前次测试残留影响）
     vi.mocked(skillsDbService.saveSkillsData).mockResolvedValue(undefined);
     vi.mocked(skillsDbService.getSkillsData).mockResolvedValue({
@@ -303,6 +314,8 @@ describe('useSkillStore - 技能 Store', () => {
       });
 
       const store = useSkillStore();
+      // P3-153：currentCharacterId 为 gameStore 只读 computed 代理，需在 initialize 前设置
+      mocks.gameStore.currentCharacterId = 'char_1';
       await store.initialize('char_1');
 
       expect(store.currentCharacterId).toBe('char_1');
@@ -327,6 +340,8 @@ describe('useSkillStore - 技能 Store', () => {
       });
 
       const store = useSkillStore();
+      // P3-153：currentCharacterId 为 gameStore 只读 computed 代理，需在 initialize 前设置
+      mocks.gameStore.currentCharacterId = 'char_1';
       await store.initialize('char_1');
 
       expect(store.skills).toEqual([s1]);
@@ -339,6 +354,8 @@ describe('useSkillStore - 技能 Store', () => {
       mocks.characterStore.getCharacterId.mockReturnValue('auto_char');
 
       const store = useSkillStore();
+      // P3-153：currentCharacterId 为 gameStore 只读 computed 代理，需在 initialize 前设置
+      mocks.gameStore.currentCharacterId = 'auto_char';
       await store.initialize();
 
       expect(skillsDbService.getSkillsData).toHaveBeenCalledWith('auto_char');
@@ -418,8 +435,8 @@ describe('useSkillStore - 技能 Store', () => {
       const s1 = makeSkill({ id: 's1' });
       const store = useSkillStore();
       store.skillTemplates.set('s1', s1);
-      // 直接设置 currentCharacterId，避免 initialize 的 checkLevelUnlocks 副作用
-      store.$patch({ currentCharacterId: 'char_1' });
+      // P3-153：currentCharacterId 为 gameStore 只读 computed 代理，通过 mocks 设置
+      mocks.gameStore.currentCharacterId = 'char_1';
 
       const result = await store.learnSkill('s1');
 
@@ -932,8 +949,9 @@ describe('useSkillStore - 技能 Store', () => {
         skills: [s1],
         skillBar: { slots: ['s1', null, null, null] },
         cooldowns: { s1: 2 },
-        currentCharacterId: 'char_1',
       });
+      // P3-153：currentCharacterId 为 gameStore 只读 computed 代理，通过 mocks 设置
+      mocks.gameStore.currentCharacterId = 'char_1';
       store.skillTemplates.set('s1', s1);
       store.monsterSkillTemplates.set('m1', makeSkill({ id: 'm1' }));
 
@@ -944,7 +962,6 @@ describe('useSkillStore - 技能 Store', () => {
       expect(store.skillTemplates.size).toBe(0);
       expect(store.monsterSkillTemplates.size).toBe(0);
       expect(store.cooldowns).toEqual({});
-      expect(store.currentCharacterId).toBeNull();
       expect(skillsDbService.saveSkillsData).toHaveBeenCalledTimes(1);
     });
   });

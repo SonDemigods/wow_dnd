@@ -65,6 +65,11 @@ const mocks = vi.hoisted(() => ({
     clearAllQuestInstances: vi.fn().mockResolvedValue(undefined),
     deleteCharacterQuests: vi.fn().mockResolvedValue(undefined),
   },
+  // P3-153：quest currentCharacterId 改为 gameStore 只读 computed 代理，
+  // 测试通过 mocks.gameStore.currentCharacterId 控制持久化触发条件
+  gameStore: {
+    currentCharacterId: null as string | null,
+  },
 }));
 
 vi.mock('@/modules/quest/db', () => ({ questDbService: mocks.questDb }));
@@ -73,6 +78,10 @@ vi.mock('@/modules/inventory/store', () => ({ useInventoryStore: () => mocks.inv
 vi.mock('@/modules/log/store', () => ({ useLogStore: () => mocks.logStore }));
 vi.mock('@/modules/log/service', () => ({ generateLogId: vi.fn().mockReturnValue('log-id') }));
 vi.mock('@/composables/useToast', () => ({ useToast: () => mocks.toast }));
+// P3-153：mock useGameStore，currentCharacterId 由 mocks.gameStore 控制
+vi.mock('@/modules/game', () => ({
+  useGameStore: () => mocks.gameStore,
+}));
 
 import { questDbService } from '@/modules/quest/db';
 
@@ -128,6 +137,8 @@ describe('useQuestStore - 任务 Store', () => {
     mocks.characterStore.level = 5;
     // 重置 inventoryStore.inventory（collect 初始进度扫描测试会修改）
     mocks.inventoryStore.inventory = [];
+    // P3-153：重置 gameStore.currentCharacterId（默认未登录状态）
+    mocks.gameStore.currentCharacterId = null;
 
     // ARCH-2 修复：通过回调注入替代 useInventoryStore 直接调用，
     // 测试中注入基于 mocks.inventoryStore 的回调以保持原测试断言有效
@@ -297,9 +308,11 @@ describe('useQuestStore - 任务 Store', () => {
       vi.mocked(questDbService.getAllQuestInstances).mockResolvedValueOnce([inst]);
 
       const store = useQuestStore();
+      // P3-153：currentCharacterId 为 gameStore 只读 computed，需在 initialize 前设置
+      mocks.gameStore.currentCharacterId = 'char-1';
       await store.initialize('char-1');
 
-      expect(store.currentCharacterId).toBe('char-1');
+      expect(mocks.gameStore.currentCharacterId).toBe('char-1');
       expect(store.definitionList).toEqual([def]);
       expect(store.instanceList).toEqual([inst]);
     });
@@ -333,8 +346,8 @@ describe('useQuestStore - 任务 Store', () => {
 
       const def = makeDefinition({ id: 'q1', levelRequirement: 1 });
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(def),
       });
 
@@ -355,15 +368,15 @@ describe('useQuestStore - 任务 Store', () => {
 
     it('任务定义不存在时返回 false', async () => {
       const store = useQuestStore();
-      store.$patch({ currentCharacterId: 'char-1' });
+      mocks.gameStore.currentCharacterId = 'char-1';
       const result = await store.acceptQuest('nope');
       expect(result).toBe(false);
     });
 
     it('等级不足时返回 false', async () => {
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(makeDefinition({ id: 'q1', levelRequirement: 99 })),
       });
       // characterStore.level = 5
@@ -373,8 +386,8 @@ describe('useQuestStore - 任务 Store', () => {
 
     it('已有 in_progress 实例时返回 false（不可重复接取）', async () => {
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(makeDefinition({ id: 'q1', levelRequirement: 1 })),
         questInstances: instMap(makeInstance({ questId: 'q1', status: 'in_progress' })),
       });
@@ -416,8 +429,8 @@ describe('useQuestStore - 任务 Store', () => {
   describe('Actions: onEnemyKilled / onItemCollected', () => {
     it('onEnemyKilled 部分进度：current 累加但未达成，状态不变', async () => {
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(makeDefinition({
           id: 'q1',
           objectives: [makeKillObjective({ key: 'kill_goblin', target: 3, enemyId: 'goblin' })],
@@ -448,8 +461,8 @@ describe('useQuestStore - 任务 Store', () => {
         objectives: [makeKillObjective({ key: 'kill_goblin', target: 1, enemyId: 'goblin' })],
       });
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(def),
         questInstances: instMap(makeInstance({
           questId: 'q1',
@@ -474,8 +487,8 @@ describe('useQuestStore - 任务 Store', () => {
 
     it('onEnemyKilled 不匹配的 enemyId 不影响进度', async () => {
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(makeDefinition({
           id: 'q1',
           objectives: [makeKillObjective({ enemyId: 'goblin' })],
@@ -495,8 +508,8 @@ describe('useQuestStore - 任务 Store', () => {
 
     it('onItemCollected 批量累加 amount', async () => {
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(makeDefinition({
           id: 'q1',
           type: 'collect',
@@ -520,8 +533,8 @@ describe('useQuestStore - 任务 Store', () => {
       eventBus.on(GameEvents.QUEST_COMPLETED, spy);
 
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(makeDefinition({
           id: 'q1',
           type: 'collect',
@@ -544,8 +557,8 @@ describe('useQuestStore - 任务 Store', () => {
 
     it('onEnemyKilled：跳过非 in_progress 状态和缺失定义的任务（continue 分支 行 455/458）', async () => {
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(makeDefinition({
           id: 'q1',
           objectives: [makeKillObjective({ key: 'kill_goblin', target: 1, enemyId: 'goblin' })],
@@ -582,8 +595,8 @@ describe('useQuestStore - 任务 Store', () => {
 
     it('onItemCollected：跳过非 in_progress 状态和缺失定义的任务（continue 分支 行 475/478）', async () => {
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(makeDefinition({
           id: 'q1',
           type: 'collect',
@@ -650,8 +663,8 @@ describe('useQuestStore - 任务 Store', () => {
 
       const def = makeDefinition({ id: 'q1', xpReward: 200, goldReward: 100 });
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(def),
         questInstances: instMap(makeInstance({
           questId: 'q1',
@@ -711,8 +724,8 @@ describe('useQuestStore - 任务 Store', () => {
 
       const def = makeDefinition({ id: 'q1', xpReward: 100, goldReward: 50 });
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(def),
         questInstances: instMap(makeInstance({
           questId: 'q1',
@@ -760,8 +773,8 @@ describe('useQuestStore - 任务 Store', () => {
       eventBus.on(GameEvents.QUEST_COMPLETED, spy);
 
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(makeDefinition({ id: 'q1', title: '测试任务' })),
         questInstances: instMap(makeInstance({ questId: 'q1', status: 'in_progress' })),
       });
@@ -859,8 +872,8 @@ describe('useQuestStore - 任务 Store', () => {
   describe('Actions: 任务板操作', () => {
     it('acceptQuestFromBoard: boardId 匹配时接取成功', async () => {
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(makeDefinition({ id: 'q1', boardId: 'village', levelRequirement: 1 })),
       });
       const result = await store.acceptQuestFromBoard('village', 'q1');
@@ -870,8 +883,8 @@ describe('useQuestStore - 任务 Store', () => {
 
     it('acceptQuestFromBoard: boardId 不匹配时返回 false', async () => {
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(makeDefinition({ id: 'q1', boardId: 'village' })),
       });
       const result = await store.acceptQuestFromBoard('forest', 'q1');
@@ -881,8 +894,8 @@ describe('useQuestStore - 任务 Store', () => {
 
     it('turnInQuestToBoard: boardId 匹配时领取成功', async () => {
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(makeDefinition({ id: 'q1', boardId: 'village' })),
         questInstances: instMap(makeInstance({ questId: 'q1', status: 'completed', completedAt: 1 })),
       });
@@ -927,10 +940,11 @@ describe('useQuestStore - 任务 Store', () => {
       vi.mocked(questDbService.getAllQuestInstances).mockResolvedValueOnce([]);
 
       const store = useQuestStore();
-      // currentCharacterId 未设置，通过 _getCharacterId() 获取 'char-1'
+      // P3-153：currentCharacterId 为 gameStore 只读 computed，需在 init 前设置
+      mocks.gameStore.currentCharacterId = 'char-1';
       await store.init();
 
-      expect(store.currentCharacterId).toBe('char-1');
+      expect(mocks.gameStore.currentCharacterId).toBe('char-1');
       expect(store.definitionList).toEqual([def]);
     });
 
@@ -938,7 +952,7 @@ describe('useQuestStore - 任务 Store', () => {
       mocks.characterStore.getCharacterId.mockReturnValueOnce(null);
       const store = useQuestStore();
       await store.init();
-      expect(store.currentCharacterId).toBeNull();
+      expect(mocks.gameStore.currentCharacterId).toBeNull();
       expect(questDbService.getAllQuestDefinitions).not.toHaveBeenCalled();
     });
   });
@@ -954,8 +968,8 @@ describe('useQuestStore - 任务 Store', () => {
         objectives: [makeCollectObjective({ key: 'collect_herb', target: 5, itemId: 'item_herb' })],
       });
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(def),
       });
 
@@ -979,8 +993,8 @@ describe('useQuestStore - 任务 Store', () => {
         objectives: [makeCollectObjective({ key: 'collect_herb', target: 5, itemId: 'item_herb' })],
       });
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(def),
       });
 
@@ -1004,8 +1018,8 @@ describe('useQuestStore - 任务 Store', () => {
         ],
       });
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(def),
       });
 
@@ -1029,8 +1043,8 @@ describe('useQuestStore - 任务 Store', () => {
         objectives: [makeKillObjective({ key: 'kill_goblin', target: 3, enemyId: 'goblin' })],
       });
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(def),
       });
 
@@ -1052,8 +1066,8 @@ describe('useQuestStore - 任务 Store', () => {
         objectives: [makeCollectObjective({ key: 'collect_herb', target: 5, itemId: 'item_herb' })],
       });
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(def),
       });
 
@@ -1079,8 +1093,8 @@ describe('useQuestStore - 任务 Store', () => {
         objectives: [makeKillObjective({ target: 1, enemyId: 'goblin' })],
       });
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(def),
         questInstances: instMap(makeInstance({
           questId: 'q-reward',
@@ -1111,8 +1125,8 @@ describe('useQuestStore - 任务 Store', () => {
         objectives: [makeKillObjective({ target: 1, enemyId: 'goblin' })],
       });
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(def),
         questInstances: instMap(makeInstance({
           questId: 'q-reward-full',
@@ -1143,8 +1157,8 @@ describe('useQuestStore - 任务 Store', () => {
     it('claimReward：无奖励（xp=0, gold=0）时日志不含奖励文本', async () => {
       const def = makeDefinition({ id: 'q1', xpReward: 0, goldReward: 0 });
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(def),
         questInstances: instMap(makeInstance({ questId: 'q1', status: 'completed', completedAt: 1 })),
       });
@@ -1157,8 +1171,8 @@ describe('useQuestStore - 任务 Store', () => {
     it('claimReward：仅有经验奖励时日志包含经验', async () => {
       const def = makeDefinition({ id: 'q1', xpReward: 100, goldReward: 0 });
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(def),
         questInstances: instMap(makeInstance({ questId: 'q1', status: 'completed', completedAt: 1 })),
       });
@@ -1171,8 +1185,8 @@ describe('useQuestStore - 任务 Store', () => {
     it('claimReward：仅有金币奖励时日志包含金币', async () => {
       const def = makeDefinition({ id: 'q1', xpReward: 0, goldReward: 50 });
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questDefinitions: defMap(def),
         questInstances: instMap(makeInstance({ questId: 'q1', status: 'completed', completedAt: 1 })),
       });
@@ -1184,8 +1198,8 @@ describe('useQuestStore - 任务 Store', () => {
 
     it('abandonQuest：任务定义不存在时仍返回 true 但不记录日志', async () => {
       const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
-        currentCharacterId: 'char-1',
         questInstances: instMap(makeInstance({ questId: 'q1', status: 'in_progress' })),
       });
       // questDefinitions 为空，definition 不存在

@@ -54,7 +54,7 @@
  */
 
 import { defineStore } from 'pinia';
-import { ref, computed, shallowRef } from 'vue';
+import { computed, shallowRef } from 'vue';
 import type { QuestDefinition, QuestInstance } from './types';
 import { questDbService } from './db';
 import { errorReporter } from '@/utils/errorReport';
@@ -63,6 +63,7 @@ import { useLogStore } from '@/modules/log/store';
 import { generateLogId } from '@/modules/log/service';
 import { useCharacterStore } from '@/modules/character/store';
 import { useToast } from '@/composables/useToast';
+import { useGameStore } from '@/modules/game';
 import {
   checkQuestProgress,
   calculateQuestRewards,
@@ -148,11 +149,10 @@ export const useQuestStore = defineStore('quest', () => {
   const questInstances = shallowRef<Map<string, QuestInstance>>(new Map());
 
   /**
-   * 当前选中的角色ID
-   *
-   * 由 initialize(characterId) 设置，用于数据隔离。
+   * 当前选中的角色ID（P3-153 扩展：收敛到 GameStore 只读 computed 代理）
    */
-  const currentCharacterId = ref<string | null>(null);
+  const gameStore = useGameStore();
+  const currentCharacterId = computed<string | null>(() => gameStore.currentCharacterId);
 
   // ==================== 计算属性 ====================
 
@@ -408,7 +408,7 @@ export const useQuestStore = defineStore('quest', () => {
    * @param characterId - 要加载的角色ID
    */
   async function initialize(characterId: string): Promise<void> {
-    currentCharacterId.value = characterId;
+    // P3-153 扩展：currentCharacterId 为只读 computed，由 GameStore 代理，无需在此赋值
 
     // 加载任务定义 —— 全局数据，所有角色共享
     await _initDefaultQuestDefinitions();

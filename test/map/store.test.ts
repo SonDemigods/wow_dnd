@@ -21,9 +21,19 @@
  *    saveMapState 调用等间接验证。
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { ref } from 'vue';
 import { createTestPinia } from '../utils/setup';
 import { eventBus, GameEvents } from '@/modules/bus';
 import type { LocationData, MapState } from '@/modules/map/types';
+
+// ==================== vi.hoisted：跨 store stub 持有对象 ====================
+const mocks = vi.hoisted(() => ({
+  // P3-153：map currentCharacterId 改为 gameStore 只读 computed 代理，
+  // 测试通过 mocks.gameStore.currentCharacterId 控制持久化触发条件
+  gameStore: {
+    currentCharacterId: null as string | null,
+  },
+}));
 
 /** mock 地图 DB 层 */
 vi.mock('@/modules/map/db', () => ({
@@ -45,6 +55,11 @@ vi.mock('@/modules/map/service', () => ({
   getLocationsByContinent: vi.fn(),
   getZoneStatus: vi.fn(),
   clamp: vi.fn((v: number, min: number, max: number) => Math.max(min, Math.min(max, v))),
+}));
+
+/** mock game store（P3-153：currentCharacterId 收敛到 GameStore 只读 computed 代理） */
+vi.mock('@/modules/game', () => ({
+  useGameStore: () => mocks.gameStore,
 }));
 
 /** 从 mock 中取出 spy 引用，便于断言 */
@@ -82,6 +97,7 @@ describe('useMapStore - 地图 Store', () => {
   beforeEach(() => {
     createTestPinia();
     vi.clearAllMocks();
+    mocks.gameStore.currentCharacterId = null;
     eventBus.clearAll();
   });
 
@@ -217,6 +233,7 @@ describe('useMapStore - 地图 Store', () => {
       vi.mocked(mapDbService.getCurrentLocationId).mockResolvedValueOnce(null);
 
       const store = useMapStore();
+      mocks.gameStore.currentCharacterId = 'c1';
       await store.initialize('c1');
 
       store.enterZone('zone-a');
@@ -298,6 +315,7 @@ describe('useMapStore - 地图 Store', () => {
       vi.mocked(mapDbService.getAllLocationData).mockResolvedValueOnce([]);
       vi.mocked(mapDbService.getCurrentLocationId).mockResolvedValueOnce(null);
       const store = useMapStore();
+      mocks.gameStore.currentCharacterId = 'c1';
       await store.initialize('c1');
       vi.mocked(mapDbService.saveMapState).mockClear();
 
@@ -389,6 +407,7 @@ describe('useMapStore - 地图 Store', () => {
       vi.mocked(mapDbService.getCurrentTab).mockResolvedValueOnce('quests');
 
       const store = useMapStore();
+      mocks.gameStore.currentCharacterId = 'c1';
       await store.initialize('c1');
 
       await store.saveCurrentTab('zones');
@@ -490,6 +509,7 @@ describe('useMapStore - 地图 Store', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const store = useMapStore();
+      mocks.gameStore.currentCharacterId = 'c1';
       await store.initialize('c1');
       store.zoomTo(3); // 触发 safeSaveState（fire-and-forget）
 
@@ -509,7 +529,8 @@ describe('useMapStore - 地图 Store', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const store = useMapStore();
-      // 先 initialize 设置 currentCharacterId
+      // 先 initialize 加载地图数据，并设置 gameStore.currentCharacterId 以触发持久化
+      mocks.gameStore.currentCharacterId = 'c1';
       vi.mocked(mapDbService.getMapState).mockResolvedValueOnce(null);
       vi.mocked(mapDbService.getAllLocationData).mockResolvedValueOnce([]);
       vi.mocked(mapDbService.getCurrentLocationId).mockResolvedValueOnce(null);

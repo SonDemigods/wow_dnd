@@ -15,7 +15,7 @@ import { SET_DEFINITIONS } from './config_set_definitions';
 import { CLASS_EQUIPMENT } from './config_class_equipment';
 import { CLASS_ABILITIES } from './config_skills';
 import { CLASS_TALENT_TREES } from './config_class_talents';
-import type { EffectType } from '@/modules/combat/effects';
+import type { EffectType } from '@/modules/combat/effects/effect-type';
 
 /**
  * 校验所有地点的 enemies/bosses ID 是否存在于 MOBS/BOSSES 数据集
