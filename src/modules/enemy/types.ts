@@ -109,6 +109,7 @@ export interface EnemyData {
   skillPool?: string[];
   aiStrategy?: AiStrategyType;
   attackType?: 'physical' | 'magical';
+  drops?: EnemyDrop[];
 }
 
 /**
@@ -153,7 +154,7 @@ export interface EnemyDrop {
  * @property {Stats} stats - 敌人六维属性（由战斗属性推导，受等级加成影响）
  * @property {number} expReward - 经验值奖励（含等级缩放后的实际值）
  * @property {number} goldReward - 金币奖励（含等级缩放后的实际值）
- * @property {EnemyDrop[]} [drops] - 掉落配置（仅 Boss 实例填充，普通敌人为 undefined）
+ * @property {EnemyDrop[]} [drops] - 掉落配置（模板配置的 drops 由 createEnemyInstance/createBossInstance 透传）
  *
  * @see EnemyData 父接口，包含所有静态配置属性
  */
@@ -228,4 +229,5 @@ export interface EnemyStorage {
   skillPool?: string[];
   aiStrategy?: string;
   attackType?: string;
+  drops?: EnemyDrop[];
 }

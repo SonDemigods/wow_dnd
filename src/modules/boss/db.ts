@@ -55,7 +55,8 @@ export class BossDbService {
         aiStrategy: boss.aiStrategy || undefined,
         attackType: boss.attackType || undefined,
         phases: boss.phases || undefined,
-        intro: boss.intro || undefined
+        intro: boss.intro || undefined,
+        drops: boss.drops || undefined
       });
     });
   }

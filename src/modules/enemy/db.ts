@@ -5,7 +5,7 @@
  * （Boss 数据已拆分至 ../boss/db.ts）
  */
 import { db as gameDb, dbService } from '@/modules/data/core';
-import type { EnemyStorage, EnemyData, AiStrategyType } from './types';
+import type { EnemyStorage, EnemyData, EnemyDrop, AiStrategyType } from './types';
 
 /**
  * 普通怪物数据层服务
@@ -37,7 +37,8 @@ export class EnemyDbService {
         dodgeChance: enemy.dodgeChance ?? null,
         skillPool: enemy.skillPool ?? undefined,
         aiStrategy: enemy.aiStrategy ?? undefined,
-        attackType: enemy.attackType ?? undefined
+        attackType: enemy.attackType ?? undefined,
+        drops: enemy.drops ?? undefined
       });
     });
   }
@@ -104,6 +105,7 @@ interface EnemyStorageBase {
   skillPool?: string[];
   aiStrategy?: string;
   attackType?: string;
+  drops?: EnemyDrop[];
 }
 
 /**
@@ -148,6 +150,7 @@ export function fromStorageBase(data: EnemyStorageBase): EnemyData {
     skillPool: data.skillPool,
     aiStrategy: data.aiStrategy as AiStrategyType | undefined,
     attackType,
+    drops: data.drops,
   };
 }
 

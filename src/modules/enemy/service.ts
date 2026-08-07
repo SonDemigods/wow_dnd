@@ -141,7 +141,8 @@ export function createEnemyInstance(template: EnemyData, level: number, rng: Rng
     physicalDefense: derived.physicalDefense,
     magicAttack: derived.magicAttack,
     magicDefense: derived.magicDefense,
-    damage: derived.damage
+    damage: derived.damage,
+    drops: template.drops,
   };
 
   return enemy;

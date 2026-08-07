@@ -24,7 +24,7 @@ export function useLootHandler(
   const { addCombatLog } = log;
 
   /**
-   * 处理掉落（仅 Boss 掉落物品）
+   * 处理掉落（怪物与 Boss 均可配置 drops）
    * @param e - 敌人数据
    * @param rng - 随机数生成器，默认使用 defaultRng（DB-4 修复：支持注入确定性 RNG 用于测试与回放）
    */

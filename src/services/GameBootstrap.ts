@@ -13,6 +13,7 @@ import { useExplorationStore } from '@/modules/exploration';
 import { useQuestStore, setQuestExternalCallbacks, clearQuestExternalCallbacks, initEnemyNameMap } from '@/modules/quest';
 import { useCombatStore } from '@/modules/combat';
 import { useAudioStore } from '@/modules/audio';
+import { useBaseStore } from '@/modules/base';
 import { useTalentStore } from '@/modules/character/talents';
 import { useCharacterStore } from '@/modules/character';
 import { configCache } from '@/modules/config';
@@ -162,6 +163,7 @@ export class GameBootstrapService {
    * - combatStore：清理战斗定时器（turnTimerId / bossIntroTimerId）
    * - explorationStore：清理 EventBus 监听器与 UI 回调
    * - audioStore：P3-116 后去抖定时器已移除，dispose 为空操作，保留接口供未来扩展
+   * - baseStore：清理 GAME_DATA_UPDATED EventBus 监听器（P3-159 修复）
    *
    * 以下 initialize 的 Store 经核查无 EventBus 监听器、定时器或订阅需要清理，故不实现 dispose：
    * - logStore / inventoryStore / equipmentStore / skillStore / mapStore / questStore
@@ -180,6 +182,7 @@ export class GameBootstrapService {
       useCombatStore(),
       useExplorationStore(),
       useAudioStore(),
+      useBaseStore(),
     ];
     for (const disposable of disposables) {
       disposable.dispose();

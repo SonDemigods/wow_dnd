@@ -14,7 +14,7 @@
  * @module boss
  */
 
-import type { EnemyData, EnemyInstance, DangerLevel, AiStrategyType } from '@/modules/enemy/types';
+import type { EnemyData, EnemyInstance, EnemyDrop, DangerLevel, AiStrategyType } from '@/modules/enemy/types';
 
 // ============================================================================
 // AiStrategyType 重导出（保留在 enemy/types.ts，boss 模块转出以维持公共 API 兼容）
@@ -221,6 +221,7 @@ export interface BossStorage {
   attackType?: string;
   phases?: BossPhase[];
   intro?: BossIntro;
+  drops?: EnemyDrop[];
 }
 
 // ============================================================================

@@ -4,7 +4,26 @@
  * @module data/mobs
  */
 
-import type { EnemyData } from '../modules/enemy/types';
+import type { EnemyData, EnemyDrop } from '../modules/enemy/types';
+
+/** 普通危险度怪物掉落（5% 药水） */
+const DROPS_NORMAL: EnemyDrop[] = [
+  { itemId: 'small_health_potion', minAmount: 1, maxAmount: 1, dropRate: 0.05 },
+  { itemId: 'small_mana_potion', minAmount: 1, maxAmount: 1, dropRate: 0.03 },
+];
+/** 困难危险度怪物掉落（8% 药水 + 2% 材料） */
+const DROPS_HARD: EnemyDrop[] = [
+  { itemId: 'medium_health_potion', minAmount: 1, maxAmount: 1, dropRate: 0.08 },
+  { itemId: 'medium_mana_potion', minAmount: 1, maxAmount: 1, dropRate: 0.05 },
+  { itemId: 'magic_dust', minAmount: 1, maxAmount: 1, dropRate: 0.02 },
+];
+/** 危险危险度怪物掉落（10% 药水 + 3% 材料 + 1% 装备） */
+const DROPS_DANGEROUS: EnemyDrop[] = [
+  { itemId: 'large_health_potion', minAmount: 1, maxAmount: 1, dropRate: 0.10 },
+  { itemId: 'large_mana_potion', minAmount: 1, maxAmount: 1, dropRate: 0.06 },
+  { itemId: 'magic_dust', minAmount: 1, maxAmount: 2, dropRate: 0.03 },
+  { itemId: 'iron_sword', minAmount: 1, maxAmount: 1, dropRate: 0.01 },
+];
 
 /**
  * 普通怪物数据集
@@ -25,7 +44,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 2,
     magicDefense: 2,
     critChance: 5,
-    dodgeChance: 3
+    dodgeChance: 3,
+    drops: DROPS_NORMAL
   },
   {
     id: 'mob_kobold',
@@ -41,7 +61,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 3,
     magicDefense: 3,
     critChance: 4,
-    dodgeChance: 5
+    dodgeChance: 5,
+    drops: DROPS_NORMAL
   },
   {
     id: 'mob_murloc',
@@ -57,7 +78,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 2,
     magicDefense: 2,
     critChance: 3,
-    dodgeChance: 4
+    dodgeChance: 4,
+    drops: DROPS_NORMAL
   },
   {
     id: 'mob_skeleton',
@@ -73,7 +95,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 4,
     magicDefense: 4,
     critChance: 6,
-    dodgeChance: 2
+    dodgeChance: 2,
+    drops: DROPS_NORMAL
   },
   {
     id: 'mob_orc_grunt',
@@ -89,7 +112,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 5,
     magicDefense: 4,
     critChance: 8,
-    dodgeChance: 4
+    dodgeChance: 4,
+    drops: DROPS_HARD
   },
   {
     id: 'mob_poison_spider',
@@ -105,7 +129,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 6,
     magicDefense: 3,
     critChance: 12,
-    dodgeChance: 8
+    dodgeChance: 8,
+    drops: DROPS_NORMAL
   },
   {
     id: 'mob_shadow_bandit',
@@ -121,7 +146,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 4,
     magicDefense: 4,
     critChance: 10,
-    dodgeChance: 8
+    dodgeChance: 8,
+    drops: DROPS_HARD
   },
   {
     id: 'mob_jungle_troll',
@@ -137,7 +163,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 8,
     magicDefense: 8,
     critChance: 8,
-    dodgeChance: 5
+    dodgeChance: 5,
+    drops: DROPS_DANGEROUS
   },
   {
     id: 'mob_gray_wolf',
@@ -153,7 +180,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 2,
     magicDefense: 2,
     critChance: 8,
-    dodgeChance: 10
+    dodgeChance: 10,
+    drops: DROPS_NORMAL
   },
   {
     id: 'mob_ghoul',
@@ -169,7 +197,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 3,
     magicDefense: 3,
     critChance: 6,
-    dodgeChance: 4
+    dodgeChance: 4,
+    drops: DROPS_NORMAL
   },
   {
     id: 'mob_iron_dwarf',
@@ -185,7 +214,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 6,
     magicDefense: 8,
     critChance: 7,
-    dodgeChance: 3
+    dodgeChance: 3,
+    drops: DROPS_DANGEROUS
   },
   {
     id: 'mob_elemental',
@@ -202,7 +232,8 @@ export const MOBS: EnemyData[] = [
     magicDefense: 15,
     critChance: 10,
     dodgeChance: 5,
-    attackType: 'magical'
+    attackType: 'magical',
+    drops: DROPS_DANGEROUS
   },
   {
     id: 'mob_nerubian',
@@ -218,7 +249,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 12,
     magicDefense: 8,
     critChance: 12,
-    dodgeChance: 8
+    dodgeChance: 8,
+    drops: DROPS_DANGEROUS
   },
   {
     id: 'mob_vrykul',
@@ -234,7 +266,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 8,
     magicDefense: 10,
     critChance: 9,
-    dodgeChance: 4
+    dodgeChance: 4,
+    drops: DROPS_DANGEROUS
   },
   {
     id: 'mob_undead',
@@ -250,7 +283,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 6,
     magicDefense: 5,
     critChance: 5,
-    dodgeChance: 3
+    dodgeChance: 3,
+    drops: DROPS_NORMAL
   },
   {
     id: 'mob_brown_bear',
@@ -266,7 +300,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 2,
     magicDefense: 3,
     critChance: 7,
-    dodgeChance: 4
+    dodgeChance: 4,
+    drops: DROPS_HARD
   },
   {
     id: 'mob_boar',
@@ -282,7 +317,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 2,
     magicDefense: 2,
     critChance: 5,
-    dodgeChance: 3
+    dodgeChance: 3,
+    drops: DROPS_NORMAL
   },
   {
     id: 'mob_centaur',
@@ -298,7 +334,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 6,
     magicDefense: 6,
     critChance: 8,
-    dodgeChance: 6
+    dodgeChance: 6,
+    drops: DROPS_HARD
   },
   {
     id: 'mob_harpy',
@@ -314,7 +351,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 12,
     magicDefense: 8,
     critChance: 10,
-    dodgeChance: 12
+    dodgeChance: 12,
+    drops: DROPS_HARD
   },
   {
     id: 'mob_naga',
@@ -330,7 +368,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 20,
     magicDefense: 14,
     critChance: 10,
-    dodgeChance: 8
+    dodgeChance: 8,
+    drops: DROPS_DANGEROUS
   },
   {
     id: 'mob_ogre',
@@ -346,7 +385,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 6,
     magicDefense: 6,
     critChance: 7,
-    dodgeChance: 3
+    dodgeChance: 3,
+    drops: DROPS_DANGEROUS
   },
   {
     id: 'mob_quilboar',
@@ -362,7 +402,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 4,
     magicDefense: 4,
     critChance: 8,
-    dodgeChance: 5
+    dodgeChance: 5,
+    drops: DROPS_HARD
   },
   {
     id: 'mob_scorpid',
@@ -378,7 +419,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 4,
     magicDefense: 3,
     critChance: 10,
-    dodgeChance: 6
+    dodgeChance: 6,
+    drops: DROPS_NORMAL
   },
   {
     id: 'mob_silithid',
@@ -394,7 +436,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 10,
     magicDefense: 8,
     critChance: 15,
-    dodgeChance: 10
+    dodgeChance: 10,
+    drops: DROPS_DANGEROUS
   },
   {
     id: 'mob_tiger',
@@ -410,7 +453,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 4,
     magicDefense: 4,
     critChance: 15,
-    dodgeChance: 12
+    dodgeChance: 12,
+    drops: DROPS_DANGEROUS
   },
   {
     id: 'mob_dark_iron_dwarf',
@@ -426,7 +470,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 6,
     magicDefense: 8,
     critChance: 7,
-    dodgeChance: 4
+    dodgeChance: 4,
+    drops: DROPS_HARD
   },
   {
     id: 'mob_young_dragon',
@@ -442,7 +487,8 @@ export const MOBS: EnemyData[] = [
     magicAttack: 15,
     magicDefense: 10,
     critChance: 8,
-    dodgeChance: 5
+    dodgeChance: 5,
+    drops: DROPS_HARD
   },
   {
     id: 'mob_imp',
@@ -459,6 +505,7 @@ export const MOBS: EnemyData[] = [
     magicDefense: 8,
     critChance: 10,
     dodgeChance: 8,
-    attackType: 'magical'
+    attackType: 'magical',
+    drops: DROPS_NORMAL
   }
 ];

@@ -18,7 +18,7 @@
  * ## 注意
  *
  * - 所有 Dexie 操作通过 dbService.withRetry() 包装，自动处理 IndexedDB 连接异常
- * - Dexie 表声明为 Table<any, string>，因此查询结果需要 `as unknown as XxxStorage` 桥接
+ * - Dexie 表声明为 Table<QuestDefinitionStorage, string> / Table<CharQuestStorage, string>，查询结果需 `as unknown as XxxStorage` 桥接
  * - saveQuestInstance 使用 toRawData() 剥离 Vue/Proxy 包装，避免 DataCloneError
  *
  * @module quest/db
@@ -130,7 +130,7 @@ export class QuestDbService {
    */
   async getQuestInstance(characterId: string, questId: string): Promise<QuestInstance | null> {
     return dbService.withRetry(async () => {
-      // Dexie 表声明为 Table<any, string>，查询结果需显式断言
+      // Dexie 表声明为 Table<CharQuestStorage, string>，查询结果需显式断言
       const result = await gameDb.char_quests.get([characterId, questId]) as unknown as QuestInstanceStorage | undefined;
       if (!result) return null;
       return {

@@ -33,8 +33,11 @@ export function createBossInstance(template: BossTemplate, level: number, rng: R
   // 等级缩放：计算当前等级下的 HP、战斗属性、经验/金币奖励
   const derived = generateEnemyStats(template, level);
 
-  // Boss 通用掉落表（来自 enemy/service.ts 的共享常量）
-  const drops: EnemyDrop[] = [...BOSS_DROP_TABLE];
+  // Boss 掉落：模板配置的 drops + 通用掉落表（药水等）
+  const drops: EnemyDrop[] = [
+    ...(template.drops ?? []),
+    ...BOSS_DROP_TABLE,
+  ];
 
   // 组合式 base：EnemyInstance（扁平战斗属性）
   const base: EnemyInstance = {
