@@ -19,7 +19,7 @@ import {
   calculateHealBonus,
   getExpForLevel
 } from '@/utils/calculations';
-import { MAX_LEVEL, MAX_STAT, POINTS_PER_LEVEL, BASE_STAT_VALUE } from '@/config/character';
+import { MAX_LEVEL, MAX_STAT, POINTS_PER_LEVEL, BASE_STAT_VALUE, DEATH_EXP_RETENTION_RATIO } from '@/config/character';
 import { generateId } from '@/utils/db-helpers';
 import { getMountOptionById, MOUNT_TIERS } from '@/data/config_mounts';
 
@@ -451,11 +451,11 @@ export function applyPotionBonus(character: Character, delta: Partial<Stats>): C
 
 // ==================== 死亡与复活 ====================
 
-/** 计算复活后的角色数据（经验值清空，HP/MP 恢复至 50%） */
+/** 计算复活后的角色数据（损失部分本级经验，HP/MP 恢复至 50%） */
 export function computeResurrection(character: Character): Character {
   return {
     ...character,
-    exp: 0,
+    exp: Math.floor(character.exp * DEATH_EXP_RETENTION_RATIO),
     // P1-23 修复：确保复活后至少 1 HP，避免 maxHp 极低时复活为 0 HP 立即死亡形成无限循环
     hp: Math.max(1, Math.floor(character.maxHp * 0.5)),
     mana: Math.max(1, Math.floor(character.maxMana * 0.5))

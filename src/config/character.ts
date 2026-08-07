@@ -166,3 +166,16 @@ export const DODGE_DEX_COEFFICIENT = 0.3;
  */
 export const HEAL_WIS_COEFFICIENT = 0.1;
 export const HEAL_CHA_COEFFICIENT = 0.05;
+
+// ==================== 死亡惩罚 ====================
+
+/**
+ * 死亡后保留的本级经验比例
+ *
+ * P3-150：死亡经验惩罚从全清（exp: 0）改为损失固定比例。
+ * 实际保留经验 = floor(exp * DEATH_EXP_RETENTION_RATIO)。
+ * 0.5 表示保留 50%（损失 50%）。
+ *
+ * @see computeResurrection 应用此比例
+ */
+export const DEATH_EXP_RETENTION_RATIO = 0.5;

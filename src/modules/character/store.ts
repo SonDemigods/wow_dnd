@@ -812,8 +812,8 @@ export const useCharacterStore = defineStore('character', () => {
   /**
    * 处理角色死亡
    *
-   * P2-57 设计说明：角色死亡后自动复活（由 computeResurrection 统一处理经验清零等状态重置）。
-   * 这是有意设计：死亡惩罚为经验清零 + 半血复活，而非永久死亡。
+   * P2-57 设计说明：角色死亡后自动复活（由 computeResurrection 统一处理经验惩罚等状态重置）。
+   * 这是有意设计：死亡惩罚为损失部分本级经验 + 半血复活，而非永久死亡。
    * 若未来需要"永久死亡"模式，可在 config 中添加配置项控制此行为。
    */
   async function handleDeath(): Promise<void> {

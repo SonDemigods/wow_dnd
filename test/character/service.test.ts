@@ -565,8 +565,14 @@ describe('computeResurrection 复活', () => {
     expect(result.mana).toBe(50); // 100 * 0.5
   });
 
-  it('经验值清空', () => {
+  it('损失50%本级经验（保留半数）', () => {
     const char = makeCharacter({ exp: 999 });
+    const result = computeResurrection(char);
+    expect(result.exp).toBe(499); // Math.floor(999 * 0.5)
+  });
+
+  it('exp 为 0 时结果仍为 0', () => {
+    const char = makeCharacter({ exp: 0 });
     const result = computeResurrection(char);
     expect(result.exp).toBe(0);
   });

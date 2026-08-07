@@ -203,7 +203,7 @@ vi.mock('@/modules/character/service', () => ({
   })),
   computeResurrection: vi.fn((char: Character) => ({
     ...char,
-    exp: 0,
+    exp: Math.floor(char.exp * 0.5),
     hp: Math.floor(char.maxHp * 0.5),
     mana: Math.floor(char.maxMana * 0.5),
   })),
@@ -1528,7 +1528,7 @@ describe('useCharacterStore - 角色 Store', () => {
 
   // -------------------- Actions：死亡与复活 --------------------
   describe('Actions：handleDeath / resurrect', () => {
-    it('handleDeath：清空本级经验、emit DEATH、自动复活', async () => {
+    it('handleDeath：损失50%本级经验、emit DEATH、自动复活', async () => {
       const deathSpy = vi.fn();
       const resurrectSpy = vi.fn();
       eventBus.on(GameEvents.CHARACTER_DEATH, deathSpy);
@@ -1537,7 +1537,7 @@ describe('useCharacterStore - 角色 Store', () => {
       const store = setupLoggedInStore(makeChar({ exp: 80, maxHp: 100, maxMana: 50 }));
       await store.handleDeath();
 
-      expect(store.character?.exp).toBe(0);
+      expect(store.character?.exp).toBe(40); // Math.floor(80 * 0.5)
       expect(deathSpy).toHaveBeenCalledWith({ cause: 'death' });
       // 复活后 hp/mp = 50% 上限
       expect(resurrectSpy).toHaveBeenCalledWith({ newHp: 50, newMp: 25 });
