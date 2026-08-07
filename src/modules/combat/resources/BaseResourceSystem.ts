@@ -23,6 +23,8 @@ export abstract class BaseResourceSystem implements ResourceSystem {
   abstract readonly type: ResourceSystem['type'];
   /** 是否为整数型资源，子类可在构造时通过 `isInteger` 参数指定 */
   readonly isInteger: boolean;
+  /** P3-181：是否为副资源（区别于替代 MP 的主资源），构造时指定 */
+  readonly isSecondary: boolean;
 
   protected _value: Ref<number>;
   protected _maxValue: Ref<number>;
@@ -33,11 +35,13 @@ export abstract class BaseResourceSystem implements ResourceSystem {
     maxValue: number;
     initialValue?: number;
     isInteger?: boolean;
+    isSecondary?: boolean;
   }) {
     this._maxValue = ref(options.maxValue);
     this.initialValue = options.initialValue ?? 0;
     this._value = ref(this.initialValue);
     this.isInteger = options.isInteger ?? false;
+    this.isSecondary = options.isSecondary ?? false;
   }
 
   get currentValue(): number {

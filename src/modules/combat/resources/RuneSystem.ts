@@ -17,7 +17,7 @@ export class RuneSystem extends BaseResourceSystem {
   readonly type = 'rune' as const;
 
   constructor(initialValue: number = 6) {
-    super({ maxValue: 6, initialValue, isInteger: true });
+    super({ maxValue: 6, initialValue, isInteger: true, isSecondary: true });
   }
 
   generate(amount: number, source: ResourceSource): void {

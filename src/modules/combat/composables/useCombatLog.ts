@@ -96,8 +96,8 @@ export function useCombatLog(state: ReturnType<typeof useCombatState>, ctx: ICom
         physicalDefense: ctx.character.attributes.physicalDefense,
         magicAttack: ctx.character.attributes.magicAttack,
         magicDefense: ctx.character.attributes.magicDefense,
-        // P1-8 修复：使用实际速度值，与 useInitiative 中先攻计算速度来源一致
-        speed: ctx.character.effectiveStats.dex || 0,
+        // P3-185：使用 ?? 替代 ||，避免 dex=0 时被吞掉
+        speed: ctx.character.effectiveStats.dex ?? 0,
       },
       currentHp: ctx.character.hp,
       maxHp: ctx.character.maxHp,

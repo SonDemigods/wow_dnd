@@ -16,7 +16,7 @@ export class ComboPointSystem extends BaseResourceSystem {
   readonly type = 'combo_point' as const;
 
   constructor(initialValue: number = 0) {
-    super({ maxValue: 6, initialValue, isInteger: true });
+    super({ maxValue: 6, initialValue, isInteger: true, isSecondary: true });
   }
 
   generate(amount: number, source: ResourceSource): void {

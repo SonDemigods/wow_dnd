@@ -544,6 +544,8 @@ export interface PassiveEffect {
   value: number;
   condition?: string;
   probability?: number;
+  /** P3-184：buff 类被动效果的持续回合数（默认 3） */
+  turns?: number;
 }
 
 /**

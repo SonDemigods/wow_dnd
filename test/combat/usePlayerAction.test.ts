@@ -352,7 +352,7 @@ function makeMockCtx(overrides: Partial<ICombatContext> = {}): ICombatContext {
       useItem: inventoryStoreMock.useItem,
       addItem: inventoryStoreMock.addItem,
     },
-    talent: { damageMultiplier: 0, damageReduction: 0, resourceBonuses: {}, skillEnhancements: [] },
+    talent: { damageMultiplier: 0, damageReduction: 0, resourceBonuses: {}, skillEnhancements: [], unlockedPets: [] },
     ...overrides,
   } as unknown as ICombatContext;
 }

@@ -24,6 +24,7 @@ import { usePetStore, calculatePetSkillDamage, getPetDefinition, getPetResourceC
 import type { PetInstance, PetType } from '../pets';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
+import type { useBossMechanics } from './useBossMechanics';
 
 /** 召唤资源消耗结果（供 UI 层展示提示） */
 export interface PetSummonResult {
@@ -36,6 +37,8 @@ export function usePetAction(
   log: ReturnType<typeof useCombatLog>,
   // ARCH-6：需完整上下文（读 enemy.getEnemyById；写 enemy.takeDamage）
   ctx: ICombatContext,
+  // P3-182：注入 Boss 机制层，使宠物攻击接入 Boss 防御/反击机制
+  boss: ReturnType<typeof useBossMechanics>,
 ) {
   const petStore = usePetStore();
   const { addCombatLog, createEnemyEffectContext } = log;
@@ -178,13 +181,19 @@ export function usePetAction(
     );
 
     // 天赋 damage_multiplier 加成
-    const _talentDmgMult = ctx.talent.damageMultiplier;
-    const finalDamage = _talentDmgMult > 0
-      ? Math.floor(pipeResult.finalDamage * (1 + _talentDmgMult))
+    const talentDmgMult = ctx.talent.damageMultiplier;
+    const finalDamage = talentDmgMult > 0
+      ? Math.floor(pipeResult.finalDamage * (1 + talentDmgMult))
       : pipeResult.finalDamage;
 
     if (finalDamage > 0) {
-      ctx.enemy.takeDamage(target.id, finalDamage);
+      // P3-182：接入 Boss 防御机制（无敌/护盾）
+      const { damage: actualPetDamage } = boss.applyBossDefenseMechanics(target, finalDamage);
+      if (actualPetDamage > 0) {
+        ctx.enemy.takeDamage(target.id, actualPetDamage);
+      }
+      // P3-182：接入 Boss 反击机制（反弹/反击）
+      boss.applyBossCounterMechanics(target, actualPetDamage);
 
       addPetLog({
         eventType: 'combat_damage',
@@ -193,10 +202,11 @@ export function usePetAction(
         targetName: target.name,
         skillId: skill.id,
         skillName: skill.name,
-        damage: finalDamage,
+        // P3-178：日志 damage 统一为防御后实际伤害
+        damage: actualPetDamage,
         isCrit: false,
         isDodge: false,
-        message: `${pet.name} 使用 ${skill.name} 对 ${target.name} 造成 ${finalDamage} 点伤害！`,
+        message: `${pet.name} 使用 ${skill.name} 对 ${target.name} 造成 ${actualPetDamage} 点伤害！`,
       }, pet);
     } else {
       // 伤害被完全吸收（护盾）

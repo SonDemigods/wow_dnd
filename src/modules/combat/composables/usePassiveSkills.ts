@@ -334,7 +334,7 @@ export function usePassiveSkills(
       const newEffect: Effect = {
         id: generateEffectId(),
         type: effectType,
-        remainingTurns: 3,  // DOT 持续 3 回合（与术士腐蚀术设计一致）
+        remainingTurns: effect.turns ?? 3,  // P3-184：从 PassiveEffect.turns 读取，默认 3
         value: dotValue,
         source: 'passive',
         sourceName: '被动：腐蚀术',

@@ -32,6 +32,9 @@ import { regenHandler } from '@/modules/combat/effects/handlers/regen';
 import { createEmptyContainer, addEffectToContainer } from '@/modules/combat/effects/container';
 import type { Effect, EffectContainer, EffectContext, EffectType } from '@/modules/combat/effects/types';
 
+// P3-187：替代 Math.random().toString(36) 的脆弱 ID 生成，改用自增计数器
+let effIdCounter = 0;
+
 // ============================================================
 // 工厂函数
 // ============================================================
@@ -43,7 +46,7 @@ function makeEffect(
   overrides: Partial<Effect> = {}
 ): Effect {
   return {
-    id: `eff_${type}_${Math.random().toString(36).slice(2, 6)}`,
+    id: `eff_${type}_${++effIdCounter}`,
     type,
     remainingTurns,
     value,

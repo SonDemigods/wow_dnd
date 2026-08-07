@@ -27,7 +27,8 @@ function makeEffect(
   type: EffectType,
   value: number,
   remainingTurns: number,
-  stackStrategy?: Effect['stackStrategy']
+  stackStrategy?: Effect['stackStrategy'],
+  maxStacks?: number
 ): Effect {
   return {
     id: generateEffectId(),
@@ -36,7 +37,8 @@ function makeEffect(
     value,
     source: 'skill',
     sourceName: 'test-skill',
-    stackStrategy
+    stackStrategy,
+    maxStacks,
   };
 }
 
@@ -250,6 +252,65 @@ describe('EffectContainer 叠加策略', () => {
         ids.add(generateEffectId());
       }
       expect(ids.size).toBe(100);
+    });
+  });
+
+  // ==================== maxStacks 叠加上限（P3-180/P3-187） ====================
+  describe('maxStacks 叠加上限', () => {
+    it('additive 达到 maxStacks 后不再 push（默认 5）', () => {
+      for (let i = 0; i < 7; i++) {
+        addEffectToContainer(container, makeEffect('poison', 10, 3, 'additive'));
+      }
+      // 默认 maxStacks=5，7 次添加后仅保留 5 个
+      const poisons = container.effects.filter(e => e.type === 'poison');
+      expect(poisons).toHaveLength(5);
+    });
+
+    it('additive 自定义 maxStacks=3 时仅保留 3 个', () => {
+      for (let i = 0; i < 5; i++) {
+        addEffectToContainer(container, makeEffect('burn', 8, 2, 'additive', 3));
+      }
+      const burns = container.effects.filter(e => e.type === 'burn');
+      expect(burns).toHaveLength(3);
+    });
+
+    it('additive 达到上限时刷新最早效果（更新 value 和 remainingTurns）', () => {
+      // 添加 3 个效果（maxStacks=3）
+      addEffectToContainer(container, makeEffect('poison', 10, 3, 'additive', 3));
+      addEffectToContainer(container, makeEffect('poison', 15, 2, 'additive', 3));
+      addEffectToContainer(container, makeEffect('poison', 20, 1, 'additive', 3));
+
+      // 第 4 个应刷新第 1 个（value 10→99, remainingTurns 3→4）
+      addEffectToContainer(container, makeEffect('poison', 99, 4, 'additive', 3));
+
+      const poisons = container.effects.filter(e => e.type === 'poison');
+      expect(poisons).toHaveLength(3);
+      // 最早的效果被刷新为最新值
+      expect(poisons.some(p => p.value === 99 && p.remainingTurns === 4)).toBe(true);
+      // 原始 value=10 的效果已不存在
+      expect(poisons.some(p => p.value === 10)).toBe(false);
+    });
+
+    it('independent 同样受 maxStacks 限制', () => {
+      for (let i = 0; i < 6; i++) {
+        addEffectToContainer(container, makeEffect('shield', 50, 3, 'independent', 3));
+      }
+      const shields = container.effects.filter(e => e.type === 'shield');
+      expect(shields).toHaveLength(3);
+    });
+
+    it('maxStacks=0 时不限制（无上限）', () => {
+      for (let i = 0; i < 10; i++) {
+        addEffectToContainer(container, makeEffect('regen', 5, 2, 'additive', 0));
+      }
+      const regens = container.effects.filter(e => e.type === 'regen');
+      expect(regens).toHaveLength(10);
+    });
+
+    it('未达 maxStacks 时正常 push', () => {
+      addEffectToContainer(container, makeEffect('poison', 10, 3, 'additive', 5));
+      addEffectToContainer(container, makeEffect('poison', 15, 2, 'additive', 5));
+      expect(container.effects.filter(e => e.type === 'poison')).toHaveLength(2);
     });
   });
 });

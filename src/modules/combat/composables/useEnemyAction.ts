@@ -113,8 +113,9 @@ export function useEnemyAction(
     }
 
     // 伤害事件
+    // P3-178：amount 统一为防御后实际伤害 finalDamage
     eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
-      amount: rawDamage,
+      amount: finalDamage,
       damageType: damageType === 'magical' ? 'magic' : 'physical',
       targetName: ctx.character.name,
       actorType: 'enemy'

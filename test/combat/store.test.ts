@@ -682,7 +682,7 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(store.goldGained).toBe(15);
       // emit 事件验证 result 和奖励
       expect(endSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ result: 'victory', expGained: 30, goldGained: 15 }),
+        expect.objectContaining({ result: 'victory' }),
       );
       // 角色获得经验和金币
       expect(charStub.gainExp).toHaveBeenCalledWith(30);
@@ -705,7 +705,7 @@ describe('useCombatStore - 战斗 Store', () => {
       await store.endCombat('defeat');
 
       expect(endSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ result: 'defeat', expGained: 0, goldGained: 0 }),
+        expect.objectContaining({ result: 'defeat' }),
       );
       expect(charStub.handleDeath).toHaveBeenCalled();
     });
@@ -721,7 +721,7 @@ describe('useCombatStore - 战斗 Store', () => {
       await store.endCombat('fled');
 
       expect(endSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ result: 'fled', expGained: 0, goldGained: 0 }),
+        expect.objectContaining({ result: 'fled' }),
       );
       expect(charStub.gainExp).not.toHaveBeenCalled();
       expect(charStub.handleDeath).not.toHaveBeenCalled();
@@ -846,7 +846,7 @@ describe('useCombatStore - 战斗 Store', () => {
       errorSpy.mockRestore();
     });
 
-    it('endCombat 时 enemies 被清空后 emit COMBAT_END 的 enemy 字段为 null（行 197 || null 分支）', async () => {
+    it('endCombat 携带最小信号 { result }（P3-177：enemy 等冗余字段已移除，测试改为验证 result 信号）', async () => {
       const endSpy = vi.fn();
       eventBus.on(GameEvents.COMBAT_END, endSpy);
 
@@ -855,8 +855,7 @@ describe('useCombatStore - 战斗 Store', () => {
 
       const store = setupFightingStore([makeEnemy()]);
 
-      // 模拟在 log.saveLogs 执行期间 enemies 被清空，
-      // 使后续 emit 读取 state.enemies.value[0] 为 undefined，走 || null 防御性分支
+      // 模拟在 log.saveLogs 执行期间 enemies 被清空
       mocks.log!.saveLogs.mockImplementationOnce(() => {
         mocks.state!.enemies.value = [];
       });
@@ -864,7 +863,7 @@ describe('useCombatStore - 战斗 Store', () => {
       await store.endCombat('fled');
 
       expect(endSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ enemy: null }),
+        expect.objectContaining({ result: 'fled' }),
       );
     });
 
@@ -1046,7 +1045,8 @@ describe('useCombatStore - 战斗 Store', () => {
 
     it('skill：委托 player.playerSkill 成功时触发资源系统 onAttack/generate 与 passive.onAttack', async () => {
       const store = setupFightingStore([makeEnemy()]);
-      const sys = makeResourceSystem({ type: 'rage' });
+      // P3-181：仅副资源（isSecondary=true）在 skill 行动时调用 generate(1, 'skill')
+      const sys = makeResourceSystem({ type: 'combo_point', isSecondary: true });
       mocks.state!.resourceSystems.value = [sys];
       mocks.player!.playerSkill.mockResolvedValueOnce({
         success: true, type: 'skill', damage: 40, isDodge: false, message: '技能命中',

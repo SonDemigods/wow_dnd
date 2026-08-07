@@ -43,11 +43,26 @@ export function addEffectToContainer(
       }
       break;
     case 'additive':
-      // 累加但独立衰减
-      // 不做合并，直接 push 独立实例
-      break;
     case 'independent':
-      // 独立存在，不参与同类型合并
+      // P3-180：限制叠加层数，防止 DOT/Buff 无限叠加导致内存泄漏与数值失控
+      // 当同类型效果数量达到 maxStacks（默认 5）时，不再继续叠加。
+      // 采用"刷新"语义：超出上限时更新最早效果为最新效果，
+      // 避免无限 push 的同时保持持续刷新。
+      {
+        const maxStacks = effect.maxStacks ?? 5;
+        if (maxStacks > 0) {
+          const sameType = container.effects.filter(e => e.type === effect.type);
+          if (sameType.length >= maxStacks) {
+            // 已达上限：将最早的同类型效果替换为最新效果（刷新）
+            const oldest = sameType[0];
+            oldest.remainingTurns = effect.remainingTurns;
+            oldest.value = effect.value;
+            oldest.source = effect.source;
+            oldest.sourceName = effect.sourceName;
+            return;
+          }
+        }
+      }
       break;
   }
 

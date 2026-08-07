@@ -35,4 +35,8 @@ export { createCombatContext } from './combatContext';
 export { useCombatSpeed } from './composables/useCombatSpeed';
 export { useCombatAutoClose } from './composables/useCombatAutoClose';
 export { useBossIntroOverlay } from './composables/useBossIntroOverlay';
+/**
+ * P3-183：仅供 CombatPopup.vue 内部使用，大量 DOM 操作（document.querySelector），
+ * 外部模块不应导入。如需动画能力，应通过事件总线订阅而非直接调用。
+ */
 export { useCombatAnimations } from './composables/useCombatAnimations';

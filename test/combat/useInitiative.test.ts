@@ -164,6 +164,7 @@ function makeMockCtx(opts: {
       calculateDamage: vi.fn(() => 10),
       tickCooldowns: vi.fn(),
       setAiStrategy: vi.fn(),
+      receiveHeal: vi.fn(),
     },
     quest: { onEnemyKilled: vi.fn() },
     log: { addLogEntry: vi.fn() },
@@ -661,13 +662,12 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       state.currentInitiativeIndex.value = 1;
       const ctx = makeMockCtx();
       ctx.enemy.getEnemyById = vi.fn(() => enemy);
-      // regen 通过 takeDamage(eId, -regenAmount) 实现，mock 需要真正修改 hp
-      ctx.enemy.takeDamage = vi.fn((id: string, damage: number) => {
+      // P3-184：regen 通过 receiveHeal(eId, amount) 实现，mock 需要真正修改 hp
+      ctx.enemy.receiveHeal = vi.fn((id: string, amount: number) => {
         const target = [enemy].find(e => e.id === id);
         if (target) {
-          target.hp = Math.max(0, Math.min(target.maxHp, target.hp - damage));
+          target.hp = Math.min(target.maxHp, target.hp + amount);
         }
-        return false;
       });
       vi.mocked(state.effectRegistry.tickAll)
         .mockReturnValueOnce({ expiredIds: [], dotDamage: 0, regenAmount: 0 })
@@ -677,6 +677,8 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
 
       init.advanceToNextUnit();
 
+      // P3-184：验证通过 receiveHeal 恢复，而非 takeDamage(负值)
+      expect(ctx.enemy.receiveHeal).toHaveBeenCalledWith('e1', 10);
       // hp 增加，但不超过 maxHp
       expect(enemy.hp).toBe(40);
       expect(log.addCombatLog).toHaveBeenCalledWith(expect.objectContaining({ heal: 10, targetId: 'e1' }));
@@ -691,13 +693,12 @@ describe('useInitiative - 先攻排序与回合推进 Composable', () => {
       state.currentInitiativeIndex.value = 1;
       const ctx = makeMockCtx();
       ctx.enemy.getEnemyById = vi.fn(() => enemy);
-      // regen 通过 takeDamage(eId, -regenAmount) 实现，mock 需要真正修改 hp
-      ctx.enemy.takeDamage = vi.fn((id: string, damage: number) => {
+      // P3-184：regen 通过 receiveHeal(eId, amount) 实现，mock 需要真正修改 hp
+      ctx.enemy.receiveHeal = vi.fn((id: string, amount: number) => {
         const target = [enemy].find(e => e.id === id);
         if (target) {
-          target.hp = Math.max(0, Math.min(target.maxHp, target.hp - damage));
+          target.hp = Math.min(target.maxHp, target.hp + amount);
         }
-        return false;
       });
       vi.mocked(state.effectRegistry.tickAll)
         .mockReturnValueOnce({ expiredIds: [], dotDamage: 0, regenAmount: 0 })

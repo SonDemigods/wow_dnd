@@ -120,6 +120,20 @@ export const useEnemyStore = defineStore('enemies', () => {
   }
 
   /**
+   * 敌人恢复生命值（P3-184：替代 takeDamage(负值) 实现回血）
+   *
+   * 语义清晰，避免未来 takeDamage 增加"受伤时触发"逻辑时误触发。
+   * @param id - 敌人实例 ID
+   * @param amount - 恢复量
+   */
+  function receiveHeal(id: string, amount: number): void {
+    const enemy = enemiesCache.value[id];
+    if (!enemy) return;
+    const newHp = Math.min(enemy.maxHp, enemy.hp + amount);
+    enemiesCache.value[id] = { ...enemy, hp: newHp };
+  }
+
+  /**
    * 根据 ID 获取敌人
    * @param id - 敌人实例 ID
    * @returns 敌人实例，不存在时返回 null
@@ -341,6 +355,7 @@ export const useEnemyStore = defineStore('enemies', () => {
     // 动作
     createEnemy,
     takeDamage,
+    receiveHeal,
     getEnemyById,
     getAvailableSkills,
     useSkill,

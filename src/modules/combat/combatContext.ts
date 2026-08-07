@@ -123,6 +123,8 @@ export interface ICombatCommand {
   enemy: {
     deleteEnemy(id: string): void;
     takeDamage(id: string, damage: number): boolean;
+    /** P3-184：敌人恢复生命值（替代 takeDamage(负值)） */
+    receiveHeal(id: string, amount: number): void;
     createEnemy(dataId: string, level: number): Promise<EnemyInstance | null>;
     useSkill(id: string, skillId: string): {
       success: boolean;
@@ -217,6 +219,7 @@ export function createCombatContext(): ICombatContext {
       getEnemyById: (id) => enemyStore.getEnemyById(id),
       deleteEnemy: (id) => enemyStore.deleteEnemy(id),
       takeDamage: (id, damage) => enemyStore.takeDamage(id, damage),
+      receiveHeal: (id, amount) => enemyStore.receiveHeal(id, amount),
       createEnemy: (dataId, level) => enemyStore.createEnemy(dataId, level),
       getAvailableSkills: (id) => enemyStore.getAvailableSkills(id),
       useSkill: (id, skillId) => enemyStore.useSkill(id, skillId),

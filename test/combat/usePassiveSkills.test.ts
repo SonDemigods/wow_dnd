@@ -837,6 +837,92 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       const mods = p.getStatModifiers();
       expect(mods).toEqual([]);
     });
+
+    // P3-187：target_hp 完整边界测试
+    it('target_hp 条件：目标 hp=0 时比值为 0，满足 < 0.2', async () => {
+      const enemyMock = { id: 'e1', hp: 0, maxHp: 100, name: '敌人' };
+      const ctx = makeMockCtx({
+        enemy: { getEnemyById: vi.fn(() => enemyMock) } as never,
+      });
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 's1',
+          effect: { type: 'stat_modifier', target: 'self', stat: 'physical_attack', value: 0.15, condition: 'target_hp < 0.2' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), ctx);
+      await p.loadPassives();
+      const mods = p.getStatModifiers('e1');
+      expect(mods).toHaveLength(1);
+    });
+
+    it('target_hp 条件：目标满血时比值为 1.0，不满足 < 0.2', async () => {
+      const enemyMock = { id: 'e1', hp: 100, maxHp: 100, name: '敌人' };
+      const ctx = makeMockCtx({
+        enemy: { getEnemyById: vi.fn(() => enemyMock) } as never,
+      });
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 's1',
+          effect: { type: 'stat_modifier', target: 'self', stat: 'physical_attack', value: 0.15, condition: 'target_hp < 0.2' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), ctx);
+      await p.loadPassives();
+      const mods = p.getStatModifiers('e1');
+      expect(mods).toEqual([]);
+    });
+
+    it('target_hp 条件：精确等于阈值 0.2 时 < 运算符不满足', async () => {
+      const enemyMock = { id: 'e1', hp: 20, maxHp: 100, name: '敌人' };
+      const ctx = makeMockCtx({
+        enemy: { getEnemyById: vi.fn(() => enemyMock) } as never,
+      });
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 's1',
+          effect: { type: 'stat_modifier', target: 'self', stat: 'physical_attack', value: 0.15, condition: 'target_hp < 0.2' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), ctx);
+      await p.loadPassives();
+      const mods = p.getStatModifiers('e1');
+      expect(mods).toEqual([]);
+    });
+
+    it('target_hp 条件：精确等于阈值 0.2 时 <= 运算符满足', async () => {
+      const enemyMock = { id: 'e1', hp: 20, maxHp: 100, name: '敌人' };
+      const ctx = makeMockCtx({
+        enemy: { getEnemyById: vi.fn(() => enemyMock) } as never,
+      });
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 's1',
+          effect: { type: 'stat_modifier', target: 'self', stat: 'physical_attack', value: 0.15, condition: 'target_hp <= 0.2' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), ctx);
+      await p.loadPassives();
+      const mods = p.getStatModifiers('e1');
+      expect(mods).toHaveLength(1);
+    });
+
+    it('target_hp 条件：目标 maxHp=0 时返回 false（除零防护）', async () => {
+      const enemyMock = { id: 'e1', hp: 0, maxHp: 0, name: '敌人' };
+      const ctx = makeMockCtx({
+        enemy: { getEnemyById: vi.fn(() => enemyMock) } as never,
+      });
+      getPassivesByClassIdMock.mockReturnValue([
+        makePassive({
+          id: 's1',
+          effect: { type: 'stat_modifier', target: 'self', stat: 'physical_attack', value: 0.15, condition: 'target_hp < 0.2' },
+        }),
+      ]);
+      const p = usePassiveSkills(makeStateMock(), makeLogMock(), ctx);
+      await p.loadPassives();
+      const mods = p.getStatModifiers('e1');
+      expect(mods).toEqual([]);
+    });
   });
 
   // -------------------- evaluateCondition（通过 getDamageReduction 间接测试） --------------------

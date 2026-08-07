@@ -157,8 +157,8 @@ export interface GameEventPayloadMap {
   [GameEvents.CHARACTER_DEATH]: { cause: string };
   [GameEvents.CHARACTER_RESURRECTED]: { newHp: number; newMp: number };
   [GameEvents.COMBAT_START]: { enemy: EnemyInstance };
-  // P3-89 修复：补充 enemyCount/enemyNames 摘要字段，enemy 保留首敌引用以向后兼容
-  [GameEvents.COMBAT_END]: { result: string; enemy: EnemyInstance | null; enemyCount: number; enemyNames: string[]; expGained: number; goldGained?: number };
+  // P3-177：精简为最小信号 { result }，跨界模块业务通知仅含必要信息
+  [GameEvents.COMBAT_END]: { result: string };
   [GameEvents.COMBAT_PLAYER_TURN]: null;
   [GameEvents.COMBAT_ENEMY_TURN]: null;
   [GameEvents.COMBAT_DEAL_DAMAGE]: { amount: number; damageType: 'physical' | 'magic'; targetName: string; actorType?: 'player' | 'enemy' };

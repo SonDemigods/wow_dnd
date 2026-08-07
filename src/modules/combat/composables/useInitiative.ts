@@ -147,6 +147,9 @@ export function useInitiative(
     if (state.state.value !== 'fighting') return;
     const next = advanceTurn();
 
+    // P3-186：空先攻数组防御，advanceTurn 返回空 unitId 时直接中止，防止无限递归
+    if (!next.unitId) return;
+
     // 新一轮开始时，对所有效果执行一次 tick（不再每个敌人回合 tick）
     if (state.currentInitiativeIndex.value === 0) {
       tickAllEffects();
@@ -242,9 +245,8 @@ export function useInitiative(
       if (tickRes.regenAmount > 0) {
         const enemy = ctx.enemy.getEnemyById(eId);
         if (enemy) {
-          // 通过 takeDamage 传入负值实现回血，走 enemy Store 的展开赋值（enemiesCache[id] = { ...enemy, hp: newHp }），
-          // 确保 Vue 响应式追踪生效，UI 血条正常更新
-          ctx.enemy.takeDamage(eId, -tickRes.regenAmount);
+          // P3-184：使用 receiveHeal 替代 takeDamage(负值)，语义清晰且避免误触发"受伤时"逻辑
+          ctx.enemy.receiveHeal(eId, tickRes.regenAmount);
           log.addCombatLog({
             actorType: 'system', actorId: 'system', actorName: '系统',
             eventType: 'combat_heal', targetType: 'enemy', targetId: eId,

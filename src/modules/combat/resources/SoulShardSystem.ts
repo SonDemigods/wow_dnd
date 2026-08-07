@@ -15,7 +15,7 @@ export class SoulShardSystem extends BaseResourceSystem {
   readonly type = 'soul_shard' as const;
 
   constructor(initialValue: number = 0) {
-    super({ maxValue: 5, initialValue, isInteger: true });
+    super({ maxValue: 5, initialValue, isInteger: true, isSecondary: true });
   }
 
   generate(amount: number, source: ResourceSource): void {

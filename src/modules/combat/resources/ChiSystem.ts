@@ -16,7 +16,7 @@ export class ChiSystem extends BaseResourceSystem {
   readonly type = 'chi' as const;
 
   constructor(initialValue: number = 0) {
-    super({ maxValue: 3, initialValue, isInteger: true });
+    super({ maxValue: 3, initialValue, isInteger: true, isSecondary: true });
   }
 
   generate(amount: number, source: ResourceSource): void {

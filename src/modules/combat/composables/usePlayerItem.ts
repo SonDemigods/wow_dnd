@@ -94,11 +94,11 @@ export function usePlayerItem(
         // P3-146：传入 statModifiers 让 crit_chance / crit_damage_multiplier 生效
         const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
         // 天赋 damage_multiplier 加成
-        const _talentDmgMult = ctx.talent.damageMultiplier;
-        const _preCritDmg = _talentDmgMult > 0
-          ? Math.floor(pipeResult.finalDamage * (1 + _talentDmgMult))
+        const talentDmgMult = ctx.talent.damageMultiplier;
+        const preCritDmg = talentDmgMult > 0
+          ? Math.floor(pipeResult.finalDamage * (1 + talentDmgMult))
           : pipeResult.finalDamage;
-        const finalDamage = Math.floor(_preCritDmg * critMultiplier);
+        const finalDamage = Math.floor(preCritDmg * critMultiplier);
 
         // BIZ-2：应用 BOSS 防御机制（无敌/护盾）
         const { damage: actualItemDamage } = boss.applyBossDefenseMechanics(target, finalDamage);
@@ -108,14 +108,14 @@ export function usePlayerItem(
         }
         itemKilledEnemy = isDead;
 
-        damageResult = { damage: finalDamage, isCrit };
+                damageResult = { damage: actualItemDamage, isCrit };
 
         // BIZ-2：应用 BOSS 反击机制（反弹/反击）
         boss.applyBossCounterMechanics(target, actualItemDamage);
 
-        // 伤害音效事件
+        // P3-178：事件 amount 统一为防御后实际伤害 actualItemDamage
         eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
-          amount: finalDamage,
+          amount: actualItemDamage,
           damageType: type === 'magic_damage' ? 'magic' : 'physical',
           targetName: target.name || '敌人',
           actorType: 'player'
@@ -124,7 +124,7 @@ export function usePlayerItem(
         // 暴击事件
         if (isCrit) {
           eventBus.emit(GameEvents.COMBAT_CRITICAL_HIT, {
-            amount: finalDamage,
+            amount: actualItemDamage,
             damageType: type === 'magic_damage' ? 'magic' : 'physical',
             targetName: target.name || '敌人',
             actorType: 'player'

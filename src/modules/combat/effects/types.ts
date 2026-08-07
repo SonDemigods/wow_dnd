@@ -24,6 +24,8 @@ export interface Effect {
   sourceName: string;
   /** 叠加策略，默认 'max' */
   stackStrategy?: StackStrategy;
+  /** P3-180：最大叠加层数（仅对 additive/independent 策略生效，默认 5） */
+  maxStacks?: number;
 }
 
 /** 效果容器（每个单位可拥有多个效果） */

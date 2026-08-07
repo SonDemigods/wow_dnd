@@ -159,9 +159,11 @@ export function usePlayerSkill(
 
     // 生成器：施放成功后生成副资源（paladin/warlock/evoker 的 MP 技能）
     if (skill?.generatesResource) {
-      const genSys = resourceSystems.value.find(sys => sys.type === skill.generatesResource!.type);
+      // P3-185：提取局部变量维持窄化，消除非空断言
+      const gen = skill.generatesResource;
+      const genSys = resourceSystems.value.find(sys => sys.type === gen.type);
       if (genSys) {
-        genSys.generate(skill.generatesResource.amount, 'skill');
+        genSys.generate(gen.amount, 'skill');
       }
     }
 
@@ -173,12 +175,16 @@ export function usePlayerSkill(
       const currentFocus = focusSys?.currentValue ?? 0;
       const summonable = pet.petStore.getSummonable(currentFocus);
       if (summonable.length === 0) {
+        // P3-179：MP 已消耗，结束回合作为惩罚
+        initiative.endPlayerTurn();
         return { success: false, type: 'skill', message: '没有可召唤的宠物（资源不足或未解锁）！' };
       }
       // M4 阶段：直接召唤第一个可召唤宠物
       // 阶段 3 将改为发射 COMBAT_OPEN_PET_SUMMON 事件弹出 PetSummonPopup 供玩家选择
       const summonResult = pet.summon(summonable[0].id as PetType);
       if (!summonResult.success) {
+        // P3-179：MP 已消耗，结束回合作为惩罚
+        initiative.endPlayerTurn();
         return { success: false, type: 'skill', message: summonResult.message };
       }
       // 召唤后重建先攻顺序，让宠物加入回合调度
@@ -196,6 +202,8 @@ export function usePlayerSkill(
     if (skill?.specialAction === 'dismiss_pet') {
       const dismissResult = pet.dismiss();
       if (!dismissResult.success) {
+        // P3-179：MP 已消耗，结束回合作为惩罚
+        initiative.endPlayerTurn();
         return { success: false, type: 'skill', message: dismissResult.message };
       }
       // 解散后重建先攻顺序，移除宠物
@@ -254,11 +262,11 @@ export function usePlayerSkill(
           // P3-146：传入 statModifiers 让 crit_chance / crit_damage_multiplier 生效
           const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
           // 天赋 damage_multiplier 加成
-          const _talentDmgMult = ctx.talent.damageMultiplier;
-          const _preCritDmg = _talentDmgMult > 0
-            ? Math.floor(pipeResult.finalDamage * (1 + _talentDmgMult))
+          const talentDmgMult = ctx.talent.damageMultiplier;
+          const preCritDmg = talentDmgMult > 0
+            ? Math.floor(pipeResult.finalDamage * (1 + talentDmgMult))
             : pipeResult.finalDamage;
-          const aoeDamage = Math.floor(_preCritDmg * critMultiplier);
+          const aoeDamage = Math.floor(preCritDmg * critMultiplier);
           // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
           const { damage: actualAoeDamage } = boss.applyBossDefenseMechanics(e, aoeDamage);
           if (actualAoeDamage > 0) {
@@ -271,8 +279,9 @@ export function usePlayerSkill(
           // P3-93 修复：补充 isCrit 字段，让 AOE 逐目标命中信息完整（供 UI 展示暴击特效/日志）
           aoeHits.push({ enemyId: e.id, enemyName: e.name, damage: actualAoeDamage, isCrit });
 
+          // P3-178：事件/日志 amount 统一为防御后实际伤害 actualAoeDamage
           eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
-            amount: aoeDamage,
+            amount: actualAoeDamage,
             damageType: damageType === 'magical' ? 'magic' : 'physical',
             targetName: e.name || '敌人',
             actorType: 'player'
@@ -281,7 +290,7 @@ export function usePlayerSkill(
           // BIZ-4：暴击事件
           if (isCrit) {
             eventBus.emit(GameEvents.COMBAT_CRITICAL_HIT, {
-              amount: aoeDamage,
+              amount: actualAoeDamage,
               damageType: damageType === 'magical' ? 'magic' : 'physical',
               targetName: e.name || '敌人',
               actorType: 'player'
@@ -298,12 +307,12 @@ export function usePlayerSkill(
             targetName: e.name || '',
             skillId,
             skillName: skill?.name || '',
-            damage: aoeDamage,
+            damage: actualAoeDamage,
             isCrit,
             isDodge: false,
             message: isCrit
-              ? `${skill?.name || '技能'} 暴击！对 ${e.name} 造成 ${aoeDamage} 点${damageType === 'magical' ? '魔法' : '物理'}伤害！`
-              : `${skill?.name || '技能'} 对 ${e.name} 造成 ${aoeDamage} 点${damageType === 'magical' ? '魔法' : '物理'}伤害！`
+              ? `${skill?.name || '技能'} 暴击！对 ${e.name} 造成 ${actualAoeDamage} 点${damageType === 'magical' ? '魔法' : '物理'}伤害！`
+              : `${skill?.name || '技能'} 对 ${e.name} 造成 ${actualAoeDamage} 点${damageType === 'magical' ? '魔法' : '物理'}伤害！`
           });
         }
 
@@ -329,6 +338,8 @@ export function usePlayerSkill(
         };
       } else if (targetType === 'self') {
         // 自伤技能在当前设计中不合理，返回错误
+        // P3-179：MP 已消耗，结束回合作为惩罚
+        initiative.endPlayerTurn();
         return {
           success: false,
           type: 'skill',
@@ -338,6 +349,8 @@ export function usePlayerSkill(
         // 单目标（默认）：使用伤害管线计算
         const target = currentTarget.value;
         if (!target) {
+          // P3-179：MP 已消耗，结束回合作为惩罚
+          initiative.endPlayerTurn();
           return { success: false, type: 'skill', message: '没有可攻击的目标！' };
         }
 
@@ -362,11 +375,11 @@ export function usePlayerSkill(
         // P3-146：传入 statModifiers 让 crit_chance / crit_damage_multiplier 生效
         const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
         // 天赋 damage_multiplier 加成
-        const _talentDmgMult = ctx.talent.damageMultiplier;
-        const _preCritDmg = _talentDmgMult > 0
-          ? Math.floor(pipeResult.finalDamage * (1 + _talentDmgMult))
+        const talentDmgMult = ctx.talent.damageMultiplier;
+        const preCritDmg = talentDmgMult > 0
+          ? Math.floor(pipeResult.finalDamage * (1 + talentDmgMult))
           : pipeResult.finalDamage;
-        const skillDamage = Math.floor(_preCritDmg * critMultiplier);
+        const skillDamage = Math.floor(preCritDmg * critMultiplier);
 
         // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
         const { damage: actualSkillDamage } = boss.applyBossDefenseMechanics(target, skillDamage);
@@ -388,9 +401,10 @@ export function usePlayerSkill(
         });
 
         // BIZ-4：暴击事件
+        // P3-178：amount 统一为防御后实际伤害 actualSkillDamage
         if (isCrit) {
           eventBus.emit(GameEvents.COMBAT_CRITICAL_HIT, {
-            amount: skillDamage,
+            amount: actualSkillDamage,
             damageType: damageType === 'magical' ? 'magic' : 'physical',
             targetName: updatedTarget?.name || '敌人',
             actorType: 'player'
@@ -407,12 +421,13 @@ export function usePlayerSkill(
           targetName: updatedTarget?.name || '',
           skillId,
           skillName: skill?.name || '',
-          damage: skillDamage,
+          // P3-178：日志 damage 统一为防御后实际伤害 actualSkillDamage
+          damage: actualSkillDamage,
           isCrit,
           isDodge: false,
           message: isCrit
-            ? `${skill?.name || '技能'} 暴击！对 ${updatedTarget?.name} 造成 ${skillDamage} 点${result.type === 'magic_damage' ? '魔法' : '物理'}伤害！`
-            : `${skill?.name || '技能'} 对 ${updatedTarget?.name} 造成 ${skillDamage} 点${result.type === 'magic_damage' ? '魔法' : '物理'}伤害！`
+            ? `${skill?.name || '技能'} 暴击！对 ${updatedTarget?.name} 造成 ${actualSkillDamage} 点${result.type === 'magic_damage' ? '魔法' : '物理'}伤害！`
+            : `${skill?.name || '技能'} 对 ${updatedTarget?.name} 造成 ${actualSkillDamage} 点${result.type === 'magic_damage' ? '魔法' : '物理'}伤害！`
         });
 
         // 附带 buff/debuff 效果（在 endCombat/endPlayerTurn 之前施加，防止效果添加到已清空的容器）
@@ -526,6 +541,8 @@ export function usePlayerSkill(
           // 单目标：对当前目标施加
           const target = currentTarget.value;
           if (!target) {
+            // P3-179：MP 已消耗，结束回合作为惩罚
+            initiative.endPlayerTurn();
             return { success: false, type: 'skill', message: '没有可攻击的目标！' };
           }
           applyDebuffToEnemy(target, result.appliedEffects, effectSourceName);
@@ -577,6 +594,11 @@ export function usePlayerSkill(
           ? `${skill?.name || '技能'} 暴击！恢复了 ${finalHeal} 点生命值！`
           : `${skill?.name || '技能'} 恢复了 ${finalHeal} 点生命值！`
       });
+
+      // P3-184：治疗技能可能附带 buff（如"治疗+增益"），在结束回合前应用
+      if (skill?.buffs && skill.buffs.length > 0) {
+        applySkillBuffs(skill, 'self');
+      }
 
       initiative.endPlayerTurn();
     }

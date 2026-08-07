@@ -75,7 +75,8 @@ export const useCombatStore = defineStore('combat', () => {
   const passive = usePassiveSkills(state, log, ctx);
 
   // P3-156：宠物行动层（术士/猎人战斗循环接入，作为战斗与宠物 Store 的唯一桥接点）
-  const pet = usePetAction(state, log, ctx);
+  // P3-182：注入 boss，使宠物攻击接入 Boss 防御/反击机制
+  const pet = usePetAction(state, log, ctx, boss);
 
   // 6. 敌人行动层（注入 passive 以便在玩家受伤时触发 onDamaged 被动）
   const enemy = useEnemyAction(state, log, ctx, passive);
@@ -223,23 +224,10 @@ export const useCombatStore = defineStore('combat', () => {
       // P3-174：forceAll=true 保存全部剩余日志
       await log.saveLogs(true);
 
-      // P3-89 修复：COMBAT_END 事件载荷补充敌人摘要（enemyCount/enemyNames），
-      // 同时保留首个敌人引用 `enemy` 以向后兼容既有消费者（仅读取首敌信息的 UI/音效）。
-      //
-      // P3 BIZ-6 审计决策（2026-07-31）：
-      // - 消费者清单：exploration/store.ts:630 仅读 data.result；audio/service.ts:298 仅读 data.result
-      // - 当前无消费者读取 data.enemy，理论上可移除该字段
-      // - 保留原因：测试中存在专门验证 enemy=null 防御分支的用例（test/combat/store.test.ts:848），
-      //   且未来可能有 UI 组件需要展示首敌信息（如战斗结算弹窗的敌人头像）
-      // - 后续清理：若确认无 UI 消费者，可移除 enemy 字段并删除对应测试用例
-      eventBus.emit(GameEvents.COMBAT_END, {
-        result,
-        enemy: state.enemies.value[0] || null,
-        enemyCount: state.enemies.value.length,
-        enemyNames: state.enemies.value.map(e => e.name),
-        expGained: result === 'victory' ? totalExp : 0,
-        goldGained: result === 'victory' ? totalGold : 0
-      });
+      // P3-177：精简 COMBAT_END 事件载荷为最小信号 { result }
+      // 消费者（exploration/store.ts、audio/service.ts）仅读取 data.result，
+      // 其余字段由监听方自行查询 store 状态。遵循 code_rule.md 跨模块通知最小化原则。
+      eventBus.emit(GameEvents.COMBAT_END, { result });
 
       state.cleanup();
       // cleanup 会重置所有状态（含 combatResult），需在 cleanup 后重新设置结果，
@@ -316,7 +304,12 @@ export const useCombatStore = defineStore('combat', () => {
     }
 
     // 加载当前职业的被动技能并触发战斗开始钩子（Phase 5.2）
-    await passive.loadPassives();
+    // P3-176：包裹 try/catch，失败时降级为空 passives，避免 state 已 fighting 但 passives 未加载
+    try {
+      await passive.loadPassives();
+    } catch (err) {
+      console.error('[CombatStore] loadPassives 失败，降级为空 passives:', err);
+    }
     passive.onCombatStart();
 
     // P3-156：初始化宠物系统（术士/猎人战斗循环接入）
@@ -428,7 +421,12 @@ export const useCombatStore = defineStore('combat', () => {
           if (result.success && !result.isDodge) {
             state.resourceSystems.value.forEach(sys => {
               sys.onAttack?.();
-              sys.generate(1, 'skill');
+              // P3-181：仅对副资源调用 generate(1, 'skill')
+              // 主资源（替代 MP 的 energy/focus/runic_power/fury）通过 onTurnStart/onAttack 自然回复，
+              // 此处再 +1 会导致双资源职业获取过快；rune 等独立冷却资源不在此生成
+              if (sys.isSecondary) {
+                sys.generate(1, 'skill');
+              }
             });
             // 触发被动技能 onAttack 钩子（技能也算攻击行为）
             // P3-146：传入当前目标敌人 ID，供 buff 类被动施加效果
@@ -550,6 +548,8 @@ export const useCombatStore = defineStore('combat', () => {
    */
   function dispose(): void {
     state.cleanup();
+    // P3-183：重置宠物系统，避免角色切换时 petStore 状态残留
+    pet.petStore.reset();
   }
 
   // ==================== 导出 ====================

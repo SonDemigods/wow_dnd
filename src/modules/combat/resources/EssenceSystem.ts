@@ -16,7 +16,7 @@ export class EssenceSystem extends BaseResourceSystem {
   readonly type = 'essence' as const;
 
   constructor(initialValue: number = 0) {
-    super({ maxValue: 3, initialValue, isInteger: true });
+    super({ maxValue: 3, initialValue, isInteger: true, isSecondary: true });
   }
 
   generate(amount: number, source: ResourceSource): void {

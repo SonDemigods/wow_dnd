@@ -15,7 +15,7 @@ export class HolyPowerSystem extends BaseResourceSystem {
   readonly type = 'holy_power' as const;
 
   constructor(initialValue: number = 0) {
-    super({ maxValue: 4, initialValue, isInteger: true });
+    super({ maxValue: 4, initialValue, isInteger: true, isSecondary: true });
   }
 
   generate(amount: number, source: ResourceSource): void {

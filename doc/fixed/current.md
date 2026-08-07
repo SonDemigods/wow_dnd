@@ -1,7 +1,7 @@
 # 当前待修复问题
 
 > 检查时间：2026-08-07
-> 最近整理：2026-08-07（战斗系统 P0 修复：P3-168/169/170/171 全部修复并归档）
+> 最近整理：2026-08-07（战斗系统专项全部修复：P3-168~187 共 20 项含测试补齐，仅剩 P3-150/149/162/136/167 玩法内容项）
 > tsc 状态：`tsc --noEmit --skipLibCheck` 通过（0 错误）
 > 历史归档目录：[doc/fixed/](file:///d:/openSource/wow_dnd/doc/fixed/)
 > 7月归档合并：[archive_2026_07.md](file:///d:/openSource/wow_dnd/doc/fixed/archive_2026_07.md)
@@ -89,139 +89,46 @@
 
 ---
 
-### P3-176（战斗·P2）：startCombat 中 loadPassives 无异常处理
-- **状态**：待修复（中）
-- **核实结果**（2026-08-07）：[store.ts:316](file:///d:/openSource/wow_dnd/src/modules/combat/store.ts#L316) `await passive.loadPassives()` 无 try/catch，若 `configCache.loadPassives()` reject，state 已设为 'fighting' 但 passives 未加载，状态不一致。
-- **修复建议**：包裹 try/catch，失败时降级为空 passives 列表 + console.error + 日志上报，而非留下 'fighting' 状态无 passives。
-- **风险**：低。
+### P3-176（战斗·P2）：~~startCombat 中 loadPassives 无异常处理~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md)）
+
+### P3-177（架构·P2）：~~COMBAT_END 事件载荷过度膨胀~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md)）
+
+### P3-178（战斗·P2）：~~伤害日志/事件 amount 与实际扣血不一致~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md)）
+
+### P3-179（战斗·P2）：~~specialAction 失败时不结束回合但已消耗资源~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md)）
+
+### P3-180（战斗·P2）：~~效果 additive/independent 叠加无层数上限~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md)）
+
+### P3-181（战斗·P2）：~~资源系统无差别 generate(1, 'skill') 导致双资源职业过快~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md)）
+
+### P3-182（战斗·P2）：~~宠物攻击绕过 Boss 防御/反击机制~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md)）
 
 ---
 
-### P3-177（架构·P2）：COMBAT_END 事件载荷过度膨胀
-- **状态**：待修复（中）
-- **核实结果**（2026-08-07）：[store.ts:235-242](file:///d:/openSource/wow_dnd/src/modules/combat/store.ts#L235-L242) 载荷含 enemy/enemyCount/enemyNames/expGained/goldGained，但实际业务消费者（exploration/store.ts:796-799、audio/service.ts:308）仅读 `data.result`。违反 code_rule.md"跨模块业务通知仅含最小信号"规则。
-- **修复建议**：精简为 `{ result }`，其余字段删除或由监听方自行查询。
-- **风险**：低。需确认无其他消费方。
+### P3-183（代码质量·P3）：~~dispose 完整性 + useCombatAnimations 公开导出~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807112730.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807112730.md)）
+
+### P3-184（战斗·P3）：~~伤害回血/事件/Buff 等代码异味（合并项）~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807112730.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807112730.md)）
+
+### P3-185（代码质量·P3）：~~命名规范与操作符一致性~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807112730.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807112730.md)）
+
+### P3-186（战斗·P3）：~~buildInitiativeOrder 先手语义 + 空数组防御~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807112730.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807112730.md)）
 
 ---
 
-### P3-178（战斗·P2）：伤害日志/事件 amount 与实际扣血不一致
-- **状态**：待修复（中）
-- **核实结果**（2026-08-07）：
-  - AOE 事件/日志：[usePlayerSkill.ts:274-276](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePlayerSkill.ts#L274-L276)（amount=aoeDamage 防御前）、[usePlayerSkill.ts:301](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePlayerSkill.ts#L301)（damage=aoeDamage），但实际扣血是 `actualAoeDamage`（防御后）。
-  - 单体技能日志：[usePlayerSkill.ts:410](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePlayerSkill.ts#L410) 记录 `skillDamage` 而非 `actualSkillDamage`。
-  - 物品伤害：[usePlayerItem.ts:111](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePlayerItem.ts#L111) `damageResult.damage = finalDamage` 而非 `actualItemDamage`。
-  - 敌人伤害事件：[useEnemyAction.ts:117](file:///d:/openSource/wow_dnd/src/modules/combat/composables/useEnemyAction.ts#L117) `amount: rawDamage` 而非 `finalDamage`。
-- **问题表现**：UI 显示的伤害数字与实际扣血不符，玩家感知"伤害虚高"或"伤害不足"。
-- **修复建议**：统一所有伤害调用点的日志/事件 `damage` 和 `amount` 字段为防御后的实际伤害值（参考 P3-94 已修复的 `playerAttack` 模式）。
-- **风险**：低。
-
----
-
-### P3-179（战斗·P2）：specialAction 失败时不结束回合但已消耗资源
-- **状态**：待修复（中）
-- **核实结果**（2026-08-07）：[usePlayerSkill.ts:175-177](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePlayerSkill.ts#L175-L177)（summonable.length === 0）、[usePlayerSkill.ts:181-183](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePlayerSkill.ts#L181-L183)（summonResult 失败）、[usePlayerSkill.ts:199-201](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePlayerSkill.ts#L199-L201)（dismiss 失败）、[usePlayerSkill.ts:528-530](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePlayerSkill.ts#L528-L530)（单目标 debuff 无目标）。
-- **问题表现**：`castSkill`（消耗 MP）和资源消耗在 specialAction 检查之前执行，失败时返回 `{ success: false }` 但未调用 `endPlayerTurn`，玩家可再次行动但 MP 已被消耗。
-- **修复建议**：在失败分支中要么退还已消耗资源，要么仍调用 `endPlayerTurn`（消耗回合作为惩罚）。
-- **风险**：低。
-
----
-
-### P3-180（战斗·P2）：效果 additive/independent 叠加无层数上限
-- **状态**：待修复（中）
-- **核实结果**（2026-08-07）：[container.ts:45-52](file:///d:/openSource/wow_dnd/src/modules/combat/effects/container.ts#L45-L52) `additive` 和 `independent` 策略直接 push 新效果，无上限。
-- **问题表现**：反复施加同一效果（如多次 poison）会无限叠加，DOT 伤害线性增长（10 次 = 每回合扣 10 倍 value），`reduceSum`/`reduceMultiplier` 遍历开销线性增长，存在内存泄漏风险。
-- **修复建议**：为 `additive` 增加最大层数参数（如 `maxStacks: 5`），超过时不再 push 或转为 `max` 策略。
-- **风险**：中。需调整 EffectContainer 接口与所有调用点。
-
----
-
-### P3-181（战斗·P2）：资源系统无差别 generate(1, 'skill') 导致双资源职业过快
-- **状态**：待修复（中）
-- **核实结果**（2026-08-07）：[store.ts:424-428](file:///d:/openSource/wow_dnd/src/modules/combat/store.ts#L424-L428) `playerAction 'skill'` 对所有资源系统调用 `sys.generate(1, 'skill')`。
-- **问题表现**：双资源职业（rogue: energy+combo_point、monk: energy+chi、demon_hunter: fury+soul、death_knight: runic_power+rune）的主资源（energy/focus/runic_power）会与 `onTurnStart` 自然回复叠加，资源获取过快；rune（亡灵骑士符文）+1 不符合"符文独立冷却回复"设计；此外 `generatesResource` 技能已在 [usePlayerSkill.ts:161-166](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePlayerSkill.ts#L161-L166) 处理副资源生成，此处再 +1 导致生成器技能双倍生成。
-- **修复建议**：仅对副资源（非 MP 替代型资源）调用 `generate(1, 'skill')`，或通过 `ResourceSystem` 接口增加 `isSecondary` 标志区分。
-- **风险**：中。需调整资源系统接口与数值平衡。
-
----
-
-### P3-182（战斗·P2）：宠物攻击绕过 Boss 防御/反击机制
-- **状态**：待修复（中）
-- **核实结果**（2026-08-07）：[usePetAction.ts:168-200](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePetAction.ts#L168-L200) `petTakeTurn` 中宠物伤害直接 `ctx.enemy.takeDamage(target.id, finalDamage)`，未调用 `boss.applyBossDefenseMechanics` 和 `boss.applyBossCounterMechanics`。
-- **问题表现**：对无敌/护盾 Boss，宠物仍造成全额伤害；Boss 不会对宠物发动反击/反弹。宠物攻击也不触发暴击判定、`passive.onAttack`、`resourceSystems.onAttack`（后两项可能是设计意图）。
-- **修复建议**：若宠物应受 Boss 机制影响，在 `petTakeTurn` 中接入 `boss.applyBossDefenseMechanics` / `boss.applyBossCounterMechanics`；若有意设计，需在注释中明确说明。
-- **风险**：低。需确认设计意图。
-
----
-
-### P3-183（代码质量·P3）：dispose 完整性 + useCombatAnimations 公开导出
-- **状态**：待修复（低）
-- **核实结果**（2026-08-07）：
-  - [store.ts:547-549](file:///d:/openSource/wow_dnd/src/modules/combat/store.ts#L547-L549) `dispose()` 仅调用 `state.cleanup()`，未重置 `pet.petStore`（endCombat 的 finally 块会调用 `pet.petStore.reset()`，但 dispose 不会）。角色切换发生在战斗中时，petStore 状态残留到下一角色。
-  - [index.ts:38](file:///d:/openSource/wow_dnd/src/modules/combat/index.ts#L38) 公开导出 `useCombatAnimations`，该 composable 大量使用 `document.querySelector`（[useCombatAnimations.ts:143,152,164,171](file:///d:/openSource/wow_dnd/src/modules/combat/composables/useCombatAnimations.ts#L143) 等 13 处），外部模块可导入并误用。
-- **修复建议**：dispose() 追加 `pet.petStore.reset()`；useCombatAnimations 在 JSDoc 标注"仅供 CombatPopup.vue 使用"或降级为组件内部文件。
-- **风险**：低。
-
----
-
-### P3-184（战斗·P3）：伤害回血/事件/Buff 等代码异味（合并项）
-- **状态**：待修复（低）
-- **核实结果**（2026-08-07）：
-  - 敌人 HOT 通过负伤害实现回血：[useInitiative.ts:243-245](file:///d:/openSource/wow_dnd/src/modules/combat/composables/useInitiative.ts#L243-L245) `ctx.enemy.takeDamage(eId, -tickRes.regenAmount)`，若未来 takeDamage 增加"受伤时触发"逻辑会错误触发。建议为 enemy store 增加 `receiveHeal` 方法。
-  - heal 技能 buffs 字段未应用：[usePlayerSkill.ts:543-582](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePlayerSkill.ts#L543-L582) heal 分支未检查 `skill?.buffs`，配置了"治疗+增益"的技能 buff 部分被静默忽略。建议在 `initiative.endPlayerTurn()` 前增加 `applySkillBuffs` 调用。
-  - applySkillBuffs isSelfBuff 硬编码：[usePlayerAction.ts:106-108](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePlayerAction.ts#L106-L108) `['attack_up','defense_up','speed_up','regen','shield'].includes(b.type)` 硬编码判断自身增益。建议在 `SkillBuffEffect` 类型增加 `target?: 'self' | 'enemy'` 字段。
-  - AI heal 分支与 useSkill 不一致：[useEnemyAction.ts:457-489](file:///d:/openSource/wow_dnd/src/modules/combat/composables/useEnemyAction.ts#L457-L489) 若 skill 配置 type 非 `health_restore`/`mana_restore`，case 'heal' 仍按治疗处理但实际为攻击，日志与效果不一致。建议增加 `if (!result.isHeal)` 回退到 `enemyBasicAttack`。
-  - applyPassive stat_modifier 日志误导：[usePassiveSkills.ts:174-183](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePassiveSkills.ts#L174-L183) stat_modifier/damage_reduction 实时暴露给管线，但 applyPassive 在多个触发时机记录日志，可能误导玩家。建议仅在战斗开始时记录一次。
-  - applyBuff DOT 回合数硬编码：[usePassiveSkills.ts:334](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePassiveSkills.ts#L334) `remainingTurns: 3` 硬编码，建议从 `PassiveEffect.turns` 字段读取。
-- **修复建议**：按上述 6 项分别修复，可分批进行。
-- **风险**：低。
-
----
-
-### P3-185（代码质量·P3）：命名规范与操作符一致性
-- **状态**：待修复（低）
-- **核实结果**（2026-08-07）：
-  - `_` 前缀误用：[usePlayerSkill.ts:257-260](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePlayerSkill.ts#L257-L260)、[usePlayerSkill.ts:365-368](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePlayerSkill.ts#L365-L368)、[usePlayerItem.ts:97-101](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePlayerItem.ts#L97-L101)、[usePetAction.ts:181-182](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePetAction.ts#L181-L182) `_talentDmgMult` / `_preCritDmg` 实际被使用，下划线前缀误导（lint 约定表示未使用）。
-  - `||` 应为 `??`：[useCombatLog.ts:83](file:///d:/openSource/wow_dnd/src/modules/combat/composables/useCombatLog.ts#L83) `speed: ctx.character.effectiveStats.dex || 0`，项目已确立 `??` 优先规范。
-  - 非空断言替代局部变量：[usePlayerSkill.ts:162](file:///d:/openSource/wow_dnd/src/modules/combat/composables/usePlayerSkill.ts#L162) `skill.generatesResource!.type`，应提取局部变量维持窄化：`const gen = skill.generatesResource; if (gen) { ... gen.type ... }`。
-- **修复建议**：移除 `_` 前缀；`||` 改 `??`；提取局部变量消除断言。
-- **风险**：低。
-
----
-
-### P3-186（战斗·P3）：buildInitiativeOrder 先手语义 + 空数组防御
-- **状态**：待确认设计意图
-- **核实结果**（2026-08-07）：
-  - [useInitiative.ts:111-112](file:///d:/openSource/wow_dnd/src/modules/combat/composables/useInitiative.ts#L111-L112) `currentInitiativeIndex` 初始化为玩家位置，先攻序列中速度高于玩家的敌人在第一回合被跳过。若意图是"玩家发起战斗则先手"则合理，但与"按速度排序"的先攻语义矛盾。
-  - [useInitiative.ts:119-130](file:///d:/openSource/wow_dnd/src/modules/combat/composables/useInitiative.ts#L119-L130) `advanceTurn` 对空数组返回 `{ unitId: '', isPlayer: false }`，`advanceToNextUnit` 会进入 else 分支调度 `singleEnemyTurn('')`，找不到敌人后再次调用 `advanceToNextUnit`，形成无限递归。正常流程不会触发，但防御性不足。
-- **修复建议**：确认先手语义是否为设计意图；在 `advanceToNextUnit` 中增加 `if (!next.unitId) return;` 守卫。
-- **风险**：低。
-
----
-
-### P3-187（测试·P2）：战斗系统测试覆盖盲区
-- **状态**：待修复（测试）
-- **核实结果**（2026-08-07）：战斗系统测试整体覆盖率高（48 文件 / 1459 用例 / 0 skipped），但存在以下盲区：
-  - **文件级盲区**：
-    - [forms/store.ts](file:///d:/openSource/wow_dnd/src/modules/combat/forms/store.ts) 无任何测试
-    - [pets/store.ts](file:///d:/openSource/wow_dnd/src/modules/combat/pets/store.ts) 无任何测试
-    - [effects/effect-type.ts](file:///d:/openSource/wow_dnd/src/modules/combat/effects/effect-type.ts) 无测试
-    - [service.ts](file:///d:/openSource/wow_dnd/src/modules/combat/service.ts) 仅 18 用例，仅覆盖概率公式（暴击/闪避/逃跑），其余业务函数未测
-  - **边界场景盲区**：
-    - 效果叠加层数上限（maxStacks）完全未测（当前 4 种叠加策略仅测 replace/max/additive/independent，无层数上限测试）
-    - `target_hp` 条件仅测 0.2 阈值，未测 0% / 100% / = 阈值精确边界
-    - 多敌人战斗流程无集成测试（仅 usePlayerSkill 测了 AOE 击杀多敌人）
-    - 多宠物协同未覆盖
-  - **集成测试缺失**：
-    - 现有 e2e（[test/e2e/explore-battle.spec.ts](file:///d:/openSource/wow_dnd/test/e2e/explore-battle.spec.ts)）用 `cmd.kill()` 跳过战斗过程，无真实回合制 e2e
-    - 无战斗失败/逃跑/Boss 战/多敌人 e2e
-    - 职业平衡性测试完全缺失
-  - **测试质量**：9 处 effect 测试用 `Math.random().toString(36).slice(2,6)` 生成 id（[handler.test.ts:46](file:///d:/openSource/wow_dnd/test/combat/effects/handler.test.ts#L46) 等），脆弱模式，建议改用自增计数器。
-- **修复建议**：
-  1. 高优先级：补 forms/store.ts、pets/store.ts、effect-type.ts 单元测试；扩展 service.ts 业务函数测试
-  2. 中优先级：补效果层数上限测试、target_hp 完整边界、多敌人战斗流程集成测试
-  3. 低优先级：真实回合制 e2e、Boss 战 e2e、职业平衡性基准测试；替换 effect id 生成方式
-- **风险**：低。
+### P3-187（测试·P2）：~~战斗系统测试覆盖盲区~~
+- **状态**：已修复（2026-08-07，归档 [fixed_20260807114900.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807114900.md)）
+- **修复内容**：forms/store.ts（23 用例）、pets/store.ts（51 用例）、maxStacks 边界（6 用例）、target_hp 边界（5 用例）、替换 9 文件随机 ID 生成。e2e/职业平衡性测试暂不包含。
 
 ---
 
@@ -243,11 +150,11 @@
 | 待办问题（内容·P3） | 2（P3-136 / P3-167） |
 | 战斗系统·P0 严重 | 0（P3-168/169/170/171 已修复） |
 | 战斗系统·P1 高 | 0（P3-172/173/174/175 已修复） |
-| 战斗系统·P2 中 | 7（P3-176 / 177 / 178 / 179 / 180 / 181 / 182） |
-| 战斗系统·P3 低 | 4（P3-183 / 184 / 185 / 186） |
-| 战斗系统·测试 | 1（P3-187） |
+| 战斗系统·P2 中 | 0（P3-176/177/178/179/180/181/182 已修复） |
+| 战斗系统·P3 低 | 0（P3-183/184/185/186 已修复） |
+| 战斗系统·测试 | 0（P3-187 已修复） |
 | 设计保留 | 2 |
-| **待办合计** | **18** |
+| **待办合计** | **5** |
 
 ### 已修复批次
 
@@ -268,25 +175,16 @@
 | 组件拆分 composable | 2026-08-07 | [fixed_20260807095516.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807095516.md) | 1（P3-163，3 个组件）|
 | 战斗系统 P0 严重修复 | 2026-08-07 | [fixed_20260807104011.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104011.md) | 4（P3-168/169/170/171）|
 | 战斗系统 P1 高优修复 | 2026-08-07 | [fixed_20260807104831.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807104831.md) | 4（P3-172/173/174/175）|
+| 战斗系统 P2 中优修复 | 2026-08-07 | [fixed_20260807111130.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807111130.md) | 7（P3-176/177/178/179/180/181/182）|
+| 战斗系统 P3 低优修复 | 2026-08-07 | [fixed_20260807112730.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807112730.md) | 4（P3-183/184/185/186）|
+| 战斗系统测试补齐 | 2026-08-07 | [fixed_20260807114900.md](file:///d:/openSource/wow_dnd/doc/fixed/fixed_20260807114900.md) | 1（P3-187，+85 用例）|
 
 ### 待办优先级清单（建议下一批次处理）
 
 | 编号 | 维度 | 标题 | 优先级 |
 |------|------|------|--------|
 | P3-150 | 玩法 | 死亡惩罚过严，无保险机制（需重新评估 P2-57） | P1 |
-| P3-176 | 战斗 | startCombat loadPassives 无异常处理 | P2 |
-| P3-177 | 架构 | COMBAT_END 事件载荷过度膨胀 | P2 |
-| P3-178 | 战斗 | 伤害日志/事件 amount 与实际扣血不一致 | P2 |
-| P3-179 | 战斗 | specialAction 失败不结束回合但已消耗资源 | P2 |
-| P3-180 | 战斗 | 效果 additive/independent 叠加无层数上限 | P2 |
-| P3-181 | 战斗 | 资源系统无差别 generate 导致双资源职业过快 | P2 |
-| P3-182 | 战斗 | 宠物攻击绕过 Boss 防御/反击机制 | P2 |
 | P3-162 | 玩法 | AI 决策类型仅 3 种，缺乏 buff/summon/defend | P2 |
 | P3-149 | 玩法 | 任务类型仅 kill/collect，目标类型枚举封闭 | P2 |
-| P3-187 | 测试 | 战斗系统测试覆盖盲区 | P2 |
-| P3-183 | 代码质量 | dispose 完整性 + useCombatAnimations 公开导出 | P3 |
-| P3-184 | 战斗 | 伤害回血/事件/Buff 等代码异味（合并项） | P3 |
-| P3-185 | 代码质量 | 命名规范与操作符一致性 | P3 |
-| P3-186 | 战斗 | buildInitiativeOrder 先手语义 + 空数组防御 | P3 |
 | P3-136 | 内容 | 任务类型全为 kill | P3 |
 | P3-167 | 内容 | 怪物/Boss 数量偏少 | P3 |

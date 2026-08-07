@@ -71,6 +71,8 @@ export interface ResourceSystem {
   readonly maxValue: number;
   /** 是否为整数型资源（如连击点/灵魂碎片通常为整数） */
   readonly isInteger: boolean;
+  /** P3-181：是否为副资源（区别于替代 MP 的主资源如 energy/focus/runic_power） */
+  readonly isSecondary: boolean;
 
   /**
    * 生成资源
