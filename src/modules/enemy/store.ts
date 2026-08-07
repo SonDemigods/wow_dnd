@@ -284,13 +284,13 @@ export const useEnemyStore = defineStore('enemies', () => {
    * 计算敌人对玩家造成的伤害（委托纯函数 calculateEnemyDamage）
    *
    * 薄封装的目的：避免 combat 层直接依赖 enemy/service.ts，通过 Store 统一对外暴露。
+   * P3-169：移除 defense 参数，防御统一由 pipeline 处理，此处仅计算原始伤害。
    *
    * @param enemy - 敌人实例
-   * @param defense - 玩家防御值
-   * @returns 计算后的伤害值
+   * @returns 计算后的原始伤害值
    */
-  function calculateDamage(enemy: EnemyInstance, defense: number): number {
-    return calculateEnemyDamage(enemy, defense);
+  function calculateDamage(enemy: EnemyInstance): number {
+    return calculateEnemyDamage(enemy);
   }
 
   /**

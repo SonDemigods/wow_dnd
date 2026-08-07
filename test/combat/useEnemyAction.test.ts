@@ -364,8 +364,8 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
       expect(result.type).toBe('attack');
       expect(result.damage).toBe(20); // pipeResult.finalDamage
       expect(result.message).toContain('哥布林');
-      // 验证调用了 calculateDamage
-      expect(ctx.enemy.calculateDamage).toHaveBeenCalledWith(enemy, ctx.character.attributes.physicalDefense);
+      // 验证调用了 calculateDamage（P3-169：不再传 defense 参数）
+      expect(ctx.enemy.calculateDamage).toHaveBeenCalledWith(enemy);
     });
 
     it('玩家闪避时返回 isDodge=true 并记录 combat_miss 日志', () => {

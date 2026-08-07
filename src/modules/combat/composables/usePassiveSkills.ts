@@ -27,6 +27,7 @@ import { configCache } from '@/modules/config';
 import type { ICombatContext } from '../combatContext';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
+import { defaultRng, type Rng } from '@/utils/rng';
 import {
   addEffectToContainer,
   createEmptyContainer,
@@ -50,7 +51,9 @@ export function usePassiveSkills(
   state: ReturnType<typeof useCombatState>,
   log: ReturnType<typeof useCombatLog>,
   // ARCH-6：需完整上下文（读 character.classId/name/hp/maxHp/mana/maxMana；写 character.receiveHeal）
-  ctx: ICombatContext
+  ctx: ICombatContext,
+  // P3-171：注入 RNG，替代 Math.random()，支持测试确定性回放
+  rng: Rng = defaultRng
 ) {
   // P3-83 修复：直接解构，无需多余的中间对象
   // P3-146：增加 createPlayerEffectContext/createEnemyEffectContext 用于 buff 接入容器
@@ -147,7 +150,7 @@ export function usePassiveSkills(
     // stat_modifier/damage_reduction 不经过 applyPassive 实时触发，不受此字段影响
     const { probability } = passive.effect;
     if (probability !== undefined && probability < 1) {
-      if (Math.random() >= probability) {
+      if (!rng.bool(probability)) {
         return; // 未触发，静默跳过
       }
     }

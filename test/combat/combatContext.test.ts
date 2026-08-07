@@ -176,8 +176,9 @@ describe('combatContext - 战斗上下文工厂（A2 读写分离）', () => {
     it('enemy.calculateDamage 委托到 enemyStore.calculateDamage 并透传参数', () => {
       const ctx = createCombatContext();
       const enemy = { id: 'e1', name: '哥布林', hp: 50, maxHp: 50, attack: 10, defense: 2, speed: 5, level: 1, isBoss: false, dataId: 'goblin', buffs: [], debuffs: [], skillCooldowns: {} } as never;
-      ctx.enemy.calculateDamage(enemy, 10);
-      expect(enemyStub.calculateDamage).toHaveBeenCalledWith(enemy, 10);
+      // P3-169：calculateDamage 不再接受 defense 参数
+      ctx.enemy.calculateDamage(enemy);
+      expect(enemyStub.calculateDamage).toHaveBeenCalledWith(enemy);
     });
 
     it('enemy.getAvailableSkills 委托到 enemyStore.getAvailableSkills 并透传参数', () => {

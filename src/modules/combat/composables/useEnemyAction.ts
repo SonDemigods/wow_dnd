@@ -144,17 +144,13 @@ export function useEnemyAction(
   /**
    * 敌人普通攻击（内部方法）
    *
-   * P3-95 修复：根据 `e.attackType` 选择玩家防御属性。
-   * - `attackType === 'magical'`：走魔法防御（法系敌人普攻走魔法）
-   * - 其他情况：走物理防御（默认物理）
+   * P3-169 修复：calculateDamage 仅计算原始伤害，防御由 pipeline 统一处理。
+   * 根据 `e.attackType` 传入正确的 damageType 让 pipeline 选择对应防御属性。
    * @param e - 执行攻击的敌人
    */
   function enemyBasicAttack(e: EnemyInstance): CombatActionResult {
-    // 计算伤害（根据敌人普攻类型选择对应的玩家防御）
-    const playerDef = e.attackType === 'magical'
-      ? ctx.character.attributes.magicDefense
-      : ctx.character.attributes.physicalDefense;
-    const damage = ctx.enemy.calculateDamage(e, playerDef);
+    // P3-169：calculateDamage 不再接受 defense 参数，防御由 pipeline 处理
+    const damage = ctx.enemy.calculateDamage(e);
 
     // 检查玩家闪避
     const dodgeChance = ctx.character.attributes.dodgeChance / 100;
@@ -188,7 +184,9 @@ export function useEnemyAction(
       };
     }
 
-    const { actualDamage } = applyEnemyDamageToPlayer(e, damage);
+    // P3-169：根据敌人攻击类型传入正确的 damageType
+    const damageType: DamageType = e.attackType === 'magical' ? 'magical' : 'physical';
+    const { actualDamage } = applyEnemyDamageToPlayer(e, damage, undefined, damageType);
 
     return {
       success: true,
@@ -266,12 +264,8 @@ export function useEnemyAction(
     const isAoeAttack = bossInstance?.runtime.aoeNextAttack === true;
     if (isAoeAttack && bossInstance) {
       bossInstance.runtime.aoeNextAttack = false;
-      // 多目标攻击：使用管线统一处理伤害、护盾
-      // P3-95：根据敌人普攻类型选择对应玩家防御
-      const aoePlayerDef = e.attackType === 'magical'
-        ? ctx.character.attributes.magicDefense
-        : ctx.character.attributes.physicalDefense;
-      const rawDamage = ctx.enemy.calculateDamage(e, aoePlayerDef);
+      // P3-169：calculateDamage 不再接受 defense 参数，防御由 pipeline 处理
+      const rawDamage = ctx.enemy.calculateDamage(e);
       // P3-147：敌方 AOE 倍率从 1.3（反向加强）改为 0.8（与玩家 0.7 对齐，略高保留 Boss 威胁感）
       const aoeDamage = Math.round(rawDamage * ENEMY_AOE_DAMAGE_MULTIPLIER);
 
@@ -292,8 +286,10 @@ export function useEnemyAction(
         return { success: true, type: 'attack', isDodge: true, message: '你闪避了敌人的范围攻击！' };
       }
 
+      // P3-169：根据敌人攻击类型传入正确的 damageType
+      const aoeDamageType: DamageType = e.attackType === 'magical' ? 'magical' : 'physical';
       // 通过管线统一处理伤害（含护盾吸收 + 攻防修正 + 日志）
-      const { actualDamage: actualAoeDamage } = applyEnemyDamageToPlayer(e, aoeDamage);
+      const { actualDamage: actualAoeDamage } = applyEnemyDamageToPlayer(e, aoeDamage, undefined, aoeDamageType);
 
       // 补充 AOE 特殊日志
       addCombatLog({

@@ -67,7 +67,7 @@ export interface ICombatQuery {
   enemy: {
     getEnemyById(id: string): EnemyInstance | null;
     getAvailableSkills(id: string): { id: string; name: string; isHeal?: boolean; isBuff?: boolean }[];
-    calculateDamage(enemy: EnemyInstance, defense: number): number;
+    calculateDamage(enemy: EnemyInstance): number;
   };
 
   /** 背包域（只读）：来自 useInventoryStore 的查询方法 */
@@ -215,7 +215,7 @@ export function createCombatContext(): ICombatContext {
       createEnemy: (dataId, level) => enemyStore.createEnemy(dataId, level),
       getAvailableSkills: (id) => enemyStore.getAvailableSkills(id),
       useSkill: (id, skillId) => enemyStore.useSkill(id, skillId),
-      calculateDamage: (enemy, defense) => enemyStore.calculateDamage(enemy, defense),
+      calculateDamage: (enemy) => enemyStore.calculateDamage(enemy),
       tickCooldowns: (enemyId) => enemyStore.tickCooldowns(enemyId),
     },
     quest: {

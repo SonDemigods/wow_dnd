@@ -22,6 +22,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ref } from 'vue';
 import { usePassiveSkills } from '@/modules/combat/composables/usePassiveSkills';
+import { createRngFromFn } from '@/utils/rng';
 import type { PassiveSkill, PassiveEffect } from '@/modules/character/types';
 import type { ICombatContext } from '@/modules/combat/combatContext';
 
@@ -522,7 +523,7 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       expect(generate).toHaveBeenCalledWith(30, 'passive');
     });
 
-    it('probability=0.3 且 Math.random() < 0.3 时触发', async () => {
+    it('probability=0.3 且 rng.next() < 0.3 时触发', async () => {
       const generate = vi.fn();
       const state = makeStateMock();
       state.resourceSystems.value = [{ type: 'rage', generate } as never];
@@ -533,17 +534,14 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       });
       getPassivesByClassIdMock.mockReturnValue([passive]);
 
-      const p = usePassiveSkills(state, makeLogMock(), makeMockCtx());
+      const p = usePassiveSkills(state, makeLogMock(), makeMockCtx(), createRngFromFn(() => 0.2));
       await p.loadPassives();
 
-      vi.spyOn(Math, 'random').mockReturnValue(0.2); // < 0.3，触发
       p.onDamaged(10);
       expect(generate).toHaveBeenCalledWith(5, 'passive');
-
-      vi.restoreAllMocks();
     });
 
-    it('probability=0.3 且 Math.random() >= 0.3 时不触发', async () => {
+    it('probability=0.3 且 rng.next() >= 0.3 时不触发', async () => {
       const generate = vi.fn();
       const state = makeStateMock();
       state.resourceSystems.value = [{ type: 'rage', generate } as never];
@@ -554,14 +552,29 @@ describe('usePassiveSkills - 职业被动技能 Composable', () => {
       });
       getPassivesByClassIdMock.mockReturnValue([passive]);
 
-      const p = usePassiveSkills(state, makeLogMock(), makeMockCtx());
+      const p = usePassiveSkills(state, makeLogMock(), makeMockCtx(), createRngFromFn(() => 0.5));
       await p.loadPassives();
 
-      vi.spyOn(Math, 'random').mockReturnValue(0.5); // >= 0.3，不触发
       p.onDamaged(10);
       expect(generate).not.toHaveBeenCalled();
+    });
 
-      vi.restoreAllMocks();
+    it('probability=0 时永不触发', async () => {
+      const generate = vi.fn();
+      const state = makeStateMock();
+      state.resourceSystems.value = [{ type: 'rage', generate } as never];
+
+      const passive = makePassive({
+        trigger: 'on_damaged',
+        effect: { type: 'resource_gen', target: 'self', stat: 'rage', value: 5, probability: 0 },
+      });
+      getPassivesByClassIdMock.mockReturnValue([passive]);
+
+      const p = usePassiveSkills(state, makeLogMock(), makeMockCtx(), createRngFromFn(() => 0));
+      await p.loadPassives();
+
+      p.onDamaged(10);
+      expect(generate).not.toHaveBeenCalled();
     });
 
     it('probability=1 时必定触发（跳过随机检查）', async () => {

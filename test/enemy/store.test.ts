@@ -556,8 +556,9 @@ describe('useEnemyStore - 敌人 Store', () => {
       vi.mocked(calculateEnemyDamage).mockReturnValue(42);
       const store = useEnemyStore();
       const enemy = makeEnemyInstance();
-      expect(store.calculateDamage(enemy, 10)).toBe(42);
-      expect(calculateEnemyDamage).toHaveBeenCalledWith(enemy, 10);
+      // P3-169：calculateDamage 不再接受 defense 参数
+      expect(store.calculateDamage(enemy)).toBe(42);
+      expect(calculateEnemyDamage).toHaveBeenCalledWith(enemy);
     });
   });
 

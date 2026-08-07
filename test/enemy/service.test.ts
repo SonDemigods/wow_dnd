@@ -141,43 +141,27 @@ describe('generateEnemyStats 等级缩放属性推导', () => {
   });
 });
 
-describe('calculateEnemyDamage 伤害计算', () => {
+describe('calculateEnemyDamage 伤害计算（P3-169：仅原始伤害，防御由 pipeline 处理）', () => {
   it('Math.random=0 时使用最小伤害范围', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
     const enemy = makeInstance({ physicalAttack: 20, damage: [5, 10] });
     // rawDamage = (20 + 5) * 0.5 = 12.5
-    // mitigated = max(1, 12.5 - 0 * 0.3) = 12.5
     // floor = 12
-    expect(calculateEnemyDamage(enemy, 0)).toBe(12);
+    expect(calculateEnemyDamage(enemy)).toBe(12);
   });
 
   it('Math.random=1 时使用最大伤害范围', () => {
     vi.spyOn(Math, 'random').mockReturnValue(1);
     const enemy = makeInstance({ physicalAttack: 20, damage: [5, 10] });
     // randomFactor = 5 + 1 * 5 = 10, rawDamage = (20 + 10) * 0.5 = 15
-    // mitigated = max(1, 15 - 0) = 15
-    expect(calculateEnemyDamage(enemy, 0)).toBe(15);
-  });
-
-  it('玩家防御按 30% 比例减免伤害', () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0);
-    const enemy = makeInstance({ physicalAttack: 20, damage: [5, 10] });
-    // rawDamage = 12.5, mitigated = max(1, 12.5 - 30*0.3) = max(1, 3.5) = 3.5
-    expect(calculateEnemyDamage(enemy, 30)).toBe(3);
-  });
-
-  it('防御过高时最低造成 1 点伤害', () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0);
-    const enemy = makeInstance({ physicalAttack: 5, damage: [1, 2] });
-    // rawDamage = (5 + 1) * 0.5 = 3, mitigated = max(1, 3 - 1000*0.3) = 1
-    expect(calculateEnemyDamage(enemy, 1000)).toBe(1);
+    expect(calculateEnemyDamage(enemy)).toBe(15);
   });
 
   it('未配置 physicalAttack 时使用默认值 10', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
     const enemy = makeInstance({ physicalAttack: undefined, damage: [0, 0] });
     // rawDamage = (10 + 0) * 0.5 = 5
-    expect(calculateEnemyDamage(enemy, 0)).toBe(5);
+    expect(calculateEnemyDamage(enemy)).toBe(5);
   });
 });
 
@@ -185,37 +169,25 @@ describe('calculateEnemyDamage 注入 RNG（P3-5 / 阶段十二）', () => {
   it('注入 rng.next()=0 时使用最小伤害范围（无需 mock 全局 Math.random）', () => {
     const enemy = makeInstance({ physicalAttack: 20, damage: [5, 10] });
     // randomFactor = 5 + 0 * 5 = 5, rawDamage = (20 + 5) * 0.5 = 12.5, floor = 12
-    expect(calculateEnemyDamage(enemy, 0, createRngFromFn(() => 0))).toBe(12);
+    expect(calculateEnemyDamage(enemy, createRngFromFn(() => 0))).toBe(12);
   });
 
   it('注入 rng.next()=1 时使用最大伤害范围', () => {
     const enemy = makeInstance({ physicalAttack: 20, damage: [5, 10] });
     // randomFactor = 5 + 1 * 5 = 10, rawDamage = (20 + 10) * 0.5 = 15
-    expect(calculateEnemyDamage(enemy, 0, createRngFromFn(() => 1))).toBe(15);
+    expect(calculateEnemyDamage(enemy, createRngFromFn(() => 1))).toBe(15);
   });
 
   it('注入 rng.next()=0.5 时使用中点伤害', () => {
     const enemy = makeInstance({ physicalAttack: 20, damage: [5, 10] });
     // randomFactor = 5 + 0.5 * 5 = 7.5, rawDamage = (20 + 7.5) * 0.5 = 13.75, floor = 13
-    expect(calculateEnemyDamage(enemy, 0, createRngFromFn(() => 0.5))).toBe(13);
-  });
-
-  it('注入 RNG 时防御减免逻辑仍生效', () => {
-    const enemy = makeInstance({ physicalAttack: 20, damage: [5, 10] });
-    // rawDamage = 12.5, mitigated = max(1, 12.5 - 30*0.3) = 3.5, floor = 3
-    expect(calculateEnemyDamage(enemy, 30, createRngFromFn(() => 0))).toBe(3);
-  });
-
-  it('注入 RNG 时高防御下限仍为 1', () => {
-    const enemy = makeInstance({ physicalAttack: 5, damage: [1, 2] });
-    // rawDamage = (5 + 1) * 0.5 = 3, mitigated = max(1, 3 - 1000*0.3) = 1
-    expect(calculateEnemyDamage(enemy, 1000, createRngFromFn(() => 0))).toBe(1);
+    expect(calculateEnemyDamage(enemy, createRngFromFn(() => 0.5))).toBe(13);
   });
 
   it('不传 rng 时回退到默认 defaultRng（基于 Math.random，向后兼容）', () => {
     const enemy = makeInstance({ physicalAttack: 20, damage: [5, 10] });
-    // 不传第三参数，使用默认 defaultRng（内部调用 Math.random），结果应在 [12, 15] 区间内
-    const damage = calculateEnemyDamage(enemy, 0);
+    // 不传第二参数，使用默认 defaultRng（内部调用 Math.random），结果应在 [12, 15] 区间内
+    const damage = calculateEnemyDamage(enemy);
     expect(damage).toBeGreaterThanOrEqual(12);
     expect(damage).toBeLessThanOrEqual(15);
   });
@@ -230,19 +202,8 @@ describe('calculateEnemyDamage 普攻伤害类型（P3-95）', () => {
       magicAttack: 30,
       damage: [5, 10],
     });
-    // rng=0: randomFactor=5, rawDamage=(30+5)*0.5=17.5, mitigated=max(1, 17.5-0)=17.5, floor=17
-    expect(calculateEnemyDamage(enemy, 0, createRngFromFn(() => 0))).toBe(17);
-  });
-
-  it("attackType='magical' 时玩家魔法防御生效（不再走物理防御）", () => {
-    const enemy = makeInstance({
-      attackType: 'magical',
-      physicalAttack: 5,
-      magicAttack: 30,
-      damage: [5, 10],
-    });
-    // rng=0: rawDamage=17.5, magicDefense=20: mitigated=max(1, 17.5-20*0.3)=max(1, 11.5)=11.5, floor=11
-    expect(calculateEnemyDamage(enemy, 20, createRngFromFn(() => 0))).toBe(11);
+    // rng=0: randomFactor=5, rawDamage=(30+5)*0.5=17.5, floor=17
+    expect(calculateEnemyDamage(enemy, createRngFromFn(() => 0))).toBe(17);
   });
 
   it("attackType='physical'（默认）时仍使用 physicalAttack", () => {
@@ -252,8 +213,8 @@ describe('calculateEnemyDamage 普攻伤害类型（P3-95）', () => {
       magicAttack: 5,
       damage: [5, 10],
     });
-    // rng=0: rawDamage=(30+5)*0.5=17.5, mitigated=17.5, floor=17
-    expect(calculateEnemyDamage(enemy, 0, createRngFromFn(() => 0))).toBe(17);
+    // rng=0: rawDamage=(30+5)*0.5=17.5, floor=17
+    expect(calculateEnemyDamage(enemy, createRngFromFn(() => 0))).toBe(17);
   });
 
   it('attackType 未配置时默认走物理攻击力', () => {
@@ -264,7 +225,7 @@ describe('calculateEnemyDamage 普攻伤害类型（P3-95）', () => {
       damage: [5, 10],
     });
     // rng=0: rawDamage=(30+5)*0.5=17.5, floor=17
-    expect(calculateEnemyDamage(enemy, 0, createRngFromFn(() => 0))).toBe(17);
+    expect(calculateEnemyDamage(enemy, createRngFromFn(() => 0))).toBe(17);
   });
 
   it("attackType='magical' 且 magicAttack 未配置时使用默认值 5", () => {
@@ -275,7 +236,7 @@ describe('calculateEnemyDamage 普攻伤害类型（P3-95）', () => {
       damage: [0, 0],
     });
     // rng=0: rawDamage=(5+0)*0.5=2.5, floor=2
-    expect(calculateEnemyDamage(enemy, 0, createRngFromFn(() => 0))).toBe(2);
+    expect(calculateEnemyDamage(enemy, createRngFromFn(() => 0))).toBe(2);
   });
 });
 

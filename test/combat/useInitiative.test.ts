@@ -111,6 +111,7 @@ function makeStateMock() {
     effectRegistry: {
       reduceSum: vi.fn(() => 0),
       tickAll: vi.fn(() => ({ expiredIds: [], dotDamage: 0, regenAmount: 0 })),
+      getDisabledActions: vi.fn(() => ({ skipTurn: false, types: [] })),
     },
     enemies: computed(() => []),
     aliveEnemies: computed(() => []),

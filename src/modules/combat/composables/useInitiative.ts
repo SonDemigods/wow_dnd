@@ -150,6 +150,8 @@ export function useInitiative(
     // 新一轮开始时，对所有效果执行一次 tick（不再每个敌人回合 tick）
     if (state.currentInitiativeIndex.value === 0) {
       tickAllEffects();
+      // P3-170：tickAllEffects 可能因 DOT 击杀触发 endCombat，需在继续前检查战斗状态
+      if (state.state.value !== 'fighting') return;
       // P3-156：宠物状态推进（技能冷却、持续时间、死亡清理），与效果 tick 同步
       pet?.petTickTurn();
     }
@@ -439,6 +441,23 @@ export function useInitiative(
 
     // 推进该敌人的技能冷却
     ctx.enemy.tickCooldowns(e.id);
+
+    // P3-168：检查敌人是否被控制（stun/freeze 导致跳过回合）
+    const enemyContainer = state.enemyEffects.value[e.id] || createEmptyContainer();
+    const disableResult = state.effectRegistry.getDisabledActions(enemyContainer);
+    if (disableResult.skipTurn) {
+      log.addCombatLog({
+        actorType: 'system', actorId: 'system', actorName: '系统',
+        eventType: 'combat_event', targetType: 'enemy', targetId: e.id,
+        targetName: e.name, isCrit: false, isDodge: false,
+        message: `${e.name} 被控制，无法行动！`
+      });
+      advanceToNextUnit();
+      if (state.state.value === 'fighting') {
+        log.saveLogs();
+      }
+      return;
+    }
 
     // 执行敌人行动
     enemyAction.enemyAction(e);
