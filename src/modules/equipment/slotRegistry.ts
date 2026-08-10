@@ -288,6 +288,10 @@ export function canEquip(
   if (item.grip === 'two_handed' && equipment.weapon2) {
     return { ok: false, reason: '双手武器需要主副手槽位都空闲' };
   }
+  // P8-207 修复：主手已装双手武器时，副手不可装备
+  if (targetSlot === 'weapon2' && equipment.weapon1?.item?.grip === 'two_handed') {
+    return { ok: false, reason: '主手双手武器占用副手' };
+  }
   return { ok: true, reason: '' };
 }
 

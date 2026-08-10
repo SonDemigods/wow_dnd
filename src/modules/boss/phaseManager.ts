@@ -50,6 +50,8 @@ export class BossPhaseManager {
     phase: BossPhase | null;
     changed: boolean;
   } {
+    // P8-024 修复：maxHp 为 0 时返回基础阶段，避免 NaN 导致阶段定位失真
+    if (maxHp <= 0) return { phase: null, changed: false };
     const hpPercent = currentHp / maxHp;
     const newIndex = this.findPhaseIndex(phases, hpPercent);
 

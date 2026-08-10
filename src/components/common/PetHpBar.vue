@@ -22,7 +22,7 @@
  * @description 战斗 UI 中展示召唤物的紧凑型血条，包含头像、名称、HP 进度条和持续时间。
  *              受伤时闪红动画，死亡时灰化并显示"宠物阵亡"字样。
  */
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onUnmounted } from 'vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import type { PetInstance } from '@/modules/combat/pets';
 
@@ -70,12 +70,18 @@ const durationText = computed(() => {
 // 受伤闪红动画：HP 下降时触发
 const flashRed = ref(false);
 let prevHp = props.pet.hp;
+// P8-510 修复：存储 timer 以便卸载时清理
+let flashTimer: ReturnType<typeof setTimeout> | null = null;
 watch(() => props.pet.hp, (newHp) => {
   if (newHp < prevHp) {
     flashRed.value = true;
-    setTimeout(() => { flashRed.value = false; }, 400);
+    if (flashTimer) clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => { flashRed.value = false; }, 400);
   }
   prevHp = newHp;
+});
+onUnmounted(() => {
+  if (flashTimer) clearTimeout(flashTimer);
 });
 </script>
 

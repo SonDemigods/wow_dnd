@@ -635,7 +635,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
       expect(initiative.endPlayerTurn).toHaveBeenCalled();
     });
 
-    it('result.heal 时 healType 为 health', async () => {
+    it('result.heal 时 healType 为 mana', async () => {
       const state = makeStateMock();
       skillStoreMock.getSkill.mockReturnValue({ id: 'sk1', name: '' });
       skillStoreMock.castSkill.mockResolvedValue({
@@ -648,7 +648,7 @@ describe('usePlayerSkill - 玩家技能 Composable（QA-9）', () => {
 
       const { eventBus, GameEvents } = await import('@/modules/bus');
       expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_CAST_HEAL, expect.objectContaining({
-        healType: 'health',
+        healType: 'mana',
         amount: 20,
       }));
     });

@@ -243,6 +243,11 @@ export const useCombatStore = defineStore('combat', () => {
     } catch (e) {
       console.error('[CombatStore] 结束战斗异常:', e);
       state.cleanup();
+      // P8-001 修复：异常时仍设置结果并通知下游，避免战斗状态机不一致
+      state.combatResult.value = result;
+      state.expGained.value = 0;
+      state.goldGained.value = 0;
+      eventBus.emit(GameEvents.COMBAT_END, { result });
     } finally {
       // P3-156：无论战斗结果如何，都重置宠物系统（清理激活的召唤物、冷却、日志回调）
       pet.petStore.reset();
@@ -412,7 +417,8 @@ export const useCombatStore = defineStore('combat', () => {
         case 'attack':
           result = player.playerAttack();
           // 攻击命中（非闪避）后触发资源系统 onAttack 钩子
-          if (result.success && !result.isDodge) {
+          // P8-002 修复：攻击击杀最后敌人后 endCombat 已设置 combatResult，跳过后续钩子
+          if (result.success && !result.isDodge && !state.combatResult.value) {
             state.resourceSystems.value.forEach(sys => sys.onAttack?.());
             // 触发被动技能 onAttack 钩子（如战士嗜血吸血、术士腐蚀术）
             // P3-146：传入当前目标敌人 ID，供 buff 类被动（如腐蚀术 DOT）施加效果
@@ -425,7 +431,8 @@ export const useCombatStore = defineStore('combat', () => {
           // 技能施放成功后触发资源系统 onAttack（技能也算攻击行为）和 onSkill 生成
           // P7-010：对治疗/纯 buff 类技能也触发 onAttack 是有意设计——
           // 资源生成和攻击型被动统一在"技能施放"时触发，简化资源系统模型
-          if (result.success && !result.isDodge) {
+          // P8-002 修复：技能击杀最后敌人后 endCombat 已设置 combatResult，跳过后续钩子避免对已结束战斗施加效果
+          if (result.success && !result.isDodge && !state.combatResult.value) {
             state.resourceSystems.value.forEach(sys => {
               sys.onAttack?.();
               // P3-181：仅对副资源调用 generate(1, 'skill')

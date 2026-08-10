@@ -84,7 +84,7 @@ export function useCombatState(ctx: ICombatContext) {
   /** 敌人效果容器映射（敌人ID -> 效果容器，用于护盾等临时效果） */
   const enemyEffects = ref<Record<string, EffectContainer>>({});
 
-  /** 效果系统注册表（单例，注册全部 15 种处理器） */
+  /** 效果系统注册表（单例，注册全部 14 种处理器） */
   const effectRegistry = new EffectHandlerRegistry();
   createDefaultRegistry(effectRegistry);
 

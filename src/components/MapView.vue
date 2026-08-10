@@ -217,11 +217,15 @@ function selectZone(zone: MapZone) {
 function zoomIn() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'map_zoom_in' });
   zoomLevel.value = Math.min(MAP_ZOOM_MAX, zoomLevel.value + MAP_ZOOM_STEP);
+  // P8-511 修复：缩放后重新钳制平移边界，防止地图越界
+  clampPan(panX.value, panY.value);
 }
 
 function zoomOut() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'map_zoom_out' });
   zoomLevel.value = Math.max(MAP_ZOOM_MIN, zoomLevel.value - MAP_ZOOM_STEP);
+  // P8-511 修复：缩放后重新钳制平移边界，防止地图越界
+  clampPan(panX.value, panY.value);
 }
 
 function onMapWheel(e: WheelEvent) {

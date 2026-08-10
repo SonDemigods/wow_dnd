@@ -39,7 +39,18 @@ export class ResourceSystemFactory {
    * @param classId - 职业 ID
    * @returns 资源系统数组（空数组表示该职业使用默认 MP 系统）
    */
+  /** P8-009 修复：实例缓存，避免频繁调用时重复实例化 */
+  private static _cache = new Map<string, ResourceSystem[]>();
+
   static create(classId: string): ResourceSystem[] {
+    const cached = this._cache.get(classId);
+    if (cached) return cached;
+    const systems = this._doCreate(classId);
+    this._cache.set(classId, systems);
+    return systems;
+  }
+
+  private static _doCreate(classId: string): ResourceSystem[] {
     switch (classId) {
       case 'warrior':
         // 战士：怒气系统

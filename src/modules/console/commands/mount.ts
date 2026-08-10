@@ -14,6 +14,7 @@ import { useCharacterStore } from '@/modules/character';
 import { computeMountBonus, isTierUnlocked } from '@/modules/character/service';
 import {
   MOUNT_TIERS,
+  STAT_NAME_SHORT, // P8-302：复用 config_mounts 的属性简写，消除重复定义
   getMountOptionById,
   getMountOptionsByTier,
   getMountTierByIndex,
@@ -32,25 +33,18 @@ import {
 // 辅助函数
 // ============================================================
 
-/** 属性简写（用于 bonus 格式化展示，与 config_mounts STAT_NAME_SHORT 一致） */
-const STAT_SHORT_LABEL: Record<keyof Stats, string> = {
-  str: '力',
-  dex: '敏',
-  con: '体',
-  int: '智',
-  wis: '感',
-  cha: '魅',
-};
+// P8-302 修复：STAT_SHORT_LABEL 已删除，复用 config_mounts 的 STAT_NAME_SHORT
 
+// P8-303 修复：从 MOUNT_TIERS 动态生成映射，消除硬编码重复
 /** 档位中文标签 → 索引映射 */
-const TIER_LABEL_TO_INDEX: Record<string, number> = {
-  '普通': 0, '优秀': 1, '稀有': 2, '史诗': 3, '传说': 4,
-};
+const TIER_LABEL_TO_INDEX = new Map<string, number>(
+  MOUNT_TIERS.map(t => [t.label, t.index])
+);
 
 /** 档位英文名 → 索引映射 */
-const TIER_NAME_TO_INDEX: Record<string, number> = {
-  common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4,
-};
+const TIER_NAME_TO_INDEX = new Map<string, number>(
+  MOUNT_TIERS.map(t => [t.tier, t.index])
+);
 
 /** 档位参数无效时的提示信息 */
 const TIER_PARAM_HINT = '可用: 0-4 / common-uncommon-rare-epic-legendary / 普通-优秀-稀有-史诗-传说';
@@ -73,12 +67,15 @@ function parseTierIndex(input: string): number | null {
   }
   // 英文名（大小写不敏感）
   const lower = input.toLowerCase();
-  if (lower in TIER_NAME_TO_INDEX) {
-    return TIER_NAME_TO_INDEX[lower];
+  // P8-303 修复：使用 Map API 替代 in 运算符
+  const nameIndex = TIER_NAME_TO_INDEX.get(lower);
+  if (nameIndex !== undefined) {
+    return nameIndex;
   }
   // 中文标签
-  if (input in TIER_LABEL_TO_INDEX) {
-    return TIER_LABEL_TO_INDEX[input];
+  const labelIndex = TIER_LABEL_TO_INDEX.get(input);
+  if (labelIndex !== undefined) {
+    return labelIndex;
   }
   return null;
 }
@@ -95,7 +92,7 @@ function formatBonus(bonus: Partial<Stats>): string {
   const keys = Object.keys(bonus) as (keyof Stats)[];
   if (keys.length === 0) return '无加成';
   return keys
-    .map(k => `+${bonus[k] ?? 0} ${STAT_SHORT_LABEL[k]}`)
+    .map(k => `+${bonus[k] ?? 0} ${STAT_NAME_SHORT[k]}`) // P8-302：复用 config_mounts 的 STAT_NAME_SHORT
     .join(', ');
 }
 

@@ -235,6 +235,10 @@ export const useCharacterStore = defineStore('character', () => {
     const race = racesData.value[raceIdParam];
     const cls = classesData.value[classIdParam];
 
+    // P8-014 修复：race/cls 为 undefined 时抛出明确错误，避免跳过兼容性校验
+    if (!race) throw new Error('无效的种族');
+    if (!cls) throw new Error('无效的职业');
+
     // 校验职业与阵营兼容性（如 death_knight 不对 neutral 开放、evoker 仅对 neutral 开放）
     if (cls && !isClassFactionCompatible(cls, factionIdParam)) {
       throw new Error(`职业「${cls.name}」不支持阵营「${factionIdParam}」`);

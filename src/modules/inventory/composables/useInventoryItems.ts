@@ -85,7 +85,8 @@ export function useInventoryItems(state: InventoryState) {
     const itemTemplate = itemTemplates.value.get(invItem.itemId);
     if (itemTemplate?.kind === 'quest') return false;
 
-    const dropCount = count ?? invItem.count;
+    // P8-205 修复：确保 dropCount 不超过实际堆叠数，日志用 dropCount
+    const dropCount = Math.min(count ?? invItem.count, invItem.count);
     if (dropCount >= invItem.count) {
       inventory.value = inventory.value.filter((_, i) => i !== index);
     } else {

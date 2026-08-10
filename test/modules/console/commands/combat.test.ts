@@ -20,6 +20,7 @@ const { combatMock, enemyMock, adminQueryMock } = vi.hoisted(() => ({
   combatMock: {
     isInCombat: false,
     currentTarget: null as { id: string; name: string } | null,
+    aliveEnemies: [],
     startCombat: vi.fn().mockResolvedValue(undefined),
     endCombat: vi.fn(),
   },

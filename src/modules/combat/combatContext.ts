@@ -184,6 +184,8 @@ export function createCombatContext(): ICombatContext {
   const questStore = useQuestStore();
   const logStore = useLogStore();
   const inventoryStore = useInventoryStore();
+  // P8-006 修复：一次性获取 talentStore，所有 getter 和 takeDamage 内复用，避免重复调用 useTalentStore()
+  const talentStore = useTalentStore();
 
   return {
     character: {
@@ -202,7 +204,7 @@ export function createCombatContext(): ICombatContext {
         // 层级2 — 被动 getDamageReduction()：处理角色被动技能减伤（如战士钢铁意志），在 useEnemyAction.applyEnemyDamageToPlayer 中应用
         // 层级3 — 天赋 damageReduction（此处）：处理天赋树 damage_reduction 效果
         // 三层各自独立，来源不同，不会叠加计算同一来源的减伤
-        const reduction = useTalentStore().effectSummary.damageReduction;
+        const reduction = talentStore.effectSummary.damageReduction;
         const finalAmount = reduction > 0
           ? Math.max(0, Math.floor(amount * (1 - Math.min(0.95, reduction))))
           : amount;
@@ -244,11 +246,12 @@ export function createCombatContext(): ICombatContext {
       addItem: (itemId, quantity) => inventoryStore.addItem(itemId, quantity),
     },
     talent: {
-      get damageMultiplier() { return useTalentStore().effectSummary.damageMultiplier; },
-      get damageReduction() { return useTalentStore().effectSummary.damageReduction; },
-      get resourceBonuses() { return useTalentStore().effectSummary.resourceBonuses; },
-      get skillEnhancements() { return useTalentStore().effectSummary.skillEnhancements; },
-      get unlockedPets() { return useTalentStore().effectSummary.unlockedPets; },
+      // P8-006 修复：所有 getter 复用顶部已创建的 talentStore，避免重复调用 useTalentStore()
+      get damageMultiplier() { return talentStore.effectSummary.damageMultiplier; },
+      get damageReduction() { return talentStore.effectSummary.damageReduction; },
+      get resourceBonuses() { return talentStore.effectSummary.resourceBonuses; },
+      get skillEnhancements() { return talentStore.effectSummary.skillEnhancements; },
+      get unlockedPets() { return talentStore.effectSummary.unlockedPets; },
     },
   };
 }

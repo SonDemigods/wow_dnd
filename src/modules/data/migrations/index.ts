@@ -43,9 +43,12 @@ export function runMigrations(data: BackupData, fromVersion: number): BackupData
   while (currentStep < CURRENT_DATA_VERSION) {
     const migration = MIGRATIONS.find(m => m.from === currentStep);
     if (!migration) {
-      // 无匹配迁移：若 currentStep < CURRENT 但无迁移可用，说明版本跨度有缺口
-      // 直接跳到 CURRENT（当前空注册表下 fromVersion=CURRENT 已在上面 return）
-      break;
+      // P8-017 修复：迁移链断裂时禁止静默推进
+      // 当注册表为空时（无迁移定义），直接返回数据（无迁移可执行）
+      if (MIGRATIONS.length === 0) {
+        return result;
+      }
+      throw new Error(`迁移链断裂：找不到从版本 ${currentStep} 开始的迁移步骤`);
     }
     result = migration.migrate(result);
     currentStep = migration.to;

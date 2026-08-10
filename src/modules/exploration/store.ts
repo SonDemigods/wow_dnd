@@ -747,12 +747,30 @@ export const useExplorationStore = defineStore('exploration', () => {
     );
 
     // P5-013 修复：玩家做出选择后，标记当前格子为已完成
+    // P8-022 修复：当前 playerPosition 处非 event 类型时，搜索整个 grid 找到第一个未完成的事件格
     const pos = playerPosition.value;
     const cell = grid.value[pos.y]?.[pos.x];
     if (cell && cell.type === 'event' && !cell.completed) {
       cell.completed = true;
       refreshGrid();
       await persistState();
+    } else if (!cell || cell.type !== 'event') {
+      // 当前格不是事件类型，搜索整个 grid 找到第一个未完成的事件格
+      let targetCell: ExplorationCell | null = null;
+      for (const row of grid.value) {
+        for (const c of row) {
+          if (c.type === 'event' && !c.completed) {
+            targetCell = c;
+            break;
+          }
+        }
+        if (targetCell) break;
+      }
+      if (targetCell) {
+        targetCell.completed = true;
+        refreshGrid();
+        await persistState();
+      }
     }
 
     if (shouldHandleDeath) {
@@ -796,6 +814,13 @@ export const useExplorationStore = defineStore('exploration', () => {
 
     if (result.campUsed) {
       campUsed.value = true;
+      // P8-021 修复：通过 playerPosition 获取真实营地格并标记 completed
+      const pos = playerPosition.value;
+      const cell = grid.value[pos.y]?.[pos.x];
+      if (cell) {
+        cell.completed = true;
+        refreshGrid();
+      }
       await persistState();
     }
   }

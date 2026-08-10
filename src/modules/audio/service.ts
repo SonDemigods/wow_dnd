@@ -73,6 +73,17 @@ class AudioService implements IAudioService {
    */
   private resumeFailedNotified = false;
 
+  /**
+   * P8-023 修复：pending 音效类型去重集合
+   *
+   * AudioContext 未就绪时，多次 playSfx 同类型调用只保留一个 pending，
+   * tryResume 成功后仅重放一次，避免 contextReady 后重复播放。
+   */
+  private pendingSfxTypes = new Set<SfxType>();
+
+  /** P8-023 修复：pending BGM 场景（同一场景去重） */
+  private pendingBgmScene: BgmScene | null = null;
+
   /** Store 订阅取消函数 */
   private unsubscribeStore: (() => void) | null = null;
 
@@ -249,8 +260,12 @@ class AudioService implements IAudioService {
   /** 播放指定音效（未就绪时调用 tryResume 尝试启动 AudioContext） */
   playSfx(type: SfxType): void {
     if (!this.isReady()) {
+      // P8-023 修复：用 pendingSfxTypes Set 去重，防止 contextReady 后多次重放同一音效
+      if (this.pendingSfxTypes.has(type)) return;
+      this.pendingSfxTypes.add(type);
       // P7-025 修复：tryResume 后若 context 就绪则重放本次请求，避免首次手势音效被吞
       this.tryResume().then(() => {
+        this.pendingSfxTypes.delete(type);
         if (this.isReady()) {
           this.sfxSynth?.playSfx(type);
         }
@@ -263,8 +278,12 @@ class AudioService implements IAudioService {
   /** 切换 BGM 场景（未就绪时调用 tryResume 尝试启动 AudioContext） */
   setBgmScene(scene: BgmScene): void {
     if (!this.isReady()) {
+      // P8-023 修复：同一场景 pending 去重，防止 contextReady 后多次重放
+      if (this.pendingBgmScene === scene) return;
+      this.pendingBgmScene = scene;
       // P7-025 修复：tryResume 后若 context 就绪则重放本次请求
       this.tryResume().then(() => {
+        this.pendingBgmScene = null;
         if (this.isReady()) {
           this.bgmSynth?.setBgmScene(scene);
         }
@@ -533,6 +552,9 @@ class AudioService implements IAudioService {
     this.contextReady = false;
     this.reverbReady = false;
     this.resumeFailedNotified = false;
+    // P8-023 修复：清理 pending 状态
+    this.pendingSfxTypes.clear();
+    this.pendingBgmScene = null;
   }
 }
 

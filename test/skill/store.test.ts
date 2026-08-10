@@ -1081,17 +1081,17 @@ describe('useSkillStore - 技能 Store', () => {
       expect(store.skillBar.slots).toEqual(['s2', 's3', 's4', 's5']);
     });
 
-    it('tickCooldowns：冷却值为 0 时不递减（FALSE 分支 line 774）', () => {
-      // 覆盖 line 774: if (cooldowns.value[key] > 0) 的 FALSE 分支
+    it('tickCooldowns：冷却值为 0 或负数时被清理', () => {
+      // P8-201 修复：remaining<=0 的键不再保留
       const store = useSkillStore();
       // 防御性场景：cooldowns 中存在 0 值（异常状态）
       store.$patch({ cooldowns: { s1: 0, s2: -1 } });
 
       store.tickCooldowns();
 
-      // 0 和负值不被处理（> 0 判断为 false）
-      expect(store.cooldowns.s1).toBe(0);
-      expect(store.cooldowns.s2).toBe(-1);
+      // 0 和负值被清理（不再保留）
+      expect(store.cooldowns.s1).toBeUndefined();
+      expect(store.cooldowns.s2).toBeUndefined();
     });
 
     it('persist：currentCharacterId 与 getCharacterId 均为空时 early return（line 189）', async () => {

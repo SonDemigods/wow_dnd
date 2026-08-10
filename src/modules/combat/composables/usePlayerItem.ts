@@ -19,6 +19,8 @@ import {
 } from '../effects';
 import { rollPlayerCrit } from './helpers/critCalc';
 import { hasCapability } from '@/modules/item/capabilityRegistry';
+// P8-102 修复：引入治疗加成换算除数，用于 restoreEffect 接入 healBonus
+import { HEAL_BONUS_DIVISOR } from '@/config/combat';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
 import type { useInitiative } from './useInitiative';
@@ -140,8 +142,13 @@ export function usePlayerItem(
     if (restoreEffect) {
       const { type, value } = restoreEffect;
       if ((type === 'health_restore' || type === 'mana_restore') && typeof value === 'number' && value > 0) {
+        // P8-102 修复：health_restore 接入 healBonus 加成，mana_restore 不受 healBonus 影响
+        const healBonus = ctx.character.attributes.healBonus ?? 0;
+        const eventAmount = type === 'health_restore'
+          ? Math.floor(value * (1 + healBonus / HEAL_BONUS_DIVISOR))
+          : value;
         eventBus.emit(GameEvents.COMBAT_CAST_HEAL, {
-          amount: value,
+          amount: eventAmount,
           healType: type === 'mana_restore' ? 'mana' : 'health',
           targetName: ctx.character.name
         });

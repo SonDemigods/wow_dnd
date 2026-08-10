@@ -116,6 +116,7 @@ import { useCharacterStore } from '@/modules/character';
 import { useExplorationStore } from '@/modules/exploration';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useToast } from '@/composables/useToast';
+import { errorHandler } from '@/services/ErrorHandler';
 import { getObjectiveText } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
@@ -136,6 +137,9 @@ const questStore = useQuestStore();
 const toast = useToast();
 
 const currentTab = ref<'available' | 'turnin'>('available');
+
+/** P8-507 修复：防重入标志，accept/turnIn 操作进行中时阻止重复触发 */
+const busy = ref(false);
 
 function switchTab(tab: 'available' | 'turnin') {
   currentTab.value = tab;
@@ -174,32 +178,61 @@ function getBoardId(): string {
 
 async function acceptQuest(questId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'quest_board_accept' });
-  const boardId = getBoardId();
-  const success = await questStore.acceptQuestFromBoard(boardId, questId);
-  if (success) {
-    const quest = questStore.getQuestDefinition(questId);
-    toast.show({ message: `已接受任务: ${quest?.title || questId}`, type: 'success', icon: '✅' });
-    loadQuests();
-  } else {
-    toast.show({ message: '无法接受此任务', type: 'danger', icon: '❌' });
+  // P8-507 修复：防重入 + try/catch
+  if (busy.value) return;
+  busy.value = true;
+  try {
+    const boardId = getBoardId();
+    const success = await questStore.acceptQuestFromBoard(boardId, questId);
+    if (success) {
+      const quest = questStore.getQuestDefinition(questId);
+      toast.show({ message: `已接受任务: ${quest?.title || questId}`, type: 'success', icon: '✅' });
+      loadQuests();
+    } else {
+      toast.show({ message: '无法接受此任务', type: 'danger', icon: '❌' });
+    }
+  } catch (e) {
+    console.error('[QuestBoardPopup] acceptQuest 失败:', e);
+    errorHandler.report(e);
+    toast.show({ message: '接受任务失败，请重试', type: 'danger', icon: '❌' });
+  } finally {
+    busy.value = false;
   }
 }
 
 async function turnInQuest(questId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'quest_board_turnin' });
-  const boardId = getBoardId();
-  const success = await questStore.turnInQuestToBoard(boardId, questId);
-  if (success) {
-    const quest = questStore.getQuestDefinition(questId);
-    toast.show({ message: `已领取奖励: ${quest?.title || questId}`, type: 'success', icon: '🏆' });
-    loadQuests();
-  } else {
-    toast.show({ message: '无法领取奖励', type: 'danger', icon: '❌' });
+  // P8-507 修复：防重入 + try/catch
+  if (busy.value) return;
+  busy.value = true;
+  try {
+    const boardId = getBoardId();
+    const success = await questStore.turnInQuestToBoard(boardId, questId);
+    if (success) {
+      const quest = questStore.getQuestDefinition(questId);
+      toast.show({ message: `已领取奖励: ${quest?.title || questId}`, type: 'success', icon: '🏆' });
+      loadQuests();
+    } else {
+      toast.show({ message: '无法领取奖励', type: 'danger', icon: '❌' });
+    }
+  } catch (e) {
+    console.error('[QuestBoardPopup] turnInQuest 失败:', e);
+    errorHandler.report(e);
+    toast.show({ message: '交付任务失败，请重试', type: 'danger', icon: '❌' });
+  } finally {
+    busy.value = false;
   }
 }
 
 async function loadQuests() {
-  await questStore.init();
+  // P8-507 修复：try/catch 包裹
+  try {
+    await questStore.init();
+  } catch (e) {
+    console.error('[QuestBoardPopup] loadQuests 失败:', e);
+    errorHandler.report(e);
+    toast.show({ message: '加载任务列表失败，请重试', type: 'danger' });
+  }
 }
 
 watch(() => props.visible, (val) => {

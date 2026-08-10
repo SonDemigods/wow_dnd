@@ -188,6 +188,7 @@ import { useCharacterStore } from '@/modules/character';
 import { useEquipmentStore } from '@/modules/equipment';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useToast } from '@/composables/useToast';
+import { errorHandler } from '@/services/ErrorHandler';
 import { useResponsiveGrid } from '@/composables/useResponsiveGrid';
 import type {
   InventoryItem,
@@ -545,11 +546,18 @@ function cancelDrop() {
 }
 
 async function loadInventory() {
-  const id = characterStore.currentCharacterId;
-  if (!id) return;
-  await inventoryStore.initialize(id);
-  // 确保装备 Store 已初始化（装备模块需要从装备 Store 加载）
-  await equipmentStore.initialize(id);
+  // P8-029 修复：try/catch 包裹，catch 中 errorHandler.report + toast 提示
+  try {
+    const id = characterStore.currentCharacterId;
+    if (!id) return;
+    await inventoryStore.initialize(id);
+    // 确保装备 Store 已初始化（装备模块需要从装备 Store 加载）
+    await equipmentStore.initialize(id);
+  } catch (e) {
+    console.error('[InventoryPopup] loadInventory 失败:', e);
+    errorHandler.report(e);
+    toast.show({ message: '加载背包数据失败，请重试', type: 'danger' });
+  }
 }
 
 onMounted(() => {

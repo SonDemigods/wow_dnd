@@ -225,8 +225,13 @@ export function useCharacterCreation(onCreated: () => void) {
       showErrorModal('请先完成阵营、种族和职业的选择');
       return;
     }
-    await characterStore.createCharacter(name.value.trim(), faction, race, cls);
-    onCreated();
+    // P8-027 修复：createCharacter 失败时提示用户并保持弹窗
+    try {
+      await characterStore.createCharacter(name.value.trim(), faction, race, cls);
+      onCreated();
+    } catch (e) {
+      showErrorModal(`创建角色失败：${e instanceof Error ? e.message : '未知错误'}`);
+    }
   }
 
   async function createCharacter() {

@@ -72,8 +72,8 @@ export interface DruidForm {
  * 形态切换配置常量
  */
 export const FORM_SWITCH_CONFIG = {
-  /** 形态切换消耗的回合数（计划要求：切换消耗回合） */
-  actionPointCost: 1,
+  // P8-103 修复：移除未使用的 actionPointCost 字段——形态切换不消耗行动点（设计如此），
+  // combat 回合切换由 initiative.endPlayerTurn() 控制，无行动点系统
   /** 切换形态恢复的最大生命百分比（计划要求：恢复 10% 生命） */
   defaultHealPercent: 0.10,
   /** 冷却回合数（0 表示无冷却） */

@@ -85,6 +85,7 @@ import { eventBus, GameEvents } from '@/modules/bus';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import { useBaseStore } from '@/modules/base';
 import { useGameStore } from '@/modules/game';
+import { errorHandler } from '@/services/ErrorHandler';
 import CharacterSelectPopup from './popup/CharacterSelectPopup.vue';
 import ArchiveManagerPopup from './popup/ArchiveManagerPopup.vue';
 import SystemPopup from './popup/SystemPopup.vue';
@@ -158,8 +159,14 @@ async function refreshData() {
 }
 
 onMounted(async () => {
-  await loadData();
-  await loadCharacters();
+  // P8-504 修复：try/catch 包裹数据加载，防止 unhandled rejection
+  try {
+    await loadData();
+    await loadCharacters();
+  } catch (e) {
+    console.error('[CharacterSelect] 初始化数据加载失败:', e);
+    errorHandler.report(e);
+  }
 });
 
 // ==================== 一级按钮处理 ====================

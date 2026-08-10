@@ -494,7 +494,7 @@ export function useConfigTableMeta(): UseConfigTableMetaReturn {
 
   /** 当前列定义（注入字典翻译） */
   const currentColumns = computed<TableColumn[]>(() => {
-    return tableColumns[currentTable.value].map(col => {
+    return (tableColumns[currentTable.value] || []).map(col => {
       // factionId → 中文阵营名
       if (col.key === 'factionId' && factionOptions.value.length > 0) {
         return { ...col, format: (v: CellValue) => t(FACTION_NAMES, v) };

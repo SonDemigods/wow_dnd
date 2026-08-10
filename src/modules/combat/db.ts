@@ -32,25 +32,14 @@ export class CombatDbService {
    */
   async saveCombatLog(log: CombatLog): Promise<void> {
     await dbService.withRetry(async () => {
+      // P8-003 修复：使用展开写法替代手动枚举，与 mapStorageToLogs 的 ...log 保持一致，
+      // 避免新增字段时遗漏同步更新
+      const { actorType, eventType, targetType, ...rest } = log;
       await gameDb.runtime_combatLogs.put({
-        combatId: log.combatId,
-        battleLogId: log.battleLogId,
-        timestamp: log.timestamp,
-        turn: log.turn,
-        actorType: log.actorType,
-        actorId: log.actorId,
-        actorName: log.actorName,
-        eventType: log.eventType,
-        targetType: log.targetType,
-        targetId: log.targetId,
-        targetName: log.targetName,
-        skillId: log.skillId,
-        skillName: log.skillName,
-        damage: log.damage,
-        heal: log.heal,
-        isCrit: log.isCrit,
-        isDodge: log.isDodge,
-        message: log.message
+        ...rest,
+        actorType,
+        eventType,
+        targetType,
       });
     });
   }

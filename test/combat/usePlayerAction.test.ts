@@ -1796,7 +1796,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
   });
 
   describe('边界分支补充：playerSkill heal mana_restore 与 buff 空名回退', () => {
-    it('heal 技能 result.heal 时 healType 为 health', async () => {
+    it('heal 技能 result.heal 时 healType 为 mana', async () => {
       // 覆盖 usePlayerAction.ts 第 764, 774, 778 行
       const state = makeStateMock();
       skillStoreMock.getSkill.mockReturnValue({
@@ -1813,7 +1813,7 @@ describe('usePlayerAction - 玩家行动 Composable', () => {
 
       const { eventBus, GameEvents } = await import('@/modules/bus');
       expect(eventBus.emit).toHaveBeenCalledWith(GameEvents.COMBAT_CAST_HEAL, expect.objectContaining({
-        healType: 'health',
+        healType: 'mana',
         amount: 20,
       }));
       // 日志 skillName 为空字符串

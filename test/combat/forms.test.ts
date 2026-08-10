@@ -43,8 +43,8 @@ import type { DruidFormType, FormState } from '@/modules/combat/forms/types';
 // ============================================================
 
 describe('FORM_SWITCH_CONFIG 常量', () => {
-  it('actionPointCost 为 1', () => {
-    expect(FORM_SWITCH_CONFIG.actionPointCost).toBe(1);
+  it('actionPointCost 已移除（形态切换不消耗行动点）', () => {
+    expect((FORM_SWITCH_CONFIG as Record<string, unknown>).actionPointCost).toBeUndefined();
   });
 
   it('defaultHealPercent 为 0.10（10%）', () => {

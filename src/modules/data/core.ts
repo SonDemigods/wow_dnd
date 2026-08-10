@@ -317,8 +317,7 @@ export class DBService {
         }
       }
     }
-
-    // 所有重试均已耗尽，抛出最终错误
+    // P8-019: 循环内最后一次迭代已抛出，此 throw 不可达但满足 TypeScript 返回类型推断
     throw new Error('所有重试均已耗尽');
   }
 

@@ -35,7 +35,8 @@ export function rollDodge(dodgeChance: number, rng: Rng = defaultRng): boolean {
  * @returns 逃跑成功率（0~1 之间的小数）
  */
 export function calculateFleeChance(dex: number): number {
-  return FLEE_BASE_CHANCE + dex * FLEE_DEX_COEFFICIENT;
+  // P8-005 修复：钳制到 [0,1]，防止 debuff 导致 dex 为负时逃跑概率为负
+  return Math.max(0, Math.min(1, FLEE_BASE_CHANCE + dex * FLEE_DEX_COEFFICIENT));
 }
 
 /**

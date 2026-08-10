@@ -872,7 +872,7 @@ describe('useEquipmentStore - 装备 Store', () => {
         expect(mocks.characterStore.applyBonus).toHaveBeenCalledWith({ str: 20 });
       });
 
-      it('双手武器在 weapon2 已占用时拒绝装备', async () => {
+      it('双手武器在 weapon2 已占用时先卸下 weapon2 再装备', async () => {
         const store = useEquipmentStore();
         const shield = makeWeapon({
           id: 'shield', name: '铁盾', subtype: 'shield', grip: 'off_hand',
@@ -886,11 +886,9 @@ describe('useEquipmentStore - 装备 Store', () => {
 
         const result = await store.equipItem('weapon1', twoHanded);
 
-        expect(result).toBe(false);
-        // 装备未写入
-        expect(store.equipment.weapon1).toBeNull();
-        // 未触达背包移除
-        expect(mocks.inventoryCallbacks.removeItem).not.toHaveBeenCalled();
+        expect(result).toBe(true);
+        // 装备已写入
+        expect(store.equipment.weapon1?.item.id).toBe('two_handed_w');
       });
 
       it('weapon1 装备双手武器后，单手武器不可装到 weapon2', async () => {
@@ -987,7 +985,7 @@ describe('useEquipmentStore - 装备 Store', () => {
         expect(store.canEquip(twoHanded, 'weapon1')).toBe(true);
       });
 
-      it('双手武器在 weapon2 已占用时不可装备到 weapon1', () => {
+      it('双手武器在 weapon2 已占用时可装备到 weapon1', () => {
         const store = useEquipmentStore();
         const shield = makeWeapon({
           id: 'shield', subtype: 'shield', grip: 'off_hand',
@@ -997,7 +995,7 @@ describe('useEquipmentStore - 装备 Store', () => {
           equipment: buildEquipment({ weapon2: { item: shield, equippedAt: 1 } }),
         });
         const twoHanded = makeTwoHandedWeapon();
-        expect(store.canEquip(twoHanded, 'weapon1')).toBe(false);
+        expect(store.canEquip(twoHanded, 'weapon1')).toBe(true);
       });
 
       it('weapon1 装备双手武器后 canEquip 单手武器到 weapon2 返回 false', () => {

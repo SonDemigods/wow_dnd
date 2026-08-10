@@ -106,6 +106,8 @@ import { RecycleScroller } from 'vue-virtual-scroller';
 import { useSkillStore } from '@/modules/skill';
 import { useCharacterStore } from '@/modules/character';
 import { eventBus, GameEvents } from '@/modules/bus';
+import { useToast } from '@/composables/useToast';
+import { errorHandler } from '@/services/ErrorHandler';
 import { useSkillDisplay } from '@/composables/useSkillDisplay';
 import { useResponsiveGrid } from '@/composables/useResponsiveGrid';
 import type { Skill, SkillSlotIndex } from '@/modules/skill';
@@ -124,6 +126,7 @@ defineEmits<{
 
 const skillsStore = useSkillStore();
 const characterStore = useCharacterStore();
+const toast = useToast();
 
 const selectedSkill = ref<Skill | null>(null);
 // P2 TS-4 修复：使用 SkillSlotIndex 精确类型替代 number，消 equipSkill 调用处的 as 断言
@@ -220,14 +223,22 @@ async function loadClassSkills() {
 }
 
 async function loadData() {
-  const id = characterStore.currentCharacterId;
-  if (!id) return;
-  await skillsStore.initialize(id);
-  await loadClassSkills();
+  // P8-506 修复：try/catch 包裹，catch 中 errorHandler.report + toast 提示
+  try {
+    const id = characterStore.currentCharacterId;
+    if (!id) return;
+    await skillsStore.initialize(id);
+    await loadClassSkills();
+  } catch (e) {
+    console.error('[SkillsPopup] loadData 失败:', e);
+    errorHandler.report(e);
+    toast.show({ message: '加载技能数据失败，请重试', type: 'danger' });
+  }
 }
 
-onMounted(() => {
-  loadData();
+onMounted(async () => {
+  // P8-506 修复：await loadData() 确保 onMounted 内异常可被捕获
+  await loadData();
 });
 </script>
 

@@ -132,25 +132,26 @@ export function useSkillState() {
 
   async function initialize(characterId?: string): Promise<void> {
     isLoading.value = true;
+    try {
+      const characterStore = useCharacterStore();
+      const charId = characterId || characterStore.getCharacterId();
+      if (!charId) {
+        return;
+      }
 
-    const characterStore = useCharacterStore();
-    const charId = characterId || characterStore.getCharacterId();
-    if (!charId) {
+      await loadTemplatesForClass(characterStore.classId);
+      await loadMonsterSkillTemplates();
+
+      const data = await skillsDbService.getSkillsData(charId);
+      skillBar.value = data.skillBar;
+
+      skills.value = data.skills
+        .map(id => skillTemplates.value.get(id))
+        .filter((s): s is Skill => s !== undefined);
+    } finally {
+      // P8-202 修复：无论 DB 读取成功或失败，finally 确保 isLoading 复位，避免永久 loading
       isLoading.value = false;
-      return;
     }
-
-    await loadTemplatesForClass(characterStore.classId);
-    await loadMonsterSkillTemplates();
-
-    const data = await skillsDbService.getSkillsData(charId);
-    skillBar.value = data.skillBar;
-
-    skills.value = data.skills
-      .map(id => skillTemplates.value.get(id))
-      .filter((s): s is Skill => s !== undefined);
-
-    isLoading.value = false;
   }
 
   // ==================== 查询 ====================
@@ -175,13 +176,29 @@ export function useSkillState() {
   async function addSkillTemplate(skill: Skill): Promise<void> {
     skillTemplates.value.set(skill.id, skill);
     triggerRef(skillTemplates);
-    await skillsDbService.saveSkillTemplate(skill);
+    // P8-203 修复：捕获 DB 写入失败，记录错误但不回滚内存（保持简单）
+    try {
+      await skillsDbService.saveSkillTemplate(skill);
+    } catch (err) {
+      errorReporter.report(err, 'manual', {
+        context: 'addSkillTemplate DB 写入失败，UI 与 DB 状态可能不一致',
+        skillId: skill.id,
+      });
+    }
   }
 
   async function removeSkillTemplate(skillId: string): Promise<void> {
     skillTemplates.value.delete(skillId);
     triggerRef(skillTemplates);
-    await skillsDbService.deleteSkillTemplate(skillId);
+    // P8-203 修复：捕获 DB 写入失败，记录错误但不回滚内存（保持简单）
+    try {
+      await skillsDbService.deleteSkillTemplate(skillId);
+    } catch (err) {
+      errorReporter.report(err, 'manual', {
+        context: 'removeSkillTemplate DB 写入失败，UI 与 DB 状态可能不一致',
+        skillId,
+      });
+    }
   }
 
   async function getSkillTemplatesByClass(classId: string): Promise<Skill[]> {
@@ -207,9 +224,8 @@ export function useSkillState() {
       const remaining = cooldowns.value[key];
       if (remaining > 0) {
         const next = remaining - 1;
+        // P8-201 修复：仅保留 next>0 的键写回，删除 else 分支（不再保留 remaining<=0 的键）
         if (next > 0) newCooldowns[key] = next;
-      } else {
-        newCooldowns[key] = remaining;
       }
     }
     cooldowns.value = newCooldowns;

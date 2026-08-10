@@ -59,7 +59,6 @@ export function useEquipmentOps(state: EquipmentState, setBonus: ReturnType<type
   async function equipItem(slot: EquipmentSlot, item: EquipmentItem): Promise<boolean> {
     if (!currentCharacterId.value) return false;
     if (!validateSlot(item, slot)) return false;
-    if (item.grip === 'two_handed' && slot === 'weapon1' && equipment.value.weapon2) return false;
     if (slot === 'weapon2' && isSlotLockedByTwoHanded(equipment.value, 'weapon2')) return false;
 
     const characterStore = useCharacterStore();
@@ -77,6 +76,10 @@ export function useEquipmentOps(state: EquipmentState, setBonus: ReturnType<type
     let previousEquipped: EquippedItem | null = null;
     try {
       previousEquipped = await doUnequip(slot);
+      // P8-015 修复：双手武器装 weapon1 时，先卸下 weapon2 残留装备
+      if (item.grip === 'two_handed' && slot === 'weapon1' && equipment.value.weapon2) {
+        await doUnequip('weapon2');
+      }
     } catch (e) {
       console.error('[EquipmentStore] equipItem 卸下旧装备失败，回滚已移除的物品:', e);
       if (cb.addItem()) cb.addItem()!(item.id, 1);
@@ -224,7 +227,7 @@ export function useEquipmentOps(state: EquipmentState, setBonus: ReturnType<type
     if (!checkClassRestriction(item, characterStore.classId)) return false;
     if (slot) {
       if (!validateSlot(item, slot)) return false;
-      if (item.grip === 'two_handed' && slot === 'weapon1' && equipment.value.weapon2) return false;
+      // P8-015 修复：双手武器装 weapon1 时自动卸下 weapon2，不再阻止装备
       if (slot === 'weapon2' && isSlotLockedByTwoHanded(equipment.value, 'weapon2')) return false;
       return true;
     }

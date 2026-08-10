@@ -10,6 +10,7 @@
 import { useEnemyStore } from '@/modules/enemy';
 import { useCombatStore } from '@/modules/combat';
 import { adminQueryService } from '@/services/AdminQueryService';
+import { CONSOLE_KILL_DAMAGE } from '@/config/combat'; // P8-301
 import {
   registerCommand,
   logTag,
@@ -125,10 +126,12 @@ registerCommand({
 /**
  * 敌人立即死亡
  *
- * 对当前战斗目标造成 99999 点伤害使其立即死亡，并以胜利结束战斗。
+ * 对当前战斗目标造成致命伤害使其立即死亡。
  * 优先使用 currentTarget（当前选中目标），无目标时返回失败。
+ * P8-304 修复：多敌人战斗中仅击杀目标不结束战斗，全部敌人死亡才胜利。
  *
  * @see useCombatStore().currentTarget
+ * @see useCombatStore().aliveEnemies
  * @see useEnemyStore().takeDamage
  */
 registerCommand({
@@ -136,7 +139,7 @@ registerCommand({
   category: 'combat',
   description: '使当前敌人立即死亡',
   usage: 'kill',
-  handler() {
+  async handler() {
     if (!useCombatStore().isInCombat) {
       return { success: false, message: '当前没有在战斗中' };
     }
@@ -144,8 +147,13 @@ registerCommand({
     if (!enemy) {
       return { success: false, message: '没有存活的敌人' };
     }
-    useEnemyStore().takeDamage(enemy.id, 99999);
-    useCombatStore().endCombat('victory');
+    // P8-301 修复：await takeDamage 确保伤害结算完成后再判断战斗结果
+    await useEnemyStore().takeDamage(enemy.id, CONSOLE_KILL_DAMAGE);
+    // P8-304 修复：检查是否仍有存活敌人，多敌人战斗中仅击杀目标不强制胜利
+    if (useCombatStore().aliveEnemies.length > 0) {
+      return { success: true, message: `${enemy.name} 已被消灭（${enemy.id}），仍有存活敌人` };
+    }
+    await useCombatStore().endCombat('victory');
     return { success: true, message: `${enemy.name} 已被消灭（${enemy.id}）` };
   }
 });

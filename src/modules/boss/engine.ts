@@ -131,7 +131,8 @@ const statAndDefenseExecutors: Record<StatAndDefenseMechanic, MechanicExecutor> 
   damage_shield: (boss, params) => {
     // 阶段二修复：shieldAmount:0 是合法值（清空护盾），不应被默认值覆盖
     const shieldAmount = params?.shieldAmount ?? 30;
-    boss.runtime.shield = (boss.runtime.shield ?? 0) + shieldAmount;
+    // P8-401 修复：shieldAmount=0 时清空护盾（与注释语义一致），其余追加
+    boss.runtime.shield = shieldAmount === 0 ? 0 : (boss.runtime.shield ?? 0) + shieldAmount;
   },
   /** 反弹伤害：设置反弹比例（默认 20%） */
   reflect_damage: (boss, params) => {

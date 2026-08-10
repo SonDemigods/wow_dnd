@@ -1,6 +1,6 @@
 # 当前待修复问题
 
-> 最近检查：2026-08-10（第四轮全量代码审查，302 源文件，6 子代理并行）
+> 最近检查：2026-08-10（第五轮全量代码审查，302 源文件，11 子代理分两波并行）
 > tsc / eslint / vitest：全部通过（模块测试 188 文件 5776 项；组件测试 wrapper.emitted() 预存问题）
 > 归档目录：[doc/fixed/](./)
 
@@ -24,6 +24,9 @@
 | P6-157 | 所有 querySelector 调用已有 `instanceof HTMLElement` 守卫。 |
 | P7-EX-01 | Quest 模块无 daily/elite/chain category 与每日重置——Vue3 项目从未设计此功能（Unity 项目记忆不适用）。 |
 | P7-EX-02 | computeEventProbability 归一化舍入偏差——P6-102 已修复（Math.max 保护负值 + 减法消尾），剩余舍入偏差可忽略。 |
+| P8-004 | AI 策略 isHeal/isBuff 从单一 skill.type 枚举派生，运行时互斥，`!isHeal && !isBuff` 分类正确。 |
+| P8-018 | collectAllData adventureLog 按 characterId 覆盖——runtime_adventureLogs 主键为 characterId，每角色单条记录，覆盖正确。 |
+| P8-019 | withRetry 末尾 throw 不可达但满足 TypeScript 返回类型推断，保留并加注释说明。 |
 
 ---
 
@@ -52,6 +55,7 @@
 
 | 轮次 | 归档 | 项数 |
 |------|------|------|
+| 第五轮 | [fixed_20260810122430.md](./fixed_20260810122430.md) | 59 |
 | 第四轮 | [fixed_20260810113526.md](./fixed_20260810113526.md) | 33 |
 | 第三轮 P3 | [fixed_20260810101500.md](./fixed_20260810101500.md) | 12 |
 | 第三轮 P1+P2 | [fixed_20260810100500.md](./fixed_20260810100500.md) | 18 |

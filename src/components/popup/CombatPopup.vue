@@ -724,9 +724,16 @@ async function doSkill(skillId: string) {
   // 视觉特效：伤害效果使用公共函数
   applyCombatDamageEffects(result, dmgType);
   if (result.heal && result.heal > 0) {
-    showFloating('player', `+${result.heal}`, 'heal-hp');
-    triggerHealGlow();
-    triggerParticles('player', HEAL_PARTICLES);
+    // P8-007 修复：mana_restore 显示为法力恢复而非生命恢复
+    if (skillType === 'mana_restore') {
+      showFloating('player', `MP+${result.heal}`, 'heal-mp');
+      triggerManaGlow();
+      triggerParticles('player', MANA_PARTICLES);
+    } else {
+      showFloating('player', `+${result.heal}`, 'heal-hp');
+      triggerHealGlow();
+      triggerParticles('player', HEAL_PARTICLES);
+    }
   }
 
   if (combatStore.combatResult) {
@@ -764,6 +771,12 @@ async function useItem(_itemId: string, _index: number) {
   const result = await combatStore.playerAction({ type: 'item', itemId: _itemId });
 
   if (isUnmounted.value) return;
+
+  // P8-501 修复：物品使用失败时复位动画状态，避免战斗卡死（与 doAction/doSkill 一致）
+  if (!result.success) {
+    isAnimating.value = false;
+    return;
+  }
 
   if (!combatStore.combatResult) {
     // 伤害型物品的视觉特效（卷轴等）

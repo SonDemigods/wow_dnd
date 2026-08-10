@@ -18,6 +18,7 @@ import {
   resetAllocations,
   getTalentStatBonuses,
   getColSpentPoints,
+  isTierUnlocked,
   type TalentEffectSummary
 } from './service';
 import { configCache } from '@/modules/config';
@@ -274,8 +275,9 @@ export const useTalentStore = defineStore('talent', () => {
       if (Object.keys(delta).length > 0) {
         await characterStore.applyBonus(delta);
       }
+      // P8-013 修复：将 lastAppliedStats 更新移到 IIFE 内部，await 完成后再更新，避免竞态
+      lastAppliedStats = { ...current };
     })();
-    lastAppliedStats = { ...current };
   }
 
   /**
@@ -334,6 +336,9 @@ export const useTalentStore = defineStore('talent', () => {
     if (!currentClassId.value) return false;
     const currentRank = allocations.value[talentId] || 0;
     if (currentRank <= 0) return false;
+
+    // P8-012 修复：取消前检查是否会导致后续行解锁降级
+    if (!canUnlearn(talentId)) return false;
 
     allocations.value = unlearnTalent(allocations.value, talentId);
 
@@ -435,7 +440,19 @@ export const useTalentStore = defineStore('talent', () => {
    */
   function canUnlearn(talentId: string): boolean {
     if (!currentClassId.value) return false;
-    return (allocations.value[talentId] || 0) > 0;
+    if ((allocations.value[talentId] || 0) <= 0) return false;
+
+    // P8-012 修复：检查取消后是否会导致后续行解锁降级
+    // 模拟取消后状态，遍历所有已学习天赋，确认其所在行仍满足解锁要求
+    const simulated = unlearnTalent(allocations.value, talentId);
+    for (const tree of talentTrees.value) {
+      for (const talent of tree.talents) {
+        if ((simulated[talent.id] || 0) > 0 && !isTierUnlocked(talent, tree, simulated)) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   return {

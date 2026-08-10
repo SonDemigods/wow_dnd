@@ -65,7 +65,7 @@ export class MigrationService {
       const migratedData = runMigrations(data, fromVersion);
 
       // 4. 写回迁移后的数据（复用 ImportService.importData）
-      //    importData 内部会清空并重写所有表
+      //    P8-016 修复：importData 为覆盖式写入（bulkPut），不删除已有记录；迁移需删除场景需另行清理
       const importService = new ImportService();
       const importResult = await importService.importData(migratedData);
 

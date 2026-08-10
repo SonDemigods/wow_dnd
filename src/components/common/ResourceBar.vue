@@ -3,7 +3,7 @@
     <BaseIcon :name="iconName || icon" :gradient="iconGradient" :size="16" />
     <div class="resource-track">
       <!-- 填充层 -->
-      <div class="resource-fill" :class="type" :style="{ width: percent + '%' }">
+      <div class="resource-fill" :class="type" :style="{ width: Math.max(0, Math.min(100, percent)) + '%' }">
         <!-- 流体波浪层 1（慢速大浪） -->
         <div class="wave-layer wave-slow" :class="type"></div>
         <!-- 流体波浪层 2（快速细浪） -->

@@ -37,6 +37,9 @@ import {
 // P1-30 修复：MAX_LEVEL 改为从 @/config/character 直接导入，不再通过 @/data 越层导出
 import { MAX_LEVEL } from '@/config/character';
 
+// P8-020 修复：模块级互斥锁，防止并发重复初始化
+let initPromise: Promise<void> | null = null;
+
 /**
  * 数据初始化服务类
  *
@@ -65,6 +68,10 @@ export class DataInitializer {
    * 如果数据已初始化则跳过，否则执行完整的初始化流程
    */
   async initializeData(): Promise<void> {
+    // P8-020 修复：模块级互斥锁，防止并发重复初始化
+    if (initPromise) return initPromise;
+
+    initPromise = (async () => {
     const isInitialized = await this.isDataInitialized();
 
     if (import.meta.env.DEV) console.log('初始化游戏数据中...');
@@ -141,6 +148,13 @@ export class DataInitializer {
         }
       }
       throw error;
+    }
+    })();
+
+    try {
+      await initPromise;
+    } finally {
+      initPromise = null;
     }
   }
 

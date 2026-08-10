@@ -205,6 +205,12 @@ export const useBaseStore = defineStore('base', () => {
       factions.value = factionsData;
       races.value = racesData;
       classes.value = classesData;
+    } catch (error) {
+      // P8-403 修复：Promise.all 失败时上报错误并返回空数组，不阻塞 bootstrap
+      errorHandler.report(error, '加载基础数据失败');
+      factions.value = [];
+      races.value = [];
+      classes.value = [];
     } finally {
       isLoading.value = false;
     }

@@ -258,6 +258,7 @@ import { onMounted } from 'vue';
 import Tag from './common/Tag.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import { useCharacterCreation } from '@/composables/useCharacterCreation';
+import { errorHandler } from '@/services/ErrorHandler';
 
 const emit = defineEmits<{
   created: [];
@@ -276,7 +277,13 @@ const {
 } = useCharacterCreation(() => emit('created'));
 
 onMounted(async () => {
-  await loadData();
+  // P8-505 修复：try/catch 包裹数据加载，防止 unhandled rejection
+  try {
+    await loadData();
+  } catch (e) {
+    console.error('[CharacterCreate] 数据加载失败:', e);
+    errorHandler.report(e);
+  }
 });
 </script>
 

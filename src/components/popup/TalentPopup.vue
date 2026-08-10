@@ -75,14 +75,14 @@
             <button
               class="action-btn learn-btn"
               :disabled="!talentStore.canLearn(selectedTalent.id)"
-              @click="talentStore.learn(selectedTalent.id)"
+              @click="learnSelected"
             >
               学习
             </button>
             <button
               class="action-btn unlearn-btn"
               :disabled="!talentStore.canUnlearn(selectedTalent.id)"
-              @click="talentStore.unlearn(selectedTalent.id)"
+              @click="unlearnSelected"
             >
               取消
             </button>
@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onUnmounted } from 'vue';
 import { useTalentStore } from '@/modules/character/talents';
 import { useCharacterStore } from '@/modules/character';
 import type { Talent } from '@/modules/character/talents/types';
@@ -211,6 +211,8 @@ function colColor(col?: number): string {
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
+// P8-502 修复：跟踪重置确认计时器，组件卸载时清理
+let resetConfirmTimer: ReturnType<typeof setTimeout> | null = null;
 
 function showToast(msg: string): void {
   toastMessage.value = msg;
@@ -221,7 +223,10 @@ function showToast(msg: string): void {
 function onNodeClick(node: GridNode): void {
   selectedTalent.value = node.talent;
   if (talentStore.canLearn(node.talent.id)) {
-    talentStore.learn(node.talent.id);
+    // P8-503 修复：检查 learn 返回值，失败时提示
+    if (!talentStore.learn(node.talent.id)) {
+      showToast('无法学习该天赋');
+    }
   } else {
     const result = canLearnReason(node.talent.id);
     if (result) showToast(result);
@@ -231,7 +236,10 @@ function onNodeClick(node: GridNode): void {
 function onNodeRightClick(node: GridNode): void {
   selectedTalent.value = node.talent;
   if (talentStore.canUnlearn(node.talent.id)) {
-    talentStore.unlearn(node.talent.id);
+    // P8-503 修复：检查 unlearn 返回值，失败时提示
+    if (!talentStore.unlearn(node.talent.id)) {
+      showToast('无法取消该天赋');
+    }
   } else {
     showToast('该天赋未学习或等级为 0');
   }
@@ -246,19 +254,42 @@ function canLearnReason(talentId: string): string | null {
   return null;
 }
 
+// P8-503 修复：模板按钮包装函数，检查 learn/unlearn 返回值
+function learnSelected(): void {
+  if (!selectedTalent.value) return;
+  if (!talentStore.learn(selectedTalent.value.id)) {
+    showToast('无法学习该天赋');
+  }
+}
+
+function unlearnSelected(): void {
+  if (!selectedTalent.value) return;
+  if (!talentStore.unlearn(selectedTalent.value.id)) {
+    showToast('无法取消该天赋');
+  }
+}
+
 const showResetConfirm = ref(false);
 
 function confirmReset(): void {
   if (!showResetConfirm.value) {
     showResetConfirm.value = true;
     showToast('再次点击「重置天赋」以确认重置');
-    setTimeout(() => { showResetConfirm.value = false; }, 3000);
+    // P8-502 修复：记录计时器引用，组件卸载时清理
+    if (resetConfirmTimer) clearTimeout(resetConfirmTimer);
+    resetConfirmTimer = setTimeout(() => { showResetConfirm.value = false; }, 3000);
     return;
   }
   talentStore.resetAllAllocations();
   showResetConfirm.value = false;
   showToast('已重置所有天赋分配');
 }
+
+// P8-502 修复：组件卸载时清理未完成的 setTimeout 计时器
+onUnmounted(() => {
+  if (toastTimer) clearTimeout(toastTimer);
+  if (resetConfirmTimer) clearTimeout(resetConfirmTimer);
+});
 
 watch(() => talentStore.allocations, () => {
   // 刷新选中天赋的等级显示

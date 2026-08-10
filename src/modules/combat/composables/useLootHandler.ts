@@ -72,6 +72,17 @@ export function useLootHandler(
             message: `从 ${e.name} 获得 ${itemName} x${actualAmount}`,
             icon: 'game-icons:backpack'
           });
+        } else {
+          // P8-104 修复：掉落物品模板缺失时记录告警，避免静默丢弃
+          addCombatLog({
+            actorType: 'system',
+            actorId: 'system',
+            actorName: '系统',
+            eventType: 'combat_item',
+            isCrit: false,
+            isDodge: false,
+            message: `掉落物品模板缺失：${drop.itemId}`,
+          });
         }
       }
     });

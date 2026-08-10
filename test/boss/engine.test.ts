@@ -154,12 +154,12 @@ describe('executeBossMechanic', () => {
       expect(bossInstance.runtime.shield).toBe(0);
     });
 
-    it('已有护盾时 shieldAmount 为 0 保持原护盾值', () => {
+    it('已有护盾时 shieldAmount 为 0 清空护盾', () => {
       const boss = makeBoss();
       const bossInstance = wrapAsBossInstance(boss);
       executeBossMechanic(bossInstance, makeMechanic({ type: 'damage_shield', params: { shieldAmount: 30 } }), 1);
       executeBossMechanic(bossInstance, makeMechanic({ type: 'damage_shield', params: { shieldAmount: 0 } }), 2);
-      expect(bossInstance.runtime.shield).toBe(30);
+      expect(bossInstance.runtime.shield).toBe(0);
     });
   });
 

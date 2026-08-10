@@ -422,6 +422,7 @@ import { useBaseStore } from '@/modules/base';
 import { ResourceSystemFactory } from '@/modules/combat/resources';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useToast } from '@/composables/useToast';
+import { errorHandler } from '@/services/ErrorHandler';
 import { useCharacterMounts } from '@/composables/useCharacterMounts';
 import type { Stats, Attributes, StatSource } from '@/modules/character';
 import type { EquipmentSlot, EquipmentItem } from '@/modules/equipment';
@@ -606,7 +607,14 @@ const attrIcons: Record<string, { name: string; gradient: string }> = {
 };
 
 async function loadData() {
-  await baseStore.loadAllData();
+  // P8-508 修复：try/catch 包裹，catch 中 errorHandler.report + toast 提示
+  try {
+    await baseStore.loadAllData();
+  } catch (e) {
+    console.error('[CharacterInfoPopup] loadData 失败:', e);
+    errorHandler.report(e);
+    useToast().show({ message: '加载角色数据失败，请重试', type: 'danger' });
+  }
 }
 
 function getRaceIcon(raceId: string) {
@@ -697,9 +705,15 @@ async function unequipItem(slotKey: string) {
 }
 
 onMounted(async () => {
-  await loadData();
-  if (characterStore.currentCharacterId) {
-    await equipmentStore.initialize(characterStore.currentCharacterId);
+  // P8-508 修复：try/catch 包裹 onMounted 中的异步操作
+  try {
+    await loadData();
+    if (characterStore.currentCharacterId) {
+      await equipmentStore.initialize(characterStore.currentCharacterId);
+    }
+  } catch (e) {
+    console.error('[CharacterInfoPopup] onMounted 失败:', e);
+    errorHandler.report(e);
   }
 });
 

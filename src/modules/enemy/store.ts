@@ -214,7 +214,8 @@ export const useEnemyStore = defineStore('enemies', () => {
       return { success: false, damage: 0, isHeal: false };
     }
 
-    const isHeal = skill.type === 'health_restore' || skill.type === 'mana_restore';
+    // P8-402 修复：mana_restore 不应治疗敌人 HP（敌人无 MP 概念），仅 health_restore 走治疗分支
+    const isHeal = skill.type === 'health_restore';
     const isBuff = skill.type === 'buff' || skill.type === 'debuff';
 
     // buff/debuff 技能：不造成伤害，将 buff 数据传回调用方处理

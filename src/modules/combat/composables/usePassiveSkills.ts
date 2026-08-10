@@ -172,7 +172,7 @@ export function usePassiveSkills(
         applyResourceGen(effect);
         break;
       case 'heal':
-        applyHeal(effect, context);
+        applyHeal(effect, context, passive.trigger);
         break;
       case 'stat_modifier':
         // P3-146：stat_modifier 已通过 getStatModifiers() 接入伤害管线与暴击判定，
@@ -186,7 +186,8 @@ export function usePassiveSkills(
         break;
       case 'buff':
         // P3-146：buff 类被动转换为 effect 写入对应容器（如术士腐蚀术 DOT）
-        applyBuff(effect, context);
+        // P8-105 修复：传入 passive.name 作为 sourceName，避免硬编码
+        applyBuff(effect, context, passive.name);
         break;
     }
   }
@@ -214,12 +215,13 @@ export function usePassiveSkills(
    * - on_attack 触发：按造成伤害的百分比吸血
    * - on_turn_start/on_damaged/on_low_hp 触发：按最大生命百分比治疗
    */
-  function applyHeal(effect: PassiveEffect, context?: PassiveTriggerContext): void {
+  function applyHeal(effect: PassiveEffect, context: PassiveTriggerContext | undefined, trigger: string): void {
     const amount = effect.value;
     if (amount <= 0) return;
 
     let healAmount: number;
-    if (context?.damage && context.damage > 0) {
+    // P8-101 修复：仅 on_attack 走吸血分支（按伤害百分比），其余触发按最大生命百分比治疗
+    if (trigger === 'on_attack' && context?.damage && context.damage > 0) {
       // 攻击吸血：按伤害百分比
       healAmount = Math.floor(context.damage * amount);
     } else {
@@ -293,7 +295,7 @@ export function usePassiveSkills(
    * @param effect  - 被动 effect 数据
    * @param context - 触发上下文（需含 targetEnemyId 才能对敌人施加效果）
    */
-  function applyBuff(effect: PassiveEffect, context?: PassiveTriggerContext): void {
+  function applyBuff(effect: PassiveEffect, context?: PassiveTriggerContext, passiveName?: string): void {
     if (effect.target === 'enemy') {
       // 敌方目标 buff：必须有 targetEnemyId 才能施加
       const targetId = context?.targetEnemyId;
@@ -337,7 +339,8 @@ export function usePassiveSkills(
         remainingTurns: effect.turns ?? 3,  // P3-184：从 PassiveEffect.turns 读取，默认 3
         value: dotValue,
         source: 'passive',
-        sourceName: '被动：腐蚀术',
+        // P8-105 修复：使用传入的 passiveName 替代硬编码 '被动：腐蚀术'
+        sourceName: passiveName || '被动效果',
       };
       addEffectToContainer(container, newEffect);
       effectRegistry.get(effectType)?.onApply?.(newEffect, effectCtx);

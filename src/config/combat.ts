@@ -355,3 +355,16 @@ export const BOSS_EFFECT_SCALE_STEP = 0.08;
  * @see src/modules/combat/composables/useInitiative.ts buildInitiativeOrder
  */
 export const INITIATIVE_DEFAULT_SPEED = 5;
+
+// ==================== 控制台命令参数 ====================
+
+/**
+ * kill 命令造成的伤害值
+ *
+ * 控制台 kill 命令对当前敌人造成的伤害量，设置为足够大的值以确保一击必杀。
+ *
+ * P8-301 修复：从 combat.ts 硬编码 99999 提取为配置常量。
+ *
+ * @see src/modules/console/commands/combat.ts kill 命令
+ */
+export const CONSOLE_KILL_DAMAGE = 99999;

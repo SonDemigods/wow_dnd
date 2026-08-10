@@ -78,7 +78,8 @@ export function useInventoryState() {
   async function persistInventory(): Promise<void> {
     const charId = currentCharacterId.value;
     if (charId) {
-      const promise = (async () => {
+      // P8-204 修复：串行化持久化，链式 .then() 确保顺序写入，避免竞态
+      const promise = (pendingPersistPromise ?? Promise.resolve()).then(async () => {
         try {
           await inventoryDbService.saveInventory(charId, inventory.value);
           persistError.value = null;
@@ -89,7 +90,7 @@ export function useInventoryState() {
             characterId: charId, itemCount: inventory.value.length,
           });
         }
-      })();
+      });
       pendingPersistPromise = promise;
       return promise;
     }
@@ -135,16 +136,20 @@ export function useInventoryState() {
     const newMap = new Map(itemTemplates.value);
     newMap.set(item.id, item);
     itemTemplates.value = newMap;
+    // P8-206 修复：DB 失败时上报 errorReporter，而非仅 console.error
     inventoryDbService.saveItemTemplate(item).catch(err => {
       console.error('[InventoryStore] 保存物品模板失败:', item.id, err);
+      errorReporter.report(err);
     });
   }
   function removeItemTemplate(itemId: string): void {
     const newMap = new Map(itemTemplates.value);
     newMap.delete(itemId);
     itemTemplates.value = newMap;
+    // P8-206 修复：DB 失败时上报 errorReporter，而非仅 console.error
     inventoryDbService.deleteItemTemplate(itemId).catch(err => {
       console.error('[InventoryStore] 删除物品模板失败:', itemId, err);
+      errorReporter.report(err);
     });
   }
 

@@ -265,8 +265,14 @@ function handleExit() {
 async function confirmExit() {
   showExitConfirm.value = false;
   transitionName.value = 'view-back';
-  await characterStore.logout();
-  gameState.value = 'character-select';
+  // P8-028 修复：logout 失败时仍切回角色选择，避免界面卡在原状态
+  try {
+    await characterStore.logout();
+  } catch (e) {
+    console.error('[App] logout 失败:', e);
+  } finally {
+    gameState.value = 'character-select';
+  }
 }
 
 /** 取消退出操作 */

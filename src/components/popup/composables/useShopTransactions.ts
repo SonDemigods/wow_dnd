@@ -23,6 +23,7 @@ import type { useInventoryStore } from '@/modules/inventory';
 import type { ShopDisplayItem } from '@/modules/shop';
 import type { InventoryItem, Item } from '@/modules/inventory';
 import { eventBus, GameEvents } from '@/modules/bus';
+import { useToast } from '@/composables/useToast';
 
 /** 出售标签的物品条目（关联背包数据和物品模板） */
 export interface SellItemEntry {
@@ -47,6 +48,9 @@ export interface UseShopTransactionsOptions {
  */
 export function useShopTransactions(options: UseShopTransactionsOptions) {
   const { shopStore, characterStore, inventoryStore, onTransactionSuccess } = options;
+
+  // P8-026 修复：catch 中向用户提供 toast 反馈
+  const toast = useToast();
 
   // ==================== 状态 ====================
 
@@ -75,7 +79,8 @@ export function useShopTransactions(options: UseShopTransactionsOptions) {
     if (!selectedBuyEntry.value || selectedBuyEntry.value.price <= 0) return 1;
     const byGold = Math.floor(gold.value / selectedBuyEntry.value.price);
     const byStock = selectedBuyEntry.value.quantity;
-    return Math.max(1, Math.min(byGold, byStock));
+    // P8-031 修复：无钱时上限为 0，而非强制 1
+    return Math.max(0, Math.min(byGold, byStock));
   });
 
   /** 购买总价 */
@@ -148,7 +153,8 @@ export function useShopTransactions(options: UseShopTransactionsOptions) {
 
   function incBuyQty(): void {
     eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_qty_inc' });
-    buyQuantity.value++;
+    // P8-031 修复：钳制购买数量不超过 buyMaxQuantity
+    buyQuantity.value = Math.min(buyQuantity.value + 1, buyMaxQuantity.value);
   }
 
   function decSellQty(): void {
@@ -177,6 +183,11 @@ export function useShopTransactions(options: UseShopTransactionsOptions) {
       }
     } catch (e) {
       console.error('[useShopTransactions] 购买失败:', e);
+      // P8-026 修复：toast 用户反馈 + 复位选中状态
+      toast.show({ type: 'danger', message: '购买失败，请重试' });
+      selectedBuyEntry.value = null;
+      buySelectedIndex.value = -1;
+      buyQuantity.value = 1;
     }
   }
 
@@ -194,6 +205,11 @@ export function useShopTransactions(options: UseShopTransactionsOptions) {
       }
     } catch (e) {
       console.error('[useShopTransactions] 出售失败:', e);
+      // P8-026 修复：toast 用户反馈 + 复位选中状态
+      toast.show({ type: 'danger', message: '出售失败，请重试' });
+      selectedSellEntry.value = null;
+      sellSelectedIndex.value = -1;
+      sellQuantity.value = 1;
     }
   }
 

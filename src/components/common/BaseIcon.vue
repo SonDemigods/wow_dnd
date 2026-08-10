@@ -93,6 +93,9 @@ const gradId = nextGradId();
 const gradientSvgBody = ref('');
 const lastLoadedKey = ref('');
 
+/** P8-025 修复：加载令牌，防止快速切换 icon 时旧请求覆盖新结果 */
+let loadToken = 0;
+
 watch(
   [finalIcon, () => props.gradient],
   async ([icon, grad]) => {
@@ -106,8 +109,13 @@ watch(
     if (cacheKey === lastLoadedKey.value && gradientSvgBody.value) return;
     lastLoadedKey.value = cacheKey;
 
+    // P8-025 修复：令牌保护，快速切换 icon 时丢弃过期的异步结果
+    const myToken = ++loadToken;
+
     try {
       const data = await loadIcon(icon);
+      // P8-025 修复：检查令牌，若已过期则丢弃本次结果
+      if (myToken !== loadToken) return;
       if (!data) {
         gradientSvgBody.value = '';
         return;

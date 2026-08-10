@@ -33,7 +33,6 @@ import type { useInitiative } from './useInitiative';
 import type { usePassiveSkills } from './usePassiveSkills';
 import type { useBossMechanics } from './useBossMechanics';
 import type { usePetAction } from './usePetAction';
-import type { PetType } from '../pets';
 
 /** P3-1：AOE 技能对每个目标造成的伤害占面板值的比例（设计文档：AOE 每目标 70% 基础伤害）
  * P3-147：常量已抽离至 @/config/combat，此处仅保留导入。 */
@@ -181,7 +180,8 @@ export function usePlayerSkill(
       }
       // M4 阶段：直接召唤第一个可召唤宠物
       // 阶段 3 将改为发射 COMBAT_OPEN_PET_SUMMON 事件弹出 PetSummonPopup 供玩家选择
-      const summonResult = pet.summon(summonable[0].id as PetType);
+      // P8-011 修复：summonable[0].id 已是 PetType（WarlockPetType|HunterPetType），移除冗余 as 强转
+      const summonResult = pet.summon(summonable[0].id);
       if (!summonResult.success) {
         // P3-179：MP 已消耗，结束回合作为惩罚
         initiative.endPlayerTurn();
@@ -577,12 +577,12 @@ export function usePlayerSkill(
       }
 
       eventBus.emit(GameEvents.COMBAT_CAST_HEAL, {
-        amount: finalHeal,
-        healType: 'health',
+        amount: isManaRestore ? result.heal : finalHeal,
+        healType: isManaRestore ? 'mana' : 'health',
         targetName: ctx.character.name
       });
 
-      if (healCrit) {
+      if (healCrit && !isManaRestore) {
         eventBus.emit(GameEvents.COMBAT_CRITICAL_HIT, {
           amount: finalHeal,
           damageType: 'physical',
@@ -598,12 +598,14 @@ export function usePlayerSkill(
         eventType: 'combat_heal',
         skillId,
         skillName: skill?.name || '',
-        heal: finalHeal,
-        isCrit: healCrit,
+        heal: isManaRestore ? result.heal : finalHeal,
+        isCrit: isManaRestore ? false : healCrit,
         isDodge: false,
-        message: healCrit
-          ? `${skill?.name || '技能'} 暴击！恢复了 ${finalHeal} 点生命值！`
-          : `${skill?.name || '技能'} 恢复了 ${finalHeal} 点生命值！`
+        message: isManaRestore
+          ? `${skill?.name || '技能'} 恢复了 ${result.heal} 点法力值！`
+          : (healCrit
+            ? `${skill?.name || '技能'} 暴击！恢复了 ${finalHeal} 点生命值！`
+            : `${skill?.name || '技能'} 恢复了 ${finalHeal} 点生命值！`)
       });
 
       // P3-184：治疗技能可能附带 buff（如"治疗+增益"），在结束回合前应用

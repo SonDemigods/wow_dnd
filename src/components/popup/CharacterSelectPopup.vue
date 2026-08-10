@@ -83,6 +83,8 @@ import Tag from '../common/Tag.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import BasePopup from '../common/BasePopup.vue';
 import { useBaseStore } from '@/modules/base';
+import { useToast } from '@/composables/useToast';
+import { errorHandler } from '@/services/ErrorHandler';
 
 defineProps<{
   visible: boolean;
@@ -148,20 +150,34 @@ function cancelDelete() {
 
 async function confirmDelete() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'confirm_delete' });
-  if (deletingCharacterId.value) {
-    await characterStore.deleteCharacter(deletingCharacterId.value);
-    await characterStore.loadCharacterList();
-    // watcher 会根据最新列表修正 selectedId
+  // P8-509 修复：try/catch 包裹删除操作，失败时提示用户
+  try {
+    if (deletingCharacterId.value) {
+      await characterStore.deleteCharacter(deletingCharacterId.value);
+      await characterStore.loadCharacterList();
+    }
+  } catch (e) {
+    console.error('[CharacterSelectPopup] 删除角色失败:', e);
+    errorHandler.report(e);
+    useToast().show({ message: '删除角色失败，请重试', type: 'danger' });
   }
+  // watcher 会根据最新列表修正 selectedId
   showConfirmModal.value = false;
   deletingCharacterId.value = null;
 }
 
 async function confirmSelect() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'enter_game' });
-  if (selectedId.value) {
-    await characterStore.selectCharacter(selectedId.value);
-    emit('select', selectedId.value);
+  // P8-509 修复：try/catch 包裹选择操作，失败时提示用户
+  try {
+    if (selectedId.value) {
+      await characterStore.selectCharacter(selectedId.value);
+      emit('select', selectedId.value);
+    }
+  } catch (e) {
+    console.error('[CharacterSelectPopup] 选择角色失败:', e);
+    errorHandler.report(e);
+    useToast().show({ message: '选择角色失败，请重试', type: 'danger' });
   }
 }
 
