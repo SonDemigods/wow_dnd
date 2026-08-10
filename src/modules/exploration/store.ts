@@ -33,6 +33,9 @@ import {
 import { VISION_RANGE, BOSS_SEAL_REQUIRED_CELLS } from '@/config/exploration';
 import { AREA_EVENT_TEMPLATES } from '@/data/config_area_events';
 import { dispatchCellEvent, applyEventEffect } from './events';
+
+/** P5-014 修复：新区域默认已访问格子数（起点+商店+任务板） */
+const DEFAULT_VISITED_CELLS = 3;
 import { defaultRng, type Rng } from '@/utils/rng';
 
 export const useExplorationStore = defineStore('exploration', () => {
@@ -157,7 +160,7 @@ export const useExplorationStore = defineStore('exploration', () => {
   /** 检查探索是否完成（所有格子已探索 且 Boss 被击败） */
   function checkCompletion(): void {
     const totalCells = GRID_SIZE * GRID_SIZE;
-    if (visitedCells.value >= totalCells || bossDefeated.value) {
+    if (visitedCells.value >= totalCells && bossDefeated.value) {
       explorationComplete.value = true;
     }
   }
@@ -320,7 +323,7 @@ export const useExplorationStore = defineStore('exploration', () => {
       campUsed.value = false;
       isExploring.value = false;
       playerPosition.value = { x: 0, y: 0 };
-      visitedCells.value = 1;
+      visitedCells.value = 1; // P5-014 修复：无网格时为 1（起点占位，与 enterArea 的 3 区分）
       bossDefeated.value = false;
       explorationComplete.value = false;
     }
@@ -364,7 +367,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     const startPos = findStartPosition(newGrid);
     grid.value = newGrid;
     playerPosition.value = startPos;
-    visitedCells.value = 3; // 起点、商店、任务板默认已访问
+    visitedCells.value = DEFAULT_VISITED_CELLS; // P5-014 修复：统一默认值
     campUsed.value = false;
     bossDefeated.value = false;
     explorationComplete.value = false;
@@ -690,7 +693,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     campUsed.value = false;
     isExploring.value = false;
     playerPosition.value = { x: 0, y: 0 };
-    visitedCells.value = 1;
+    visitedCells.value = 1; // P5-014 修复：无网格时为 1（起点占位，与 enterArea 的 3 区分）
     bossDefeated.value = false;
     explorationComplete.value = false;
     pendingBattleCell.value = null;
@@ -744,6 +747,15 @@ export const useExplorationStore = defineStore('exploration', () => {
       },
       amount
     );
+
+    // P5-013 修复：玩家做出选择后，标记当前格子为已完成
+    const pos = playerPosition.value;
+    const cell = grid.value[pos.y]?.[pos.x];
+    if (cell && cell.type === 'event' && !cell.completed) {
+      cell.completed = true;
+      refreshGrid();
+      await persistState();
+    }
 
     if (shouldHandleDeath) {
       // BIZ-9 修复：探索中死亡需手动触发 handleDeath

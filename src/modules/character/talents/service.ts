@@ -119,9 +119,10 @@ export function canLearnTalent(
     return { canLearn: false, reason: '没有可用的天赋点数' };
   }
 
-  // 4. 检查是否已达 maxRank
+  // 4. 检查是否已达上限（P5-011 修复：取 maxRank 与 maxPointsPerTalent 的较小值）
   const currentRank = allocations[talentId] || 0;
-  if (currentRank >= talent.maxRank) {
+  const maxRank = Math.min(talent.maxRank, TALENT_POINT_RULES.maxPointsPerTalent);
+  if (currentRank >= maxRank) {
     return { canLearn: false, reason: '该天赋已达最大等级' };
   }
 

@@ -198,7 +198,6 @@ class ErrorReporter {
   }
 
   private consoleLog(record: ErrorRecord): void {
-    // eslint-disable-next-line no-console
     console.error(
       `[ErrorReporter][${record.source}] ${record.message}`,
       record.context ?? '',

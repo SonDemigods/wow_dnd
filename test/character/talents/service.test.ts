@@ -379,8 +379,10 @@ describe('talents/service - 天赋纯函数服务层', () => {
     });
 
     it('已投入部分等级但未满 maxRank 时可继续学习', () => {
-      setupFoundTalent({ tier: 1, maxRank: 5 });
-      const result = canLearnTalent('t1', 'warrior', { t1: 2 }, 5);
+      // P5-011 修复：maxPointsPerTalent=2 生效，effective maxRank = min(maxRank, 2)
+      // maxRank:3 配合 currentRank:1 验证"部分投入可继续"逻辑
+      setupFoundTalent({ tier: 1, maxRank: 3 });
+      const result = canLearnTalent('t1', 'warrior', { t1: 1 }, 5);
       expect(result.canLearn).toBe(true);
     });
   });

@@ -279,12 +279,11 @@ import { useCharacterStore } from '@/modules/character';
 import { useSkillStore } from '@/modules/skill';
 import { useInventoryStore } from '@/modules/inventory';
 import { useEquipmentStore } from '@/modules/equipment';
-import { useSkillDisplay } from '@/composables/useSkillDisplay';
 import { useCombatUiHelpers } from '@/composables/useCombatUiHelpers';
 import { eventBus, GameEvents } from '@/modules/bus';
 import type { CombatLog, CombatResult, CombatActionType } from '@/modules/combat';
 import type { Skill } from '@/modules/skill';
-import type { ItemRarity, Item } from '@/modules/inventory';
+import type { ItemRarity } from '@/modules/inventory';
 import { describeEffect } from '@/modules/item/descriptors';
 import { hasCapability } from '@/modules/item/capabilityRegistry';
 import ResourceBar from '@/components/common/ResourceBar.vue';
@@ -401,16 +400,12 @@ const {
   phaseContentRef,
   vsDividerRef,
   PHYSICAL_PARTICLES,
-  MAGIC_PARTICLES,
   HEAL_PARTICLES,
   MANA_PARTICLES,
   CRIT_PARTICLES,
   showFloating,
   triggerShake,
   triggerCritShake,
-  triggerDodgeBlink,
-  triggerScreenFlash,
-  triggerMagicPulse,
   triggerHealGlow,
   triggerManaGlow,
   triggerCritBorderFlash,
@@ -475,7 +470,7 @@ const {
   getEnemiesInSlot, getEnemyEffects, getEnemyEffectCount,
   buildItemDescription, getSkillEffectText, getTargetTypeText,
   getDamageTypeClass, getDamageTypeIcon,
-  isBuffEffect, isDebuffEffect, formatEffectValue, getEffectIcon,
+  isBuffEffect, formatEffectValue, getEffectIcon,
 } = useCombatUiHelpers();
 
 // 状态

@@ -243,12 +243,26 @@ function onMapMouseMove(e: MouseEvent) {
   if (!isDragging.value) return;
   const dx = e.clientX - dragStartX.value;
   const dy = e.clientY - dragStartY.value;
-  panX.value = dragStartPanX.value + dx;
-  panY.value = dragStartPanY.value + dy;
+  clampPan(dragStartPanX.value + dx, dragStartPanY.value + dy);
 }
 
 function onMapMouseUp() {
   isDragging.value = false;
+}
+
+// P5-030 修复：拖拽平移边界钳制，基于地图与容器尺寸动态计算
+const PAN_BOUND_MARGIN = 40;
+function clampPan(targetX: number, targetY: number): void {
+  const containerW = mapContainerRef.value?.clientWidth ?? 0;
+  const containerH = mapContainerRef.value?.clientHeight ?? 0;
+  // 地图缩放后尺寸
+  const scaledW = mapWidth.value * zoomLevel.value;
+  const scaledH = mapHeight.value * zoomLevel.value;
+  // 当地图小于容器时，将地图固定在中心；否则限制拖拽范围在可视区内
+  const maxPanX = Math.max(0, (scaledW - containerW) / 2) + PAN_BOUND_MARGIN;
+  const maxPanY = Math.max(0, (scaledH - containerH) / 2) + PAN_BOUND_MARGIN;
+  panX.value = Math.max(-maxPanX, Math.min(maxPanX, targetX));
+  panY.value = Math.max(-maxPanY, Math.min(maxPanY, targetY));
 }
 
 // 拖拽控制 - 触摸事件（移动端）
@@ -268,8 +282,7 @@ function onMapTouchMove(e: TouchEvent) {
   const touch = e.touches[0];
   const dx = touch.clientX - dragStartX.value;
   const dy = touch.clientY - dragStartY.value;
-  panX.value = dragStartPanX.value + dx;
-  panY.value = dragStartPanY.value + dy;
+  clampPan(dragStartPanX.value + dx, dragStartPanY.value + dy);
 }
 
 function onMapTouchEnd() {

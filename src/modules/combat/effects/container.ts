@@ -3,7 +3,7 @@
  * @description 效果的增删查改、ID 生成等纯函数操作
  */
 
-import type { Effect, EffectContainer, EffectType, StackStrategy } from './types';
+import type { Effect, EffectContainer, EffectType, StackStrategy, EffectContext } from './types';
 import type { EffectHandlerRegistry } from './handler';
 import { generateId } from '@/utils/db-helpers';
 
@@ -11,6 +11,16 @@ import { generateId } from '@/utils/db-helpers';
 export function generateEffectId(): string {
   return generateId('effect');
 }
+
+// P5-020 修复：兜底空上下文（调用方未传入真实 ctx 时使用，避免硬编码散落）
+// 当前内置 handler 的 onRemove 均不读取 ctx，风险较低；新增依赖 ctx 的 handler 时应透传真实上下文
+const FALLBACK_EFFECT_CONTEXT: EffectContext = {
+  ownerId: '',
+  ownerType: 'player',
+  baseStats: { physicalAttack: 0, physicalDefense: 0, magicAttack: 0, magicDefense: 0, speed: 0 },
+  currentHp: 0,
+  maxHp: 0,
+};
 
 /**
  * 为容器添加效果
@@ -20,17 +30,23 @@ export function generateEffectId(): string {
  * - replace 策略：先调用旧 effect 的 onRemove 回调，再用 splice 原地移除（保持数组引用）
  * - additive/independent 达到 maxStacks 时：同样调用旧 effect 的 onRemove 后再替换
  *
+ * P5-020 修复：新增可选 ctx 参数，供 onRemove 回调读取真实上下文；
+ * 未传入时使用 FALLBACK_EFFECT_CONTEXT 兜底。
+ *
  * @param container - 效果容器
  * @param effect - 要添加的效果
  * @param registry - 效果处理器注册表（可选，用于调用 onRemove 回调）
+ * @param ctx - 效果持有者上下文（可覆盖交互时语义受损的实测数据）
  */
 export function addEffectToContainer(
   container: EffectContainer,
   effect: Effect,
   registry?: EffectHandlerRegistry,
+  ctx?: EffectContext,
 ): void {
   const strategy: StackStrategy = effect.stackStrategy || 'max';
   const existing = container.effects.find(e => e.type === effect.type);
+  const removeCtx = ctx ?? FALLBACK_EFFECT_CONTEXT;
 
   switch (strategy) {
     case 'replace':
@@ -38,7 +54,7 @@ export function addEffectToContainer(
       if (existing) {
         if (registry) {
           const handler = registry.get(existing.type);
-          handler?.onRemove?.(existing, { ownerId: '', ownerType: 'player', baseStats: { physicalAttack: 0, physicalDefense: 0, magicAttack: 0, magicDefense: 0, speed: 0 }, currentHp: 0, maxHp: 0 });
+          handler?.onRemove?.(existing, removeCtx);
         }
         const idx = container.effects.indexOf(existing);
         if (idx !== -1) container.effects.splice(idx, 1);
@@ -72,7 +88,7 @@ export function addEffectToContainer(
             const oldest = sameType[0];
             if (registry) {
               const handler = registry.get(oldest.type);
-              handler?.onRemove?.(oldest, { ownerId: '', ownerType: 'player', baseStats: { physicalAttack: 0, physicalDefense: 0, magicAttack: 0, magicDefense: 0, speed: 0 }, currentHp: 0, maxHp: 0 });
+              handler?.onRemove?.(oldest, removeCtx);
             }
             oldest.remainingTurns = effect.remainingTurns;
             oldest.value = effect.value;

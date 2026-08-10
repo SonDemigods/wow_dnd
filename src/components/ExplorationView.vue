@@ -289,6 +289,7 @@ function endDrag() {
 // 拖动功能 - 触摸事件（移动端）
 let touchStartX = 0;
 let touchStartY = 0;
+let touchStartTarget: EventTarget | null = null;
 
 function onTouchStart(e: TouchEvent) {
   if (e.touches.length !== 1) return;
@@ -296,6 +297,7 @@ function onTouchStart(e: TouchEvent) {
   const touch = e.touches[0];
   touchStartX = touch.clientX;
   touchStartY = touch.clientY;
+  touchStartTarget = e.target;
   isDragging.value = true;
   startX.value = touch.clientX - panX.value;
   startY.value = touch.clientY - panY.value;
@@ -314,13 +316,28 @@ function onTouchMove(e: TouchEvent) {
     if (e.cancelable) {
       e.preventDefault(); // 拖动时阻止页面滚动
     }
+    hasDragged.value = true;
     panX.value = touch.clientX - startX.value;
     panY.value = touch.clientY - startY.value;
   }
 }
 
 function onTouchEnd() {
+  // P5-004 修复：触摸结束时若未拖动，视为点击（与鼠标 endDrag 逻辑一致）
+  if (isDragging.value && !hasDragged.value) {
+    const target = touchStartTarget as HTMLElement;
+    const cellEl = target?.closest('.cell') as HTMLElement;
+    if (cellEl) {
+      const x = Number(cellEl.dataset.x);
+      const y = Number(cellEl.dataset.y);
+      if (!isNaN(x) && !isNaN(y) && grid.value[y]?.[x]) {
+        handleCellClick(grid.value[y][x]);
+      }
+    }
+  }
   isDragging.value = false;
+  hasDragged.value = false;
+  touchStartTarget = null;
 }
 
 async function initExploration() {
@@ -358,13 +375,17 @@ async function handleCellClick(cell: ExplorationCell) {
   }
 
 onMounted(async () => {
-  // 确保探索服务已从数据库加载状态
-  const characterId = characterStore.currentCharacterId;
-  if (characterId) {
-    await explorationStore.init(characterId);
+  // P5-017 修复：包裹 try/catch，避免初始化失败导致未捕获 rejection
+  try {
+    const characterId = characterStore.currentCharacterId;
+    if (characterId) {
+      await explorationStore.init(characterId);
+    }
+    await initExploration();
+  } catch (err) {
+    console.error('[ExplorationView] 初始化失败:', err);
+    toast.show({ message: '探索初始化失败', type: 'danger' });
   }
-
-  initExploration();
 });
 
 // P2-68 修复：组件卸载时清理 rafId，避免卸载后回调执行导致错误

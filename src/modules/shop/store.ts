@@ -594,6 +594,7 @@ export const useShopStore = defineStore('shop', () => {
     await characterStore.gainGold(actualSellPrice);
 
     // 5. 加入回购列表（ARCH-14：通过 _replaceSoldItems 整体替换触发响应式）
+    // P5-010 修复：持久化阶段加 try-catch，失败时回滚背包和金币
     _replaceSoldItems(newMap => {
       let innerMap = newMap.get(shopId);
       if (!innerMap) {
@@ -608,14 +609,49 @@ export const useShopStore = defineStore('shop', () => {
       }
     });
 
-    // BIZ-16: 持久化回购列表到 IndexedDB（整体替换后读取最新状态）
-    // _replaceSoldItems 的 mutator 已保证创建 shopId 对应的 innerMap，currentSoldMap 必存在
-    const currentSoldMap = soldItems.value.get(shopId)!;
-    await shopDbService.saveSoldItems(shopId, Array.from(currentSoldMap.values()));
+    try {
+      // BIZ-16: 持久化回购列表到 IndexedDB（整体替换后读取最新状态）
+      const currentSoldMap = soldItems.value.get(shopId);
+      await shopDbService.saveSoldItems(shopId, currentSoldMap ? Array.from(currentSoldMap.values()) : []);
 
-    // 6. 刷新当前商品列表（合并回购物品）
-    const currentGenerated = await shopDbService.getShopItems(shopId);
-    currentItems.value = mergeItems(currentGenerated || []);
+      // 6. 刷新当前商品列表（合并回购物品）
+      const currentGenerated = await shopDbService.getShopItems(shopId);
+      currentItems.value = mergeItems(currentGenerated || []);
+    } catch (err) {
+      // P5-010 修复：持久化失败，回滚背包和金币
+      console.error('[ShopStore] sellItem 持久化失败，回滚背包和金币:', err);
+      errorReporter.report(err, 'manual', {
+        context: '商店出售持久化失败，已回滚背包和金币',
+        shopId, itemId, quantity: actualQuantity,
+      });
+      // 回滚背包：加回物品
+      try {
+        inventoryStore.addItem(itemId, actualQuantity);
+        await inventoryStore.flushPersist();
+      } catch (rollbackErr) {
+        console.error('[ShopStore] sellItem 回滚背包失败:', rollbackErr);
+        errorReporter.report(rollbackErr, 'manual', {
+          context: '商店出售回滚背包失败，物品可能未恢复',
+          shopId, itemId, quantity: actualQuantity,
+        });
+      }
+      // 回滚金币：扣回获得的金币
+      try {
+        await characterStore.spendGold(actualSellPrice);
+      } catch (rollbackErr) {
+        console.error('[ShopStore] sellItem 回滚金币失败:', rollbackErr);
+        errorReporter.report(rollbackErr, 'manual', {
+          context: '商店出售回滚金币失败，金币可能未扣除',
+          shopId, sellPrice: actualSellPrice,
+        });
+      }
+      useToast().show({
+        message: '出售失败，已恢复物品和金币',
+        type: 'danger',
+        duration: 3000
+      });
+      return false;
+    }
 
     // 7. 通知 UI（音效等）
     eventBus.emit(GameEvents.SHOP_TRANSACTION, { shopId, itemId, quantity: actualQuantity, sellPrice: actualSellPrice });

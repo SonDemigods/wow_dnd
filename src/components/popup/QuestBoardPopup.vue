@@ -126,7 +126,7 @@ const props = defineProps<{
   boardId?: string;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'close'): void;
 }>();
 

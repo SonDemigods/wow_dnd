@@ -289,6 +289,9 @@ describe('useTalentStore - 天赋 Store', () => {
       const store = useTalentStore();
       await store.initialize('hunter', 20);
 
+      // P3-172：通过回调注入替代直接 import usePetStore
+      store.setPetCallbacks(mockPetStore.unlockPet, vi.fn());
+
       expect(store.learn('hunter_beast_t4')).toBe(true);
       expect(mockPetStore.unlockPet).toHaveBeenCalledWith('cat');
     });

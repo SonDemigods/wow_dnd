@@ -105,7 +105,8 @@ export function useCombatUiHelpers() {
 
   function formatEffectValue(type: string, value: number): string {
     if (isBuffEffect(type)) return `+${value}`;
-    if (isDebuffEffect(type)) return `+${value}`;
+    // P5-015 修复：debuff 显示为负值
+    if (isDebuffEffect(type)) return `-${value}`;
     return `${value}`;
   }
 

@@ -181,11 +181,11 @@ import EmptyState from '@/components/common/EmptyState.vue';
 import { useShopTransactions, type SellItemEntry } from './composables/useShopTransactions';
 import { useGoldFlash } from './composables/useGoldFlash';
 
-const props = defineProps<{
+defineProps<{
   visible: boolean;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'close'): void;
 }>();
 

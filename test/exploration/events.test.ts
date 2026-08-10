@@ -615,7 +615,8 @@ describe('exploration/events - 事件处理器注册表', () => {
         // 多选项事件不应直接应用效果（效果由玩家选择后应用）
         expect(mocks.characterStore.gainExp).not.toHaveBeenCalled();
         expect(mocks.characterStore.receiveHeal).not.toHaveBeenCalled();
-        expect(result).toEqual({ completed: true });
+        // P5-013 修复：多选项事件不立即标记 completed，待玩家选择 applyEventChoice 后再标记
+        expect(result).toEqual({ completed: false });
       });
     });
 

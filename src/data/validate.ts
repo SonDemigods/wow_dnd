@@ -15,6 +15,7 @@ import { SET_DEFINITIONS } from './config_set_definitions';
 import { CLASS_EQUIPMENT } from './config_class_equipment';
 import { CLASS_ABILITIES } from './config_skills';
 import { CLASS_TALENT_TREES } from './config_class_talents';
+import { CLASSES } from './config_classes';
 import type { EffectType } from '@/modules/combat/effects/effect-type';
 
 /**
@@ -354,6 +355,36 @@ export function validateTalentData(): number {
   return validCount;
 }
 
+/**
+ * 校验 CLASS_ABILITIES 的 class_id 是否存在于 CLASSES 定义
+ *
+ * P5-018 修复：防止技能分组引用不存在的职业 ID，导致技能无法被加载。
+ *
+ * @returns 校验通过的技能分组数量
+ */
+export function validateClassSkillRefs(): number {
+  const classIds = new Set<string>(CLASSES.map(c => c.id));
+  const errors: string[] = [];
+  let validCount = 0;
+
+  for (const group of CLASS_ABILITIES) {
+    if (!classIds.has(group.class_id)) {
+      errors.push(`技能分组 class_id "${group.class_id}" 不存在于 CLASSES 定义`);
+    } else {
+      validCount++;
+    }
+  }
+
+  if (errors.length > 0) {
+    console.error(`[数据校验] 职业-技能引用存在 ${errors.length} 处无效:`);
+    errors.forEach(e => console.error(`  - ${e}`));
+  } else {
+    console.log(`[数据校验] 职业-技能引用校验通过：${validCount}/${CLASS_ABILITIES.length} 个技能分组的 class_id 均有效`);
+  }
+
+  return validCount;
+}
+
 // 开发环境自动执行校验（生产环境构建时 import.meta.env.DEV 为 false，整段会被 tree-shaking）
 if (import.meta.env.DEV) {
   validateLocationData();
@@ -363,4 +394,5 @@ if (import.meta.env.DEV) {
   validateItemSetReferences();
   validateSkillBuffs();
   validateTalentData();
+  validateClassSkillRefs();
 }

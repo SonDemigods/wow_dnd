@@ -111,7 +111,8 @@ export function calculateEnemyDamage(
   const randomFactor = damageRange[0] + rng.next() * (damageRange[1] - damageRange[0]);
   const rawDamage = (baseDamage + randomFactor) * 0.5;
   // P3-169：移除防御减免，防御由 processDamagePipeline 统一处理
-  return Math.floor(rawDamage);
+  // P5-021 修复：与注释一致，最小为 1
+  return Math.max(1, Math.floor(rawDamage));
 }
 
 /**

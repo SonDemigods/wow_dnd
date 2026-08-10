@@ -13,6 +13,7 @@ import { useExplorationStore } from '@/modules/exploration';
 import { useQuestStore, setQuestExternalCallbacks, clearQuestExternalCallbacks, initEnemyNameMap } from '@/modules/quest';
 import { useCombatStore } from '@/modules/combat';
 import { usePetStore } from '@/modules/combat/pets';
+import type { PetType } from '@/modules/combat/pets';
 import { useAudioStore } from '@/modules/audio';
 import { useBaseStore } from '@/modules/base';
 import { useTalentStore } from '@/modules/character/talents';
@@ -149,8 +150,8 @@ export class GameBootstrapService {
       // P3-172：注入宠物回调，切断 talents → combat/pets 循环依赖
       const petStore = usePetStore();
       talentStore.setPetCallbacks(
-        (petType: string) => petStore.unlockPet(petType as never),
-        (petType: string) => petStore.lockPet(petType as never),
+        (petType: string) => petStore.unlockPet(petType as PetType),
+        (petType: string) => petStore.lockPet(petType as PetType),
       );
     }
 

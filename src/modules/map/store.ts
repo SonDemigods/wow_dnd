@@ -170,10 +170,16 @@ export const useMapStore = defineStore('map', () => {
 
   /**
    * 进入区域
+   * P5-012 修复：增加角色等级校验，低等级角色不能进入高等级区域
    */
-  function enterZone(zoneId: string): boolean {
+  function enterZone(zoneId: string, playerLevel?: number): boolean {
     const location = getLocationById(locations.value, zoneId);
     if (!location) return false;
+
+    // P5-012：等级校验（playerLevel 由调用方传入，避免 Store 直接依赖 characterStore）
+    if (playerLevel !== undefined && playerLevel < location.levelRange[0]) {
+      return false;
+    }
 
     currentLocation.value = location;
 

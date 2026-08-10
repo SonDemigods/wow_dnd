@@ -259,7 +259,9 @@ export function useBossMechanics(
         break;
       }
       case 'healing_zone': {
-        const healAmount = Number(params?.healPerTurn) || 5;
+        // P5-007 修复：使用 ?? 替代 || 避免 0 值被吞；Number() 对 undefined 返回 NaN 故先判空
+        const rawHeal = params?.healPerTurn;
+        const healAmount = rawHeal != null ? Number(rawHeal) : 5;
         base.hp = Math.min(base.maxHp, base.hp + healAmount);
         log.addCombatLog({
           actorType: 'system', actorId: 'system', actorName: '系统',

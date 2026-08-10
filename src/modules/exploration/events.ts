@@ -291,7 +291,8 @@ export const cellEventHandlers: Partial<Record<CellType, CellEventHandler>> = {
         message: multiEvent.message,
         icon: multiEvent.icon
       });
-      return { completed: true };
+      // P5-013 修复：多选项事件不立即标记 completed，待 applyEventChoice 应用效果后再标记
+      return { completed: false };
     }
 
     // 普通随机事件：生成效果 → 通过注册表分发应用

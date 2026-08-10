@@ -60,7 +60,7 @@ interface Emits {
 }
 
 const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
+defineEmits<Emits>();
 
 const logStore = useLogStore();
 const logContainer = ref<HTMLDivElement | null>(null);

@@ -71,6 +71,9 @@ export const useGameStore = defineStore('game', () => {
    */
   const currentDataVersion = ref<number | null>(null);
 
+  // P5-025 修复：isInitialized 声明移到 versionMismatch 之前，消除 TDZ 风险
+  const isInitialized = ref(false);
+
   /**
    * 版本不匹配标志（只读 computed）
    *
@@ -87,9 +90,6 @@ export const useGameStore = defineStore('game', () => {
     if (!isInitialized.value) return false;
     return currentDataVersion.value !== CURRENT_DATA_VERSION;
   });
-
-  /** 是否已初始化 */
-  const isInitialized = ref(false);
 
   // ==================== 持久化辅助 ====================
 

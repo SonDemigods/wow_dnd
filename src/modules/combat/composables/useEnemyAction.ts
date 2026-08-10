@@ -130,8 +130,12 @@ export function useEnemyAction(
 
     if (isDebuff) {
       // 减益技能：效果施加到玩家身上
+      // P5-019 修复：自防御判空，避免未来新增调用点未先判断导致 TypeError
+      if (!result.buffs) {
+        return { success: false, type: 'skill', message: `${e.name} 的 ${skillName} 未产生效果！` };
+      }
       const playerCtx = createPlayerEffectContext();
-      for (const b of result.buffs!) {
+      for (const b of result.buffs) {
         const debuffEffect: Effect = {
           id: generateEffectId(),
           type: isEffectType(b.type) ? b.type : 'attack_down',
@@ -155,13 +159,17 @@ export function useEnemyAction(
     }
 
     // 增益技能：效果施加到敌人自身
+    // P5-019 修复：自防御判空
+    if (!result.buffs) {
+      return { success: false, type: 'skill', message: `${e.name} 的 ${skillName} 未产生效果！` };
+    }
     if (!enemyEffects.value[e.id]) {
       enemyEffects.value[e.id] = createEmptyContainer();
     }
     const container = enemyEffects.value[e.id]!;
     const enemyCtx = createEnemyEffectContext(e);
 
-    for (const b of result.buffs!) {
+    for (const b of result.buffs) {
       const effect: Effect = {
         id: generateEffectId(),
         type: isEffectType(b.type) ? b.type : 'attack_up',
@@ -226,10 +234,11 @@ export function useEnemyAction(
     ctx.character.takeDamage(finalDamage);
 
     // 玩家受伤时触发资源系统 onDamaged 钩子（如战士怒气获取）
-    if (actualDamage > 0) {
-      resourceSystems.value.forEach(sys => sys.onDamaged?.(actualDamage));
+    // P5-022 修复：用 finalDamage（含被动减伤后）而非 actualDamage，避免伤害降为 0 仍触发受伤反馈
+    if (finalDamage > 0) {
+      resourceSystems.value.forEach(sys => sys.onDamaged?.(finalDamage));
       // 触发被动技能 onDamaged 钩子（如影刃猎手复仇：受伤恢复生命）
-      passive?.onDamaged(actualDamage);
+      passive?.onDamaged(finalDamage);
     }
 
     // 伤害事件

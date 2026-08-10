@@ -57,7 +57,7 @@
  * @description 管理游戏主界面状态（角色选择/游戏中），协调子组件间的交互，处理角色选择、创建和退出逻辑
  */
 
-import { ref, reactive, defineAsyncComponent, h, onMounted, onUnmounted, type Ref } from 'vue';
+import { ref, reactive, defineAsyncComponent, h, onMounted, onUnmounted } from 'vue';
 import ConfirmPopup from './components/common/ConfirmPopup.vue';
 import Toast from './components/common/Toast.vue';
 import { useCharacterStore } from './modules/character';

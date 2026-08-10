@@ -80,38 +80,38 @@
     <CharacterInfoPopup
       v-if="popupMounted.characterInfo"
       :visible="showCharacterInfo"
-      @close="showCharacterInfo = false; onPanelClose('character_info')"
+      @close="showCharacterInfo = false; popupMounted.characterInfo = false; onPanelClose('character_info')"
     />
 
     <InventoryPopup
       v-if="popupMounted.inventory"
       :visible="showInventory"
-      @close="showInventory = false; onPanelClose('inventory')"
+      @close="showInventory = false; popupMounted.inventory = false; onPanelClose('inventory')"
     />
 
     <SkillsPopup
       v-if="popupMounted.skills"
       :visible="showSkills"
-      @close="showSkills = false; onPanelClose('skills')"
+      @close="showSkills = false; popupMounted.skills = false; onPanelClose('skills')"
     />
 
     <TalentPopup
       v-if="popupMounted.talents"
       :visible="showTalents"
-      @close="showTalents = false; onPanelClose('talents')"
+      @close="showTalents = false; popupMounted.talents = false; onPanelClose('talents')"
     />
 
     <QuestPopup
       v-if="popupMounted.quests"
       :visible="showQuests"
-      @close="showQuests = false; onPanelClose('quests')"
+      @close="showQuests = false; popupMounted.quests = false; onPanelClose('quests')"
     />
 
     <AdventureLogPopup
       v-if="popupMounted.adventureLog"
       :visible="showAdventureLog"
       :current-area="currentArea"
-      @close="showAdventureLog = false; onPanelClose('adventure_log')"
+      @close="showAdventureLog = false; popupMounted.adventureLog = false; onPanelClose('adventure_log')"
     />
 
     <ShopPopup
@@ -123,7 +123,7 @@
     <QuestBoardPopup
       v-if="popupMounted.questBoard"
       :visible="showQuestBoard"
-      @close="showQuestBoard = false; onPanelClose('quest_board')"
+      @close="showQuestBoard = false; popupMounted.questBoard = false; onPanelClose('quest_board')"
     />
 
     <CombatPopup
@@ -134,15 +134,22 @@
     <AudioSettingsPopup
       v-if="popupMounted.audioSettings"
       :visible="showAudioSettings"
-      @close="showAudioSettings = false; onPanelClose('audio_settings')"
+      @close="showAudioSettings = false; popupMounted.audioSettings = false; onPanelClose('audio_settings')"
     />
 
     <SystemPopup
       v-if="popupMounted.system"
       :visible="showSystem"
-      @close="showSystem = false; onPanelClose('system')"
+      @close="showSystem = false; popupMounted.system = false; onPanelClose('system')"
       @exit="handleExit"
       @open-audio="openAudioFromSystem"
+    />
+
+    <MultiOptionEventPopup
+      :visible="showMultiOptionEvent"
+      :event="currentMultiOptionEvent"
+      @close="handleMultiOptionEventClose"
+      @select="handleEventChoice"
     />
   </div>
 </template>
@@ -263,6 +270,13 @@ const SystemPopup = defineAsyncComponent({
   delay: 200,
   timeout: 10000,
 });
+const MultiOptionEventPopup = defineAsyncComponent({
+  loader: () => import('./popup/MultiOptionEventPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
 
 const emit = defineEmits<{
   (e: 'exit'): void;
@@ -272,13 +286,15 @@ const {
   currentContentTab, loading,
   showCharacterInfo, showInventory, showSkills, showTalents, showQuests,
   showAdventureLog, showShop, showQuestBoard, showCombat, showAudioSettings, showSystem,
+  showMultiOptionEvent, currentMultiOptionEvent,
   popupMounted, levelUpTriggered,
   character, currentHp, maxHp, currentMp, maxMp, hpPercent, mpPercent,
   showManaBar, classResourceSystems, exp, expToNext, expPercent, gold,
   currentArea, hasCurrentLocation, raceIcon,
-  showNotif, handleExit, onClickPanel, onPanelOpen, onPanelClose,
+  showNotif, handleExit, onClickPanel, onPanelClose,
   openAudioFromSystem, handleMapTabClick, handleExploreTabClick,
   handleCombatClose, handleShopClose,
+  handleEventChoice, handleMultiOptionEventClose,
   init, cleanup,
 } = useGameActions(() => emit('exit'));
 

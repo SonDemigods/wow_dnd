@@ -263,12 +263,15 @@ export const useTalentStore = defineStore('talent', () => {
       else if (diff < 0) removeDelta[key] = -diff;
     }
     const characterStore = useCharacterStore();
-    if (Object.keys(removeDelta).length > 0) {
-      characterStore.removeBonus(removeDelta);
-    }
-    if (Object.keys(delta).length > 0) {
-      characterStore.applyBonus(delta);
-    }
+    // P5-023 修复：链式 await 避免多次 fire-and-forget 写竞态；先移除再应用，保持确定性顺序
+    void (async () => {
+      if (Object.keys(removeDelta).length > 0) {
+        await characterStore.removeBonus(removeDelta);
+      }
+      if (Object.keys(delta).length > 0) {
+        await characterStore.applyBonus(delta);
+      }
+    })();
     lastAppliedStats = { ...current };
   }
 

@@ -239,6 +239,13 @@ export const useCharacterStore = defineStore('character', () => {
     if (cls && !isClassFactionCompatible(cls, factionIdParam)) {
       throw new Error(`职业「${cls.name}」不支持阵营「${factionIdParam}」`);
     }
+    // P5-009 修复：补齐种族↔阵营、种族↔职业兼容性校验（与 setRace/setClass 对齐）
+    if (race && !isRaceFactionCompatible(race, factionIdParam)) {
+      throw new Error(`种族「${raceIdParam}」不支持阵营「${factionIdParam}」`);
+    }
+    if (cls && !isClassRaceCompatible(cls, raceIdParam)) {
+      throw new Error(`职业「${cls.name}」不支持种族「${raceIdParam}」`);
+    }
 
     const params: CreateCharacterParams = {
       name,

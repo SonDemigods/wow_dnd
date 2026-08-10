@@ -79,6 +79,8 @@ export function useSkillCasting(state: SkillState) {
       }
       case 'mana_restore':
         await characterStore.changeMp(damageValue);
+        // P5-001 修复：设置 heal 字段使 usePlayerSkill 进入 heal 分支并结束回合
+        heal = damageValue;
         break;
       case 'buff':
       case 'debuff':

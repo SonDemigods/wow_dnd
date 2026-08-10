@@ -74,7 +74,7 @@ export class ImportService implements IImportService {
             timestamp: backup.timestamp,
             gameVersion: backup.gameVersion
           });
-        } catch (error) {
+        } catch {
           resolve({ success: false, error: '备份文件格式错误' });
         }
       };

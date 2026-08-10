@@ -18,8 +18,8 @@ import type { Stats } from '@/modules/character';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useToast } from '@/composables/useToast';
 
-/** 空加成（无任何选择时） */
-const EMPTY_BONUS: Partial<Stats> = {};
+/** 空加成（无任何选择时），P5-027 修复：冻结防止外部意外修改 */
+const EMPTY_BONUS: Readonly<Partial<Stats>> = Object.freeze({});
 
 /** 档位视图（供 UI 渲染） */
 export interface MountTierView {
