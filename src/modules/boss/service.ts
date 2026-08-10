@@ -67,7 +67,11 @@ export function createBossInstance(template: BossTemplate, level: number, rng: R
   return {
     base,
     isBoss: true,
-    phases: template.phases ?? [],
+    // P9-031 修复：深拷贝 phases 及 mechanics，防止 engine 修改 lastTriggerTurn 污染模板
+    phases: template.phases?.map(phase => ({
+      ...phase,
+      mechanics: phase.mechanics.map(m => ({ ...m })),
+    })) ?? [],
     intro: template.intro,
     runtime,
   };

@@ -24,7 +24,8 @@ export const useEquipmentStore = defineStore('equipment', () => {
 
   async function initialize(characterId: string): Promise<void> {
     await state.initialize(characterId);
-    await setBonus.reapplySetBonuses();
+    // P9-006 修复：角色加载时对齐 diff 基线，不重复 applyBonus（bonusStats 已从 DB 恢复）
+    setBonus.syncAppliedBonuses();
   }
 
   async function reset(): Promise<void> {

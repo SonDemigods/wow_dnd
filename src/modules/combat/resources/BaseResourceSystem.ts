@@ -30,6 +30,8 @@ export abstract class BaseResourceSystem implements ResourceSystem {
   protected _maxValue: Ref<number>;
   /** 战斗开始时的初始值 */
   protected readonly initialValue: number;
+  /** 基础上限（不含天赋 addMaxBonus 加成），reset 时恢复 */
+  protected readonly baseMaxValue: number;
 
   constructor(options: {
     maxValue: number;
@@ -38,6 +40,7 @@ export abstract class BaseResourceSystem implements ResourceSystem {
     isSecondary?: boolean;
   }) {
     this._maxValue = ref(options.maxValue);
+    this.baseMaxValue = options.maxValue;
     this.initialValue = options.initialValue ?? 0;
     this._value = ref(this.initialValue);
     this.isInteger = options.isInteger ?? false;
@@ -91,6 +94,7 @@ export abstract class BaseResourceSystem implements ResourceSystem {
 
   reset(): void {
     this._value.value = this.initialValue;
+    this._maxValue.value = this.baseMaxValue;
   }
 
   /**

@@ -930,6 +930,7 @@ export const useCharacterStore = defineStore('character', () => {
     spendGold,
     applyBonus,
     removeBonus,
+    persistCharacter,
     // 四层属性 Action
     applyPotionBonus,
     allocateStat,

@@ -53,5 +53,25 @@ export function useSetBonus(state: EquipmentState) {
     appliedSetBonuses.value = currentStats;
   }
 
-  return { reapplySetBonuses };
+  /**
+   * 对齐 diff 基线（P9-006 修复）
+   *
+   * 角色加载时 bonusStats 已从 DB 恢复（含已持久化的套装 bonus），
+   * 此方法仅将 appliedSetBonuses 同步为当前装备状态，不调用 applyBonus/removeBonus，
+   * 避免套装 bonus 被重复施加。后续 equip/unequip 走 reapplySetBonuses 做 diff。
+   */
+  function syncAppliedBonuses(): void {
+    const progresses = getAllSetProgresses(equipment.value, configCache.getSetDefinitions());
+    const currentStats: Array<{ setId: string; stat: keyof Stats; value: number }> = [];
+    for (const progress of progresses) {
+      for (const effect of getActiveBonusEffects(progress)) {
+        if (effect.kind === 'stat') {
+          currentStats.push({ setId: progress.setId, stat: effect.stat, value: effect.value });
+        }
+      }
+    }
+    appliedSetBonuses.value = currentStats;
+  }
+
+  return { reapplySetBonuses, syncAppliedBonuses };
 }

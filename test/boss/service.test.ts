@@ -142,12 +142,30 @@ describe('createBossInstance', () => {
       expect(boss.base.drops).not.toBe(BOSS_DROP_TABLE); // 新数组，非同引用
     });
 
-    it('保留模板上的 phases 配置（顶层字段）', () => {
+it('保留模板上的 phases 配置（顶层字段）', () => {
       const phases = [
         { hpThreshold: 1.0, name: 'P1', dialogue: [], aiStrategy: 'balanced' as const, mechanics: [] }
       ];
       const boss = createBossInstance(makeBossTemplate({ phases }), 1);
       expect(boss.phases).toEqual(phases);
+    });
+
+    // P9-031 修复：phases/mechanics 深拷贝，不与模板共享引用，防止 engine 修改 lastTriggerTurn 污染模板
+    it('phases 及 mechanics 深拷贝，不与模板共享引用', () => {
+      const mechanics = [{ type: 'enrage' as const, intervalTurns: 3, params: {} }];
+      const phases = [
+        { hpThreshold: 1.0, name: 'P1', dialogue: [], aiStrategy: 'balanced' as const, mechanics }
+      ];
+      const boss = createBossInstance(makeBossTemplate({ phases }), 1);
+
+      // 顶层数组引用隔离
+      expect(boss.phases).not.toBe(phases);
+      // mechanics 数组引用隔离
+      expect(boss.phases![0].mechanics).not.toBe(mechanics);
+      // 修改副本不影响模板
+      boss.phases![0].mechanics[0].lastTriggerTurn = 5;
+      expect(mechanics[0].lastTriggerTurn).toBeUndefined();
+      expect(phases[0].mechanics[0].lastTriggerTurn).toBeUndefined();
     });
 
     it('保留模板上的 intro 配置（顶层字段）', () => {

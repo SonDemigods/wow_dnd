@@ -294,6 +294,20 @@ describe('useInventoryStore - 背包 Store', () => {
       expect(store.inventory).toEqual([inv('p1', 10), inv('p1', 3)]);
     });
 
+    // P9-013 修复：addItem 使用 itemTemplate.maxStack 替代硬编码 MAX_STACK
+    it('可堆叠物品 maxStack=99 时按 99 堆叠而非默认 10', () => {
+      const store = useInventoryStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({
+        inventory: [],
+        itemTemplates: mapOf(makeItem({ id: 'mat1', maxStack: 99 })),
+      });
+      // 99 个材料应全部放入一个槽位（而非旧 MAX_STACK=10 的 10 个槽位）
+      const added = store.addItem('mat1', 99);
+      expect(added).toBe(99);
+      expect(store.inventory).toEqual([inv('mat1', 99)]);
+    });
+
     it('不可堆叠物品：每件占用独立槽位', () => {
       const store = useInventoryStore();
       mocks.gameStore.currentCharacterId = 'char-1';

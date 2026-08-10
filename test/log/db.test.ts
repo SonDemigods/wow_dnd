@@ -79,6 +79,25 @@ describe('AdventureLogDbService - 冒险日志数据层（fake-indexeddb 真实 
       expect(result).not.toBeNull();
       expect(result!.entries).toEqual([]);
     });
+
+    // P9-012 修复：截断保留最新条目（数组头部），丢弃最旧条目（数组尾部）
+    it('超过 MAX_LOG_ENTRIES 时截断保留最新条目（数组头部）', async () => {
+      // 构造 1200 条日志，前 200 条为最新（index 0-199），后 1000 条为最旧
+      const logs: LogEntry[] = Array.from({ length: 1200 }, (_, i) =>
+        makeLogEntry({ id: `log-${i}`, message: `日志-${i}`, timestamp: 1700000000000 - i })
+      );
+      await adventureLogDbService.saveAdventureLog('char-1', logs);
+
+      const result = await adventureLogDbService.getAdventureLog('char-1');
+      expect(result).not.toBeNull();
+      // MAX_LOG_ENTRIES 从 config/log.ts 导入，值为 1000
+      expect(result!.entries).toHaveLength(1000);
+      // 最新条目（数组头部）应被保留
+      expect(result!.entries[0].id).toBe('log-0');
+      expect(result!.entries[0].message).toBe('日志-0');
+      // 最旧条目（数组尾部）应被丢弃
+      expect(result!.entries[result!.entries.length - 1].id).toBe('log-999');
+    });
   });
 
   describe('getAdventureLog：读取日志', () => {

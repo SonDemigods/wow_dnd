@@ -43,6 +43,11 @@ export class ImportService implements IImportService {
    * @returns ValidationResult - 验证结果
    */
   async validateBackup(file: File): Promise<ValidationResult> {
+    // P9-021 修复：限制备份文件大小，防止超大文件导致浏览器崩溃
+    const MAX_BACKUP_SIZE = 50 * 1024 * 1024; // 50MB
+    if (file.size > MAX_BACKUP_SIZE) {
+      return { success: false, error: '备份文件过大（超过 50MB），请检查是否选择了正确的文件' };
+    }
     return new Promise((resolve) => {
       const reader = new FileReader();
 

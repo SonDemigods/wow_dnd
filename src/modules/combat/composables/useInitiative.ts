@@ -271,6 +271,16 @@ export function useInitiative(
       return;
     }
     // 检查敌人是否全部死亡（DOT 杀敌触发胜利判定，BIZ-4 修复）
+    // P9-008 修复：DOT 击杀 Boss 时检查复活机制
+    for (const eId of enemyTickResults.keys()) {
+      const tickRes = enemyTickResults.get(eId);
+      if (tickRes?.dotDamage && tickRes.dotDamage > 0) {
+        const enemy = ctx.enemy.getEnemyById(eId);
+        if (enemy && enemy.hp <= 0) {
+          boss.checkBossRevive(enemy);
+        }
+      }
+    }
     const allEnemiesDead = state.enemies.value.every(e => e.hp <= 0);
     if (allEnemiesDead && state.enemies.value.length > 0) {
       endCombat('victory');

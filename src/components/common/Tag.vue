@@ -12,6 +12,7 @@
  * @fileoverview 标签组件
  * @description 用于展示种族、职业、阵营的彩色标签，支持自定义颜色
  */
+import { computed } from 'vue';
 
 const props = defineProps<{
   text: string;
@@ -19,9 +20,10 @@ const props = defineProps<{
   color?: string;
 }>();
 
-const customStyle = {
+// P9-038 修复：改为 computed 使 props.color 变化时 CSS 变量响应式更新
+const customStyle = computed(() => ({
   '--tag-color': props.color || 'inherit'
-};
+}));
 </script>
 
 <style lang="less" scoped>

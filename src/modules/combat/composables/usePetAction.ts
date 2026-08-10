@@ -190,7 +190,11 @@ export function usePetAction(
       // P3-182：接入 Boss 防御机制（无敌/护盾）
       const { damage: actualPetDamage } = boss.applyBossDefenseMechanics(target, finalDamage);
       if (actualPetDamage > 0) {
-        ctx.enemy.takeDamage(target.id, actualPetDamage);
+        const petKill = ctx.enemy.takeDamage(target.id, actualPetDamage);
+        // P9-003 修复：宠物击杀 Boss 时检查复活机制
+        if (petKill) {
+          boss.checkBossRevive(target);
+        }
       }
       // P3-182：接入 Boss 反击机制（反弹/反击）
       boss.applyBossCounterMechanics(target, actualPetDamage);

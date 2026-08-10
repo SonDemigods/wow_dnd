@@ -149,11 +149,11 @@ export const useTalentStore = defineStore('talent', () => {
       allocations.value = {};
     }
 
-    // P6-054 修复：切换角色时先移除上一角色的 stat_bonus，避免 delta 计算基于错误基线
-    removeStatBonusesFromCharacter();
-
-    // 应用初始 stat_bonus 到角色（非战斗时直接加到 bonusStats）
-    applyStatBonusesToCharacter();
+    // P9-006 修复：角色加载时 bonusStats 已从 DB 恢复（含已持久化的天赋 stat_bonus），
+    // 此处仅对齐 diff 基线，不调用 applyBonus/removeBonus，避免重复施加。
+    // P9-007 修复：重置 lastAppliedStats 避免上一角色的基线残留影响 delta 计算。
+    lastAppliedStats = {};
+    lastAppliedStats = { ...statBonuses.value };
   }
 
   /**
@@ -267,17 +267,15 @@ export const useTalentStore = defineStore('talent', () => {
       else if (diff < 0) removeDelta[key] = -diff;
     }
     const characterStore = useCharacterStore();
-    // P5-023 修复：链式 await 避免多次 fire-and-forget 写竞态；先移除再应用，保持确定性顺序
-    void (async () => {
-      if (Object.keys(removeDelta).length > 0) {
-        await characterStore.removeBonus(removeDelta);
-      }
-      if (Object.keys(delta).length > 0) {
-        await characterStore.applyBonus(delta);
-      }
-      // P8-013 修复：将 lastAppliedStats 更新移到 IIFE 内部，await 完成后再更新，避免竞态
-      lastAppliedStats = { ...current };
-    })();
+    // P9-027 修复：同步执行 applyBonus/removeBonus（Pinia action 的同步部分立即更新 bonusStats），
+    // 避免异步 IIFE 导致快速连续调用时 lastAppliedStats 未更新而重复叠加
+    if (Object.keys(removeDelta).length > 0) {
+      characterStore.removeBonus(removeDelta);
+    }
+    if (Object.keys(delta).length > 0) {
+      characterStore.applyBonus(delta);
+    }
+    lastAppliedStats = { ...current };
   }
 
   /**
@@ -297,12 +295,16 @@ export const useTalentStore = defineStore('talent', () => {
    *
    * talentStore.allocations 是运行时数据源，
    * character.talentAllocations 用于持久化到 IndexedDB。
+   *
+   * P9-026 修复：同步后调用 persistCharacter 确保落盘，
+   * 避免非 stat_bonus 天赋（如 unlock_pet）学习后分配丢失。
    */
   function syncAllocationsToCharacter(): void {
     const characterStore = useCharacterStore();
     const char = characterStore.getCharacterData();
     if (char) {
       characterStore.character = { ...char, talentAllocations: { ...allocations.value } };
+      void characterStore.persistCharacter();
     }
   }
 

@@ -21,9 +21,11 @@ export function useInventoryItems(state: InventoryState) {
     const newInventory = inventory.value.map(item => ({ ...item }));
 
     if (itemTemplate.stackable) {
+      // P9-013 修复：使用物品模板的 maxStack 替代硬编码 MAX_STACK
+      const maxStack = itemTemplate.maxStack ?? MAX_STACK;
       for (let i = 0; i < newInventory.length && added < quantity; i++) {
         if (newInventory[i].itemId === itemId) {
-          const result = computeStackResult(newInventory[i].count, quantity - added, MAX_STACK);
+          const result = computeStackResult(newInventory[i].count, quantity - added, maxStack);
           const delta = result.quantity - newInventory[i].count;
           newInventory[i] = { ...newInventory[i], count: result.quantity };
           added += delta;
@@ -31,7 +33,7 @@ export function useInventoryItems(state: InventoryState) {
       }
     }
 
-    const perSlot = itemTemplate.stackable ? MAX_STACK : 1;
+    const perSlot = itemTemplate.stackable ? (itemTemplate.maxStack ?? MAX_STACK) : 1;
     while (added < quantity && newInventory.length < INVENTORY_SIZE) {
       const slotCount = Math.min(quantity - added, perSlot);
       newInventory.push({ itemId, count: slotCount });

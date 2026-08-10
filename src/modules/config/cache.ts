@@ -222,13 +222,17 @@ class ConfigCacheService {
       this._talentTrees = null;
       this._talentTreesByClass.clear();
       this._talentById.clear();
+      // P9-019 修复：清除进行中的加载 Promise，防止 invalidate 后仍返回旧数据
+      this._talentLoadingPromise = null;
     }
     if (!type || type === 'passives') {
       this._passives = null;
       this._passivesByClass.clear();
+      this._passiveLoadingPromise = null;
     }
     if (!type || type === 'sets') {
       this._setDefinitions = null;
+      this._setLoadingPromise = null;
     }
   }
 }

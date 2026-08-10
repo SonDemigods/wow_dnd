@@ -206,7 +206,8 @@ export class BossPhaseStrategy implements IAiStrategy {
 
     // 1. 狂暴（<20%）→ 全力攻击，不 buff/治疗
     if (hpPercent < BOSS_ENRAGE_HP_THRESHOLD) {
-      if (playerHpPercent < 0.3 && attackSkills.length > 0) {
+      // P9-044 修复：合并冗余分支，使用 PLAYER_LOW_HP_THRESHOLD 替代硬编码 0.3
+      if (playerHpPercent < PLAYER_LOW_HP_THRESHOLD && attackSkills.length > 0 && this.rng.bool(0.5)) {
         const skill = this.rng.pick(attackSkills);
         return { type: 'skill', skillId: skill.id };
       }

@@ -36,6 +36,10 @@ export function runMigrations(data: BackupData, fromVersion: number): BackupData
   if (fromVersion === CURRENT_DATA_VERSION) {
     return data;
   }
+  // P9-022 修复：检测版本降级（备份版本高于当前代码版本），拒绝直接使用高版本数据
+  if (fromVersion > CURRENT_DATA_VERSION) {
+    throw new Error(`存档版本 v${fromVersion} 高于当前应用版本 v${CURRENT_DATA_VERSION}，可能存在兼容性问题，请更新应用`);
+  }
   // P7-026 修复：改用显式链式步进，从 fromVersion 逐步推进到 CURRENT_DATA_VERSION
   // 每步只匹配 m.from === currentStep 的迁移，应用后推进 currentStep = m.to
   let result = data;

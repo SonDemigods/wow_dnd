@@ -106,25 +106,30 @@ export function useEquipmentState() {
   }
 
   // ==================== 初始化 ====================
+  // P9-028 修复：try/finally 确保异常时 isLoading 不卡死
   async function initialize(characterId: string): Promise<void> {
+    if (!characterId) return;
     isLoading.value = true;
-    const templates = await equipmentDbService.getAllEquipmentTemplates();
-    await configCache.loadSetDefinitions();
-    const map = new Map<string, EquipmentItem>();
-    templates.forEach(item => map.set(item.id, item));
-    equipmentTemplates.value = map;
+    try {
+      const templates = await equipmentDbService.getAllEquipmentTemplates();
+      await configCache.loadSetDefinitions();
+      const map = new Map<string, EquipmentItem>();
+      templates.forEach(item => map.set(item.id, item));
+      equipmentTemplates.value = map;
 
-    const idMap = await equipmentDbService.getEquipment(characterId);
-    const resolved: Record<EquipmentSlot, EquippedItem | null> = getDefaultEquipment();
-    for (const slot of Object.keys(idMap) as EquipmentSlot[]) {
-      const itemId = idMap[slot];
-      if (itemId) {
-        const template = map.get(itemId);
-        if (template) resolved[slot] = { item: template, equippedAt: Date.now() };
+      const idMap = await equipmentDbService.getEquipment(characterId);
+      const resolved: Record<EquipmentSlot, EquippedItem | null> = getDefaultEquipment();
+      for (const slot of Object.keys(idMap) as EquipmentSlot[]) {
+        const itemId = idMap[slot];
+        if (itemId) {
+          const template = map.get(itemId);
+          if (template) resolved[slot] = { item: template, equippedAt: Date.now() };
+        }
       }
+      equipment.value = resolved;
+    } finally {
+      isLoading.value = false;
     }
-    equipment.value = resolved;
-    isLoading.value = false;
   }
 
   // ==================== 查询 ====================

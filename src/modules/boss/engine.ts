@@ -224,7 +224,7 @@ const mechanicExecutors: Record<BossMechanicType, MechanicExecutor> = {
  */
 export function executeBossMechanic(boss: BossInstance, mechanic: BossMechanic, turnCount: number): boolean {
   // 未到触发间隔，跳过
-  if (mechanic.lastTriggerTurn && turnCount - mechanic.lastTriggerTurn < mechanic.intervalTurns) {
+  if (mechanic.lastTriggerTurn !== undefined && turnCount - mechanic.lastTriggerTurn < mechanic.intervalTurns) {
     return false;
   }
   const executor = mechanicExecutors[mechanic.type];

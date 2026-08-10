@@ -169,10 +169,12 @@ export function usePlayerSkill(
     // P3-156 M4-4：特殊动作技能（召唤/解散宠物）
     // 此类技能不走伤害/buff/heal 分支，独立处理后直接结束回合
     if (skill?.specialAction === 'summon_pet') {
-      // 获取当前集中值，筛选可召唤宠物
-      const focusSys = resourceSystems.value.find(sys => sys.type === 'focus');
-      const currentFocus = focusSys?.currentValue ?? 0;
-      const summonable = pet.petStore.getSummonable(currentFocus);
+      // P9-011 修复：根据宠物系统 owner 查找对应资源类型，不再硬编码 focus
+      const owner = pet.petStore.currentOwner;
+      const resourceType = owner === 'warlock' ? 'soul_shard' : 'focus';
+      const resourceSys = resourceSystems.value.find(sys => sys.type === resourceType);
+      const currentAmount = resourceSys?.currentValue ?? 0;
+      const summonable = pet.petStore.getSummonable(currentAmount);
       if (summonable.length === 0) {
         // P3-179：MP 已消耗，结束回合作为惩罚
         initiative.endPlayerTurn();
@@ -270,7 +272,11 @@ export function usePlayerSkill(
           // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
           const { damage: actualAoeDamage } = boss.applyBossDefenseMechanics(e, aoeDamage);
           if (actualAoeDamage > 0) {
-            ctx.enemy.takeDamage(e.id, actualAoeDamage);
+            const aoeKill = ctx.enemy.takeDamage(e.id, actualAoeDamage);
+            // P9-002 修复：AOE 击杀 Boss 时检查复活机制
+            if (aoeKill) {
+              boss.checkBossRevive(e);
+            }
           }
 
           // BIZ-6：应用 BOSS 反击机制（反弹/反击）
@@ -455,23 +461,28 @@ export function usePlayerSkill(
             );
             const petDamage = petPipeResult.finalDamage;
             if (petDamage > 0) {
-              const petKill = ctx.enemy.takeDamage(updatedTarget.id, petDamage);
-              addCombatLog({
-                actorType: 'pet',
-                actorId: petInst.instanceId,
-                actorName: petInst.name,
-                eventType: 'combat_damage',
-                targetType: 'enemy',
-                targetId: updatedTarget.id,
-                targetName: updatedTarget.name,
-                skillId,
-                skillName: `${skill?.name || ''}（宠物撕咬）`,
-                damage: petDamage,
-                isCrit: false,
-                isDodge: false,
-                message: `${petInst.name} 受狩猎指令激发，对 ${updatedTarget.name} 额外造成 ${petDamage} 点撕咬伤害！`,
-              });
-              if (petKill) isDead = true;
+              // P9-004 修复：宠物伤害也需经过 Boss 防御/反击机制
+              const { damage: actualPetDamage } = boss.applyBossDefenseMechanics(updatedTarget, petDamage);
+              if (actualPetDamage > 0) {
+                const petKill = ctx.enemy.takeDamage(updatedTarget.id, actualPetDamage);
+                boss.applyBossCounterMechanics(updatedTarget, actualPetDamage);
+                addCombatLog({
+                  actorType: 'pet',
+                  actorId: petInst.instanceId,
+                  actorName: petInst.name,
+                  eventType: 'combat_damage',
+                  targetType: 'enemy',
+                  targetId: updatedTarget.id,
+                  targetName: updatedTarget.name,
+                  skillId,
+                  skillName: `${skill?.name || ''}（宠物撕咬）`,
+                  damage: actualPetDamage,
+                  isCrit: false,
+                  isDodge: false,
+                  message: `${petInst.name} 受狩猎指令激发，对 ${updatedTarget.name} 额外造成 ${actualPetDamage} 点撕咬伤害！`,
+                });
+                if (petKill) isDead = true;
+              }
             }
           }
         }
@@ -616,6 +627,9 @@ export function usePlayerSkill(
       initiative.endPlayerTurn();
     }
     // P2 BIZ-4 修复：移除重复 saveLogs，endPlayerTurn/endCombat 内部已调用
+
+    // P9-005 修复：兜底——未匹配任何已知分支时结束回合，防止玩家卡死
+    initiative.endPlayerTurn();
 
     return {
       success: true,

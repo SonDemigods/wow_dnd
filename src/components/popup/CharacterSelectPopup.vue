@@ -168,16 +168,10 @@ async function confirmDelete() {
 
 async function confirmSelect() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'enter_game' });
-  // P8-509 修复：try/catch 包裹选择操作，失败时提示用户
-  try {
-    if (selectedId.value) {
-      await characterStore.selectCharacter(selectedId.value);
-      emit('select', selectedId.value);
-    }
-  } catch (e) {
-    console.error('[CharacterSelectPopup] 选择角色失败:', e);
-    errorHandler.report(e);
-    useToast().show({ message: '选择角色失败，请重试', type: 'danger' });
+  // P9-037 修复：不再在此调用 selectCharacter，仅 emit 'select'，
+  // 由 App.vue handleCharacterSelect 统一处理选择（含返回值校验与错误提示），避免双重初始化
+  if (selectedId.value) {
+    emit('select', selectedId.value);
   }
 }
 

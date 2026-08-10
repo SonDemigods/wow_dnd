@@ -46,4 +46,9 @@ export class FocusSystem extends BaseResourceSystem {
   onAttack(): void {
     this.generate(5, 'attack');
   }
+
+  // P9-009 修复：实现 onDamaged 钩子，使猎人在受伤时获取集中值（FOCUS_CAPS.damaged = 3）
+  onDamaged(amount: number): void {
+    this.generate(Math.floor(amount * 0.1), 'damaged');
+  }
 }

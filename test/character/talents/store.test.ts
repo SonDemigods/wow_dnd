@@ -56,6 +56,20 @@ vi.mock('@/modules/combat/pets', () => ({
   usePetStore: vi.fn(() => mockPetStore),
 }));
 
+/** mock 角色 Store（P9-006/007/026：initialize/learn 会调用 applyBonus/removeBonus/persistCharacter） */
+const { mockCharacterStore } = vi.hoisted(() => ({
+  mockCharacterStore: {
+    applyBonus: vi.fn(() => Promise.resolve()),
+    removeBonus: vi.fn(() => Promise.resolve()),
+    persistCharacter: vi.fn(() => Promise.resolve()),
+    getCharacterData: vi.fn(() => ({ name: 'test', classId: 'warrior', level: 10, talentAllocations: {} })),
+    character: null as unknown,
+  },
+}));
+vi.mock('@/modules/character/store', () => ({
+  useCharacterStore: vi.fn(() => mockCharacterStore),
+}));
+
 /** 从 mock 中取出 spy 引用，便于断言 */
 import {
   canLearnTalent,
@@ -225,6 +239,36 @@ describe('useTalentStore - 天赋 Store', () => {
       // 应为拷贝，修改 store 不影响原对象
       store.$patch({ allocations: { t1: 3 } });
       expect(saved.t1).toBe(2);
+    });
+
+    // P9-006/007 修复：initialize 不应调用 applyBonus/removeBonus（bonusStats 已从 DB 恢复），
+    // 仅对齐 diff 基线，防止重复施加
+    it('initialize 不重复 applyBonus（对齐基线）', async () => {
+      vi.mocked(getTalentStatBonuses).mockReturnValue({ str: 5, con: 3 });
+      const store = useTalentStore();
+      await store.initialize('warrior', 10);
+      // initialize 后不应调用 applyBonus 或 removeBonus
+      expect(mockCharacterStore.applyBonus).not.toHaveBeenCalled();
+      expect(mockCharacterStore.removeBonus).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------- Action: learn 持久化 --------------------
+  describe('Action: learn 持久化（P9-026）', () => {
+    it('learn 后调用 persistCharacter 落盘', async () => {
+      vi.mocked(canLearnTalent).mockReturnValue({ canLearn: true, reason: '' });
+      vi.mocked(learnTalent).mockReturnValue({ t1: 1 });
+      vi.mocked(calculateSpentPoints).mockReturnValueOnce(0);
+      vi.mocked(getTalentStatBonuses).mockReturnValue({});
+      const store = useTalentStore();
+      await store.initialize('warrior', 10);
+
+      // learn 应返回 true
+      const result = store.learn('t1');
+      expect(result).toBe(true);
+
+      // P9-026 修复：syncAllocationsToCharacter 应调用 persistCharacter
+      expect(mockCharacterStore.persistCharacter).toHaveBeenCalled();
     });
   });
 

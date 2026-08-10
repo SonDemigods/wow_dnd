@@ -8,6 +8,7 @@ import { ref, computed } from 'vue';
 import { adminService } from './service';
 import type { AdminView, ConfigTableName, FormConfig, ReferenceOption } from './types';
 import { CONFIG_TABLES } from './types';
+import { configCache } from '@/modules/config';
 
 /**
  * 后台管理状态存储
@@ -158,6 +159,10 @@ export const useAdminStore = defineStore('admin', () => {
     }
 
     if (result.success) {
+      // P9-016 修复：物品模板/套装定义表修改后失效缓存，确保运行时读取最新数据
+      if (tableName === 'config_equipment_items' || tableName === 'config_set_definitions') {
+        configCache.invalidate(tableName === 'config_set_definitions' ? 'sets' : undefined);
+      }
       closeForm();
       await loadTableData();
       return true;
@@ -171,6 +176,10 @@ export const useAdminStore = defineStore('admin', () => {
   async function deleteRecord(tableName: string, id: string): Promise<boolean> {
     const result = await adminService.delete(tableName, id);
     if (result.success) {
+      // P9-016 修复：物品模板/套装定义表删除后失效缓存
+      if (tableName === 'config_equipment_items' || tableName === 'config_set_definitions') {
+        configCache.invalidate(tableName === 'config_set_definitions' ? 'sets' : undefined);
+      }
       await loadTableData();
       return true;
     }

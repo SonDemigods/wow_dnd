@@ -5,8 +5,10 @@
  */
 import { ref, reactive, computed } from 'vue';
 import { useCharacterStore } from '@/modules/character';
+import { useTalentStore } from '@/modules/character/talents';
 import { useMapStore } from '@/modules/map';
 import { useShopStore } from '@/modules/shop';
+import { useSkillStore } from '@/modules/skill';
 import { useExplorationStore, type MultiOptionEventResult, type EventChoice } from '@/modules/exploration';
 import { gameBootstrap } from '@/services/GameBootstrap';
 import { eventBus, GameEvents } from '@/modules/bus';
@@ -44,6 +46,10 @@ export function useGameActions(onExit: () => void) {
   });
   const levelUpTriggered = ref(false);
   let levelUpTimerId: ReturnType<typeof setTimeout> | null = null;
+
+  // P9-024/P9-025：升级时同步天赋点与自动学习技能
+  const talentStore = useTalentStore();
+  const skillStore = useSkillStore();
 
   // P6-153 修复：回退对象包含完整的 Character 必要字段，避免下游访问 undefined
   const character = computed(() => characterStore.character || {
@@ -173,9 +179,13 @@ export function useGameActions(onExit: () => void) {
     await shopStore.closeShop();
   }
 
-  function onLevelUp(): void {
+  function onLevelUp(payload: { oldLevel: number; newLevel: number }): void {
     levelUpTriggered.value = true;
     showNotif('升级了！', 'success');
+    // P9-024 修复：同步天赋等级到 talentStore，使天赋点立即更新
+    talentStore.updateLevel(payload.newLevel);
+    // P9-025 修复：升级后自动学习新等级解锁的技能
+    void skillStore.checkLevelUnlocks(true);
     if (levelUpTimerId !== null) clearTimeout(levelUpTimerId);
     levelUpTimerId = setTimeout(() => {
       levelUpTimerId = null;

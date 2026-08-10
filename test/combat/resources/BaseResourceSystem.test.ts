@@ -93,6 +93,16 @@ describe('BaseResourceSystem 通用逻辑', () => {
     expect(r.currentValue).toBe(30);
   });
 
+  // P9-001 修复：reset 同时重置 maxValue 到 baseMaxValue，防止 addMaxBonus 跨战斗累积
+  it('reset 恢复 maxValue 到 baseMaxValue', () => {
+    const r = new TestResource({ maxValue: 100, initialValue: 0 });
+    r.addMaxBonus(50);
+    expect(r.maxValue).toBe(150);
+    r.reset();
+    expect(r.maxValue).toBe(100);
+    expect(r.currentValue).toBe(0);
+  });
+
   it('valueRef / maxValueRef 暴露响应式引用', () => {
     const r = new TestResource({ maxValue: 100, initialValue: 10 });
     expect(r.valueRef.value).toBe(10);
