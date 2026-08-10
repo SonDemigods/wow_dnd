@@ -148,6 +148,9 @@ export const useTalentStore = defineStore('talent', () => {
       allocations.value = {};
     }
 
+    // P6-054 修复：切换角色时先移除上一角色的 stat_bonus，避免 delta 计算基于错误基线
+    removeStatBonusesFromCharacter();
+
     // 应用初始 stat_bonus 到角色（非战斗时直接加到 bonusStats）
     applyStatBonusesToCharacter();
   }

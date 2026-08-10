@@ -103,15 +103,17 @@ export function usePlayerAction(
     if (!skill.buffs || skill.buffs.length === 0) return;
 
     const sourceName = skill.name;
-    const isSelfBuff = skill.buffs.some(b =>
-      ['attack_up', 'defense_up', 'speed_up', 'regen', 'shield'].includes(b.type)
-    );
+    // P6-003 修复：按单个 buff.type 逐条判断目标（self vs enemy），
+    // 而非整段技能级二选一。混合 buff+debuff 技能应同时施加自身增益和敌方减益。
+    const selfBuffTypes = ['attack_up', 'defense_up', 'speed_up', 'regen', 'shield'];
+    const hasSelfBuffs = skill.buffs.some(b => selfBuffTypes.includes(b.type));
+    const enemyBuffs = skill.buffs.filter(b => !selfBuffTypes.includes(b.type));
 
-    if (isSelfBuff || targetType === 'self') {
-      // 自身增益：应用到玩家
+    // 施加自身增益
+    if (hasSelfBuffs || targetType === 'self') {
       const playerCtx = createPlayerEffectContext();
       for (const be of skill.buffs) {
-        if (['attack_up', 'defense_up', 'speed_up', 'regen', 'shield'].includes(be.type)) {
+        if (selfBuffTypes.includes(be.type)) {
           const effect: Effect = {
             id: generateEffectId(),
             type: be.type as EffectType,
@@ -121,24 +123,23 @@ export function usePlayerAction(
             sourceName
           };
           addEffectToContainer(playerEffects.value, effect);
-          // 调用 handler.onApply 触发效果施加回调
           effectRegistry.get(effect.type)?.onApply?.(effect, playerCtx);
         }
       }
-      return;
     }
 
-    // 敌人减益
-    if (targetType === 'all_enemies') {
-      const livingEnemies = aliveEnemies.value;
-      for (const e of livingEnemies) {
-        applyDebuffToEnemy(e, skill.buffs, sourceName);
-      }
-    } else {
-      // 单目标
-      const target = currentTarget.value;
-      if (target) {
-        applyDebuffToEnemy(target, skill.buffs, sourceName);
+    // 施加敌方减益（不 return，混合技能的 debuff 也需生效）
+    if (enemyBuffs.length > 0 && targetType !== 'self') {
+      if (targetType === 'all_enemies') {
+        const livingEnemies = aliveEnemies.value;
+        for (const e of livingEnemies) {
+          applyDebuffToEnemy(e, enemyBuffs, sourceName);
+        }
+      } else {
+        const target = currentTarget.value;
+        if (target) {
+          applyDebuffToEnemy(target, enemyBuffs, sourceName);
+        }
       }
     }
   }
@@ -277,13 +278,13 @@ export function usePlayerAction(
     });
 
     // 检查战斗是否结束
-    if (isDead || !updatedTarget || aliveEnemies.value.length === 0) {
-      // BIZ-6：检查 BOSS 复活机制
-      if (isDead && boss.checkBossRevive(target)) {
-        initiative.endPlayerTurn();
-      } else {
-        endCombat('victory');
-      }
+    // P6-001 修复：胜利条件改为仅当所有敌人均已死亡（aliveEnemies.length === 0），
+    // isDead 仅表示当前目标被击杀，不意味着整场战斗胜利（多敌场景下其他敌人可能仍存活）
+    // BIZ-6：先检查 BOSS 复活机制（复活后 aliveEnemies 不再为空，不会误判胜利）
+    if (isDead && boss.checkBossRevive(target)) {
+      initiative.endPlayerTurn();
+    } else if (aliveEnemies.value.length === 0) {
+      endCombat('victory');
     } else {
       initiative.endPlayerTurn();
     }
@@ -292,11 +293,12 @@ export function usePlayerAction(
     return {
       success: true,
       type: 'attack',
-      damage: finalDamage,
+      // P6-007 修复：返回值统一使用 actualDamage（实际扣血量），与日志一致
+      damage: actualDamage,
       isCrit,
       message: isCrit
-        ? `暴击！造成 ${finalDamage} 点伤害！`
-        : `造成 ${finalDamage} 点伤害！`
+        ? `暴击！造成 ${actualDamage} 点伤害！`
+        : `造成 ${actualDamage} 点伤害！`
     };
   }
 

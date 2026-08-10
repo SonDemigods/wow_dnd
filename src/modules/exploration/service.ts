@@ -116,7 +116,8 @@ export function computeEventProbability(avgLevel: number): GridEventProbability 
   raw.trap = Math.round(raw.trap / total * PROBABILITY_NORMALIZATION_BASE);
   raw.event = Math.round(raw.event / total * PROBABILITY_NORMALIZATION_BASE);
   // 最后一项用减法消除舍入误差，确保总和恰好为 100
-  raw.empty = PROBABILITY_NORMALIZATION_BASE - raw.monster - raw.item - raw.trap - raw.event;
+  // P6-102 修复：归一化后四项之和可能超过 100，empty 可能为负数，用 Math.max 保护
+  raw.empty = Math.max(0, PROBABILITY_NORMALIZATION_BASE - raw.monster - raw.item - raw.trap - raw.event);
   return raw;
 }
 
@@ -323,7 +324,8 @@ const multiOptionEventTemplates: Array<(areaLevel: number, rng: Rng) => MultiOpt
     icon: 'game-icons:altar',
     choices: [
       { label: '触碰祭坛（献祭生命换取经验）', icon: 'game-icons:bleeding-heart', effect: { type: 'exp', amount: lv * 15 + 20 } },
-      { label: '安全离开', icon: 'game-icons:walk', effect: { type: 'heal', amount: lv * 2 } },
+      // P6-106 修复：安全离开不应回血，改为无效果（amount: 0）
+      { label: '安全离开', icon: 'game-icons:walk', effect: { type: 'heal', amount: 0 } },
     ],
   }),
   // 宝箱守卫：战斗风险 vs 高额金币

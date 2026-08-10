@@ -11,9 +11,11 @@
 import type { Table } from 'dexie';
 import { db, getTable } from './core';
 import type { GameStateStorage, GameDatabaseSchema } from './core';
-import type { FactionStorage, RaceStorage, ClassStorage } from '../character/types';
+import type { FactionStorage, RaceStorage, ClassStorage, PassiveSkill } from '../character/types';
+import type { TalentTree } from '../character/talents/types';
 import type { ItemStorage } from '../inventory/types';
-import type { EquipmentTemplateStorage } from '../equipment/types';
+import type { EquipmentTemplateStorage, EquipmentItem } from '../equipment/types';
+import type { ItemSet } from '../equipment/setTypes';
 import type { EnemyStorage } from '../enemy/types';
 import type { BossStorage } from '../boss/types';
 import type { LocationData, MapStateStorage } from '../map/types';
@@ -21,6 +23,7 @@ import type { ShopConfig, ShopItemsStorage } from '../shop/types';
 import type { SkillTemplateStorage } from '../skill/types';
 import type { CombatLogStorage } from '../combat/types';
 import type { LogEntry } from '../log/types';
+import type { QuestDefinitionStorage } from '../quest/types';
 import { BACKUP_CONFIG } from '@/config/database';
 import { APP_VERSION } from '@/config/version';
 import { downloadBlob } from '@/utils/fileDownload';
@@ -51,7 +54,13 @@ type ArrayBackupField =
   | 'equipmentItems'
   | 'mobs'
   | 'bosses'
-  | 'skillTemplates';
+  | 'skillTemplates'
+  // P6-200 修复：补齐遗漏的配置表
+  | 'questDefinitions'
+  | 'classEquipment'
+  | 'classPassives'
+  | 'classTalents'
+  | 'setDefinitions';
 
 const TABLES_TO_BACKUP: ReadonlyArray<{
   /** BackupData 中对应的字段名 */
@@ -71,6 +80,12 @@ const TABLES_TO_BACKUP: ReadonlyArray<{
   { field: 'mobs', table: 'config_mobs', storeName: 'config_mobs' },
   { field: 'bosses', table: 'config_bosses', storeName: 'config_bosses' },
   { field: 'skillTemplates', table: 'config_skills', storeName: 'config_skills' },
+  // P6-200 修复：补齐遗漏的配置表，避免备份/导入丢失任务与职业数据
+  { field: 'questDefinitions', table: 'config_quests', storeName: 'config_quests' },
+  { field: 'classEquipment', table: 'config_class_equipment', storeName: 'config_class_equipment' },
+  { field: 'classPassives', table: 'config_class_passives', storeName: 'config_class_passives' },
+  { field: 'classTalents', table: 'config_class_talents', storeName: 'config_class_talents' },
+  { field: 'setDefinitions', table: 'config_set_definitions', storeName: 'config_set_definitions' },
 ];
 
 // TABLES_TO_BACKUP 在 backup.ts 与 importer.ts 间共享：通过下方 export 暴露给 importer 使用。
@@ -188,7 +203,10 @@ export class BackupService implements IBackupService {
       skillsRecords, explorationRecords, combatRecords, adventureLogRecords,
       gameStateRecords, mapStateRecords, shopItemsRecords,
       mapRecords, shopRecords, factionsRecords, racesRecords, classesRecords,
-      itemsRecords, equipmentItemsRecords, mobsRecords, bossesRecords, skillTemplatesRecords
+      itemsRecords, equipmentItemsRecords, mobsRecords, bossesRecords, skillTemplatesRecords,
+      // P6-200 修复：补齐遗漏的配置表读取
+      questDefinitionsRecords, classEquipmentRecords, classPassivesRecords,
+      classTalentsRecords, setDefinitionsRecords
     ] = await Promise.all([
       // 角色表（Record 形状，以 characterId 为键）
       db.char_data.toArray(),
@@ -215,6 +233,12 @@ export class BackupService implements IBackupService {
       getTable<EnemyStorage>(db, 'config_mobs').toArray(),
       getTable<BossStorage>(db, 'config_bosses').toArray(),
       getTable<SkillTemplateStorage>(db, 'config_skills').toArray(),
+      // P6-200 修复：补齐遗漏的配置表
+      getTable<QuestDefinitionStorage>(db, 'config_quests').toArray(),
+      getTable<EquipmentItem>(db, 'config_class_equipment').toArray(),
+      getTable<PassiveSkill>(db, 'config_class_passives').toArray(),
+      getTable<TalentTree>(db, 'config_class_talents').toArray(),
+      getTable<ItemSet>(db, 'config_set_definitions').toArray(),
     ]);
 
     // 构建角色数据 Record（以 characterId 为键）
@@ -270,6 +294,12 @@ export class BackupService implements IBackupService {
       mobs: mobsRecords,
       bosses: bossesRecords,
       skillTemplates: skillTemplatesRecords,
+      // P6-200 修复：补齐遗漏的配置表数据
+      questDefinitions: questDefinitionsRecords,
+      classEquipment: classEquipmentRecords,
+      classPassives: classPassivesRecords,
+      classTalents: classTalentsRecords,
+      setDefinitions: setDefinitionsRecords,
     };
   }
 

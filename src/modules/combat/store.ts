@@ -98,7 +98,7 @@ export const useCombatStore = defineStore('combat', () => {
     if (state.state.value === 'ended' || state.state.value === 'idle') return;
 
     if (state.enemies.value.length === 0) {
-      // 无敌人时直接标记结束并清理效果
+      // 无敌人时直接标记结束并清理效果（设计保留：不 emit COMBAT_END，此为异常防御分支）
       state.state.value = 'ended';
       state.playerEffects.value = createEmptyContainer();
       state.enemyEffects.value = {};
@@ -202,7 +202,11 @@ export const useCombatStore = defineStore('combat', () => {
         //   需要保证探索状态在 character 死亡前完成；combat 场景无此依赖
         // - 风险评估：若 resurrect 在 state.cleanup 之前完成，character.value 已被替换为新对象，
         //   但 cleanup 不读取 character，故无影响
-        ctx.character.handleDeath();
+        // P6-009 修复：添加 .catch 避免未捕获的 Promise 拒绝
+        // 使用 Promise.resolve 包裹以兼容 mock 返回非 Promise 的情况
+        Promise.resolve(ctx.character.handleDeath()).catch(err => {
+          console.error('[CombatStore] handleDeath 异步执行失败:', err);
+        });
       } else if (result === 'fled') {
         state.combatResult.value = result;
         state.expGained.value = 0;

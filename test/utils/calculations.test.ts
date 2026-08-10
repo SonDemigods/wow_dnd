@@ -184,9 +184,10 @@ describe('getExpForLevel 等级经验查询', () => {
     expect(getExpForLevel(10)).toBe(LEVEL_EXP_REQUIREMENTS[10]);
   });
 
-  it('超过 MAX_LEVEL 时返回 MAX_LEVEL 的经验值', () => {
-    expect(getExpForLevel(MAX_LEVEL + 1)).toBe(LEVEL_EXP_REQUIREMENTS[MAX_LEVEL]);
-    expect(getExpForLevel(9999)).toBe(LEVEL_EXP_REQUIREMENTS[MAX_LEVEL]);
+  it('超过 MAX_LEVEL 时返回 Infinity 表示已封顶', () => {
+    // P6-204 修复：超出最大等级返回 Infinity，调用方可据此判断不可再升级
+    expect(getExpForLevel(MAX_LEVEL + 1)).toBe(Infinity);
+    expect(getExpForLevel(9999)).toBe(Infinity);
   });
 
   it('刚好 MAX_LEVEL 返回对应值', () => {

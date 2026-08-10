@@ -45,7 +45,10 @@ export function useGameActions(onExit: () => void) {
   const levelUpTriggered = ref(false);
   let levelUpTimerId: ReturnType<typeof setTimeout> | null = null;
 
-  const character = computed(() => characterStore.character || { name: '...', level: 1 });
+  // P6-153 修复：回退对象包含完整的 Character 必要字段，避免下游访问 undefined
+  const character = computed(() => characterStore.character || {
+    name: '...', level: 1, classId: '', raceId: '', factionId: '',
+  });
   const currentHp = computed(() => characterStore.hp);
   const maxHp = computed(() => characterStore.maxHp);
   const currentMp = computed(() => characterStore.mana);
@@ -211,6 +214,8 @@ export function useGameActions(onExit: () => void) {
   }
 
   function cleanup() {
+    // P6-152 修复：幂等保护，多次调用安全
+    if (disposed) return;
     disposed = true; // P5-016 修复：设置标记，阻止 init 后续执行
     eventBus.off(GameEvents.CHARACTER_LEVEL_UP, onLevelUp);
     if (levelUpTimerId !== null) { clearTimeout(levelUpTimerId); levelUpTimerId = null; }

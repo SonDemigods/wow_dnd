@@ -319,3 +319,28 @@ export const DEFEND_DEFENSE_BONUS = 10;
  * @see src/modules/combat/composables/useEnemyAction.ts defend case
  */
 export const DEFEND_DURATION_TURNS = 2;
+
+// ==================== Boss 机制参数 ====================
+
+/**
+ * Boss 反击伤害倍率（相对于玩家造成的伤害）
+ *
+ * @see src/modules/combat/composables/useBossMechanics.ts applyBossCounterMechanics
+ */
+export const BOSS_COUNTER_DAMAGE_RATIO = 0.5;
+
+/**
+ * Boss 复活时恢复的生命值比例
+ *
+ * @see src/modules/combat/composables/useBossMechanics.ts checkBossRevive
+ */
+export const BOSS_REVIVE_HP_RATIO = 0.5;
+
+/**
+ * Boss 效果缩放步进系数（按等级线性增长）
+ *
+ * 效果值 = floor(baseValue × (1 + (level-1) × 该系数))
+ *
+ * @see src/modules/combat/composables/useBossMechanics.ts scaleBossEffectValue
+ */
+export const BOSS_EFFECT_SCALE_STEP = 0.08;

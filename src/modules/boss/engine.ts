@@ -271,11 +271,9 @@ export function processBossPhaseMechanics(boss: BossInstance, phase: BossPhase, 
 export function applyPhaseStats(boss: BossInstance, phase: BossPhase): void {
   if (!phase.statMultipliers) return;
   const m = phase.statMultipliers;
-  // 注：此处 ?? 保留是合理的——physicalAttack 为 undefined 时回退到默认值 10 符合游戏设计
-  //（Boss 不会真的有 0 攻击力，0 通常表示未配置；但若显式配置 0 则保留 0）
-  if (m.physicalAttack) boss.base.physicalAttack = Math.round((boss.base.physicalAttack ?? 10) * m.physicalAttack);
-  if (m.magicAttack) boss.base.magicAttack = Math.round((boss.base.magicAttack ?? 10) * m.magicAttack);
-  if (m.physicalDefense) boss.base.physicalDefense = Math.round((boss.base.physicalDefense ?? 5) * m.physicalDefense);
-  // P3-7：magicDefense 处理与其他属性保持一致，未定义时使用默认值 5
-  if (m.magicDefense) boss.base.magicDefense = Math.round((boss.base.magicDefense ?? 5) * m.magicDefense);
+  // P6-006 修复：改用 !== undefined 判断，允许配置乘数 0（用于清零属性）
+  if (m.physicalAttack !== undefined) boss.base.physicalAttack = Math.round((boss.base.physicalAttack ?? 10) * m.physicalAttack);
+  if (m.magicAttack !== undefined) boss.base.magicAttack = Math.round((boss.base.magicAttack ?? 10) * m.magicAttack);
+  if (m.physicalDefense !== undefined) boss.base.physicalDefense = Math.round((boss.base.physicalDefense ?? 5) * m.physicalDefense);
+  if (m.magicDefense !== undefined) boss.base.magicDefense = Math.round((boss.base.magicDefense ?? 5) * m.magicDefense);
 }

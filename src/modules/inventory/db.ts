@@ -217,7 +217,8 @@ export class InventoryDbService {
       levelRequirement: data.levelRequirement ?? undefined,
       template: data.template || undefined,
       // plan.md §3.4：能力标签集合透传（配置层显式声明，无派生兜底）
-      capabilities: data.capabilities,
+      // P6-052 修复：旧存档可能缺少 capabilities 字段，兜底为空数组避免 hasCapability 崩溃
+      capabilities: data.capabilities ?? [],
     };
 
     // 旧 effect + bonus → 新 effects[]（plan.md T5/T6：统一为多效果数组）

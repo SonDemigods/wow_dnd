@@ -104,7 +104,32 @@ export function useEquipmentOps(state: EquipmentState, setBonus: ReturnType<type
       return false;
     }
 
-    await setBonus.reapplySetBonuses();
+    // P6-053 修复：reapplySetBonuses 纳入 try-catch，失败时回滚装备状态
+    try {
+      await setBonus.reapplySetBonuses();
+    } catch (e) {
+      console.error('[EquipmentStore] equipItem reapplySetBonuses 失败，回滚装备状态:', e);
+      errorReporter.report(e, 'manual', {
+        context: '套装重算失败，已回滚装备状态', characterId: currentCharacterId.value,
+      });
+      try {
+        const newBonus = computeEquipBonus(item);
+        if (Object.keys(newBonus).length > 0) await useCharacterStore().removeBonus(newBonus);
+      } catch (rollbackErr) {
+        console.error('[EquipmentStore] equipItem 回滚新装备 bonus 失败:', rollbackErr);
+      }
+      equipment.value[slot] = null;
+      if (cb.addItem()) cb.addItem()!(item.id, 1);
+      if (previousEquipped) {
+        if (cb.removeItem()) cb.removeItem()!(previousEquipped.item.id, 1);
+        equipment.value[slot] = previousEquipped;
+        try { await applyBonusForSlot(slot); } catch (rollbackErr) {
+          console.error('[EquipmentStore] equipItem 回滚旧装备 bonus 失败:', rollbackErr);
+        }
+      }
+      if (cb.flushPersist()) await cb.flushPersist()!();
+      return false;
+    }
 
     try {
       await persist();

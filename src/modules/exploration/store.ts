@@ -203,7 +203,8 @@ export const useExplorationStore = defineStore('exploration', () => {
     const itemPool = buildItemPool(allItems, minLevel, maxLevel);
 
     return {
-      areaId: location.name,
+      // P6-105 修复：areaId 存储 location.id 而非 location.name，保持语义一致
+      areaId: location.id,
       name: location.name,
       level: minLevel,
       eventProbability,
@@ -651,8 +652,7 @@ export const useExplorationStore = defineStore('exploration', () => {
         cell.explored = true;
         cell.visited = true;
         visitedCells.value++;
-        // P3-149：探索新格触发 explore 任务进度
-        await useQuestStore().onCellExplored(currentAreaId.value ?? undefined);
+        // P6-101 修复：战斗失败/逃跑不应触发 explore 任务进度（仅胜利才算探索成功）
       }
       // 失败/逃跑：回退到 previousPosition（movePlayer 记录的原位）
       if (previousPosition.value) {
@@ -842,6 +842,8 @@ export const useExplorationStore = defineStore('exploration', () => {
 
     grid.value = newGrid;
     visitedCells.value = GRID_SIZE * GRID_SIZE;
+    // P6-100 修复：revealAllCells 同时设置 bossDefeated，使 checkCompletion 能正常触发
+    bossDefeated.value = true;
     checkCompletion();
     await persistState();
   }

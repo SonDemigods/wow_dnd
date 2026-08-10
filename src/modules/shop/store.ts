@@ -384,19 +384,21 @@ export const useShopStore = defineStore('shop', () => {
         const remaining = Math.max(0, shopItem.maxPurchaseCount - currentPurchased);
         const toast = useToast();
         if (remaining > 0) {
+          // P6-055 修复：有剩余额度时按剩余数量部分购买
           toast.show({
-            message: `该商品限购 ${shopItem.maxPurchaseCount} 次，当前还可购买 ${remaining} 次`,
+            message: `该商品限购 ${shopItem.maxPurchaseCount} 次，本次仅可购买 ${remaining} 件`,
             type: 'warning',
             duration: 2500
           });
+          quantity = remaining;
         } else {
           toast.show({
             message: `该商品已达购买上限（${shopItem.maxPurchaseCount} 次）`,
             type: 'warning',
             duration: 2500
           });
+          return false;
         }
-        return false;
       }
     }
 
@@ -619,10 +621,26 @@ export const useShopStore = defineStore('shop', () => {
       currentItems.value = mergeItems(currentGenerated || []);
     } catch (err) {
       // P5-010 修复：持久化失败，回滚背包和金币
+      // P6-051 修复：同时回滚 soldItems Map（内存中已添加但持久化失败的回购条目）
       console.error('[ShopStore] sellItem 持久化失败，回滚背包和金币:', err);
       errorReporter.report(err, 'manual', {
         context: '商店出售持久化失败，已回滚背包和金币',
         shopId, itemId, quantity: actualQuantity,
+      });
+      // P6-051：回滚 soldItems Map —— 移除刚加入的回购条目
+      _replaceSoldItems(newMap => {
+        const innerMap = newMap.get(shopId);
+        if (!innerMap) return;
+        const entry = innerMap.get(itemId);
+        if (!entry) return;
+        if (entry.quantity > actualQuantity) {
+          entry.quantity -= actualQuantity;
+        } else {
+          innerMap.delete(itemId);
+        }
+        if (innerMap.size === 0) {
+          newMap.delete(shopId);
+        }
       });
       // 回滚背包：加回物品
       try {

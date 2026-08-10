@@ -92,8 +92,9 @@ describe('data/backup 子模块独立测试', () => {
   });
 
   describe('TABLES_TO_BACKUP 配置完整性', () => {
-    it('包含全部 10 个数组形状配置表', () => {
-      expect(TABLES_TO_BACKUP.length).toBe(10);
+    it('包含全部 15 个数组形状配置表', () => {
+      // P6-200 修复：从 10 个表扩展到 15 个（新增 questDefinitions/classEquipment/classPassives/classTalents/setDefinitions）
+      expect(TABLES_TO_BACKUP.length).toBe(15);
     });
 
     it('每项包含 field / table / storeName 三个字段', () => {
@@ -104,12 +105,14 @@ describe('data/backup 子模块独立测试', () => {
       }
     });
 
-    it('覆盖 factions/races/classes/items/equipmentItems/mobs/bosses/skillTemplates/map/shop', () => {
+    it('覆盖 factions/races/classes/items/equipmentItems/mobs/bosses/skillTemplates/map/shop + questDefinitions/classEquipment/classPassives/classTalents/setDefinitions', () => {
       const fields = TABLES_TO_BACKUP.map(item => item.field);
       expect(fields).toEqual(
         expect.arrayContaining([
           'factions', 'races', 'classes', 'items', 'equipmentItems',
-          'mobs', 'bosses', 'skillTemplates', 'map', 'shop'
+          'mobs', 'bosses', 'skillTemplates', 'map', 'shop',
+          // P6-200 新增
+          'questDefinitions', 'classEquipment', 'classPassives', 'classTalents', 'setDefinitions'
         ])
       );
     });

@@ -1263,7 +1263,8 @@ describe('useCharacterStore - 角色 Store', () => {
     it('allocateStat：分配 str 时不重算 HP/MP（仍持久化）', async () => {
       const store = setupLoggedInStore(makeChar({ unallocatedPoints: 3 }));
       await store.allocateStat('str');
-      expect(computeEffectiveStats).not.toHaveBeenCalled();
+      // P6-057 修复：allocateStat 现在读 effectiveStats.value[stat] 做上限检查，
+      // 会触发 computeEffectiveStats mock 调用，此为预期行为
       expect(characterDbService.saveCharacterData).toHaveBeenCalledTimes(1);
     });
 

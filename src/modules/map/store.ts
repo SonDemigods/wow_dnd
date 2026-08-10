@@ -127,11 +127,12 @@ export const useMapStore = defineStore('map', () => {
 
   /** 获取地图状态（深拷贝，防止外部修改污染 Store） */
   function getState(): MapState {
-    return {
+    // P6-107 修复：返回对象使用 Object.freeze 防止外部 mutate
+    return Object.freeze({
       view: { ...state.value.view },
       unlockedZones: state.value.unlockedZones ? [...state.value.unlockedZones] : undefined,
       completedZones: state.value.completedZones ? [...state.value.completedZones] : undefined
-    };
+    });
   }
 
   /** 获取地点数据 */

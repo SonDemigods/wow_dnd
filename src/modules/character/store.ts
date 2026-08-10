@@ -559,7 +559,9 @@ export const useCharacterStore = defineStore('character', () => {
   async function allocateStat(stat: keyof Stats): Promise<boolean> {
     if (!character.value || character.value.unallocatedPoints <= 0) return false;
     // P4-003 修复：属性已达 MAX_STAT 时拒绝分配，避免白耗点数
-    if (character.value.allocatedStats[stat] >= MAX_STAT) return false;
+    // P6-057 修复：上限判定基于 effectiveStats（含 potionStats/bonusStats 的聚合值），
+    // 避免属性已通过药剂/装备达到上限但仍消耗升级点
+    if (effectiveStats.value[stat] >= MAX_STAT) return false;
     const newChar = allocateStatPure(character.value, stat);
     // P3-6：仅 con/int/wis 影响 HP/MP 上限（HP←con，MP←int/wis，str/dex/cha 不影响）
     const needsRecalc = stat === 'con' || stat === 'int' || stat === 'wis';

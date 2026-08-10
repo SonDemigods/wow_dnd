@@ -19,6 +19,7 @@ import {
 } from '../effects';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
+import { BOSS_COUNTER_DAMAGE_RATIO, BOSS_REVIVE_HP_RATIO, BOSS_EFFECT_SCALE_STEP } from '@/config/combat';
 
 /**
  * Boss 机制上下文接口
@@ -96,7 +97,8 @@ export function useBossMechanics(
    * @returns 缩放后的效果值
    */
   function scaleBossEffectValue(baseValue: number, bossLevel: number): number {
-    return Math.floor(baseValue * (1 + (bossLevel - 1) * 0.08));
+    // P6-004 修复：魔法数字 0.08 抽取到 config/combat.ts BOSS_EFFECT_SCALE_STEP
+    return Math.floor(baseValue * (1 + (bossLevel - 1) * BOSS_EFFECT_SCALE_STEP));
   }
 
   /**
@@ -360,7 +362,7 @@ export function useBossMechanics(
     }
 
     if (runtime.counterStance) {
-      const counterDamage = Math.floor(actualDamage * 0.5);
+      const counterDamage = Math.floor(actualDamage * BOSS_COUNTER_DAMAGE_RATIO);
       if (counterDamage > 0) {
         bossCtx.applyDamageToPlayer(counterDamage);
         log.addCombatLog({
@@ -389,7 +391,7 @@ export function useBossMechanics(
     const boss = state.bossInstances.get(target.id);
     if (!boss) return false;
     if (boss.runtime.canRevive) {
-      target.hp = Math.floor(target.maxHp * 0.5);
+      target.hp = Math.floor(target.maxHp * BOSS_REVIVE_HP_RATIO);
       boss.runtime.canRevive = false;
       log.addCombatLog({
         actorType: 'system', actorId: 'system', actorName: '系统',

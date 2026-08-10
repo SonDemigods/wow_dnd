@@ -871,7 +871,7 @@ describe('useShopStore - 商店 Store', () => {
 
   // -------------------- Actions：buyItem 限购与部分成功 --------------------
   describe('Actions：buyItem 限购与部分成功', () => {
-    it('maxPurchaseCount 限购：剩余 > 0 → 返回 false，不扣金币', async () => {
+    it('maxPurchaseCount 限购：剩余 > 0 → 部分购买（P6-055 修复）', async () => {
       // Arrange：商品限购 5 次，已购 4 次，购买 2 件超过剩余 1 次
       const store = useShopStore();
       const item = makeShopItem({
@@ -883,9 +883,10 @@ describe('useShopStore - 商店 Store', () => {
 
       const result = await store.buyItem('rare_1', 2);
 
-      // Assert：被限购拦截，未扣金币
-      expect(result).toBe(false);
-      expect(mocks.characterStore.spendGold).not.toHaveBeenCalled();
+      // Assert：P6-055 修复后有剩余额度时按剩余数量部分购买，返回 true
+      expect(result).toBe(true);
+      // 仅扣 1 件的金币（remaining=1，price=100）
+      expect(mocks.characterStore.spendGold).toHaveBeenCalledWith(100);
     });
 
     it('maxPurchaseCount 限购：已达上限 → 返回 false', async () => {

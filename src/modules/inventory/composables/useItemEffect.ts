@@ -34,6 +34,14 @@ export function useItemEffect(state: InventoryState) {
         await characterStore.receiveHeal(value);
       } else if (type === 'mana_restore' && typeof value === 'number' && value > 0) {
         await characterStore.changeMp(value);
+      } else {
+        // P6-050 修复：未处理的效果类型（如 buff/physical_damage 等），拒绝消耗物品
+        if (import.meta.env.DEV) {
+          console.warn(
+            `[InventoryStore] 消耗品 ${itemTemplate.id} (${itemTemplate.name}) 的效果类型 ${type} 未被处理，已阻止消耗。`
+          );
+        }
+        return false;
       }
     }
 

@@ -29,9 +29,11 @@ export const useLogStore = defineStore('log', () => {
   const totalPages = computed(() => Math.max(0, Math.ceil(logs.value.length / PAGE_SIZE)));
 
   // ==================== 持久化 ====================
-  async function saveToDb(): Promise<void> {
-    if (currentCharacterId.value) {
-      await adventureLogDbService.saveAdventureLog(currentCharacterId.value, logs.value);
+  // P6-201 修复：saveToDb 显式接收 characterId 参数，避免依赖 GameStore 全局状态
+  async function saveToDb(characterId?: string): Promise<void> {
+    const id = characterId ?? currentCharacterId.value;
+    if (id) {
+      await adventureLogDbService.saveAdventureLog(id, logs.value);
     }
   }
 
@@ -58,10 +60,11 @@ export const useLogStore = defineStore('log', () => {
     // 仅在确实发生截断时持久化，避免无意义写入
     if (truncated) {
       // P3-151：原 console.error 改为 errorReporter 统一上报，便于全局监测
-      saveToDb().catch(err => {
+      // P6-201 修复：传递 initialize 的 characterId 参数而非依赖 GameStore 全局状态
+      saveToDb(characterId).catch(err => {
         errorReporter.report(err, 'manual', {
           context: '日志截断后持久化失败',
-          characterId: currentCharacterId.value,
+          characterId,
         });
       });
     }

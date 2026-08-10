@@ -98,6 +98,10 @@ class ConfigCacheService {
         }
       }
       return trees;
+    } catch (err) {
+      // P6-202 修复：加载失败时复位缓存状态，确保下次调用可重试
+      this._talentTrees = null;
+      throw err;
     } finally {
       this._talentLoadingPromise = null;
     }
@@ -143,6 +147,10 @@ class ConfigCacheService {
         this._passivesByClass.set(p.classId, existing);
       }
       return passives;
+    } catch (err) {
+      // P6-202 修复：加载失败时复位缓存状态，确保下次调用可重试
+      this._passives = null;
+      throw err;
     } finally {
       this._passiveLoadingPromise = null;
     }
@@ -173,6 +181,10 @@ class ConfigCacheService {
       const sets = await db.config_set_definitions.toArray();
       this._setDefinitions = sets;
       return sets;
+    } catch (err) {
+      // P6-202 修复：加载失败时复位缓存状态，确保下次调用可重试
+      this._setDefinitions = null;
+      throw err;
     } finally {
       this._setLoadingPromise = null;
     }

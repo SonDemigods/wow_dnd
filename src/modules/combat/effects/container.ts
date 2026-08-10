@@ -79,6 +79,9 @@ export function addEffectToContainer(
       // 当同类型效果数量达到 maxStacks（默认 5）时，不再继续叠加。
       // 采用"刷新"语义：超出上限时更新最早效果为最新效果，
       // 避免无限 push 的同时保持持续刷新。
+      // P6-005 说明：additive 与 independent 当前走同一分支，语义等价。
+      // 若未来需要区分（independent 应每来源独立条目），在此拆分逻辑。
+      // 刷新时保留旧 id 不变，避免外部引用断链（UI 定位/去重依赖 id 稳定性）。
       {
         const maxStacks = effect.maxStacks ?? 5;
         if (maxStacks > 0) {

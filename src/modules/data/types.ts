@@ -17,10 +17,14 @@ import type { LocationData } from '../map/types';
 import type { ShopConfig, ShopItemsStorage } from '../shop/types';
 import type { MapStateStorage } from '../map/types';
 import type { GameStateStorage } from './core';
-import type { FactionStorage, RaceStorage, ClassStorage, CharacterDataStorage } from '../character/types';
+import type { FactionStorage, RaceStorage, ClassStorage, CharacterDataStorage, PassiveSkill } from '../character/types';
+import type { TalentTree } from '../character/talents/types';
 import type { EnemyStorage } from '../enemy/types';
 import type { BossStorage } from '../boss/types';
 import type { SkillTemplateStorage } from '../skill/types';
+import type { QuestDefinitionStorage } from '../quest/types';
+import type { EquipmentItem } from '../equipment/types';
+import type { ItemSet } from '../equipment/setTypes';
 import {
   CONTINENTS,
   LOCATIONS,
@@ -172,6 +176,12 @@ export interface BackupData {
   mobs?: EnemyStorage[];
   bosses?: BossStorage[];
   skillTemplates?: SkillTemplateStorage[];
+  // P6-200 修复：补齐遗漏的配置表备份字段
+  questDefinitions?: QuestDefinitionStorage[];
+  classEquipment?: EquipmentItem[];
+  classPassives?: PassiveSkill[];
+  classTalents?: TalentTree[];
+  setDefinitions?: ItemSet[];
 }
 
 // ============================================================================

@@ -189,6 +189,7 @@ export function calculateAllAttributes(stats: Stats, primaryStat: keyof Stats): 
  */
 export function getExpForLevel(level: number): number {
   if (level <= 1) return 0;
-  if (level > MAX_LEVEL) return LEVEL_EXP_REQUIREMENTS[MAX_LEVEL];
+  // P6-204 修复：超出最大等级时返回 Infinity 表示已封顶，调用方可据此判断不可再升级
+  if (level > MAX_LEVEL) return Infinity;
   return LEVEL_EXP_REQUIREMENTS[level as Level] ?? 0;
 }

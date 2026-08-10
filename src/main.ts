@@ -116,6 +116,9 @@ function setupLazyAudioInit(): void {
     } catch (error) {
       // 音频失败不阻断游戏，仅记录
       errorReporter.report(error, 'manual', { context: '音频服务延迟初始化失败' })
+      // P6-155 修复：初始化失败后重新注册一次性监听，为用户提供一次自动重试机会
+      window.addEventListener('pointerdown', startAudio, { once: true })
+      window.addEventListener('keydown', startAudio, { once: true })
     }
   }
 

@@ -212,6 +212,12 @@ export class ImportService implements IImportService {
           db.config_mobs,
           db.config_bosses,
           db.config_skills,
+          // P6-200 修复：补齐遗漏的配置表到导入事务
+          db.config_quests,
+          db.config_class_equipment,
+          db.config_class_passives,
+          db.config_class_talents,
+          db.config_set_definitions,
           db.runtime_mapState,
           db.runtime_shopItems,
         ],

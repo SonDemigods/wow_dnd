@@ -15,9 +15,8 @@ export type Result<T, E = Error> =
 /**
  * 统一错误处理器
  *
- * 提供三个层次的错误处理：
+ * 提供两个层次的错误处理：
  * - {@link tryAsync}：纯函数式，返回 Result 元组，无副作用
- * - {@link wrapAsync}：自动 catch + toast 通知 + 控制台日志，返回可能为 undefined 的数据
  * - {@link report}：手动上报错误，触发 toast 与控制台日志
  */
 class ErrorHandlerService {
@@ -39,29 +38,9 @@ class ErrorHandlerService {
     }
   }
 
-  /**
-   * 包装异步操作，自动处理错误（toast 通知 + 错误上报）
-   *
-   * @deprecated P3-124 修复：该函数失败时返回 undefined，调用方极易忽略失败场景而继续使用
-   *   undefined 数据，导致后续逻辑出错。新代码请改用 {@link tryAsync} 的 Result 模式，
-   *   通过 success 分支显式区分成功与失败，强制调用方处理错误路径。
-   *
-   * @param promise - 要执行的 Promise
-   * @param userMessage - 展示给用户的错误提示文案（省略则不弹 toast）
-   * @returns 成功时返回数据，失败时返回 undefined
-   */
-  async wrapAsync<T>(promise: Promise<T>, userMessage?: string): Promise<T | undefined> {
-    try {
-      return await promise;
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      errorReporter.report(error, 'manual', userMessage ? { userMessage } : undefined);
-      if (userMessage) {
-        useToast().show({ message: userMessage, type: 'danger', duration: 3000 });
-      }
-      return undefined;
-    }
-  }
+  // P6-154 修复：移除已废弃的 wrapAsync 方法（全项目无调用方）。
+  // 原方法失败时返回 undefined，调用方极易忽略失败场景。
+  // 新代码请使用 tryAsync 的 Result 模式，通过 success 分支显式区分成功与失败。
 
   /**
    * 手动上报错误
