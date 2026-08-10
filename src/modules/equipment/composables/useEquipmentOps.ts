@@ -101,6 +101,8 @@ export function useEquipmentOps(state: EquipmentState, setBonus: ReturnType<type
           console.error('[EquipmentStore] equipItem 回滚旧装备 bonus 失败:', rollbackErr);
         }
       }
+      // P7-013 修复：回滚后调用 flushPersist，与其他回滚分支保持一致
+      if (cb.flushPersist()) await cb.flushPersist()!();
       return false;
     }
 
@@ -171,7 +173,24 @@ export function useEquipmentOps(state: EquipmentState, setBonus: ReturnType<type
     const equippedItem = await doUnequip(slot);
     if (!equippedItem) return null;
 
-    await setBonus.reapplySetBonuses();
+    // P7-003 修复：reapplySetBonuses 纳入 try-catch，与 equipItem 保持一致
+    try {
+      await setBonus.reapplySetBonuses();
+    } catch (e) {
+      console.error('[EquipmentStore] unequipItem reapplySetBonuses 失败:', e);
+      errorReporter.report(e, 'manual', {
+        context: '套装重算失败（卸下装备），尝试回滚装备状态', characterId: currentCharacterId.value,
+      });
+      const cb = getInventoryCallbacks();
+      if (cb.removeItem()) cb.removeItem()!(equippedItem.item.id, 1);
+      equipment.value[slot] = equippedItem;
+      try { await applyBonusForSlot(slot); } catch (rollbackErr) {
+        console.error('[EquipmentStore] unequipItem 回滚装备 bonus 失败:', rollbackErr);
+      }
+      await setBonus.reapplySetBonuses();
+      if (cb.flushPersist()) await cb.flushPersist()!();
+      return null;
+    }
 
     try {
       await persist();

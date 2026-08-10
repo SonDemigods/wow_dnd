@@ -10,6 +10,7 @@ import type { EnemyInstance } from '@/modules/enemy';
 import type { ICombatContext } from '../combatContext';
 import { eventBus, GameEvents } from '../../bus';
 import { processBossPhaseMechanics, applyPhaseStats } from '@/modules/boss';
+import { INITIATIVE_DEFAULT_SPEED } from '@/config/combat';
 import { createEmptyContainer } from '../effects';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
@@ -100,7 +101,7 @@ export function useInitiative(
         'getSpeedMod',
         enemyCtx
       );
-      const enemySpeed = (e.stats?.dex ?? 5) + enemySpeedMod;
+      const enemySpeed = (e.stats?.dex ?? INITIATIVE_DEFAULT_SPEED) + enemySpeedMod;
       units.push({ id: e.id, speed: enemySpeed });
     }
 

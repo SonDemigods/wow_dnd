@@ -129,7 +129,8 @@ export function usePlayerAction(
     }
 
     // 施加敌方减益（不 return，混合技能的 debuff 也需生效）
-    if (enemyBuffs.length > 0 && targetType !== 'self') {
+    // P7-009 修复：移除 targetType !== 'self' 限制，自施放型混合技能的敌方减益也需生效
+    if (enemyBuffs.length > 0) {
       if (targetType === 'all_enemies') {
         const livingEnemies = aliveEnemies.value;
         for (const e of livingEnemies) {

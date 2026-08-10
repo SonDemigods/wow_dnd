@@ -110,6 +110,8 @@ import { eventBus, GameEvents } from '@/modules/bus';
 import type { MapZone, ZoneStatus } from '@/modules/map';
 import ConfirmPopup from './common/ConfirmPopup.vue';
 import worldBgImg from '@/images/worldBg.jpg';
+// P7-031 修复：魔法数字提取到 config/map.ts
+import { MAP_ASPECT_RATIO, MAP_ZOOM_STEP, MAP_ZOOM_MIN, MAP_ZOOM_MAX, PAN_BOUND_MARGIN } from '@/config/map';
 
 const emit = defineEmits<{
   (e: 'enter-zone'): void;
@@ -172,7 +174,7 @@ function fitMapToContainer() {
   if (!mapContainerRef.value) return;
   const containerWidth = mapContainerRef.value.clientWidth;
   const containerHeight = mapContainerRef.value.clientHeight;
-  const aspectRatio = 1201 / 800;
+  const aspectRatio = MAP_ASPECT_RATIO;
 
   // 优先按高度适配
   let w = containerHeight * aspectRatio;
@@ -214,12 +216,12 @@ function selectZone(zone: MapZone) {
 // 缩放控制
 function zoomIn() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'map_zoom_in' });
-  zoomLevel.value = Math.min(3, zoomLevel.value + 0.2);
+  zoomLevel.value = Math.min(MAP_ZOOM_MAX, zoomLevel.value + MAP_ZOOM_STEP);
 }
 
 function zoomOut() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'map_zoom_out' });
-  zoomLevel.value = Math.max(0.5, zoomLevel.value - 0.2);
+  zoomLevel.value = Math.max(MAP_ZOOM_MIN, zoomLevel.value - MAP_ZOOM_STEP);
 }
 
 function onMapWheel(e: WheelEvent) {
@@ -251,7 +253,7 @@ function onMapMouseUp() {
 }
 
 // P5-030 修复：拖拽平移边界钳制，基于地图与容器尺寸动态计算
-const PAN_BOUND_MARGIN = 40;
+// P7-031：PAN_BOUND_MARGIN 从 config/map.ts 导入
 function clampPan(targetX: number, targetY: number): void {
   const containerW = mapContainerRef.value?.clientWidth ?? 0;
   const containerH = mapContainerRef.value?.clientHeight ?? 0;

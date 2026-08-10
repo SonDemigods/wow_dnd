@@ -67,7 +67,18 @@ export class MigrationService {
       // 4. 写回迁移后的数据（复用 ImportService.importData）
       //    importData 内部会清空并重写所有表
       const importService = new ImportService();
-      await importService.importData(migratedData);
+      const importResult = await importService.importData(migratedData);
+
+      // P7-004 修复：校验 importData 返回值，失败时不更新版本戳
+      if (!importResult.success) {
+        return {
+          success: false,
+          fromVersion,
+          toVersion: fromVersion,
+          migratedRecords: 0,
+          error: `数据写入失败: ${importResult.error ?? '未知错误'}`
+        };
+      }
 
       // 5. 更新版本戳
       await db.runtime_gameState.update('gameState', {

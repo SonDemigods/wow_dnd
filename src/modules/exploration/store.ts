@@ -157,10 +157,11 @@ export const useExplorationStore = defineStore('exploration', () => {
     }
   }
 
-  /** 检查探索是否完成（所有格子已探索 且 Boss 被击败） */
+  /** 检查探索是否完成（Boss 被击败 且 已充分探索网格） */
   function checkCompletion(): void {
-    const totalCells = GRID_SIZE * GRID_SIZE;
-    if (visitedCells.value >= totalCells && bossDefeated.value) {
+    // P7-015 修复：放宽 visited 要求——boss 击败后即使有少量未访问格也允许完成，
+    // 防止运行期连通性问题导致探索永远无法完成（网格生成期保证连通，但无运行期兜底）
+    if (bossDefeated.value && visitedCells.value >= BOSS_SEAL_REQUIRED_CELLS) {
       explorationComplete.value = true;
     }
   }
@@ -451,12 +452,9 @@ export const useExplorationStore = defineStore('exploration', () => {
 
     // ===== 路径 2：商店/任务板 → 发射交互事件 =====
     if (cell.type === 'shop' || cell.type === 'board') {
-      const isNewlyVisited = !cell.visited;
+      // P7-014 修复：shop/board 在 placeFixedEvents 时已设 visited:true，无需重复计数
       cell.explored = true;
       cell.visited = true;
-      if (isNewlyVisited) {
-        visitedCells.value++;
-      }
 
       refreshGrid();
 

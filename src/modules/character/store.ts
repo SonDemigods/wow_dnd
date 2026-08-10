@@ -317,12 +317,13 @@ export const useCharacterStore = defineStore('character', () => {
 
     // 通知 UI（角色切换时发送 CHARACTER_LOGOUT 用于清理旧角色的音频等模块状态）
     // 注意：initialize 中直接调用时不发送事件，避免启动时多余的 UI 重绘
-    // P1-21 修复：在更新 store 状态之前 emit LOGOUT，确保监听器收到事件时 currentCharacterId 仍为旧值
+    // P7-012 修复：currentCharacterId 已由上方 gameStore.setCurrentCharacterId 更新，
+    // LOGOUT 事件触发时 currentCharacterId 已是新值（P3-116 变更后注释过期已修正）
     if (emitEvent) {
       eventBus.emit(GameEvents.CHARACTER_LOGOUT, null); // 先登出旧角色 UI 状态
     }
 
-    // 更新 Store 状态（在 emit LOGOUT 之后，确保监听器收到事件时 currentCharacterId 仍为旧值）
+    // 更新 Store 状态
     // P3-116 修复：currentCharacterId 已由上方 gameStore.setCurrentCharacterId 更新（只读 computed 自动反映），无需再赋值
     character.value = characterDbService.fromStorageFormat(data);
     bonusStats.value = data.bonusStats || {};

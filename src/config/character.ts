@@ -179,3 +179,21 @@ export const HEAL_CHA_COEFFICIENT = 0.05;
  * @see computeResurrection 应用此比例
  */
 export const DEATH_EXP_RETENTION_RATIO = 0.5;
+
+/**
+ * 复活后 HP 恢复比例
+ *
+ * P7-011：抽取硬编码 0.5 为配置常量。
+ *
+ * @see computeResurrection 应用此比例
+ */
+export const RESURRECT_HP_RATIO = 0.5;
+
+/**
+ * 复活后 MP 恢复比例
+ *
+ * P7-011：抽取硬编码 0.5 为配置常量。
+ *
+ * @see computeResurrection 应用此比例
+ */
+export const RESURRECT_MP_RATIO = 0.5;

@@ -147,8 +147,12 @@ export const useAdminStore = defineStore('admin', () => {
     let result: { success: boolean; error?: string };
 
     if (isEdit) {
+      // P7-023 修复：运行时校验 id 非空非空字符串，避免误写
       const id = editingRecord.value?.id as string | undefined;
-      result = await adminService.update(tableName, id!, data);
+      if (!id || (typeof id === 'string' && id.trim() === '')) {
+        return false;
+      }
+      result = await adminService.update(tableName, id, data);
     } else {
       result = await adminService.add(tableName, data);
     }

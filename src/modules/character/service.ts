@@ -19,7 +19,7 @@ import {
   calculateHealBonus,
   getExpForLevel
 } from '@/utils/calculations';
-import { MAX_LEVEL, MAX_STAT, POINTS_PER_LEVEL, BASE_STAT_VALUE, DEATH_EXP_RETENTION_RATIO } from '@/config/character';
+import { MAX_LEVEL, MAX_STAT, POINTS_PER_LEVEL, BASE_STAT_VALUE, DEATH_EXP_RETENTION_RATIO, RESURRECT_HP_RATIO, RESURRECT_MP_RATIO } from '@/config/character';
 import { generateId } from '@/utils/db-helpers';
 import { getMountOptionById, MOUNT_TIERS } from '@/data/config_mounts';
 
@@ -457,7 +457,8 @@ export function computeResurrection(character: Character): Character {
     ...character,
     exp: Math.floor(character.exp * DEATH_EXP_RETENTION_RATIO),
     // P1-23 修复：确保复活后至少 1 HP，避免 maxHp 极低时复活为 0 HP 立即死亡形成无限循环
-    hp: Math.max(1, Math.floor(character.maxHp * 0.5)),
-    mana: Math.max(1, Math.floor(character.maxMana * 0.5))
+    // P7-011：比例值提取为配置常量
+    hp: Math.max(1, Math.floor(character.maxHp * RESURRECT_HP_RATIO)),
+    mana: Math.max(1, Math.floor(character.maxMana * RESURRECT_MP_RATIO))
   };
 }

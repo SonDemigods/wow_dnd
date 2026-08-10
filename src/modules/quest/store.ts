@@ -711,9 +711,11 @@ export const useQuestStore = defineStore('quest', () => {
     // 物品奖励 → inventoryStore（ARCH-2 修复：通过回调注入替代 useInventoryStore() 直接调用）
     for (const item of rewards.items) {
       // P2-2：检查 addItem 返回值，背包满时提示玩家
-      // P4-013 修复：回调未注入时 warn 而非静默降级为 0
+      // P4-013 修复：回调未注入时用 errorReporter 上报（P7-020：统一为 errorReporter 模式）
       if (!addItemToInventoryCallback) {
-        console.warn('[QuestStore] addItemToInventoryCallback 未注入，任务奖励物品无法发放。请检查 GameBootstrap 初始化流程。');
+        errorReporter.report(new Error('addItemToInventoryCallback 未注入'), 'manual', {
+          context: '任务奖励物品无法发放，请检查 GameBootstrap 初始化流程',
+        });
       }
       const added = addItemToInventoryCallback ? addItemToInventoryCallback(item.itemId, item.count) : 0;
       if (added < item.count) {

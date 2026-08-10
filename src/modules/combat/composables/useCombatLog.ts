@@ -70,7 +70,13 @@ export function useCombatLog(state: ReturnType<typeof useCombatState>, ctx: ICom
    */
   async function saveLogs(forceAll: boolean = false): Promise<void> {
     if (savingPromise) {
-      return savingPromise;
+      // P7-008 修复：forceAll 时不能直接复用 in-flight promise（其快照可能不含最新日志）
+      if (forceAll) {
+        await savingPromise;
+        // in-flight 完成后 fall through 执行一次新的 forceAll 保存
+      } else {
+        return savingPromise;
+      }
     }
     savingPromise = (async () => {
       try {

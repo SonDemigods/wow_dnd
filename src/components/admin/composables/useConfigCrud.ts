@@ -12,6 +12,7 @@ import { ref } from 'vue';
 import { useAdminStore } from '@/modules/admin';
 import type { AdminRecord } from '@/modules/admin';
 import type { ComputedRef } from 'vue';
+import { useToast } from '@/composables/useToast';
 
 /** useConfigCrud 依赖的元信息（来自 useConfigTableMeta） */
 export interface UseConfigCrudDeps {
@@ -68,15 +69,36 @@ export function useConfigCrud(deps: UseConfigCrudDeps): UseConfigCrudReturn {
   /** 确认删除 */
   async function confirmDelete(): Promise<void> {
     if (!pendingDeleteRecord.value) return;
-    const id = pendingDeleteRecord.value.id ?? pendingDeleteRecord.value.characterId;
-    await store.deleteRecord(deps.currentDbTable.value, String(id));
-    showDeleteConfirm.value = false;
-    pendingDeleteRecord.value = null;
+    // P7-030 修复：从记录中获取主键，校验非空后才执行删除
+    const record = pendingDeleteRecord.value;
+    const id = record.id ?? record.characterId;
+    if (!id || (typeof id === 'string' && id.trim() === '')) {
+      useToast().show({ message: '记录主键为空，无法删除', type: 'danger', duration: 3000 });
+      showDeleteConfirm.value = false;
+      pendingDeleteRecord.value = null;
+      return;
+    }
+    // P7-029 修复：try/catch 防止 Dexie 操作异常导致 unhandled rejection
+    try {
+      await store.deleteRecord(deps.currentDbTable.value, String(id));
+    } catch (e) {
+      console.error('[useConfigCrud] 删除记录失败:', e);
+      useToast().show({ message: '删除失败，请查看控制台', type: 'danger', duration: 3000 });
+    } finally {
+      showDeleteConfirm.value = false;
+      pendingDeleteRecord.value = null;
+    }
   }
 
   /** 提交表单 */
   async function handleFormSubmit(data: AdminRecord): Promise<void> {
-    await store.saveRecord(deps.currentDbTable.value, data);
+    // P7-029 修复：try/catch 防止 Dexie 操作异常导致 unhandled rejection
+    try {
+      await store.saveRecord(deps.currentDbTable.value, data);
+    } catch (e) {
+      console.error('[useConfigCrud] 保存记录失败:', e);
+      useToast().show({ message: '保存失败，请查看控制台', type: 'danger', duration: 3000 });
+    }
   }
 
   return {

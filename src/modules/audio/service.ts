@@ -216,12 +216,13 @@ class AudioService implements IAudioService {
     const masterDb = this.dbFromLinear(store.settings.masterVolume);
     this.nodes.masterVolume.volume.value = masterDb;
 
+    // P7-024 修复：使用 effectiveBgmVolume/effectiveSfxVolume（含 muted 标志）做 dB 计算
     // BGM 通道额外衰减（委托 BgmSynth）
-    const bgmDb = this.dbFromLinear(store.settings.bgmVolume);
+    const bgmDb = this.dbFromLinear(store.effectiveBgmVolume);
     this.bgmSynth.applyBgmVolume(bgmDb);
 
-    // SFX 各通道
-    const sfxDb = this.dbFromLinear(store.settings.sfxVolume);
+    // SFX 各通道（muted 时 effectiveSfxVolume=0，dB=-Infinity 静音）
+    const sfxDb = this.dbFromLinear(store.effectiveSfxVolume);
     this.nodes.magicChannel.volume.value = sfxDb;
     this.nodes.combatChannel.volume.value = sfxDb;
     this.nodes.uiChannel.volume.value = sfxDb;
@@ -248,7 +249,12 @@ class AudioService implements IAudioService {
   /** 播放指定音效（未就绪时调用 tryResume 尝试启动 AudioContext） */
   playSfx(type: SfxType): void {
     if (!this.isReady()) {
-      this.tryResume();
+      // P7-025 修复：tryResume 后若 context 就绪则重放本次请求，避免首次手势音效被吞
+      this.tryResume().then(() => {
+        if (this.isReady()) {
+          this.sfxSynth?.playSfx(type);
+        }
+      });
       return;
     }
     this.sfxSynth?.playSfx(type);
@@ -257,7 +263,12 @@ class AudioService implements IAudioService {
   /** 切换 BGM 场景（未就绪时调用 tryResume 尝试启动 AudioContext） */
   setBgmScene(scene: BgmScene): void {
     if (!this.isReady()) {
-      this.tryResume();
+      // P7-025 修复：tryResume 后若 context 就绪则重放本次请求
+      this.tryResume().then(() => {
+        if (this.isReady()) {
+          this.bgmSynth?.setBgmScene(scene);
+        }
+      });
       return;
     }
     this.bgmSynth?.setBgmScene(scene);

@@ -61,6 +61,16 @@ export function checkQuestProgress(
 
   // 深拷贝进度数组，确保纯函数不修改入参
   const newProgress: QuestObjectiveProgress[] = quest.progress.map(p => ({ ...p }));
+
+  // P7-019 修复：校验 progress 条目与 definition.objectives 的一致性
+  // 若定义被修改新增目标但实例未更新，补建缺失的初始条目，避免 every 跳过缺失条目误判完成
+  for (const obj of definition.objectives) {
+    const exists = newProgress.some(p => p.objectiveKey === obj.key);
+    if (!exists) {
+      newProgress.push({ objectiveKey: obj.key, current: 0, target: obj.target });
+    }
+  }
+
   let matched = false;
 
   // 遍历任务定义中的所有目标，检查是否匹配当前事件

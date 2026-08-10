@@ -44,14 +44,15 @@ export function generateEnemyStats(
 
   // 六维属性由缩放后的战斗属性推导：
   // - str（力量）：物理攻击 × 0.8
-  // - dex（敏捷）：闪避率 × 1.5
+  // - dex（敏捷）：闪避率 × 等级缩放 × 1.5
   // - con（体质）：最大生命 × 等级缩放 × 0.3
   // - int（智力）：魔法攻击 × 0.8
   // - wis（智慧）：魔法防御 × 1.2
   // - cha（魅力）：固定为 5（敌人不使用魅力属性）
+  // P7-018 修复：dex 改为用 levelScale 缩放后的 dodgeChance，与其他属性口径一致
   const stats: Stats = {
     str: Math.floor(scaledPhysicalAttack * 0.8),
-    dex: Math.floor((template.dodgeChance ?? 5) * 1.5),
+    dex: Math.floor((template.dodgeChance ?? 5) * levelScale * 1.5),
     con: Math.floor(template.maxHp * levelScale * 0.3),
     int: Math.floor(scaledMagicAttack * 0.8),
     wis: Math.floor(scaledMagicDefense * 1.2),

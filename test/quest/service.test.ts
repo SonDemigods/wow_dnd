@@ -252,8 +252,9 @@ describe('checkQuestProgress 进度更新', () => {
     expect(result).toBeNull();
   });
 
-  it('目标匹配但进度数组中无对应 objectiveKey 时不更新进度', () => {
+  it('目标匹配且进度数组中无对应 objectiveKey 时自动补建条目（P7-019 修复）', () => {
     // 击杀 goblin 匹配到目标，但 progress 中没有 objectiveKey='kill_goblin' 的条目
+    // P7-019 修复后：checkQuestProgress 会自动补建缺失条目并更新进度
     const def = makeDefinition({
       objectives: [{ key: 'kill_goblin', type: 'kill', target: 5, enemyId: 'goblin' }],
     });
@@ -261,8 +262,13 @@ describe('checkQuestProgress 进度更新', () => {
       progress: [{ objectiveKey: 'different_key', current: 0, target: 5 }],
     });
     const result = checkQuestProgress(inst, def, { enemyId: 'goblin' });
-    // 匹配到目标但无进度条目，matched 仍为 false，返回 null
-    expect(result).toBeNull();
+    // P7-019：补建后匹配成功，进度从 0 增至 1
+    expect(result).not.toBeNull();
+    expect(result!.isComplete).toBe(false);
+    const goblinProgress = result!.progress.find(p => p.objectiveKey === 'kill_goblin');
+    expect(goblinProgress).toBeDefined();
+    expect(goblinProgress!.current).toBe(1);
+    expect(goblinProgress!.target).toBe(5);
   });
 
   it('进度不超过 target 上限', () => {

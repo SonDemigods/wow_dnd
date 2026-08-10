@@ -97,7 +97,7 @@ describe('ExplorationDbService - 探索数据层（fake-indexeddb 真实 CRUD）
       expect(result!.updatedAt).toBeTypeOf('number');
     });
 
-    it('playerPosition 越界时原样返回（版本基线重构后不再 clamp）', async () => {
+    it('playerPosition 越界时 clamp 到原点（P7-017 防御性校验）', async () => {
       // Arrange：3×3 网格，playerPosition {8,9} 明显越界
       const state = makeState({
         grid: makeFullGrid(3, 3),
@@ -108,11 +108,11 @@ describe('ExplorationDbService - 探索数据层（fake-indexeddb 真实 CRUD）
       // Act
       const result = await explorationDbService.getExplorationData('char-1');
 
-      // Assert：原样返回，不再 clamp（新基线下网格尺寸固定，无越界存档）
-      expect(result!.playerPosition).toEqual({ x: 8, y: 9 });
+      // Assert：P7-017 修复后越界位置被 clamp 到 {0,0}
+      expect(result!.playerPosition).toEqual({ x: 0, y: 0 });
     });
 
-    it('playerPosition 为负数时原样返回（版本基线重构后不再 clamp）', async () => {
+    it('playerPosition 为负数时 clamp 到原点（P7-017 防御性校验）', async () => {
       // Arrange：playerPosition 含负数
       const state = makeState({
         grid: makeFullGrid(3, 3),
@@ -123,8 +123,8 @@ describe('ExplorationDbService - 探索数据层（fake-indexeddb 真实 CRUD）
       // Act
       const result = await explorationDbService.getExplorationData('char-1');
 
-      // Assert：原样返回，不再 clamp
-      expect(result!.playerPosition).toEqual({ x: -1, y: -5 });
+      // Assert：P7-017 修复后负数位置被 clamp 到 {0,0}
+      expect(result!.playerPosition).toEqual({ x: 0, y: 0 });
     });
 
     it('未传 assignedShopId 时默认为空字符串', async () => {

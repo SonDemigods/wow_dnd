@@ -166,24 +166,34 @@ export function useShopTransactions(options: UseShopTransactionsOptions) {
   /** 购买当前选中商品，成功后重置选中并触发金币闪烁 */
   async function handleBuy(itemId: string): Promise<void> {
     eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_buy' });
-    const result = await shopStore.buyItem(itemId, buyQuantity.value);
-    if (result) {
-      onTransactionSuccess?.();
-      selectedBuyEntry.value = null;
-      buySelectedIndex.value = -1;
-      buyQuantity.value = 1;
+    // P7-005 修复：try/catch 防止 Dexie 操作异常导致 unhandled rejection
+    try {
+      const result = await shopStore.buyItem(itemId, buyQuantity.value);
+      if (result) {
+        onTransactionSuccess?.();
+        selectedBuyEntry.value = null;
+        buySelectedIndex.value = -1;
+        buyQuantity.value = 1;
+      }
+    } catch (e) {
+      console.error('[useShopTransactions] 购买失败:', e);
     }
   }
 
   /** 出售当前选中物品，成功后重置选中并触发金币闪烁 */
   async function handleSell(itemId: string): Promise<void> {
     eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_sell' });
-    const result = await shopStore.sellItem(itemId, sellQuantity.value);
-    if (result) {
-      onTransactionSuccess?.();
-      selectedSellEntry.value = null;
-      sellSelectedIndex.value = -1;
-      sellQuantity.value = 1;
+    // P7-005 修复：try/catch 防止 Dexie 操作异常导致 unhandled rejection
+    try {
+      const result = await shopStore.sellItem(itemId, sellQuantity.value);
+      if (result) {
+        onTransactionSuccess?.();
+        selectedSellEntry.value = null;
+        sellSelectedIndex.value = -1;
+        sellQuantity.value = 1;
+      }
+    } catch (e) {
+      console.error('[useShopTransactions] 出售失败:', e);
     }
   }
 

@@ -25,10 +25,13 @@ registerCommand({
   description: '查看任务状态或操作任务',
   usage: 'quests [accept|complete|abandon <任务ID>]',
   async handler(args) {
+    // P7-022 修复：缓存 store 引用，避免循环内重复 useQuestStore() 调用
+    const questStore = useQuestStore();
+
     if (args.length === 0) {
-      const available = useQuestStore().availableQuests;
-      const inProgress = useQuestStore().activeQuests;
-      const completed = useQuestStore().completedQuests;
+      const available = questStore.availableQuests;
+      const inProgress = questStore.activeQuests;
+      const completed = questStore.completedQuests;
 
       if (available.length === 0 && inProgress.length === 0 && completed.length === 0) {
         return { success: true, message: '当前没有任何任务' };
@@ -37,7 +40,7 @@ registerCommand({
       if (inProgress.length > 0) {
         logTag('quests', '═══ 进行中的任务 ═══');
         for (const instance of inProgress) {
-          const def = useQuestStore().getQuestDefinition(instance.questId);
+          const def = questStore.getQuestDefinition(instance.questId);
           console.log(`  %c${instance.questId.padEnd(24)}%c ${def?.title || instance.questId} %c${JSON.stringify(instance.progress)}`, STYLE.label, STYLE.value, STYLE.hint);
         }
       }
@@ -52,7 +55,7 @@ registerCommand({
       if (completed.length > 0) {
         logTag('quests', '═══ 已完成（可提交）═══');
         for (const instance of completed) {
-          const def = useQuestStore().getQuestDefinition(instance.questId);
+          const def = questStore.getQuestDefinition(instance.questId);
           console.log(`  %c${instance.questId.padEnd(24)}%c ${def?.title || instance.questId}`, STYLE.label, STYLE.value);
         }
       }
@@ -69,21 +72,21 @@ registerCommand({
 
     switch (action) {
       case 'accept': {
-        const ok = await useQuestStore().acceptQuest(questId);
+        const ok = await questStore.acceptQuest(questId);
         if (ok) {
           return { success: true, message: `已接受任务: ${questId}` };
         }
         return { success: false, message: `无法接受任务: ${questId}` };
       }
       case 'complete': {
-        const ok = await useQuestStore().claimReward(questId);
+        const ok = await questStore.claimReward(questId);
         if (ok) {
           return { success: true, message: `已提交任务: ${questId}` };
         }
         return { success: false, message: `无法提交任务: ${questId}（可能尚未完成）` };
       }
       case 'abandon': {
-        const ok = await useQuestStore().abandonQuest(questId);
+        const ok = await questStore.abandonQuest(questId);
         if (ok) {
           return { success: true, message: `已放弃任务: ${questId}` };
         }

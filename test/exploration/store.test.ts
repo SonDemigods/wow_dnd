@@ -384,7 +384,8 @@ describe('useExplorationStore - 探索 Store', () => {
       expect(exploredSpy).toHaveBeenCalledWith(
         expect.objectContaining({ x: 0, y: 0, cellType: 'shop' })
       );
-      expect(store.visitedCells).toBe(1);
+      // P7-014 修复：shop/board 不再递增 visitedCells（placeFixedEvents 时已预置 visited）
+      expect(store.visitedCells).toBe(0);
       expect(explorationDbService.saveExplorationData).not.toHaveBeenCalled();
       // currentCharacterId 未设置，persistState 跳过
     });

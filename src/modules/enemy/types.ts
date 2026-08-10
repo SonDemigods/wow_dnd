@@ -78,7 +78,7 @@ export type AiStrategyType = 'aggressive' | 'defensive' | 'balanced' | 'boss_pha
  * @property {number} [magicAttack] - 魔法攻击力（未配置时使用默认推导值）
  * @property {number} [magicDefense] - 魔法防御力（未配置时使用默认推导值）
  * @property {number} [critChance] - 暴击率（0-1，未配置时使用默认推导值）
- * @property {number} [dodgeChance] - 闪避率（0-1，未配置时使用默认推导值）
+ * @property {number} [dodgeChance] - 闪避率（0-100 整数百分比，未配置时使用默认值 5。P7-018 修正：原注释 0-1 有误）
  * @property {string[]} [skillPool] - 可用技能模板 ID 列表（AI 从此列表中选取技能施放）
  * @property {AiStrategyType} [aiStrategy] - AI 策略类型（决定技能选择和行为模式）
  * @property {'physical'|'magical'} [attackType] - 普攻伤害类型（P3-95 修复）

@@ -125,6 +125,8 @@ export function useCharacterCreation(onCreated: () => void) {
 
   function selectRace(id: RaceType) {
     selectedRace.value = id;
+    // P7-028 修复：切换种族时清除非法职业选择，新种族可能无法使用原职业
+    selectedClass.value = null;
     eventBus.emit(GameEvents.UI_CLICK, { source: 'select_race' });
   }
 
@@ -215,12 +217,15 @@ export function useCharacterCreation(onCreated: () => void) {
   }
 
   async function doCreate() {
-    await characterStore.createCharacter(
-      name.value.trim(),
-      selectedFaction.value!,
-      selectedRace.value!,
-      selectedClass.value!
-    );
+    // P7-027 修复：运行时校验三个值非 null，防止 confirm 弹窗后选择被清空的竞态
+    const faction = selectedFaction.value;
+    const race = selectedRace.value;
+    const cls = selectedClass.value;
+    if (!faction || !race || !cls) {
+      showErrorModal('请先完成阵营、种族和职业的选择');
+      return;
+    }
+    await characterStore.createCharacter(name.value.trim(), faction, race, cls);
     onCreated();
   }
 

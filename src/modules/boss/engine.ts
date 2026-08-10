@@ -271,9 +271,21 @@ export function processBossPhaseMechanics(boss: BossInstance, phase: BossPhase, 
 export function applyPhaseStats(boss: BossInstance, phase: BossPhase): void {
   if (!phase.statMultipliers) return;
   const m = phase.statMultipliers;
+
+  // P7-021 修复：首次调用时保存原始 base 属性快照，后续基于快照重算，防止阶段切换累积连乘
+  if (!boss.runtime.originalBaseStats) {
+    boss.runtime.originalBaseStats = {
+      physicalAttack: boss.base.physicalAttack,
+      magicAttack: boss.base.magicAttack,
+      physicalDefense: boss.base.physicalDefense,
+      magicDefense: boss.base.magicDefense,
+    };
+  }
+  const orig = boss.runtime.originalBaseStats;
+
   // P6-006 修复：改用 !== undefined 判断，允许配置乘数 0（用于清零属性）
-  if (m.physicalAttack !== undefined) boss.base.physicalAttack = Math.round((boss.base.physicalAttack ?? 10) * m.physicalAttack);
-  if (m.magicAttack !== undefined) boss.base.magicAttack = Math.round((boss.base.magicAttack ?? 10) * m.magicAttack);
-  if (m.physicalDefense !== undefined) boss.base.physicalDefense = Math.round((boss.base.physicalDefense ?? 5) * m.physicalDefense);
-  if (m.magicDefense !== undefined) boss.base.magicDefense = Math.round((boss.base.magicDefense ?? 5) * m.magicDefense);
+  if (m.physicalAttack !== undefined) boss.base.physicalAttack = Math.round((orig.physicalAttack ?? 10) * m.physicalAttack);
+  if (m.magicAttack !== undefined) boss.base.magicAttack = Math.round((orig.magicAttack ?? 10) * m.magicAttack);
+  if (m.physicalDefense !== undefined) boss.base.physicalDefense = Math.round((orig.physicalDefense ?? 5) * m.physicalDefense);
+  if (m.magicDefense !== undefined) boss.base.magicDefense = Math.round((orig.magicDefense ?? 5) * m.magicDefense);
 }

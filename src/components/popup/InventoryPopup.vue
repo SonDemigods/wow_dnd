@@ -182,6 +182,8 @@ import EffectTag from '../common/EffectTag.vue';
 import EmptyState from '@/components/common/EmptyState.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import { useInventoryStore } from '@/modules/inventory';
+// P7-032 修复：缓存 store 引用，避免 computed 内重复 useInventoryStore() 调用
+const inventoryStore = useInventoryStore();
 import { useCharacterStore } from '@/modules/character';
 import { useEquipmentStore } from '@/modules/equipment';
 import { eventBus, GameEvents } from '@/modules/bus';
@@ -247,7 +249,7 @@ const availableSlots = ref<EquipmentSlot[]>([]);
 const pendingEquipItem = ref<EquipmentItem | null>(null);
 
 /** 直接从 Store 读取的响应式背包物品列表 */
-const inventoryItems = computed(() => useInventoryStore().inventory);
+const inventoryItems = computed(() => inventoryStore.inventory);
 
 /** 已装备物品ID集合，直接从装备 Store 响应式数据派生 */
 const equippedItemIds = computed(() => {
@@ -298,7 +300,7 @@ const filteredItems = computed(() => {
   if (selectedCategory.value === 'all') return inventoryItems.value;
   // P3.3：用 getItemCategory（基于 kind+subtype）替代旧 info?.type 比较
   return inventoryItems.value.filter((item) => {
-    const info = useInventoryStore().getItemInfo(item.itemId);
+    const info = inventoryStore.getItemInfo(item.itemId);
     return info !== null && getItemCategory(info) === selectedCategory.value;
   });
 });
@@ -306,7 +308,7 @@ const filteredItems = computed(() => {
 const displayItems = computed<ItemEntry[]>(() => {
   return filteredItems.value.map((item) => ({
     item,
-    info: useInventoryStore().getItemInfo(item.itemId)
+    info: inventoryStore.getItemInfo(item.itemId)
   }));
 });
 
@@ -366,7 +368,7 @@ function selectCategory(catId: string) {
  */
 async function doOrganize() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_organize' });
-  useInventoryStore().organizeInventory();
+  inventoryStore.organizeInventory();
   await loadInventory();
   selectedEntry.value = null;
   toast.show({ message: '背包已整理', type: 'success', icon: '📋' });
@@ -402,12 +404,12 @@ async function useItem(itemId: string) {
   if (index === -1) return;
 
   const invItem = inventoryItems.value[index];
-  const info = useInventoryStore().getItemInfo(itemId);
+  const info = inventoryStore.getItemInfo(itemId);
   // P3.3：consumable 下沉为判别字面量，用 kind 收窄替代旧 info.consumable 布尔
   if (!info || info.kind !== 'consumable') return;
 
   // 使用物品（内部处理HP/MP恢复和堆叠数量递减）
-  const success = await useInventoryStore().useItemByIndex(index);
+  const success = await inventoryStore.useItemByIndex(index);
   if (!success) return;
 
   // 物品使用弹跳动画
@@ -518,11 +520,11 @@ function confirmDrop() {
   const itemId = pendingDropItemId.value;
   if (!itemId) return;
 
-  const info = useInventoryStore().getItemInfo(itemId);
+  const info = inventoryStore.getItemInfo(itemId);
   // 优先丢弃选中的那一组
   const index = findSelectedOrFirstIndex(itemId);
   if (index !== -1) {
-    useInventoryStore().removeItemByIndex(index);
+    inventoryStore.removeItemByIndex(index);
     eventBus.emit(GameEvents.ITEM_DROPPED, { itemId });
     toast.show({
       message: `已丢弃 ${info?.name || '物品'}`,
@@ -545,7 +547,7 @@ function cancelDrop() {
 async function loadInventory() {
   const id = characterStore.currentCharacterId;
   if (!id) return;
-  await useInventoryStore().initialize(id);
+  await inventoryStore.initialize(id);
   // 确保装备 Store 已初始化（装备模块需要从装备 Store 加载）
   await equipmentStore.initialize(id);
 }

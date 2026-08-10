@@ -122,10 +122,16 @@ export function useGameActions(onExit: () => void) {
 
   async function handleBattleTriggered(data: { eventData: { monsterId: string; areaLevel: number } }) {
     const { monsterId, areaLevel } = data.eventData;
-    const enemy = await useEnemyStore().createEnemy(monsterId, areaLevel);
-    if (enemy) {
-      await useCombatStore().startCombat([enemy]);
-      showCombat.value = true;
+    // P7-033 修复：try/catch 防止创建/启动战斗失败时静默无反馈
+    try {
+      const enemy = await useEnemyStore().createEnemy(monsterId, areaLevel);
+      if (enemy) {
+        await useCombatStore().startCombat([enemy]);
+        showCombat.value = true;
+      }
+    } catch (err) {
+      console.error('[GameActions] 战斗触发失败:', err);
+      showNotif('战斗触发失败，请重试', 'danger');
     }
   }
 

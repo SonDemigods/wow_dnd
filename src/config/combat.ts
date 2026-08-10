@@ -344,3 +344,14 @@ export const BOSS_REVIVE_HP_RATIO = 0.5;
  * @see src/modules/combat/composables/useBossMechanics.ts scaleBossEffectValue
  */
 export const BOSS_EFFECT_SCALE_STEP = 0.08;
+
+// ==================== 先攻排序参数 ====================
+
+/**
+ * 先攻排序中敌人速度缺失时的默认值
+ *
+ * P7-007 修复：统一玩家与敌人的默认速度基准，避免不一致。
+ *
+ * @see src/modules/combat/composables/useInitiative.ts buildInitiativeOrder
+ */
+export const INITIATIVE_DEFAULT_SPEED = 5;

@@ -91,17 +91,20 @@ const gradId = nextGradId();
 
 /** 渐变模式缓存的 SVG body */
 const gradientSvgBody = ref('');
-const lastLoadedIcon = ref('');
+const lastLoadedKey = ref('');
 
 watch(
   [finalIcon, () => props.gradient],
   async ([icon, grad]) => {
     if (!grad || !icon) {
       gradientSvgBody.value = '';
+      lastLoadedKey.value = '';
       return;
     }
-    if (icon === lastLoadedIcon.value && gradientSvgBody.value) return;
-    lastLoadedIcon.value = icon;
+    // P7-006 修复：将 gradient 纳入缓存键，gradient 变化时也需重新加载
+    const cacheKey = `${icon}:${grad}`;
+    if (cacheKey === lastLoadedKey.value && gradientSvgBody.value) return;
+    lastLoadedKey.value = cacheKey;
 
     try {
       const data = await loadIcon(icon);

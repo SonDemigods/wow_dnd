@@ -300,6 +300,13 @@ export interface BossRuntimeState {
   counterStance?: boolean;
   /** 狂暴已激活标记（enrage 机制设置，防止多次触发无限叠加攻击力） */
   enraged?: boolean;
+  /** P7-021：原始战斗属性快照，applyPhaseStats 基于此重算，防止阶段切换累积连乘 */
+  originalBaseStats?: {
+    physicalAttack?: number;
+    magicAttack?: number;
+    physicalDefense?: number;
+    magicDefense?: number;
+  };
 }
 
 // ============================================================================

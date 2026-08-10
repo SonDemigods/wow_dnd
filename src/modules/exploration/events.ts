@@ -334,7 +334,8 @@ export const cellEventHandlers: Partial<Record<CellType, CellEventHandler>> = {
    * 持久化也由 store.ts 统一处理。
    */
   rest: async (ctx) => {
-    // 营地只能使用一次：已使用则直接返回，仅标记格子已完成
+    // P7-016：此分支为防御性兜底——正常流程下 useCamp 入口已短路 + revealGrid 已拦截 completed 格，
+    // 但保留以防其他调用方（如控制台直接 dispatch）绕过上层保护
     if (ctx.campUsed) {
       return { completed: true };
     }

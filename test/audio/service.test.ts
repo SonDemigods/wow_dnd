@@ -52,6 +52,7 @@ const {
   const storeMock = {
     settings: { masterVolume: 0.7, sfxVolume: 0.8, bgmVolume: 0.5, muted: false, sfxEnabled: true, bgmEnabled: true },
     effectiveBgmVolume: 0.5,
+    effectiveSfxVolume: 0.8,
     loadFromDb: vi.fn().mockResolvedValue(undefined),
     // P3-116：updateSettings 改为 async（委托 GameStore 持久化）
     updateSettings: vi.fn().mockResolvedValue(undefined),
@@ -396,13 +397,16 @@ describe('AudioService 音频服务核心', () => {
       storeMock.settings.masterVolume = 0.5;
       storeMock.settings.sfxVolume = 0.4;
       storeMock.settings.bgmVolume = 0.3;
+      // P7-024 修复：applyVolume 现在使用 effective*Volume（含 muted 标志）
+      storeMock.effectiveBgmVolume = 0.3;
+      storeMock.effectiveSfxVolume = 0.4;
 
       await audioService.init();
 
       // applyVolume 在 init 中被调用
       // 主音量 dB = 20 * log10(0.5) ≈ -6.02
-      // SFX dB = 20 * log10(0.4) ≈ -7.96
-      // BGM dB = 20 * log10(0.3) ≈ -10.46
+      // SFX dB = 20 * log10(0.4) ≈ -7.96  (通过 effectiveSfxVolume)
+      // BGM dB = 20 * log10(0.3) ≈ -10.46  (通过 effectiveBgmVolume)
       expect(bgmSynthMock.applyBgmVolume).toHaveBeenCalledWith(expect.closeTo(-10.46, 1));
     });
 

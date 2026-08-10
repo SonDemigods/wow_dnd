@@ -172,11 +172,12 @@ export const useCombatStore = defineStore('combat', () => {
         }
 
         // 更新击杀进度
-        for (const e of state.enemies.value) {
-          if (e.dataId) {
-            ctx.quest.onEnemyKilled(e.dataId);
-          }
-        }
+        // P7-002 修复：await + catch 防止 unhandled rejection 和竞态
+        await Promise.all(
+          state.enemies.value
+            .filter(e => e.dataId)
+            .map(e => ctx.quest.onEnemyKilled(e.dataId!))
+        ).catch(err => console.error('[CombatStore] onEnemyKilled 失败:', err));
       } else if (result === 'defeat') {
         state.combatResult.value = result;
         state.expGained.value = 0;
@@ -422,6 +423,8 @@ export const useCombatStore = defineStore('combat', () => {
           if (!action.skillId) return { success: false, type: 'skill', message: '未指定技能！' };
           result = await player.playerSkill(action.skillId);
           // 技能施放成功后触发资源系统 onAttack（技能也算攻击行为）和 onSkill 生成
+          // P7-010：对治疗/纯 buff 类技能也触发 onAttack 是有意设计——
+          // 资源生成和攻击型被动统一在"技能施放"时触发，简化资源系统模型
           if (result.success && !result.isDodge) {
             state.resourceSystems.value.forEach(sys => {
               sys.onAttack?.();

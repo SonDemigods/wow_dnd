@@ -36,12 +36,19 @@ export function runMigrations(data: BackupData, fromVersion: number): BackupData
   if (fromVersion === CURRENT_DATA_VERSION) {
     return data;
   }
-  // 逐步应用匹配的迁移
+  // P7-026 修复：改用显式链式步进，从 fromVersion 逐步推进到 CURRENT_DATA_VERSION
+  // 每步只匹配 m.from === currentStep 的迁移，应用后推进 currentStep = m.to
   let result = data;
-  for (const m of MIGRATIONS) {
-    if (m.from >= fromVersion && m.to <= CURRENT_DATA_VERSION) {
-      result = m.migrate(result);
+  let currentStep = fromVersion;
+  while (currentStep < CURRENT_DATA_VERSION) {
+    const migration = MIGRATIONS.find(m => m.from === currentStep);
+    if (!migration) {
+      // 无匹配迁移：若 currentStep < CURRENT 但无迁移可用，说明版本跨度有缺口
+      // 直接跳到 CURRENT（当前空注册表下 fromVersion=CURRENT 已在上面 return）
+      break;
     }
+    result = migration.migrate(result);
+    currentStep = migration.to;
   }
   return result;
 }

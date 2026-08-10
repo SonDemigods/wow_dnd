@@ -14,7 +14,7 @@ import type { ExplorationStorage } from '../exploration/types';
 import type { CombatLogStorage } from '../combat/types';
 import type { LogEntry } from '../log/types';
 import type { LocationData } from '../map/types';
-import type { ShopConfig, ShopItemsStorage } from '../shop/types';
+import type { ShopConfig, ShopItemsStorage, ShopSoldItemsStorage } from '../shop/types';
 import type { MapStateStorage } from '../map/types';
 import type { GameStateStorage } from './core';
 import type { FactionStorage, RaceStorage, ClassStorage, CharacterDataStorage, PassiveSkill } from '../character/types';
@@ -166,6 +166,8 @@ export interface BackupData {
   shop: ShopConfig[];
   gameState: Record<string, GameStateStorage>;
   shopItems: Record<string, ShopItemsStorage>;
+  // P7-001 修复：补齐 runtime_shopSoldItems 备份字段
+  shopSoldItems?: Record<string, ShopSoldItemsStorage>;
   mapState?: Record<string, MapStateStorage>;
   // ==================== 配置表备份（v1.1 新增，兼容旧备份不含这些字段） ====================
   factions?: FactionStorage[];

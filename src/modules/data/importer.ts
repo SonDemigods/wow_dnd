@@ -220,6 +220,8 @@ export class ImportService implements IImportService {
           db.config_set_definitions,
           db.runtime_mapState,
           db.runtime_shopItems,
+          // P7-001 修复：补齐 runtime_shopSoldItems 到导入事务
+          db.runtime_shopSoldItems,
         ],
         async () => {
           // 辅助函数：Record 形状数据有数据则 bulkPut，否则计入 skipped
@@ -261,6 +263,8 @@ export class ImportService implements IImportService {
           await bulkPutIfNotEmpty(db.runtime_gameState, data.gameState, 'runtime_gameState');
           await bulkPutIfNotEmpty(db.runtime_mapState, data.mapState, 'runtime_mapState');
           await bulkPutIfNotEmpty(db.runtime_shopItems, data.shopItems, 'runtime_shopItems');
+          // P7-001 修复：补齐 runtime_shopSoldItems 导入
+          await bulkPutIfNotEmpty(db.runtime_shopSoldItems, data.shopSoldItems, 'runtime_shopSoldItems');
 
           // adventureLog：转换为 AdventureLogData[] 后统一处理
           // 注意：补全 updatedAt 字段（AdventureLogData 必填，旧实现缺失导致类型不匹配）

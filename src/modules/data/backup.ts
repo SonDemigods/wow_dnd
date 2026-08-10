@@ -19,7 +19,7 @@ import type { ItemSet } from '../equipment/setTypes';
 import type { EnemyStorage } from '../enemy/types';
 import type { BossStorage } from '../boss/types';
 import type { LocationData, MapStateStorage } from '../map/types';
-import type { ShopConfig, ShopItemsStorage } from '../shop/types';
+import type { ShopConfig, ShopItemsStorage, ShopSoldItemsStorage } from '../shop/types';
 import type { SkillTemplateStorage } from '../skill/types';
 import type { CombatLogStorage } from '../combat/types';
 import type { LogEntry } from '../log/types';
@@ -202,6 +202,8 @@ export class BackupService implements IBackupService {
       characterRecords, inventoryRecords, questsRecords, equipmentRecords,
       skillsRecords, explorationRecords, combatRecords, adventureLogRecords,
       gameStateRecords, mapStateRecords, shopItemsRecords,
+      // P7-001 修复：补齐 runtime_shopSoldItems 读取
+      shopSoldItemsRecords,
       mapRecords, shopRecords, factionsRecords, racesRecords, classesRecords,
       itemsRecords, equipmentItemsRecords, mobsRecords, bossesRecords, skillTemplatesRecords,
       // P6-200 修复：补齐遗漏的配置表读取
@@ -221,6 +223,8 @@ export class BackupService implements IBackupService {
       db.runtime_gameState.toArray(),
       db.runtime_mapState.toArray(),
       db.runtime_shopItems.toArray(),
+      // P7-001 修复：补齐 runtime_shopSoldItems 读取
+      db.runtime_shopSoldItems.toArray(),
       // 配置表（数组形状）：通过 getTable<具体类型> 收敛 Table 类型断言（CODE-5）
       // 表清单与 TABLES_TO_BACKUP 配置保持一致
       getTable<LocationData>(db, 'config_locations').toArray(),
@@ -272,6 +276,10 @@ export class BackupService implements IBackupService {
     const shopItems: Record<string, ShopItemsStorage> = {};
     shopItemsRecords.forEach((item) => { shopItems[item.shopId] = item; });
 
+    // P7-001 修复：补齐 runtime_shopSoldItems 备份
+    const shopSoldItems: Record<string, ShopSoldItemsStorage> = {};
+    shopSoldItemsRecords.forEach((item) => { shopSoldItems[item.shopId] = item; });
+
     return {
       characters,
       inventory,
@@ -285,6 +293,8 @@ export class BackupService implements IBackupService {
       shop: shopRecords,
       gameState,
       shopItems,
+      // P7-001 修复：补齐 runtime_shopSoldItems 备份输出
+      shopSoldItems,
       mapState,
       factions: factionsRecords,
       races: racesRecords,
