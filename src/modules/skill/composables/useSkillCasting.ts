@@ -127,7 +127,11 @@ export function useSkillCasting(state: SkillState) {
 
     const charData = characterStore.getCharacterData();
     if (!charData) return false;
-    if (!canCastSkill(skill, charData.mana).canCast) return false;
+    // P10-024 修复：传入冷却状态，与 castSkill 中的校验保持一致
+    if (!canCastSkill(skill, {
+      currentMana: charData.mana,
+      currentCooldown: getCooldownRemaining(skillId),
+    }).canCast) return false;
 
     return !isOnCooldown(skillId);
   }

@@ -111,10 +111,12 @@ export function computeEventProbability(avgLevel: number): GridEventProbability 
   };
   // 归一化：因各项独立 clamp，原始总和可能偏离 100，此处重新调整为百分比
   const total = raw.monster + raw.item + raw.trap + raw.event + raw.empty;
-  raw.monster = Math.round(raw.monster / total * PROBABILITY_NORMALIZATION_BASE);
-  raw.item = Math.round(raw.item / total * PROBABILITY_NORMALIZATION_BASE);
-  raw.trap = Math.round(raw.trap / total * PROBABILITY_NORMALIZATION_BASE);
-  raw.event = Math.round(raw.event / total * PROBABILITY_NORMALIZATION_BASE);
+  // P10-014 修复：前四项使用 Math.floor（而非 Math.round），避免四项全部向上取整导致总和超过 100；
+  // empty 用 100 减去四者之和兜底（已有 Math.max(0, ...) 保护，不会为负）
+  raw.monster = Math.floor(raw.monster / total * PROBABILITY_NORMALIZATION_BASE);
+  raw.item = Math.floor(raw.item / total * PROBABILITY_NORMALIZATION_BASE);
+  raw.trap = Math.floor(raw.trap / total * PROBABILITY_NORMALIZATION_BASE);
+  raw.event = Math.floor(raw.event / total * PROBABILITY_NORMALIZATION_BASE);
   // 最后一项用减法消除舍入误差，确保总和恰好为 100
   // P6-102 修复：归一化后四项之和可能超过 100，empty 可能为负数，用 Math.max 保护
   raw.empty = Math.max(0, PROBABILITY_NORMALIZATION_BASE - raw.monster - raw.item - raw.trap - raw.event);

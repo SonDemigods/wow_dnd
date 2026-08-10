@@ -5,6 +5,8 @@
  */
 export type { FloatingType, ParticleConfig } from './types';
 
+export type { ParticleBurstController } from './service';
+
 export {
   animateShake,
   animateCritShake,

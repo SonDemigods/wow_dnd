@@ -19,6 +19,7 @@ import {
   getTalentStatBonuses,
   getColSpentPoints,
   isTierUnlocked,
+  meetsRequirements,
   type TalentEffectSummary
 } from './service';
 import { configCache } from '@/modules/config';
@@ -57,6 +58,17 @@ export const useTalentStore = defineStore('talent', () => {
   function setPetCallbacks(unlock: (petType: string) => void, lock: (petType: string) => void): void {
     onPetUnlock = unlock;
     onPetLock = lock;
+  }
+
+  /**
+   * 清除宠物回调引用（由 GameBootstrap dispose 调用）
+   *
+   * P10-042 修复：角色切换/退出时清空回调，避免闭包残留指向旧 petStore 实例。
+   * setPetCallbacks 常与 clearPetCallbacks 配对使用（initialize 设置 → dispose 清除）。
+   */
+  function clearPetCallbacks(): void {
+    onPetUnlock = null;
+    onPetLock = null;
   }
 
   // ==================== 响应式状态 ====================
@@ -452,6 +464,10 @@ export const useTalentStore = defineStore('talent', () => {
         if ((simulated[talent.id] || 0) > 0 && !isTierUnlocked(talent, tree, simulated)) {
           return false;
         }
+        // P10-004 修复：检查取消后是否导致其他已学天赋失去前置依赖
+        if ((simulated[talent.id] || 0) > 0 && !meetsRequirements(talent, simulated)) {
+          return false;
+        }
       }
     }
     return true;
@@ -478,6 +494,8 @@ export const useTalentStore = defineStore('talent', () => {
 
     // P3-172：宠物回调注入（GameBootstrap 调用）
     setPetCallbacks,
+    // P10-042 修复：宠物回调清除（GameBootstrap dispose 调用）
+    clearPetCallbacks,
 
     // 操作
     learn,

@@ -102,7 +102,10 @@ export const useEnemyStore = defineStore('enemies', () => {
         }
       }
 
-      throw new Error(`Enemy data not found: ${dataId}`);
+      // P10-016 修复：不再 throw，改为 console.warn + return null
+      // throw 会被外层 catch 捕获并上报 errorHandler，污染错误监控
+      console.warn(`Enemy data not found: ${dataId}`);
+      return null;
     } catch (e) {
       errorHandler.report(e, '创建敌人失败');
       return null;

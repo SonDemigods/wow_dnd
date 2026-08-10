@@ -35,7 +35,7 @@ export function useInitiative(
 
   /**
    * 分配敌人位置到 3×2 网格（前排 3 格 + 后排 3 格）
-   * Boss 优先放在后排中间，普通敌人优先填满前排
+   * Boss 优先放在后排左侧（首位），普通敌人优先填满前排
    * @param enemiesData - 敌人数据数组
    */
   function assignEnemyPositions(enemiesData: EnemyInstance[]): void {
@@ -47,7 +47,7 @@ export function useInitiative(
     const bosses = enemiesData.filter(e => e.isBoss);
     const normals = enemiesData.filter(e => !e.isBoss);
 
-    // Boss 优先占后排中间位置
+    // Boss 优先占后排左侧（首位）位置
     for (const bossEnemy of bosses) {
       const col = backSlots.shift() ?? 0;
       positions[bossEnemy.id] = { row: 'back', col };

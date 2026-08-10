@@ -60,7 +60,13 @@ export function checkQuestProgress(
   const amount = relevantData.amount ?? 1;
 
   // 深拷贝进度数组，确保纯函数不修改入参
-  const newProgress: QuestObjectiveProgress[] = quest.progress.map(p => ({ ...p }));
+  let newProgress: QuestObjectiveProgress[] = quest.progress.map(p => ({ ...p }));
+
+  // P10-005 修复：过滤掉不在 definition.objectives 中的过期 progress 条目
+  // 任务定义可能被精简（移除某 objective），残留的过期条目会因 current<target 且无法累加
+  // 导致 isComplete 永远 false，任务无法自动完成
+  const validKeys = new Set(definition.objectives.map(o => o.key));
+  newProgress = newProgress.filter(p => validKeys.has(p.objectiveKey));
 
   // P7-019 修复：校验 progress 条目与 definition.objectives 的一致性
   // 若定义被修改新增目标但实例未更新，补建缺失的初始条目，避免 every 跳过缺失条目误判完成

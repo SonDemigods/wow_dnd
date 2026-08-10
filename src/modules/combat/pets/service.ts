@@ -148,9 +148,10 @@ export function createPetInstance(petType: PetType, level: number): PetInstance 
   const attrs = calculatePetAttributes(petType, level);
 
   // 初始化技能冷却映射（所有技能初始冷却为 0）
-  const skillCooldowns = new Map<string, number>();
+  // P10-020 修复：Map 不可序列化，改用 Record
+  const skillCooldowns: Record<string, number> = {};
   for (const skill of pet.skills) {
-    skillCooldowns.set(skill.id, 0);
+    skillCooldowns[skill.id] = 0;
   }
 
   return {
@@ -337,7 +338,7 @@ export function isPetDead(pet: PetInstance): boolean {
  * @returns 是否可用
  */
 export function isSkillReady(pet: PetInstance, skillId: string): boolean {
-  const cooldown = pet.skillCooldowns.get(skillId) ?? 0;
+  const cooldown = pet.skillCooldowns[skillId] ?? 0;
   return cooldown <= 0;
 }
 
@@ -362,8 +363,9 @@ export function setSkillCooldown(pet: PetInstance, skillId: string): PetInstance
   const skill = pet.skills.find(s => s.id === skillId);
   if (!skill) return pet;
 
-  const newCooldowns = new Map(pet.skillCooldowns);
-  newCooldowns.set(skillId, skill.cooldown);
+  // P10-020 修复：Map 不可序列化，改用 Record
+  const newCooldowns = { ...pet.skillCooldowns };
+  newCooldowns[skillId] = skill.cooldown;
   return { ...pet, skillCooldowns: newCooldowns };
 }
 
@@ -374,9 +376,10 @@ export function setSkillCooldown(pet: PetInstance, skillId: string): PetInstance
  * @returns 更新后的实例
  */
 export function tickSkillCooldowns(pet: PetInstance): PetInstance {
-  const newCooldowns = new Map<string, number>();
-  for (const [skillId, cooldown] of pet.skillCooldowns) {
-    newCooldowns.set(skillId, Math.max(0, cooldown - 1));
+  // P10-020 修复：Map 不可序列化，改用 Record
+  const newCooldowns: Record<string, number> = {};
+  for (const [skillId, cooldown] of Object.entries(pet.skillCooldowns)) {
+    newCooldowns[skillId] = Math.max(0, cooldown - 1);
   }
   return { ...pet, skillCooldowns: newCooldowns };
 }

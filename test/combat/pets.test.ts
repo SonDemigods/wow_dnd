@@ -336,7 +336,7 @@ describe('createPetInstance 实例创建', () => {
   it('技能冷却映射初始化为 0', () => {
     const instance = createPetInstance('imp', 1);
     for (const skill of instance.skills) {
-      expect(instance.skillCooldowns.get(skill.id)).toBe(0);
+      expect(instance.skillCooldowns[skill.id]).toBe(0);
     }
   });
 
@@ -611,13 +611,13 @@ describe('setSkillCooldown 设置冷却', () => {
     const pet = createPetInstance('imp', 1);
     const fireShield = WARLOCK_PETS.imp.skills.find(s => s.id === 'fire_shield')!;
     const result = setSkillCooldown(pet, 'fire_shield');
-    expect(result.skillCooldowns.get('fire_shield')).toBe(fireShield.cooldown);
+    expect(result.skillCooldowns['fire_shield']).toBe(fireShield.cooldown);
   });
 
   it('不修改原实例', () => {
     const pet = createPetInstance('imp', 1);
     setSkillCooldown(pet, 'firebolt');
-    expect(pet.skillCooldowns.get('firebolt')).toBe(0);
+    expect(pet.skillCooldowns['firebolt']).toBe(0);
   });
 
   it('未知技能 ID 返回原实例', () => {
@@ -629,7 +629,7 @@ describe('setSkillCooldown 设置冷却', () => {
   it('冷却 0 的技能设置后仍为 0', () => {
     const pet = createPetInstance('imp', 1);
     const result = setSkillCooldown(pet, 'firebolt'); // firebolt cooldown=0
-    expect(result.skillCooldowns.get('firebolt')).toBe(0);
+    expect(result.skillCooldowns['firebolt']).toBe(0);
   });
 });
 
@@ -639,22 +639,22 @@ describe('tickSkillCooldowns 冷却推进', () => {
     let state = setSkillCooldown(pet, 'fire_shield'); // cooldown=3
     state = setSkillCooldown(state, 'blood_pact'); // cooldown=5
     state = tickSkillCooldowns(state);
-    expect(state.skillCooldowns.get('fire_shield')).toBe(2);
-    expect(state.skillCooldowns.get('blood_pact')).toBe(4);
+    expect(state.skillCooldowns['fire_shield']).toBe(2);
+    expect(state.skillCooldowns['blood_pact']).toBe(4);
   });
 
   it('冷却不会低于 0', () => {
     const pet = createPetInstance('imp', 1);
     let state = setSkillCooldown(pet, 'firebolt'); // cooldown=0
     state = tickSkillCooldowns(state);
-    expect(state.skillCooldowns.get('firebolt')).toBe(0);
+    expect(state.skillCooldowns['firebolt']).toBe(0);
   });
 
   it('不修改原实例', () => {
     const pet = createPetInstance('imp', 1);
     const state = setSkillCooldown(pet, 'fire_shield');
     tickSkillCooldowns(state);
-    expect(state.skillCooldowns.get('fire_shield')).toBe(3);
+    expect(state.skillCooldowns['fire_shield']).toBe(3);
   });
 });
 
@@ -780,7 +780,7 @@ describe('tickPetTurn 回合推进', () => {
       unlockedPets: ['imp'],
     };
     const result = tickPetTurn(state);
-    expect(result.activePet?.skillCooldowns.get('fire_shield')).toBe(2);
+    expect(result.activePet?.skillCooldowns['fire_shield']).toBe(2);
   });
 
   it('永久召唤物（duration=0）不减少持续时间', () => {

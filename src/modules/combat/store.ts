@@ -453,7 +453,8 @@ export const useCombatStore = defineStore('combat', () => {
           return result;
         case 'item':
           if (!action.itemId) return { success: false, type: 'item', message: '未指定物品！' };
-          return await player.playerUseItem(action.itemId);
+          // P10-029 修复：传入 index 以便按索引使用指定物品组
+          return await player.playerUseItem(action.itemId, action.index);
         case 'flee':
           return player.playerFlee();
         default:

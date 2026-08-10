@@ -48,6 +48,8 @@ export function useCombatUiHelpers() {
   }
 
   function getHpPercent(e: { hp: number; maxHp: number }): number {
+    // P10-043 修复：maxHp=0 时避免除零得到 Infinity 并被 Math.min 夹成 100，直接返回 0
+    if (e.maxHp <= 0) return 0;
     return Math.max(0, Math.min(100, (e.hp / e.maxHp) * 100));
   }
 

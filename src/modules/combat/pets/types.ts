@@ -192,7 +192,7 @@ export type Pet = WarlockPet | HunterPet;
  * @property {PetSkill[]} skills - 可用技能列表
  * @property {PetAIBehavior} aiBehavior - AI 行为类型
  * @property {number} durationRemaining - 持续剩余回合数
- * @property {Map<string, number>} skillCooldowns - 技能冷却映射（技能 ID → 剩余冷却）
+ * @property {Record<string, number>} skillCooldowns - 技能冷却映射（技能 ID → 剩余冷却）
  * @property {PetOwner} owner - 所有者职业（'warlock' 或 'hunter'）
  */
 export interface PetInstance {
@@ -209,7 +209,7 @@ export interface PetInstance {
   skills: PetSkill[];
   aiBehavior: PetAIBehavior;
   durationRemaining: number;
-  skillCooldowns: Map<string, number>;
+  skillCooldowns: Record<string, number>;
   owner: PetOwner;
 }
 

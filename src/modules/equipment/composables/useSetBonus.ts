@@ -18,19 +18,21 @@ export function useSetBonus(state: EquipmentState) {
 
     // P9-030 修复：遍历 activeTiers 而非 getActiveBonusEffects，携带 requiredPieces 到 key
     // 避免不同档位的同 stat 同类值碰撞（如 2件套 str+5 与 4件套 str+5 被视为同一 bonus）
-    const currentStats: Array<{ setId: string; stat: keyof Stats; value: number; requiredPieces: number }> = [];
+    // P10-011 修复：在 key 中加入 tierIndex（档位在 activeTiers 中的索引）作为 tier 标识，
+    // 进一步确保不同 tier 不会因 requiredPieces 缺失或重复而碰撞
+    const currentStats: Array<{ setId: string; stat: keyof Stats; value: number; requiredPieces: number; tierIndex: number }> = [];
     for (const progress of progresses) {
-      for (const tier of progress.activeTiers) {
+      for (const [tierIndex, tier] of progress.activeTiers.entries()) {
         for (const effect of tier.bonuses) {
           if (effect.kind === 'stat') {
-            currentStats.push({ setId: progress.setId, stat: effect.stat, value: effect.value, requiredPieces: tier.requiredPieces });
+            currentStats.push({ setId: progress.setId, stat: effect.stat, value: effect.value, requiredPieces: tier.requiredPieces, tierIndex });
           }
         }
       }
     }
 
-    const buildKey = (s: { setId: string; stat: keyof Stats; value: number; requiredPieces?: number }) =>
-      `${s.setId}:${s.stat}:${s.value}:${s.requiredPieces ?? 0}`;
+    const buildKey = (s: { setId: string; stat: keyof Stats; value: number; requiredPieces?: number; tierIndex?: number }) =>
+      `${s.setId}:${s.stat}:${s.value}:${s.requiredPieces ?? 0}:${s.tierIndex ?? 0}`;
     const currentKeys = new Set(currentStats.map(s => buildKey(s)));
     const appliedKeys = new Set(appliedSetBonuses.value.map(b => buildKey(b)));
 
@@ -67,12 +69,12 @@ export function useSetBonus(state: EquipmentState) {
    */
   function syncAppliedBonuses(): void {
     const progresses = getAllSetProgresses(equipment.value, configCache.getSetDefinitions());
-    const currentStats: Array<{ setId: string; stat: keyof Stats; value: number; requiredPieces: number }> = [];
+    const currentStats: Array<{ setId: string; stat: keyof Stats; value: number; requiredPieces: number; tierIndex: number }> = [];
     for (const progress of progresses) {
-      for (const tier of progress.activeTiers) {
+      for (const [tierIndex, tier] of progress.activeTiers.entries()) {
         for (const effect of tier.bonuses) {
           if (effect.kind === 'stat') {
-            currentStats.push({ setId: progress.setId, stat: effect.stat, value: effect.value, requiredPieces: tier.requiredPieces });
+            currentStats.push({ setId: progress.setId, stat: effect.stat, value: effect.value, requiredPieces: tier.requiredPieces, tierIndex });
           }
         }
       }

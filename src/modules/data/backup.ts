@@ -244,10 +244,10 @@ export class BackupService implements IBackupService {
       getTable<ItemSet>(db, 'config_set_definitions').toArray(),
     ]);
 
-    // 构建角色数据 Record（以 characterId 为键）
+    // P10-002 修复：char_quests 是复合主键 [characterId+questId] 多行表，不能用 toCharacterRecord 折叠
     const characters = this.toCharacterRecord(characterRecords);
     const inventory = this.toCharacterRecord(inventoryRecords);
-    const quests = this.toCharacterRecord(questsRecords);
+    const quests = questsRecords;  // 数组形状，保留全部任务进度行
     const equipment = this.toCharacterRecord(equipmentRecords);
     const skills = this.toCharacterRecord(skillsRecords);
     const exploration = this.toCharacterRecord(explorationRecords);

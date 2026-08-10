@@ -16,6 +16,7 @@
  */
 import { ref, nextTick, type Ref } from 'vue';
 import { animateBossIntro } from '@/modules/animation';
+import { BOSS_INTRO_BASE_MS, BOSS_INTRO_PER_LINE_MS, BOSS_INTRO_FADE_BUFFER_MS } from '@/config/combat';
 
 /**
  * Boss 出场演出覆盖层选项
@@ -96,15 +97,15 @@ export function useBossIntroOverlay(options: UseBossIntroOverlayOptions) {
       }
     });
 
-    // 演出结束后自动关闭（+300ms 给淡出动画留时间）
-    const minDuration = 1000 + data.lines.length * 900;
+    // 演出结束后自动关闭（+ BOSS_INTRO_FADE_BUFFER_MS 给淡出动画留时间）
+    const minDuration = BOSS_INTRO_BASE_MS + data.lines.length * BOSS_INTRO_PER_LINE_MS;
     const actualDuration = Math.max(data.duration, minDuration);
     // P9-073 修复：记录 timer id 供 dispose 清理
     autoCloseTimerId = options.setAnimTimer(() => {
       showBossIntro.value = false;
       bossIntroController = null;
       autoCloseTimerId = null;
-    }, actualDuration + 300);
+    }, actualDuration + BOSS_INTRO_FADE_BUFFER_MS);
   }
 
   /**

@@ -50,6 +50,11 @@ export class ResourceSystemFactory {
     return systems;
   }
 
+  /** 清除实例缓存（测试用） */
+  static clearCache(): void {
+    this._cache.clear();
+  }
+
   private static _doCreate(classId: string): ResourceSystem[] {
     switch (classId) {
       case 'warrior':
@@ -114,7 +119,7 @@ export class ResourceSystemFactory {
    * 获取该职业的替代型资源系统实例（仅主资源替代 MP 的系统）
    *
    * 用于非战斗 UI（主界面、角色面板）显示职业专属资源条。
-   * 返回的实例携带初始值（战士怒气 0、潜行者能量 50、猎人集中值 100 等），仅供展示。
+   * 返回的实例携带初始值（战士怒气 0、潜行者能量 100、猎人集中值 100 等），仅供展示。
    *
    * @param classId - 职业 ID
    * @returns 替代型资源系统数组（空数组表示该职业使用 MP）

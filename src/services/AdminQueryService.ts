@@ -26,6 +26,7 @@ import type { Item } from '@/modules/inventory';
 import type { EquipmentItem } from '@/modules/equipment';
 import type { EnemyData } from '@/modules/enemy';
 import type { BossTemplate } from '@/modules/boss';
+import { errorReporter } from '@/utils/errorReport';
 
 /**
  * 管理后台查询服务
@@ -52,11 +53,20 @@ export class AdminQueryService {
     items: Item[];
     equipments: EquipmentItem[];
   }> {
-    const [items, equipments] = await Promise.all([
-      inventoryDbService.getAllItemTemplates(),
-      equipmentDbService.getAllEquipmentTemplates(),
-    ]);
-    return { items, equipments };
+    try {
+      const [items, equipments] = await Promise.all([
+        inventoryDbService.getAllItemTemplates(),
+        equipmentDbService.getAllEquipmentTemplates(),
+      ]);
+      return { items, equipments };
+    } catch (error) {
+      // P10-026 修复：查询失败时不抛出，记录错误并返回空列表
+      console.error('[AdminQueryService] queryAllItemTemplates 失败:', error);
+      errorReporter.report(error, 'manual', {
+        context: 'AdminQueryService.queryAllItemTemplates 查询所有物品模板失败',
+      });
+      return { items: [], equipments: [] };
+    }
   }
 
   /**
@@ -76,20 +86,29 @@ export class AdminQueryService {
     itemId: string
   ): Promise<{ type: 'item'; data: Item } | { type: 'equipment'; data: EquipmentItem } | null> {
     // P3-120 修复：并行查询消耗品与装备表，避免串行等待
-    const [lootItem, equipItem] = await Promise.all([
-      inventoryDbService.getItemTemplate(itemId),
-      equipmentDbService.getEquipmentTemplate(itemId),
-    ]);
+    try {
+      const [lootItem, equipItem] = await Promise.all([
+        inventoryDbService.getItemTemplate(itemId),
+        equipmentDbService.getEquipmentTemplate(itemId),
+      ]);
 
-    // 同时命中时消耗品优先（与原串行逻辑的返回顺序保持一致）
-    if (lootItem) {
-      return { type: 'item', data: lootItem };
-    }
-    if (equipItem) {
-      return { type: 'equipment', data: equipItem };
-    }
+      // 同时命中时消耗品优先（与原串行逻辑的返回顺序保持一致）
+      if (lootItem) {
+        return { type: 'item', data: lootItem };
+      }
+      if (equipItem) {
+        return { type: 'equipment', data: equipItem };
+      }
 
-    return null;
+      return null;
+    } catch (error) {
+      // P10-026 修复：查询失败时不抛出，记录错误并返回 null
+      console.error(`[AdminQueryService] queryItemTemplate(${itemId}) 失败:`, error);
+      errorReporter.report(error, 'manual', {
+        context: `AdminQueryService.queryItemTemplate(${itemId}) 查询物品模板失败`,
+      });
+      return null;
+    }
   }
 
   // ========================================================================
@@ -110,11 +129,20 @@ export class AdminQueryService {
     mobs: EnemyData[];
     bosses: BossTemplate[];
   }> {
-    const [mobs, bosses] = await Promise.all([
-      enemyDbService.getAllEnemyTemplates(),
-      bossDbService.getAllBossTemplates(),
-    ]);
-    return { mobs, bosses };
+    try {
+      const [mobs, bosses] = await Promise.all([
+        enemyDbService.getAllEnemyTemplates(),
+        bossDbService.getAllBossTemplates(),
+      ]);
+      return { mobs, bosses };
+    } catch (error) {
+      // P10-026 修复：查询失败时不抛出，记录错误并返回空列表
+      console.error('[AdminQueryService] queryAllEnemyTemplates 失败:', error);
+      errorReporter.report(error, 'manual', {
+        context: 'AdminQueryService.queryAllEnemyTemplates 查询所有敌人模板失败',
+      });
+      return { mobs: [], bosses: [] };
+    }
   }
 }
 

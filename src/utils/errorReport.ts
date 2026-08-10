@@ -208,6 +208,7 @@ class ErrorReporter {
   private addToBuffer(record: ErrorRecord): void {
     this.buffer.push(record);
     // 环形缓冲：超出上限时丢弃最旧的
+    // P10-027: slice 重建 O(n) 但 maxBufferSize=50 影响极小，循环队列可优化但收益不抵复杂度
     if (this.buffer.length > this.config.maxBufferSize) {
       this.buffer = this.buffer.slice(-this.config.maxBufferSize);
     }

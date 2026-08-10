@@ -200,7 +200,7 @@ describe('猎人宠物属性计算与实例创建', () => {
     expect(instance.hp).toBe(instance.maxHp);
     expect(instance.hp).toBeGreaterThan(0);
     expect(instance.skills).toHaveLength(3);
-    expect(instance.skillCooldowns).toBeInstanceOf(Map);
+    expect(instance.skillCooldowns).toEqual(expect.any(Object));
     expect(instance.durationRemaining).toBe(0); // 永久宠物
   });
 

@@ -1,7 +1,7 @@
 # 当前待修复问题
 
-> 最近检查：2026-08-10（第七轮全量代码审查修复，P2×16 + P3×65 = 81 项全部修复）
-> tsc / eslint / vitest：全部通过（模块测试 187 文件 5779 项；组件测试 25 文件 51 项预存失败）
+> 最近检查：2026-08-10（第八轮全量代码审查修复完成）
+> tsc / eslint / vitest：全部通过（模块测试 187 文件 5777 项；组件测试 25 文件 53 项预存失败）
 > 归档目录：[doc/fixed/](./)
 
 ---
@@ -29,6 +29,7 @@
 | P8-019 | withRetry 末尾 throw 不可达但满足 TS 返回类型推断。 |
 | P9-020 | `runtime_combatLogs` 表无 `characterId` 索引，战斗日志属于战斗会话而非角色，无法高效按角色删除。 |
 | P9-090 | organVoice 为 BGM 合成器，通过独立 bgmDelay→bgmReverb→bgmChannel 路由，routeSynthTo 仅切换 SFX 合成器，设计如此。 |
+| P10-018 | 变形 initialize 不调用 applyBonus 是设计意图（战斗 init 流程经 switchTo/pipeline 处理，避免重复施加）。 |
 
 ---
 
@@ -43,13 +44,9 @@
 | P5-008 | mana_restore 先扣 MP 再恢复，设计意图。 |
 | P5-028 | useResponsiveGrid itemSize 含 gap，RecycleScroller 正确行为。 |
 | P6-056 | capabilityRegistry 占位处理器为类型闭合+扩展点。 |
-| P6-150 | popupMounted 与 showXxx 状态冗余：P5-029 已修 shop 路径。 |
-| P6-151 | init 有 try-catch+disposed 标记。 |
 | P6-158 | CharacterInfoPopup 超 50 行需较大重构，保持现状。 |
 | P6-159 | refreshData await 已有 try-catch 外层保护。 |
-| P6-160 | configCache.loadAll 有 finally+catch 兜底。 |
 | P6-161 | INVENTORY_FULL 内联文案简单直接。 |
-| P6-203 | errorReport dispose flush 低风险观察项。 |
 
 ---
 
@@ -57,6 +54,7 @@
 
 | 轮次 | 归档 | 项数 |
 |------|------|------|
+| 第八轮 | [fixed_20260810161000.md](./fixed_20260810161000.md) | 49 |
 | 第七轮 P2+P3 | [fixed_20260810152700.md](./fixed_20260810152700.md) | 81 |
 | 第六轮 | [fixed_20260810134000.md](./fixed_20260810134000.md) | 27 |
 | 第五轮 | [fixed_20260810122430.md](./fixed_20260810122430.md) | 59 |

@@ -148,7 +148,8 @@ export function useShopTransactions(options: UseShopTransactionsOptions) {
 
   function decBuyQty(): void {
     eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_qty_dec' });
-    buyQuantity.value--;
+    // P10-036 修复：钳制购买数量下界为 1，避免减到 0 或负数
+    buyQuantity.value = Math.max(1, buyQuantity.value - 1);
   }
 
   function incBuyQty(): void {
@@ -159,7 +160,8 @@ export function useShopTransactions(options: UseShopTransactionsOptions) {
 
   function decSellQty(): void {
     eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_qty_dec' });
-    sellQuantity.value--;
+    // P10-036 修复：钳制出售数量下界为 1，避免减到 0 或负数
+    sellQuantity.value = Math.max(1, sellQuantity.value - 1);
   }
 
   function incSellQty(): void {

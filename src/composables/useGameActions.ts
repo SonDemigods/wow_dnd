@@ -115,7 +115,14 @@ export function useGameActions(onExit: () => void) {
     if (cellType === 'shop') {
       const shopId = data?.interactionId || '';
       if (!shopId) { console.warn('[GameMain] 商店交互ID为空，无法打开商店'); return; }
-      await shopStore.openShop(shopId);
+      // P10-007 修复：try/catch 防止 openShop 失败时 unhandled rejection 且无反馈
+      try {
+        await shopStore.openShop(shopId);
+      } catch (e) {
+        console.error('[GameActions] 打开商店失败:', e);
+        showNotif('打开商店失败，请重试', 'danger');
+        return;
+      }
       popupMounted.shop = true;
       showShop.value = true;
       onPanelOpen('shop');
@@ -158,9 +165,16 @@ export function useGameActions(onExit: () => void) {
 
   async function handleEventChoice(choice: EventChoice) {
     const explorationStore = useExplorationStore();
-    await explorationStore.applyEventChoice(choice);
-    showMultiOptionEvent.value = false;
-    currentMultiOptionEvent.value = null;
+    // P10-006 修复：try/catch 防止 applyEventChoice 失败时弹窗永久卡死
+    try {
+      await explorationStore.applyEventChoice(choice);
+    } catch (e) {
+      console.error('[GameActions] 事件选择应用失败:', e);
+      showNotif('事件处理失败，请重试', 'danger');
+    } finally {
+      showMultiOptionEvent.value = false;
+      currentMultiOptionEvent.value = null;
+    }
   }
 
   function handleMultiOptionEventClose() {
@@ -235,6 +249,9 @@ export function useGameActions(onExit: () => void) {
     disposed = true; // P5-016 修复：设置标记，阻止 init 后续执行
     eventBus.off(GameEvents.CHARACTER_LEVEL_UP, onLevelUp);
     if (levelUpTimerId !== null) { clearTimeout(levelUpTimerId); levelUpTimerId = null; }
+    // P10-044 修复：显式解除探索模块注册的 UI 回调，
+    // 不再依赖 gameBootstrap.dispose()（其内部调用 explorationStore.dispose）间接清理。
+    useExplorationStore().unregisterUICallbacks();
     gameBootstrap.dispose();
   }
 

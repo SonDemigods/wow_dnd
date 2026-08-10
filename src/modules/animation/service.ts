@@ -268,22 +268,37 @@ export function animateVsFlash(target: HTMLElement, speed: number = 1): JSAnimat
 // ==================== T2 粒子系统 ====================
 
 /**
+ * 粒子爆发控制器（P10-046 修复）
+ *
+ * 提供取消方法，供调用方在组件卸载时移除未完成动画的粒子 DOM 元素，
+ * 避免粒子 span 在容器卸载后成为孤儿 DOM。
+ */
+export interface ParticleBurstController {
+  /** 所有粒子动画实例数组 */
+  animations: JSAnimation[];
+  /** 取消所有粒子动画并移除粒子 DOM 元素，防止组件卸载时 DOM 泄漏 */
+  cancel: () => void;
+}
+
+/**
  * 创建粒子爆发效果
  * @param container 目标元素的父容器（用于定位）
  * @param originRect 爆发起始位置（相对 container 的坐标）
  * @param config 粒子配置
  * @param speed 速度倍率
- * @returns 所有粒子动画实例数组，供调用方在组件卸载时统一 pause
+ * @returns 粒子爆发控制器，包含动画实例数组与 cancel 方法（调用方可选调用 cancel 清理 DOM）
  */
 export function createParticleBurst(
   container: HTMLElement,
   originRect: { left: number; top: number; width: number; height: number },
   config: ParticleConfig,
   speed: number = 1
-): JSAnimation[] {
+): ParticleBurstController {
   const centerX = originRect.left + originRect.width / 2;
   const centerY = originRect.top + originRect.height / 2;
   const animations: JSAnimation[] = [];
+  // P10-046 修复：记录所有粒子 DOM 元素，供 cancel 时统一移除
+  const particles: HTMLElement[] = [];
 
   for (let i = 0; i < config.count; i++) {
     const particle = document.createElement('span');
@@ -339,6 +354,7 @@ export function createParticleBurst(
     }
 
     container.appendChild(particle);
+    particles.push(particle);
 
     // 随机飞散方向
     const angle = (Math.PI * 2 * i) / config.count + (defaultRng.next() - 0.5) * 0.6;
@@ -363,7 +379,23 @@ export function createParticleBurst(
     });
     animations.push(anim);
   }
-  return animations;
+
+  return {
+    animations,
+    cancel: () => {
+      // 暂停所有动画并移除粒子 DOM 元素，防止组件卸载时 DOM 泄漏
+      for (const anim of animations) {
+        try {
+          anim.pause();
+        } catch {
+          // 动画已销毁或不可暂停时忽略
+        }
+      }
+      for (const particle of particles) {
+        particle.remove();
+      }
+    },
+  };
 }
 
 // ==================== Boss 出场演出 ====================

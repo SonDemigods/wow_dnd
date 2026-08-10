@@ -277,11 +277,21 @@ export const useExplorationStore = defineStore('exploration', () => {
    */
   async function getQuestRequiredMonsters(areaId: string): Promise<string[]> {
     const required: string[] = [];
+    const seen = new Set<string>();
+    // P10-040 说明：areaId 即 location.id，quest 数据中 boardId 与 location.id 取相同值
+    // （如 'teldrassil'、'azuremyst'、'elwynn' 等），config_quests 的 boardId 字段是
+    // 专门为匹配 location.id 而设计的，因此 areaId 可直接作为 boardId 查询。
     const quests = await crossModuleQuery.getQuestDefinitionsByBoard(areaId);
     for (const quest of quests) {
       for (const obj of quest.objectives) {
         if (obj.type === 'kill' && obj.enemyId) {
-          for (let i = 0; i < obj.target; i++) {
+          // P10-047 修复：对同一 enemyId 去重，仅 push 一次。
+          // generateGrid 通过遍历 questNormalMonsters 逐个占格放置怪物，
+          // 数组长度决定占格数量。按 target 重复 push 会导致同一 enemyId 占用
+          // 多个格子（如 target=5 会放 5 个相同怪物格），挤占网格空位。
+          // generateGrid 只需知道该 enemyId 需要放置，击杀数量由任务 target 决定。
+          if (!seen.has(obj.enemyId)) {
+            seen.add(obj.enemyId);
             required.push(obj.enemyId);
           }
         }

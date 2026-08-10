@@ -114,13 +114,24 @@ describe('ResourceSystemFactory 全职业映射', () => {
     expect(ResourceSystemFactory.replacesMana('unknown')).toBe(false);
   });
 
-  it('每次 create 返回新实例（无单例缓存）', () => {
+  it('create 使用实例缓存（P8-009），clearCache 后返回新实例', () => {
+    // P8-009: 工厂使用 _cache 避免频繁实例化，同一 classId 返回相同引用
+    ResourceSystemFactory.clearCache();
     const a = ResourceSystemFactory.create('paladin');
     const b = ResourceSystemFactory.create('paladin');
-    expect(a).not.toBe(b);
-    expect(a[0]).not.toBe(b[0]);
+    expect(a).toBe(b); // 缓存命中，返回同一数组
+    expect(a[0]).toBe(b[0]); // 同一实例
+
+    // clearCache 后返回新实例
+    ResourceSystemFactory.clearCache();
+    const c = ResourceSystemFactory.create('paladin');
+    expect(c).not.toBe(a);
+    expect(c[0]).not.toBe(a[0]);
     a[0].generate(10, 'skill'); // 4
-    expect(b[0].currentValue).toBe(0); // 不受影响
+    expect(c[0].currentValue).toBe(0); // 不受影响
+
+    // 清理缓存避免影响后续测试
+    ResourceSystemFactory.clearCache();
   });
 });
 

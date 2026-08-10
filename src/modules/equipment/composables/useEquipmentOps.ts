@@ -74,11 +74,13 @@ export function useEquipmentOps(state: EquipmentState, setBonus: ReturnType<type
     if (removed <= 0) return false;
 
     let previousEquipped: EquippedItem | null = null;
+    // P10-003 修复：暂存自动卸下的 weapon2，用于失败回滚时恢复
+    let unequippedWeapon2: EquippedItem | null = null;
     try {
       previousEquipped = await doUnequip(slot);
       // P8-015 修复：双手武器装 weapon1 时，先卸下 weapon2 残留装备
       if (item.grip === 'two_handed' && slot === 'weapon1' && equipment.value.weapon2) {
-        await doUnequip('weapon2');
+        unequippedWeapon2 = await doUnequip('weapon2');
       }
     } catch (e) {
       console.error('[EquipmentStore] equipItem 卸下旧装备失败，回滚已移除的物品:', e);
@@ -90,6 +92,14 @@ export function useEquipmentOps(state: EquipmentState, setBonus: ReturnType<type
         equipment.value[slot] = previousEquipped;
         try { await applyBonusForSlot(slot); } catch (rollbackErr) {
           console.error('[EquipmentStore] equipItem 回滚旧装备 bonus 失败:', rollbackErr);
+        }
+      }
+      // P10-003 修复：若有 weapon2 被卸下，也恢复
+      if (unequippedWeapon2) {
+        if (cb.removeItem()) cb.removeItem()!(unequippedWeapon2.item.id, 1);
+        equipment.value.weapon2 = unequippedWeapon2;
+        try { await applyBonusForSlot('weapon2'); } catch (rollbackErr) {
+          console.error('[EquipmentStore] equipItem 回滚 weapon2 bonus 失败:', rollbackErr);
         }
       }
       return false;
@@ -111,6 +121,14 @@ export function useEquipmentOps(state: EquipmentState, setBonus: ReturnType<type
         equipment.value[slot] = previousEquipped;
         try { await applyBonusForSlot(slot); } catch (rollbackErr) {
           console.error('[EquipmentStore] equipItem 回滚旧装备 bonus 失败:', rollbackErr);
+        }
+      }
+      // P10-003 修复：恢复 weapon2
+      if (unequippedWeapon2) {
+        if (cb.removeItem()) cb.removeItem()!(unequippedWeapon2.item.id, 1);
+        equipment.value.weapon2 = unequippedWeapon2;
+        try { await applyBonusForSlot('weapon2'); } catch (rollbackErr) {
+          console.error('[EquipmentStore] equipItem 回滚 weapon2 bonus 失败:', rollbackErr);
         }
       }
       // P7-013 修复：回滚后调用 flushPersist，与其他回滚分支保持一致
@@ -141,6 +159,14 @@ export function useEquipmentOps(state: EquipmentState, setBonus: ReturnType<type
           console.error('[EquipmentStore] equipItem 回滚旧装备 bonus 失败:', rollbackErr);
         }
       }
+      // P10-003 修复：恢复 weapon2
+      if (unequippedWeapon2) {
+        if (cb.removeItem()) cb.removeItem()!(unequippedWeapon2.item.id, 1);
+        equipment.value.weapon2 = unequippedWeapon2;
+        try { await applyBonusForSlot('weapon2'); } catch (rollbackErr) {
+          console.error('[EquipmentStore] equipItem 回滚 weapon2 bonus 失败:', rollbackErr);
+        }
+      }
       if (cb.flushPersist()) await cb.flushPersist()!();
       return false;
     }
@@ -166,6 +192,14 @@ export function useEquipmentOps(state: EquipmentState, setBonus: ReturnType<type
         equipment.value[slot] = previousEquipped;
         try { await applyBonusForSlot(slot); } catch (rollbackErr) {
           console.error('[EquipmentStore] equipItem 回滚旧装备 bonus 失败:', rollbackErr);
+        }
+      }
+      // P10-003 修复：恢复 weapon2
+      if (unequippedWeapon2) {
+        if (cb.removeItem()) cb.removeItem()!(unequippedWeapon2.item.id, 1);
+        equipment.value.weapon2 = unequippedWeapon2;
+        try { await applyBonusForSlot('weapon2'); } catch (rollbackErr) {
+          console.error('[EquipmentStore] equipItem 回滚 weapon2 bonus 失败:', rollbackErr);
         }
       }
       await setBonus.reapplySetBonuses();

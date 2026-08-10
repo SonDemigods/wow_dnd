@@ -248,12 +248,14 @@ describe('effectChains 音频效果链', () => {
       expect(nodes.fmSynth.connect).toHaveBeenCalledWith(nodes.phaser);
     });
 
-    it('combat 路由：membrane/noiseSynth → compressor', () => {
+    it('combat 路由：membrane/noiseSynth/fmSynth/metalSynth/synth → compressor', () => {
       routeSynthTo(nodes, 'combat');
       expect(nodes.membrane.connect).toHaveBeenCalledWith(nodes.compressor);
       expect(nodes.noiseSynth.connect).toHaveBeenCalledWith(nodes.compressor);
-      // 其他合成器未重连
-      expect(nodes.synth.connect).not.toHaveBeenCalled();
+      // P10-031: 战斗音效使用 tFM/tMetal/tSynth，需全部接入 compressor
+      expect(nodes.fmSynth.connect).toHaveBeenCalledWith(nodes.compressor);
+      expect(nodes.metalSynth.connect).toHaveBeenCalledWith(nodes.compressor);
+      expect(nodes.synth.connect).toHaveBeenCalledWith(nodes.compressor);
     });
 
     it('ui 路由：synth/metalSynth/noiseSynth → chorus', () => {

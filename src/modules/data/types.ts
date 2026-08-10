@@ -132,7 +132,7 @@ export interface BackupFile {
  *
  * @property {Record<string, CharacterDataStorage>} characters - 角色数据（以角色 ID 为键）
  * @property {Record<string, InventoryStorage>} inventory - 背包数据（以角色 ID 为键）
- * @property {Record<string, CharQuestStorage>} quests - 任务进度（以角色 ID 为键）
+ * @property {CharQuestStorage[]} quests - 任务进度（每角色多行，按数组存储避免 characterId 折叠丢失）
  * @property {Record<string, EquipmentStorage>} equipment - 装备状态（以角色 ID 为键）
  * @property {Record<string, SkillsData>} skills - 技能数据（以角色 ID 为键）
  * @property {Record<string, ExplorationStorage>} exploration - 探索进度（以角色 ID 为键）
@@ -158,7 +158,8 @@ export interface BackupFile {
 export interface BackupData {
   characters: Record<string, CharacterDataStorage>;
   inventory: Record<string, InventoryStorage>;
-  quests: Record<string, CharQuestStorage>;
+  // P10-002 修复：quests 改为数组形状，避免 toCharacterRecord 按 characterId 折叠丢失多任务进度行
+  quests: CharQuestStorage[];
   equipment: Record<string, EquipmentStorage>;
   skills: Record<string, SkillsData>;
   exploration: Record<string, ExplorationStorage>;

@@ -45,6 +45,7 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useLogStore } from '../../modules/log';
 import { eventBus, GameEvents } from '@/modules/bus';
+import { useToast } from '../../composables/useToast';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
@@ -63,6 +64,7 @@ const props = defineProps<Props>();
 defineEmits<Emits>();
 
 const logStore = useLogStore();
+const toast = useToast();
 const logContainer = ref<HTMLDivElement | null>(null);
 const showClearConfirm = ref(false);
 
@@ -97,8 +99,14 @@ const formatTimestamp = (timestamp: number): string => {
   return `${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
-const confirmClear = () => {
-  logStore.clearLogs();
+const confirmClear = async () => {
+  try {
+    logStore.clearLogs();
+  } catch (e) {
+    // P10-030 修复：清空日志失败时记录错误并提示用户，避免静默失败
+    console.error('[AdventureLogPopup] 清空日志失败:', e);
+    toast.show({ message: '清空日志失败，请重试', type: 'danger' });
+  }
   showClearConfirm.value = false;
 };
 

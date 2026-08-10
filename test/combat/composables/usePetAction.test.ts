@@ -51,7 +51,7 @@ function makePetInstance(overrides: Partial<PetInstance> = {}): PetInstance {
     skills: [petSkillAttack],
     aiBehavior: 'caster',
     durationRemaining: 0,
-    skillCooldowns: new Map(),
+    skillCooldowns: {},
     ...overrides,
   };
 }

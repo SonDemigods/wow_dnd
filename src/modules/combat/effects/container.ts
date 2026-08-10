@@ -153,7 +153,23 @@ export function createEmptyContainer(): EffectContainer {
 
 /**
  * 清空效果容器
+ *
+ * P10-019 修复：新增可选 registry + ctx 参数，清空前逐个调用 onRemove 回调，
+ * 确保 stat_modifier 等效果的清理逻辑被执行。
+ * 未传入 registry 时仅清空数组（保持向后兼容）。
+ *
+ * @param container - 效果容器
+ * @param registry - 效果处理器注册表（可选，用于调用 onRemove 回调）
+ * @param ctx - 效果持有者上下文（可选，供 onRemove 回调读取真实上下文）
  */
-export function clearContainer(container: EffectContainer): void {
+export function clearContainer(container: EffectContainer, registry?: EffectHandlerRegistry, ctx?: EffectContext): void {
+  const removeCtx = ctx ?? FALLBACK_EFFECT_CONTEXT;
+  // P10-019：若传入了 registry，逐个调用 onRemove 回调后再清空
+  if (registry) {
+    for (const effect of container.effects) {
+      const handler = registry.get(effect.type);
+      handler?.onRemove?.(effect, removeCtx);
+    }
+  }
   container.effects = [];
 }

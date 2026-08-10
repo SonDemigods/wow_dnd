@@ -17,6 +17,7 @@
 import { ref } from 'vue';
 import { useCombatStore } from '../store';
 import { eventBus, GameEvents } from '@/modules/bus';
+import { AUTO_CLOSE_VICTORY_SEC, AUTO_CLOSE_DEFEAT_SEC } from '@/config/combat';
 import type { CombatResult } from '../types';
 
 /**
@@ -63,12 +64,12 @@ export function useCombatAutoClose(onClose: () => void, options?: UseCombatAutoC
   /**
    * 启动自动关闭倒计时
    *
-   * 战斗结果为 victory 时延迟 3 秒，其他结果（defeat/fled）延迟 2 秒。
+   * 战斗结果为 victory 时延迟 AUTO_CLOSE_VICTORY_SEC 秒，其他结果（defeat/fled）延迟 AUTO_CLOSE_DEFEAT_SEC 秒。
    * 倒计时结束后调用 onClose 回调。
    */
   function scheduleAutoClose(): void {
     clearAutoClose();
-    const delay = getCombatResult() === 'victory' ? 3 : 2;
+    const delay = getCombatResult() === 'victory' ? AUTO_CLOSE_VICTORY_SEC : AUTO_CLOSE_DEFEAT_SEC;
     autoCloseCountdown.value = delay;
 
     autoCloseTimer = setInterval(() => {

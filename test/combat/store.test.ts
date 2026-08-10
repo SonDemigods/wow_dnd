@@ -1105,7 +1105,7 @@ describe('useCombatStore - 战斗 Store', () => {
       const result = await store.playerAction({ type: 'item', itemId: 'potion' });
 
       expect(result.success).toBe(true);
-      expect(mocks.player!.playerUseItem).toHaveBeenCalledWith('potion');
+      expect(mocks.player!.playerUseItem).toHaveBeenCalledWith('potion', undefined);
     });
 
     it('attack：success=false 时不触发资源系统与被动钩子', async () => {

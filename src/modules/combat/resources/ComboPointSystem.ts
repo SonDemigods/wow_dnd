@@ -20,6 +20,8 @@ export class ComboPointSystem extends BaseResourceSystem {
   }
 
   generate(amount: number, source: ResourceSource): void {
+    // P10-049 确认：调用方 usePlayerSkill.playerSkill 在技能施放后以 source='skill'
+    // 调用 generate()，此处 source !== 'skill' 守卫正确放行生成器技能。
     if (source !== 'skill') {
       // 连击点仅通过生成器技能积攒（generatesResource 触发）
       return;

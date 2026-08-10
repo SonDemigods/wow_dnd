@@ -5,6 +5,7 @@
  */
 
 import { defaultRng, type Rng } from './rng';
+import { errorReporter } from './errorReport';
 
 /**
  * 将对象转为纯数据，去除 Vue/Proxy 响应式包装
@@ -51,9 +52,11 @@ export function generateId(prefix: string, rng: Rng = defaultRng): string {
 /**
  * 通用数据层基类（CODE-31 修复）
  *
- * 封装各模块 db.ts 中高度重复的 CRUD + withRetry 模式。
- * 子类只需提供表引用和主键字段名，即可获得带重试的标准增删改查能力，
- * 避免每个 db.ts 都重复编写 `await dbService.withRetry(async () => { await gameDb.xxx.put(toRawData(...)); })`。
+ * 封装各模块 db.ts 中高度重复的 CRUD 模式。
+ * 子类只需提供表引用和主键字段名，即可获得标准增删改查能力。
+ *
+ * P10-041 修复：所有公开方法均包含 try-catch，失败时通过 errorReporter 上报后重新抛出，
+ * 符合「Dexie 操作必须 try-catch」规范。
  *
  * @typeParam T - 运行时业务对象类型
  * @typeParam S - DB 存储格式类型（默认与 T 相同）
@@ -100,30 +103,55 @@ export abstract class BaseDbService<T, S = T> {
 
   /** 保存（新增或覆盖）单条记录 */
   async save(data: T): Promise<void> {
-    const cleanData = toRawData(this.toStorage(data));
-    await this.table.put(cleanData);
+    try {
+      const cleanData = toRawData(this.toStorage(data));
+      await this.table.put(cleanData);
+    } catch (e) {
+      errorReporter.report(e, 'manual', { context: 'BaseDbService.save 失败', key: this.getKey(data) });
+      throw e;
+    }
   }
 
   /** 批量保存 */
   async saveAll(items: T[]): Promise<void> {
-    const cleanData = items.map(item => toRawData(this.toStorage(item)));
-    await this.table.bulkPut(cleanData);
+    try {
+      const cleanData = items.map(item => toRawData(this.toStorage(item)));
+      await this.table.bulkPut(cleanData);
+    } catch (e) {
+      errorReporter.report(e, 'manual', { context: 'BaseDbService.saveAll 失败', count: items.length });
+      throw e;
+    }
   }
 
   /** 按主键查询单条记录，不存在返回 null */
   async getById(id: string): Promise<T | null> {
-    const data = await this.table.get(id);
-    return data ? this.toRuntime(data) : null;
+    try {
+      const data = await this.table.get(id);
+      return data ? this.toRuntime(data) : null;
+    } catch (e) {
+      errorReporter.report(e, 'manual', { context: 'BaseDbService.getById 失败', id });
+      throw e;
+    }
   }
 
   /** 获取全部记录 */
   async getAll(): Promise<T[]> {
-    const items = await this.table.toArray();
-    return items.map(data => this.toRuntime(data));
+    try {
+      const items = await this.table.toArray();
+      return items.map(data => this.toRuntime(data));
+    } catch (e) {
+      errorReporter.report(e, 'manual', { context: 'BaseDbService.getAll 失败' });
+      throw e;
+    }
   }
 
   /** 按主键删除 */
   async deleteById(id: string): Promise<void> {
-    await this.table.delete(id);
+    try {
+      await this.table.delete(id);
+    } catch (e) {
+      errorReporter.report(e, 'manual', { context: 'BaseDbService.deleteById 失败', id });
+      throw e;
+    }
   }
 }

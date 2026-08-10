@@ -57,7 +57,7 @@ export function useEquipmentState() {
   const gameStore = useGameStore();
   const currentCharacterId = computed<string | null>(() => gameStore.currentCharacterId);
   const isLoading = ref(false);
-  const appliedSetBonuses = ref<Array<{ setId: string; stat: keyof Stats; value: number }>>([]);
+  const appliedSetBonuses = ref<Array<{ setId: string; stat: keyof Stats; value: number; requiredPieces: number; tierIndex: number }>>([]);
 
   // ==================== 计算属性 ====================
   const totalStats = computed<Stats>(() => {

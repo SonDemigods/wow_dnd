@@ -44,8 +44,9 @@ export function usePlayerItem(
   /**
    * 玩家使用物品
    * @param itemId - 物品 ID
+   * @param index - 物品在背包中的索引（P10-029 修复：不再忽略此参数，供后续按索引使用指定物品组）
    */
-  async function playerUseItem(itemId: string): Promise<CombatActionResult> {
+  async function playerUseItem(itemId: string, index?: number): Promise<CombatActionResult> {
     // 先获取物品信息，判断是否为伤害型物品
     const itemInfo = ctx.inventory.getItemInfo(itemId);
     let damageResult: { damage: number; isCrit: boolean } | null = null;
@@ -136,7 +137,12 @@ export function usePlayerItem(
     }
 
     // 调用 inventoryStore 使用物品（扣减数量 + 应用恢复/属性效果）
-    await ctx.inventory.useItem(itemId);
+    // P10-029 修复：有有效索引时按索引使用指定物品组，否则按 itemId 使用（装备来源 index=-1）
+    if (index !== undefined && index >= 0) {
+      await ctx.inventory.useItemByIndex(index);
+    } else {
+      await ctx.inventory.useItem(itemId);
+    }
 
     // 生命/法力恢复音效事件
     if (restoreEffect) {

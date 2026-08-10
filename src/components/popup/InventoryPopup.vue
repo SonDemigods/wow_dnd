@@ -404,7 +404,6 @@ async function useItem(itemId: string) {
   const index = findSelectedOrFirstIndex(itemId);
   if (index === -1) return;
 
-  const invItem = inventoryItems.value[index];
   const info = inventoryStore.getItemInfo(itemId);
   // P3.3：consumable 下沉为判别字面量，用 kind 收窄替代旧 info.consumable 布尔
   if (!info || info.kind !== 'consumable') return;
@@ -426,9 +425,10 @@ async function useItem(itemId: string) {
 
   toast.show({ message: getEffectToast(info), type: 'success', icon: '💊' });
 
-  loadInventory();
-  // 堆叠数归零时清除选中
-  if (invItem.count <= 1) {
+  await loadInventory();
+  // P10-028 修复：基于使用后的新数量判断是否清除选中，而非使用前旧的 invItem.count
+  const updatedItem = inventoryItems.value.find(i => i.itemId === itemId);
+  if (!updatedItem || updatedItem.count <= 0) {
     selectedEntry.value = null;
   }
 }

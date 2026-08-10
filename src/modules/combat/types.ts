@@ -95,6 +95,7 @@ export type CombatEventType =
  *
  * @property {CombatActionType} type - 动作类型
  * @property {string} [itemId] - 物品 ID（仅 type='item' 时有效）
+ * @property {number} [index] - 物品在背包中的索引（仅 type='item' 时有效，指定使用哪一组物品）
  * @property {string} [skillId] - 技能 ID（仅 type='skill' 时有效）
  * @property {'player' | 'enemy'} [target] - 目标类型（当前版本仅支持 'enemy'）
  *
@@ -103,6 +104,7 @@ export type CombatEventType =
 export interface CombatAction {
   type: CombatActionType;
   itemId?: string;
+  index?: number;
   skillId?: string;
   target?: 'player' | 'enemy';
 }

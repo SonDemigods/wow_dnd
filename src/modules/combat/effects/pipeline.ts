@@ -64,8 +64,8 @@ function applyDefenseReduction(
  * 从 stat_modifier 列表中提取与当前伤害类型相关的攻击方倍率
  *
  * P3-146：将 passive 的 stat_modifier 转换为管线可用的 multiplier：
- * - `*_attack_multiplier`：作为面板攻击力倍率，乘入 baseDamage
- * - `bonus_*_damage_percent`：作为最终伤害额外百分比，乘入 attackerMod
+ * - `*_attack_multiplier`：作为面板攻击力倍率，减伤前乘入 baseDamage
+ * - `bonus_*_damage_percent`：作为最终伤害额外百分比，减伤后乘入预期伤害
  *
  * @returns { attackMultiplier, bonusPercent } — 攻击力倍率与额外伤害百分比
  */
@@ -94,11 +94,9 @@ function extractAttackerModifiers(
  * 执行完整伤害计算管线
  *
  * 阶段 0: 计算原始伤害（技能传 baseDamageOverride 跳过，普攻打 calcAttackDamage）
- * 阶段 0.5: 减伤公式（始终应用，无论来源是技能还是普攻）
- * 阶段 1: 攻击方效果修正 → 预期伤害
- *   - 1a: 应用 stat_modifier 的 attack_multiplier 到 baseDamage
- *   - 1b: 应用 effect 系统的 attackerMod（attack_up/attack_down 等）
- *   - 1c: 应用 stat_modifier 的 bonus_damage_percent
+ * 阶段 0.5: 攻击方攻击力倍率（passive attack_multiplier + effect attack_up/attack_down 合并，减伤前应用）
+ * 阶段 1: 减伤公式（始终应用，无论来源是技能还是普攻）
+ * 阶段 1.5: 攻击方最终伤害加成 → 预期伤害（stat_modifier 的 bonus_damage_percent，减伤后应用）
  * 阶段 2: 防御方修正 → 实际伤害
  * 阶段 3: 护盾吸收 → 最终伤害
  *
@@ -119,23 +117,27 @@ export function processDamagePipeline(
   // 阶段 0: 原始伤害（技能传 override，普攻打 calcAttackDamage）
   const rawDamage = baseDamageOverride ?? calcAttackDamage(attackerCtx.baseStats, damageType, rng);
 
+  // 提取 passive stat_modifier 的攻击力倍率与最终伤害加成
+  const { attackMultiplier, bonusPercent } = extractAttackerModifiers(attackerStatModifiers, damageType);
+
+  // 阶段 0.5: 攻击方攻击力倍率（减伤前应用）
   // P9-041 修复：attackMultiplier 在防御减免前应用（影响"面板攻击力"层），
   // 否则当防御值大于 coefficient×伤害 时，攻击力倍率被过度削减
-  const { attackMultiplier, bonusPercent } = extractAttackerModifiers(attackerStatModifiers, damageType);
-  const scaledDamage = Math.floor(rawDamage * attackMultiplier);
-
-  // 阶段 0.5: 减伤公式（始终应用，无论来源是技能还是普攻）
-  const defendedDamage = applyDefenseReduction(scaledDamage, defenderCtx.baseStats, damageType);
-
-  // 阶段 1: 攻击方修正 → 预期伤害
-  const baseDamage = defendedDamage;
-
-  // 1b: effect 系统修正（attack_up/attack_down 等效果）
+  // P10-039 修复：effect 系统的 attack_up/attack_down（attackerMod）与 passive 的
+  // attack_multiplier 同属"攻击加成"，统一在减伤前合并应用，避免同类修正被拆到减伤两侧
   const attackerMod = registry.reduceMultiplier(attackerEffects, 'getAttackerDamageMod', attackerCtx);
   // P2-5：NaN 防御，效果系统返回 NaN（除零/未初始化）时归零，防止腐蚀 HP 状态
   const safeAttackerMod = Number.isFinite(attackerMod) ? attackerMod : 1;
-  // 1c: stat_modifier 中的 bonus_damage_percent（如猎手鹰眼 +5% 物理伤害）
-  const expectedDamage = Math.floor(baseDamage * safeAttackerMod * (1 + bonusPercent));
+  const combinedAttackMultiplier = attackMultiplier * safeAttackerMod;
+  const scaledDamage = Math.floor(rawDamage * combinedAttackMultiplier);
+
+  // 阶段 1: 减伤公式（始终应用，无论来源是技能还是普攻）
+  const defendedDamage = applyDefenseReduction(scaledDamage, defenderCtx.baseStats, damageType);
+
+  // 阶段 1.5: 攻击方最终伤害加成 → 预期伤害
+  // bonus_percent 是独立最终伤害加成，保持在减伤后（如猎手鹰眼 +5% 物理伤害）
+  const baseDamage = defendedDamage;
+  const expectedDamage = Math.floor(baseDamage * (1 + bonusPercent));
 
   // 阶段 2: 防御方修正 → 实际伤害
   const defenderMod = registry.reduceMultiplier(defenderEffects, 'getDefenderDamageMod', defenderCtx);
@@ -160,7 +162,8 @@ export function applyEffect(
   ctx: EffectContext
 ): void {
   // P4-004：传入 registry 使 addEffectToContainer 能调用旧 effect 的 onRemove 回调
-  addEffectToContainer(container, effect, registry);
+  // P10-017 修复：透传 ctx，使 onRemove 回调能读取真实上下文
+  addEffectToContainer(container, effect, registry, ctx);
 
   const handler = registry.get(effect.type);
   handler?.onApply?.(effect, ctx);

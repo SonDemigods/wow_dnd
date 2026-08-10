@@ -30,7 +30,7 @@
             :disabled="field.disabled"
             class="form-textarea"
             rows="3"
-            @input="formData[field.key] = ($event.target as HTMLTextAreaElement).value"
+            @input="formData[field.key] = getTextValue($event)"
           />
 
           <!-- 下拉选择 -->
@@ -58,7 +58,7 @@
                 type="checkbox"
                 :checked="!!formData[field.key]"
                 :disabled="field.disabled"
-                @change="formData[field.key] = ($event.target as HTMLInputElement).checked"
+                @change="formData[field.key] = getCheckedValue($event)"
               />
               <span class="switch-slider" />
             </label>
@@ -112,7 +112,7 @@
               :disabled="field.disabled"
               class="form-textarea form-json"
               rows="5"
-              @input="formData[field.key] = ($event.target as HTMLTextAreaElement).value"
+              @input="formData[field.key] = getTextValue($event)"
             />
 
             <!-- 键值对模式 -->
@@ -213,6 +213,21 @@ const jsonModes = reactive<Record<string, boolean>>({});
 const jsonParseError = reactive<Record<string, boolean>>({});
 /** JSON 键值对缓存 */
 const jsonEntriesCache = reactive<Record<string, Array<{ key: string; value: string }>>>({});
+
+/** 从输入事件中安全提取文本值（用 instanceof 守卫替代 as 断言） */
+function getTextValue(e: Event): string {
+  const target = e.target;
+  if (target instanceof HTMLTextAreaElement) return target.value;
+  if (target instanceof HTMLInputElement) return target.value;
+  return '';
+}
+
+/** 从输入事件中安全提取选中状态（用 instanceof 守卫替代 as 断言） */
+function getCheckedValue(e: Event): boolean {
+  const target = e.target;
+  if (target instanceof HTMLInputElement) return target.checked;
+  return false;
+}
 
 /** 切换 JSON 编辑模式 */
 function toggleJsonMode(fieldKey: string) {

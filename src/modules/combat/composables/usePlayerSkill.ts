@@ -16,7 +16,7 @@ import type { CombatActionResult, AoeHitInfo, CombatResult } from '../types';
 import type { EnemyInstance } from '@/modules/enemy';
 import type { ICombatContext } from '../combatContext';
 import { eventBus, GameEvents } from '@/modules/bus';
-import { PLAYER_AOE_DAMAGE_PENALTY, HEAL_BONUS_DIVISOR } from '@/config/combat';
+import { PLAYER_AOE_DAMAGE_PENALTY, HEAL_BONUS_DIVISOR, PET_CHOMP_RATIO } from '@/config/combat';
 import {
   processDamagePipeline,
   createEmptyContainer,
@@ -157,6 +157,8 @@ export function usePlayerSkill(
     }
 
     // 生成器：施放成功后生成副资源（paladin/warlock/evoker 的 MP 技能）
+    // P10-049 确认：generate() 以 source='skill' 调用，ComboPointSystem/ChiSystem
+    // 的 source !== 'skill' 守卫正确放行生成器技能的资源生成
     if (skill?.generatesResource) {
       // P3-185：提取局部变量维持窄化，消除非空断言
       const gen = skill.generatesResource;
@@ -446,8 +448,8 @@ export function usePlayerSkill(
         if (skill?.requiresActivePet && !isDead && updatedTarget && updatedTarget.hp > 0) {
           const petInst = pet.petStore.activePet;
           if (petInst) {
-            // 宠物撕咬伤害基数 = pet.damage × 1.5（致命撕咬倍率）
-            const petBaseDamage = Math.floor(petInst.damage * 1.5);
+            // 宠物撕咬伤害基数 = pet.damage × PET_CHOMP_RATIO（致命撕咬倍率）
+            const petBaseDamage = Math.floor(petInst.damage * PET_CHOMP_RATIO);
             const petPipeResult = processDamagePipeline(
               effectRegistry,
               createEmptyContainer(),
@@ -487,13 +489,12 @@ export function usePlayerSkill(
           }
         }
 
-        if (isDead || !updatedTarget || aliveEnemies.value.length === 0) {
-          // BIZ-6：检查 BOSS 复活机制
-          if (isDead && boss.checkBossRevive(target)) {
-            initiative.endPlayerTurn();
-          } else {
-            endCombat('victory');
-          }
+        // P10-001 修复：与 playerAttack（P6-001）逻辑对齐
+        // 先判 Boss 复活，再判全场是否清空，避免 isDead=true 时对非 Boss 误判 endCombat('victory')
+        if (isDead && boss.checkBossRevive(target)) {
+          initiative.endPlayerTurn();
+        } else if (aliveEnemies.value.length === 0) {
+          endCombat('victory');
         } else {
           initiative.endPlayerTurn();
         }

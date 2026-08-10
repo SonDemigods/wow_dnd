@@ -369,7 +369,8 @@ export function useCombatAnimations(options: UseCombatAnimationsOptions) {
     if (options.isUnmounted.value) return;
     if (data.actorType !== 'enemy') return;
     triggerShake('player');
-    showFloating('player', `-${data.amount}`, 'physical');
+    // P10-010 修复：根据伤害类型选择浮动文字样式（魔法/物理），而非固定 'physical'
+    showFloating('player', `-${data.amount}`, data.damageType === 'magic' ? 'magic' : 'physical');
   }
 
   /** 闪避事件处理 */

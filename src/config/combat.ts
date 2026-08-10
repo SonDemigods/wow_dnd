@@ -5,6 +5,19 @@
  *              便于统一调整与维护，避免数值散落各处导致口径不一致。
  */
 
+// ==================== 控制效果参数 ====================
+
+/**
+ * 冰冻（freeze）效果的速度修正值
+ *
+ * freeze 的 getSpeedMod 返回该值，表示冰冻状态下速度大幅降低。
+ *
+ * P10-038 修复：从 control.ts 硬编码 -10 提取为配置常量。
+ *
+ * @see src/modules/combat/effects/handlers/control.ts freezeHandler.getSpeedMod
+ */
+export const FREEZE_SPEED_MOD = -10;
+
 // ==================== 伤害计算参数 ====================
 
 /**
@@ -391,3 +404,59 @@ export const INITIATIVE_DEFAULT_SPEED = 5;
  * @see src/modules/console/commands/combat.ts kill 命令
  */
 export const CONSOLE_KILL_DAMAGE = 99999;
+
+// ==================== P10-008 新增动画/数值参数 ====================
+
+/**
+ * 宠物致命撕咬伤害倍率
+ *
+ * 狩猎指令/召唤宠物联动时，宠物撕咬伤害基数 = floor(pet.damage × 该比值)。
+ *
+ * @see src/modules/combat/composables/usePlayerSkill.ts 狩猎指令宠物联动
+ */
+export const PET_CHOMP_RATIO = 1.5;
+
+/**
+ * 战斗胜利后弹窗自动关闭延迟（秒）
+ *
+ * 战斗结果为 victory 时延迟该秒数后自动关闭结果弹窗。
+ *
+ * @see src/modules/combat/composables/useCombatAutoClose.ts scheduleAutoClose
+ */
+export const AUTO_CLOSE_VICTORY_SEC = 3;
+
+/**
+ * 战斗失败/逃跑后弹窗自动关闭延迟（秒）
+ *
+ * 战斗结果为 defeat/fled 时延迟该秒数后自动关闭结果弹窗。
+ *
+ * @see src/modules/combat/composables/useCombatAutoClose.ts scheduleAutoClose
+ */
+export const AUTO_CLOSE_DEFEAT_SEC = 2;
+
+/**
+ * Boss 出场演出最短基础时长（毫秒）
+ *
+ * 演出时长 = max(data.duration, 该值 + 台词数 × 每行时长)，保证有多行台词时演出完整播放。
+ *
+ * @see src/modules/combat/composables/useBossIntroOverlay.ts onBossIntro
+ */
+export const BOSS_INTRO_BASE_MS = 1000;
+
+/**
+ * Boss 出场演出每行台词额外时长（毫秒）
+ *
+ * 每行台词在最短时长基础上追加的播放时间。
+ *
+ * @see src/modules/combat/composables/useBossIntroOverlay.ts onBossIntro
+ */
+export const BOSS_INTRO_PER_LINE_MS = 900;
+
+/**
+ * Boss 出场演出结束后淡出缓冲时长（毫秒）
+ *
+ * 自动关闭定时器在演出实际时长基础上追加该缓冲，为淡出动画留出时间。
+ *
+ * @see src/modules/combat/composables/useBossIntroOverlay.ts onBossIntro
+ */
+export const BOSS_INTRO_FADE_BUFFER_MS = 300;

@@ -151,6 +151,8 @@ export interface ICombatCommand {
   /** 背包域（写入）：来自 useInventoryStore 的状态变更方法 */
   inventory: {
     useItem(itemId: string): Promise<boolean>;
+    /** P10-029 修复：按索引使用指定物品组 */
+    useItemByIndex(index: number): Promise<boolean>;
     addItem(itemId: string, quantity: number): number;
   };
 }
@@ -242,6 +244,7 @@ export function createCombatContext(): ICombatContext {
     },
     inventory: {
       useItem: (itemId) => inventoryStore.useItem(itemId),
+      useItemByIndex: (index) => inventoryStore.useItemByIndex(index),
       getItemInfo: (itemId) => inventoryStore.getItemInfo(itemId),
       addItem: (itemId, quantity) => inventoryStore.addItem(itemId, quantity),
     },

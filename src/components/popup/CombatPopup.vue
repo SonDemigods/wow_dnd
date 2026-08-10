@@ -534,7 +534,7 @@ const equippedUsableItems = computed(() => {
       const item = equippedItem.item;
       if (!hasCapability(item, 'usable')) return;
       result.push({
-        index: -1,  // 装备不在背包索引中，useItem 函数已 _ 前缀忽略此参数
+        index: -1,  // 装备不在背包索引中，useItem 传入 index=-1 标识装备来源
         itemId: item.id,
         count: 1,
         name: item.name,
@@ -759,7 +759,7 @@ function openItemModal() {
   }
 }
 
-async function useItem(_itemId: string, _index: number) {
+async function useItem(itemId: string, index: number) {
   if (!canAct.value) return;
   eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_use_item' });
   showItemModal.value = false;
@@ -768,7 +768,8 @@ async function useItem(_itemId: string, _index: number) {
   const prevPlayerHp = playerHp.value;
   const prevPlayerMp = playerMp.value;
 
-  const result = await combatStore.playerAction({ type: 'item', itemId: _itemId });
+  // P10-029 修复：不再忽略 index 参数，传入 playerAction 以便按索引使用指定物品组
+  const result = await combatStore.playerAction({ type: 'item', itemId, index });
 
   if (isUnmounted.value) return;
 

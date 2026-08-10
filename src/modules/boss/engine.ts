@@ -122,6 +122,16 @@ const statAndDefenseExecutors: Record<StatAndDefenseMechanic, MechanicExecutor> 
   /** 狂暴：按 attackMultiplier 倍率提升物理攻击力（默认 1.5 倍，仅触发一次） */
   enrage: (boss, params) => {
     if (boss.runtime.enraged) return;
+    // P10-015 修复：enrage 修改 base 属性前，先保存 originalBaseStats 快照
+    // 防止 enrage 先于 applyPhaseStats 执行时，快照捕获到已 enrage 的值
+    if (!boss.runtime.originalBaseStats) {
+      boss.runtime.originalBaseStats = {
+        physicalAttack: boss.base.physicalAttack,
+        magicAttack: boss.base.magicAttack,
+        physicalDefense: boss.base.physicalDefense,
+        magicDefense: boss.base.magicDefense,
+      };
+    }
     // 阶段二修复：|| 会吞掉 0，改用 ?? 仅在 undefined/null 时回退
     const multiplier = params?.attackMultiplier ?? 1.5;
     boss.base.physicalAttack = Math.round((boss.base.physicalAttack ?? 10) * multiplier);

@@ -162,7 +162,7 @@
  * @description 提供购买和出售两个标签页的商品交易界面，支持按分类筛选物品，以列表形式展示。
  */
 
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useShopStore } from '@/modules/shop';
 import { useCharacterStore } from '@/modules/character';
 import { useInventoryStore } from '@/modules/inventory';
@@ -311,13 +311,20 @@ const displaySellItems = computed<SellItemEntry[]>(() => {
 // ==================== 数据加载与生命周期 ====================
 
 let isLoading = false;
+// P10-035 修复：标记组件是否已卸载，防止异步加载期间弹窗关闭后触发 unmounted component 警告
+let isUnmounted = false;
+
 async function loadShopItems() {
   if (isLoading) return;
   isLoading = true;
   try {
     await shopStore.init();
+    // P10-035 修复：每个 await 后检查组件是否已卸载
+    if (isUnmounted) return;
     await inventoryStore.loadInventory();
+    if (isUnmounted) return;
     await shopStore.refreshShop();
+    if (isUnmounted) return;
   } catch (err) {
     console.error('[ShopPopup] 加载商店数据失败:', err);
     errorHandler.report(err, '加载商店失败');
@@ -327,6 +334,11 @@ async function loadShopItems() {
 }
 
 onMounted(loadShopItems);
+
+// P10-035 修复：组件卸载时设置标记，阻止异步加载继续操作已卸载的组件
+onUnmounted(() => {
+  isUnmounted = true;
+});
 
 // 切换商店时刷新数据并重置选中
 watch(() => shopStore.currentShopId, (newId) => {

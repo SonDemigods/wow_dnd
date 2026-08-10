@@ -111,6 +111,10 @@ import { useCharacterStore } from '@/modules/character';
 import type { Talent } from '@/modules/character/talents/types';
 import BasePopup from '../common/BasePopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import {
+  TALENT_NODE_W, TALENT_NODE_H, TALENT_COL_GAP, TALENT_ROW_GAP,
+  TALENT_COL1_COLOR, TALENT_COL2_COLOR, TALENT_COL3_COLOR, TALENT_COL_DEFAULT_COLOR,
+} from '@/config/talentLayout';
 
 defineProps<{ visible: boolean }>();
 defineEmits<{ close: [] }>();
@@ -122,13 +126,10 @@ const selectedTalent = ref<Talent | null>(null);
 const toastMessage = ref('');
 const containerRef = ref<HTMLElement | null>(null);
 
-// 网格布局参数
-const NODE_W = 90;
-const NODE_H = 70;
-const COL_GAP = 50;
-const ROW_GAP = 50;
-
-const tree = computed(() => talentStore.talentTrees[0]);
+const tree = computed(() =>
+  // P10-037 修复：按 characterStore.classId 匹配天赋树，而非用索引取第一棵树
+  talentStore.talentTrees.find(t => t.classId === characterStore.classId) ?? talentStore.talentTrees[0]
+);
 
 interface GridNode {
   talent: Talent;
@@ -147,16 +148,16 @@ const allNodes = computed<GridNode[]>(() => {
     return {
       talent: t,
       rank: talentStore.getTalentRank(t.id),
-      x: (col - 1) * (NODE_W + COL_GAP),
-      y: (tier - 1) * (NODE_H + ROW_GAP),
+      x: (col - 1) * (TALENT_NODE_W + TALENT_COL_GAP),
+      y: (tier - 1) * (TALENT_NODE_H + TALENT_ROW_GAP),
       col,
       tier,
     };
   });
 });
 
-const gridWidth = computed(() => 3 * NODE_W + 2 * COL_GAP);
-const gridHeight = computed(() => 6 * NODE_H + 5 * ROW_GAP);
+const gridWidth = computed(() => 3 * TALENT_NODE_W + 2 * TALENT_COL_GAP);
+const gridHeight = computed(() => 6 * TALENT_NODE_H + 5 * TALENT_ROW_GAP);
 
 interface ConnLine {
   x1: number; y1: number; x2: number; y2: number;
@@ -174,9 +175,9 @@ const connectionLines = computed<ConnLine[]>(() => {
       const from = nodeMap.get(reqId);
       if (!from) continue;
       lines.push({
-        x1: from.x + NODE_W / 2,
-        y1: from.y + NODE_H,
-        x2: node.x + NODE_W / 2,
+        x1: from.x + TALENT_NODE_W / 2,
+        y1: from.y + TALENT_NODE_H,
+        x2: node.x + TALENT_NODE_W / 2,
         y2: node.y,
         active: from.rank > 0,
       });
@@ -196,17 +197,17 @@ function nodeStyle(node: GridNode): Record<string, string> {
   return {
     left: node.x + 'px',
     top: node.y + 'px',
-    width: NODE_W + 'px',
-    height: NODE_H + 'px',
+    width: TALENT_NODE_W + 'px',
+    height: TALENT_NODE_H + 'px',
   };
 }
 
 function colColor(col?: number): string {
   switch (col) {
-    case 1: return '#C79C6E'; // 武器/输出系
-    case 2: return '#F58CBA'; // 狂怒/辅助系
-    case 3: return '#0070DE'; // 防护/生存系
-    default: return '#999';
+    case 1: return TALENT_COL1_COLOR; // 武器/输出系
+    case 2: return TALENT_COL2_COLOR; // 狂怒/辅助系
+    case 3: return TALENT_COL3_COLOR; // 防护/生存系
+    default: return TALENT_COL_DEFAULT_COLOR;
   }
 }
 

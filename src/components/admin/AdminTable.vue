@@ -39,7 +39,7 @@
           <tr v-for="(row, index) in data" :key="getRowKey(row, index)">
             <td v-for="col in columns" :key="col.key">
               <slot :name="'cell-' + col.key" :row="row" :value="row[col.key]">
-                {{ formatCellValue(row[col.key], col) }}
+                {{ formatCellValue(row[col.key], col, row) }}
               </slot>
             </td>
             <td class="actions-col">
@@ -106,12 +106,14 @@ const searchValue = ref('');
 
 /** 获取行的唯一 key */
 function getRowKey(row: T, index: number): string {
-  return (row.id ?? row.characterId ?? `row-${index}`) as string;
+  // P10-033 修复：增加 __pk 字段回退，避免无 id/characterId 的表退化为序号
+  return (row.id ?? row.characterId ?? row.__pk ?? `row-${index}`) as string;
 }
 
 /** 格式化单元格值 */
-function formatCellValue(value: unknown, col: TableColumn<T>): string {
-  if (col.format) return col.format(value as CellValue, {} as T);
+// P10-032 修复：传入完整 row 对象，使 col.format 回调能访问行数据
+function formatCellValue(value: unknown, col: TableColumn<T>, row: T): string {
+  if (col.format) return col.format(value as CellValue, row);
   if (value === null || value === undefined) return '-';
   if (typeof value === 'boolean') return value ? '是' : '否';
   if (Array.isArray(value)) return JSON.stringify(value);

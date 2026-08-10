@@ -249,10 +249,16 @@ async function handleCharacterSelect(characterId: string) {
 }
 
 /** 角色创建完成后关闭弹窗并刷新列表 */
-function handleCharacterCreated() {
+// P10-A 修复：await refreshData 并加 try/catch，防止 Dexie 失败时 unhandled rejection
+async function handleCharacterCreated() {
   showCreateModal.value = false;
   if (characterSelectRef.value?.refreshData) {
-    characterSelectRef.value.refreshData();
+    try {
+      await characterSelectRef.value.refreshData();
+    } catch (e) {
+      console.error('[App] refreshData 失败:', e);
+      toast.show({ message: '角色数据刷新失败，请重启', type: 'danger' });
+    }
   }
 }
 

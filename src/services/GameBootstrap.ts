@@ -23,7 +23,7 @@ import { setBossCreateFn } from '@/modules/enemy';
 import { bossDbService, createBossInstance } from '@/modules/boss';
 import type { BossEnemyInstance } from '@/modules/boss';
 // P9-077 修复：引入 setFormContext 为形态系统注入外部依赖
-import { setFormContext } from '@/modules/combat/forms/store';
+import { setFormContext, clearFormContext } from '@/modules/combat/forms/store';
 // P9-061 修复：引入 errorReporter 用于部分失败时上报
 import { errorReporter } from '@/utils/errorReport';
 
@@ -231,6 +231,13 @@ export class GameBootstrapService {
 
     // 清除敌人模块的 Boss 创建回调引用（阶段四：避免角色切换后回调指向旧闭包）
     setBossCreateFn(null);
+
+    // P10-025 修复：清除形态系统外部上下文引用，避免角色切换后回调指向旧闭包
+    clearFormContext();
+
+    // P10-042 修复：清除天赋模块注入的宠物回调引用，
+    // 与 initialize 中的 setPetCallbacks 配对，避免闭包残留指向旧 petStore 实例
+    useTalentStore().clearPetCallbacks();
   }
 }
 

@@ -170,25 +170,27 @@ describe('processDamagePipeline — 阶段 1 攻击方修正', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
   });
 
-  it('攻击方有 attack_up（+20%）→ expectedDamage = floor(base * 1.2)', () => {
-    // base = 14（见上）
-    // attackerMod = 1.2, expected = floor(14 * 1.2) = floor(16.8) = 16
+  it('攻击方有 attack_up（+20%）→ expectedDamage = floor(scaled - defense)', () => {
+    // P10-039: attack_up 在减伤前应用（与 passive attack_multiplier 合并）
+    // raw = floor(50 * 0.4) = 20, scaledDamage = floor(20 * 1.2) = 24
+    // defense = max(floor(24 * 0.3), 5) = 7, expected = 24 - 7 = 17
     const attacker = makeCtx();
     const defender = makeCtx({ baseStats: { physicalAttack: 30, physicalDefense: 5, magicAttack: 25, magicDefense: 3, speed: 10 } });
     const { attacker: ae, defender: de } = makeEmptyContainers();
     addEffectToContainer(ae, makeEffect('attack_up', 20, 3));
     const result = processDamagePipeline(registry, ae, de, attacker, defender, 'physical');
-    expect(result.expectedDamage).toBe(16);
+    expect(result.expectedDamage).toBe(17);
   });
 
-  it('攻击方有 attack_down（-50%）→ expectedDamage = floor(base * 0.5)', () => {
-    // base = 14, attackerMod = 0.5, expected = floor(7) = 7
+  it('攻击方有 attack_down（-50%）→ expectedDamage = floor(scaled - defense)', () => {
+    // P10-039: attack_down 在减伤前应用
+    // raw = 20, scaledDamage = floor(20 * 0.5) = 10, defense = max(floor(10 * 0.3), 5) = 5, expected = 10 - 5 = 5
     const attacker = makeCtx();
     const defender = makeCtx({ baseStats: { physicalAttack: 30, physicalDefense: 5, magicAttack: 25, magicDefense: 3, speed: 10 } });
     const { attacker: ae, defender: de } = makeEmptyContainers();
     addEffectToContainer(ae, makeEffect('attack_down', 50, 3));
     const result = processDamagePipeline(registry, ae, de, attacker, defender, 'physical');
-    expect(result.expectedDamage).toBe(7);
+    expect(result.expectedDamage).toBe(5);
   });
 
   it('攻击方无效果 → expectedDamage = baseDamage', () => {
@@ -322,13 +324,10 @@ describe('processDamagePipeline — 完整 4 阶段集成', () => {
   });
 
   it('攻击方+防御方都有效果时正确串联 4 阶段', () => {
-    // 攻击方：attack_up +20% → attackerMod = 1.2
-    // 防御方：defense_up +20% → defenderMod = 0.8, shield 10
-    // base = 14
-    // expected = floor(14 * 1.2) = floor(16.8) = 16
-    // actual = floor(16 * 0.8) = floor(12.8) = 12
-    // absorbed = min(12, 10) = 10
-    // final = max(0, 12 - 10) = 2
+    // P10-039: attack_up 在减伤前应用
+    // raw = 20, scaledDamage = floor(20 * 1.2) = 24, defense = max(floor(24 * 0.3), 5) = 7
+    // expected = 24 - 7 = 17, actual = floor(17 * 0.8) = 13
+    // absorbed = min(13, 10) = 10, final = max(0, 13 - 10) = 3
     const attacker = makeCtx();
     const defender = makeCtx({ baseStats: { physicalAttack: 30, physicalDefense: 5, magicAttack: 25, magicDefense: 3, speed: 10 } });
     const { attacker: ae, defender: de } = makeEmptyContainers();
@@ -336,10 +335,10 @@ describe('processDamagePipeline — 完整 4 阶段集成', () => {
     addEffectToContainer(de, makeEffect('defense_up', 20, 3));
     addEffectToContainer(de, makeEffect('shield', 10, 3, { stackStrategy: 'independent' }));
     const result = processDamagePipeline(registry, ae, de, attacker, defender, 'physical');
-    expect(result.expectedDamage).toBe(16);
-    expect(result.actualDamage).toBe(12);
+    expect(result.expectedDamage).toBe(17);
+    expect(result.actualDamage).toBe(13);
     expect(result.absorbed).toBe(10);
-    expect(result.finalDamage).toBe(2);
+    expect(result.finalDamage).toBe(3);
   });
 
   it('返回对象包含全部 4 个字段', () => {

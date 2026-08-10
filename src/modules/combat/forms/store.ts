@@ -64,6 +64,16 @@ export function setFormContext(ctx: FormStoreContext): void {
 }
 
 /**
+ * 清除形态系统外部上下文引用
+ *
+ * P10-025 修复：角色切换或 GameBootstrap.dispose 时调用，
+ * 避免旧 formCtx 引用残留导致角色切换后操作到旧 Store 实例。
+ */
+export function clearFormContext(): void {
+  formCtx = null;
+}
+
+/**
  * 德鲁伊形态 Store
  *
  * ## 导出接口分类
@@ -119,6 +129,9 @@ export const useFormStore = defineStore('druidForm', () => {
    * 可传入 savedState 从存档恢复。
    */
   function initialize(savedState?: Partial<FormState>): void {
+    // P10-018: initialize 恢复非 humanoid 形态时不应用 stat bonus（设计保留）
+    // 原因：initialize 在战斗开始时调用，战斗初始化流程会通过 switchTo 或 combat pipeline 统一应用形态属性
+    // 若直接在此处 applyBonus 可能与战斗初始化重复叠加
     formState.value = {
       ...createInitialFormState(),
       ...savedState

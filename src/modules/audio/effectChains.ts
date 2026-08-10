@@ -271,58 +271,69 @@ export function routeSynthTo(nodes: AudioNodes, route: SfxRoute): void {
   nodes.phaser.disconnect();
   nodes.compressor.disconnect();
 
-  // 重新连接共享效果器到主输出链（效果器→masterVolume）
-  nodes.sfxReverb.connect(nodes.masterVolume);
-  nodes.chorus.connect(nodes.masterVolume);
-  nodes.cathedralReverb.connect(nodes.masterVolume);
-  nodes.phaser.connect(nodes.masterVolume);
-  nodes.compressor.connect(nodes.masterVolume);
-
+  // P10-201 修复：重新连接共享效果器到对应分类通道（通道→masterVolume），而非直接 masterVolume，
+  // 确保 applyVolume 设置的通道 volume（含 muted/sfxEnabled/sfxVolume）能正确衰减 SFX，
+  // 同时保持 P9-033 的防 fan-out 语义（每个效果器本次仅连到目标通道，不再多通道倍增）。
   switch (route) {
     case 'magic':
-      // 魔法通道：phaser → cathedralReverb
+      // 魔法通道：synth → phaser → cathedralReverb → magicChannel
       nodes.synth.connect(nodes.phaser);
       nodes.metalSynth.connect(nodes.phaser);
       nodes.fmSynth.connect(nodes.phaser);
+      nodes.phaser.connect(nodes.cathedralReverb);
+      nodes.cathedralReverb.connect(nodes.magicChannel);
       break;
 
     case 'combat':
-      // 战斗通道：compressor → combatReverb
+      // 战斗通道：membrane + noiseSynth + fmSynth + metalSynth + synth → compressor → combatReverb → combatChannel
+      // P10-031 修复：attack_hit/attack_crit/enemy_hurt/player_hurt 等战斗音效
+      // 使用 tMetal/tFM/tSynth，需将这些合成器一并接入 combat 路由，否则音效层静音
       nodes.membrane.connect(nodes.compressor);
       nodes.noiseSynth.connect(nodes.compressor);
+      nodes.fmSynth.connect(nodes.compressor);
+      nodes.metalSynth.connect(nodes.compressor);
+      nodes.synth.connect(nodes.compressor);
+      nodes.compressor.connect(nodes.combatReverb);
+      nodes.combatReverb.connect(nodes.combatChannel);
       break;
 
     case 'ui':
-      // UI 通道：chorus → sfxReverb
+      // UI 通道：chorus → sfxReverb → uiChannel
       nodes.synth.connect(nodes.chorus);
       nodes.metalSynth.connect(nodes.chorus);
       nodes.noiseSynth.connect(nodes.chorus);
+      nodes.chorus.connect(nodes.sfxReverb);
+      nodes.sfxReverb.connect(nodes.uiChannel);
       break;
 
     case 'exploration':
-      // 探索通道：sfxReverb
+      // 探索通道：sfxReverb → explorationChannel
       nodes.synth.connect(nodes.sfxReverb);
       nodes.membrane.connect(nodes.sfxReverb);
       nodes.fmSynth.connect(nodes.sfxReverb);
       nodes.noiseSynth.connect(nodes.sfxReverb);
       nodes.metalSynth.connect(nodes.sfxReverb);
+      nodes.sfxReverb.connect(nodes.explorationChannel);
       break;
 
     case 'character':
-      // 角色通道：chorus → cathedralReverb
+      // 角色通道：chorus → cathedralReverb → characterChannel
       nodes.synth.connect(nodes.chorus);
       nodes.metalSynth.connect(nodes.chorus);
       nodes.fmSynth.connect(nodes.chorus);
+      nodes.chorus.connect(nodes.cathedralReverb);
+      nodes.cathedralReverb.connect(nodes.characterChannel);
       break;
 
     case 'standard':
     default:
-      // 标准通道：sfxReverb
+      // 标准通道：sfxReverb → standardChannel
       nodes.synth.connect(nodes.sfxReverb);
       nodes.membrane.connect(nodes.sfxReverb);
       nodes.fmSynth.connect(nodes.sfxReverb);
       nodes.noiseSynth.connect(nodes.sfxReverb);
       nodes.metalSynth.connect(nodes.sfxReverb);
+      nodes.sfxReverb.connect(nodes.standardChannel);
       break;
   }
 }

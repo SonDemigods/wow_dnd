@@ -36,6 +36,14 @@ export class ImportService implements IImportService {
   private readonly SUPPORTED_VERSIONS = BACKUP_CONFIG.supportedVersions;
 
   /**
+   * 备份文件大小上限（50MB）
+   *
+   * P10-012 修复：原 validateBackup 与 importBackup 中各自重复定义的局部常量，
+   * 提取为类级别私有常量统一管理。
+   */
+  private readonly MAX_BACKUP_SIZE = 50 * 1024 * 1024;
+
+  /**
    * 验证备份文件
    *
    * 检查备份文件的格式、完整性和版本兼容性
@@ -43,9 +51,8 @@ export class ImportService implements IImportService {
    * @returns ValidationResult - 验证结果
    */
   async validateBackup(file: File): Promise<ValidationResult> {
-    // P9-021 修复：限制备份文件大小，防止超大文件导致浏览器崩溃
-    const MAX_BACKUP_SIZE = 50 * 1024 * 1024; // 50MB
-    if (file.size > MAX_BACKUP_SIZE) {
+    // P10-012 修复：MAX_BACKUP_SIZE 已提取为类级别私有常量
+    if (file.size > this.MAX_BACKUP_SIZE) {
       return { success: false, error: '备份文件过大（超过 50MB），请检查是否选择了正确的文件' };
     }
     return new Promise((resolve) => {
@@ -62,6 +69,11 @@ export class ImportService implements IImportService {
       };
 
       reader.onerror = () => {
+        resolve({ success: false, error: '读取文件失败' });
+      };
+
+      // P10-013 修复：补充 onabort 回调，与 onerror 一致，防止文件读取被中止时 Promise 永不 resolve
+      reader.onabort = () => {
         resolve({ success: false, error: '读取文件失败' });
       };
 
@@ -110,8 +122,8 @@ export class ImportService implements IImportService {
    */
   async importBackup(file: File): Promise<ImportResult> {
     // P9-056 修复：一次 FileReader 读取同时完成校验与导入，避免重复读取文件
-    const MAX_BACKUP_SIZE = 50 * 1024 * 1024; // 50MB
-    if (file.size > MAX_BACKUP_SIZE) {
+    // P10-012 修复：MAX_BACKUP_SIZE 已提取为类级别私有常量
+    if (file.size > this.MAX_BACKUP_SIZE) {
       return {
         success: false,
         error: '备份文件过大（超过 50MB），请检查是否选择了正确的文件',
@@ -124,6 +136,15 @@ export class ImportService implements IImportService {
     return new Promise((resolve) => {
       // P2-3：补充 onerror 回调，防止文件读取失败时 Promise 永不 resolve 导致 UI 卡死
       reader.onerror = () => {
+        resolve({
+          success: false,
+          error: '读取文件失败',
+          importedStores: [],
+          skippedStores: []
+        });
+      };
+      // P10-013 修复：补充 onabort 回调，与 onerror 一致，防止文件读取被中止时 Promise 永不 resolve
+      reader.onabort = () => {
         resolve({
           success: false,
           error: '读取文件失败',
@@ -285,7 +306,8 @@ export class ImportService implements IImportService {
           // Record 形状的表（角色表 + 运行时表）
           await bulkPutIfNotEmpty(db.char_data, data.characters, 'char_data');
           await bulkPutIfNotEmpty(db.char_inventory, data.inventory, 'char_inventory');
-          await bulkPutIfNotEmpty(db.char_quests, data.quests, 'char_quests');
+          // P10-002 修复：char_quests 改为数组形状导入（每角色多行），避免 Record 折叠丢失
+          await bulkPutArrayIfNotEmpty(db.char_quests, data.quests, 'char_quests');
           await bulkPutIfNotEmpty(db.char_equipment, data.equipment, 'char_equipment');
           await bulkPutIfNotEmpty(db.char_skills, data.skills, 'char_skills');
           await bulkPutIfNotEmpty(db.char_exploration, data.exploration, 'char_exploration');
@@ -306,6 +328,7 @@ export class ImportService implements IImportService {
                   ([characterId, entries]) => ({
                     characterId,
                     entries,
+                    // 旧版备份无 updatedAt 字段，用当前时间降级（仅影响旧存档导入）
                     updatedAt: Date.now()
                   })
                 )

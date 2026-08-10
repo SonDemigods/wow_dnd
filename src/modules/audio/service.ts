@@ -84,6 +84,14 @@ class AudioService implements IAudioService {
   /** P8-023 修复：pending BGM 场景（同一场景去重） */
   private pendingBgmScene: BgmScene | null = null;
 
+  /**
+   * P10-023 修复：tryResume 节流时间戳
+   *
+   * AudioContext 恒不可启动时（如浏览器策略限制），每次 playSfx 都会触发 tryResume，
+   * 导致 pendingSfxTypes 无限累积。通过 5 秒节流避免频繁重试。
+   */
+  private lastResumeAttempt = 0;
+
   /** Store 订阅取消函数 */
   private unsubscribeStore: (() => void) | null = null;
 
@@ -256,7 +264,7 @@ class AudioService implements IAudioService {
 
   /** 线性值（0-1）转 dB */
   private dbFromLinear(value: number): number {
-    if (value <= 0) return -Infinity;
+    if (value <= 0) return -80; // P10-022 修复：固定最小 dB，避免 -Infinity 传给 Tone.js 导致异常
     return 20 * Math.log10(value);
   }
 
@@ -265,6 +273,9 @@ class AudioService implements IAudioService {
   /** 播放指定音效（未就绪时调用 tryResume 尝试启动 AudioContext） */
   playSfx(type: SfxType): void {
     if (!this.isReady()) {
+      // P10-023 修复：节流 tryResume 调用，AudioContext 恒不可启动时避免 pendingSfxTypes 无限累积
+      if (Date.now() - this.lastResumeAttempt < 5000) return;
+      this.lastResumeAttempt = Date.now();
       // P8-023 修复：用 pendingSfxTypes Set 去重，防止 contextReady 后多次重放同一音效
       if (this.pendingSfxTypes.has(type)) return;
       this.pendingSfxTypes.add(type);
@@ -331,6 +342,10 @@ class AudioService implements IAudioService {
       handler: (data: GameEventPayloadMap[K]) => void,
     ) => {
       eventBus.on(event, handler);
+      // P10-045：类型断言设计取舍 — handler 的泛型签名 (GameEventPayloadMap[K]) => void
+      // 被擦除为统一的 EventCallback 以便存入 eventHandlers 数组。运行时行为正确
+      // （eventBus.on/off 按 event 名分发，handler 闭包捕获了正确的 payload 类型），
+      // 此处类型安全弱化是有意设计以简化泛型约束，避免为每个事件类型维护独立数组。
       this.eventHandlers.push({ event, handler: handler as EventCallback });
     };
 
@@ -533,6 +548,8 @@ class AudioService implements IAudioService {
     this.unsubscribeStore = null;
 
     // 3. 取消所有事件总线监听
+    // P10-045：event 存储为 string，此处断言回 keyof GameEventPayloadMap 以满足
+    // eventBus.off 的类型签名。运行时按字符串名匹配，类型断言不影响分发行为。
     for (const { event, handler } of this.eventHandlers) {
       eventBus.off(event as keyof GameEventPayloadMap, handler as (data: unknown) => void);
     }
@@ -566,6 +583,8 @@ class AudioService implements IAudioService {
     // P8-023 修复：清理 pending 状态
     this.pendingSfxTypes.clear();
     this.pendingBgmScene = null;
+    // P10-023 修复：重置节流时间戳，允许 destroy 后重新尝试 tryResume
+    this.lastResumeAttempt = 0;
   }
 }
 
