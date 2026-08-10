@@ -171,12 +171,19 @@ export class ImportService implements IImportService {
    * 可见性说明：原为 private，版本号基线重构后改为 public，
    * 供 MigrationService.runStartupMigration 复用（写回迁移后的全量数据）。
    *
+   * P4-009 修复：导入前对备份数据做结构性校验，拒绝缺少关键字段的无效备份。
+   *
    * @param data - 备份数据
    * @returns ImportResult - 导入结果
    */
   async importData(data: BackupData): Promise<ImportResult> {
     const importedStores: string[] = [];
     const skippedStores: string[] = [];
+
+    // P4-009 修复：结构性校验 — 拒绝非对象类型或 null/undefined 的备份数据
+    if (!data || (typeof data !== 'object')) {
+      return { success: false, error: '备份数据格式无效', importedStores, skippedStores };
+    }
 
     // 版本号基线重构后：DATA_VERSION = 1 为基线，导入的备份无需迁移。
     // 未来版本变更时，此处调用 runMigrations(data, backup.dataVersion)，

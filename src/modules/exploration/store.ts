@@ -18,6 +18,7 @@ import { generateLogId } from '@/modules/log/service';
 import { useGameStore } from '@/modules/game';
 import { useCharacterStore } from '@/modules/character/store';
 import { useInventoryStore } from '@/modules/inventory/store';
+import { useQuestStore } from '@/modules/quest';
 import {
   generateGrid,
   findStartPosition,
@@ -482,6 +483,8 @@ export const useExplorationStore = defineStore('exploration', () => {
     cell.visited = true;
     if (isFirstVisit) {
       visitedCells.value++;
+      // P3-149：探索新格触发 explore 任务进度
+      await useQuestStore().onCellExplored(currentAreaId.value ?? undefined);
     }
 
     // 通过事件处理器注册表分发格子事件（ARCH-11 修复）
@@ -628,6 +631,8 @@ export const useExplorationStore = defineStore('exploration', () => {
         cell.explored = true;
         cell.visited = true;
         visitedCells.value++;
+        // P3-149：探索新格触发 explore 任务进度
+        await useQuestStore().onCellExplored(currentAreaId.value ?? undefined);
       }
       cell.completed = true; // 击败后标记为已完成，前端显示褪色
       cell.accessible = false;
@@ -643,6 +648,8 @@ export const useExplorationStore = defineStore('exploration', () => {
         cell.explored = true;
         cell.visited = true;
         visitedCells.value++;
+        // P3-149：探索新格触发 explore 任务进度
+        await useQuestStore().onCellExplored(currentAreaId.value ?? undefined);
       }
       // 失败/逃跑：回退到 previousPosition（movePlayer 记录的原位）
       if (previousPosition.value) {
@@ -829,7 +836,13 @@ export const useExplorationStore = defineStore('exploration', () => {
 
   // ==================== 清洁 ====================
 
-  /** 清理资源：清除探索模块的所有 EventBus 监听器与 UI 回调，重置挂起状态（EXP-2 修复） */
+  /** 清理资源：清除探索模块的所有 EventBus 监听器与 UI 回调，重置挂起状态（EXP-2 修复）
+   *
+   * P4-018 说明：dispose() 清除 COMBAT_END 监听后不会自动重挂。
+   * 调用方（GameBootstrap）须确保 dispose 后重新调用 init() 才能恢复监听。
+   * 当前架构中 dispose 仅在角色切换/退出时调用，随后 init 会被重新调用，
+   * 属于配对使用模式。若未来出现 dispose 后不 init 但继续探索的场景，需显式重调 init。
+   */
   function dispose(): void {
     // 1. 清理 EventBus 监听器（分组订阅一次性移除，避免监听器累积）
     eventBus.clearGroup('exploration');

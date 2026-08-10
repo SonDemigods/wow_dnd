@@ -95,6 +95,10 @@ function makeCollectObjective(o: Partial<QuestObjective> = {}): QuestObjective {
   return { key: 'collect_herb', type: 'collect', target: 1, itemId: 'item_herb', ...o };
 }
 
+function makeExploreObjective(o: Partial<QuestObjective> = {}): QuestObjective {
+  return { key: 'explore_area', type: 'explore', target: 5, ...o };
+}
+
 function makeDefinition(o: Partial<QuestDefinition> = {}): QuestDefinition {
   return {
     id: 'q1',
@@ -325,16 +329,16 @@ describe('useQuestStore - 任务 Store', () => {
       expect(questDbService.getAllQuestInstances).not.toHaveBeenCalled();
     });
 
-    it('DB 无任务定义时写入默认模板（getDefaultQuests 4 个）', async () => {
+    it('DB 无任务定义时写入默认模板（getDefaultQuests 5 个）', async () => {
       vi.mocked(questDbService.getAllQuestDefinitions).mockResolvedValueOnce([]);
       vi.mocked(questDbService.getAllQuestInstances).mockResolvedValueOnce([]);
 
       const store = useQuestStore();
       await store.initialize('char-1');
 
-      // getDefaultQuests 返回 4 个任务模板
-      expect(store.questDefinitions.size).toBe(4);
-      expect(questDbService.saveQuestDefinition).toHaveBeenCalledTimes(4);
+      // getDefaultQuests 返回 5 个任务模板
+      expect(store.questDefinitions.size).toBe(5);
+      expect(questDbService.saveQuestDefinition).toHaveBeenCalledTimes(5);
     });
   });
 
@@ -651,6 +655,143 @@ describe('useQuestStore - 任务 Store', () => {
 
       // 进度仍应更新（内存），但因 cid 为 null 不持久化到 DB
       expect(store.getQuestInstance('q1')!.progress[0].current).toBe(1);
+      expect(questDbService.saveQuestInstance).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------- Actions: onCellExplored（P3-149） --------------------
+  describe('Actions: onCellExplored', () => {
+    it('onCellExplored 部分进度：current 累加但未达成，状态不变', async () => {
+      const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({
+        questDefinitions: defMap(makeDefinition({
+          id: 'q1',
+          type: 'explore',
+          objectives: [makeExploreObjective({ key: 'explore_area', target: 5 })],
+        })),
+        questInstances: instMap(makeInstance({
+          questId: 'q1',
+          progress: [{ objectiveKey: 'explore_area', current: 2, target: 5 }],
+        })),
+      });
+
+      await store.onCellExplored('teldrassil');
+
+      const inst = store.getQuestInstance('q1');
+      expect(inst!.progress[0].current).toBe(3);
+      expect(inst!.status).toBe('in_progress');
+      expect(questDbService.saveQuestInstance).toHaveBeenCalled();
+    });
+
+    it('onCellExplored 不传 locationId 时任意探索均计数（目标未限定区域）', async () => {
+      const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({
+        questDefinitions: defMap(makeDefinition({
+          id: 'q1',
+          type: 'explore',
+          objectives: [makeExploreObjective({ key: 'explore_area', target: 5 })],
+        })),
+        questInstances: instMap(makeInstance({
+          questId: 'q1',
+          progress: [{ objectiveKey: 'explore_area', current: 0, target: 5 }],
+        })),
+      });
+
+      await store.onCellExplored();
+
+      const inst = store.getQuestInstance('q1');
+      expect(inst!.progress[0].current).toBe(1);
+    });
+
+    it('onCellExplored 限定 locationId：仅匹配指定区域', async () => {
+      const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
+      const def = makeDefinition({
+        id: 'q1',
+        type: 'explore',
+        objectives: [makeExploreObjective({ key: 'explore_area', target: 5, locationId: 'teldrassil' })],
+      });
+      store.$patch({
+        questDefinitions: defMap(def),
+        questInstances: instMap(makeInstance({
+          questId: 'q1',
+          progress: [{ objectiveKey: 'explore_area', current: 0, target: 5 }],
+        })),
+      });
+
+      // 目标限定 teldrassil，探索 elwynn 不计数
+      await store.onCellExplored('elwynn');
+      expect(store.getQuestInstance('q1')!.progress[0].current).toBe(0);
+
+      // 探索 teldrassil 计数
+      await store.onCellExplored('teldrassil');
+      expect(store.getQuestInstance('q1')!.progress[0].current).toBe(1);
+    });
+
+    it('onCellExplored 完成进度：status → completed + emit QUEST_COMPLETED + 发奖', async () => {
+      const spy = vi.fn();
+      eventBus.on(GameEvents.QUEST_COMPLETED, spy);
+
+      const def = makeDefinition({
+        id: 'q1',
+        type: 'explore',
+        xpReward: 90,
+        goldReward: 40,
+        objectives: [makeExploreObjective({ key: 'explore_area', target: 5 })],
+      });
+      const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({
+        questDefinitions: defMap(def),
+        questInstances: instMap(makeInstance({
+          questId: 'q1',
+          progress: [{ objectiveKey: 'explore_area', current: 4, target: 5 }],
+        })),
+      });
+
+      await store.onCellExplored('teldrassil');
+
+      const inst = store.getQuestInstance('q1');
+      expect(inst!.status).toBe('completed');
+      expect(inst!.completedAt).toBeDefined();
+      expect(spy).toHaveBeenCalledWith({ questId: 'q1', definition: def });
+      expect(mocks.characterStore.gainExp).toHaveBeenCalledWith(90);
+      expect(mocks.characterStore.gainGold).toHaveBeenCalledWith(40);
+      expect(mocks.logStore.addLogEntry).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'quest',
+        message: expect.stringContaining('完成了任务'),
+      }));
+    });
+
+    it('onCellExplored 忽略非 in_progress 任务', async () => {
+      const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
+      store.$patch({
+        questDefinitions: defMap(makeDefinition({
+          id: 'q1',
+          type: 'explore',
+          objectives: [makeExploreObjective({ key: 'explore_area', target: 5 })],
+        })),
+        questInstances: instMap(makeInstance({
+          questId: 'q1',
+          status: 'completed',
+          progress: [{ objectiveKey: 'explore_area', current: 5, target: 5 }],
+        })),
+      });
+
+      await store.onCellExplored('teldrassil');
+
+      // 任务已 completed，不影响（状态不变）
+      expect(store.getQuestInstance('q1')!.status).toBe('completed');
+      expect(questDbService.saveQuestInstance).not.toHaveBeenCalled();
+    });
+
+    it('onCellExplored 空实例 Map 时安全执行无副作用', async () => {
+      const store = useQuestStore();
+      mocks.gameStore.currentCharacterId = 'char-1';
+      await expect(store.onCellExplored('teldrassil')).resolves.toBeUndefined();
       expect(questDbService.saveQuestInstance).not.toHaveBeenCalled();
     });
   });

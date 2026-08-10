@@ -7,6 +7,9 @@ import { db as gameDb, dbService } from '@/modules/data';
 import type { LogEntry, AdventureLogData } from './types';
 import { toRawData } from '../../utils';
 
+/** P4-012 修复：日志条目上限，防止 entries 数组无限增长导致读改写性能下降 */
+const MAX_LOG_ENTRIES = 500;
+
 export class AdventureLogDbService {
   /**
    * 保存角色的冒险日志到数据库
@@ -14,11 +17,16 @@ export class AdventureLogDbService {
    * @param logs - 日志记录列表
    */
   async saveAdventureLog(characterId: string, logs: LogEntry[]): Promise<void> {
+    // P4-012 修复：截断超出上限的旧日志，仅保留最近的 MAX_LOG_ENTRIES 条
+    const trimmedLogs = logs.length > MAX_LOG_ENTRIES
+      ? logs.slice(logs.length - MAX_LOG_ENTRIES)
+      : logs;
+
     await dbService.withRetry(async () => {
       // JSON 序列化去除 Vue/Proxy 包装，避免 IndexedDB DataCloneError
       const cleanData = toRawData({
         characterId,
-        entries: logs,
+        entries: trimmedLogs,
         updatedAt: Date.now()
       });
       await gameDb.runtime_adventureLogs.put(cleanData);

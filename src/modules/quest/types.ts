@@ -53,8 +53,9 @@ export type QuestStatus =
  * 决定目标的匹配方式和服务端进度计算逻辑：
  * - `kill`    : 击杀指定敌人（relevantData.enemyId 匹配 QuestObjective.enemyId）
  * - `collect` : 收集指定物品（relevantData.itemId 匹配 QuestObjective.itemId）
+ * - `explore` : 探索新格子（relevantData.explored=true 时触发；可选 locationId 限定区域）
  */
-export type QuestType = 'kill' | 'collect';
+export type QuestType = 'kill' | 'collect' | 'explore';
 
 // ============================================================================
 // 核心数据接口
@@ -74,7 +75,7 @@ export type QuestType = 'kill' | 'collect';
  * @property {number} target - 需要完成的总次数
  * @property {string} [itemId] - 物品ID（收集任务专用，用于进度匹配）
  * @property {string} [enemyId] - 敌人ID（击杀任务专用，用于进度匹配和 UI 文本生成）
- * @property {string} [locationId] - 地点ID（预留，用于交互任务，当前未使用）
+ * @property {string} [locationId] - 地点ID（explore 任务用于限定区域；为空则任意区域新格均计数）
  *
  * @see getObjectiveText 根据 enemyId / itemId 自动生成目标描述文本
  */

@@ -527,3 +527,10 @@ class AudioService implements IAudioService {
 
 /** 音频服务单例 */
 export const audioService = new AudioService();
+
+// P4-023 修复：HMR 时销毁旧实例，避免 document 事件监听器残留
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    audioService.destroy();
+  });
+}

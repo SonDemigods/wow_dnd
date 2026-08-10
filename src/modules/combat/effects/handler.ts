@@ -138,6 +138,10 @@ export class EffectHandlerRegistry {
     extra?: number
   ): number {
     let result = 0;
+    // P4-001 修复：getDamageAbsorb 需要传递剩余伤害而非原始伤害，
+    // 避免多护盾效果各自基于原始伤害计算吸收量导致超额吸收。
+    // getSpeedMod 不依赖 extra，逐个累加即可。
+    let remaining = extra ?? 0;
     for (const effect of container.effects) {
       const handler = this.handlers.get(effect.type);
       if (!handler) continue;
@@ -148,8 +152,10 @@ export class EffectHandlerRegistry {
         }
       } else {
         const fn = handler[method] as ((e: Effect, incomingDamage: number) => number) | undefined;
-        if (fn && extra !== undefined) {
-          result += fn(effect, extra);
+        if (fn && remaining > 0) {
+          const absorbed = fn(effect, remaining);
+          result += absorbed;
+          remaining -= absorbed;
         }
       }
     }

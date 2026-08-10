@@ -55,7 +55,8 @@ export async function initEnemyNameMap(): Promise<void> {
  * 根据 objective.type 自动选择文本模板：
  * - kill    → "消灭{敌人名称}"（从 ENEMY_NAME_MAP 查找）
  * - collect → "收集{物品名称}"（通过 itemNameProvider 查找，失败时回退到 itemId）
- * - 其他    → "未知目标: {objective.key}"（防御性回退，当前 kill/collect 涵盖所有情况）
+ * - explore → "探索{N}格区域"（N=target）；有 locationId 时 → "探索{locationId}区域"
+ * - 其他    → "未知目标: {objective.key}"（防御性回退）
  *
  * @param objective        - 任务目标对象
  * @param itemNameProvider - 可选回调，传入 itemId 返回物品中文名（收集类任务需要）
@@ -79,6 +80,14 @@ export function getObjectiveText(
     }
     // 无法解析名称时回退到原始 itemId
     return `收集${objective.itemId}`;
+  }
+
+  // 探索目标：有 locationId 时显示区域名，否则显示需探索的格数
+  if (objective.type === 'explore') {
+    if (objective.locationId) {
+      return `探索${objective.locationId}区域`;
+    }
+    return `探索${objective.target}格区域`;
   }
 
   // 防御性回退：当目标类型不在已知范围内时（如未来扩展新类型）

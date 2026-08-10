@@ -21,3 +21,18 @@ export type EffectType =
   | 'speed_down'   // 速度下降
   | 'regen'        // 恢复：每回合回血
   | 'vulnerable';  // 易伤：受到的伤害增加
+
+/** P4-022 修复：EffectType 值集合，供运行时校验使用 */
+const EFFECT_TYPE_VALUES: ReadonlySet<string> = new Set([
+  'poison', 'burn', 'stun', 'freeze', 'silence', 'shield',
+  'attack_up', 'attack_down', 'defense_up', 'defense_down',
+  'speed_up', 'speed_down', 'regen', 'vulnerable',
+]);
+
+/**
+ * 类型守卫：验证字符串是否为合法的 EffectType
+ * 替代裸 `as EffectType` 断言，提供运行时安全保障。
+ */
+export function isEffectType(value: string): value is EffectType {
+  return EFFECT_TYPE_VALUES.has(value);
+}

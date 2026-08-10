@@ -95,11 +95,28 @@ describe('getObjectiveText 生成目标描述文本', () => {
     });
   });
 
+  describe('explore 目标', () => {
+    it('无 locationId → "探索{target}格区域"', () => {
+      const obj = makeObjective({ type: 'explore', key: 'explore_1', target: 10, enemyId: undefined });
+      expect(getObjectiveText(obj)).toBe('探索10格区域');
+    });
+
+    it('有 locationId → "探索{locationId}区域"', () => {
+      const obj = makeObjective({ type: 'explore', key: 'explore_2', target: 8, enemyId: undefined, locationId: 'teldrassil' });
+      expect(getObjectiveText(obj)).toBe('探索teldrassil区域');
+    });
+
+    it('target 为 1 时显示 "探索1格区域"', () => {
+      const obj = makeObjective({ type: 'explore', key: 'explore_3', target: 1, enemyId: undefined });
+      expect(getObjectiveText(obj)).toBe('探索1格区域');
+    });
+  });
+
   describe('防御性回退', () => {
     it('未知 type → 回退为 "未知目标: {key}"', () => {
       const obj = makeObjective({ type: 'kill' as QuestObjective['type'], key: 'unknown_type' });
       // 强制改为未知类型测试回退
-      (obj as { type: string }).type = 'explore';
+      (obj as { type: string }).type = 'nonexistent_type';
       expect(getObjectiveText(obj)).toBe('未知目标: unknown_type');
     });
   });

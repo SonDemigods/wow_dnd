@@ -16,6 +16,21 @@ import { CONFIG_TABLES } from './types';
 import { errorHandler } from '@/services/ErrorHandler';
 
 /**
+ * P4-002 修复：admin 可写表白名单
+ *
+ * 仅允许对 CONFIG_TABLES 中定义的配置表执行写操作（add/update/delete/clear），
+ * 拒绝对 char_xxx / runtime_xxx 等业务表写入，避免绕过各模块 Store 的业务校验。
+ * 读操作（getAll/getById/search/count）不受限。
+ */
+const WRITABLE_TABLES = new Set(CONFIG_TABLES.map(t => t.dbTable));
+
+function assertWritable(tableName: string): void {
+  if (!WRITABLE_TABLES.has(tableName)) {
+    throw new Error(`[AdminService] 表 "${tableName}" 不在可写白名单中，仅配置表（config_*）允许写操作`);
+  }
+}
+
+/**
  * 管理后台服务类
  */
 export class AdminService {
@@ -31,6 +46,7 @@ export class AdminService {
 
   async add<T>(tableName: string, data: T, key?: string): Promise<AdminOperationResult<string>> {
     try {
+      assertWritable(tableName);
       const id = await adminDbService.add(tableName as keyof GameDatabaseSchema, data, key);
       return { success: true, data: id };
     } catch (error) {
@@ -41,6 +57,7 @@ export class AdminService {
 
   async update<T>(tableName: string, id: string, data: Partial<T>): Promise<AdminOperationResult> {
     try {
+      assertWritable(tableName);
       await adminDbService.update(tableName as keyof GameDatabaseSchema, id, data);
       return { success: true };
     } catch (error) {
@@ -51,6 +68,7 @@ export class AdminService {
 
   async delete(tableName: string, id: string): Promise<AdminOperationResult> {
     try {
+      assertWritable(tableName);
       await adminDbService.delete(tableName as keyof GameDatabaseSchema, id);
       return { success: true };
     } catch (error) {
@@ -61,6 +79,7 @@ export class AdminService {
 
   async clear(tableName: string): Promise<AdminOperationResult> {
     try {
+      assertWritable(tableName);
       await adminDbService.clear(tableName as keyof GameDatabaseSchema);
       return { success: true };
     } catch (error) {
@@ -87,6 +106,8 @@ export class AdminService {
   async getDashboardStats(): Promise<{
     tableCounts: Record<string, number>;
   }> {
+    // P4-024 说明：使用 Promise.all 并行 count 所有配置表，非串行。
+    // 随数据量增长可考虑懒加载或缓存 count 结果，当前数据量下性能可接受。
     const tableNames = CONFIG_TABLES.map(t => t.dbTable);
 
     const counts: Record<string, number> = {};

@@ -162,25 +162,32 @@ export function useGameActions(onExit: () => void) {
   }
 
   async function init() {
-    const explorationStore = useExplorationStore();
-    explorationStore.registerUICallbacks({
-      onCellExplored: handleCellExplored,
-      onBattleTriggered: handleBattleTriggered,
-      onItemFound: handleItemFound,
-      onTrapTriggered: handleTrapTriggered,
-      onRandomEvent: handleRandomEvent,
-      onMultiOptionEvent: handleMultiOptionEvent
-    });
-    const cid = characterStore.currentCharacterId;
-    if (cid) {
-      await gameBootstrap.initialize(cid);
-      const savedTab = await mapStore.getCurrentTab();
-      if (savedTab === 'explore' && hasCurrentLocation.value) {
-        currentContentTab.value = 'explore';
+    // P4-025 修复：包裹 try/catch 防止初始化失败导致 loading 卡死
+    try {
+      const explorationStore = useExplorationStore();
+      explorationStore.registerUICallbacks({
+        onCellExplored: handleCellExplored,
+        onBattleTriggered: handleBattleTriggered,
+        onItemFound: handleItemFound,
+        onTrapTriggered: handleTrapTriggered,
+        onRandomEvent: handleRandomEvent,
+        onMultiOptionEvent: handleMultiOptionEvent
+      });
+      const cid = characterStore.currentCharacterId;
+      if (cid) {
+        await gameBootstrap.initialize(cid);
+        const savedTab = await mapStore.getCurrentTab();
+        if (savedTab === 'explore' && hasCurrentLocation.value) {
+          currentContentTab.value = 'explore';
+        }
       }
+      eventBus.on(GameEvents.CHARACTER_LEVEL_UP, onLevelUp);
+    } catch (err) {
+      console.error('[GameMain] 初始化失败:', err);
+      showNotif('游戏初始化失败，请重试', 'danger');
+    } finally {
+      loading.value = false;
     }
-    loading.value = false;
-    eventBus.on(GameEvents.CHARACTER_LEVEL_UP, onLevelUp);
   }
 
   function cleanup() {

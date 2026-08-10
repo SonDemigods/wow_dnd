@@ -364,6 +364,8 @@ export const useQuestStore = defineStore('quest', () => {
    * @param relevantData - 触发进度检查的事件数据
    * @param relevantData.enemyId - 被击杀的敌人ID
    * @param relevantData.itemId  - 被收集的物品ID
+   * @param relevantData.explored - 是否为新探索格（explore 任务触发标志）
+   * @param relevantData.locationId - 当前探索区域ID（explore 任务可选过滤）
    * @param relevantData.amount  - 数量（默认 1）
    * @returns 是否触发了任务完成（供调用方判断是否需要额外 UI 响应）
    */
@@ -371,7 +373,7 @@ export const useQuestStore = defineStore('quest', () => {
     questId: string,
     instance: QuestInstance,
     definition: QuestDefinition,
-    relevantData: { enemyId?: string; itemId?: string; amount?: number }
+    relevantData: { enemyId?: string; itemId?: string; explored?: boolean; locationId?: string; amount?: number }
   ): Promise<boolean> {
     const result = checkQuestProgress(instance, definition, relevantData);
     // 无匹配目标，事件与任务无关
@@ -547,6 +549,25 @@ export const useQuestStore = defineStore('quest', () => {
     }
   }
 
+  /**
+   * 处理探索新格事件
+   *
+   * 遍历所有进行中的任务，检查是否有匹配的探索目标。
+   * 由 exploration/store.ts 在 revealGrid / onBattleResult 新格首次探索时调用。
+   *
+   * @param locationId - 当前探索区域ID（可选，explore 目标可用 locationId 限定区域）
+   */
+  async function onCellExplored(locationId?: string): Promise<void> {
+    for (const [questId, instance] of questInstances.value) {
+      if (instance.status !== 'in_progress') continue;
+
+      const definition = questDefinitions.value.get(questId);
+      if (!definition) continue;
+
+      await _processQuestProgress(questId, instance, definition, { explored: true, locationId });
+    }
+  }
+
   // ==================== Action：完成任务（手动触发） ====================
 
   /**
@@ -690,7 +711,10 @@ export const useQuestStore = defineStore('quest', () => {
     // 物品奖励 → inventoryStore（ARCH-2 修复：通过回调注入替代 useInventoryStore() 直接调用）
     for (const item of rewards.items) {
       // P2-2：检查 addItem 返回值，背包满时提示玩家
-      // ARCH-2 修复：回调未注入时降级为 0（视为添加失败），并提示玩家
+      // P4-013 修复：回调未注入时 warn 而非静默降级为 0
+      if (!addItemToInventoryCallback) {
+        console.warn('[QuestStore] addItemToInventoryCallback 未注入，任务奖励物品无法发放。请检查 GameBootstrap 初始化流程。');
+      }
       const added = addItemToInventoryCallback ? addItemToInventoryCallback(item.itemId, item.count) : 0;
       if (added < item.count) {
         useToast().show({
@@ -833,6 +857,7 @@ export const useQuestStore = defineStore('quest', () => {
     acceptQuest,
     onEnemyKilled,
     onItemCollected,
+    onCellExplored,
     completeQuest,
     claimReward,
     abandonQuest,

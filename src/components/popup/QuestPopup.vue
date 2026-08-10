@@ -113,7 +113,8 @@ const confirmState = reactive({
 
 const questIcons: Record<string, { name: string; gradient: string }> = {
   kill: { name: 'sword-clash', gradient: 'physical' },
-  collect: { name: 'treasure-map', gradient: 'gold' }
+  collect: { name: 'treasure-map', gradient: 'gold' },
+  explore: { name: 'compass', gradient: 'nature' }
 };
 
 const statusTexts: Record<string, string> = {

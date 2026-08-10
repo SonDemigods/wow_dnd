@@ -37,6 +37,9 @@ export function useCombatLog(state: ReturnType<typeof useCombatState>, ctx: ICom
   /**
    * 添加战斗日志（内部方法）
    * @param data - 日志数据（不含自动生成字段）
+   *
+   * P4-021 修复：对 message 中的名称做基本 HTML 转义，防止日志注入。
+   * 虽然名称来自配置数据（非用户输入），但转义是防御性措施。
    */
   function addCombatLog(data: Omit<CombatLog, 'combatId' | 'battleLogId' | 'timestamp' | 'turn'>): void {
     const log: CombatLog = {
@@ -44,7 +47,11 @@ export function useCombatLog(state: ReturnType<typeof useCombatState>, ctx: ICom
       battleLogId: generateBattleLogId(),
       timestamp: Date.now(),
       turn: state.turnCount.value,
-      ...data
+      ...data,
+      // P4-021：对 message 做 HTML 实体转义
+      message: data.message
+        ? data.message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        : data.message,
     };
     state.combatLogs.value.push(log);
   }

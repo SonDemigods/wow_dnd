@@ -162,16 +162,19 @@ describe('computeEventProbability 概率分布计算', () => {
     expect(high.trap).toBeGreaterThanOrEqual(low.trap);
   });
 
-  it('event 概率固定为 15', () => {
+  it('event 概率在归一化后合理分布（P4-015：怪物/陷阱上限调整后归一化结果变化）', () => {
     const prob = computeEventProbability(10);
-    expect(prob.event).toBe(15);
+    // event 基础值为 15，归一化后因 monster/trap 上限降低（25/18）导致 total 变化，
+    // event 归一化后可能不再是恰好 15，但应在合理范围内
+    expect(prob.event).toBeGreaterThan(10);
+    expect(prob.event).toBeLessThanOrEqual(20);
   });
 
-  it('怪物概率在归一化前受上限 30 约束（归一化后可能略高）', () => {
-    // 源码 clamp 仅作用于归一化前，归一化重新分配后可能略微超过 30
-    // 如 avgLevel=100 时：raw.monster=30, total=97, 归一化后 round(30/97*100)=31
+  it('怪物概率在归一化前受上限 25 约束（归一化后可能略高）', () => {
+    // P4-015：MONSTER_PROBABILITY_MAX 从 30 降至 25
+    // 源码 clamp 仅作用于归一化前，归一化重新分配后可能略微超过 25
     const prob = computeEventProbability(100);
-    expect(prob.monster).toBeLessThanOrEqual(35);
+    expect(prob.monster).toBeLessThanOrEqual(30);
   });
 
   it('物品概率不低于下限 15', () => {
@@ -179,10 +182,11 @@ describe('computeEventProbability 概率分布计算', () => {
     expect(prob.item).toBeGreaterThanOrEqual(15);
   });
 
-  it('陷阱概率在归一化前受上限 22 约束（归一化后可能略高）', () => {
-    // 同上，归一化后可能略微超过 22
+  it('陷阱概率在归一化前受上限 18 约束（归一化后可能略高）', () => {
+    // P4-015：TRAP_PROBABILITY_MAX 从 22 降至 18
+    // 同上，归一化后可能略微超过 18
     const prob = computeEventProbability(100);
-    expect(prob.trap).toBeLessThanOrEqual(25);
+    expect(prob.trap).toBeLessThanOrEqual(22);
   });
 
   it('空地概率不低于下限 15', () => {

@@ -158,7 +158,8 @@ const characterLevel = computed(() => characterStore.level);
 
 const questIcons: Record<string, string> = {
   kill: 'crossed-swords',
-  collect: 'chest'
+  collect: 'chest',
+  explore: 'compass'
 };
 
 function getQuestIcon(type: string) {

@@ -156,7 +156,8 @@ export function applyEffect(
   effect: Effect,
   ctx: EffectContext
 ): void {
-  addEffectToContainer(container, effect);
+  // P4-004：传入 registry 使 addEffectToContainer 能调用旧 effect 的 onRemove 回调
+  addEffectToContainer(container, effect, registry);
 
   const handler = registry.get(effect.type);
   handler?.onApply?.(effect, ctx);

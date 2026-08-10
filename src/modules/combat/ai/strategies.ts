@@ -39,12 +39,17 @@ import {
 /** 玩家残血阈值（低于此值敌人会优先攻击终结） */
 const PLAYER_LOW_HP_THRESHOLD = 0.25;
 
+/** P4-019 修复：安全计算 HP 百分比，防止 maxHp=0 时产生 NaN */
+function safeHpPercent(hp: number, maxHp: number): number {
+  return hp / Math.max(1, maxHp);
+}
+
 /** 激进型：猛攻至上，偶尔开场强化 */
 export class AggressiveStrategy implements IAiStrategy {
   readonly name = 'aggressive';
   constructor(private readonly rng: Rng = defaultRng) {}
   decideAction(_enemy: EnemyInstance, ctx: BattleContext): AiDecision {
-    const playerHpPercent = ctx.playerHp / ctx.playerMaxHp;
+    const playerHpPercent = safeHpPercent(ctx.playerHp, ctx.playerMaxHp);
     const attackSkills = ctx.availableSkills.filter(s => !s.isHeal && !s.isBuff);
     const buffSkills = ctx.availableSkills.filter(s => s.isBuff);
 
@@ -81,8 +86,8 @@ export class DefensiveStrategy implements IAiStrategy {
   readonly name = 'defensive';
   constructor(private readonly rng: Rng = defaultRng) {}
   decideAction(_enemy: EnemyInstance, ctx: BattleContext): AiDecision {
-    const hpPercent = ctx.enemyHp / ctx.enemyMaxHp;
-    const playerHpPercent = ctx.playerHp / ctx.playerMaxHp;
+    const hpPercent = safeHpPercent(ctx.enemyHp, ctx.enemyMaxHp);
+    const playerHpPercent = safeHpPercent(ctx.playerHp, ctx.playerMaxHp);
     const attackSkills = ctx.availableSkills.filter(s => !s.isHeal && !s.isBuff);
     const buffSkills = ctx.availableSkills.filter(s => s.isBuff);
     const healSkills = ctx.availableSkills.filter(s => s.isHeal);
@@ -141,8 +146,8 @@ export class BalancedStrategy implements IAiStrategy {
   readonly name = 'balanced';
   constructor(private readonly rng: Rng = defaultRng) {}
   decideAction(_enemy: EnemyInstance, ctx: BattleContext): AiDecision {
-    const hpPercent = ctx.enemyHp / ctx.enemyMaxHp;
-    const playerHpPercent = ctx.playerHp / ctx.playerMaxHp;
+    const hpPercent = safeHpPercent(ctx.enemyHp, ctx.enemyMaxHp);
+    const playerHpPercent = safeHpPercent(ctx.playerHp, ctx.playerMaxHp);
     const attackSkills = ctx.availableSkills.filter(s => !s.isHeal && !s.isBuff);
     const buffSkills = ctx.availableSkills.filter(s => s.isBuff);
     const healSkills = ctx.availableSkills.filter(s => s.isHeal);
@@ -193,8 +198,8 @@ export class BossPhaseStrategy implements IAiStrategy {
   readonly name = 'boss_phase';
   constructor(private readonly rng: Rng = defaultRng) {}
   decideAction(_enemy: EnemyInstance, ctx: BattleContext): AiDecision {
-    const hpPercent = ctx.enemyHp / ctx.enemyMaxHp;
-    const playerHpPercent = ctx.playerHp / ctx.playerMaxHp;
+    const hpPercent = safeHpPercent(ctx.enemyHp, ctx.enemyMaxHp);
+    const playerHpPercent = safeHpPercent(ctx.playerHp, ctx.playerMaxHp);
     const attackSkills = ctx.availableSkills.filter(s => !s.isHeal && !s.isBuff);
     const buffSkills = ctx.availableSkills.filter(s => s.isBuff);
     const healSkills = ctx.availableSkills.filter(s => s.isHeal);

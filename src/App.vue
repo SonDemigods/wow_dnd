@@ -144,34 +144,44 @@ onMounted(async () => {
     window.__gameState = gameState;
   }
 
-  // P3-127 修复：移除对 dataInitializer.initializeData 的重复调用，
-  // 数据初始化已由 main.ts 在 App 挂载前完成，此处直接初始化各模块 Store。
+  // P4-006 修复：包裹 try/catch 防止初始化失败导致用户停留在加载死屏
+  try {
+    // P3-127 修复：移除对 dataInitializer.initializeData 的重复调用，
+    // 数据初始化已由 main.ts 在 App 挂载前完成，此处直接初始化各模块 Store。
 
-  // P3-116 修复：GameStore 必须最先初始化，提供全局状态（currentCharacterId /
-  // currentShopId / gameSettings）给其他 store 读取。GameStore.initialize 内部会
-  // 自动迁移旧 audio_settings 键到 gameState.gameSettings。
-  await gameStore.initialize();
+    // P3-116 修复：GameStore 必须最先初始化，提供全局状态（currentCharacterId /
+    // currentShopId / gameSettings）给其他 store 读取。GameStore.initialize 内部会
+    // 自动迁移旧 audio_settings 键到 gameState.gameSettings。
+    await gameStore.initialize();
 
-  // 先初始化基础数据（阵营、种族、职业），再初始化角色模块
-  // 注意：characterStore.initialize 依赖 baseStore 的 factions/races/classes 数据，必须串行
-  await baseStore.initialize();
-  await characterStore.initialize();
+    // 先初始化基础数据（阵营、种族、职业），再初始化角色模块
+    // 注意：characterStore.initialize 依赖 baseStore 的 factions/races/classes 数据，必须串行
+    await baseStore.initialize();
+    await characterStore.initialize();
 
-  // 版本检测拦截：dataVersion 与 CURRENT_DATA_VERSION 不匹配时，
-  // 强制停留在主菜单（character-select），即使存在 currentCharacterId 也不自动进入游戏。
-  // 用户需在主菜单点击"数据迁移"按钮触发 MigrationService.runStartupMigration，
-  // 迁移成功后由 handleMigrated 重新初始化各 Store 并清除 versionMismatch 状态。
-  if (!gameStore.versionMismatch) {
-    const currentCharacterId = gameStore.getCurrentCharacterId();
-    if (currentCharacterId) {
-      // 如果有当前角色ID，直接进入游戏
-      gameState.value = 'game';
+    // 版本检测拦截：dataVersion 与 CURRENT_DATA_VERSION 不匹配时，
+    // 强制停留在主菜单（character-select），即使存在 currentCharacterId 也不自动进入游戏。
+    // 用户需在主菜单点击"数据迁移"按钮触发 MigrationService.runStartupMigration，
+    // 迁移成功后由 handleMigrated 重新初始化各 Store 并清除 versionMismatch 状态。
+    if (!gameStore.versionMismatch) {
+      const currentCharacterId = gameStore.getCurrentCharacterId();
+      if (currentCharacterId) {
+        // 如果有当前角色ID，直接进入游戏
+        gameState.value = 'game';
+      }
     }
+    // versionMismatch 为 true 时，gameState 保持初始值 'character-select'
+  } catch (err) {
+    console.error('[App] 初始化失败:', err);
+    toast.show({
+      message: '游戏初始化失败，请刷新页面重试',
+      type: 'danger',
+      duration: 0
+    });
+  } finally {
+    // 初始化完成，解除加载状态
+    loading.value = false;
   }
-  // versionMismatch 为 true 时，gameState 保持初始值 'character-select'
-
-  // 初始化完成，解除加载状态
-  loading.value = false;
 });
 
 /**
@@ -185,11 +195,21 @@ onMounted(async () => {
  * 避免迁移后立即进入游戏导致用户对数据变更无感知。
  */
 async function handleMigrated() {
-  await gameStore.initialize();
-  await baseStore.initialize();
-  await characterStore.initialize();
-  if (characterSelectRef.value?.refreshData) {
-    await characterSelectRef.value.refreshData();
+  // P4-007 修复：包裹 try/catch，迁移后初始化失败时给出用户反馈
+  try {
+    await gameStore.initialize();
+    await baseStore.initialize();
+    await characterStore.initialize();
+    if (characterSelectRef.value?.refreshData) {
+      await characterSelectRef.value.refreshData();
+    }
+  } catch (err) {
+    console.error('[App] 迁移后初始化失败:', err);
+    toast.show({
+      message: '数据迁移后初始化失败，请刷新页面重试',
+      type: 'danger',
+      duration: 5000
+    });
   }
 }
 

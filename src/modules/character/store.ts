@@ -41,7 +41,7 @@ import {
 } from './service';
 import { getMountOptionById, MOUNT_TIERS } from '@/data/config_mounts';
 import { getExpForLevel } from '@/utils/calculations';
-import { BASE_STAT_VALUE } from '@/config/character';
+import { BASE_STAT_VALUE, MAX_STAT } from '@/config/character';
 import { errorReporter } from '@/utils/errorReport';
 import { backupService, importService, dataInitializer } from '../data';
 import type { ImportResult, ValidationResult } from '../data';
@@ -551,6 +551,8 @@ export const useCharacterStore = defineStore('character', () => {
    */
   async function allocateStat(stat: keyof Stats): Promise<boolean> {
     if (!character.value || character.value.unallocatedPoints <= 0) return false;
+    // P4-003 修复：属性已达 MAX_STAT 时拒绝分配，避免白耗点数
+    if (character.value.allocatedStats[stat] >= MAX_STAT) return false;
     const newChar = allocateStatPure(character.value, stat);
     // P3-6：仅 con/int/wis 影响 HP/MP 上限（HP←con，MP←int/wis，str/dex/cha 不影响）
     const needsRecalc = stat === 'con' || stat === 'int' || stat === 'wis';

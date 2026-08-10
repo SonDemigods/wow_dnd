@@ -19,8 +19,8 @@ import {
   generateEffectId,
   processDamagePipeline,
   hasEffect,
+  isEffectType,
   type Effect,
-  type EffectType,
   type DamageType,
 } from '../effects';
 import type { useCombatState } from './useCombatState';
@@ -67,6 +67,125 @@ export function useEnemyAction(
   }
 
   // ==================== 敌人行动 ====================
+
+  /**
+   * 敌人恢复生命值的统一处理（P4-008 修复：消除 heal/skill 分支的重复代码）
+   *
+   * @param e - 执行治疗的敌人
+   * @param result - enemyStore.useSkill 的返回值（result.damage 为治疗量）
+   * @param decisionSkillId - AI 决策选中的技能ID
+   * @returns CombatActionResult
+   */
+  function handleEnemyHeal(
+    e: EnemyInstance,
+    result: { success: boolean; damage: number; isHeal: boolean },
+    decisionSkillId: string,
+  ): CombatActionResult {
+    const updatedEnemy = ctx.enemy.getEnemyById(e.id);
+    if (!updatedEnemy) {
+      return { success: false, type: 'skill', message: '找不到敌人数据' };
+    }
+
+    const healSkillData = availableSkillsCache.find(s => s.id === decisionSkillId);
+    const healSkillName = healSkillData?.name || decisionSkillId;
+
+    addCombatLog({
+      actorType: 'enemy',
+      actorId: updatedEnemy.id,
+      actorName: updatedEnemy.name,
+      eventType: 'combat_heal',
+      skillId: decisionSkillId,
+      skillName: healSkillName,
+      heal: result.damage,
+      isCrit: false,
+      isDodge: false,
+      message: `${updatedEnemy.name} 恢复生命值 (+${Math.abs(result.damage)})！`
+    });
+
+    return {
+      success: true,
+      type: 'skill',
+      heal: result.damage,
+      message: `${e.name} 恢复了生命值 (+${Math.abs(result.damage)})！`
+    };
+  }
+
+  /**
+   * 敌人使用 buff/debuff 技能的统一处理（P4-008 修复：消除 buff 分支的重复代码）
+   *
+   * @param e - 执行 buff 的敌人
+   * @param result - enemyStore.useSkill 的返回值
+   * @param decisionSkillId - AI 决策选中的技能ID
+   * @returns CombatActionResult
+   */
+  function handleEnemyBuff(
+    e: EnemyInstance,
+    result: { success: boolean; isBuff?: boolean; buffs?: Array<{ type: string; value: number; turns: number }> },
+    decisionSkillId: string,
+  ): CombatActionResult {
+    const skillData = availableSkillsCache.find(s => s.id === decisionSkillId);
+    const skillName = skillData?.name || decisionSkillId;
+    const fullSkill = ctx.skill.getSkill(decisionSkillId);
+    const isDebuff = fullSkill?.type === 'debuff';
+
+    if (isDebuff) {
+      // 减益技能：效果施加到玩家身上
+      const playerCtx = createPlayerEffectContext();
+      for (const b of result.buffs!) {
+        const debuffEffect: Effect = {
+          id: generateEffectId(),
+          type: isEffectType(b.type) ? b.type : 'attack_down',
+          remainingTurns: b.turns,
+          value: b.value,
+          source: 'enemy',
+          sourceName: e.name
+        };
+        addEffectToContainer(playerEffects.value, debuffEffect);
+        effectRegistry.get(debuffEffect.type)?.onApply?.(debuffEffect, playerCtx);
+      }
+
+      addCombatLog({
+        actorType: 'enemy', actorId: e.id, actorName: e.name,
+        eventType: 'combat_skill_cast', skillId: decisionSkillId, skillName,
+        isCrit: false, isDodge: false,
+        message: `${e.name} 使用了 ${skillName}，对 ${ctx.character.name} 施加了减益效果！`
+      });
+
+      return { success: true, type: 'skill', message: `${e.name} 使用了 ${skillName}！` };
+    }
+
+    // 增益技能：效果施加到敌人自身
+    if (!enemyEffects.value[e.id]) {
+      enemyEffects.value[e.id] = createEmptyContainer();
+    }
+    const container = enemyEffects.value[e.id]!;
+    const enemyCtx = createEnemyEffectContext(e);
+
+    for (const b of result.buffs!) {
+      const effect: Effect = {
+        id: generateEffectId(),
+        type: isEffectType(b.type) ? b.type : 'attack_up',
+        remainingTurns: b.turns,
+        value: b.value,
+        source: 'enemy',
+        sourceName: e.name
+      };
+      addEffectToContainer(container, effect);
+      effectRegistry.get(effect.type)?.onApply?.(effect, enemyCtx);
+    }
+
+    addCombatLog({
+      actorType: 'enemy', actorId: e.id, actorName: e.name,
+      eventType: 'combat_skill_cast', skillId: decisionSkillId, skillName,
+      isCrit: false, isDodge: false,
+      message: `${e.name} 使用了 ${skillName}，获得增益效果！`
+    });
+
+    return { success: true, type: 'skill', message: `${e.name} 使用了 ${skillName}！` };
+  }
+
+  /** 缓存 availableSkills 供 handleEnemyHeal/handleEnemyBuff 使用（在 enemyAction 内部赋值） */
+  let availableSkillsCache: Array<{ id: string; name: string; isHeal?: boolean; isBuff?: boolean }> = [];
 
   /**
    * 对玩家造成敌人伤害（公共逻辑：管线计算 → 扣血 → 事件 → 日志）
@@ -308,6 +427,7 @@ export function useEnemyAction(
 
     // 获取敌人可用技能
     const availableSkills = ctx.enemy.getAvailableSkills(e.id);
+    availableSkillsCache = availableSkills;
 
     // 构建战斗上下文
     const enemyEffectContainer = enemyEffects.value[e.id] || createEmptyContainer();
@@ -318,11 +438,11 @@ export function useEnemyAction(
       enemyMaxHp: e.maxHp,
       availableSkills,
       turnCount: state.turnCount.value,
-      enemyHasBuff: hasEffect(enemyEffectContainer, 'attack_up' as EffectType)
-                  || hasEffect(enemyEffectContainer, 'defense_up' as EffectType)
-                  || hasEffect(enemyEffectContainer, 'shield' as EffectType),
-      playerHasDebuff: hasEffect(playerEffects.value, 'attack_down' as EffectType)
-                    || hasEffect(playerEffects.value, 'vulnerable' as EffectType),
+      enemyHasBuff: hasEffect(enemyEffectContainer, 'attack_up')
+                  || hasEffect(enemyEffectContainer, 'defense_up')
+                  || hasEffect(enemyEffectContainer, 'shield'),
+      playerHasDebuff: hasEffect(playerEffects.value, 'attack_down')
+                    || hasEffect(playerEffects.value, 'vulnerable'),
     };
 
     // 根据敌人 AI 策略类型选择策略
@@ -333,125 +453,19 @@ export function useEnemyAction(
       case 'skill': {
         const result = ctx.enemy.useSkill(e.id, decision.skillId);
         if (result.success) {
-          // P2-40 修复：在 case 'skill' 开头缓存完整技能数据，避免在 isHeal/buff/attack 分支重复调用 getSkill
           const cachedFullSkill = ctx.skill.getSkill(decision.skillId);
           if (result.isHeal) {
-            // 敌人恢复生命值
-            const updatedEnemy = ctx.enemy.getEnemyById(e.id);
-            if (!updatedEnemy) {
-              return { success: false, type: 'skill', message: '找不到敌人数据' };
-            }
-
-            // BIZ-7：查询技能名称而非直接使用 skillId
-            const healSkillData = availableSkills.find(s => s.id === decision.skillId);
-            const healSkillName = healSkillData?.name || decision.skillId;
-
-            addCombatLog({
-              actorType: 'enemy',
-              actorId: updatedEnemy.id,
-              actorName: updatedEnemy.name,
-              eventType: 'combat_heal',
-              skillId: decision.skillId,
-              skillName: healSkillName,
-              heal: result.damage,
-              isCrit: false,
-              isDodge: false,
-              message: `${updatedEnemy.name} 恢复生命值 (+${Math.abs(result.damage)})！`
-            });
-
-            return {
-              success: true,
-              type: 'skill',
-              heal: result.damage,
-              message: `${e.name} 恢复了生命值 (+${Math.abs(result.damage)})！`
-            };
+            // P4-008：统一调用 handleEnemyHeal
+            return handleEnemyHeal(e, result, decision.skillId);
           } else if (result.isBuff && result.buffs) {
-            // 敌人使用 buff/debuff 技能：区分自身增益（buff）和对玩家减益（debuff）
-            const skillData = availableSkills.find(s => s.id === decision.skillId);
-            const skillName = skillData?.name || decision.skillId;
-            // 通过完整技能数据判断是否为减益技能（P2-40：复用 cachedFullSkill）
-            const fullSkill = cachedFullSkill;
-            const isDebuff = fullSkill?.type === 'debuff';
-
-            if (isDebuff) {
-              // 减益技能：效果施加到玩家身上
-              const playerCtx = createPlayerEffectContext();
-              for (const b of result.buffs) {
-                const debuffEffect: Effect = {
-                  id: generateEffectId(),
-                  type: b.type as EffectType,
-                  remainingTurns: b.turns,
-                  value: b.value,
-                  source: 'enemy',
-                  sourceName: e.name
-                };
-                addEffectToContainer(playerEffects.value, debuffEffect);
-                effectRegistry.get(debuffEffect.type as EffectType)?.onApply?.(debuffEffect, playerCtx);
-              }
-
-              addCombatLog({
-                actorType: 'enemy',
-                actorId: e.id,
-                actorName: e.name,
-                eventType: 'combat_skill_cast',
-                skillId: decision.skillId,
-                skillName,
-                isCrit: false,
-                isDodge: false,
-                message: `${e.name} 使用了 ${skillName}，对 ${ctx.character.name} 施加了减益效果！`
-              });
-
-              return {
-                success: true,
-                type: 'skill',
-                message: `${e.name} 使用了 ${skillName}！`
-              };
-            }
-
-            // 增益技能：效果施加到敌人自身
-            if (!enemyEffects.value[e.id]) {
-              enemyEffects.value[e.id] = createEmptyContainer();
-            }
-            const container = enemyEffects.value[e.id]!;
-            const enemyCtx = createEnemyEffectContext(e);
-
-            for (const b of result.buffs) {
-              const effect: Effect = {
-                id: generateEffectId(),
-                type: b.type as EffectType,
-                remainingTurns: b.turns,
-                value: b.value,
-                source: 'enemy',
-                sourceName: e.name
-              };
-              addEffectToContainer(container, effect);
-              effectRegistry.get(effect.type as EffectType)?.onApply?.(effect, enemyCtx);
-            }
-
-            addCombatLog({
-              actorType: 'enemy',
-              actorId: e.id,
-              actorName: e.name,
-              eventType: 'combat_skill_cast',
-              skillId: decision.skillId,
-              skillName,
-              isCrit: false,
-              isDodge: false,
-              message: `${e.name} 使用了 ${skillName}，获得增益效果！`
-            });
-
-            return {
-              success: true,
-              type: 'skill',
-              message: `${e.name} 使用了 ${skillName}！`
-            };
+            // P4-008：统一调用 handleEnemyBuff
+            return handleEnemyBuff(e, result, decision.skillId);
           } else {
-            // 敌人使用攻击技能（P2-40：复用 cachedFullSkill）
+            // 敌人使用攻击技能
             const skillData = availableSkills.find(s => s.id === decision.skillId);
-            const fullSkill = cachedFullSkill;
             return enemyAttackWithSkill(
               result.damage,
-              { id: decision.skillId, name: skillData?.name || decision.skillId, type: fullSkill?.type },
+              { id: decision.skillId, name: skillData?.name || decision.skillId, type: cachedFullSkill?.type },
               e
             );
           }
@@ -461,34 +475,8 @@ export function useEnemyAction(
       case 'heal': {
         const result = ctx.enemy.useSkill(e.id, decision.skillId);
         if (result.success) {
-          const updatedEnemy = ctx.enemy.getEnemyById(e.id);
-          if (!updatedEnemy) {
-            return { success: false, type: 'skill', message: '找不到敌人数据' };
-          }
-
-          // BIZ-7：查询技能名称而非直接使用 skillId
-          const healSkillData = availableSkills.find(s => s.id === decision.skillId);
-          const healSkillName = healSkillData?.name || decision.skillId;
-
-          addCombatLog({
-            actorType: 'enemy',
-            actorId: updatedEnemy.id,
-            actorName: updatedEnemy.name,
-            eventType: 'combat_heal',
-            skillId: decision.skillId,
-            skillName: healSkillName,
-            heal: result.damage,
-            isCrit: false,
-            isDodge: false,
-            message: `${updatedEnemy.name} 恢复生命值 (+${Math.abs(result.damage)})！`
-          });
-
-          return {
-            success: true,
-            type: 'skill',
-            heal: result.damage,
-            message: `${e.name} 恢复了生命值 (+${Math.abs(result.damage)})！`
-          };
+          // P4-008：统一调用 handleEnemyHeal
+          return handleEnemyHeal(e, result, decision.skillId);
         }
         break;
       }
@@ -496,71 +484,8 @@ export function useEnemyAction(
         // P3-162：主动施放 buff/debuff 技能
         const result = ctx.enemy.useSkill(e.id, decision.skillId);
         if (result.success && result.isBuff && result.buffs) {
-          const skillData = availableSkills.find(s => s.id === decision.skillId);
-          const skillName = skillData?.name || decision.skillId;
-          const fullSkill = ctx.skill.getSkill(decision.skillId);
-          const isDebuff = fullSkill?.type === 'debuff';
-
-          if (isDebuff) {
-            // 减益技能：效果施加到玩家身上
-            const playerCtx = createPlayerEffectContext();
-            for (const b of result.buffs) {
-              const debuffEffect: Effect = {
-                id: generateEffectId(),
-                type: b.type as EffectType,
-                remainingTurns: b.turns,
-                value: b.value,
-                source: 'enemy',
-                sourceName: e.name
-              };
-              addEffectToContainer(playerEffects.value, debuffEffect);
-              effectRegistry.get(debuffEffect.type as EffectType)?.onApply?.(debuffEffect, playerCtx);
-            }
-
-            addCombatLog({
-              actorType: 'enemy', actorId: e.id, actorName: e.name,
-              eventType: 'combat_skill_cast', skillId: decision.skillId, skillName,
-              isCrit: false, isDodge: false,
-              message: `${e.name} 使用了 ${skillName}，对 ${ctx.character.name} 施加了减益效果！`
-            });
-
-            return {
-              success: true, type: 'skill',
-              message: `${e.name} 使用了 ${skillName}！`
-            };
-          }
-
-          // 增益技能：效果施加到敌人自身
-          if (!enemyEffects.value[e.id]) {
-            enemyEffects.value[e.id] = createEmptyContainer();
-          }
-          const container = enemyEffects.value[e.id]!;
-          const enemyCtx = createEnemyEffectContext(e);
-
-          for (const b of result.buffs) {
-            const effect: Effect = {
-              id: generateEffectId(),
-              type: b.type as EffectType,
-              remainingTurns: b.turns,
-              value: b.value,
-              source: 'enemy',
-              sourceName: e.name
-            };
-            addEffectToContainer(container, effect);
-            effectRegistry.get(effect.type as EffectType)?.onApply?.(effect, enemyCtx);
-          }
-
-          addCombatLog({
-            actorType: 'enemy', actorId: e.id, actorName: e.name,
-            eventType: 'combat_skill_cast', skillId: decision.skillId, skillName,
-            isCrit: false, isDodge: false,
-            message: `${e.name} 使用了 ${skillName}，获得增益效果！`
-          });
-
-          return {
-            success: true, type: 'skill',
-            message: `${e.name} 使用了 ${skillName}！`
-          };
+          // P4-008：统一调用 handleEnemyBuff
+          return handleEnemyBuff(e, result, decision.skillId);
         }
         break;
       }
@@ -573,14 +498,14 @@ export function useEnemyAction(
         const enemyCtx = createEnemyEffectContext(e);
         const effect: Effect = {
           id: generateEffectId(),
-          type: 'defense_up' as EffectType,
+          type: 'defense_up',
           remainingTurns: DEFEND_DURATION_TURNS,
           value: DEFEND_DEFENSE_BONUS,
           source: 'enemy',
           sourceName: e.name,
         };
         addEffectToContainer(container, effect);
-        effectRegistry.get(effect.type as EffectType)?.onApply?.(effect, enemyCtx);
+        effectRegistry.get(effect.type)?.onApply?.(effect, enemyCtx);
 
         addCombatLog({
           actorType: 'enemy', actorId: e.id, actorName: e.name,

@@ -16,7 +16,7 @@ import type { CombatActionResult, AoeHitInfo, CombatResult } from '../types';
 import type { EnemyInstance } from '@/modules/enemy';
 import type { ICombatContext } from '../combatContext';
 import { eventBus, GameEvents } from '@/modules/bus';
-import { PLAYER_AOE_DAMAGE_PENALTY, HEAL_BONUS_DIVISOR } from '@/config/combat';
+import { PLAYER_AOE_DAMAGE_PENALTY, HEAL_BONUS_DIVISOR, HEAL_CRIT_MULTIPLIER } from '@/config/combat';
 import {
   processDamagePipeline,
   createEmptyContainer,
@@ -559,10 +559,18 @@ export function usePlayerSkill(
       }
     } else if (result.heal) {
       // 生命恢复：castSkill 已计算基础治疗量（含天赋加成），此处应用 healBonus + 暴击
+      // P4-017 修复：治疗暴击使用独立倍率 HEAL_CRIT_MULTIPLIER，且治疗也吃天赋 damageMultiplier
       const statModifiers = passive.getStatModifiers();
       const healBonus = ctx.character.attributes.healBonus ?? 0;
-      const { isCrit: healCrit, multiplier: healCritMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
-      const finalHeal = Math.floor(result.heal * (1 + healBonus / HEAL_BONUS_DIVISOR) * healCritMultiplier);
+      const { isCrit: healCrit, multiplier: _healCritMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
+      // P4-017：暴击倍率使用独立常量，不与伤害暴击共享
+      const healCritMultiplier = healCrit ? HEAL_CRIT_MULTIPLIER : 1;
+      // P4-017：天赋 damageMultiplier 对治疗生效（与伤害对齐）
+      const talentDmgMult = ctx.talent.damageMultiplier;
+      const preHeal = talentDmgMult > 0
+        ? Math.floor(result.heal * (1 + talentDmgMult))
+        : result.heal;
+      const finalHeal = Math.floor(preHeal * (1 + healBonus / HEAL_BONUS_DIVISOR) * healCritMultiplier);
       ctx.character.receiveHeal(finalHeal);
 
       eventBus.emit(GameEvents.COMBAT_CAST_HEAL, {

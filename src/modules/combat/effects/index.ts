@@ -14,6 +14,9 @@ export type {
   StackStrategy,
 } from './types';
 
+// P4-022：类型守卫
+export { isEffectType } from './effect-type';
+
 // 注册表
 export { EffectHandlerRegistry } from './handler';
 export type { EffectHandler, ActionType } from './handler';

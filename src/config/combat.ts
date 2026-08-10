@@ -67,6 +67,41 @@ export const HEAL_BONUS_DIVISOR = 100;
  */
 export const CRIT_DAMAGE_MULTIPLIER = 1.5;
 
+/**
+ * 治疗暴击倍率
+ *
+ * 治疗暴击时最终治疗量 = floor(基础治疗 × 该倍率)。
+ * P4-017 修复：从 CRIT_DAMAGE_MULTIPLIER 独立出来，便于单独调整治疗暴击强度。
+ *
+ * @see src/modules/combat/composables/usePlayerSkill.ts 治疗分支
+ */
+export const HEAL_CRIT_MULTIPLIER = 1.5;
+
+/**
+ * 防御修正参数
+ *
+ * P4-014 修复：承伤倍率上限与易伤系数提取为配置常量
+ */
+
+/**
+ * 承伤倍率上限（defense_down/vulnerable 的 getDefenderDamageMod 结果不超过此值）
+ *
+ * 防止极端减益叠加导致承伤倍率无限放大。
+ *
+ * @see src/modules/combat/effects/handlers/defenseMod.ts
+ */
+export const DAMAGE_TAKEN_MOD_MAX = 3.0;
+
+/**
+ * 易伤（vulnerable）额外承伤系数
+ *
+ * vulnerable 的承伤倍率 = 1 + value * 该系数 / 100
+ * 该系数 > 1 表示易伤比降防更严重（原硬编码 1.5）。
+ *
+ * @see src/modules/combat/effects/handlers/defenseMod.ts vulnerableHandler
+ */
+export const VULNERABLE_DAMAGE_COEFFICIENT = 1.5;
+
 // ==================== AOE 伤害参数 ====================
 
 /**

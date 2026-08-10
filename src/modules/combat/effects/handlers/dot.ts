@@ -12,7 +12,8 @@ export const poisonHandler: EffectHandler = {
   type: 'poison',
 
   onTick(effect) {
-    return { dotDamage: effect.value, regenAmount: 0 };
+    // P4-005 修复：Math.max(0, ...) 防止负值
+    return { dotDamage: Math.max(0, effect.value), regenAmount: 0 };
   },
 };
 
@@ -24,6 +25,7 @@ export const burnHandler: EffectHandler = {
   type: 'burn',
 
   onTick(effect) {
-    return { dotDamage: Math.round(effect.value * 1.5), regenAmount: 0 };
+    // P4-005 修复：Math.max(0, ...) 防止负值导致 DOT 变回血
+    return { dotDamage: Math.max(0, Math.round(effect.value * 1.5)), regenAmount: 0 };
   },
 };

@@ -33,7 +33,8 @@ import type {
  * **匹配逻辑**：
  * - 传入 enemyId → 查找 type='kill' 且 enemyId 匹配的目标
  * - 传入 itemId  → 查找 type='collect' 且 itemId 匹配的目标
- * - 两侧同时传入时，分别匹配各自类型的目标
+ * - 传入 explored=true → 查找 type='explore' 的目标（可选 locationId 限定区域）
+ * - 上述可同时传入，分别匹配各自类型的目标
  *
  * **边界情况**：
  * - 没有任何目标匹配 → 返回 null（调用方应忽略此次事件）
@@ -45,13 +46,15 @@ import type {
  * @param relevantData - 触发本次检查的事件数据
  * @param relevantData.enemyId - 被击杀的敌人ID
  * @param relevantData.itemId  - 被收集的物品ID
+ * @param relevantData.explored - 是否为新探索格（explore 任务触发标志）
+ * @param relevantData.locationId - 当前探索区域ID（explore 任务可选过滤）
  * @param relevantData.amount  - 数量（默认 1）
  * @returns 新进度 + 是否全部完成；无匹配目标时返回 null
  */
 export function checkQuestProgress(
   quest: QuestInstance,
   definition: QuestDefinition,
-  relevantData: { enemyId?: string; itemId?: string; amount?: number }
+  relevantData: { enemyId?: string; itemId?: string; explored?: boolean; locationId?: string; amount?: number }
 ): { isComplete: boolean; progress: QuestObjectiveProgress[] } | null {
   // 未显式提供数量时，每次击杀/收集计 1
   const amount = relevantData.amount ?? 1;
@@ -67,8 +70,11 @@ export function checkQuestProgress(
       && objective.enemyId !== undefined
       && objective.enemyId === relevantData.enemyId;
     const isCollectMatch = relevantData.itemId && objective.type === 'collect' && objective.itemId === relevantData.itemId;
+    // explore：explored=true 时触发；locationId 为空则任意区域新格均计数，否则仅匹配指定区域
+    const isExploreMatch = objective.type === 'explore' && relevantData.explored === true
+      && (objective.locationId === undefined || objective.locationId === relevantData.locationId);
 
-    if (isKillMatch || isCollectMatch) {
+    if (isKillMatch || isCollectMatch || isExploreMatch) {
       // 在进度数组中查找对应的进度条目
       const idx = newProgress.findIndex(p => p.objectiveKey === objective.key);
       if (idx !== -1) {
@@ -269,6 +275,19 @@ export function getDefaultQuests(): QuestDefinition[] {
       levelRequirement: 5,
       xpReward: 500,
       goldReward: 300,
+      boardId: 'village'
+    },
+    {
+      id: 'quest_explore_forest',
+      title: '探索幽暗密林',
+      description: '村庄北方的幽暗密林隐藏着无数秘密，据说深处有古代遗迹的踪迹。请前往探索，揭开它的面纱。',
+      type: 'explore',
+      objectives: [
+        { key: 'explore_forest', type: 'explore', target: 10 }
+      ],
+      levelRequirement: 1,
+      xpReward: 90,
+      goldReward: 40,
       boardId: 'village'
     }
   ];

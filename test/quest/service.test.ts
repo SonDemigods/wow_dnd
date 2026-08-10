@@ -343,6 +343,169 @@ describe('checkQuestProgress 进度更新', () => {
   });
 });
 
+describe('checkQuestProgress explore 进度更新（P3-149）', () => {
+  it('explored=true 时累加 explore 目标进度', () => {
+    const def = makeDefinition({
+      type: 'explore',
+      objectives: [{ key: 'explore_area', type: 'explore', target: 10 }],
+    });
+    const inst: QuestInstance = {
+      questId: 'quest_test',
+      status: 'in_progress',
+      progress: [{ objectiveKey: 'explore_area', current: 3, target: 10 }],
+      acceptedAt: 1,
+    };
+    const result = checkQuestProgress(inst, def, { explored: true });
+    expect(result).not.toBeNull();
+    expect(result!.progress[0].current).toBe(4);
+  });
+
+  it('explored=false 时不匹配 explore 目标，返回 null', () => {
+    const def = makeDefinition({
+      type: 'explore',
+      objectives: [{ key: 'explore_area', type: 'explore', target: 10 }],
+    });
+    const inst: QuestInstance = {
+      questId: 'quest_test',
+      status: 'in_progress',
+      progress: [{ objectiveKey: 'explore_area', current: 0, target: 10 }],
+      acceptedAt: 1,
+    };
+    const result = checkQuestProgress(inst, def, { explored: false });
+    expect(result).toBeNull();
+  });
+
+  it('未传 explored 时视为非探索事件，不匹配 explore 目标', () => {
+    const def = makeDefinition({
+      type: 'explore',
+      objectives: [{ key: 'explore_area', type: 'explore', target: 10 }],
+    });
+    const inst: QuestInstance = {
+      questId: 'quest_test',
+      status: 'in_progress',
+      progress: [{ objectiveKey: 'explore_area', current: 0, target: 10 }],
+      acceptedAt: 1,
+    };
+    const result = checkQuestProgress(inst, def, { enemyId: 'goblin' });
+    expect(result).toBeNull();
+  });
+
+  it('目标未限定 locationId 时任意区域新格均计数', () => {
+    const def = makeDefinition({
+      type: 'explore',
+      objectives: [{ key: 'explore_area', type: 'explore', target: 10 }],
+    });
+    const inst: QuestInstance = {
+      questId: 'quest_test',
+      status: 'in_progress',
+      progress: [{ objectiveKey: 'explore_area', current: 0, target: 10 }],
+      acceptedAt: 1,
+    };
+    const result = checkQuestProgress(inst, def, { explored: true, locationId: 'somewhere_else' });
+    expect(result!.progress[0].current).toBe(1);
+  });
+
+  it('目标限定 locationId 时仅匹配指定区域', () => {
+    const def = makeDefinition({
+      type: 'explore',
+      objectives: [{ key: 'explore_area', type: 'explore', target: 10, locationId: 'teldrassil' }],
+    });
+    const inst: QuestInstance = {
+      questId: 'quest_test',
+      status: 'in_progress',
+      progress: [{ objectiveKey: 'explore_area', current: 0, target: 10 }],
+      acceptedAt: 1,
+    };
+    const matched = checkQuestProgress(inst, def, { explored: true, locationId: 'teldrassil' });
+    expect(matched!.progress[0].current).toBe(1);
+
+    const unmatched = checkQuestProgress(inst, def, { explored: true, locationId: 'elwynn' });
+    expect(unmatched).toBeNull();
+  });
+
+  it('目标限定 locationId 但事件未带 locationId 时不匹配', () => {
+    const def = makeDefinition({
+      type: 'explore',
+      objectives: [{ key: 'explore_area', type: 'explore', target: 10, locationId: 'teldrassil' }],
+    });
+    const inst: QuestInstance = {
+      questId: 'quest_test',
+      status: 'in_progress',
+      progress: [{ objectiveKey: 'explore_area', current: 0, target: 10 }],
+      acceptedAt: 1,
+    };
+    const result = checkQuestProgress(inst, def, { explored: true });
+    expect(result).toBeNull();
+  });
+
+  it('explore 与 kill 混合目标：kill 事件只更新 kill 目标', () => {
+    const def = makeDefinition({
+      objectives: [
+        { key: 'kill_goblin', type: 'kill', target: 5, enemyId: 'goblin' },
+        { key: 'explore_area', type: 'explore', target: 10 },
+      ],
+    });
+    const inst: QuestInstance = {
+      questId: 'quest_test',
+      status: 'in_progress',
+      progress: [
+        { objectiveKey: 'kill_goblin', current: 1, target: 5 },
+        { objectiveKey: 'explore_area', current: 4, target: 10 },
+      ],
+      acceptedAt: 1,
+    };
+    const result = checkQuestProgress(inst, def, { enemyId: 'goblin' });
+    expect(result!.progress[0].current).toBe(2);
+    expect(result!.progress[1].current).toBe(4);
+    expect(result!.isComplete).toBe(false);
+  });
+
+  it('进度不超过 target 上限', () => {
+    const def = makeDefinition({
+      type: 'explore',
+      objectives: [{ key: 'explore_area', type: 'explore', target: 5 }],
+    });
+    const inst: QuestInstance = {
+      questId: 'quest_test',
+      status: 'in_progress',
+      progress: [{ objectiveKey: 'explore_area', current: 5, target: 5 }],
+      acceptedAt: 1,
+    };
+    const result = checkQuestProgress(inst, def, { explored: true });
+    expect(result!.progress[0].current).toBe(5);
+  });
+
+  it('explore 目标达成时 isComplete=true', () => {
+    const def = makeDefinition({
+      type: 'explore',
+      objectives: [{ key: 'explore_area', type: 'explore', target: 5 }],
+    });
+    const inst: QuestInstance = {
+      questId: 'quest_test',
+      status: 'in_progress',
+      progress: [{ objectiveKey: 'explore_area', current: 4, target: 5 }],
+      acceptedAt: 1,
+    };
+    const result = checkQuestProgress(inst, def, { explored: true });
+    expect(result!.isComplete).toBe(true);
+  });
+
+  it('不修改原始实例的进度（纯函数）', () => {
+    const def = makeDefinition({
+      type: 'explore',
+      objectives: [{ key: 'explore_area', type: 'explore', target: 10 }],
+    });
+    const inst: QuestInstance = {
+      questId: 'quest_test',
+      status: 'in_progress',
+      progress: [{ objectiveKey: 'explore_area', current: 3, target: 10 }],
+      acceptedAt: 1,
+    };
+    checkQuestProgress(inst, def, { explored: true });
+    expect(inst.progress[0].current).toBe(3);
+  });
+});
+
 describe('calculateQuestRewards 奖励计算', () => {
   it('正确提取经验和金币奖励', () => {
     const def = makeDefinition({ xpReward: 200, goldReward: 100 });
@@ -415,9 +578,9 @@ describe('generateQuestInstance 任务实例生成', () => {
 });
 
 describe('getDefaultQuests 默认任务模板', () => {
-  it('返回 4 个默认任务', () => {
+  it('返回 5 个默认任务', () => {
     const quests = getDefaultQuests();
-    expect(quests).toHaveLength(4);
+    expect(quests).toHaveLength(5);
   });
 
   it('包含击杀豺狼人任务', () => {

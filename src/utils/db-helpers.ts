@@ -29,7 +29,8 @@ export function toRawData<T>(data: T): T {
     try {
       return structuredClone(data);
     } catch {
-      // Vue Proxy 嵌套响应式或不可克隆类型，回退到 JSON 序列化
+      // P4-010 修复：回退路径打印 warning，提醒 Date/Map/Set 等特殊类型会丢失
+      console.warn('[toRawData] structuredClone 失败，回退到 JSON 序列化（Date/Map/Set 等特殊类型将丢失）');
     }
   }
   return JSON.parse(JSON.stringify(data));

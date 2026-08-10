@@ -210,9 +210,9 @@ describe('defenseDownHandler', () => {
       expect(defenseDownHandler.getDefenderDamageMod!(eff, ctx)).toBeCloseTo(1.5);
     });
 
-    it('大值 value=500 → 倍率 6.0（无上限封顶）', () => {
+    it('大值 value=500 → 倍率封顶 DAMAGE_TAKEN_MOD_MAX=3.0（P4-014 修复）', () => {
       const eff = makeEffect('defense_down', 500, 3);
-      expect(defenseDownHandler.getDefenderDamageMod!(eff, ctx)).toBe(6);
+      expect(defenseDownHandler.getDefenderDamageMod!(eff, ctx)).toBe(3);
     });
 
     it('type 字段为 defense_down', () => {

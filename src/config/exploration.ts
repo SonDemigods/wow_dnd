@@ -83,7 +83,7 @@ export const MONSTER_PROBABILITY_BASE = 20;
 /** 怪物事件概率随等级提升系数（每级增加的百分比） */
 export const MONSTER_PROBABILITY_LEVEL_COEFFICIENT = 1;
 /** 怪物事件概率上限（百分比） */
-export const MONSTER_PROBABILITY_MAX = 30;
+export const MONSTER_PROBABILITY_MAX = 25;
 
 /** 物品事件概率基础值（最终概率 = max(MIN, BASE - LEVEL_COEFF × avgLevel)） */
 export const ITEM_PROBABILITY_BASE = 25;
@@ -97,7 +97,7 @@ export const TRAP_PROBABILITY_BASE = 12;
 /** 陷阱事件概率随等级提升系数 */
 export const TRAP_PROBABILITY_LEVEL_COEFFICIENT = 1;
 /** 陷阱事件概率上限（百分比） */
-export const TRAP_PROBABILITY_MAX = 22;
+export const TRAP_PROBABILITY_MAX = 18;
 
 /** 随机事件固定概率（百分比，不随等级变化） */
 export const EVENT_PROBABILITY = 15;

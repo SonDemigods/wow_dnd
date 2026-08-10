@@ -25,6 +25,10 @@ export function isLocationAccessible(location: LocationData, characterLevel: num
 /**
  * 获取区域状态
  * 优先级：已完成 > 已手动解锁 > 等级满足自动解锁 > 锁定
+ *
+ * P4-020 说明：unlockedZones/completedZones 当前为预留字段（无 Action 写入），
+ * 实际区域解锁完全由 isLocationAccessible（等级检查）决定。
+ * 保留字段供未来实现"手动解锁/区域完成追踪"功能。
  */
 export function getZoneStatus(
   state: MapState,

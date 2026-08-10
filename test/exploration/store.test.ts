@@ -49,6 +49,10 @@ const mocks = vi.hoisted(() => ({
   gameStore: {
     currentCharacterId: null as string | null,
   },
+  // P3-149：quest store mock（onCellExplored 被 exploration store 调用）
+  questStore: {
+    onCellExplored: vi.fn().mockResolvedValue(undefined),
+  },
 }));
 
 // ==================== Mock：exploration db ====================
@@ -140,6 +144,10 @@ vi.mock('@/modules/log/store', () => ({
 // P3-153：mock useGameStore，currentCharacterId 由 mocks.gameStore 控制
 vi.mock('@/modules/game', () => ({
   useGameStore: () => mocks.gameStore,
+}));
+// P3-149：mock quest store（exploration store 调用 onCellExplored）
+vi.mock('@/modules/quest', () => ({
+  useQuestStore: () => mocks.questStore,
 }));
 
 // ==================== 取出 spy 引用 ====================
@@ -766,6 +774,9 @@ describe('useExplorationStore - 探索 Store', () => {
 
       // 通过 eventBus emit COMBAT_END 触发监听器
       eventBus.emit(GameEvents.COMBAT_END, { result: 'victory', enemy: null, expGained: 0 });
+
+      // onBattleResult 内部 await onCellExplored 后才设置 completed，需刷新微任务
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // 胜利后格子标记 completed
       expect(store.getGridCell(0, 0)?.completed).toBe(true);

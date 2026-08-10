@@ -197,6 +197,11 @@ export function createCombatContext(): ICombatContext {
       get attributes() { return characterStore.attributes; },
       get effectiveStats() { return characterStore.effectiveStats; },
       takeDamage: (amount) => {
+        // P4-016 文档说明：三层减伤设计（非双重计算）
+        // 层级1 — 管线 defenderMod：处理 EffectContainer 中的 buff/debuff（如 defense_up/vulnerable）
+        // 层级2 — 被动 getDamageReduction()：处理角色被动技能减伤（如战士钢铁意志），在 useEnemyAction.applyEnemyDamageToPlayer 中应用
+        // 层级3 — 天赋 damageReduction（此处）：处理天赋树 damage_reduction 效果
+        // 三层各自独立，来源不同，不会叠加计算同一来源的减伤
         const reduction = useTalentStore().effectSummary.damageReduction;
         const finalAmount = reduction > 0
           ? Math.max(0, Math.floor(amount * (1 - Math.min(0.95, reduction))))
