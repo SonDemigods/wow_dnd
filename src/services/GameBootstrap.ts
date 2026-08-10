@@ -22,6 +22,10 @@ import { configCache } from '@/modules/config';
 import { setBossCreateFn } from '@/modules/enemy';
 import { bossDbService, createBossInstance } from '@/modules/boss';
 import type { BossEnemyInstance } from '@/modules/boss';
+// P9-077 修复：引入 setFormContext 为形态系统注入外部依赖
+import { setFormContext } from '@/modules/combat/forms/store';
+// P9-061 修复：引入 errorReporter 用于部分失败时上报
+import { errorReporter } from '@/utils/errorReport';
 
 /**
  * 可释放资源接口
@@ -76,6 +80,8 @@ export class GameBootstrapService {
    * @param characterId - 角色 ID
    */
   async initialize(characterId: string): Promise<void> {
+    // P9-061 修复：添加 try-catch，部分失败时上报 errorReporter 并清理已初始化状态
+    try {
     // ==================== Layer 0：预加载配置缓存 ====================
     // 从 DB 加载天赋树/被动技能/套装定义/敌人名称到内存缓存，
     // 确保后续各 Store 的同步查询（computed/getter）能命中缓存。
@@ -111,6 +117,16 @@ export class GameBootstrapService {
           .reduce((sum, slot) => sum + slot.count, 0);
       },
       addItemToInventory: (itemId, quantity) => inventoryStore.addItem(itemId, quantity),
+    });
+
+    // P9-077 修复：注入形态系统外部上下文（character/log Store 方法）
+    // 使用局部引用，避免与 Layer 3.5 的 characterStore 重复声明
+    setFormContext({
+      get maxHp() { return useCharacterStore().maxHp; },
+      receiveHeal: (amount) => useCharacterStore().receiveHeal(amount),
+      applyBonus: (delta) => useCharacterStore().applyBonus(delta),
+      removeBonus: (delta) => useCharacterStore().removeBonus(delta),
+      addLogEntry: (entry) => { useLogStore().addLogEntry(entry); },
     });
 
     // 注入 Boss 创建回调到敌人模块（回调注入替代 enemy → boss 静态依赖）
@@ -157,6 +173,15 @@ export class GameBootstrapService {
 
     // ==================== Layer 4：quest（依赖 inventory 回调 + exploration） ====================
     await questStore.initialize(characterId);
+    } catch (error) {
+      // P9-061 修复：部分失败时上报 errorReporter 并清理已初始化状态，避免半初始化残留
+      errorReporter.report(error, 'manual', {
+        context: 'GameBootstrap.initialize 部分初始化失败，已清理已初始化的 Store 状态',
+        characterId,
+      });
+      this.dispose();
+      throw error;
+    }
   }
 
   /**

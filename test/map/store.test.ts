@@ -198,7 +198,7 @@ describe('useMapStore - 地图 Store', () => {
 
   // -------------------- Action: enterZone --------------------
   describe('Action: enterZone', () => {
-    it('切换 currentLocation 并 emit ZONE_ENTERED，返回 true', () => {
+    it('切换 currentLocation，返回 true（P9-091 修复：不再 emit ZONE_ENTERED）', () => {
       const spy = vi.fn();
       eventBus.on(GameEvents.ZONE_ENTERED, spy);
       const loc = makeLocation({ id: 'zone-a' });
@@ -209,12 +209,11 @@ describe('useMapStore - 地图 Store', () => {
 
       expect(result).toBe(true);
       expect(store.currentLocation).toEqual(loc);
-      expect(spy).toHaveBeenCalledWith({ locationId: 'zone-a', location: loc });
+      // P9-091 修复：enterZone 不再 emit ZONE_ENTERED，由 exploration/store.ts enterArea 统一发射
+      expect(spy).not.toHaveBeenCalled();
     });
 
-    it('地点不存在时返回 false 且不 emit', () => {
-      const spy = vi.fn();
-      eventBus.on(GameEvents.ZONE_ENTERED, spy);
+    it('地点不存在时返回 false', () => {
       vi.mocked(getLocationById).mockReturnValueOnce(undefined);
 
       const store = useMapStore();
@@ -222,7 +221,6 @@ describe('useMapStore - 地图 Store', () => {
 
       expect(result).toBe(false);
       expect(store.currentLocation).toBeNull();
-      expect(spy).not.toHaveBeenCalled();
     });
 
     it('已初始化角色时持久化当前区域 ID（fire-and-forget）', async () => {
@@ -357,9 +355,12 @@ describe('useMapStore - 地图 Store', () => {
       expect(snapshot.unlockedZones).toEqual(['z1']);
       expect(snapshot.completedZones).toEqual(['z2']);
 
-      // 修改快照不影响 store
-      snapshot.unlockedZones!.push('zX');
-      snapshot.view.zoomLevel = 9;
+      // P9-087 修复：deepFreeze 冻结嵌套对象，修改快照会抛错（strict mode）或静默失败
+      // 验证深冻结：嵌套对象不可变
+      expect(Object.isFrozen(snapshot.view)).toBe(true);
+      expect(Object.isFrozen(snapshot.unlockedZones)).toBe(true);
+      expect(Object.isFrozen(snapshot.completedZones)).toBe(true);
+      // store 状态不受影响
       expect(store.state.view.zoomLevel).toBe(2);
       expect(store.state.unlockedZones).toEqual(['z1']);
     });

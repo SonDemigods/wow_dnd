@@ -17,15 +17,29 @@
 import { ref } from 'vue';
 import { useCombatStore } from '../store';
 import { eventBus, GameEvents } from '@/modules/bus';
+import type { CombatResult } from '../types';
+
+/**
+ * 战斗结果弹窗自动关闭选项
+ *
+ * P9-067 修复：通过参数注入 combat 状态，替代直接 import useCombatStore。
+ * 测试时可传入 mock getCombatResult 避免依赖 Pinia 初始化。
+ */
+export interface UseCombatAutoCloseOptions {
+  /** 获取当前战斗结果（注入替代直接访问 combatStore.combatResult） */
+  getCombatResult?: () => CombatResult | null;
+}
 
 /**
  * 战斗结果弹窗自动关闭
  *
  * @param onClose - 倒计时结束时的关闭回调（由组件传入，内部 emit('close', ...)）
+ * @param options - 可选注入参数（getCombatResult），测试时传入 mock 避免直接依赖 Pinia
  * @returns { autoCloseCountdown, scheduleAutoClose, clearAutoClose, handleClose }
  */
-export function useCombatAutoClose(onClose: () => void) {
-  const combatStore = useCombatStore();
+export function useCombatAutoClose(onClose: () => void, options?: UseCombatAutoCloseOptions) {
+  // P9-067 修复：优先使用注入的 getCombatResult，未注入时惰性回退到 useCombatStore
+  const getCombatResult = options?.getCombatResult ?? (() => useCombatStore().combatResult);
 
   /** 剩余自动关闭秒数（供模板显示） */
   const autoCloseCountdown = ref(0);
@@ -54,7 +68,7 @@ export function useCombatAutoClose(onClose: () => void) {
    */
   function scheduleAutoClose(): void {
     clearAutoClose();
-    const delay = combatStore.combatResult === 'victory' ? 3 : 2;
+    const delay = getCombatResult() === 'victory' ? 3 : 2;
     autoCloseCountdown.value = delay;
 
     autoCloseTimer = setInterval(() => {

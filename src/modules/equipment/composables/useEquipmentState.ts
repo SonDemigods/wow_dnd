@@ -155,10 +155,17 @@ export function useEquipmentState() {
     });
   }
   function removeEquipmentTemplate(itemId: string): void {
+    // P9-082 修复：保存被删除的模板引用，DB 删除失败时回滚内存 map 状态
+    const removedItem = equipmentTemplates.value.get(itemId);
     equipmentTemplates.value.delete(itemId);
     triggerRef(equipmentTemplates);
     equipmentDbService.deleteEquipmentTemplate(itemId).catch(err => {
       console.error('[EquipmentStore] deleteEquipmentTemplate 失败:', err);
+      // P9-082 修复：DB 删除失败时回滚内存 map 状态
+      if (removedItem) {
+        equipmentTemplates.value.set(itemId, removedItem);
+        triggerRef(equipmentTemplates);
+      }
     });
   }
 

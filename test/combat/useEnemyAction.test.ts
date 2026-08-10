@@ -588,7 +588,10 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
       const log = makeLogMock();
       const ctx = makeMockCtx();
       ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'sk1', name: '火焰冲击' }]);
-      ctx.enemy.useSkill.mockReturnValue({ success: true, damage: -30, isHeal: true });
+      // P9-088 修复：测试更新 — 治疗量改为 Math.floor(enemy.maxHp * 0.15)
+      const enemyMaxHp = 50;
+      const expectedHeal = Math.floor(enemyMaxHp * 0.15); // 7
+      ctx.enemy.useSkill.mockReturnValue({ success: true, damage: -expectedHeal, isHeal: true });
       const healedEnemy = makeEnemy({ id: 'e1', name: '法师' });
       ctx.enemy.getEnemyById.mockReturnValue(healedEnemy);
       const action = useEnemyAction(state, log, ctx);
@@ -598,7 +601,7 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
 
       expect(result.success).toBe(true);
       expect(result.type).toBe('skill');
-      expect(result.heal).toBe(-30);
+      expect(result.heal).toBe(expectedHeal);
       expect(result.message).toContain('恢复');
       // 验证日志包含 combat_heal
       const healLog = log.addCombatLog.mock.calls[0][0];
@@ -751,16 +754,19 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
       const log = makeLogMock();
       const ctx = makeMockCtx();
       ctx.enemy.getAvailableSkills.mockReturnValue([{ id: 'heal1', name: '自我治疗', isHeal: true }]);
-      ctx.enemy.useSkill.mockReturnValue({ success: true, damage: -30, isHeal: true });
+      // P9-088 修复：测试更新 — 治疗量改为 Math.floor(enemy.maxHp * 0.15)
+      const enemyMaxHp = 100;
+      const expectedHeal = Math.floor(enemyMaxHp * 0.15); // 15
+      ctx.enemy.useSkill.mockReturnValue({ success: true, damage: -expectedHeal, isHeal: true });
       ctx.enemy.getEnemyById.mockReturnValue(makeEnemy({ id: 'e1', name: '牧师' }));
       const action = useEnemyAction(state, log, ctx);
 
-      const enemy = makeEnemy({ id: 'e1', name: '牧师', aiStrategy: 'defensive', hp: 20, maxHp: 100 });
+      const enemy = makeEnemy({ id: 'e1', name: '牧师', aiStrategy: 'defensive', hp: 20, maxHp: enemyMaxHp });
       const result = action.enemyAction(enemy);
 
       expect(result.success).toBe(true);
       expect(result.type).toBe('skill');
-      expect(result.heal).toBe(-30);
+      expect(result.heal).toBe(expectedHeal);
       expect(result.message).toContain('恢复');
     });
 

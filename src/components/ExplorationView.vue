@@ -371,7 +371,13 @@ async function handleCellClick(cell: ExplorationCell) {
     }
     // 阶段二：改为移动式交互，由 movePlayer 校验 4 邻域 + isPassable
     // movePlayer 内部处理驻留格（商店/任务板/营地）打开面板、战斗落点等逻辑
-    await explorationStore.movePlayer(cell.x, cell.y);
+    // P9-095 修复：包裹 try/catch，避免 movePlayer 异常导致未捕获 rejection + toast 提示
+    try {
+      await explorationStore.movePlayer(cell.x, cell.y);
+    } catch (err) {
+      console.error('[ExplorationView] handleCellClick 失败:', err);
+      toast.show({ message: '移动失败，请重试', type: 'danger' });
+    }
   }
 
 onMounted(async () => {

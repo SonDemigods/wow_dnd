@@ -402,6 +402,9 @@ export const useShopStore = defineStore('shop', () => {
       }
     }
 
+    // P9-049 修复：校验商品价格为正数，价格为 0 或负数时拒绝购买
+    if (shopItem.price <= 0) return false;
+
     let totalPrice = shopItem.price * quantity;
 
     // 1. 检查并扣除金币
@@ -587,6 +590,8 @@ export const useShopStore = defineStore('shop', () => {
     // 3. 从背包移除物品
     const removed = inventoryStore.removeItem(itemId, quantity);
     if (removed <= 0) return false;
+    // P9-051 修复：await removeItem 的持久化，确保背包状态已写入 DB
+    await inventoryStore.flushPersist();
 
     const actualQuantity = removed;
     const actualSellPrice = unitPrice * actualQuantity;

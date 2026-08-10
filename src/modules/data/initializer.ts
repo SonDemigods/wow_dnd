@@ -32,10 +32,9 @@ import {
   CLASS_EQUIPMENT,
   CLASS_PASSIVES,
   CLASS_TALENT_TREES,
-  SET_DEFINITIONS
+  SET_DEFINITIONS,
+  SET_PARTS
 } from '@/data';
-// P1-30 修复：MAX_LEVEL 改为从 @/config/character 直接导入，不再通过 @/data 越层导出
-import { MAX_LEVEL } from '@/config/character';
 
 // P8-020 修复：模块级互斥锁，防止并发重复初始化
 let initPromise: Promise<void> | null = null;
@@ -104,22 +103,8 @@ export class DataInitializer {
           await this.initContinents();
 
           if (!isInitialized) {
-            await this.initFactions();
-            await this.initRaces();
-            await this.initClasses();
-            await this.initItems();
-            await this.initEquipment();
-            await this.initMobs();
-            await this.initBosses();
-            await this.initShops();
-            await this.initQuests();
-            await this.initSkillTemplates();
-            await this.initGameConstants();
-            // DATA-4：职业专属数据持久化（供 admin 后台编辑）
-            await this.initClassItems();
-            await this.initClassPassives();
-            await this.initClassTalents();
-            await this.initItemSets();
+            // P9-059 修复：抽取公共 initAllConfigTables 方法，消除与 reinitializeData 的重复初始化逻辑
+            await this.initAllConfigTables();
 
             await db.runtime_gameState.put({
               id: this.initFlagKey,
@@ -174,6 +159,31 @@ export class DataInitializer {
   }
 
   /**
+   * 初始化所有配置表（公共方法）
+   *
+   * P9-059 修复：抽取 initializeData 与 reinitializeData 中重复的配置表初始化逻辑，
+   * 供两者复用。地点/大陆数据（initLocations/initContinents）因调用时机不同不纳入此方法。
+   */
+  private async initAllConfigTables(): Promise<void> {
+    await this.initFactions();
+    await this.initRaces();
+    await this.initClasses();
+    await this.initItems();
+    await this.initEquipment();
+    await this.initMobs();
+    await this.initBosses();
+    await this.initShops();
+    await this.initQuests();
+    await this.initSkillTemplates();
+    await this.initGameConstants();
+    // DATA-4：职业专属数据持久化（供 admin 后台编辑）
+    await this.initClassItems();
+    await this.initClassPassives();
+    await this.initClassTalents();
+    await this.initItemSets();
+  }
+
+  /**
    * 初始化阵营数据
    */
   private async initFactions(): Promise<void> {
@@ -203,9 +213,12 @@ export class DataInitializer {
 
   /**
    * 初始化装备数据
+   *
+   * P9-017 修复：合并 SET_PARTS（195 件套装部件）到装备表，
+   * 确保 unifiedItemTemplateCache 能查询到套装部件。
    */
   private async initEquipment(): Promise<void> {
-    await this.initTable(db.config_equipment_items, EQUIPMENT_ITEMS);
+    await this.initTable(db.config_equipment_items, [...EQUIPMENT_ITEMS, ...SET_PARTS]);
   }
 
   /**
@@ -283,10 +296,9 @@ export class DataInitializer {
    * P3-143：使用 bulkPut 替代嵌套循环逐条 put，将数百次事务往返压缩为一次批量写入，
    * 与 initTable/initBosses 模式保持一致，加速冷启动。
    *
-   * 注意：此处仍需 as unknown as SkillTemplateStorage 断言，因为 @/data 中的
-   * CLASS_ABILITIES / MONSTER_ABILITIES 常量使用 typeof 推断类型，与 SkillTemplateStorage
-   * 存在微妙的类型不匹配（如 classRestriction 字段由外层追加）。待 @/data 常量添加显式类型
-   * 注解后可移除此断言。
+   * P9-066 修复：@/data 常量已带显式类型注解（CLASS_ABILITIES: { class_id; skills: Skill[] }[]、
+   * MONSTER_ABILITIES: Skill[]），spread 后附加 classRestriction/usableBy 与 SkillTemplateStorage
+   * 结构兼容，故将原 `as unknown as` 双重断言收敛为单层 `as SkillTemplateStorage`。
    */
   private async initSkillTemplates(): Promise<void> {
     const allSkills: SkillTemplateStorage[] = [];
@@ -297,7 +309,7 @@ export class DataInitializer {
           ...skill,
           classRestriction: entry.class_id,
           usableBy: 'player'
-        } as unknown as SkillTemplateStorage);
+        } as SkillTemplateStorage);
       }
     }
     // 2. 收集怪物/首领技能模板（usableBy = 'enemy'）
@@ -306,7 +318,7 @@ export class DataInitializer {
         ...skill,
         classRestriction: null,
         usableBy: 'enemy'
-      } as unknown as SkillTemplateStorage);
+      } as SkillTemplateStorage);
     }
     if (allSkills.length > 0) {
       await db.config_skills.bulkPut(allSkills);
@@ -317,9 +329,9 @@ export class DataInitializer {
    * 初始化游戏常量
    */
   private async initGameConstants(): Promise<void> {
+    // P9-058 修复：移除已废弃的 maxLevel 字段写入（P3-116 后标记 @deprecated，无代码依赖读取）
     await db.runtime_gameState.put({
       id: 'game_constants',
-      maxLevel: MAX_LEVEL
     } as GameStateStorage);
   }
 
@@ -393,7 +405,7 @@ export class DataInitializer {
           db.config_class_talents,
           db.config_set_definitions,
           db.runtime_gameState,
-          db.runtime_mapState,
+          // P9-063 修复：移除事务中未使用的 runtime_mapState（reinitializeData 不读写该表）
         ],
         async () => {
           // 清空所有 config 表
@@ -413,25 +425,10 @@ export class DataInitializer {
           await db.config_class_talents.clear();
           await db.config_set_definitions.clear();
 
-          // 重新导入所有基础数据
-          await this.initFactions();
-          await this.initRaces();
-          await this.initClasses();
-          await this.initItems();
-          await this.initEquipment();
-          await this.initMobs();
-          await this.initBosses();
+          // P9-059 修复：复用公共 initAllConfigTables 方法，消除重复初始化逻辑
+          await this.initAllConfigTables();
           await this.initLocations();
           await this.initContinents();
-          await this.initShops();
-          await this.initQuests();
-          await this.initSkillTemplates();
-          await this.initGameConstants();
-          // DATA-4：职业专属数据持久化（供 admin 后台编辑）
-          await this.initClassItems();
-          await this.initClassPassives();
-          await this.initClassTalents();
-          await this.initItemSets();
 
           // 更新初始化标志
           await db.runtime_gameState.put({

@@ -284,7 +284,10 @@ function onMapTouchStart(e: TouchEvent) {
 
 function onMapTouchMove(e: TouchEvent) {
   if (!isDragging.value || e.touches.length !== 1) return;
-  e.preventDefault(); // 拖动时阻止页面滚动
+  // P9-096 修复：调用 preventDefault 前判断 e.cancelable，避免控制台警告
+  if (e.cancelable) {
+    e.preventDefault(); // 拖动时阻止页面滚动
+  }
   const touch = e.touches[0];
   const dx = touch.clientX - dragStartX.value;
   const dy = touch.clientY - dragStartY.value;

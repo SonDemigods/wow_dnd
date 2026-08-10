@@ -942,7 +942,7 @@ describe('useSkillStore - 技能 Store', () => {
 
   // -------------------- Actions：reset --------------------
   describe('Actions：reset', () => {
-    it('reset：清空全部状态并 persist', async () => {
+    it('reset：清空全部状态（不 persist，P9-084 修复）', async () => {
       const s1 = makeSkill({ id: 's1' });
       const store = useSkillStore();
       store.$patch({
@@ -962,7 +962,8 @@ describe('useSkillStore - 技能 Store', () => {
       expect(store.skillTemplates.size).toBe(0);
       expect(store.monsterSkillTemplates.size).toBe(0);
       expect(store.cooldowns).toEqual({});
-      expect(skillsDbService.saveSkillsData).toHaveBeenCalledTimes(1);
+      // P9-084 修复：reset 不再调用 persist，防止空数据覆盖有效存档
+      expect(skillsDbService.saveSkillsData).not.toHaveBeenCalled();
     });
   });
 
@@ -1012,8 +1013,8 @@ describe('useSkillStore - 技能 Store', () => {
 
       await store.castSkill('s1');
 
-      // canCastSkill 被调用时 mana 参数为 0
-      expect(canCastSkill).toHaveBeenCalledWith(s1, 0);
+      // P9-023 修复：canCastSkill 现在接收 CanCastSkillOptions 对象而非裸 number
+      expect(canCastSkill).toHaveBeenCalledWith(s1, expect.objectContaining({ currentMana: 0 }));
     });
 
     it('castSkill：buff 技能无 buffs 数组时 appliedEffects 保持 undefined（FALSE 分支 line 421）', async () => {

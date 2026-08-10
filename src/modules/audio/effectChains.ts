@@ -250,16 +250,33 @@ export function connectEffectChains(nodes: AudioNodes): void {
  * 播放音效前调用，通过 disconnect + connect 实现动态路由切换。
  * 不同路由走不同的效果器组合，产生不同的听感特征。
  *
+ * P9-033 修复：断开共享效果器到所有通道的连接后仅重连目标通道，
+ * 防止信号 fan-out 到多个通道导致音量倍增。
+ *
  * @param nodes - 音频节点集合
  * @param route - 目标效果路由
  */
 export function routeSynthTo(nodes: AudioNodes, route: SfxRoute): void {
-  // 断开所有连接
+  // 断开所有合成器
   nodes.synth.disconnect();
   nodes.membrane.disconnect();
   nodes.fmSynth.disconnect();
   nodes.noiseSynth.disconnect();
   nodes.metalSynth.disconnect();
+
+  // P9-033 修复：断开共享效果器到各通道的连接，防止 fan-out
+  nodes.sfxReverb.disconnect();
+  nodes.chorus.disconnect();
+  nodes.cathedralReverb.disconnect();
+  nodes.phaser.disconnect();
+  nodes.compressor.disconnect();
+
+  // 重新连接共享效果器到主输出链（效果器→masterVolume）
+  nodes.sfxReverb.connect(nodes.masterVolume);
+  nodes.chorus.connect(nodes.masterVolume);
+  nodes.cathedralReverb.connect(nodes.masterVolume);
+  nodes.phaser.connect(nodes.masterVolume);
+  nodes.compressor.connect(nodes.masterVolume);
 
   switch (route) {
     case 'magic':

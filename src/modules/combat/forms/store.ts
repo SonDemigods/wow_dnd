@@ -16,14 +16,52 @@ import {
   calculateFormSwitchHeal,
   getAvailableSkills,
   isSkillAvailableInForm,
+  calculateFormStatDifference,
   createInitialFormState
 } from './service';
 import { getSwitchableForms, getFormByType } from './druidForms';
-// P2-39/P2-47 修复：直接依赖 useCharacterStore 和 useLogStore，
-// 不再调用 createCombatContext 创建完整 ICombatContext（其中 6 个 Store 引用全部未使用）
-import { useCharacterStore } from '@/modules/character/store';
-import { useLogStore } from '@/modules/log/store';
+// P9-077 修复：移除直接 import useCharacterStore/useLogStore，改为通过 setFormContext 注入
+import type { Stats } from '@/modules/character/types';
+import type { LogEntry } from '@/modules/log/types';
 import { generateLogId } from '@/modules/log/service';
+
+// ============================================================================
+// P9-077 修复：外部依赖注入（参照 enemy/store.ts setBossCreateFn 模式）
+// ============================================================================
+
+/**
+ * 形态系统外部上下文接口
+ *
+ * 由调用方（GameBootstrap 或战斗初始化）在 Pinia 就绪后通过 setFormContext 注入，
+ * 替代原先直接 import useCharacterStore/useLogStore，便于测试 mock 与依赖收口。
+ */
+export interface FormStoreContext {
+  /** 角色最大生命值 */
+  readonly maxHp: number;
+  /** 恢复生命值 */
+  receiveHeal: (amount: number) => Promise<void>;
+  /** 施加属性加成（正值 delta） */
+  applyBonus: (delta: Partial<Stats>) => Promise<void>;
+  /** 移除属性加成（正值 delta，表示要移除的量） */
+  removeBonus: (delta: Partial<Stats>) => Promise<void>;
+  /** 添加冒险日志条目 */
+  addLogEntry: (entry: LogEntry) => void;
+}
+
+/** 注入的外部上下文引用（未注入时 switchTo 会抛出错误提示） */
+let formCtx: FormStoreContext | null = null;
+
+/**
+ * 注入形态系统所需的外部上下文
+ *
+ * 由 GameBootstrap 或战斗初始化代码在 Pinia 就绪后调用，
+ * 替代原先在 store 顶层直接 `useCharacterStore()` / `useLogStore()`。
+ *
+ * @param ctx - 外部上下文（character/log Store 的相关方法）
+ */
+export function setFormContext(ctx: FormStoreContext): void {
+  formCtx = ctx;
+}
 
 /**
  * 德鲁伊形态 Store
@@ -39,9 +77,7 @@ import { generateLogId } from '@/modules/log/service';
  * | 查询 | `canSwitch`, `isSkillAvailable`, `getAvailableSkills`, `calculateHealAmount` | 纯查询 |
  */
 export const useFormStore = defineStore('druidForm', () => {
-  // P2-39/P2-47 修复：直接持有需要的外部 Store 引用，不再创建完整 ICombatContext
-  const characterStore = useCharacterStore();
-  const logStore = useLogStore();
+  // P9-077 修复：通过 formCtx 访问外部 Store，不再直接持有 useCharacterStore/useLogStore
 
   // ==================== 响应式状态 ====================
 
@@ -114,6 +150,12 @@ export const useFormStore = defineStore('druidForm', () => {
    * @returns `{ success, reason? }` — 成功仅返回 `{ success: true }`；失败返回 `{ success: false, reason }`
    */
   async function switchTo(targetForm: DruidFormType): Promise<{ success: boolean; reason?: string }> {
+    if (!formCtx) {
+      // P9-077 修复：未注入外部上下文时显式报错，而非静默失败
+      console.error('[FormsStore] formCtx 未注入，请先调用 setFormContext()');
+      return { success: false, reason: '形态系统未初始化' };
+    }
+
     const result = canSwitchForm(targetForm, formState.value);
     if (!result.canSwitch) {
       // P3-96 修复：返回失败原因，调用方可据 reason 给出 toast 提示
@@ -123,12 +165,30 @@ export const useFormStore = defineStore('druidForm', () => {
     // P3-87 修复：直接调用 getFormByType，避免创建多余的临时对象
     const newForm = getFormByType(targetForm);
 
+    // P9-071 修复：switchTo 时应用形态属性修正到角色
+    // 计算旧形态→新形态的属性差异，正值部分 applyBonus，负值部分 removeBonus
+    const statDiff = calculateFormStatDifference(formState.value.currentForm, targetForm);
+    const positiveDiff: Partial<Stats> = {};
+    const negativeDiff: Partial<Stats> = {};
+    const statKeys = Object.keys(statDiff.statModifiers) as Array<keyof Stats>;
+    for (const key of statKeys) {
+      const delta = statDiff.statModifiers[key] || 0;
+      if (delta > 0) positiveDiff[key] = delta;
+      else if (delta < 0) negativeDiff[key] = -delta; // removeBonus 需要正值
+    }
+    if (Object.keys(positiveDiff).length > 0) {
+      try { await formCtx.applyBonus(positiveDiff); } catch (e) { console.error('[FormsStore] applyBonus 失败:', e); }
+    }
+    if (Object.keys(negativeDiff).length > 0) {
+      try { await formCtx.removeBonus(negativeDiff); } catch (e) { console.error('[FormsStore] removeBonus 失败:', e); }
+    }
+
     // 应用形态切换治疗
-    const healAmount = calculateFormSwitchHeal(targetForm, characterStore.maxHp);
+    const healAmount = calculateFormSwitchHeal(targetForm, formCtx.maxHp);
     if (healAmount > 0) {
       // P1-11 修复：await receiveHeal 并添加 try-catch，避免未捕获的 Promise rejection
       try {
-        await characterStore.receiveHeal(healAmount);
+        await formCtx.receiveHeal(healAmount);
       } catch (e) {
         console.error('[FormsStore] receiveHeal 失败:', e);
       }
@@ -138,7 +198,7 @@ export const useFormStore = defineStore('druidForm', () => {
     formState.value = switchForm(formState.value, targetForm);
 
     // 记录冒险日志
-    logStore.addLogEntry({
+    formCtx.addLogEntry({
       id: generateLogId(),
       timestamp: Date.now(),
       type: 'combat',
@@ -194,7 +254,8 @@ export const useFormStore = defineStore('druidForm', () => {
    * @returns 治疗量
    */
   function calculateHealAmount(targetForm: DruidFormType): number {
-    return calculateFormSwitchHeal(targetForm, characterStore.maxHp);
+    // P9-077 修复：通过 formCtx 访问 maxHp
+    return calculateFormSwitchHeal(targetForm, formCtx?.maxHp ?? 0);
   }
 
   return {

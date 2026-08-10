@@ -14,7 +14,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createTestPinia } from '../../utils/setup';
-import { useFormStore } from '@/modules/combat/forms/store';
+import { useFormStore, setFormContext } from '@/modules/combat/forms/store';
 import { FORM_SWITCH_CONFIG } from '@/modules/combat/forms/types';
 
 // ==================== vi.hoisted：跨 store stub 持有对象 ====================
@@ -22,6 +22,9 @@ const mocks = vi.hoisted(() => ({
   characterStore: {
     maxHp: 100,
     receiveHeal: vi.fn().mockResolvedValue(undefined),
+    // P9-077 修复：测试更新 — 补充 applyBonus/removeBonus 供 setFormContext 注入
+    applyBonus: vi.fn().mockResolvedValue(undefined),
+    removeBonus: vi.fn().mockResolvedValue(undefined),
   },
   logStore: {
     addLogEntry: vi.fn(),
@@ -51,7 +54,18 @@ describe('德鲁伊形态系统 Store', () => {
 
     mocks.characterStore.receiveHeal.mockClear();
     mocks.logStore.addLogEntry.mockClear();
+    mocks.characterStore.applyBonus.mockClear();
+    mocks.characterStore.removeBonus.mockClear();
     mocks.characterStore.maxHp = 100;
+
+    // P9-077 修复：测试更新 — 通过 setFormContext 注入外部依赖，替代直接 import useCharacterStore/useLogStore
+    setFormContext({
+      get maxHp() { return mocks.characterStore.maxHp; },
+      receiveHeal: mocks.characterStore.receiveHeal,
+      applyBonus: mocks.characterStore.applyBonus,
+      removeBonus: mocks.characterStore.removeBonus,
+      addLogEntry: mocks.logStore.addLogEntry,
+    });
   });
 
   // ============================================================

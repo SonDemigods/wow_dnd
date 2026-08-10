@@ -83,6 +83,11 @@ export class BossPhaseManager {
    * 若 phases 为空，返回 null。
    */
   private findPhaseIndex(phases: BossPhase[], hpPercent: number): number | null {
+    // P9-089 修复：检测全 0 阈值（仅基础阶段），显式记录日志而非静默回退
+    const hasNonZeroThreshold = phases.some(p => p.hpThreshold > 0);
+    if (!hasNonZeroThreshold && phases.length > 0) {
+      console.warn('[BossPhaseManager] 所有阶段阈值为 0，Boss 将始终处于基础阶段');
+    }
     for (let i = phases.length - 1; i >= 0; i--) {
       // 跳过基础阶段（hpThreshold === 0），防止 BOSS HP=0 时切回基础阶段而非濒死挣扎阶段
       if (phases[i].hpThreshold === 0) continue;

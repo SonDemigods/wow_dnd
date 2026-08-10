@@ -110,6 +110,7 @@ export function setQuestExternalCallbacks(callbacks: {
 
 /**
  * 清除 quest 模块的外部回调（供 GameBootstrap.dispose 调用，避免回调泄漏）
+ * P9-052 修复：提供 clear/reset 回调方法，避免模块级回调变量在测试中互相污染
  */
 export function clearQuestExternalCallbacks(): void {
   getInventoryItemCountCallback = null;

@@ -846,11 +846,16 @@ function handleClose() {
   emit('close', combatStore.combatResult || undefined);
 }
 
-onMounted(() => {
-  // 确保技能 Store 已初始化
-  const id = characterStore.currentCharacterId;
-  if (id) {
-    skillsStore.initialize(id);
+onMounted(async () => {
+  // P9-105 修复：改 async + await skillsStore.initialize + try-catch
+  try {
+    // 确保技能 Store 已初始化
+    const id = characterStore.currentCharacterId;
+    if (id) {
+      await skillsStore.initialize(id);
+    }
+  } catch (err) {
+    console.error('[CombatPopup] skillsStore.initialize 失败:', err);
   }
   // 事件处理函数来自 useCombatAnimations / useBossIntroOverlay
   eventBus.on(GameEvents.COMBAT_CRITICAL_HIT, onCritHit);

@@ -130,7 +130,7 @@ export function useBossMechanics(
           source: 'enemy',
           sourceName: base.name
         };
-        addEffectToContainer(state.playerEffects.value, stunEffect);
+        addEffectToContainer(state.playerEffects.value, stunEffect, state.effectRegistry);
         log.addCombatLog({
           actorType: 'system', actorId: 'system', actorName: '系统',
           eventType: 'combat_event', targetType: 'player', targetId: 'player',
@@ -150,7 +150,7 @@ export function useBossMechanics(
           source: 'enemy',
           sourceName: base.name
         };
-        addEffectToContainer(state.playerEffects.value, silenceEffect);
+        addEffectToContainer(state.playerEffects.value, silenceEffect, state.effectRegistry);
         log.addCombatLog({
           actorType: 'system', actorId: 'system', actorName: '系统',
           eventType: 'combat_event', targetType: 'player', targetId: 'player',
@@ -173,7 +173,7 @@ export function useBossMechanics(
           source: 'enemy',
           sourceName: base.name
         };
-        addEffectToContainer(state.playerEffects.value, debuffEffect);
+        addEffectToContainer(state.playerEffects.value, debuffEffect, state.effectRegistry);
         log.addCombatLog({
           actorType: 'system', actorId: 'system', actorName: '系统',
           eventType: 'combat_event', targetType: 'player', targetId: 'player',
@@ -334,27 +334,39 @@ export function useBossMechanics(
    *
    * 阶段九迁移：从 usePlayerAction.ts 迁入。
    * 在玩家造成实际伤害后调用，根据 Boss 运行时状态（reflectDamage/counterStance）
-   * 对玩家造成反击伤害。通过 bossCtx.applyDamageToPlayer 注入玩家伤害，
+   * 对目标造成反击伤害。通过 bossCtx.applyDamageToPlayer 注入玩家伤害，
    * 保持 S3 解耦原则。
+   *
+   * P9-010 修复：新增 onDamage + damageTargetName 可选参数，用于宠物攻击场景
+   * 将反击伤害施加给宠物而非玩家。
    *
    * @param target - 受击的敌人实例（须为 Boss）
    * @param actualDamage - 玩家实际造成的伤害
+   * @param onDamage - 可选的伤害回调（默认施加给玩家 owner；宠物场景传 petTakeDamage）
+   * @param damageTargetName - 可选的受击方名称（默认玩家名；宠物场景传宠物名）
    */
-  function applyBossCounterMechanics(target: EnemyInstance, actualDamage: number): void {
+  function applyBossCounterMechanics(
+    target: EnemyInstance,
+    actualDamage: number,
+    onDamage?: (amount: number) => void,
+    damageTargetName?: string,
+  ): void {
     if (actualDamage <= 0) return;
     const boss = state.bossInstances.get(target.id);
     if (!boss) return;
     const { runtime } = boss;
     const playerName = bossCtx.getPlayerName();
+    const damageFn = onDamage ?? bossCtx.applyDamageToPlayer;
+    const receiverName = damageTargetName ?? playerName;
 
     if (runtime.reflectDamage && runtime.reflectDamage > 0) {
       const reflectAmount = Math.floor(actualDamage * runtime.reflectDamage);
       if (reflectAmount > 0) {
-        bossCtx.applyDamageToPlayer(reflectAmount);
+        damageFn(reflectAmount);
         log.addCombatLog({
           actorType: 'system', actorId: 'system', actorName: '系统',
           eventType: 'combat_damage', targetType: 'player', targetId: 'player',
-          targetName: playerName, damage: reflectAmount,
+          targetName: receiverName, damage: reflectAmount,
           isCrit: false, isDodge: false,
           message: `${target.name} 反弹了 ${reflectAmount} 点伤害！`
         });
@@ -364,13 +376,13 @@ export function useBossMechanics(
     if (runtime.counterStance) {
       const counterDamage = Math.floor(actualDamage * BOSS_COUNTER_DAMAGE_RATIO);
       if (counterDamage > 0) {
-        bossCtx.applyDamageToPlayer(counterDamage);
+        damageFn(counterDamage);
         log.addCombatLog({
           actorType: 'system', actorId: 'system', actorName: '系统',
           eventType: 'combat_damage', targetType: 'player', targetId: 'player',
-          targetName: playerName, damage: counterDamage,
+          targetName: receiverName, damage: counterDamage,
           isCrit: false, isDodge: false,
-          message: `${target.name} 反击对 ${playerName} 造成 ${counterDamage} 点伤害！`
+          message: `${target.name} 反击对 ${receiverName} 造成 ${counterDamage} 点伤害！`
         });
       }
       runtime.counterStance = false;

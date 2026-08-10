@@ -18,6 +18,7 @@ import { createEnemyInstance, calculateEnemyDamage } from './service';
 import { enemyDbService } from './db';
 import { useSkillStore } from '@/modules/skill/store';
 import { errorHandler } from '@/services/ErrorHandler';
+import { ENEMY_HEAL_HP_RATIO } from '@/config/combat';
 
 // ============================================================================
 // Boss 创建回调注入（阶段四：切断 enemy → boss 反向依赖）
@@ -83,8 +84,10 @@ export const useEnemyStore = defineStore('enemies', () => {
       if (template) {
         const enemy = createEnemyInstance(template, level);
         activeEnemyIds.value.push(enemy.id);
-        enemiesCache.value[enemy.id] = { ...enemy };
-        return enemy;
+        // P9-035 修复：返回缓存引用而非原始对象，确保后续 takeDamage 等修改同步可见
+        const cached = { ...enemy };
+        enemiesCache.value[enemy.id] = cached;
+        return cached;
       }
 
       // 回退到 Boss 表查找（通过注入的回调，避免静态依赖 boss 模块）
@@ -92,8 +95,10 @@ export const useEnemyStore = defineStore('enemies', () => {
         const boss = await bossCreateFn(dataId, level);
         if (boss) {
           activeEnemyIds.value.push(boss.id);
-          enemiesCache.value[boss.id] = { ...boss };
-          return boss;
+          // P9-035 修复：返回缓存引用
+          const cachedBoss = { ...boss };
+          enemiesCache.value[boss.id] = cachedBoss;
+          return cachedBoss;
         }
       }
 
@@ -240,9 +245,12 @@ export const useEnemyStore = defineStore('enemies', () => {
 
     if (isHeal) {
       // 生命恢复技能：恢复敌人生命值
-      // 记录技能冷却（修复：治疗技能也需要进入冷却）
+      // P9-088 修复：治疗量基于敌人最大生命值比例而非物理攻击力
       recordCooldown(id, skillId, skill.cooldown);
-      const healAmount = Math.min(baseDamage, enemy.maxHp - enemy.hp);
+      const healAmount = Math.min(
+        Math.floor(enemy.maxHp * ENEMY_HEAL_HP_RATIO),
+        enemy.maxHp - enemy.hp
+      );
       enemiesCache.value[id] = { ...enemy, hp: enemy.hp + healAmount };
       return { success: true, damage: -healAmount, isHeal: true };
     }

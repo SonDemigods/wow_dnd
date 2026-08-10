@@ -1,6 +1,6 @@
 /**
  * @fileoverview 职业被动技能数据（Phase 5.2）
- * @description 为 13 个职业各定义 3 个专属被动技能，共 39 个。
+ * @description 为 13 个职业各定义 6 个专属被动技能，共 78 个。
  *              被动技能在战斗开始时由 usePassiveSkills 加载并按触发时机执行。
  *              数据结构与 PassiveSkill 接口严格对齐。
  * @module data

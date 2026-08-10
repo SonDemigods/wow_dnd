@@ -298,7 +298,14 @@ const {
   init, cleanup,
 } = useGameActions(() => emit('exit'));
 
-onMounted(async () => { await init(); });
+// P9-104 修复：init() 包裹 try-catch，避免初始化异常导致未捕获 rejection
+onMounted(async () => {
+  try {
+    await init();
+  } catch (err) {
+    console.error('[GameMain] init 失败:', err);
+  }
+});
 onUnmounted(() => cleanup());
 defineExpose({ showNotif });
 </script>

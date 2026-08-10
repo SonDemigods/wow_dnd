@@ -86,8 +86,13 @@ defineEmits<{
   exit: [];
 }>();
 
-onMounted(() => {
-  store.loadDashboardStats();
+// P9-106 修复：onMounted store 调用包裹 try-catch
+onMounted(async () => {
+  try {
+    await store.loadDashboardStats();
+  } catch (err) {
+    console.error('[AdminLayout] loadDashboardStats 失败:', err);
+  }
 });
 
 /** 导航到指定配置表 */

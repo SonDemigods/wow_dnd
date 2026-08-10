@@ -42,7 +42,7 @@
  * @description 展示冒险记录列表，支持按类型着色和清空日志操作
  */
 
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useLogStore } from '../../modules/log';
 import { eventBus, GameEvents } from '@/modules/bus';
 import BasePopup from '../common/BasePopup.vue';
@@ -111,6 +111,11 @@ const scrollToBottom = () => {
 };
 
 onMounted(() => {
+  scrollToBottom();
+});
+
+// P9-097 修复：新增日志时自动滚动到底部
+watch(logs, () => {
   scrollToBottom();
 });
 </script>

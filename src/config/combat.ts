@@ -345,6 +345,29 @@ export const BOSS_REVIVE_HP_RATIO = 0.5;
  */
 export const BOSS_EFFECT_SCALE_STEP = 0.08;
 
+// ==================== 被动技能参数 ====================
+
+/**
+ * 低血量被动触发阈值（生命百分比低于此值时触发 on_low_hp 被动）
+ *
+ * P9-070 修复：从 usePassiveSkills.checkLowHpPassives 硬编码 0.3 提取为配置常量。
+ *
+ * @see src/modules/combat/composables/usePassiveSkills.ts checkLowHpPassives
+ */
+export const LOW_HP_PASSIVE_THRESHOLD = 0.3;
+
+// ==================== 敌人治疗参数 ====================
+
+/**
+ * 敌人治疗技能恢复量占最大生命值的比例
+ *
+ * P9-088 修复：敌人 useSkill 治疗量原基于物理攻击力，改为基于最大生命值比例，
+ * 使治疗量与敌人生命池匹配，避免低攻击力敌人治疗效果微乎其微。
+ *
+ * @see src/modules/enemy/store.ts useSkill 治疗分支
+ */
+export const ENEMY_HEAL_HP_RATIO = 0.15;
+
 // ==================== 先攻排序参数 ====================
 
 /**

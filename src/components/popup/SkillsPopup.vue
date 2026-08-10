@@ -180,30 +180,42 @@ function selectBarSlot(index: number) {
 
 function activateSkill(skillId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'skill_memorize' });
-  const targetSlot = selectedSlotIndex.value ?? findEmptySlot();
-  if (targetSlot === null) {
-    const skillAtSlot0 = skillsStore.skillBar.slots[0];
-    if (skillAtSlot0) {
-      skillsStore.unequipSkill(skillAtSlot0);
+  // P9-101 修复：包裹 try/catch，避免 equipSkill/unequipSkill 异常导致未处理错误 + toast 提示
+  try {
+    const targetSlot = selectedSlotIndex.value ?? findEmptySlot();
+    if (targetSlot === null) {
+      const skillAtSlot0 = skillsStore.skillBar.slots[0];
+      if (skillAtSlot0) {
+        skillsStore.unequipSkill(skillAtSlot0);
+      }
+      skillsStore.equipSkill(skillId, 0);
+    } else {
+      skillsStore.equipSkill(skillId, targetSlot);
     }
-    skillsStore.equipSkill(skillId, 0);
-  } else {
-    skillsStore.equipSkill(skillId, targetSlot);
+    selectedSlotIndex.value = null;
+    barRenderKey.value++;
+  } catch (err) {
+    console.error('[SkillsPopup] activateSkill 失败:', err);
+    toast.show({ message: '技能记忆失败，请重试', type: 'danger' });
   }
-  selectedSlotIndex.value = null;
-  barRenderKey.value++;
 }
 
 function deactivateSkill(skillId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'skill_forget' });
-  const slotIndex = skillsStore.skillBar.slots.findIndex(id => id === skillId);
-  if (slotIndex !== -1) {
-    skillsStore.unequipSkill(skillId);
+  // P9-101 修复：包裹 try/catch，避免 unequipSkill 异常导致未处理错误 + toast 提示
+  try {
+    const slotIndex = skillsStore.skillBar.slots.findIndex(id => id === skillId);
+    if (slotIndex !== -1) {
+      skillsStore.unequipSkill(skillId);
+    }
+    if (selectedSkill.value?.id === skillId) {
+      selectedSkill.value = null;
+    }
+    barRenderKey.value++;
+  } catch (err) {
+    console.error('[SkillsPopup] deactivateSkill 失败:', err);
+    toast.show({ message: '技能遗忘失败，请重试', type: 'danger' });
   }
-  if (selectedSkill.value?.id === skillId) {
-    selectedSkill.value = null;
-  }
-  barRenderKey.value++;
 }
 
 function findEmptySlot(): SkillSlotIndex | null {

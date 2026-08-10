@@ -941,7 +941,7 @@ describe('useShopStore - 商店 Store', () => {
       expect(mocks.characterStore.gainGold).toHaveBeenCalledWith(50); // (3-2)*50
     });
 
-    it('部分成功且单价为 0 → 不返还金币（refundAmount === 0）', async () => {
+    it('单价为 0 时拒绝购买（P9-049 修复）', async () => {
       const store = useShopStore();
       const item = makeShopItem({ itemId: 'free_1', price: 0, quantity: 5 });
       // P3-116：currentShopId 收敛到 GameStore
@@ -957,8 +957,9 @@ describe('useShopStore - 商店 Store', () => {
 
       const result = await store.buyItem('free_1', 3);
 
-      // Assert：单价 0，refundAmount = 0，不调用 gainGold
-      expect(result).toBe(true);
+      // P9-049 修复：单价 <= 0 时直接拒绝购买，返回 false
+      expect(result).toBe(false);
+      expect(mocks.characterStore.spendGold).not.toHaveBeenCalled();
       expect(mocks.characterStore.gainGold).not.toHaveBeenCalled();
     });
 

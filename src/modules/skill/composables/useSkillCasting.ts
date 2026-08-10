@@ -34,7 +34,13 @@ export function useSkillCasting(state: SkillState) {
       return { success: false, skillId, type: 'physical_damage', message: '未加载角色，无法施放技能' };
     }
 
-    const castCheck = canCastSkill(skill, charData.mana);
+    // P9-023 修复：构造完整 CanCastSkillOptions，传入冷却状态
+    // 沉默校验由 combat store 的 playerAction 在调用 castSkill 前完成（defense-in-depth），
+    // 此处传入 currentCooldown 使 canCastSkill 校验冷却，避免直接调用时跳过
+    const castCheck = canCastSkill(skill, {
+      currentMana: charData.mana,
+      currentCooldown: getCooldownRemaining(skillId),
+    });
     if (!castCheck.canCast) {
       return { success: false, skillId, type: skill.type, message: castCheck.reason };
     }
@@ -79,7 +85,9 @@ export function useSkillCasting(state: SkillState) {
       }
       case 'mana_restore':
         await characterStore.changeMp(damageValue);
-        // P5-001 修复：设置 heal 字段使 usePlayerSkill 进入 heal 分支并结束回合
+        // P9-078 修复：mana_restore 仍需设置 heal 字段以进入 usePlayerSkill 的 heal 分支并结束回合，
+        // 但通过 type='mana_restore' 标记使 pipeline 跳过 receiveHeal（P8-007 已实现 isManaRestore 守卫）。
+        // 此处保持 heal=damageValue 供 pipeline 显示 MP+ 蓝字，不会触发回血。
         heal = damageValue;
         break;
       case 'buff':

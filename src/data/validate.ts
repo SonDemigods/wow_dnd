@@ -282,8 +282,9 @@ export function validateTalentData(): number {
     'stat_bonus', 'damage_multiplier', 'damage_reduction',
     'healing_multiplier', 'resource_bonus', 'skill_enhance', 'unlock_pet',
   ]);
-  // 禁用效果类型（违反 2.1 合规约束）：crit_bonus / hp_multiplier / special
-  const bannedEffectTypes: ReadonlySet<string> = new Set(['crit_bonus', 'hp_multiplier', 'special']);
+  // 禁用效果类型（违反 2.1 合规约束）：crit_bonus / hp_multiplier / special / mana_max
+  // P9-062 修复：补充遗漏的 mana_max 到 bannedEffectTypes
+  const bannedEffectTypes: ReadonlySet<string> = new Set(['crit_bonus', 'hp_multiplier', 'special', 'mana_max']);
   let validCount = 0;
 
   for (const tree of CLASS_TALENT_TREES) {

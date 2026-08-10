@@ -3,14 +3,12 @@
  * @description 提供添加、移除、丢弃、整理物品功能。
  * @module inventory/composables
  */
-import { computeStackResult, MAX_STACK, INVENTORY_SIZE } from '../service';
-import { getItemDisplayName } from '../../item/typeRegistry';
-import { RARITY_ORDER } from '../service';
+import { computeStackResult, MAX_STACK, INVENTORY_SIZE, sortItems } from '../service';
 import type { InventoryState } from './useInventoryState';
 import type { InventoryItem } from '../types';
 
 export function useInventoryItems(state: InventoryState) {
-  const { inventory, itemTemplates, currentCharacterId, persistInventory, logItemAcquired, logItemDropped, notifyItemCollected } = state;
+  const { inventory, itemTemplates, currentCharacterId, persistInventory, logItemAcquired, logItemDropped, notifyItemCollected, sortBy, sortOrder } = state;
 
   function addItem(itemId: string, quantity: number): number {
     if (!currentCharacterId.value || quantity <= 0) return 0;
@@ -98,8 +96,8 @@ export function useInventoryItems(state: InventoryState) {
     }
     persistInventory();
 
-    const droppedItem = itemTemplates.value.get(invItem.itemId);
-    if (droppedItem) logItemDropped(droppedItem.name, dropCount);
+    // P9-048 修复：复用已取出的 itemTemplate 变量，避免重复 get
+    if (itemTemplate) logItemDropped(itemTemplate.name, dropCount);
     return true;
   }
 
@@ -112,6 +110,13 @@ export function useInventoryItems(state: InventoryState) {
       return itemTemplate?.kind !== 'quest';
     });
     if (validIndices.length === 0) return false;
+
+    // P9-014 修复：批量丢弃前记录日志
+    for (const index of validIndices) {
+      const invItem = inventory.value[index];
+      const itemTemplate = itemTemplates.value.get(invItem.itemId);
+      if (itemTemplate) logItemDropped(itemTemplate.name, invItem.count);
+    }
 
     const sortedIndices = [...validIndices].sort((a, b) => b - a);
     const newInventory = [...inventory.value];
@@ -148,18 +153,8 @@ export function useInventoryItems(state: InventoryState) {
       }
     });
 
-    newInventory.sort((a, b) => {
-      const itemA = itemTemplates.value.get(a.itemId);
-      const itemB = itemTemplates.value.get(b.itemId);
-      const rarityA = RARITY_ORDER[itemA?.rarity || 'common'];
-      const rarityB = RARITY_ORDER[itemB?.rarity || 'common'];
-      if (rarityA !== rarityB) return rarityB - rarityA;
-      const nameA = itemA ? getItemDisplayName(itemA) : '杂项';
-      const nameB = itemB ? getItemDisplayName(itemB) : '杂项';
-      return nameA.localeCompare(nameB);
-    });
-
-    inventory.value = newInventory;
+    // P9-053 修复：整理后按用户排序偏好（sortBy/sortOrder）排序，而非硬编码稀有度+名称
+    inventory.value = sortItems(newInventory, itemTemplates.value, sortBy.value, sortOrder.value);
     persistInventory();
   }
 

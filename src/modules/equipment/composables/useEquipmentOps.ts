@@ -83,6 +83,15 @@ export function useEquipmentOps(state: EquipmentState, setBonus: ReturnType<type
     } catch (e) {
       console.error('[EquipmentStore] equipItem 卸下旧装备失败，回滚已移除的物品:', e);
       if (cb.addItem()) cb.addItem()!(item.id, 1);
+      // P9-029 修复：若 previousEquipped 已被卸下（doUnequip 成功但后续 weapon2 卸下失败），
+      // 需重新装备 previousEquipped 到原槽位并恢复 bonus
+      if (previousEquipped) {
+        if (cb.removeItem()) cb.removeItem()!(previousEquipped.item.id, 1);
+        equipment.value[slot] = previousEquipped;
+        try { await applyBonusForSlot(slot); } catch (rollbackErr) {
+          console.error('[EquipmentStore] equipItem 回滚旧装备 bonus 失败:', rollbackErr);
+        }
+      }
       return false;
     }
 

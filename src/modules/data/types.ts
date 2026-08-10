@@ -8,11 +8,12 @@
 
 import type { InventoryStorage, ItemStorage } from '../inventory/types';
 import type { CharQuestStorage } from '../quest/types';
-import type { EquipmentStorage, EquipmentTemplateStorage } from '../equipment/types';
+import type { EquipmentStorage, EquipmentTemplateStorage, EquipmentItem } from '../equipment/types';
 import type { SkillsData } from '../skill/types';
 import type { ExplorationStorage } from '../exploration/types';
 import type { CombatLogStorage } from '../combat/types';
-import type { LogEntry } from '../log/types';
+// P9-060 修复：引入 AdventureLogData 以保留备份中的 updatedAt 时间戳
+import type { AdventureLogData } from '../log/types';
 import type { LocationData } from '../map/types';
 import type { ShopConfig, ShopItemsStorage, ShopSoldItemsStorage } from '../shop/types';
 import type { MapStateStorage } from '../map/types';
@@ -23,9 +24,10 @@ import type { EnemyStorage } from '../enemy/types';
 import type { BossStorage } from '../boss/types';
 import type { SkillTemplateStorage } from '../skill/types';
 import type { QuestDefinitionStorage } from '../quest/types';
-import type { EquipmentItem } from '../equipment/types';
 import type { ItemSet } from '../equipment/setTypes';
-import {
+// P9-064 修复：改用 import type 引入，避免将运行时依赖引入纯类型文件
+// 原 typeof 推导仍可在 type 位置使用，但 import type 不会生成运行时代码
+import type {
   CONTINENTS,
   LOCATIONS,
   SHOPS,
@@ -39,7 +41,7 @@ import {
   RACES,
   FACTIONS
 } from '@/data';
-import {
+import type {
   RARITY_SELL_DISCOUNT,
   RARITY_PRICE_MULTIPLIER,
   RARITY_CONFIG
@@ -135,7 +137,7 @@ export interface BackupFile {
  * @property {Record<string, SkillsData>} skills - 技能数据（以角色 ID 为键）
  * @property {Record<string, ExplorationStorage>} exploration - 探索进度（以角色 ID 为键）
  * @property {Record<string, CombatLogStorage>} combat - 战斗记录（以 battleLogId 为键；若缺失则降级为 ${combatId}_${timestamp}）
- * @property {Record<string, LogEntry[]>} adventureLog - 冒险日志（以角色 ID 为键）
+ * @property {AdventureLogData[]} adventureLog - 冒险日志（每个元素含 characterId/entries/updatedAt）
  * @property {LocationData[]} map - 地图数据（地点和大陆配置）
  * @property {ShopConfig[]} shop - 商店配置
  * @property {Record<string, GameStateStorage>} gameState - 游戏状态（runtime_gameState 全量表，以 id 为键）
@@ -161,7 +163,8 @@ export interface BackupData {
   skills: Record<string, SkillsData>;
   exploration: Record<string, ExplorationStorage>;
   combat: Record<string, CombatLogStorage>;
-  adventureLog: Record<string, LogEntry[]>;
+  // P9-060 修复：adventureLog 改为 AdventureLogData[] 以保留原始 updatedAt 时间戳
+  adventureLog: AdventureLogData[];
   map: LocationData[];
   shop: ShopConfig[];
   gameState: Record<string, GameStateStorage>;
@@ -314,8 +317,8 @@ export interface BackupConfig {
  * 初始化数据接口
  *
  * 定义 DataInitializer 所需的全量初始化数据源结构。
- * 注意：此处使用 typeof 从运行时常量推导类型，导致 types.ts 产生运行时依赖。
- * 理想做法是将 InitData 移至 service.ts 或独立文件，使 types.ts 回归纯类型定义。
+ * 注意：P9-064 修复后已改用 import type 引入常量，typeof 仅在 type 位置使用，
+ * 不再产生运行时依赖。原注释中"导致 types.ts 产生运行时依赖"的问题已消除。
  *
  * @property {object} map - 地图相关初始化数据
  * @property {typeof CONTINENTS} map.continents - 大陆数据常量引用

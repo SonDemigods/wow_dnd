@@ -13,6 +13,7 @@ import { eventBus, GameEvents } from '../../bus';
 import { rollDodge } from '../service';
 import { AggressiveStrategy, DefensiveStrategy, BalancedStrategy, BossPhaseStrategy } from '../ai/strategies';
 import { ENEMY_AOE_DAMAGE_MULTIPLIER, DEFEND_DEFENSE_BONUS, DEFEND_DURATION_TURNS } from '@/config/combat';
+import type { Rng } from '@/utils/rng';
 import {
   createEmptyContainer,
   addEffectToContainer,
@@ -46,6 +47,19 @@ const strategyRegistry: Record<AiStrategyType, IAiStrategy> = {
   balanced: new BalancedStrategy(),
   boss_phase: new BossPhaseStrategy(),
 };
+
+/**
+ * P9-107 修复：注入确定性 RNG 到 AI 策略注册表
+ *
+ * 替换模块级 strategyRegistry 中的策略实例为使用指定 rng 的实例。
+ * 供测试与回放使用，生产环境无需调用（默认使用 defaultRng）。
+ */
+export function injectAiRng(rng: Rng): void {
+  strategyRegistry.aggressive = new AggressiveStrategy(rng);
+  strategyRegistry.defensive = new DefensiveStrategy(rng);
+  strategyRegistry.balanced = new BalancedStrategy(rng);
+  strategyRegistry.boss_phase = new BossPhaseStrategy(rng);
+}
 
 export function useEnemyAction(
   state: ReturnType<typeof useCombatState>,
@@ -89,6 +103,9 @@ export function useEnemyAction(
     const healSkillData = availableSkillsCache.find(s => s.id === decisionSkillId);
     const healSkillName = healSkillData?.name || decisionSkillId;
 
+    // P9-042 修复：result.damage 为负值（enemy store 返回 -healAmount），clamp 为非负治疗量
+    const heal = Math.max(0, -result.damage);
+
     addCombatLog({
       actorType: 'enemy',
       actorId: updatedEnemy.id,
@@ -96,17 +113,17 @@ export function useEnemyAction(
       eventType: 'combat_heal',
       skillId: decisionSkillId,
       skillName: healSkillName,
-      heal: result.damage,
+      heal,
       isCrit: false,
       isDodge: false,
-      message: `${updatedEnemy.name} 恢复生命值 (+${Math.abs(result.damage)})！`
+      message: `${updatedEnemy.name} 恢复生命值 (+${heal})！`
     });
 
     return {
       success: true,
       type: 'skill',
-      heal: result.damage,
-      message: `${e.name} 恢复了生命值 (+${Math.abs(result.damage)})！`
+      heal,
+      message: `${e.name} 恢复了生命值 (+${heal})！`
     };
   }
 
@@ -144,7 +161,7 @@ export function useEnemyAction(
           source: 'enemy',
           sourceName: e.name
         };
-        addEffectToContainer(playerEffects.value, debuffEffect);
+        addEffectToContainer(playerEffects.value, debuffEffect, effectRegistry);
         effectRegistry.get(debuffEffect.type)?.onApply?.(debuffEffect, playerCtx);
       }
 
@@ -178,7 +195,7 @@ export function useEnemyAction(
         source: 'enemy',
         sourceName: e.name
       };
-      addEffectToContainer(container, effect);
+      addEffectToContainer(container, effect, effectRegistry);
       effectRegistry.get(effect.type)?.onApply?.(effect, enemyCtx);
     }
 

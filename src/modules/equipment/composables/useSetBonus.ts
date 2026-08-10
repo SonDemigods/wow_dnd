@@ -5,7 +5,7 @@
  */
 import { useCharacterStore } from '@/modules/character/store';
 import { configCache } from '@/modules/config';
-import { getAllSetProgresses, getActiveBonusEffects } from '../setService';
+import { getAllSetProgresses } from '../setService';
 import type { Stats } from '@/modules/character/types';
 import type { EquipmentState } from './useEquipmentState';
 
@@ -16,30 +16,35 @@ export function useSetBonus(state: EquipmentState) {
     const characterStore = useCharacterStore();
     const progresses = getAllSetProgresses(equipment.value, configCache.getSetDefinitions());
 
-    const currentStats: Array<{ setId: string; stat: keyof Stats; value: number }> = [];
+    // P9-030 修复：遍历 activeTiers 而非 getActiveBonusEffects，携带 requiredPieces 到 key
+    // 避免不同档位的同 stat 同类值碰撞（如 2件套 str+5 与 4件套 str+5 被视为同一 bonus）
+    const currentStats: Array<{ setId: string; stat: keyof Stats; value: number; requiredPieces: number }> = [];
     for (const progress of progresses) {
-      for (const effect of getActiveBonusEffects(progress)) {
-        if (effect.kind === 'stat') {
-          currentStats.push({ setId: progress.setId, stat: effect.stat, value: effect.value });
+      for (const tier of progress.activeTiers) {
+        for (const effect of tier.bonuses) {
+          if (effect.kind === 'stat') {
+            currentStats.push({ setId: progress.setId, stat: effect.stat, value: effect.value, requiredPieces: tier.requiredPieces });
+          }
         }
       }
     }
 
-    const buildKey = (setId: string, stat: keyof Stats, value: number) => `${setId}:${stat}:${value}`;
-    const currentKeys = new Set(currentStats.map(s => buildKey(s.setId, s.stat, s.value)));
-    const appliedKeys = new Set(appliedSetBonuses.value.map(b => buildKey(b.setId, b.stat, b.value)));
+    const buildKey = (s: { setId: string; stat: keyof Stats; value: number; requiredPieces?: number }) =>
+      `${s.setId}:${s.stat}:${s.value}:${s.requiredPieces ?? 0}`;
+    const currentKeys = new Set(currentStats.map(s => buildKey(s)));
+    const appliedKeys = new Set(appliedSetBonuses.value.map(b => buildKey(b)));
 
     // P5-024 修复：先收集需移除/需应用的项目，任一步失败时回滚已应用的部分并重建状态，
     // 避免出现部分 bonus 增减却 appliedSetBonuses 未同步导致的重复累计错误。
     try {
       for (const b of appliedSetBonuses.value) {
-        if (!currentKeys.has(buildKey(b.setId, b.stat, b.value))) {
+        if (!currentKeys.has(buildKey(b))) {
           await characterStore.removeBonus({ [b.stat]: b.value } as Partial<Stats>);
         }
       }
 
       for (const s of currentStats) {
-        const key = buildKey(s.setId, s.stat, s.value);
+        const key = buildKey(s);
         if (!appliedKeys.has(key)) {
           await characterStore.applyBonus({ [s.stat]: s.value } as Partial<Stats>);
         }
@@ -62,11 +67,13 @@ export function useSetBonus(state: EquipmentState) {
    */
   function syncAppliedBonuses(): void {
     const progresses = getAllSetProgresses(equipment.value, configCache.getSetDefinitions());
-    const currentStats: Array<{ setId: string; stat: keyof Stats; value: number }> = [];
+    const currentStats: Array<{ setId: string; stat: keyof Stats; value: number; requiredPieces: number }> = [];
     for (const progress of progresses) {
-      for (const effect of getActiveBonusEffects(progress)) {
-        if (effect.kind === 'stat') {
-          currentStats.push({ setId: progress.setId, stat: effect.stat, value: effect.value });
+      for (const tier of progress.activeTiers) {
+        for (const effect of tier.bonuses) {
+          if (effect.kind === 'stat') {
+            currentStats.push({ setId: progress.setId, stat: effect.stat, value: effect.value, requiredPieces: tier.requiredPieces });
+          }
         }
       }
     }

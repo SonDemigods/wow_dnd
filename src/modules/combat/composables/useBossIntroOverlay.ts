@@ -50,6 +50,8 @@ export function useBossIntroOverlay(options: UseBossIntroOverlayOptions) {
 
   // ==================== 动画控制器（P2-60 修复：卸载时调用 cancel 清理） ====================
   let bossIntroController: { cancel: () => void } | null = null;
+  // P9-073 修复：记录 setAnimTimer 返回的 timer id，dispose 时 clearTimeout 避免卸载后回调
+  let autoCloseTimerId: ReturnType<typeof setTimeout> | null = null;
 
   /**
    * COMBAT_BOSS_INTRO 事件处理
@@ -97,9 +99,11 @@ export function useBossIntroOverlay(options: UseBossIntroOverlayOptions) {
     // 演出结束后自动关闭（+300ms 给淡出动画留时间）
     const minDuration = 1000 + data.lines.length * 900;
     const actualDuration = Math.max(data.duration, minDuration);
-    options.setAnimTimer(() => {
+    // P9-073 修复：记录 timer id 供 dispose 清理
+    autoCloseTimerId = options.setAnimTimer(() => {
       showBossIntro.value = false;
       bossIntroController = null;
+      autoCloseTimerId = null;
     }, actualDuration + 300);
   }
 
@@ -107,11 +111,17 @@ export function useBossIntroOverlay(options: UseBossIntroOverlayOptions) {
    * 清理 Boss 出场演出资源
    *
    * 在组件 onUnmounted 中调用，取消进行中的动画控制器。
+   * P9-073 修复：同时清理 setAnimTimer 注册的自动关闭定时器，防止卸载后回调修改状态。
    */
   function dispose(): void {
     if (bossIntroController) {
       bossIntroController.cancel();
       bossIntroController = null;
+    }
+    // P9-073 修复：清理自动关闭定时器，避免卸载后回调
+    if (autoCloseTimerId) {
+      clearTimeout(autoCloseTimerId);
+      autoCloseTimerId = null;
     }
   }
 

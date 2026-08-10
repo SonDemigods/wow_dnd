@@ -109,16 +109,28 @@ export function addEffectToContainer(
 
 /**
  * 从容器中移除指定类型的效果
+ *
+ * P9-040 修复：新增可选 registry + ctx 参数，移除前调用 onRemove 回调，
+ * 确保 stat_modifier 等效果的清理逻辑被执行。
+ *
  * @returns 移除的效果数量
  */
 export function removeEffectFromContainer(
   container: EffectContainer,
-  type: EffectType
+  type: EffectType,
+  registry?: EffectHandlerRegistry,
+  ctx?: EffectContext,
 ): number {
+  const removeCtx = ctx ?? FALLBACK_EFFECT_CONTEXT;
   const count = container.effects.filter(e => e.type === type).length;
   // P4-004：使用 splice 原地移除，避免 filter 重建数组破坏外部引用
   for (let i = container.effects.length - 1; i >= 0; i--) {
     if (container.effects[i].type === type) {
+      // P9-040：移除前调用 onRemove 回调
+      if (registry) {
+        const handler = registry.get(container.effects[i].type);
+        handler?.onRemove?.(container.effects[i], removeCtx);
+      }
       container.effects.splice(i, 1);
     }
   }

@@ -28,8 +28,9 @@ export class MapDbService {
           ...(existing || {}),
           id: key,
           view: state.view,
-          unlockedZones: state.unlockedZones,
-          completedZones: state.completedZones
+          // P9-086 修复：对可选字段做 undefined 兜底，避免写入 undefined 值
+          unlockedZones: state.unlockedZones ?? [],
+          completedZones: state.completedZones ?? []
         });
       });
     });

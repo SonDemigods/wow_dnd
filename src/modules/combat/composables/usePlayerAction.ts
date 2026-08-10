@@ -85,7 +85,7 @@ export function usePlayerAction(
         source: 'skill',
         sourceName
       };
-      addEffectToContainer(container, effect);
+      addEffectToContainer(container, effect, effectRegistry);
       // 调用 handler.onApply 触发效果施加回调
       effectRegistry.get(effect.type)?.onApply?.(effect, effectCtx);
     }
@@ -122,7 +122,7 @@ export function usePlayerAction(
             source: 'skill',
             sourceName
           };
-          addEffectToContainer(playerEffects.value, effect);
+          addEffectToContainer(playerEffects.value, effect, effectRegistry);
           effectRegistry.get(effect.type)?.onApply?.(effect, playerCtx);
         }
       }

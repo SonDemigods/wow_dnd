@@ -100,7 +100,7 @@ export const useTalentStore = defineStore('talent', () => {
         critBonus: 0,
         resourceBonuses: {},
         healingMultiplier: 0,
-        hpMultiplier: 0,
+        // P9-083 修复：hpMultiplier 字段移除（死代码）
         specialEffects: [],
         skillEnhancements: [],
         unlockedPets: []

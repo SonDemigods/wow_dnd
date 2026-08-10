@@ -54,31 +54,8 @@ export class ImportService implements IImportService {
       reader.onload = async () => {
         try {
           const content = reader.result as string;
-          const backup = JSON.parse(content);
-
-          if (!backup.version) {
-            resolve({ success: false, error: '备份文件格式错误' });
-            return;
-          }
-
-          const checksum = await calculateChecksum(backup.data);
-          if (checksum !== backup.checksum) {
-            resolve({ success: false, error: '备份文件已损坏' });
-            return;
-          }
-
-          const compatibility = this.checkVersionCompatibility(backup.version);
-          if (!compatibility.compatible) {
-            resolve({ success: false, error: compatibility.message });
-            return;
-          }
-
-          resolve({
-            success: true,
-            version: backup.version,
-            timestamp: backup.timestamp,
-            gameVersion: backup.gameVersion
-          });
+          const backup = JSON.parse(content) as BackupFile;
+          resolve(await this.validateBackupData(backup));
         } catch {
           resolve({ success: false, error: '备份文件格式错误' });
         }
@@ -93,6 +70,38 @@ export class ImportService implements IImportService {
   }
 
   /**
+   * 验证已解析的备份对象（内部方法）
+   *
+   * P9-056 修复：抽取公共验证逻辑，供 validateBackup 和 importBackup 复用，
+   * 避免重复读取文件——importBackup 读取一次后直接调用本方法校验。
+   *
+   * @param backup - 已解析的备份对象
+   * @returns ValidationResult - 验证结果
+   */
+  private async validateBackupData(backup: BackupFile): Promise<ValidationResult> {
+    if (!backup.version) {
+      return { success: false, error: '备份文件格式错误' };
+    }
+
+    const checksum = await calculateChecksum(backup.data);
+    if (checksum !== backup.checksum) {
+      return { success: false, error: '备份文件已损坏' };
+    }
+
+    const compatibility = this.checkVersionCompatibility(backup.version);
+    if (!compatibility.compatible) {
+      return { success: false, error: compatibility.message };
+    }
+
+    return {
+      success: true,
+      version: backup.version,
+      timestamp: backup.timestamp,
+      gameVersion: backup.gameVersion
+    };
+  }
+
+  /**
    * 导入备份文件
    *
    * 验证备份文件后，将数据导入数据库
@@ -100,11 +109,12 @@ export class ImportService implements IImportService {
    * @returns ImportResult - 导入结果
    */
   async importBackup(file: File): Promise<ImportResult> {
-    const validation = await this.validateBackup(file);
-    if (!validation.success) {
+    // P9-056 修复：一次 FileReader 读取同时完成校验与导入，避免重复读取文件
+    const MAX_BACKUP_SIZE = 50 * 1024 * 1024; // 50MB
+    if (file.size > MAX_BACKUP_SIZE) {
       return {
         success: false,
-        error: validation.error,
+        error: '备份文件过大（超过 50MB），请检查是否选择了正确的文件',
         importedStores: [],
         skippedStores: []
       };
@@ -125,6 +135,18 @@ export class ImportService implements IImportService {
         try {
           const content = reader.result as string;
           const backup = JSON.parse(content) as BackupFile;
+
+          // 复用 validateBackupData 校验，无需二次读取文件
+          const validation = await this.validateBackupData(backup);
+          if (!validation.success) {
+            resolve({
+              success: false,
+              error: validation.error,
+              importedStores: [],
+              skippedStores: []
+            });
+            return;
+          }
 
           const result = await this.importData(backup.data);
           resolve(result);
@@ -229,12 +251,14 @@ export class ImportService implements IImportService {
           db.runtime_shopSoldItems,
         ],
         async () => {
-          // 辅助函数：Record 形状数据有数据则 bulkPut，否则计入 skipped
+          // 辅助函数：Record 形状数据有数据则 clear+bulkPut，否则计入 skipped
+          // P9-018 修复：导入前 clear 目标表，避免旧数据残留
           const bulkPutIfNotEmpty = async <T>(
             table: Table,
             record: Record<string, T> | undefined,
             storeName: string
           ) => {
+            await table.clear();
             if (record && Object.keys(record).length > 0) {
               await table.bulkPut(Object.values(record));
               importedStores.push(storeName);
@@ -243,12 +267,13 @@ export class ImportService implements IImportService {
             }
           };
 
-          // 辅助函数：数组形状数据有数据则 bulkPut，否则计入 skipped（CODE-34）
+          // 辅助函数：数组形状数据有数据则 clear+bulkPut，否则计入 skipped（CODE-34）
           const bulkPutArrayIfNotEmpty = async (
             table: Table,
             items: readonly unknown[] | undefined,
             storeName: string
           ) => {
+            await table.clear();
             if (items && items.length > 0) {
               await table.bulkPut(items as unknown[]);
               importedStores.push(storeName);
@@ -272,14 +297,19 @@ export class ImportService implements IImportService {
           await bulkPutIfNotEmpty(db.runtime_shopSoldItems, data.shopSoldItems, 'runtime_shopSoldItems');
 
           // adventureLog：转换为 AdventureLogData[] 后统一处理
-          // 注意：补全 updatedAt 字段（AdventureLogData 必填，旧实现缺失导致类型不匹配）
-          const adventureLogEntries: AdventureLogData[] = data.adventureLog
-            ? Object.entries(data.adventureLog).map(([characterId, entries]) => ({
-                characterId,
-                entries,
-                updatedAt: Date.now()
-              }))
-            : [];
+          // P9-060 修复：保留备份中的原始 updatedAt 时间戳，而非用 Date.now()
+          // 兼容旧格式（Record<string, LogEntry[]>）：若 adventureLog 为对象则降级为 Date.now()
+          const adventureLogEntries: AdventureLogData[] = Array.isArray(data.adventureLog)
+            ? data.adventureLog
+            : data.adventureLog
+              ? Object.entries(data.adventureLog as unknown as Record<string, LogEntry[]>).map(
+                  ([characterId, entries]) => ({
+                    characterId,
+                    entries,
+                    updatedAt: Date.now()
+                  })
+                )
+              : [];
           await bulkPutArrayIfNotEmpty(
             db.runtime_adventureLogs,
             adventureLogEntries,

@@ -32,9 +32,11 @@ export type ResourceStatKey = `${ResourceType}_max`;
  * - `resource_bonus`：资源加成（怒气/能量上限提升等，stat 限定为 ResourceStatKey）
  * - `skill_enhance`：技能增强（特定技能效果提升）
  * - `healing_multiplier`：治疗倍率（治疗效果百分比提升，P2-75 新增，替代 special 的"治疗效果提升"语义）
- * - `hp_multiplier`：生命上限倍率（每级提升 X% 生命上限，P3-139 新增，修复原 stat_bonus+hp_max 配置 bug）
  * - `unlock_pet`：解锁宠物（P3-156 新增，学习该天赋后解锁指定宠物，由天赋系统在加点时调用 petStore.unlockPet）
  * - `special`：特殊效果（需自定义处理逻辑，目前无消费方，仅为兼容保留）
+ *
+ * P9-083 修复：移除 `hp_multiplier` 天赋效果类型——该类型在 validate.ts 中已被禁用，
+ * 实际天赋配置已全部转为 stat_bonus(con)，属于死代码。
  */
 export type TalentEffectType =
   | 'stat_bonus'
@@ -44,7 +46,6 @@ export type TalentEffectType =
   | 'resource_bonus'
   | 'skill_enhance'
   | 'healing_multiplier'
-  | 'hp_multiplier'
   | 'unlock_pet'
   | 'special';
 
@@ -119,11 +120,12 @@ export interface UnlockPetEffect {
 /**
  * 无 stat 字段的数值累加效果
  *
- * 涵盖 damage_multiplier / damage_reduction / crit_bonus / healing_multiplier / hp_multiplier，
+ * 涵盖 damage_multiplier / damage_reduction / crit_bonus / healing_multiplier，
  * 这些类型仅需 valuePerRank 字段进行累加。
  */
 export interface SimpleMultiplierEffect {
-  type: 'damage_multiplier' | 'damage_reduction' | 'crit_bonus' | 'healing_multiplier' | 'hp_multiplier';
+  // P9-083 修复：移除 'hp_multiplier'（死代码，validate.ts 已禁用，配置已转为 stat_bonus）
+  type: 'damage_multiplier' | 'damage_reduction' | 'crit_bonus' | 'healing_multiplier';
   /** 每级天赋提供的数值（百分比小数，如 0.05 = 5%） */
   valuePerRank: number;
   /** 效果描述（可选，仅用于配置文档化） */

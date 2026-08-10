@@ -161,8 +161,7 @@ export interface TalentEffectSummary {
   resourceBonuses: Record<string, number>;
   /** 治疗倍率总和（healing_multiplier，P2-75 新增），如 0.24 表示治疗量提升 24% */
   healingMultiplier: number;
-  /** 生命上限倍率总和（hp_multiplier，P3-139 新增），如 0.15 表示生命上限提升 15% */
-  hpMultiplier: number;
+  // P9-083 修复：hp_multiplier 为死代码（天赋效果类型已移除），hpMultiplier 字段移除
   /** 特殊效果列表（special） */
   specialEffects: Array<{ description: string; value: number }>;
   /** 技能增强列表（skill_enhance） */
@@ -182,7 +181,7 @@ export function createEmptyEffectSummary(): TalentEffectSummary {
     critBonus: 0,
     resourceBonuses: {},
     healingMultiplier: 0,
-    hpMultiplier: 0,
+    // P9-083 修复：hpMultiplier 字段移除（死代码）
     specialEffects: [],
     skillEnhancements: [],
     unlockedPets: []
@@ -241,11 +240,7 @@ function accumulateEffect(summary: TalentEffectSummary, effect: TalentEffect, ra
       // 供 skill/store.ts 在治疗计算中读取并应用（原 special 类型无消费方，导致天赋失效）
       summary.healingMultiplier += totalValue;
       break;
-    case 'hp_multiplier':
-      // P3-139 修复：新增 hp_multiplier 类型，替代原 stat_bonus+hp_max 的错误配置，
-      // 让"每级提升 X% 生命上限"的天赋效果能被正确聚合（原配置因 hp_max 非 keyof Stats 被静默丢弃）
-      summary.hpMultiplier += totalValue;
-      break;
+    // P9-083 修复：hp_multiplier 为死代码（validate.ts 已禁用，配置已转为 stat_bonus(con)），移除处理分支
     case 'special':
       summary.specialEffects.push({
         description: effect.description || '特殊效果',

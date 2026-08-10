@@ -278,6 +278,8 @@ export function useInitiative(
         const enemy = ctx.enemy.getEnemyById(eId);
         if (enemy && enemy.hp <= 0) {
           boss.checkBossRevive(enemy);
+          // P9-075 修复：DOT 击杀敌人时触发资源系统 onKill 钩子（含 RuneSystem 等），与 endCombat 统一
+          state.resourceSystems.value.forEach(sys => sys.onKill?.());
         }
       }
     }

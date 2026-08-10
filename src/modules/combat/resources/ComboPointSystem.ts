@@ -24,6 +24,7 @@ export class ComboPointSystem extends BaseResourceSystem {
       // 连击点仅通过生成器技能积攒（generatesResource 触发）
       return;
     }
-    this.applyGeneration(Math.min(amount, 6));
+    // P9-074 修复：移除 Math.min(amount, 6) 重复裁剪——applyGeneration 已通过 maxValue 裁剪
+    this.applyGeneration(amount);
   }
 }

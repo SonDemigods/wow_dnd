@@ -73,20 +73,23 @@ export function useCombatLog(state: ReturnType<typeof useCombatState>, ctx: ICom
       // P7-008 修复：forceAll 时不能直接复用 in-flight promise（其快照可能不含最新日志）
       if (forceAll) {
         await savingPromise;
-        // in-flight 完成后 fall through 执行一次新的 forceAll 保存
+        // P9-076 修复：in-flight 完成后用独立日志快照执行一次新的 forceAll 保存，
+        // 确保最新日志不因竞态丢失。此时 savingPromise 已为 null，重新进入下方主逻辑。
       } else {
         return savingPromise;
       }
     }
+    // P9-076 修复：forceAll 时记录独立日志快照（深拷贝 slice），避免异步执行期间 combatLogs 被修改
+    const logsSnapshot = forceAll ? state.combatLogs.value.slice(0) : null;
     savingPromise = (async () => {
       try {
-        const logs = state.combatLogs.value;
+        const logs = forceAll ? logsSnapshot! : state.combatLogs.value;
         // 增量：仅保存 [lastSavedIndex, length) 新增日志；forceAll 保存全部
         const start = forceAll ? 0 : lastSavedIndex;
         const logsToSave = logs.slice(start);
         await Promise.all(logsToSave.map(log => combatDbService.saveCombatLog(log)));
         // 保存成功后推进指针（forceAll 时同步全部指针到末尾）
-        lastSavedIndex = forceAll ? logs.length : start + logsToSave.length;
+        lastSavedIndex = forceAll ? state.combatLogs.value.length : start + logsToSave.length;
       } catch (e) {
         console.error('[CombatStore] 保存战斗日志失败:', e);
       } finally {

@@ -20,7 +20,9 @@ import {
   createEmptyContainer,
   type EffectContext,
 } from '../effects';
-import { usePetStore, calculatePetSkillDamage, getPetDefinition, getPetResourceCost } from '../pets';
+// P9-068 修复：移除直接 import usePetStore，改为通过参数注入 petStore 引用（参照 useEnemyAction 的 DI 风格）
+import { calculatePetSkillDamage, getPetDefinition, getPetResourceCost } from '../pets';
+import type { usePetStore } from '../pets';
 import type { PetInstance, PetType } from '../pets';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
@@ -39,8 +41,9 @@ export function usePetAction(
   ctx: ICombatContext,
   // P3-182：注入 Boss 机制层，使宠物攻击接入 Boss 防御/反击机制
   boss: ReturnType<typeof useBossMechanics>,
+  // P9-068 修复：注入 petStore 引用（替代直接 import usePetStore），便于测试 mock 与依赖收口
+  petStore: ReturnType<typeof usePetStore>,
 ) {
-  const petStore = usePetStore();
   const { addCombatLog, createEnemyEffectContext } = log;
   const { aliveEnemies, currentTarget, enemyEffects, effectRegistry } = state;
 
@@ -197,7 +200,8 @@ export function usePetAction(
         }
       }
       // P3-182：接入 Boss 反击机制（反弹/反击）
-      boss.applyBossCounterMechanics(target, actualPetDamage);
+      // P9-010 修复：宠物攻击时反击伤害施加给宠物而非玩家
+      boss.applyBossCounterMechanics(target, actualPetDamage, (amount) => petTakeDamage(amount), pet.name);
 
       addPetLog({
         eventType: 'combat_damage',

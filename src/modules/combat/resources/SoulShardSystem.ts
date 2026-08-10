@@ -23,6 +23,7 @@ export class SoulShardSystem extends BaseResourceSystem {
       // 灵魂碎片仅通过 MP 生成器技能积攒（generatesResource 触发）
       return;
     }
-    this.applyGeneration(Math.min(amount, 5));
+    // P9-074 修复：移除 Math.min(amount, 5) 重复裁剪——applyGeneration 已通过 maxValue 裁剪
+    this.applyGeneration(amount);
   }
 }

@@ -146,6 +146,7 @@ const { mockSeedData } = vi.hoisted(() => {
       CLASS_EQUIPMENT: classSpecificItems,
       CLASS_TALENT_TREES: classTalentTrees,
       SET_DEFINITIONS: itemSets,
+      SET_PARTS: [], // P9-017：initializer 合并 SET_PARTS 到装备表，mock 需提供空数组
       MAX_LEVEL: 60,
     },
   };
@@ -200,7 +201,7 @@ function createMinimalBackupData(): BackupData {
     skills: {},
     exploration: {},
     combat: {},
-    adventureLog: {},
+    adventureLog: [], // P9-060 修复：adventureLog 从 Record 改为 AdventureLogData[]
     map: [],
     shop: [],
     gameState: {},
@@ -363,7 +364,8 @@ describe('DataInitializer 数据初始化服务', () => {
       // 游戏常量
       const constants = await db.runtime_gameState.get('game_constants');
       expect(constants).toBeDefined();
-      expect(constants!.maxLevel).toBe(mockSeedData.MAX_LEVEL);
+      // P9-058 修复：initGameConstants 不再写入废弃的 maxLevel 字段
+      expect(constants).not.toHaveProperty('maxLevel');
     });
 
     it('首次初始化后写入初始化标志', async () => {
@@ -786,9 +788,14 @@ describe('BackupService 数据备份服务', () => {
       const backup = await backupService.createBackup();
 
       // Assert：含 entries 的角色日志保留条目
-      expect(backup.data.adventureLog['char_1']).toHaveLength(1);
-      // entries 缺失的角色降级为空数组
-      expect(backup.data.adventureLog['char_2']).toEqual([]);
+      // P9-060 修复：adventureLog 为数组，用 characterId 查找
+      const char1 = backup.data.adventureLog.find(item => item.characterId === 'char_1');
+      expect(char1).toBeDefined();
+      expect(char1!.entries).toHaveLength(1);
+      // entries 缺失的角色：原始记录中 entries 为 undefined（P9-060 修复：直接存储原始记录，不再降级为 []）
+      const char2 = backup.data.adventureLog.find(item => item.characterId === 'char_2');
+      expect(char2).toBeDefined();
+      expect(char2!.entries).toBeUndefined();
     });
 
     it('正确收集 mapState、shopItems、characters 运行时数据', async () => {
@@ -1107,25 +1114,12 @@ describe('ImportService 数据导入服务', () => {
       const logEntry: LogEntry = { id: 'log_1', timestamp: 1000, type: 'combat', message: '战斗胜利' };
       const backupData: BackupData = {
         ...createMinimalBackupData(),
-        adventureLog: { char_1: [logEntry] },
+        // P9-060 修复：adventureLog 为数组格式
+        adventureLog: [{ characterId: 'char_1', entries: [logEntry], updatedAt: 5000 }],
       };
-      const backup: BackupFile = {
-        version: BACKUP_CONFIG.backupVersion,
-        timestamp: Date.now(),
-        checksum: 'placeholder',
-        gameVersion: '1.0.0',
-        data: backupData,
-      };
-      const file = backupToFile(backup);
-      // mock validateBackup 成功，绕过 checksum 校验以聚焦 importData 映射逻辑
-      vi.spyOn(importService, 'validateBackup').mockResolvedValueOnce({
-        success: true,
-        version: BACKUP_CONFIG.backupVersion,
-        timestamp: backup.timestamp,
-      });
 
-      // Act
-      const result = await importService.importBackup(file);
+      // P9-056 修复：importBackup 不再调用 validateBackup，改为直接调 importData
+      const result = await importService.importData(backupData);
 
       // Assert
       expect(result.success).toBe(true);
@@ -1135,28 +1129,17 @@ describe('ImportService 数据导入服务', () => {
       expect(logs[0].characterId).toBe('char_1');
       expect(logs[0].entries).toHaveLength(1);
       expect(logs[0].updatedAt).toBeTypeOf('number');
+      // P9-060 修复：验证导入保留了原始 updatedAt
+      expect(logs[0].updatedAt).toBe(5000);
     });
 
     it('备份不含 adventureLog 字段时计入 skippedStores', async () => {
-      // Arrange：构造不含 adventureLog 的备份数据（模拟旧版本备份，覆盖三元运算 false 分支）
+      // Arrange：构造不含 adventureLog 的备份数据
       const { adventureLog: _omit, ...rest } = createMinimalBackupData();
       const backupData = rest as BackupData;
-      const backup: BackupFile = {
-        version: BACKUP_CONFIG.backupVersion,
-        timestamp: Date.now(),
-        checksum: 'placeholder',
-        gameVersion: '1.0.0',
-        data: backupData,
-      };
-      const file = backupToFile(backup);
-      vi.spyOn(importService, 'validateBackup').mockResolvedValueOnce({
-        success: true,
-        version: BACKUP_CONFIG.backupVersion,
-        timestamp: backup.timestamp,
-      });
 
-      // Act
-      const result = await importService.importBackup(file);
+      // P9-056 修复：直接调 importData
+      const result = await importService.importData(backupData);
 
       // Assert
       expect(result.success).toBe(true);

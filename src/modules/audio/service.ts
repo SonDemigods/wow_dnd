@@ -90,6 +90,9 @@ class AudioService implements IAudioService {
   /** 事件总线监听器记录（用于销毁时取消订阅） */
   private eventHandlers: { event: string; handler: EventCallback }[] = [];
 
+  /** P9-085 修复：DOM 事件监听器记录（用于销毁时移除） */
+  private domListeners: { event: string; handler: EventListener }[] = [];
+
   constructor() {
     // 构造函数中不启动音频上下文，等待用户交互
     // 节点延迟到 init() 创建，避免在未启动 AudioContext 时构造 Reverb 等节点
@@ -160,6 +163,8 @@ class AudioService implements IAudioService {
     // 是音频服务的必要边界例外。监听器使用 { once: true } 自动注销，无泄漏风险。
     const events = ['click', 'touchstart', 'keydown'] as const;
     for (const event of events) {
+      // P9-085 修复：记录 DOM 监听器，destroy 时移除未触发的监听器
+      this.domListeners.push({ event, handler: resume as EventListener });
       document.addEventListener(event, resume, { once: true });
     }
   }
@@ -532,6 +537,12 @@ class AudioService implements IAudioService {
       eventBus.off(event as keyof GameEventPayloadMap, handler as (data: unknown) => void);
     }
     this.eventHandlers = [];
+
+    // P9-085 修复：移除未触发的 DOM 事件监听器
+    for (const { event, handler } of this.domListeners) {
+      document.removeEventListener(event, handler);
+    }
+    this.domListeners = [];
 
     // 4. 释放 SFX 调度状态
     this.sfxSynth?.dispose();

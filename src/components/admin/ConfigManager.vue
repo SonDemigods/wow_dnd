@@ -72,8 +72,13 @@ const {
   handleFormSubmit,
 } = useConfigCrud({ currentDbTable });
 
-onMounted(() => {
-  store.loadReferenceData();
+// P9-106 修复：onMounted store 调用包裹 try-catch
+onMounted(async () => {
+  try {
+    await store.loadReferenceData();
+  } catch (err) {
+    console.error('[ConfigManager] loadReferenceData 失败:', err);
+  }
 });
 </script>
 

@@ -67,7 +67,14 @@ export class AdminDbService {
         await table.add({ ...cleanData, id: key }, key);
         return key;
       }
-      return await table.add(cleanData);
+      // P9-050 修复：对自动生成的主键做运行时类型校验，确保返回 string
+      const generatedKey = await table.add(cleanData);
+      if (typeof generatedKey !== 'string') {
+        throw new Error(
+          `自动生成的主键类型不是 string，实际类型: ${typeof generatedKey}，值: ${String(generatedKey)}`
+        );
+      }
+      return generatedKey;
     });
   }
 
@@ -82,6 +89,7 @@ export class AdminDbService {
       const table = getTable(tableName);
       const existing = await table.get(id);
       if (!existing) throw new Error('记录不存在');
+      // P9-055 修复：先 get 现有记录再浅合并，再 put，避免 put 覆盖整行导致未传入字段丢失
       // JSON 序列化去除 Vue/Proxy 包装，避免 IndexedDB DataCloneError
       const cleanData = toRawData({ ...existing, ...data, id: existing.id ?? id }) as Record<string, unknown>;
       await table.put(cleanData);

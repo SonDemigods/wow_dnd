@@ -287,8 +287,8 @@ function clampBonus(value: number): number {
 }
 
 /** 计算加成变更后的 bonusStats
- * isAdd=true 时下界为 1（clampStat），保证新加成至少为 1
- * isAdd=false 时下界为 0（clampBonus），允许完全移除加成
+ * P9-079 修复：isAdd 与 isRemove 统一使用 clampBonus（下界 0），避免零值加成被 clampStat 强制变为 1
+ * 原逻辑 isAdd=true 时使用 clampStat（下界 1），导致零值加成（如装备 bonus 中某属性为 0）被错误提升为 1
  */
 export function computeBonusChange(currentBonus: Partial<Stats>, delta: Partial<Stats>, isAdd: boolean): Partial<Stats> {
   const result = { ...currentBonus };
@@ -298,8 +298,9 @@ export function computeBonusChange(currentBonus: Partial<Stats>, delta: Partial<
   for (const key of keys) {
     const current = result[key] || 0;
     const change = delta[key] || 0;
+    // P9-079 修复：加成值统一使用 clampBonus（下界 0），零值加成不再被强制变为 1
     result[key] = isAdd
-      ? clampStat(current + change)
+      ? clampBonus(current + change)
       : clampBonus(current - change);
   }
   return result;

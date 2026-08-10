@@ -34,6 +34,7 @@ import { useInitiative } from './composables/useInitiative';
 import { usePlayerAction } from './composables/usePlayerAction';
 import { usePassiveSkills } from './composables/usePassiveSkills';
 import { usePetAction, type PetSummonResult } from './composables/usePetAction';
+import { usePetStore } from './pets';
 import type { PetType, PetOwner } from './pets';
 
 /**
@@ -76,7 +77,9 @@ export const useCombatStore = defineStore('combat', () => {
 
   // P3-156：宠物行动层（术士/猎人战斗循环接入，作为战斗与宠物 Store 的唯一桥接点）
   // P3-182：注入 boss，使宠物攻击接入 Boss 防御/反击机制
-  const pet = usePetAction(state, log, ctx, boss);
+  // P9-068 修复：注入 petStore 引用，替代 usePetAction 内部直接 import usePetStore
+  const petStore = usePetStore();
+  const pet = usePetAction(state, log, ctx, boss, petStore);
 
   // 6. 敌人行动层（注入 passive 以便在玩家受伤时触发 onDamaged 被动）
   const enemy = useEnemyAction(state, log, ctx, passive);
@@ -203,9 +206,9 @@ export const useCombatStore = defineStore('combat', () => {
         //   需要保证探索状态在 character 死亡前完成；combat 场景无此依赖
         // - 风险评估：若 resurrect 在 state.cleanup 之前完成，character.value 已被替换为新对象，
         //   但 cleanup 不读取 character，故无影响
-        // P6-009 修复：添加 .catch 避免未捕获的 Promise 拒绝
+        // P9-043 修复：await handleDeath 确保 character 状态在 cleanup 前完成更新
         // 使用 Promise.resolve 包裹以兼容 mock 返回非 Promise 的情况
-        Promise.resolve(ctx.character.handleDeath()).catch(err => {
+        await Promise.resolve(ctx.character.handleDeath()).catch(err => {
           console.error('[CombatStore] handleDeath 异步执行失败:', err);
         });
       } else if (result === 'fled') {
@@ -324,7 +327,8 @@ export const useCombatStore = defineStore('combat', () => {
 
     // P3-156：初始化宠物系统（术士/猎人战斗循环接入）
     // 根据职业 classId 决定加载哪套宠物数据；非宠物职业 initialize 也安全：
-    // 仅重置状态为空，buildInitiativeOrder 会通过 hasActivePet 守卫跳过
+    // P9-108 修复：仅 hunter 使用 hunter 宠物，术士(warlock)使用 warlock 宠物，
+    // 其余非宠物职业仍需初始化（重置状态），petStore.initialize 内部通过 hasActivePet 守卫跳过
     const petOwner: PetOwner = ctx.character.classId === 'hunter' ? 'hunter' : 'warlock';
     // petStore.initialize 的 logCallback 签名为 (message: string) => void，
     // 而 addCombatLog 接收完整 CombatLog 对象，此处包装为系统日志写入

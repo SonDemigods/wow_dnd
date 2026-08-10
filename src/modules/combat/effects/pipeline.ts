@@ -119,13 +119,16 @@ export function processDamagePipeline(
   // 阶段 0: 原始伤害（技能传 override，普攻打 calcAttackDamage）
   const rawDamage = baseDamageOverride ?? calcAttackDamage(attackerCtx.baseStats, damageType, rng);
 
+  // P9-041 修复：attackMultiplier 在防御减免前应用（影响"面板攻击力"层），
+  // 否则当防御值大于 coefficient×伤害 时，攻击力倍率被过度削减
+  const { attackMultiplier, bonusPercent } = extractAttackerModifiers(attackerStatModifiers, damageType);
+  const scaledDamage = Math.floor(rawDamage * attackMultiplier);
+
   // 阶段 0.5: 减伤公式（始终应用，无论来源是技能还是普攻）
-  const defendedDamage = applyDefenseReduction(rawDamage, defenderCtx.baseStats, damageType);
+  const defendedDamage = applyDefenseReduction(scaledDamage, defenderCtx.baseStats, damageType);
 
   // 阶段 1: 攻击方修正 → 预期伤害
-  // P3-146：先应用 stat_modifier 中的 attack_multiplier（影响"面板攻击力"层）
-  const { attackMultiplier, bonusPercent } = extractAttackerModifiers(attackerStatModifiers, damageType);
-  const baseDamage = Math.floor(defendedDamage * attackMultiplier);
+  const baseDamage = defendedDamage;
 
   // 1b: effect 系统修正（attack_up/attack_down 等效果）
   const attackerMod = registry.reduceMultiplier(attackerEffects, 'getAttackerDamageMod', attackerCtx);

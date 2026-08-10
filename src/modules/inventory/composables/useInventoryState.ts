@@ -27,6 +27,7 @@ export function setInventoryExternalCallbacks(callbacks: {
 }
 
 export function clearInventoryExternalCallbacks(): void {
+  // P9-052 修复：提供 clear/reset 回调方法，避免模块级回调变量在测试中互相污染
   onItemCollectedCallback = null;
 }
 
@@ -154,28 +155,30 @@ export function useInventoryState() {
   }
 
   // ==================== 重置 ====================
-  function resetInventory(): void {
+  // P9-047 修复：改为 async 并 await persistInventory，避免角色切换竞态
+  async function resetInventory(): Promise<void> {
     inventory.value = [];
-    persistInventory();
+    await persistInventory();
   }
 
   // ==================== 日志辅助 ====================
-  function logItemAcquired(itemName: string, count: number): void {
+  // P9-054 修复：日志函数改为 async 并 await addLogEntry，避免 fire-and-forget 异步
+  async function logItemAcquired(itemName: string, count: number): Promise<void> {
     const countText = count > 1 ? ` x${count}` : '';
-    useLogStore().addLogEntry({
+    await useLogStore().addLogEntry({
       id: generateLogId(), timestamp: Date.now(), type: 'item',
       message: `获得了物品：${itemName}${countText}`, icon: 'game-icons:chest'
     });
   }
-  function logItemUsed(itemName: string): void {
-    useLogStore().addLogEntry({
+  async function logItemUsed(itemName: string): Promise<void> {
+    await useLogStore().addLogEntry({
       id: generateLogId(), timestamp: Date.now(), type: 'item',
       message: `使用了：${itemName}`, icon: 'game-icons:potion-ball'
     });
   }
-  function logItemDropped(itemName: string, count: number): void {
+  async function logItemDropped(itemName: string, count: number): Promise<void> {
     const countText = count > 1 ? ` x${count}` : '';
-    useLogStore().addLogEntry({
+    await useLogStore().addLogEntry({
       id: generateLogId(), timestamp: Date.now(), type: 'item',
       message: `丢弃了：${itemName}${countText}`, icon: 'game-icons:trash-can'
     });
@@ -183,7 +186,21 @@ export function useInventoryState() {
 
   // ==================== 回调通知 ====================
   function notifyItemCollected(itemId: string, quantity: number): void {
-    onItemCollectedCallback?.(itemId, quantity);
+    // P9-015 修复：包装回调返回值，捕获异步错误避免静默吞没
+    try {
+      const result = onItemCollectedCallback?.(itemId, quantity);
+      if (result && typeof (result as Promise<unknown>).then === 'function') {
+        Promise.resolve(result as Promise<unknown>).catch(err => {
+          errorReporter.report(err, 'manual', {
+            context: 'onItemCollected 回调异步失败', itemId, quantity,
+          });
+        });
+      }
+    } catch (err) {
+      errorReporter.report(err, 'manual', {
+        context: 'onItemCollected 回调同步异常', itemId, quantity,
+      });
+    }
   }
 
   return {

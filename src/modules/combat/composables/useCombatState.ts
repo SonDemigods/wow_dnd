@@ -202,7 +202,8 @@ export function useCombatState(ctx: ICombatContext) {
       console.warn('[Combat] 非战斗状态，忽略效果施加');
       return;
     }
-    addEffectToContainer(playerEffects.value, effect);
+    // P9-039 修复：传入 effectRegistry 使 addEffectToContainer 能调用旧 effect 的 onRemove 回调
+    addEffectToContainer(playerEffects.value, effect, effectRegistry);
   }
 
   return {

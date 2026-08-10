@@ -128,6 +128,7 @@ import { useBaseStore } from '@/modules/base';
 import { useGameStore } from '@/modules/game';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { migrationService } from '@/modules/data';
+import { useToast } from '@/composables/useToast';
 import type { ImportResult } from '@/modules/data';
 import BasePopup from '../common/BasePopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
@@ -147,6 +148,8 @@ const emit = defineEmits<{
 const baseStore = useBaseStore();
 const characterStore = useCharacterStore();
 const gameStore = useGameStore();
+// P9-102 修复：缓存 useToast() 实例，导出成功后复用
+const toast = useToast();
 
 /**
  * 当前存档的数据版本戳（用于迁移确认弹窗显示 v{当前版本}）
@@ -195,6 +198,8 @@ async function handleExport() {
   try {
     await characterStore.exportBackup();
     eventBus.emit(GameEvents.DATA_EXPORTED, null);
+    // P9-102 修复：导出存档成功后 toast 提示用户
+    toast.show({ message: '存档导出成功', type: 'success' });
   } catch (error) {
     showResult(false, '导出失败', (error as Error).message || '未知错误');
   }

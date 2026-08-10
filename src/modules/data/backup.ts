@@ -22,7 +22,6 @@ import type { LocationData, MapStateStorage } from '../map/types';
 import type { ShopConfig, ShopItemsStorage, ShopSoldItemsStorage } from '../shop/types';
 import type { SkillTemplateStorage } from '../skill/types';
 import type { CombatLogStorage } from '../combat/types';
-import type { LogEntry } from '../log/types';
 import type { QuestDefinitionStorage } from '../quest/types';
 import { BACKUP_CONFIG } from '@/config/database';
 import { APP_VERSION } from '@/config/version';
@@ -260,11 +259,9 @@ export class BackupService implements IBackupService {
       combat[key] = item;
     });
 
-    // adventureLog 按 characterId 分组
-    const adventureLog: Record<string, LogEntry[]> = {};
-    adventureLogRecords.forEach((item) => {
-      adventureLog[item.characterId] = item.entries || [];
-    });
+    // P9-060 修复：保留原始 updatedAt 时间戳，直接存储完整 AdventureLogData 记录
+    // 原实现按 characterId 分组为 Record<string, LogEntry[]>，丢失了 updatedAt 字段
+    const adventureLog = adventureLogRecords;
 
     // id-keyed Record
     const gameState: Record<string, GameStateStorage> = {};

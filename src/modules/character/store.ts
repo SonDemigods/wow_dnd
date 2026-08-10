@@ -316,16 +316,15 @@ export const useCharacterStore = defineStore('character', () => {
     const updatedListItem = { ...listItem, lastPlayedTime: Date.now() };
     await characterDbService.saveCharacterListItem(updatedListItem);
 
+    // P9-080 修复：先 emit CHARACTER_LOGOUT 再变更 currentCharacterId，
+    // 确保 LOGOUT 事件触发时 currentCharacterId 仍为旧值，语义正确（登出旧角色 UI 状态）
+    // 注意：initialize 中直接调用时不发送事件，避免启动时多余的 UI 重绘
+    if (emitEvent) {
+      eventBus.emit(GameEvents.CHARACTER_LOGOUT, null);
+    }
+
     // P3-116 修复：通过 GameStore 设置并持久化 currentCharacterId
     await gameStore.setCurrentCharacterId(characterId);
-
-    // 通知 UI（角色切换时发送 CHARACTER_LOGOUT 用于清理旧角色的音频等模块状态）
-    // 注意：initialize 中直接调用时不发送事件，避免启动时多余的 UI 重绘
-    // P7-012 修复：currentCharacterId 已由上方 gameStore.setCurrentCharacterId 更新，
-    // LOGOUT 事件触发时 currentCharacterId 已是新值（P3-116 变更后注释过期已修正）
-    if (emitEvent) {
-      eventBus.emit(GameEvents.CHARACTER_LOGOUT, null); // 先登出旧角色 UI 状态
-    }
 
     // 更新 Store 状态
     // P3-116 修复：currentCharacterId 已由上方 gameStore.setCurrentCharacterId 更新（只读 computed 自动反映），无需再赋值
@@ -701,6 +700,8 @@ export const useCharacterStore = defineStore('character', () => {
       unallocatedPoints: 0,
       // 坐骑配置：一并清空（plan §5.3）；bonus 已在上方扣除
       mountChoices: [null, null, null, null, null],
+      // P9-081 修复：重置时清除天赋分配，回到 1 级角色状态（无天赋点）
+      talentAllocations: {},
     };
     const effStats = computeEffectiveStats(
       character.value.stats,

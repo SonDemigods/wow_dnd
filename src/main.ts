@@ -107,6 +107,10 @@ async function initApp() {
  * 不影响游戏核心逻辑（音频非核心路径）。
  */
 function setupLazyAudioInit(): void {
+  // P9-094 修复：限制重试次数，防止初始化失败后事件监听器无限累积
+  let retryCount = 0;
+  const MAX_RETRIES = 3;
+
   const startAudio = async () => {
     try {
       // P3-141：直接动态 import service.ts，避免通过 @/modules/audio 入口
@@ -116,9 +120,12 @@ function setupLazyAudioInit(): void {
     } catch (error) {
       // 音频失败不阻断游戏，仅记录
       errorReporter.report(error, 'manual', { context: '音频服务延迟初始化失败' })
-      // P6-155 修复：初始化失败后重新注册一次性监听，为用户提供一次自动重试机会
-      window.addEventListener('pointerdown', startAudio, { once: true })
-      window.addEventListener('keydown', startAudio, { once: true })
+      // P9-094 修复：限制重试次数，超过 MAX_RETRIES 后不再注册监听器
+      if (retryCount < MAX_RETRIES) {
+        retryCount++
+        window.addEventListener('pointerdown', startAudio, { once: true })
+        window.addEventListener('keydown', startAudio, { once: true })
+      }
     }
   }
 

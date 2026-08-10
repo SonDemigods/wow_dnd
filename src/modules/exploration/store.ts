@@ -80,6 +80,13 @@ export const useExplorationStore = defineStore('exploration', () => {
   const assignedShopId = ref('');
   /** 当前区域配置（缓存） */
   const currentAreaConfig = ref<AreaConfig | null>(null);
+  /**
+   * P9-036 修复：当前等待多选项事件选择的格子坐标
+   *
+   * revealGrid 遇到 event 格时记录坐标，applyEventChoice 据此精确定位目标格，
+   * 替代原先搜索整个网格的回退逻辑。
+   */
+  const pendingEventCell = ref<{ x: number; y: number } | null>(null);
 
   // ==================== UI 回调（替代 EventBus 跨模块数据事件） ====================
 
@@ -489,6 +496,11 @@ export const useExplorationStore = defineStore('exploration', () => {
       await useQuestStore().onCellExplored(currentAreaId.value ?? undefined);
     }
 
+    // P9-036 修复：记录事件格坐标，供 applyEventChoice 精确定位
+    if (cell.type === 'event') {
+      pendingEventCell.value = { x, y };
+    }
+
     // 通过事件处理器注册表分发格子事件（ARCH-11 修复）
     // 处理逻辑迁移至 events.ts 的 cellEventHandlers，store.ts 不再硬编码每个 cell 类型。
     // 必须在 updateAccessibleCells 之前完成，否则 completed 状态无法通过浅拷贝同步到新网格中。
@@ -593,7 +605,11 @@ export const useExplorationStore = defineStore('exploration', () => {
     // completed 格 revealGrid 入口拒绝（无事件），但位置推进成功，玩家可穿过已清理区域
     playerPosition.value = { x, y };
     cell.accessible = true;
-    await revealGrid(x, y);
+    const revealed = await revealGrid(x, y);
+    // P9-034 修复：revealGrid 对 completed 格返回 false，但仍需刷新视线以更新可见区域
+    if (!revealed) {
+      refreshGrid();
+    }
     return true;
   }
 
@@ -658,6 +674,8 @@ export const useExplorationStore = defineStore('exploration', () => {
         previousPosition.value = null;
       }
       refreshGrid();
+      // P9-092 修复：失败路径也触发 checkCompletion，确保已满足条件时能正确标记探索完成
+      checkCompletion();
       await persistState();
     }
 
@@ -698,6 +716,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     previousPosition.value = null;
     currentAreaConfig.value = null;
     assignedShopId.value = '';
+    pendingEventCell.value = null;
 
     eventBus.emit(GameEvents.EXPLORATION_END, { characterId: currentCharacterId.value });
 
@@ -747,15 +766,19 @@ export const useExplorationStore = defineStore('exploration', () => {
     );
 
     // P5-013 修复：玩家做出选择后，标记当前格子为已完成
-    // P8-022 修复：当前 playerPosition 处非 event 类型时，搜索整个 grid 找到第一个未完成的事件格
+    // P9-036 修复：优先使用 pendingEventCell 精确定位事件格，替代全网格搜索
+    const coords = pendingEventCell.value;
     const pos = playerPosition.value;
-    const cell = grid.value[pos.y]?.[pos.x];
+    const cell = coords
+      ? grid.value[coords.y]?.[coords.x]
+      : grid.value[pos.y]?.[pos.x];
+
     if (cell && cell.type === 'event' && !cell.completed) {
       cell.completed = true;
       refreshGrid();
       await persistState();
     } else if (!cell || cell.type !== 'event') {
-      // 当前格不是事件类型，搜索整个 grid 找到第一个未完成的事件格
+      // 兜底：pendingEventCell 未记录时搜索整个 grid 找到第一个未完成的事件格
       let targetCell: ExplorationCell | null = null;
       for (const row of grid.value) {
         for (const c of row) {
@@ -772,6 +795,7 @@ export const useExplorationStore = defineStore('exploration', () => {
         await persistState();
       }
     }
+    pendingEventCell.value = null;
 
     if (shouldHandleDeath) {
       // BIZ-9 修复：探索中死亡需手动触发 handleDeath
@@ -890,6 +914,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     // 3. 重置挂起的战斗格子坐标与战斗前位置
     pendingBattleCell.value = null;
     previousPosition.value = null;
+    pendingEventCell.value = null;
   }
 
   // ==================== 导出 ====================

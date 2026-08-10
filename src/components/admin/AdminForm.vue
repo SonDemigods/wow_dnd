@@ -134,10 +134,11 @@
                 />
                 <button type="button" class="btn-kv-remove" @click="removeJsonEntry(field.key, idx)">×</button>
               </div>
-              <button type="button" class="btn-kv-add" @click="addJsonEntry(field.key)">+ 添加属性</button>
-              <p v-if="jsonParseError[field.key]" class="json-error">JSON 解析失败，请检查格式</p>
-            </div>
-          </div>
+                  <button type="button" class="btn-kv-add" @click="addJsonEntry(field.key)">+ 添加属性</button>
+                </div>
+                <!-- P9-103 修复：JSON 解析错误提示移至模式外部，文本/键值对模式通用 -->
+                <p v-if="jsonParseError[field.key]" class="json-error">JSON 解析失败，请检查格式</p>
+              </div>
         </div>
 
         <!-- 自定义内容插槽 -->
@@ -329,6 +330,8 @@ watch(
 function handleSubmit() {
   // 将 number 类型字段的值转为数字，收集为 AdminRecord（Record<string, unknown>）
   const data: AdminRecord = {};
+  // P9-103 修复：JSON 解析失败时阻断提交并提示
+  let hasParseError = false;
   props.fields.forEach(field => {
     let value: unknown = formData[field.key];
     if (field.type === 'number' && typeof value === 'string') {
@@ -337,13 +340,18 @@ function handleSubmit() {
     if (field.type === 'json' && typeof value === 'string' && value.trim()) {
       try {
         value = JSON.parse(value);
+        jsonParseError[field.key] = false;
       } catch (e) {
-        // 解析失败则保持字符串
+        // P9-103 修复：解析失败时标记错误并阻断提交，不再保持字符串静默提交
         console.error(e);
+        jsonParseError[field.key] = true;
+        hasParseError = true;
       }
     }
     data[field.key] = value;
   });
+  // P9-103 修复：存在 JSON 解析错误时阻断提交
+  if (hasParseError) return;
   emit('submit', data);
 }
 </script>

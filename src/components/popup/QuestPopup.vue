@@ -152,15 +152,27 @@ function abandonQuest(questId: string) {
 async function onConfirmAbandon() {
   const questId = confirmState.questId;
   confirmState.visible = false;
-  const success = await questStore.abandonQuest(questId);
-  if (success) {
-    loadQuests();
-    toast.show({ message: '已放弃任务', type: 'warning', icon: '⚠️' });
+  // P9-100 修复：包裹 try/catch，避免 abandonQuest/loadQuests 异常导致未捕获 rejection + toast 提示
+  try {
+    const success = await questStore.abandonQuest(questId);
+    if (success) {
+      await loadQuests();
+      toast.show({ message: '已放弃任务', type: 'warning', icon: '⚠️' });
+    }
+  } catch (err) {
+    console.error('[QuestPopup] onConfirmAbandon 失败:', err);
+    toast.show({ message: '放弃任务失败，请重试', type: 'danger' });
   }
 }
 
 async function loadQuests() {
-  await questStore.init();
+  // P9-100 修复：包裹 try/catch，避免 init 异常导致未捕获 rejection + toast 提示
+  try {
+    await questStore.init();
+  } catch (err) {
+    console.error('[QuestPopup] loadQuests 失败:', err);
+    toast.show({ message: '加载任务失败，请重试', type: 'danger' });
+  }
 }
 
 watch(() => props.visible, (val) => {

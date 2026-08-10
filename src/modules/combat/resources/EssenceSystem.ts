@@ -24,6 +24,7 @@ export class EssenceSystem extends BaseResourceSystem {
       // 精华仅通过 MP 生成器技能积攒（generatesResource 触发）
       return;
     }
-    this.applyGeneration(Math.min(amount, 3));
+    // P9-074 修复：移除 Math.min(amount, 3) 重复裁剪——applyGeneration 已通过 maxValue 裁剪
+    this.applyGeneration(amount);
   }
 }

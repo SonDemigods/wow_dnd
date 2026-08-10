@@ -398,7 +398,7 @@ describe('talents/service - 天赋纯函数服务层', () => {
         critBonus: 0,
         resourceBonuses: {},
         healingMultiplier: 0,
-        hpMultiplier: 0,
+        // P9-083 修复：测试更新 — hpMultiplier 字段已移除（死代码）
         specialEffects: [],
         skillEnhancements: [],
         unlockedPets: [],
@@ -410,10 +410,9 @@ describe('talents/service - 天赋纯函数服务层', () => {
       const b = createEmptyEffectSummary();
       a.statBonuses.str = 1;
       a.damageMultiplier = 0.5;
-      a.hpMultiplier = 0.15;
+      // P9-083 修复：测试更新 — hpMultiplier 字段已移除
       expect(b.statBonuses.str).toBeUndefined();
       expect(b.damageMultiplier).toBe(0);
-      expect(b.hpMultiplier).toBe(0);
     });
   });
 
@@ -573,40 +572,7 @@ describe('talents/service - 天赋纯函数服务层', () => {
       expect(summary.healingMultiplier).toBeCloseTo(0.24);
     });
 
-    it('hp_multiplier 累加（P3-139 修复，替代原 stat_bonus+hp_max 错误配置）', () => {
-      const tree = makeTree({
-        talents: [
-          makeTalent({
-            id: 't1',
-            effects: [makeEffect({ type: 'hp_multiplier', valuePerRank: 0.05 })],
-          }),
-        ],
-      });
-      vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
-      const summary = calculateTalentEffects('warrior', { t1: 3 });
-      expect(summary.hpMultiplier).toBeCloseTo(0.15);
-      // 验证不再误写入 statBonuses（原 bug：stat_bonus+hp_max 会污染 statBonuses['hp_max']）
-      expect(summary.statBonuses.hp_max).toBeUndefined();
-      expect(summary.statBonuses).toEqual({});
-    });
-
-    it('hp_multiplier 多天赋累加', () => {
-      const tree = makeTree({
-        talents: [
-          makeTalent({
-            id: 't1',
-            effects: [makeEffect({ type: 'hp_multiplier', valuePerRank: 0.05 })],
-          }),
-          makeTalent({
-            id: 't2',
-            effects: [makeEffect({ type: 'hp_multiplier', valuePerRank: 0.03 })],
-          }),
-        ],
-      });
-      vi.mocked(getTalentTreesByClassId).mockReturnValue([tree]);
-      const summary = calculateTalentEffects('warrior', { t1: 3, t2: 2 });
-      expect(summary.hpMultiplier).toBeCloseTo(0.21);
-    });
+    // P9-083 修复：测试更新 — hp_multiplier 效果类型已移除（死代码），删除相关测试用例
 
     it('special 效果追加到 specialEffects 列表', () => {
       const tree = makeTree({

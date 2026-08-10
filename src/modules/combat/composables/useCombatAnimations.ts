@@ -305,9 +305,17 @@ export function useCombatAnimations(options: UseCombatAnimationsOptions) {
   ): void {
     if (result.aoeHits && result.aoeHits.length > 0) {
       for (const hit of result.aoeHits) {
-        triggerShake('enemy', hit.enemyId);
-        showFloating('enemy', `-${hit.damage}`, damageType, hit.enemyId);
-        triggerParticles('enemy', damageType === 'magic' ? MAGIC_PARTICLES : PHYSICAL_PARTICLES, hit.enemyId);
+        // P9-069 修复：AOE 命中暴击时也触发暴击视觉特效（暴击震动 + 金色边框 + 暴击粒子）
+        if (result.isCrit) {
+          triggerCritShake('enemy', hit.enemyId);
+          triggerCritBorderFlash('enemy', hit.enemyId);
+          showFloating('enemy', `暴击! -${hit.damage}`, 'crit', hit.enemyId);
+          triggerParticles('enemy', CRIT_PARTICLES, hit.enemyId);
+        } else {
+          triggerShake('enemy', hit.enemyId);
+          showFloating('enemy', `-${hit.damage}`, damageType, hit.enemyId);
+          triggerParticles('enemy', damageType === 'magic' ? MAGIC_PARTICLES : PHYSICAL_PARTICLES, hit.enemyId);
+        }
       }
     } else if (result.damage && result.damage > 0) {
       const targetId = options.getCurrentTargetId();

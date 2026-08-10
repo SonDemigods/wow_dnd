@@ -28,6 +28,7 @@ import type { ICombatContext } from '../combatContext';
 import type { useCombatState } from './useCombatState';
 import type { useCombatLog } from './useCombatLog';
 import { defaultRng, type Rng } from '@/utils/rng';
+import { LOW_HP_PASSIVE_THRESHOLD } from '@/config/combat';
 import {
   addEffectToContainer,
   createEmptyContainer,
@@ -129,11 +130,12 @@ export function usePassiveSkills(
   }
 
   /**
-   * 检查并触发低血量被动（生命低于 30%）
+   * 检查并触发低血量被动（生命低于 LOW_HP_PASSIVE_THRESHOLD）
    */
   function checkLowHpPassives(): void {
     const hpRatio = ctx.character.hp / ctx.character.maxHp;
-    if (hpRatio < 0.3) {
+    // P9-070 修复：魔法数字 0.3 提取为配置常量 LOW_HP_PASSIVE_THRESHOLD
+    if (hpRatio < LOW_HP_PASSIVE_THRESHOLD) {
       passives
         .filter(p => p.trigger === 'on_low_hp')
         .forEach(p => applyPassive(p));
@@ -342,7 +344,7 @@ export function usePassiveSkills(
         // P8-105 修复：使用传入的 passiveName 替代硬编码 '被动：腐蚀术'
         sourceName: passiveName || '被动效果',
       };
-      addEffectToContainer(container, newEffect);
+      addEffectToContainer(container, newEffect, effectRegistry);
       effectRegistry.get(effectType)?.onApply?.(newEffect, effectCtx);
 
       addCombatLog({

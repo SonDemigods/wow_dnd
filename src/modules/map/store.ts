@@ -9,7 +9,6 @@ import { ref, computed } from 'vue';
 import type { MapState, MapView, LocationData, MapZone } from './types';
 import { getLocationById, isLocationAccessible, getLocationsByContinent, getZoneStatus, clamp } from './service';
 import { mapDbService } from './db';
-import { eventBus, GameEvents } from '@/modules/bus';
 import { errorReporter } from '@/utils/errorReport';
 import { useGameStore } from '@/modules/game';
 
@@ -27,6 +26,25 @@ const DEFAULT_MAP_VIEW: MapView = {
   panX: 0,
   panY: 0,
 };
+
+/**
+ * 深冻结对象，递归冻结所有嵌套对象和数组，防止外部 mutate
+ *
+ * P9-087 修复：Object.freeze 仅冻结顶层，嵌套对象（如 view、unlockedZones 数组）仍可被修改。
+ * 使用 deepFreeze 确保返回的状态对象在所有层级上不可变。
+ */
+function deepFreeze<T>(obj: T): T {
+  if (obj === null || typeof obj !== 'object') return obj;
+  Object.freeze(obj);
+  const keys = Object.keys(obj as Record<string, unknown>);
+  for (const key of keys) {
+    const val = (obj as Record<string, unknown>)[key];
+    if (val !== null && typeof val === 'object' && !Object.isFrozen(val)) {
+      deepFreeze(val);
+    }
+  }
+  return obj;
+}
 
 
 /**
@@ -127,8 +145,8 @@ export const useMapStore = defineStore('map', () => {
 
   /** 获取地图状态（深拷贝，防止外部修改污染 Store） */
   function getState(): MapState {
-    // P6-107 修复：返回对象使用 Object.freeze 防止外部 mutate
-    return Object.freeze({
+    // P9-087 修复：使用深冻结替代 Object.freeze，确保嵌套对象（view 及数组）也不可变
+    return deepFreeze({
       view: { ...state.value.view },
       unlockedZones: state.value.unlockedZones ? [...state.value.unlockedZones] : undefined,
       completedZones: state.value.completedZones ? [...state.value.completedZones] : undefined
@@ -198,10 +216,9 @@ export const useMapStore = defineStore('map', () => {
         });
     }
 
-    // P3 BIZ-7 审计决策（2026-07-31）：
-    // - 消费者清单：audio/service.ts:369 监听 ZONE_ENTERED 但不读 data
-    // - 保留 location 字段供未来 UI 消费者展示地点信息；若确认无 UI 消费者可移除
-    eventBus.emit(GameEvents.ZONE_ENTERED, { locationId: zoneId, location });
+    // P9-091 修复：ZONE_ENTERED 由 exploration/store.ts enterArea 统一发射，
+    // enterZone 不再重复发射（两者在进入探索时形成双重触发）
+    // eventBus.emit(GameEvents.ZONE_ENTERED, { locationId: zoneId, location });
     return true;
   }
 

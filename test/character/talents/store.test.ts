@@ -190,7 +190,7 @@ describe('useTalentStore - 天赋 Store', () => {
         critBonus: 0,
         resourceBonuses: {},
         healingMultiplier: 0,
-        hpMultiplier: 0,
+        // P9-083 修复：测试更新 — hpMultiplier 字段已移除（死代码）
         specialEffects: [],
         skillEnhancements: [],
         unlockedPets: [],

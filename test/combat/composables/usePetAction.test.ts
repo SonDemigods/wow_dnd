@@ -69,6 +69,9 @@ const petStoreMock = {
   summon: vi.fn(() => true),
   dismiss: vi.fn(),
   unlockedPets: [] as never[],
+  // P9-068 修复：测试更新 — 补充 petStore 接口完整字段
+  unlockPet: vi.fn(),
+  reset: vi.fn(),
 };
 
 vi.mock('@/modules/combat/pets', async () => {
@@ -213,7 +216,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       const logMock = makeLogMock();
 
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, logMock, ctx, makeBossMock());
+      const action = usePetAction(state, logMock, ctx, makeBossMock(), petStoreMock);
       action.petTakeTurn();
 
       expect(ctx.enemy.takeDamage).toHaveBeenCalledWith('e1', 15);
@@ -230,7 +233,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       vi.mocked(rollDodge).mockReturnValue(true);
 
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock());
+      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock(), petStoreMock);
       action.petTakeTurn();
 
       expect(ctx.enemy.takeDamage).not.toHaveBeenCalled();
@@ -246,7 +249,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       const ctx = makeMockCtx();
 
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock());
+      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock(), petStoreMock);
       action.petTakeTurn();
 
       expect(ctx.enemy.takeDamage).not.toHaveBeenCalled();
@@ -261,7 +264,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       const ctx = makeMockCtx();
 
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock());
+      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock(), petStoreMock);
       action.petTakeTurn();
 
       expect(ctx.enemy.takeDamage).not.toHaveBeenCalled();
@@ -275,7 +278,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       const ctx = makeMockCtx();
 
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock());
+      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock(), petStoreMock);
       action.petTakeTurn();
 
       expect(ctx.enemy.takeDamage).not.toHaveBeenCalled();
@@ -292,7 +295,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       const ctx = makeMockCtx();
 
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock());
+      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock(), petStoreMock);
       action.petTakeTurn();
 
       expect(ctx.enemy.takeDamage).not.toHaveBeenCalled();
@@ -306,7 +309,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       const state = makeStateMock();
       const ctx = makeMockCtx();
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock());
+      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock(), petStoreMock);
       action.petTakeDamage(10);
       expect(petStoreMock.takeDamage).toHaveBeenCalledWith(10);
     });
@@ -315,7 +318,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       const state = makeStateMock();
       const ctx = makeMockCtx();
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock());
+      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock(), petStoreMock);
       action.petTickTurn();
       expect(petStoreMock.tickTurn).toHaveBeenCalled();
     });
@@ -329,7 +332,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       const soulShardSys = state.resourceSystems.value[0];
       const ctx = makeMockCtx();
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock());
+      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock(), petStoreMock);
       const result = action.summon('imp' as WarlockPetType);
 
       expect(result.success).toBe(true);
@@ -345,7 +348,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       petStoreMock.canSummon.mockReturnValue({ canSummon: false, reason: '灵魂碎片不足' });
       const ctx = makeMockCtx();
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock());
+      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock(), petStoreMock);
       const result = action.summon('doomguard' as WarlockPetType);
 
       expect(result.success).toBe(false);
@@ -357,7 +360,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       state.resourceSystems.value = [];
       const ctx = makeMockCtx();
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock());
+      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock(), petStoreMock);
       const result = action.summon('imp' as WarlockPetType);
 
       expect(result.success).toBe(false);
@@ -373,7 +376,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       const state = makeStateMock();
       const ctx = makeMockCtx();
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock());
+      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock(), petStoreMock);
       const result = action.dismiss();
 
       expect(result.success).toBe(true);
@@ -385,7 +388,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       const state = makeStateMock();
       const ctx = makeMockCtx();
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock());
+      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock(), petStoreMock);
       const result = action.dismiss();
 
       expect(result.success).toBe(false);
@@ -401,7 +404,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       const state = makeStateMock([target, other], target);
       const ctx = makeMockCtx();
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock());
+      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock(), petStoreMock);
       const selected = action.selectPetTarget();
 
       expect(selected?.id).toBe('e_target');
@@ -413,7 +416,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       const state = makeStateMock([e1, e2], null);
       const ctx = makeMockCtx();
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock());
+      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock(), petStoreMock);
       const selected = action.selectPetTarget();
 
       expect(selected?.id).toBe('e1');
@@ -423,7 +426,7 @@ describe('usePetAction - 宠物行动 Composable（P3-156）', () => {
       const state = makeStateMock([], null);
       const ctx = makeMockCtx();
       const { usePetAction } = await import('@/modules/combat/composables/usePetAction');
-      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock());
+      const action = usePetAction(state, makeLogMock(), ctx, makeBossMock(), petStoreMock);
       const selected = action.selectPetTarget();
 
       expect(selected).toBeNull();

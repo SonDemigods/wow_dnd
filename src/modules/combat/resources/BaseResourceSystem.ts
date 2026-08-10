@@ -74,7 +74,8 @@ export abstract class BaseResourceSystem implements ResourceSystem {
    * 子类的 `generate` 实现应通过此方法实际增加值。
    */
   protected applyGeneration(amount: number): void {
-    if (amount <= 0) return;
+    // P9-072 修复：对 NaN/Infinity 做防御，避免脏数据导致资源值变为 NaN
+    if (!Number.isFinite(amount) || amount <= 0) return;
     let next = this._value.value + amount;
     if (this.isInteger) next = Math.floor(next);
     this._value.value = Math.min(this._maxValue.value, next);

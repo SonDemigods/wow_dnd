@@ -516,12 +516,13 @@ describe('computeBonusChange 加成变更', () => {
     expect(result.str).toBe(0);
   });
 
-  it('isAdd=true 时下界为 1（clampStat）', () => {
+  it('isAdd=true 时下界为 0（clampBonus）', () => {
+    // P9-079 修复：测试更新
     const current = { str: 0 };
     const delta = { str: -10 };
-    // isAdd=true 使用 clampStat，下界 1
+    // isAdd=true 使用 clampBonus，下界 0（零值加成不再被强制变为 1）
     const result = computeBonusChange(current, delta, true);
-    expect(result.str).toBe(1);
+    expect(result.str).toBe(0);
   });
 
   it('加成不超过 MAX_STAT', () => {

@@ -81,10 +81,14 @@ export class MigrationService {
       }
 
       // 5. 更新版本戳
-      await db.runtime_gameState.update('gameState', {
+      // P9-057 修复：检查 update 返回值，失败时 throw（update 返回更新行数，0 表示未找到记录）
+      const updatedCount = await db.runtime_gameState.update('gameState', {
         dataVersion: CURRENT_DATA_VERSION,
         appVersion: APP_VERSION
       });
+      if (updatedCount === 0) {
+        throw new Error('更新版本戳失败：runtime_gameState 中不存在 gameState 记录');
+      }
 
       return {
         success: true,

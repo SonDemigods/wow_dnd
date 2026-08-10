@@ -445,6 +445,8 @@ defineEmits<{
 
 const characterStore = useCharacterStore();
 const equipmentStore = useEquipmentStore();
+// P9-099 修复：在 setup 层缓存 useToast()，避免每次调用重复创建实例
+const toast = useToast();
 // 坐骑配置 Composable：封装档位视图、当前加成、选择/重置交互
 const { tiers: mountTiers, currentBonus: mountBonus, hasAnyChoice: hasMountChoice, setChoice: onMountSelect, resetAll: onMountReset } = useCharacterMounts();
 
@@ -482,14 +484,26 @@ const canResetAllocations = computed<boolean>(() => hasAllocatedStats.value);
 async function onAllocate(stat: keyof Stats): Promise<void> {
   if (!canAllocate.value) return;
   eventBus.emit(GameEvents.UI_CLICK, { source: 'allocate_stat' });
-  await characterStore.allocateStat(stat);
+  // P9-098 修复：包裹 try/catch，避免 allocateStat 异常导致未捕获 rejection + toast 提示
+  try {
+    await characterStore.allocateStat(stat);
+  } catch (err) {
+    console.error('[CharacterInfoPopup] onAllocate 失败:', err);
+    toast.show({ message: '属性分配失败，请重试', type: 'danger' });
+  }
 }
 
 /** 重置升级层已分配点数（完全免费，不影响药剂层） */
 async function onResetAllocations(): Promise<void> {
   if (!canResetAllocations.value) return;
   eventBus.emit(GameEvents.UI_CLICK, { source: 'reset_allocations' });
-  await characterStore.resetAllocatedStats();
+  // P9-098 修复：包裹 try/catch，避免 resetAllocatedStats 异常导致未捕获 rejection + toast 提示
+  try {
+    await characterStore.resetAllocatedStats();
+  } catch (err) {
+    console.error('[CharacterInfoPopup] onResetAllocations 失败:', err);
+    toast.show({ message: '属性重置失败，请重试', type: 'danger' });
+  }
 }
 
 // ==================== 阶段四：属性来源明细 tooltip ====================
@@ -613,7 +627,7 @@ async function loadData() {
   } catch (e) {
     console.error('[CharacterInfoPopup] loadData 失败:', e);
     errorHandler.report(e);
-    useToast().show({ message: '加载角色数据失败，请重试', type: 'danger' });
+    toast.show({ message: '加载角色数据失败，请重试', type: 'danger' });
   }
 }
 
@@ -667,7 +681,7 @@ function formatMountBonus(bonus: Partial<Stats>): string {
 function selectEquipment(slot: SlotInfo) {
   // P3.2：被双手武器锁定的槽位不可选中
   if (slot.locked) {
-    useToast().show({
+    toast.show({
       message: '该槽位被双手武器占用，无法操作',
       type: 'warning',
       icon: '🔒'
@@ -696,7 +710,7 @@ async function unequipItem(slotKey: string) {
       selectedSlot.value = null;
     }
   } catch (e) {
-    useToast().show({
+    toast.show({
       message: e instanceof Error ? e.message : '卸下装备失败',
       type: 'danger',
       duration: 3000

@@ -213,7 +213,8 @@ export function useSkillState() {
     skillTemplates.value = new Map();
     monsterSkillTemplates.value = new Map();
     cooldowns.value = {};
-    await persist();
+    // P9-084 修复：reset 不持久化空数据，避免覆盖有效存档
+    // reset 仅清空内存状态，下次 initialize 时从 DB 重新加载
   }
 
   // ==================== 冷却管理 ====================

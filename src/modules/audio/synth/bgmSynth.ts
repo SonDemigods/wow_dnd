@@ -431,8 +431,8 @@ export class BgmSynth {
       clearTimeout(this.bgmTransitionTimer);
       this.bgmTransitionTimer = null;
     }
-    this.bgmOsc?.dispose();
-    this.bgmFilterLfo?.dispose();
+    // P9-093 修复：stopBgm() 已调用 stopBgmOscillator() 和 stopFilterLfo() 释放 bgmOsc/bgmFilterLfo，
+    // 此处仅清理残余引用，不再重复 dispose
     this.bgmOsc = null;
     this.bgmFilterLfo = null;
     this.currentBgmScene = null;
