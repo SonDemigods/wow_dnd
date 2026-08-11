@@ -2,9 +2,6 @@
   <div class="equipment-section">
     <div class="equipment-header">
       <h3>装备</h3>
-      <button class="open-inventory-btn" @click="$emit('open-inventory')" title="打开背包管理装备">
-        <BaseIcon name="backpack" gradient="gold" :size="14" /> 背包
-      </button>
     </div>
 
     <div class="equipment-group">
@@ -74,7 +71,6 @@
         </div>
         <div class="detail-actions">
           <button class="action-btn unequip" @click="unequipItem(selectedSlot.key)">卸下</button>
-          <button class="action-btn open-bag" @click="$emit('open-inventory')">前往背包装备</button>
         </div>
       </template>
       <EmptyState v-else icon="empty-box" gradient="metal" text="槽位为空" />
@@ -103,10 +99,6 @@ import { getRarityName, getStatName } from '@/modules/item/descriptors';
 import ItemIcon from '../../common/ItemIcon.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import EmptyState from '../../common/EmptyState.vue';
-
-defineEmits<{
-  (e: 'open-inventory'): void;
-}>();
 
 const equipmentStore = useEquipmentStore();
 const characterStore = useCharacterStore();
@@ -194,25 +186,6 @@ onUnmounted(() => {
   color: @accent-color;
   margin: 0;
   font-weight: @font-weight-bold;
-}
-
-.open-inventory-btn {
-  display: flex;
-  align-items: center;
-  gap: @spacing-xs;
-  padding: @spacing-2xs @spacing-md;
-  border: 1px solid rgba(255, 215, 0, 0.4);
-  border-radius: @radius-sm;
-  background: @gold-bg;
-  color: @accent-color;
-  font-size: @font-xs;
-  cursor: pointer;
-  transition: all @transition-quick;
-}
-
-.open-inventory-btn:hover {
-  background: @gold-bg-hover;
-  border-color: @accent-color;
 }
 
 .equipment-group {
@@ -370,5 +343,4 @@ onUnmounted(() => {
 }
 
 .unequip { background: linear-gradient(135deg, #ff9800, #f57c00); color: @popup-text-color; }
-.open-bag { background: @white-10; color: @text-primary; border: 1px solid @popup-border-color; }
 </style>

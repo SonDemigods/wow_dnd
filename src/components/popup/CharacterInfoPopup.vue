@@ -16,7 +16,7 @@
       <div class="char-info-body">
         <CharacterOverview v-show="activeTab === 'overview'" />
         <CharacterAttributes v-show="activeTab === 'attributes'" />
-        <CharacterEquipment v-show="activeTab === 'equipment'" @open-inventory="handleOpenInventory" />
+        <CharacterEquipment v-show="activeTab === 'equipment'" />
         <CharacterMounts v-show="activeTab === 'mounts'" />
       </div>
     </template>
@@ -44,9 +44,8 @@ const props = defineProps<{
   visible: boolean;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'close'): void;
-  (e: 'open-inventory'): void;
 }>();
 
 const characterStore = useCharacterStore();
@@ -69,11 +68,6 @@ watch(() => props.visible, (val) => {
     activeTab.value = unallocatedPoints.value > 0 ? 'attributes' : 'overview';
   }
 });
-
-function handleOpenInventory() {
-  emit('open-inventory');
-  emit('close');
-}
 </script>
 
 <style lang="less" scoped>

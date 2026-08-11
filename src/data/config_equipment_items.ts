@@ -155,7 +155,7 @@ const SWORDS: EquipmentItemDraft[] = [
     description: '古都废墟最深处封印的太古神兵，传说其锋芒能斩断时间本身，唯有时之守护者方可驾驭',
     value: 550,
     template: 'eternity_blade',
-    levelRequirement: 25
+    levelRequirement: 20
   }
 ];
 
@@ -269,7 +269,7 @@ const GREATSWORDS: EquipmentItemDraft[] = [
     description: '熔岩深渊最底层封印的太古终末之剑，传说其出鞘之时便是世界终结之刻，剑心涌动着末日之火',
     value: 580,
     template: 'apocalypse_blade',
-    levelRequirement: 25
+    levelRequirement: 20
   }
 ];
 
@@ -383,7 +383,7 @@ const AXES: EquipmentItemDraft[] = [
     description: '古都废墟深处出土的太古巨斧，传说其曾一斧劈开山岳，斧刃裂痕中至今涌动着地脉之力',
     value: 560,
     template: 'worldbreaker_axe',
-    levelRequirement: 25
+    levelRequirement: 20
   }
 ];
 
@@ -497,7 +497,7 @@ const GREATAXES: EquipmentItemDraft[] = [
     description: '古都废墟最深处封印的太古巨斧，传说其曾一斧劈开大地形成峡谷，斧身至今涌动着地脉之力',
     value: 580,
     template: 'world_cleaver',
-    levelRequirement: 25
+    levelRequirement: 20
   }
 ];
 
@@ -611,7 +611,7 @@ const POLEARMS: EquipmentItemDraft[] = [
     description: '古都废墟最深处封印的太古神兵，传说其曾刺穿时间之壁，柄身流转着永恒不灭的星辉',
     value: 580,
     template: 'eternity_polearm',
-    levelRequirement: 25
+    levelRequirement: 20
   }
 ];
 
@@ -725,7 +725,7 @@ const HAMMERS: EquipmentItemDraft[] = [
     description: '古都废墟最深处封印的太古战锤，传说其曾一锤震碎山岳，锤心至今涌动着大地的怒吼',
     value: 580,
     template: 'world_smasher',
-    levelRequirement: 25
+    levelRequirement: 20
   }
 ];
 
@@ -839,7 +839,7 @@ const DAGGERS: EquipmentItemDraft[] = [
     description: '古都废墟最深处封印的太古匕首，传说其曾刺穿维度之壁，刃口至今涌动着扭曲虚空的景象',
     value: 560,
     template: 'void_piercer',
-    levelRequirement: 25
+    levelRequirement: 20
   }
 ];
 
@@ -971,7 +971,7 @@ const STAVES: EquipmentItemDraft[] = [
     description: '观星之塔顶层的太古法杖，传说其能沟通星界，杖顶的星辰结晶中封印着一片微型宇宙',
     value: 580,
     template: 'cosmos_staff',
-    levelRequirement: 25,
+    levelRequirement: 20,
     // C3：魔法武器主动技能（持杖施法，可重复使用不消耗）
     effects: [{ type: 'magic_damage', value: 100 }]
   }
@@ -1087,7 +1087,7 @@ const BOWS: EquipmentItemDraft[] = [
     description: '圣光之泉天界使者遗落人间的传奇长弓，拉满时弦上凝聚星光，箭出如流星坠地',
     value: 560,
     template: 'celestial_bow',
-    levelRequirement: 25
+    levelRequirement: 20
   }
 ];
 
@@ -1201,7 +1201,7 @@ const SHIELDS: EquipmentItemDraft[] = [
     description: '古都废墟最深处封印的太古神盾，传说其曾独自抵挡过灭世洪水，盾面至今流转着不灭圣光',
     value: 580,
     template: 'eternal_bulwark',
-    levelRequirement: 25
+    levelRequirement: 20
   }
 ];
 
@@ -1319,7 +1319,7 @@ const HELM_ARMOR: EquipmentItemDraft[] = [
     description: '古都废墟最深处封印的太古头盔，传说其曾护住太古英雄斩杀邪神，盔心至今涌动着永恒之力',
     value: 580,
     template: 'eternity_helm',
-    levelRequirement: 25
+    levelRequirement: 20
   }
 ];
 
@@ -1433,7 +1433,7 @@ const CHEST_ARMOR: EquipmentItemDraft[] = [
     description: '古都废墟最深处封印的太古战甲，传说其曾伴随太古英雄征战四方，甲心涌动着永恒不灭之力',
     value: 580,
     template: 'eternal_armor',
-    levelRequirement: 25
+    levelRequirement: 20
   }
 ];
 
@@ -1547,7 +1547,7 @@ const LEG_ARMOR: EquipmentItemDraft[] = [
     description: '古都废墟最深处封印的太古护腿，传说其曾伴随太古英雄征战四方，腿甲涌动着永恒之力',
     value: 580,
     template: 'eternal_legguards',
-    levelRequirement: 25
+    levelRequirement: 20
   }
 ];
 
@@ -1661,7 +1661,7 @@ const BOOTS: EquipmentItemDraft[] = [
     description: '古都废墟最深处封印的太古战靴，传说其曾伴随太古英雄踏遍九幽，靴心涌动着永恒之力',
     value: 580,
     template: 'eternal_boots',
-    levelRequirement: 25
+    levelRequirement: 20
   }
 ];
 
@@ -1775,7 +1775,7 @@ const GLOVES: EquipmentItemDraft[] = [
     description: '古都废墟最深处封印的太古护手，传说其曾握住过神兵斩杀邪神，掌心涌动着永恒之力',
     value: 580,
     template: 'eternal_gauntlets',
-    levelRequirement: 25
+    levelRequirement: 20
   }
 ];
 
