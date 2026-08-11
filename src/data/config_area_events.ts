@@ -33,7 +33,7 @@ export const AREA_EVENT_TEMPLATES: Record<string, AreaEventTemplate[]> = {
     }),
     (lv) => ({
       message: `毒藤缠绕住你的脚踝，受到 ${lv * 2 + 3} 点伤害，但挣脱后获得了 ${lv * 6 + 5} 点经验`,
-      icon: 'game-icons:thorned-vine',
+      icon: 'game-icons:thorny-vine',
       effect: { type: 'exp', amount: lv * 6 + 5 },
     }),
   ],

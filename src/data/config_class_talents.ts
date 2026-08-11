@@ -54,7 +54,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'warrior_fury_t2', name: '嗜血', description: '每级提升 6% 物理伤害',
-        icon: 'game-icons:droplet', tier: 2, col: 2, maxRank: 2,
+        icon: 'game-icons:blood', tier: 2, col: 2, maxRank: 2,
         requires: ['warrior_fury_t1'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.06 }]
       },
@@ -72,7 +72,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'warrior_fury_t3', name: '狂暴', description: '每级提升 5 点力量',
-        icon: 'game-icons:rage', tier: 3, col: 2, maxRank: 2,
+        icon: 'game-icons:enrage', tier: 3, col: 2, maxRank: 2,
         requires: ['warrior_fury_t2'],
         effects: [{ type: 'stat_bonus', stat: 'str', valuePerRank: 5 }]
       },
@@ -90,7 +90,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'warrior_fury_t4', name: '狂暴之怒', description: '每级提升 15 点怒气上限和 8% 物理伤害',
-        icon: 'game-icons:berserk', tier: 4, col: 2, maxRank: 2,
+        icon: 'game-icons:enrage', tier: 4, col: 2, maxRank: 2,
         requires: ['warrior_fury_t3', 'warrior_arms_t3'],
         effects: [{ type: 'resource_bonus', stat: 'rage_max', valuePerRank: 15 }, { type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
@@ -114,7 +114,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'warrior_prot_t5', name: '坚韧不屈', description: '每级减免 6% 受到的伤害',
-        icon: 'game-icons:stone-shield', tier: 5, col: 3, maxRank: 2,
+        icon: 'game-icons:shield', tier: 5, col: 3, maxRank: 2,
         requires: ['warrior_prot_t4', 'warrior_fury_t4'],
         effects: [{ type: 'damage_reduction', valuePerRank: 0.06 }]
       },
@@ -126,7 +126,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'warrior_fury_t6', name: '泰坦之怒', description: '提升 15% 物理伤害',
-        icon: 'game-icons:berserk', tier: 6, col: 2, maxRank: 1,
+        icon: 'game-icons:enrage', tier: 6, col: 2, maxRank: 1,
         requires: ['warrior_fury_t5'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.15 }]
       },
@@ -165,7 +165,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'paladin_prot_t2', name: '圣盾术', description: '每级减免 5% 受到的伤害',
-        icon: 'game-icons:stone-shield', tier: 2, col: 2, maxRank: 2,
+        icon: 'game-icons:shield', tier: 2, col: 2, maxRank: 2,
         requires: ['paladin_prot_t1'],
         effects: [{ type: 'damage_reduction', valuePerRank: 0.05 }]
       },
@@ -177,7 +177,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'paladin_holy_t3', name: '圣光闪耀', description: '每级提升 8% 魔法伤害',
-        icon: 'game-icons:lightning-shadow', tier: 3, col: 1, maxRank: 2,
+        icon: 'game-icons:holy-symbol', tier: 3, col: 1, maxRank: 2,
         requires: ['paladin_holy_t2'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
@@ -189,7 +189,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'paladin_ret_t3', name: '复仇之怒', description: '每级提升 5 点魅力',
-        icon: 'game-icons:rage', tier: 3, col: 3, maxRank: 2,
+        icon: 'game-icons:enrage', tier: 3, col: 3, maxRank: 2,
         requires: ['paladin_ret_t2'],
         effects: [{ type: 'stat_bonus', stat: 'cha', valuePerRank: 5 }]
       },
@@ -213,13 +213,13 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'paladin_holy_t5', name: '神圣光辉', description: '每级提升 12% 治疗效果',
-        icon: 'game-icons:lightning-shadow', tier: 5, col: 1, maxRank: 2,
+        icon: 'game-icons:holy-water', tier: 5, col: 1, maxRank: 2,
         requires: ['paladin_holy_t4'],
         effects: [{ type: 'healing_multiplier', valuePerRank: 0.12, description: '治疗效果提升' }]
       },
       {
         id: 'paladin_prot_t5', name: '守护者之光', description: '每级减免 6% 受到的伤害',
-        icon: 'game-icons:stone-shield', tier: 5, col: 2, maxRank: 2,
+        icon: 'game-icons:shield', tier: 5, col: 2, maxRank: 2,
         requires: ['paladin_prot_t4'],
         effects: [{ type: 'damage_reduction', valuePerRank: 0.06 }]
       },
@@ -282,7 +282,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'hunter_surv_t2', name: '陷阱掌握', description: '每级提升 6% 物理伤害',
-        icon: 'game-icons:bear-trap', tier: 2, col: 3, maxRank: 2,
+        icon: 'game-icons:mantrap', tier: 2, col: 3, maxRank: 2,
         requires: ['hunter_surv_t1'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.06 }]
       },
@@ -324,7 +324,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'hunter_beast_t5', name: '驯服野猪', description: '解锁可召唤的野猪宠物，擅长冲撞控制敌人',
-        icon: 'game-icons:boar-tusk', tier: 5, col: 1, maxRank: 1,
+        icon: 'game-icons:boar-tusks', tier: 5, col: 1, maxRank: 1,
         requires: ['hunter_beast_t4'],
         effects: [{ type: 'unlock_pet', petType: 'boar' }]
       },
@@ -336,7 +336,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'hunter_surv_t5', name: '陷阱大师', description: '每级提升 10% 物理伤害',
-        icon: 'game-icons:bear-trap', tier: 5, col: 3, maxRank: 2,
+        icon: 'game-icons:mantrap', tier: 5, col: 3, maxRank: 2,
         requires: ['hunter_surv_t4', 'hunter_marks_t4'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.1 }]
       },
@@ -362,7 +362,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
   },
   {
     id: 'rogue', name: '潜行者', classId: 'rogue',
-    icon: 'game-icons:curved-knife', description: '精通毒药、双持与阴影技艺的致命刺客',
+    icon: 'game-icons:curvy-knife', description: '精通毒药、双持与阴影技艺的致命刺客',
     talents: [
       {
         id: 'rogue_assn_t1', name: '毒药精通', description: '每级提升 5 点敏捷',
@@ -371,23 +371,23 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'rogue_combat_t1', name: '双武器', description: '每级提升 5 点敏捷',
-        icon: 'game-icons:double-quaver', tier: 1, col: 2, maxRank: 2,
+        icon: 'game-icons:duality', tier: 1, col: 2, maxRank: 2,
         effects: [{ type: 'stat_bonus', stat: 'dex', valuePerRank: 5 }]
       },
       {
         id: 'rogue_sub_t1', name: '潜行', description: '每级提升 5 点敏捷',
-        icon: 'game-icons:shadow', tier: 1, col: 3, maxRank: 2,
+        icon: 'game-icons:bottled-shadow', tier: 1, col: 3, maxRank: 2,
         effects: [{ type: 'stat_bonus', stat: 'dex', valuePerRank: 5 }]
       },
       {
         id: 'rogue_assn_t2', name: '致命毒药', description: '每级提升 8% 物理伤害',
-        icon: 'game-icons:droplet', tier: 2, col: 1, maxRank: 2,
+        icon: 'game-icons:poison-bottle', tier: 2, col: 1, maxRank: 2,
         requires: ['rogue_assn_t1'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
       {
         id: 'rogue_combat_t2', name: '剑刃乱舞', description: '每级提升 6% 物理伤害',
-        icon: 'game-icons:spinning-swords', tier: 2, col: 2, maxRank: 2,
+        icon: 'game-icons:spinning-sword', tier: 2, col: 2, maxRank: 2,
         requires: ['rogue_combat_t1'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.06 }]
       },
@@ -399,19 +399,19 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'rogue_assn_t3', name: '刺杀', description: '每级提升 5 点敏捷',
-        icon: 'game-icons:skull', tier: 3, col: 1, maxRank: 2,
+        icon: 'game-icons:dread-skull', tier: 3, col: 1, maxRank: 2,
         requires: ['rogue_assn_t2'],
         effects: [{ type: 'stat_bonus', stat: 'dex', valuePerRank: 5 }]
       },
       {
         id: 'rogue_combat_t3', name: '活力', description: '每级提升 8 点能量上限',
-        icon: 'game-icons:lightning', tier: 3, col: 2, maxRank: 2,
+        icon: 'game-icons:sparkles', tier: 3, col: 2, maxRank: 2,
         requires: ['rogue_combat_t2'],
         effects: [{ type: 'resource_bonus', stat: 'energy_max', valuePerRank: 8 }]
       },
       {
         id: 'rogue_sub_t3', name: '暗影之舞', description: '每级提升 8% 物理伤害',
-        icon: 'game-icons:dance', tier: 3, col: 3, maxRank: 2,
+        icon: 'game-icons:fluffy-swirl', tier: 3, col: 3, maxRank: 2,
         requires: ['rogue_sub_t2'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
@@ -423,25 +423,25 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'rogue_combat_t4', name: '剑刃风暴', description: '每级提升 5 点敏捷和 8% 物理伤害',
-        icon: 'game-icons:spinning-swords', tier: 4, col: 2, maxRank: 2,
+        icon: 'game-icons:spinning-sword', tier: 4, col: 2, maxRank: 2,
         requires: ['rogue_combat_t3', 'rogue_assn_t3'],
         effects: [{ type: 'stat_bonus', stat: 'dex', valuePerRank: 5 }, { type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
       {
         id: 'rogue_sub_t4', name: '暗影大师', description: '每级提升 5 点敏捷和 8% 物理伤害',
-        icon: 'game-icons:shadow', tier: 4, col: 3, maxRank: 2,
+        icon: 'game-icons:bottled-shadow', tier: 4, col: 3, maxRank: 2,
         requires: ['rogue_sub_t3'],
         effects: [{ type: 'stat_bonus', stat: 'dex', valuePerRank: 5 }, { type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
       {
         id: 'rogue_assn_t5', name: '封喉', description: '每级提升 10% 物理伤害',
-        icon: 'game-icons:curved-knife', tier: 5, col: 1, maxRank: 2,
+        icon: 'game-icons:curvy-knife', tier: 5, col: 1, maxRank: 2,
         requires: ['rogue_assn_t4'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.1 }]
       },
       {
         id: 'rogue_combat_t5', name: '冲动', description: '每级提升 10% 物理伤害',
-        icon: 'game-icons:double-quaver', tier: 5, col: 2, maxRank: 2,
+        icon: 'game-icons:fire-dash', tier: 5, col: 2, maxRank: 2,
         requires: ['rogue_combat_t4'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.1 }]
       },
@@ -453,7 +453,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'rogue_assn_t6', name: '死亡之吻', description: '提升 15% 物理伤害',
-        icon: 'game-icons:skull', tier: 6, col: 1, maxRank: 1,
+        icon: 'game-icons:dread-skull', tier: 6, col: 1, maxRank: 1,
         requires: ['rogue_assn_t5'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.15 }]
       },
@@ -482,7 +482,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'priest_shadow_t1', name: '暗影形态', description: '每级提升 5 点智力',
-        icon: 'game-icons:shadow', tier: 1, col: 2, maxRank: 2,
+        icon: 'game-icons:bottled-shadow', tier: 1, col: 2, maxRank: 2,
         effects: [{ type: 'stat_bonus', stat: 'int', valuePerRank: 5 }]
       },
       {
@@ -516,7 +516,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'priest_shadow_t3', name: '暗影之语', description: '每级提升 5 点感知',
-        icon: 'game-icons:whirlpool', tier: 3, col: 2, maxRank: 2,
+        icon: 'game-icons:bottled-shadow', tier: 3, col: 2, maxRank: 2,
         requires: ['priest_shadow_t2'],
         effects: [{ type: 'stat_bonus', stat: 'wis', valuePerRank: 5 }]
       },
@@ -552,7 +552,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'priest_shadow_t5', name: '精神控制', description: '每级提升 10% 魔法伤害',
-        icon: 'game-icons:shadow', tier: 5, col: 2, maxRank: 2,
+        icon: 'game-icons:bottled-shadow', tier: 5, col: 2, maxRank: 2,
         requires: ['priest_shadow_t4'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.1 }]
       },
@@ -570,13 +570,13 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'priest_shadow_t6', name: '暗影形态·终极', description: '提升 15% 魔法伤害',
-        icon: 'game-icons:whirlpool', tier: 6, col: 2, maxRank: 1,
+        icon: 'game-icons:spark-spirit', tier: 6, col: 2, maxRank: 1,
         requires: ['priest_shadow_t5'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.15 }]
       },
       {
         id: 'priest_disc_t6', name: '神圣庇护', description: '减免 10% 受到的伤害，提升 10% 治疗效果',
-        icon: 'game-icons:scroll', tier: 6, col: 3, maxRank: 1,
+        icon: 'game-icons:shield', tier: 6, col: 3, maxRank: 1,
         requires: ['priest_disc_t5'],
         effects: [{ type: 'damage_reduction', valuePerRank: 0.1 }, { type: 'healing_multiplier', valuePerRank: 0.1, description: '治疗效果提升' }]
       }
@@ -588,7 +588,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
     talents: [
       {
         id: 'shaman_elem_t1', name: '元素掌握', description: '每级提升 5 点感知',
-        icon: 'game-icons:lightning', tier: 1, col: 1, maxRank: 2,
+        icon: 'game-icons:spark-spirit', tier: 1, col: 1, maxRank: 2,
         effects: [{ type: 'stat_bonus', stat: 'wis', valuePerRank: 5 }]
       },
       {
@@ -609,7 +609,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'shaman_enh_t2', name: '风暴打击', description: '每级提升 8% 物理伤害',
-        icon: 'game-icons:lightning-storm', tier: 2, col: 2, maxRank: 2,
+        icon: 'game-icons:chain-lightning', tier: 2, col: 2, maxRank: 2,
         requires: ['shaman_enh_t1'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
@@ -633,13 +633,13 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'shaman_rest_t3', name: '自然守护', description: '每级减免 3% 受到的伤害',
-        icon: 'game-icons:leaf', tier: 3, col: 3, maxRank: 2,
+        icon: 'game-icons:oak-leaf', tier: 3, col: 3, maxRank: 2,
         requires: ['shaman_rest_t2'],
         effects: [{ type: 'damage_reduction', valuePerRank: 0.03 }]
       },
       {
         id: 'shaman_elem_t4', name: '元素之怒·强化', description: '每级提升 5 点感知和 8% 魔法伤害',
-        icon: 'game-icons:lightning', tier: 4, col: 1, maxRank: 2,
+        icon: 'game-icons:fire-wave', tier: 4, col: 1, maxRank: 2,
         requires: ['shaman_elem_t3'],
         effects: [{ type: 'stat_bonus', stat: 'wis', valuePerRank: 5 }, { type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
@@ -663,31 +663,31 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'shaman_enh_t5', name: '熔岩猛击', description: '每级提升 10% 物理伤害',
-        icon: 'game-icons:hammer', tier: 5, col: 2, maxRank: 2,
+        icon: 'game-icons:warhammer', tier: 5, col: 2, maxRank: 2,
         requires: ['shaman_enh_t4'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.1 }]
       },
       {
         id: 'shaman_rest_t5', name: '潮汐之力', description: '每级提升 12% 治疗效果',
-        icon: 'game-icons:health-normal', tier: 5, col: 3, maxRank: 2,
+        icon: 'game-icons:wave-crest', tier: 5, col: 3, maxRank: 2,
         requires: ['shaman_rest_t4', 'shaman_enh_t4'],
         effects: [{ type: 'healing_multiplier', valuePerRank: 0.12, description: '治疗效果提升' }]
       },
       {
         id: 'shaman_elem_t6', name: '元素毁灭', description: '提升 15% 魔法伤害',
-        icon: 'game-icons:lightning-storm', tier: 6, col: 1, maxRank: 1,
+        icon: 'game-icons:explosion-rays', tier: 6, col: 1, maxRank: 1,
         requires: ['shaman_elem_t5'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.15 }]
       },
       {
         id: 'shaman_enh_t6', name: '末日震击', description: '提升 15% 物理伤害',
-        icon: 'game-icons:lightning-storm', tier: 6, col: 2, maxRank: 1,
+        icon: 'game-icons:thunder-blade', tier: 6, col: 2, maxRank: 1,
         requires: ['shaman_enh_t5'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.15 }]
       },
       {
         id: 'shaman_rest_t6', name: '自然之愈', description: '提升 15% 治疗效果，减免 5% 受到的伤害',
-        icon: 'game-icons:leaf', tier: 6, col: 3, maxRank: 1,
+        icon: 'game-icons:oak-leaf', tier: 6, col: 3, maxRank: 1,
         requires: ['shaman_rest_t5'],
         effects: [{ type: 'healing_multiplier', valuePerRank: 0.15, description: '治疗效果提升' }, { type: 'damage_reduction', valuePerRank: 0.05 }]
       }
@@ -714,7 +714,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'mage_arcane_t2', name: '法力涌动', description: '每级提升 8% 魔法伤害',
-        icon: 'game-icons:lightning', tier: 2, col: 1, maxRank: 2,
+        icon: 'game-icons:magic-swirl', tier: 2, col: 1, maxRank: 2,
         requires: ['mage_arcane_t1'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
@@ -738,13 +738,13 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'mage_fire_t3', name: '烈焰风暴', description: '每级提升 9% 魔法伤害',
-        icon: 'game-icons:meteor', tier: 3, col: 2, maxRank: 2,
+        icon: 'game-icons:burning-meteor', tier: 3, col: 2, maxRank: 2,
         requires: ['mage_fire_t2'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.09 }]
       },
       {
         id: 'mage_frost_t3', name: '冰封寒霜', description: '每级提升 8% 魔法伤害',
-        icon: 'game-icons:icicles', tier: 3, col: 3, maxRank: 2,
+        icon: 'game-icons:icicles-aura', tier: 3, col: 3, maxRank: 2,
         requires: ['mage_frost_t2'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
@@ -768,13 +768,13 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'mage_arcane_t5', name: '法力风暴', description: '每级提升 10% 魔法伤害',
-        icon: 'game-icons:lightning', tier: 5, col: 1, maxRank: 2,
+        icon: 'game-icons:lightning-storm', tier: 5, col: 1, maxRank: 2,
         requires: ['mage_arcane_t4'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.1 }]
       },
       {
         id: 'mage_fire_t5', name: '炎爆术', description: '每级提升 10% 魔法伤害',
-        icon: 'game-icons:fire-zone', tier: 5, col: 2, maxRank: 2,
+        icon: 'game-icons:fireball', tier: 5, col: 2, maxRank: 2,
         requires: ['mage_fire_t4'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.1 }]
       },
@@ -792,13 +792,13 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'mage_fire_t6', name: '陨石坠落', description: '提升 15% 魔法伤害',
-        icon: 'game-icons:meteor', tier: 6, col: 2, maxRank: 1,
+        icon: 'game-icons:burning-meteor', tier: 6, col: 2, maxRank: 1,
         requires: ['mage_fire_t5'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.15 }]
       },
       {
         id: 'mage_frost_t6', name: '冰封王座', description: '提升 15% 魔法伤害，减免 5% 受到的伤害',
-        icon: 'game-icons:icicles', tier: 6, col: 3, maxRank: 1,
+        icon: 'game-icons:icicles-aura', tier: 6, col: 3, maxRank: 1,
         requires: ['mage_frost_t5'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.15 }, { type: 'damage_reduction', valuePerRank: 0.05 }]
       }
@@ -806,32 +806,32 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
   },
   {
     id: 'warlock', name: '术士', classId: 'warlock',
-    icon: 'game-icons:tormented', description: '与恶魔订约，施用痛苦诅咒与毁灭法术的黑暗施法者',
+    icon: 'game-icons:evil-hand', description: '与恶魔订约，施用痛苦诅咒与毁灭法术的黑暗施法者',
     talents: [
       {
         id: 'warlock_aff_t1', name: '诅咒增幅', description: '每级提升 5 点智力',
-        icon: 'game-icons:curse', tier: 1, col: 1, maxRank: 2,
+        icon: 'game-icons:cursed-star', tier: 1, col: 1, maxRank: 2,
         effects: [{ type: 'stat_bonus', stat: 'int', valuePerRank: 5 }]
       },
       {
         id: 'warlock_demon_t1', name: '恶魔掌控', description: '每级提升 5 点智力',
-        icon: 'game-icons:devil', tier: 1, col: 2, maxRank: 2,
+        icon: 'game-icons:devil-mask', tier: 1, col: 2, maxRank: 2,
         effects: [{ type: 'stat_bonus', stat: 'int', valuePerRank: 5 }]
       },
       {
         id: 'warlock_dest_t1', name: '毁灭打击', description: '每级提升 6% 魔法伤害',
-        icon: 'game-icons:meteor', tier: 1, col: 3, maxRank: 2,
+        icon: 'game-icons:burning-meteor', tier: 1, col: 3, maxRank: 2,
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.06 }]
       },
       {
         id: 'warlock_aff_t2', name: '腐蚀', description: '每级提升 8% 魔法伤害',
-        icon: 'game-icons:slime', tier: 2, col: 1, maxRank: 2,
+        icon: 'game-icons:poison-cloud', tier: 2, col: 1, maxRank: 2,
         requires: ['warlock_aff_t1'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
       {
         id: 'warlock_demon_t2', name: '恶魔韧性', description: '每级减免 3% 受到的伤害',
-        icon: 'game-icons:demon-claw', tier: 2, col: 2, maxRank: 2,
+        icon: 'game-icons:claw', tier: 2, col: 2, maxRank: 2,
         requires: ['warlock_demon_t1'],
         effects: [{ type: 'damage_reduction', valuePerRank: 0.03 }]
       },
@@ -849,43 +849,43 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'warlock_demon_t3', name: '恶魔变形', description: '每级提升 9% 魔法伤害',
-        icon: 'game-icons:transmutation', tier: 3, col: 2, maxRank: 2,
+        icon: 'game-icons:transform', tier: 3, col: 2, maxRank: 2,
         requires: ['warlock_demon_t2'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.09 }]
       },
       {
         id: 'warlock_dest_t3', name: '混乱之箭', description: '每级提升 9% 魔法伤害',
-        icon: 'game-icons:chaos', tier: 3, col: 3, maxRank: 2,
+        icon: 'game-icons:spiky-explosion', tier: 3, col: 3, maxRank: 2,
         requires: ['warlock_dest_t2'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.09 }]
       },
       {
         id: 'warlock_aff_t4', name: '诅咒之王', description: '每级提升 5 点智力和 8% 魔法伤害',
-        icon: 'game-icons:curse', tier: 4, col: 1, maxRank: 2,
+        icon: 'game-icons:cursed-star', tier: 4, col: 1, maxRank: 2,
         requires: ['warlock_aff_t3'],
         effects: [{ type: 'stat_bonus', stat: 'int', valuePerRank: 5 }, { type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
       {
         id: 'warlock_demon_t4', name: '恶魔之主', description: '每级提升 5 点智力，减免 5% 受到的伤害',
-        icon: 'game-icons:devil', tier: 4, col: 2, maxRank: 2,
+        icon: 'game-icons:devil-mask', tier: 4, col: 2, maxRank: 2,
         requires: ['warlock_demon_t3', 'warlock_aff_t3'],
         effects: [{ type: 'stat_bonus', stat: 'int', valuePerRank: 5 }, { type: 'damage_reduction', valuePerRank: 0.05 }]
       },
       {
         id: 'warlock_dest_t4', name: '毁灭之心', description: '每级提升 5 点智力和 8% 魔法伤害',
-        icon: 'game-icons:meteor', tier: 4, col: 3, maxRank: 2,
+        icon: 'game-icons:burning-meteor', tier: 4, col: 3, maxRank: 2,
         requires: ['warlock_dest_t3'],
         effects: [{ type: 'stat_bonus', stat: 'int', valuePerRank: 5 }, { type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
       {
         id: 'warlock_aff_t5', name: '痛苦诅咒', description: '每级提升 10% 魔法伤害',
-        icon: 'game-icons:slime', tier: 5, col: 1, maxRank: 2,
+        icon: 'game-icons:poison-bottle', tier: 5, col: 1, maxRank: 2,
         requires: ['warlock_aff_t4'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.1 }]
       },
       {
         id: 'warlock_demon_t5', name: '恶魔之心', description: '每级提升 10% 魔法伤害',
-        icon: 'game-icons:demon', tier: 5, col: 2, maxRank: 2,
+        icon: 'game-icons:devil-mask', tier: 5, col: 2, maxRank: 2,
         requires: ['warlock_demon_t4'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.1 }]
       },
@@ -903,13 +903,13 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'warlock_demon_t6', name: '恶魔变形·终极', description: '提升 15% 魔法伤害，减免 5% 受到的伤害',
-        icon: 'game-icons:transmutation', tier: 6, col: 2, maxRank: 1,
+        icon: 'game-icons:transform', tier: 6, col: 2, maxRank: 1,
         requires: ['warlock_demon_t5'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.15 }, { type: 'damage_reduction', valuePerRank: 0.05 }]
       },
       {
         id: 'warlock_dest_t6', name: '混乱之雨', description: '提升 15% 魔法伤害',
-        icon: 'game-icons:chaos', tier: 6, col: 3, maxRank: 1,
+        icon: 'game-icons:spiky-explosion', tier: 6, col: 3, maxRank: 1,
         requires: ['warlock_dest_t5'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.15 }]
       }
@@ -917,7 +917,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
   },
   {
     id: 'monk', name: '武僧', classId: 'monk',
-    icon: 'game-icons:wind', description: '以酒、拳与迷雾之息淬炼身心的武道宗师',
+    icon: 'game-icons:whirlwind', description: '以酒、拳与迷雾之息淬炼身心的武道宗师',
     talents: [
       {
         id: 'monk_brew_t1', name: '醉拳', description: '每级提升 5 点体质',
@@ -931,12 +931,12 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'monk_mw_t1', name: '抚慰之雾', description: '每级提升 5 点感知',
-        icon: 'game-icons:wind', tier: 1, col: 3, maxRank: 2,
+        icon: 'game-icons:fluffy-cloud', tier: 1, col: 3, maxRank: 2,
         effects: [{ type: 'stat_bonus', stat: 'wis', valuePerRank: 5 }]
       },
       {
         id: 'monk_brew_t2', name: '壮胆酒', description: '每级减免 5% 受到的伤害',
-        icon: 'game-icons:flagon', tier: 2, col: 1, maxRank: 2,
+        icon: 'game-icons:beer-stein', tier: 2, col: 1, maxRank: 2,
         requires: ['monk_brew_t1'],
         effects: [{ type: 'damage_reduction', valuePerRank: 0.05 }]
       },
@@ -948,7 +948,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'monk_mw_t2', name: '复苏之雾', description: '每级提升 12% 治疗效果',
-        icon: 'game-icons:windsock', tier: 2, col: 3, maxRank: 2,
+        icon: 'game-icons:fog', tier: 2, col: 3, maxRank: 2,
         requires: ['monk_mw_t1'],
         effects: [{ type: 'healing_multiplier', valuePerRank: 0.12, description: '治疗效果提升' }]
       },
@@ -960,13 +960,13 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'monk_ww_t3', name: '真气爆裂', description: '每级提升 2 点真气上限',
-        icon: 'game-icons:spirit', tier: 3, col: 2, maxRank: 2,
+        icon: 'game-icons:explosion-rays', tier: 3, col: 2, maxRank: 2,
         requires: ['monk_ww_t2'],
         effects: [{ type: 'resource_bonus', stat: 'chi_max', valuePerRank: 2 }]
       },
       {
         id: 'monk_mw_t3', name: '真气贯通', description: '每级提升 6% 魔法伤害',
-        icon: 'game-icons:spirit', tier: 3, col: 3, maxRank: 2,
+        icon: 'game-icons:energy-breath', tier: 3, col: 3, maxRank: 2,
         requires: ['monk_mw_t2'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.06 }]
       },
@@ -984,13 +984,13 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'monk_mw_t4', name: '迷雾之息', description: '每级提升 5 点敏捷和 10% 治疗效果',
-        icon: 'game-icons:windsock', tier: 4, col: 3, maxRank: 2,
+        icon: 'game-icons:fog-light', tier: 4, col: 3, maxRank: 2,
         requires: ['monk_mw_t3'],
         effects: [{ type: 'stat_bonus', stat: 'dex', valuePerRank: 5 }, { type: 'healing_multiplier', valuePerRank: 0.1, description: '治疗效果提升' }]
       },
       {
         id: 'monk_brew_t5', name: '壮胆酒·强化', description: '每级减免 6% 受到的伤害',
-        icon: 'game-icons:flagon', tier: 5, col: 1, maxRank: 2,
+        icon: 'game-icons:beer-stein', tier: 5, col: 1, maxRank: 2,
         requires: ['monk_brew_t4'],
         effects: [{ type: 'damage_reduction', valuePerRank: 0.06 }]
       },
@@ -1002,25 +1002,25 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'monk_mw_t5', name: '复苏之雾·强化', description: '每级提升 12% 治疗效果',
-        icon: 'game-icons:wind', tier: 5, col: 3, maxRank: 2,
+        icon: 'game-icons:fog', tier: 5, col: 3, maxRank: 2,
         requires: ['monk_mw_t4', 'monk_ww_t4'],
         effects: [{ type: 'healing_multiplier', valuePerRank: 0.12, description: '治疗效果提升' }]
       },
       {
         id: 'monk_brew_t6', name: '醉仙之醉', description: '减免 10% 受到的伤害，提升 8% 物理伤害',
-        icon: 'game-icons:fire', tier: 6, col: 1, maxRank: 1,
+        icon: 'game-icons:fist', tier: 6, col: 1, maxRank: 1,
         requires: ['monk_brew_t5'],
         effects: [{ type: 'damage_reduction', valuePerRank: 0.1 }, { type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
       {
         id: 'monk_ww_t6', name: '翔龙在天', description: '提升 15% 物理伤害',
-        icon: 'game-icons:wind', tier: 6, col: 2, maxRank: 1,
+        icon: 'game-icons:whirlwind', tier: 6, col: 2, maxRank: 1,
         requires: ['monk_ww_t5'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.15 }]
       },
       {
         id: 'monk_mw_t6', name: '生生不息', description: '提升 15% 治疗效果和 8% 魔法伤害',
-        icon: 'game-icons:spirit', tier: 6, col: 3, maxRank: 1,
+        icon: 'game-icons:spark-spirit', tier: 6, col: 3, maxRank: 1,
         requires: ['monk_mw_t5'],
         effects: [{ type: 'healing_multiplier', valuePerRank: 0.15, description: '治疗效果提升' }, { type: 'damage_multiplier', valuePerRank: 0.08 }]
       }
@@ -1032,7 +1032,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
     talents: [
       {
         id: 'druid_bal_t1', name: '星辰之力', description: '每级提升 5 点智力',
-        icon: 'game-icons:star', tier: 1, col: 1, maxRank: 2,
+        icon: 'game-icons:star-swirl', tier: 1, col: 1, maxRank: 2,
         effects: [{ type: 'stat_bonus', stat: 'int', valuePerRank: 5 }]
       },
       {
@@ -1042,7 +1042,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'druid_rest_t1', name: '自然愈合', description: '每级提升 5 点感知',
-        icon: 'game-icons:leaf', tier: 1, col: 3, maxRank: 2,
+        icon: 'game-icons:oak-leaf', tier: 1, col: 3, maxRank: 2,
         effects: [{ type: 'stat_bonus', stat: 'wis', valuePerRank: 5 }]
       },
       {
@@ -1059,7 +1059,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'druid_rest_t2', name: '回春术', description: '每级提升 12% 治疗效果',
-        icon: 'game-icons:plant-root', tier: 2, col: 3, maxRank: 2,
+        icon: 'game-icons:plant-roots', tier: 2, col: 3, maxRank: 2,
         requires: ['druid_rest_t1'],
         effects: [{ type: 'healing_multiplier', valuePerRank: 0.12, description: '治疗效果提升' }]
       },
@@ -1071,13 +1071,13 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'druid_feral_t3', name: '狂暴', description: '每级提升 4 点感知',
-        icon: 'game-icons:rage', tier: 3, col: 2, maxRank: 2,
+        icon: 'game-icons:enrage', tier: 3, col: 2, maxRank: 2,
         requires: ['druid_feral_t2'],
         effects: [{ type: 'stat_bonus', stat: 'wis', valuePerRank: 4 }]
       },
       {
         id: 'druid_rest_t3', name: '生命之树', description: '每级减免 3% 受到的伤害',
-        icon: 'game-icons:tree', tier: 3, col: 3, maxRank: 2,
+        icon: 'game-icons:willow-tree', tier: 3, col: 3, maxRank: 2,
         requires: ['druid_rest_t2'],
         effects: [{ type: 'damage_reduction', valuePerRank: 0.03 }]
       },
@@ -1095,7 +1095,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'druid_rest_t4', name: '自然之愈', description: '每级提升 5 点感知和 10% 治疗效果',
-        icon: 'game-icons:leaf', tier: 4, col: 3, maxRank: 2,
+        icon: 'game-icons:oak-leaf', tier: 4, col: 3, maxRank: 2,
         requires: ['druid_rest_t3'],
         effects: [{ type: 'stat_bonus', stat: 'wis', valuePerRank: 5 }, { type: 'healing_multiplier', valuePerRank: 0.1, description: '治疗效果提升' }]
       },
@@ -1113,13 +1113,13 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'druid_rest_t5', name: '生命绽放', description: '每级提升 12% 治疗效果',
-        icon: 'game-icons:plant-root', tier: 5, col: 3, maxRank: 2,
+        icon: 'game-icons:plant-roots', tier: 5, col: 3, maxRank: 2,
         requires: ['druid_rest_t4', 'druid_feral_t4'],
         effects: [{ type: 'healing_multiplier', valuePerRank: 0.12, description: '治疗效果提升' }]
       },
       {
         id: 'druid_bal_t6', name: '艾露恩之怒', description: '提升 15% 魔法伤害',
-        icon: 'game-icons:star', tier: 6, col: 1, maxRank: 1,
+        icon: 'game-icons:star-formation', tier: 6, col: 1, maxRank: 1,
         requires: ['druid_bal_t5'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.15 }]
       },
@@ -1131,7 +1131,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'druid_rest_t6', name: '大自然的守护', description: '提升 15% 治疗效果，减免 5% 受到的伤害',
-        icon: 'game-icons:tree', tier: 6, col: 3, maxRank: 1,
+        icon: 'game-icons:willow-tree', tier: 6, col: 3, maxRank: 1,
         requires: ['druid_rest_t5'],
         effects: [{ type: 'healing_multiplier', valuePerRank: 0.15, description: '治疗效果提升' }, { type: 'damage_reduction', valuePerRank: 0.05 }]
       }
@@ -1139,38 +1139,38 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
   },
   {
     id: 'death_knight', name: '死亡骑士', classId: 'death_knight',
-    icon: 'game-icons:droplet', description: '驾驭鲜血、冰霜与亡灵之力的黑暗骑士',
+    icon: 'game-icons:blood', description: '驾驭鲜血、冰霜与亡灵之力的黑暗骑士',
     talents: [
       {
         id: 'death_knight_blood_t1', name: '鲜血之力', description: '每级提升 5 点力量',
-        icon: 'game-icons:droplet', tier: 1, col: 1, maxRank: 2,
+        icon: 'game-icons:blood', tier: 1, col: 1, maxRank: 2,
         effects: [{ type: 'stat_bonus', stat: 'str', valuePerRank: 5 }]
       },
       {
         id: 'death_knight_frost_t1', name: '冰霜之力', description: '每级提升 5 点力量',
-        icon: 'game-icons:snowflake', tier: 1, col: 2, maxRank: 2,
+        icon: 'game-icons:snowflake-1', tier: 1, col: 2, maxRank: 2,
         effects: [{ type: 'stat_bonus', stat: 'str', valuePerRank: 5 }]
       },
       {
         id: 'death_knight_unholy_t1', name: '亡灵掌握', description: '每级提升 5 点智力',
-        icon: 'game-icons:skull', tier: 1, col: 3, maxRank: 2,
+        icon: 'game-icons:dread-skull', tier: 1, col: 3, maxRank: 2,
         effects: [{ type: 'stat_bonus', stat: 'int', valuePerRank: 5 }]
       },
       {
         id: 'death_knight_blood_t2', name: '吸血', description: '每级提升 8% 物理伤害',
-        icon: 'game-icons:veins', tier: 2, col: 1, maxRank: 2,
+        icon: 'game-icons:blood', tier: 2, col: 1, maxRank: 2,
         requires: ['death_knight_blood_t1'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
       {
         id: 'death_knight_frost_t2', name: '冰霜打击', description: '每级提升 8% 物理伤害',
-        icon: 'game-icons:icicles', tier: 2, col: 2, maxRank: 2,
+        icon: 'game-icons:icicles-aura', tier: 2, col: 2, maxRank: 2,
         requires: ['death_knight_frost_t1'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
       {
         id: 'death_knight_unholy_t2', name: '疾病', description: '每级提升 8% 魔法伤害',
-        icon: 'game-icons:plague', tier: 2, col: 3, maxRank: 2,
+        icon: 'game-icons:plague-doctor-profile', tier: 2, col: 3, maxRank: 2,
         requires: ['death_knight_unholy_t1'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
@@ -1182,7 +1182,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'death_knight_frost_t3', name: '湮没', description: '每级提升 5 点力量',
-        icon: 'game-icons:broken-heart', tier: 3, col: 2, maxRank: 2,
+        icon: 'game-icons:shatter', tier: 3, col: 2, maxRank: 2,
         requires: ['death_knight_frost_t2'],
         effects: [{ type: 'stat_bonus', stat: 'str', valuePerRank: 5 }]
       },
@@ -1194,31 +1194,31 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'death_knight_blood_t4', name: '鲜血之怒', description: '每级提升 5 点力量和 8% 物理伤害',
-        icon: 'game-icons:droplet', tier: 4, col: 1, maxRank: 2,
+        icon: 'game-icons:bloody-sword', tier: 4, col: 1, maxRank: 2,
         requires: ['death_knight_blood_t3'],
         effects: [{ type: 'stat_bonus', stat: 'str', valuePerRank: 5 }, { type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
       {
         id: 'death_knight_frost_t4', name: '冰霜之拳', description: '每级提升 5 点力量和 8% 物理伤害',
-        icon: 'game-icons:icicles', tier: 4, col: 2, maxRank: 2,
+        icon: 'game-icons:icicles-aura', tier: 4, col: 2, maxRank: 2,
         requires: ['death_knight_frost_t3', 'death_knight_blood_t3'],
         effects: [{ type: 'stat_bonus', stat: 'str', valuePerRank: 5 }, { type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
       {
         id: 'death_knight_unholy_t4', name: '亡灵主宰', description: '每级提升 5 点力量和 8% 魔法伤害',
-        icon: 'game-icons:skull', tier: 4, col: 3, maxRank: 2,
+        icon: 'game-icons:dread-skull', tier: 4, col: 3, maxRank: 2,
         requires: ['death_knight_unholy_t3'],
         effects: [{ type: 'stat_bonus', stat: 'str', valuePerRank: 5 }, { type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
       {
         id: 'death_knight_blood_t5', name: '吸血鬼之血', description: '每级提升 10% 物理伤害',
-        icon: 'game-icons:veins', tier: 5, col: 1, maxRank: 2,
+        icon: 'game-icons:blood', tier: 5, col: 1, maxRank: 2,
         requires: ['death_knight_blood_t4'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.1 }]
       },
       {
         id: 'death_knight_frost_t5', name: '凛风冲击', description: '每级提升 10% 物理伤害',
-        icon: 'game-icons:snowflake', tier: 5, col: 2, maxRank: 2,
+        icon: 'game-icons:snowflake-1', tier: 5, col: 2, maxRank: 2,
         requires: ['death_knight_frost_t4'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.1 }]
       },
@@ -1242,7 +1242,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'death_knight_unholy_t6', name: '天灾', description: '提升 15% 魔法伤害',
-        icon: 'game-icons:plague', tier: 6, col: 3, maxRank: 1,
+        icon: 'game-icons:plague-doctor-profile', tier: 6, col: 3, maxRank: 1,
         requires: ['death_knight_unholy_t5'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.15 }]
       }
@@ -1259,7 +1259,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'demon_hunter_havoc_t1', name: '恶魔之牙', description: '每级提升 5 点敏捷',
-        icon: 'game-icons:demon-claw', tier: 1, col: 2, maxRank: 2,
+        icon: 'game-icons:claw', tier: 1, col: 2, maxRank: 2,
         effects: [{ type: 'stat_bonus', stat: 'dex', valuePerRank: 5 }]
       },
       {
@@ -1269,31 +1269,31 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'demon_hunter_venge_t2', name: '痛苦', description: '每级减免 5% 受到的伤害',
-        icon: 'game-icons:tormented', tier: 2, col: 1, maxRank: 2,
+        icon: 'game-icons:evil-hand', tier: 2, col: 1, maxRank: 2,
         requires: ['demon_hunter_venge_t1'],
         effects: [{ type: 'damage_reduction', valuePerRank: 0.05 }]
       },
       {
         id: 'demon_hunter_havoc_t2', name: '混乱打击', description: '每级提升 8% 物理伤害',
-        icon: 'game-icons:chaos', tier: 2, col: 2, maxRank: 2,
+        icon: 'game-icons:spiky-explosion', tier: 2, col: 2, maxRank: 2,
         requires: ['demon_hunter_havoc_t1'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
       {
         id: 'demon_hunter_fel_t2', name: '邪能爆发', description: '每级提升 8% 物理伤害',
-        icon: 'game-icons:explosion', tier: 2, col: 3, maxRank: 2,
+        icon: 'game-icons:bright-explosion', tier: 2, col: 3, maxRank: 2,
         requires: ['demon_hunter_fel_t1'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
       {
         id: 'demon_hunter_venge_t3', name: '恶魔变形', description: '每级提升 6% 物理伤害',
-        icon: 'game-icons:transmutation', tier: 3, col: 1, maxRank: 2,
+        icon: 'game-icons:transform', tier: 3, col: 1, maxRank: 2,
         requires: ['demon_hunter_venge_t2'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.06 }]
       },
       {
         id: 'demon_hunter_havoc_t3', name: '眼棱', description: '每级提升 5 点敏捷',
-        icon: 'game-icons:eye', tier: 3, col: 2, maxRank: 2,
+        icon: 'game-icons:all-seeing-eye', tier: 3, col: 2, maxRank: 2,
         requires: ['demon_hunter_havoc_t2'],
         effects: [{ type: 'stat_bonus', stat: 'dex', valuePerRank: 5 }]
       },
@@ -1311,7 +1311,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'demon_hunter_havoc_t4', name: '混乱之刃', description: '每级提升 5 点敏捷和 8% 物理伤害',
-        icon: 'game-icons:chaos', tier: 4, col: 2, maxRank: 2,
+        icon: 'game-icons:spiky-explosion', tier: 4, col: 2, maxRank: 2,
         requires: ['demon_hunter_havoc_t3', 'demon_hunter_venge_t3'],
         effects: [{ type: 'stat_bonus', stat: 'dex', valuePerRank: 5 }, { type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
@@ -1323,7 +1323,7 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'demon_hunter_venge_t5', name: '灵魂裂劈', description: '每级减免 6% 受到的伤害',
-        icon: 'game-icons:tormented', tier: 5, col: 1, maxRank: 2,
+        icon: 'game-icons:evil-hand', tier: 5, col: 1, maxRank: 2,
         requires: ['demon_hunter_venge_t4'],
         effects: [{ type: 'damage_reduction', valuePerRank: 0.06 }]
       },
@@ -1335,19 +1335,19 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'demon_hunter_fel_t5', name: '邪能风暴', description: '每级提升 10% 物理伤害',
-        icon: 'game-icons:explosion', tier: 5, col: 3, maxRank: 2,
+        icon: 'game-icons:bright-explosion', tier: 5, col: 3, maxRank: 2,
         requires: ['demon_hunter_fel_t4', 'demon_hunter_havoc_t4'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.1 }]
       },
       {
         id: 'demon_hunter_venge_t6', name: '恶魔变形·终极', description: '减免 10% 受到的伤害，提升 8% 物理伤害',
-        icon: 'game-icons:transmutation', tier: 6, col: 1, maxRank: 1,
+        icon: 'game-icons:transform', tier: 6, col: 1, maxRank: 1,
         requires: ['demon_hunter_venge_t5'],
         effects: [{ type: 'damage_reduction', valuePerRank: 0.1 }, { type: 'damage_multiplier', valuePerRank: 0.08 }]
       },
       {
         id: 'demon_hunter_havoc_t6', name: '眼棱·终极', description: '提升 15% 物理伤害',
-        icon: 'game-icons:eye', tier: 6, col: 2, maxRank: 1,
+        icon: 'game-icons:all-seeing-eye', tier: 6, col: 2, maxRank: 1,
         requires: ['demon_hunter_havoc_t5'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.15 }]
       },
@@ -1386,19 +1386,19 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'evoker_pres_t2', name: '巨龙坚韧', description: '每级减免 5% 受到的伤害',
-        icon: 'game-icons:stone-shield', tier: 2, col: 2, maxRank: 2,
+        icon: 'game-icons:shield', tier: 2, col: 2, maxRank: 2,
         requires: ['evoker_pres_t1'],
         effects: [{ type: 'damage_reduction', valuePerRank: 0.05 }]
       },
       {
         id: 'evoker_aug_t2', name: '能量灌注', description: '每级提升 8% 魔法伤害',
-        icon: 'game-icons:lightning', tier: 2, col: 3, maxRank: 2,
+        icon: 'game-icons:energy-arrow', tier: 2, col: 3, maxRank: 2,
         requires: ['evoker_aug_t1'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.08, description: '魔法伤害提升' }]
       },
       {
         id: 'evoker_dev_t3', name: '永恒之眼', description: '每级提升 4 点魅力',
-        icon: 'game-icons:eye', tier: 3, col: 1, maxRank: 2,
+        icon: 'game-icons:all-seeing-eye', tier: 3, col: 1, maxRank: 2,
         requires: ['evoker_dev_t2'],
         effects: [{ type: 'stat_bonus', stat: 'cha', valuePerRank: 4 }]
       },
@@ -1440,19 +1440,19 @@ export const CLASS_TALENT_TREES: TalentTree[] = [
       },
       {
         id: 'evoker_pres_t5', name: '守护之翼', description: '每级减免 6% 受到的伤害',
-        icon: 'game-icons:stone-shield', tier: 5, col: 2, maxRank: 2,
+        icon: 'game-icons:shield', tier: 5, col: 2, maxRank: 2,
         requires: ['evoker_pres_t4'],
         effects: [{ type: 'damage_reduction', valuePerRank: 0.06 }]
       },
       {
         id: 'evoker_aug_t5', name: '能量共鸣', description: '每级提升 10% 魔法伤害',
-        icon: 'game-icons:lightning', tier: 5, col: 3, maxRank: 2,
+        icon: 'game-icons:energy-breath', tier: 5, col: 3, maxRank: 2,
         requires: ['evoker_aug_t4', 'evoker_pres_t4'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.1, description: '魔法伤害提升' }]
       },
       {
         id: 'evoker_dev_t6', name: '龙之怒', description: '提升 15% 魔法伤害',
-        icon: 'game-icons:meteor', tier: 6, col: 1, maxRank: 1,
+        icon: 'game-icons:burning-meteor', tier: 6, col: 1, maxRank: 1,
         requires: ['evoker_dev_t5'],
         effects: [{ type: 'damage_multiplier', valuePerRank: 0.15 }]
       },

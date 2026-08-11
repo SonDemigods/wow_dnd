@@ -24,6 +24,7 @@
  */
 import { computed, ref, watch, onUnmounted } from 'vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { FALLBACK_ICON } from '@/config/icons';
 import type { PetInstance } from '@/modules/combat/pets';
 
 const props = defineProps<{
@@ -37,18 +38,18 @@ const petIcon = computed(() => {
   const iconMap: Record<string, string> = {
     // 术士宠物
     imp: 'game-icons:imp',
-    voidwalker: 'game-icons:void',
-    succubus: 'game-icons:succubus',
+    voidwalker: 'game-icons:falling-ovoid',
+    succubus: 'game-icons:charm',
     felhunter: 'game-icons:dog-house',
-    doomguard: 'game-icons:demon',
+    doomguard: 'game-icons:evil-minion',
     // 猎人宠物
     wolf: 'game-icons:wolf-head',
     bear: 'game-icons:bear-head',
     cat: 'game-icons:cat',
-    boar: 'game-icons:boar-tusk',
+    boar: 'game-icons:boar-tusks',
     devilsaur: 'game-icons:t-rex-skull',
   };
-  return iconMap[props.pet.petId] || 'game-icons:monster-skull';
+  return iconMap[props.pet.petId] || FALLBACK_ICON;
 });
 
 const petHp = computed(() => Math.max(0, props.pet.hp));

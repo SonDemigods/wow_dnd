@@ -4,7 +4,7 @@
       <div class="pet-summon-header">
         <span class="pet-summon-title">召唤宠物</span>
         <button class="pet-summon-close" @click="handleClose">
-          <BaseIcon name="cancel" :size="16" />
+          <BaseIcon :name="COMMON_ICONS.cancel" :size="16" />
         </button>
       </div>
       <div class="pet-summon-body">
@@ -45,7 +45,7 @@
       </div>
       <div v-if="hasActivePet" class="pet-summon-footer">
         <button class="dismiss-btn" @click="handleDismiss">
-          <BaseIcon name="cancel" :size="14" /> 解散当前宠物
+          <BaseIcon :name="COMMON_ICONS.cancel" :size="14" /> 解散当前宠物
         </button>
       </div>
     </div>
@@ -60,6 +60,7 @@
  *              术士/猎人共用，根据资源类型切换显示。
  */
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS } from '@/config/icons';
 import type { Pet, PetType } from '@/modules/combat/pets';
 
 const props = defineProps<{

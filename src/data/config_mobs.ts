@@ -519,7 +519,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'mob_strider',
     name: '陆行鸟',
-    icon: 'game-icons:stork',
+    icon: 'game-icons:shoebill-stork',
     maxHp: 18,
     damage: [2, 5],
     xp: 10,
@@ -554,7 +554,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'mob_raptor',
     name: '迅猛龙',
-    icon: 'game-icons:raptor',
+    icon: 'game-icons:velociraptor',
     maxHp: 42,
     damage: [7, 13],
     xp: 32,
@@ -624,7 +624,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'mob_faceless',
     name: '无面者',
-    icon: 'game-icons:amorphous-tentacles',
+    icon: 'game-icons:floating-tentacles',
     maxHp: 70,
     damage: [10, 18],
     xp: 55,
@@ -692,7 +692,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'mob_basilisk',
     name: '石化蜥蜴',
-    icon: 'game-icons:lizard',
+    icon: 'game-icons:lizardman',
     maxHp: 72,
     damage: [9, 16],
     xp: 50,
@@ -709,7 +709,7 @@ export const MOBS: EnemyData[] = [
   {
     id: 'mob_void_walker',
     name: '虚空行者',
-    icon: 'game-icons:shadow-fog',
+    icon: 'game-icons:shadow-follower',
     maxHp: 68,
     damage: [10, 18],
     xp: 54,

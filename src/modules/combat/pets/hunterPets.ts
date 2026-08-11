@@ -176,7 +176,7 @@ export const HUNTER_PETS: Record<HunterPetType, HunterPet> = {
   boar: {
     id: 'boar',
     name: '野猪',
-    icon: 'game-icons:boar-tusk',
+    icon: 'game-icons:boar-tusks',
     description: '凶猛的野猪，以獠牙冲撞击退并控制敌人',
     aiBehavior: 'controller',
     attributes: {

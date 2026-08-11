@@ -8,6 +8,7 @@ import { useCombatStore } from '@/modules/combat';
 import { useCharacterStore } from '@/modules/character';
 import { useSkillDisplay } from '@/composables/useSkillDisplay';
 import { describeEffect } from '@/modules/item/descriptors';
+import { EFFECT_ICONS as CONFIG_EFFECT_ICONS, EFFECT_ICON_FALLBACK } from '@/config/icons';
 import type { Skill } from '@/modules/skill';
 import type { Item } from '@/modules/inventory';
 import type { CombatLog } from '@/modules/combat';
@@ -19,12 +20,7 @@ const RESOURCE_TYPE_NAMES: Record<string, string> = {
   mana: '法力',
 };
 
-const EFFECT_ICONS: Record<string, string> = {
-  poison: 'skull-poison', burn: 'flame', stun: 'stun-glow', freeze: 'snowflake', silence: 'silenced',
-  shield: 'shield', attack_up: 'sword-clash', attack_down: 'sword-clash', defense_up: 'shield',
-  defense_down: 'shield', speed_up: 'dodge', speed_down: 'turtle', regen: 'regeneration',
-  thorn: 'cactus', vulnerable: 'heart-organ',
-};
+const EFFECT_ICONS = CONFIG_EFFECT_ICONS;
 
 export function useCombatUiHelpers() {
   const combatStore = useCombatStore();
@@ -113,7 +109,7 @@ export function useCombatUiHelpers() {
   }
 
   function getEffectIcon(type: string): string {
-    return EFFECT_ICONS[type] || 'game-icons:sparkles';
+    return EFFECT_ICONS[type] || EFFECT_ICON_FALLBACK;
   }
 
   return {

@@ -15,7 +15,7 @@
           @click="selectEquipment(slot)"
         >
           <div v-if="slot.locked" class="slot-lock-overlay" title="被双手武器占用">
-            <BaseIcon name="padlock" gradient="metal" :size="20" />
+            <BaseIcon :name="COMMON_ICONS.padlock" gradient="metal" :size="20" />
             <span class="lock-text">占用</span>
           </div>
           <template v-else-if="slot.equipment">
@@ -98,6 +98,7 @@ import type { Stats } from '@/modules/character';
 import { getRarityName, getStatName } from '@/modules/item/descriptors';
 import ItemIcon from '../../common/ItemIcon.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS } from '@/config/icons';
 import EmptyState from '../../common/EmptyState.vue';
 
 const equipmentStore = useEquipmentStore();

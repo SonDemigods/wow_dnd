@@ -2,7 +2,7 @@
   <div class="exploration-view">
     <!-- 未选择区域时的提示 -->
     <div v-if="!hasCurrentLocation" class="no-location-hint">
-      <BaseIcon name="treasure-map" gradient="nature" :size="20" />
+      <BaseIcon :name="COMMON_ICONS.treasure" gradient="nature" :size="20" />
       <div class="hint-text">请先在地图上选择一个区域</div>
       <div class="hint-sub">点击地图标签，选择想要探索的区域后开始冒险</div>
     </div>
@@ -38,15 +38,15 @@
               :data-y="y"
             >
               <!-- 玩家位置标记（金色人物图标，叠加在原格图标之上） -->
-              <BaseIcon v-if="isPlayerPosition(x, y)" name="player-token" gradient="gold" :size="24" class="player-marker" />
+              <BaseIcon v-if="isPlayerPosition(x, y)" name="token" gradient="gold" :size="24" class="player-marker" />
               <!-- 阶段四：封印门 Boss 格（sealed=true 且未解锁），无论 discovered/explored 都显示锁形图标 -->
-              <BaseIcon v-else-if="isBossSealed(cell)" name="padlock" gradient="dragon" :size="20" class="sealed-icon" />
+              <BaseIcon v-else-if="isBossSealed(cell)" :name="COMMON_ICONS.padlock" gradient="dragon" :size="20" class="sealed-icon" />
               <BaseIcon v-else-if="cell.explored" :name="getCellIcon(cell.type).name" :gradient="getCellIcon(cell.type).gradient" :size="20" />
               <!-- 阶段三：discovered 层模糊图标（问号/黑影），危险格由 .danger class 叠加警告色 -->
               <!-- 阶段四：discovered 陷阱格 hint=true 显示暗色裂纹图标（弱提示），其余显示模糊问号 -->
               <BaseIcon v-else-if="cell.discovered && cell.type === 'trap' && cell.hint" name="caltrops" gradient="shadow" :size="20" class="discovered-icon hint-icon" />
-              <BaseIcon v-else-if="cell.discovered" name="uncertainty" gradient="shadow" :size="20" class="discovered-icon" />
-              <BaseIcon v-else name="uncertainty" gradient="shadow" :size="20" />
+              <BaseIcon v-else-if="cell.discovered" :name="COMMON_ICONS.uncertainty" gradient="shadow" :size="20" class="discovered-icon" />
+              <BaseIcon v-else :name="COMMON_ICONS.uncertainty" gradient="shadow" :size="20" />
             </div>
             </div>
           </div>
@@ -73,6 +73,7 @@ import { useCharacterStore } from '@/modules/character';
 import { useMapStore } from '@/modules/map';
 import { useToast } from '@/composables/useToast';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { CELL_ICONS, CELL_ICON_FALLBACK, COMMON_ICONS } from '@/config/icons';
 import type { ExplorationCell } from '@/modules/exploration';
 
 const explorationStore = useExplorationStore();
@@ -168,21 +169,10 @@ const explorationProgress = computed(() => {
   return Math.round((explored / total) * 100);
 });
 
-const cellIcons: Record<string, { name: string; gradient: string }> = {
-  empty: { name: 'plain-circle', gradient: 'metal' },
-  monster: { name: 'sword-clash', gradient: 'physical' },
-  treasure: { name: 'treasure-map', gradient: 'magic' },
-  shop: { name: 'shop', gradient: 'gold' },
-  rest: { name: 'campfire', gradient: 'heal' },
-  boss: { name: 'dragon-head', gradient: 'dragon' },
-  event: { name: 'perspective-dice-six', gradient: 'gold' },
-  trap: { name: 'caltrops', gradient: 'debuff' },
-  start: { name: 'entry-door', gradient: 'heal' },
-  board: { name: 'notebook', gradient: 'gold' }
-};
+const cellIcons = CELL_ICONS;
 
 function getCellIcon(type: string) {
-  return cellIcons[type] || { name: 'plain-circle', gradient: 'metal' };
+  return cellIcons[type] || CELL_ICON_FALLBACK;
 }
 
 /**

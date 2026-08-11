@@ -6,14 +6,14 @@
           :class="['build-tab', { active: activeTab === 'skills' }]"
           @click="activeTab = 'skills'"
         >
-          <BaseIcon name="sword-spin" gradient="gold" :size="16" /> 技能
+          <BaseIcon :name="COMMON_ICONS.swordSpin" gradient="gold" :size="16" /> 技能
           <MenuBadge v-if="talentStore.availablePoints > 0" :count="0" variant="info" />
         </button>
         <button
           :class="['build-tab', { active: activeTab === 'talents' }]"
           @click="activeTab = 'talents'"
         >
-          <BaseIcon name="star" gradient="gold" :size="16" /> 天赋
+          <BaseIcon :name="COMMON_ICONS.star" gradient="gold" :size="16" /> 天赋
           <MenuBadge :count="talentStore.availablePoints" variant="danger" />
         </button>
       </div>
@@ -34,6 +34,7 @@
 import { ref, watch } from 'vue';
 import BasePopup from '../common/BasePopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS } from '@/config/icons';
 import MenuBadge from '../common/MenuBadge.vue';
 import SkillsPanel from './panels/SkillsPanel.vue';
 import TalentsPanel from './panels/TalentsPanel.vue';

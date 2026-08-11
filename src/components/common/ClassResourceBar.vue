@@ -24,6 +24,7 @@
  */
 import { computed } from 'vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { RESOURCE_ICONS } from '@/config/icons';
 import type { ResourceSystem, ResourceType } from '@/modules/combat/resources';
 
 const props = defineProps<{
@@ -32,19 +33,19 @@ const props = defineProps<{
 
 /** 资源类型对应的显示配置 */
 const RESOURCE_DISPLAY_CONFIG: Record<ResourceType, { name: string; icon: string; gradient: string }> = {
-  rage: { name: '怒气', icon: 'game-icons:flame', gradient: 'physical' },
-  energy: { name: '能量', icon: 'game-icons:lightning-bolt', gradient: 'gold' },
-  combo_point: { name: '连击', icon: 'game-icons:archery-target', gradient: 'gold' },
-  soul_shard: { name: '碎片', icon: 'game-icons:soul', gradient: 'debuff' },
-  chi: { name: '真气', icon: 'game-icons:fist', gradient: 'heal' },
-  focus: { name: '集中', icon: 'game-icons:targeting', gradient: 'physical' },
-  holy_power: { name: '神圣', icon: 'game-icons:halo', gradient: 'holy' },
-  runic_power: { name: '符能', icon: 'game-icons:rune-sword', gradient: 'blood' },
-  rune: { name: '符文', icon: 'game-icons:rune-stone', gradient: 'blood' },
-  fury: { name: '怒火', icon: 'game-icons:demon-claw', gradient: 'debuff' },
-  soul: { name: '灵魂', icon: 'game-icons:soul', gradient: 'debuff' },
-  essence: { name: '精华', icon: 'game-icons:dragon-orb', gradient: 'mana' },
-  mana: { name: '法力', icon: 'game-icons:magic-palm', gradient: 'mana' },
+  rage: { name: '怒气', icon: RESOURCE_ICONS.rage, gradient: 'physical' },
+  energy: { name: '能量', icon: RESOURCE_ICONS.energy, gradient: 'gold' },
+  combo_point: { name: '连击', icon: RESOURCE_ICONS.combo_point, gradient: 'gold' },
+  soul_shard: { name: '碎片', icon: RESOURCE_ICONS.soul_shard, gradient: 'debuff' },
+  chi: { name: '真气', icon: RESOURCE_ICONS.chi, gradient: 'heal' },
+  focus: { name: '集中', icon: RESOURCE_ICONS.focus, gradient: 'physical' },
+  holy_power: { name: '神圣', icon: RESOURCE_ICONS.holy_power, gradient: 'holy' },
+  runic_power: { name: '符能', icon: RESOURCE_ICONS.runic_power, gradient: 'blood' },
+  rune: { name: '符文', icon: RESOURCE_ICONS.rune, gradient: 'blood' },
+  fury: { name: '怒火', icon: RESOURCE_ICONS.fury, gradient: 'debuff' },
+  soul: { name: '灵魂', icon: RESOURCE_ICONS.soul, gradient: 'debuff' },
+  essence: { name: '精华', icon: RESOURCE_ICONS.essence, gradient: 'mana' },
+  mana: { name: '法力', icon: RESOURCE_ICONS.mana, gradient: 'mana' },
 };
 
 const resourceConfig = computed(() => {

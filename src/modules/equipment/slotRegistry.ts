@@ -25,6 +25,7 @@ import type {
   EquipmentItem,
   EquipmentState
 } from '../item/types';
+import { SLOT_ICONS } from '@/config/icons';
 
 // ============================================================================
 // 槽位基础设施（7 槽）
@@ -79,13 +80,13 @@ export interface SlotConfigEntry {
 }
 
 export const SLOT_CONFIG: Record<EquipmentSlot, SlotConfigEntry> = {
-  weapon1: { name: '主手', icon: 'game-icons:broadsword', group: 'weapon' },
-  weapon2: { name: '副手', icon: 'game-icons:checked-shield', group: 'weapon' },
-  helm: { name: '头部', icon: 'game-icons:visored-helm', group: 'armor' },
-  chest: { name: '胸部', icon: 'game-icons:chest-armor', group: 'armor' },
-  gloves: { name: '手套', icon: 'game-icons:gauntlet', group: 'armor' },
-  legs: { name: '腿部', icon: 'game-icons:leg-armor', group: 'armor' },
-  boots: { name: '鞋子', icon: 'game-icons:leather-boot', group: 'armor' }
+  weapon1: { name: '主手', icon: SLOT_ICONS.weapon1, group: 'weapon' },
+  weapon2: { name: '副手', icon: SLOT_ICONS.weapon2, group: 'weapon' },
+  helm: { name: '头部', icon: SLOT_ICONS.helm, group: 'armor' },
+  chest: { name: '胸部', icon: SLOT_ICONS.chest, group: 'armor' },
+  gloves: { name: '手套', icon: SLOT_ICONS.gloves, group: 'armor' },
+  legs: { name: '腿部', icon: SLOT_ICONS.legs, group: 'armor' },
+  boots: { name: '鞋子', icon: SLOT_ICONS.boots, group: 'armor' }
 };
 
 /**

@@ -506,7 +506,7 @@ const POLEARMS: EquipmentItemDraft[] = [
   {
     id: 'wooden_spear',
     name: '木制长矛',
-    icon: 'game-icons:spear',
+    icon: 'game-icons:barbed-spear',
     bonus: { str: 10, dex: 8 },
     rarity: 'common',
     description: '翠叶森林猎人随手削制的白蜡木长矛，矛尖以燧石打磨，质朴却足以刺穿野兽心脏',
@@ -517,7 +517,7 @@ const POLEARMS: EquipmentItemDraft[] = [
   {
     id: 'iron_spear',
     name: '铁尖长矛',
-    icon: 'game-icons:spear',
+    icon: 'game-icons:barbed-spear',
     bonus: { str: 12, dex: 10 },
     rarity: 'common',
     description: '辉石城民兵制式装备，铁质矛尖经淬火后坚硬锋利，长柄可远距离拒敌于丈外',
@@ -539,7 +539,7 @@ const POLEARMS: EquipmentItemDraft[] = [
   {
     id: 'jagged_pike',
     name: '锯齿长枪',
-    icon: 'game-icons:spear',
+    icon: 'game-icons:barbed-spear',
     bonus: { str: 20, dex: 15 },
     rarity: 'uncommon',
     description: '荒芜平原佣兵在矛尖刻下倒刺的长枪，刺入后拔出会带出大块血肉，杀伤力骇人',
@@ -550,7 +550,7 @@ const POLEARMS: EquipmentItemDraft[] = [
   {
     id: 'mithril_spear',
     name: '秘银长矛',
-    icon: 'game-icons:spear',
+    icon: 'game-icons:barbed-spear',
     bonus: { str: 22, dex: 18 },
     rarity: 'rare',
     description: '卡兹山脉秘银锻就的轻盈长矛，矛身泛着淡蓝魔法辉光，刺击时快如闪电难以闪避',
@@ -572,7 +572,7 @@ const POLEARMS: EquipmentItemDraft[] = [
   {
     id: 'dragon_lance',
     name: '巨龙长枪',
-    icon: 'game-icons:spear',
+    icon: 'game-icons:barbed-spear',
     bonus: { str: 32, dex: 25, con: 10 },
     rarity: 'epic',
     description: '以成年赤红巨龙尾骨与鳞片锻造的史诗长枪，曾一枪刺穿过同伴巨龙的胸膛',
@@ -594,7 +594,7 @@ const POLEARMS: EquipmentItemDraft[] = [
   {
     id: 'celestial_spear',
     name: '天界长矛',
-    icon: 'game-icons:spear',
+    icon: 'game-icons:barbed-spear',
     bonus: { str: 45, dex: 35, wis: 15 },
     rarity: 'legendary',
     description: '圣光之泉高地天使遗落人间的传奇长矛，矛尖凝聚着星光，刺击时如流星划破夜空',

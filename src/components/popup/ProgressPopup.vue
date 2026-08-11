@@ -6,7 +6,7 @@
           :class="['progress-tab', { active: activeTab === 'quests' }]"
           @click="activeTab = 'quests'"
         >
-          <BaseIcon name="notebook" gradient="gold" :size="16" /> 任务
+          <BaseIcon :name="COMMON_ICONS.notebook" gradient="gold" :size="16" /> 任务
           <MenuBadge :count="questStore.activeCount" variant="info" />
         </button>
         <button
@@ -33,6 +33,7 @@
 import { ref, watch } from 'vue';
 import BasePopup from '../common/BasePopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS } from '@/config/icons';
 import MenuBadge from '../common/MenuBadge.vue';
 import QuestPanel from './panels/QuestPanel.vue';
 import LogPanel from './panels/LogPanel.vue';

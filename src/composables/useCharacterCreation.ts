@@ -9,6 +9,7 @@ import { useBaseStore } from '@/modules/base';
 import { eventBus, GameEvents } from '@/modules/bus';
 import type { FactionType, RaceType, ClassType } from '@/modules/character';
 import { STAT_NAMES } from '@/config/character';
+import { STAT_ICONS, STAT_ICON_FALLBACK } from '@/config/icons';
 import {
   calculatePhysicalAttack,
   calculatePhysicalDefense,
@@ -144,15 +145,7 @@ export function useCharacterCreation(onCreated: () => void) {
   }
 
   function getStatIcon(stat: string): { name: string; gradient: string } {
-    const icons: Record<string, { name: string; gradient: string }> = {
-      str: { name: 'biceps', gradient: 'physical' },
-      dex: { name: 'boot-kick', gradient: 'lightning' },
-      con: { name: 'heart-organ', gradient: 'blood' },
-      int: { name: 'brain', gradient: 'magic' },
-      wis: { name: 'eye-target', gradient: 'nature' },
-      cha: { name: 'charm', gradient: 'gold' }
-    };
-    return icons[stat] || { name: 'uncertainty', gradient: 'shadow' };
+    return STAT_ICONS[stat] || STAT_ICON_FALLBACK;
   }
 
   function nextStep() {

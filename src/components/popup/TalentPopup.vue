@@ -46,7 +46,7 @@
             >
               <div class="node-col-indicator" :style="{ background: colColor(node.talent.col) }" />
               <BaseIcon
-                :name="node.talent.icon || 'game-icons:star'"
+                :name="node.talent.icon || COMMON_ICONS.star"
                 :gradient="characterStore.classId"
                 :size="28"
               />
@@ -56,7 +56,7 @@
               </span>
               <span v-if="node.talent.tier === 6" class="node-ultimate-badge">★</span>
               <span v-if="nodeStateClass(node) === 'locked'" class="node-lock">
-                <BaseIcon name="padlock" :size="12" />
+                <BaseIcon :name="COMMON_ICONS.padlock" :size="12" />
               </span>
             </div>
           </div>
@@ -111,6 +111,7 @@ import { useCharacterStore } from '@/modules/character';
 import type { Talent } from '@/modules/character/talents/types';
 import BasePopup from '../common/BasePopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS } from '@/config/icons';
 import {
   TALENT_NODE_W, TALENT_NODE_H, TALENT_COL_GAP, TALENT_ROW_GAP,
   TALENT_COL1_COLOR, TALENT_COL2_COLOR, TALENT_COL3_COLOR, TALENT_COL_DEFAULT_COLOR,

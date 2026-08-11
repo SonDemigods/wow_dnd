@@ -609,7 +609,7 @@ describe('useExplorationStore - 探索 Store', () => {
 
       await store.applyEventChoice({
         label: '触碰祭坛',
-        icon: 'game-icons:altar',
+        icon: 'game-icons:star-altar',
         effect: { type: 'exp', amount: 30 },
       });
 

@@ -16,7 +16,7 @@
   />
   <Icon
     v-else
-    :icon="finalIcon"
+    :icon="effectiveIcon"
     :width="size"
     :height="size"
     :color="color"
@@ -34,9 +34,7 @@ export function nextGradId() {
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { Icon, loadIcon } from '@iconify/vue';
-
-/** 回退图标：问号 */
-const FALLBACK_ICON = 'game-icons:uncertainty';
+import { FALLBACK_ICON } from '@/config/icons';
 
 /**
  * 净化 SVG body 字符串，防止 XSS
@@ -86,6 +84,14 @@ const finalIcon = computed(() => {
   return `game-icons:${props.name}`;
 });
 
+/** 图标是否存在（异步 loadIcon 校验后更新） */
+const iconExists = ref(true);
+
+/** 实际渲染的图标名：不存在时回退为问号 */
+const effectiveIcon = computed(() =>
+  iconExists.value ? finalIcon.value : FALLBACK_ICON
+);
+
 /** 每个实例分配全局唯一渐变 ID */
 const gradId = nextGradId();
 
@@ -99,16 +105,6 @@ let loadToken = 0;
 watch(
   [finalIcon, () => props.gradient],
   async ([icon, grad]) => {
-    if (!grad || !icon) {
-      gradientSvgBody.value = '';
-      lastLoadedKey.value = '';
-      return;
-    }
-    // P7-006 修复：将 gradient 纳入缓存键，gradient 变化时也需重新加载
-    const cacheKey = `${icon}:${grad}`;
-    if (cacheKey === lastLoadedKey.value && gradientSvgBody.value) return;
-    lastLoadedKey.value = cacheKey;
-
     // P8-025 修复：令牌保护，快速切换 icon 时丢弃过期的异步结果
     const myToken = ++loadToken;
 
@@ -116,10 +112,30 @@ watch(
       const data = await loadIcon(icon);
       // P8-025 修复：检查令牌，若已过期则丢弃本次结果
       if (myToken !== loadToken) return;
+
       if (!data) {
+        // 图标不存在 — 回退为问号
+        iconExists.value = false;
         gradientSvgBody.value = '';
+        lastLoadedKey.value = '';
         return;
       }
+
+      // 图标存在
+      iconExists.value = true;
+
+      // 非渐变模式：清空 SVG body，由 <Icon> 组件单色渲染
+      if (!grad) {
+        gradientSvgBody.value = '';
+        lastLoadedKey.value = '';
+        return;
+      }
+
+      // P7-006 修复：将 gradient 纳入缓存键，gradient 变化时也需重新加载
+      const cacheKey = `${icon}:${grad}`;
+      if (cacheKey === lastLoadedKey.value && gradientSvgBody.value) return;
+      lastLoadedKey.value = cacheKey;
+
       // 使用唯一 gradId 避免多实例 SVG ID 冲突导致渐变被覆盖
       const defs = `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--icon-grad-${grad}-start)"/><stop offset="100%" stop-color="var(--icon-grad-${grad}-end)"/></linearGradient></defs>`;
       // 净化 SVG body 防止 XSS（icon 名可能来自外部配置）
@@ -129,8 +145,11 @@ watch(
       );
       gradientSvgBody.value = defs + body;
     } catch (e) {
-      console.warn(`[BaseIcon] loadIcon("${icon}") 失败，降级为单色图标:`, e);
+      if (myToken !== loadToken) return;
+      // loadIcon 失败 — 图标不存在，回退为问号
+      iconExists.value = false;
       gradientSvgBody.value = '';
+      lastLoadedKey.value = '';
     }
   },
   { immediate: true }

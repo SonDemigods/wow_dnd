@@ -45,9 +45,9 @@
                     </div>
                   </div>
                   <div class="quest-rewards">
-                    <span v-if="quest.goldReward"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
+                    <span v-if="quest.goldReward"><BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
                     <span v-if="quest.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.xpReward }}</span>
-                    <span v-if="quest.itemRewards?.length"><BaseIcon name="chest" gradient="gold" :size="14" /> {{ quest.itemRewards.length }}</span>
+                    <span v-if="quest.itemRewards?.length"><BaseIcon :name="COMMON_ICONS.chest" gradient="gold" :size="14" /> {{ quest.itemRewards.length }}</span>
                   </div>
                   <button
                     class="accept-btn"
@@ -83,7 +83,7 @@
                   </div>
                   <p class="quest-desc">{{ quest.description }}</p>
                   <div class="quest-rewards">
-                    <span v-if="quest.goldReward"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
+                    <span v-if="quest.goldReward"><BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
                     <span v-if="quest.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.xpReward }}</span>
                   </div>
                   <button
@@ -120,6 +120,7 @@ import { errorHandler } from '@/services/ErrorHandler';
 import { getObjectiveText } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS, QUEST_ICONS, QUEST_ICON_FALLBACK } from '@/config/icons';
 import EmptyState from '@/components/common/EmptyState.vue';
 
 const props = defineProps<{
@@ -160,14 +161,8 @@ const turnInQuests = computed(() => {
 
 const characterLevel = computed(() => characterStore.level);
 
-const questIcons: Record<string, string> = {
-  kill: 'crossed-swords',
-  collect: 'chest',
-  explore: 'compass'
-};
-
-function getQuestIcon(type: string) {
-  return questIcons[type] || 'notebook';
+function getQuestIcon(type: string): string {
+  return QUEST_ICONS[type]?.name || QUEST_ICON_FALLBACK.name;
 }
 
 // 获取当前区域的任务板ID

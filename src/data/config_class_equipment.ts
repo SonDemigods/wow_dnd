@@ -85,7 +85,7 @@ const CLASS_EQUIPMENT_DRAFTS: ClassItemDraft[] = [
   {
     id: 'warrior_axe_berserker',
     name: '狂战士之斧',
-    icon: 'game-icons:axe',
+    icon: 'game-icons:war-axe',
     subtype: 'axe',
     grip: 'one_handed',
     bonus: { str: 32, con: 10 },
@@ -145,7 +145,7 @@ const CLASS_EQUIPMENT_DRAFTS: ClassItemDraft[] = [
   {
     id: 'hunter_dagger_quick',
     name: '疾风匕首',
-    icon: 'game-icons:curved-knife',
+    icon: 'game-icons:curvy-knife',
     subtype: 'dagger',
     grip: 'one_handed',
     bonus: { dex: 30, wis: 8 },
@@ -161,7 +161,7 @@ const CLASS_EQUIPMENT_DRAFTS: ClassItemDraft[] = [
   {
     id: 'rogue_dagger_venom',
     name: '剧毒匕首',
-    icon: 'game-icons:curved-knife',
+    icon: 'game-icons:curvy-knife',
     subtype: 'dagger',
     grip: 'one_handed',
     bonus: { dex: 14, cha: 5 },
@@ -191,7 +191,7 @@ const CLASS_EQUIPMENT_DRAFTS: ClassItemDraft[] = [
   {
     id: 'priest_staff_light',
     name: '圣光法杖',
-    icon: 'game-icons:lightstaff',
+    icon: 'game-icons:light-sabers',
     subtype: 'staff',
     grip: 'two_handed',
     bonus: { wis: 20, int: 6 },
@@ -206,7 +206,7 @@ const CLASS_EQUIPMENT_DRAFTS: ClassItemDraft[] = [
   {
     id: 'priest_dagger_ceremonial',
     name: '仪式匕首',
-    icon: 'game-icons:ritual-dagger',
+    icon: 'game-icons:sacrificial-dagger',
     subtype: 'dagger',
     grip: 'one_handed',
     bonus: { wis: 30, cha: 8 },
@@ -253,7 +253,7 @@ const CLASS_EQUIPMENT_DRAFTS: ClassItemDraft[] = [
   {
     id: 'mage_staff_eternal',
     name: '永恒法杖',
-    icon: 'game-icons:staff',
+    icon: 'game-icons:wizard-staff',
     subtype: 'staff',
     grip: 'two_handed',
     bonus: { int: 18, wis: 8 },
@@ -268,7 +268,7 @@ const CLASS_EQUIPMENT_DRAFTS: ClassItemDraft[] = [
   {
     id: 'mage_dagger_arcane',
     name: '奥术匕首',
-    icon: 'game-icons:curved-knife',
+    icon: 'game-icons:curvy-knife',
     subtype: 'dagger',
     grip: 'one_handed',
     bonus: { int: 30, dex: 8 },
@@ -284,7 +284,7 @@ const CLASS_EQUIPMENT_DRAFTS: ClassItemDraft[] = [
   {
     id: 'warlock_staff_soul',
     name: '灵魂权杖',
-    icon: 'game-icons:gnome',
+    icon: 'game-icons:bad-gnome',
     subtype: 'staff',
     grip: 'two_handed',
     bonus: { int: 16, cha: 8 },
@@ -299,7 +299,7 @@ const CLASS_EQUIPMENT_DRAFTS: ClassItemDraft[] = [
   {
     id: 'warlock_dagger_ritual',
     name: '仪式匕首',
-    icon: 'game-icons:ritual-dagger',
+    icon: 'game-icons:sacrificial-dagger',
     subtype: 'dagger',
     grip: 'one_handed',
     bonus: { int: 30, cha: 8 },
@@ -315,7 +315,7 @@ const CLASS_EQUIPMENT_DRAFTS: ClassItemDraft[] = [
   {
     id: 'monk_dagger_wind',
     name: '疾风短刃',
-    icon: 'game-icons:wind-feather',
+    icon: 'game-icons:feather',
     subtype: 'dagger',
     grip: 'one_handed',
     bonus: { dex: 20, wis: 5 },
@@ -329,7 +329,7 @@ const CLASS_EQUIPMENT_DRAFTS: ClassItemDraft[] = [
   {
     id: 'monk_polearm_staff',
     name: '武僧长棍',
-    icon: 'game-icons:bo-staff',
+    icon: 'game-icons:crescent-staff',
     subtype: 'polearm',
     grip: 'two_handed',
     bonus: { dex: 30, con: 8 },
@@ -360,7 +360,7 @@ const CLASS_EQUIPMENT_DRAFTS: ClassItemDraft[] = [
   {
     id: 'druid_polearm_spear',
     name: '翠叶长矛',
-    icon: 'game-icons:spear',
+    icon: 'game-icons:barbed-spear',
     subtype: 'polearm',
     grip: 'two_handed',
     bonus: { wis: 30, str: 8 },
@@ -376,7 +376,7 @@ const CLASS_EQUIPMENT_DRAFTS: ClassItemDraft[] = [
   {
     id: 'dk_greatsword_frost',
     name: '寒霜巨剑',
-    icon: 'game-icons:ice-sword',
+    icon: 'game-icons:ice-bolt',
     subtype: 'greatsword',
     grip: 'two_handed',
     bonus: { str: 20, con: 6 },
@@ -420,7 +420,7 @@ const CLASS_EQUIPMENT_DRAFTS: ClassItemDraft[] = [
   {
     id: 'dh_greatsword_illidari',
     name: '伊利达雷巨剑',
-    icon: 'game-icons:fire-sword',
+    icon: 'game-icons:flame',
     subtype: 'greatsword',
     grip: 'two_handed',
     bonus: { dex: 30, str: 8 },

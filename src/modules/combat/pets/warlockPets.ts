@@ -73,7 +73,7 @@ export const WARLOCK_PETS: Record<WarlockPetType, WarlockPet> = {
   voidwalker: {
     id: 'voidwalker',
     name: '虚空行者',
-    icon: 'game-icons:void',
+    icon: 'game-icons:falling-ovoid',
     description: '由虚空能量构成的坚韧恶魔，能吸引敌人攻击保护主人',
     aiBehavior: 'defensive',
     attributes: {
@@ -124,7 +124,7 @@ export const WARLOCK_PETS: Record<WarlockPetType, WarlockPet> = {
   succubus: {
     id: 'succubus',
     name: '魅魔',
-    icon: 'game-icons:succubus',
+    icon: 'game-icons:charm',
     description: '以魅力迷惑敌人的恶魔，擅长近战输出和控制',
     aiBehavior: 'controller',
     attributes: {
@@ -226,7 +226,7 @@ export const WARLOCK_PETS: Record<WarlockPetType, WarlockPet> = {
   doomguard: {
     id: 'doomguard',
     name: '末日守卫',
-    icon: 'game-icons:demon',
+    icon: 'game-icons:evil-minion',
     description: '强大的恶魔战士，仅在有足够灵魂碎片时方可召唤，造成毁灭性范围伤害',
     aiBehavior: 'aggressive',
     attributes: {

@@ -53,7 +53,7 @@ const SET_PART_DRAFTS: SetItemDraft[] = [
   {
     id: 'warrior_helm_t1',
     name: '铁壁头盔',
-    icon: 'game-icons:knight-helmet',
+    icon: 'game-icons:warlord-helmet',
     subtype: 'helm',
     bonus: { str: 5, con: 3 },
     rarity: 'rare',
@@ -125,7 +125,7 @@ const SET_PART_DRAFTS: SetItemDraft[] = [
   {
     id: 'warrior_helm_t2',
     name: '嗜血战盔',
-    icon: 'game-icons:knight-helmet',
+    icon: 'game-icons:warlord-helmet',
     subtype: 'helm',
     bonus: { str: 8, con: 5 },
     rarity: 'epic',
@@ -197,7 +197,7 @@ const SET_PART_DRAFTS: SetItemDraft[] = [
   {
     id: 'warrior_helm_t3',
     name: '不朽战盔',
-    icon: 'game-icons:knight-helmet',
+    icon: 'game-icons:warlord-helmet',
     subtype: 'helm',
     bonus: { str: 12, con: 8 },
     rarity: 'legendary',

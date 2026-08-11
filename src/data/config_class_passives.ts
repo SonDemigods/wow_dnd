@@ -56,7 +56,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'warrior_bloodlust',
     name: '嗜血',
     description: '攻击命中时恢复造成伤害 5% 的生命',
-    icon: 'game-icons:droplet',
+    icon: 'game-icons:droplets',
     classId: 'warrior',
     trigger: 'on_attack',
     effect: {
@@ -83,7 +83,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'warrior_rage_burst',
     name: '怒火爆发',
     description: '受到伤害时有 30% 概率获得 5 点怒气',
-    icon: 'game-icons:flame-stream',
+    icon: 'game-icons:flamethrower',
     classId: 'warrior',
     trigger: 'on_damaged',
     effect: {
@@ -98,7 +98,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'warrior_execute_instinct',
     name: '斩杀本能',
     description: '目标生命低于 20% 时，物理攻击力提升 15%',
-    icon: 'game-icons:cut-throat',
+    icon: 'game-icons:knife-thrust',
     classId: 'warrior',
     trigger: 'passive',
     effect: {
@@ -171,7 +171,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'mage_spell_vampirism',
     name: '法术吸血',
     description: '法术命中时恢复造成伤害 4% 的生命',
-    icon: 'game-icons:droplet',
+    icon: 'game-icons:droplets',
     classId: 'mage',
     trigger: 'on_attack',
     effect: {
@@ -214,7 +214,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'paladin_righteousness',
     name: '正义之力',
     description: '攻击命中时恢复造成伤害 3% 的生命',
-    icon: 'game-icons:holly',
+    icon: 'game-icons:ginkgo-leaf',
     classId: 'paladin',
     trigger: 'on_attack',
     effect: {
@@ -416,7 +416,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'rogue_opportunist',
     name: '机会主义者',
     description: '攻击命中时有 30% 概率获得 1 连击点',
-    icon: 'game-icons:opportunity',
+    icon: 'game-icons:targeting',
     classId: 'rogue',
     trigger: 'on_attack',
     effect: {
@@ -431,7 +431,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'rogue_shadow_resilience',
     name: '暗影韧性',
     description: '生命低于 30% 时，受到伤害减少 20%',
-    icon: 'game-icons:shadow-mask',
+    icon: 'game-icons:shadow-grasp',
     classId: 'rogue',
     trigger: 'on_low_hp',
     effect: {
@@ -476,7 +476,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'warlock_demonic_pact',
     name: '恶魔契约',
     description: '魔法攻击力 +12%，但每回合损失 2% 最大生命',
-    icon: 'game-icons:demon-claw',
+    icon: 'game-icons:claw',
     classId: 'warlock',
     trigger: 'on_turn_start',
     effect: {
@@ -518,7 +518,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'warlock_demonic_resilience',
     name: '恶魔韧性',
     description: '生命值低于 30% 时，恶魔之力护体，减免 20% 伤害',
-    icon: 'game-icons:demon-claw',
+    icon: 'game-icons:claw',
     classId: 'warlock',
     trigger: 'on_low_hp',
     effect: {
@@ -561,7 +561,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'druid_thick_hide',
     name: '厚皮',
     description: '物理防御力 +15%',
-    icon: 'game-icons:crocodile',
+    icon: 'game-icons:croc-jaws',
     classId: 'druid',
     trigger: 'passive',
     effect: {
@@ -602,7 +602,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'druid_survival_instinct',
     name: '生存本能',
     description: '生命低于 30% 时，受到伤害减少 20%',
-    icon: 'game-icons:shield-resistance',
+    icon: 'game-icons:shield',
     classId: 'druid',
     trigger: 'on_low_hp',
     effect: {
@@ -673,7 +673,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'priest_divine_favor',
     name: '神圣恩赐',
     description: '魔法攻击力 +10%',
-    icon: 'game-icons:divine',
+    icon: 'game-icons:holy-oak',
     classId: 'priest',
     trigger: 'passive',
     effect: {
@@ -687,7 +687,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'priest_shadow_affinity',
     name: '暗影亲和',
     description: '攻击命中时恢复造成伤害 8% 的生命',
-    icon: 'game-icons:shadow',
+    icon: 'game-icons:bottled-shadow',
     classId: 'priest',
     trigger: 'on_attack',
     effect: {
@@ -700,7 +700,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'priest_faith_guardian',
     name: '信仰守护',
     description: '生命低于 30% 时，受到伤害减少 15%',
-    icon: 'game-icons:shield-cross',
+    icon: 'game-icons:cross-shield',
     classId: 'priest',
     trigger: 'on_low_hp',
     effect: {
@@ -716,7 +716,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'shaman_elemental_mastery',
     name: '元素掌控',
     description: '魔法攻击力 +10%',
-    icon: 'game-icons:elements',
+    icon: 'game-icons:flame',
     classId: 'shaman',
     trigger: 'passive',
     effect: {
@@ -730,7 +730,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'shaman_ancestral_knowledge',
     name: '先祖智慧',
     description: '最大法力 +10%',
-    icon: 'game-icons:spirit',
+    icon: 'game-icons:spark-spirit',
     classId: 'shaman',
     trigger: 'passive',
     effect: {
@@ -800,7 +800,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'death_knight_undead_fortitude',
     name: '亡灵韧性',
     description: '生命低于 30% 时，受到伤害减少 25%',
-    icon: 'game-icons:bone',
+    icon: 'game-icons:jawbone',
     classId: 'death_knight',
     trigger: 'on_low_hp',
     effect: {
@@ -999,7 +999,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
     id: 'demon_hunter_illidari_resolve',
     name: '伊利达雷决心',
     description: '生命低于 30% 时物理攻击力 +20%',
-    icon: 'game-icons:demon-claw',
+    icon: 'game-icons:claw',
     classId: 'demon_hunter',
     trigger: 'on_low_hp',
     effect: {

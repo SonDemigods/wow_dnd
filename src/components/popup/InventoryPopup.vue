@@ -3,7 +3,7 @@
     <template #header-extra>
       <div class="header-info">
         <div class="gold-display">
-          <BaseIcon name="two-coins" gradient="gold" :size="16" /> {{ gold }}
+          <BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="16" /> {{ gold }}
         </div>
         <div class="inventory-count">
           {{ inventoryItems.length }} / {{ maxSlots }}
@@ -181,6 +181,7 @@ import ItemIcon from '../common/ItemIcon.vue';
 import EffectTag from '../common/EffectTag.vue';
 import EmptyState from '@/components/common/EmptyState.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS } from '@/config/icons';
 import { useInventoryStore } from '@/modules/inventory';
 // P7-032 修复：缓存 store 引用，避免 computed 内重复 useInventoryStore() 调用
 const inventoryStore = useInventoryStore();

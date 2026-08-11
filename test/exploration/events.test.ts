@@ -50,7 +50,7 @@ vi.mock('@/modules/exploration/service', () => ({
   }),
   generateMultiOptionEvent: vi.fn().mockReturnValue({
     message: '发现一座古老祭坛',
-    icon: 'game-icons:altar',
+    icon: 'game-icons:star-altar',
     choices: [
       { label: '触碰祭坛', effect: { type: 'exp', amount: 30 } },
       { label: '安全离开', effect: { type: 'heal', amount: 5 } },
@@ -170,7 +170,7 @@ describe('exploration/events - 事件处理器注册表', () => {
     });
     vi.mocked(generateMultiOptionEvent).mockReturnValue({
       message: '发现一座古老祭坛',
-      icon: 'game-icons:altar',
+      icon: 'game-icons:star-altar',
       choices: [
         { label: '触碰祭坛', effect: { type: 'exp', amount: 30 } },
         { label: '安全离开', effect: { type: 'heal', amount: 5 } },
@@ -589,7 +589,7 @@ describe('exploration/events - 事件处理器注册表', () => {
         vi.spyOn(Math, 'random').mockReturnValue(0.1);
         vi.mocked(generateMultiOptionEvent).mockReturnValue({
           message: '发现一座古老祭坛',
-          icon: 'game-icons:altar',
+          icon: 'game-icons:star-altar',
           choices: [
             { label: '触碰祭坛', effect: { type: 'exp', amount: 30 } },
             { label: '安全离开', effect: { type: 'heal', amount: 5 } },

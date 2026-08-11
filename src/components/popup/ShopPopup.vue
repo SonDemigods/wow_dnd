@@ -2,7 +2,7 @@
   <BasePopup :visible="visible" :title="shopName || '商店'" @close="$emit('close')">
     <template #header-extra>
       <div class="header-info">
-        <span :class="['gold-display', { flash: goldFlash }]"><BaseIcon name="two-coins" gradient="gold" :size="16" /> {{ gold }}</span>
+        <span :class="['gold-display', { flash: goldFlash }]"><BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="16" /> {{ gold }}</span>
       </div>
     </template>
 
@@ -50,7 +50,7 @@
               <div class="card-desc">{{ entry.description }}</div>
               <div v-if="entry.quantity > 0" class="card-quantity">库存: {{ entry.quantity }}</div>
             </div>
-            <div class="card-price"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ entry.price }}</div>
+            <div class="card-price"><BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> {{ entry.price }}</div>
           </div>
         </div>
 
@@ -68,7 +68,7 @@
               <div class="card-desc">{{ entry.info?.description }}</div>
               <div class="card-count">数量: {{ entry.item.count }}</div>
             </div>
-            <div class="card-price"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ getSellPrice(entry.item.itemId) }}</div>
+            <div class="card-price"><BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> {{ getSellPrice(entry.item.itemId) }}</div>
           </div>
         </div>
 
@@ -83,7 +83,7 @@
             <p class="detail-desc">{{ selectedBuyEntry.description }}</p>
             <div class="detail-info">
               <span>类型: {{ selectedBuyEntry.typeName }}</span>
-              <span>单价: <BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ selectedBuyEntry.price }}</span>
+              <span>单价: <BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> {{ selectedBuyEntry.price }}</span>
             </div>
             <div v-if="selectedBuyEntry.effects?.length" class="effect-info">
               <span v-for="(eff, i) in selectedBuyEntry.effects" :key="i">{{ describeEffect(eff) }}</span>
@@ -106,7 +106,7 @@
                 :disabled="!canAffordBuy()"
                 @click="handleBuy(selectedBuyEntry.itemId)"
               >
-                <BaseIcon name="two-coins" gradient="gold" :size="14" /> 购买 ×{{ buyQuantity }}（{{ totalBuyPrice }}）
+                <BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> 购买 ×{{ buyQuantity }}（{{ totalBuyPrice }}）
               </button>
             </div>
           </template>
@@ -121,7 +121,7 @@
             <div class="detail-info">
               <span>类型: {{ getSellItemTypeName(selectedSellEntry.info) }}</span>
               <span>持有: {{ selectedSellEntry.item.count }}</span>
-              <span>单价: <BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ getSellPrice(selectedSellEntry.item.itemId) }}</span>
+              <span>单价: <BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> {{ getSellPrice(selectedSellEntry.item.itemId) }}</span>
             </div>
             <div v-if="getItemEffects(selectedSellEntry.info).length" class="effect-info">
               <span v-for="(eff, i) in getItemEffects(selectedSellEntry.info)" :key="i">{{ describeEffect(eff) }}</span>
@@ -144,7 +144,7 @@
                 :disabled="selectedSellEntry.item.count <= 0"
                 @click="handleSell(selectedSellEntry.item.itemId)"
               >
-                <BaseIcon name="two-coins" gradient="gold" :size="14" /> 出售 ×{{ sellQuantity }}（{{ totalSellPrice }}）
+                <BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> 出售 ×{{ sellQuantity }}（{{ totalSellPrice }}）
               </button>
             </div>
           </template>
@@ -176,6 +176,7 @@ import { getItemDisplayName } from '@/modules/item/typeRegistry';
 import BasePopup from '../common/BasePopup.vue';
 import ItemIcon from '../common/ItemIcon.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS } from '@/config/icons';
 import EmptyState from '@/components/common/EmptyState.vue';
 // P3-163：抽离交易逻辑与金币闪烁动画为独立 Composable
 import { useShopTransactions, type SellItemEntry } from './composables/useShopTransactions';

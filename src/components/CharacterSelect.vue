@@ -2,7 +2,7 @@
   <div class="character-select">
     <!-- 版本不匹配警告横幅 -->
     <div v-if="versionMismatch" class="version-mismatch-banner">
-      <BaseIcon name="warning" gradient="fire" :size="20" />
+      <BaseIcon name="butterfly-warning" gradient="fire" :size="20" />
       <span>
         检测到旧版存档（v{{ currentDataVersion }}），需迁移至 v{{ expectedDataVersion }} 才能进入游戏
       </span>
@@ -11,7 +11,7 @@
     <!-- 4 个一级按钮 -->
     <div class="main-menu">
       <button class="menu-btn menu-btn-start" @click="openStartPopup">
-        <BaseIcon name="sword-spin" :size="24" />
+        <BaseIcon :name="COMMON_ICONS.swordSpin" :size="24" />
         <span class="menu-btn-label">开始游戏</span>
       </button>
       <button class="menu-btn menu-btn-archive" @click="openArchivePopup">
@@ -19,7 +19,7 @@
         <span class="menu-btn-label">存档管理</span>
       </button>
       <button class="menu-btn menu-btn-system" @click="openSystemPopup">
-        <BaseIcon name="cog" :size="24" />
+        <BaseIcon :name="COMMON_ICONS.cog" :size="24" />
         <span class="menu-btn-label">系统设置</span>
       </button>
       <button class="menu-btn menu-btn-about" @click="openAboutPopup">
@@ -83,6 +83,7 @@ import { ref, computed, reactive, onMounted } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { eventBus, GameEvents } from '@/modules/bus';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS } from '@/config/icons';
 import { useBaseStore } from '@/modules/base';
 import { useGameStore } from '@/modules/game';
 import { errorHandler } from '@/services/ErrorHandler';

@@ -22,7 +22,7 @@
           class="action-btn action-btn-migrate"
           @click="triggerMigration"
         >
-          <BaseIcon name="arrow-up" :size="18" /> 数据迁移
+          <BaseIcon name="upgrade" :size="18" /> 数据迁移
         </button>
       </div>
 
@@ -89,7 +89,7 @@
     <!-- 数据迁移确认弹窗 -->
     <div v-if="showMigrationModal" class="confirm-modal-overlay" @click="cancelMigration">
       <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
-        <div class="confirm-icon"><BaseIcon name="arrow-up" gradient="fire" :size="32" /></div>
+        <div class="confirm-icon"><BaseIcon name="upgrade" gradient="fire" :size="32" /></div>
         <h3>确认数据迁移</h3>
         <p>将把存档从 v{{ currentDataVersion }} 迁移至 v{{ expectedDataVersion }}。建议迁移前先导出存档备份，避免迁移失败导致数据丢失。确定要继续吗？</p>
         <div class="confirm-buttons">

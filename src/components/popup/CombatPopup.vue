@@ -60,7 +60,7 @@
                   <div class="combatant-info">
                     <div class="combatant-name">{{ e.name }}</div>
                     <div class="combatant-level">Lv.{{ e.level || 1 }}</div>
-                    <div v-if="e.isBoss" class="boss-badge"><BaseIcon name="crowned-skull" gradient="gold" :size="12" /> 首领</div>
+                    <div v-if="e.isBoss" class="boss-badge"><BaseIcon :name="COMMON_ICONS.crownedSkull" gradient="gold" :size="12" /> 首领</div>
                   </div>
                   <div class="combatant-bars">
                     <ResourceBar icon="health-normal" iconGradient="blood" name="生命" :current="e.hp" :max="e.maxHp" :percent="getHpPercent(e)" type="hp" />
@@ -87,7 +87,7 @@
         </div>
 
         <!-- VS 分隔 -->
-        <div ref="vsDividerRef" class="vs-divider" :class="{ 'flash': vsFlash }"><BaseIcon name="crossed-swords" gradient="physical" :size="20" /></div>
+        <div ref="vsDividerRef" class="vs-divider" :class="{ 'flash': vsFlash }"><BaseIcon :name="COMMON_ICONS.crossedSwords" gradient="physical" :size="20" /></div>
 
         <!-- 玩家区域 -->
         <div class="combatant player-side" :class="{ 'shake': playerShake, 'crit-shake': playerCritShake, 'dodge-blink': playerDodgeBlink }">
@@ -179,7 +179,7 @@
         </div>
         <!-- 敌人回合遮罩 -->
         <div v-if="!isPlayerTurn && isFighting" class="enemy-turn-overlay">
-          <span class="enemy-turn-text"><BaseIcon name="uncertainty" gradient="shadow" :size="16" /> 敌人行动中...</span>
+          <span class="enemy-turn-text"><BaseIcon :name="COMMON_ICONS.uncertainty" gradient="shadow" :size="16" /> 敌人行动中...</span>
         </div>
       </div>
     </div>
@@ -193,7 +193,7 @@
         </div>
         <div class="result-rewards" v-if="combatStore.combatResult === 'victory'">
           <div v-if="combatStore.expGained > 0" class="reward-item"><BaseIcon name="star-formation" gradient="gold" :size="14" /> +{{ combatStore.expGained }} 经验</div>
-          <div v-if="combatStore.goldGained > 0" class="reward-item"><BaseIcon name="two-coins" gradient="gold" :size="14" /> +{{ combatStore.goldGained }} 金币</div>
+          <div v-if="combatStore.goldGained > 0" class="reward-item"><BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> +{{ combatStore.goldGained }} 金币</div>
         </div>
         <div class="result-countdown" v-if="autoCloseCountdown > 0">
           {{ autoCloseCountdown }} 秒后自动关闭
@@ -207,7 +207,7 @@
       <div class="item-modal">
         <div class="item-modal-header">
           <span>选择物品</span>
-          <button class="item-modal-close" @click="showItemModal = false; eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_item_modal_close' })"><BaseIcon name="cancel" :size="16" /></button>
+          <button class="item-modal-close" @click="showItemModal = false; eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_item_modal_close' })"><BaseIcon :name="COMMON_ICONS.cancel" :size="16" /></button>
         </div>
         <div class="item-modal-body">
           <!-- C3：装备技能分区（已装备魔法武器主动技能） -->
@@ -291,6 +291,7 @@ import ClassResourceBar from '@/components/common/ClassResourceBar.vue';
 import PetHpBar from '@/components/common/PetHpBar.vue';
 import ItemIcon from '@/components/common/ItemIcon.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS } from '@/config/icons';
 import PetSummonPopup from '@/components/popup/PetSummonPopup.vue';
 import { animateResultPopup } from '@/modules/animation';
 // QA-5 阶段四：抽离的 4 个 composable（通过 combat 模块公共入口导入，符合 ARCH-4 规范）

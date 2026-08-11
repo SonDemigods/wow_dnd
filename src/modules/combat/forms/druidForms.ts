@@ -22,7 +22,7 @@ export const DRUID_FORMS: Record<DruidFormType, DruidForm> = {
   humanoid: {
     id: 'humanoid',
     name: '人形形态',
-    icon: 'game-icons:elf',
+    icon: 'game-icons:elf-helmet',
     description: '平衡的施法形态，可使用治疗和平衡法术',
     modifiers: {
       statModifiers: {},
@@ -41,7 +41,7 @@ export const DRUID_FORMS: Record<DruidFormType, DruidForm> = {
   bear: {
     id: 'bear',
     name: '熊形态',
-    icon: 'game-icons:bear',
+    icon: 'game-icons:bear-face',
     description: '坚韧的坦克形态，生命和防御大幅提升',
     modifiers: {
       statModifiers: { str: 5, con: 8, dex: -3, int: -5, wis: -3 },
@@ -60,7 +60,7 @@ export const DRUID_FORMS: Record<DruidFormType, DruidForm> = {
   cat: {
     id: 'cat',
     name: '猎豹形态',
-    icon: 'game-icons:panther',
+    icon: 'game-icons:cat',
     description: '敏捷的近战输出形态，暴击和速度大幅提升',
     modifiers: {
       statModifiers: { str: 3, dex: 8, con: -2, int: -5, wis: -3 },

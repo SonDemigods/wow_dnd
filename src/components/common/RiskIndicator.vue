@@ -13,6 +13,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { FALLBACK_ICON } from '@/config/icons';
 import type { CellType } from '@/modules/exploration';
 
 const props = defineProps<{
@@ -59,10 +60,10 @@ const riskIcon = computed(() => {
   switch (riskLevel.value) {
     case 'safe': return 'game-icons:shield';
     case 'low': return 'game-icons:checked-shield';
-    case 'medium': return 'game-icons:exclamation-orb';
+    case 'medium': return 'game-icons:unstable-orb';
     case 'high': return 'game-icons:skull-crack';
     case 'extreme': return 'game-icons:death-skull';
-    default: return 'game-icons:question-mark';
+    default: return FALLBACK_ICON;
   }
 });
 </script>

@@ -25,7 +25,7 @@
             </div>
           </div>
           <div class="quest-rewards">
-            <span v-if="quest.definition.goldReward"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ quest.definition.goldReward }}</span>
+            <span v-if="quest.definition.goldReward"><BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> {{ quest.definition.goldReward }}</span>
             <span v-if="quest.definition.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.definition.xpReward }}</span>
           </div>
           <div class="quest-actions" v-if="quest.instance.status !== 'completed'">
@@ -65,6 +65,7 @@ import { useToast } from '@/composables/useToast';
 import type { QuestInstance, QuestStatus } from '@/modules/quest';
 import { getObjectiveText } from '@/modules/quest';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { QUEST_ICONS, QUEST_ICON_FALLBACK, COMMON_ICONS } from '@/config/icons';
 import ConfirmPopup from '../../common/ConfirmPopup.vue';
 import EmptyState from '../../common/EmptyState.vue';
 
@@ -97,11 +98,7 @@ const confirmState = reactive({
   questId: ''
 });
 
-const questIcons: Record<string, { name: string; gradient: string }> = {
-  kill: { name: 'sword-clash', gradient: 'physical' },
-  collect: { name: 'treasure-map', gradient: 'gold' },
-  explore: { name: 'compass', gradient: 'nature' }
-};
+const questIcons = QUEST_ICONS;
 
 const statusTexts: Record<string, string> = {
   in_progress: '进行中',
@@ -109,7 +106,7 @@ const statusTexts: Record<string, string> = {
 };
 
 function getQuestIcon(type: string) {
-  return questIcons[type] || { name: 'scroll-unfurled', gradient: 'gold' };
+  return questIcons[type] || QUEST_ICON_FALLBACK;
 }
 
 function getStatusText(status: QuestStatus) {
@@ -125,7 +122,7 @@ function getObjectiveProgress(instance: QuestInstance, index: number): number {
 }
 
 function getObjectiveIconName(instance: QuestInstance, index: number) {
-  return isObjectiveCompleted(instance, index) ? 'check-mark' : 'empty-box';
+  return isObjectiveCompleted(instance, index) ? COMMON_ICONS.checkMark : 'empty-box';
 }
 
 function abandonQuest(questId: string) {

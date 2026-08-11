@@ -73,11 +73,11 @@ describe('ClassResourceBar 职业专属资源条组件', () => {
       expect(wrapper.findComponent(BaseIcon).props('name')).toBe('game-icons:flame');
     });
 
-    it('type=energy 时 BaseIcon 接收到 game-icons:lightning-bolt 图标', () => {
+    it('type=energy 时 BaseIcon 接收到 game-icons:lightning-storm 图标', () => {
       const wrapper = mount(ClassResourceBar, {
         props: { resourceSystem: makeResourceSystem({ type: 'energy' }) },
       });
-      expect(wrapper.findComponent(BaseIcon).props('name')).toBe('game-icons:lightning-bolt');
+      expect(wrapper.findComponent(BaseIcon).props('name')).toBe('game-icons:lightning-storm');
     });
   });
 

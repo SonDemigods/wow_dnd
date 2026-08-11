@@ -7,7 +7,7 @@
           <div class="player-name">{{ character.name }}</div>
           <div class="player-meta">
             <span :class="['player-level', { 'level-up': levelUpTriggered }]">Lv.{{ character.level }}</span>
-            <span class="player-gold"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ gold }}</span>
+            <span class="player-gold"><BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> {{ gold }}</span>
           </div>
         </div>
       </div>
@@ -25,13 +25,13 @@
           :class="['content-tab', { active: currentContentTab === 'map' }]"
           @click="handleMapTabClick"
         >
-          <BaseIcon name="treasure-map" gradient="nature" :size="16" /> 地图
+          <BaseIcon :name="COMMON_ICONS.treasure" gradient="nature" :size="16" /> 地图
         </button>
         <button 
           :class="['content-tab', { active: currentContentTab === 'explore', disabled: !hasCurrentLocation }]"
           @click="handleExploreTabClick"
         >
-          <BaseIcon name="campfire" gradient="heal" :size="16" /> 探索
+          <BaseIcon :name="COMMON_ICONS.campfire" gradient="heal" :size="16" /> 探索
         </button>
         <div class="area-info">
           区域: {{ currentArea }}
@@ -48,27 +48,27 @@
 
     <div class="game-footer">
       <button class="footer-btn" @click="popupMounted.characterInfo = true; showCharacterInfo = true; onClickPanel('character_info')" title="角色">
-        <BaseIcon name="person" gradient="gold" :size="16" />
+        <BaseIcon :name="NAV_ICONS.character" gradient="gold" :size="16" />
         <span class="footer-text">角色</span>
         <MenuBadge :count="characterBadge" variant="danger" />
       </button>
       <button class="footer-btn" @click="popupMounted.inventory = true; showInventory = true; onClickPanel('inventory')" title="背包">
-        <BaseIcon name="backpack" gradient="gold" :size="16" />
+        <BaseIcon :name="NAV_ICONS.inventory" gradient="gold" :size="16" />
         <span class="footer-text">背包</span>
         <MenuBadge :count="inventoryBadge" variant="warning" />
       </button>
       <button class="footer-btn" @click="popupMounted.build = true; showBuild = true; onClickPanel('build')" title="构筑">
-        <BaseIcon name="sword-spin" gradient="gold" :size="16" />
+        <BaseIcon :name="NAV_ICONS.build" gradient="gold" :size="16" />
         <span class="footer-text">构筑</span>
         <MenuBadge :count="buildBadge" variant="danger" />
       </button>
       <button class="footer-btn" @click="popupMounted.progress = true; showProgress = true; onClickPanel('progress')" title="进度">
-        <BaseIcon name="notebook" gradient="gold" :size="16" />
+        <BaseIcon :name="NAV_ICONS.progress" gradient="gold" :size="16" />
         <span class="footer-text">进度</span>
         <MenuBadge :count="progressBadge" variant="info" />
       </button>
       <button class="footer-btn" @click="popupMounted.system = true; showSystem = true; onClickPanel('system')" title="系统">
-        <BaseIcon name="cog" gradient="gold" :size="16" />
+        <BaseIcon :name="NAV_ICONS.settings" gradient="gold" :size="16" />
         <span class="footer-text">系统</span>
       </button>
     </div>
@@ -151,6 +151,7 @@ import ResourceBar from './common/ResourceBar.vue';
 import ClassResourceBar from './common/ClassResourceBar.vue';
 import MenuBadge from './common/MenuBadge.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS, NAV_ICONS } from '@/config/icons';
 
 /**
  * 弹窗与视图组件懒加载（B1/B2：首屏 bundle 优化）

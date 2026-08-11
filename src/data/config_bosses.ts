@@ -463,7 +463,7 @@ export const BOSSES: BossTemplate[] = [
   {
     id: 'boss_void_lord',
     name: '虚空领主',
-    icon: 'game-icons:amorphous-tentacles',
+    icon: 'game-icons:floating-tentacles',
     maxHp: 185,
     damage: [22, 40],
     xp: 180,

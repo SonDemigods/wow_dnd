@@ -26,7 +26,7 @@
               </div>
             </div>
             <div class="quest-rewards">
-              <span v-if="quest.definition.goldReward"><BaseIcon name="two-coins" gradient="gold" :size="14" /> {{ quest.definition.goldReward }}</span>
+              <span v-if="quest.definition.goldReward"><BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> {{ quest.definition.goldReward }}</span>
               <span v-if="quest.definition.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.definition.xpReward }}</span>
             </div>
             <div class="quest-actions" v-if="quest.instance.status !== 'completed'">
@@ -70,6 +70,7 @@ import { getObjectiveText } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS, QUEST_ICONS, QUEST_ICON_FALLBACK } from '@/config/icons';
 import EmptyState from '@/components/common/EmptyState.vue';
 
 interface ActiveQuest {
@@ -111,11 +112,7 @@ const confirmState = reactive({
   questId: ''
 });
 
-const questIcons: Record<string, { name: string; gradient: string }> = {
-  kill: { name: 'sword-clash', gradient: 'physical' },
-  collect: { name: 'treasure-map', gradient: 'gold' },
-  explore: { name: 'compass', gradient: 'nature' }
-};
+const questIcons = QUEST_ICONS;
 
 const statusTexts: Record<string, string> = {
   in_progress: '进行中',
@@ -123,7 +120,7 @@ const statusTexts: Record<string, string> = {
 };
 
 function getQuestIcon(type: string) {
-  return questIcons[type] || { name: 'scroll-unfurled', gradient: 'gold' };
+  return questIcons[type] || QUEST_ICON_FALLBACK;
 }
 
 function getStatusText(status: QuestStatus) {

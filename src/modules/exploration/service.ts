@@ -323,7 +323,7 @@ const multiOptionEventTemplates: Array<(areaLevel: number, rng: Rng) => MultiOpt
   // 神秘祭坛：献祭 HP 换取经验，或直接离开
   (lv) => ({
     message: '发现一座古老祭坛，表面泛着幽幽蓝光',
-    icon: 'game-icons:altar',
+    icon: 'game-icons:star-altar',
     choices: [
       { label: '触碰祭坛（献祭生命换取经验）', icon: 'game-icons:bleeding-heart', effect: { type: 'exp', amount: lv * 15 + 20 } },
       // P6-106 修复：安全离开不应回血，改为无效果（amount: 0）
@@ -336,7 +336,7 @@ const multiOptionEventTemplates: Array<(areaLevel: number, rng: Rng) => MultiOpt
     icon: 'game-icons:treasure-map',
     choices: [
       { label: '强行开启（可能受伤但金币更多）', icon: 'game-icons:two-coins', effect: { type: 'gold', amount: lv * 12 + 25 } },
-      { label: '悄悄拿走少量金币', icon: 'game-icons:coin', effect: { type: 'gold', amount: lv * 4 + 5 } },
+      { label: '悄悄拿走少量金币', icon: 'game-icons:coins', effect: { type: 'gold', amount: lv * 4 + 5 } },
     ],
   }),
   // 魔法卷轴：恢复 MP 或获得经验
@@ -354,7 +354,7 @@ const multiOptionEventTemplates: Array<(areaLevel: number, rng: Rng) => MultiOpt
     icon: 'game-icons:potion-ball',
     choices: [
       { label: '勇敢饮下（可能恢复或受伤）', icon: 'game-icons:drink-me', effect: { type: rng.bool(0.5) ? 'heal' : 'damage', amount: lv * 4 + 8 } },
-      { label: '丢弃药水', icon: 'game-icons:trash', effect: { type: 'exp', amount: lv * 2 } },
+      { label: '丢弃药水', icon: 'game-icons:trash-can', effect: { type: 'exp', amount: lv * 2 } },
     ],
   }),
 ];

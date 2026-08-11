@@ -33,8 +33,8 @@
               @click="selectSkill(item.skill)"
             >
               <BaseIcon :name="item.skill.icon" :gradient="characterStore.classId" :size="24" />
-              <span v-if="!canUnlock(item.skill)" class="lock-badge"><BaseIcon name="padlock" :size="14" /></span>
-              <span v-if="isSkillEquipped(item.skill.id)" class="equipped-badge"><BaseIcon name="check-mark" gradient="heal" :size="14" /></span>
+              <span v-if="!canUnlock(item.skill)" class="lock-badge"><BaseIcon :name="COMMON_ICONS.padlock" :size="14" /></span>
+              <span v-if="isSkillEquipped(item.skill.id)" class="equipped-badge"><BaseIcon :name="COMMON_ICONS.checkMark" gradient="heal" :size="14" /></span>
             </div>
           </template>
         </RecycleScroller>
@@ -76,11 +76,11 @@
           </div>
           <div class="detail-level-req">
             <template v-if="!canUnlock(selectedSkill)">
-              <span class="level-lock-icon"><BaseIcon name="padlock" :size="14" /></span>
+              <span class="level-lock-icon"><BaseIcon :name="COMMON_ICONS.padlock" :size="14" /></span>
               <span class="level-lock-text">需要等级 {{ selectedSkill.unlockLevel }}</span>
             </template>
             <template v-else>
-              <span class="level-unlock-icon"><BaseIcon name="check-mark" gradient="heal" :size="14" /></span>
+              <span class="level-unlock-icon"><BaseIcon :name="COMMON_ICONS.checkMark" gradient="heal" :size="14" /></span>
               <span class="level-unlock-text">解锁等级 {{ selectedSkill.unlockLevel }}</span>
             </template>
           </div>
@@ -108,6 +108,7 @@ import { useResponsiveGrid } from '@/composables/useResponsiveGrid';
 import type { Skill, SkillSlotIndex } from '@/modules/skill';
 import SkillTags from '../../common/SkillTags.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS } from '@/config/icons';
 import EmptyState from '../../common/EmptyState.vue';
 
 const skillsStore = useSkillStore();
