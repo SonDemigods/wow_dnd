@@ -141,7 +141,7 @@ const DIRECTION_META: Record<MountDirection, DirectionMeta> = {
   // 双属性方向（力系）
   str_con: { name: '蛮力体魄', icon: 'game-icons:shield',       description: '近战坦克流派：力量 + 体质，兼顾输出与生存' },
   str_wis: { name: '蛮勇信仰', icon: 'game-icons:prayer',       description: '物理治疗流派：力量 + 感知，混合战士与治疗' },
-  str_cha: { name: '蛮力领袖', icon: 'game-icons:banner',       description: '圣印战士流派：力量 + 魅力，圣骑向专精' },
+  str_cha: { name: '蛮力领袖', icon: 'game-icons:convince',   description: '圣印战士流派：力量 + 魅力，圣骑向专精' },
   // 双属性方向（敏系）
   dex_con: { name: '灵巧体魄', icon: 'game-icons:acrobatic',    description: '敏捷坦克流派：敏捷 + 体质，武僧/猎人向' },
   dex_wis: { name: '灵思自然', icon: 'game-icons:leaf-skeleton', description: '敏捷治疗流派：敏捷 + 感知，德鲁伊向专精' },
@@ -149,7 +149,7 @@ const DIRECTION_META: Record<MountDirection, DirectionMeta> = {
   // 双属性方向（智系）
   int_con: { name: '奥术体魄', icon: 'game-icons:crystal-shine', description: '法术坦克流派：智力 + 体质，术士向专精' },
   int_wis: { name: '奥术信仰', icon: 'game-icons:scroll-unfurled', description: '法术治疗流派：智力 + 感知，双系施法向' },
-  int_cha: { name: '奥术领袖', icon: 'game-icons:summoning',    description: '法术召唤流派：智力 + 魅力，术士/龙脉向' },
+  int_cha: { name: '奥术领袖', icon: 'game-icons:orb-wand',  description: '法术召唤流派：智力 + 魅力，术士/龙脉向' },
 };
 
 // ============================================================================
