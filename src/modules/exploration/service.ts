@@ -1093,35 +1093,9 @@ function isOccupied(grid: ExplorationCell[][], x: number, y: number): boolean {
   return grid[y][x].type !== 'empty';
 }
 
-/** 判断两个坐标是否相邻（含对角） */
-function isAdjacent(pos1: { x: number; y: number }, pos2: { x: number; y: number }): boolean {
-  return Math.abs(pos1.x - pos2.x) <= 1 && Math.abs(pos1.y - pos2.y) <= 1;
-}
-
 /** 计算两个坐标的切比雪夫距离 */
 function getDistance(pos1: { x: number; y: number }, pos2: { x: number; y: number }): number {
   return Math.max(Math.abs(pos1.x - pos2.x), Math.abs(pos1.y - pos2.y));
-}
-
-/**
- * 查找一个不与任何已占用位置相邻的空位。
- * 用于放置营地——营地应与其他固定事件保持一定距离，
- * 避免起点/商店/任务板紧挨着营地。
- *
- * @param rng - 随机数生成器，用于从候选位置中随机选取
- */
-function findNonAdjacentPosition(grid: ExplorationCell[][], size: number, occupiedPositions: { x: number; y: number }[], rng: Rng): { x: number; y: number } {
-  const candidates: { x: number; y: number }[] = [];
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      if (!isOccupied(grid, x, y)) {
-        const nonAdjacent = occupiedPositions.every(pos => !isAdjacent({ x, y }, pos));
-        if (nonAdjacent) candidates.push({ x, y });
-      }
-    }
-  }
-  if (candidates.length === 0) return findAnyEmptyPosition(grid, size);
-  return rng.pick(candidates);
 }
 
 /**
@@ -1161,11 +1135,11 @@ function findAnyEmptyPosition(grid: ExplorationCell[][], size: number): { x: num
  * 在网格上放置固定事件：起点、商店、任务板、营地、Boss。
  *
  * 放置策略：
- * 1. 起点 — 随机边缘位置（玩家从边界进入）
- * 2. 商店 — 随机角落（方便随时访问）
- * 3. 任务板 — 另一随机角落
- * 4. 营地 — 不与上述三者相邻的空位
- * 5. Boss — 中心区域，与其他事件保持距离
+ * 1. 起点 — 随机边缘位置
+ * 2. 任务板 — 起点相邻空位（默认可见）
+ * 3. 营地 — 起点另一个相邻空位（未探索）
+ * 4. 商店 — 远离起点的角落（默认可见）
+ * 5. Boss — 中心区域
  *
  * @param rng - 随机数生成器，用于所有随机选取
  */
@@ -1178,34 +1152,43 @@ function placeFixedEvents(grid: ExplorationCell[][], size: number, bossPool: str
     type: 'start', explored: true, accessible: true, visited: true, completed: false
   };
 
-  // 商店 + 任务板：放置在两个不同的角落，默认可见
+  // 任务板 + 营地：放在起点的相邻空位
+  const startNeighbors = getFourNeighbors(startPos, size).filter(n => !isOccupied(grid, n.x, n.y));
+  const shuffledNeighbors = rng.shuffle(startNeighbors);
+  // 任务板取第一个相邻空位（默认可见）
+  if (shuffledNeighbors.length > 0) {
+    const boardPos = shuffledNeighbors[0];
+    grid[boardPos.y][boardPos.x] = {
+      x: boardPos.x, y: boardPos.y,
+      type: 'board', explored: true, accessible: true, visited: true, completed: false
+    };
+    shuffledNeighbors.splice(0, 1);
+  }
+  // 营地取第二个相邻空位（未探索）
+  if (shuffledNeighbors.length > 0) {
+    const campPos = shuffledNeighbors[0];
+    grid[campPos.y][campPos.x] = {
+      x: campPos.x, y: campPos.y,
+      type: 'rest', explored: true, accessible: true, visited: true, completed: false
+    };
+    shuffledNeighbors.splice(0, 1);
+  }
+
+  // 商店：放在远离起点的角落（取与起点切比雪夫距离最大的角落）
   const corners = [[0, 0], [0, size - 1], [size - 1, 0], [size - 1, size - 1]];
-  const availableCorners = corners.filter(c => !isOccupied(grid, c[0], c[1]));
-
-  // 保留索引用于 splice 移除已选角落
-  const shopCornerIndex = rng.int(0, availableCorners.length - 1);
-  const shopPos = availableCorners[shopCornerIndex];
-  grid[shopPos[1]][shopPos[0]] = {
-    x: shopPos[0], y: shopPos[1],
-    type: 'shop', explored: true, accessible: true, visited: true, completed: false
-  };
-  availableCorners.splice(shopCornerIndex, 1);
-
-  const boardPos = rng.pick(availableCorners);
-  grid[boardPos[1]][boardPos[0]] = {
-    x: boardPos[0], y: boardPos[1],
-    type: 'board', explored: true, accessible: true, visited: true, completed: false
-  };
-
-  // 营地：放置在非相邻位置
-  const campPos = findNonAdjacentPosition(grid, size, [startPos, { x: shopPos[0], y: shopPos[1] }, { x: boardPos[0], y: boardPos[1] }], rng);
-  grid[campPos.y][campPos.x] = {
-    x: campPos.x, y: campPos.y,
-    type: 'rest', explored: false, accessible: false, visited: false, completed: false
-  };
+  const availableCorners = corners
+    .filter(c => !isOccupied(grid, c[0], c[1]))
+    .sort((a, b) => getDistance({ x: b[0], y: b[1] }, startPos) - getDistance({ x: a[0], y: a[1] }, startPos));
+  if (availableCorners.length > 0) {
+    const shopPos = availableCorners[0];
+    grid[shopPos[1]][shopPos[0]] = {
+      x: shopPos[0], y: shopPos[1],
+      type: 'shop', explored: true, accessible: true, visited: true, completed: false
+    };
+  }
 
   // Boss：放置在中心区域
-  const bossPos = findBossPosition(grid, size, [startPos, { x: shopPos[0], y: shopPos[1] }, { x: boardPos[0], y: boardPos[1] }, campPos], rng);
+  const bossPos = findBossPosition(grid, size, [startPos], rng);
   const bossMonsterId = bossPool.length > 0 ? rng.pick(bossPool) : undefined;
   grid[bossPos.y][bossPos.x] = {
     x: bossPos.x, y: bossPos.y,
