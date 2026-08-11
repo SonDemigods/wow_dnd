@@ -13,6 +13,13 @@
 /** 网格默认尺寸（10×10 的二维网格） */
 export const GRID_SIZE = 10;
 
+// ==================== 等距渲染（2.5D） ====================
+
+/** 等距瓦片宽度（像素，菱形宽） */
+export const ISO_TILE_W = 52;
+/** 等距瓦片高度（像素，菱形高 = 宽/2，2:1 经典等距比） */
+export const ISO_TILE_H = 26;
+
 // ==================== 迷宫生成（generateMazeWalls） ====================
 // 迷宫化：在网格上生成墙结构，将"格子集合"转化为"迷宫通道"。
 // 算法：DFS 完美迷宫骨架（封全部非树边，最多死路）+ 按密度额外开通捷径（环路）。
@@ -231,3 +238,99 @@ export const FALLBACK_GOLD_RANDOM_RANGE = 30;
 export const FALLBACK_EXP_MIN = 3;
 /** 兜底经验随机范围上限 */
 export const FALLBACK_EXP_RANDOM_RANGE = 15;
+
+// ==================== 区域主题（C 层氛围强化） ====================
+
+/** 区域主题类型 */
+export interface AreaTheme {
+  /** 主题标识（用于 CSS class：theme-{theme}） */
+  theme: string;
+  /** 瓦片顶面底色 */
+  surface: string;
+  /** 墙体色调 */
+  wallTone: string;
+  /** 暗角强度（0~1，值越大越暗） */
+  vignette: number;
+}
+
+/**
+ * 区域→主题映射表
+ * 切换区域时 ExplorationView 读取 currentAreaId 查表，未命中则回退到 DEFAULT_AREA_THEME。
+ * 主题驱动 CSS 变量（--tile-surface / --wall-tone / --vignette）切换氛围。
+ */
+export const AREA_THEME_MAP: Record<string, AreaTheme> = {
+  // 森林系（暮光大陆低等级区）
+  teldrassil:  { theme: 'forest',  surface: '#2d4a2d', wallTone: '#4a5a3a', vignette: 0.3 },
+  ashenvale:   { theme: 'forest',  surface: '#2a5a35', wallTone: '#4a6a3a', vignette: 0.35 },
+  mulgore:     { theme: 'forest',  surface: '#3a5a3a', wallTone: '#5a7a4a', vignette: 0.3 },
+
+  // 海岸/水系
+  darkshore:   { theme: 'coast',   surface: '#1a3a4a', wallTone: '#3a4a5a', vignette: 0.4 },
+  azuremyst:   { theme: 'coast',   surface: '#1a3050', wallTone: '#3a5070', vignette: 0.35 },
+  wetlands:    { theme: 'coast',   surface: '#1a3a3a', wallTone: '#3a5a5a', vignette: 0.45 },
+  sholazar:    { theme: 'coast',   surface: '#1a4040', wallTone: '#3a6060', vignette: 0.35 },
+
+  // 荒原/沙漠
+  barrens:     { theme: 'wasteland', surface: '#4a3a20', wallTone: '#6a5a3a', vignette: 0.4 },
+  desolace:    { theme: 'wasteland', surface: '#4a3525', wallTone: '#6a4a3a', vignette: 0.5 },
+  durotar:     { theme: 'wasteland', surface: '#5a3520', wallTone: '#7a4a2a', vignette: 0.4 },
+  thousand_needles: { theme: 'wasteland', surface: '#5a4a25', wallTone: '#7a6a3a', vignette: 0.45 },
+  deserts:     { theme: 'wasteland', surface: '#5a4020', wallTone: '#7a5a2a', vignette: 0.5 },
+  badlands:    { theme: 'wasteland', surface: '#5a3020', wallTone: '#7a4a2a', vignette: 0.55 },
+
+  // 山脉/岩洞
+  stonetalon:  { theme: 'mountain', surface: '#3a3530', wallTone: '#5a4a3a', vignette: 0.45 },
+  loch_modan:  { theme: 'mountain', surface: '#3a3040', wallTone: '#5a4a5a', vignette: 0.4 },
+  arathi:      { theme: 'mountain', surface: '#3a3535', wallTone: '#5a5a5a', vignette: 0.45 },
+  hillsbrad:   { theme: 'mountain', surface: '#353a35', wallTone: '#4a5a4a', vignette: 0.4 },
+  hinterlands: { theme: 'mountain', surface: '#2a3a30', wallTone: '#4a5a4a', vignette: 0.5 },
+
+  // 腐化/暗影
+  felwood:     { theme: 'corrupt',  surface: '#2a2030', wallTone: '#4a3a5a', vignette: 0.6 },
+  bloodmyst:   { theme: 'corrupt',  surface: '#3a1a20', wallTone: '#5a3a3a', vignette: 0.55 },
+  duskwood:    { theme: 'corrupt',  surface: '#1a1a2a', wallTone: '#3a3a4a', vignette: 0.65 },
+  deadwind:    { theme: 'corrupt',  surface: '#1a1525', wallTone: '#3a2a4a', vignette: 0.7 },
+  plaguelands: { theme: 'corrupt',  surface: '#2a2515', wallTone: '#4a3a2a', vignette: 0.6 },
+  western_plaguelands: { theme: 'corrupt', surface: '#2a2515', wallTone: '#4a3a2a', vignette: 0.55 },
+  silverpine:  { theme: 'corrupt',  surface: '#1a2a20', wallTone: '#3a4a3a', vignette: 0.55 },
+  tirisfal:    { theme: 'corrupt',  surface: '#1a2a1a', wallTone: '#3a4a3a', vignette: 0.6 },
+  swamp_of_sorrows: { theme: 'corrupt', surface: '#1a2a15', wallTone: '#3a4a2a', vignette: 0.6 },
+  blasted_lands: { theme: 'corrupt', surface: '#2a1515', wallTone: '#4a2a2a', vignette: 0.65 },
+
+  // 丘陵/平原（人类区）
+  elwynn:      { theme: 'plains',   surface: '#3a4a30', wallTone: '#5a6a4a', vignette: 0.3 },
+  westfall:    { theme: 'plains',   surface: '#4a4a25', wallTone: '#6a6a3a', vignette: 0.35 },
+  redridge:    { theme: 'plains',   surface: '#3a4030', wallTone: '#5a5a4a', vignette: 0.35 },
+
+  // 热带/丛林
+  stranglethorn: { theme: 'jungle', surface: '#1a4a1a', wallTone: '#3a6a3a', vignette: 0.45 },
+  feralas:     { theme: 'jungle',   surface: '#1a4025', wallTone: '#3a5a3a', vignette: 0.4 },
+
+  // 火山/熔岩
+  burning_steppes: { theme: 'volcanic', surface: '#3a1510', wallTone: '#5a2a1a', vignette: 0.7 },
+  searing_gorge:   { theme: 'volcanic', surface: '#3a2010', wallTone: '#5a3a1a', vignette: 0.65 },
+  hyjal:       { theme: 'volcanic', surface: '#2a1510', wallTone: '#4a2a1a', vignette: 0.6 },
+
+  // 冰雪/寒霜（寒霜废土大陆）
+  winterspring: { theme: 'frozen',  surface: '#3d4a5a', wallTone: '#5a6a7a', vignette: 0.6 },
+  northrend:   { theme: 'frozen',   surface: '#3a4555', wallTone: '#5a6575', vignette: 0.65 },
+  zuldrak:     { theme: 'frozen',   surface: '#3a3a4a', wallTone: '#5a5a6a', vignette: 0.6 },
+  storm_peaks: { theme: 'frozen',   surface: '#353a4a', wallTone: '#5a5a6a', vignette: 0.7 },
+  icecrown:    { theme: 'frozen',   surface: '#2a3040', wallTone: '#4a4a5a', vignette: 0.75 },
+  borean_tundra: { theme: 'frozen', surface: '#3a4045', wallTone: '#5a5a65', vignette: 0.55 },
+  howling_fjord: { theme: 'frozen', surface: '#2a3540', wallTone: '#4a5560', vignette: 0.5 },
+  dragonblight: { theme: 'frozen',  surface: '#303540', wallTone: '#4a505a', vignette: 0.6 },
+  grizzly_hills: { theme: 'frozen', surface: '#2a3530', wallTone: '#4a5550', vignette: 0.5 },
+  crystal_song: { theme: 'frozen',  surface: '#2a3045', wallTone: '#4a4a65', vignette: 0.55 },
+
+  // 虫巢
+  silithus:    { theme: 'hive',     surface: '#2a2515', wallTone: '#4a3a2a', vignette: 0.65 },
+};
+
+/** 默认主题（未配置区域回退） */
+export const DEFAULT_AREA_THEME: AreaTheme = {
+  theme: 'generic',
+  surface: '#2a2a3e',
+  wallTone: '#555555',
+  vignette: 0.4,
+};

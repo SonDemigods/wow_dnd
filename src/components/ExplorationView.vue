@@ -15,6 +15,7 @@
         @mousemove="onDrag"
         @mouseup="endDrag"
         @mouseleave="endDrag"
+        @wheel.prevent="onWheel"
         @touchstart="onTouchStart"
         @touchmove="onTouchMove"
         @touchend="onTouchEnd"
@@ -22,33 +23,37 @@
       >
         <div 
           class="grid-wrapper"
-          :style="{ transform: `translate(${panX}px, ${panY}px)` }"
+          :style="gridWrapperStyle"
         >
-          <div class="grid">
-            <div 
-              v-for="(row, y) in grid" 
-              :key="y" 
-              class="grid-row"
-            >
-              <div 
-              v-for="(cell, x) in row"
-              :key="x"
-              :class="[...getCellClasses(cell, x, y), ...getWallClasses(cell)]"
-              :data-x="x"
-              :data-y="y"
-            >
-              <!-- 玩家位置标记（金色人物图标，叠加在原格图标之上） -->
-              <BaseIcon v-if="isPlayerPosition(x, y)" name="token" gradient="gold" :size="24" class="player-marker" />
-              <!-- 阶段四：封印门 Boss 格（sealed=true 且未解锁），无论 discovered/explored 都显示锁形图标 -->
-              <BaseIcon v-else-if="isBossSealed(cell)" :name="COMMON_ICONS.padlock" gradient="dragon" :size="20" class="sealed-icon" />
-              <BaseIcon v-else-if="cell.explored" :name="getCellIcon(cell.type).name" :gradient="getCellIcon(cell.type).gradient" :size="20" />
-              <!-- 阶段三：discovered 层模糊图标（问号/黑影），危险格由 .danger class 叠加警告色 -->
-              <!-- 阶段四：discovered 陷阱格 hint=true 显示暗色裂纹图标（弱提示），其余显示模糊问号 -->
-              <BaseIcon v-else-if="cell.discovered && cell.type === 'trap' && cell.hint" name="caltrops" gradient="shadow" :size="20" class="discovered-icon hint-icon" />
-              <BaseIcon v-else-if="cell.discovered" :name="COMMON_ICONS.uncertainty" gradient="shadow" :size="20" class="discovered-icon" />
-              <BaseIcon v-else :name="COMMON_ICONS.uncertainty" gradient="shadow" :size="20" />
-            </div>
-            </div>
+          <div class="grid iso-grid" :class="areaThemeClass" :style="isoGridStyle">
+            <template v-for="(row, y) in grid" :key="y">
+              <div
+                v-for="(cell, x) in row"
+                :key="x"
+                :class="[...getCellClasses(cell, x, y), ...getWallClasses(cell)]"
+                :data-x="x"
+                :data-y="y"
+                :style="getIsoStyle(x, y)"
+              >
+                <!-- 立体墙面层（只画 top 和 left） -->
+                <div v-if="cell.walls?.top" class="wall-face wall-top"></div>
+                <div v-if="cell.walls?.left" class="wall-face wall-left"></div>
+                <!-- 瓦片顶面内容 -->
+                <div class="cell-surface">
+                  <!-- 玩家位置标记（金色人物图标） -->
+                  <BaseIcon v-if="isPlayerPosition(x, y)" name="position-marker" gradient="gold" :size="20" class="player-marker" />
+                  <!-- 可通行格：无图标，仅绿色呼吸背景 -->
+                  <template v-else-if="cell.accessible && !cell.discovered && !cell.explored"></template>
+                  <!-- 阶段四：封印门 Boss 格 -->
+                  <BaseIcon v-else-if="isBossSealed(cell)" :name="COMMON_ICONS.padlock" gradient="dragon" :size="16" class="sealed-icon" />
+                  <BaseIcon v-else-if="cell.explored" :name="getCellIcon(cell.type).name" :gradient="getCellIcon(cell.type).gradient" :size="16" />
+                  <!-- 阶段三：discovered 层模糊图标 -->
+                  <BaseIcon v-else-if="cell.discovered && cell.type === 'trap' && cell.hint" name="caltrops" gradient="shadow" :size="16" class="discovered-icon hint-icon" />
+                  <BaseIcon v-else-if="cell.discovered" :name="COMMON_ICONS.uncertainty" gradient="shadow" :size="16" class="discovered-icon" />
+                  <BaseIcon v-else :name="COMMON_ICONS.uncertainty" gradient="shadow" :size="16" />
+                </div>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -65,6 +70,7 @@
 /**
  * @fileoverview 探索视图组件
  * @description 基于网格的探索玩法界面，支持拖拽平移探索地图、点击翻开格子触发战斗/商店/任务等交互事件
+ *             等距 2.5D 渲染：每个格子按 isometric 坐标投影到屏幕绝对定位，clip-path 画菱形
  */
 
 import { ref, computed, onMounted, onUnmounted } from 'vue';
@@ -74,6 +80,8 @@ import { useMapStore } from '@/modules/map';
 import { useToast } from '@/composables/useToast';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 import { CELL_ICONS, CELL_ICON_FALLBACK, COMMON_ICONS } from '@/config/icons';
+import { AREA_THEME_MAP, DEFAULT_AREA_THEME, type AreaTheme } from '@/config/exploration';
+import { ISO_TILE_W, ISO_TILE_H } from '@/config/exploration';
 import type { ExplorationCell } from '@/modules/exploration';
 
 const explorationStore = useExplorationStore();
@@ -89,6 +97,15 @@ const grid = computed(() => {
 });
 
 const hasCurrentLocation = computed(() => !!mapStore.getCurrentLocation);
+
+/** 当前区域主题（C 层氛围强化） */
+const currentAreaTheme = computed<AreaTheme>(() => {
+  const areaId = explorationStore.currentAreaId;
+  return AREA_THEME_MAP[areaId] ?? DEFAULT_AREA_THEME;
+});
+
+/** 区域主题 class（驱动 CSS 变量切换） */
+const areaThemeClass = computed(() => `theme-${currentAreaTheme.value.theme}`);
 
 /** 玩家当前位置（阶段二：实体化移动） */
 const playerPosition = computed(() => explorationStore.playerPosition);
@@ -108,17 +125,43 @@ function isMovableTarget(x: number, y: number): boolean {
   return isPassable(grid.value, playerPosition.value, { x, y });
 }
 
+// ==================== 等距坐标投影 ====================
+
+/** 网格尺寸（行/列数） */
+const gridSize = computed(() => grid.value.length || 10);
+
+/** 等距网格容器尺寸（菱形地图的外包围矩形） */
+const isoGridStyle = computed(() => ({
+  width: `${gridSize.value * ISO_TILE_W}px`,
+  height: `${gridSize.value * ISO_TILE_H}px`,
+}));
+
+/**
+ * 将网格坐标 (x, y) 投影到等距屏幕坐标
+ * screenX = (x - y + gridSize - 1) * tileW / 2
+ * screenY = (x + y) * tileH / 2
+ */
+function getIsoStyle(x: number, y: number): Record<string, string> {
+  const left = (x - y + gridSize.value - 1) * ISO_TILE_W / 2;
+  const top = (x + y) * ISO_TILE_H / 2;
+  return {
+    position: 'absolute',
+    left: `${left}px`,
+    top: `${top}px`,
+    width: `${ISO_TILE_W}px`,
+    height: `${ISO_TILE_H}px`,
+  };
+}
+
 // ==================== 阶段四：封印门 / 陷阱线索 / 怪物索敌 ====================
 
 /**
  * Boss 封印是否已解除（从 Store 读取，由 visitedCells >= BOSS_SEAL_REQUIRED_CELLS 推导）
- * 用于 UI 决定是否显示封印门图标与红色警告色。
  */
 const bossSealBroken = computed(() => explorationStore.bossSealBroken);
 
 /**
  * 判断 Boss 格是否处于封印状态（阶段四）
- * 仅当 cell.sealed=true 且封印未解除时显示锁形图标与封印色。
  */
 function isBossSealed(cell: ExplorationCell): boolean {
   return cell.type === 'boss' && cell.sealed === true && !bossSealBroken.value;
@@ -126,23 +169,18 @@ function isBossSealed(cell: ExplorationCell): boolean {
 
 /**
  * 判断 discovered 怪物格是否触发索敌警告（阶段四）
- * 委托 service.shouldShowEnemyAlert 纯函数：曼哈顿距离 ≤ ENEMY_ALERT_RANGE
- * 且怪物格已被发现但未击败。
  */
 function isEnemyAlert(x: number, y: number): boolean {
   return shouldShowEnemyAlert(grid.value, { x, y }, playerPosition.value);
 }
 
 /**
- * 根据 walls 字段生成墙线 class（阶段二：墙体线条）
- * walls 缺失（旧存档）时不加墙线 class，视为全开放
+ * 根据 walls 字段生成墙线 class（只画 top 和 left，避免冗余重叠）
  */
 function getWallClasses(cell: ExplorationCell): string[] {
   if (!cell.walls) return [];
   const classes: string[] = [];
   if (cell.walls.top) classes.push('wall-top');
-  if (cell.walls.right) classes.push('wall-right');
-  if (cell.walls.bottom) classes.push('wall-bottom');
   if (cell.walls.left) classes.push('wall-left');
   return classes;
 }
@@ -155,6 +193,37 @@ const startY = ref(0);
 const panX = ref(0);
 const panY = ref(0);
 const DRAG_THRESHOLD = 5; // 拖动阈值（像素）
+
+// ==================== 缩放 ====================
+
+const ZOOM_MIN = 0.3;
+const ZOOM_MAX = 2.5;
+const ZOOM_STEP = 0.1;
+const zoom = ref(1);
+
+/** grid-wrapper 样式：平移 + 缩放 */
+const gridWrapperStyle = computed(() => ({
+  transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoom.value})`,
+}));
+
+/** PC 端滚轮缩放 */
+function onWheel(e: WheelEvent) {
+  const delta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
+  zoom.value = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom.value + delta));
+}
+
+// ==================== 双指缩放（移动端） ====================
+
+/** 双指缩放状态 */
+let pinchStartDist = 0;
+let pinchStartZoom = 1;
+
+/** 两指间距离 */
+function touchDistance(t1: Touch, t2: Touch): number {
+  const dx = t1.clientX - t2.clientX;
+  const dy = t1.clientY - t2.clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
 
 const explorationProgress = computed(() => {
   if (!grid.value.length) return 0;
@@ -177,14 +246,13 @@ function getCellIcon(type: string) {
 
 /**
  * 判断是否为危险格（discovered 层叠加红色警告色轮廓）
- * monster/trap/boss 类型在 discovered 状态下显示警告色，其余为中性色
  */
 function isDangerousCell(type: string): boolean {
   return type === 'monster' || type === 'trap' || type === 'boss';
 }
 
 function getCellClasses(cell: ExplorationCell, x: number, y: number) {
-  const classes = ['cell'];
+  const classes = ['cell', 'iso-cell'];
   // 玩家当前位置（金色描边，优先级最高）
   if (isPlayerPosition(x, y)) {
     classes.push('player-here');
@@ -276,24 +344,45 @@ function endDrag() {
   mouseDownTarget.value = null;
 }
 
-// 拖动功能 - 触摸事件（移动端）
+// 拖动功能 - 触摸事件（移动端，支持单指拖动 + 双指缩放）
 let touchStartX = 0;
 let touchStartY = 0;
 let touchStartTarget: EventTarget | null = null;
 
 function onTouchStart(e: TouchEvent) {
-  if (e.touches.length !== 1) return;
-  
-  const touch = e.touches[0];
-  touchStartX = touch.clientX;
-  touchStartY = touch.clientY;
-  touchStartTarget = e.target;
-  isDragging.value = true;
-  startX.value = touch.clientX - panX.value;
-  startY.value = touch.clientY - panY.value;
+  if (e.touches.length === 1) {
+    // 单指：准备拖动
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    touchStartTarget = e.target;
+    isDragging.value = true;
+    startX.value = touch.clientX - panX.value;
+    startY.value = touch.clientY - panY.value;
+  } else if (e.touches.length === 2) {
+    // 双指：准备缩放
+    isDragging.value = false; // 停止单指拖动
+    const t1 = e.touches[0];
+    const t2 = e.touches[1];
+    pinchStartDist = touchDistance(t1, t2);
+    pinchStartZoom = zoom.value;
+  }
 }
 
 function onTouchMove(e: TouchEvent) {
+  if (e.touches.length === 2) {
+    // 双指缩放
+    if (e.cancelable) e.preventDefault();
+    const t1 = e.touches[0];
+    const t2 = e.touches[1];
+    const dist = touchDistance(t1, t2);
+    if (pinchStartDist > 0) {
+      const ratio = dist / pinchStartDist;
+      zoom.value = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, pinchStartZoom * ratio));
+    }
+    return;
+  }
+
   if (!isDragging.value || e.touches.length !== 1) return;
   
   const touch = e.touches[0];
@@ -302,7 +391,6 @@ function onTouchMove(e: TouchEvent) {
   
   // 只有移动超过阈值才视为拖动
   if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
-    // 仅当事件可取消时才阻止默认行为，避免控制台警告
     if (e.cancelable) {
       e.preventDefault(); // 拖动时阻止页面滚动
     }
@@ -349,7 +437,6 @@ async function initExploration() {
 
 async function handleCellClick(cell: ExplorationCell) {
     // 阶段四：封印 Boss 格点击提示——解锁前不触发战斗，toast 提示"封印尚未解除"
-    // isBossSealed 判定 cell.sealed && !bossSealBroken（基于 visitedCells >= BOSS_SEAL_REQUIRED_CELLS）
     if (isBossSealed(cell)) {
       toast.show({
         message: '封印尚未解除，继续探索以解锁 Boss 挑战',
@@ -360,8 +447,6 @@ async function handleCellClick(cell: ExplorationCell) {
       return;
     }
     // 阶段二：改为移动式交互，由 movePlayer 校验 4 邻域 + isPassable
-    // movePlayer 内部处理驻留格（商店/任务板/营地）打开面板、战斗落点等逻辑
-    // P9-095 修复：包裹 try/catch，避免 movePlayer 异常导致未捕获 rejection + toast 提示
     try {
       await explorationStore.movePlayer(cell.x, cell.y);
     } catch (err) {
@@ -425,66 +510,131 @@ onUnmounted(() => {
   border-radius: 10px;
   border: 2px solid @color-mid-gray;
   box-shadow: @shadow-card;
-  transition: transform 0.1s ease-out;
-}
-
-.grid {
-  .flex-col();
-  gap: 3px;
-}
-
-.grid-row {
+  transition: transform 0.08s ease-out;
+  // CSS 变量默认值（由区域主题 class 覆盖）
+  --tile-surface: @bg-mid-dark;
+  --wall-tone: @color-mid-gray;
+  --vignette: 0.4;
+  // 正方形容器，等距菱形地图居中
+  aspect-ratio: 1;
   display: flex;
-  gap: 3px;
+  align-items: center;
+  justify-content: center;
 }
 
-.cell {
-  width: 52px;
-  height: 52px;
-  background: @bg-mid-dark;
-  border: 1px solid @color-dark-line;
-  border-radius: @radius-md;
-  .flex-center();
+/* ===== 区域主题 CSS 变量 ===== */
+.theme-forest    { --tile-surface: #2d4a2d; --wall-tone: #4a5a3a; --vignette: 0.3; --tile-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.15' numOctaves='3' seed='1'/%3E%3CfeColorMatrix values='0 0 0 0 0.18 0 0 0 0 0.29 0 0 0 0 0.18 0 0 0 0.4 0'/%3E%3C/filter%3E%3Crect width='52' height='52' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.theme-coast     { --tile-surface: #1a3a4a; --wall-tone: #3a4a5a; --vignette: 0.4; --tile-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.08' numOctaves='2' seed='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.23 0 0 0 0 0.29 0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='52' height='52' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.theme-wasteland { --tile-surface: #4a3a20; --wall-tone: #6a5a3a; --vignette: 0.45; --tile-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.25' numOctaves='4' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.29 0 0 0 0 0.23 0 0 0 0 0.13 0 0 0 0.3 0'/%3E%3C/filter%3E%3Crect width='52' height='52' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.theme-mountain  { --tile-surface: #3a3530; --wall-tone: #5a4a3a; --vignette: 0.45; --tile-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.3' numOctaves='4' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0.23 0 0 0 0 0.21 0 0 0 0 0.19 0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='52' height='52' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.theme-corrupt   { --tile-surface: #2a2030; --wall-tone: #4a3a5a; --vignette: 0.6; --tile-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.2' numOctaves='3' seed='5'/%3E%3CfeColorMatrix values='0 0 0 0 0.16 0 0 0 0 0.13 0 0 0 0 0.19 0 0 0 0.4 0'/%3E%3C/filter%3E%3Crect width='52' height='52' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.theme-plains    { --tile-surface: #3a4a30; --wall-tone: #5a6a4a; --vignette: 0.3; --tile-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.12' numOctaves='2' seed='6'/%3E%3CfeColorMatrix values='0 0 0 0 0.23 0 0 0 0 0.29 0 0 0 0 0.19 0 0 0 0.3 0'/%3E%3C/filter%3E%3Crect width='52' height='52' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.theme-jungle    { --tile-surface: #1a4a1a; --wall-tone: #3a6a3a; --vignette: 0.45; --tile-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.18' numOctaves='3' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.29 0 0 0 0 0.1 0 0 0 0.4 0'/%3E%3C/filter%3E%3Crect width='52' height='52' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.theme-volcanic  { --tile-surface: #3a1510; --wall-tone: #5a2a1a; --vignette: 0.7; --tile-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.35' numOctaves='4' seed='8'/%3E%3CfeColorMatrix values='0 0 0 0 0.23 0 0 0 0 0.08 0 0 0 0 0.06 0 0 0 0.45 0'/%3E%3C/filter%3E%3Crect width='52' height='52' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.theme-frozen    { --tile-surface: #3d4a5a; --wall-tone: #5a6a7a; --vignette: 0.6; --tile-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.4' numOctaves='2' seed='9'/%3E%3CfeColorMatrix values='0 0 0 0 0.24 0 0 0 0 0.29 0 0 0 0 0.35 0 0 0 0.3 0'/%3E%3C/filter%3E%3Crect width='52' height='52' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.theme-hive      { --tile-surface: #2a2515; --wall-tone: #4a3a2a; --vignette: 0.65; --tile-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.22' numOctaves='3' seed='10'/%3E%3CfeColorMatrix values='0 0 0 0 0.16 0 0 0 0 0.15 0 0 0 0 0.08 0 0 0 0.4 0'/%3E%3C/filter%3E%3Crect width='52' height='52' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.theme-generic   { --tile-surface: #2a2a3e; --wall-tone: #555555; --vignette: 0.4; --tile-texture: none; }
+
+/* ===== 等距网格容器（绝对定位菱形布局） ===== */
+.iso-grid {
+  position: relative;
+}
+
+/* 网格底座厚度（等距 2.5D 厚度感） */
+.iso-grid::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--tile-surface);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  transform: translateY(10px);
+  filter: blur(4px);
+  opacity: 0.6;
+}
+
+/* ===== 等距单元格 ===== */
+.iso-cell {
+  position: absolute;
   cursor: pointer;
-  transition: all @transition-quick;
-  flex-shrink: 0;
+  transition: filter 0.3s ease-out;
 }
 
-.cell:hover {
-  border-color: @color-mid-gray;
-  transform: scale(1.05);
+.iso-cell:hover {
+  filter: brightness(1.2);
+  z-index: @z-base;
 }
 
-/* 未探索格子 */
-.cell.hidden {
+/* 瓦片顶面 — 全尺寸菱形（无边框线，墙由 wall-face 独立绘制） */
+.cell-surface {
+  position: absolute;
+  inset: 0;
+  background: var(--tile-surface);
+  clip-path: path('M 26 0 L 52 13 L 26 26 L 0 13 Z');
+  .flex-center();
+  z-index: 2;
+  overflow: hidden;
+}
+
+/* 菱形边框底层 — 仅填充，无边框线（墙由 wall-face 独立绘制） */
+.iso-cell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--tile-surface);
+  clip-path: path('M 26 0 L 52 13 L 26 26 L 0 13 Z');
+  z-index: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.1));
+}
+
+/* ===== 立体墙面（只画 top 和 left，2px 细线 + 发光）
+ * 等距投影：x→右上, y→左下
+ *   walls.top  (dy=-1) → 菱形右上边 Top(26,0)→Right(52,13)
+ *   walls.left (dx=-1) → 菱形左上边 Left(0,13)→Top(26,0)
+ * 法向量 (sin26.57°, cos26.57°) ≈ (0.447, 0.894)，2px 偏移 ≈ (1, 2) */
+.wall-face {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  inset: 0;
+  background: var(--wall-tone);
+  filter: drop-shadow(0 0 3px var(--wall-tone));
+}
+
+/* wall-top: 右上边 Top(26,0)→Right(52,13)，法向偏移 (-1,+2) */
+.wall-face.wall-top {
+  clip-path: path('M 26 0 L 52 13 L 51 15 L 25 2 Z');
+}
+
+/* wall-left: 左上边 Left(0,13)→Top(26,0)，法向偏移 (+1,-2) */
+.wall-face.wall-left {
+  clip-path: path('M 0 13 L 26 0 L 27 2 L 1 15 Z');
+}
+
+/* ===== 未探索格子 ===== */
+.cell.hidden .cell-surface {
   background: @primary-bg;
-  border-color: @bg-mid-dark;
+}
+
+.cell.hidden {
   cursor: default;
 }
 
-.cell.hidden:hover {
-  background: @primary-bg;
-  border-color: @bg-mid-dark;
-  transform: none;
+/* 可访问的未探索格子 — 菱形背景变绿，无呼吸（与危险呼吸区分） */
+.cell.accessible .cell-surface {
+  background: rgba(76, 175, 80, 0.35);
 }
 
-/* 可访问的未探索格子 */
-.cell.accessible {
-  background: @primary-bg;
-  border-color: @popup-border-color;
-  cursor: pointer;
+.cell.accessible:hover .cell-surface {
+  background: rgba(76, 175, 80, 0.5);
 }
 
-.cell.accessible:hover {
-  background: @bg-mid-dark;
-  border-color: @color-ally;
-  box-shadow: 0 0 8px rgba(0, 210, 211, 0.3);
-}
-
-/* 阶段三：discovered 层 - 被视线扫到但未到达，模糊可见 */
-.cell.discovered {
-  background: @bg-mid-dark;
-  border-color: @color-dark-line;
+/* ===== discovered 层 ===== */
+.cell.discovered .cell-surface {
+  background:
+    radial-gradient(circle, transparent 40%, rgba(0, 0, 0, var(--vignette)) 100%),
+    var(--tile-surface);
 }
 
 .cell.discovered .discovered-icon {
@@ -492,10 +642,25 @@ onUnmounted(() => {
   filter: blur(1px);
 }
 
-/* 危险格（monster/trap/boss）discovered 时叠加红色警告色轮廓 */
-.cell.discovered.danger {
-  border-color: #F44336;
-  box-shadow: 0 0 6px rgba(244, 67, 54, 0.3);
+/* 危险格 */
+.cell.discovered.danger .cell-surface {
+  background:
+    radial-gradient(circle, rgba(244, 67, 54, 0.2), transparent 60%),
+    var(--tile-surface);
+  animation: danger-breathe 1.5s ease-in-out infinite;
+}
+
+@keyframes danger-breathe {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+}
+
+/* 危险+可移动 — 绿色底 + 红色呼吸叠加 */
+.cell.movable.discovered.danger .cell-surface {
+  background:
+    radial-gradient(circle, rgba(244, 67, 54, 0.2), transparent 60%),
+    rgba(76, 175, 80, 0.35);
+  animation: danger-breathe 1.5s ease-in-out infinite;
 }
 
 .cell.discovered.danger .discovered-icon {
@@ -503,14 +668,10 @@ onUnmounted(() => {
   filter: drop-shadow(0 0 3px rgba(244, 67, 54, 0.5));
 }
 
-/* ===== 阶段四：封印门 / 陷阱线索 / 怪物索敌警告 ===== */
+/* ===== 封印门 / 陷阱线索 / 怪物索敌 ===== */
 
-/* 封印门：sealed Boss 格（discovered 或 explored 状态下未解锁）
-   深红封印色 + 紫黑封印光环，区别于普通 Boss 的红色脉动 */
-.cell.sealed {
-  background: rgba(40, 0, 0, 0.6);
-  border-color: #8B0000;
-  box-shadow: 0 0 8px rgba(139, 0, 0, 0.6), inset 0 0 6px @overlay-dim;
+.cell.sealed .cell-surface {
+  background: rgba(40, 0, 0, 0.7);
 }
 
 .cell.sealed .sealed-icon {
@@ -519,28 +680,28 @@ onUnmounted(() => {
 }
 
 @keyframes sealed-pulse {
-  0%, 100% { opacity: 0.85; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.08); }
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
 }
 
-/* 陷阱线索：discovered hint trap 格显示暗色裂纹图标（弱提示）
-   不叠加红色警告色，保留"可疑但不明确"的视觉张力 */
+/* 陷阱线索 */
+.cell.discovered.hint .cell-surface {
+  background:
+    radial-gradient(circle, rgba(109, 76, 65, 0.2), transparent 60%),
+    var(--tile-surface);
+}
+
 .cell.discovered.hint .hint-icon {
   opacity: 0.55;
   filter: drop-shadow(0 0 2px rgba(120, 60, 0, 0.6));
 }
 
-.cell.discovered.hint {
-  border-color: #6D4C41;
-  box-shadow: 0 0 4px rgba(109, 76, 65, 0.4);
-}
-
-/* 怪物索敌警告：discovered monster 格玩家进入 ENEMY_ALERT_RANGE 时
-   叠加红色跳动强警告动画，提示玩家近身风险 */
-.cell.discovered.enemy-alert {
-  border-color: #FF1744;
-  box-shadow: 0 0 10px rgba(255, 23, 68, 0.7), inset 0 0 6px rgba(255, 23, 68, 0.3);
-  animation: enemy-alert-shake 0.6s ease-in-out infinite;
+/* 怪物索敌警告 */
+.cell.discovered.enemy-alert .cell-surface {
+  background:
+    radial-gradient(circle, rgba(255, 23, 68, 0.3), transparent 50%),
+    var(--tile-surface);
+  animation: enemy-alert-glow 0.6s ease-in-out infinite alternate;
 }
 
 .cell.discovered.enemy-alert .discovered-icon {
@@ -548,149 +709,171 @@ onUnmounted(() => {
   filter: drop-shadow(0 0 4px rgba(255, 23, 68, 0.8));
 }
 
-@keyframes enemy-alert-shake {
-  0%, 100% { transform: translate(0, 0); }
-  25% { transform: translate(-1px, 0); }
-  75% { transform: translate(1px, 0); }
+@keyframes enemy-alert-glow {
+  0% { filter: brightness(0.8); }
+  100% { filter: brightness(1.3); }
 }
 
-/* 已揭示格子 */
-.cell.revealed {
-  background: @bg-mid-dark;
-  border-color: @popup-border-color;
+/* ===== 已揭示格子（叠加地形纹理 + 光照） ===== */
+.cell.revealed .cell-surface {
+  background:
+    var(--tile-texture, none),
+    var(--tile-surface);
+  background-blend-mode: overlay, normal;
 }
 
-/* 营地 - 绿色高亮 */
-.cell.rest {
-  background: rgba(76, 175, 80, 0.3);
-  border-color: @heal-hp;
+/* 营地 - 篝火投射 */
+.cell.rest .cell-surface {
+  background:
+    var(--tile-texture, none),
+    radial-gradient(circle, rgba(255, 152, 0, 0.5), transparent 60%),
+    var(--tile-surface);
+  background-blend-mode: overlay, normal, normal;
 }
 
-/* 商店 - 蓝色高亮 */
-.cell.shop {
-  background: rgba(33, 150, 243, 0.3);
-  border-color: #2196F3;
+/* 商店 */
+.cell.shop .cell-surface {
+  background:
+    var(--tile-texture, none),
+    radial-gradient(circle, rgba(33, 150, 243, 0.4), transparent 60%),
+    var(--tile-surface);
+  background-blend-mode: overlay, normal, normal;
 }
 
-/* 任务看板 - 黄色高亮 */
-.cell.event {
-  background: rgba(255, 193, 7, 0.3);
-  border-color: #FFC107;
+/* 随机事件 */
+.cell.event .cell-surface {
+  background:
+    var(--tile-texture, none),
+    radial-gradient(circle, rgba(255, 193, 7, 0.4), transparent 60%),
+    var(--tile-surface);
+  background-blend-mode: overlay, normal, normal;
 }
 
-/* 任务看板 - 青色高亮 */
-.cell.board {
-  background: rgba(0, 188, 212, 0.3);
-  border-color: #00BCD4;
+/* 任务看板 */
+.cell.board .cell-surface {
+  background:
+    var(--tile-texture, none),
+    radial-gradient(circle, rgba(0, 188, 212, 0.4), transparent 60%),
+    var(--tile-surface);
+  background-blend-mode: overlay, normal, normal;
 }
 
-/* BOSS - 红色高亮 */
-.cell.boss {
-  background: rgba(244, 67, 54, 0.3);
-  border-color: #F44336;
+/* BOSS - 地面血色脉动 */
+.cell.boss .cell-surface {
+  background:
+    var(--tile-texture, none),
+    radial-gradient(circle, rgba(244, 67, 54, 0.4), transparent 60%),
+    var(--tile-surface);
+  background-blend-mode: overlay, normal, normal;
   animation: boss-pulse 1.5s infinite;
 }
 
-/* 怪物 - 橙色 */
-.cell.monster {
-  background: rgba(255, 152, 0, 0.3);
-  border-color: #FF9800;
+@keyframes boss-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.4); }
 }
 
-/* 物品 - 紫色 */
-.cell.treasure {
-  background: rgba(156, 39, 176, 0.3);
-  border-color: #9C27B0;
+/* 怪物 */
+.cell.monster .cell-surface {
+  background:
+    var(--tile-texture, none),
+    radial-gradient(circle, rgba(255, 152, 0, 0.4), transparent 60%),
+    var(--tile-surface);
+  background-blend-mode: overlay, normal, normal;
 }
 
-/* 陷阱 - 红色 */
-.cell.trap {
-  background: rgba(244, 67, 54, 0.2);
-  border-color: #F44336;
+/* 物品 */
+.cell.treasure .cell-surface {
+  background:
+    var(--tile-texture, none),
+    radial-gradient(circle, rgba(156, 39, 176, 0.4), transparent 60%),
+    var(--tile-surface);
+  background-blend-mode: overlay, normal, normal;
+}
+
+/* 陷阱 */
+.cell.trap .cell-surface {
+  background:
+    var(--tile-texture, none),
+    radial-gradient(circle, rgba(244, 67, 54, 0.3), transparent 60%),
+    var(--tile-surface);
+  background-blend-mode: overlay, normal, normal;
 }
 
 /* 空地 */
-.cell.empty {
-  background: @primary-bg;
+.cell.empty .cell-surface {
+  background:
+    var(--tile-texture, none),
+    var(--tile-surface);
+  background-blend-mode: overlay, normal;
 }
 
 /* 起点 */
-.cell.start {
-  background: rgba(0, 210, 211, 0.2);
-  border-color: @color-ally;
+.cell.start .cell-surface {
+  background:
+    var(--tile-texture, none),
+    radial-gradient(circle, rgba(0, 210, 211, 0.3), transparent 60%),
+    var(--tile-surface);
+  background-blend-mode: overlay, normal, normal;
 }
 
-/* ===== 阶段二：玩家位置 / 移动高亮 / 墙线 ===== */
+/* ===== 玩家位置 / 移动高亮 ===== */
 
-/* 玩家当前位置 - 金色描边 + 光晕 */
+/* 玩家当前位置 - 金色光斑 */
 .cell.player-here {
-  border-color: @accent-color;
-  box-shadow: 0 0 12px rgba(255, 215, 0, 0.6), inset 0 0 8px rgba(255, 215, 0, 0.2);
   z-index: @z-base;
 }
 
-.cell.player-here:hover {
-  border-color: @accent-color;
-  transform: scale(1.05);
+.cell.player-here .cell-surface {
+  background:
+    var(--tile-texture, none),
+    radial-gradient(circle at 50% 30%, rgba(255, 215, 0, 0.35), transparent 70%),
+    var(--tile-surface);
+  background-blend-mode: overlay, normal, normal;
 }
 
-/* 玩家位置标记图标 - 轻微浮动动画 */
+/* 玩家位置标记图标 - 浮动动画 */
 .player-marker {
   animation: player-bob 1.2s ease-in-out infinite;
   filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.8));
+  z-index: 3;
+  position: relative;
 }
 
 @keyframes player-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-2px); }
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; }
 }
 
-/* 可移动目标格 - 绿色虚线高亮 */
-.cell.movable {
-  border-color: @heal-hp;
-  border-style: dashed;
-  cursor: pointer;
-  animation: movable-pulse 1.5s ease-in-out infinite;
+.cell.movable .cell-surface {
+  background: rgba(76, 175, 80, 0.35);
 }
 
-.cell.movable:hover {
-  background: @green-bg-hover;
-  border-color: @heal-hp;
-  box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
-  transform: scale(1.05);
+.cell.movable:hover .cell-surface {
+  background: rgba(76, 175, 80, 0.5);
 }
 
 @keyframes movable-pulse {
-  0%, 100% { box-shadow: 0 0 4px rgba(76, 175, 80, 0.2); }
-  50% { box-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
 }
 
-/* 墙体线条 - 比格线亮一档，加粗显眼 */
-.cell.wall-top { border-top: 3px solid @color-mid-gray; }
-.cell.wall-right { border-right: 3px solid @color-mid-gray; }
-.cell.wall-bottom { border-bottom: 3px solid @color-mid-gray; }
-.cell.wall-left { border-left: 3px solid @color-mid-gray; }
-
-/* 墙线在玩家位置/移动高亮上仍保留（墙是结构，优先级最高） */
-.cell.player-here.wall-top,
-.cell.movable.wall-top { border-top: 3px solid @color-mid-gray; }
-.cell.player-here.wall-right,
-.cell.movable.wall-right { border-right: 3px solid @color-mid-gray; }
-.cell.player-here.wall-bottom,
-.cell.movable.wall-bottom { border-bottom: 3px solid @color-mid-gray; }
-.cell.player-here.wall-left,
-.cell.movable.wall-left { border-left: 3px solid @color-mid-gray; }
-
-.cell-icon {
-  font-size: @font-4xl;
+/* ===== 降级：尊重用户动画偏好 ===== */
+@media (prefers-reduced-motion: reduce) {
+  .iso-cell,
+  .cell-surface,
+  .player-marker,
+  .cell.sealed .sealed-icon,
+  .cell.boss .cell-surface,
+  .cell.discovered.danger .cell-surface,
+  .cell.movable.discovered.danger .cell-surface,
+  .cell.discovered.enemy-alert .cell-surface {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
-.cell-hidden {
-  color: #444;
-  font-size: @font-2xl;
-}
-
-/* 探索底部 */
+/* ===== 探索底部 ===== */
 .exploration-footer {
   padding: @spacing-lg @spacing-3xl;
   text-align: center;
@@ -704,23 +887,7 @@ onUnmounted(() => {
   font-weight: @font-weight-normal;
 }
 
-/* 响应式 - 移动端 */
-@media (max-width: 768px) {
-  .cell {
-    width: 44px;
-    height: 44px;
-  }
-  
-  .cell-icon {
-    font-size: 20px;
-  }
-  
-  .cell-hidden {
-    font-size: 16px;
-  }
-}
-
-/* 未选择区域时的提示 */
+/* ===== 未选择区域时的提示 ===== */
 .no-location-hint {
   flex: 1;
   .flex-col-center();
