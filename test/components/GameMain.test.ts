@@ -93,21 +93,20 @@ describe('GameMain 游戏主界面组件', () => {
       expect(wrapper.find('.game-footer').exists()).toBe(true);
     });
 
-    it('底部渲染 6 个 .footer-btn 导航按钮', async () => {
+    it('底部渲染 5 个 .footer-btn 导航按钮', async () => {
       const wrapper = shallowMount(GameMain, { global: { plugins: [pinia] } });
       await flushPromises();
-      expect(wrapper.findAll('.footer-btn')).toHaveLength(6);
+      expect(wrapper.findAll('.footer-btn')).toHaveLength(5);
     });
 
-    it('底部按钮文本含角色/背包/技能/任务/日志/系统', async () => {
+    it('底部按钮文本含角色/背包/构筑/进度/系统', async () => {
       const wrapper = shallowMount(GameMain, { global: { plugins: [pinia] } });
       await flushPromises();
       const texts = wrapper.findAll('.footer-btn').map(b => b.text());
       expect(texts.some(t => t.includes('角色'))).toBe(true);
       expect(texts.some(t => t.includes('背包'))).toBe(true);
-      expect(texts.some(t => t.includes('技能'))).toBe(true);
-      expect(texts.some(t => t.includes('任务'))).toBe(true);
-      expect(texts.some(t => t.includes('日志'))).toBe(true);
+      expect(texts.some(t => t.includes('构筑'))).toBe(true);
+      expect(texts.some(t => t.includes('进度'))).toBe(true);
       expect(texts.some(t => t.includes('系统'))).toBe(true);
     });
 
