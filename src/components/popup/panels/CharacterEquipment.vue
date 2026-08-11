@@ -7,39 +7,49 @@
       </button>
     </div>
 
-    <div class="equipment-grid">
-      <div
-        v-for="slot in weaponSlots"
-        :key="slot.key"
-        :data-equip-slot="slot.key"
-        :class="['equip-slot', { equipped: slot.equipment, selected: selectedSlot?.key === slot.key, locked: slot.locked }, slot.equipment ? 'rarity-' + (slot.equipment?.rarity || 'common') : '']"
-        @click="selectEquipment(slot)"
-      >
-        <div v-if="slot.locked" class="slot-lock-overlay" title="被双手武器占用">
-          <BaseIcon name="padlock" gradient="metal" :size="20" />
-          <span class="lock-text">占用</span>
+    <div class="equipment-group">
+      <div class="group-label"><BaseIcon name="sword-clash" gradient="gold" :size="12" /> 武器</div>
+      <div class="equipment-grid weapon-grid">
+        <div
+          v-for="slot in weaponSlots"
+          :key="slot.key"
+          :data-equip-slot="slot.key"
+          :class="['equip-slot', { equipped: slot.equipment, selected: selectedSlot?.key === slot.key, locked: slot.locked }, slot.equipment ? 'rarity-' + (slot.equipment?.rarity || 'common') : '']"
+          @click="selectEquipment(slot)"
+        >
+          <div v-if="slot.locked" class="slot-lock-overlay" title="被双手武器占用">
+            <BaseIcon name="padlock" gradient="metal" :size="20" />
+            <span class="lock-text">占用</span>
+          </div>
+          <template v-else-if="slot.equipment">
+            <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="broadsword" size="lg" />
+          </template>
+          <template v-else>
+            <ItemIcon icon="" fallback="broadsword" size="lg" />
+          </template>
+          <span class="slot-name">{{ slot.name }}</span>
         </div>
-        <template v-else-if="slot.equipment">
-          <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="broadsword" size="lg" />
-        </template>
-        <template v-else>
-          <ItemIcon icon="" fallback="broadsword" size="lg" />
-        </template>
       </div>
+    </div>
 
-      <div
-        v-for="slot in armorSlots"
-        :key="slot.key"
-        :data-equip-slot="slot.key"
-        :class="['equip-slot', { equipped: slot.equipment, selected: selectedSlot?.key === slot.key }, slot.equipment ? 'rarity-' + (slot.equipment?.rarity || 'common') : '']"
-        @click="selectEquipment(slot)"
-      >
-        <template v-if="slot.equipment">
-          <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="checked-shield" size="lg" />
-        </template>
-        <template v-else>
-          <ItemIcon icon="" fallback="checked-shield" size="lg" />
-        </template>
+    <div class="equipment-group">
+      <div class="group-label"><BaseIcon name="checked-shield" gradient="gold" :size="12" /> 护甲</div>
+      <div class="equipment-grid armor-grid">
+        <div
+          v-for="slot in armorSlots"
+          :key="slot.key"
+          :data-equip-slot="slot.key"
+          :class="['equip-slot', { equipped: slot.equipment, selected: selectedSlot?.key === slot.key }, slot.equipment ? 'rarity-' + (slot.equipment?.rarity || 'common') : '']"
+          @click="selectEquipment(slot)"
+        >
+          <template v-if="slot.equipment">
+            <ItemIcon :icon="slot.equipment?.icon" :rarity="slot.equipment?.rarity" fallback="checked-shield" size="lg" />
+          </template>
+          <template v-else>
+            <ItemIcon icon="" fallback="checked-shield" size="lg" />
+          </template>
+          <span class="slot-name">{{ slot.name }}</span>
+        </div>
       </div>
     </div>
 
@@ -205,11 +215,33 @@ onUnmounted(() => {
   border-color: @accent-color;
 }
 
+.equipment-group {
+  margin-bottom: @spacing-xl;
+}
+
+.group-label {
+  display: flex;
+  align-items: center;
+  gap: @spacing-xs;
+  font-size: @font-sm;
+  color: @text-secondary;
+  font-weight: @font-weight-bold;
+  margin-bottom: @spacing-sm;
+  padding-left: @spacing-xs;
+}
+
 .equipment-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
   gap: @spacing-md;
-  margin-bottom: @spacing-xl;
+  margin-bottom: 0;
+}
+
+.weapon-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.armor-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .equip-slot {
@@ -218,14 +250,28 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: @spacing-xs;
-  padding: @spacing-md;
+  padding: @spacing-sm @spacing-xs;
   background: @white-05;
   border-radius: @radius-lg;
   cursor: pointer;
   transition: all @transition-normal;
-  min-height: 80px;
-  aspect-ratio: 1;
+  min-height: 72px;
+  min-width: 0;
+  overflow: hidden;
 }
+
+.slot-name {
+  font-size: @font-2xs;
+  color: @text-secondary;
+  font-weight: @font-weight-bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.equip-slot:hover .slot-name { color: @text-primary; }
+.equip-slot.selected .slot-name { color: @accent-color; }
 
 .equip-slot.equip-anim-empty { animation: equip-slot-empty 0.6s ease; }
 .equip-slot:hover { background: @white-10; }
