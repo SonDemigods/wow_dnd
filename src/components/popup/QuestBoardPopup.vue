@@ -277,7 +277,9 @@ onMounted(() => {
   max-height: 400px;
 }
 
-.quest-scroller :deep(.vue-recycle-scroller__item-view) {
+/* DynamicScroller 测量 item-view 的直接子元素（DynamicScrollerItem 的 <div>）的 offsetHeight
+   来定位，padding 必须加在子元素上才会被计入尺寸，加在 item-view 上会导致条目重叠、间距消失 */
+.quest-scroller :deep(.vue-recycle-scroller__item-view > div) {
   padding-bottom: @spacing-lg;
   box-sizing: border-box;
 }
