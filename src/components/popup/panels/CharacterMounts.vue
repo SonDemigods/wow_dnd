@@ -49,9 +49,15 @@
           @click="onMountSelect(tier.meta.index, opt.id)"
           :title="opt.description"
         >
-          <BaseIcon :name="opt.icon" :size="16" />
-          <span class="option-name">{{ opt.name }}</span>
-          <span class="option-bonus">{{ formatMountBonus(opt.bonus) }}</span>
+          <span class="option-title">
+            <BaseIcon :name="opt.icon" :size="16" />
+            <span class="option-name">{{ opt.name }}</span>
+          </span>
+          <span class="option-bonus">
+            <span v-for="(line, i) in mountBonusLines(opt.bonus)" :key="i" class="option-bonus-line">
+              +{{ line.value }} {{ line.short }}
+            </span>
+          </span>
         </button>
       </div>
     </div>
@@ -71,13 +77,16 @@ import BaseIcon from '@/components/common/BaseIcon.vue';
 const { tiers: mountTiers, currentBonus: mountBonus, hasAnyChoice: hasMountChoice, setChoice: onMountSelect, resetAll: onMountReset } = useCharacterMounts();
 
 const STAT_SHORT: Record<keyof Stats, string> = {
-  str: '力', dex: '敏', con: '体', int: '智', wis: '感', cha: '魅'
+  str: '力量',
+  dex: '敏捷',
+  con: '体质',
+  int: '智力',
+  wis: '感知',
+  cha: '魅力'
 };
 
-function formatMountBonus(bonus: Partial<Stats>): string {
-  return (Object.keys(bonus) as (keyof Stats)[])
-    .map(k => `+${bonus[k]} ${STAT_SHORT[k]}`)
-    .join('，');
+function mountBonusLines(bonus: Partial<Stats>): { value: number; short: string }[] {
+  return (Object.keys(bonus) as (keyof Stats)[]).map(k => ({ value: bonus[k]!, short: STAT_SHORT[k] }));
 }
 </script>
 
@@ -170,8 +179,9 @@ function formatMountBonus(bonus: Partial<Stats>): string {
 
 .mount-option {
   display: flex;
-  align-items: center;
-  gap: @spacing-xs;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: @spacing-2xs;
   padding: @spacing-xs @spacing-md;
   background: @white-05;
   border: 1px solid @white-10;
@@ -201,7 +211,9 @@ function formatMountBonus(bonus: Partial<Stats>): string {
 .mount-option.rarity-epic { border-color: rgba(163, 51, 238, 0.5); }
 .mount-option.rarity-legendary { border-color: rgba(255, 128, 0, 0.5); }
 
+.option-title { display: flex; align-items: center; gap: @spacing-xs; }
 .option-name { font-weight: 500; white-space: nowrap; }
-.option-bonus { color: @text-secondary; font-variant-numeric: tabular-nums; }
-.mount-option.selected .option-bonus { color: @heal-hp; }
+.option-bonus { display: flex; flex-direction: column; }
+.option-bonus-line { color: @text-secondary; font-variant-numeric: tabular-nums; line-height: 1.4; }
+.mount-option.selected .option-bonus-line { color: @heal-hp; }
 </style>

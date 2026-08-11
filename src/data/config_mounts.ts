@@ -198,12 +198,12 @@ const DUAL_BONUS_VALUE: Record<MountTier, number> = {
 /** 属性简写（用于描述拼装，与 STAT_NAMES 完整名区分） */
 // P8-302 修复：export 供 mount.ts 复用，消除 STAT_SHORT_LABEL 重复定义
 export const STAT_NAME_SHORT: Record<keyof Stats, string> = {
-  str: '力',
-  dex: '敏',
-  con: '体',
-  int: '智',
-  wis: '感',
-  cha: '魅',
+  str: '力量',
+  dex: '敏捷',
+  con: '体质',
+  int: '智力',
+  wis: '感知',
+  cha: '魅力',
 };
 
 /**
