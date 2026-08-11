@@ -18,6 +18,8 @@ import { useGameStore } from '@/modules/game';
 export const useLogStore = defineStore('log', () => {
   // ==================== 状态 ====================
   const logs = ref<LogEntry[]>([]);
+  /** 未读日志计数（新增日志时递增，用户查看日志后归零） */
+  const unreadCount = ref(0);
   // P3-153 扩展：currentCharacterId 收敛到 GameStore 只读 computed 代理
   const gameStore = useGameStore();
   const currentCharacterId = computed<string | null>(() => gameStore.currentCharacterId);
@@ -85,6 +87,8 @@ export const useLogStore = defineStore('log', () => {
       nextLogs.length = MAX_LOG_ENTRIES;
     }
     logs.value = nextLogs;
+    // 新增日志计入未读
+    unreadCount.value++;
     try {
       await saveToDb();
     } catch (e) {
@@ -123,6 +127,7 @@ export const useLogStore = defineStore('log', () => {
   /** 清空日志并持久化 */
   async function clearLogs(): Promise<void> {
     logs.value = [];
+    unreadCount.value = 0;
     try {
       await saveToDb();
     } catch (e) {
@@ -131,11 +136,17 @@ export const useLogStore = defineStore('log', () => {
     }
   }
 
+  /** 标记全部日志已读（打开日志面板时调用），归零未读计数 */
+  function markAllRead(): void {
+    unreadCount.value = 0;
+  }
+
   return {
     // 状态
     logs,
     logCount,
     totalPages,
+    unreadCount,
 
     // 动作
     initialize,
@@ -143,6 +154,7 @@ export const useLogStore = defineStore('log', () => {
     getLogs,
     getLogsByType,
     getPaginatedLogs,
-    clearLogs
+    clearLogs,
+    markAllRead
   };
 });

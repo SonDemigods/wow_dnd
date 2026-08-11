@@ -133,7 +133,7 @@ function handleClose(): void {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.75);
-  z-index: @z-modal-overlay;
+  z-index: @z-item-modal;
   .flex-center();
   animation: fadeIn 0.2s ease;
 }

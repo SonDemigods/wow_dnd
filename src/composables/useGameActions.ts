@@ -16,6 +16,10 @@ import { useEnemyStore } from '@/modules/enemy';
 import { useCombatStore } from '@/modules/combat';
 import { ResourceSystemFactory } from '@/modules/combat/resources';
 import { useToast } from '@/composables/useToast';
+import { useQuestStore } from '@/modules/quest';
+import { useLogStore } from '@/modules/log';
+import { INVENTORY_SIZE } from '@/modules/inventory/service';
+import { useInventoryStore } from '@/modules/inventory';
 import type { CombatResult } from '@/modules/combat';
 
 export function useGameActions(onExit: () => void) {
@@ -28,10 +32,8 @@ export function useGameActions(onExit: () => void) {
   const loading = ref(true);
   const showCharacterInfo = ref(false);
   const showInventory = ref(false);
-  const showSkills = ref(false);
-  const showTalents = ref(false);
-  const showQuests = ref(false);
-  const showAdventureLog = ref(false);
+  const showBuild = ref(false);
+  const showProgress = ref(false);
   const showShop = ref(false);
   const showQuestBoard = ref(false);
   const showCombat = ref(false);
@@ -40,8 +42,8 @@ export function useGameActions(onExit: () => void) {
   const showMultiOptionEvent = ref(false);
   const currentMultiOptionEvent = ref<MultiOptionEventResult | null>(null);
   const popupMounted = reactive({
-    characterInfo: false, inventory: false, skills: false, talents: false,
-    quests: false, adventureLog: false, shop: false, questBoard: false,
+    characterInfo: false, inventory: false, build: false, progress: false,
+    shop: false, questBoard: false,
     audioSettings: false, system: false,
   });
   const levelUpTriggered = ref(false);
@@ -70,6 +72,23 @@ export function useGameActions(onExit: () => void) {
   const currentArea = computed(() => mapStore.getCurrentLocation?.name || '未知区域');
   const hasCurrentLocation = computed(() => !!mapStore.getCurrentLocation);
   const raceIcon = computed(() => characterStore.raceIcon);
+
+  // ==================== 菜单徽章 ====================
+  const questStore = useQuestStore();
+  const logStore = useLogStore();
+  const inventoryStore = useInventoryStore();
+
+  /** 角色徽章：未分配属性点 */
+  const characterBadge = computed(() => characterStore.character?.unallocatedPoints ?? 0);
+  /** 背包徽章：满度 ≥ 90% 显示红点（count=-1） */
+  const inventoryBadge = computed(() => {
+    const used = inventoryStore.inventory.length;
+    return used >= INVENTORY_SIZE * 0.9 ? -1 : 0;
+  });
+  /** 构筑徽章：未分配天赋点 */
+  const buildBadge = computed(() => talentStore.availablePoints);
+  /** 进度徽章：任务数 + 日志未读 */
+  const progressBadge = computed(() => questStore.activeCount + logStore.unreadCount);
 
   function showNotif(message: string, type: 'info' | 'success' | 'warning' | 'danger' = 'info') {
     toast.show({ message, type });
@@ -258,14 +277,16 @@ export function useGameActions(onExit: () => void) {
   return {
     // 状态
     currentContentTab, loading,
-    showCharacterInfo, showInventory, showSkills, showTalents, showQuests,
-    showAdventureLog, showShop, showQuestBoard, showCombat, showAudioSettings, showSystem,
+    showCharacterInfo, showInventory, showBuild, showProgress,
+    showShop, showQuestBoard, showCombat, showAudioSettings, showSystem,
     showMultiOptionEvent, currentMultiOptionEvent,
     popupMounted, levelUpTriggered,
     // 计算属性
     character, currentHp, maxHp, currentMp, maxMp, hpPercent, mpPercent,
     showManaBar, classResourceSystems, exp, expToNext, expPercent, gold,
     currentArea, hasCurrentLocation, raceIcon,
+    // 菜单徽章
+    characterBadge, inventoryBadge, buildBadge, progressBadge,
     // Actions
     showNotif, handleExit, onClickPanel, onPanelClose,
     openAudioFromSystem, handleMapTabClick, handleExploreTabClick,

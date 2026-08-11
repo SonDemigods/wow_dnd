@@ -50,26 +50,22 @@
       <button class="footer-btn" @click="popupMounted.characterInfo = true; showCharacterInfo = true; onClickPanel('character_info')" title="角色">
         <BaseIcon name="person" gradient="gold" :size="16" />
         <span class="footer-text">角色</span>
+        <MenuBadge :count="characterBadge" variant="danger" />
       </button>
       <button class="footer-btn" @click="popupMounted.inventory = true; showInventory = true; onClickPanel('inventory')" title="背包">
         <BaseIcon name="backpack" gradient="gold" :size="16" />
         <span class="footer-text">背包</span>
+        <MenuBadge :count="inventoryBadge" variant="warning" />
       </button>
-      <button class="footer-btn" @click="popupMounted.skills = true; showSkills = true; onClickPanel('skills')" title="技能">
+      <button class="footer-btn" @click="popupMounted.build = true; showBuild = true; onClickPanel('build')" title="构筑">
         <BaseIcon name="sword-spin" gradient="gold" :size="16" />
-        <span class="footer-text">技能</span>
+        <span class="footer-text">构筑</span>
+        <MenuBadge :count="buildBadge" variant="danger" />
       </button>
-      <button class="footer-btn" @click="popupMounted.talents = true; showTalents = true; onClickPanel('talents')" title="天赋">
-        <BaseIcon name="star" gradient="gold" :size="16" />
-        <span class="footer-text">天赋</span>
-      </button>
-      <button class="footer-btn" @click="popupMounted.quests = true; showQuests = true; onClickPanel('quests')" title="任务">
+      <button class="footer-btn" @click="popupMounted.progress = true; showProgress = true; onClickPanel('progress')" title="进度">
         <BaseIcon name="notebook" gradient="gold" :size="16" />
-        <span class="footer-text">任务</span>
-      </button>
-      <button class="footer-btn" @click="popupMounted.adventureLog = true; showAdventureLog = true; onClickPanel('adventure_log')" title="日志">
-        <BaseIcon name="scroll-unfurled" gradient="gold" :size="16" />
-        <span class="footer-text">日志</span>
+        <span class="footer-text">进度</span>
+        <MenuBadge :count="progressBadge" variant="info" />
       </button>
       <button class="footer-btn" @click="popupMounted.system = true; showSystem = true; onClickPanel('system')" title="系统">
         <BaseIcon name="cog" gradient="gold" :size="16" />
@@ -81,6 +77,7 @@
       v-if="popupMounted.characterInfo"
       :visible="showCharacterInfo"
       @close="showCharacterInfo = false; popupMounted.characterInfo = false; onPanelClose('character_info')"
+      @open-inventory="handleOpenInventoryFromCharacter"
     />
 
     <InventoryPopup
@@ -89,29 +86,17 @@
       @close="showInventory = false; popupMounted.inventory = false; onPanelClose('inventory')"
     />
 
-    <SkillsPopup
-      v-if="popupMounted.skills"
-      :visible="showSkills"
-      @close="showSkills = false; popupMounted.skills = false; onPanelClose('skills')"
+    <BuildPopup
+      v-if="popupMounted.build"
+      :visible="showBuild"
+      @close="showBuild = false; popupMounted.build = false; onPanelClose('build')"
     />
 
-    <TalentPopup
-      v-if="popupMounted.talents"
-      :visible="showTalents"
-      @close="showTalents = false; popupMounted.talents = false; onPanelClose('talents')"
-    />
-
-    <QuestPopup
-      v-if="popupMounted.quests"
-      :visible="showQuests"
-      @close="showQuests = false; popupMounted.quests = false; onPanelClose('quests')"
-    />
-
-    <AdventureLogPopup
-      v-if="popupMounted.adventureLog"
-      :visible="showAdventureLog"
+    <ProgressPopup
+      v-if="popupMounted.progress"
+      :visible="showProgress"
       :current-area="currentArea"
-      @close="showAdventureLog = false; popupMounted.adventureLog = false; onPanelClose('adventure_log')"
+      @close="showProgress = false; popupMounted.progress = false; onPanelClose('progress')"
     />
 
     <ShopPopup
@@ -164,6 +149,7 @@ import { defineAsyncComponent, h, onMounted, onUnmounted } from 'vue';
 import { useGameActions } from '@/composables/useGameActions';
 import ResourceBar from './common/ResourceBar.vue';
 import ClassResourceBar from './common/ClassResourceBar.vue';
+import MenuBadge from './common/MenuBadge.vue';
 import BaseIcon from '@/components/common/BaseIcon.vue';
 
 /**
@@ -200,22 +186,15 @@ const InventoryPopup = defineAsyncComponent({
   delay: 200,
   timeout: 10000,
 });
-const SkillsPopup = defineAsyncComponent({
-  loader: () => import('./popup/SkillsPopup.vue'),
+const BuildPopup = defineAsyncComponent({
+  loader: () => import('./popup/BuildPopup.vue'),
   loadingComponent: AsyncPopupLoading,
   errorComponent: AsyncPopupError,
   delay: 200,
   timeout: 10000,
 });
-const TalentPopup = defineAsyncComponent({
-  loader: () => import('./popup/TalentPopup.vue'),
-  loadingComponent: AsyncPopupLoading,
-  errorComponent: AsyncPopupError,
-  delay: 200,
-  timeout: 10000,
-});
-const QuestPopup = defineAsyncComponent({
-  loader: () => import('./popup/QuestPopup.vue'),
+const ProgressPopup = defineAsyncComponent({
+  loader: () => import('./popup/ProgressPopup.vue'),
   loadingComponent: AsyncPopupLoading,
   errorComponent: AsyncPopupError,
   delay: 200,
@@ -237,13 +216,6 @@ const QuestBoardPopup = defineAsyncComponent({
 });
 const CharacterInfoPopup = defineAsyncComponent({
   loader: () => import('./popup/CharacterInfoPopup.vue'),
-  loadingComponent: AsyncPopupLoading,
-  errorComponent: AsyncPopupError,
-  delay: 200,
-  timeout: 10000,
-});
-const AdventureLogPopup = defineAsyncComponent({
-  loader: () => import('./popup/AdventureLogPopup.vue'),
   loadingComponent: AsyncPopupLoading,
   errorComponent: AsyncPopupError,
   delay: 200,
@@ -284,19 +256,28 @@ const emit = defineEmits<{
 
 const {
   currentContentTab, loading,
-  showCharacterInfo, showInventory, showSkills, showTalents, showQuests,
-  showAdventureLog, showShop, showQuestBoard, showCombat, showAudioSettings, showSystem,
+  showCharacterInfo, showInventory, showBuild, showProgress,
+  showShop, showQuestBoard, showCombat, showAudioSettings, showSystem,
   showMultiOptionEvent, currentMultiOptionEvent,
   popupMounted, levelUpTriggered,
   character, currentHp, maxHp, currentMp, maxMp, hpPercent, mpPercent,
   showManaBar, classResourceSystems, exp, expToNext, expPercent, gold,
   currentArea, hasCurrentLocation, raceIcon,
+  characterBadge, inventoryBadge, buildBadge, progressBadge,
   showNotif, handleExit, onClickPanel, onPanelClose,
   openAudioFromSystem, handleMapTabClick, handleExploreTabClick,
   handleCombatClose, handleShopClose,
   handleEventChoice, handleMultiOptionEventClose,
   init, cleanup,
 } = useGameActions(() => emit('exit'));
+
+/** 角色面板装备段"前往背包"跳转：关闭角色面板，打开背包 */
+function handleOpenInventoryFromCharacter() {
+  showCharacterInfo.value = false;
+  popupMounted.characterInfo = false;
+  popupMounted.inventory = true;
+  showInventory.value = true;
+}
 
 // P9-104 修复：init() 包裹 try-catch，避免初始化异常导致未捕获 rejection
 onMounted(async () => {

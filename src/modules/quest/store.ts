@@ -177,6 +177,9 @@ export const useQuestStore = defineStore('quest', () => {
     instanceList.value.filter(i => i.status === 'completed')
   );
 
+  /** 进行中 + 已完成待提交的任务总数（用于菜单徽章） */
+  const activeCount = computed(() => activeQuests.value.length + completedQuests.value.length);
+
   /** 已提交终态的任务（status === turned_in） */
   const turnedInQuests = computed<QuestInstance[]>(() =>
     instanceList.value.filter(i => i.status === 'turned_in')
@@ -848,6 +851,7 @@ export const useQuestStore = defineStore('quest', () => {
     instanceList,
     activeQuests,
     completedQuests,
+    activeCount,
     turnedInQuests,
     availableQuests,
     inProgressQuests,
