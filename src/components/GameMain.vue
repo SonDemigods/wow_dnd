@@ -533,17 +533,13 @@ defineExpose({ showNotif });
   }
   
   .player-gold {
-    font-size: 11px;
+    font-size: 16px;
   }
   
   .player-resources {
     max-width: 100%;
     order: 3;
     width: 100%;
-  }
-  
-  .player-gold {
-    font-size: 16px;
   }
   
   .content-tabs {

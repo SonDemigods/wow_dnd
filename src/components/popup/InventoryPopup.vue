@@ -604,12 +604,6 @@ onUnmounted(() => {
   font-size: @font-sm;
 }
 
-.inventory-content {
-  .flex-col();
-  height: 100%;
-  gap: 14px;
-}
-
 .category-tabs {
   display: flex;
   gap: @spacing-sm;
