@@ -39,20 +39,20 @@ registerCommand({
   usage: 'item <物品ID> [数量]',
   async handler(args) {
     if (args.length === 0) {
-      // CHR-5 修复：通过 AdminQueryService 收口跨模块 DbService 查询
       const { items: lootItems, equipments: equipItems } = await adminQueryService.queryAllItemTemplates();
 
-      logTag('item', '═══ 消耗品 ═══');
+      logTag('item', `═══ 消耗品（${lootItems.length}）═══`);
       for (const item of lootItems) {
         console.log(`  %c${item.id.padEnd(24)}%c ${item.name}`, STYLE.label, STYLE.value);
       }
-      logTag('item', '═══ 装备 ═══');
+
+      logTag('item', `═══ 装备（${equipItems.length}）═══`);
       for (const item of equipItems) {
         const rc = rarityColorKey(item.rarity || 'common');
-        // P3.3：旧 item.type（weapon/armor）已移除，改用 subtype 显示装备子类型
-        console.log(`  %c${item.id.padEnd(24)}%c ${item.name} %c[${item.subtype}]`, STYLE.label, rc, STYLE.hint);
+        console.log(`  %c${item.id.padEnd(24)}%c ${item.name}%c [${item.subtype}]`, STYLE.label, rc, STYLE.hint);
       }
-      return { success: true, message: '已在上方列出所有可用物品' };
+
+      return { success: true, message: `共 ${lootItems.length} 消耗品 + ${equipItems.length} 装备` };
     }
 
     const itemId = args[0];
