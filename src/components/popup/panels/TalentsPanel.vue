@@ -21,19 +21,17 @@
 
     <!-- 天赋树网格 -->
     <div class="talent-tree-container" ref="containerRef">
-      <!-- SVG 连线层 -->
-      <svg class="connections-layer" :width="gridWidth" :height="gridHeight">
-        <line
-          v-for="(line, i) in connectionLines"
-          :key="i"
-          :x1="line.x1" :y1="line.y1"
-          :x2="line.x2" :y2="line.y2"
-          :class="['conn-line', { active: line.active }]"
-        />
-      </svg>
-
-      <!-- 节点网格 -->
+      <!-- 节点网格（含 SVG 连线层） -->
       <div class="talent-grid" :style="{ width: gridWidth + 'px', height: gridHeight + 'px' }">
+        <svg class="connections-layer" :width="gridWidth" :height="gridHeight">
+          <line
+            v-for="(line, i) in connectionLines"
+            :key="i"
+            :x1="line.x1" :y1="line.y1"
+            :x2="line.x2" :y2="line.y2"
+            :class="['conn-line', { active: line.active }]"
+          />
+        </svg>
         <div
           v-for="node in allNodes"
           :key="node.talent.id"
@@ -293,8 +291,6 @@ watch(() => talentStore.allocations, () => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 70vh;
-  overflow-y: auto;
 }
 
 .talent-header {
@@ -352,18 +348,16 @@ watch(() => talentStore.allocations, () => {
 }
 
 .talent-tree-container {
-  position: relative;
-  display: flex;
-  justify-content: center;
   overflow: auto;
   padding: 8px;
+  max-height: 40vh;
+  .custom-scrollbar();
 }
 
 .connections-layer {
   position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 0;
+  left: 0;
   pointer-events: none;
 }
 
@@ -380,6 +374,7 @@ watch(() => talentStore.allocations, () => {
 
 .talent-grid {
   position: relative;
+  margin: 0 auto;
 }
 
 .talent-node {

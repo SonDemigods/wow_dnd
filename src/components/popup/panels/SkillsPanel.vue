@@ -149,7 +149,6 @@ function canUnlock(skill: Skill): boolean {
 
 function selectSkill(skill: Skill) {
   selectedSkill.value = skill;
-  selectedSlotIndex.value = null;
   eventBus.emit(GameEvents.UI_CLICK, { source: 'skill_select' });
 }
 
@@ -201,7 +200,7 @@ function deactivateSkill(skillId: string) {
 }
 
 function findEmptySlot(): SkillSlotIndex | null {
-  const emptyIndex = skillsStore.skillBar.slots.findIndex(slot => slot === null);
+  const emptyIndex = skillsStore.skillBar.slots.findIndex(slot => !slot);
   return emptyIndex !== -1 ? (emptyIndex as SkillSlotIndex) : null;
 }
 

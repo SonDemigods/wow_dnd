@@ -303,6 +303,17 @@ describe('SkillsDbService - 技能数据层（fake-indexeddb 真实 CRUD）', ()
       const ids = result.map(s => s.id).sort();
       expect(ids).toEqual(['common-1', 'w-1']);
     });
+
+    it('usableBy=enemy 的怪物技能不会被 getSkillTemplatesByClass 返回', async () => {
+      // Arrange：怪物技能 classRestriction=null + usableBy=enemy
+      await skillsDbService.saveSkillTemplate(makeSkill({ id: 'monster-1', usableBy: 'enemy' }));
+      await skillsDbService.saveSkillTemplate(makeSkill({ id: 'w-1' }), 'warrior');
+      // Act
+      const result = await skillsDbService.getSkillTemplatesByClass('warrior');
+      // Assert：怪物技能虽 classRestriction=null，但 usableBy=enemy 应被排除
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('w-1');
+    });
   });
 
   describe('getMonsterSkillTemplates：怪物技能查询', () => {

@@ -253,9 +253,13 @@ export class SkillsDbService {
     return dbService.withRetry(async () => {
       // P1-18 修复：IndexedDB 不索引 null 值，anyOf(classId, null) 会抛 DataError
       // 改为查全部后过滤：返回职业专属技能 + classRestriction 为 null/undefined 的通用技能
+      // 同时排除 usableBy='enemy' 的怪物技能（其 classRestriction 也为 null，会误通过通用技能过滤）
       const allItems = await gameDb.config_skills.toArray() as SkillTemplateStorage[];
       return allItems
-        .filter(item => !item.classRestriction || item.classRestriction === classId)
+        .filter(item =>
+          item.usableBy !== 'enemy' &&
+          (!item.classRestriction || item.classRestriction === classId)
+        )
         .map(data => this.toSkill(data));
     });
   }
