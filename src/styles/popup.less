@@ -168,3 +168,82 @@
 .popup-leave-active {
   animation: fadeIn @transition-fast ease reverse;
 }
+
+/* ===== 确认删除弹窗（ArchiveManagerPopup / CharacterSelectPopup 共用） ===== */
+
+.confirm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: @overlay-deep;
+  .flex-center();
+  z-index: @z-popup;
+}
+
+.confirm-modal {
+  background: rgba(20, 25, 35, 0.98);
+  border: 2px solid @color-delete;
+  border-radius: @radius-xl;
+  padding: 24px;
+  max-width: 360px;
+  width: 90%;
+  text-align: center;
+}
+
+.confirm-icon {
+  font-size: 48px;
+  margin-bottom: @spacing-3xl;
+}
+
+.confirm-modal h3 {
+  color: @color-delete;
+  font-size: @font-2xl;
+  margin-bottom: @spacing-xl;
+}
+
+.confirm-modal p {
+  color: #b0b0b0;
+  font-size: @font-md;
+  margin-bottom: 20px;
+}
+
+.confirm-buttons {
+  display: flex;
+  gap: @spacing-xl;
+  justify-content: center;
+}
+
+.confirm-btn-cancel {
+  padding: @spacing-lg 24px;
+  background: @white-10;
+  border: 1px solid @color-dim-gray;
+  border-radius: @radius-md;
+  color: @text-primary;
+  font-size: @font-md;
+  cursor: pointer;
+  transition: all @transition-normal;
+}
+
+.confirm-btn-cancel:hover {
+  background: @white-20;
+  border-color: @color-dodge;
+}
+
+.confirm-btn-delete {
+  padding: @spacing-lg 24px;
+  background: linear-gradient(135deg, @color-delete, #cc3300);
+  border: none;
+  border-radius: @radius-md;
+  color: @popup-text-color;
+  font-size: @font-md;
+  font-weight: @font-weight-bold;
+  cursor: pointer;
+  transition: all @transition-normal;
+}
+
+.confirm-btn-delete:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 68, 0, 0.4);
+}

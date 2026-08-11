@@ -622,23 +622,12 @@ watch(currentTab, resetSelection);
 }
 
 .action-btn {
+  .action-btn-base();
   padding: @spacing-md 18px;
   border: none;
   border-radius: @radius-sm;
   font-size: @font-md;
-  font-weight: @font-weight-bold;
-  cursor: pointer;
-  transition: all @transition-normal;
   color: @popup-text-color;
-}
-
-.action-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-}
-
-.action-btn:disabled {
-  opacity: @opacity-dimmed;
-  cursor: not-allowed;
 }
 
 .action-btn.buy {

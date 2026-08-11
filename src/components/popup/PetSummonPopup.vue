@@ -145,7 +145,7 @@ function handleClose(): void {
   background: linear-gradient(135deg, rgba(30, 30, 45, 0.98), rgba(20, 20, 30, 0.98));
   border-radius: @radius-md;
   border: 1px solid rgba(74, 222, 128, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(74, 222, 128, 0.1);
+  box-shadow: 0 8px 32px @overlay-mid, 0 0 16px rgba(74, 222, 128, 0.1);
   .flex-col();
   overflow: hidden;
 }
@@ -155,7 +155,7 @@ function handleClose(): void {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid @white-08;
 }
 
 .pet-summon-title {
@@ -190,7 +190,7 @@ function handleClose(): void {
   justify-content: space-between;
   padding: 6px 12px;
   margin-bottom: 12px;
-  background: rgba(0, 0, 0, 0.3);
+  background: @overlay-light;
   border-radius: @radius-sm;
   border: 1px solid rgba(255, 255, 255, 0.06);
 
@@ -212,7 +212,7 @@ function handleClose(): void {
   gap: @spacing-md;
   padding: 10px 12px;
   margin-bottom: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: @white-03;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: @radius-sm;
   cursor: pointer;
@@ -272,7 +272,7 @@ function handleClose(): void {
   .stat-item {
     font-size: 10px;
     color: @color-dim-gray;
-    background: rgba(0, 0, 0, 0.3);
+    background: @overlay-light;
     padding: 1px 6px;
     border-radius: @radius-xs;
   }
@@ -323,7 +323,7 @@ function handleClose(): void {
 
 .pet-summon-footer {
   padding: 10px 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid @white-08;
   .flex-center();
 }
 

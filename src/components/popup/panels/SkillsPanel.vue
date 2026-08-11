@@ -316,25 +316,12 @@ onMounted(async () => {
 
 .skills-scroller {
   max-height: 180px;
+  .custom-scrollbar();
 }
 
 .skills-scroller :deep(.vue-recycle-scroller__item-view) {
   padding: 3px;
   box-sizing: border-box;
-}
-
-.skills-scroller::-webkit-scrollbar {
-  width: 6px;
-}
-
-.skills-scroller::-webkit-scrollbar-track {
-  background: @overlay-light;
-  border-radius: @radius-xs;
-}
-
-.skills-scroller::-webkit-scrollbar-thumb {
-  background: @popup-border-color;
-  border-radius: @radius-xs;
 }
 
 .skill-slot {
@@ -465,22 +452,20 @@ onMounted(async () => {
 }
 
 .action-btn {
+  .action-btn-base();
   padding: @spacing-md @spacing-3xl;
   border: none;
   border-radius: @radius-sm;
   font-size: @font-base;
-  font-weight: @font-weight-bold;
-  cursor: pointer;
   transition: all @transition-quick;
-}
 
-.action-btn:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.1);
-}
+  &:hover {
+    filter: brightness(1.1);
+  }
 
-.action-btn:active {
-  transform: translateY(0);
+  &:active {
+    transform: translateY(0);
+  }
 }
 
 .action-btn.memorize {

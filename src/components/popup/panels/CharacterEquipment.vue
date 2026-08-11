@@ -230,7 +230,7 @@ onUnmounted(() => {
 .equip-slot.equip-anim-empty { animation: equip-slot-empty 0.6s ease; }
 .equip-slot:hover { background: @white-10; }
 .equip-slot.selected { background: @gold-bg-strong; }
-.equip-slot.equipped { background: rgba(255, 255, 255, 0.08); }
+.equip-slot.equipped { background: @white-08; }
 .equip-slot.equipped.selected { background: @gold-bg-strong; }
 
 .equip-slot.locked {
@@ -311,16 +311,17 @@ onUnmounted(() => {
 .detail-actions { display: flex; gap: @spacing-md; margin-top: @spacing-lg; }
 
 .action-btn {
+  .action-btn-base();
   padding: @spacing-md @spacing-3xl;
   border: none;
   border-radius: @radius-sm;
   font-size: @font-base;
-  font-weight: @font-weight-bold;
-  cursor: pointer;
   transition: all @transition-quick;
-}
 
-.action-btn:hover { transform: translateY(-1px); }
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+}
 
 .unequip { background: linear-gradient(135deg, #ff9800, #f57c00); color: @popup-text-color; }
 .open-bag { background: @white-10; color: @text-primary; border: 1px solid @popup-border-color; }

@@ -430,7 +430,7 @@ onUnmounted(() => {
 }
 
 .grid-wrapper {
-  background: rgba(0, 0, 0, 0.5);
+  background: @overlay-mid;
   padding: @spacing-xl;
   border-radius: 10px;
   border: 2px solid @color-mid-gray;
@@ -520,7 +520,7 @@ onUnmounted(() => {
 .cell.sealed {
   background: rgba(40, 0, 0, 0.6);
   border-color: #8B0000;
-  box-shadow: 0 0 8px rgba(139, 0, 0, 0.6), inset 0 0 6px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 8px rgba(139, 0, 0, 0.6), inset 0 0 6px @overlay-dim;
 }
 
 .cell.sealed .sealed-icon {
@@ -704,7 +704,7 @@ onUnmounted(() => {
 .exploration-footer {
   padding: @spacing-lg @spacing-3xl;
   text-align: center;
-  background: rgba(0, 0, 0, 0.3);
+  background: @overlay-light;
   border-top: 1px solid @color-dark-line;
 }
 

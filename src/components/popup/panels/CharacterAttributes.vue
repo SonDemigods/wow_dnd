@@ -272,7 +272,7 @@ function getAttrName(key: string) {
   background: @popup-bg;
   border: 1px solid rgba(255, 215, 0, 0.4);
   border-radius: @radius-sm;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 12px @overlay-mid;
   pointer-events: none;
   user-select: none;
   animation: attr-breakdown-fade-in 0.15s ease-out;

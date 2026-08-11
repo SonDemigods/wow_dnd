@@ -308,7 +308,7 @@ onMounted(async () => {
 .create-header h2 {
   font-size: @font-3xl;
   color: @accent-color;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  text-shadow: 2px 2px 4px @overlay-mid;
   margin: 0 0 @spacing-lg 0;
 }
 
@@ -584,7 +584,7 @@ onMounted(async () => {
   font-weight: @font-weight-bold;
   text-align: center;
   padding-bottom: @spacing-xs;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid @white-08;
 }
 
 .attr-list {
@@ -598,9 +598,9 @@ onMounted(async () => {
   align-items: center;
   gap: @spacing-sm;
   padding: @spacing-xs @spacing-sm;
-  background: rgba(255, 255, 255, 0.03);
+  background: @white-03;
   border-radius: @radius-sm;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid @white-05;
 }
 
 .attr-item .attr-icon {
@@ -643,7 +643,7 @@ onMounted(async () => {
   font-weight: @font-weight-bold;
   text-align: center;
   padding-bottom: @spacing-xs;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid @white-08;
 }
 
 .attr-grid {
@@ -655,10 +655,10 @@ onMounted(async () => {
 
 .attr-box {
   padding: 4px 4px;
-  background: rgba(255, 255, 255, 0.03);
+  background: @white-03;
   border-radius: @radius-sm;
   text-align: center;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid @white-05;
 }
 
 .attr-box .attr-icon {
@@ -707,9 +707,9 @@ onMounted(async () => {
   align-items: center;
   gap: @spacing-sm;
   padding: @spacing-xs @spacing-sm;
-  background: rgba(255, 255, 255, 0.03);
+  background: @white-03;
   border-radius: @radius-sm;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid @white-05;
 }
 
 .sec-attr .sec-icon {
@@ -796,14 +796,7 @@ onMounted(async () => {
 
 /* 校验/确认弹窗 */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: @overlay-deep;
-  .flex-center();
-  z-index: @z-popup;
+  .overlay-mask(@overlay-deep);
 }
 
 .modal-box {

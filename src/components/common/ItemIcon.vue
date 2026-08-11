@@ -97,9 +97,4 @@ const wrapperPxStyle = computed(() => {
   border-color: #ff8000;
   animation: legendary-glow 2s infinite;
 }
-
-@keyframes legendary-glow {
-  0%, 100% { box-shadow: 0 0 4px rgba(255, 128, 0, 0.4); }
-  50%      { box-shadow: 0 0 12px rgba(255, 128, 0, 0.8); }
-}
 </style>

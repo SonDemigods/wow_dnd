@@ -97,11 +97,7 @@ onMounted(async () => {
 }
 
 .btn {
-  padding: @spacing-md @spacing-4xl;
-  border-radius: @radius-md;
-  cursor: pointer;
-  font-size: @font-md;
-  border: 1px solid @border-color;
+  .admin-btn-base(@spacing-4xl);
 
   &-secondary {
     background: transparent;
@@ -113,21 +109,10 @@ onMounted(async () => {
     color: @popup-text-color;
     border-color: @danger-color;
   }
-
-  &:hover {
-    opacity: 0.85;
-  }
 }
 
 .confirm-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: @overlay-deep;
-  .flex-center();
-  z-index: 2000;
+  .overlay-mask(@overlay-deep; @z-combat-overlay);
 }
 
 .confirm-dialog {

@@ -87,3 +87,171 @@
 .shadow-bright(@color) {
   box-shadow: 0 0 15px @color;
 }
+
+// ========== 资源条基础结构（ResourceBar / ClassResourceBar 共用） ==========
+
+.resource-bar-base(
+  @track-height: 20px;
+  @fill-transition: 0.5s;
+  @wave-height: 10px;
+  @wave-fast-height: 6px;
+  @wave-fast-opacity: 0.22;
+  @wave-anim: wave-drift;
+) {
+  .resource-track {
+    flex: 1;
+    height: @track-height;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: @radius-sm;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid @white-08;
+  }
+
+  .resource-fill {
+    height: 100%;
+    transition: width @fill-transition cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: @radius-xs;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    overflow: hidden;
+  }
+
+  .wave-layer {
+    position: absolute;
+    top: -3px;
+    left: -50%;
+    width: 200%;
+    height: @wave-height;
+    border-radius: 40%;
+    opacity: @opacity-disabled;
+    pointer-events: none;
+  }
+
+  .wave-slow {
+    animation: @wave-anim 4s ease-in-out infinite;
+  }
+
+  .wave-fast {
+    animation: @wave-anim 2.5s ease-in-out infinite reverse;
+    height: @wave-fast-height;
+    top: -1px;
+    opacity: @wave-fast-opacity;
+  }
+
+  .resource-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 @spacing-md;
+    z-index: 3;
+  }
+
+  .resource-label {
+    font-size: @font-2xs;
+    color: #e0e0e0;
+    font-weight: @font-weight-semibold;
+    text-shadow: @text-shadow-label;
+  }
+
+  .resource-value {
+    font-size: @font-2xs;
+    color: #e0e0e0;
+    font-weight: @font-weight-semibold;
+    text-shadow: @text-shadow-label;
+  }
+}
+
+// ========== 操作按钮基础（popup .action-btn 共用） ==========
+
+.action-btn-base() {
+  cursor: pointer;
+  font-weight: @font-weight-bold;
+  transition: all @transition-normal;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
+
+  &:disabled {
+    opacity: @opacity-dimmed;
+    cursor: not-allowed;
+  }
+}
+
+// ========== 全屏遮罩（modal-overlay / form-overlay / confirm-overlay 共用） ==========
+
+.overlay-mask(@bg: @popup-overlay-bg; @z: @z-popup) {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: @bg;
+  .flex-center();
+  z-index: @z;
+}
+
+// ========== Admin 按钮基础 ==========
+
+.admin-btn-base(@pad-x: @spacing-3xl) {
+  padding: @spacing-md @pad-x;
+  border: 1px solid @border-color;
+  border-radius: @radius-md;
+  font-size: @font-md;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.85;
+  }
+}
+
+// ========== 分段标签栏（BuildPopup / ProgressPopup / CharacterInfoPopup 共用） ==========
+
+.segment-tabs() {
+  display: flex;
+  gap: @spacing-md;
+  margin: -@spacing-3xl -@spacing-3xl @spacing-2xl;
+  padding: @spacing-sm @spacing-3xl 0 @spacing-3xl;
+  border-bottom: @border-sm;
+  position: sticky;
+  top: -@spacing-3xl;
+  z-index: 1;
+  background: @popup-bg;
+}
+
+.segment-tab() {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: @spacing-sm;
+  padding: @spacing-md @spacing-xl;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: @text-secondary;
+  font-size: @font-md;
+  font-weight: @font-weight-bold;
+  cursor: pointer;
+  transition: all @transition-quick;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &:hover {
+    color: @text-primary;
+  }
+
+  &.active {
+    color: @accent-color;
+    border-bottom-color: @accent-color;
+  }
+}
+
+.segment-panel-body() {
+  min-height: 300px;
+  padding-top: @spacing-2xl;
+}

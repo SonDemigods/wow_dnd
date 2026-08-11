@@ -649,6 +649,10 @@ onUnmounted(() => {
 
 .inventory-scroller {
   max-height: 280px;
+  .custom-scrollbar();
+  &::-webkit-scrollbar-thumb:hover {
+    background: @color-dim-gray;
+  }
 }
 
 /* RecycleScroller gridItems 模式下，每个条目 wrapper 由组件设置宽高，
@@ -656,24 +660,6 @@ onUnmounted(() => {
 .inventory-scroller :deep(.vue-recycle-scroller__item-view) {
   padding: 3px;
   box-sizing: border-box;
-}
-
-.inventory-scroller::-webkit-scrollbar {
-  width: 6px;
-}
-
-.inventory-scroller::-webkit-scrollbar-track {
-  background: @overlay-light;
-  border-radius: @radius-xs;
-}
-
-.inventory-scroller::-webkit-scrollbar-thumb {
-  background: @popup-border-color;
-  border-radius: @radius-xs;
-}
-
-.inventory-scroller::-webkit-scrollbar-thumb:hover {
-  background: @color-dim-gray;
 }
 
 .item-slot {
@@ -834,13 +820,11 @@ onUnmounted(() => {
 }
 
 .action-btn {
+  .action-btn-base();
   padding: @spacing-md 14px;
   border: none;
   border-radius: @radius-sm;
   font-size: @font-base;
-  font-weight: @font-weight-bold;
-  cursor: pointer;
-  transition: all @transition-normal;
 }
 
 .action-btn.use {
@@ -856,10 +840,6 @@ onUnmounted(() => {
 .action-btn.drop {
   background: linear-gradient(135deg, #ff4444, #cc0000);
   color: @popup-text-color;
-}
-
-.action-btn:hover {
-  transform: translateY(-2px);
 }
 
 .slot-select-content {

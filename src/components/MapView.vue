@@ -399,28 +399,28 @@ onUnmounted(() => {
 /* 未解锁 - 灰色边框，半透明 */
 .zone-marker.locked .marker-icon {
   border-color: @color-dim-gray;
-  background: rgba(0, 0, 0, 0.5);
+  background: @overlay-mid;
   opacity: @opacity-dimmed;
 }
 
 /* 已解锁 - 绿色边框 */
 .zone-marker.unlocked .marker-icon {
   border-color: @color-ally;
-  background: rgba(0, 0, 0, 0.6);
+  background: @overlay-dark;
   box-shadow: 0 0 8px rgba(0, 210, 211, 0.3);
 }
 
 /* 高风险 - 红色边框 */
 .zone-marker.high-risk .marker-icon {
   border-color: @color-danger-accent;
-  background: rgba(0, 0, 0, 0.6);
+  background: @overlay-dark;
   box-shadow: 0 0 8px rgba(233, 69, 96, 0.3);
 }
 
 /* 当前位置 - 金色边框 */
 .zone-marker.is-current .marker-icon {
   border-color: @accent-color;
-  background: rgba(0, 0, 0, 0.6);
+  background: @overlay-dark;
   box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
 }
 
@@ -431,7 +431,7 @@ onUnmounted(() => {
   right: 16px;
   .flex-col-center();
   gap: @spacing-2xs;
-  background: rgba(0, 0, 0, 0.6);
+  background: @overlay-dark;
   border-radius: @radius-lg;
   padding: @spacing-xs;
   z-index: 20;
@@ -440,7 +440,7 @@ onUnmounted(() => {
 .zoom-btn {
   width: 36px;
   height: 36px;
-  background: rgba(255, 255, 255, 0.08);
+  background: @white-08;
   border: none;
   border-radius: @radius-md;
   color: @popup-text-color;
@@ -451,7 +451,7 @@ onUnmounted(() => {
 }
 
 .zoom-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: @white-18;
 }
 
 .zoom-btn:active {

@@ -187,7 +187,7 @@ function navigateToConfig(tableName: ConfigTableName) {
 .exit-btn {
   width: 100%;
   padding: @spacing-lg;
-  background: rgba(255, 255, 255, 0.08);
+  background: @white-08;
   border: 1px solid @border-color;
   border-radius: @radius-md;
   color: @text-primary;

@@ -174,7 +174,7 @@ function formatMountBonus(bonus: Partial<Stats>): string {
   gap: @spacing-xs;
   padding: @spacing-xs @spacing-md;
   background: @white-05;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid @white-10;
   border-radius: @radius-sm;
   cursor: pointer;
   transition: all @transition-quick;

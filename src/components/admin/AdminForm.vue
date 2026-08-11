@@ -375,14 +375,7 @@ function handleSubmit() {
 @import '@/styles/variables.less';
 
 .form-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: @overlay-heavy;
-  .flex-center();
-  z-index: 2000;
+  .overlay-mask(@overlay-heavy; @z-combat-overlay);
 }
 
 .form-dialog {
@@ -602,7 +595,7 @@ function handleSubmit() {
   .btn-json-mode {
     font-size: @font-xs;
     padding: 2px 8px;
-    background: rgba(255, 255, 255, 0.08);
+    background: @white-08;
     border: 1px solid @border-color;
     border-radius: @radius-sm;
     color: @text-secondary;
@@ -671,11 +664,7 @@ function handleSubmit() {
 }
 
 .btn {
-  padding: @spacing-md @spacing-4xl;
-  border-radius: @radius-md;
-  cursor: pointer;
-  font-size: @font-md;
-  border: 1px solid @border-color;
+  .admin-btn-base(@spacing-4xl);
 
   &-primary {
     background: @accent-color;
@@ -686,10 +675,6 @@ function handleSubmit() {
   &-secondary {
     background: transparent;
     color: @text-primary;
-  }
-
-  &:hover {
-    opacity: 0.85;
   }
 }
 </style>

@@ -78,46 +78,14 @@ function handleOpenInventory() {
 
 <style lang="less" scoped>
 .char-info-tabs {
-  display: flex;
-  gap: @spacing-md;
-  margin: -@spacing-3xl -@spacing-3xl @spacing-2xl;
-  padding: @spacing-sm @spacing-3xl 0 @spacing-3xl;
-  border-bottom: @border-sm;
-  position: sticky;
-  top: -@spacing-3xl;
-  z-index: 1;
-  background: @popup-bg;
+  .segment-tabs();
 }
 
 .char-info-tab {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: @spacing-sm;
-  padding: @spacing-md @spacing-xl;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: @text-secondary;
-  font-size: @font-md;
-  font-weight: @font-weight-bold;
-  cursor: pointer;
-  transition: all @transition-quick;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.char-info-tab:hover {
-  color: @text-primary;
-}
-
-.char-info-tab.active {
-  color: @accent-color;
-  border-bottom-color: @accent-color;
+  .segment-tab();
 }
 
 .char-info-body {
-  min-height: 300px;
-  padding-top: @spacing-2xl;
+  .segment-panel-body();
 }
 </style>

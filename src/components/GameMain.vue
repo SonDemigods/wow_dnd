@@ -305,7 +305,7 @@ defineExpose({ showNotif });
   align-items: center;
   justify-content: space-between;
   padding: @spacing-xl 24px;
-  background: rgba(0, 0, 0, 0.5);
+  background: @overlay-mid;
   border-bottom: 2px solid @popup-border-color;
   flex-wrap: wrap;
   gap: @spacing-xl;
@@ -391,7 +391,7 @@ defineExpose({ showNotif });
   align-items: center;
   gap: 16px;
   padding: @spacing-xl 24px;
-  background: rgba(0, 0, 0, 0.3);
+  background: @overlay-light;
   border-bottom: @border-sm;
 }
 
@@ -444,7 +444,7 @@ defineExpose({ showNotif });
   justify-content: space-around;
   align-items: center;
   padding: @spacing-lg @spacing-xl @spacing-2xl;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.7) 100%);
+  background: linear-gradient(180deg, @overlay-light 0%, @overlay-deep 100%);
   border-top: 1px solid rgba(255, 215, 0, 0.2);
   position: relative;
 }
@@ -504,7 +504,7 @@ defineExpose({ showNotif });
 .footer-icon {
   font-size: @font-4xl;
   line-height: 1;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 1px 2px @overlay-light);
 }
 
 .footer-text {

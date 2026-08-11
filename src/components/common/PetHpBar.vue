@@ -124,7 +124,7 @@ onUnmounted(() => {
   font-size: @font-2xs;
   color: #4ade80;
   font-weight: @font-weight-semibold;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  text-shadow: @text-shadow-label;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -168,7 +168,7 @@ onUnmounted(() => {
   font-size: 10px;
   color: #e0e0e0;
   font-weight: @font-weight-semibold;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  text-shadow: @text-shadow-label;
 }
 
 @keyframes hp-flash-anim {

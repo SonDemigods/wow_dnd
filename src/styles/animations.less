@@ -25,8 +25,8 @@
 /* ===== 物品品质发光 ===== */
 
 @keyframes legendary-glow {
-  0%, 100% { box-shadow: 0 0 5px #ff8000; }
-  50% { box-shadow: 0 0 15px #ff8000; }
+  0%, 100% { box-shadow: 0 0 4px rgba(255, 128, 0, 0.4); }
+  50%      { box-shadow: 0 0 12px rgba(255, 128, 0, 0.8); }
 }
 
 /* ===== 探索视图 ===== */
@@ -81,6 +81,11 @@
   50%  { transform: translateX(10%) rotate(-1deg); }
   75%  { transform: translateX(-5%) rotate(-3deg); }
   100% { transform: translateX(-10%) rotate(0deg); }
+}
+
+@keyframes wave-drift-alt {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  50%      { transform: translateX(25%) rotate(2deg); }
 }
 
 @keyframes particle-float {

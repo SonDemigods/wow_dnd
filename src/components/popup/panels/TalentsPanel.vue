@@ -288,7 +288,7 @@ watch(() => talentStore.allocations, () => {
 }, { deep: true });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .talent-content {
   display: flex;
   flex-direction: column;
@@ -302,7 +302,7 @@ watch(() => talentStore.allocations, () => {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.3);
+  background: @overlay-light;
   border-radius: 6px;
 }
 
@@ -391,7 +391,7 @@ watch(() => talentStore.allocations, () => {
   gap: 2px;
   border: 2px solid #555;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.5);
+  background: @overlay-mid;
   cursor: pointer;
   transition: all 0.15s;
   user-select: none;
@@ -471,7 +471,7 @@ watch(() => talentStore.allocations, () => {
 
 .talent-detail {
   padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.3);
+  background: @overlay-light;
   border-radius: 6px;
   min-height: 60px;
 }
@@ -509,11 +509,15 @@ watch(() => talentStore.allocations, () => {
 }
 
 .action-btn {
+  .action-btn-base();
   padding: 4px 16px;
-  border: 1px solid #666;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
+  border: 1px solid @color-mid-gray;
+  border-radius: @radius-sm;
+  font-size: @font-sm;
+
+  &:disabled {
+    opacity: @opacity-disabled;
+  }
 }
 
 .learn-btn {
@@ -524,11 +528,6 @@ watch(() => talentStore.allocations, () => {
 .unlearn-btn {
   background: rgba(255, 107, 107, 0.15);
   color: #ff6b6b;
-}
-
-.action-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
 }
 
 .talent-toast {

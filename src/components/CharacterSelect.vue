@@ -343,14 +343,14 @@ defineExpose({
 
 /* 关于 - 暖灰色（低优先级，不抢主操作焦点） */
 .menu-btn-about {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: @white-05;
+  border-color: @white-15;
   color: @color-dodge;
 }
 
 .menu-btn-about:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: @white-10;
   border-color: @color-dodge;
-  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 16px @white-10;
 }
 </style>

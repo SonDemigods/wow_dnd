@@ -334,14 +334,7 @@ function handleAdminExit() {
 }
 
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: @overlay-heavy;
-  .flex-center();
-  z-index: @z-popup;
+  .overlay-mask(@overlay-heavy);
 }
 
 .modal-content {

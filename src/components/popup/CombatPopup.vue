@@ -1050,7 +1050,7 @@ onUnmounted(() => {
   font-weight: @font-weight-heavy;
   pointer-events: none;
   z-index: 10;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  text-shadow: 0 2px 4px @overlay-mid;
   /* 动画由 anime.js animateFloating 处理 */
 }
 
@@ -1061,7 +1061,7 @@ onUnmounted(() => {
 .floating-damage.crit {
   color: @damage-crit;
   font-size: 30px;
-  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8), 0 2px 6px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8), 0 2px 6px @overlay-dark;
 }
 .floating-damage.dodge {
   color: @color-dodge;
@@ -1091,7 +1091,7 @@ onUnmounted(() => {
   max-height: 160px;
   margin: 0 16px;
   padding: 10px 12px;
-  background: rgba(0, 0, 0, 0.4);
+  background: @overlay-dim;
   border-radius: @radius-lg;
   overflow-y: auto;
   border: 1px solid @bg-mid-dark;
@@ -1509,7 +1509,7 @@ onUnmounted(() => {
   font-size: @font-lg;
   color: @popup-text-color;
   margin-top: 8px;
-  text-shadow: 0 0 8px rgba(0, 0, 0, 0.7), 0 1px 2px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 0 8px @overlay-deep, 0 1px 2px @overlay-mid;
   /* 动画初始状态：隐藏 + 下移 10px，由 anime.js 驱动滑入 */
   opacity: 0;
   transform: translateY(10px);
@@ -1542,7 +1542,7 @@ onUnmounted(() => {
 
 /* 默认暗色遮罩 */
 .phase-transition-darken .phase-transition-backdrop {
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.85) 80%);
+  background: radial-gradient(ellipse at center, @overlay-dim 0%, rgba(0, 0, 0, 0.85) 80%);
 }
 .phase-transition-flame .phase-transition-backdrop {
   background: radial-gradient(ellipse at center, rgba(80, 0, 0, 0.5) 0%, rgba(40, 0, 0, 0.9) 80%);
@@ -1586,10 +1586,10 @@ onUnmounted(() => {
 
 /* 各特效的文字颜色 */
 .phase-transition-darken .phase-transition-text { color: @accent-color; text-shadow: @text-glow-gold; }
-.phase-transition-flame .phase-transition-text { color: #ff4500; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 69, 0, 0.7), 0 0 64px rgba(255, 0, 0, 0.5); }
-.phase-transition-freeze .phase-transition-text { color: #00bcd4; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(0, 188, 212, 0.7), 0 0 64px rgba(0, 255, 255, 0.4); }
-.phase-transition-lightning .phase-transition-text { color: @damage-magic; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(168, 85, 247, 0.7), 0 0 64px rgba(200, 100, 255, 0.5); }
-.phase-transition-shake .phase-transition-text { color: #ff6347; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 99, 71, 0.7), 0 0 64px rgba(255, 50, 0, 0.5); }
+.phase-transition-flame .phase-transition-text { color: #ff4500; text-shadow: 0 0 12px @overlay-heavy, 0 0 32px rgba(255, 69, 0, 0.7), 0 0 64px rgba(255, 0, 0, 0.5); }
+.phase-transition-freeze .phase-transition-text { color: #00bcd4; text-shadow: 0 0 12px @overlay-heavy, 0 0 32px rgba(0, 188, 212, 0.7), 0 0 64px rgba(0, 255, 255, 0.4); }
+.phase-transition-lightning .phase-transition-text { color: @damage-magic; text-shadow: 0 0 12px @overlay-heavy, 0 0 32px rgba(168, 85, 247, 0.7), 0 0 64px rgba(200, 100, 255, 0.5); }
+.phase-transition-shake .phase-transition-text { color: #ff6347; text-shadow: 0 0 12px @overlay-heavy, 0 0 32px rgba(255, 99, 71, 0.7), 0 0 64px rgba(255, 50, 0, 0.5); }
 
 /* Boss 出场和阶段转换动画已迁移至 @/modules/animation/combat-effects.ts (anime.js) */
 

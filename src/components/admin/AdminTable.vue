@@ -162,11 +162,7 @@ function formatCellValue(value: unknown, col: TableColumn<T>, row: T): string {
 }
 
 .btn {
-  padding: @spacing-md @spacing-3xl;
-  border: 1px solid @border-color;
-  border-radius: @radius-md;
-  cursor: pointer;
-  font-size: @font-md;
+  .admin-btn-base();
   transition: all @transition-quick;
 
   &-primary {
@@ -195,10 +191,6 @@ function formatCellValue(value: unknown, col: TableColumn<T>, row: T): string {
     background: rgba(255, 68, 68, 0.15);
     color: @danger-color;
     border-color: @danger-color;
-  }
-
-  &:hover {
-    opacity: 0.85;
   }
 }
 
