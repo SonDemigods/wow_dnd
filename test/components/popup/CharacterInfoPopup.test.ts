@@ -211,10 +211,10 @@ describe('CharacterInfoPopup 角色信息弹窗组件', () => {
     const allocBtns = wrapper.findAll('.alloc-btn');
     expect(allocBtns.length).toBeGreaterThan(0);
     expect((allocBtns[0].element as HTMLButtonElement).disabled).toBe(false);
-    // 已分配点数显示（str 已分配 2）
-    const strBonus = wrapper.find('.alloc-bonus');
-    expect(strBonus.exists()).toBe(true);
-    expect(strBonus.text()).toBe('+2');
+    // 已分配点数在明细层显示（升级层 str 已分配 2）
+    const chips = wrapper.findAll('.breakdown-chip.layer-allocated');
+    const strAllocChip = chips.find(c => c.text().includes('+2'));
+    expect(strAllocChip).toBeDefined();
   });
 
   it('点击 + 按钮触发 characterStore.allocateStat 与 UI_CLICK 事件', async () => {
@@ -253,21 +253,8 @@ describe('CharacterInfoPopup 角色信息弹窗组件', () => {
     expect(characterStore.resetAllocatedStats).toHaveBeenCalled();
   });
 
-  // ==================== 阶段四：属性来源明细 tooltip ====================
-  it('默认无 hover 时不显示属性来源 tooltip', () => {
-    const pinia = createStubPinia();
-    const characterStore = useCharacterStore();
-    characterStore.$patch((state) => {
-      state.character = buildCharacter();
-    });
-    const wrapper = mount(CharacterInfoPopup, {
-      props: { visible: true },
-      global: { plugins: [pinia] },
-    });
-    expect(wrapper.find('.attr-breakdown').exists()).toBe(false);
-  });
-
-  it('hover 属性项时显示来源明细 tooltip，包含 7 层来源', async () => {
+  // ==================== 阶段四：属性来源明细内联展示 ====================
+  it('默认显示属性来源内联明细，包含 7 层来源', () => {
     const pinia = createStubPinia();
     const characterStore = useCharacterStore();
     characterStore.$patch((state) => {
@@ -281,44 +268,23 @@ describe('CharacterInfoPopup 角色信息弹窗组件', () => {
       global: { plugins: [pinia] },
     });
 
-    // hover 第一个属性项（str）
+    // 第一个属性项（str）的内联明细
     const attrItems = wrapper.findAll('.core-attr-item');
     expect(attrItems.length).toBeGreaterThan(0);
-    await attrItems[0].trigger('mouseenter');
-
-    // tooltip 显示
-    const tooltip = wrapper.find('.attr-breakdown');
-    expect(tooltip.exists()).toBe(true);
-    // 包含 7 行来源明细（基础/种族/职业/药剂/升级/装备天赋/坐骑）
-    const rows = tooltip.findAll('.breakdown-row');
-    expect(rows).toHaveLength(7);
-    // 标题包含属性名与总值
-    expect(tooltip.find('.breakdown-title').text()).toContain('力量');
+    const chips = attrItems[0].findAll('.breakdown-chip');
+    expect(chips).toHaveLength(7);
     // 各层标签正确
-    const labels = rows.map(r => r.find('.breakdown-label').text());
-    expect(labels).toEqual(['基础', '种族', '职业', '药剂', '升级', '装备/天赋', '坐骑']);
+    const texts = chips.map(c => c.text());
+    expect(texts.some(t => t.includes('基础'))).toBe(true);
+    expect(texts.some(t => t.includes('种族'))).toBe(true);
+    expect(texts.some(t => t.includes('职业'))).toBe(true);
+    expect(texts.some(t => t.includes('药剂'))).toBe(true);
+    expect(texts.some(t => t.includes('升级'))).toBe(true);
+    expect(texts.some(t => t.includes('装备/天赋'))).toBe(true);
+    expect(texts.some(t => t.includes('坐骑'))).toBe(true);
   });
 
-  it('mouseleave 后 tooltip 消失', async () => {
-    const pinia = createStubPinia();
-    const characterStore = useCharacterStore();
-    characterStore.$patch((state) => {
-      state.character = buildCharacter();
-    });
-    const wrapper = mount(CharacterInfoPopup, {
-      props: { visible: true },
-      global: { plugins: [pinia] },
-    });
-
-    const attrItem = wrapper.find('.core-attr-item');
-    await attrItem.trigger('mouseenter');
-    expect(wrapper.find('.attr-breakdown').exists()).toBe(true);
-
-    await attrItem.trigger('mouseleave');
-    expect(wrapper.find('.attr-breakdown').exists()).toBe(false);
-  });
-
-  it('tooltip 显示已分配点数与药剂层贡献（buildCharacter 注入的 potionStats/allocatedStats）', async () => {
+  it('内联明细显示已分配点数与药剂层贡献（buildCharacter 注入的 potionStats/allocatedStats）', async () => {
     const pinia = createStubPinia();
     const characterStore = useCharacterStore();
     characterStore.$patch((state) => {
@@ -330,23 +296,20 @@ describe('CharacterInfoPopup 角色信息弹窗组件', () => {
       global: { plugins: [pinia] },
     });
 
-    // hover str 属性项
     const attrItems = wrapper.findAll('.core-attr-item');
-    await attrItems[0].trigger('mouseenter');
-
-    const rows = wrapper.findAll('.breakdown-row');
+    const chips = attrItems[0].findAll('.breakdown-chip');
     // 药剂层（str=1）
-    const potionRow = rows.find(r => r.classes().includes('layer-potion'));
-    expect(potionRow).toBeDefined();
-    expect(potionRow!.find('.breakdown-value').text()).toBe('+1');
+    const potionChip = chips.find(c => c.classes().includes('layer-potion'));
+    expect(potionChip).toBeDefined();
+    expect(potionChip!.text()).toContain('+1');
     // 升级层（str=2）
-    const allocatedRow = rows.find(r => r.classes().includes('layer-allocated'));
-    expect(allocatedRow).toBeDefined();
-    expect(allocatedRow!.find('.breakdown-value').text()).toBe('+2');
+    const allocatedChip = chips.find(c => c.classes().includes('layer-allocated'));
+    expect(allocatedChip).toBeDefined();
+    expect(allocatedChip!.text()).toContain('+2');
     // 基础层（=10）
-    const baseRow = rows.find(r => r.classes().includes('layer-base'));
-    expect(baseRow).toBeDefined();
-    expect(baseRow!.find('.breakdown-value').text()).toBe('+10');
+    const baseChip = chips.find(c => c.classes().includes('layer-base'));
+    expect(baseChip).toBeDefined();
+    expect(baseChip!.text()).toContain('+10');
   });
 
   it('零值层显示 — 占位符，便于区分空贡献', async () => {
@@ -361,14 +324,13 @@ describe('CharacterInfoPopup 角色信息弹窗组件', () => {
       global: { plugins: [pinia] },
     });
 
-    const attrItem = wrapper.find('.core-attr-item');
-    await attrItem.trigger('mouseenter');
-
-    const raceRow = wrapper.findAll('.breakdown-row').find(r => r.classes().includes('layer-race'));
-    expect(raceRow).toBeDefined();
+    const attrItems = wrapper.findAll('.core-attr-item');
+    const chips = attrItems[0].findAll('.breakdown-chip');
+    const raceChip = chips.find(c => c.classes().includes('layer-race'));
+    expect(raceChip).toBeDefined();
     // raceBonus 未设置，值为 0，显示 —
-    expect(raceRow!.find('.breakdown-value').text()).toBe('—');
+    expect(raceChip!.text()).toContain('—');
     // 零值层有 .zero class 标识
-    expect(raceRow!.classes()).toContain('zero');
+    expect(raceChip!.classes()).toContain('zero');
   });
 });

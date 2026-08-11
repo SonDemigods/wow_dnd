@@ -21,34 +21,33 @@
         class="core-attr-item"
         v-for="(value, key) in stats"
         :key="key"
-        @mouseenter="onAttrHover(key as keyof Stats)"
-        @mouseleave="onAttrHoverEnd"
       >
-        <BaseIcon :name="getAttrIcon(key).name" :gradient="getAttrIcon(key).gradient" :size="14" />
-        <div class="core-attr-content">
-          <span class="core-attr-name">{{ getAttrName(key) }}</span>
-          <span class="core-attr-value">
-            {{ value }}
-            <span v-if="allocatedStats[key as keyof Stats] > 0" class="alloc-bonus">+{{ allocatedStats[key as keyof Stats] }}</span>
-          </span>
+        <div class="attr-main">
+          <BaseIcon :name="getAttrIcon(key).name" :gradient="getAttrIcon(key).gradient" :size="14" />
+          <div class="core-attr-content">
+            <span class="core-attr-name">{{ getAttrName(key) }}</span>
+            <span class="core-attr-value">{{ value }}</span>
+          </div>
+          <button
+            class="alloc-btn"
+            :disabled="!canAllocate"
+            @click="onAllocate(key as keyof Stats)"
+            :title="canAllocate ? `分配 1 点到${getAttrName(key)}` : '无可用点数'"
+          >+</button>
         </div>
-        <button
-          class="alloc-btn"
-          :disabled="!canAllocate"
-          @click="onAllocate(key as keyof Stats)"
-          :title="canAllocate ? `分配 1 点到${getAttrName(key)}` : '无可用点数'"
-        >+</button>
-        <div v-if="hoveredAttrKey === (key as keyof Stats)" class="attr-breakdown" role="tooltip">
-          <div class="breakdown-title">{{ getAttrName(key) }} · 总值 {{ value }}</div>
-          <div
+        <div class="attr-breakdown-inline">
+          <span
             v-for="src in statsBreakdown[key as keyof Stats]"
             :key="src.layer"
-            class="breakdown-row"
-            :class="['layer-' + src.layer, { zero: src.value === 0 }]"
+            class="breakdown-chip"
+            :class="[
+              'layer-' + src.layer,
+              src.value > 0 ? 'pos' : (src.value < 0 ? 'neg' : 'zero')
+            ]"
           >
-            <span class="breakdown-label">{{ src.label }}</span>
-            <span class="breakdown-value">{{ formatSourceValue(src.value) }}</span>
-          </div>
+            <span class="chip-label">{{ src.label }}</span>
+            <span class="chip-value">{{ formatSourceValue(src.value) }}</span>
+          </span>
         </div>
       </div>
     </div>
@@ -60,7 +59,7 @@
  * @fileoverview 核心属性面板（无 BasePopup 外壳）
  * @description 展示六维核心属性、升级点数分配、七层属性来源 tooltip。供 CharacterInfoPopup 分段复用。
  */
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import { useCharacterStore } from '@/modules/character';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { useToast } from '@/composables/useToast';
@@ -107,10 +106,6 @@ async function onResetAllocations(): Promise<void> {
     toast.show({ message: '属性重置失败，请重试', type: 'danger' });
   }
 }
-
-const hoveredAttrKey = ref<keyof Stats | null>(null);
-function onAttrHover(key: keyof Stats): void { hoveredAttrKey.value = key; }
-function onAttrHoverEnd(): void { hoveredAttrKey.value = null; }
 
 function formatSourceValue(value: number): string {
   if (value === 0) return '—';
@@ -195,20 +190,25 @@ function getAttrName(key: string) {
 }
 
 .core-attributes {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: @spacing-md;
 }
 
 .core-attr-item {
   display: flex;
-  align-items: center;
-  gap: @spacing-lg;
+  flex-direction: column;
+  gap: @spacing-xs;
   padding: @spacing-md @spacing-xl;
   background: @white-05;
   border-radius: @radius-md;
   border: 1px solid rgba(255, 215, 0, 0.3);
-  position: relative;
+}
+
+.attr-main {
+  display: flex;
+  align-items: center;
+  gap: @spacing-lg;
 }
 
 .core-attr-content {
@@ -261,61 +261,29 @@ function getAttrName(key: string) {
   background: @white-05;
 }
 
-.attr-breakdown {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  min-width: 160px;
-  padding: @spacing-sm @spacing-md;
-  background: @popup-bg;
-  border: 1px solid rgba(255, 215, 0, 0.4);
-  border-radius: @radius-sm;
-  box-shadow: 0 4px 12px @overlay-mid;
-  pointer-events: none;
-  user-select: none;
-  animation: attr-breakdown-fade-in 0.15s ease-out;
+.attr-breakdown-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: @spacing-sm;
+  padding-left: 22px;
 }
 
-@keyframes attr-breakdown-fade-in {
-  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
-
-.breakdown-title {
+.breakdown-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: @spacing-xs;
   font-size: @font-sm;
-  color: @accent-color;
-  font-weight: @font-weight-bold;
-  padding-bottom: @spacing-xs;
-  margin-bottom: @spacing-xs;
-  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+  padding: @spacing-xs @spacing-md;
+  border-radius: @radius-sm;
+  background: @white-05;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.breakdown-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: @spacing-md;
-  padding: 2px 0;
-  font-size: @font-xs;
-}
+.chip-label { color: @text-secondary; }
+.chip-value { font-weight: @font-weight-bold; }
 
-.breakdown-label { color: @text-secondary; }
-.breakdown-value { font-weight: @font-weight-bold; font-variant-numeric: tabular-nums; }
-
-.breakdown-row.layer-base .breakdown-value { color: @text-secondary; }
-.breakdown-row.layer-race .breakdown-value,
-.breakdown-row.layer-class .breakdown-value { color: @accent-color; }
-.breakdown-row.layer-potion .breakdown-value { color: #b388ff; }
-.breakdown-row.layer-allocated .breakdown-value { color: @heal-hp; }
-.breakdown-row.layer-bonus .breakdown-value { color: #4fc3f7; }
-.breakdown-row.layer-mount .breakdown-value { color: #ffb74d; }
-
-.breakdown-row.zero .breakdown-label,
-.breakdown-row.zero .breakdown-value {
-  color: @color-dim-gray;
-  opacity: 0.6;
-}
+.breakdown-chip.pos .chip-value { color: @heal-hp; }
+.breakdown-chip.neg .chip-value { color: @danger-color; }
+.breakdown-chip.zero .chip-value { color: @color-dim-gray; }
 </style>
