@@ -221,6 +221,60 @@ export class InventoryDbService {
       capabilities: data.capabilities ?? [],
     };
 
+    // P3.3 现代格式：config_items 表写入的是 Item 判别联合（kind/subtype/effects），
+    // 直接按 kind 读取，无需从旧 type/effect/bonus 反推。
+    // 兼容性：旧存档（P3.3 前的 saveItemTemplate 写入的 type/effect/bonus）走下方 switch。
+    const modernKind = (data as ItemDataStorage & { kind?: string }).kind;
+    if (modernKind) {
+      const modernSubtype = (data as ItemDataStorage & { subtype?: string }).subtype;
+      const modernEffects = (data as ItemDataStorage & { effects?: ItemEffect[] }).effects;
+      switch (modernKind) {
+        case 'consumable':
+          return {
+            ...base,
+            kind: 'consumable',
+            subtype: (modernSubtype as 'potion' | 'food' | 'scroll') ?? 'potion',
+            stackable: true as const,
+            consumable: true as const,
+            effects: modernEffects ?? [],
+            useMode: 'instant',
+          };
+        case 'material':
+          return {
+            ...base,
+            kind: 'material',
+            stackable: true as const,
+            consumable: false as const,
+            effects: [] as [],
+          };
+        case 'quest':
+          return {
+            ...base,
+            kind: 'quest',
+            stackable: false as const,
+            consumable: false as const,
+            effects: [] as [],
+          };
+        case 'currency':
+          return {
+            ...base,
+            kind: 'currency',
+            subtype: (modernSubtype as 'gold') ?? 'gold',
+            stackable: false as const,
+            consumable: false as const,
+          };
+        // equipment 不应在 config_items 表（在 config_equipment_items），兜底 material
+        default:
+          return {
+            ...base,
+            kind: 'material',
+            stackable: true as const,
+            consumable: false as const,
+            effects: [] as [],
+          };
+      }
+    }
+
     // 旧 effect + bonus → 新 effects[]（plan.md T5/T6：统一为多效果数组）
     const effects: ItemEffect[] = [];
     if (data.effect) {
