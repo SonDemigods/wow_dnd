@@ -15,7 +15,6 @@
  *  - mock Tone.js 的 Oscillator/LFO/Pattern/Loop/Transport/now
  *  - mock SfxSynth.tOrgan 记录调用
  *  - mock useAudioStore 控制音量状态
- *  - mock defaultRng 控制随机音符选择
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -57,6 +56,8 @@ const transportMock = {
   state: 'stopped',
   start: vi.fn(),
   stop: vi.fn(),
+  ticks: 0,
+  PPQ: 192,
 };
 
 vi.mock('tone', () => {
@@ -110,14 +111,6 @@ vi.mock('@/modules/audio/store', () => ({
   useAudioStore: vi.fn(() => storeMock),
 }));
 
-// ==================== defaultRng Mock ====================
-
-vi.mock('@/utils/rng', () => ({
-  defaultRng: {
-    pick: vi.fn(<T>(arr: T[]): T => arr[0]),
-  },
-}));
-
 // ==================== 导入被测模块 ====================
 
 import { BgmSynth } from '@/modules/audio/synth/bgmSynth';
@@ -138,7 +131,7 @@ function makeNodes(): AudioNodes {
       disconnect: vi.fn().mockReturnThis(),
       dispose: vi.fn(),
     },
-    bgmChannel: { volume: { value: 0 }, connect: vi.fn(), disconnect: vi.fn(), dispose: vi.fn() },
+    bgmChannel: { volume: { value: 0, rampTo: vi.fn() }, connect: vi.fn(), disconnect: vi.fn(), dispose: vi.fn() },
     bgmOscGain: { gain: { value: 0 }, connect: vi.fn(), disconnect: vi.fn(), dispose: vi.fn() },
     bgmFilter: { frequency: { value: 500 }, connect: vi.fn(), disconnect: vi.fn(), dispose: vi.fn() },
     bgmReverb: { connect: vi.fn(), disconnect: vi.fn(), dispose: vi.fn(), generate: vi.fn() },
@@ -217,26 +210,26 @@ describe('BgmSynth 背景音乐合成器', () => {
       expect(nodes.organVoice.setPreset).toHaveBeenCalledWith('flute');
     });
 
-    it('victory 场景调用 tOrgan 4 次并设置定时器切回探索', () => {
+    it('victory 场景调用 tOrgan 8 次并设置定时器切回探索', () => {
       vi.useFakeTimers();
       bgmSynth.setBgmScene('victory');
-      // victory 直接调用 sfxSynth.tOrgan 4 次
-      expect(tOrganCalls).toHaveLength(4);
+      // victory 直接调用 sfxSynth.tOrgan 8 次（4 铺垫 + 4 高潮）
+      expect(tOrganCalls).toHaveLength(8);
       // 当前场景为 victory
       expect(bgmSynth.getCurrentScene()).toBe('victory');
-      // 快进 3 秒
-      vi.advanceTimersByTime(3000);
+      // 快进 5 秒
+      vi.advanceTimersByTime(5000);
       // 切换后应为 exploration
       expect(bgmSynth.getCurrentScene()).toBe('exploration');
       vi.useRealTimers();
     });
 
-    it('defeat 场景调用 tOrgan 4 次并设置定时器切回探索', () => {
+    it('defeat 场景调用 tOrgan 8 次并设置定时器切回探索', () => {
       vi.useFakeTimers();
       bgmSynth.setBgmScene('defeat');
-      expect(tOrganCalls).toHaveLength(4);
+      expect(tOrganCalls).toHaveLength(8);
       expect(bgmSynth.getCurrentScene()).toBe('defeat');
-      vi.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(5000);
       expect(bgmSynth.getCurrentScene()).toBe('exploration');
       vi.useRealTimers();
     });
@@ -345,8 +338,8 @@ describe('BgmSynth 背景音乐合成器', () => {
       vi.useFakeTimers();
       bgmSynth.setBgmScene('victory');
       bgmSynth.dispose();
-      // 定时器被清理，快进 3 秒后不应切回探索
-      vi.advanceTimersByTime(3000);
+      // 定时器被清理，快进 5 秒后不应切回探索
+      vi.advanceTimersByTime(5000);
       expect(bgmSynth.getCurrentScene()).toBeNull();
       vi.useRealTimers();
     });

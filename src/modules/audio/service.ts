@@ -30,6 +30,7 @@ import {
 } from './effectChains';
 import { SfxSynth } from './synth/sfxSynth';
 import { BgmSynth } from './synth/bgmSynth';
+import { STEP_THROTTLE_MS } from '@/config/audio';
 
 /**
  * 音频服务实现类
@@ -91,6 +92,9 @@ class AudioService implements IAudioService {
    * 导致 pendingSfxTypes 无限累积。通过 5 秒节流避免频繁重试。
    */
   private lastResumeAttempt = 0;
+
+  /** 脚步声节流时间戳（探索移动时避免每格都播放脚步声） */
+  private lastStepTime = 0;
 
   /** Store 订阅取消函数 */
   private unsubscribeStore: (() => void) | null = null;
@@ -411,6 +415,9 @@ class AudioService implements IAudioService {
 
     // -- 探索事件 --
     onEvent(GameEvents.EXPLORATION_CELL_EXPLORED, () => {
+      const now = Date.now();
+      if (now - this.lastStepTime < STEP_THROTTLE_MS) return;
+      this.lastStepTime = now;
       this.playSfx('step');
     });
 
@@ -585,6 +592,7 @@ class AudioService implements IAudioService {
     this.pendingBgmScene = null;
     // P10-023 修复：重置节流时间戳，允许 destroy 后重新尝试 tryResume
     this.lastResumeAttempt = 0;
+    this.lastStepTime = 0;
   }
 }
 

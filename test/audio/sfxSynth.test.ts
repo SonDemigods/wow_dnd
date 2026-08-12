@@ -36,6 +36,16 @@ vi.mock('@/modules/audio/effectChains', () => ({
   }),
 }));
 
+// ==================== defaultRng Mock ====================
+// 返回固定 0.5，使 jitterVelocity 因子 = 1.0（不改变力度），测试断言保持精确
+
+vi.mock('@/utils/rng', () => ({
+  defaultRng: {
+    next: vi.fn(() => 0.5),
+    pick: vi.fn(<T>(arr: T[]): T => arr[0]),
+  },
+}));
+
 // ==================== 测试夹具 ====================
 
 /** 创建带 spy 的合成器节点 */
@@ -176,10 +186,24 @@ describe('SfxSynth 音效合成器', () => {
   // -------------------- playSfx 路由分发 --------------------
 
   describe('playSfx 路由切换', () => {
-    it('每次调用都通过 routeSynthTo 切换路由', () => {
+    it('首次调用通过 routeSynthTo 切换路由', () => {
       sfxSynth.playSfx('attack_hit');
       expect(routeSynthCalls).toHaveLength(1);
       expect(routeSynthCalls[0].route).toBe('combat');
+    });
+
+    it('相同路由不重复切换（路由缓存）', () => {
+      sfxSynth.playSfx('attack_hit');   // combat
+      sfxSynth.playSfx('attack_crit');   // combat（同路由，不触发 routeSynthTo）
+      expect(routeSynthCalls).toHaveLength(1);
+    });
+
+    it('不同路由才触发切换', () => {
+      sfxSynth.playSfx('attack_hit');   // combat
+      sfxSynth.playSfx('ui_click');     // ui
+      sfxSynth.playSfx('ui_open');      // ui（同路由，不触发）
+      sfxSynth.playSfx('coin');         // standard
+      expect(routeSynthCalls).toHaveLength(3);
     });
 
     it('魔法类音效走 magic 路由', () => {
@@ -282,8 +306,8 @@ describe('SfxSynth 音效合成器', () => {
       for (const type of allTypes) {
         expect(() => sfxSynth.playSfx(type)).not.toThrow();
       }
-      // 每种类型都触发了一次路由切换
-      expect(routeSynthCalls).toHaveLength(51);
+      // 路由缓存：仅路由变化时触发 routeSynthTo，51 种类型中有 28 次路由变化
+      expect(routeSynthCalls).toHaveLength(28);
     });
   });
 
@@ -298,6 +322,16 @@ describe('SfxSynth 音效合成器', () => {
       // 再次调度应使用传入时间（而非基于上次的 5.005）
       sfxSynth.tSynth('D4', '8n', 1.0);
       expect(nodes.synth.triggerAttackRelease).toHaveBeenLastCalledWith('D4', '8n', 1.0, undefined);
+    });
+
+    it('dispose 后路由缓存重置（下次 playSfx 重新切换路由）', () => {
+      sfxSynth.playSfx('attack_hit'); // combat
+      expect(routeSynthCalls).toHaveLength(1);
+      sfxSynth.dispose();
+      routeSynthCalls.length = 0;
+      // dispose 后再次播放同路由音效应触发路由切换（缓存已清）
+      sfxSynth.playSfx('attack_hit');
+      expect(routeSynthCalls).toHaveLength(1);
     });
   });
 });

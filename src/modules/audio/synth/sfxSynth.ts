@@ -17,6 +17,8 @@ import * as Tone from 'tone';
 import type { AudioNodes } from '../effectChains';
 import { routeSynthTo } from '../effectChains';
 import { SFX_ROUTE_MAP, type SfxType, type SfxRoute } from '../types';
+import { defaultRng } from '@/utils/rng';
+import { SFX_VELOCITY_JITTER, SFX_TYPE_THROTTLE_MS } from '@/config/audio';
 
 /**
  * SFX 音效合成器
@@ -32,6 +34,12 @@ import { SFX_ROUTE_MAP, type SfxType, type SfxRoute } from '../types';
 export class SfxSynth {
   /** 各合成器的最后调度时间（按合成器 key 分别追踪，避免时间冲突） */
   private synthScheduleTimes = new Map<string, number>();
+
+  /** 当前效果路由（缓存，相同路由不重复切换） */
+  private currentRoute: SfxRoute | null = null;
+
+  /** 各 SfxType 的最后播放时间（用于同类型节流） */
+  private lastPlayTime = new Map<SfxType, number>();
 
   constructor(private nodes: AudioNodes) {}
 
@@ -53,36 +61,52 @@ export class SfxSynth {
     return time;
   }
 
+  /**
+   * 对力度施加微随机抖动，减少高频音效的机械感
+   *
+   * @param vel - 原始力度 0-1
+   * @returns 抖动后的力度，钳制在 [0, 1]
+   */
+  private jitterVelocity(vel: number): number {
+    const factor = 1 + (defaultRng.next() - 0.5) * 2 * SFX_VELOCITY_JITTER;
+    return Math.max(0, Math.min(1, vel * factor));
+  }
+
   // ============================================================
   // 合成器快捷方法（自动处理时间调度安全）
   // ============================================================
 
   /** 通用 Synth 触发 */
   tSynth(note: string, dur: string, time: number, vel?: number): void {
-    this.nodes.synth.triggerAttackRelease(note, dur, this.scheduleAt('synth', time), vel);
+    const v = vel !== undefined ? this.jitterVelocity(vel) : undefined;
+    this.nodes.synth.triggerAttackRelease(note, dur, this.scheduleAt('synth', time), v);
   }
 
   /** MembraneSynth 触发（打击/命中） */
   tMembrane(note: string, dur: string, time: number, vel?: number): void {
-    this.nodes.membrane.triggerAttackRelease(note, dur, this.scheduleAt('membrane', time), vel);
+    const v = vel !== undefined ? this.jitterVelocity(vel) : undefined;
+    this.nodes.membrane.triggerAttackRelease(note, dur, this.scheduleAt('membrane', time), v);
   }
 
   /** FMSynth 触发（法术/魔法） */
   tFM(note: string, dur: string, time: number, vel?: number): void {
-    this.nodes.fmSynth.triggerAttackRelease(note, dur, this.scheduleAt('fmSynth', time), vel);
+    const v = vel !== undefined ? this.jitterVelocity(vel) : undefined;
+    this.nodes.fmSynth.triggerAttackRelease(note, dur, this.scheduleAt('fmSynth', time), v);
   }
 
   /** NoiseSynth 触发（噪声/风声） */
   tNoise(dur: string, time: number, vel?: number): void {
-    this.nodes.noiseSynth.triggerAttackRelease(dur, this.scheduleAt('noiseSynth', time), vel);
+    const v = vel !== undefined ? this.jitterVelocity(vel) : undefined;
+    this.nodes.noiseSynth.triggerAttackRelease(dur, this.scheduleAt('noiseSynth', time), v);
   }
 
   /** MetalSynth 触发（金属/硬币） */
   tMetal(note: string, dur: string, time: number, vel?: number): void {
-    this.nodes.metalSynth.triggerAttackRelease(note, dur, this.scheduleAt('metalSynth', time), vel);
+    const v = vel !== undefined ? this.jitterVelocity(vel) : undefined;
+    this.nodes.metalSynth.triggerAttackRelease(note, dur, this.scheduleAt('metalSynth', time), v);
   }
 
-  /** OrganVoice 触发（管风琴，BGM 与战斗号角共用） */
+  /** OrganVoice 触发（管风琴，BGM 与战斗号角共用，不施加抖动） */
   tOrgan(note: string | string[], dur: string, time: number, vel?: number): void {
     this.nodes.organVoice.triggerAttackRelease(note, dur, this.scheduleAt('organVoice', time), vel);
   }
@@ -110,8 +134,18 @@ export class SfxSynth {
    * @param type - 音效类型
    */
   playSfx(type: SfxType): void {
+    // 同类型节流：防止高频重复音效（如多敌战斗连击）产生机器枪效果
+    const nowMs = Date.now();
+    const lastTime = this.lastPlayTime.get(type);
+    if (lastTime !== undefined && nowMs - lastTime < SFX_TYPE_THROTTLE_MS) return;
+    this.lastPlayTime.set(type, nowMs);
+
+    // 路由缓存：相同路由不重复断开/重连节点，减少 GC 压力和信号中断
     const route = this.getRoute(type);
-    routeSynthTo(this.nodes, route);
+    if (route !== this.currentRoute) {
+      routeSynthTo(this.nodes, route);
+      this.currentRoute = route;
+    }
 
     const now = Tone.now();
 
@@ -559,5 +593,7 @@ export class SfxSynth {
   /** 清理调度状态 */
   dispose(): void {
     this.synthScheduleTimes.clear();
+    this.currentRoute = null;
+    this.lastPlayTime.clear();
   }
 }
