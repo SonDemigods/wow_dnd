@@ -71,7 +71,9 @@ function makeEmptyContainers(): { attacker: EffectContainer; defender: EffectCon
 // calcAttackDamage + applyDefenseReduction（通过 processDamagePipeline 间接测试，需 mock Math.random）
 // ============================================================
 // 公式：rawDamage = floor(attack * 0.4) + floor(random * 10)
-//      defenseReduction = max(floor(rawDamage * 0.3), defense)
+//      maxDefenseReduction = floor(rawDamage * 0.7)  // B-002: 防御减伤上限 70%
+//      cappedDefense = min(defense, maxDefenseReduction)
+//      defenseReduction = max(floor(rawDamage * 0.3), cappedDefense)
 //      result = max(1, rawDamage - defenseReduction)
 
 describe('processDamagePipeline — 阶段 0 基础伤害', () => {
@@ -132,10 +134,9 @@ describe('processDamagePipeline — 阶段 0 基础伤害', () => {
   });
 
   it('防御过高时基础伤害保底为 1', () => {
-    // rawDamage = floor(50*0.4) + 0 = 20
-    // defenseReduction = max(6, 1000) = 1000 → max(1, ...) 保底为 1
-    // 但若 attack 很低：attack=2 → baseDamage = floor(0.8) + 0 = 0
-    // defenseReduction = min(0, 1000) = 0 → max(1, 0-0) = 1
+    // B-002: attack=2 → rawDamage = floor(2*0.4) + 0 = 0
+    // maxDefenseReduction = floor(0*0.7) = 0, cappedDefense = min(1000, 0) = 0
+    // defenseReduction = max(0, 0) = 0 → max(1, 0-0) = 1
     vi.spyOn(Math, 'random').mockReturnValue(0);
     const attacker = makeCtx({ baseStats: { physicalAttack: 2, physicalDefense: 20, magicAttack: 0, magicDefense: 15, speed: 15 } });
     const defender = makeCtx({ baseStats: { physicalAttack: 30, physicalDefense: 1000, magicAttack: 25, magicDefense: 15, speed: 10 } });
@@ -144,16 +145,17 @@ describe('processDamagePipeline — 阶段 0 基础伤害', () => {
     expect(result.finalDamage).toBeGreaterThanOrEqual(1);
   });
 
-  it('防御高于保底时全额生效', () => {
-    // rawDamage = 20（random=0），defense=1000
-    // defenseReduction = max(floor(20*0.3), 1000) = max(6, 1000) = 1000
-    // 基础 = max(1, 20-1000) = 1（高防御全额抵扣，保底为 1）
+  it('防御高于保底时受 70% 上限约束', () => {
+    // B-002: rawDamage = 20（random=0），defense=1000
+    // maxDefenseReduction = floor(20*0.7) = 14, cappedDefense = min(1000, 14) = 14
+    // defenseReduction = max(floor(20*0.3), 14) = max(6, 14) = 14
+    // 基础 = max(1, 20-14) = 6（防御不再全额抵扣，最多减伤 70%）
     vi.spyOn(Math, 'random').mockReturnValue(0);
     const attacker = makeCtx();
     const defender = makeCtx({ baseStats: { physicalAttack: 30, physicalDefense: 1000, magicAttack: 25, magicDefense: 15, speed: 10 } });
     const { attacker: ae, defender: de } = makeEmptyContainers();
     const result = processDamagePipeline(registry, ae, de, attacker, defender, 'physical');
-    expect(result.expectedDamage).toBe(1);
+    expect(result.expectedDamage).toBe(6);
   });
 });
 

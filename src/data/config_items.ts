@@ -96,7 +96,7 @@ const HEALTH_POTIONS: ConsumableItemDraft[] = [
     level: 1,
     description: '一瓶散发着草药清香的生命药水，能快速愈合轻微伤口',
     value: 10,
-    effects: [{ type: 'health_restore', value: 30 }],
+    effects: [{ type: 'health_restore', value: 20, percentValue: 15 }],
     useMode: 'instant',
     template: 'small_health_potion'
   },
@@ -109,7 +109,7 @@ const HEALTH_POTIONS: ConsumableItemDraft[] = [
     level: 3,
     description: '由炼金师精心调配的红色药水，能有效愈合中度创伤',
     value: 25,
-    effects: [{ type: 'health_restore', value: 60 }],
+    effects: [{ type: 'health_restore', value: 40, percentValue: 25 }],
     useMode: 'instant',
     template: 'medium_health_potion'
   },
@@ -122,7 +122,7 @@ const HEALTH_POTIONS: ConsumableItemDraft[] = [
     level: 5,
     description: '泛着金色光泽的特效生命药水，即使重伤也能迅速恢复',
     value: 50,
-    effects: [{ type: 'health_restore', value: 100 }],
+    effects: [{ type: 'health_restore', value: 60, percentValue: 35 }],
     useMode: 'instant',
     template: 'large_health_potion'
   },
@@ -135,7 +135,7 @@ const HEALTH_POTIONS: ConsumableItemDraft[] = [
     level: 7,
     description: '据说是从深渊军团魔能炼金釜中诞生的奇迹药水，猩红的液体翻滚着令人敬畏的再生之力，即便是濒死的战士也能瞬间重返战场',
     value: 80,
-    effects: [{ type: 'health_restore', value: 150 }],
+    effects: [{ type: 'health_restore', value: 80, percentValue: 50 }],
     useMode: 'instant',
     template: 'super_health_potion'
   }
@@ -152,7 +152,7 @@ const MANA_POTIONS: ConsumableItemDraft[] = [
     level: 1,
     description: '一瓶泛着淡蓝微光的法力药水，由银辉城学徒炼金师用魔力草与安神花蒸馏而成，足以补充数道低阶咒语所需的魔力',
     value: 10,
-    effects: [{ type: 'mana_restore', value: 30 }],
+    effects: [{ type: 'mana_restore', value: 20, percentValue: 15 }],
     useMode: 'instant',
     template: 'small_mana_potion'
   },
@@ -165,7 +165,7 @@ const MANA_POTIONS: ConsumableItemDraft[] = [
     level: 3,
     description: '奥术师调配的蓝色药水，蕴含纯净的魔法能量',
     value: 25,
-    effects: [{ type: 'mana_restore', value: 60 }],
+    effects: [{ type: 'mana_restore', value: 40, percentValue: 25 }],
     useMode: 'instant',
     template: 'medium_mana_potion'
   },
@@ -178,7 +178,7 @@ const MANA_POTIONS: ConsumableItemDraft[] = [
     level: 5,
     description: '晶莹剔透的特效法力药水，由奥法学院资深奥术师以魔力蓟与光耀草精炼而成，饮下后魔力如泉水般从魔网深处奔涌而来',
     value: 50,
-    effects: [{ type: 'mana_restore', value: 100 }],
+    effects: [{ type: 'mana_restore', value: 60, percentValue: 35 }],
     useMode: 'instant',
     template: 'large_mana_potion'
   },
@@ -191,7 +191,7 @@ const MANA_POTIONS: ConsumableItemDraft[] = [
     level: 7,
     description: '从奥术之源碎片中提炼的超级法力药水，蕴含着近乎无穷的奥术能量',
     value: 80,
-    effects: [{ type: 'mana_restore', value: 150 }],
+    effects: [{ type: 'mana_restore', value: 80, percentValue: 50 }],
     useMode: 'instant',
     template: 'super_mana_potion'
   }
@@ -216,7 +216,7 @@ const ATTRIBUTE_POTIONS: ConsumableItemDraft[] = [
     rarity: 'uncommon',
     level: 3,
     description: '散发着原始蛮力的药剂，饮用后仿佛感受到远古巨人的血脉在体内奔涌',
-    value: 50,
+    value: 120,
     effects: [{ type: 'stat', value: { str: 1 } }],
     useMode: 'instant',
     template: 'strength_potion'
@@ -229,7 +229,7 @@ const ATTRIBUTE_POTIONS: ConsumableItemDraft[] = [
     rarity: 'uncommon',
     level: 3,
     description: '用稀有猫鼬草提炼的敏捷药剂，能让你的动作如猎豹般迅捷',
-    value: 50,
+    value: 120,
     effects: [{ type: 'stat', value: { dex: 1 } }],
     useMode: 'instant',
     template: 'agility_potion'
@@ -242,7 +242,7 @@ const ATTRIBUTE_POTIONS: ConsumableItemDraft[] = [
     rarity: 'uncommon',
     level: 3,
     description: '由矮人秘方调制的坚韧药剂，饮用后筋骨如精钢般坚硬',
-    value: 50,
+    value: 120,
     effects: [{ type: 'stat', value: { con: 1 } }],
     useMode: 'instant',
     template: 'constitution_potion'
@@ -255,7 +255,7 @@ const ATTRIBUTE_POTIONS: ConsumableItemDraft[] = [
     rarity: 'uncommon',
     level: 3,
     description: '汇聚了奥法学院学者智慧的药剂，能让思维如水晶般通透',
-    value: 50,
+    value: 120,
     effects: [{ type: 'stat', value: { int: 1 } }],
     useMode: 'instant',
     template: 'intelligence_potion'
@@ -268,7 +268,7 @@ const ATTRIBUTE_POTIONS: ConsumableItemDraft[] = [
     rarity: 'uncommon',
     level: 3,
     description: '由暮精灵祭司祝福的洞察药剂，能让感知穿透世俗的迷雾',
-    value: 50,
+    value: 120,
     effects: [{ type: 'stat', value: { wis: 1 } }],
     useMode: 'instant',
     template: 'wisdom_potion'
@@ -281,7 +281,7 @@ const ATTRIBUTE_POTIONS: ConsumableItemDraft[] = [
     rarity: 'uncommon',
     level: 3,
     description: '散发着迷人芬芳的魅力药剂，让旁人不由自主地心生好感',
-    value: 50,
+    value: 120,
     effects: [{ type: 'stat', value: { cha: 1 } }],
     useMode: 'instant',
     template: 'charisma_potion'

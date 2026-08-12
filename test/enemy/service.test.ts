@@ -145,51 +145,50 @@ describe('calculateEnemyDamage 伤害计算（P3-169：仅原始伤害，防御�
   it('Math.random=0 时使用最小伤害范围', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
     const enemy = makeInstance({ physicalAttack: 20, damage: [5, 10] });
-    // rawDamage = (20 + 5) * 0.5 = 12.5
-    // floor = 12
-    expect(calculateEnemyDamage(enemy)).toBe(12);
+    // B-001: rawDamage = floor(20 * 0.4) + 5 = 8 + 5 = 13
+    expect(calculateEnemyDamage(enemy)).toBe(13);
   });
 
   it('Math.random=1 时使用最大伤害范围', () => {
     vi.spyOn(Math, 'random').mockReturnValue(1);
     const enemy = makeInstance({ physicalAttack: 20, damage: [5, 10] });
-    // randomFactor = 5 + 1 * 5 = 10, rawDamage = (20 + 10) * 0.5 = 15
-    expect(calculateEnemyDamage(enemy)).toBe(15);
+    // B-001: randomFactor = 5 + 1 * 5 = 10, rawDamage = floor(20 * 0.4) + 10 = 18
+    expect(calculateEnemyDamage(enemy)).toBe(18);
   });
 
   it('未配置 physicalAttack 时使用默认值 10', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
     const enemy = makeInstance({ physicalAttack: undefined, damage: [0, 0] });
-    // rawDamage = (10 + 0) * 0.5 = 5
-    expect(calculateEnemyDamage(enemy)).toBe(5);
+    // B-001: rawDamage = floor(10 * 0.4) + 0 = 4
+    expect(calculateEnemyDamage(enemy)).toBe(4);
   });
 });
 
 describe('calculateEnemyDamage 注入 RNG（P3-5 / 阶段十二）', () => {
   it('注入 rng.next()=0 时使用最小伤害范围（无需 mock 全局 Math.random）', () => {
     const enemy = makeInstance({ physicalAttack: 20, damage: [5, 10] });
-    // randomFactor = 5 + 0 * 5 = 5, rawDamage = (20 + 5) * 0.5 = 12.5, floor = 12
-    expect(calculateEnemyDamage(enemy, createRngFromFn(() => 0))).toBe(12);
+    // B-001: randomFactor = 5, rawDamage = floor(20 * 0.4) + 5 = 13
+    expect(calculateEnemyDamage(enemy, createRngFromFn(() => 0))).toBe(13);
   });
 
   it('注入 rng.next()=1 时使用最大伤害范围', () => {
     const enemy = makeInstance({ physicalAttack: 20, damage: [5, 10] });
-    // randomFactor = 5 + 1 * 5 = 10, rawDamage = (20 + 10) * 0.5 = 15
-    expect(calculateEnemyDamage(enemy, createRngFromFn(() => 1))).toBe(15);
+    // B-001: randomFactor = 10, rawDamage = floor(20 * 0.4) + 10 = 18
+    expect(calculateEnemyDamage(enemy, createRngFromFn(() => 1))).toBe(18);
   });
 
   it('注入 rng.next()=0.5 时使用中点伤害', () => {
     const enemy = makeInstance({ physicalAttack: 20, damage: [5, 10] });
-    // randomFactor = 5 + 0.5 * 5 = 7.5, rawDamage = (20 + 7.5) * 0.5 = 13.75, floor = 13
-    expect(calculateEnemyDamage(enemy, createRngFromFn(() => 0.5))).toBe(13);
+    // B-001: randomFactor = 7.5, rawDamage = floor(20 * 0.4) + 7.5 = 15.5, floor = 15
+    expect(calculateEnemyDamage(enemy, createRngFromFn(() => 0.5))).toBe(15);
   });
 
   it('不传 rng 时回退到默认 defaultRng（基于 Math.random，向后兼容）', () => {
     const enemy = makeInstance({ physicalAttack: 20, damage: [5, 10] });
-    // 不传第二参数，使用默认 defaultRng（内部调用 Math.random），结果应在 [12, 15] 区间内
+    // B-001: 结果应在 [13, 18] 区间内（floor(20*0.4)+randomFactor）
     const damage = calculateEnemyDamage(enemy);
-    expect(damage).toBeGreaterThanOrEqual(12);
-    expect(damage).toBeLessThanOrEqual(15);
+    expect(damage).toBeGreaterThanOrEqual(13);
+    expect(damage).toBeLessThanOrEqual(18);
   });
 });
 
@@ -202,7 +201,7 @@ describe('calculateEnemyDamage 普攻伤害类型（P3-95）', () => {
       magicAttack: 30,
       damage: [5, 10],
     });
-    // rng=0: randomFactor=5, rawDamage=(30+5)*0.5=17.5, floor=17
+    // B-001: rng=0: randomFactor=5, rawDamage = floor(30*0.4) + 5 = 17
     expect(calculateEnemyDamage(enemy, createRngFromFn(() => 0))).toBe(17);
   });
 
@@ -213,7 +212,7 @@ describe('calculateEnemyDamage 普攻伤害类型（P3-95）', () => {
       magicAttack: 5,
       damage: [5, 10],
     });
-    // rng=0: rawDamage=(30+5)*0.5=17.5, floor=17
+    // B-001: rng=0: rawDamage = floor(30*0.4) + 5 = 17
     expect(calculateEnemyDamage(enemy, createRngFromFn(() => 0))).toBe(17);
   });
 
@@ -224,7 +223,7 @@ describe('calculateEnemyDamage 普攻伤害类型（P3-95）', () => {
       magicAttack: 5,
       damage: [5, 10],
     });
-    // rng=0: rawDamage=(30+5)*0.5=17.5, floor=17
+    // B-001: rng=0: rawDamage = floor(30*0.4) + 5 = 17
     expect(calculateEnemyDamage(enemy, createRngFromFn(() => 0))).toBe(17);
   });
 
@@ -235,7 +234,7 @@ describe('calculateEnemyDamage 普攻伤害类型（P3-95）', () => {
       magicAttack: undefined,
       damage: [0, 0],
     });
-    // rng=0: rawDamage=(5+0)*0.5=2.5, floor=2
+    // B-001: rng=0: rawDamage = floor(5*0.4) + 0 = 2
     expect(calculateEnemyDamage(enemy, createRngFromFn(() => 0))).toBe(2);
   });
 });

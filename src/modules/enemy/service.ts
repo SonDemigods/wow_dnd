@@ -7,6 +7,7 @@ import type { EnemyInstance, EnemyDrop, EnemyData } from './types';
 import type { Stats } from '@/modules/character/types';
 import { generateId } from '@/utils/db-helpers';
 import { defaultRng, type Rng } from '@/utils/rng';
+import { DAMAGE_BASE_COEFFICIENT } from '@/config/combat';
 
 /**
  * 根据模板和等级推导敌人属性统计（含等级缩放）
@@ -110,7 +111,9 @@ export function calculateEnemyDamage(
     : (enemy.physicalAttack ?? 10);
   const damageRange = enemy.damage;
   const randomFactor = damageRange[0] + rng.next() * (damageRange[1] - damageRange[0]);
-  const rawDamage = (baseDamage + randomFactor) * 0.5;
+  // B-001 修复：原公式 (baseDamage + randomFactor) × 0.5 导致敌人普攻伤害过低，
+  // 被玩家防御完全压制。改用与玩家普攻对齐的公式：attackStat × 0.4 + damage 随机值。
+  const rawDamage = Math.floor(baseDamage * DAMAGE_BASE_COEFFICIENT) + randomFactor;
   // P3-169：移除防御减免，防御由 processDamagePipeline 统一处理
   // P5-021 修复：与注释一致，最小为 1
   return Math.max(1, Math.floor(rawDamage));

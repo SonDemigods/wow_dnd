@@ -100,13 +100,21 @@ const EFFECT_DESCRIBERS: Record<string, (value: number | Partial<Stats>) => stri
 };
 
 /**
- * 描述单个物品效果
+ * 描述单个物品效果（含百分比恢复）
  *
+ * B-005：health_restore/mana_restore 效果如果有 percentValue，
+ * 显示为"恢复 X+Z% 最大生命/法力值"格式。
  * 未注册的效果类型降级为 `${type}: ${value}`，保证永远有输出。
  */
 export function describeEffect(effect: ItemEffect): string {
   const fn = EFFECT_DESCRIBERS[effect.type];
-  return fn ? fn(effect.value) : `${effect.type}: ${String(effect.value)}`;
+  if (!fn) return `${effect.type}: ${String(effect.value)}`;
+  if (effect.percentValue && (effect.type === 'health_restore' || effect.type === 'mana_restore')) {
+    const baseValue = effect.value as number;
+    const resourceName = effect.type === 'health_restore' ? '生命' : '法力';
+    return `恢复 ${baseValue}+${effect.percentValue}% 最大${resourceName}值`;
+  }
+  return fn(effect.value);
 }
 
 // ============================================================================

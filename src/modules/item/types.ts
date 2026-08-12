@@ -54,10 +54,14 @@ export type ItemEffectType = SkillType | 'stat';
  *
  * @property type - 效果类型，决定 value 的语义
  * @property value - 效果值：数值类型时为 number，属性加成时为 Partial<Stats>
+ * @property percentValue - 百分比恢复值（0-100），仅 health_restore/mana_restore 使用。
+ *   B-005：药水恢复量 = floor(maxResource × percentValue / 100) + value（保底值）。
+ *   未指定时仅使用 value（向后兼容）。
  */
 export interface ItemEffect {
   type: ItemEffectType;
   value: number | Partial<Stats>;
+  percentValue?: number;
 }
 
 // ============================================================================

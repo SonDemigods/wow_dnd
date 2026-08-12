@@ -52,12 +52,25 @@ export const PHYSICAL_DEFENSE_REDUCTION_COEFFICIENT = 0.3;
 /**
  * 魔法减伤保底系数
  *
- * 魔法减伤量 = max(floor(伤害 × 该系数), magicDefense)。
- * 防御可全额生效，该系数为最低保底减免比例（0~1 之间的小数）。
+ * 魔法减伤量 = max(floor(伤害 × 该系数), min(magicDefense, floor(伤害 × 上限系数)))。
+ * 防御可生效但不超过伤害的 上限系数，该系数为最低保底减免比例（0~1 之间的小数）。
  *
  * @see src/modules/combat/effects/pipeline.ts applyDefenseReduction
  */
 export const MAGICAL_DEFENSE_REDUCTION_COEFFICIENT = 0.3;
+
+/**
+ * 防御减伤上限比例
+ *
+ * 防御减伤量最多为伤害的该比例，防止高防御完全压制低伤害攻击。
+ * 0.7 表示防御最多减伤 70%，攻击方至少造成 30% 伤害。
+ *
+ * B-002 修复：原公式 max(floor(dmg×0.3), defense) 在低伤害区间导致减伤=defense
+ * （可能远超伤害本身），现限制防御减伤不超过伤害的 70%。
+ *
+ * @see src/modules/combat/effects/pipeline.ts applyDefenseReduction
+ */
+export const DEFENSE_REDUCTION_MAX_RATIO = 0.7;
 
 /**
  * 治疗加成换算除数

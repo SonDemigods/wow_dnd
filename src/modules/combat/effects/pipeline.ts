@@ -10,7 +10,7 @@ import type { EffectContainer, EffectContext, DamageType, DamagePipelineResult, 
 import { EffectHandlerRegistry } from './handler';
 import { addEffectToContainer } from './container';
 import { defaultRng, type Rng } from '@/utils/rng';
-import { DAMAGE_BASE_COEFFICIENT, DAMAGE_RANDOM_RANGE, PHYSICAL_DEFENSE_REDUCTION_COEFFICIENT, MAGICAL_DEFENSE_REDUCTION_COEFFICIENT } from '@/config/combat';
+import { DAMAGE_BASE_COEFFICIENT, DAMAGE_RANDOM_RANGE, PHYSICAL_DEFENSE_REDUCTION_COEFFICIENT, MAGICAL_DEFENSE_REDUCTION_COEFFICIENT, DEFENSE_REDUCTION_MAX_RATIO } from '@/config/combat';
 
 /**
  * 被动 stat_modifier 条目
@@ -56,7 +56,11 @@ function applyDefenseReduction(
   const coefficient = damageType === 'physical'
     ? PHYSICAL_DEFENSE_REDUCTION_COEFFICIENT
     : MAGICAL_DEFENSE_REDUCTION_COEFFICIENT;
-  const defenseReduction = Math.max(Math.floor(rawDamage * coefficient), defense);
+  // B-002 修复：限制防御减伤不超过伤害的 DEFENSE_REDUCTION_MAX_RATIO（70%），
+  // 防止高防御在低伤害区间完全压制攻击（原公式 max(floor(dmg×0.3), defense) 可导致减伤 > 伤害）。
+  const maxDefenseReduction = Math.floor(rawDamage * DEFENSE_REDUCTION_MAX_RATIO);
+  const cappedDefense = Math.min(defense, maxDefenseReduction);
+  const defenseReduction = Math.max(Math.floor(rawDamage * coefficient), cappedDefense);
   return Math.max(1, rawDamage - defenseReduction);
 }
 

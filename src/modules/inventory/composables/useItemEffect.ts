@@ -31,11 +31,18 @@ export function useItemEffect(state: InventoryState) {
     if (itemTemplate.kind === 'consumable') {
       const nonStatEffects = itemTemplate.effects.filter(e => e.type !== 'stat');
       for (const effect of nonStatEffects) {
-        const { type, value } = effect;
+        const { type, value, percentValue } = effect;
         if (type === 'health_restore' && typeof value === 'number' && value > 0) {
-          await characterStore.receiveHeal(value);
+          // B-005：药水恢复 = floor(maxHp × percentValue / 100) + value（保底值）
+          const percentHeal = percentValue
+            ? Math.floor(characterStore.maxHp * percentValue / 100)
+            : 0;
+          await characterStore.receiveHeal(value + percentHeal);
         } else if (type === 'mana_restore' && typeof value === 'number' && value > 0) {
-          await characterStore.changeMp(value);
+          const percentHeal = percentValue
+            ? Math.floor(characterStore.maxMana * percentValue / 100)
+            : 0;
+          await characterStore.changeMp(value + percentHeal);
         } else {
           // P6-050 修复：未处理的效果类型（如 buff/physical_damage 等），拒绝消耗物品
           if (import.meta.env.DEV) {
