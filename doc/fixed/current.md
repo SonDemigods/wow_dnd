@@ -1,6 +1,6 @@
 # 当前待修复问题
 
-> 最近检查：2026-08-12（第十轮全量代码审查修复完成）
+> 最近检查：2026-08-12（第十一轮全量代码审查修复完成）
 > tsc / eslint / vitest：全部通过（模块测试 188 文件 5781 项；组件测试 50 项预存失败）
 > 归档目录：[doc/fixed/](./)
 
@@ -27,6 +27,19 @@
 | P12-034 | GameMain handleOpenInventoryFromCharacter 绕过面板事件。 |
 | P12-035 | GameMain popupMounted 与 @close 逻辑矛盾。 |
 | P12-037 | useConfigTableMeta classEquipment type 列缺字典翻译。 |
+| P13-005 | characterStore.reset() 未清除装备和天赋加成，影响仅限 GM 重置场景。 |
+| P13-006 | 任务 collect 进度不随物品消耗/丢弃同步，需跨模块回调。 |
+| P13-008 | Boss enrage 重新应用使用硬编码倍率，当前所有 Boss 配置均使用默认 1.5。 |
+| P13-009 | 天赋 applyStatBonusesToCharacter 未 await persistCharacter，极端情况持久化乱序。 |
+| P13-010 | 敌人技能冷却直接修改 ref 嵌套属性，可能不触发响应式更新。 |
+| P13-016 | InventoryPopup confirmDrop/doOrganize/doEquip/useItem 缺 try/catch，DB 异常时 UI 卡死。 |
+| P13-017 | CombatPopup onMounted async eventBus 监听器在组件快速卸载时泄漏。 |
+| P13-018 | ExplorationView onTouchMove 阈值逻辑与鼠标版不一致，手指回弯时地图卡住。 |
+| P13-019 | useShopTransactions incSellQty 缺上界钳制，快速连续出售时可能越界。 |
+| P13-020 | ShopPopup displaySellItems 不过滤 info=null 条目，显示空白卡片。 |
+| P13-021 | fileDownload revokeObjectURL 在 click() 后立即释放，Firefox 可能下载失败。 |
+| P13-022 | AdminQueryService queryItemTemplate 用 Promise.all，单表失败丢弃另一表结果。 |
+| P13-023 | db-helpers toRawData JSON 回退路径未 catch 循环引用异常。 |
 
 ---
 
@@ -51,6 +64,7 @@
 | P11-200 | unlockedZones/completedZones 为 P4-020 设计预留字段，实际解锁由等级检查决定。 |
 | P11-201 | getQuestRequiredMonsters 的 boardId=location.id 为 P6-105 确认的设计约定。 |
 | P11-216 | 任务奖励物品添加失败仍标记完成是 P3 DB-12 审计决策，跨模块事务成本高，已有 toast 提示。 |
+| P13-EX-01 | Forms switchTo 中 receiveHeal 在 setFormHpMultiplier 之前调用——setFormHpMultiplier 内部已钳制当前 HP 不超过新上限（L529-531），不会出现 HP > maxHp。 |
 
 ---
 
@@ -75,6 +89,7 @@
 
 | 轮次 | 归档 | 项数 |
 |------|------|------|
+| 第十一轮 | [fixed_20260812170000.md](./fixed_20260812170000.md) | 12 |
 | 第十轮 | [fixed_20260812150600.md](./fixed_20260812150600.md) | 29 |
 | 第九轮 | [fixed_20260812131604.md](./fixed_20260812131604.md) | 46 |
 | 第八轮 | [fixed_20260810161000.md](./fixed_20260810161000.md) | 49 |

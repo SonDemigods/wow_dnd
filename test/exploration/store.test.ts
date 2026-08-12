@@ -582,6 +582,8 @@ describe('useExplorationStore - 探索 Store', () => {
       mocks.gameStore.currentCharacterId = 'char_1';
       await store.init('char_1');
       store.$patch({ campUsed: false, currentAreaId: 'forest' });
+      // P13-007 修复：useCamp 校验当前格子类型为 rest，需将玩家位置格子设为 rest
+      store.grid = [[{ x: 0, y: 0, type: 'rest', explored: true, accessible: false, visited: true }]];
 
       await store.useCamp();
 

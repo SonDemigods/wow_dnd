@@ -687,8 +687,8 @@ describe('useCombatStore - 战斗 Store', () => {
       // 角色获得经验和金币
       expect(charStub.gainExp).toHaveBeenCalledWith(30);
       expect(charStub.gainGold).toHaveBeenCalledWith(15);
-      // 触发资源系统和被动技能 onKill
-      expect(mocks.passive!.onKill).toHaveBeenCalled();
+      // P13-002/P13-003 修复：onKill 已移动到各击杀路径，endCombat 不再调用
+      expect(mocks.passive!.onKill).not.toHaveBeenCalled();
       // 调用 cleanup
       expect(mocks.state!.cleanup).toHaveBeenCalled();
     });
@@ -740,9 +740,10 @@ describe('useCombatStore - 战斗 Store', () => {
 
       await store.endCombat('victory');
 
-      // 仅 Boss 敌人触发 handleLoot
-      expect(mocks.player!.handleLoot).toHaveBeenCalledTimes(1);
+      // P13-001 修复：所有敌人均触发 handleLoot（普通怪物与 Boss 统一处理）
+      expect(mocks.player!.handleLoot).toHaveBeenCalledTimes(2);
       expect(mocks.player!.handleLoot).toHaveBeenCalledWith(bossEnemy);
+      expect(mocks.player!.handleLoot).toHaveBeenCalledWith(normalEnemy);
     });
 
     it('victory 时调用 ctx.quest.onEnemyKilled 更新击杀进度（每个有 dataId 的敌人）', async () => {
@@ -781,7 +782,7 @@ describe('useCombatStore - 战斗 Store', () => {
       expect(questStub.onEnemyKilled).not.toHaveBeenCalled();
     });
 
-    it('victory 时触发资源系统 onKill 钩子', async () => {
+    it('victory 时不再触发资源系统 onKill 钩子（已移至各击杀路径）', async () => {
       const endSpy = vi.fn();
       eventBus.on(GameEvents.COMBAT_END, endSpy);
 
@@ -795,8 +796,9 @@ describe('useCombatStore - 战斗 Store', () => {
 
       await store.endCombat('victory');
 
-      expect(sys1.onKill).toHaveBeenCalled();
-      expect(sys2.onKill).toHaveBeenCalled();
+      // P13-002/P13-003 修复：onKill 已移动到各击杀路径，endCombat 直接调用不再触发
+      expect(sys1.onKill).not.toHaveBeenCalled();
+      expect(sys2.onKill).not.toHaveBeenCalled();
     });
 
     it('victory 时 totalExp/totalGold 为 0 不写获得经验/金币日志', async () => {

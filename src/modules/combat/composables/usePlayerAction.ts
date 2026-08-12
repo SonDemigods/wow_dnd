@@ -283,12 +283,19 @@ export function usePlayerAction(
     // P6-001 修复：胜利条件改为仅当所有敌人均已死亡（aliveEnemies.length === 0），
     // isDead 仅表示当前目标被击杀，不意味着整场战斗胜利（多敌场景下其他敌人可能仍存活）
     // BIZ-6：先检查 BOSS 复活机制（复活后 aliveEnemies 不再为空，不会误判胜利）
+    // P13-003 修复：直接击杀时统一触发 onKill（与 endCombat 移除的 onKill 对应）
     if (isDead && boss.checkBossRevive(target)) {
       initiative.endPlayerTurn();
-    } else if (aliveEnemies.value.length === 0) {
-      endCombat('victory');
     } else {
-      initiative.endPlayerTurn();
+      if (isDead) {
+        state.resourceSystems.value.forEach(sys => sys.onKill?.());
+        passive.onKill();
+      }
+      if (aliveEnemies.value.length === 0) {
+        endCombat('victory');
+      } else {
+        initiative.endPlayerTurn();
+      }
     }
     // P2 BIZ-4 修复：移除重复 saveLogs，endPlayerTurn/endCombat 内部已调用
 

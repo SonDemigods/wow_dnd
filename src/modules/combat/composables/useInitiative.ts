@@ -283,7 +283,9 @@ export function useInitiative(
           // P11-003 修复：Boss 复活时不触发 onKill，避免资源系统误获击杀奖励
           if (!boss.checkBossRevive(enemy)) {
             // P9-075 修复：DOT 击杀敌人时触发资源系统 onKill 钩子（含 RuneSystem 等），与 endCombat 统一
+            // P13-002 修复：同时触发被动技能 onKill（与直接击杀路径一致）
             state.resourceSystems.value.forEach(sys => sys.onKill?.());
+            passive?.onKill();
           }
         }
       }
@@ -351,6 +353,9 @@ export function useInitiative(
     // 检查敌人是否全部死亡（宠物击杀触发胜利判定）
     const allEnemiesDead = state.enemies.value.length > 0 && state.enemies.value.every(e => e.hp <= 0);
     if (allEnemiesDead) {
+      // P13-003 修复：宠物击杀时统一触发 onKill
+      state.resourceSystems.value.forEach(sys => sys.onKill?.());
+      passive?.onKill();
       endCombat('victory');
       return;
     }

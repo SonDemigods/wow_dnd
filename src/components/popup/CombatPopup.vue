@@ -439,10 +439,9 @@ const logs = computed(() => combatStore.combatLogs);
 let cachedLogs: CombatLog[] = [];
 let cachedReversed: CombatLog[] = [];
 const logsReversed = computed(() => {
-  if (logs.value === cachedLogs) return cachedReversed;
-  cachedLogs = logs.value;
-  cachedReversed = [...logs.value].reverse();
-  return cachedReversed;
+  // P13-015 修复：addCombatLog 使用 push（不替换数组引用），
+  // 引用比较缓存失效，直接浅拷贝反转即可（日志 <100 条，开销可忽略）
+  return [...logs.value].reverse();
 });
 
 // 动画状态、Boss 出场演出状态、Boss 阶段转换状态、模板 refs 已迁移至 useCombatAnimations / useBossIntroOverlay
@@ -762,7 +761,14 @@ function doSkip() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_skip' });
   isAnimating.value = true;
   // skipTurn 内部调用 endPlayerTurn → 自动调度敌人回合
-  combatStore.skipTurn();
+  // P13-013 修复：try/catch 包裹，失败时复位 isAnimating，避免永久锁定
+  try {
+    combatStore.skipTurn();
+  } catch (e) {
+    console.error('[CombatPopup] 跳过回合失败:', e);
+    isAnimating.value = false;
+    toast.show({ message: '跳过回合失败', type: 'danger', duration: 2000 });
+  }
   // isAnimating 由 watch(turn) 在敌人回合结束后恢复
 }
 

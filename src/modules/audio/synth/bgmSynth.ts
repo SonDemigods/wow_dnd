@@ -174,6 +174,8 @@ export class BgmSynth {
     this.stopBgmOscillator();
     this.stopFilterLfo();
     Tone.getTransport().stop();
+    // P13-011 修复：重置 currentBgmScene，防止 setBgmScene 因 early return 跳过相同场景
+    this.currentBgmScene = null;
   }
 
   // ============================================================

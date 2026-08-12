@@ -199,6 +199,9 @@ export function useGameActions(onExit: () => void) {
   function handleMultiOptionEventClose() {
     showMultiOptionEvent.value = false;
     currentMultiOptionEvent.value = null;
+    // P13-004 修复：清除 pendingEventCell，防止事件格永久阻塞
+    const explorationStore = useExplorationStore();
+    explorationStore.clearPendingEventCell();
   }
 
   function handleCombatClose(_result?: CombatResult) {

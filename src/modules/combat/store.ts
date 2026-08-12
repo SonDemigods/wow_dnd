@@ -19,7 +19,7 @@ import type { EnemyInstance } from '@/modules/enemy/types';
 import type { Skill } from '@/modules/skill/types';
 import { eventBus, GameEvents } from '@/modules/bus';
 import { generateLogId } from '@/modules/log/service';
-import { isBossCombat, generateCombatId } from './service';
+import { generateCombatId } from './service';
 import { createEmptyContainer } from './effects';
 import { ResourceSystemFactory } from './resources';
 
@@ -160,18 +160,14 @@ export const useCombatStore = defineStore('combat', () => {
           ctx.character.gainGold(totalGold)
         ]);
 
-        // 战斗胜利时触发资源系统 onKill 钩子（击杀获取资源，如怒气/连击点/灵魂碎片）
-        state.resourceSystems.value.forEach(sys => sys.onKill?.());
+        // P13-002/P13-003 修复：onKill 已移动到各击杀路径（playerAttack/playerSkill/playerUseItem/
+        // tickAllEffects DOT/singlePetTurn）在敌人死亡时统一触发一次。
+        // 此处不再调用，避免与 DOT 击杀（tickAllEffects）重复触发导致资源翻倍。
 
-        // 触发被动技能 onKill 钩子（如术士灵魂虹吸：击杀获得额外灵魂碎片）
-        passive.onKill();
-
-        // 处理掉落（仅 Boss）
+        // 处理掉落（所有敌人均可配置 drops，普通怪物与 Boss 统一处理）
         // P2-36 修复：通过 playerHolder 延迟引用 player，避免 TDZ 风险
         for (const e of state.enemies.value) {
-          if (isBossCombat(e)) {
-            playerHolder.current?.handleLoot(e);
-          }
+          playerHolder.current?.handleLoot(e);
         }
 
         // 更新击杀进度

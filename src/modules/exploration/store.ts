@@ -833,9 +833,30 @@ export const useExplorationStore = defineStore('exploration', () => {
    *
    * 通过 cellEventHandlers.rest 注册表分发，复用与 revealGrid 路径 3 相同的恢复逻辑。
    * 营地只能使用一次：campUsed 已为 true 时直接返回。
+   * P13-007 修复：非营地格调用时直接返回，避免状态不一致。
+
+  /**
+   * 清除挂起的事件格坐标
+   *
+   * P13-004 修复：多选项事件弹窗关闭（未选择选项）时调用，
+   * 防止 pendingEventCell 残留导致事件格永久不可交互。
+   */
+  function clearPendingEventCell(): void {
+    pendingEventCell.value = null;
+  }
+
+  /**
+   * 使用营地休息，恢复全部生命值和法力值
    */
   async function useCamp(): Promise<void> {
     if (campUsed.value) {
+      return;
+    }
+
+    // P13-007 修复：校验玩家当前格子是否为营地类型
+    const pos = playerPosition.value;
+    const currentCell = grid.value[pos.y]?.[pos.x];
+    if (!currentCell || currentCell.type !== 'rest') {
       return;
     }
 
@@ -965,6 +986,8 @@ export const useExplorationStore = defineStore('exploration', () => {
     exitExploration,
     useCamp,
     applyEventChoice,
+    // P13-004 修复：清除挂起事件坐标（多选项事件弹窗关闭时调用，防止事件格永久阻塞）
+    clearPendingEventCell,
 
     // 生命周期
     dispose,

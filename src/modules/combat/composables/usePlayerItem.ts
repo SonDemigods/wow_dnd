@@ -193,13 +193,20 @@ export function usePlayerItem(
     }
 
     // P11-002 修复：先检查 Boss 复活，再检查全场是否清空，与 playerAttack/playerSkill 对齐
+    // P13-003 修复：物品击杀时统一触发 onKill
     const target = currentTarget.value;
     if (itemKilledEnemy && target && boss.checkBossRevive(target)) {
       initiative.endPlayerTurn();
-    } else if (damageResult && aliveEnemies.value.length === 0) {
-      endCombat('victory');
     } else {
-      initiative.endPlayerTurn();
+      if (itemKilledEnemy && damageResult) {
+        state.resourceSystems.value.forEach(sys => sys.onKill?.());
+        passive.onKill();
+      }
+      if (damageResult && aliveEnemies.value.length === 0) {
+        endCombat('victory');
+      } else {
+        initiative.endPlayerTurn();
+      }
     }
     // P2 BIZ-4 修复：移除重复 saveLogs，endPlayerTurn/endCombat 内部已调用
 

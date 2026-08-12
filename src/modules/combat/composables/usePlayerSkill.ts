@@ -276,8 +276,10 @@ export function usePlayerSkill(
           if (actualAoeDamage > 0) {
             const aoeKill = ctx.enemy.takeDamage(e.id, actualAoeDamage);
             // P9-002 修复：AOE 击杀 Boss 时检查复活机制
-            if (aoeKill) {
-              boss.checkBossRevive(e);
+            // P13-003 修复：AOE 击杀时统一触发 onKill（非 Boss 复活）
+            if (aoeKill && !boss.checkBossRevive(e)) {
+              state.resourceSystems.value.forEach(sys => sys.onKill?.());
+              passive.onKill();
             }
           }
 
@@ -491,12 +493,19 @@ export function usePlayerSkill(
 
         // P10-001 修复：与 playerAttack（P6-001）逻辑对齐
         // 先判 Boss 复活，再判全场是否清空，避免 isDead=true 时对非 Boss 误判 endCombat('victory')
+        // P13-003 修复：直接击杀时统一触发 onKill
         if (isDead && boss.checkBossRevive(target)) {
           initiative.endPlayerTurn();
-        } else if (aliveEnemies.value.length === 0) {
-          endCombat('victory');
         } else {
-          initiative.endPlayerTurn();
+          if (isDead) {
+            state.resourceSystems.value.forEach(sys => sys.onKill?.());
+            passive.onKill();
+          }
+          if (aliveEnemies.value.length === 0) {
+            endCombat('victory');
+          } else {
+            initiative.endPlayerTurn();
+          }
         }
         // P11-001 修复：添加 return 防止落入末尾 P9-005 兜底重复调用 endPlayerTurn
         return { success: true, type: 'skill', damage: result.damage, message: result.message };
