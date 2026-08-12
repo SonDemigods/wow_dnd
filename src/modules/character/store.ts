@@ -231,6 +231,8 @@ export const useCharacterStore = defineStore('character', () => {
     raceIdParam: RaceType,
     classIdParam: ClassType
   ): Promise<string> {
+    // P11-107 修复：校验角色名称非空
+    if (!name || !name.trim()) throw new Error('角色名称不能为空');
     const id = generateCharacterId();
     const race = racesData.value[raceIdParam];
     const cls = classesData.value[classIdParam];
@@ -323,11 +325,8 @@ export const useCharacterStore = defineStore('character', () => {
       eventBus.emit(GameEvents.CHARACTER_LOGOUT, null);
     }
 
-    // P3-116 修复：通过 GameStore 设置并持久化 currentCharacterId
-    await gameStore.setCurrentCharacterId(characterId);
-
-    // 更新 Store 状态
-    // P3-116 修复：currentCharacterId 已由上方 gameStore.setCurrentCharacterId 更新（只读 computed 自动反映），无需再赋值
+    // P11-105 修复：先设置 character/bonusStats/raceBonus/classBonus，再 await setCurrentCharacterId，
+    // 避免 await 期间 watcher 读到新 ID 配旧角色（与 createCharacter 顺序对齐）
     character.value = characterDbService.fromStorageFormat(data);
     bonusStats.value = data.bonusStats || {};
 
@@ -335,6 +334,9 @@ export const useCharacterStore = defineStore('character', () => {
     const cls = classesData.value[data.classId];
     raceBonus.value = race?.bonus || {};
     classBonus.value = cls?.bonus || {};
+
+    // P3-116 修复：通过 GameStore 设置并持久化 currentCharacterId
+    await gameStore.setCurrentCharacterId(characterId);
 
     return true;
   }
@@ -613,6 +615,11 @@ export const useCharacterStore = defineStore('character', () => {
     if (!isRaceFactionCompatible(raceData, character.value.factionId)) {
       throw new Error(`种族「${raceData.name}」不支持阵营「${character.value.factionId}」`);
     }
+    // P11-100 修复：校验种族与当前角色职业兼容（与 setClass 对齐）
+    const cls = classesData.value[character.value.classId];
+    if (cls && !isClassRaceCompatible(cls, race)) {
+      throw new Error(`种族「${raceData.name}」不支持职业「${cls.name}」`);
+    }
     raceBonus.value = raceData?.bonus || {};
     character.value = {
       ...character.value,
@@ -837,8 +844,9 @@ export const useCharacterStore = defineStore('character', () => {
     if (!character.value) return;
 
     eventBus.emit(GameEvents.CHARACTER_DEATH, { cause: 'death' });
-    await persistCharacter();
 
+    // P11-101 修复：移除复活前的 persistCharacter() 调用，避免 hp=0 落盘后崩溃导致角色永久卡死。
+    // resurrect() 内部已调用 persistCharacter() 持久化复活后的状态。
     // 自动复活（由 computeResurrection 统一处理经验清零等状态重置）
     await resurrect();
   }

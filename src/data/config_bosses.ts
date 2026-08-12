@@ -148,6 +148,7 @@ export const BOSSES: BossTemplate[] = [
     critChance: 15,
     dodgeChance: 8,
     aiStrategy: 'boss_phase',
+    attackType: 'magical',
     skillPool: ['shadow_bolt', 'curse', 'soul_drain'],
     phases: [
       { hpThreshold: 0.5, name: '暗影帷幕', aiStrategy: 'defensive', mechanics: [{ type: 'damage_shield', intervalTurns: 3, params: { shieldAmount: 40 } }, { type: 'debuff_aura', intervalTurns: 4, params: { debuffType: 'attack_down' } }], statMultipliers: { magicDefense: 1.3 }, transitionEffect: 'darken', dialogue: ['亡灵大法师释放了暗影帷幕！', '你的力量被削弱了...'] },

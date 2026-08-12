@@ -32,13 +32,13 @@ export function useItemEffect(state: InventoryState) {
       const nonStatEffects = itemTemplate.effects.filter(e => e.type !== 'stat');
       for (const effect of nonStatEffects) {
         const { type, value, percentValue } = effect;
-        if (type === 'health_restore' && typeof value === 'number' && value > 0) {
+        if (type === 'health_restore' && typeof value === 'number' && (value > 0 || (percentValue && percentValue > 0))) {
           // B-005：药水恢复 = floor(maxHp × percentValue / 100) + value（保底值）
           const percentHeal = percentValue
             ? Math.floor(characterStore.maxHp * percentValue / 100)
             : 0;
           await characterStore.receiveHeal(value + percentHeal);
-        } else if (type === 'mana_restore' && typeof value === 'number' && value > 0) {
+        } else if (type === 'mana_restore' && typeof value === 'number' && (value > 0 || (percentValue && percentValue > 0))) {
           const percentHeal = percentValue
             ? Math.floor(characterStore.maxMana * percentValue / 100)
             : 0;

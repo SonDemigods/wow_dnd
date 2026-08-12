@@ -101,7 +101,7 @@ export function useInventoryItems(state: InventoryState) {
     return true;
   }
 
-  function dropItemsByIndices(indices: number[]): boolean {
+  async function dropItemsByIndices(indices: number[]): Promise<boolean> {
     if (indices.length === 0) return false;
     const validIndices = indices.filter(index => {
       if (index < 0 || index >= inventory.value.length) return false;
@@ -112,10 +112,11 @@ export function useInventoryItems(state: InventoryState) {
     if (validIndices.length === 0) return false;
 
     // P9-014 修复：批量丢弃前记录日志
+    // P11-306 修复：await logItemDropped，避免 fire-and-forget 异步
     for (const index of validIndices) {
       const invItem = inventory.value[index];
       const itemTemplate = itemTemplates.value.get(invItem.itemId);
-      if (itemTemplate) logItemDropped(itemTemplate.name, invItem.count);
+      if (itemTemplate) await logItemDropped(itemTemplate.name, invItem.count);
     }
 
     const sortedIndices = [...validIndices].sort((a, b) => b - a);
@@ -144,9 +145,10 @@ export function useInventoryItems(state: InventoryState) {
           newInventory.push({ itemId, count: 1 });
         }
       } else {
+        const itemMaxStack = itemInfo.maxStack ?? MAX_STACK;
         let remaining = totalCount;
         while (remaining > 0) {
-          const stackSize = Math.min(remaining, MAX_STACK);
+          const stackSize = Math.min(remaining, itemMaxStack);
           newInventory.push({ itemId, count: stackSize });
           remaining -= stackSize;
         }

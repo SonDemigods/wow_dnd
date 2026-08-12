@@ -8,7 +8,7 @@
  *   - ItemStorage：写入 IndexedDB 时的数据类型（用于引用其字段类型进行类型断言）
  *   - InventoryStorage：导入/导出存档时背包数据的序列化格式
  */
-import type { ItemKind, ItemRarity } from '../item/types';
+import type { ItemKind, ItemRarity, ItemEffect } from '../item/types';
 import type { Capability } from '../item/capabilityTypes';
 
 // ==================== 共享类型 re-export（P3.3：从 item/types 迁移） ====================
@@ -157,6 +157,14 @@ export interface ItemDataStorage {
   levelRequirement?: number | null;
   /** 能力标签集合（plan.md §3.4，配置层显式声明，mapToItem 透传至 Item.capabilities） */
   capabilities: Capability[];
+  /** P11-302：modern 格式的完整效果数组（含 percentValue），向后兼容旧 effect/bonus */
+  effects?: ItemEffect[];
+  /** P11-303：最大堆叠数（modern 格式），向后兼容旧存档（未存储时由 maxStack ?? MAX_STACK 兜底） */
+  maxStack?: number;
+  /** P11-302：modern 格式的判别字段 kind（consumable/material/quest/currency/equipment） */
+  kind?: string;
+  /** P11-302：modern 格式的子类型（potion/food/scroll/gold/...） */
+  subtype?: string;
 }
 
 /**
@@ -200,6 +208,14 @@ export interface ItemStorage {
   level?: number;
   /** 能力标签集合（plan.md §3.4，saveItemTemplate 写入 DB，mapToItem 读取还原） */
   capabilities: Capability[];
+  /** P11-302：完整效果数组（含 percentValue），供 mapToItem modern 格式读取 */
+  effects?: ItemEffect[];
+  /** P11-302：判别字段 kind，供 mapToItem modern 格式读取 */
+  kind?: string;
+  /** P11-302：子类型，供 mapToItem modern 格式读取 */
+  subtype?: string;
+  /** P11-303：最大堆叠数，null 表示未设置（由 maxStack ?? MAX_STACK 兜底） */
+  maxStack?: number | null;
 }
 
 /**

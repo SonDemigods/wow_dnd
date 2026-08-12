@@ -98,11 +98,11 @@ export class DataInitializer {
           db.runtime_mapState,
         ],
         async () => {
-          // 地点和大陆数据每次都更新
-          await this.initLocations();
-          await this.initContinents();
-
           if (!isInitialized) {
+            // P11-502 修复：地点/大陆数据移入 isInitialized 块内，避免每次启动覆盖
+            await this.initLocations();
+            await this.initContinents();
+
             // P9-059 修复：抽取公共 initAllConfigTables 方法，消除与 reinitializeData 的重复初始化逻辑
             await this.initAllConfigTables();
 

@@ -12,8 +12,9 @@ import { BOSSES } from './config_bosses';
 import { QUESTS } from './config_quests';
 import { LOOT_ITEMS } from './config_items';
 import { SET_DEFINITIONS } from './config_set_definitions';
+import { SET_PARTS } from './config_set_parts';
 import { CLASS_EQUIPMENT } from './config_class_equipment';
-import { CLASS_ABILITIES } from './config_skills';
+import { CLASS_ABILITIES, MONSTER_ABILITIES } from './config_skills';
 import { CLASS_TALENT_TREES } from './config_class_talents';
 import { CLASSES } from './config_classes';
 import type { EffectType } from '@/modules/combat/effects/effect-type';
@@ -205,11 +206,22 @@ export function validateItemSetReferences(): number {
     }
   }
 
+  // P11-401 修复：同时校验 SET_PARTS 中的套装部件 setId 引用
+  for (const item of SET_PARTS) {
+    if (item.setId && !setIds.has(item.setId)) {
+      errors.push(`套装部件 ${item.id} (${item.name}) 的 setId "${item.setId}" 不存在于 SET_DEFINITIONS`);
+    } else {
+      validCount++;
+    }
+  }
+
+  const totalItems = CLASS_EQUIPMENT.length + SET_PARTS.length;
+
   if (errors.length > 0) {
     console.error(`[数据校验] 装备 setId 引用存在 ${errors.length} 处无效:`);
     errors.forEach(e => console.error(`  - ${e}`));
   } else {
-    console.log(`[数据校验] 装备 setId 引用校验通过：${validCount}/${CLASS_EQUIPMENT.length} 件装备的 setId 均有效`);
+    console.log(`[数据校验] 装备 setId 引用校验通过：${validCount}/${totalItems} 件装备的 setId 均有效`);
   }
 
   return validCount;
@@ -230,7 +242,7 @@ export function validateSkillBuffs(): number {
   const validEffectTypes: ReadonlySet<EffectType> = new Set<EffectType>([
     'poison', 'burn', 'stun', 'freeze', 'silence', 'shield',
     'attack_up', 'attack_down', 'defense_up', 'defense_down',
-    'speed_up', 'speed_down', 'regen', 'vulnerable',
+    'speed_up', 'speed_down', 'regen', 'vulnerable', 'thorn',
   ]);
 
   const errors: string[] = [];
@@ -386,6 +398,44 @@ export function validateClassSkillRefs(): number {
   return validCount;
 }
 
+/**
+ * 校验 Boss skillPool 中的技能 ID 是否存在于 MONSTER_ABILITIES
+ *
+ * P11-402：Boss 的 skillPool 数组中的 ID 必须能在 MONSTER_ABILITIES 中找到对应技能，
+ * 否则 Boss AI 选中该技能时无法获取技能数据，导致 Boss 战斗行为异常。
+ *
+ * 校验范围：BOSSES 中所有带 skillPool 的 Boss。
+ *
+ * @returns 校验通过的 Boss 数量；若存在无效引用，会在控制台输出错误日志
+ */
+export function validateBossSkillPool(): number {
+  const abilityIds = new Set(MONSTER_ABILITIES.map(a => a.id));
+  const errors: string[] = [];
+  let validCount = 0;
+
+  for (const boss of BOSSES) {
+    let bossValid = true;
+    if (boss.skillPool && boss.skillPool.length > 0) {
+      for (const skillId of boss.skillPool) {
+        if (!abilityIds.has(skillId)) {
+          errors.push(`Boss ${boss.id} (${boss.name}) 的 skillPool ID "${skillId}" 不存在于 MONSTER_ABILITIES`);
+          bossValid = false;
+        }
+      }
+    }
+    if (bossValid) validCount++;
+  }
+
+  if (errors.length > 0) {
+    console.error(`[数据校验] Boss skillPool 引用存在 ${errors.length} 处无效:`);
+    errors.forEach(e => console.error(`  - ${e}`));
+  } else {
+    console.log(`[数据校验] Boss skillPool 引用校验通过：${validCount}/${BOSSES.length} 个 Boss 的 skillPool ID 均有效`);
+  }
+
+  return validCount;
+}
+
 // 开发环境自动执行校验（生产环境构建时 import.meta.env.DEV 为 false，整段会被 tree-shaking）
 if (import.meta.env.DEV) {
   validateLocationData();
@@ -396,4 +446,5 @@ if (import.meta.env.DEV) {
   validateSkillBuffs();
   validateTalentData();
   validateClassSkillRefs();
+  validateBossSkillPool();
 }

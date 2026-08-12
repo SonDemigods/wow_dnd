@@ -277,9 +277,11 @@ export function useInitiative(
       if (tickRes?.dotDamage && tickRes.dotDamage > 0) {
         const enemy = ctx.enemy.getEnemyById(eId);
         if (enemy && enemy.hp <= 0) {
-          boss.checkBossRevive(enemy);
-          // P9-075 修复：DOT 击杀敌人时触发资源系统 onKill 钩子（含 RuneSystem 等），与 endCombat 统一
-          state.resourceSystems.value.forEach(sys => sys.onKill?.());
+          // P11-003 修复：Boss 复活时不触发 onKill，避免资源系统误获击杀奖励
+          if (!boss.checkBossRevive(enemy)) {
+            // P9-075 修复：DOT 击杀敌人时触发资源系统 onKill 钩子（含 RuneSystem 等），与 endCombat 统一
+            state.resourceSystems.value.forEach(sys => sys.onKill?.());
+          }
         }
       }
     }

@@ -150,6 +150,8 @@ function canUnlock(skill: Skill): boolean {
 
 function selectSkill(skill: Skill) {
   selectedSkill.value = skill;
+  // P11-603 修复：切换选中技能时清除槽位选中状态，避免误装备到之前选中的槽位
+  selectedSlotIndex.value = null;
   eventBus.emit(GameEvents.UI_CLICK, { source: 'skill_select' });
 }
 
@@ -201,7 +203,8 @@ function deactivateSkill(skillId: string) {
 }
 
 function findEmptySlot(): SkillSlotIndex | null {
-  const emptyIndex = skillsStore.skillBar.slots.findIndex(slot => !slot);
+  // P11-604 修复：统一使用 slot === null 判空，与 SkillsPopup 保持一致
+  const emptyIndex = skillsStore.skillBar.slots.findIndex(slot => slot === null);
   return emptyIndex !== -1 ? (emptyIndex as SkillSlotIndex) : null;
 }
 

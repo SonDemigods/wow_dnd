@@ -31,7 +31,7 @@ import {
   GRID_SIZE
 } from './service';
 import { VISION_RANGE, BOSS_SEAL_REQUIRED_CELLS } from '@/config/exploration';
-import { AREA_EVENT_TEMPLATES } from '@/data/config_area_events';
+import { getAreaEventTemplates } from '@/data/config_area_events';
 import { dispatchCellEvent, applyEventEffect } from './events';
 
 /** P5-014 修复：新区域默认已访问格子数（起点+商店+任务板） */
@@ -220,7 +220,7 @@ export const useExplorationStore = defineStore('exploration', () => {
       bossPool,
       itemPool,
       // 阶段四：区域专属事件池，按 location.id 查找；未命中时为空（走通用事件）
-      areaEvents: AREA_EVENT_TEMPLATES[location.id] ?? []
+      areaEvents: getAreaEventTemplates(location.id)
     };
   }
 
@@ -494,6 +494,12 @@ export const useExplorationStore = defineStore('exploration', () => {
     // ===== 路径 3：宝箱/陷阱/事件/营地 → 立即结算 =====
     // 已探索且已完成的格子不允许再次交互
     if (cell.explored && cell.completed) {
+      return false;
+    }
+
+    // P11-204 修复：未完成的多选项事件格不重新生成事件
+    // 玩家走开后再回来时，pendingEventCell 仍指向该格，不应分发新事件
+    if (cell.type === 'event' && cell.explored && !cell.completed && pendingEventCell.value) {
       return false;
     }
 

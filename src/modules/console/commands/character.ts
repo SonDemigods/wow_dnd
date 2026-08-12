@@ -69,9 +69,12 @@ registerCommand({
   description: '添加金币',
   usage: 'gold <数量>',
   async handler(args) {
+    // P11-506 修复：添加 requireCharacter 前置检查
+    const req = requireCharacter();
+    if (!req.ok) return req.result;
     const amount = parseInt(args[0], 10);
-    if (isNaN(amount)) {
-      return { success: false, message: '请输入有效的数字' };
+    if (isNaN(amount) || amount <= 0) {
+      return { success: false, message: '请输入有效的正整数' };
     }
     await useCharacterStore().gainGold(amount);
     return { success: true, message: `已添加 ${amount} 金币` };
@@ -122,6 +125,9 @@ registerCommand({
   description: '设置当前生命值',
   usage: 'hp <数值>',
   async handler(args) {
+    // P11-506 修复：添加 requireCharacter 前置检查
+    const req = requireCharacter();
+    if (!req.ok) return req.result;
     const value = parseInt(args[0], 10);
     if (isNaN(value)) {
       return { success: false, message: '请输入有效的数字' };
@@ -144,6 +150,9 @@ registerCommand({
   description: '设置当前法力值',
   usage: 'mp <数值>',
   async handler(args) {
+    // P11-506 修复：添加 requireCharacter 前置检查
+    const req = requireCharacter();
+    if (!req.ok) return req.result;
     const value = parseInt(args[0], 10);
     if (isNaN(value)) {
       return { success: false, message: '请输入有效的数字' };
@@ -181,7 +190,7 @@ registerCommand({
  * 设置等级
  *
  * 将角色等级调整为指定值（1 至 MAX_LEVEL）。
- * 降低等级时会先 reset() 再逐级加回经验值；升高等级时直接累加差额经验。
+ * 降低等级时仅调整等级和经验值（不调用 reset()）；升高等级时直接累加差额经验。
  *
  * @param {string[]} args - args[0] 为目标等级（1-MAX_LEVEL）
  *
@@ -205,13 +214,14 @@ registerCommand({
     }
 
     if (targetLevel < currentLevel) {
-      await useCharacterStore().reset();
-      if (targetLevel > 1) {
-        let totalExp = 0;
-        for (let i = 2; i <= targetLevel; i++) {
-          totalExp += getExpForLevel(i);
-        }
-        await useCharacterStore().gainExp(totalExp);
+      // P11-503 修复：降级时仅调整等级和经验值，不调用 reset() 清空装备/技能/进度
+      const store = useCharacterStore();
+      const char = store.character;
+      if (char) {
+        char.level = targetLevel;
+        char.exp = 0;
+        char.expToNextLevel = getExpForLevel(targetLevel + 1);
+        await store.persistCharacter();
       }
     } else {
       let totalExp = 0;

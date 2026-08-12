@@ -124,11 +124,8 @@ export function canEquipItem(
   itemTemplate: EquipmentItem,
   equipment: Record<EquipmentSlot, EquippedItem | null>
 ): { canEquip: boolean; reason: string } {
-  // 双手武器额外校验：装入 weapon1 时需要 weapon2 也空闲
-  if (itemTemplate.grip === 'two_handed' && equipment.weapon2) {
-    return { canEquip: false, reason: '双手武器需要主副手槽位都空闲' };
-  }
-
+  // P11-104 修复：移除双手武器+weapon2 存在时的硬拒绝逻辑。
+  // 双手武器在有 weapon2 时应返回 canEquip=true，由 equipItem 自动卸下 weapon2（P8-015）。
   const compatibleSlots = itemTemplate.slots.filter(slot => {
     if (!validateSlot(itemTemplate, slot)) return false;
     // 双手武器联动：weapon1 装备双手武器时，weapon2 被锁定，不可作为候选槽位

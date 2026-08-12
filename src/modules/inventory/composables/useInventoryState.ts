@@ -115,13 +115,16 @@ export function useInventoryState() {
   // ==================== 初始化 ====================
   async function initialize(characterId: string): Promise<void> {
     isLoading.value = true;
-    if (characterId) {
-      inventory.value = await inventoryDbService.getInventory(characterId);
-    } else {
-      inventory.value = [];
+    try {
+      if (characterId) {
+        inventory.value = await inventoryDbService.getInventory(characterId);
+      } else {
+        inventory.value = [];
+      }
+      await loadItemTemplates();
+    } finally {
+      isLoading.value = false;
     }
-    await loadItemTemplates();
-    isLoading.value = false;
   }
 
   // ==================== 查询 ====================

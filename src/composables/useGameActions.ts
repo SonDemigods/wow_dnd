@@ -205,11 +205,16 @@ export function useGameActions(onExit: () => void) {
     showCombat.value = false;
     onPanelClose('combat');
   }
+  // P11-701 修复：包裹 try/catch，防止 closeShop 失败导致未捕获 rejection
   async function handleShopClose() {
     showShop.value = false;
     popupMounted.shop = false; // P5-029 修复：关闭时复位挂载标记
     onPanelClose('shop');
-    await shopStore.closeShop();
+    try {
+      await shopStore.closeShop();
+    } catch (e) {
+      console.error('[GameActions] 关闭商店失败:', e);
+    }
   }
 
   function onLevelUp(payload: { oldLevel: number; newLevel: number }): void {

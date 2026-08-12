@@ -248,13 +248,13 @@ describe('P3.2 双手武器联动 canEquipItem', () => {
     expect(result.reason).toBe('');
   });
 
-  it('双手武器在 weapon2 已占用时不可装备', () => {
+  it('双手武器在 weapon2 已占用时可装备（P11-104：equipItem 自动卸下 weapon2）', () => {
     const weapon = makeTwoHandedWeapon();
     const equipment = emptyEquipment();
     equipment.weapon2 = makeEquipped(makeItem({ id: 'shield', subtype: 'shield', grip: 'off_hand', slots: ['weapon2'], occupies: ['weapon2'] }));
     const result = canEquipItem(weapon, equipment);
-    expect(result.canEquip).toBe(false);
-    expect(result.reason).toContain('双手武器');
+    expect(result.canEquip).toBe(true);
+    expect(result.reason).toBe('');
   });
 
   it('双手武器在 weapon1 已占用时不可装备', () => {

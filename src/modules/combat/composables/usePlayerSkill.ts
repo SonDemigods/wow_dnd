@@ -498,6 +498,8 @@ export function usePlayerSkill(
         } else {
           initiative.endPlayerTurn();
         }
+        // P11-001 修复：添加 return 防止落入末尾 P9-005 兜底重复调用 endPlayerTurn
+        return { success: true, type: 'skill', damage: result.damage, message: result.message };
       }
     } else if (result.appliedEffects && result.appliedEffects.length > 0) {
       // buff/debuff 技能：将效果应用到目标
@@ -534,6 +536,8 @@ export function usePlayerSkill(
         });
 
         initiative.endPlayerTurn();
+        // P11-001 修复：添加 return 防止落入末尾 P9-005 兜底重复调用 endPlayerTurn
+        return { success: true, type: 'skill', message: `${ctx.character.name} 使用了 ${effectSourceName}，获得增益效果！` };
       } else if (result.type === 'debuff') {
         // 减益技能：对敌人施加效果
         if (targetType === 'all_enemies') {
@@ -549,6 +553,8 @@ export function usePlayerSkill(
             message: `${ctx.character.name} 使用了 ${effectSourceName}，对所有敌人施加减益效果！`
           });
           initiative.endPlayerTurn();
+          // P11-001 修复：添加 return 防止落入末尾 P9-005 兜底重复调用 endPlayerTurn
+          return { success: true, type: 'skill', message: `${ctx.character.name} 使用了 ${effectSourceName}！` };
         } else {
           // 单目标：对当前目标施加
           const target = currentTarget.value;
@@ -567,6 +573,8 @@ export function usePlayerSkill(
             message: `${ctx.character.name} 对 ${target.name} 使用了 ${effectSourceName}！`
           });
           initiative.endPlayerTurn();
+          // P11-001 修复：添加 return 防止落入末尾 P9-005 兜底重复调用 endPlayerTurn
+          return { success: true, type: 'skill', message: `${ctx.character.name} 使用了 ${effectSourceName}！` };
         }
       }
     } else if (result.heal) {
@@ -626,6 +634,8 @@ export function usePlayerSkill(
       }
 
       initiative.endPlayerTurn();
+      // P11-001 修复：添加 return 防止落入末尾 P9-005 兜底重复调用 endPlayerTurn
+      return { success: true, type: 'skill', heal: result.heal, message: result.message };
     }
     // P2 BIZ-4 修复：移除重复 saveLogs，endPlayerTurn/endCombat 内部已调用
 

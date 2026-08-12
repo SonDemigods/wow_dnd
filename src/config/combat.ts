@@ -120,6 +120,17 @@ export const CRIT_DAMAGE_MULTIPLIER = 1.5;
 export const HEAL_CRIT_MULTIPLIER = 1.5;
 
 /**
+ * 灼烧（burn）伤害倍率
+ *
+ * burn 的每回合 DOT 伤害 = floor(value × 该倍率)，比 poison 更强。
+ *
+ * P11-006 修复：从 dot.ts 硬编码 1.5 提取为配置常量。
+ *
+ * @see src/modules/combat/effects/handlers/dot.ts burnHandler.onTick
+ */
+export const BURN_DAMAGE_MULTIPLIER = 1.5;
+
+/**
  * 防御修正参数
  *
  * P4-014 修复：承伤倍率上限与易伤系数提取为配置常量
@@ -162,7 +173,7 @@ export const PLAYER_AOE_DAMAGE_PENALTY = 0.8;
  * 敌方 AOE 攻击每目标伤害占面板伤害的比例
  *
  * P3-147 修复：原值为 1.3（敌方 AOE 比普攻猛 30%，导致 Boss 一发 AOE 团灭的挫败感）。
- * 现改为 0.8，略高于玩家 0.7 保留 Boss 威胁感，但低于 1.0 避免反向加强。
+ * 现改为 0.8，与玩家 0.8 保持口径一致，避免"敌方 AOE 比普攻还猛"的设计 bug。
  *
  * @see src/modules/combat/composables/useEnemyAction.ts enemyAction
  */
@@ -205,6 +216,15 @@ export const FLEE_DEX_COEFFICIENT = 0.01;
 export const BOSS_INTRO_DELAY = 300;
 
 // ==================== AI 策略参数 ====================
+
+/**
+ * 玩家残血阈值（低于此值敌人会优先攻击终结，0~1 之间的小数）
+ *
+ * P11-007 修复：从 strategies.ts 模块级常量提取为配置常量。
+ *
+ * @see src/modules/combat/ai/strategies.ts
+ */
+export const PLAYER_LOW_HP_THRESHOLD = 0.25;
 
 /**
  * 激进型策略使用技能的概率

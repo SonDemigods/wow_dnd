@@ -218,7 +218,8 @@ export const RARITY_LEVEL_MAP: Record<string, number> = {
   common: 1,
   uncommon: 3,
   rare: 5,
-  epic: 7
+  epic: 7,
+  legendary: 9
 };
 
 // ==================== 隐藏房间（markHiddenRooms） ====================

@@ -45,14 +45,24 @@ export class MigrationService {
     const gameState = await db.runtime_gameState.get('gameState');
     const fromVersion = gameState?.dataVersion ?? 1;
 
-    // 已是最新版本，无需迁移
-    if (fromVersion >= CURRENT_DATA_VERSION) {
+    // P11-500 修复：区分版本相等与版本降级
+    if (fromVersion === CURRENT_DATA_VERSION) {
       return {
         success: true,
         fromVersion,
         toVersion: CURRENT_DATA_VERSION,
         migratedRecords: 0,
         error: '当前存档已是最新版本，无需迁移'
+      };
+    }
+
+    if (fromVersion > CURRENT_DATA_VERSION) {
+      return {
+        success: false,
+        fromVersion,
+        toVersion: CURRENT_DATA_VERSION,
+        migratedRecords: 0,
+        error: '存档版本高于当前应用版本，请更新应用'
       };
     }
 

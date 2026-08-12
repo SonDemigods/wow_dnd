@@ -114,8 +114,13 @@ export function useCharacterCreation(onCreated: () => void) {
     return name.value.trim().length > 0 && selectedFaction.value && selectedRace.value && selectedClass.value;
   });
 
+  // P11-700 修复：包裹 try/catch，防止 loadAllData 失败导致未捕获 rejection
   async function loadData() {
-    await baseStore.loadAllData();
+    try {
+      await baseStore.loadAllData();
+    } catch (e) {
+      console.error('[useCharacterCreation] loadData 失败:', e);
+    }
   }
 
   function selectFaction(id: FactionType) {

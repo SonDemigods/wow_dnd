@@ -192,15 +192,12 @@ export function usePlayerItem(
       });
     }
 
-    // 检查敌人是否全部死亡
-    if (damageResult && aliveEnemies.value.length === 0) {
-      const target = currentTarget.value;
-      // P1-1：检查 BOSS 复活机制（与 playerAttack/playerSkill 保持一致）
-      if (itemKilledEnemy && target && boss.checkBossRevive(target)) {
-        initiative.endPlayerTurn();
-      } else {
-        endCombat('victory');
-      }
+    // P11-002 修复：先检查 Boss 复活，再检查全场是否清空，与 playerAttack/playerSkill 对齐
+    const target = currentTarget.value;
+    if (itemKilledEnemy && target && boss.checkBossRevive(target)) {
+      initiative.endPlayerTurn();
+    } else if (damageResult && aliveEnemies.value.length === 0) {
+      endCombat('victory');
     } else {
       initiative.endPlayerTurn();
     }

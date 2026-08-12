@@ -51,7 +51,7 @@ const effectTypeNames: Record<EffectType, string> = {
   poison: '中毒', burn: '灼烧', stun: '眩晕', freeze: '冰冻',
   silence: '沉默', shield: '护盾', attack_up: '加攻', attack_down: '降攻',
   defense_up: '加防', defense_down: '降防', speed_up: '加速', speed_down: '减速',
-  regen: '回复', vulnerable: '易伤'
+  regen: '回复', vulnerable: '易伤', thorn: '反伤'
 };
 
 export function useSkillDisplay() {

@@ -167,6 +167,8 @@ export function useEquipmentOps(state: EquipmentState, setBonus: ReturnType<type
           console.error('[EquipmentStore] equipItem 回滚 weapon2 bonus 失败:', rollbackErr);
         }
       }
+      // P11-103 修复：回滚装备后重算套装 bonus，与 unequipItem 回滚一致
+      await setBonus.reapplySetBonuses();
       if (cb.flushPersist()) await cb.flushPersist()!();
       return false;
     }

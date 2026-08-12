@@ -72,7 +72,7 @@ describe('console/commands/inventory - 物品类命令', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const result = await exec('item');
       expect(result.success).toBe(true);
-      expect(result.message).toContain('已在上方列出所有可用物品');
+      expect(result.message).toContain('消耗品');
       expect(adminQueryMock.queryAllItemTemplates).toHaveBeenCalled();
       expect(logSpy.mock.calls.length).toBeGreaterThan(2);
       logSpy.mockRestore();

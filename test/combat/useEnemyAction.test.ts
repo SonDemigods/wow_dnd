@@ -533,6 +533,8 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
 
     // -------- basic_attack 决策 --------
     it('无可用技能时执行普通攻击', () => {
+      // mock Math.random 避免 BALANCED_DEFEND_CHANCE(10%) 随机命中 defend
+      const mathSpy = vi.spyOn(Math, 'random').mockReturnValue(0.99);
       const state = makeStateMock();
       const ctx = makeMockCtx();
       ctx.enemy.getAvailableSkills.mockReturnValue([]);
@@ -545,6 +547,7 @@ describe('useEnemyAction - 敌人行动 Composable', () => {
       expect(result.type).toBe('attack');
       // 普通攻击调用 calculateDamage
       expect(ctx.enemy.calculateDamage).toHaveBeenCalled();
+      mathSpy.mockRestore();
     });
 
     // -------- skill 决策：useSkill 失败 → fallback --------

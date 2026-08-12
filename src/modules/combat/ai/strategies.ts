@@ -34,10 +34,8 @@ import {
   BOSS_NORMAL_SKILL_CHANCE,
   BOSS_BUFF_CHANCE,
   BOSS_HALF_BUFF_CHANCE,
+  PLAYER_LOW_HP_THRESHOLD,
 } from '@/config/combat';
-
-/** 玩家残血阈值（低于此值敌人会优先攻击终结） */
-const PLAYER_LOW_HP_THRESHOLD = 0.25;
 
 /** P4-019 修复：安全计算 HP 百分比，防止 maxHp=0 时产生 NaN */
 function safeHpPercent(hp: number, maxHp: number): number {

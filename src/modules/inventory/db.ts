@@ -184,7 +184,14 @@ export class InventoryDbService {
         // 用 ?? 而非 ||，0 是合法的等级要求（mapToItem 读取端亦用 ??）
         levelRequirement: item.levelRequirement ?? null,
         // plan.md §3.4：能力标签集合落库（必填字段，配置层显式声明）
-        capabilities: item.capabilities
+        capabilities: item.capabilities,
+        // P11-302 修复：持久化完整 effects 数组（含 percentValue），供 mapToItem modern 格式读取
+        effects: item.kind === 'consumable' ? item.effects : undefined,
+        // P11-302 修复：持久化 kind/subtype，供 mapToItem modern 格式直接读取
+        kind: item.kind,
+        subtype: 'subtype' in item ? item.subtype : undefined,
+        // P11-303 修复：持久化 maxStack，null 表示未设置
+        maxStack: (item.kind === 'consumable' || item.kind === 'material') ? (item.maxStack ?? null) : null,
       });
     });
   }
@@ -224,20 +231,20 @@ export class InventoryDbService {
     // P3.3 现代格式：config_items 表写入的是 Item 判别联合（kind/subtype/effects），
     // 直接按 kind 读取，无需从旧 type/effect/bonus 反推。
     // 兼容性：旧存档（P3.3 前的 saveItemTemplate 写入的 type/effect/bonus）走下方 switch。
-    const modernKind = (data as ItemDataStorage & { kind?: string }).kind;
-    if (modernKind) {
-      const modernSubtype = (data as ItemDataStorage & { subtype?: string }).subtype;
-      const modernEffects = (data as ItemDataStorage & { effects?: ItemEffect[] }).effects;
-      switch (modernKind) {
+    // P11-302 修复：kind/subtype/effects 已在 ItemDataStorage 接口中声明，无需 cast
+    if (data.kind) {
+      switch (data.kind) {
         case 'consumable':
           return {
             ...base,
             kind: 'consumable',
-            subtype: (modernSubtype as 'potion' | 'food' | 'scroll') ?? 'potion',
+            subtype: (data.subtype as 'potion' | 'food' | 'scroll') ?? 'potion',
             stackable: true as const,
             consumable: true as const,
-            effects: modernEffects ?? [],
+            effects: data.effects ?? [],
             useMode: 'instant',
+            // P11-303 修复：读取 maxStack
+            maxStack: data.maxStack ?? undefined,
           };
         case 'material':
           return {
@@ -246,6 +253,8 @@ export class InventoryDbService {
             stackable: true as const,
             consumable: false as const,
             effects: [] as [],
+            // P11-303 修复：读取 maxStack
+            maxStack: data.maxStack ?? undefined,
           };
         case 'quest':
           return {
@@ -259,7 +268,7 @@ export class InventoryDbService {
           return {
             ...base,
             kind: 'currency',
-            subtype: (modernSubtype as 'gold') ?? 'gold',
+            subtype: (data.subtype as 'gold') ?? 'gold',
             stackable: false as const,
             consumable: false as const,
           };

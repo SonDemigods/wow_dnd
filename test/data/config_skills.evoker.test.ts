@@ -1,8 +1,8 @@
 /**
  * @fileoverview evoker 职业技能数据完整性测试
  *
- * 验证 evoker 16 技能 + 6 被动的数据完整性：
- * - 技能总数 = 16
+ * 验证 evoker 17 技能 + 6 被动的数据完整性：
+ * - 技能总数 = 17
  * - 双资源循环：MP 生成器（含 mpCost + generatesResource）→ essence 终结技（含 resourceType/resourceCost）
  * - ID 全局唯一、以 evoker_ 前缀开头、unlockLevel ∈ [1, 10]
  * - 所有 magic_damage/health_restore 技能 effect.statKey 为 'int'
@@ -21,8 +21,8 @@ const evokerSkills: Skill[] = evokerEntry?.skills ?? [];
 const evokerPassives: PassiveSkill[] = CLASS_PASSIVES.filter(p => p.classId === 'evoker');
 
 describe('evoker 技能数据完整性', () => {
-  it('技能总数为 16', () => {
-    expect(evokerSkills).toHaveLength(16);
+  it('技能总数为 17', () => {
+    expect(evokerSkills).toHaveLength(17);
   });
 
   it('所有技能 ID 全局唯一', () => {
@@ -55,7 +55,7 @@ describe('evoker 技能数据完整性', () => {
     });
   });
 
-  it('新增 6 个技能存在', () => {
+  it('新增 7 个技能存在', () => {
     const newIds = [
       'evoker_obsidian_scale',
       'evoker_azure_spear',
@@ -63,6 +63,7 @@ describe('evoker 技能数据完整性', () => {
       'evoker_time_spiral',
       'evoker_emerald_embrace',
       'evoker_emerald_cataclysm',
+      'evoker_firestorm',
     ];
     newIds.forEach(id => {
       expect(evokerSkills.find(s => s.id === id), `新技能 ${id} 应存在`).toBeDefined();

@@ -107,6 +107,20 @@ export const useShopStore = defineStore('shop', () => {
     soldItems.value = newMap;
   }
 
+  /**
+   * 整体替换 lastRefresh 触发响应式更新（P11-308 修复）
+   *
+   * 与 _replaceSoldItems 同理：Vue 3 的 `ref<Map>` 对 Map 的 `.set()` 不触发深层响应式，
+   * 因此创建新 Map 实例，在副本上修改后整体赋值。
+   *
+   * @param mutator - 在副本上执行的修改函数
+   */
+  function _replaceLastRefresh(mutator: (map: Map<string, number>) => void): void {
+    const newMap = new Map(lastRefresh.value);
+    mutator(newMap);
+    lastRefresh.value = newMap;
+  }
+
   // ==================== 计算属性 ====================
 
   /** 当前商店配置对象的快捷访问，未打开商店时返回 null */
@@ -185,8 +199,9 @@ export const useShopStore = defineStore('shop', () => {
     const storage = await shopDbService.getShopItemsStorage(shopId);
     if (storage && storage.items && storage.items.length > 0) {
       // BIZ-20: 恢复 lastRefresh 到内存 Map（与 init 中的恢复幂等，确保最新）
+      // P11-308 修复：通过 _replaceLastRefresh 触发 Vue 响应式
       if (typeof storage.lastRefresh === 'number') {
-        lastRefresh.value.set(shopId, storage.lastRefresh);
+        _replaceLastRefresh(newMap => newMap.set(shopId, storage.lastRefresh));
       }
       return storage.items;
     }
@@ -214,8 +229,9 @@ export const useShopStore = defineStore('shop', () => {
     const items = generateShopItems(config, allTemplates);
 
     // BIZ-20: 统一内存与 DB 中的 lastRefresh 时间戳
+    // P11-308 修复：通过 _replaceLastRefresh 触发 Vue 响应式
     const now = Date.now();
-    lastRefresh.value.set(shopId, now);
+    _replaceLastRefresh(newMap => newMap.set(shopId, now));
     await shopDbService.saveShopItems(shopId, items, now);
 
     return items;
@@ -261,12 +277,15 @@ export const useShopStore = defineStore('shop', () => {
       });
 
       // BIZ-20: 恢复各商店上次刷新时间戳，避免页面刷新后刷新检查被跳过
+      // P11-308 修复：通过 _replaceLastRefresh 触发 Vue 响应式
       const allStorages = await shopDbService.getAllShopItemsStorage();
-      for (const storage of allStorages) {
-        if (typeof storage.lastRefresh === 'number') {
-          lastRefresh.value.set(storage.shopId, storage.lastRefresh);
+      _replaceLastRefresh(newMap => {
+        for (const storage of allStorages) {
+          if (typeof storage.lastRefresh === 'number') {
+            newMap.set(storage.shopId, storage.lastRefresh);
+          }
         }
-      }
+      });
     } catch (err) {
       console.error('[ShopStore] 初始化失败:', err);
       errorHandler.report(err, '加载商店失败');
@@ -518,6 +537,24 @@ export const useShopStore = defineStore('shop', () => {
           shopId, totalPrice,
         });
       }
+      // P11-305 修复：回购路径回滚 soldItems（将被扣减的 quantity 加回，参照 sellItem catch 块对称逻辑）
+      if (isBuyback && soldMap) {
+        _replaceSoldItems(newMap => {
+          let innerMap = newMap.get(shopId);
+          if (!innerMap) {
+            // innerMap 因购买后变空被删除，需重建
+            innerMap = new Map();
+            newMap.set(shopId, innerMap);
+          }
+          const entry = innerMap.get(itemId);
+          if (entry) {
+            entry.quantity += quantity;
+          } else {
+            // entry 因购买后数量归零被删除，需重建
+            innerMap.set(itemId, { itemId, price: shopItem.price, quantity });
+          }
+        });
+      }
       useToast().show({
         message: '商店库存更新失败，已退还金币和物品',
         type: 'danger',
@@ -534,10 +571,11 @@ export const useShopStore = defineStore('shop', () => {
     eventBus.emit(GameEvents.SHOP_TRANSACTION, { shopId, itemId, quantity, totalPrice });
 
     // 6. 记录冒险日志
+    // P11-307 修复：await addLogEntry，避免 fire-and-forget 异步
     const itemTemplate = inventoryStore.getItemInfo(itemId);
     if (itemTemplate) {
       const qtyText = quantity > 1 ? ` x${quantity}` : '';
-      useLogStore().addLogEntry({
+      await useLogStore().addLogEntry({
         id: generateLogId(),
         timestamp: Date.now(),
         type: 'shop',
@@ -597,8 +635,33 @@ export const useShopStore = defineStore('shop', () => {
     const actualSellPrice = unitPrice * actualQuantity;
 
     // 4. 添加金币
+    // P11-301 修复：gainGold 包裹 try-catch，失败时回滚背包
     const characterStore = useCharacterStore();
-    await characterStore.gainGold(actualSellPrice);
+    try {
+      await characterStore.gainGold(actualSellPrice);
+    } catch (err) {
+      console.error('[ShopStore] sellItem gainGold 失败，回滚背包:', err);
+      errorReporter.report(err, 'manual', {
+        context: '商店出售添加金币失败，已回滚背包',
+        shopId, itemId, quantity: actualQuantity,
+      });
+      try {
+        inventoryStore.addItem(itemId, actualQuantity);
+        await inventoryStore.flushPersist();
+      } catch (rollbackErr) {
+        console.error('[ShopStore] sellItem 回滚背包失败:', rollbackErr);
+        errorReporter.report(rollbackErr, 'manual', {
+          context: '商店出售回滚背包失败，物品可能未恢复',
+          shopId, itemId, quantity: actualQuantity,
+        });
+      }
+      useToast().show({
+        message: '出售失败，已恢复物品',
+        type: 'danger',
+        duration: 3000
+      });
+      return false;
+    }
 
     // 5. 加入回购列表（ARCH-14：通过 _replaceSoldItems 整体替换触发响应式）
     // P5-010 修复：持久化阶段加 try-catch，失败时回滚背包和金币
@@ -680,8 +743,9 @@ export const useShopStore = defineStore('shop', () => {
     eventBus.emit(GameEvents.SHOP_TRANSACTION, { shopId, itemId, quantity: actualQuantity, sellPrice: actualSellPrice });
 
     // 8. 记录冒险日志
+    // P11-307 修复：await addLogEntry，避免 fire-and-forget 异步
     const qtyText = actualQuantity > 1 ? ` x${actualQuantity}` : '';
-    useLogStore().addLogEntry({
+    await useLogStore().addLogEntry({
       id: generateLogId(),
       timestamp: Date.now(),
       type: 'shop',

@@ -847,11 +847,11 @@ describe('useInventoryStore - 背包 Store', () => {
 
   // -------------------- Actions: dropItemsByIndices --------------------
   describe('Actions: dropItemsByIndices', () => {
-    it('空索引数组返回 false', () => {
+    it('空索引数组返回 false', async () => {
       const store = useInventoryStore();
       mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({ inventory: [inv('p1', 1)] });
-      expect(store.dropItemsByIndices([])).toBe(false);
+      expect(await store.dropItemsByIndices([])).toBe(false);
     });
 
     it('批量删除多个索引（从大到小 splice 避免索引偏移）', async () => {
@@ -861,29 +861,29 @@ describe('useInventoryStore - 背包 Store', () => {
         inventory: [inv('a', 1), inv('b', 1), inv('c', 1), inv('d', 1)],
       });
       // 删除索引 0 和 2（a 和 c），保留 b 和 d
-      expect(store.dropItemsByIndices([0, 2])).toBe(true);
+      expect(await store.dropItemsByIndices([0, 2])).toBe(true);
       expect(store.inventory).toEqual([inv('b', 1), inv('d', 1)]);
       await Promise.resolve();
       expect(inventoryDbService.saveInventory).toHaveBeenCalled();
     });
 
-    it('包含越界索引（>= length）时仅删除有效索引', () => {
+    it('包含越界索引（>= length）时仅删除有效索引', async () => {
       const store = useInventoryStore();
       mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
         inventory: [inv('a', 1), inv('b', 1)],
       });
-      expect(store.dropItemsByIndices([1, 99])).toBe(true);
+      expect(await store.dropItemsByIndices([1, 99])).toBe(true);
       expect(store.inventory).toEqual([inv('a', 1)]);
     });
 
-    it('包含负数索引时仅删除有效索引', () => {
+    it('包含负数索引时仅删除有效索引', async () => {
       const store = useInventoryStore();
       mocks.gameStore.currentCharacterId = 'char-1';
       store.$patch({
         inventory: [inv('a', 1), inv('b', 1), inv('c', 1)],
       });
-      expect(store.dropItemsByIndices([-1, 1])).toBe(true);
+      expect(await store.dropItemsByIndices([-1, 1])).toBe(true);
       expect(store.inventory).toEqual([inv('a', 1), inv('c', 1)]);
     });
   });

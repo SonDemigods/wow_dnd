@@ -68,7 +68,7 @@ export const RARITY_ORDER: Record<ItemRarity, number> = {
  * @returns 是否可堆叠到此槽位
  */
 export function canStackItem(item: Item, existingItem: InventoryItem): boolean {
-  return item.stackable && item.id === existingItem.itemId && existingItem.count < MAX_STACK;
+  return item.stackable && item.id === existingItem.itemId && existingItem.count < (item.maxStack ?? MAX_STACK);
 }
 
 /**

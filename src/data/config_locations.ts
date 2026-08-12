@@ -116,7 +116,7 @@ export const LOCATIONS: LocationData[] = [
     description: '暮光大陆极北的永冻冰川，峡谷间回荡着冰蓝龙族悠远的龙吟。温泉在冰雪中蒸腾起迷离的雾气，雪豹与雪怪在暴风雪中潜行，唯有最坚韧的冒险者方能在这种极端之地存活。',
     continent: 'kalimdor',
     enemies: ['mob_elemental', 'mob_ice_troll', 'mob_frost_serpent'],
-    bosses: ['boss_abyss_guard', 'boss_dragon_whelp', 'boss_death_lord'],
+    bosses: ['boss_abyss_guard', 'boss_dragon_whelp', 'boss_frost_wyrm'],
     levelRange: [14, 18],
     color: '#87ceeb',
     mapX: 27,

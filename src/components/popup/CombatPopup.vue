@@ -500,7 +500,7 @@ const consumableItems = computed(() => {
     return inventory
       .map((invItem, index) => {
         const info = inventoryStore.getItemInfo(invItem.itemId);
-        if (!info || !info.consumable) return null;
+        if (!info || info.kind !== 'consumable') return null;
         return {
           index,
           itemId: invItem.itemId,

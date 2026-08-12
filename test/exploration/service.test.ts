@@ -935,11 +935,11 @@ describe('generateGrid 边界分支覆盖', () => {
 
 describe('buildItemPool ?? 回退分支覆盖', () => {
   it('item.level 为 undefined 且 rarity 不在 RARITY_LEVEL_MAP 时 itemLevel 回退为 0', () => {
-    // Arrange：rarity='legendary' 不在 RARITY_LEVEL_MAP（仅含 common/uncommon/rare/epic）
+    // Arrange：rarity='mythic' 不在 RARITY_LEVEL_MAP（含 common/uncommon/rare/epic/legendary）
     // item.level ?? RARITY_LEVEL_MAP[item.rarity] ?? 0 → undefined ?? undefined ?? 0 → 0
     // 0 >= minLevel-1=0 && 0 <= maxLevel+2=7 → 合适
     const items = [
-      { id: 'unknown_rarity', rarity: 'legendary' },
+      { id: 'unknown_rarity', rarity: 'mythic' },
     ];
     // Act
     const pool = buildItemPool(items, 1, 5);

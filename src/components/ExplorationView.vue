@@ -314,14 +314,18 @@ function onDrag(e: MouseEvent) {
   if (!isDragging.value) return;
   cancelAnimationFrame(rafId);
   rafId = requestAnimationFrame(() => {
+    // P11-600 修复：阈值仅用于判定 drag vs click，一旦 hasDragged 为 true 就持续更新 pan
     const dx = e.clientX - (startX.value + panX.value);
     const dy = e.clientY - (startY.value + panY.value);
-    // 移动超过阈值后才实际拖动
-    if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
-      hasDragged.value = true;
-      panX.value = e.clientX - startX.value;
-      panY.value = e.clientY - startY.value;
+    if (!hasDragged.value) {
+      if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+        hasDragged.value = true;
+      } else {
+        return;
+      }
     }
+    panX.value = e.clientX - startX.value;
+    panY.value = e.clientY - startY.value;
   });
   e.preventDefault();
 }

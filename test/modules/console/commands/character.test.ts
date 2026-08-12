@@ -22,6 +22,8 @@ const characterMock = {
   reset: vi.fn().mockResolvedValue(undefined),
   resurrect: vi.fn().mockResolvedValue(undefined),
   applyBonus: vi.fn().mockResolvedValue(undefined),
+  persistCharacter: vi.fn().mockResolvedValue(undefined),
+  character: null as { level: number; exp: number; expToNextLevel: number } | null,
   level: 1,
   currentCharacterId: 'c1',
   effectiveStats: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
@@ -48,6 +50,8 @@ describe('console/commands/character - 角色类命令', () => {
     // 重置 character mock 的 level 默认值
     characterMock.level = 1;
     characterMock.currentCharacterId = 'c1';
+    // P11-503：level 降级命令通过 store.character 直接修改属性
+    characterMock.character = { level: 5, exp: 100, expToNextLevel: 500 };
     characterMock.getCharacterData.mockReturnValue({
       id: 'c1', name: 'Hero', level: 5,
       hp: 50, maxHp: 100, mana: 30, maxMana: 60,
@@ -83,22 +87,23 @@ describe('console/commands/character - 角色类命令', () => {
       expect(characterMock.gainGold).toHaveBeenCalledWith(100);
     });
 
-    it('负数也接受（gainGold 内部处理）', async () => {
+    it('负数返回失败（P11-506：gold 需正整数）', async () => {
       const result = await exec('gold -50');
-      expect(result.success).toBe(true);
-      expect(characterMock.gainGold).toHaveBeenCalledWith(-50);
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('请输入有效的正整数');
+      expect(characterMock.gainGold).not.toHaveBeenCalled();
     });
 
     it('非数字参数返回失败', async () => {
       const result = await exec('gold abc');
-      expect(result).toEqual({ success: false, message: '请输入有效的数字' });
+      expect(result).toEqual({ success: false, message: '请输入有效的正整数' });
       expect(characterMock.gainGold).not.toHaveBeenCalled();
     });
 
     it('缺少参数时 parseInt 返回 NaN 失败', async () => {
       const result = await exec('gold');
       expect(result.success).toBe(false);
-      expect(result.message).toBe('请输入有效的数字');
+      expect(result.message).toBe('请输入有效的正整数');
     });
   });
 
@@ -210,13 +215,12 @@ describe('console/commands/character - 角色类命令', () => {
       expect(characterMock.gainExp).not.toHaveBeenCalled();
     });
 
-    it('降低等级时先 reset 再加回经验', async () => {
+    it('降低等级时仅调整等级和经验值（P11-503：不调用 reset）', async () => {
       characterMock.level = 10;
-      // reset 后 level 应被 game logic 设为 1，此处不模拟，仅断言调用
       const result = await exec('level 3');
       expect(result.success).toBe(true);
-      expect(characterMock.reset).toHaveBeenCalled();
-      expect(characterMock.gainExp).toHaveBeenCalled();
+      expect(characterMock.reset).not.toHaveBeenCalled();
+      expect(characterMock.persistCharacter).toHaveBeenCalled();
     });
 
     it('升高等级时直接累加差额经验', async () => {

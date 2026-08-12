@@ -141,6 +141,7 @@ export function getCommands(): Map<string, CommandDef> {
 export function rarityColorKey(rarity: string): string {
   const map: Record<string, string> = {
     // common: STYLE.rarity.common,
+    common: STYLE.rarity.common,
     uncommon: STYLE.rarity.uncommon,
     rare: STYLE.rarity.rare,
     epic: STYLE.rarity.epic,

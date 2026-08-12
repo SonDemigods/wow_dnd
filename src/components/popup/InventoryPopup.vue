@@ -370,7 +370,8 @@ function selectCategory(catId: string) {
  */
 async function doOrganize() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_organize' });
-  inventoryStore.organizeInventory();
+  // P11-601 修复：await organizeInventory 完成后再 loadInventory，避免竞态条件
+  await inventoryStore.organizeInventory();
   await loadInventory();
   selectedEntry.value = null;
   toast.show({ message: '背包已整理', type: 'success', icon: '📋' });
@@ -470,33 +471,37 @@ function equipItem(itemId: string) {
 }
 
 async function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
-  const success = await equipmentStore.equipItem(slot, item);
-  if (success) {
-    // 装备槽填充动画（如果角色面板打开）
-    // P3 TS-13 修复：使用 instanceof 守卫收窄 HTMLElement 类型，替代 as 断言
-    const slotElRaw = document.querySelector(`[data-equip-slot="${slot}"]`);
-    if (slotElRaw instanceof HTMLElement) {
-      slotElRaw.classList.add('equip-anim-fill');
-      // P2 BIZ-9 修复：使用 registerAnimCleanup 跟踪监听器，弹窗卸载时主动清理
-      registerAnimCleanup(slotElRaw, () => {
-        slotElRaw.classList.remove('equip-anim-fill');
+  // P11-602 修复：用 try/finally 确保弹窗状态始终被清理
+  try {
+    const success = await equipmentStore.equipItem(slot, item);
+    if (success) {
+      // 装备槽填充动画（如果角色面板打开）
+      // P3 TS-13 修复：使用 instanceof 守卫收窄 HTMLElement 类型，替代 as 断言
+      const slotElRaw = document.querySelector(`[data-equip-slot="${slot}"]`);
+      if (slotElRaw instanceof HTMLElement) {
+        slotElRaw.classList.add('equip-anim-fill');
+        // P2 BIZ-9 修复：使用 registerAnimCleanup 跟踪监听器，弹窗卸载时主动清理
+        registerAnimCleanup(slotElRaw, () => {
+          slotElRaw.classList.remove('equip-anim-fill');
+        });
+      }
+      toast.show({
+        message: `已装备 ${item.name} 到 ${SLOT_CONFIG[slot].name}`,
+        type: 'success',
+        icon: '🛡️'
+      });
+      await loadInventory();
+      selectedEntry.value = null;
+    } else {
+      toast.show({
+        message: '装备失败，可能等级不足或槽位不匹配',
+        type: 'warning'
       });
     }
-    toast.show({
-      message: `已装备 ${item.name} 到 ${SLOT_CONFIG[slot].name}`,
-      type: 'success',
-      icon: '🛡️'
-    });
-    loadInventory();
-    selectedEntry.value = null;
-  } else {
-    toast.show({
-      message: '装备失败，可能等级不足或槽位不匹配',
-      type: 'warning'
-    });
+  } finally {
+    showSlotSelect.value = false;
+    pendingEquipItem.value = null;
   }
-  showSlotSelect.value = false;
-  pendingEquipItem.value = null;
 }
 
 function selectEquipSlot(slot: EquipmentSlot) {
@@ -518,7 +523,7 @@ function dropItem(itemId: string) {
   showDropConfirm.value = true;
 }
 
-function confirmDrop() {
+async function confirmDrop() {
   const itemId = pendingDropItemId.value;
   if (!itemId) return;
 
@@ -526,14 +531,15 @@ function confirmDrop() {
   // 优先丢弃选中的那一组
   const index = findSelectedOrFirstIndex(itemId);
   if (index !== -1) {
-    inventoryStore.removeItemByIndex(index);
+    // P11-601 修复：await removeItemByIndex 完成后再 loadInventory，避免竞态条件
+    await inventoryStore.removeItemByIndex(index);
     eventBus.emit(GameEvents.ITEM_DROPPED, { itemId });
     toast.show({
       message: `已丢弃 ${info?.name || '物品'}`,
       type: 'info',
       icon: '🗑️'
     });
-    loadInventory();
+    await loadInventory();
     selectedEntry.value = null;
   }
 

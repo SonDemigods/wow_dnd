@@ -159,9 +159,13 @@ export const useAdminStore = defineStore('admin', () => {
     }
 
     if (result.success) {
-      // P9-016 修复：物品模板/套装定义表修改后失效缓存，确保运行时读取最新数据
-      if (tableName === 'config_equipment_items' || tableName === 'config_set_definitions') {
-        configCache.invalidate(tableName === 'config_set_definitions' ? 'sets' : undefined);
+      // P11-501 修复：按表名精准失效 ConfigCache 对应缓存
+      if (tableName === 'config_class_talents') {
+        configCache.invalidate('talents');
+      } else if (tableName === 'config_class_passives') {
+        configCache.invalidate('passives');
+      } else if (tableName === 'config_set_definitions') {
+        configCache.invalidate('sets');
       }
       closeForm();
       await loadTableData();
@@ -176,9 +180,13 @@ export const useAdminStore = defineStore('admin', () => {
   async function deleteRecord(tableName: string, id: string): Promise<boolean> {
     const result = await adminService.delete(tableName, id);
     if (result.success) {
-      // P9-016 修复：物品模板/套装定义表删除后失效缓存
-      if (tableName === 'config_equipment_items' || tableName === 'config_set_definitions') {
-        configCache.invalidate(tableName === 'config_set_definitions' ? 'sets' : undefined);
+      // P11-501 修复：按表名精准失效 ConfigCache 对应缓存
+      if (tableName === 'config_class_talents') {
+        configCache.invalidate('talents');
+      } else if (tableName === 'config_class_passives') {
+        configCache.invalidate('passives');
+      } else if (tableName === 'config_set_definitions') {
+        configCache.invalidate('sets');
       }
       await loadTableData();
       return true;

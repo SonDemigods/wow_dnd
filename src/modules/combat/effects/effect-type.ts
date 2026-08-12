@@ -20,13 +20,14 @@ export type EffectType =
   | 'speed_up'     // 速度上升
   | 'speed_down'   // 速度下降
   | 'regen'        // 恢复：每回合回血
-  | 'vulnerable';  // 易伤：受到的伤害增加
+  | 'vulnerable'   // 易伤：受到的伤害增加
+  | 'thorn';       // 反伤：反弹受到的伤害
 
 /** P4-022 修复：EffectType 值集合，供运行时校验使用 */
 const EFFECT_TYPE_VALUES: ReadonlySet<string> = new Set([
   'poison', 'burn', 'stun', 'freeze', 'silence', 'shield',
   'attack_up', 'attack_down', 'defense_up', 'defense_down',
-  'speed_up', 'speed_down', 'regen', 'vulnerable',
+  'speed_up', 'speed_down', 'regen', 'vulnerable', 'thorn',
 ]);
 
 /**

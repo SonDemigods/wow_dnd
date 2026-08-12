@@ -11,7 +11,7 @@ import type { PassiveSkill } from '@/modules/character/types';
  * 全职业被动技能列表
  *
  * 设计原则：
- * 1. 每个职业 3 个被动，覆盖不同触发时机（战斗开始/攻击/受伤/低血量/被动）
+ * 1. 每个职业 6 个被动，覆盖不同触发时机（战斗开始/攻击/受伤/低血量/被动）
  * 2. 效果类型多样化（属性修正/资源生成/减伤/治疗）
  * 3. 数值遵循 WoW 风格：百分比用小数（0.2 = 20%）
  *
@@ -1142,7 +1142,7 @@ export const CLASS_PASSIVES: PassiveSkill[] = [
 /**
  * 根据职业 ID 获取其专属被动技能列表
  * @param classId - 职业 ID
- * @returns 该职业的被动技能数组（通常为 3 个）
+ * @returns 该职业的被动技能数组（通常为 6 个）
  */
 export function getPassivesByClassId(classId: string): PassiveSkill[] {
   return CLASS_PASSIVES.filter(p => p.classId === classId);

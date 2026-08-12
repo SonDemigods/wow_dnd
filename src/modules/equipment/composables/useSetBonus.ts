@@ -38,23 +38,20 @@ export function useSetBonus(state: EquipmentState) {
 
     // P5-024 修复：先收集需移除/需应用的项目，任一步失败时回滚已应用的部分并重建状态，
     // 避免出现部分 bonus 增减却 appliedSetBonuses 未同步导致的重复累计错误。
-    try {
-      for (const b of appliedSetBonuses.value) {
-        if (!currentKeys.has(buildKey(b))) {
-          await characterStore.removeBonus({ [b.stat]: b.value } as Partial<Stats>);
-        }
+    // P11-102 修复：若下方 applyBonus/removeBonus 抛出异常，错误直接传播，
+    // appliedSetBonuses 保持旧值不变（不到达下方赋值行），让调用方回滚装备后
+    // 重新触发完整的 reapplySetBonuses 重建正确基线。
+    for (const b of appliedSetBonuses.value) {
+      if (!currentKeys.has(buildKey(b))) {
+        await characterStore.removeBonus({ [b.stat]: b.value } as Partial<Stats>);
       }
+    }
 
-      for (const s of currentStats) {
-        const key = buildKey(s);
-        if (!appliedKeys.has(key)) {
-          await characterStore.applyBonus({ [s.stat]: s.value } as Partial<Stats>);
-        }
+    for (const s of currentStats) {
+      const key = buildKey(s);
+      if (!appliedKeys.has(key)) {
+        await characterStore.applyBonus({ [s.stat]: s.value } as Partial<Stats>);
       }
-    } catch (err) {
-      // 失败时重建 appliedSetBonuses 为当前实际状态（尽力而为），避免下次 diff 重复增删
-      appliedSetBonuses.value = currentStats;
-      throw err;
     }
 
     appliedSetBonuses.value = currentStats;
