@@ -15,7 +15,6 @@ import {
   calculateMagicDefense,
   calculateCritChance,
   calculateDodgeChance,
-  calculateMpBonus,
   calculateHealBonus,
   getExpForLevel
 } from '@/utils/calculations';
@@ -96,7 +95,6 @@ export function computeAttributes(stats: Stats, primaryStat: keyof Stats = 'dex'
     magicDefense: calculateMagicDefense(stats),
     critChance: calculateCritChance(stats, primaryStat),
     dodgeChance: calculateDodgeChance(stats),
-    mpBonus: calculateMpBonus(stats),
     healBonus: calculateHealBonus(stats)
   };
 }

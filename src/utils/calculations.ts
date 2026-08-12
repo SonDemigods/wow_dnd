@@ -123,15 +123,6 @@ export function calculateDodgeChance(stats: Stats): number {
 }
 
 /**
- * 计算每级MP加成
- * @param {Stats} stats - 角色主属性对象
- * @returns {number} 每级MP加成
- */
-export function calculateMpBonus(stats: Stats): number {
-  return stats.int + stats.wis + stats.cha;
-}
-
-/**
  * 计算生命恢复加成
  * @param {Stats} stats - 角色主属性对象
  * @returns {number} 生命恢复加成
@@ -155,7 +146,6 @@ export interface Attributes {
   maxHp: number;
   maxMana: number;
   healBonus: number;
-  mpBonus: number;
 }
 
 /**
@@ -174,8 +164,7 @@ export function calculateAllAttributes(stats: Stats, primaryStat: keyof Stats): 
     dodgeChance: calculateDodgeChance(stats),
     maxHp: calculateMaxHp(stats),
     maxMana: calculateMaxMana(stats),
-    healBonus: calculateHealBonus(stats),
-    mpBonus: calculateMpBonus(stats)
+    healBonus: calculateHealBonus(stats)
   };
 }
 

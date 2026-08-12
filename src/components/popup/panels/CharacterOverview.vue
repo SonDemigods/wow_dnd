@@ -24,28 +24,28 @@
         <div class="secondary-item attack">
           <BaseIcon name="sword-clash" gradient="physical" :size="14" />
           <div class="secondary-info">
-            <div class="secondary-label">物理攻击</div>
+            <div class="secondary-label">物理强度</div>
             <div class="secondary-value">{{ attributes.physicalAttack }}</div>
           </div>
         </div>
         <div class="secondary-item defense">
           <BaseIcon name="shield" gradient="earth" :size="14" />
           <div class="secondary-info">
-            <div class="secondary-label">物理防御</div>
+            <div class="secondary-label">物理韧性</div>
             <div class="secondary-value">{{ attributes.physicalDefense }}</div>
           </div>
         </div>
         <div class="secondary-item magic-attack">
           <BaseIcon name="magic-swirl" gradient="magic" :size="14" />
           <div class="secondary-info">
-            <div class="secondary-label">魔法攻击</div>
+            <div class="secondary-label">魔法强度</div>
             <div class="secondary-value">{{ attributes.magicAttack }}</div>
           </div>
         </div>
         <div class="secondary-item magic-defense">
           <BaseIcon name="magic-shield" gradient="magic" :size="14" />
           <div class="secondary-info">
-            <div class="secondary-label">魔法防御</div>
+            <div class="secondary-label">魔法韧性</div>
             <div class="secondary-value">{{ attributes.magicDefense }}</div>
           </div>
         </div>
@@ -61,6 +61,13 @@
           <div class="secondary-info">
             <div class="secondary-label">闪避率</div>
             <div class="secondary-value">{{ attributes.dodgeChance }}%</div>
+          </div>
+        </div>
+        <div class="secondary-item heal">
+          <BaseIcon name="healing" gradient="heal" :size="14" />
+          <div class="secondary-info">
+            <div class="secondary-label">治疗强度</div>
+            <div class="secondary-value">{{ attributes.healBonus }}</div>
           </div>
         </div>
       </div>
@@ -236,6 +243,7 @@ onMounted(async () => {
 .secondary-item.magic-defense { border-left-color: #fd79a8; }
 .secondary-item.crit { border-left-color: #fdcb6e; }
 .secondary-item.dodge { border-left-color: #74b9ff; }
+.secondary-item.heal { border-left-color: #2ecc71; }
 
 .secondary-info { flex: 1; }
 .secondary-label { font-size: @font-sm; color: @text-secondary; margin-bottom: 2px; }

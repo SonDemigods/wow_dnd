@@ -6,7 +6,7 @@
  * - calculatePhysicalAttack / calculatePhysicalDefense
  * - calculateMagicAttack / calculateMagicDefense
  * - calculateCritChance / calculateDodgeChance（含上限校验）
- * - calculateMpBonus / calculateHealBonus
+ * - calculateHealBonus
  * - calculateAllAttributes 聚合函数
  * - getExpForLevel 等级经验查询（含边界）
  *
@@ -22,7 +22,6 @@ import {
   calculateMagicDefense,
   calculateCritChance,
   calculateDodgeChance,
-  calculateMpBonus,
   calculateHealBonus,
   calculateAllAttributes,
   getExpForLevel,
@@ -127,13 +126,6 @@ describe('calculateDodgeChance 闪避率', () => {
   });
 });
 
-describe('calculateMpBonus 每级MP加成', () => {
-  it('公式：int + wis + cha', () => {
-    const stats = makeStats({ int: 10, wis: 10, cha: 10 });
-    expect(calculateMpBonus(stats)).toBe(30);
-  });
-});
-
 describe('calculateHealBonus 生命恢复加成', () => {
   it('公式：floor(wis*0.2 + cha*0.1)', () => {
     const stats = makeStats({ wis: 10, cha: 10 });
@@ -154,7 +146,6 @@ describe('calculateAllAttributes 聚合计算', () => {
     expect(result).toHaveProperty('maxHp');
     expect(result).toHaveProperty('maxMana');
     expect(result).toHaveProperty('healBonus');
-    expect(result).toHaveProperty('mpBonus');
   });
 
   it('聚合结果与单独调用一致', () => {

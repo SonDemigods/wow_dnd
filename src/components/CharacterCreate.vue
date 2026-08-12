@@ -179,22 +179,22 @@
           <div class="secondary-attrs">
             <div class="sec-attr">
               <BaseIcon name="sword-clash" gradient="physical" :size="14" />
-              <span>物理攻击</span>
+              <span>物理强度</span>
               <strong>{{ derivedAttributes.physicalAttack }}</strong>
             </div>
             <div class="sec-attr">
               <BaseIcon name="shield" gradient="earth" :size="14" />
-              <span>物理防御</span>
+              <span>物理韧性</span>
               <strong>{{ derivedAttributes.physicalDefense }}</strong>
             </div>
             <div class="sec-attr">
               <BaseIcon name="magic-swirl" gradient="magic" :size="14" />
-              <span>魔法攻击</span>
+              <span>魔法强度</span>
               <strong>{{ derivedAttributes.magicAttack }}</strong>
             </div>
             <div class="sec-attr">
               <BaseIcon name="magic-shield" gradient="magic" :size="14" />
-              <span>魔法防御</span>
+              <span>魔法韧性</span>
               <strong>{{ derivedAttributes.magicDefense }}</strong>
             </div>
             <div class="sec-attr">
