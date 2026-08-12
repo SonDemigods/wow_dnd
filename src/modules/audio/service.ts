@@ -262,7 +262,9 @@ class AudioService implements IAudioService {
     if (store.effectiveBgmVolume === 0) {
       this.bgmSynth.stopBgmOscillator();
     } else if (this.bgmSynth.getCurrentScene() && !this.bgmSynth.isBgmOscRunning()) {
-      this.bgmSynth.startBgmOscillator();
+      // P12-016 修复：传入当前场景对应的振荡器频率，而非使用默认值 37
+      const sceneFreq = this.getSceneOscillatorFreq(this.bgmSynth.getCurrentScene());
+      this.bgmSynth.startBgmOscillator(sceneFreq);
     }
   }
 
@@ -270,6 +272,19 @@ class AudioService implements IAudioService {
   private dbFromLinear(value: number): number {
     if (value <= 0) return -80; // P10-022 修复：固定最小 dB，避免 -Infinity 传给 Tone.js 导致异常
     return 20 * Math.log10(value);
+  }
+
+  /** P12-016 修复：获取场景对应的 BGM 振荡器频率（与 bgmSynth 各场景实现中的频率一致） */
+  private getSceneOscillatorFreq(scene: string | null): number {
+    switch (scene) {
+      case 'main_menu': return 36;
+      case 'exploration': return 37;
+      case 'combat': return 33;
+      case 'shop': return 44;
+      case 'victory': return 37;
+      case 'defeat': return 33;
+      default: return 37;
+    }
   }
 
   // ==================== 公共 API ====================

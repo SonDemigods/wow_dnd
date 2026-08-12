@@ -44,6 +44,8 @@ export interface FormStoreContext {
   applyBonus: (delta: Partial<Stats>) => Promise<void>;
   /** 移除属性加成（正值 delta，表示要移除的量） */
   removeBonus: (delta: Partial<Stats>) => Promise<void>;
+  /** P12-006 修复：设置形态 HP 倍率 */
+  setFormHpMultiplier: (multiplier: number) => void;
   /** 添加冒险日志条目 */
   addLogEntry: (entry: LogEntry) => void;
 }
@@ -93,6 +95,8 @@ export const useFormStore = defineStore('druidForm', () => {
 
   /** 形态系统完整状态 */
   const formState = ref<FormState>(createInitialFormState());
+  // P12-007 修复：防重入标志
+  let isSwitching = false;
 
   // ==================== 计算属性 ====================
 
@@ -143,6 +147,8 @@ export const useFormStore = defineStore('druidForm', () => {
    */
   function reset(): void {
     formState.value = createInitialFormState();
+    // P12-006 修复：退出战斗时重置形态 HP 倍率
+    formCtx?.setFormHpMultiplier(1);
   }
 
   // ==================== Action：形态切换 ====================
@@ -163,6 +169,10 @@ export const useFormStore = defineStore('druidForm', () => {
    * @returns `{ success, reason? }` — 成功仅返回 `{ success: true }`；失败返回 `{ success: false, reason }`
    */
   async function switchTo(targetForm: DruidFormType): Promise<{ success: boolean; reason?: string }> {
+    // P12-007 修复：防重入
+    if (isSwitching) return { success: false, reason: '正在切换形态中' };
+    isSwitching = true;
+    try {
     if (!formCtx) {
       // P9-077 修复：未注入外部上下文时显式报错，而非静默失败
       console.error('[FormsStore] formCtx 未注入，请先调用 setFormContext()');
@@ -210,6 +220,9 @@ export const useFormStore = defineStore('druidForm', () => {
     // 更新形态状态
     formState.value = switchForm(formState.value, targetForm);
 
+    // P12-006 修复：应用 HP 倍率（熊形态 +30% HP 等）
+    formCtx.setFormHpMultiplier(newForm.modifiers.hpMultiplier);
+
     // 记录冒险日志
     formCtx.addLogEntry({
       id: generateLogId(),
@@ -219,7 +232,10 @@ export const useFormStore = defineStore('druidForm', () => {
       icon: newForm.icon
     });
 
-    return { success: true };
+      return { success: true };
+    } finally {
+      isSwitching = false;
+    }
   }
 
   /**

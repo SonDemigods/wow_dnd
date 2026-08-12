@@ -66,8 +66,10 @@ export function useShopTransactions(options: UseShopTransactionsOptions) {
 
   /** 购买数量 */
   const buyQuantity = ref(1);
-  /** 出售数量 */
+
   const sellQuantity = ref(1);
+  // P12-018 修复：防重入标志
+  const isBusy = ref(false);
 
   // ==================== 计算属性 ====================
 
@@ -107,6 +109,8 @@ export function useShopTransactions(options: UseShopTransactionsOptions) {
   /** 金币是否足够购买当前选中商品 × 当前数量 */
   function canAffordBuy(): boolean {
     if (!selectedBuyEntry.value) return false;
+    // P12-020 修复：校验库存 > 0，缺货时禁止购买
+    if (buyMaxQuantity.value <= 0) return false;
     return gold.value >= selectedBuyEntry.value.price * buyQuantity.value;
   }
 
@@ -173,6 +177,8 @@ export function useShopTransactions(options: UseShopTransactionsOptions) {
 
   /** 购买当前选中商品，成功后重置选中并触发金币闪烁 */
   async function handleBuy(itemId: string): Promise<void> {
+    if (isBusy.value) return;
+    isBusy.value = true;
     eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_buy' });
     // P7-005 修复：try/catch 防止 Dexie 操作异常导致 unhandled rejection
     try {
@@ -190,11 +196,15 @@ export function useShopTransactions(options: UseShopTransactionsOptions) {
       selectedBuyEntry.value = null;
       buySelectedIndex.value = -1;
       buyQuantity.value = 1;
+    } finally {
+      isBusy.value = false;
     }
   }
 
   /** 出售当前选中物品，成功后重置选中并触发金币闪烁 */
   async function handleSell(itemId: string): Promise<void> {
+    if (isBusy.value) return;
+    isBusy.value = true;
     eventBus.emit(GameEvents.UI_CLICK, { source: 'shop_sell' });
     // P7-005 修复：try/catch 防止 Dexie 操作异常导致 unhandled rejection
     try {
@@ -212,6 +222,8 @@ export function useShopTransactions(options: UseShopTransactionsOptions) {
       selectedSellEntry.value = null;
       sellSelectedIndex.value = -1;
       sellQuantity.value = 1;
+    } finally {
+      isBusy.value = false;
     }
   }
 
@@ -235,6 +247,7 @@ export function useShopTransactions(options: UseShopTransactionsOptions) {
     sellSelectedIndex,
     buyQuantity,
     sellQuantity,
+    isBusy,
     gold,
     // 计算属性
     buyMaxQuantity,

@@ -309,9 +309,11 @@ function toggleMultiSelect(fieldKey: string, value: string) {
 }
 
 // 监听 initialData 变化，初始化表单数据
+// P12-027 修复：同时监听 visible，防止 null→null 不触发 watch 导致残留旧数据
 watch(
-  () => props.initialData,
-  (data) => {
+  [() => props.initialData, () => props.visible],
+  ([data, visible]) => {
+    if (!visible) return;
     // 先清空
     Object.keys(formData).forEach(key => delete formData[key]);
     // 重置 JSON 编辑器状态，防止切换记录时残留旧数据

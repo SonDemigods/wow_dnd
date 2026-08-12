@@ -64,6 +64,8 @@ describe('德鲁伊形态系统 Store', () => {
       receiveHeal: mocks.characterStore.receiveHeal,
       applyBonus: mocks.characterStore.applyBonus,
       removeBonus: mocks.characterStore.removeBonus,
+      // P12-006 修复：测试更新 — 补充 setFormHpMultiplier
+      setFormHpMultiplier: vi.fn(),
       addLogEntry: mocks.logStore.addLogEntry,
     });
   });

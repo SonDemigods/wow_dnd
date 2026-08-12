@@ -142,7 +142,8 @@ const statAndDefenseExecutors: Record<StatAndDefenseMechanic, MechanicExecutor> 
     // 阶段二修复：shieldAmount:0 是合法值（清空护盾），不应被默认值覆盖
     const shieldAmount = params?.shieldAmount ?? 30;
     // P8-401 修复：shieldAmount=0 时清空护盾（与注释语义一致），其余追加
-    boss.runtime.shield = shieldAmount === 0 ? 0 : (boss.runtime.shield ?? 0) + shieldAmount;
+    // P12-009 修复：钳制护盾下界为 0，防止负护盾值
+    boss.runtime.shield = shieldAmount === 0 ? 0 : Math.max(0, (boss.runtime.shield ?? 0) + shieldAmount);
   },
   /** 反弹伤害：设置反弹比例（默认 20%） */
   reflect_damage: (boss, params) => {
@@ -299,4 +300,10 @@ export function applyPhaseStats(boss: BossInstance, phase: BossPhase): void {
   if (m.magicAttack !== undefined) boss.base.magicAttack = Math.round((orig.magicAttack ?? 10) * m.magicAttack);
   if (m.physicalDefense !== undefined) boss.base.physicalDefense = Math.round((orig.physicalDefense ?? 5) * m.physicalDefense);
   if (m.magicDefense !== undefined) boss.base.magicDefense = Math.round((orig.magicDefense ?? 5) * m.magicDefense);
+
+  // P12-008 修复：阶段切换后重新应用狂暴倍率，防止 applyPhaseStats 从快照重算时清除 enrage 效果
+  if (boss.runtime.enraged) {
+    const enrageMultiplier = 1.5; // 与 enrage 执行器默认值一致
+    boss.base.physicalAttack = Math.round((boss.base.physicalAttack ?? 10) * enrageMultiplier);
+  }
 }

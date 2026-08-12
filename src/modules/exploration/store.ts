@@ -855,9 +855,10 @@ export const useExplorationStore = defineStore('exploration', () => {
     if (result.campUsed) {
       campUsed.value = true;
       // P8-021 修复：通过 playerPosition 获取真实营地格并标记 completed
+      // P12-011 修复：仅当当前格为 rest 类型时才标记 completed，避免误标记非营地格
       const pos = playerPosition.value;
       const cell = grid.value[pos.y]?.[pos.x];
-      if (cell) {
+      if (cell && cell.type === 'rest') {
         cell.completed = true;
         refreshGrid();
       }

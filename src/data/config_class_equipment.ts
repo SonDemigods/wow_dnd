@@ -482,7 +482,10 @@ const CLASS_EQUIPMENT_ITEMS: EquipmentItem[] = CLASS_EQUIPMENT_DRAFTS.map(item =
   consumable: false as const,
   // plan.md §3.4：套装部件（有 setId）追加 setMember 能力；独立装备用普通装备能力组合。
   // 配置层按 setId 显式选择能力常量，非运行期派生。
-  capabilities: item.setId ? CLASS_SET_MEMBER_CAPABILITIES : CLASS_EQUIPMENT_CAPABILITIES,
+  // P12-002 修复：法杖（staff）注入含 usable 的能力组合，与 config_equipment_items.ts 保持一致
+  capabilities: item.subtype === 'staff'
+    ? ([...CLASS_EQUIPMENT_CAPABILITIES, 'usable'] as Capability[])
+    : (item.setId ? CLASS_SET_MEMBER_CAPABILITIES : CLASS_EQUIPMENT_CAPABILITIES),
   slots: deriveSlots(item.subtype),
   occupies: SUBTYPE_OCCUPIES[item.subtype] ?? deriveSlots(item.subtype)
 }));

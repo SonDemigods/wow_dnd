@@ -265,11 +265,11 @@ export function usePlayerSkill(
           // BIZ-4：暴击判定（每个敌人独立判定，与 playerAttack 保持一致）
           // P3-146：传入 statModifiers 让 crit_chance / crit_damage_multiplier 生效
           const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
-          // 天赋 damage_multiplier 加成
+          // 天赋 damage_multiplier 加成 + P12-006 形态 damageMultiplier
           const talentDmgMult = ctx.talent.damageMultiplier;
-          const preCritDmg = talentDmgMult > 0
-            ? Math.floor(pipeResult.finalDamage * (1 + talentDmgMult))
-            : pipeResult.finalDamage;
+          const formDmgMult = ctx.form.damageMultiplier;
+          const combinedMult = (talentDmgMult > 0 ? 1 + talentDmgMult : 1) * formDmgMult;
+          const preCritDmg = Math.floor(pipeResult.finalDamage * combinedMult);
           const aoeDamage = Math.floor(preCritDmg * critMultiplier);
           // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
           const { damage: actualAoeDamage } = boss.applyBossDefenseMechanics(e, aoeDamage);
@@ -382,11 +382,11 @@ export function usePlayerSkill(
         // BIZ-4：暴击判定（与 playerAttack 保持一致）
         // P3-146：传入 statModifiers 让 crit_chance / crit_damage_multiplier 生效
         const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
-        // 天赋 damage_multiplier 加成
+        // 天赋 damage_multiplier 加成 + P12-006 形态 damageMultiplier
         const talentDmgMult = ctx.talent.damageMultiplier;
-        const preCritDmg = talentDmgMult > 0
-          ? Math.floor(pipeResult.finalDamage * (1 + talentDmgMult))
-          : pipeResult.finalDamage;
+        const formDmgMult = ctx.form.damageMultiplier;
+        const combinedMult = (talentDmgMult > 0 ? 1 + talentDmgMult : 1) * formDmgMult;
+        const preCritDmg = Math.floor(pipeResult.finalDamage * combinedMult);
         const skillDamage = Math.floor(preCritDmg * critMultiplier);
 
         // BIZ-6：应用 BOSS 防御机制（无敌/护盾）
@@ -585,11 +585,11 @@ export function usePlayerSkill(
       const statModifiers = passive.getStatModifiers();
       const healBonus = ctx.character.attributes.healBonus ?? 0;
       const { isCrit: healCrit, multiplier: healCritMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
-      // P4-017：天赋 damageMultiplier 对治疗生效（与伤害对齐）
+      // P4-017：天赋 damageMultiplier 对治疗生效（与伤害对齐）+ P12-006 形态 damageMultiplier
       const talentDmgMult = ctx.talent.damageMultiplier;
-      const preHeal = talentDmgMult > 0
-        ? Math.floor(result.heal * (1 + talentDmgMult))
-        : result.heal;
+      const formDmgMult = ctx.form.damageMultiplier;
+      const combinedHealMult = (talentDmgMult > 0 ? 1 + talentDmgMult : 1) * formDmgMult;
+      const preHeal = Math.floor(result.heal * combinedHealMult);
       const finalHeal = Math.floor(preHeal * (1 + healBonus / HEAL_BONUS_DIVISOR) * healCritMultiplier);
       // mana_restore 的 MP 已在 castSkill 中恢复，此处仅对 health_restore 调用 receiveHeal
       if (!isManaRestore) {

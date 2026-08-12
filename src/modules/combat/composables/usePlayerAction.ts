@@ -221,10 +221,11 @@ export function usePlayerAction(
     // P3-146：传入 statModifiers 让 crit_chance / crit_damage_multiplier 生效
     const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
     // 天赋 damage_multiplier 加成（通过 ctx.talent 统一访问，保持测试隔离）
+    // P12-006 修复：叠加形态 damageMultiplier（德鲁伊变形）
     const talentDmgMult = ctx.talent.damageMultiplier;
-    const preCritDamage = talentDmgMult > 0
-      ? Math.floor(pipeResult.finalDamage * (1 + talentDmgMult))
-      : pipeResult.finalDamage;
+    const formDmgMult = ctx.form.damageMultiplier;
+    const combinedMult = (talentDmgMult > 0 ? 1 + talentDmgMult : 1) * formDmgMult;
+    const preCritDamage = Math.floor(pipeResult.finalDamage * combinedMult);
     const finalDamage = Math.floor(preCritDamage * critMultiplier);
 
     // 造成伤害

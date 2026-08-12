@@ -96,11 +96,11 @@ export function usePlayerItem(
         // 暴击判定
         // P3-146：传入 statModifiers 让 crit_chance / crit_damage_multiplier 生效
         const { isCrit, multiplier: critMultiplier } = rollPlayerCrit(ctx.character.attributes, undefined, statModifiers);
-        // 天赋 damage_multiplier 加成
+        // 天赋 damage_multiplier 加成 + P12-006 形态 damageMultiplier
         const talentDmgMult = ctx.talent.damageMultiplier;
-        const preCritDmg = talentDmgMult > 0
-          ? Math.floor(pipeResult.finalDamage * (1 + talentDmgMult))
-          : pipeResult.finalDamage;
+        const formDmgMult = ctx.form.damageMultiplier;
+        const combinedMult = (talentDmgMult > 0 ? 1 + talentDmgMult : 1) * formDmgMult;
+        const preCritDmg = Math.floor(pipeResult.finalDamage * combinedMult);
         const finalDamage = Math.floor(preCritDmg * critMultiplier);
 
         // BIZ-2：应用 BOSS 防御机制（无敌/护盾）

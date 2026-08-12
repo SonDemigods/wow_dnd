@@ -99,9 +99,9 @@ describe('FoundationDbService - 基础数据层（fake-indexeddb 真实 CRUD）'
       expect(result!.description).toBe('正义与光明的联盟');
     });
 
-    it('阵营不存在时 getFactionById 返回 undefined（Dexie get 未找到返回 undefined）', async () => {
+    it('阵营不存在时 getFactionById 返回 null（P12-003 修复后统一返回 null）', async () => {
       const result = await baseDbService.getFactionById('non-existent');
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
     it('getAllFactions：空表返回空数组', async () => {
@@ -139,12 +139,12 @@ describe('FoundationDbService - 基础数据层（fake-indexeddb 真实 CRUD）'
       ).rejects.toThrow('Faction not found');
     });
 
-    it('deleteFaction：删除后 getFactionById 返回 undefined', async () => {
+    it('deleteFaction：删除后 getFactionById 返回 null', async () => {
       const id = await baseDbService.createFaction(makeFactionData());
-      expect(await baseDbService.getFactionById(id)).not.toBeUndefined();
+      expect(await baseDbService.getFactionById(id)).not.toBeNull();
 
       await baseDbService.deleteFaction(id);
-      expect(await baseDbService.getFactionById(id)).toBeUndefined();
+      expect(await baseDbService.getFactionById(id)).toBeNull();
     });
 
     it('deleteFaction：不影响其他阵营', async () => {
@@ -152,8 +152,8 @@ describe('FoundationDbService - 基础数据层（fake-indexeddb 真实 CRUD）'
       const idB = await baseDbService.createFaction(makeFactionData({ name: 'B' }));
 
       await baseDbService.deleteFaction(idA);
-      expect(await baseDbService.getFactionById(idA)).toBeUndefined();
-      expect(await baseDbService.getFactionById(idB)).not.toBeUndefined();
+      expect(await baseDbService.getFactionById(idA)).toBeNull();
+      expect(await baseDbService.getFactionById(idB)).not.toBeNull();
       expect(await baseDbService.getAllFactions()).toHaveLength(1);
     });
 
@@ -181,9 +181,9 @@ describe('FoundationDbService - 基础数据层（fake-indexeddb 真实 CRUD）'
       expect(result!.description).toBe('多才多艺的种族');
     });
 
-    it('种族不存在时 getRaceById 返回 undefined', async () => {
+    it('种族不存在时 getRaceById 返回 null', async () => {
       const result = await baseDbService.getRaceById('non-existent');
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
     it('getAllRaces：空表返回空数组', async () => {
@@ -234,10 +234,10 @@ describe('FoundationDbService - 基础数据层（fake-indexeddb 真实 CRUD）'
       ).rejects.toThrow('Race not found');
     });
 
-    it('deleteRace：删除后 getRaceById 返回 undefined', async () => {
+    it('deleteRace：删除后 getRaceById 返回 null', async () => {
       const id = await baseDbService.createRace(makeRaceData());
       await baseDbService.deleteRace(id);
-      expect(await baseDbService.getRaceById(id)).toBeUndefined();
+      expect(await baseDbService.getRaceById(id)).toBeNull();
     });
 
     it('deleteRace：不影响其他种族', async () => {
@@ -245,8 +245,8 @@ describe('FoundationDbService - 基础数据层（fake-indexeddb 真实 CRUD）'
       const idB = await baseDbService.createRace(makeRaceData({ name: 'B' }));
 
       await baseDbService.deleteRace(idA);
-      expect(await baseDbService.getRaceById(idA)).toBeUndefined();
-      expect(await baseDbService.getRaceById(idB)).not.toBeUndefined();
+      expect(await baseDbService.getRaceById(idA)).toBeNull();
+      expect(await baseDbService.getRaceById(idB)).not.toBeNull();
     });
 
     it('deleteRace：种族不存在时抛出 Error', async () => {
@@ -281,9 +281,9 @@ describe('FoundationDbService - 基础数据层（fake-indexeddb 真实 CRUD）'
       expect(result!.bonus).toEqual({ str: 2, con: 1 });
     });
 
-    it('职业不存在时 getClassById 返回 undefined', async () => {
+    it('职业不存在时 getClassById 返回 null', async () => {
       const result = await baseDbService.getClassById('non-existent');
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
     it('getAllClasses：空表返回空数组', async () => {
@@ -371,10 +371,10 @@ describe('FoundationDbService - 基础数据层（fake-indexeddb 真实 CRUD）'
       ).rejects.toThrow('Class not found');
     });
 
-    it('deleteClass：删除后 getClassById 返回 undefined', async () => {
+    it('deleteClass：删除后 getClassById 返回 null', async () => {
       const id = await baseDbService.createClass(makeClassData());
       await baseDbService.deleteClass(id);
-      expect(await baseDbService.getClassById(id)).toBeUndefined();
+      expect(await baseDbService.getClassById(id)).toBeNull();
     });
 
     it('deleteClass：不影响其他职业', async () => {
@@ -382,8 +382,8 @@ describe('FoundationDbService - 基础数据层（fake-indexeddb 真实 CRUD）'
       const idB = await baseDbService.createClass(makeClassData({ name: 'B' }));
 
       await baseDbService.deleteClass(idA);
-      expect(await baseDbService.getClassById(idA)).toBeUndefined();
-      expect(await baseDbService.getClassById(idB)).not.toBeUndefined();
+      expect(await baseDbService.getClassById(idA)).toBeNull();
+      expect(await baseDbService.getClassById(idB)).not.toBeNull();
     });
 
     it('deleteClass：职业不存在时抛出 Error', async () => {

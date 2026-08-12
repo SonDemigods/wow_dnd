@@ -184,7 +184,7 @@ describe('MapView 地图视图组件', () => {
       await wrapper.findComponent(ConfirmPopup).vm.$emit('confirm');
       await flushPromises();
 
-      expect(mapStore.enterZone).toHaveBeenCalledWith('z1');
+      expect(mapStore.enterZone).toHaveBeenCalledWith('z1', expect.anything());
       expect(wrapper.emitted('enter-zone')).toHaveLength(1);
     });
 
@@ -201,7 +201,7 @@ describe('MapView 地图视图组件', () => {
       await wrapper.findComponent(ConfirmPopup).vm.$emit('confirm');
       await flushPromises();
 
-      expect(mapStore.enterZone).toHaveBeenCalledWith('z1');
+      expect(mapStore.enterZone).toHaveBeenCalledWith('z1', expect.anything());
       expect(wrapper.emitted('enter-zone')).toBeUndefined();
     });
   });

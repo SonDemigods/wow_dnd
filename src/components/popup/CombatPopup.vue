@@ -273,6 +273,7 @@
 
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { errorHandler } from '@/services/ErrorHandler';
+import { useToast } from '@/composables/useToast';
 import { useCombatStore } from '@/modules/combat';
 import { ResourceSystemFactory } from '@/modules/combat/resources';
 import { useCharacterStore } from '@/modules/character';
@@ -459,8 +460,9 @@ const playerHp = computed(() => characterStore.hp);
 const playerMaxHp = computed(() => characterStore.maxHp);
 const playerMp = computed(() => characterStore.mana);
 const playerMaxMp = computed(() => characterStore.maxMana);
-const playerHpPercent = computed(() => Math.max(0, Math.min(100, (playerHp.value / playerMaxHp.value) * 100)));
-const playerMpPercent = computed(() => Math.max(0, Math.min(100, (playerMp.value / playerMaxMp.value) * 100)));
+// P12-021 修复：除零保护，max<=0 时返回 0 避免 NaN
+const playerHpPercent = computed(() => playerMaxHp.value <= 0 ? 0 : Math.max(0, Math.min(100, (playerHp.value / playerMaxHp.value) * 100)));
+const playerMpPercent = computed(() => playerMaxMp.value <= 0 ? 0 : Math.max(0, Math.min(100, (playerMp.value / playerMaxMp.value) * 100)));
 
 /** 是否显示 MP 资源条（战士/盗贼/猎人等替代型资源职业隐藏 MP 条） */
 const showManaBar = computed(() => !ResourceSystemFactory.replacesMana(characterStore.classId));
@@ -677,25 +679,31 @@ async function doAction(type: CombatActionType) {
   isAnimating.value = true;
   triggerVsFlash();
 
-  const result = await combatStore.playerAction({ type });
+  try {
+    const result = await combatStore.playerAction({ type });
 
-  if (isUnmounted.value) return;
+    if (isUnmounted.value) return;
 
-  if (!result.success) {
+    if (!result.success) {
+      isAnimating.value = false;
+      return;
+    }
+
+    // 视觉特效：伤害效果提取为 applyCombatDamageEffects
+    // 暴击特效（critShake / screenFlash）由 COMBAT_CRITICAL_HIT EventBus 事件驱动，避免双重触发
+    // 闪避特效由 COMBAT_DODGE EventBus 事件驱动
+    applyCombatDamageEffects(result);
+
+    if (combatStore.combatResult) {
+      // 战斗结束（击败/逃跑失败等）
+      isAnimating.value = false;
+    }
+    // 否则 isAnimating 由 watch(turn) 在敌人回合结束后恢复
+  } catch (e) {
     isAnimating.value = false;
-    return;
+    errorHandler.report(e instanceof Error ? e : new Error(String(e)));
+    useToast().error('战斗操作异常，请重试');
   }
-
-  // 视觉特效：伤害效果提取为 applyCombatDamageEffects
-  // 暴击特效（critShake / screenFlash）由 COMBAT_CRITICAL_HIT EventBus 事件驱动，避免双重触发
-  // 闪避特效由 COMBAT_DODGE EventBus 事件驱动
-  applyCombatDamageEffects(result);
-
-  if (combatStore.combatResult) {
-    // 战斗结束（击败/逃跑失败等）
-    isAnimating.value = false;
-  }
-  // 否则 isAnimating 由 watch(turn) 在敌人回合结束后恢复
 }
 
 // 使用技能
@@ -705,40 +713,46 @@ async function doSkill(skillId: string) {
   isAnimating.value = true;
   triggerVsFlash();
 
-  const result = await combatStore.playerAction({ type: 'skill', skillId });
+  try {
+    const result = await combatStore.playerAction({ type: 'skill', skillId });
 
-  if (isUnmounted.value) return;
+    if (isUnmounted.value) return;
 
-  if (!result.success) {
-    isAnimating.value = false;
-    return;
-  }
-
-  // 根据技能类型判断伤害类型
-  const unlockeds = skillsStore.unlockedSkills;
-  const equippeds = skillsStore.equippedSkills;
-  const allSkills = [...(unlockeds ?? []), ...((equippeds ?? []).filter(s => s != null) as NonNullable<typeof unlockeds>)];
-  const skill = allSkills.find(s => s.id === skillId);
-  const skillType = skill?.type || 'physical_damage';
-  const dmgType: 'physical' | 'magic' = skillType === 'magic_damage' ? 'magic' : 'physical';
-
-  // 视觉特效：伤害效果使用公共函数
-  applyCombatDamageEffects(result, dmgType);
-  if (result.heal && result.heal > 0) {
-    // P8-007 修复：mana_restore 显示为法力恢复而非生命恢复
-    if (skillType === 'mana_restore') {
-      showFloating('player', `MP+${result.heal}`, 'heal-mp');
-      triggerManaGlow();
-      triggerParticles('player', MANA_PARTICLES);
-    } else {
-      showFloating('player', `+${result.heal}`, 'heal-hp');
-      triggerHealGlow();
-      triggerParticles('player', HEAL_PARTICLES);
+    if (!result.success) {
+      isAnimating.value = false;
+      return;
     }
-  }
 
-  if (combatStore.combatResult) {
+    // 根据技能类型判断伤害类型
+    const unlockeds = skillsStore.unlockedSkills;
+    const equippeds = skillsStore.equippedSkills;
+    const allSkills = [...(unlockeds ?? []), ...((equippeds ?? []).filter(s => s != null) as NonNullable<typeof unlockeds>)];
+    const skill = allSkills.find(s => s.id === skillId);
+    const skillType = skill?.type || 'physical_damage';
+    const dmgType: 'physical' | 'magic' = skillType === 'magic_damage' ? 'magic' : 'physical';
+
+    // 视觉特效：伤害效果使用公共函数
+    applyCombatDamageEffects(result, dmgType);
+    if (result.heal && result.heal > 0) {
+      // P8-007 修复：mana_restore 显示为法力恢复而非生命恢复
+      if (skillType === 'mana_restore') {
+        showFloating('player', `MP+${result.heal}`, 'heal-mp');
+        triggerManaGlow();
+        triggerParticles('player', MANA_PARTICLES);
+      } else {
+        showFloating('player', `+${result.heal}`, 'heal-hp');
+        triggerHealGlow();
+        triggerParticles('player', HEAL_PARTICLES);
+      }
+    }
+
+    if (combatStore.combatResult) {
+      isAnimating.value = false;
+    }
+  } catch (e) {
     isAnimating.value = false;
+    errorHandler.report(e instanceof Error ? e : new Error(String(e)));
+    useToast().error('技能施放异常，请重试');
   }
 }
 
@@ -766,49 +780,55 @@ async function useItem(itemId: string, index: number) {
   showItemModal.value = false;
   isAnimating.value = true;
 
-  const prevPlayerHp = playerHp.value;
-  const prevPlayerMp = playerMp.value;
+  try {
+    const prevPlayerHp = playerHp.value;
+    const prevPlayerMp = playerMp.value;
 
-  // P10-029 修复：不再忽略 index 参数，传入 playerAction 以便按索引使用指定物品组
-  const result = await combatStore.playerAction({ type: 'item', itemId, index });
+    // P10-029 修复：不再忽略 index 参数，传入 playerAction 以便按索引使用指定物品组
+    const result = await combatStore.playerAction({ type: 'item', itemId, index });
 
-  if (isUnmounted.value) return;
+    if (isUnmounted.value) return;
 
-  // P8-501 修复：物品使用失败时复位动画状态，避免战斗卡死（与 doAction/doSkill 一致）
-  if (!result.success) {
-    isAnimating.value = false;
-    return;
-  }
+    // P8-501 修复：物品使用失败时复位动画状态，避免战斗卡死（与 doAction/doSkill 一致）
+    if (!result.success) {
+      isAnimating.value = false;
+      return;
+    }
 
-  if (!combatStore.combatResult) {
-    // 伤害型物品的视觉特效（卷轴等）
-    if (result.damage && result.damage > 0) {
-      triggerVsFlash();
-      if (result.isCrit) {
-        triggerCritShake('enemy', currentTarget.value?.id);
-        triggerCritBorderFlash('enemy', currentTarget.value?.id);
-      } else {
-        triggerShake('enemy', currentTarget.value?.id);
+    if (!combatStore.combatResult) {
+      // 伤害型物品的视觉特效（卷轴等）
+      if (result.damage && result.damage > 0) {
+        triggerVsFlash();
+        if (result.isCrit) {
+          triggerCritShake('enemy', currentTarget.value?.id);
+          triggerCritBorderFlash('enemy', currentTarget.value?.id);
+        } else {
+          triggerShake('enemy', currentTarget.value?.id);
+        }
+        showFloating('enemy', `-${result.damage}`, result.isCrit ? 'crit' : 'physical', currentTarget.value?.id);
+        triggerParticles('enemy', result.isCrit ? CRIT_PARTICLES : PHYSICAL_PARTICLES, currentTarget.value?.id);
       }
-      showFloating('enemy', `-${result.damage}`, result.isCrit ? 'crit' : 'physical', currentTarget.value?.id);
-      triggerParticles('enemy', result.isCrit ? CRIT_PARTICLES : PHYSICAL_PARTICLES, currentTarget.value?.id);
-    }
 
-    // 物品恢复效果（通过 HP/MP 差值计算）
-    const hpHeal = playerHp.value - prevPlayerHp;
-    if (hpHeal > 0) {
-      showFloating('player', `+${hpHeal}`, 'heal-hp');
-      triggerHealGlow();
-      triggerParticles('player', HEAL_PARTICLES);
+      // 物品恢复效果（通过 HP/MP 差值计算）
+      const hpHeal = playerHp.value - prevPlayerHp;
+      if (hpHeal > 0) {
+        showFloating('player', `+${hpHeal}`, 'heal-hp');
+        triggerHealGlow();
+        triggerParticles('player', HEAL_PARTICLES);
+      }
+      const mpHeal = playerMp.value - prevPlayerMp;
+      if (mpHeal > 0) {
+        showFloating('player', `MP+${mpHeal}`, 'heal-mp');
+        triggerManaGlow();
+        triggerParticles('player', MANA_PARTICLES);
+      }
     }
-    const mpHeal = playerMp.value - prevPlayerMp;
-    if (mpHeal > 0) {
-      showFloating('player', `MP+${mpHeal}`, 'heal-mp');
-      triggerManaGlow();
-      triggerParticles('player', MANA_PARTICLES);
-    }
+    // isAnimating 由 watch(turn) 在敌人回合结束后恢复
+  } catch (e) {
+    isAnimating.value = false;
+    errorHandler.report(e instanceof Error ? e : new Error(String(e)));
+    useToast().error('物品使用异常，请重试');
   }
-  // isAnimating 由 watch(turn) 在敌人回合结束后恢复
 }
 
 // ========== 敌人回合动画监听（替代 runEnemyTurn 编排） ==========

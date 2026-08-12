@@ -20,7 +20,7 @@
     </div>
 
     <!-- 天赋树网格 -->
-    <div class="talent-tree-container" ref="containerRef">
+    <div class="talent-tree-container">
       <!-- 节点网格（含 SVG 连线层） -->
       <div class="talent-grid" :style="{ width: gridWidth + 'px', height: gridHeight + 'px' }">
         <svg class="connections-layer" :width="gridWidth" :height="gridHeight">
@@ -119,7 +119,7 @@ const characterStore = useCharacterStore();
 
 const selectedTalent = ref<Talent | null>(null);
 const toastMessage = ref('');
-const containerRef = ref<HTMLElement | null>(null);
+// P12-026 修复：移除未使用的 containerRef 死绑定
 
 const tree = computed(() =>
   talentStore.talentTrees.find(t => t.classId === characterStore.classId) ?? talentStore.talentTrees[0]

@@ -82,6 +82,8 @@ export abstract class BaseResourceSystem implements ResourceSystem {
   }
 
   consume(amount: number): boolean {
+    // P12-005 修复：防御负数消耗导致资源值无限增加
+    if (amount <= 0) return false;
     if (!this.hasEnough(amount)) return false;
     let next = this._value.value - amount;
     if (this.isInteger) next = Math.floor(next);

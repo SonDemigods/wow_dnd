@@ -257,7 +257,10 @@ export class DataInitializer {
       skillPool: boss.skillPool || undefined,
       aiStrategy: boss.aiStrategy || undefined,
       phases: boss.phases || undefined,
-      intro: boss.intro || undefined
+      intro: boss.intro || undefined,
+      // P12-001 修复：补充遗漏的 attackType 和 drops 字段
+      attackType: boss.attackType || undefined,
+      drops: boss.drops || undefined
     }));
     await db.config_bosses.bulkPut(bossData);
   }

@@ -363,6 +363,8 @@ const gridData = computed(() => {
 function selectCategory(catId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_category' });
   selectedCategory.value = catId as 'all' | ItemCategory;
+  // P12-022 修复：切换分类时清除已选中物品详情，避免操作不可见物品
+  selectedEntry.value = null;
 }
 
 /**

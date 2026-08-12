@@ -80,7 +80,11 @@ export function useConfigCrud(deps: UseConfigCrudDeps): UseConfigCrudReturn {
     }
     // P7-029 修复：try/catch 防止 Dexie 操作异常导致 unhandled rejection
     try {
-      await store.deleteRecord(deps.currentDbTable.value, String(id));
+      // P12-028 修复：检查返回值，失败时 toast 提示
+      const success = await store.deleteRecord(deps.currentDbTable.value, String(id));
+      if (!success) {
+        useToast().show({ message: '删除失败，请查看控制台', type: 'danger', duration: 3000 });
+      }
     } catch (e) {
       console.error('[useConfigCrud] 删除记录失败:', e);
       useToast().show({ message: '删除失败，请查看控制台', type: 'danger', duration: 3000 });
@@ -94,7 +98,11 @@ export function useConfigCrud(deps: UseConfigCrudDeps): UseConfigCrudReturn {
   async function handleFormSubmit(data: AdminRecord): Promise<void> {
     // P7-029 修复：try/catch 防止 Dexie 操作异常导致 unhandled rejection
     try {
-      await store.saveRecord(deps.currentDbTable.value, data);
+      // P12-028 修复：检查返回值，失败时 toast 提示
+      const success = await store.saveRecord(deps.currentDbTable.value, data);
+      if (!success) {
+        useToast().show({ message: '保存失败，请检查数据', type: 'danger', duration: 3000 });
+      }
     } catch (e) {
       console.error('[useConfigCrud] 保存记录失败:', e);
       useToast().show({ message: '保存失败，请查看控制台', type: 'danger', duration: 3000 });

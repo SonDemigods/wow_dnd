@@ -53,7 +53,7 @@
     <div v-if="showResultModal" class="confirm-modal-overlay" @click="closeResult">
       <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="confirm-modal" @click.stop>
         <div class="confirm-icon"><BaseIcon :name="importSuccess ? 'check-mark' : 'cancel'" :gradient="importSuccess ? 'heal' : 'debuff'" :size="32" /></div>
-        <h3>{{ importSuccess ? '导入成功' : '导入失败' }}</h3>
+        <h3>{{ resultTitle }}</h3>
         <p>{{ importMessage }}</p>
         <div class="confirm-buttons">
           <button class="confirm-btn-cancel" @click="closeResult">确定</button>
@@ -169,6 +169,8 @@ const selectedFile = ref<File | null>(null);
 const showResultModal = ref(false);
 const importSuccess = ref(false);
 const importMessage = ref('');
+// P12-017 修复：结果弹窗标题纳入状态，不再硬编码"导入失败"
+const resultTitle = ref('');
 
 // 修复基础数据相关状态
 const showRepairModal = ref(false);
@@ -284,8 +286,9 @@ function closeResult() {
 /**
  * 显示结果提示弹窗
  */
-function showResult(success: boolean, _title: string, message: string) {
+function showResult(success: boolean, title: string, message: string) {
   importSuccess.value = success;
+  resultTitle.value = title;
   importMessage.value = message;
   showResultModal.value = true;
 }

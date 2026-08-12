@@ -41,6 +41,9 @@ const customStyle = computed(() => ({
   color: @popup-text-color;
   min-width: 40px;
   max-width: 80px;
+  /* P12-025 修复：添加溢出省略，防止长名称被直接裁切 */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tag-race {

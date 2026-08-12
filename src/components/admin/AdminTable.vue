@@ -8,7 +8,7 @@
           type="text"
           class="search-input"
           placeholder="搜索..."
-          @input="$emit('search', searchValue)"
+          @input="onSearchInput"
         />
       </div>
       <div class="toolbar-right">
@@ -81,6 +81,9 @@ export interface TableColumn<T = Record<string, unknown>> {
   format?: (value: CellValue, row: T) => string;
 }
 
+// P12-029 修复：搜索防抖定时器，避免每次按键触发 DB 查询竞态
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+
 defineProps<{
   /** 列定义 */
   columns: TableColumn<T>[];
@@ -94,7 +97,7 @@ defineProps<{
   hideEdit?: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   create: [];
   edit: [row: T];
   delete: [row: T];
@@ -103,6 +106,15 @@ defineEmits<{
 }>();
 
 const searchValue = ref('');
+
+/** P12-029 修复：搜索防抖，避免每次按键触发 DB 查询竞态 */
+function onSearchInput(): void {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    searchTimer = null;
+    emit('search', searchValue.value);
+  }, 300);
+}
 
 /** 获取行的唯一 key */
 function getRowKey(row: T, index: number): string {

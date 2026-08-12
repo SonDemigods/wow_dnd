@@ -512,8 +512,9 @@ export function useConfigTableMeta(): UseConfigTableMetaReturn {
       if (col.key === 'primaryStat') return { ...col, format: (v: CellValue) => t(STAT_NAMES, v) };
       if (col.key === 'rarity') return { ...col, format: (v: CellValue) => t(RARITY_NAMES, v) };
       if (col.key === 'dangerLevel') return { ...col, format: (v: CellValue) => String(v ?? '-') };
-      if (col.key === 'damage') return { ...col, format: (v: CellValue) => Array.isArray(v) ? `${v[0]} ~ ${v[1]}` : String(v ?? '-') };
-      if (col.key === 'levelRange') return { ...col, format: (v: CellValue) => Array.isArray(v) ? `${v[0]} ~ ${v[1]}` : String(v ?? '-') };
+      // P12-036 修复：短数组（length < 2）时用现有值或 '-'，避免渲染 "undefined"
+      if (col.key === 'damage') return { ...col, format: (v: CellValue) => Array.isArray(v) && v.length >= 2 ? `${v[0]} ~ ${v[1]}` : (Array.isArray(v) && v.length === 1 ? String(v[0]) : String(v ?? '-')) };
+      if (col.key === 'levelRange') return { ...col, format: (v: CellValue) => Array.isArray(v) && v.length >= 2 ? `${v[0]} ~ ${v[1]}` : (Array.isArray(v) && v.length === 1 ? String(v[0]) : String(v ?? '-')) };
       if (col.key === 'classRestriction') {
         if (classOptions.value.length > 0) {
           const map = Object.fromEntries(classOptions.value.map(o => [o.value, o.label]));
@@ -579,6 +580,14 @@ export function useConfigTableMeta(): UseConfigTableMetaReturn {
         };
       }
       if (field.key === 'classRestriction' && classOptions.value.length > 0) {
+        // P12-030 修复：保留 multiselect 类型不被降级为 select
+        if (field.type === 'multiselect') {
+          return {
+            ...field,
+            type: 'multiselect' as const,
+            options: classOptions.value,
+          };
+        }
         return {
           ...field,
           type: 'select' as const,

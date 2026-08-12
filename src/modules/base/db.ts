@@ -50,7 +50,8 @@ export class FoundationDbService {
   async getFactionById(id: string): Promise<FactionData | null> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_factions.get(id);
-      return cast<FactionData | null>(result);
+      // P12-003 修复：Dexie get 返回 undefined，显式转换为 null
+      return result ? cast<FactionData>(result) : null;
     });
   }
 
@@ -125,7 +126,7 @@ export class FoundationDbService {
   async getRaceById(id: string): Promise<RaceData | null> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_races.get(id);
-      return cast<RaceData | null>(result);
+      return result ? cast<RaceData>(result) : null;
     });
   }
 
@@ -209,7 +210,7 @@ export class FoundationDbService {
   async getClassById(id: string): Promise<ClassData | null> {
     return dbService.withRetry(async () => {
       const result = await gameDb.config_classes.get(id);
-      return cast<ClassData | null>(result);
+      return result ? cast<ClassData>(result) : null;
     });
   }
 

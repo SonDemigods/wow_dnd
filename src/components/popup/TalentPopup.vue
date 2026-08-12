@@ -22,7 +22,7 @@
         </div>
 
         <!-- 天赋树网格 -->
-        <div class="talent-tree-container" ref="containerRef">
+        <div class="talent-tree-container">
           <!-- SVG 连线层 -->
           <svg class="connections-layer" :width="gridWidth" :height="gridHeight">
             <line
@@ -125,7 +125,7 @@ const characterStore = useCharacterStore();
 
 const selectedTalent = ref<Talent | null>(null);
 const toastMessage = ref('');
-const containerRef = ref<HTMLElement | null>(null);
+// P12-026 修复：移除未使用的 containerRef 死绑定
 
 const tree = computed(() =>
   // P10-037 修复：按 characterStore.classId 匹配天赋树，而非用索引取第一棵树

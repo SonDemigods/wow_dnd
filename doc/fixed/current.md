@@ -1,7 +1,7 @@
 # 当前待修复问题
 
-> 最近检查：2026-08-12（第九轮全量代码审查修复完成）
-> tsc / eslint / vitest：全部通过（模块测试 187 文件 5774 项；组件测试 53 项预存失败）
+> 最近检查：2026-08-12（第十轮全量代码审查修复完成）
+> tsc / eslint / vitest：全部通过（模块测试 188 文件 5781 项；组件测试 50 项预存失败）
 > 归档目录：[doc/fixed/](./)
 
 ---
@@ -20,6 +20,13 @@
 | P11-106 | castSkill fallback 到 skillTemplates，调用方已保证不施放未学习技能。 |
 | P11-108 | 天赋初始化未校验存档分配合法性，影响仅限旧存档配置变更场景。 |
 | P11-505 | ConfigCache invalidate 竞态条件，单机游戏触发概率极低。 |
+| P12-023 | InventoryPopup isEquipped 同 itemId 副本判定，需重构装备状态逻辑。 |
+| P12-024 | BasePopup 缺少 Escape 键关闭与 a11y，需较大改动影响所有弹窗。 |
+| P12-032 | AdminForm 空数字字段 Number('') 变 0，影响仅限 admin 后台。 |
+| P12-033 | main.ts db.open() 失败白屏，需添加错误 UI 组件。 |
+| P12-034 | GameMain handleOpenInventoryFromCharacter 绕过面板事件。 |
+| P12-035 | GameMain popupMounted 与 @close 逻辑矛盾。 |
+| P12-037 | useConfigTableMeta classEquipment type 列缺字典翻译。 |
 
 ---
 
@@ -68,6 +75,7 @@
 
 | 轮次 | 归档 | 项数 |
 |------|------|------|
+| 第十轮 | [fixed_20260812150600.md](./fixed_20260812150600.md) | 29 |
 | 第九轮 | [fixed_20260812131604.md](./fixed_20260812131604.md) | 46 |
 | 第八轮 | [fixed_20260810161000.md](./fixed_20260810161000.md) | 49 |
 | 第七轮 P2+P3 | [fixed_20260810152700.md](./fixed_20260810152700.md) | 81 |

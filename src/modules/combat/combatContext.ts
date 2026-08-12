@@ -31,6 +31,7 @@ import type { AiStrategyType } from '@/modules/enemy/types';
 import { useQuestStore } from '@/modules/quest';
 import { useLogStore, type LogEntry } from '@/modules/log';
 import { useInventoryStore, type Item } from '@/modules/inventory';
+import { useFormStore } from '@/modules/combat/forms';
 
 /**
  * 战斗只读查询接口（A2 拆分）
@@ -84,6 +85,13 @@ export interface ICombatQuery {
     readonly skillEnhancements: Array<{ skillId: string; value: number }>;
     /** P3-172：已解锁宠物列表（替代 store.ts 直接 import useTalentStore） */
     readonly unlockedPets: string[];
+  };
+
+  /** 形态域（只读）：来自 useFormStore 的倍率（P12-006 修复） */
+  form: {
+    readonly damageMultiplier: number;
+    readonly defenseMultiplier: number;
+    readonly speedMultiplier: number;
   };
 }
 
@@ -188,6 +196,8 @@ export function createCombatContext(): ICombatContext {
   const inventoryStore = useInventoryStore();
   // P8-006 修复：一次性获取 talentStore，所有 getter 和 takeDamage 内复用，避免重复调用 useTalentStore()
   const talentStore = useTalentStore();
+  // P12-006 修复：获取 formStore 读取形态倍率
+  const formStore = useFormStore();
 
   return {
     character: {
@@ -255,6 +265,11 @@ export function createCombatContext(): ICombatContext {
       get resourceBonuses() { return talentStore.effectSummary.resourceBonuses; },
       get skillEnhancements() { return talentStore.effectSummary.skillEnhancements; },
       get unlockedPets() { return talentStore.effectSummary.unlockedPets; },
+    },
+    form: {
+      get damageMultiplier() { return formStore.damageMultiplier; },
+      get defenseMultiplier() { return formStore.defenseMultiplier; },
+      get speedMultiplier() { return formStore.speedMultiplier; },
     },
   };
 }

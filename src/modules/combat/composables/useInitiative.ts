@@ -82,7 +82,10 @@ export function useInitiative(
     const playerCtx = log.createPlayerEffectContext();
     const speedMod = state.effectRegistry.reduceSum(state.playerEffects.value, 'getSpeedMod', playerCtx);
     // P2-45 修复：统一使用 ?? 操作符，避免 dex=0 时被 || 吞掉
-    const playerSpeed = (ctx.character.effectiveStats.dex ?? 0) + speedMod;
+    // P12-006 修复：叠加形态 speedMultiplier（德鲁伊变形）
+    const baseSpeed = (ctx.character.effectiveStats.dex ?? 0) + speedMod;
+    const formSpeedMult = ctx.form.speedMultiplier;
+    const playerSpeed = Math.floor(baseSpeed * formSpeedMult);
     units.push({ id: 'player', speed: playerSpeed });
 
     // P3-156：宠物先攻（仅当有激活的召唤物时插入）
@@ -310,8 +313,12 @@ export function useInitiative(
       if (removedIndex !== -1) {
         state.initiativeOrder.value = state.initiativeOrder.value.filter(id => id !== 'pet');
         // P3-11：若移除位置在当前索引之前，递减当前索引防止跳过下一个单位回合
-        if (removedIndex < state.currentInitiativeIndex.value) {
+        // P12-010 修复：removedIndex === currentInitiativeIndex 时也需递减
+        if (removedIndex <= state.currentInitiativeIndex.value) {
           state.currentInitiativeIndex.value--;
+        }
+        if (state.currentInitiativeIndex.value < 0) {
+          state.currentInitiativeIndex.value = 0;
         }
         if (state.currentInitiativeIndex.value >= state.initiativeOrder.value.length) {
           state.currentInitiativeIndex.value = 0;
@@ -368,19 +375,23 @@ export function useInitiative(
 
     const e = state.enemies.value.find(en => en.id === enemyId);
     if (!e || e.hp <= 0) {
-      // 敌人已死亡，从先攻序列中移除并清理效果容器
-      if (e) {
-        // P3-11：记录被移除元素的索引，若在当前索引之前则递减当前索引，防止跳过下一个单位回合
-        const removedIndex = state.initiativeOrder.value.indexOf(enemyId);
-        state.initiativeOrder.value = state.initiativeOrder.value.filter(id => id !== enemyId);
-        delete state.enemyEffects.value[enemyId];
-        if (removedIndex !== -1 && removedIndex < state.currentInitiativeIndex.value) {
-          state.currentInitiativeIndex.value--;
-        }
-        // 修正当前索引，防止因移除元素导致索引越界
-        if (state.currentInitiativeIndex.value >= state.initiativeOrder.value.length) {
-          state.currentInitiativeIndex.value = 0;
-        }
+      // 敌人已死亡或不存在，从先攻序列中移除并清理效果容器
+      // P12-011 修复：无论 e 是否存在都执行过滤，防止 !e 时 enemyId 残留在 initiativeOrder 导致无限循环
+      // P3-11：记录被移除元素的索引，若在当前索引之前则递减当前索引，防止跳过下一个单位回合
+      // P12-010 修复：removedIndex === currentInitiativeIndex 时也需递减，
+      // 否则 advanceTurn 递增后会跳过移除后移动到当前位置的下一个单位
+      const removedIndex = state.initiativeOrder.value.indexOf(enemyId);
+      state.initiativeOrder.value = state.initiativeOrder.value.filter(id => id !== enemyId);
+      delete state.enemyEffects.value[enemyId];
+      if (removedIndex !== -1 && removedIndex <= state.currentInitiativeIndex.value) {
+        state.currentInitiativeIndex.value--;
+      }
+      // 修正当前索引，防止因移除元素导致索引越界
+      if (state.currentInitiativeIndex.value < 0) {
+        state.currentInitiativeIndex.value = 0;
+      }
+      if (state.currentInitiativeIndex.value >= state.initiativeOrder.value.length) {
+        state.currentInitiativeIndex.value = 0;
       }
       advanceToNextUnit();
       return;

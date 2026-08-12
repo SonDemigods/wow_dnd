@@ -141,7 +141,8 @@ export class EquipmentDbService {
     // slots：始终由 subtype 派生（忽略 data.slots，可能是旧 armor1-4 格式）
     const slots = deriveSlots(subtype);
     // occupies：优先用 DB 值，否则由 subtype 派生（双手武器占 2 槽，其余同 slots）
-    const occupies: EquipmentSlot[] = data.occupies
+    // P12-013 修复：空数组 occupies 为 falsy 陷阱，需检查 length > 0
+    const occupies: EquipmentSlot[] = (Array.isArray(data.occupies) && data.occupies.length > 0)
       ? (data.occupies as EquipmentSlot[])
       : (SUBTYPE_OCCUPIES[subtype] ?? slots);
 

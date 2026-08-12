@@ -183,11 +183,11 @@ export function usePetAction(
       undefined,
     );
 
-    // 天赋 damage_multiplier 加成
+    // 天赋 damage_multiplier 加成 + P12-006 形态 damageMultiplier
     const talentDmgMult = ctx.talent.damageMultiplier;
-    const finalDamage = talentDmgMult > 0
-      ? Math.floor(pipeResult.finalDamage * (1 + talentDmgMult))
-      : pipeResult.finalDamage;
+    const formDmgMult = ctx.form.damageMultiplier;
+    const combinedMult = (talentDmgMult > 0 ? 1 + talentDmgMult : 1) * formDmgMult;
+    const finalDamage = Math.floor(pipeResult.finalDamage * combinedMult);
 
     if (finalDamage > 0) {
       // P3-182：接入 Boss 防御机制（无敌/护盾）

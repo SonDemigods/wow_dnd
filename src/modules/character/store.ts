@@ -153,7 +153,9 @@ export const useCharacterStore = defineStore('character', () => {
   });
 
   const hp = computed(() => character.value?.hp || 0);
-  const maxHp = computed(() => character.value?.maxHp || 100);
+  // P12-006 修复：形态 HP 倍率（德鲁伊变形时设置，非持久化，角色切换/退出战斗时重置）
+  const formHpMultiplier = ref(1);
+  const maxHp = computed(() => Math.floor((character.value?.maxHp || 100) * formHpMultiplier.value));
   const hpPercentage = computed(() => {
     // maxHp 已通过 || 100 兜底保证非 0，无需额外除零防御
     return Math.min(100, Math.round((hp.value / maxHp.value) * 100));
@@ -329,6 +331,8 @@ export const useCharacterStore = defineStore('character', () => {
     // 避免 await 期间 watcher 读到新 ID 配旧角色（与 createCharacter 顺序对齐）
     character.value = characterDbService.fromStorageFormat(data);
     bonusStats.value = data.bonusStats || {};
+    // P12-006 修复：切换角色时重置形态 HP 倍率
+    resetFormHpMultiplier();
 
     const race = racesData.value[data.raceId];
     const cls = classesData.value[data.classId];
@@ -515,6 +519,21 @@ export const useCharacterStore = defineStore('character', () => {
       character.value = recalculateHpMp(character.value, effStats);
     }
     await persistCharacter();
+  }
+
+  // P12-006 修复：形态 HP 倍率控制（德鲁伊变形用）
+  /** 设置形态 HP 倍率并钳制当前 HP */
+  function setFormHpMultiplier(multiplier: number): void {
+    formHpMultiplier.value = multiplier;
+    // 倍率降低时钳制当前 HP 不超过新上限
+    if (character.value && character.value.hp > maxHp.value) {
+      character.value = { ...character.value, hp: maxHp.value };
+    }
+  }
+
+  /** 重置形态 HP 倍率为 1.0（退出战斗/角色切换时调用） */
+  function resetFormHpMultiplier(): void {
+    formHpMultiplier.value = 1;
   }
 
   // ==================== Action：四层属性（药剂层 / 升级层） ====================
@@ -915,6 +934,7 @@ export const useCharacterStore = defineStore('character', () => {
     attributes,
     level, exp, expToNextLevel, expPercentage,
     hp, maxHp, hpPercentage,
+    formHpMultiplier, setFormHpMultiplier, resetFormHpMultiplier,
     mana, maxMana, manaPercentage,
     gold, name,
     factionId, raceId, classId,

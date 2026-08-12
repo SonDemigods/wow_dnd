@@ -126,6 +126,7 @@ export class GameBootstrapService {
       receiveHeal: (amount) => useCharacterStore().receiveHeal(amount),
       applyBonus: (delta) => useCharacterStore().applyBonus(delta),
       removeBonus: (delta) => useCharacterStore().removeBonus(delta),
+      setFormHpMultiplier: (mult) => useCharacterStore().setFormHpMultiplier(mult),
       addLogEntry: (entry) => { useLogStore().addLogEntry(entry); },
     });
 

@@ -242,10 +242,15 @@ export function useEnemyAction(
 
     // BIZ-5：应用被动减伤效果（如战士钢铁意志：低血减伤 20%）
     // 天赋 damage_reduction 由 combatContext.takeDamage 统一应用，此处仅处理被动
+    // P12-006 修复：形态 defenseMultiplier 减伤（德鲁伊变形）
+    const formDefMult = ctx.form.defenseMultiplier;
+    const formReducedDamage = formDefMult !== 1
+      ? Math.max(0, Math.floor(actualDamage / formDefMult))
+      : actualDamage;
     const damageReduction = passive?.getDamageReduction() || 0;
     const finalDamage = damageReduction > 0
-      ? Math.max(0, Math.floor(actualDamage * (1 - damageReduction)))
-      : actualDamage;
+      ? Math.max(0, Math.floor(formReducedDamage * (1 - damageReduction)))
+      : formReducedDamage;
 
     // 扣血
     ctx.character.takeDamage(finalDamage);

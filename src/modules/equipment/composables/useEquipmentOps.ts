@@ -44,15 +44,14 @@ export function useEquipmentOps(state: EquipmentState, setBonus: ReturnType<type
       throw new Error('[EquipmentStore] inventoryAddItemCallback 未注入，无法卸下装备。请检查 GameBootstrap 初始化流程。');
     }
 
-    await removeBonusesFromSlot(slot);
-    equipment.value[slot] = null;
-
+    // P12-012 修复：先尝试添加到背包，成功后再移除装备槽和属性加成，避免异常时装备丢失
     const added = cb.addItem()!(equippedItem.item.id, 1);
     if (added <= 0) {
-      equipment.value[slot] = equippedItem;
-      await applyBonusForSlot(slot);
       throw new Error(`[EquipmentStore] 背包已满，无法卸下「${equippedItem.item.name}」。请先清理背包。`);
     }
+
+    await removeBonusesFromSlot(slot);
+    equipment.value[slot] = null;
     return equippedItem;
   }
 

@@ -307,7 +307,8 @@ function onEnterZoneClick() {
 
 function onConfirmEnter() {
   if (!selectedZone.value) return;
-  const success = mapStore.enterZone(selectedZone.value.id);
+  // P12-031 修复：传入 playerLevel，使 enterZone 的等级校验生效
+  const success = mapStore.enterZone(selectedZone.value.id, characterStore.level);
   if (success) {
     showConfirm.value = false;
     emit('enter-zone');

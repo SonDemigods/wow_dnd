@@ -94,6 +94,8 @@ export class BgmSynth {
       this.isFading = false;
       // 旧 BGM 已被淡出至 -80dB，直接停止
       this.stopBgm();
+      // P12-015 修复：中断淡变后重置音量，防止卡在 -80dB
+      this.nodes.bgmChannel.volume.value = this.lastBgmDb;
     }
 
     // 若有活跃 BGM（Pattern/Loop），先淡出再切换

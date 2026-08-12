@@ -28,9 +28,10 @@ export async function saveGameState(patch: Partial<GameStateStorage>, key: strin
   await db.transaction('rw', db.runtime_gameState, async () => {
     const existing = await db.runtime_gameState.get(key);
     await db.runtime_gameState.put({
+      // P12-004 修复：id: key 移到 ...patch 之后，防止 patch.id 覆盖 key
       ...(existing ?? {}),
-      id: key,
       ...patch,
+      id: key,
     } as GameStateStorage);
   });
 }

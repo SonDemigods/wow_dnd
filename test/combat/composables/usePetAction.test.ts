@@ -187,6 +187,7 @@ function makeMockCtx(overrides: Partial<ICombatContext> = {}): ICombatContext {
     log: { addLogEntry: vi.fn() },
     inventory: { useItem: vi.fn(), getItemInfo: vi.fn(), addItem: vi.fn() },
     talent: { damageMultiplier: 0, damageReduction: 0, resourceBonuses: {}, skillEnhancements: [], unlockedPets: [] },
+    form: { damageMultiplier: 1, defenseMultiplier: 1, speedMultiplier: 1 },
     ...overrides,
   } as unknown as ICombatContext;
 }
