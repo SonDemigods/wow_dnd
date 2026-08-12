@@ -72,11 +72,11 @@ describe('generateEnemyStats 等级缩放属性推导', () => {
     expect(stats.goldReward).toBe(20);
   });
 
-  it('level=10 时缩放系数为 1.9', () => {
+  it('level=10 时缩放系数为 1.54', () => {
     const template = makeTemplate({ physicalAttack: 20 });
     const stats = generateEnemyStats(template, 10);
-    expect(stats.physicalAttack).toBe(Math.floor(20 * 1.9)); // 38
-    expect(stats.maxHp).toBe(Math.floor(100 * 1.9));
+    expect(stats.physicalAttack).toBe(Math.floor(20 * 1.54)); // 30
+    expect(stats.maxHp).toBe(Math.floor(100 * 1.54));
   });
 
   it('level 越高属性越高', () => {
@@ -109,8 +109,8 @@ describe('generateEnemyStats 等级缩放属性推导', () => {
   it('damage 范围随等级缩放', () => {
     const template = makeTemplate({ damage: [10, 20] });
     const stats = generateEnemyStats(template, 10);
-    expect(stats.damage[0]).toBe(Math.floor(10 * 1.9));
-    expect(stats.damage[1]).toBe(Math.floor(20 * 1.9));
+    expect(stats.damage[0]).toBe(Math.floor(10 * 1.54));
+    expect(stats.damage[1]).toBe(Math.floor(20 * 1.54));
   });
 
   it('返回的 stats 包含六维属性', () => {

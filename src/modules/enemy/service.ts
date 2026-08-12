@@ -7,7 +7,7 @@ import type { EnemyInstance, EnemyDrop, EnemyData } from './types';
 import type { Stats } from '@/modules/character/types';
 import { generateId } from '@/utils/db-helpers';
 import { defaultRng, type Rng } from '@/utils/rng';
-import { DAMAGE_BASE_COEFFICIENT } from '@/config/combat';
+import { DAMAGE_BASE_COEFFICIENT, ENEMY_LEVEL_SCALE_COEFFICIENT } from '@/config/combat';
 
 /**
  * 根据模板和等级推导敌人属性统计（含等级缩放）
@@ -30,8 +30,8 @@ export function generateEnemyStats(
   magicDefense: number;
   damage: [number, number];
 } {
-  // 等级缩放系数：每级 +10%，level=1 时为 1.0，level=50 时为 5.9
-  const levelScale = 1 + (level - 1) * 0.1;
+  // 等级缩放系数：每级 +6%，level=1 时为 1.0，level=20 时为 2.14
+  const levelScale = 1 + (level - 1) * ENEMY_LEVEL_SCALE_COEFFICIENT;
 
   // 战斗属性随等级缩放
   const scaledPhysicalAttack = Math.floor((template.physicalAttack ?? 10) * levelScale);

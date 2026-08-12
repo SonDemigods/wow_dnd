@@ -122,7 +122,7 @@ const HEALTH_POTIONS: ConsumableItemDraft[] = [
     level: 5,
     description: '泛着金色光泽的特效生命药水，即使重伤也能迅速恢复',
     value: 50,
-    effects: [{ type: 'health_restore', value: 60, percentValue: 35 }],
+    effects: [{ type: 'health_restore', value: 50, percentValue: 30 }],
     useMode: 'instant',
     template: 'large_health_potion'
   },
@@ -135,7 +135,7 @@ const HEALTH_POTIONS: ConsumableItemDraft[] = [
     level: 7,
     description: '据说是从深渊军团魔能炼金釜中诞生的奇迹药水，猩红的液体翻滚着令人敬畏的再生之力，即便是濒死的战士也能瞬间重返战场',
     value: 80,
-    effects: [{ type: 'health_restore', value: 80, percentValue: 50 }],
+    effects: [{ type: 'health_restore', value: 60, percentValue: 40 }],
     useMode: 'instant',
     template: 'super_health_potion'
   }
@@ -178,7 +178,7 @@ const MANA_POTIONS: ConsumableItemDraft[] = [
     level: 5,
     description: '晶莹剔透的特效法力药水，由奥法学院资深奥术师以魔力蓟与光耀草精炼而成，饮下后魔力如泉水般从魔网深处奔涌而来',
     value: 50,
-    effects: [{ type: 'mana_restore', value: 60, percentValue: 35 }],
+    effects: [{ type: 'mana_restore', value: 50, percentValue: 30 }],
     useMode: 'instant',
     template: 'large_mana_potion'
   },
@@ -191,7 +191,7 @@ const MANA_POTIONS: ConsumableItemDraft[] = [
     level: 7,
     description: '从奥术之源碎片中提炼的超级法力药水，蕴含着近乎无穷的奥术能量',
     value: 80,
-    effects: [{ type: 'mana_restore', value: 80, percentValue: 50 }],
+    effects: [{ type: 'mana_restore', value: 60, percentValue: 40 }],
     useMode: 'instant',
     template: 'super_mana_potion'
   }
