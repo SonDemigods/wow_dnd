@@ -158,7 +158,7 @@ const currentZoneId = computed(() => {
 
 const mapTransformStyle = computed(() => ({
   transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoomLevel.value})`,
-  transformOrigin: '0 0',
+  transformOrigin: 'center center',
   backgroundImage: `url(${worldBgImg})`,
   backgroundSize: 'cover',
   backgroundPosition: 'center'
@@ -258,17 +258,17 @@ function onMapMouseUp() {
 
 // P5-030 修复：拖拽平移边界钳制，基于地图与容器尺寸动态计算
 // P7-031：PAN_BOUND_MARGIN 从 config/map.ts 导入
+// transformOrigin:center center → 缩放从中心扩散，平移范围对称
 function clampPan(targetX: number, targetY: number): void {
   const containerW = mapContainerRef.value?.clientWidth ?? 0;
   const containerH = mapContainerRef.value?.clientHeight ?? 0;
-  // 地图缩放后尺寸
   const scaledW = mapWidth.value * zoomLevel.value;
   const scaledH = mapHeight.value * zoomLevel.value;
-  // 当地图小于容器时，将地图固定在中心；否则限制拖拽范围在可视区内
-  const maxPanX = Math.max(0, (scaledW - containerW) / 2) + PAN_BOUND_MARGIN;
-  const maxPanY = Math.max(0, (scaledH - containerH) / 2) + PAN_BOUND_MARGIN;
-  panX.value = Math.max(-maxPanX, Math.min(maxPanX, targetX));
-  panY.value = Math.max(-maxPanY, Math.min(maxPanY, targetY));
+  // 地图超出容器的半差值：正值表示地图比容器大，可拖动该距离
+  const halfX = Math.max(0, (scaledW - containerW) / 2) + PAN_BOUND_MARGIN;
+  const halfY = Math.max(0, (scaledH - containerH) / 2) + PAN_BOUND_MARGIN;
+  panX.value = Math.max(-halfX, Math.min(halfX, targetX));
+  panY.value = Math.max(-halfY, Math.min(halfY, targetY));
 }
 
 // 拖拽控制 - 触摸事件（移动端）
