@@ -152,11 +152,11 @@ export const VULNERABLE_DAMAGE_COEFFICIENT = 1.5;
  * AOE 技能对每个目标造成的伤害 = floor(单体伤害 × 该比例)。
  * 小于 1 表示 AOE 每目标伤害低于单体技能，符合"多目标换低单价"的常规设计。
  *
- * P3-147：与敌方 AOE 倍率保持口径一致（玩家 0.7 / 敌方 0.8），避免"敌方 AOE 比普攻还猛"的设计 bug。
+ * P3-147：与敌方 AOE 倍率保持口径一致（玩家 0.8 / 敌方 0.8），避免"敌方 AOE 比普攻还猛"的设计 bug。
  *
  * @see src/modules/combat/composables/usePlayerSkill.ts applySkillDamage
  */
-export const PLAYER_AOE_DAMAGE_PENALTY = 0.7;
+export const PLAYER_AOE_DAMAGE_PENALTY = 0.8;
 
 /**
  * 敌方 AOE 攻击每目标伤害占面板伤害的比例

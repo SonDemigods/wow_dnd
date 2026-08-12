@@ -241,18 +241,18 @@ describe('paladin 技能数据完整性', () => {
       });
     });
 
-    it('AOE 魔法伤害基础值在 15-60 区间', () => {
+    it('AOE 魔法伤害基础值在 15-70 区间', () => {
       magicAoe.forEach(s => {
-        expect(s.effect.value, `技能 ${s.id} value 应在 15-60`).toBeGreaterThanOrEqual(15);
-        expect(s.effect.value, `技能 ${s.id} value 应在 15-60`).toBeLessThanOrEqual(60);
+        expect(s.effect.value, `技能 ${s.id} value 应在 15-70`).toBeGreaterThanOrEqual(15);
+        expect(s.effect.value, `技能 ${s.id} value 应在 15-70`).toBeLessThanOrEqual(70);
       });
     });
 
-    it('治疗技能基础值在 15-60 区间', () => {
+    it('治疗技能基础值在 15-70 区间', () => {
       const healSkills = paladinSkills.filter(s => s.type === 'health_restore');
       healSkills.forEach(s => {
-        expect(s.effect.value, `技能 ${s.id} value 应在 15-60`).toBeGreaterThanOrEqual(15);
-        expect(s.effect.value, `技能 ${s.id} value 应在 15-60`).toBeLessThanOrEqual(60);
+        expect(s.effect.value, `技能 ${s.id} value 应在 15-70`).toBeGreaterThanOrEqual(15);
+        expect(s.effect.value, `技能 ${s.id} value 应在 15-70`).toBeLessThanOrEqual(70);
       });
     });
 

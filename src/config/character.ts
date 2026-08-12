@@ -164,8 +164,8 @@ export const DODGE_DEX_COEFFICIENT = 0.3;
  * 生命恢复加成系数
  * 公式：floor(wis * HEAL_WIS_COEFFICIENT + cha * HEAL_CHA_COEFFICIENT)
  */
-export const HEAL_WIS_COEFFICIENT = 0.1;
-export const HEAL_CHA_COEFFICIENT = 0.05;
+export const HEAL_WIS_COEFFICIENT = 0.2;
+export const HEAL_CHA_COEFFICIENT = 0.1;
 
 // ==================== 死亡惩罚 ====================
 

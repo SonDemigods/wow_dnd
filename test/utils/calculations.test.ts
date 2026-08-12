@@ -135,9 +135,9 @@ describe('calculateMpBonus 每级MP加成', () => {
 });
 
 describe('calculateHealBonus 生命恢复加成', () => {
-  it('公式：floor(wis*0.1 + cha*0.05)', () => {
+  it('公式：floor(wis*0.2 + cha*0.1)', () => {
     const stats = makeStats({ wis: 10, cha: 10 });
-    expect(calculateHealBonus(stats)).toBe(Math.floor(1 + 0.5));
+    expect(calculateHealBonus(stats)).toBe(Math.floor(2 + 1));
   });
 });
 

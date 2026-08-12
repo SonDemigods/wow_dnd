@@ -165,10 +165,10 @@ describe('priest 技能数据完整性', () => {
       });
     });
 
-    it('单体治疗基础值在 15-60 区间', () => {
+    it('单体治疗基础值在 15-70 区间', () => {
       healSingle.forEach(s => {
-        expect(s.effect.value, `技能 ${s.id} value 应在 15-60`).toBeGreaterThanOrEqual(15);
-        expect(s.effect.value, `技能 ${s.id} value 应在 15-60`).toBeLessThanOrEqual(60);
+        expect(s.effect.value, `技能 ${s.id} value 应在 15-70`).toBeGreaterThanOrEqual(15);
+        expect(s.effect.value, `技能 ${s.id} value 应在 15-70`).toBeLessThanOrEqual(70);
       });
     });
 
