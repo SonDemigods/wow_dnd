@@ -53,21 +53,21 @@
           <BaseIcon name="explosion-rays" gradient="crit" :size="14" />
           <div class="secondary-info">
             <div class="secondary-label">暴击率</div>
-            <div class="secondary-value">{{ attributes.critChance }}%</div>
+            <div class="secondary-value">{{ attributes.critChance }}<span class="pct-suffix">%</span></div>
           </div>
         </div>
         <div class="secondary-item dodge">
           <BaseIcon name="dodge" gradient="dodge" :size="14" />
           <div class="secondary-info">
             <div class="secondary-label">闪避率</div>
-            <div class="secondary-value">{{ attributes.dodgeChance }}%</div>
+            <div class="secondary-value">{{ attributes.dodgeChance }}<span class="pct-suffix">%</span></div>
           </div>
         </div>
         <div class="secondary-item heal">
           <BaseIcon name="healing" gradient="heal" :size="14" />
           <div class="secondary-info">
-            <div class="secondary-label">治疗强度</div>
-            <div class="secondary-value">{{ attributes.healBonus }}</div>
+            <div class="secondary-label">治疗增效</div>
+            <div class="secondary-value">{{ attributes.healBonus }}<span class="pct-suffix">%</span></div>
           </div>
         </div>
       </div>
@@ -248,6 +248,7 @@ onMounted(async () => {
 .secondary-info { flex: 1; }
 .secondary-label { font-size: @font-sm; color: @text-secondary; margin-bottom: 2px; }
 .secondary-value { font-size: @font-md; color: @text-primary; font-weight: @font-weight-bold; }
+.pct-suffix { font-size: @font-xs; color: @text-secondary; font-weight: normal; margin-left: 6px; }
 
 .resource-stats {
   display: flex;
