@@ -5,11 +5,11 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 各模块功能整理 |
-| 版本 | v4.0 |
-| 生成日期 | 2026年8月3日 |
+| 版本 | v5.0 |
+| 生成日期 | 2026年8月13日 |
 | 所属目录 | `doc/project/` |
 | 关联文档 | DATA_ARCHITECTURE_OVERVIEW.md、ARCHITECTURE_DIAGRAMS.md、DEPENDENCY_GRAPH.md、各模块设计文档 |
-| 更新说明 | 本次基于源码逐项比对修正：音频模块补充 QA-6 拆分架构（`service.ts` 生命周期协调 + `effectChains.ts` 节点工厂/效果链 + `synth/sfxSynth.ts` 52 种音效合成 + `synth/bgmSynth.ts` 6 种 BGM 场景合成，SfxType 52 种、SfxRoute 6 条）；动画模块动画函数数量修正为 15 个（animateHealGlow/animateManaGlow 以 const 箭头函数形式导出，原「14 个」为笔误）；数据模块关键文件修正为 initializer.ts/backup.ts/importer.ts（service.ts 为 re-export 入口，QA-11 拆分）；探索模块删除源码中已不存在的「步数限制（初始 20 步）」描述；game/console/item-template/admin 模块、services 5 个服务、数据库表 config_ 15 / char_ 6 / runtime_ 6、EventBus 事件 46 个经源码核实与 v3.0 描述一致。 |
+| 更新说明 | admin 模块全面升级：AdminQueryService 从 src/services/ 迁入 modules/admin/queryService.ts（services 目录减至 4 个文件）；admin 模块新增 queryService.ts / referenceGraph.ts / defaultData.ts；CONFIG_TABLES 11→15 张；UI 新增 DashboardPanel / ImportDialog / fields/ 7 子组件 / config-meta/ 3 文件 / composables/ useFormValidation；AdminTable 分页/排序/列显隐/批量选择/行详情/行克隆；AdminForm 表单校验+键盘快捷键；ConfigManager 导出/导入/重置/批量删除。 |
 
 ---
 
@@ -60,8 +60,10 @@
 | 项 | 内容 |
 |----|------|
 | 定位 | 配置管理和数据管理后台 |
-| 核心职责 | 配置项 CRUD、数据表直管（CONFIG_TABLES）、AdminForm/AdminTable/AdminLayout 配套（`components/admin/`） |
-| 依赖模块 | data、bus |
+| 核心职责 | 配置项 CRUD（含分页/排序/搜索）、数据表直管（CONFIG_TABLES 15 张）、批量导入/导出（JSON/CSV）、单表重置默认值、引用完整性检查（referenceGraph）、AdminQueryService 收口控制台跨模块查询 |
+| 模块文件 | types.ts / db.ts（getPaged/bulkPut/增强 search）/ service.ts（WRITABLE_TABLES 白名单/getPagedData/resetToDefaults）/ store.ts（分页/排序/导入/重置/ConfigCache 失效）/ queryService.ts / referenceGraph.ts / defaultData.ts |
+| UI 组件 | AdminLayout / DashboardPanel / AdminTable（分页/排序/列显隐/批量选择/行详情/行克隆）/ AdminForm（7 个 fields/ 子组件 + useFormValidation 校验）/ ConfigManager / ImportDialog + composables/（useConfigTableMeta / useConfigCrud / useFormValidation）+ config-meta/（columns / formFields / dictionaries） |
+| 依赖模块 | data、config |
 
 ### 1.5 音频模块（`modules/audio/`）
 
@@ -93,7 +95,7 @@
 | 架构 | 拆分为 `framework.ts`（框架核心：CommandResult/CommandDef/CommandCategory 类型、commands 注册表、exec 解析执行、initConsole 挂载、公共辅助 requireCharacter/switchGameState/logTag/rarityColorKey/resolveCategory）+ `commands/` 命令子模块（7 个命令文件，加载即注册） |
 | 命令文件 | `character.ts`（stats/gold/exp/hp/mp/heal/level/resurrect/buff/resetChar）、`inventory.ts`（item/bag/clearBag/equips）、`combat.ts`（spawn/win/flee/kill）、`skill.ts`（skills）、`exploration.ts`（resetExplore/goto/revealAll）、`quest.ts`（quests）、`system.ts`（admin/game/help/shops/log） |
 | 使用方式 | `initConsole()` 挂载到 `window.cmd`；`exec('help')` 字符串形式调用 |
-| 依赖模块 | `AdminQueryService`（收口跨模块查询，CHR-5 修复） |
+| 依赖模块 | `admin 模块（queryService）`（收口跨模块查询，CHR-5 修复） |
 
 ### 1.8 游戏全局状态模块（`modules/game/`）
 
@@ -109,7 +111,7 @@
 
 ### 1.9 服务层（`services/`）
 
-服务层是跨模块协调层，位于 `src/services/` 目录，用于解耦模块间的直接依赖。共 5 个服务（`ItemTemplateCache` 已删除，物品模板缓存职责统一收归 `item-template/unifiedItemTemplateCache`，ARCH-1）。
+服务层是跨模块协调层，位于 `src/services/` 目录，用于解耦模块间的直接依赖。共 4 个服务（`ItemTemplateCache` 已删除 ARCH-1，`AdminQueryService` 已迁入 `modules/admin/queryService.ts`）。
 
 | 服务 | 文件 | 职责 |
 |------|------|------|
@@ -117,7 +119,7 @@
 | 游戏初始化编排 | `GameBootstrap.ts` | 按 4 层并行初始化各 Store（P3-128）：Layer 1 log+inventory 并行 → Layer 1.5 注入全部回调（setInventoryCallbacks/setInventoryExternalCallbacks/setQuestExternalCallbacks/setBossCreateFn）→ Layer 2 equipment+skill+map 并行 → Layer 3 exploration → Layer 4 quest；退出时 `dispose()` 按逆序清理实现 `Disposable` 的 Store（combat/exploration/audio）并清除全部回调引用 |
 | 统一错误处理 | `ErrorHandler.ts` | 集中处理错误，提供 `tryAsync`（Result 类型）/ `wrapAsync`（toast+日志）/ `report`（手动上报）三层 API |
 | 角色生命周期服务 | `CharacterLifecycleService.ts` | 收口角色创建（`initializeCharacterSkills`）与删除（`cascadeDeleteCharacter`）流程中的跨模块持久化，消除 character Store 对 6 个模块 DbService 的直接依赖（CHR-4 修复） |
-| 管理后台查询服务 | `AdminQueryService.ts` | 收口控制台命令模块对 enemy/boss/inventory/equipment DbService 的查询依赖，统一管理后台的数据查询入口（CHR-5 修复） |
+| 管理后台查询服务 | `modules/admin/queryService.ts` | 收口控制台命令模块对 enemy/boss/inventory/equipment DbService 的查询依赖，统一管理后台的数据查询入口（CHR-5 修复） |
 
 | 项 | 内容 |
 |----|------|
@@ -420,16 +422,16 @@ AI 目标选择系统，替代简单的"攻击玩家"逻辑。
 | 核心数据层 | character、inventory、equipment、skill、quest、item-template | 6 |
 | 玩法核心层 | combat、exploration、map、shop | 4 |
 | 辅助层 | log、enemy、boss | 3 |
-| 服务层 | CrossModuleQuery、GameBootstrap、ErrorHandler、CharacterLifecycleService、AdminQueryService | 5 |
-| **合计** | — | **26**（21 个业务模块 + 5 个服务） |
+| 服务层 | CrossModuleQuery、GameBootstrap、ErrorHandler、CharacterLifecycleService（AdminQueryService 已迁入 modules/admin/queryService.ts） | 4 + 1 |
+| **合计** | — | **26**（21 个业务模块 + 4 个 src/services/ 服务 + 1 个 admin 模块内服务） |
 
-> 说明：业务模块总数 21 个（含 `game`、`item-template`、`console`）；服务层 5 个独立于业务模块之外。
+> 说明：业务模块总数 21 个（含 `game`、`item-template`、`console`）；服务层 4 个独立于业务模块之外（`AdminQueryService` 已迁入 `modules/admin/`）。
 
 ### 5.2 数据库表分类
 
 | 表类型 | 前缀 | 表数量 | 说明 |
 |--------|------|--------|------|
-| 配置表 | `config_` | 15 | 全局共享，游戏定义数据（含 DATA-4 新增 config_class_items/config_class_passives/config_class_talents/config_item_sets 4 张职业专属数据表） |
+| 配置表 | `config_` | 15 | 全局共享，游戏定义数据（含 DATA-4 新增 config_class_equipment/config_class_passives/config_class_talents/config_set_definitions 4 张职业专属数据表） |
 | 角色表 | `char_` | 6 | 按 characterId 隔离，角色专属 |
 | 运行时表 | `runtime_` | 6 | 全局状态或日志（含 runtime_shopSoldItems 回购记录） |
 
@@ -459,7 +461,7 @@ AI 目标选择系统，替代简单的"攻击玩家"逻辑。
 | `GameBootstrap` | EXP-5 / P3-128 | GameMain.vue | `initialize(characterId)`、`dispose()` |
 | `ErrorHandler` | — | 全模块 Store | `tryAsync`、`wrapAsync`、`report` |
 | `CharacterLifecycleService` | CHR-4 | characterStore | `initializeCharacterSkills`、`cascadeDeleteCharacter` |
-| `AdminQueryService` | CHR-5 | console | `queryAllItemTemplates`、`queryItemTemplate`、`queryAllEnemyTemplates` |
+| `AdminQueryService` | CHR-5 | console | `queryAllItemTemplates`、`queryItemTemplate`、`queryAllEnemyTemplates`（位于 `modules/admin/queryService.ts`） |
 
 ### 5.5 Disposable 接口实现
 
@@ -497,7 +499,7 @@ AI 目标选择系统，替代简单的"攻击玩家"逻辑。
 | combatListenerRegistered 全局标志 | exploration | `Disposable` 接口 + `clearGroup('exploration')` 统一清理 | ARCH-8 | ✅ 已修复 |
 | Boss 模块与 combat 耦合 | boss ↔ combat | `IBossContext` 接口注入解耦 | S3 | ✅ 已修复 |
 | character 直接依赖 6 个模块 DbService | character → skill/inventory/equipment/exploration/log/quest | `CharacterLifecycleService` 收口级联删除/初始化 | CHR-4 | ✅ 已修复 |
-| console 直接依赖 4 个模块 DbService | console → enemy/boss/inventory/equipment | `AdminQueryService` 收口查询 | CHR-5 | ✅ 已修复 |
+| console 直接依赖 4 个模块 DbService | console → enemy/boss/inventory/equipment | `AdminQueryService`（`modules/admin/queryService.ts`）收口查询 | CHR-5 | ✅ 已修复 |
 | inventory ↔ equipment 双向依赖 | inventory ↔ equipment | `item-template` 模块（`unifiedItemTemplateCache`）+ `setInventoryCallbacks` 回调注入 | A1/G1 | ✅ 已修复 |
 | inventory ↔ quest 循环依赖 | inventory ↔ quest | `setInventoryExternalCallbacks` / `setQuestExternalCallbacks` 双向回调注入 | ARCH-2 | ✅ 已修复 |
 | combat 直接 import 6 个外部 Store | combat → character/skill/enemy/quest/log/inventory | `ICombatContext`（`ICombatQuery` + `ICombatCommand` 读写分离）收口 | S2 | ✅ 已修复 |
@@ -515,6 +517,7 @@ AI 目标选择系统，替代简单的"攻击玩家"逻辑。
 | v2.0 | 2026-07-10 | — | 模块数量从 18 个更新为 19 个（新增 item-template 统一物品模板层）；服务层补全为 6 个服务（新增 CharacterLifecycleService、AdminQueryService）；天赋树/被动技能数据来源修正为 config 层；战斗补充 combatContext.ts 与 IBossContext 接口注入说明 |
 | v3.0 | 2026-08-03 | System | 模块数量从 19 个更新为 21 个（新增 game 全局游戏状态模块，P3-116）；服务层 6 个减为 5 个（删除 ItemTemplateCache，ARCH-1）；音频 db.ts 删除、设置收敛 GameStore、audioService 懒加载（P3-141）；战斗资源系统扩至 13 种资源类型（P3-148）、效果管线 8 handler 文件（P3-146）、AOE 常量 0.7/0.8（P3-147）；控制台拆分为 console/commands/ 7 个命令文件；GameBootstrap 4 层并行初始化（P3-128）；数据库表修正为 config_ 15 / char_ 6 / runtime_ 6；EventBus 事件修正为 46 个 |
 | v4.0 | 2026-08-03 | System | 音频模块补充 QA-6 拆分架构（service.ts 生命周期协调 + effectChains.ts 节点工厂/效果链 + synth/sfxSynth.ts 52 种音效 + synth/bgmSynth.ts 6 种 BGM 场景，SfxType 52 种、SfxRoute 6 条）；动画函数数量修正为 15 个（animateHealGlow/animateManaGlow 为 const 导出，原 14 个为笔误）；数据模块关键文件修正（QA-11 拆分 initializer/backup/importer，service.ts 为 re-export 入口）；探索模块移除过时的「步数限制（初始 20 步）」描述；game/console/item-template/admin 模块、services 5 个服务、数据库表 15/6/6、EventBus 事件 46 个经源码核实与 v3.0 一致 |
+| v5.0 | 2026-08-13 | System | admin 模块全面升级：AdminQueryService 从 src/services/ 迁入 modules/admin/queryService.ts（services 目录减至 4 个文件）；admin 模块新增 queryService.ts / referenceGraph.ts / defaultData.ts 三文件；CONFIG_TABLES 从 11 张扩展到 15 张（补入 DATA-4 职业扩展 4 张）；UI 组件新增 DashboardPanel / ImportDialog + fields/ 7 个字段子组件 + config-meta/ 3 个元信息文件 + composables/ 新增 useFormValidation；AdminTable 增加分页/排序/列显隐/批量选择/行详情/行克隆；AdminForm 增加表单校验与键盘快捷键；ConfigManager 增加导出/导入/重置/批量删除 |
 
 ---
 

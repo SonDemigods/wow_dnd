@@ -5,11 +5,11 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 项目数据流梳理 |
-| 版本 | v5.0 |
-| 生成日期 | 2026年8月3日 |
+| 版本 | v5.1 |
+| 生成日期 | 2026年8月13日 |
 | 所属目录 | `doc/project/` |
 | 关联文档 | `MODULE_FUNCTIONS.md`、`DEPENDENCY_GRAPH.md`、`DATA_ARCHITECTURE_OVERVIEW.md`、`EVENT_BUS_DESIGN.md` |
-| 更新说明 | P3-116「全局状态收敛与持久化重构」：新增 `src/modules/game/` 模块，useGameStore 收敛全局游戏状态（currentCharacterId / currentShopId / gameSettings / lastPlayedAt / initializedAt），经 gameStateHelper（getGameState / saveGameState，事务保证原子性）读写 `runtime_gameState` 表（id='gameState'）；原 character/db.ts、shop/db.ts、audio/db.ts 中直接操作 gameState 的路径收敛到 game 模块，character / shop / exploration 的 currentCharacterId / currentShopId 经 gameStore 读写，audio 的音频设置经 gameStore.updateGameSettings 读写并持久化（audio/db.ts 已删除）；migrateAudioSettings() 在 gameStore.initialize 时把旧 audio_settings 键数据迁移合并到 gameState 键的 gameSettings 字段后删除旧键；持久化架构为 Pinia Store（内存状态）↔ IndexedDB（持久化）双向；备份 backupVersion 更新为 v1.1、supportedVersions ['v1.0','v1.1']；数据库共 27 张表（15 配置表 + 6 角色表 + 6 运行时表），自动备份覆盖 21 张。 |
+| 更新说明 | AdminQueryService 从 src/services/ 迁入 modules/admin/queryService.ts；services 聚合层减至 4 个服务；全局数据流图中 admin/queryService 独立为虚线节点 |
 
 ---
 
@@ -23,7 +23,7 @@
 
 ## 一、全局数据流向
 
-下图展示项目所有业务流的统一数据流向。从用户在 Vue 组件中的交互开始，经过 Store 编排、Service 计算、状态更新、DB 持久化，最终通过 EventBus 触发 UI 重渲染。`src/services/` 聚合层（CrossModuleQuery / GameBootstrap / ErrorHandler / CharacterLifecycleService / AdminQueryService）将跨模块查询、初始化编排、错误处理、角色生命周期与管理后台查询从 Store 中收口；全局状态统一收敛到 game 模块的 GameStore；物品模板缓存统一由 `src/modules/item-template/` 的 `unifiedItemTemplateCache` 提供。
+下图展示项目所有业务流的统一数据流向。从用户在 Vue 组件中的交互开始，经过 Store 编排、Service 计算、状态更新、DB 持久化，最终通过 EventBus 触发 UI 重渲染。`src/services/` 聚合层（CrossModuleQuery / GameBootstrap / ErrorHandler / CharacterLifecycleService）将跨模块查询、初始化编排、错误处理与角色生命周期从 Store 中收口；admin 模块的 `AdminQueryService`（`modules/admin/queryService.ts`）收口控制台跨模块查询；全局状态统一收敛到 game 模块的 GameStore；物品模板缓存统一由 `src/modules/item-template/` 的 `unifiedItemTemplateCache` 提供。
 
 ```mermaid
 flowchart LR
@@ -32,7 +32,8 @@ flowchart LR
     Component -->|调用 Action| StoreAction[Store Action<br/>combatStore / explorationStore 等]
     StoreAction -->|纯函数计算| Service[Service 纯函数<br/>combatService / explorationService]
     Service -->|返回计算结果| StoreAction
-    StoreAction -->|跨模块查询 / 初始化编排 / 角色生命周期 / 管理后台查询| ServicesLayer[src/services 聚合层<br/>CrossModuleQuery / GameBootstrap<br/>ErrorHandler / CharacterLifecycleService / AdminQueryService]
+    StoreAction -->|跨模块查询 / 初始化编排 / 角色生命周期| ServicesLayer[src/services 聚合层<br/>CrossModuleQuery / GameBootstrap<br/>ErrorHandler / CharacterLifecycleService]
+    StoreAction -.->|控制台跨模块查询| AdminQuery[admin/queryService.ts<br/>AdminQueryService]
     StoreAction -->|读写全局状态<br/>setCurrentCharacterId 等| GameStore[gameStore<br/>全局状态唯一持有者]
     ServicesLayer -->|物品模板查询<br/>命中缓存| ItemCache[unifiedItemTemplateCache<br/>聚合 config_items + config_equipmentItems]
     ItemCache -->|懒加载| DB
@@ -56,9 +57,8 @@ flowchart LR
 | `GameBootstrap` | 按依赖顺序统一编排各 Store 初始化（分层并行）与逆序清理，管理 Disposable 接口的 Store 资源释放与各回调注入/清理 | GameMain.vue / 角色切换入口 |
 | `ErrorHandler` | 统一错误处理入口，提供 `tryAsync`（Result 类型）/ `wrapAsync`（toast+日志）/ `report`（手动上报）三层 API | 全模块 Store |
 | `CharacterLifecycleService` | 收口角色创建（`initializeCharacterSkills`）与删除（`cascadeDeleteCharacter`，Promise.allSettled 并行）流程中的跨模块持久化，消除 character Store 对 6 个模块 DbService 的直接依赖 | characterStore |
-| `AdminQueryService` | 收口控制台命令模块对 enemy/boss/inventory/equipment DbService 的查询依赖，统一管理后台的数据查询入口 | console 命令模块 |
 
-> 说明：原 services 层的 `ItemTemplateCache` 已删除（ARCH-1 修复），物品模板缓存统一由 `src/modules/item-template/` 的 `unifiedItemTemplateCache` 提供，聚合查询 `config_items`（普通物品）与 `config_equipmentItems`（装备）两张表。
+> 说明：原 services 层的 `ItemTemplateCache` 已删除（ARCH-1 修复），物品模板缓存统一由 `src/modules/item-template/` 的 `unifiedItemTemplateCache` 提供。`AdminQueryService` 原位于 `src/services/`，已迁入 `modules/admin/queryService.ts`，收口控制台命令模块对 enemy/boss/inventory/equipment DbService 的查询依赖（CHR-5 修复）。
 
 **关键约定**：
 
@@ -66,7 +66,8 @@ flowchart LR
 |----------|----------|------|
 | 组件 → Store | 直接调用 Action | 单向数据流，组件不直接修改状态 |
 | Store → Service | 直接调用纯函数 | Service 无副作用，只负责计算 |
-| Store → services 层 | 直接调用聚合服务 | 跨模块查询/缓存/编排/错误处理/角色生命周期/管理后台查询收口于此 |
+| Store → services 层 | 直接调用聚合服务 | 跨模块查询/缓存/编排/错误处理/角色生命周期收口于此 |
+| Store → admin 模块 | 直接调用 adminQueryService | 控制台跨模块查询收口（CHR-5） |
 | Store → DB | 直接调用 db.ts / gameStateHelper | 异步持久化，不阻塞主线程；GameStore 经 `saveGameState` 写 `runtime_gameState` |
 | Store → Store | 直接调用 Action | 跨模块数据变更通过 Store Action（非 EventBus） |
 | Store → 组件 | EventBus + computed | UI 通知走 EventBus，状态变更走响应式 |
@@ -641,7 +642,7 @@ P3-116「全局状态收敛与持久化重构」后，数据持久化架构为 *
 
 | 分类 | 数量 | 表清单 |
 |------|------|--------|
-| 配置表（config_*） | 15 | config_factions / config_races / config_classes / config_items / config_equipmentItems / config_mobs / config_bosses / config_quests / config_skills / config_locations / config_shops / config_class_items / config_class_passives / config_class_talents / config_item_sets |
+| 配置表（config_*） | 15 | config_factions / config_races / config_classes / config_items / config_equipmentItems / config_mobs / config_bosses / config_quests / config_skills / config_locations / config_shops / config_class_equipment / config_class_passives / config_class_talents / config_set_definitions |
 | 角色表（char_*） | 6 | char_data / char_inventory / char_equipment / char_skills / char_quests / char_exploration |
 | 运行时表（runtime_*） | 6 | runtime_gameState / runtime_combatLogs / runtime_adventureLogs / runtime_mapState / runtime_shopItems / runtime_shopSoldItems |
 
@@ -822,7 +823,7 @@ interface BackupFile {
 
 1. **存储位置**：自动备份存 `localStorage`（键名 `wow_dnd_auto_backups`），手动备份导出为 JSON 文件下载（characterStore 包装 `exportBackup`，由 CharacterSelect.vue 调用）。
 2. **保留策略**：`unshift` 新备份到头部，超过 `MAX_AUTO_BACKUPS`（5）时 `pop` 最旧备份。
-3. **收集范围**：`collectAllData` 并行读取 21 张表——6 角色表（char_data/char_inventory/char_quests/char_equipment/char_skills/char_exploration）+ 5 运行时表（runtime_combatLogs/runtime_adventureLogs/runtime_gameState/runtime_mapState/runtime_shopItems）+ 10 配置表（config_locations/config_shops/config_factions/config_races/config_classes/config_items/config_equipmentItems/config_mobs/config_bosses/config_skills），配置表清单与 `TABLES_TO_BACKUP` 配置保持一致。数据库共 27 张表（15 配置表 + 6 角色表 + 6 运行时表），备份不涉及 5 张配置表（config_quests/config_class_items/config_class_passives/config_class_talents/config_item_sets）与 1 张运行时表（runtime_shopSoldItems）。
+3. **收集范围**：`collectAllData` 并行读取 21 张表——6 角色表（char_data/char_inventory/char_quests/char_equipment/char_skills/char_exploration）+ 5 运行时表（runtime_combatLogs/runtime_adventureLogs/runtime_gameState/runtime_mapState/runtime_shopItems）+ 10 配置表（config_locations/config_shops/config_factions/config_races/config_classes/config_items/config_equipmentItems/config_mobs/config_bosses/config_skills），配置表清单与 `TABLES_TO_BACKUP` 配置保持一致。数据库共 27 张表（15 配置表 + 6 角色表 + 6 运行时表），备份不涉及 5 张配置表（config_quests/config_class_equipment/config_class_passives/config_class_talents/config_set_definitions）与 1 张运行时表（runtime_shopSoldItems）。
 4. **校验和算法**：P3-113 起改为 SHA-256（`crypto.subtle.digest`，Web Crypto API），替代原 32 位 DJB2 变种哈希，碰撞概率降至可忽略水平；`validateBackup` 导入前重新计算并比对。
 5. **配置驱动导入**：`ImportService.importData` 在单个 Dexie 事务中写入全部表；Record 形状（角色表/运行时表）按 `characterId`/`id` 键 bulkPut，数组形状的 10 个配置表由 `TABLES_TO_BACKUP` 配置驱动遍历写入（CODE-34）；导入前经 `migrateBackupEnemyIds` 迁移旧怪物 ID 到新 ID（P3-137 别名层）。
 6. **备份版本兼容（P3-116）**：`BACKUP_CONFIG.backupVersion` 已更新为 `v1.1`，`supportedVersions` 为 `['v1.0','v1.1']`；`ImportService.checkVersionCompatibility` 依据 `supportedVersions` 判断兼容性，v1.0 旧备份导入时标记 `requiresMigration`，导入事务前由 `migrateBackupEnemyIds` 统一迁移旧怪物 ID。
@@ -1007,7 +1008,7 @@ sequenceDiagram
 | 纯函数计算 | Service 层无副作用，只负责计算 | combatService / skillService / explorationService |
 | 跨模块直调 | 模块间数据变更通过 Store Action | combatStore 通过 ICombatContext 代理调用 characterStore.takeDamage |
 | 上下文注入解耦 | combat 模块通过 ICombatContext 聚合外部 Store，不直接 import | createCombatContext 是 combat 内唯一引用外部 Store 的位置 |
-| 跨模块查询收口 | 探索/管理后台的跨模块查询通过 services 层聚合 | crossModuleQuery / adminQueryService / unifiedItemTemplateCache |
+| 跨模块查询收口 | 探索/控制台的跨模块查询通过服务层或 admin 模块聚合 | crossModuleQuery / adminQueryService / unifiedItemTemplateCache |
 | 角色生命周期收口 | 角色 create/delete 的跨模块持久化通过 CharacterLifecycleService | initializeCharacterSkills / cascadeDeleteCharacter（Promise.allSettled） |
 | 全局状态收敛 | 全局状态由 game 模块 GameStore 唯一持有，其他模块只读代理 | characterStore.currentCharacterId / shopStore.currentShopId / audioStore.settings |
 | 注册表分发 | 探索事件处理器集中在 events.ts 注册表 | cellEventHandlers / effectHandlers |

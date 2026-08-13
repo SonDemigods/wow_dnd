@@ -8,7 +8,7 @@
 | 版本 | v4.3 |
 | 生成日期 | 2026年8月3日 |
 | 所属模块 | `modules/equipment` |
-| 更新说明 | 严格对齐源码：更新回调注入接口（`setInventoryCallbacks` 新增 `flushPersistCallback` 第三参数，DB-1/DB-2 修复）；新增 item-template 聚合层章节（`UnifiedItemTemplateCache` 合并 `config_items` 与 `config_equipmentItems`，消除 inventory↔equipment 双向依赖 A1/G1/ARCH-1）；修正 `char_equipment` 表类型标注（`Table<EquipmentStorage, string>`）；补充 Store 新增状态 `persistError`；标注 `equipmentTemplates` 改 `shallowRef`（P3-144）与 store.ts 约 871 行未拆分待办（P3-155）；修正 `doUnequip`/`equipItem`/`unequipItem` 失败回滚流程（P2-55/DB-1/DB-2）；修正数据安全表中 `toRawData` 描述（装备模块未使用，改用可选字段默认值）；补充职业专属装备（`CLASS_SPECIFIC_ITEMS`）与套装配置持久化表（`config_class_items`/`config_item_sets`，DATA-4）；`SLOT_CONFIG` 移入 service.ts（P3-101） |
+| 更新说明 | 严格对齐源码：更新回调注入接口（`setInventoryCallbacks` 新增 `flushPersistCallback` 第三参数，DB-1/DB-2 修复）；新增 item-template 聚合层章节（`UnifiedItemTemplateCache` 合并 `config_items` 与 `config_equipmentItems`，消除 inventory↔equipment 双向依赖 A1/G1/ARCH-1）；修正 `char_equipment` 表类型标注（`Table<EquipmentStorage, string>`）；补充 Store 新增状态 `persistError`；标注 `equipmentTemplates` 改 `shallowRef`（P3-144）与 store.ts 约 871 行未拆分待办（P3-155）；修正 `doUnequip`/`equipItem`/`unequipItem` 失败回滚流程（P2-55/DB-1/DB-2）；修正数据安全表中 `toRawData` 描述（装备模块未使用，改用可选字段默认值）；补充职业专属装备（`CLASS_EQUIPMENT`）与套装配置持久化表（`config_class_equipment`/`config_set_definitions`，DATA-4）；`SLOT_CONFIG` 移入 service.ts（P3-101） |
 
 ---
 
@@ -65,8 +65,8 @@
 - **角色模块**：应用/移除装备属性加成和套装奖励
 - **背包模块**：装备来源和卸下后放回（通过回调注入，非直接 import）
 - **日志模块**：记录装备/卸下操作的冒险日志
-- **套装配置**：从 `@/data/config_item_sets` 的 `ITEM_SETS` 获取套装定义
-- **职业专属装备配置**：从 `@/data/config_class_items` 的 `CLASS_SPECIFIC_ITEMS` 获取职业专属装备（含 `classRestriction`/`setId`）
+- **套装配置**：从 `@/data/config_set_definitions` 的 `SET_DEFINITIONS` 获取套装定义
+- **职业专属装备配置**：从 `@/data/config_class_equipment` 的 `CLASS_EQUIPMENT` 获取职业专属装备（含 `classRestriction`/`setId`）
 - **item-template 聚合层**：聚合 `config_items` 与 `config_equipmentItems` 两表查询，装备模板经 `UnifiedItemTemplateCache` 以统一 `Item` 格式供背包等模块访问，消除 inventory↔equipment 双向循环依赖（A1/G1/ARCH-1）
 
 ---
@@ -463,13 +463,13 @@ export function clearInventoryCallbacks(): void;
 
 ### 概述
 
-套装系统通过 `setId` 字段将装备归组，穿戴达到指定件数时激活对应奖励。套装定义存储在 `src/data/config_item_sets.ts` 的 `ITEM_SETS` 中（DATA-4：同时持久化到 `config_item_sets` 表供 admin 后台编辑，业务模块仍直接 import 静态常量保持同步访问）。
+套装系统通过 `setId` 字段将装备归组，穿戴达到指定件数时激活对应奖励。套装定义存储在 `src/data/config_set_definitions.ts` 的 `SET_DEFINITIONS` 中（DATA-4：同时持久化到 `config_set_definitions` 表供 admin 后台编辑，业务模块仍直接 import 静态常量保持同步访问）。
 
 ### 套装奖励触发条件
 
 - 装备的 `setId` 字段标识所属套装
 - `countSetPieces(equipment)` 统计各套装的穿戴件数
-- `getActiveSetBonuses(equipment)` 按 `ITEM_SETS` 中的定义筛选 `requiredPieces <= 当前穿戴件数` 的奖励
+- `getActiveSetBonuses(equipment)` 按 `SET_DEFINITIONS` 中的定义筛选 `requiredPieces <= 当前穿戴件数` 的奖励
 - 套装奖励的 `stat` + `value` 通过 `characterStore.applyBonus/removeBonus` 同步到角色属性
 
 ### 套装奖励效果类型
@@ -489,14 +489,14 @@ export function clearInventoryCallbacks(): void;
 - **卸下装备**：可能导致套装奖励失效 → 调用 `removeBonus`
 - **唯一键**：`setId:requiredPieces:stat:value`，确保同一奖励不重复应用
 
-### 职业专属装备（config_class_items）
+### 职业专属装备（config_class_equipment）
 
-`src/data/config_class_items.ts` 定义 6 个核心职业的专属装备 `CLASS_SPECIFIC_ITEMS`（Phase 5.3）：
+`src/data/config_class_equipment.ts` 定义 6 个核心职业的专属装备 `CLASS_EQUIPMENT`（Phase 5.3）：
 
 - 每个职业 3 件专属装备（武器 + 头部 + 胸部），覆盖核心槽位
 - 其中 2 件带 `setId` 归属对应职业套装，1 件为独立装备
 - `classRestriction` 字段强制职业限制，装备时由 `checkClassRestriction` 校验
-- DATA-4：初始化时写入 `config_class_items` 表（`Table<EquipmentItem, string>`）供 admin 后台编辑，业务模块直接 import 静态常量
+- DATA-4：初始化时写入 `config_class_equipment` 表（`Table<EquipmentItem, string>`）供 admin 后台编辑，业务模块直接 import 静态常量
 
 ---
 
@@ -508,8 +508,8 @@ export function clearInventoryCallbacks(): void;
 |----------|-----|----------|------|
 | `char_equipment` | `characterId` | `EquipmentStorage` | 角色装备 ID 映射（仅存 ID，按角色隔离；Dexie 表类型标注为 `Table<EquipmentStorage, string>`，实际写入形状为 `EquipmentDataStorage`） |
 | `config_equipmentItems` | `id` | `EquipmentTemplateStorage` | 装备模板完整定义（装备模块 DbService 操作的表） |
-| `config_class_items` | `id` | `EquipmentItem` | 职业专属装备（DATA-4，供 admin 后台编辑；业务模块直接 import 静态常量） |
-| `config_item_sets` | `id` | `ItemSet` | 套装定义（DATA-4，供 admin 后台编辑；业务模块直接 import `ITEM_SETS`） |
+| `config_class_equipment` | `id` | `EquipmentItem` | 职业专属装备（DATA-4，供 admin 后台编辑；业务模块直接 import 静态常量） |
+| `config_set_definitions` | `id` | `ItemSet` | 套装定义（DATA-4，供 admin 后台编辑；业务模块直接 import `SET_DEFINITIONS`） |
 
 ### EquipmentDataStorage 存储内容
 
@@ -631,8 +631,8 @@ export function clearInventoryCallbacks(): void;
 - **角色模块**：通过 `useCharacterStore()` 直接调用 `applyBonus()` / `removeBonus()` 同步属性和套装奖励
 - **背包模块**：通过 `setInventoryCallbacks` 注入的回调操作背包（A1/G1，不直接 import inventory/store）
 - **日志模块**：通过 `useLogStore().addLogEntry()` 记录装备/卸下操作的冒险日志
-- **套装配置**：从 `@/data/config_item_sets` 的 `ITEM_SETS` 获取套装定义（service.ts 引用）
-- **职业专属装备配置**：从 `@/data/config_class_items` 的 `CLASS_SPECIFIC_ITEMS` 获取职业专属装备（data 层静态常量，业务模块直接 import）
+- **套装配置**：从 `@/data/config_set_definitions` 的 `SET_DEFINITIONS` 获取套装定义（service.ts 引用）
+- **职业专属装备配置**：从 `@/data/config_class_equipment` 的 `CLASS_EQUIPMENT` 获取职业专属装备（data 层静态常量，业务模块直接 import）
 - **item-template 聚合层**：装备模板查询经 `itemTemplateDbService` 委托 `equipmentDbService.getAllEquipmentTemplates()`；`UnifiedItemTemplateCache` 为系统内唯一物品模板缓存（ARCH-1，原 `services/ItemTemplateCache` 已删除）
 
 ### 交互模块
@@ -642,7 +642,7 @@ export function clearInventoryCallbacks(): void;
 | 角色模块 | 直接 Action 调用 | `applyBonus(stats)` 应用属性，`removeBonus(stats)` 移除属性；`level` 获取等级，`classId` 获取职业 |
 | 背包模块 | 回调注入（A1/G1） | `inventoryAddItemCallback(itemId, quantity)` 放回装备，`inventoryRemoveItemCallback(itemId, quantity)` 移除装备，`flushPersistCallback()` 等待背包持久化完成（DB-1/DB-2） |
 | 日志模块 | 直接 Action 调用 | `addLogEntry()` 记录装备/卸下操作的冒险日志 |
-| 套装配置 | 静态 import | `ITEM_SETS` 套装定义数据（service.ts 引用） |
+| 套装配置 | 静态 import | `SET_DEFINITIONS` 套装定义数据（service.ts 引用） |
 | item-template 聚合层 | 只读委托查询（A1/G1/ARCH-1） | `ItemTemplateDbService` 委托 equipment DbService 查询装备模板；`UnifiedItemTemplateCache` 合并 `config_items` 与 `config_equipmentItems` 为统一 `Item` 格式，消除 inventory↔equipment 双向依赖 |
 
 ---

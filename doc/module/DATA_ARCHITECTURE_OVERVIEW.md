@@ -5,9 +5,9 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 数据持久化架构设计文档 |
-| 版本 | v5.0 |
-| 生成日期 | 2026年8月3日 |
-| 更新说明 | P3-116 全局状态收敛与持久化重构：新增 src/modules/game/ 模块（useGameStore 成为 currentCharacterId/currentShopId/gameSettings/lastPlayedAt/initializedAt 唯一持有者，经 gameStateHelper 持久化到 runtime_gameState 表）；GameStateStorage 新增 gameSettings 字段，settings/maxLevel 标记 @deprecated；audioDbService 移除，音频设置收敛到 GameStore（audio/store.ts 去除去抖定时器改异步持久化）；character/shop 的 currentCharacterId/currentShopId 改为 computed 代理 GameStore；删除旧版 services/ItemTemplateCache.ts（统一使用 UnifiedItemTemplateCache）；src/modules/index.ts 改为显式命名导出（ARCH-6） |
+| 版本 | v5.1 |
+| 生成日期 | 2026年8月13日 |
+| 更新说明 | admin 模块升级：AdminQueryService 从 src/services/ 迁入 modules/admin/queryService.ts；admin 模块新增 queryService.ts / referenceGraph.ts / defaultData.ts；CONFIG_TABLES 11→15 张；services 目录减至 4 个文件（ErrorHandler/GameBootstrap/CharacterLifecycleService/CrossModuleQuery） |
 
 ---
 
@@ -120,7 +120,7 @@ map ──────────────── 依赖 data + bus
 log ──────────────── 依赖 data + bus
 audio ────────────── 依赖 bus + game（P3-116 起不再直接依赖 data，音频设置由 GameStore 持久化）
 animation ────────── 依赖 bus
-admin ────────────── 依赖 data + bus + 各配置表
+admin ────────────── 依赖 data + config（AdminQueryService 聚合 enemy/boss/inventory/equipment DbService 查询）
 ```
 
 ---
@@ -158,7 +158,7 @@ export const BACKUP_CONFIG: BackupConfig = {
 |------|----------|----------|
 | v1 | 基础表结构：11 配置表 + 6 角色表 + 5 运行时表 | 初始版本 |
 | v2 | 新增 `runtime_shopSoldItems` 表（商店回购列表持久化） | BIZ-16 |
-| v3 | 新增 4 张职业专属配置表（`config_class_items`/`config_class_passives`/`config_class_talents`/`config_item_sets`） | DATA-4 |
+| v3 | 新增 4 张职业专属配置表（`config_class_equipment`/`config_class_passives`/`config_class_talents`/`config_set_definitions`） | DATA-4 |
 
 ### 3.3 数据表分类
 
@@ -179,10 +179,10 @@ export const BACKUP_CONFIG: BackupConfig = {
 | `config_skills` | `id, classRestriction, type, usableBy` | v1 | 技能定义数据 |
 | `config_locations` | `id, type, continent` | v1 | 地图地点配置数据（通过 `type` 字段区分 `'location'` 与 `'continent'`） |
 | `config_shops` | `id` | v1 | 商店配置数据 |
-| `config_class_items` | `id, name, type, rarity` | v3 | 职业专属装备数据（DATA-4） |
+| `config_class_equipment` | `id, name, type, rarity` | v3 | 职业专属装备数据（DATA-4） |
 | `config_class_passives` | `id, classId, trigger` | v3 | 职业专属被动技能数据（DATA-4） |
 | `config_class_talents` | `id, classId` | v3 | 职业天赋树数据（DATA-4） |
-| `config_item_sets` | `id, classRestriction` | v3 | 套装配置数据（DATA-4） |
+| `config_set_definitions` | `id, classRestriction` | v3 | 套装配置数据（DATA-4） |
 
 #### 3.3.2 角色表（char_*）— 绑定角色ID，每个角色独立
 
@@ -296,7 +296,7 @@ src/modules/{moduleName}/
 | `modules/game/` | 全局游戏状态 | P3-116 新增：useGameStore 唯一持有 currentCharacterId/currentShopId/gameSettings/lastPlayedAt/initializedAt，经 gameStateHelper 持久化到 runtime_gameState 表（types.ts/store.ts/index.ts） |
 | `modules/audio/` | 音频 | 基于 Tone.js 的音频管理（P3-116 起音频设置收敛到 GameStore，不再直接读写 IndexedDB） |
 | `modules/animation/` | 动画 | 战斗效果动画 |
-| `modules/admin/` | 后台管理 | 配置管理和数据管理 |
+| `modules/admin/` | 后台管理 | 配置管理后台（types/db/service/store/queryService/referenceGraph/defaultData），15 张配置表 CRUD + 分页/排序/导入/导出/重置/引用检查 |
 
 ### 4.3 跨模块服务层（src/services/）
 
@@ -306,7 +306,8 @@ src/modules/{moduleName}/
 | `services/GameBootstrap.ts` | 游戏启动流程编排 |
 | `services/CharacterLifecycleService.ts` | 角色生命周期管理（创建/删除/切换） |
 | `services/CrossModuleQuery.ts` | 跨模块查询服务（物品模板查询统一走 unifiedItemTemplateCache，原 services/ItemTemplateCache 已删除） |
-| `services/AdminQueryService.ts` | 后台查询服务 |
+
+> **注**：AdminQueryService 原位于 `src/services/AdminQueryService.ts`，已迁入 `modules/admin/queryService.ts`，作为 admin 模块的一部分导出。
 
 ---
 
@@ -790,10 +791,10 @@ export function filterClassesByFaction(classes: ClassData[], factionId: FactionT
 | `config_skills` | `id` | `classRestriction, type, usableBy` | v1 |
 | `config_locations` | `id` | `type, continent` | v1 |
 | `config_shops` | `id` | — | v1 |
-| `config_class_items` | `id` | `name, type, rarity` | v3 |
+| `config_class_equipment` | `id` | `name, type, rarity` | v3 |
 | `config_class_passives` | `id` | `classId, trigger` | v3 |
 | `config_class_talents` | `id` | `classId` | v3 |
-| `config_item_sets` | `id` | `classRestriction` | v3 |
+| `config_set_definitions` | `id` | `classRestriction` | v3 |
 | `char_data` | `characterId` | — | v1 |
 | `char_inventory` | `characterId` | — | v1 |
 | `char_equipment` | `characterId` | — | v1 |
@@ -903,10 +904,10 @@ export function filterClassesByFaction(classes: ClassData[], factionId: FactionT
 | `data/config_locations.ts` | 世界地图数据（CONTINENTS + LOCATIONS） |
 | `data/config_quests.ts` | 任务数据（QUESTS） |
 | `data/config_shops.ts` | 商店数据（SHOPS） |
-| `data/config_class_items.ts` | 职业专属装备数据（CLASS_SPECIFIC_ITEMS，DATA-4） |
+| `data/config_class_equipment.ts` | 职业专属装备数据（CLASS_EQUIPMENT，DATA-4） |
 | `data/config_class_passives.ts` | 职业被动技能数据（CLASS_PASSIVES，DATA-4） |
 | `data/config_class_talents.ts` | 职业天赋树数据（CLASS_TALENT_TREES，DATA-4） |
-| `data/config_item_sets.ts` | 套装定义数据（ITEM_SETS，DATA-4） |
+| `data/config_set_definitions.ts` | 套装定义数据（SET_DEFINITIONS，DATA-4） |
 | `data/validate.ts` | 数据验证函数 |
 | `data/index.ts` | 统一导出入口 |
 
@@ -927,7 +928,7 @@ export function filterClassesByFaction(classes: ClassData[], factionId: FactionT
 | v1.1 | 2026-05-20 | 拆分地图和商店配置到独立存储 | System |
 | v2.0 | 2026-06-16 | 根据项目实际代码全面修订：修正技术栈、数据库结构、模块列表、文件结构 | System |
 | v3.0 | 2026-06-17 | 逐文件比对代码修正：运行时表索引字段、备份文件ISO命名格式、自动备份localStorage存储、校验和算法(简单哈希非SHA-256)、数据初始化流程描述 | System |
-| v3.1 | 2026-07-09 | 补充版本 2/3 新增表（runtime_shopSoldItems、config_class_*、config_item_sets）；新增 7.4 索引策略审计（完整索引清单 + 高频查询匹配 + 审计结论）和 7.5 查询性能基准章节 | System |
+| v3.1 | 2026-07-09 | 补充版本 2/3 新增表（runtime_shopSoldItems、config_class_*、config_set_definitions）；新增 7.4 索引策略审计（完整索引清单 + 高频查询匹配 + 审计结论）和 7.5 查询性能基准章节 | System |
 | v4.0 | 2026-07-10 | 逐文件比对源码修正：表数量更正（27张表=15配置+6角色+6运行时，原文档误为25张=11+6+8）；新增 item-template 聚合层与 base 模块完整描述；补充 DBService/getTable/gameStateHelper/BaseDbService 工具层 API；补充 BackupService/ImportService 完整方法签名与 TABLES_TO_BACKUP 配置驱动机制；补充两套物品模板缓存（ItemTemplateCache 旧版 vs UnifiedItemTemplateCache 新版）的区别；更新模块目录结构与配置文件清单 | System |
 | v5.0 | 2026-08-03 | P3-116 全局状态收敛与持久化重构：新增 src/modules/game/ 模块（useGameStore 成为 currentCharacterId/currentShopId/gameSettings/lastPlayedAt/initializedAt 唯一持有者，经 gameStateHelper 持久化到 runtime_gameState 表）；GameStateStorage 新增 gameSettings 字段，settings/maxLevel 标记 @deprecated；audioDbService 移除，音频设置收敛到 GameStore（audio/store.ts 去除去抖定时器改异步持久化）；character/shop 的 currentCharacterId/currentShopId 改为 computed 代理 GameStore；删除旧版 services/ItemTemplateCache.ts（统一使用 UnifiedItemTemplateCache）；src/modules/index.ts 改为显式命名导出（ARCH-6） | System |
 

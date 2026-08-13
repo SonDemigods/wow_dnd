@@ -181,7 +181,7 @@ sequenceDiagram
 | 直接 Store Action 调用 | 数据变更类跨模块操作 | `combatStore` 经 `ICombatContext` 调用 `characterStore.gainExp`、`questStore.onEnemyKilled` |
 | EventBus 事件 | UI 刷新 / 音效触发 / 通知类 | `CHARACTER_LEVEL_UP`、`COMBAT_START`、`QUEST_COMPLETED` |
 | UI 回调注册 | 探索模块跨模块数据事件 | `explorationStore.registerUICallbacks` 替代 EventBus 传递数据 |
-| services 聚合层调用 | 跨模块查询 / 初始化编排 / 缓存 / 错误处理 / 角色生命周期 / 管理后台查询 | `explorationStore` 经 `crossModuleQuery` 查询地图/物品/任务/商店；`GameBootstrap` 编排 Store 初始化；`CharacterLifecycleService` 收口角色创建/删除跨模块持久化 |
+| services 聚合层调用 | 跨模块查询 / 初始化编排 / 缓存 / 错误处理 / 角色生命周期 | `explorationStore` 经 `crossModuleQuery` 查询地图/物品/任务/商店；`GameBootstrap` 编排 Store 初始化；`CharacterLifecycleService` 收口角色创建/删除跨模块持久化；控制台跨模块查询经 `adminQueryService`（`modules/admin/queryService.ts`）收口 |
 | 回调注入 | 装备模块卸下装备放回背包 / 背包 ↔ 任务双向通知 / Boss 创建 | `GameBootstrap` Layer 1.5：`setInventoryCallbacks`（A1/G1 + DB-1/DB-2）、`setInventoryExternalCallbacks`/`setQuestExternalCallbacks`（ARCH-2）、`setBossCreateFn`（TS-2） |
 | DB 层直接调用 | 仅限自身模块持久化 | `explorationStore` 调用 `explorationDbService.persistState`（跨模块查询已收口至 `crossModuleQuery`） |
 

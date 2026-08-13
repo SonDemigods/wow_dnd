@@ -5,11 +5,11 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 模块依赖关系梳理 |
-| 版本 | v4.0 |
-| 生成日期 | 2026年8月3日 |
+| 版本 | v5.0 |
+| 生成日期 | 2026年8月13日 |
 | 所属目录 | `doc/project/` |
 | 关联文档 | MODULE_FUNCTIONS.md、DATA_ARCHITECTURE_OVERVIEW.md、ARCHITECTURE_DIAGRAMS.md |
-| 更新说明 | 本次基于源码逐项复核更新：① 矩阵补全 `console` 行（命令子模块经各模块 Store 访问数据：character/inventory/equipment/skill/quest/log/enemy/map/shop/combat，模板查询类经 adminQueryService 收口，不直接 import 任何 DbService）并修正 `boss` 行 data 列（boss/db.ts 经 data/core 的 DBService 基类访问数据库）；② 全景图移除源码中不存在的 `animation → bus`、`admin → bus` 边，补充 `console → character` 边；③ 补充 P3-141 说明：audioService 不再从 modules 聚合入口 re-export（避免经 `@/modules` 静态引用拉入 Tone.js），仅由 main.ts 动态 import 加载。P3-116 全局状态收敛内容经复核与源码一致（GameStore 持有 currentCharacterId/currentShopId/gameSettings/lastPlayedAt/initializedAt，经 gameStateHelper 持久化至 runtime_gameState 表，audio/db.ts 已删除，services 目录现存 5 个服务）。 |
+| 更新说明 | AdminQueryService 从 src/services/ 迁入 modules/admin/queryService.ts；全景图 adminQuery 节点标注新位置；CHR-5 涉及文件路径更新；import 路径从 `@/services/AdminQueryService` 改为 `@/modules/admin` |
 
 ---
 
@@ -62,7 +62,7 @@ graph TD
     gameBootstrap[GameBootstrap<br/>初始化编排]
     errorHandler[ErrorHandler<br/>错误处理]
     characterLifecycle[CharacterLifecycleService<br/>角色生命周期]
-    adminQuery[AdminQueryService<br/>管理后台查询]
+    adminQuery[AdminQueryService<br/>modules/admin/queryService.ts]
 
     %% 基础设施依赖
     base --> data
@@ -203,7 +203,7 @@ graph TD
     class combatContext,eventsTS bridge
 ```
 
-> 说明：虚线表示 EventBus 事件监听、运行时编排调用（如 GameBootstrap → 各 Store initialize）、接口注入（如 IBossContext、setInventoryCallbacks、setInventoryExternalCallbacks、setQuestExternalCallbacks、setBossCreateFn）或 dispose 清理；`xxx_db` 表示直接 import 其他模块的 DbService（跨层数据查询，已收口到服务层或 item-template 模块）。服务层（粉色节点）收口跨模块查询、初始化编排、缓存、错误处理、角色生命周期与管理后台查询。`game`（紫色节点）是全局状态唯一持有者（P3-116），character/shop/exploration/audio 通过 gameStore 代理 currentCharacterId/currentShopId/gameSettings，game 仅依赖 data。`combatContext.ts`（青色节点）是 combat 模块内唯一引用 6 个外部 Store 的位置（S2 修复）。`events.ts`（青色节点）是探索模块的事件处理器注册表（ARCH-11 修复）。物品模板缓存统一收敛于 item-template 模块的 `unifiedItemTemplateCache`（ARCH-1 修复，原 services/ItemTemplateCache 已删除）。`console` 命令子模块经各模块 Store 访问数据，模板查询类经 `AdminQueryService` 收口（CHR-5 修复）。`animation` 与 `admin` 仅依赖 data/config/utils 层，不依赖 bus。另 P3-141：`audioService` 不再从 modules 聚合入口 re-export（避免经 `@/modules` 静态引用拉入 Tone.js，gzip 后约 50KB+），仅由 main.ts 通过动态 `import('@/modules/audio/service')` 加载。
+> 说明：虚线表示 EventBus 事件监听、运行时编排调用（如 GameBootstrap → 各 Store initialize）、接口注入（如 IBossContext、setInventoryCallbacks、setInventoryExternalCallbacks、setQuestExternalCallbacks、setBossCreateFn）或 dispose 清理；`xxx_db` 表示直接 import 其他模块的 DbService（跨层数据查询，已收口到服务层或 item-template 模块）。服务层（粉色节点）收口跨模块查询、初始化编排、缓存、错误处理、角色生命周期。`game`（紫色节点）是全局状态唯一持有者（P3-116），character/shop/exploration/audio 通过 gameStore 代理 currentCharacterId/currentShopId/gameSettings，game 仅依赖 data。`combatContext.ts`（青色节点）是 combat 模块内唯一引用 6 个外部 Store 的位置（S2 修复）。`events.ts`（青色节点）是探索模块的事件处理器注册表（ARCH-11 修复）。物品模板缓存统一收敛于 item-template 模块的 `unifiedItemTemplateCache`（ARCH-1 修复，原 services/ItemTemplateCache 已删除）。`console` 命令子模块经各模块 Store 访问数据，模板查询类经 `AdminQueryService` 收口（CHR-5 修复）。`animation` 与 `admin` 仅依赖 data/config/utils 层，不依赖 bus。另 P3-141：`audioService` 不再从 modules 聚合入口 re-export（避免经 `@/modules` 静态引用拉入 Tone.js，gzip 后约 50KB+），仅由 main.ts 通过动态 `import('@/modules/audio/service')` 加载。
 
 ---
 
@@ -252,7 +252,7 @@ graph TD
         gameBootstrap[GameBootstrap]
         errorHandler[ErrorHandler]
         characterLifecycle[CharacterLifecycleService]
-        adminQuery[AdminQueryService]
+        adminQuery[AdminQueryService<br/>modules/admin/]
     end
 
     subgraph L0[工具与配置]
@@ -294,7 +294,7 @@ graph TD
 | 同层之间 | 谨慎 | 玩法层之间通过 EventBus 或 Store 调用 |
 | 下层 → 上层 | 禁止 | 基础层不应依赖玩法层 |
 | 跨层跳级 | 谨慎 | UI 直接调核心数据层 Store 是允许的 |
-| 模块 → 服务层 | 允许 | 跨模块查询/缓存/编排/生命周期/管理后台查询收口于服务层 |
+| 模块 → 服务层 | 允许 | 跨模块查询/缓存/编排/生命周期收口于服务层（管理后台查询已迁入 modules/admin/queryService.ts） |
 | 模块 → item-template | 允许 | inventory 通过 item-template 聚合物品模板（单向，无循环） |
 | 模块 → game | 允许 | 全局状态（currentCharacterId/currentShopId/gameSettings）通过 GameStore 统一代理（P3-116） |
 
@@ -649,13 +649,13 @@ import { characterLifecycleService } from '@/services/CharacterLifecycleService'
 
 ### 6.1.2 CHR-5 console 直接依赖多模块 DbService（已修复）
 
-`src/modules/console/`（管理后台入口）原直接 import 了 4 个模块的 DbService，现已通过 `AdminQueryService` 收口（CHR-5 修复）。
+`src/modules/console/`（控制台入口）原直接 import 了 4 个模块的 DbService，现已通过 `AdminQueryService` 收口（CHR-5 修复）。`AdminQueryService` 原位于 `src/services/AdminQueryService.ts`，已迁入 `modules/admin/queryService.ts`。
 
 **修复后的依赖结构**：
 
 ```typescript
 // modules/console/commands/inventory.ts（修复后）
-import { adminQueryService } from '@/services/AdminQueryService';
+import { adminQueryService } from '@/modules/admin';
 ```
 
 **收口情况**：
@@ -793,7 +793,7 @@ graph LR
 | 修复编号 | 问题 | 修复方案 | 涉及文件 |
 |----------|------|----------|----------|
 | CHR-4 | character Store 直接依赖 6 个模块 DbService | 新增 `CharacterLifecycleService`，收口 `initializeCharacterSkills` 与 `cascadeDeleteCharacter` | `src/services/CharacterLifecycleService.ts`、`src/modules/character/store.ts` |
-| CHR-5 | console 直接依赖 4 个模块 DbService | 新增 `AdminQueryService`，收口物品/敌人模板查询 | `src/services/AdminQueryService.ts`、`src/modules/console/commands/inventory.ts`、`combat.ts` |
+| CHR-5 | console 直接依赖 4 个模块 DbService | 新增 `AdminQueryService`，收口物品/敌人模板查询 | `src/modules/admin/queryService.ts`（原 `src/services/AdminQueryService.ts`）、`src/modules/console/commands/inventory.ts`、`combat.ts` |
 | S2 | combat 模块直接 import 6 个外部 Store | 新增 `combatContext.ts`，聚合为 `ICombatContext`（`ICombatQuery` + `ICombatCommand` 读写分离） | `src/modules/combat/combatContext.ts`、`src/modules/combat/store.ts` |
 | S3 | combat ↔ boss 双向静态耦合 | 新增 `IBossContext` 接口，combat/store.ts 实现接口并注入到 `useBossMechanics` | `src/modules/combat/composables/useBossMechanics.ts`、`src/modules/combat/store.ts` |
 | A1/G1 | inventory ↔ equipment 双向依赖 | 新增 `item-template` 模块（`unifiedItemTemplateCache`）+ `setInventoryCallbacks` 回调注入 | `src/modules/item-template/*`、`src/modules/inventory/store.ts`、`src/modules/equipment/store.ts` |
@@ -816,6 +816,7 @@ graph LR
 
 | 日期 | 版本 | 作者 | 变更说明 |
 |------|------|------|----------|
+| 2026-08-13 | v5.0 | System | AdminQueryService 从 src/services/ 迁入 modules/admin/queryService.ts；import 路径改为 `@/modules/admin`；全景图/分层图 adminQuery 节点标注新位置；CHR-5 涉及文件路径更新 |
 | 2026-08-03 | v4.0 | System | 基于源码逐项复核修正：矩阵补全 console 行（命令子模块经各模块 Store 访问数据）并修正 boss 行 data 列；全景图移除源码中不存在的 animation → bus、admin → bus 边，补充 console → character 边；补充 P3-141（audioService 由 main.ts 动态 import 加载）；P3-116 全局状态收敛内容复核一致 |
 | 2026-08-03 | v3.0 | System | 新增 `game` 全局状态模块节点（P3-116）；audio 移除 data 依赖（audio/db.ts 删除）；ARCH-1 统一物品模板缓存；ARCH-2 inventory ↔ quest 双向回调注入；GameBootstrap 分层并行初始化（P3-128）；ARCH-6 显式命名导出；map 移除 character 依赖；exploration 新增 enemy 依赖 |
 | 2026-07-10 | v2.0 | System | 服务层补全 6 个服务；新增 item-template 模块；CHR-4/CHR-5/S2/S3/A1/G1 等修复 |

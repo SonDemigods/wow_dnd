@@ -5,10 +5,10 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | UI界面设计文档 - 主界面 |
-| 版本 | v1.5 |
-| 生成日期 | 2026年8月3日 |
+| 版本 | v1.6 |
+| 生成日期 | 2026年8月13日 |
 | 适用平台 | PC端、移动端 |
-| 更新说明 | 补全第6章探索视图（格子类型与图标、格子状态样式、拖拽点击交互、探索进度、初始化与生命周期）章节；新增第7章后台管理（AdminLayout 布局/仪表盘/AdminTable 表格/AdminForm 表单/ConfigManager 配置管理/useConfigTableMeta/useConfigCrud/admin 模块 types-db-service-store 五层结构与 11 张配置表）及第8章 useResponsiveGrid composable 章节 |
+| 更新说明 | 第7章后台管理全面更新：AdminLayout 侧边栏一级/二级菜单重构 + DashboardPanel 提取 + AdminTable 增加分页/排序/列显隐/批量选择/行详情/行克隆 + AdminForm 拆分 7 个字段子组件 + useFormValidation 校验引擎 + ImportDialog 导入预览 + ConfigManager 增加导出/导入/重置/批量删除 + admin 模块新增 queryService/referenceGraph/defaultData 三文件 + CONFIG_TABLES 从 11 张扩展到 15 张 |
 
 ***
 
@@ -22,6 +22,7 @@
 | v1.3 | 2026-08-03 | P3-116 后同步源码：更新 App.vue 初始化流程与进入游戏失败提示、GameMain 顶栏职业资源条与异步视图懒加载、后台管理 11 张配置表与 ConfigManager/useConfigTableMeta/useConfigCrud 章节、角色创建次级属性文案、探索 grid-wrapper 描述 | System |
 | v1.4 | 2026-08-03 | 补全角色创建步骤3（职业）/步骤4（角色名）章节并修正次级属性文案；新增游戏主界面（GameMain）、地图视图（MapView）、探索视图（ExplorationView）、后台管理（admin 模块）与 useResponsiveGrid 共 5 个章节 | System |
 | v1.5 | 2026-08-03 | 补全第6章探索视图（格子类型与图标、格子状态样式、拖拽点击交互、探索进度、初始化与生命周期）；新增第7章后台管理（AdminLayout/AdminTable/AdminForm/ConfigManager/useConfigTableMeta/useConfigCrud/admin 模块五层结构与 11 张配置表）及第8章 useResponsiveGrid 章节 | System |
+| v1.6 | 2026-08-13 | 第7章后台管理全面更新：DashboardPanel 提取、AdminLayout 侧边栏重构、AdminTable 分页/排序/列显隐/批量选择/行详情/行克隆、AdminForm 拆分 7 个字段子组件 + 校验引擎、ImportDialog 导入预览、ConfigManager 导出/导入/重置/批量删除、admin 模块新增 queryService/referenceGraph/defaultData、CONFIG_TABLES 11→15 张 | System |
 
 ***
 
@@ -832,8 +833,8 @@ GameMain 在 onMounted 中通过 `explorationStore.registerUICallbacks` 注册�
 
 后台管理是内嵌于单机游戏中的配置管理后台，由视图层与数据层两部分组成：
 
-- 视图层：`src/components/admin/`（AdminLayout.vue / AdminTable.vue / AdminForm.vue / ConfigManager.vue + composables/useConfigCrud.ts / useConfigTableMeta.ts）
-- 数据层：`src/modules/admin/`（index.ts / types.ts / db.ts / service.ts / store.ts）
+- 视图层：`src/components/admin/`（AdminLayout.vue / DashboardPanel.vue / AdminTable.vue / AdminForm.vue / ConfigManager.vue / ImportDialog.vue + `fields/` 7 个字段子组件 + `composables/` 3 个 composable + `config-meta/` 3 个元信息文件）
+- 数据层：`src/modules/admin/`（index.ts / types.ts / db.ts / service.ts / store.ts / queryService.ts / referenceGraph.ts / defaultData.ts）
 
 App.vue 中 `gameState === 'admin'` 时渲染 AdminLayout（懒加载），支持 `dashboard`（仪表盘）与 `config`（配置管理）两种视图（AdminView）切换。service 层不做权限校验是单机场景的设计意图（DISC-1），访问控制由 UI 路由层负责。
 
@@ -844,96 +845,151 @@ App.vue 中 `gameState === 'admin'` 时渲染 AdminLayout（懒加载），支�
 │  .admin-layout (flex, height: 100vh)                        │
 │  ┌─ .admin-sidebar (260px) ──┐  ┌─ .admin-main (flex:1) ─┐ │
 │  │  sidebar-header "后台管理"  │  │  [dashboard]           │ │
-│  │  sidebar-nav               │  │    page-title 仪表盘    │ │
-│  │    仪表盘                  │  │    stats-grid          │ │
-│  │    配置管理 (分组标题)      │  │      11 张统计卡        │ │
-│  │    ├ 阵营 ├ 种族 ... └ 商店 │  │  [config]              │ │
-│  │  sidebar-footer            │  │    <ConfigManager />   │ │
+│  │  sidebar-nav (overflow-y)   │  │    <DashboardPanel />   │ │
+│  │    仪表盘 (一级菜单)        │  │  [config]              │ │
+│  │    配置管理 (一级菜单)      │  │    <ConfigManager />   │ │
+│  │    · 阵营 (二级菜单)        │  │                        │ │
+│  │    · 种族                   │  │                        │ │
+│  │    · ...                    │  │                        │ │
+│  │    · 职业套装               │  │                        │ │
+│  │  sidebar-footer            │  │                        │ │
 │  │    [返回游戏]               │  │                        │ │
 │  └────────────────────────────┘  └────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-- 侧边栏（260px，@secondary-bg）：导航项包括"仪表盘"与"配置管理"分组（.nav-group-title），分组下按 CONFIG_TABLES 遍历渲染 11 张配置表子项（.nav-item.nav-sub-item，显示 label + description）。
+- 侧边栏（260px，@secondary-bg）：头部固定（sidebar-header "后台管理"），底部固定（sidebar-footer "返回游戏"按钮），中间导航区域可滚动（sidebar-nav overflow-y: auto）。
+- 导航采用一级/二级菜单结构：仪表盘与配置管理为一级菜单项（.nav-item），配置管理下方展开 15 张配置表为二级菜单项（.nav-item.nav-sub-item，显示 label）。二级菜单仅在 currentView === 'config' 时可见（v-show）。
+- 二级菜单项左侧有圆点指示器（::before 伪元素，6px 圆点），active 时圆点变金色。
 - active 状态：背景 @gold-bg + 文字 @accent-color + 右侧 3px 金色边框（border-right: 3px solid @accent-color）。
-- 点击配置表 → `store.switchView('config')` + `store.selectConfigTable(key)`；底部"返回游戏"按钮 emit exit（App.vue 以 view-back 动画返回角色选择界面）。
+- 点击一级"配置管理"→ `navigateToConfigManager()`（保持当前选中表，切换到 config 视图）；点击二级配置表 → `navigateToConfig(key)`（switchView + selectConfigTable）；底部"返回游戏"按钮 emit exit。
 - onMounted 调用 `store.loadDashboardStats()`。
 
-### 7.3 仪表盘
+### 7.3 仪表盘（DashboardPanel.vue）
 
-stats-grid（grid: repeat(auto-fill, minmax(180px, 1fr)), gap: 16px）为每张配置表渲染一张统计卡（.stat-card.stat-card-small）：
+从 AdminLayout 中提取的独立组件，展示数据概览与快捷操作：
 
-| 元素 | 内容 |
+**统计卡片网格**（stats-grid: repeat(auto-fill, minmax(180px, 1fr)), gap: 16px）：为 15 张配置表各渲染一张统计卡（.stat-card.stat-card-small），点击跳转到对应配置表。每张卡显示记录数（stat-value，@font-4xl 金色）和表中文名（stat-label）。
+
+**数据概览**（overview-grid: repeat(auto-fill, minmax(220px, 1fr)), gap: 16px）：
+
+| 卡片 | 内容 |
 |------|------|
-| stat-value | 表记录数（`store.dashboardStats.tableCounts[dbTable]`），font-size: @font-4xl，金色 |
-| stat-label | 表中文名（label） |
+| 总记录数 | 15 张表记录数之和 |
+| 最活跃的表 | 记录数 Top 3（label + count） |
+| 空表 | 记录数为 0 的表列表（有空表时卡片边框变红色警告） |
+| 版本信息 | 游戏版本（APP_VERSION）+ 数据库版本（BACKUP_CONFIG.backupVersion） |
 
-统计卡可点击（cursor: pointer，hover 时边框变金色），点击直接跳转到对应配置表管理视图。
+**快捷操作**：
+
+| 按钮 | 功能 |
+|------|------|
+| 全局备份 | 调用 `backupService.exportBackup()` 下载全量备份 JSON |
+| 全局恢复 | 选择 JSON 文件 → `importService.importBackup(file)` 恢复数据 |
+| 重置全部配置 | 确认弹窗 → 遍历 15 张表调用 `store.resetTable()`，Toast 报告成功/失败数 |
 
 ### 7.4 通用表格（AdminTable.vue）
 
-泛型组件（`generic="T extends Record<string, unknown>"`），提供搜索、数据展示与操作按钮：
+泛型组件（`generic="T extends Record<string, unknown>"`），提供搜索、排序、分页、批量选择、行详情展开的通用表格：
 
 ```
 ┌─ .table-toolbar ────────────────────────────────────────┐
-│ [搜索输入框]                    [+ 新增] [刷新]          │
+│ [搜索框(300ms防抖)]  [批量删除(N)] [+新增] [刷新] [列设置] [导出JSON] [导出CSV] [导入] [重置] │
 ├─ .table-wrapper (flex:1, overflow-y: auto) ─────────────┤
-│  thead: 列定义(columns) + 操作列（表头 sticky top:0）    │
-│  tbody: 单元格 + 操作列（编辑/删除，sticky right:0）     │
-│  空数据: "暂无数据"（colspan 合并整行，padding 40px）    │
+│  thead: [☑] 列定义(可排序) + 操作列（sticky top:0/right:0）│
+│  tbody: [☑] 单元格 + [编辑][克隆][删除]                   │
+│         ↳ 行详情展开（全字段 grid 展示）                  │
+│  空数据: "暂无数据"                                       │
 ├─ .table-footer ─────────────────────────────────────────┤
-│  共 N 条记录                                            │
+│  共 N 条记录 | 已选 M 项    10/20/50条/页 [上一页] X/Y [下一页] │
 └─────────────────────────────────────────────────────────┘
 ```
 
-- 列定义 `TableColumn { key, label, width?, format? }`。
+- 列定义 `TableColumn { key, label, width?, format?, hidden? }`。
+- **列显隐**：通过 `visibleColumnKeys` prop 控制可见列，为空时显示全部。ConfigManager 中通过列设置面板（checkbox 列表）切换，配置持久化到 `localStorage`（key: `admin_columns_{tableName}`），默认显示前 5 列。
+- **搜索**：输入框 300ms 防抖（P12-029 修复），emit search 事件。
+- **排序**：列头点击切换排序（sortBy + sortOrder），同一列点击切换 asc/desc，新列默认 asc。表头显示 ▲/▼ 指示器。emit sort 事件。
+- **分页**：底部分页栏显示总记录数、每页条数选择（10/20/50）、当前页/总页数、上一页/下一页按钮。emit page-change / page-size-change 事件。
+- **批量选择**：selectable prop 开启，表头全选 checkbox（含半选 indeterminate 状态），行 checkbox 选中。emit selection-change 事件。通过 `#batch-actions` 插槽注入批量删除按钮，暴露 `clearSelection` 方法。
+- **行详情展开**：expandedRows Set 管理，通过 `#row-detail` 插槽自定义详情内容（ConfigManager 注入全字段 grid 展示）。暴露 `toggleRowDetail` 方法。
+- **行克隆**：emit clone 事件，ConfigManager 处理（清空 ID + 切换为 create 模式）。
 - 单元格格式化（formatCellValue）：null/undefined → '-'；boolean → 是/否；数组/对象 → JSON.stringify；定义 format 函数时优先使用。
-- 行 key（getRowKey）：`row.id ?? row.characterId ?? 'row-' + index`。
-- 事件：create / edit / delete / refresh / search；支持 `cell-{key}` 与 `actions` 插槽自定义单元格/操作列渲染。
-- 操作列 sticky（right: 0）与表头 sticky（top: 0），横向/纵向滚动时保持可见。
+- 行 key（getRowKey）：`row.id ?? row.characterId ?? row.__pk ?? 'row-' + index`。
+- 事件：create / edit / delete / clone / refresh / search / sort / page-change / page-size-change / selection-change；支持 `cell-{key}`、`actions`、`batch-actions`、`column-settings`、`row-detail` 插槽。
 
 ### 7.5 通用表单（AdminForm.vue）
 
-按字段配置动态渲染的表单弹窗（.form-dialog 宽 500px，max-height: 80vh），支持 8 种字段类型：
+按字段配置动态渲染的表单弹窗（.form-dialog 宽 500px，max-height: 80vh），通过 `fieldComponentMap` 将各字段类型的渲染委托给 `fields/` 目录下的独立子组件：
 
-| 类型 | 渲染控件 | 说明 |
-|------|----------|------|
-| text / number | form-input | 单行输入 |
-| textarea | form-textarea | 多行文本（rows=3） |
-| select | form-select | 下拉选择（默认"-- 请选择 --"） |
-| multiselect | multiselect-group | 复选网格（2 列，max-height 240px 滚动），显示"是/否" |
-| switch | switch-container | 开关（44×24px 滑块），右侧文本"是/否" |
-| color | form-color | 颜色选择器（50×36px） |
-| json | json-editor | JSON 编辑器，支持"文本 / 键值对"两种模式切换，键值对模式可增删条目（.json-kv-row），解析失败显示"JSON 解析失败，请检查格式" |
+| 类型 | 子组件 | 说明 |
+|------|--------|------|
+| text / number | TextField.vue | 单行输入（number 类型提交时转 Number） |
+| textarea | TextareaField.vue | 多行文本 |
+| select | SelectField.vue | 下拉选择 |
+| multiselect | MultiselectField.vue | 复选网格 |
+| switch | SwitchField.vue | 开关 |
+| color | ColorField.vue | 颜色选择器 |
+| json | JsonField.vue | JSON 编辑器（文本模式），提交时 JSON.parse，解析失败标记 jsonSubmitErrors |
 
-- 字段定义 `FormField { key, label, type, placeholder?, options?, disabled? }`；值类型 text/textarea/select/color/json(文本) 为 string、number 为 number、switch 为 boolean、multiselect 为 string[]。
-- 表单数据通过 watch initialData 初始化/重置（含 JSON 编辑器状态清空），multiselect 默认 []、number 默认 0。
-- 提交时 number 字段转为 Number，json 字段尝试 JSON.parse。
+- 字段定义 `FormField { key, label, type, placeholder?, options?, disabled?, required?, pattern?, patternMessage?, min?, max?, minLength?, maxLength? }`（字段类型定义在 `fields/types.ts`）。
+- **表单校验**（useFormValidation composable）：支持 5 种校验规则——required（非空）、pattern（正则，对 text/textarea 生效）、min/max（数值范围，对 number 生效）、minLength/maxLength（文本长度）、json（JSON 格式校验）。字段 blur 时触发单字段校验（validateField），提交时全量校验（validate）。校验失败在字段下方显示红色错误提示。
+- **键盘快捷键**：Esc 取消、Ctrl+S / Cmd+S 保存（onKeydown 处理）。
+- 表单数据通过 watch `[initialData, visible]` 初始化/重置，multiselect 默认 []、number 默认 0。visible 变化时自动 focus 第一个输入框（nextTick）。
+- 提交时 number 字段转 Number，json 字段尝试 JSON.parse（失败时阻止提交并标记错误）。
 - 事件：submit(data) / cancel；支持 `custom-fields` 插槽（透传 formData）。
-- 底部按钮：取消（btn-secondary）/ 保存（btn-primary 金色）。
+- 底部按钮：取消（btn-secondary）/ 保存（btn-primary 金色），左侧显示快捷键提示"Esc 取消 · Ctrl+S 保存"。
 
 ### 7.6 配置管理（ConfigManager.vue）
 
-根据当前选中的配置表动态切换表格列定义与表单字段，编排 AdminTable + AdminForm + 删除确认弹窗，实现全部 11 个配置表的统一管理：
+根据当前选中的配置表动态切换表格列定义与表单字段，编排 AdminTable + AdminForm + ImportDialog + 多个确认弹窗，实现全部 15 个配置表的统一管理：
 
-- 列定义、表单字段、字典翻译、CRUD 逻辑全部下沉至 composables（useConfigTableMeta / useConfigCrud），视图层仅保留绑定与编排。
-- AdminTable 的 create / edit / delete / refresh / search 分别接入 handleCreate / handleEdit / handleDelete / store.loadTableData / store.doSearch。
-- 删除流程：handleDelete 记录待删数据 → 删除确认弹窗（标题"确认删除"，文案"确定要删除此记录吗？此操作不可撤销。"，confirm-overlay + confirm-dialog）→ confirmDelete 执行 store.deleteRecord 并关闭弹窗。
-- 表单流程：handleCreate / handleEdit 调用 store.openCreateForm / openEditForm（标题如"新增阵营"/"编辑种族"）→ AdminForm 提交 → handleFormSubmit → store.saveRecord（按 formConfig.mode 调用 add 或 update）。
+- 列定义、表单字段、字典翻译下沉至 `config-meta/` 目录（columns.ts / formFields.ts / dictionaries.ts），由 useConfigTableMeta composable 调度注入。
+- CRUD 逻辑下沉至 useConfigCrud composable（含关联完整性检查）。
+- AdminTable 的 create / edit / delete / clone / refresh / search / sort / page-change / page-size-change / selection-change 分别接入对应 handler 和 store 方法。
+
+**功能清单**：
+
+| 功能 | 实现 |
+|------|------|
+| 新增 | handleCreate → store.openCreateForm → AdminForm（create 模式）→ handleFormSubmit → store.saveRecord |
+| 编辑 | handleEdit → store.openEditForm → AdminForm（edit 模式）→ handleFormSubmit → store.saveRecord |
+| 删除 | handleDelete → checkReferences 关联检查 → 删除确认弹窗（含引用警告）→ confirmDelete → store.deleteRecord |
+| 克隆 | handleClone → 清空 ID → store.openEditForm（修正为 create 模式）→ AdminForm |
+| 批量删除 | 选中行 → 批量删除确认弹窗 → Promise.allSettled 并发删除 → Toast 报告结果 |
+| 列显隐 | 列设置面板（checkbox 列表）→ localStorage 持久化（`admin_columns_{tableName}`） |
+| 导出 JSON | `adminService.getAll` → `exportJSON(data, tableName)` 下载 |
+| 导出 CSV | `adminService.getAll` → `exportCSV(data, columns, tableName)` 下载（BOM + 列定义） |
+| 导入 | ImportDialog 选择文件 → 解析预览前 5 条 → 确认导入 → store.importRecords |
+| 重置默认 | 重置确认弹窗 → store.resetTable → adminService.resetToDefaults（清空 + 写入 DEFAULT_DATA_MAP） |
+
+- 删除确认弹窗：标题"确认删除"，文案"确定要删除此记录吗？此操作不可撤销。"，若存在关联引用则追加黄色警告文本（formatReferenceWarning）。
 - onMounted 调用 `store.loadReferenceData()` 加载参考数据（阵营/种族/职业/地点/大陆）供下拉选项使用。
 
-### 7.7 状态与数据层（modules/admin）
+### 7.7 导入预览弹窗（ImportDialog.vue）
+
+文件导入预览组件，支持 JSON / CSV 格式：
+
+- 文件选择后调用 `readFileAsText` → 自动判断格式（按扩展名或内容首字符）→ `parseJSON` / `parseCSV` 解析。
+- 解析成功后显示预览表格（前 5 列 × 前 5 行），提示总记录数。
+- 解析失败显示错误信息（parseError）。
+- CSV 解析支持引号内换行、逗号转义、BOM 移除、值类型推断（JSON/数字/布尔）。
+- 确认导入 emit import 事件，取消 emit cancel。
+
+### 7.8 状态与数据层（modules/admin）
 
 | 文件 | 职责 |
 |------|------|
 | types.ts | 类型定义与 CONFIG_TABLES 常量（AdminView / ConfigTableName / ConfigTableMeta / AdminOperationResult / ReferenceOption / AdminRecord / FormMode / FormConfig） |
-| db.ts | AdminDbService：对任意 Dexie 表（tableName 受 keyof GameDatabaseSchema 约束）提供 getAll / getById / add / update / delete / count / clear / search；复用 gameDb 与 dbService.withRetry；写入前经 toRawData JSON 序列化去除 Proxy 包装；search 采用"name/id 索引 startsWithIgnoreCase + distinct"优先策略，索引缺失时回退全字段过滤 |
-| service.ts | AdminService：CRUD 业务封装（错误经 errorHandler 上报，返回 AdminOperationResult），searchTable、getDashboardStats（Promise.all 并发统计 11 张表记录数）；单机场景不做权限校验（DISC-1） |
-| store.ts | useAdminStore（Pinia）：currentView / selectedConfigTable（默认 'mobs'）/ tableData / isLoading / dashboardStats / formConfig / editingRecord / searchKeyword / 5 组参考数据（阵营/种族/职业/地点/大陆）；方法 switchView / selectConfigTable / loadDashboardStats / loadTableData / doSearch / openCreateForm / openEditForm / closeForm / saveRecord / deleteRecord / loadReferenceData |
+| db.ts | AdminDbService：对任意 Dexie 表（tableName 受 keyof GameDatabaseSchema 约束）提供 getAll / getById / add / update / delete / count / clear / search / bulkPut / getPaged；复用 gameDb 与 dbService.withRetry；写入前经 toRawData JSON 序列化去除 Proxy 包装；update 在事务内 get+put 避免并发不一致；search 采用"name/id 索引 startsWithIgnoreCase + distinct"优先策略，索引缺失时回退全字段过滤；getPaged 支持排序（索引优先→内存回退）+ 搜索过滤 + 分页切片 |
+| service.ts | AdminService：CRUD 业务封装（错误经 errorHandler 上报，返回 AdminOperationResult）；WRITABLE_TABLES 白名单（P4-002：仅 config_* 表可写，拒绝 char_*/runtime_* 写入）；getPagedData 分页查询代理；getDashboardStats（Promise.all 并发统计 15 张表记录数）；resetToDefaults（从 DEFAULT_DATA_MAP 获取源码默认值，清空+bulkPut 重置）；单机场景不做权限校验（DISC-1） |
+| store.ts | useAdminStore（Pinia）：currentView / selectedConfigTable（默认 'mobs'）/ tableData / isLoading / dashboardStats / formConfig / editingRecord / searchKeyword / currentPage / pageSize / totalCount / sortBy / sortOrder / 5 组参考数据；方法 switchView / selectConfigTable（重置分页排序）/ loadDashboardStats / loadTableData（分页+排序+搜索）/ doSearch / toggleSort / changePageSize / changePage / openCreateForm / openEditForm / closeForm / saveRecord（含 ConfigCache 精准失效）/ deleteRecord（含 ConfigCache 精准失效）/ importRecords / resetTable / loadReferenceData |
+| queryService.ts | AdminQueryService：收口控制台命令模块对 enemy/boss/inventory/equipment DbService 的查询依赖（CHR-5），提供 queryAllItemTemplates / queryItemTemplate / queryAllEnemyTemplates；查询失败不抛出，记录错误并返回空列表 |
+| referenceGraph.ts | 配置表间引用关系图（REFERENCE_GRAPH）与关联检查（checkReferences / formatReferenceWarning）；删除前检查记录是否被其他表引用，支持 string 和 string[] 字段值匹配 |
+| defaultData.ts | DEFAULT_DATA_MAP：将 config_*.ts 源文件静态常量映射到 Dexie 表名，供"单表重置默认值"使用；skills 表需从 CLASS_ABILITIES + MONSTER_ABILITIES 展平为 SkillTemplateStorage 格式 |
 
-### 7.8 composables
+### 7.9 composables
 
-**useConfigTableMeta**（`src/components/admin/composables/useConfigTableMeta.ts`）：按 store.selectedConfigTable 动态分发当前表的元信息：
+**useConfigTableMeta**（`composables/useConfigTableMeta.ts`）：按 store.selectedConfigTable 动态分发当前表的元信息。列定义和表单字段定义拆分到 `config-meta/` 目录（columns.ts / formFields.ts / dictionaries.ts），本文件仅保留调度逻辑：
 
 | 返回值 | 说明 |
 |--------|------|
@@ -942,34 +998,68 @@ stats-grid（grid: repeat(auto-fill, minmax(180px, 1fr)), gap: 16px）为每张�
 | currentColumns | 当前表的列定义（注入字典翻译 format） |
 | currentFormFields | 当前表的表单字段定义（注入下拉/多选 options） |
 
-- 内置字典翻译映射：阵营（alliance 光辉盟约 / horde 铁血盟约 / neutral 中立）、属性（str 力量…cha 魅力）、稀有度（common 普通…legendary 传说）、物品类型（potion 药水…）、装备类型（weapon 武器/armor 护甲）、地点类型（location 地点/continent 大陆）、任务类型（kill 击杀/collect 收集）、技能类型（physical_damage 物理伤害…）、商店类型（general 杂货…）。
-- 根据 store 参考数据为 factionId / raceId / classId / factionsIds / raceIds / slots / classRestriction / boardId / continent / rarity / dangerLevel 等字段注入 select / multiselect 下拉选项（slots 含主手/副手/头部/胸部/腿部/鞋子六槽位）。
+- 字典翻译映射定义在 `config-meta/dictionaries.ts`：阵营、属性（str~cha）、稀有度（common~legendary）、物品类型、装备类型、地点类型、任务类型（kill/collect/explore）、技能类型、商店类型。
+- 根据 store 参考数据为 factionId / raceId / classId / factionsIds / raceIds / slots / classRestriction / boardId / continent / rarity / dangerLevel 等字段注入 select / multiselect 下拉选项。
 
-**useConfigCrud**（`src/components/admin/composables/useConfigCrud.ts`）：封装配置表 CRUD 交互逻辑，通过依赖注入接收 currentDbTable：
+**useConfigCrud**（`composables/useConfigCrud.ts`）：封装配置表 CRUD 交互逻辑，通过依赖注入接收 currentDbTable：
 
 | 返回值 | 说明 |
 |--------|------|
 | showDeleteConfirm | 删除确认弹窗可见状态（内部 ref 管理） |
+| referenceWarning | 引用完整性警告文本（删除确认弹窗中展示） |
 | handleCreate / handleEdit | 打开创建/编辑表单（"新增XX"/"编辑XX"） |
-| handleDelete | 记录待删数据并打开删除确认 |
+| handleDelete | 记录待删数据 + checkReferences 关联检查 + 打开删除确认 |
 | confirmDelete | 执行 store.deleteRecord（`id ?? characterId` 作为主键）并关闭弹窗 |
 | handleFormSubmit | 执行 store.saveRecord |
 
-### 7.9 配置表清单（CONFIG_TABLES）
+**useFormValidation**（`composables/useFormValidation.ts`）：表单校验引擎，基于 FormField 定义提供客户端校验：
 
-| key | 中文名 | 说明 | Dexie 表名 |
-|-----|--------|------|------------|
-| factions | 阵营 | 光辉盟约/铁血盟约/中立阵营 | config_factions |
-| races | 种族 | 26 个可选种族 | config_races |
-| classes | 职业 | 13 个职业定义 | config_classes |
-| items | 物品 | 消耗品/材料模板 | config_items |
-| equipmentItems | 装备 | 武器装备模板 | config_equipmentItems |
-| mobs | 普通怪物 | 普通怪物模板 | config_mobs |
-| bosses | Boss | Boss 模板 | config_bosses |
-| quests | 任务 | 任务定义 | config_quests |
-| skills | 技能 | 职业技能模板 | config_skills |
-| locations | 地点 | 大陆/地点数据 | config_locations |
-| shops | 商店 | 商店配置 | config_shops |
+| 返回值 | 说明 |
+|--------|------|
+| errors | 响应式错误信息映射（Record\<string, string\>） |
+| validate | 全量校验，返回 true 表示全部通过 |
+| validateField | 校验单个字段并更新 errors（blur 时触发） |
+| clearErrors | 清空所有错误 |
+
+校验规则：required（非空，含空数组检测）、pattern（正则，text/textarea）、min/max（数值范围，number）、minLength/maxLength（文本长度）、json（JSON 格式校验）。
+
+### 7.10 字段子组件（fields/）
+
+AdminForm 的字段渲染委托给 `fields/` 目录下 7 个独立子组件，通过 `fieldComponentMap` 映射字段类型到组件：
+
+| 子组件 | 对应类型 | 说明 |
+|--------|----------|------|
+| TextField.vue | text / number | 单行输入，number 类型提交时转 Number |
+| TextareaField.vue | textarea | 多行文本 |
+| SelectField.vue | select | 下拉选择 |
+| MultiselectField.vue | multiselect | 复选网格 |
+| SwitchField.vue | switch | 开关 |
+| ColorField.vue | color | 颜色选择器 |
+| JsonField.vue | json | JSON 文本编辑器，支持 submitError 状态 |
+
+类型定义在 `fields/types.ts`：FormFieldType（8 种类型联合）+ FormField 接口（含校验属性）+ FormFieldValue 联合类型。
+
+### 7.11 配置表清单（CONFIG_TABLES）
+
+共 15 张配置表（B1 定义型 4 张 + B2 调参型 11 张，其中 DATA-4 职业扩展系统 4 张于 2026-08-06 补入）：
+
+| key | 中文名 | 说明 | Dexie 表名 | 分层 |
+|-----|--------|------|------------|------|
+| factions | 阵营 | 阵营模板 | config_factions | B1 定义型 |
+| races | 种族 | 种族模板 | config_races | B1 定义型 |
+| classes | 职业 | 职业模板 | config_classes | B1 定义型 |
+| locations | 地点 | 大陆/地点数据 | config_locations | B1 定义型 |
+| items | 物品 | 消耗品/材料模板 | config_items | B2 调参型 |
+| equipmentItems | 装备 | 武器装备模板 | config_equipment_items | B2 调参型 |
+| mobs | 普通怪物 | 普通怪物模板 | config_mobs | B2 调参型 |
+| bosses | Boss | Boss 模板 | config_bosses | B2 调参型 |
+| quests | 任务 | 任务模板 | config_quests | B2 调参型 |
+| skills | 技能 | 职业技能模板 | config_skills | B2 调参型 |
+| shops | 商店 | 商店配置 | config_shops | B2 调参型 |
+| classEquipment | 职业装备 | 职业装备模板 | config_class_equipment | DATA-4 |
+| classPassives | 职业被动 | 职业被动技能配置 | config_class_passives | DATA-4 |
+| classTalents | 职业天赋 | 职业天赋树配置 | config_class_talents | DATA-4 |
+| setDefinitions | 职业套装 | 套装规则配置 | config_set_definitions | DATA-4 |
 
 ***
 

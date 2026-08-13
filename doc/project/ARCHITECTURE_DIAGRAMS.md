@@ -5,11 +5,11 @@
 | 项目 | 内容 |
 |------|------|
 | 标题 | 项目架构图 |
-| 版本 | v4.0 |
-| 生成日期 | 2026年8月3日 |
+| 版本 | v5.0 |
+| 生成日期 | 2026年8月13日 |
 | 所属目录 | `doc/project/` |
 | 关联文档 | MODULE_FUNCTIONS.md、DEPENDENCY_GRAPH.md、DATA_ARCHITECTURE_OVERVIEW.md |
-| 更新说明 | 1. P3-116「全局状态收敛与持久化重构」：新增 game 模块，useGameStore 成为全局游戏状态（currentCharacterId/currentShopId/gameSettings/lastPlayedAt/initializedAt）的唯一持有者，经 gameStateHelper 持久化到 runtime_gameState 表（id='gameState'）；2. character/shop 的 currentCharacterId/currentShopId 与 exploration（P3-153）、audio 的 settings 均改为只读 computed 代理 gameStore，修改经 gameStore.setXxx()/updateGameSettings() 触发持久化；3. 音频模块重构：audio/db.ts 已删除（audioDbService 移除），音频设置收敛到 GameStore，audio 仅依赖 bus + game；4. src/modules/index.ts 顶层从 export * 改为显式命名导出（ARCH-6），新增 game 段导出；5. services/ItemTemplateCache.ts 已删除，服务层现存 5 个服务（AdminQueryService/CharacterLifecycleService/CrossModuleQuery/ErrorHandler/GameBootstrap）；6. 依据源码核验全文：模块目录共 21 个（含新增 game）、数据库 27 张表（config_* 15 + char_* 6 + runtime_* 6）、事件总线 46 个事件；7. 补全第四节探索模块架构图（原文档在第四节截断），新增「五、数据持久化架构」「六、事件总线架构」「七、服务层架构」「八、音频模块架构」「九、全局状态收敛与启动流程」章节；8. 文末新增「版本历史」 |
+| 更新说明 | admin 模块升级：AdminQueryService 从 src/services/ 迁入 modules/admin/queryService.ts（services 目录减至 4 个）；admin 后台组件群新增 DashboardPanel/ImportDialog/fields/ 子组件；数据持久化 v3 表名修正（config_class_equipment/config_set_definitions）；AdminQueryService 从服务层架构表中移除 |
 
 ---
 
@@ -37,7 +37,7 @@ graph TD
         L1E[MapView 地图视图]
         L1F[popup 弹窗组件群<br/>CombatPopup/InventoryPopup/SkillsPopup/<br/>ShopPopup/QuestPopup/QuestBoardPopup/<br/>AdventureLogPopup/AudioSettingsPopup/<br/>CharacterInfoPopup/SystemPopup]
         L1G[common 通用组件群<br/>AlertPopup/BasePopup/BaseIcon/ClassResourceBar/<br/>ConfirmPopup/EffectTag/EmptyState/ItemIcon/<br/>ResourceBar/RiskIndicator/SkillTags/Tag/Toast]
-        L1H[admin 后台组件群<br/>AdminForm/AdminLayout/<br/>AdminTable/ConfigManager]
+        L1H[admin 后台组件群<br/>AdminLayout/DashboardPanel/<br/>AdminTable/AdminForm/ConfigManager/<br/>ImportDialog + fields/ 7 子组件]
     end
 
     %% ===== 第二层：Composables 层 =====
@@ -55,8 +55,9 @@ graph TD
         L2S2[GameBootstrap<br/>初始化编排]
         L2S3[ErrorHandler<br/>统一错误处理]
         L2S4[CharacterLifecycleService<br/>角色生命周期服务]
-        L2S5[AdminQueryService<br/>管理后台查询服务]
     end
+
+    %% AdminQueryService 已迁入 modules/admin/queryService.ts
 
     %% ===== 第三层：玩法核心层 =====
     subgraph L3[玩法核心层]
@@ -103,7 +104,7 @@ graph TD
         direction LR
         L7A[utils/calculations 计算工具]
         L7B[config/* 配置<br/>character/combat-colors/<br/>database/inventory]
-        L7C[data/config_* 静态数据<br/>config_bosses/config_classes/<br/>config_class_items/config_class_passives/<br/>config_class_talents/config_equipmentItems/<br/>config_factions/config_item_sets/config_items/<br/>config_locations/config_mobs/config_quests/<br/>config_races/config_shops/config_skills]
+        L7C[data/config_* 静态数据<br/>config_bosses/config_classes/<br/>config_class_equipment/config_class_passives/<br/>config_class_talents/config_equipmentItems/<br/>config_factions/config_set_definitions/config_items/<br/>config_locations/config_mobs/config_quests/<br/>config_races/config_shops/config_skills]
     end
 
     %% ===== 层间调用关系 =====
@@ -151,14 +152,14 @@ graph TD
 |------|------|----------|
 | UI 组件层 | 用户交互与视图渲染 | GameMain、CharacterCreate/Select、ExplorationView、MapView、popup/、common/（含 BaseIcon/ClassResourceBar/RiskIndicator）、admin/ |
 | Composables 层 | 跨组件复用的组合式逻辑 | useSkillDisplay、useToast、useResponsiveGrid |
-| 服务层 | 跨模块查询、初始化编排、错误处理、角色生命周期、管理后台查询 | CrossModuleQuery、GameBootstrap、ErrorHandler、CharacterLifecycleService、AdminQueryService |
+| 服务层 | 跨模块查询、初始化编排、错误处理、角色生命周期 | CrossModuleQuery、GameBootstrap、ErrorHandler、CharacterLifecycleService（AdminQueryService 已迁入 modules/admin/queryService.ts） |
 | 玩法核心层 | 游戏核心玩法编排 | combat、exploration、map、shop |
 | 核心数据层 | 角色相关业务数据管理 | character、inventory、equipment、skill、quest |
 | 辅助模块层 | 为玩法层提供辅助能力 | log、enemy、boss |
-| 基础设施层 | 数据/事件/音频/全局状态/物品模板等基础能力 | data、bus、base、admin、audio、animation、item-template、game（全局状态唯一持有者，P3-116） |
-| 工具与配置层 | 纯函数工具与静态配置 | utils/calculations、config/*、data/config_*（含 config_class_items/config_class_passives/config_class_talents/config_item_sets） |
+| 基础设施层 | 数据/事件/音频/全局状态/物品模板等基础能力 | data、bus、base、admin（含 AdminQueryService）、audio、animation、item-template、game（全局状态唯一持有者，P3-116） |
+| 工具与配置层 | 纯函数工具与静态配置 | utils/calculations、config/*、data/config_*（含 config_class_equipment/config_class_passives/config_class_talents/config_set_definitions） |
 
-**服务层说明（P3-116 调整）**：`services/ItemTemplateCache.ts` 已删除，物品模板统一缓存收敛到 `modules/item-template` 的 `unifiedItemTemplateCache`，服务层现存 5 个服务。
+**服务层说明**：`services/ItemTemplateCache.ts` 已删除（P3-116），物品模板统一缓存收敛到 `modules/item-template`。`AdminQueryService` 从 `src/services/` 迁入 `modules/admin/queryService.ts`。services 目录现存 4 个服务。
 
 ---
 
@@ -709,13 +710,13 @@ graph TD
 |------|------|
 | v1 | 初始建表：11 张 config_* + 6 张 char_* + 5 张 runtime_* |
 | v2 | 新增 `runtime_shopSoldItems`（BIZ-16 商店回购列表持久化） |
-| v3 | 新增 `config_class_items` / `config_class_passives` / `config_class_talents` / `config_item_sets`（DATA-4 职业专属配置持久化，供 admin 后台编辑） |
+| v3 | 新增 `config_class_equipment` / `config_class_passives` / `config_class_talents` / `config_set_definitions`（DATA-4 职业专属配置持久化，供 admin 后台编辑） |
 
 **27 张表清单**：
 
 | 类别 | 数量 | 表名 |
 |------|------|------|
-| 配置表 config_* | 15 | config_factions、config_races、config_classes、config_items、config_equipmentItems、config_mobs、config_bosses、config_quests、config_skills、config_locations、config_shops、config_class_items、config_class_passives、config_class_talents、config_item_sets |
+| 配置表 config_* | 15 | config_factions、config_races、config_classes、config_items、config_equipmentItems、config_mobs、config_bosses、config_quests、config_skills、config_locations、config_shops、config_class_equipment、config_class_passives、config_class_talents、config_set_definitions |
 | 角色表 char_* | 6 | char_data、char_inventory、char_equipment、char_skills、char_quests、char_exploration |
 | 运行时表 runtime_* | 6 | runtime_gameState、runtime_combatLogs、runtime_adventureLogs、runtime_mapState、runtime_shopItems、runtime_shopSoldItems |
 
@@ -764,7 +765,7 @@ graph LR
 
 ## 七、服务层架构
 
-`src/services/` 目录提供跨模块的通用服务，P3-116 后现存 5 个服务（原 `ItemTemplateCache.ts` 已删除，物品模板统一缓存收敛到 `modules/item-template` 的 `unifiedItemTemplateCache`）。
+`src/services/` 目录提供跨模块的通用服务，现存 4 个服务（原 `ItemTemplateCache.ts` 已删除 ARCH-1，`AdminQueryService` 已迁入 `modules/admin/queryService.ts`）。
 
 | 服务 | 职责 |
 |------|------|
@@ -772,7 +773,8 @@ graph LR
 | `GameBootstrap` | 游戏初始化编排，按依赖顺序并行初始化各模块 Store（P3-128 四层并行：log+inventory → 注入回调 → equipment+skill+map → exploration → quest），并统一清理（Disposable 接口） |
 | `ErrorHandler` | 统一错误处理入口（errorHandler） |
 | `CharacterLifecycleService` | 角色生命周期服务（CHR-4），收口角色创建/删除的跨模块持久化逻辑 |
-| `AdminQueryService` | 管理后台查询服务，支撑 admin 模块的配置查询 |
+
+> **注**：`AdminQueryService` 原列于此表，已迁入 `modules/admin/queryService.ts`，作为 admin 模块的一部分导出，收口控制台命令模块对 enemy/boss/inventory/equipment DbService 的查询依赖（CHR-5）。
 
 ---
 
