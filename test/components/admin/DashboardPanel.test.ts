@@ -91,7 +91,7 @@ describe('DashboardPanel 仪表盘面板组件', () => {
       store.dashboardStats = { tableCounts: { config_mobs: 42 } };
       const wrapper = shallowMount(DashboardPanel, { global: { plugins: [pinia] } });
       const cards = wrapper.findAll('.stat-card');
-      const mobsCard = cards.find(c => c.find('.stat-label').text() === '普通怪物');
+      const mobsCard = cards.find(c => c.find('.stat-label').text() === '怪物');
       expect(mobsCard).toBeDefined();
       expect(mobsCard!.find('.stat-value').text()).toBe('42');
     });

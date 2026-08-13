@@ -7,7 +7,7 @@
       </div>
 
       <nav class="sidebar-nav">
-        <!-- 仪表盘 -->
+        <!-- 仪表盘（一级菜单） -->
         <a
           class="nav-item"
           :class="{ active: store.currentView === 'dashboard' }"
@@ -16,10 +16,19 @@
           <span class="nav-label">仪表盘</span>
         </a>
 
-        <!-- 配置管理分组 -->
-        <div class="nav-group-title">配置管理</div>
+        <!-- 配置管理（一级菜单） -->
+        <a
+          class="nav-item"
+          :class="{ active: store.currentView === 'config' }"
+          @click="navigateToConfigManager"
+        >
+          <span class="nav-label">配置管理</span>
+        </a>
+
+        <!-- 二级菜单：各配置表 -->
         <a
           v-for="table in configTables"
+          v-show="store.currentView === 'config'"
           :key="table.key"
           class="nav-item nav-sub-item"
           :class="{
@@ -28,7 +37,6 @@
           @click="navigateToConfig(table.key)"
         >
           <span class="nav-label">{{ table.label }}</span>
-          <span class="nav-desc">{{ table.description }}</span>
         </a>
       </nav>
 
@@ -88,6 +96,13 @@ onMounted(async () => {
 function navigateToConfig(tableName: ConfigTableName) {
   store.switchView('config');
   store.selectConfigTable(tableName);
+}
+
+/** 点击"配置管理"一级菜单：进入配置视图，保持当前选中的表 */
+function navigateToConfigManager() {
+  if (store.currentView !== 'config') {
+    store.switchView('config');
+  }
 }
 </script>
 
@@ -149,24 +164,38 @@ function navigateToConfig(tableName: ConfigTableName) {
 }
 
 .nav-sub-item {
-  padding-left: 36px;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-
-  .nav-desc {
-    font-size: @font-xs;
-    color: @text-secondary;
-    opacity: 0.7;
-  }
-}
-
-.nav-group-title {
-  padding: @spacing-3xl @spacing-4xl @spacing-sm;
-  font-size: @font-xs;
+  padding-left: 40px;
+  font-size: @font-base;
   color: @text-secondary;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  position: relative;
+
+  // 二级菜单项左侧圆点指示层级
+  &::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: @border-color;
+    transition: background @transition-quick;
+  }
+
+  &:hover::before {
+    background: @text-secondary;
+  }
+
+  &.active::before {
+    background: @accent-color;
+  }
+
+  &.active {
+    background: @gold-bg;
+    color: @accent-color;
+    border-right: 3px solid @accent-color;
+  }
 }
 
 .sidebar-footer {

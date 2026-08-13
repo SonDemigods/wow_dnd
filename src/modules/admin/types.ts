@@ -176,21 +176,21 @@ export interface FormConfig {
  */
 export const CONFIG_TABLES: ConfigTableMeta[] = [
   // -------- B1 定义型（低频变更，发版才改） --------
-  { key: 'factions', label: '阵营', description: '维护阵营数据', dbTable: 'config_factions' },
-  { key: 'races', label: '种族', description: '26个可选种族', dbTable: 'config_races' },
-  { key: 'classes', label: '职业', description: '13个职业定义', dbTable: 'config_classes' },
+  { key: 'factions', label: '阵营', description: '阵营模板', dbTable: 'config_factions' },
+  { key: 'races', label: '种族', description: '种族模板', dbTable: 'config_races' },
+  { key: 'classes', label: '职业', description: '职业模板', dbTable: 'config_classes' },
   { key: 'locations', label: '地点', description: '大陆/地点数据', dbTable: 'config_locations' },
   // -------- B2 调参型（高频变更，平衡性调整，admin 优先） --------
   { key: 'items', label: '物品', description: '消耗品/材料模板', dbTable: 'config_items' },
   { key: 'equipmentItems', label: '装备', description: '武器装备模板', dbTable: 'config_equipment_items' },
-  { key: 'mobs', label: '普通怪物', description: '普通怪物模板', dbTable: 'config_mobs' },
-  { key: 'bosses', label: 'Boss', description: 'Boss 模板', dbTable: 'config_bosses' },
-  { key: 'quests', label: '任务', description: '任务定义', dbTable: 'config_quests' },
+  { key: 'mobs', label: '怪物', description: '普通怪物模板', dbTable: 'config_mobs' },
+  { key: 'bosses', label: '首领', description: '首领模板', dbTable: 'config_bosses' },
+  { key: 'quests', label: '任务', description: '任务模板', dbTable: 'config_quests' },
   { key: 'skills', label: '技能', description: '职业技能模板', dbTable: 'config_skills' },
   { key: 'shops', label: '商店', description: '商店配置', dbTable: 'config_shops' },
   // -------- DATA-4 职业扩展系统（2026-08-06 补入 admin 可编辑列表） --------
-  { key: 'classEquipment', label: '职业专属装备', description: '职业绑定装备模板（DATA-4）', dbTable: 'config_class_equipment' },
-  { key: 'classPassives', label: '职业被动', description: '职业被动技能定义（DATA-4）', dbTable: 'config_class_passives' },
-  { key: 'classTalents', label: '职业天赋', description: '职业天赋树定义（DATA-4）', dbTable: 'config_class_talents' },
-  { key: 'setDefinitions', label: '套装定义', description: '套装规则定义（DATA-4）', dbTable: 'config_set_definitions' },
+  { key: 'classEquipment', label: '职业装备', description: '职业装备模板', dbTable: 'config_class_equipment' },
+  { key: 'classPassives', label: '职业被动', description: '职业被动技能配置', dbTable: 'config_class_passives' },
+  { key: 'classTalents', label: '职业天赋', description: '职业天赋树配置', dbTable: 'config_class_talents' },
+  { key: 'setDefinitions', label: '职业套装', description: '套装规则配置', dbTable: 'config_set_definitions' },
 ];

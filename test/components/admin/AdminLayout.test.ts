@@ -34,9 +34,15 @@ describe('AdminLayout 后台管理布局组件', () => {
       expect(wrapper.find('.admin-sidebar').exists()).toBe(true);
     });
 
-    it('侧边栏渲染所有配置表导航项 .nav-sub-item', () => {
+    it('侧边栏默认视图(dashboard)时二级菜单 .nav-sub-item 不可见', () => {
       const wrapper = mount(AdminLayout, { global: { plugins: [pinia] } });
-      expect(wrapper.findAll('.nav-sub-item')).toHaveLength(CONFIG_TABLES.length);
+      // v-show 控制隐藏，元素存在但不显示
+      const subItems = wrapper.findAll('.nav-sub-item');
+      expect(subItems).toHaveLength(CONFIG_TABLES.length);
+      // dashboard 视图下二级菜单 v-show=false
+      subItems.forEach(item => {
+        expect(item.isVisible()).toBe(false);
+      });
     });
 
     it('侧边栏标题为"后台管理"', () => {
