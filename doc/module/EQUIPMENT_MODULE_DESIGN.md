@@ -80,7 +80,7 @@
 | FR-EQUIP-001 | 支持装备穿戴（含槽位/等级/职业校验） | 核心功能 |
 | FR-EQUIP-002 | 支持装备卸下（通过回调放回背包） | 核心功能 |
 | FR-EQUIP-003 | 支持属性加成计算（`totalStats` computed） | 核心功能 |
-| FR-EQUIP-004 | 支持 6 个装备栏位（2 武器 + 4 护甲） | 槽位管理 |
+| FR-EQUIP-004 | 支持 7 个装备栏位（2 武器 + 5 护甲） | 槽位管理 |
 | FR-EQUIP-005 | 装备类型与槽位匹配（`validateSlot` 双重校验：类型 + slots 列表） | 类型校验 |
 | FR-EQUIP-006 | 装备属性需计算至角色模块（直接调用 `characterStore` Action） | 属性同步 |
 | FR-EQUIP-007 | 数据持久化存储（`char_equipment` + `config_equipmentItems` 双表） | 存档系统 |
@@ -516,7 +516,7 @@ export function clearInventoryCallbacks(): void;
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `characterId` | string | - | 角色唯一标识（主键） |
-| `equipment` | Record<EquipmentSlot, string \| null> | 6 个 null 槽位 | 装备槽位 → 装备 ID 映射 |
+| `equipment` | Record<EquipmentSlot, string \| null> | 7 个 null 槽位 | 装备槽位 → 装备 ID 映射 |
 | `updatedAt` | number | `Date.now()` | 最后更新时间戳 |
 
 > 与 `EquipmentStorage`（导入/导出格式）字段一致，区别仅在于 `updatedAt` 必选/可选；Dexie schema 中 `char_equipment` 表类型标注为 `EquipmentStorage`，`db.ts` 写入时构造含必选 `updatedAt` 的完整对象。
