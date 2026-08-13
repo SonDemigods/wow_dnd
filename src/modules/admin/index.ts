@@ -6,6 +6,7 @@
 export { useAdminStore } from './store';
 export { adminService } from './service';
 export { adminDbService } from './db';
+export { adminQueryService } from './queryService';
 export { CONFIG_TABLES } from './types';
 export type {
   AdminView,

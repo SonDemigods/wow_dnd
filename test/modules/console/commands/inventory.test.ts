@@ -40,7 +40,7 @@ vi.mock('@/modules/equipment/store', () => ({
   useEquipmentStore: () => equipmentMock,
 }));
 
-vi.mock('@/services/AdminQueryService', () => ({
+vi.mock('@/modules/admin', () => ({
   adminQueryService: adminQueryMock,
 }));
 

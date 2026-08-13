@@ -41,7 +41,7 @@ vi.mock('@/modules/enemy/store', () => ({
   useEnemyStore: () => enemyMock,
 }));
 
-vi.mock('@/services/AdminQueryService', () => ({
+vi.mock('@/modules/admin', () => ({
   adminQueryService: adminQueryMock,
 }));
 

@@ -41,22 +41,10 @@
     <!-- 主内容区 -->
     <main class="admin-main">
       <!-- 仪表盘 -->
-      <div v-if="store.currentView === 'dashboard'" class="dashboard-view">
-        <h2 class="page-title">仪表盘</h2>
-        <div class="stats-grid">
-          <div
-            v-for="table in configTables"
-            :key="table.key"
-            class="stat-card stat-card-small"
-            @click="navigateToConfig(table.key)"
-          >
-            <div class="stat-value">
-              {{ store.dashboardStats.tableCounts[table.dbTable] || 0 }}
-            </div>
-            <div class="stat-label">{{ table.label }}</div>
-          </div>
-        </div>
-      </div>
+      <DashboardPanel
+        v-if="store.currentView === 'dashboard'"
+        @navigate="navigateToConfig"
+      />
 
       <!-- 配置管理 -->
       <div v-if="store.currentView === 'config'" class="config-view">
@@ -71,13 +59,15 @@
  * 后台管理布局组件
  *
  * 左侧导航 + 右侧内容区的经典后台布局，
- * 支持仪表盘和10个配置表的管理视图切换
+ * 支持仪表盘和 15 张配置表的管理视图切换。
+ * Phase 5：仪表盘内容提取到 DashboardPanel.vue。
  */
 import { onMounted } from 'vue';
 import { useAdminStore } from '@/modules/admin';
 import { CONFIG_TABLES } from '@/modules/admin';
 import type { ConfigTableName } from '@/modules/admin';
 import ConfigManager from './ConfigManager.vue';
+import DashboardPanel from './DashboardPanel.vue';
 
 const store = useAdminStore();
 const configTables = CONFIG_TABLES;
@@ -86,7 +76,6 @@ defineEmits<{
   exit: [];
 }>();
 
-// P9-106 修复：onMounted store 调用包裹 try-catch
 onMounted(async () => {
   try {
     await store.loadDashboardStats();
@@ -119,7 +108,7 @@ function navigateToConfig(tableName: ConfigTableName) {
   background: @secondary-bg;
   border-right: 1px solid @border-color;
   .flex-col();
-  overflow-y: auto;
+  overflow: hidden; // 头尾不动，中间滚动
 }
 
 .sidebar-header {
@@ -136,6 +125,7 @@ function navigateToConfig(tableName: ConfigTableName) {
 .sidebar-nav {
   flex: 1;
   padding: @spacing-lg 0;
+  overflow-y: auto; // 仅导航区域滚动，头部和底部固定
 }
 
 .nav-item {
@@ -207,58 +197,6 @@ function navigateToConfig(tableName: ConfigTableName) {
   padding: 24px;
 }
 
-.page-title {
-  color: @accent-color;
-  font-size: @font-4xl;
-  margin: 0 0 24px;
-}
-
-// ==================== 仪表盘 ====================
-.dashboard-view {
-  flex: 1;
-  overflow-y: auto;
-}
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
-}
-
-.stat-card {
-  background: @secondary-bg;
-  border: 1px solid @border-color;
-  border-radius: @radius-lg;
-  padding: @spacing-4xl;
-  text-align: center;
-  cursor: default;
-
-  .stat-value {
-    font-size: @font-6xl;
-    font-weight: @font-weight-bold;
-    color: @accent-color;
-  }
-
-  .stat-label {
-    font-size: @font-base;
-    color: @text-secondary;
-    margin-top: 6px;
-  }
-
-  &-small {
-    cursor: pointer;
-    transition: border-color @transition-quick;
-
-    .stat-value {
-      font-size: @font-4xl;
-    }
-
-    &:hover {
-      border-color: @accent-color;
-    }
-  }
-}
-
-// ==================== 管理视图 ====================
 .config-view {
   flex: 1;
   overflow: hidden;

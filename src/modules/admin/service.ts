@@ -14,6 +14,7 @@ import type { AdminOperationResult } from './types';
 import type { GameDatabaseSchema } from '@/modules/data/core';
 import { CONFIG_TABLES } from './types';
 import { errorHandler } from '@/services/ErrorHandler';
+import { DEFAULT_DATA_MAP } from './defaultData';
 
 /**
  * P4-002 修复：admin 可写表白名单
@@ -101,6 +102,24 @@ export class AdminService {
     return await adminDbService.search(tableName as keyof GameDatabaseSchema, keyword);
   }
 
+  // ==================== 分页查询 ====================
+
+  /**
+   * 分页查询数据表（支持排序 + 搜索）
+   */
+  async getPagedData(
+    tableName: string,
+    page: number,
+    pageSize: number,
+    options?: {
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+      keyword?: string;
+    },
+  ): Promise<{ data: Record<string, unknown>[]; total: number }> {
+    return await adminDbService.getPaged(tableName as keyof GameDatabaseSchema, page, pageSize, options);
+  }
+
   // ==================== 仪表盘 ====================
 
   async getDashboardStats(): Promise<{
@@ -118,6 +137,32 @@ export class AdminService {
     );
 
     return { tableCounts: counts };
+  }
+
+  // ==================== 重置默认值 ====================
+
+  /**
+   * 将指定表重置为源码默认值
+   *
+   * 清空表数据后，从 config_*.ts 静态常量重新写入。
+   */
+  async resetToDefaults(tableName: string): Promise<AdminOperationResult> {
+    try {
+      assertWritable(tableName);
+      const getDefaultData = DEFAULT_DATA_MAP[tableName];
+      if (!getDefaultData) {
+        return { success: false, error: `表 "${tableName}" 没有默认数据映射` };
+      }
+      const defaultData = getDefaultData();
+      await adminDbService.clear(tableName as keyof GameDatabaseSchema);
+      if (defaultData.length > 0) {
+        await adminDbService.bulkPut(tableName as keyof GameDatabaseSchema, defaultData);
+      }
+      return { success: true };
+    } catch (error) {
+      errorHandler.report(error, `admin resetToDefaults(${tableName}) 失败`);
+      return { success: false, error: error instanceof Error ? error.message : '重置失败' };
+    }
   }
 }
 

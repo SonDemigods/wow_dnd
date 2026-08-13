@@ -176,7 +176,7 @@ export interface FormConfig {
  */
 export const CONFIG_TABLES: ConfigTableMeta[] = [
   // -------- B1 定义型（低频变更，发版才改） --------
-  { key: 'factions', label: '阵营', description: '光辉盟约/铁血盟约/中立阵营', dbTable: 'config_factions' },
+  { key: 'factions', label: '阵营', description: '维护阵营数据', dbTable: 'config_factions' },
   { key: 'races', label: '种族', description: '26个可选种族', dbTable: 'config_races' },
   { key: 'classes', label: '职业', description: '13个职业定义', dbTable: 'config_classes' },
   { key: 'locations', label: '地点', description: '大陆/地点数据', dbTable: 'config_locations' },

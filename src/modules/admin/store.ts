@@ -46,6 +46,15 @@ export const useAdminStore = defineStore('admin', () => {
   /** 搜索关键词 */
   const searchKeyword = ref('');
 
+  /** 分页状态 */
+  const currentPage = ref(1);
+  const pageSize = ref(20);
+  const totalCount = ref(0);
+
+  /** 排序状态 */
+  const sortBy = ref<string>('');
+  const sortOrder = ref<'asc' | 'desc'>('asc');
+
   /** 参考数据：阵营下拉选项 */
   const referenceFactions = ref<ReferenceOption[]>([]);
   /** 参考数据：种族下拉选项 */
@@ -77,11 +86,14 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   /**
-   * 选择配置表
+   * 选择配置表（重置分页和排序）
    */
   function selectConfigTable(table: ConfigTableName) {
     selectedConfigTable.value = table;
     searchKeyword.value = '';
+    currentPage.value = 1;
+    sortBy.value = '';
+    sortOrder.value = 'asc';
     loadTableData();
   }
 
@@ -98,7 +110,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   /**
-   * 加载当前选中表的数据
+   * 加载当前选中表的数据（分页 + 排序 + 搜索）
    */
   async function loadTableData() {
     const meta = currentTableMeta.value;
@@ -106,11 +118,18 @@ export const useAdminStore = defineStore('admin', () => {
 
     isLoading.value = true;
     try {
-      if (searchKeyword.value) {
-        tableData.value = await adminService.searchTable(meta.dbTable, searchKeyword.value);
-      } else {
-        tableData.value = await adminService.getAll(meta.dbTable);
-      }
+      const result = await adminService.getPagedData(
+        meta.dbTable,
+        currentPage.value,
+        pageSize.value,
+        {
+          sortBy: sortBy.value || undefined,
+          sortOrder: sortOrder.value,
+          keyword: searchKeyword.value,
+        },
+      );
+      tableData.value = result.data;
+      totalCount.value = result.total;
     } finally {
       isLoading.value = false;
     }
@@ -194,9 +213,77 @@ export const useAdminStore = defineStore('admin', () => {
     return false;
   }
 
-  /** 执行搜索并重新加载数据 */
+  /** 执行搜索并重新加载数据（重置到第1页） */
   async function doSearch(keyword: string) {
     searchKeyword.value = keyword;
+    currentPage.value = 1;
+    await loadTableData();
+  }
+
+  /** 按表名失效 ConfigCache 对应缓存 */
+  function invalidateConfigCache(tableName: string): void {
+    if (tableName === 'config_class_talents') {
+      configCache.invalidate('talents');
+    } else if (tableName === 'config_class_passives') {
+      configCache.invalidate('passives');
+    } else if (tableName === 'config_set_definitions') {
+      configCache.invalidate('sets');
+    }
+  }
+
+  /** 批量导入记录 */
+  async function importRecords(tableName: string, records: Record<string, unknown>[]): Promise<{ success: number; fail: number }> {
+    let success = 0;
+    let fail = 0;
+    for (const record of records) {
+      const result = await adminService.add(tableName, record, record.id as string | undefined);
+      if (result.success) {
+        success++;
+      } else {
+        fail++;
+      }
+    }
+    invalidateConfigCache(tableName);
+    await loadTableData();
+    return { success, fail };
+  }
+
+  /** 重置当前表为默认值 */
+  async function resetTable(): Promise<boolean> {
+    const meta = currentTableMeta.value;
+    if (!meta) return false;
+    const result = await adminService.resetToDefaults(meta.dbTable);
+    if (result.success) {
+      invalidateConfigCache(meta.dbTable);
+      currentPage.value = 1;
+      await loadTableData();
+      return true;
+    }
+    return false;
+  }
+
+  /** 切换排序字段（点击同一列切换方向，点击新列重置为 asc） */
+  async function toggleSort(columnKey: string) {
+    if (sortBy.value === columnKey) {
+      sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortBy.value = columnKey;
+      sortOrder.value = 'asc';
+    }
+    currentPage.value = 1;
+    await loadTableData();
+  }
+
+  /** 切换每页条数 */
+  async function changePageSize(size: number) {
+    pageSize.value = size;
+    currentPage.value = 1;
+    await loadTableData();
+  }
+
+  /** 跳转到指定页 */
+  async function changePage(page: number) {
+    currentPage.value = page;
     await loadTableData();
   }
 
@@ -230,6 +317,11 @@ export const useAdminStore = defineStore('admin', () => {
     formConfig,
     editingRecord,
     searchKeyword,
+    currentPage,
+    pageSize,
+    totalCount,
+    sortBy,
+    sortOrder,
     referenceFactions,
     referenceRaces,
     referenceClasses,
@@ -245,11 +337,16 @@ export const useAdminStore = defineStore('admin', () => {
     loadDashboardStats,
     loadTableData,
     doSearch,
+    toggleSort,
+    changePageSize,
+    changePage,
     openCreateForm,
     openEditForm,
     closeForm,
     saveRecord,
     deleteRecord,
+    importRecords,
+    resetTable,
     loadReferenceData,
   };
 });

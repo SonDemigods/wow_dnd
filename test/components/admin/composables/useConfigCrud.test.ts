@@ -16,6 +16,12 @@ import { createStubPinia } from '../../../utils/setup';
 import { useAdminStore } from '@/modules/admin';
 import { useConfigCrud } from '@/components/admin/composables/useConfigCrud';
 
+// Mock checkReferences 避免 DB 查询
+vi.mock('@/modules/admin/referenceGraph', () => ({
+  checkReferences: vi.fn().mockResolvedValue({ hasReferences: false, details: [] }),
+  formatReferenceWarning: vi.fn().mockReturnValue(''),
+}));
+
 describe('useConfigCrud 配置表 CRUD composable', () => {
   beforeEach(() => {
     createStubPinia();
@@ -64,13 +70,13 @@ describe('useConfigCrud 配置表 CRUD composable', () => {
   });
 
   describe('handleDelete', () => {
-    it('设置 showDeleteConfirm 为 true', () => {
+    it('设置 showDeleteConfirm 为 true', async () => {
       const { showDeleteConfirm, handleDelete } = useConfigCrud({
         currentDbTable: computed(() => 'config_factions'),
       });
       expect(showDeleteConfirm.value).toBe(false);
 
-      handleDelete({ id: 'del1' });
+      await handleDelete({ id: 'del1' });
 
       expect(showDeleteConfirm.value).toBe(true);
     });
@@ -79,11 +85,10 @@ describe('useConfigCrud 配置表 CRUD composable', () => {
   describe('confirmDelete', () => {
     it('调用 store.deleteRecord，传入 currentDbTable 与 id 字符串', async () => {
       const store = useAdminStore();
-      // 必须使用同一个 composable 实例：handleDelete 设置 pendingDeleteRecord，confirmDelete 消费它
       const { handleDelete, confirmDelete } = useConfigCrud({
         currentDbTable: computed(() => 'config_factions'),
       });
-      handleDelete({ id: 'del1' });
+      await handleDelete({ id: 'del1' });
 
       await confirmDelete();
 
@@ -108,7 +113,7 @@ describe('useConfigCrud 配置表 CRUD composable', () => {
       const { handleDelete, confirmDelete, showDeleteConfirm } = useConfigCrud({
         currentDbTable: computed(() => 'config_factions'),
       });
-      handleDelete({ id: 'del1' });
+      await handleDelete({ id: 'del1' });
       expect(showDeleteConfirm.value).toBe(true);
 
       await confirmDelete();
@@ -121,7 +126,7 @@ describe('useConfigCrud 配置表 CRUD composable', () => {
       const { handleDelete, confirmDelete } = useConfigCrud({
         currentDbTable: computed(() => 'char_data'),
       });
-      handleDelete({ characterId: 'char_99' });
+      await handleDelete({ characterId: 'char_99' });
 
       await confirmDelete();
 

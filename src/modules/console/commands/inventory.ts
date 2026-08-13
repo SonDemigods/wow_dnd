@@ -9,7 +9,7 @@
  */
 import { useInventoryStore } from '@/modules/inventory';
 import { useEquipmentStore } from '@/modules/equipment';
-import { adminQueryService } from '@/services/AdminQueryService';
+import { adminQueryService } from '@/modules/admin';
 import {
   registerCommand,
   rarityColorKey,

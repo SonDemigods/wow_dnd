@@ -13,7 +13,7 @@
  * CHR-5 修复验证：console.ts 不再直接依赖这些 DbService
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { adminQueryService } from '@/services/AdminQueryService';
+import { adminQueryService } from '@/modules/admin';
 
 /** mock 4 个依赖的 DbService */
 const mocks = vi.hoisted(() => ({

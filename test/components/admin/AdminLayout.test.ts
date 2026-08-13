@@ -15,6 +15,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import AdminLayout from '@/components/admin/AdminLayout.vue';
+import DashboardPanel from '@/components/admin/DashboardPanel.vue';
 import { useAdminStore } from '@/modules/admin';
 import { CONFIG_TABLES } from '@/modules/admin/types';
 import { createStubPinia } from '../../utils/setup';
@@ -45,7 +46,8 @@ describe('AdminLayout 后台管理布局组件', () => {
 
     it('默认 currentView=dashboard 时渲染仪表盘视图而非配置视图', () => {
       const wrapper = mount(AdminLayout, { global: { plugins: [pinia] } });
-      expect(wrapper.find('.dashboard-view').exists()).toBe(true);
+      // Phase 5：仪表盘内容提取到 DashboardPanel.vue
+      expect(wrapper.findComponent(DashboardPanel).exists()).toBe(true);
       expect(wrapper.find('.config-view').exists()).toBe(false);
     });
 

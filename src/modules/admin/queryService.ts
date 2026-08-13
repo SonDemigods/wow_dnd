@@ -16,7 +16,7 @@
  * - 查询类操作通过本服务聚合，减少 console.ts 的跨模块 import
  * - 服务层无状态，仅聚合查询，不持有缓存（缓存由 modules/item-template 的 unifiedItemTemplateCache 负责）
  *
- * @module services
+ * @module admin
  */
 import { enemyDbService } from '@/modules/enemy';
 import { bossDbService } from '@/modules/boss';

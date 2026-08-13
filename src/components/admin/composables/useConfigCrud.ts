@@ -3,16 +3,15 @@
  *
  * 封装配置表的创建、编辑、删除、表单提交等交互逻辑：
  * - handleCreate / handleEdit：调用 store 打开对应模式的表单
- * - handleDelete / confirmDelete：删除确认弹窗的状态与执行
+ * - handleDelete / confirmDelete：删除确认弹窗 + 关联完整性检查
  * - handleFormSubmit：表单提交后写入数据库
- *
- * 删除确认弹窗的可见状态由本 composable 内部 ref 管理，组件模板直接绑定。
  */
 import { ref } from 'vue';
 import { useAdminStore } from '@/modules/admin';
 import type { AdminRecord } from '@/modules/admin';
 import type { ComputedRef } from 'vue';
 import { useToast } from '@/composables/useToast';
+import { checkReferences, formatReferenceWarning } from '@/modules/admin/referenceGraph';
 
 /** useConfigCrud 依赖的元信息（来自 useConfigTableMeta） */
 export interface UseConfigCrudDeps {
@@ -24,11 +23,13 @@ export interface UseConfigCrudDeps {
 export interface UseConfigCrudReturn {
   /** 是否显示删除确认弹窗 */
   showDeleteConfirm: ReturnType<typeof ref<boolean>>;
+  /** 引用完整性警告文本（删除确认弹窗中展示） */
+  referenceWarning: ReturnType<typeof ref<string>>;
   /** 打开创建表单 */
   handleCreate: () => void;
   /** 打开编辑表单 */
   handleEdit: (row: AdminRecord) => void;
-  /** 打开删除确认弹窗 */
+  /** 打开删除确认弹窗（含关联检查） */
   handleDelete: (row: AdminRecord) => void;
   /** 确认删除（执行 store.deleteRecord 并关闭弹窗） */
   confirmDelete: () => Promise<void>;
@@ -38,9 +39,6 @@ export interface UseConfigCrudReturn {
 
 /**
  * ConfigManager CRUD 操作 composable
- *
- * @param deps - 依赖注入，提供 currentDbTable 计算属性
- * @returns 包含删除确认状态与各 CRUD 处理函数的对象
  */
 export function useConfigCrud(deps: UseConfigCrudDeps): UseConfigCrudReturn {
   const store = useAdminStore();
@@ -49,6 +47,8 @@ export function useConfigCrud(deps: UseConfigCrudDeps): UseConfigCrudReturn {
   const showDeleteConfirm = ref(false);
   /** 待删除的记录 */
   const pendingDeleteRecord = ref<AdminRecord | null>(null);
+  /** 引用完整性警告文本 */
+  const referenceWarning = ref('');
 
   /** 打开创建表单 */
   function handleCreate(): void {
@@ -60,16 +60,30 @@ export function useConfigCrud(deps: UseConfigCrudDeps): UseConfigCrudReturn {
     store.openEditForm(row, `编辑${store.currentTableMeta?.label || '记录'}`);
   }
 
-  /** 打开删除确认 */
-  function handleDelete(row: AdminRecord): void {
+  /** 打开删除确认（含关联检查） */
+  async function handleDelete(row: AdminRecord): Promise<void> {
     pendingDeleteRecord.value = row;
+    referenceWarning.value = '';
+
+    // 关联完整性检查
+    const id = row.id ?? row.characterId;
+    if (id) {
+      try {
+        const result = await checkReferences(deps.currentDbTable.value, String(id));
+        if (result.hasReferences) {
+          referenceWarning.value = formatReferenceWarning(result);
+        }
+      } catch {
+        // 检查失败不阻塞删除流程
+      }
+    }
+
     showDeleteConfirm.value = true;
   }
 
   /** 确认删除 */
   async function confirmDelete(): Promise<void> {
     if (!pendingDeleteRecord.value) return;
-    // P7-030 修复：从记录中获取主键，校验非空后才执行删除
     const record = pendingDeleteRecord.value;
     const id = record.id ?? record.characterId;
     if (!id || (typeof id === 'string' && id.trim() === '')) {
@@ -78,9 +92,7 @@ export function useConfigCrud(deps: UseConfigCrudDeps): UseConfigCrudReturn {
       pendingDeleteRecord.value = null;
       return;
     }
-    // P7-029 修复：try/catch 防止 Dexie 操作异常导致 unhandled rejection
     try {
-      // P12-028 修复：检查返回值，失败时 toast 提示
       const success = await store.deleteRecord(deps.currentDbTable.value, String(id));
       if (!success) {
         useToast().show({ message: '删除失败，请查看控制台', type: 'danger', duration: 3000 });
@@ -91,14 +103,13 @@ export function useConfigCrud(deps: UseConfigCrudDeps): UseConfigCrudReturn {
     } finally {
       showDeleteConfirm.value = false;
       pendingDeleteRecord.value = null;
+      referenceWarning.value = '';
     }
   }
 
   /** 提交表单 */
   async function handleFormSubmit(data: AdminRecord): Promise<void> {
-    // P7-029 修复：try/catch 防止 Dexie 操作异常导致 unhandled rejection
     try {
-      // P12-028 修复：检查返回值，失败时 toast 提示
       const success = await store.saveRecord(deps.currentDbTable.value, data);
       if (!success) {
         useToast().show({ message: '保存失败，请检查数据', type: 'danger', duration: 3000 });
@@ -111,6 +122,7 @@ export function useConfigCrud(deps: UseConfigCrudDeps): UseConfigCrudReturn {
 
   return {
     showDeleteConfirm,
+    referenceWarning,
     handleCreate,
     handleEdit,
     handleDelete,

@@ -36,6 +36,8 @@ vi.mock('@/modules/admin/service', () => ({
     count: vi.fn().mockResolvedValue(0),
     searchTable: vi.fn().mockResolvedValue([]),
     getDashboardStats: vi.fn().mockResolvedValue({ tableCounts: {} }),
+    getPagedData: vi.fn().mockResolvedValue({ data: [], total: 0 }),
+    resetToDefaults: vi.fn().mockResolvedValue({ success: true }),
   },
 }));
 
@@ -140,7 +142,7 @@ describe('useAdminStore - 后台管理 Store', () => {
 
     it('selectConfigTable 切换表、重置搜索词并加载数据', async () => {
       const data = [{ id: 'q1', name: '任务1' }];
-      vi.mocked(adminService.getAll).mockResolvedValueOnce(data);
+      vi.mocked(adminService.getPagedData).mockResolvedValueOnce({ data, total: 1 });
       const store = useAdminStore();
       store.$patch({ searchKeyword: '旧词' });
 
@@ -151,7 +153,10 @@ describe('useAdminStore - 后台管理 Store', () => {
       // loadTableData 异步执行
       await Promise.resolve();
       await Promise.resolve();
-      expect(adminService.getAll).toHaveBeenCalledWith('config_quests');
+      expect(adminService.getPagedData).toHaveBeenCalledWith(
+        'config_quests', 1, 20,
+        expect.objectContaining({ keyword: '' }),
+      );
       expect(store.tableData).toEqual(data);
     });
   });
@@ -197,32 +202,39 @@ describe('useAdminStore - 后台管理 Store', () => {
 
   // -------------------- Actions: loadTableData --------------------
   describe('Actions: loadTableData', () => {
-    it('无搜索词时走 getAll 并填充 tableData', async () => {
+    it('无搜索词时走 getPagedData 并填充 tableData', async () => {
       const data = [{ id: 'm1', name: '哥布林' }];
-      vi.mocked(adminService.getAll).mockResolvedValueOnce(data);
+      vi.mocked(adminService.getPagedData).mockResolvedValueOnce({ data, total: 1 });
 
       const store = useAdminStore();
       await store.loadTableData();
 
-      expect(adminService.getAll).toHaveBeenCalledWith('config_mobs');
+      expect(adminService.getPagedData).toHaveBeenCalledWith(
+        'config_mobs', 1, 20,
+        expect.objectContaining({ keyword: '' }),
+      );
       expect(store.tableData).toEqual(data);
+      expect(store.totalCount).toBe(1);
       expect(store.isLoading).toBe(false);
     });
 
-    it('有搜索词时走 searchTable', async () => {
+    it('有搜索词时走 getPagedData 带 keyword', async () => {
       const result = [{ id: 'm1', name: '哥布林' }];
-      vi.mocked(adminService.searchTable).mockResolvedValueOnce(result);
+      vi.mocked(adminService.getPagedData).mockResolvedValueOnce({ data: result, total: 1 });
 
       const store = useAdminStore();
       store.$patch({ searchKeyword: '哥布林' });
       await store.loadTableData();
 
-      expect(adminService.searchTable).toHaveBeenCalledWith('config_mobs', '哥布林');
+      expect(adminService.getPagedData).toHaveBeenCalledWith(
+        'config_mobs', 1, 20,
+        expect.objectContaining({ keyword: '哥布林' }),
+      );
       expect(store.tableData).toEqual(result);
     });
 
     it('失败时 isLoading 回落 false 且不填充数据', async () => {
-      vi.mocked(adminService.getAll).mockRejectedValueOnce(new Error('db error'));
+      vi.mocked(adminService.getPagedData).mockRejectedValueOnce(new Error('db error'));
       const store = useAdminStore();
       store.$patch({ tableData: [{ id: 'old' }] });
 
@@ -234,13 +246,11 @@ describe('useAdminStore - 后台管理 Store', () => {
 
     it('currentTableMeta 为空时直接返回不加载（防御性早退）', async () => {
       const store = useAdminStore();
-      // 设置一个不存在的表 key，使 currentTableMeta 返回 undefined
       store.$patch({ selectedConfigTable: 'non_existent_table' as any });
 
       await store.loadTableData();
 
-      expect(adminService.getAll).not.toHaveBeenCalled();
-      expect(adminService.searchTable).not.toHaveBeenCalled();
+      expect(adminService.getPagedData).not.toHaveBeenCalled();
       expect(store.isLoading).toBe(false);
     });
   });
@@ -287,7 +297,7 @@ describe('useAdminStore - 后台管理 Store', () => {
   describe('Actions: saveRecord', () => {
     it('create 模式成功：调用 add、关闭表单、重新加载、返回 true', async () => {
       vi.mocked(adminService.add).mockResolvedValueOnce({ success: true, data: 'new-id' });
-      vi.mocked(adminService.getAll).mockResolvedValueOnce([{ id: 'new-id' }]);
+      vi.mocked(adminService.getPagedData).mockResolvedValueOnce({ data: [{ id: 'new-id' }], total: 1 });
 
       const store = useAdminStore();
       store.openCreateForm('新建');
@@ -297,12 +307,12 @@ describe('useAdminStore - 后台管理 Store', () => {
       expect(result).toBe(true);
       expect(adminService.add).toHaveBeenCalledWith('config_mobs', { name: '哥布林' });
       expect(store.formConfig.visible).toBe(false);
-      expect(adminService.getAll).toHaveBeenCalledWith('config_mobs');
+      expect(adminService.getPagedData).toHaveBeenCalled();
     });
 
     it('edit 模式成功：调用 update（携带 editingRecord.id）、关闭表单、返回 true', async () => {
       vi.mocked(adminService.update).mockResolvedValueOnce({ success: true });
-      vi.mocked(adminService.getAll).mockResolvedValueOnce([]);
+      vi.mocked(adminService.getPagedData).mockResolvedValueOnce({ data: [], total: 0 });
 
       const store = useAdminStore();
       store.openEditForm({ id: 'r1', name: '旧' }, '编辑');
@@ -343,14 +353,14 @@ describe('useAdminStore - 后台管理 Store', () => {
   describe('Actions: deleteRecord', () => {
     it('成功：调用 delete、重新加载、返回 true', async () => {
       vi.mocked(adminService.delete).mockResolvedValueOnce({ success: true });
-      vi.mocked(adminService.getAll).mockResolvedValueOnce([]);
+      vi.mocked(adminService.getPagedData).mockResolvedValueOnce({ data: [], total: 0 });
 
       const store = useAdminStore();
       const result = await store.deleteRecord('config_mobs', 'm1');
 
       expect(result).toBe(true);
       expect(adminService.delete).toHaveBeenCalledWith('config_mobs', 'm1');
-      expect(adminService.getAll).toHaveBeenCalledWith('config_mobs');
+      expect(adminService.getPagedData).toHaveBeenCalled();
     });
 
     it('失败：返回 false', async () => {
@@ -365,15 +375,18 @@ describe('useAdminStore - 后台管理 Store', () => {
 
   // -------------------- Actions: doSearch --------------------
   describe('Actions: doSearch', () => {
-    it('设置 searchKeyword 并触发 searchTable 加载', async () => {
+    it('设置 searchKeyword 并触发 getPagedData 加载', async () => {
       const result = [{ id: 'm1', name: '哥布林' }];
-      vi.mocked(adminService.searchTable).mockResolvedValueOnce(result);
+      vi.mocked(adminService.getPagedData).mockResolvedValueOnce({ data: result, total: 1 });
 
       const store = useAdminStore();
       await store.doSearch('哥布林');
 
       expect(store.searchKeyword).toBe('哥布林');
-      expect(adminService.searchTable).toHaveBeenCalledWith('config_mobs', '哥布林');
+      expect(adminService.getPagedData).toHaveBeenCalledWith(
+        'config_mobs', 1, 20,
+        expect.objectContaining({ keyword: '哥布林' }),
+      );
       expect(store.tableData).toEqual(result);
     });
   });

@@ -297,6 +297,96 @@ describe('AdminDbService - 后台管理数据层（fake-indexeddb 真实 CRUD）
     });
   });
 
+  // -------------------- getPaged --------------------
+
+  describe('getPaged：分页查询', () => {
+    beforeEach(async () => {
+      // 插入 5 条测试数据
+      for (let i = 1; i <= 5; i++) {
+        await adminDbService.add('config_mobs', makeMob({
+          id: `p${i}`,
+          name: `怪物${i}`,
+          dangerLevel: i <= 2 ? '普通' : '困难',
+          hp: i * 100,
+        }), `p${i}`);
+      }
+    });
+
+    it('第1页返回正确数量和总数', async () => {
+      const result = await adminDbService.getPaged<MobRecord>('config_mobs', 1, 2);
+      expect(result.data).toHaveLength(2);
+      expect(result.total).toBe(5);
+    });
+
+    it('第3页（最后一页）返回剩余记录', async () => {
+      const result = await adminDbService.getPaged<MobRecord>('config_mobs', 3, 2);
+      // 5 条数据，每页 2 条，第3页应有 1 条
+      expect(result.data).toHaveLength(1);
+      expect(result.total).toBe(5);
+    });
+
+    it('第4页（超出范围）返回空数组但 total 正确', async () => {
+      const result = await adminDbService.getPaged<MobRecord>('config_mobs', 4, 2);
+      expect(result.data).toHaveLength(0);
+      expect(result.total).toBe(5);
+    });
+
+    it('按数字字段升序排序', async () => {
+      const result = await adminDbService.getPaged<MobRecord>('config_mobs', 1, 10, {
+        sortBy: 'hp',
+        sortOrder: 'asc',
+      });
+      expect(result.data[0].hp).toBe(100);
+      expect(result.data[4].hp).toBe(500);
+    });
+
+    it('按数字字段降序排序', async () => {
+      const result = await adminDbService.getPaged<MobRecord>('config_mobs', 1, 10, {
+        sortBy: 'hp',
+        sortOrder: 'desc',
+      });
+      expect(result.data[0].hp).toBe(500);
+      expect(result.data[4].hp).toBe(100);
+    });
+
+    it('按字符串字段排序', async () => {
+      const result = await adminDbService.getPaged<MobRecord>('config_mobs', 1, 10, {
+        sortBy: 'name',
+        sortOrder: 'asc',
+      });
+      // 中文按 localeCompare 排序
+      expect(result.data).toHaveLength(5);
+    });
+
+    it('带搜索关键词的分页查询', async () => {
+      const result = await adminDbService.getPaged<MobRecord>('config_mobs', 1, 10, {
+        keyword: '怪物1',
+      });
+      // 搜索"怪物1"应匹配"怪物1"（name 索引前缀搜索）
+      expect(result.data.length).toBeGreaterThanOrEqual(1);
+      expect(result.total).toBeGreaterThanOrEqual(1);
+    });
+
+    it('无排序字段时返回原始顺序', async () => {
+      const result = await adminDbService.getPaged<MobRecord>('config_mobs', 1, 10);
+      expect(result.data).toHaveLength(5);
+      expect(result.total).toBe(5);
+    });
+
+    it('null 值字段排序时排到末尾', async () => {
+      // 添加一条 hp 为 null 的记录
+      await adminDbService.add('config_mobs', { id: 'null-hp', name: '无血量', dangerLevel: '普通' }, 'null-hp');
+
+      const ascResult = await adminDbService.getPaged<MobRecord>('config_mobs', 1, 10, {
+        sortBy: 'hp',
+        sortOrder: 'asc',
+      });
+      // null 值应排到最后
+      const lastItem = ascResult.data[ascResult.data.length - 1];
+      expect(lastItem.id).toBe('null-hp');
+    });
+  });
+
   // -------------------- DATA-4 表 admin CRUD 验证 --------------------
 
   /**

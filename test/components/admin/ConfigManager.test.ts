@@ -13,13 +13,26 @@
  *  - 使用 createStubPinia() 隔离 store 副作用，断言 stub action 被调用。
  *  - 不断言计算后 CSS 样式值。
  */
-import { describe, it, expect, beforeEach } from 'vitest';
-import { shallowMount } from '@vue/test-utils';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { shallowMount, flushPromises } from '@vue/test-utils';
 import ConfigManager from '@/components/admin/ConfigManager.vue';
 import AdminTable from '@/components/admin/AdminTable.vue';
 import AdminForm from '@/components/admin/AdminForm.vue';
+import ImportDialog from '@/components/admin/ImportDialog.vue';
 import { useAdminStore } from '@/modules/admin';
 import { createStubPinia } from '../../utils/setup';
+
+// Mock checkReferences 避免 DB 查询
+vi.mock('@/modules/admin/referenceGraph', () => ({
+  checkReferences: vi.fn().mockResolvedValue({ hasReferences: false, details: [] }),
+  formatReferenceWarning: vi.fn().mockReturnValue(''),
+}));
+
+// Mock exportData 避免触发浏览器下载
+vi.mock('@/utils/exportData', () => ({
+  exportJSON: vi.fn(),
+  exportCSV: vi.fn(),
+}));
 
 describe('ConfigManager 配置表管理组件', () => {
   let pinia: ReturnType<typeof createStubPinia>;
@@ -110,6 +123,7 @@ describe('ConfigManager 配置表管理组件', () => {
       const wrapper = shallowMount(ConfigManager, { global: { plugins: [pinia] } });
       expect(wrapper.find('.confirm-overlay').exists()).toBe(false);
       await wrapper.findComponent(AdminTable).vm.$emit('delete', { id: 'del1' });
+      await flushPromises();
       expect(wrapper.find('.confirm-overlay').exists()).toBe(true);
     });
 
@@ -118,9 +132,9 @@ describe('ConfigManager 配置表管理组件', () => {
       store.selectedConfigTable = 'factions';
       const wrapper = shallowMount(ConfigManager, { global: { plugins: [pinia] } });
       await wrapper.findComponent(AdminTable).vm.$emit('delete', { id: 'del1' });
+      await flushPromises();
       await wrapper.find('.btn-danger').trigger('click');
       expect(store.deleteRecord).toHaveBeenCalledTimes(1);
-      // deleteRecord 第一个参数为当前表 dbTable（config_factions），第二个为 id 字符串
       expect(store.deleteRecord).toHaveBeenCalledWith('config_factions', 'del1');
       expect(wrapper.find('.confirm-overlay').exists()).toBe(false);
     });
@@ -129,6 +143,7 @@ describe('ConfigManager 配置表管理组件', () => {
       const store = useAdminStore(pinia);
       const wrapper = shallowMount(ConfigManager, { global: { plugins: [pinia] } });
       await wrapper.findComponent(AdminTable).vm.$emit('delete', { id: 'del1' });
+      await flushPromises();
       await wrapper.find('.confirm-footer .btn-secondary').trigger('click');
       expect(store.deleteRecord).not.toHaveBeenCalled();
       expect(wrapper.find('.confirm-overlay').exists()).toBe(false);

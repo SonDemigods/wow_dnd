@@ -16,7 +16,7 @@
 import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import AdminForm from '@/components/admin/AdminForm.vue';
-import type { FormField } from '@/components/admin/AdminForm.vue';
+import type { FormField } from '@/components/admin/fields/types';
 
 const baseFields: FormField[] = [
   { key: 'name', label: '名称', type: 'text', placeholder: '输入名称' },

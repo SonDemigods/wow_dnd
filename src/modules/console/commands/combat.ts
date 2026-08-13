@@ -9,7 +9,7 @@
  */
 import { useEnemyStore } from '@/modules/enemy';
 import { useCombatStore } from '@/modules/combat';
-import { adminQueryService } from '@/services/AdminQueryService';
+import { adminQueryService } from '@/modules/admin';
 import { CONSOLE_KILL_DAMAGE } from '@/config/combat'; // P8-301
 import {
   registerCommand,

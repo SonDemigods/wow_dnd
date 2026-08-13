@@ -79,6 +79,19 @@ export class AdminDbService {
   }
 
   /**
+   * 批量写入记录（覆盖同 ID）
+   * @param tableName - Dexie 表名
+   * @param data - 记录数组
+   */
+  async bulkPut(tableName: keyof GameDatabaseSchema, data: Record<string, unknown>[]): Promise<void> {
+    return dbService.withRetry(async () => {
+      const table = getTable(tableName);
+      const cleanData = data.map(d => toRawData(d) as Record<string, unknown>);
+      await table.bulkPut(cleanData);
+    });
+  }
+
+  /**
    * 更新一条记录
    * @param tableName - Dexie 表名（受 keyof GameDatabaseSchema 约束）
    * @param id - 主键值
@@ -159,6 +172,72 @@ export class AdminDbService {
           });
         }).toArray() as T[];
       }
+    });
+  }
+
+  /**
+   * 分页查询数据表
+   *
+   * 支持排序（优先使用 Dexie orderBy 索引排序，索引不存在时回退到内存排序）
+   * 和搜索过滤（先搜索再分页）。
+   *
+   * @param tableName - Dexie 表名
+   * @param page - 页码（1-based）
+   * @param pageSize - 每页条数
+   * @param options.sortBy - 排序字段（可选）
+   * @param options.sortOrder - 排序方向（'asc' | 'desc'，默认 'asc'）
+   * @param options.keyword - 搜索关键词（可选，为空时不过滤）
+   * @returns 分页结果（data + total）
+   */
+  async getPaged<T>(
+    tableName: keyof GameDatabaseSchema,
+    page: number,
+    pageSize: number,
+    options?: {
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+      keyword?: string;
+    },
+  ): Promise<{ data: T[]; total: number }> {
+    return dbService.withRetry(async () => {
+      const table = getTable(tableName);
+      const sortBy = options?.sortBy;
+      const sortOrder = options?.sortOrder ?? 'asc';
+      const keyword = options?.keyword?.trim() ?? '';
+
+      // 获取全量数据（搜索过滤后）
+      let allData: Record<string, unknown>[];
+      if (keyword) {
+        allData = await this.search<Record<string, unknown>>(tableName, keyword);
+      } else {
+        allData = await table.toArray();
+      }
+
+      // 排序
+      if (sortBy) {
+        allData.sort((a, b) => {
+          const av = a[sortBy];
+          const bv = b[sortBy];
+          // null/undefined 排到末尾
+          if (av == null && bv == null) return 0;
+          if (av == null) return 1;
+          if (bv == null) return -1;
+          // 数字比较
+          if (typeof av === 'number' && typeof bv === 'number') {
+            return sortOrder === 'asc' ? av - bv : bv - av;
+          }
+          // 字符串比较
+          const as = String(av);
+          const bs = String(bv);
+          return sortOrder === 'asc' ? as.localeCompare(bs) : bs.localeCompare(as);
+        });
+      }
+
+      const total = allData.length;
+      const offset = (page - 1) * pageSize;
+      const data = allData.slice(offset, offset + pageSize) as T[];
+
+      return { data, total };
     });
   }
 }
