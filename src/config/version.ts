@@ -23,6 +23,6 @@ export const CURRENT_DATA_VERSION = DATA_VERSION;
  * 仅管表结构演进（加表、加索引、改索引）。新增表或修改索引时升此版本，
  * 不影响 DATA_VERSION（DATA_VERSION 管数据字段演进，与表结构无关）。
  *
- * 当前值需与 core.ts 中 GameDatabase 构造函数的 version(N) 最大值保持一致。
+ * core.ts 中 GameDatabase 构造函数直接使用此常量调用 version(DB_SCHEMA_VERSION)。
  */
 export const DB_SCHEMA_VERSION = 1;

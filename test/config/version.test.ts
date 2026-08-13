@@ -54,7 +54,7 @@ describe('config/version 版本号统一源', () => {
       expect(DB_SCHEMA_VERSION).toBeGreaterThan(0);
     });
 
-    it('当前基线版本为 1（与 GameDatabase 构造函数 version(1) 一致）', () => {
+    it('当前基线版本为 1（GameDatabase 构造函数使用此常量调用 version()）', () => {
       expect(DB_SCHEMA_VERSION).toBe(1);
     });
   });

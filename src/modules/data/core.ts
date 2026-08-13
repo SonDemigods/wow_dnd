@@ -9,7 +9,7 @@
  */
 import Dexie, { Table } from 'dexie';
 import { DATABASE_CONFIG, DB_SERVICE_CONFIG } from '@/config/database';
-import { APP_VERSION, DATA_VERSION } from '@/config/version';
+import { APP_VERSION, DATA_VERSION, DB_SCHEMA_VERSION } from '@/config/version';
 // P2-80 修复：类型直接从 data/types 导入，避免经 config/database.ts 再导出
 import type { DBServiceConfig } from '@/modules/data/types';
 
@@ -171,7 +171,7 @@ export class GameDatabase extends Dexie {
      * - 角色表（char_*）：绑定角色 ID，每个角色独立
      * - 运行时表（runtime_*）：日志和临时状态
      */
-    this.version(1).stores({
+    this.version(DB_SCHEMA_VERSION).stores({
       // 配置表
       config_factions: 'id, name',
       config_races: 'id, name, factionId',
