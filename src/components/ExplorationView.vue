@@ -101,7 +101,7 @@ const hasCurrentLocation = computed(() => !!mapStore.getCurrentLocation);
 /** 当前区域主题（C 层氛围强化） */
 const currentAreaTheme = computed<AreaTheme>(() => {
   const areaId = explorationStore.currentAreaId;
-  return AREA_THEME_MAP[areaId] ?? DEFAULT_AREA_THEME;
+  return AREA_THEME_MAP[areaId ?? ''] ?? DEFAULT_AREA_THEME;
 });
 
 /** 区域主题 class（驱动 CSS 变量切换） */

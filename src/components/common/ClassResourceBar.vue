@@ -28,7 +28,7 @@ import { RESOURCE_ICONS } from '@/config/icons';
 import type { ResourceSystem, ResourceType } from '@/modules/combat/resources';
 
 const props = defineProps<{
-  resourceSystem: ResourceSystem;
+  resourceSystem: Pick<ResourceSystem, 'type' | 'currentValue' | 'maxValue'>;
 }>();
 
 /** 资源类型对应的显示配置 */

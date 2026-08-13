@@ -28,11 +28,11 @@
       <!-- 批量操作 -->
       <template #batch-actions="{ selectedIds, clearSelection }">
         <button
-          v-if="selectedIds.length > 0"
+          v-if="selectedIds.size > 0"
           class="btn btn-batch-delete"
-          @click="handleBatchDelete(selectedIds, clearSelection)"
+          @click="handleBatchDelete([...selectedIds], clearSelection)"
         >
-          批量删除 ({{ selectedIds.length }})
+          批量删除 ({{ selectedIds.size }})
         </button>
       </template>
 

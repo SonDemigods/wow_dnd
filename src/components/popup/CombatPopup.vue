@@ -282,7 +282,7 @@ import { useInventoryStore } from '@/modules/inventory';
 import { useEquipmentStore } from '@/modules/equipment';
 import { useCombatUiHelpers } from '@/composables/useCombatUiHelpers';
 import { eventBus, GameEvents } from '@/modules/bus';
-import type { CombatLog, CombatResult, CombatActionType } from '@/modules/combat';
+import type { CombatResult, CombatActionType } from '@/modules/combat';
 import type { Skill } from '@/modules/skill';
 import type { ItemRarity } from '@/modules/inventory';
 import { describeEffect } from '@/modules/item/descriptors';
@@ -425,6 +425,9 @@ const {
   getCurrentTargetId: () => currentTarget.value?.id,
 });
 
+// vue-tsc 无法检测解构后的模板 ref 在 <template> 中的使用，需显式标记
+void [bossIntroOverlayRef, bossIntroIconRef, bossIntroNameRef, screenFlashRef, phaseBackdropRef, phaseContentRef, vsDividerRef];
+
 // 战斗状态 - 直接从 Combat Store 响应式数据派生
 const turn = computed(() => combatStore.turn);
 const turnCount = computed(() => combatStore.turnCount);
@@ -436,8 +439,6 @@ const logs = computed(() => combatStore.combatLogs);
  * 当前战斗日志条数有限（通常 &lt; 100 条），浅拷贝开销可接受。
  * 若未来日志量增大，可改用 shallowRef + 手动控制更新频率。
  */
-let cachedLogs: CombatLog[] = [];
-let cachedReversed: CombatLog[] = [];
 const logsReversed = computed(() => {
   // P13-015 修复：addCombatLog 使用 push（不替换数组引用），
   // 引用比较缓存失效，直接浅拷贝反转即可（日志 <100 条，开销可忽略）
@@ -701,7 +702,7 @@ async function doAction(type: CombatActionType) {
   } catch (e) {
     isAnimating.value = false;
     errorHandler.report(e instanceof Error ? e : new Error(String(e)));
-    useToast().error('战斗操作异常，请重试');
+    useToast().show({ message: '战斗操作异常，请重试', type: 'danger' });
   }
 }
 
@@ -751,7 +752,7 @@ async function doSkill(skillId: string) {
   } catch (e) {
     isAnimating.value = false;
     errorHandler.report(e instanceof Error ? e : new Error(String(e)));
-    useToast().error('技能施放异常，请重试');
+    useToast().show({ message: '技能施放异常，请重试', type: 'danger' });
   }
 }
 
@@ -767,7 +768,7 @@ function doSkip() {
   } catch (e) {
     console.error('[CombatPopup] 跳过回合失败:', e);
     isAnimating.value = false;
-    toast.show({ message: '跳过回合失败', type: 'danger', duration: 2000 });
+    useToast().show({ message: '跳过回合失败', type: 'danger', duration: 2000 });
   }
   // isAnimating 由 watch(turn) 在敌人回合结束后恢复
 }
@@ -833,7 +834,7 @@ async function useItem(itemId: string, index: number) {
   } catch (e) {
     isAnimating.value = false;
     errorHandler.report(e instanceof Error ? e : new Error(String(e)));
-    useToast().error('物品使用异常，请重试');
+    useToast().show({ message: '物品使用异常，请重试', type: 'danger' });
   }
 }
 

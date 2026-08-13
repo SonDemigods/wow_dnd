@@ -105,19 +105,19 @@
     <div class="table-footer">
       <div class="footer-left">
         <span>共 {{ totalCount }} 条记录</span>
-        <span v-if="selectable && selectedIds.length > 0" class="selected-info">
-          | 已选 {{ selectedIds.length }} 项
+        <span v-if="selectable && selectedIds.size > 0" class="selected-info">
+          | 已选 {{ selectedIds.size }} 项
         </span>
       </div>
-      <div v-if="totalCount > 0" class="footer-right">
+      <div v-if="(totalCount ?? 0) > 0" class="footer-right">
         <select class="page-size-select" :value="pageSize" @change="onPageSizeChange">
           <option :value="10">10 条/页</option>
           <option :value="20">20 条/页</option>
           <option :value="50">50 条/页</option>
         </select>
-        <button class="btn btn-page" :disabled="currentPage <= 1" @click="$emit('page-change', currentPage - 1)">上一页</button>
-        <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
-        <button class="btn btn-page" :disabled="currentPage >= totalPages" @click="$emit('page-change', currentPage + 1)">下一页</button>
+        <button class="btn btn-page" :disabled="(currentPage ?? 1) <= 1" @click="$emit('page-change', (currentPage ?? 1) - 1)">上一页</button>
+        <span class="page-info">{{ currentPage ?? 1 }} / {{ totalPages }}</span>
+        <button class="btn btn-page" :disabled="(currentPage ?? 1) >= totalPages" @click="$emit('page-change', (currentPage ?? 1) + 1)">下一页</button>
       </div>
     </div>
   </div>

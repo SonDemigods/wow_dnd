@@ -129,7 +129,7 @@ watch(
     });
     // 自动 focus 第一个输入框
     nextTick(() => {
-      formDialogEl?.querySelector('input, textarea, select')?.focus();
+      (formDialogEl?.querySelector('input, textarea, select') as HTMLElement | null)?.focus();
     });
   },
   { immediate: true }

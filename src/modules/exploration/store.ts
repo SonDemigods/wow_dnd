@@ -967,6 +967,7 @@ export const useExplorationStore = defineStore('exploration', () => {
     visitedCells,
     bossDefeated,
     explorationComplete,
+    pendingBattleCell,
 
     // 计算属性
     state,

@@ -156,7 +156,7 @@ function selectSkill(skill: Skill) {
 }
 
 function selectBarSlot(index: number) {
-  selectedSlotIndex.value = index;
+  selectedSlotIndex.value = index as SkillSlotIndex;
   eventBus.emit(GameEvents.UI_CLICK, { source: 'skill_bar_slot' });
   const slot = skillBarSlots.value[index];
   if (slot.skill) {
