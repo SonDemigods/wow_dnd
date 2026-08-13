@@ -7,9 +7,9 @@
       <!-- Boss 出场演出遮罩（统一风格） -->
       <div v-if="showBossIntro" ref="bossIntroOverlayRef" class="boss-intro-overlay">
         <div class="boss-intro-content">
-          <div ref="bossIntroIconRef" class="boss-intro-icon">{{ bossIntroIcon }}</div>
+          <div ref="bossIntroIconRef" class="boss-intro-icon"><BaseIcon :name="bossIntroIcon" gradient="dragon" :size="48" /></div>
           <div ref="bossIntroNameRef" class="boss-intro-name">{{ bossIntroName }}</div>
-          <div v-for="(line, i) in bossIntroLines" :key="i" :ref="(el) => { if (el) bossIntroLineRefs[i] = el as HTMLElement }" :class="['boss-intro-line', 'line-' + i]">
+          <div v-for="(line, i) in bossIntroLines" :key="line + '-' + i" :ref="(el) => { if (el) bossIntroLineRefs[i] = el as HTMLElement }" :class="['boss-intro-line', 'line-' + i]">
             {{ line }}
           </div>
         </div>
@@ -28,7 +28,8 @@
       <div class="combat-header">
         <span class="combat-title">{{ combatStore.hasBossEnemy ? '首领战斗！' : '遭遇战斗！' }}</span>
         <button class="speed-toggle" @click="toggleSpeed" :title="combatSpeed === 1 ? '切换2倍速' : '切换1倍速'">
-          {{ combatSpeed === 1 ? '⚡1x' : '⚡⚡2x' }}
+          <BaseIcon :name="combatSpeed === 1 ? 'single-arrow' : 'double-arrow'" gradient="lightning" :size="16" />
+          {{ combatSpeed === 1 ? '1x' : '2x' }}
         </button>
         <span class="combat-turn">第 {{ turnCount }} 回合</span>
       </div>
@@ -55,19 +56,19 @@
                   :data-enemy-shake="e.id"
                   @click="selectTarget(e.id)"
                 >
-                  <div class="combatant-avatar">{{ e.icon || '👹' }}</div>
+                  <div class="combatant-avatar"><BaseIcon :name="e.icon || 'dragon-head'" :size="28" /></div>
                   <div class="combatant-info">
                     <div class="combatant-name">{{ e.name }}</div>
                     <div class="combatant-level">Lv.{{ e.level || 1 }}</div>
-                    <div v-if="e.isBoss" class="boss-badge">👑 首领</div>
+                    <div v-if="e.isBoss" class="boss-badge"><BaseIcon :name="COMMON_ICONS.crownedSkull" gradient="gold" :size="12" /> 首领</div>
                   </div>
                   <div class="combatant-bars">
-                    <ResourceBar icon="❤️" name="HP" :current="e.hp" :max="e.maxHp" :percent="getHpPercent(e)" type="hp" />
+                    <ResourceBar icon="health-normal" iconGradient="blood" name="生命" :current="e.hp" :max="e.maxHp" :percent="getHpPercent(e)" type="hp" />
                   </div>
                   <!-- Buff/Debuff 效果指示器 -->
                   <div v-if="getEnemyEffectCount(e.id) > 0" class="effects-indicator enemy-effects">
                     <span v-for="eff in getEnemyEffects(e.id)" :key="eff.id" :class="['effect-badge', 'effect-' + eff.type, isBuffEffect(eff.type) ? 'effect-buff' : 'effect-debuff']">
-                      {{ getEffectIcon(eff.type) }} {{ effectLabels[eff.type] || eff.type }} {{ formatEffectValue(eff.type, eff.value) }} {{ eff.remainingTurns }}回合
+                      <BaseIcon :name="getEffectIcon(eff.type)" :gradient="isBuffEffect(eff.type) ? 'buff' : 'debuff'" :size="12" /> {{ effectLabels[eff.type] || eff.type }} {{ formatEffectValue(eff.type, eff.value) }} {{ eff.remainingTurns }}回合
                     </span>
                   </div>
                   <!-- 浮动伤害数字（每个敌人独立） -->
@@ -86,23 +87,31 @@
         </div>
 
         <!-- VS 分隔 -->
-        <div ref="vsDividerRef" class="vs-divider" :class="{ 'flash': vsFlash }">⚔️</div>
+        <div ref="vsDividerRef" class="vs-divider" :class="{ 'flash': vsFlash }"><BaseIcon :name="COMMON_ICONS.crossedSwords" gradient="physical" :size="20" /></div>
 
         <!-- 玩家区域 -->
         <div class="combatant player-side" :class="{ 'shake': playerShake, 'crit-shake': playerCritShake, 'dodge-blink': playerDodgeBlink }">
-          <div class="combatant-avatar">{{ playerIcon }}</div>
+          <div class="combatant-avatar"><BaseIcon :name="playerIcon" :size="28" /></div>
           <div class="combatant-info">
             <div class="combatant-name">{{ playerName }}</div>
             <div class="combatant-level">Lv.{{ playerLevel }}</div>
           </div>
           <div class="combatant-bars">
-            <ResourceBar icon="❤️" name="HP" :current="playerHp" :max="playerMaxHp" :percent="playerHpPercent" type="hp" />
-            <ResourceBar icon="💧" name="MP" :current="playerMp" :max="playerMaxMp" :percent="playerMpPercent" type="mp" />
+            <ResourceBar icon="health-normal" iconGradient="blood" name="生命" :current="playerHp" :max="playerMaxHp" :percent="playerHpPercent" type="hp" />
+            <ResourceBar v-if="showManaBar" icon="magic-palm" iconGradient="mana" name="法力" :current="playerMp" :max="playerMaxMp" :percent="playerMpPercent" type="mp" />
+            <!-- 职业专属资源条（怒气/能量/连击点/灵魂碎片/真气等） -->
+            <ClassResourceBar
+              v-for="(sys, idx) in combatStore.resourceSystems"
+              :key="'class-res-' + idx"
+              :resource-system="sys"
+            />
+            <!-- P3-156：宠物 HP 条（仅当有激活的召唤物时显示） -->
+            <PetHpBar v-if="combatStore.hasActivePet && combatStore.activePet" :pet="combatStore.activePet" />
             <!-- Buff/Debuff 效果指示器 -->
             <template v-if="combatStore.playerEffects.effects.length > 0">
               <div class="effects-indicator">
                 <span v-for="eff in combatStore.playerEffects.effects" :key="eff.id" :class="['effect-badge', 'effect-' + eff.type, isBuffEffect(eff.type) ? 'effect-buff' : 'effect-debuff']">
-                  {{ getEffectIcon(eff.type) }} {{ effectLabels[eff.type] || eff.type }} {{ formatEffectValue(eff.type, eff.value) }} {{ eff.remainingTurns }}回合
+                  <BaseIcon :name="getEffectIcon(eff.type)" :gradient="isBuffEffect(eff.type) ? 'buff' : 'debuff'" :size="12" /> {{ effectLabels[eff.type] || eff.type }} {{ formatEffectValue(eff.type, eff.value) }} {{ eff.remainingTurns }}回合
                 </span>
               </div>
             </template>
@@ -116,13 +125,13 @@
 
       <!-- 战斗日志 -->
       <div class="combat-log" ref="logRef">
-        <div v-for="(log, i) in logsReversed" :key="i" :class="['log-entry', 'log-' + log.actorType]">
+        <div v-for="(log, i) in logsReversed" :key="log.timestamp + '-' + i" :class="['log-entry', 'log-' + log.actorType]">
           <span class="log-turn">[{{ log.turn }}]</span>
           <span class="log-msg">{{ log.message }}</span>
           <span v-if="log.damage && log.damage > 0" :class="['log-damage', getDamageTypeClass(log)]">
             {{ getDamageTypeIcon(log) }} -{{ log.damage }}
           </span>
-          <span v-if="log.heal && log.heal > 0" class="log-heal">💚 +{{ log.heal }}</span>
+          <span v-if="log.heal && log.heal > 0" class="log-heal"><BaseIcon name="health-increase" gradient="heal" :size="12" /> +{{ log.heal }}</span>
           <span v-if="log.isCrit" class="log-crit">暴击！</span>
           <span v-if="log.isDodge" class="log-dodge">闪避！</span>
         </div>
@@ -133,16 +142,20 @@
       <div class="combat-actions">
         <div class="action-row primary-actions">
           <button class="action-btn attack-btn" @click="doAction('attack')" :disabled="!canAct">
-            ⚔️ 普通攻击
+            <BaseIcon name="sword-clash" gradient="physical" :size="16" /> 普通攻击
+          </button>
+          <!-- P3-156：召唤宠物按钮（仅术士显示） -->
+          <button v-if="isPetClass" class="action-btn pet-btn" @click="openPetSummonModal" :disabled="!canAct">
+            <BaseIcon name="game-icons:imp" gradient="buff" :size="16" /> {{ hasActivePet ? '宠物' : '召唤' }}
           </button>
           <button class="action-btn item-btn" @click="openItemModal" :disabled="!canAct || !hasConsumables">
-            💊 物品
+            <BaseIcon name="potion-ball" gradient="heal" :size="16" /> 物品
           </button>
           <button class="action-btn skip-btn" @click="doSkip" :disabled="!canAct">
-            ⏭️ 跳过
+            <BaseIcon name="next-button" gradient="metal" :size="16" /> 跳过
           </button>
           <button class="action-btn flee-btn" @click="doAction('flee')" :disabled="!canAct || combatStore.hasBossEnemy">
-            🏃 逃跑
+            <BaseIcon name="run" gradient="dodge" :size="16" /> 逃跑
           </button>
         </div>
         <div class="action-row skill-actions" v-if="equippedSkills.length > 0">
@@ -150,14 +163,14 @@
             v-for="skill in equippedSkills"
             :key="skill.id"
             class="action-btn skill-btn"
-            :class="{ 'no-mp': playerMp < skill.mpCost, 'on-cooldown': skillsStore.isOnCooldown(skill.id) }"
+            :class="{ 'no-mp': !canCastSkill(skill), 'on-cooldown': skillsStore.isOnCooldown(skill.id) }"
             @click="doSkill(skill.id)"
-            :disabled="!canAct || playerMp < skill.mpCost || skillsStore.isOnCooldown(skill.id)"
+            :disabled="!canAct || !canCastSkill(skill) || skillsStore.isOnCooldown(skill.id)"
           >
-            <span class="skill-icon">{{ skill.icon }}</span>
+            <span class="skill-icon"><BaseIcon :name="skill.icon" :size="18" /></span>
             <span class="skill-name">{{ skill.name }}</span>
             <span :class="['skill-effect', `skill-effect-${skill.type}`]">{{ getSkillEffectText(skill) }}</span>
-            <span class="skill-cost">{{ skill.mpCost }} MP</span>
+            <span class="skill-cost">{{ getSkillCostText(skill) }}</span>
             <span v-if="getTargetTypeText(skill.targetType)" class="skill-target">{{ getTargetTypeText(skill.targetType) }}</span>
             <span v-if="skillsStore.isOnCooldown(skill.id)" class="skill-cooldown">
               冷却 {{ skillsStore.getCooldownRemaining(skill.id) }}
@@ -166,7 +179,7 @@
         </div>
         <!-- 敌人回合遮罩 -->
         <div v-if="!isPlayerTurn && isFighting" class="enemy-turn-overlay">
-          <span class="enemy-turn-text">⏳ 敌人行动中...</span>
+          <span class="enemy-turn-text"><BaseIcon :name="COMMON_ICONS.uncertainty" gradient="shadow" :size="16" /> 敌人行动中...</span>
         </div>
       </div>
     </div>
@@ -174,13 +187,13 @@
     <!-- 战斗结果弹窗 -->
     <div v-if="combatStore.combatResult" class="result-overlay">
       <div ref="resultPopupRef" class="result-popup">
-        <div ref="resultIconRef" class="result-icon">{{ combatStore.combatResult === 'victory' ? '🏆' : combatStore.combatResult === 'defeat' ? '💀' : '🏃' }}</div>
+        <div ref="resultIconRef" class="result-icon"><BaseIcon :name="resultIconName" :gradient="resultIconGradient" :size="24" /></div>
         <div ref="resultTextRef" :class="['result-text', 'result-' + combatStore.combatResult]">
           {{ resultText }}
         </div>
         <div class="result-rewards" v-if="combatStore.combatResult === 'victory'">
-          <div v-if="combatStore.expGained > 0" class="reward-item">⭐ +{{ combatStore.expGained }} 经验</div>
-          <div v-if="combatStore.goldGained > 0" class="reward-item">💰 +{{ combatStore.goldGained }} 金币</div>
+          <div v-if="combatStore.expGained > 0" class="reward-item"><BaseIcon name="star-formation" gradient="gold" :size="14" /> +{{ combatStore.expGained }} 经验</div>
+          <div v-if="combatStore.goldGained > 0" class="reward-item"><BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> +{{ combatStore.goldGained }} 金币</div>
         </div>
         <div class="result-countdown" v-if="autoCloseCountdown > 0">
           {{ autoCloseCountdown }} 秒后自动关闭
@@ -194,26 +207,61 @@
       <div class="item-modal">
         <div class="item-modal-header">
           <span>选择物品</span>
-          <button class="item-modal-close" @click="showItemModal = false; eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_item_modal_close' })">✕</button>
+          <button class="item-modal-close" @click="showItemModal = false; eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_item_modal_close' })"><BaseIcon :name="COMMON_ICONS.cancel" :size="16" /></button>
         </div>
         <div class="item-modal-body">
-          <div
-            v-for="item in consumableItems"
-            :key="item.itemId"
-            class="item-option"
-            @click="useItem(item.itemId, item.index)"
-          >
-            <ItemIcon :icon="item.icon" :rarity="item.rarity" size="md" />
-            <div class="item-info">
-              <span class="item-name">{{ item.name }}</span>
-              <span class="item-desc">{{ item.description }}</span>
+          <!-- C3：装备技能分区（已装备魔法武器主动技能） -->
+          <template v-if="equippedUsableItems.length > 0">
+            <div class="item-section-label">装备技能</div>
+            <div
+              v-for="item in equippedUsableItems"
+              :key="'eq_' + item.itemId"
+              class="item-option item-option-equipped"
+              @click="useItem(item.itemId, item.index)"
+            >
+              <ItemIcon :icon="item.icon" :rarity="item.rarity" size="md" />
+              <div class="item-info">
+                <span class="item-name">{{ item.name }}</span>
+                <span class="item-desc">{{ item.description }}</span>
+              </div>
+              <span class="item-count item-count-equipped">已装备</span>
             </div>
-            <span class="item-count">x{{ item.count }}</span>
-          </div>
-          <div v-if="consumableItems.length === 0" class="item-empty">没有可用的物品</div>
+          </template>
+          <!-- 消耗品分区 -->
+          <template v-if="consumableItems.length > 0">
+            <div class="item-section-label">消耗品</div>
+            <div
+              v-for="item in consumableItems"
+              :key="item.itemId"
+              class="item-option"
+              @click="useItem(item.itemId, item.index)"
+            >
+              <ItemIcon :icon="item.icon" :rarity="item.rarity" size="md" />
+              <div class="item-info">
+                <span class="item-name">{{ item.name }}</span>
+                <span class="item-desc">{{ item.description }}</span>
+              </div>
+              <span class="item-count">x{{ item.count }}</span>
+            </div>
+          </template>
+          <div v-if="itemMenuEntries.length === 0" class="item-empty">没有可用的物品</div>
         </div>
       </div>
     </div>
+
+    <!-- P3-156：宠物召唤选择弹窗 -->
+    <PetSummonPopup
+      v-if="showPetSummonModal"
+      :unlocked-pets="unlockedWarlockPets"
+      :current-resource="petResourceCurrent"
+      :max-resource="petResourceMax"
+      :resource-name="petResourceName"
+      :has-active-pet="!!combatStore.hasActivePet"
+      :active-pet-id="combatStore.activePet?.petId ?? null"
+      @summon="handlePetSummon"
+      @dismiss="handlePetDismiss"
+      @close="showPetSummonModal = false"
+    />
   </div>
 </template>
 
@@ -224,28 +272,31 @@
  */
 
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
-import { useCombatStore } from '@/modules/combat/store';
+import { errorHandler } from '@/services/ErrorHandler';
+import { useToast } from '@/composables/useToast';
+import { useCombatStore } from '@/modules/combat';
+import { ResourceSystemFactory } from '@/modules/combat/resources';
 import { useCharacterStore } from '@/modules/character';
-import { useSkillsStore } from '@/modules/skill/store';
-import { useInventoryStore } from '@/modules/inventory/store';
-import { useSkillDisplay } from '@/composables/useSkillDisplay';
-import { eventBus, GameEvents } from '@/modules/bus/core';
-import type { CombatLog, CombatResult, CombatActionType } from '@/modules/combat/types';
-import type { Skill } from '@/modules/skill/types';
-import type { ItemRarity } from '@/modules/inventory/types';
+import { useSkillStore } from '@/modules/skill';
+import { useInventoryStore } from '@/modules/inventory';
+import { useEquipmentStore } from '@/modules/equipment';
+import { useCombatUiHelpers } from '@/composables/useCombatUiHelpers';
+import { eventBus, GameEvents } from '@/modules/bus';
+import type { CombatResult, CombatActionType } from '@/modules/combat';
+import type { Skill } from '@/modules/skill';
+import type { ItemRarity } from '@/modules/inventory';
+import { describeEffect } from '@/modules/item/descriptors';
+import { hasCapability } from '@/modules/item/capabilityRegistry';
 import ResourceBar from '@/components/common/ResourceBar.vue';
+import ClassResourceBar from '@/components/common/ClassResourceBar.vue';
+import PetHpBar from '@/components/common/PetHpBar.vue';
 import ItemIcon from '@/components/common/ItemIcon.vue';
-import {
-  animateShake,
-  animateCritShake,
-  animateDodgeBlink,
-  animateFloating,
-  animateScreenFlash,
-  animateVsFlash,
-  animateBossIntro,
-  animatePhaseTransition,
-  animateResultPopup,
-} from '@/modules/animation/combat-effects';
+import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS } from '@/config/icons';
+import PetSummonPopup from '@/components/popup/PetSummonPopup.vue';
+import { animateResultPopup } from '@/modules/animation';
+// QA-5 阶段四：抽离的 4 个 composable（通过 combat 模块公共入口导入，符合 ARCH-4 规范）
+import { useCombatSpeed, useCombatAutoClose, useBossIntroOverlay, useCombatAnimations } from '@/modules/combat';
 
 const emit = defineEmits<{
   (e: 'close', result?: CombatResult): void;
@@ -254,68 +305,149 @@ const emit = defineEmits<{
 /** 组件是否已卸载，防止异步回调在卸载后修改状态触发 Vue DOM 错误 */
 const isUnmounted = ref(false);
 
+/**
+ * 动画定时器集合
+ *
+ * 收集所有短时动画 setTimeout（浮动数字、震动、闪避、屏幕闪白、Boss 介绍等），
+ * 在 onUnmounted 中统一清理，防止组件卸载后定时器仍触发并访问已卸载组件的响应式状态
+ * （触发 Vue "unmounted component" 警告或状态不一致）。
+ */
+const animationTimers = new Set<ReturnType<typeof setTimeout>>();
+
+/**
+ * 注册动画定时器
+ *
+ * 包装 setTimeout：定时器执行后自动从集合中移除；
+ * 组件卸载时通过 clearAllAnimationTimers 统一清理未触发的定时器。
+ */
+function setAnimTimer(fn: () => void, delay: number): ReturnType<typeof setTimeout> {
+  const timer = setTimeout(() => {
+    animationTimers.delete(timer);
+    fn();
+  }, delay);
+  animationTimers.add(timer);
+  return timer;
+}
+
+/** 清理所有未触发的动画定时器（onUnmounted 调用） */
+function clearAllAnimationTimers(): void {
+  animationTimers.forEach(t => clearTimeout(t));
+  animationTimers.clear();
+}
+
 const characterStore = useCharacterStore();
-const skillsStore = useSkillsStore();
+const skillsStore = useSkillStore();
 const inventoryStore = useInventoryStore();
+const equipmentStore = useEquipmentStore();
 const combatStore = useCombatStore();
 const logRef = ref<HTMLElement | null>(null);
 const isAnimating = ref(false);
 const showItemModal = ref(false);
-const autoCloseCountdown = ref(0);
+// P3-156：宠物召唤弹窗状态
+const showPetSummonModal = ref(false);
+// ==================== QA-5 阶段四：Composable 调用 ====================
 
-// 战斗速度（从 Store 读取）
-const combatSpeed = computed(() => combatStore.combatSpeed);
+// 倍速切换（combatSpeed + toggleSpeed）
+const { combatSpeed, toggleSpeed } = useCombatSpeed();
 
-function toggleSpeed() {
-  combatStore.toggleCombatSpeed();
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_speed_toggle' });
-}
+// 自动关闭倒计时（autoCloseCountdown + scheduleAutoClose + clearAutoClose）
+const {
+  autoCloseCountdown,
+  scheduleAutoClose,
+  clearAutoClose: clearAutoCloseTimer,
+  handleClose: handleCloseAutoClose,
+} = useCombatAutoClose(() => {
+  emit('close', combatStore.combatResult || undefined);
+});
 
-let autoCloseTimer: ReturnType<typeof setInterval> | null = null;
-let autoCloseTimeout: ReturnType<typeof setTimeout> | null = null;
+// 当前目标敌人 ID（animations 依赖注入需要，提前声明）
+const currentTarget = computed(() => combatStore.currentTarget);
+
+// Boss 出场演出（showBossIntro + onBossIntro + dispose）
+const {
+  showBossIntro,
+  bossIntroIcon,
+  bossIntroName,
+  bossIntroLines,
+  bossIntroOverlayRef,
+  bossIntroIconRef,
+  bossIntroNameRef,
+  bossIntroLineRefs,
+  onBossIntro,
+  dispose: disposeBossIntro,
+} = useBossIntroOverlay({
+  getCombatSpeed: () => combatSpeed.value,
+  setAnimTimer,
+  isUnmounted,
+});
+
+// 战斗视觉特效（震动/闪避/浮动数字/屏幕闪白/VS 闪光/Boss 阶段转换 + 事件处理）
+const {
+  enemyShakes,
+  enemyCritShakes,
+  enemyDodgeBlinks,
+  enemyFloatings,
+  playerShake,
+  playerCritShake,
+  playerDodgeBlink,
+  vsFlash,
+  playerFloating,
+  screenFlash,
+  screenFlashType,
+  showPhaseTransition,
+  phaseTransitionEffect,
+  phaseTransitionName,
+  screenFlashRef,
+  phaseBackdropRef,
+  phaseContentRef,
+  vsDividerRef,
+  PHYSICAL_PARTICLES,
+  HEAL_PARTICLES,
+  MANA_PARTICLES,
+  CRIT_PARTICLES,
+  showFloating,
+  triggerShake,
+  triggerCritShake,
+  triggerHealGlow,
+  triggerManaGlow,
+  triggerCritBorderFlash,
+  triggerParticles,
+  triggerVsFlash,
+  applyCombatDamageEffects,
+  onCritHit,
+  onEnemyDealDamage,
+  onDodge,
+  onBossPhase,
+} = useCombatAnimations({
+  getCombatSpeed: () => combatSpeed.value,
+  setAnimTimer,
+  isUnmounted,
+  getCurrentTargetId: () => currentTarget.value?.id,
+});
+
+// vue-tsc 无法检测解构后的模板 ref 在 <template> 中的使用，需显式标记
+void [bossIntroOverlayRef, bossIntroIconRef, bossIntroNameRef, screenFlashRef, phaseBackdropRef, phaseContentRef, vsDividerRef];
 
 // 战斗状态 - 直接从 Combat Store 响应式数据派生
 const turn = computed(() => combatStore.turn);
 const turnCount = computed(() => combatStore.turnCount);
 const logs = computed(() => combatStore.combatLogs);
 
-/** 战斗日志倒序（最新在最上面） */
-const logsReversed = computed(() => [...logs.value].reverse());
+/**
+ * 战斗日志倒序（最新在最上面）
+ * [性能] 带缓存的 computed：当 logs.value 引用未变时直接返回缓存数组，避免每次访问都创建新副本。
+ * 当前战斗日志条数有限（通常 &lt; 100 条），浅拷贝开销可接受。
+ * 若未来日志量增大，可改用 shallowRef + 手动控制更新频率。
+ */
+const logsReversed = computed(() => {
+  // P13-015 修复：addCombatLog 使用 push（不替换数组引用），
+  // 引用比较缓存失效，直接浅拷贝反转即可（日志 <100 条，开销可忽略）
+  return [...logs.value].reverse();
+});
 
-// 动画状态（按敌人 ID 索引）
-const enemyShakes = ref<Record<string, boolean>>({});
-const enemyCritShakes = ref<Record<string, boolean>>({});
-const enemyDodgeBlinks = ref<Record<string, boolean>>({});
-const enemyFloatings = ref<Record<string, { text: string; type: string } | null>>({});
-// 保留这些全局动画
-const playerShake = ref(false);
-const playerCritShake = ref(false);
-const playerDodgeBlink = ref(false);
-const vsFlash = ref(false);
-const playerFloating = ref<{ text: string; type: string } | null>(null);
-const screenFlash = ref(false);
-const screenFlashType = ref<'crit' | 'dodge'>('crit');
+// 动画状态、Boss 出场演出状态、Boss 阶段转换状态、模板 refs 已迁移至 useCombatAnimations / useBossIntroOverlay
 
-// Boss 出场演出状态
-const showBossIntro = ref(false);
-const bossIntroIcon = ref('');
-const bossIntroName = ref('');
-const bossIntroLines = ref<string[]>([]);
-
-// Boss 阶段转换特效状态
-const showPhaseTransition = ref(false);
-const phaseTransitionEffect = ref('');
-const phaseTransitionName = ref('');
-
-// 模板 refs（用于 anime.js 直接操作 DOM）
-const screenFlashRef = ref<HTMLElement | null>(null);
-const bossIntroOverlayRef = ref<HTMLElement | null>(null);
-const bossIntroIconRef = ref<HTMLElement | null>(null);
-const bossIntroNameRef = ref<HTMLElement | null>(null);
-const bossIntroLineRefs = ref<Record<number, HTMLElement>>({});
-const phaseBackdropRef = ref<HTMLElement | null>(null);
-const phaseContentRef = ref<HTMLElement | null>(null);
-const vsDividerRef = ref<HTMLElement | null>(null);
+// 结果弹窗模板 refs（用于结果弹窗动画，保留在组件中）
 const resultPopupRef = ref<HTMLElement | null>(null);
 const resultIconRef = ref<HTMLElement | null>(null);
 const resultTextRef = ref<HTMLElement | null>(null);
@@ -323,39 +455,26 @@ const resultTextRef = ref<HTMLElement | null>(null);
 // 玩家数据（从 characterStore 读取，与主界面一致）
 const playerName = computed(() => characterStore.name);
 const playerLevel = computed(() => characterStore.level);
-const playerIcon = computed(() => characterStore.raceIcon || '🧑');
+const playerIcon = computed(() => characterStore.raceIcon || 'person');
 const playerHp = computed(() => characterStore.hp);
 const playerMaxHp = computed(() => characterStore.maxHp);
 const playerMp = computed(() => characterStore.mana);
 const playerMaxMp = computed(() => characterStore.maxMana);
-const playerHpPercent = computed(() => Math.max(0, Math.min(100, (playerHp.value / playerMaxHp.value) * 100)));
-const playerMpPercent = computed(() => Math.max(0, Math.min(100, (playerMp.value / playerMaxMp.value) * 100)));
+// P12-021 修复：除零保护，max<=0 时返回 0 避免 NaN
+const playerHpPercent = computed(() => playerMaxHp.value <= 0 ? 0 : Math.max(0, Math.min(100, (playerHp.value / playerMaxHp.value) * 100)));
+const playerMpPercent = computed(() => playerMaxMp.value <= 0 ? 0 : Math.max(0, Math.min(100, (playerMp.value / playerMaxMp.value) * 100)));
 
-// 敌人数据（当前目标）
-const currentTarget = computed(() => combatStore.currentTarget);
+/** 是否显示 MP 资源条（战士/盗贼/猎人等替代型资源职业隐藏 MP 条） */
+const showManaBar = computed(() => !ResourceSystemFactory.replacesMana(characterStore.classId));
 
-function getHpPercent(e: { hp: number; maxHp: number }): number {
-  return Math.max(0, Math.min(100, (e.hp / e.maxHp) * 100));
-}
-
-/** 获取指定位置（前后排 + 列）上的敌人列表 */
-function getEnemiesInSlot(row: 'front' | 'back', col: number) {
-  const positions = combatStore.enemyPositions;
-  return combatStore.enemies.filter(e => {
-    const pos = positions[e.id];
-    return pos && pos.row === row && pos.col === col;
-  });
-}
-
-/** 获取指定敌人的效果列表 */
-function getEnemyEffects(enemyId: string) {
-  return combatStore.enemyEffects.get(enemyId)?.effects || [];
-}
-
-/** 获取指定敌人的效果数量 */
-function getEnemyEffectCount(enemyId: string): number {
-  return getEnemyEffects(enemyId).length;
-}
+// P3-163：UI 辅助函数抽离到 useCombatUiHelpers composable
+const {
+  getSkillCostText, canCastSkill, getHpPercent,
+  getEnemiesInSlot, getEnemyEffects, getEnemyEffectCount,
+  buildItemDescription, getSkillEffectText, getTargetTypeText,
+  getDamageTypeClass, getDamageTypeIcon,
+  isBuffEffect, formatEffectValue, getEffectIcon,
+} = useCombatUiHelpers();
 
 // 状态
 const isPlayerTurn = computed(() => turn.value === 'player');
@@ -369,7 +488,9 @@ const equippedSkills = computed<Skill[]>(() => {
     if (equipped && equipped.length > 0) return equipped.filter((s): s is Skill => s !== null).slice(0, 4);
     const unlocked = skillsStore.unlockedSkills;
     return (unlocked || []).slice(0, 4);
-  } catch {
+  } catch (e) {
+    console.error(e);
+    errorHandler.report(e);
     return [];
   }
 });
@@ -381,69 +502,117 @@ const consumableItems = computed(() => {
     return inventory
       .map((invItem, index) => {
         const info = inventoryStore.getItemInfo(invItem.itemId);
-        if (!info || !info.consumable) return null;
+        if (!info || info.kind !== 'consumable') return null;
         return {
           index,
           itemId: invItem.itemId,
           count: invItem.count,
           name: info.name,
-          icon: info.icon || '📦',
+          icon: info.icon || 'backpack',
           description: buildItemDescription(info),
           rarity: info.rarity
         };
       })
       .filter(Boolean) as { index: number; itemId: string; count: number; name: string; icon: string; description: string; rarity: ItemRarity }[];
-  } catch {
+  } catch (e) {
+    console.error(e);
+    errorHandler.report(e);
     return [];
   }
 });
 
-const hasConsumables = computed(() => consumableItems.value.length > 0);
+/**
+ * 已装备的可使用物品（C3：复合物品 — 魔法武器主动技能）
+ *
+ * 从 equipmentStore.equipment 读取所有已装备物品，过滤声明了 'usable' 能力的
+ * （当前仅法杖）。这些物品不在背包中，但可在战斗中通过物品菜单施放主动技能。
+ * 设计语义：持杖施法 — 法杖必须装备到武器槽后才能在战斗中使用。
+ * 与 consumableItems 的差异：来源 equipmentStore（不在背包）；数量恒为 1；使用不消耗。
+ */
+const equippedUsableItems = computed(() => {
+  try {
+    const result: { index: number; itemId: string; count: number; name: string; icon: string; description: string; rarity: ItemRarity }[] = [];
+    Object.values(equipmentStore.equipment).forEach((equippedItem) => {
+      if (!equippedItem) return;
+      const item = equippedItem.item;
+      if (!hasCapability(item, 'usable')) return;
+      result.push({
+        index: -1,  // 装备不在背包索引中，useItem 传入 index=-1 标识装备来源
+        itemId: item.id,
+        count: 1,
+        name: item.name,
+        icon: item.icon || 'backpack',
+        description: item.effects?.map(describeEffect).join('，') || item.description,
+        rarity: item.rarity,
+      });
+    });
+    return result;
+  } catch (e) {
+    console.error(e);
+    errorHandler.report(e);
+    return [];
+  }
+});
 
-function buildItemDescription(info: { effect?: { type: string; value: unknown }; description?: string }): string {
-  const { effect, description } = info;
-  if (!effect || typeof effect.value !== 'number') return description || '';
-  const parts: string[] = [];
-  if (effect.type === 'health_restore' && effect.value > 0) parts.push(`HP+${effect.value}`);
-  if (effect.type === 'mana_restore' && effect.value > 0) parts.push(`MP+${effect.value}`);
-  if (effect.type === 'physical_damage' && effect.value > 0) parts.push(`物理伤害 ${effect.value}`);
-  if (effect.type === 'magic_damage' && effect.value > 0) parts.push(`法术伤害 ${effect.value}`);
-  return parts.length > 0 ? parts.join(' ') : (description || '');
+/** 物品菜单条目（合并已装备可使用物品 + 消耗品，装备技能优先展示） */
+const itemMenuEntries = computed(() => [
+  ...equippedUsableItems.value,
+  ...consumableItems.value,
+]);
+
+// C3：含已装备可使用物品或消耗品时均可打开物品菜单
+const hasConsumables = computed(() => itemMenuEntries.value.length > 0);
+
+// ==================== P3-156：宠物系统 UI 辅助 ====================
+
+/** 当前职业是否为宠物职业（术士或猎人） */
+const isPetClass = computed(() => characterStore.classId === 'warlock' || characterStore.classId === 'hunter');
+
+/** 当前是否有激活的宠物 */
+const hasActivePet = computed(() => !!combatStore.hasActivePet);
+
+/** 已解锁的宠物列表（供 PetSummonPopup 展示，术士/猎人通用） */
+const unlockedWarlockPets = computed(() => combatStore.unlockedPets || []);
+
+/** 宠物召唤资源类型（术士=灵魂碎片，猎人=集中值） */
+const petResourceType = computed(() => characterStore.classId === 'hunter' ? 'focus' : 'soul_shard');
+
+/** 宠物召唤资源系统 */
+const petResourceSystem = computed(() =>
+  combatStore.resourceSystems.find(sys => sys.type === petResourceType.value)
+);
+
+/** 当前资源数量 */
+const petResourceCurrent = computed(() => petResourceSystem.value?.currentValue ?? 0);
+
+/** 资源上限 */
+const petResourceMax = computed(() => petResourceSystem.value?.maxValue ?? 0);
+
+/** 资源名称 */
+const petResourceName = computed(() => characterStore.classId === 'hunter' ? '集中值' : '灵魂碎片');
+
+/** 打开宠物召唤弹窗 */
+function openPetSummonModal(): void {
+  if (!canAct.value) return;
+  showPetSummonModal.value = true;
+  eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_pet_summon_btn' });
 }
 
-const { getSkillEffectBrief, getTargetTypeName } = useSkillDisplay();
-
-function getSkillEffectText(skill: Skill): string {
-  return getSkillEffectBrief(skill);
+/** 处理宠物召唤 */
+function handlePetSummon(petType: import('@/modules/combat/pets').PetType): void {
+  const result = combatStore.summonPet(petType);
+  if (result.success) {
+    showPetSummonModal.value = false;
+  }
 }
 
-/** 获取技能目标类型文本 */
-function getTargetTypeText(targetType?: string): string {
-  if (!targetType || targetType === 'single') return '';
-  return getTargetTypeName(targetType);
+/** 处理宠物解散 */
+function handlePetDismiss(): void {
+  const result = combatStore.dismissPet();
+  if (result.success) {
+    showPetSummonModal.value = false;
+  }
 }
-
-// 根据日志事件类型获取伤害类型样式类
-function getDamageTypeClass(log: CombatLog): string {
-  if (log.eventType === 'combat_skill_cast') return 'magic-damage';
-  if (log.eventType === 'combat_critical') return 'crit-damage';
-  return 'physical-damage';
-}
-
-// 根据日志事件类型获取伤害类型图标
-function getDamageTypeIcon(log: CombatLog): string {
-  if (log.eventType === 'combat_skill_cast') return '🔮';
-  if (log.eventType === 'combat_critical') return '⚔️';
-  return '🗡️';
-}
-
-/** 效果图标映射 */
-const effectIcons: Record<string, string> = {
-  poison: '☠️', burn: '🔥', stun: '💫', freeze: '❄️', silence: '🔇',
-  shield: '🛡️', attack_up: '⚔️', attack_down: '⚔️', defense_up: '🛡️',
-  defense_down: '🛡️', speed_up: '💨', speed_down: '🐢', regen: '💚',
-  thorn: '🌵', vulnerable: '💔',
-};
 
 /** 效果类型标签 */
 const effectLabels: Record<string, string> = {
@@ -453,28 +622,6 @@ const effectLabels: Record<string, string> = {
   thorn: '反伤', vulnerable: '易伤',
 };
 
-/** 效果是否为增益 */
-function isBuffEffect(type: string): boolean {
-  return ['shield', 'attack_up', 'defense_up', 'speed_up', 'regen', 'thorn'].includes(type);
-}
-
-/** 效果是否为减益 */
-function isDebuffEffect(type: string): boolean {
-  return ['poison', 'burn', 'stun', 'freeze', 'silence', 'attack_down', 'defense_down', 'speed_down', 'vulnerable'].includes(type);
-}
-
-/** 效果数值格式化（增益正数，减益取绝对值） */
-function formatEffectValue(type: string, value: number): string {
-  if (isBuffEffect(type)) return `+${value}`;
-  if (isDebuffEffect(type)) return `+${value}`;
-  return `${value}`;
-}
-
-/** 获取效果对应的图标 */
-function getEffectIcon(type: string): string {
-  return effectIcons[type] || '✨';
-}
-
 const resultText = computed(() => {
   switch (combatStore.combatResult) {
     case 'victory': return '战斗胜利！';
@@ -482,6 +629,20 @@ const resultText = computed(() => {
     case 'fled': return '成功逃跑！';
     default: return '';
   }
+});
+
+/** 战斗结果图标名称 */
+const resultIconName = computed(() => {
+  if (combatStore.combatResult === 'victory') return 'laurel-crown';
+  if (combatStore.combatResult === 'defeat') return 'death-skull';
+  return 'run';
+});
+
+/** 战斗结果图标渐变 */
+const resultIconGradient = computed(() => {
+  if (combatStore.combatResult === 'victory') return 'gold';
+  if (combatStore.combatResult === 'defeat') return 'debuff';
+  return 'dodge';
 });
 
 /** 战斗日志变化时自动滚动到顶部（倒序显示，最新在最上面） */
@@ -495,202 +656,12 @@ function scrollToTop() {
   }
 }
 
-// 浮动伤害/生命恢复数字
-function showFloating(target: 'enemy' | 'player', text: string, type: string, enemyId?: string) {
-  if (target === 'enemy' && enemyId) {
-    enemyFloatings.value[enemyId] = { text, type };
-    nextTick(() => {
-      const el = document.querySelector(`[data-enemy-float="${enemyId}"]`) as HTMLElement;
-      if (el) animateFloating(el, type as 'damage' | 'crit' | 'heal' | 'dodge', combatSpeed.value);
-    });
-    setTimeout(() => { if (enemyFloatings.value[enemyId]) enemyFloatings.value[enemyId] = null; }, 1800);
-  } else {
-    playerFloating.value = { text, type };
-    nextTick(() => {
-      const el = document.querySelector('.player-side .floating-damage') as HTMLElement;
-      if (el) animateFloating(el, type as 'damage' | 'crit' | 'heal' | 'dodge', combatSpeed.value);
-    });
-    setTimeout(() => { playerFloating.value = null; }, 1800);
-  }
-}
-
-// 震动效果（普通攻击）
-function triggerShake(target: 'enemy' | 'player', enemyId?: string) {
-  if (target === 'enemy' && enemyId) {
-    enemyShakes.value[enemyId] = true;
-    nextTick(() => {
-      const el = document.querySelector(`[data-enemy-shake="${enemyId}"]`) as HTMLElement;
-      if (el) animateShake(el, combatSpeed.value);
-    });
-    setTimeout(() => { enemyShakes.value[enemyId] = false; }, 600);
-  } else {
-    playerShake.value = true;
-    nextTick(() => {
-      const el = document.querySelector('.player-side') as HTMLElement;
-      if (el) animateShake(el, combatSpeed.value);
-    });
-    setTimeout(() => { playerShake.value = false; }, 600);
-  }
-}
-
-// 暴击震动效果（更强、更持久）
-function triggerCritShake(target: 'enemy' | 'player', enemyId?: string) {
-  if (target === 'enemy' && enemyId) {
-    enemyCritShakes.value[enemyId] = true;
-    nextTick(() => {
-      const el = document.querySelector(`[data-enemy-shake="${enemyId}"]`) as HTMLElement;
-      if (el) animateCritShake(el, combatSpeed.value);
-    });
-    setTimeout(() => { enemyCritShakes.value[enemyId] = false; }, 900);
-  } else {
-    playerCritShake.value = true;
-    nextTick(() => {
-      const el = document.querySelector('.player-side') as HTMLElement;
-      if (el) animateCritShake(el, combatSpeed.value);
-    });
-    setTimeout(() => { playerCritShake.value = false; }, 900);
-  }
-}
-
-// 闪避闪烁效果
-function triggerDodgeBlink(target: 'enemy' | 'player', enemyId?: string) {
-  if (target === 'enemy' && enemyId) {
-    enemyDodgeBlinks.value[enemyId] = true;
-    nextTick(() => {
-      const el = document.querySelector(`[data-enemy-shake="${enemyId}"]`) as HTMLElement;
-      if (el) animateDodgeBlink(el, combatSpeed.value);
-    });
-    setTimeout(() => { enemyDodgeBlinks.value[enemyId] = false; }, 800);
-  } else {
-    playerDodgeBlink.value = true;
-    nextTick(() => {
-      const el = document.querySelector('.player-side') as HTMLElement;
-      if (el) animateDodgeBlink(el, combatSpeed.value);
-    });
-    setTimeout(() => { playerDodgeBlink.value = false; }, 800);
-  }
-}
-
-// 屏幕闪白特效
-function triggerScreenFlash(type: 'crit' | 'dodge') {
-  screenFlashType.value = type;
-  screenFlash.value = true;
-  nextTick(() => {
-    if (screenFlashRef.value) {
-      animateScreenFlash(screenFlashRef.value, type, combatSpeed.value);
-    }
-  });
-  setTimeout(() => { screenFlash.value = false; }, 600);
-}
-
-// 暴击事件处理
-function onCritHit(data: { amount: number; damageType: string; targetName: string; actorType: 'player' | 'enemy'; enemyId?: string }) {
-  if (isUnmounted.value) return;
-  // 震动目标：玩家暴击震敌人，敌人暴击震玩家
-  const shakeTarget = data.actorType === 'player' ? 'enemy' : 'player';
-  // 暴击震动 + 屏幕闪白
-  triggerCritShake(shakeTarget, data.enemyId);
-  triggerScreenFlash('crit');
-  // 玩家暴击时浮动文字由 applyCombatDamageEffects 处理，此处仅处理敌人暴击
-  if (data.actorType === 'enemy') {
-    showFloating(shakeTarget, `暴击! -${data.amount}`, 'crit', data.enemyId);
-  }
-}
-
-// 敌人造成伤害事件处理（敌人攻击玩家时的视觉反馈）
-function onEnemyDealDamage(data: { amount: number; damageType: string; targetName: string; actorType?: 'player' | 'enemy' }) {
-  if (isUnmounted.value) return;
-  // 仅处理敌人对玩家造成的伤害
-  if (data.actorType !== 'enemy') return;
-  // 玩家受击震动
-  triggerShake('player');
-  // 玩家受击浮动伤害文字
-  showFloating('player', `-${data.amount}`, 'damage');
-}
-
-// 闪避事件处理
-function onDodge(data: { attackerName: string; dodgerName: string; dodgerType: 'player' | 'enemy'; enemyId?: string }) {
-  if (isUnmounted.value) return;
-  // 闪避者闪烁
-  triggerDodgeBlink(data.dodgerType, data.enemyId);
-  // 闪避浮动文字
-  showFloating(data.dodgerType, '闪避!', 'dodge', data.enemyId);
-  // 屏幕轻闪
-  triggerScreenFlash('dodge');
-}
-
-// Boss 出场演出事件处理
-function onBossIntro(data: { enemyId: string; enemyName: string; icon: string; effect: string; lines: string[]; duration: number }) {
-  if (isUnmounted.value) return;
-  bossIntroIcon.value = data.icon;
-  bossIntroName.value = data.enemyName;
-  bossIntroLines.value = data.lines;
-  showBossIntro.value = true;
-
-  // 使用 anime.js 时间线播放演出
-  nextTick(() => {
-    if (bossIntroOverlayRef.value && bossIntroIconRef.value && bossIntroNameRef.value) {
-      const lineEls = Object.values(bossIntroLineRefs.value);
-      animateBossIntro(
-        bossIntroOverlayRef.value,
-        bossIntroIconRef.value,
-        bossIntroNameRef.value,
-        lineEls,
-        data.duration,
-        combatSpeed.value
-      );
-    }
-  });
-
-  // 演出结束后自动关闭
-  const minDuration = 1000 + data.lines.length * 900;
-  const actualDuration = Math.max(data.duration, minDuration);
-  setTimeout(() => {
-    showBossIntro.value = false;
-  }, actualDuration + 300); // +300 给淡出动画留时间
-}
-
-// Boss 阶段转换事件处理
-function onBossPhase(data: { enemyId: string; enemyName: string; phaseName: string; effect: string }) {
-  if (isUnmounted.value) return;
-  phaseTransitionEffect.value = data.effect;
-  phaseTransitionName.value = `${data.enemyName} 进入 "${data.phaseName}" 阶段！`;
-  showPhaseTransition.value = true;
-
-  // 使用 anime.js 播放阶段转换
-  nextTick(() => {
-    if (phaseBackdropRef.value && phaseContentRef.value) {
-      animatePhaseTransition(phaseBackdropRef.value, phaseContentRef.value, combatSpeed.value);
-    }
-  });
-
-  // 2.5 秒后自动关闭（匹配动画时长）
-  setTimeout(() => {
-    showPhaseTransition.value = false;
-  }, 2500);
-}
-
-// VS 分隔线闪光动画（doAction / doSkill 共用）
-function triggerVsFlash() {
-  vsFlash.value = true;
-  nextTick(() => {
-    if (vsDividerRef.value) animateVsFlash(vsDividerRef.value, combatSpeed.value);
-  });
-  setTimeout(() => { vsFlash.value = false; }, 450);
-}
-
-/** 应用战斗伤害视觉特效（多目标伤害 / 单体伤害），doAction / doSkill 共用 */
-function applyCombatDamageEffects(result: { aoeHits?: { enemyId: string; damage: number }[]; damage?: number; isCrit?: boolean }) {
-  if (result.aoeHits && result.aoeHits.length > 0) {
-    for (const hit of result.aoeHits) {
-      triggerShake('enemy', hit.enemyId);
-      showFloating('enemy', `-${hit.damage}`, 'damage', hit.enemyId);
-    }
-  } else if (result.damage && result.damage > 0) {
-    triggerShake('enemy', currentTarget.value?.id);
-    showFloating('enemy', `-${result.damage}`, result.isCrit ? 'crit' : 'damage', currentTarget.value?.id);
-  }
-}
+// 视觉特效触发函数（showFloating / triggerShake / triggerCritShake / triggerDodgeBlink /
+// triggerScreenFlash / triggerMagicPulse / triggerHealGlow / triggerManaGlow /
+// triggerCritBorderFlash / triggerParticles / triggerVsFlash）、粒子配置常量
+// （PHYSICAL_PARTICLES / MAGIC_PARTICLES / HEAL_PARTICLES / MANA_PARTICLES / CRIT_PARTICLES）、
+// 事件处理（onCritHit / onEnemyDealDamage / onDodge / onBossIntro / onBossPhase）、
+// 编排函数（applyCombatDamageEffects）已迁移至 useCombatAnimations / useBossIntroOverlay
 
 // 选择攻击目标
 function selectTarget(enemyId: string) {
@@ -708,25 +679,31 @@ async function doAction(type: CombatActionType) {
   isAnimating.value = true;
   triggerVsFlash();
 
-  const result = await combatStore.playerAction({ type });
+  try {
+    const result = await combatStore.playerAction({ type });
 
-  if (isUnmounted.value) return;
+    if (isUnmounted.value) return;
 
-  if (!result.success) {
+    if (!result.success) {
+      isAnimating.value = false;
+      return;
+    }
+
+    // 视觉特效：伤害效果提取为 applyCombatDamageEffects
+    // 暴击特效（critShake / screenFlash）由 COMBAT_CRITICAL_HIT EventBus 事件驱动，避免双重触发
+    // 闪避特效由 COMBAT_DODGE EventBus 事件驱动
+    applyCombatDamageEffects(result);
+
+    if (combatStore.combatResult) {
+      // 战斗结束（击败/逃跑失败等）
+      isAnimating.value = false;
+    }
+    // 否则 isAnimating 由 watch(turn) 在敌人回合结束后恢复
+  } catch (e) {
     isAnimating.value = false;
-    return;
+    errorHandler.report(e instanceof Error ? e : new Error(String(e)));
+    useToast().show({ message: '战斗操作异常，请重试', type: 'danger' });
   }
-
-  // 视觉特效：伤害效果提取为 applyCombatDamageEffects
-  // 暴击特效（critShake / screenFlash）由 COMBAT_CRITICAL_HIT EventBus 事件驱动，避免双重触发
-  // 闪避特效由 COMBAT_DODGE EventBus 事件驱动
-  applyCombatDamageEffects(result);
-
-  if (combatStore.combatResult) {
-    // 战斗结束（击败/逃跑失败等）
-    isAnimating.value = false;
-  }
-  // 否则 isAnimating 由 watch(turn) 在敌人回合结束后恢复
 }
 
 // 使用技能
@@ -736,23 +713,46 @@ async function doSkill(skillId: string) {
   isAnimating.value = true;
   triggerVsFlash();
 
-  const result = await combatStore.playerAction({ type: 'skill', skillId });
+  try {
+    const result = await combatStore.playerAction({ type: 'skill', skillId });
 
-  if (isUnmounted.value) return;
+    if (isUnmounted.value) return;
 
-  if (!result.success) {
+    if (!result.success) {
+      isAnimating.value = false;
+      return;
+    }
+
+    // 根据技能类型判断伤害类型
+    const unlockeds = skillsStore.unlockedSkills;
+    const equippeds = skillsStore.equippedSkills;
+    const allSkills = [...(unlockeds ?? []), ...((equippeds ?? []).filter(s => s != null) as NonNullable<typeof unlockeds>)];
+    const skill = allSkills.find(s => s.id === skillId);
+    const skillType = skill?.type || 'physical_damage';
+    const dmgType: 'physical' | 'magic' = skillType === 'magic_damage' ? 'magic' : 'physical';
+
+    // 视觉特效：伤害效果使用公共函数
+    applyCombatDamageEffects(result, dmgType);
+    if (result.heal && result.heal > 0) {
+      // P8-007 修复：mana_restore 显示为法力恢复而非生命恢复
+      if (skillType === 'mana_restore') {
+        showFloating('player', `MP+${result.heal}`, 'heal-mp');
+        triggerManaGlow();
+        triggerParticles('player', MANA_PARTICLES);
+      } else {
+        showFloating('player', `+${result.heal}`, 'heal-hp');
+        triggerHealGlow();
+        triggerParticles('player', HEAL_PARTICLES);
+      }
+    }
+
+    if (combatStore.combatResult) {
+      isAnimating.value = false;
+    }
+  } catch (e) {
     isAnimating.value = false;
-    return;
-  }
-
-  // 视觉特效：伤害效果使用公共函数
-  applyCombatDamageEffects(result);
-  if (result.heal && result.heal > 0) {
-    showFloating('player', `+${result.heal}`, 'heal');
-  }
-
-  if (combatStore.combatResult) {
-    isAnimating.value = false;
+    errorHandler.report(e instanceof Error ? e : new Error(String(e)));
+    useToast().show({ message: '技能施放异常，请重试', type: 'danger' });
   }
 }
 
@@ -762,7 +762,14 @@ function doSkip() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_skip' });
   isAnimating.value = true;
   // skipTurn 内部调用 endPlayerTurn → 自动调度敌人回合
-  combatStore.skipTurn();
+  // P13-013 修复：try/catch 包裹，失败时复位 isAnimating，避免永久锁定
+  try {
+    combatStore.skipTurn();
+  } catch (e) {
+    console.error('[CombatPopup] 跳过回合失败:', e);
+    isAnimating.value = false;
+    useToast().show({ message: '跳过回合失败', type: 'danger', duration: 2000 });
+  }
   // isAnimating 由 watch(turn) 在敌人回合结束后恢复
 }
 
@@ -774,38 +781,61 @@ function openItemModal() {
   }
 }
 
-async function useItem(_itemId: string, _index: number) {
+async function useItem(itemId: string, index: number) {
   if (!canAct.value) return;
   eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_use_item' });
   showItemModal.value = false;
   isAnimating.value = true;
 
-  const prevPlayerHp = playerHp.value;
-  const prevPlayerMp = playerMp.value;
+  try {
+    const prevPlayerHp = playerHp.value;
+    const prevPlayerMp = playerMp.value;
 
-  const result = await combatStore.playerAction({ type: 'item', itemId: _itemId });
+    // P10-029 修复：不再忽略 index 参数，传入 playerAction 以便按索引使用指定物品组
+    const result = await combatStore.playerAction({ type: 'item', itemId, index });
 
-  if (isUnmounted.value) return;
+    if (isUnmounted.value) return;
 
-  if (!combatStore.combatResult) {
-    // 伤害型物品的视觉特效（卷轴等）
-    if (result.damage && result.damage > 0) {
-      triggerVsFlash();
-      triggerShake('enemy', currentTarget.value?.id);
-      showFloating('enemy', `-${result.damage}`, result.isCrit ? 'crit' : 'damage', currentTarget.value?.id);
+    // P8-501 修复：物品使用失败时复位动画状态，避免战斗卡死（与 doAction/doSkill 一致）
+    if (!result.success) {
+      isAnimating.value = false;
+      return;
     }
 
-    // 物品恢复效果（通过 HP/MP 差值计算）
-    const hpHeal = playerHp.value - prevPlayerHp;
-    if (hpHeal > 0) {
-      showFloating('player', `+${hpHeal}`, 'heal');
+    if (!combatStore.combatResult) {
+      // 伤害型物品的视觉特效（卷轴等）
+      if (result.damage && result.damage > 0) {
+        triggerVsFlash();
+        if (result.isCrit) {
+          triggerCritShake('enemy', currentTarget.value?.id);
+          triggerCritBorderFlash('enemy', currentTarget.value?.id);
+        } else {
+          triggerShake('enemy', currentTarget.value?.id);
+        }
+        showFloating('enemy', `-${result.damage}`, result.isCrit ? 'crit' : 'physical', currentTarget.value?.id);
+        triggerParticles('enemy', result.isCrit ? CRIT_PARTICLES : PHYSICAL_PARTICLES, currentTarget.value?.id);
+      }
+
+      // 物品恢复效果（通过 HP/MP 差值计算）
+      const hpHeal = playerHp.value - prevPlayerHp;
+      if (hpHeal > 0) {
+        showFloating('player', `+${hpHeal}`, 'heal-hp');
+        triggerHealGlow();
+        triggerParticles('player', HEAL_PARTICLES);
+      }
+      const mpHeal = playerMp.value - prevPlayerMp;
+      if (mpHeal > 0) {
+        showFloating('player', `MP+${mpHeal}`, 'heal-mp');
+        triggerManaGlow();
+        triggerParticles('player', MANA_PARTICLES);
+      }
     }
-    const mpHeal = playerMp.value - prevPlayerMp;
-    if (mpHeal > 0) {
-      showFloating('player', `MP+${mpHeal}`, 'heal');
-    }
+    // isAnimating 由 watch(turn) 在敌人回合结束后恢复
+  } catch (e) {
+    isAnimating.value = false;
+    errorHandler.report(e instanceof Error ? e : new Error(String(e)));
+    useToast().show({ message: '物品使用异常，请重试', type: 'danger' });
   }
-  // isAnimating 由 watch(turn) 在敌人回合结束后恢复
 }
 
 // ========== 敌人回合动画监听（替代 runEnemyTurn 编排） ==========
@@ -826,57 +856,37 @@ watch(() => combatStore.combatResult, (result) => {
     // 使用 anime.js 播放结果弹窗动画
     nextTick(() => {
       if (resultPopupRef.value && resultIconRef.value && resultTextRef.value) {
+        // P3 TS-13 修复：使用 instanceof 守卫收窄 HTMLElement 类型，替代 as 断言
         const rewardEls = Array.from(
           resultPopupRef.value.querySelectorAll('.reward-item')
-        ) as HTMLElement[];
+        ).filter((el): el is HTMLElement => el instanceof HTMLElement);
         animateResultPopup(resultPopupRef.value, resultIconRef.value, resultTextRef.value, rewardEls, combatSpeed.value);
       }
     });
   }
 });
 
-function scheduleAutoClose() {
-  clearAutoClose();
-  const delay = combatStore.combatResult === 'victory' ? 3 : 2;
-  autoCloseCountdown.value = delay;
+// scheduleAutoClose / clearAutoClose 已迁移至 useCombatAutoClose
+// （解构为 scheduleAutoClose / clearAutoCloseTimer）
 
-  autoCloseTimer = setInterval(() => {
-    autoCloseCountdown.value--;
-    if (autoCloseCountdown.value <= 0) {
-      if (autoCloseTimer) {
-        clearInterval(autoCloseTimer);
-        autoCloseTimer = null;
-      }
-    }
-  }, 1000);
-
-  autoCloseTimeout = setTimeout(() => {
-    clearAutoClose();
-    handleClose();
-  }, delay * 1000);
-}
-
-function clearAutoClose() {
-  if (autoCloseTimer) {
-    clearInterval(autoCloseTimer);
-    autoCloseTimer = null;
-  }
-  if (autoCloseTimeout) {
-    clearTimeout(autoCloseTimeout);
-    autoCloseTimeout = null;
-  }
-  autoCloseCountdown.value = 0;
-}
-
+/** 用户点击"确定"关闭结果弹窗 */
 function handleClose() {
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'combat_result_close' });
-  clearAutoClose();
+  handleCloseAutoClose();
   emit('close', combatStore.combatResult || undefined);
 }
 
-onMounted(() => {
-  // 确保技能 Store 已初始化
-  skillsStore.initialize();
+onMounted(async () => {
+  // P9-105 修复：改 async + await skillsStore.initialize + try-catch
+  try {
+    // 确保技能 Store 已初始化
+    const id = characterStore.currentCharacterId;
+    if (id) {
+      await skillsStore.initialize(id);
+    }
+  } catch (err) {
+    console.error('[CombatPopup] skillsStore.initialize 失败:', err);
+  }
+  // 事件处理函数来自 useCombatAnimations / useBossIntroOverlay
   eventBus.on(GameEvents.COMBAT_CRITICAL_HIT, onCritHit);
   eventBus.on(GameEvents.COMBAT_DEAL_DAMAGE, onEnemyDealDamage);
   eventBus.on(GameEvents.COMBAT_DODGE, onDodge);
@@ -891,12 +901,17 @@ onUnmounted(() => {
   eventBus.off(GameEvents.COMBAT_DODGE, onDodge);
   eventBus.off(GameEvents.COMBAT_BOSS_INTRO, onBossIntro);
   eventBus.off(GameEvents.COMBAT_BOSS_PHASE, onBossPhase);
-  clearAutoClose();
+  // 清理自动关闭定时器（来自 useCombatAutoClose）
+  clearAutoCloseTimer();
+  // 清理所有未触发的动画定时器，防止卸载后访问响应式状态
+  clearAllAnimationTimers();
+  // P2-60 修复：取消 Boss 出场演出动画控制器（来自 useBossIntroOverlay）
+  disposeBossIntro();
 });
 
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .combat-overlay {
   position: fixed;
   top: 0;
@@ -904,10 +919,8 @@ onUnmounted(() => {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.92);
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  z-index: @z-combat-overlay;
+  .flex-center();
   animation: fadeIn 0.3s ease;
 }
 
@@ -916,13 +929,12 @@ onUnmounted(() => {
   width: 95%;
   max-width: 700px;
   max-height: 95vh;
-  background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
-  border: 2px solid #4a4a4a;
+  background: @gradient-panel;
+  border: @border-card;
   border-radius: 16px;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 32px @overlay-dark;
   position: relative;
 }
 
@@ -941,53 +953,49 @@ onUnmounted(() => {
 
 /* 标题 */
 .combat-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  .flex-between();
   padding: 14px 20px;
-  background: rgba(0, 0, 0, 0.4);
-  border-bottom: 1px solid #333;
+  background: @overlay-dim;
+  border-bottom: 1px solid @color-dark-line;
 }
 
-.combat-title { font-size: 18px; font-weight: 700; color: #e94560; }
-.combat-turn { font-size: 13px; color: #888; }
+.combat-title { font-size: @font-xl; font-weight: @font-weight-bold; color: @color-danger-accent; }
+.combat-turn { font-size: 13px; color: @color-dodge; }
 
 /* 战斗区域 */
 .combat-arena {
   display: flex;
   align-items: stretch;
   padding: 16px;
-  gap: 12px;
+  gap: @spacing-xl;
 }
 
 .combatant {
   flex: 1;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 12px;
+  background: @overlay-light;
+  border-radius: @radius-xl;
   padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  border: 1px solid #333;
+  .flex-col();
+  gap: @spacing-lg;
+  border: 1px solid @color-dark-line;
   position: relative;
   transition: transform 0.1s;
 }
 
-.enemy-side { border-color: #e94560; }
-.player-side { border-color: #00d2d3; }
+.enemy-side { border-color: @color-danger-accent; }
+.player-side { border-color: @color-ally; }
 
 /* 敌人 3×2 网格容器 */
 .enemy-grid {
   flex: 1.5;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  .flex-col();
+  gap: @spacing-sm;
 }
 
 .enemy-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: @spacing-sm;
 }
 
 /* 敌人槽位 */
@@ -1000,61 +1008,59 @@ onUnmounted(() => {
 .enemy-slot .combatant {
   flex: 1;
   min-width: 100px;
-  padding: 10px;
-  gap: 6px;
+  padding: @spacing-lg;
+  gap: @spacing-sm;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
 }
 
 .enemy-slot .combatant:hover {
-  border-color: #ff6b6b;
+  border-color: @damage-physical;
 }
 
 /* 空槽位占位符 */
 .enemy-slot .combatant.enemy-empty {
   cursor: default;
-  opacity: 0.3;
+  opacity: @opacity-disabled;
   border-style: dashed;
-  border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.03);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  border-color: @white-18;
+  background: @white-03;
+  .flex-col-center();
   justify-content: center;
-  gap: 4px;
+  gap: @spacing-xs;
 }
 
 .enemy-slot .combatant.enemy-empty:hover {
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: @white-18;
 }
 
 .enemy-slot .combatant.enemy-empty .empty-avatar {
-  font-size: 32px;
-  opacity: 0.6;
+  font-size: @font-6xl;
+  opacity: @opacity-subtle;
 }
 
 .enemy-slot .combatant.enemy-empty .empty-text {
   font-size: 13px;
-  opacity: 0.6;
+  opacity: @opacity-subtle;
   color: rgba(255, 255, 255, 0.5);
 }
 
 /* 选中目标高亮 */
 .combatant.targeted {
-  border-color: #ffd700 !important;
+  border-color: @accent-color !important;
   box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
 }
 
 .enemy-slot .combatant.targeted:hover {
-  border-color: #ffd700 !important;
+  border-color: @accent-color !important;
 }
 
 /* Boss 徽章 */
 .boss-badge {
-  font-size: 11px;
+  font-size: @font-xs;
   color: #ff6b5a;
   margin-top: 2px;
-  font-weight: 700;
+  font-weight: @font-weight-bold;
 }
 
 .combatant.defeated {
@@ -1068,39 +1074,41 @@ onUnmounted(() => {
   top: 10%;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 22px;
-  font-weight: 900;
+  font-size: @font-3xl;
+  font-weight: @font-weight-heavy;
   pointer-events: none;
   z-index: 10;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  text-shadow: 0 2px 4px @overlay-mid;
   /* 动画由 anime.js animateFloating 处理 */
 }
 
-.floating-damage.damage { color: #ff4444; }
-.floating-damage.heal { color: #4CAF50; }
+.floating-damage.physical { color: @damage-physical; }
+.floating-damage.magic { color: @damage-magic; }
+.floating-damage.heal-hp { color: @heal-hp; }
+.floating-damage.heal-mp { color: @heal-mp; }
 .floating-damage.crit {
-  color: #ffd700;
+  color: @damage-crit;
   font-size: 30px;
-  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8), 0 2px 6px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8), 0 2px 6px @overlay-dark;
 }
 .floating-damage.dodge {
-  color: #888;
-  font-size: 22px;
+  color: @color-dodge;
+  font-size: @font-3xl;
   font-style: italic;
 }
 
 .combatant-avatar { font-size: 36px; text-align: center; }
 .combatant-info { text-align: center; }
-.combatant-name { font-size: 16px; font-weight: 700; color: #f0f0f0; }
-.combatant-level { font-size: 12px; color: #ffd700; margin-top: 2px; }
+.combatant-name { font-size: @font-lg; font-weight: @font-weight-bold; color: @text-primary; }
+.combatant-level { font-size: @font-sm; color: @accent-color; margin-top: 2px; }
 
-.combatant-bars { display: flex; flex-direction: column; gap: 8px; }
+.combatant-bars { .flex-col(); gap: @spacing-md; }
 
 .vs-divider {
   display: flex;
   align-items: center;
-  font-size: 24px;
-  color: #ffd700;
+  font-size: @font-4xl;
+  color: @accent-color;
   transition: transform 0.2s;
 }
 
@@ -1111,10 +1119,10 @@ onUnmounted(() => {
   max-height: 160px;
   margin: 0 16px;
   padding: 10px 12px;
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 8px;
+  background: @overlay-dim;
+  border-radius: @radius-lg;
   overflow-y: auto;
-  border: 1px solid #2a2a3e;
+  border: 1px solid @bg-mid-dark;
 }
 
 .log-entry {
@@ -1124,91 +1132,93 @@ onUnmounted(() => {
   color: #ccc;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: @spacing-sm;
   flex-wrap: wrap;
 }
 
-.log-player .log-msg { color: #60a5fa; }
-.log-enemy .log-msg { color: #f87171; }
-.log-system .log-msg { color: #fbbf24; }
+.log-player .log-msg { color: @log-player; }
+.log-enemy .log-msg { color: @log-enemy; }
+.log-system .log-msg { color: @log-system; }
+.log-pet .log-msg { color: @log-pet; }
 
-.log-turn { color: #666; font-size: 11px; }
-.log-damage { font-weight: 700; font-size: 14px; }
-.log-damage.physical-damage { color: #ff8c00; }
-.log-damage.magic-damage { color: #a855f7; }
-.log-damage.crit-damage { color: #ffd700; }
-.log-heal { color: #4CAF50; font-weight: 700; font-size: 14px; }
-.log-crit { color: #ffd700; font-weight: 700; font-size: 12px; }
-.log-dodge { color: #888; font-weight: 700; font-size: 12px; }
-.log-empty { color: #555; text-align: center; padding: 20px 0; font-style: italic; }
+.log-turn { color: @color-dim-gray; font-size: @font-xs; }
+.log-damage { font-weight: @font-weight-bold; font-size: @font-md; }
+.log-damage.physical-damage { color: @damage-physical; }
+.log-damage.magic-damage { color: @damage-magic; }
+.log-damage.crit-damage { color: @damage-crit; }
+.log-heal { color: @heal-hp; font-weight: @font-weight-bold; font-size: @font-md; }
+.log-crit { color: @damage-crit; font-weight: @font-weight-bold; font-size: @font-sm; }
+.log-dodge { color: @color-dodge; font-weight: @font-weight-bold; font-size: @font-sm; }
+.log-empty { color: @color-mid-gray; text-align: center; padding: @spacing-4xl 0; font-style: italic; }
 
 /* 行动按钮区域 */
 .combat-actions {
   padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  .flex-col();
+  gap: @spacing-md;
   position: relative;
 }
 
 .action-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: @spacing-md;
 }
 
 .action-btn {
-  padding: 10px 8px;
-  border: 2px solid #4a4a4a;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: @spacing-lg @spacing-md;
+  border: @border-card;
+  border-radius: @radius-lg;
+  background: @white-05;
+  color: @popup-text-color;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: @font-weight-semibold;
   cursor: pointer;
-  transition: all 0.2s;
-  text-align: center;
+  transition: all @transition-quick;
 }
 
-.action-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); border-color: #666; }
-.action-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-.attack-btn:hover:not(:disabled) { border-color: #e94560; background: rgba(233, 69, 96, 0.15); }
-.item-btn:hover:not(:disabled) { border-color: #4CAF50; background: rgba(76, 175, 80, 0.15); }
-.skip-btn:hover:not(:disabled) { border-color: #fbbf24; background: rgba(251, 191, 36, 0.15); }
-.flee-btn:hover:not(:disabled) { border-color: #888; background: rgba(136, 136, 136, 0.15); }
+.action-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); border-color: @color-dim-gray; }
+.action-btn:disabled { opacity: @opacity-disabled; cursor: not-allowed; }
+.attack-btn:hover:not(:disabled) { border-color: @color-danger-accent; background: rgba(233, 69, 96, 0.15); }
+.item-btn:hover:not(:disabled) { border-color: @heal-hp; background: rgba(76, 175, 80, 0.15); }
+.skip-btn:hover:not(:disabled) { border-color: @log-system; background: rgba(251, 191, 36, 0.15); }
+.flee-btn:hover:not(:disabled) { border-color: @color-dodge; background: rgba(136, 136, 136, 0.15); }
+.pet-btn:hover:not(:disabled) { border-color: @log-pet; background: rgba(74, 222, 128, 0.15); }
 
 .skill-btn {
-  border-color: #8b5cf6;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  border-color: @skill-purple;
+  .flex-col-center();
   gap: 2px;
   padding: 8px 6px;
 }
 
 .skill-btn:hover:not(:disabled) { background: rgba(139, 92, 246, 0.15); border-color: #a78bfa; }
-.skill-btn.no-mp { border-color: #555; }
-.skill-icon { font-size: 18px; }
-.skill-name { font-size: 12px; font-weight: 600; }
-.skill-effect { font-size: 10px; }
-.skill-effect-physical_damage { color: #ff6b6b; }
-.skill-effect-magic_damage { color: #a29bfe; }
-.skill-effect-health_restore,
-.skill-effect-mana_restore { color: #4ecdc4; }
-.skill-effect-buff { color: #4CAF50; }
-.skill-effect-debuff { color: #ff9800; }
+.skill-btn.no-mp { border-color: @color-mid-gray; }
+.skill-icon { font-size: @font-xl; }
+.skill-name { font-size: @font-sm; font-weight: @font-weight-semibold; }
+.skill-effect { font-size: @font-2xs; }
+.skill-effect-physical_damage { color: @damage-physical; }
+.skill-effect-magic_damage { color: @damage-magic; }
+.skill-effect-health_restore { color: @heal-hp; }
+.skill-effect-mana_restore { color: @heal-mp; }
+.skill-effect-buff { color: @buff-color; }
+.skill-effect-debuff { color: @debuff-color; }
 .skill-cost {
-  font-size: 10px;
-  color: #6e9bff;
+  font-size: @font-2xs;
+  color: @heal-mp;
   background: rgba(110, 155, 255, 0.15);
-  border-radius: 3px;
+  border-radius: @radius-xs;
   padding: 0 4px;
 }
 .skill-target {
-  font-size: 10px;
+  font-size: @font-2xs;
   color: #a064ff;
   background: rgba(160, 100, 255, 0.15);
-  border-radius: 3px;
+  border-radius: @radius-xs;
   padding: 0 4px;
 }
 
@@ -1220,18 +1230,16 @@ onUnmounted(() => {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.75);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: @radius-lg;
+  .flex-center();
   z-index: 5;
   animation: fadeIn 0.3s ease;
 }
 
 .enemy-turn-text {
-  color: #fbbf24;
-  font-size: 18px;
-  font-weight: 700;
+  color: @log-system;
+  font-size: @font-xl;
+  font-weight: @font-weight-bold;
   animation: pulse 1.2s infinite;
 }
 
@@ -1242,22 +1250,20 @@ onUnmounted(() => {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2200;
+  background: @overlay-heavy;
+  .flex-center();
+  z-index: @z-item-modal;
   animation: fadeIn 0.3s ease;
 }
 
 .result-popup {
-  background: linear-gradient(145deg, #1a1a2e, #16213e);
-  border: 2px solid #4a4a4a;
+  background: @gradient-panel;
+  border: @border-card;
   border-radius: 20px;
   padding: 40px 50px;
   text-align: center;
   min-width: 300px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 12px 40px @overlay-dark;
   /* 入场动画由 anime.js animateResultPopup 处理 */
 }
 
@@ -1267,40 +1273,39 @@ onUnmounted(() => {
   /* 弹跳动画由 anime.js animateResultPopup 处理 */
 }
 
-.result-text { font-size: 28px; font-weight: 700; margin-bottom: 16px; /* 动画初始状态：隐藏 + 下移 16px，由 anime.js animateResultPopup 驱动 */ opacity: 0; transform: translateY(16px); }
-.result-victory { color: #ffd700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
-.result-defeat { color: #e94560; text-shadow: 0 0 20px rgba(233, 69, 96, 0.3); }
-.result-fled { color: #888; }
+.result-text { font-size: @font-5xl; font-weight: @font-weight-bold; margin-bottom: 16px; /* 动画初始状态：隐藏 + 下移 16px，由 anime.js animateResultPopup 驱动 */ opacity: 0; transform: translateY(16px); }
+.result-victory { color: @accent-color; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
+.result-defeat { color: @color-danger-accent; text-shadow: 0 0 20px rgba(233, 69, 96, 0.3); }
+.result-fled { color: @color-dodge; }
 
 .result-rewards {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  .flex-col();
+  gap: @spacing-md;
   margin-bottom: 20px;
 }
 
 .reward-item {
-  font-size: 18px;
-  color: #ffd700;
+  font-size: @font-xl;
+  color: @accent-color;
   /* 滑入动画由 anime.js animateResultPopup 处理 */
 }
 
-.result-countdown { font-size: 13px; color: #888; margin-bottom: 16px; }
+.result-countdown { font-size: 13px; color: @color-dodge; margin-bottom: 16px; }
 
 .result-close-btn {
   padding: 10px 36px;
-  background: rgba(255, 215, 0, 0.15);
-  border: 2px solid #ffd700;
-  border-radius: 8px;
-  color: #ffd700;
+  background: @gold-bg-hover;
+  border: 2px solid @accent-color;
+  border-radius: @radius-lg;
+  color: @accent-color;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: @font-weight-semibold;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all @transition-quick;
 }
 
 .result-close-btn:hover {
-  background: rgba(255, 215, 0, 0.25);
+  background: @gold-bg-strong;
 }
 
 /* 物品选择弹窗 */
@@ -1310,59 +1315,67 @@ onUnmounted(() => {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.7);
-  z-index: 2100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: @overlay-deep;
+  z-index: @z-combat-result;
+  .flex-center();
 }
 
 .item-modal {
   width: 90%;
   max-width: 400px;
   max-height: 60vh;
-  background: linear-gradient(145deg, #1a1a2e, #16213e);
-  border: 2px solid #4a4a4a;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
+  background: @gradient-panel;
+  border: @border-card;
+  border-radius: @radius-xl;
+  .flex-col();
   overflow: hidden;
 }
 
 .item-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  .flex-between();
   padding: 14px 16px;
-  background: rgba(0, 0, 0, 0.4);
-  border-bottom: 1px solid #333;
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffd700;
+  background: @overlay-dim;
+  border-bottom: 1px solid @color-dark-line;
+  font-size: @font-lg;
+  font-weight: @font-weight-bold;
+  color: @accent-color;
 }
 
-.item-modal-close { background: none; border: none; color: #888; font-size: 18px; cursor: pointer; padding: 4px 8px; }
-.item-modal-close:hover { color: #fff; }
+.item-modal-close { background: none; border: none; color: @color-dodge; font-size: @font-xl; cursor: pointer; padding: @spacing-xs @spacing-md; }
+.item-modal-close:hover { color: @popup-text-color; }
 
-.item-modal-body { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.item-modal-body { flex: 1; overflow-y: auto; padding: 8px; .flex-col(); gap: @spacing-md; }
 
 .item-option {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: @spacing-xl;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  background: @white-05;
+  border-radius: @radius-lg;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all @transition-quick;
 }
 
-.item-option:hover { background: rgba(255, 255, 255, 0.1); }
-.item-option .item-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.item-option .item-name { font-size: 14px; color: #fff; font-weight: bold; }
-.item-option .item-desc { font-size: 12px; color: #888; }
-.item-option .item-count { font-size: 13px; color: #ffd700; font-weight: bold; flex-shrink: 0; }
-.item-empty { text-align: center; padding: 24px; color: #555; font-style: italic; }
+.item-option:hover { background: @white-10; }
+.item-option .item-info { flex: 1; min-width: 0; .flex-col(); gap: 2px; }
+.item-option .item-name { font-size: @font-md; color: @popup-text-color; font-weight: @font-weight-bold; }
+.item-option .item-desc { font-size: @font-sm; color: @color-dodge; }
+.item-option .item-count { font-size: 13px; color: @accent-color; font-weight: @font-weight-bold; flex-shrink: 0; }
+.item-empty { text-align: center; padding: 24px; color: @color-mid-gray; font-style: italic; }
+
+// C3：装备技能分区样式
+.item-section-label {
+  padding: 4px 8px;
+  font-size: @font-sm;
+  color: @color-dodge;
+  font-weight: @font-weight-bold;
+  border-top: 1px solid @white-10;
+  &:first-child { border-top: none; }
+}
+.item-option-equipped { background: rgba(168, 85, 247, 0.08); }
+.item-option-equipped:hover { background: rgba(168, 85, 247, 0.16); }
+.item-count-equipped { font-size: @font-sm; color: #a855f7; }
 
 /* 动画 —— 战斗动画已迁移至 @/modules/animation/combat-effects.ts (anime.js) */
 
@@ -1390,14 +1403,14 @@ onUnmounted(() => {
 
 /* 技能冷却 */
 .skill-btn.on-cooldown {
-  opacity: 0.5;
+  opacity: @opacity-dimmed;
   position: relative;
 }
 .skill-cooldown {
-  font-size: 10px;
+  font-size: @font-2xs;
   color: #ffa500;
   background: rgba(255, 165, 0, 0.15);
-  border-radius: 3px;
+  border-radius: @radius-xs;
   padding: 0 4px;
   display: inline-block;
   margin-top: 2px;
@@ -1405,15 +1418,15 @@ onUnmounted(() => {
 
 /* 速度切换按钮 */
 .speed-toggle {
-  background: rgba(255, 215, 0, 0.15);
-  border: 1px solid #ffd700;
-  color: #ffd700;
-  border-radius: 6px;
+  background: @gold-bg-hover;
+  border: 1px solid @accent-color;
+  color: @accent-color;
+  border-radius: @radius-md;
   padding: 2px 10px;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: @font-sm;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all @transition-quick;
 }
 .speed-toggle:hover {
   background: rgba(255, 215, 0, 0.3);
@@ -1429,8 +1442,8 @@ onUnmounted(() => {
 }
 
 .effect-badge {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: @font-xs;
+  font-weight: @font-weight-semibold;
   border-radius: 5px;
   padding: 2px 8px;
   white-space: nowrap;
@@ -1446,9 +1459,9 @@ onUnmounted(() => {
 .effect-badge.effect-speed_up,
 .effect-badge.effect-regen,
 .effect-badge.effect-thorn {
-  background: rgba(39, 174, 96, 0.18);
-  border: 1px solid rgba(39, 174, 96, 0.5);
-  color: #2ecc71;
+  background: @buff-bg;
+  border: 1px solid @buff-border;
+  color: @buff-color;
 }
 
 /* 减益（Debuff）- 红色系 */
@@ -1461,18 +1474,18 @@ onUnmounted(() => {
 .effect-badge.effect-defense_down,
 .effect-badge.effect-speed_down,
 .effect-badge.effect-vulnerable {
-  background: rgba(231, 76, 60, 0.18);
-  border: 1px solid rgba(231, 76, 60, 0.5);
-  color: #e74c3c;
+  background: @debuff-bg;
+  border: 1px solid @debuff-border;
+  color: @debuff-color;
 }
 
 /* 各效果细分配色（保持辨识度） */
-.effect-badge.effect-poison { background: rgba(139, 195, 74, 0.18); border-color: rgba(139, 195, 74, 0.5); color: #8bc34a; }
-.effect-badge.effect-burn { background: rgba(255, 152, 0, 0.18); border-color: rgba(255, 152, 0, 0.5); color: #ff9800; }
-.effect-badge.effect-stun { background: rgba(255, 235, 59, 0.15); border-color: rgba(255, 235, 59, 0.5); color: #ffeb3b; }
-.effect-badge.effect-freeze { background: rgba(0, 188, 212, 0.18); border-color: rgba(0, 188, 212, 0.5); color: #00bcd4; }
-.effect-badge.effect-silence { background: rgba(156, 39, 176, 0.18); border-color: rgba(156, 39, 176, 0.5); color: #ce93d8; }
-.effect-badge.effect-vulnerable { background: rgba(255, 87, 34, 0.18); border-color: rgba(255, 87, 34, 0.5); color: #ff5722; }
+.effect-badge.effect-poison { background: @poison-bg; border-color: @poison-border; color: @poison-color; }
+.effect-badge.effect-burn { background: @burn-bg; border-color: @burn-border; color: @burn-color; }
+.effect-badge.effect-stun { background: @stun-bg; border-color: @stun-border; color: @stun-color; }
+.effect-badge.effect-freeze { background: @freeze-bg; border-color: @freeze-border; color: @freeze-color; }
+.effect-badge.effect-silence { background: @silence-bg; border-color: @silence-border; color: @silence-color; }
+.effect-badge.effect-vulnerable { background: @vulnerable-bg; border-color: @vulnerable-border; color: @vulnerable-color; }
 
 /* ========== Boss 出场演出遮罩 ========== */
 .boss-intro-overlay {
@@ -1482,9 +1495,7 @@ onUnmounted(() => {
   right: 0;
   bottom: 0;
   z-index: 60;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  .flex-center();
   border-radius: 14px;
   /* 统一暗色遮罩 + 虚化底层 */
   background: rgba(0, 0, 0, 0.82);
@@ -1497,9 +1508,9 @@ onUnmounted(() => {
   text-align: center;
   z-index: 2;
   /* 半透明暗色背景增强文字对比度 */
-  background: rgba(0, 0, 0, 0.5);
+  background: @overlay-mid;
   padding: 32px 48px;
-  border-radius: 12px;
+  border-radius: @radius-xl;
 }
 
 .boss-intro-icon {
@@ -1512,21 +1523,21 @@ onUnmounted(() => {
 }
 
 .boss-intro-name {
-  font-size: 28px;
-  font-weight: 900;
-  color: #ffd700;
+  font-size: @font-5xl;
+  font-weight: @font-weight-heavy;
+  color: @accent-color;
   margin-top: 12px;
-  text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 24px rgba(255, 215, 0, 0.6);
+  text-shadow: @text-glow-gold, 0 0 24px rgba(255, 215, 0, 0.6);
   /* 动画初始状态：隐藏 + 下移 20px，由 anime.js 驱动滑入 */
   opacity: 0;
   transform: translateY(20px);
 }
 
 .boss-intro-line {
-  font-size: 16px;
-  color: #fff;
+  font-size: @font-lg;
+  color: @popup-text-color;
   margin-top: 8px;
-  text-shadow: 0 0 8px rgba(0, 0, 0, 0.7), 0 1px 2px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 0 8px @overlay-deep, 0 1px 2px @overlay-mid;
   /* 动画初始状态：隐藏 + 下移 10px，由 anime.js 驱动滑入 */
   opacity: 0;
   transform: translateY(10px);
@@ -1541,9 +1552,7 @@ onUnmounted(() => {
   bottom: 0;
   z-index: 55;
   pointer-events: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  .flex-center();
   border-radius: 14px;
   overflow: hidden;
 }
@@ -1561,7 +1570,7 @@ onUnmounted(() => {
 
 /* 默认暗色遮罩 */
 .phase-transition-darken .phase-transition-backdrop {
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.85) 80%);
+  background: radial-gradient(ellipse at center, @overlay-dim 0%, rgba(0, 0, 0, 0.85) 80%);
 }
 .phase-transition-flame .phase-transition-backdrop {
   background: radial-gradient(ellipse at center, rgba(80, 0, 0, 0.5) 0%, rgba(40, 0, 0, 0.9) 80%);
@@ -1587,8 +1596,8 @@ onUnmounted(() => {
 }
 
 .phase-transition-label {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: @font-md;
+  font-weight: @font-weight-semibold;
   color: rgba(255, 255, 255, 0.6);
   text-transform: uppercase;
   letter-spacing: 3px;
@@ -1596,19 +1605,19 @@ onUnmounted(() => {
 }
 
 .phase-transition-text {
-  font-size: 32px;
-  font-weight: 900;
-  color: #ffd700;
-  text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 215, 0, 0.6), 0 0 64px rgba(255, 100, 0, 0.4);
+  font-size: @font-6xl;
+  font-weight: @font-weight-heavy;
+  color: @accent-color;
+  text-shadow: @text-glow-gold, 0 0 64px rgba(255, 100, 0, 0.4);
   white-space: nowrap;
 }
 
 /* 各特效的文字颜色 */
-.phase-transition-darken .phase-transition-text { color: #ffd700; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 215, 0, 0.6); }
-.phase-transition-flame .phase-transition-text { color: #ff4500; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 69, 0, 0.7), 0 0 64px rgba(255, 0, 0, 0.5); }
-.phase-transition-freeze .phase-transition-text { color: #00bcd4; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(0, 188, 212, 0.7), 0 0 64px rgba(0, 255, 255, 0.4); }
-.phase-transition-lightning .phase-transition-text { color: #a855f7; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(168, 85, 247, 0.7), 0 0 64px rgba(200, 100, 255, 0.5); }
-.phase-transition-shake .phase-transition-text { color: #ff6347; text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 99, 71, 0.7), 0 0 64px rgba(255, 50, 0, 0.5); }
+.phase-transition-darken .phase-transition-text { color: @accent-color; text-shadow: @text-glow-gold; }
+.phase-transition-flame .phase-transition-text { color: #ff4500; text-shadow: 0 0 12px @overlay-heavy, 0 0 32px rgba(255, 69, 0, 0.7), 0 0 64px rgba(255, 0, 0, 0.5); }
+.phase-transition-freeze .phase-transition-text { color: #00bcd4; text-shadow: 0 0 12px @overlay-heavy, 0 0 32px rgba(0, 188, 212, 0.7), 0 0 64px rgba(0, 255, 255, 0.4); }
+.phase-transition-lightning .phase-transition-text { color: @damage-magic; text-shadow: 0 0 12px @overlay-heavy, 0 0 32px rgba(168, 85, 247, 0.7), 0 0 64px rgba(200, 100, 255, 0.5); }
+.phase-transition-shake .phase-transition-text { color: #ff6347; text-shadow: 0 0 12px @overlay-heavy, 0 0 32px rgba(255, 99, 71, 0.7), 0 0 64px rgba(255, 50, 0, 0.5); }
 
 /* Boss 出场和阶段转换动画已迁移至 @/modules/animation/combat-effects.ts (anime.js) */
 

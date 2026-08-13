@@ -41,12 +41,6 @@ export interface EffectHandler {
    */
   getDamageAbsorb?(effect: Effect, incomingDamage: number): number;
 
-  /**
-   * 反伤 — 受到攻击后调用
-   * 返回反弹给攻击方的伤害量
-   */
-  getThornDamage?(effect: Effect, incomingDamage: number): number;
-
   // ===== 控制效果 =====
 
   /** 返回被禁用的行动类型列表 */
@@ -68,10 +62,22 @@ export type ActionType = 'attack' | 'skill' | 'flee';
 export class EffectHandlerRegistry {
   private handlers = new Map<EffectType, EffectHandler>();
 
-  /** 注册一个效果处理器 */
-  register(handler: EffectHandler): void {
-    if (this.handlers.has(handler.type)) {
-      console.warn(`[EffectRegistry] 覆盖已注册的处理器: ${handler.type}`);
+  /**
+   * 注册一个效果处理器
+   * P3-84 修复：默认 force=false，覆盖已注册处理器时在开发环境抛错、生产环境 warn；
+   *            传入 force=true 时静默覆盖。
+   * 注：测试环境（MODE='test'）走 prod 路径保留 warn 行为，兼容既有用例。
+   *
+   * @param handler - 效果处理器实例
+   * @param force - 是否强制覆盖已注册的同类型处理器（默认 false）
+   */
+  register(handler: EffectHandler, force: boolean = false): void {
+    if (this.handlers.has(handler.type) && !force) {
+      // P3-84 修复
+      if (import.meta.env.DEV && import.meta.env.MODE !== 'test') {
+        throw new Error(`[EffectHandler] 效果类型 ${handler.type} 已注册处理器，如需覆盖请传入 force=true`);
+      }
+      console.warn(`[EffectHandler] 效果类型 ${handler.type} 已注册处理器，将被覆盖`);
     }
     this.handlers.set(handler.type, handler);
   }
@@ -109,21 +115,48 @@ export class EffectHandlerRegistry {
   }
 
   /**
-   * 遍历容器中所有效果，调用指定方法，累加结果（用于护盾、反伤、速度）
+   * 遍历容器中所有效果，调用指定方法，累加结果（用于护盾吸收）
    */
   reduceSum(
     container: EffectContainer,
-    method: 'getDamageAbsorb' | 'getThornDamage' | 'getSpeedMod',
+    method: 'getDamageAbsorb',
     ctx: EffectContext,
-    extra: number = 0
+    extra: number
+  ): number;
+  /**
+   * 遍历容器中所有效果，调用指定方法，累加结果（用于速度修正）
+   */
+  reduceSum(
+    container: EffectContainer,
+    method: 'getSpeedMod',
+    ctx: EffectContext
+  ): number;
+  reduceSum(
+    container: EffectContainer,
+    method: 'getDamageAbsorb' | 'getSpeedMod',
+    _ctx: EffectContext,
+    extra?: number
   ): number {
     let result = 0;
+    // P4-001 修复：getDamageAbsorb 需要传递剩余伤害而非原始伤害，
+    // 避免多护盾效果各自基于原始伤害计算吸收量导致超额吸收。
+    // getSpeedMod 不依赖 extra，逐个累加即可。
+    let remaining = extra ?? 0;
     for (const effect of container.effects) {
       const handler = this.handlers.get(effect.type);
       if (!handler) continue;
-      const fn = handler[method] as ((e: Effect, ...args: unknown[]) => number) | undefined;
-      if (fn) {
-        result += fn(effect, extra, ctx);
+      if (method === 'getSpeedMod') {
+        const fn = handler[method] as ((e: Effect) => number) | undefined;
+        if (fn) {
+          result += fn(effect);
+        }
+      } else {
+        const fn = handler[method] as ((e: Effect, incomingDamage: number) => number) | undefined;
+        if (fn && remaining > 0) {
+          const absorbed = fn(effect, remaining);
+          result += absorbed;
+          remaining -= absorbed;
+        }
       }
     }
     return result;
@@ -174,11 +207,9 @@ export class EffectHandlerRegistry {
         }
       }
     }
-    // 眩晕/冰冻时强制跳过回合
-    const hasStunOrFreeze = container.effects.some(
-      e => e.type === 'stun' || e.type === 'freeze'
-    );
-    return { skipTurn: hasStunOrFreeze, types };
+    // 当所有行动类型都被禁用时（attack + skill + flee），强制跳过回合
+    const allDisabled = types.includes('attack') && types.includes('skill') && types.includes('flee');
+    return { skipTurn: allDisabled, types };
   }
 
   /** 检查是否注册了所有内置处理器 */

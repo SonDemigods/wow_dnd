@@ -13,7 +13,7 @@ import { db, type GameStateStorage } from './core';
  * @returns 游戏状态对象，不存在时返回 null
  */
 export async function getGameState(key: string = 'gameState'): Promise<GameStateStorage | null> {
-  const state = await db.runtime_gameState.get(key) as GameStateStorage | undefined;
+  const state = await db.runtime_gameState.get(key);
   return state ?? null;
 }
 
@@ -28,9 +28,10 @@ export async function saveGameState(patch: Partial<GameStateStorage>, key: strin
   await db.transaction('rw', db.runtime_gameState, async () => {
     const existing = await db.runtime_gameState.get(key);
     await db.runtime_gameState.put({
-      ...existing,
-      id: key,
+      // P12-004 修复：id: key 移到 ...patch 之后，防止 patch.id 覆盖 key
+      ...(existing ?? {}),
       ...patch,
+      id: key,
     } as GameStateStorage);
   });
 }

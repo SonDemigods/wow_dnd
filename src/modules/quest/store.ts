@@ -1,18 +1,69 @@
 /**
- * 任务模块状态管理（Store 核心架构）
- * 
- * Store 是任务数据的唯一持有者，所有响应式状态集中管理。
- * Action 负责编排：调用 Service 纯函数 → 更新 Store 状态 → 调用 DB 持久化 → 通知其他模块。
+ * @fileoverview 任务模块 —— 状态管理（Pinia Store）
+ *
+ * Store 是任务数据的**唯一持有者**，所有响应式状态集中管理。
+ *
+ * ## 架构分层与数据流
+ *
+ *   外部事件（战斗/收集）
+ *        │
+ *        ▼
+ *   ┌─────────────┐
+ *   │  Store Action │  编排层：接收外部事件，调用 service 纯函数，更新状态，触发持久化
+ *   └──────┬──────┘
+ *          │
+ *     ┌────┴────┐
+ *     ▼         ▼
+ *   service    db.ts
+ *   (纯计算)   (持久化)
+ *     │         │
+ *     └────┬────┘
+ *          ▼
+ *   ┌─────────────┐
+ *   │   状态更新    │  更新 questInstances / questDefinitions（响应式）
+ *   └──────┬──────┘
+ *          ▼
+ *   ┌─────────────┐
+ *   │  通知/日志   │  eventBus.emit() → UI 刷新；useLogStore() → 冒险日志
+ *   └─────────────┘
+ *
+ * ## 关键设计决策
+ *
+ * 1. **奖励在完成时自动发放**：
+ *    _handleQuestCompletion() 在标记 completed 的同时调用 _grantQuestRewards()，
+ *    claimReward() 仅做状态转换（completed → turned_in），不重复发奖。
+ *
+ * 2. **Progress 检查与完成逻辑分离**：
+ *    _processQuestProgress() 负责"进度计算 + 是否完成判定"，
+ *    _handleQuestCompletion() 负责"完成后的收尾"（发奖/通知/日志），
+ *    两者独立，便于 completeQuest（手动完成）复用 _handleQuestCompletion。
+ *
+ * 3. **Map 作为核心数据结构**：
+ *    questDefinitions / questInstances 使用 Map<string, T> 存储，查询 O(1)。
+ *    每次更新都创建新的 Map 实例以触发 Vue 响应式更新。
+ *
+ * P3 BIZ-8 审计决策（2026-07-31）：
+ *   QUEST_ACCEPTED / QUEST_COMPLETED / QUEST_REWARDED 事件载荷包含完整 QuestDefinition 对象。
+ *   - 消费者清单：audio/service.ts:396/400/404 监听但仅 playSfx，不读 data
+ *   - 当前无消费者读取 data.definition，理论上可移除该字段
+ *   - 保留原因：测试中存在断言 definition 字段的用例（test/quest/store.test.ts:348 等），
+ *     且未来 UI 组件（如任务完成弹窗）可能需要立即展示任务标题/奖励信息
+ *   - 后续清理：若确认无 UI 消费者，可移除 definition 字段并更新对应测试
+ *
+ * @module quest/store
  */
+
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { computed, shallowRef } from 'vue';
 import type { QuestDefinition, QuestInstance } from './types';
 import { questDbService } from './db';
-import { eventBus, GameEvents } from '../bus/core';
-import { useLogStore } from '../log/store';
-import { generateLogId } from '../log/service';
-import { useCharacterStore } from '../character/store';
-import { useInventoryStore } from '../inventory/store';
+import { errorReporter } from '@/utils/errorReport';
+import { eventBus, GameEvents } from '@/modules/bus';
+import { useLogStore } from '@/modules/log/store';
+import { generateLogId } from '@/modules/log/service';
+import { useCharacterStore } from '@/modules/character/store';
+import { useToast } from '@/composables/useToast';
+import { useGameStore } from '@/modules/game';
 import {
   checkQuestProgress,
   calculateQuestRewards,
@@ -22,48 +73,124 @@ import {
 } from './service';
 
 /**
+ * 背包操作回调类型（ARCH-2 修复：回调注入替代 quest → inventory 静态依赖）
+ *
+ * quest 模块在 acceptQuest（查询 collect 任务初始进度）和 _grantQuestRewards（发放物品奖励）
+ * 时需要访问背包数据，原直接 import useInventoryStore 形成循环依赖。
+ * 通过回调注入切断依赖，由 GameBootstrap 在初始化时注入 inventoryStore 的对应方法。
+ */
+type GetInventoryItemCountCallback = (itemId: string) => number;
+type AddItemToInventoryCallback = (itemId: string, quantity: number) => number;
+
+/**
+ * 背包操作回调引用（模块级单例）
+ *
+ * 由 GameBootstrap.initialize 调用 setQuestExternalCallbacks 注入，
+ * quest/store 内部 acceptQuest / _grantQuestRewards 通过此回调访问背包。
+ *
+ * 设计权衡同 inventory/store.ts 的 onItemCollectedCallback：
+ * - 同步语义优于 EventBus 异步触发
+ * - 回调注入消除 quest → inventory 静态依赖（循环依赖）
+ */
+let getInventoryItemCountCallback: GetInventoryItemCountCallback | null = null;
+let addItemToInventoryCallback: AddItemToInventoryCallback | null = null;
+
+/**
+ * 设置 quest 模块的外部回调（供 GameBootstrap 在初始化时调用）
+ *
+ * @param callbacks - 外部回调集合，传 null 表示清除
+ */
+export function setQuestExternalCallbacks(callbacks: {
+  getInventoryItemCount: GetInventoryItemCountCallback;
+  addItemToInventory: AddItemToInventoryCallback;
+} | null): void {
+  getInventoryItemCountCallback = callbacks?.getInventoryItemCount ?? null;
+  addItemToInventoryCallback = callbacks?.addItemToInventory ?? null;
+}
+
+/**
+ * 清除 quest 模块的外部回调（供 GameBootstrap.dispose 调用，避免回调泄漏）
+ * P9-052 修复：提供 clear/reset 回调方法，避免模块级回调变量在测试中互相污染
+ */
+export function clearQuestExternalCallbacks(): void {
+  getInventoryItemCountCallback = null;
+  addItemToInventoryCallback = null;
+}
+
+/**
  * 任务状态存储
+ *
+ * 使用 Pinia Composition API（defineStore + setup 函数）实现。
+ * 导出为组合函数 useQuestStore，在组件中通过 useQuestStore() 获取实例。
  */
 export const useQuestStore = defineStore('quest', () => {
-  // ==================== 响应式状态（Store 是唯一数据源） ====================
 
-  /** 任务定义缓存（key: questId） */
-  const questDefinitions = ref<Map<string, QuestDefinition>>(new Map());
+  // ==================== 响应式状态 ====================
 
-  /** 任务实例缓存（key: questId） */
-  const questInstances = ref<Map<string, QuestInstance>>(new Map());
+  /**
+   * 任务定义缓存
+   *
+   * key: questId（如 "teldrassil_defense"）
+   * 在 initialize() 时从 config_quests 表一次性加载，
+   * 全局共享（所有角色看到同一份任务定义）。
+   *
+   * P3-144 修复：改用 shallowRef。更新模式为整体替换，无原地 mutate，避免深度响应式追踪开销。
+   */
+  const questDefinitions = shallowRef<Map<string, QuestDefinition>>(new Map());
 
-  /** 当前选中的角色ID */
-  const currentCharacterId = ref<string | null>(null);
+  /**
+   * 任务实例缓存
+   *
+   * key: questId
+   * 在 initialize() 时从 char_quests 表按当前角色加载，
+   * 每个角色独立（切换角色时重新加载）。
+   *
+   * P3-144 修复：同 questDefinitions，改用 shallowRef。
+   */
+  const questInstances = shallowRef<Map<string, QuestInstance>>(new Map());
+
+  /**
+   * 当前选中的角色ID（P3-153 扩展：收敛到 GameStore 只读 computed 代理）
+   */
+  const gameStore = useGameStore();
+  const currentCharacterId = computed<string | null>(() => gameStore.currentCharacterId);
 
   // ==================== 计算属性 ====================
 
-  /** 所有任务实例列表 */
+  /** 所有任务实例的数组视图（便于 filter/map 操作） */
   const instanceList = computed<QuestInstance[]>(() =>
     Array.from(questInstances.value.values())
   );
 
-  /** 所有任务定义列表 */
+  /** 所有任务定义的数组视图 */
   const definitionList = computed<QuestDefinition[]>(() =>
     Array.from(questDefinitions.value.values())
   );
 
-  /** 进行中的任务 */
+  /** 进行中的任务（status === in_progress） */
   const activeQuests = computed<QuestInstance[]>(() =>
     instanceList.value.filter(i => i.status === 'in_progress')
   );
 
-  /** 已完成（待提交）的任务 */
+  /** 已完成待提交的任务（status === completed） */
   const completedQuests = computed<QuestInstance[]>(() =>
     instanceList.value.filter(i => i.status === 'completed')
   );
 
-  /** 已提交（奖励已领取）的任务 */
+  /** 进行中 + 已完成待提交的任务总数（用于菜单徽章） */
+  const activeCount = computed(() => activeQuests.value.length + completedQuests.value.length);
+
+  /** 已提交终态的任务（status === turned_in） */
   const turnedInQuests = computed<QuestInstance[]>(() =>
     instanceList.value.filter(i => i.status === 'turned_in')
   );
 
-  /** 可用任务定义（未被接取或可重新接取的） */
+  /**
+   * 当前可接取的任务定义
+   *
+   * 筛选条件：等级满足 + 不存在活跃实例（或上次已放弃）。
+   * 由 canAcceptQuest() 纯函数计算。
+   */
   const availableQuests = computed<QuestDefinition[]>(() => {
     const characterLevel = _getCharacterLevel();
     return definitionList.value.filter(def =>
@@ -71,7 +198,12 @@ export const useQuestStore = defineStore('quest', () => {
     );
   });
 
-  /** 进行中的任务（包含定义和进度的组合视图） */
+  /**
+   * 进行中任务的组合视图（定义 + 进度）
+   *
+   * 将 QuestDefinition 和 QuestInstance.progress 合并，
+   * 便于 UI 层一次性获取任务标题、目标列表和当前进度。
+   */
   const inProgressQuests = computed<(QuestDefinition & { progress: QuestInstance['progress'] })[]>(() => {
     const result: (QuestDefinition & { progress: QuestInstance['progress'] })[] = [];
     for (const instance of activeQuests.value) {
@@ -86,14 +218,19 @@ export const useQuestStore = defineStore('quest', () => {
   // ==================== 私有辅助 ====================
 
   /**
-   * 获取当前角色等级（从 characterStore 读取）
+   * 从 characterStore 获取当前角色等级
+   *
+   * characterStore 是 Pinia 全局单例，无需注入。
+   * 没有角色时回退为 1（防止 canAcceptQuest 因 level=0 全部拒绝）。
    */
   function _getCharacterLevel(): number {
     return useCharacterStore().level || 1;
   }
 
   /**
-   * 获取当前角色ID（从 characterStore 读取）
+   * 从 characterStore 获取当前角色ID
+   *
+   * @returns 角色ID，无角色时返回 null
    */
   function _getCharacterId(): string | null {
     return useCharacterStore().getCharacterId();
@@ -101,18 +238,41 @@ export const useQuestStore = defineStore('quest', () => {
 
   /**
    * 持久化单个任务实例到数据库
+   *
+   * 从 currentCharacterId 或 characterStore 获取角色ID，
+   * 调用 questDbService.saveQuestInstance() 写入 char_quests 表。
+   *
+   * P3-151：补齐 try-catch + errorReporter 上报，参考 inventory/store.ts 的最佳实践。
+   * persist 失败时 UI 与 DB 状态可能不一致，需通过 errorReporter 记录便于监测。
+   *
+   * @param instance - 需要持久化的任务实例
    */
   async function _persistInstance(instance: QuestInstance): Promise<void> {
     const cid = currentCharacterId.value || _getCharacterId();
     if (cid) {
-      await questDbService.saveQuestInstance(instance, cid);
+      try {
+        await questDbService.saveQuestInstance(instance, cid);
+      } catch (err) {
+        errorReporter.report(err, 'manual', {
+          context: '任务实例持久化失败，UI 与 DB 状态可能不一致',
+          characterId: cid,
+          questId: instance.questId,
+        });
+      }
     }
   }
 
   /**
    * 更新内存中的任务实例并持久化
+   *
+   * 创建新 Map → set → 赋值给 ref 以触发 Vue 响应式更新，
+   * 然后调用 _persistInstance 写入数据库。
+   *
+   * @param questId  - 任务ID
+   * @param instance - 更新后的任务实例
    */
   async function _updateAndPersistInstance(questId: string, instance: QuestInstance): Promise<void> {
+    // 创建新 Map 实例触发 ref 的响应式替换
     const newInstances = new Map(questInstances.value);
     newInstances.set(questId, instance);
     questInstances.value = newInstances;
@@ -120,18 +280,22 @@ export const useQuestStore = defineStore('quest', () => {
   }
 
   /**
-   * 初始化默认任务定义（DB为空时的回退）
+   * 初始化任务定义
+   *
+   * 优先从 DB 加载已有数据，DB 为空时使用 getDefaultQuests() 写入默认模板。
+   * 默认模板仅在首次启动或数据库被清空时生效。
    */
   async function _initDefaultQuestDefinitions(): Promise<void> {
     const existingDefs = await questDbService.getAllQuestDefinitions();
     if (existingDefs.length > 0) {
+      // DB 中已有数据，直接加载
       const defMap = new Map<string, QuestDefinition>();
       existingDefs.forEach(def => defMap.set(def.id, def));
       questDefinitions.value = defMap;
       return;
     }
 
-    // DB 中没有任务定义，写入默认模板
+    // DB 中没有任务定义（首次启动或数据重置），写入默认模板
     const defaults = getDefaultQuests();
     const defMap = new Map<string, QuestDefinition>();
     for (const quest of defaults) {
@@ -141,18 +305,118 @@ export const useQuestStore = defineStore('quest', () => {
     questDefinitions.value = defMap;
   }
 
+  /**
+   * 处理任务完成后的公共逻辑
+   *
+   * 执行以下步骤（按顺序）：
+   * 1. 构建 updatedInstance（status → completed, completedAt → 当前时间）
+   * 2. 更新内存 + 持久化（_updateAndPersistInstance）
+   * 3. 发放奖励（_grantQuestRewards）
+   * 4. 触发 QUEST_COMPLETED 事件
+   * 5. 记录冒险日志
+   *
+   * 被 _processQuestProgress（自动完成）和 completeQuest（手动完成）共用。
+   *
+   * 注意：先持久化再发奖，防止持久化失败时玩家已获得奖励但任务状态未更新，
+   * 导致同一任务可被重复刷取的漏洞。
+   *
+   * @param questId    - 任务ID
+   * @param instance   - 当前任务实例（进度已更新至完成状态）
+   * @param definition - 任务定义（用于奖励计算和日志文本）
+   * @returns 更新后的任务实例（status = completed）
+   */
+  async function _handleQuestCompletion(
+    questId: string,
+    instance: QuestInstance,
+    definition: QuestDefinition
+  ): Promise<QuestInstance> {
+    const updatedInstance: QuestInstance = {
+      ...instance,
+      status: 'completed',
+      completedAt: Date.now()
+    };
+
+    // 先持久化再发奖：持久化失败则上抛异常不发放奖励，避免玩家可重复刷取（Bug 2 修复）
+    await _updateAndPersistInstance(questId, updatedInstance);
+    await _grantQuestRewards(definition);
+
+    // 通知 UI 刷新（如任务面板、进度条）
+    eventBus.emit(GameEvents.QUEST_COMPLETED, { questId, definition });
+
+    // 记录冒险日志
+    useLogStore().addLogEntry({
+      id: generateLogId(),
+      timestamp: Date.now(),
+      type: 'quest',
+      message: `完成了任务：${definition.title}！`,
+      icon: 'game-icons:check-mark'
+    });
+
+    return updatedInstance;
+  }
+
+  /**
+   * 处理单个任务的进度更新（公共逻辑）
+   *
+   * 被 onEnemyKilled 和 onItemCollected 共用。
+   * 调用 checkQuestProgress() 纯函数计算新进度，
+   * 若目标未全部完成则仅更新进度，若全部完成则委托给 _handleQuestCompletion。
+   *
+   * @param questId      - 任务ID
+   * @param instance     - 当前任务实例
+   * @param definition   - 任务定义
+   * @param relevantData - 触发进度检查的事件数据
+   * @param relevantData.enemyId - 被击杀的敌人ID
+   * @param relevantData.itemId  - 被收集的物品ID
+   * @param relevantData.explored - 是否为新探索格（explore 任务触发标志）
+   * @param relevantData.locationId - 当前探索区域ID（explore 任务可选过滤）
+   * @param relevantData.amount  - 数量（默认 1）
+   * @returns 是否触发了任务完成（供调用方判断是否需要额外 UI 响应）
+   */
+  async function _processQuestProgress(
+    questId: string,
+    instance: QuestInstance,
+    definition: QuestDefinition,
+    relevantData: { enemyId?: string; itemId?: string; explored?: boolean; locationId?: string; amount?: number }
+  ): Promise<boolean> {
+    const result = checkQuestProgress(instance, definition, relevantData);
+    // 无匹配目标，事件与任务无关
+    if (!result) return false;
+
+    const updatedInstance: QuestInstance = {
+      ...instance,
+      progress: result.progress
+    };
+
+    // 所有目标全部达成 → 完成
+    if (result.isComplete) {
+      await _handleQuestCompletion(questId, updatedInstance, definition);
+      return true;
+    }
+
+    // 仅更新进度，任务未完成
+    await _updateAndPersistInstance(questId, updatedInstance);
+    return false;
+  }
+
   // ==================== Action：初始化 ====================
 
   /**
    * 初始化任务模块
-   * 从数据库加载任务定义和当前角色的任务实例
-   * 
-   * @param characterId - 角色ID
+   *
+   * 从数据库加载任务定义（全局）和指定角色的任务实例。
+   * 应在角色登录/切换时调用。
+   *
+   * 加载顺序：
+   * 1. 加载任务定义（_initDefaultQuestDefinitions）
+   * 2. 加载当前角色的任务实例
+   *
+   * @param characterId - 要加载的角色ID
    */
   async function initialize(characterId: string): Promise<void> {
-    currentCharacterId.value = characterId;
+    // P3-153 扩展：currentCharacterId 为只读 computed，由 GameStore 代理，无需在此赋值
 
-    // 加载任务定义（全局数据）
+    // 加载任务定义 —— 全局数据，所有角色共享
     await _initDefaultQuestDefinitions();
 
     // 加载当前角色的任务实例
@@ -167,8 +431,9 @@ export const useQuestStore = defineStore('quest', () => {
   }
 
   /**
-   * 兼容旧接口的无参初始化
-   * 自动从 characterStore 获取角色ID
+   * 无参初始化（兼容旧接口）
+   *
+   * 自动从 characterStore 获取当前角色ID。
    */
   async function init(): Promise<void> {
     const cid = _getCharacterId();
@@ -181,9 +446,17 @@ export const useQuestStore = defineStore('quest', () => {
 
   /**
    * 接受任务
-   * 
-   * @param questId - 任务ID
-   * @returns 是否成功接受
+   *
+   * 执行步骤：
+   * 1. 校验任务定义存在
+   * 2. 校验角色存在
+   * 3. 调用 canAcceptQuest() 检查是否可接取
+   * 4. 调用 generateQuestInstance() 创建实例
+   * 5. 更新 Store 状态 + 持久化到 DB
+   * 6. 触发 QUEST_ACCEPTED 事件 + 记录日志
+   *
+   * @param questId - 要接受的任务ID
+   * @returns 是否成功接受（false = 校验失败）
    */
   async function acceptQuest(questId: string): Promise<boolean> {
     const definition = questDefinitions.value.get(questId);
@@ -192,95 +465,82 @@ export const useQuestStore = defineStore('quest', () => {
     const cid = currentCharacterId.value || _getCharacterId();
     if (!cid) return false;
 
-    // 检查是否可以接受
+    // 检查等级和重复接取限制
     const characterLevel = _getCharacterLevel();
     if (!canAcceptQuest(definition, characterLevel, instanceList.value)) return false;
 
-    // 生成任务实例
-    const instance = generateQuestInstance(definition, cid);
+    // 创建新任务实例（status = in_progress, 所有 progress.current = 0）
+    const instance = generateQuestInstance(definition);
 
-    // 更新 Store 状态
+    // P1-1：对 collect 类型目标，扫描当前背包设置初始进度
+    // ARCH-2 修复：通过回调注入替代 useInventoryStore() 直接调用，消除 quest → inventory 静态依赖
+    const hasCollectObjective = definition.objectives.some(obj => obj.type === 'collect' && obj.itemId);
+    const getItemCount = getInventoryItemCountCallback;
+    if (hasCollectObjective && getItemCount) {
+      instance.progress = instance.progress.map(prog => {
+        const obj = definition.objectives.find(o => o.key === prog.objectiveKey);
+        if (obj?.type === 'collect' && obj.itemId) {
+          const owned = getItemCount(obj.itemId);
+          return { ...prog, current: Math.min(owned, prog.target) };
+        }
+        return prog;
+      });
+    }
+
+    // 更新内存状态
     const newInstances = new Map(questInstances.value);
     newInstances.set(questId, instance);
     questInstances.value = newInstances;
 
-    // 持久化到数据库
+    // 持久化到 IndexedDB
     await _persistInstance(instance);
 
-    // 通知 UI
+    // 通知 UI + 记录日志
     eventBus.emit(GameEvents.QUEST_ACCEPTED, { questId, definition });
-
-    // 记录冒险日志
     useLogStore().addLogEntry({
       id: generateLogId(),
       timestamp: Date.now(),
       type: 'quest',
       message: `接受了任务：${definition.title}`,
-      icon: '📋'
+      icon: 'game-icons:notebook'
     });
 
     return true;
   }
 
-  // ==================== Action：敌人击杀处理 ====================
+  // ==================== Action：进度事件处理 ====================
 
   /**
    * 处理敌人击杀事件
-   * 遍历所有进行中的击杀任务，更新进度；若全部目标完成则自动发放奖励
-   * 
+   *
+   * 遍历所有进行中的任务，调用 _processQuestProgress 检查是否有匹配的击杀目标。
+   * 由 combat/store.ts 在战斗结束时调用。
+   *
+   * 性能说明：当前实现为 O(n * m)，n = 任务数，m = 每个任务的目标数。
+   * 对于当前规模（数十个任务，每个 1-2 个目标）无性能瓶颈。
+   *
    * @param enemyId - 被击杀的敌人ID
    */
   async function onEnemyKilled(enemyId: string): Promise<void> {
     for (const [questId, instance] of questInstances.value) {
+      // 仅检查进行中的任务
       if (instance.status !== 'in_progress') continue;
 
       const definition = questDefinitions.value.get(questId);
       if (!definition) continue;
 
-      const result = checkQuestProgress(instance, definition, { enemyId });
-      if (!result) continue;
-
-      // 更新进度
-      const updatedInstance: QuestInstance = {
-        ...instance,
-        progress: result.progress
-      };
-
-      if (result.isComplete) {
-        // 任务完成 → 自动发放奖励
-        updatedInstance.status = 'completed';
-        updatedInstance.completedAt = Date.now();
-
-        // 发放奖励
-        await _grantQuestRewards(definition);
-
-        // 更新 Store 并持久化
-        await _updateAndPersistInstance(questId, updatedInstance);
-
-        // 通知 UI
-        eventBus.emit(GameEvents.QUEST_COMPLETED, { questId, definition });
-
-        // 记录冒险日志
-        useLogStore().addLogEntry({
-          id: generateLogId(),
-          timestamp: Date.now(),
-          type: 'quest',
-          message: `完成了任务：${definition.title}！`,
-          icon: '✅'
-        });
-      } else {
-        // 仅更新进度
-        await _updateAndPersistInstance(questId, updatedInstance);
-      }
+      // 委托给公共进度处理函数
+      await _processQuestProgress(questId, instance, definition, { enemyId });
     }
   }
 
   /**
    * 处理物品收集事件
-   * 遍历所有进行中的收集任务，更新进度
-   * 
+   *
+   * 遍历所有进行中的任务，检查是否有匹配的收集目标。
+   *
    * @param itemId - 收集的物品ID
-   * @param amount - 收集数量，默认为1
+   * @param amount - 收集数量（默认 1，批量收集时可传入具体数量）
    */
   async function onItemCollected(itemId: string, amount: number = 1): Promise<void> {
     for (const [questId, instance] of questInstances.value) {
@@ -289,44 +549,41 @@ export const useQuestStore = defineStore('quest', () => {
       const definition = questDefinitions.value.get(questId);
       if (!definition) continue;
 
-      const result = checkQuestProgress(instance, definition, { itemId, amount });
-      if (!result) continue;
+      await _processQuestProgress(questId, instance, definition, { itemId, amount });
+    }
+  }
 
-      const updatedInstance: QuestInstance = {
-        ...instance,
-        progress: result.progress
-      };
+  /**
+   * 处理探索新格事件
+   *
+   * 遍历所有进行中的任务，检查是否有匹配的探索目标。
+   * 由 exploration/store.ts 在 revealGrid / onBattleResult 新格首次探索时调用。
+   *
+   * @param locationId - 当前探索区域ID（可选，explore 目标可用 locationId 限定区域）
+   */
+  async function onCellExplored(locationId?: string): Promise<void> {
+    for (const [questId, instance] of questInstances.value) {
+      if (instance.status !== 'in_progress') continue;
 
-      if (result.isComplete) {
-        updatedInstance.status = 'completed';
-        updatedInstance.completedAt = Date.now();
+      const definition = questDefinitions.value.get(questId);
+      if (!definition) continue;
 
-        await _grantQuestRewards(definition);
-        await _updateAndPersistInstance(questId, updatedInstance);
-
-        eventBus.emit(GameEvents.QUEST_COMPLETED, { questId, definition });
-
-        useLogStore().addLogEntry({
-          id: generateLogId(),
-          timestamp: Date.now(),
-          type: 'quest',
-          message: `完成了任务：${definition.title}！`,
-          icon: '✅'
-        });
-      } else {
-        await _updateAndPersistInstance(questId, updatedInstance);
-      }
+      await _processQuestProgress(questId, instance, definition, { explored: true, locationId });
     }
   }
 
   // ==================== Action：完成任务（手动触发） ====================
 
   /**
-   * 手动完成任务（在不是自动检测进度的情况下使用）
-   * 计算奖励 → 发放至角色/背包 → 更新状态 → 持久化
-   * 
+   * 手动完成任务
+   *
+   * 与 _processQuestProgress 不同，不走 checkQuestProgress() 进度计算，
+   * 而是直接检查所有 progress.current >= target 后调用 _handleQuestCompletion。
+   *
+   * 适用场景：任务目标已通过进度条显示达成，玩家手动点击"完成"按钮。
+   *
    * @param questId - 任务ID
-   * @returns 是否成功完成
+   * @returns 是否成功完成（false = 实例不存在 / 状态非 in_progress / 目标未全部达成）
    */
   async function completeQuest(questId: string): Promise<boolean> {
     const instance = questInstances.value.get(questId);
@@ -335,44 +592,24 @@ export const useQuestStore = defineStore('quest', () => {
     const definition = questDefinitions.value.get(questId);
     if (!definition) return false;
 
-    // 检查所有目标是否达成
+    // 手动确认所有目标均已达成
     const allComplete = instance.progress.every(p => p.current >= p.target);
     if (!allComplete) return false;
 
-    // 发放奖励
-    await _grantQuestRewards(definition);
-
-    // 更新状态
-    const updatedInstance: QuestInstance = {
-      ...instance,
-      status: 'completed',
-      completedAt: Date.now()
-    };
-    await _updateAndPersistInstance(questId, updatedInstance);
-
-    // 通知 UI
-    eventBus.emit(GameEvents.QUEST_COMPLETED, { questId, definition });
-
-    // 记录冒险日志
-    useLogStore().addLogEntry({
-      id: generateLogId(),
-      timestamp: Date.now(),
-      type: 'quest',
-      message: `完成了任务：${definition.title}！`,
-      icon: '✅'
-    });
-
+    await _handleQuestCompletion(questId, instance, definition);
     return true;
   }
 
-  // ==================== Action：领取奖励 ====================
+  // ==================== Action：领取奖励（提交任务） ====================
 
   /**
-   * 领取任务奖励（将任务标记为"已提交"）
-   * 注意：奖励已在完成时自动发放，此方法仅做状态转换
-   * 
+   * 领取任务奖励（提交任务）
+   *
+   * 注意：奖励已在完成时通过 _handleQuestCompletion → _grantQuestRewards 自动发放，
+   * 此方法仅将状态从 completed 转换为 turned_in（终态）。
+   *
    * @param questId - 任务ID
-   * @returns 是否成功领取
+   * @returns 是否成功领取（false = 实例不存在 / 状态非 completed）
    */
   async function claimReward(questId: string): Promise<boolean> {
     const instance = questInstances.value.get(questId);
@@ -381,7 +618,7 @@ export const useQuestStore = defineStore('quest', () => {
     const definition = questDefinitions.value.get(questId);
     if (!definition) return false;
 
-    // 更新状态为"已提交"
+    // 标记为已提交（终态）
     const updatedInstance: QuestInstance = {
       ...instance,
       status: 'turned_in'
@@ -391,7 +628,7 @@ export const useQuestStore = defineStore('quest', () => {
     // 通知 UI
     eventBus.emit(GameEvents.QUEST_REWARDED, { questId, definition });
 
-    // 记录冒险日志
+    // 记录冒险日志（显示奖励详情）
     const rewardParts: string[] = [];
     if (definition.xpReward > 0) rewardParts.push(`${definition.xpReward} 经验`);
     if (definition.goldReward > 0) rewardParts.push(`${definition.goldReward} 金币`);
@@ -401,7 +638,7 @@ export const useQuestStore = defineStore('quest', () => {
       timestamp: Date.now(),
       type: 'quest',
       message: `提交了任务：${definition.title}${rewardText}`,
-      icon: '🏆'
+      icon: 'game-icons:laurel-crown'
     });
 
     return true;
@@ -411,15 +648,16 @@ export const useQuestStore = defineStore('quest', () => {
 
   /**
    * 放弃任务
-   * 
+   *
+   * 将状态标记为 abandoned，后续可通过 acceptQuest 重新接取。
+   *
    * @param questId - 任务ID
-   * @returns 是否成功放弃
+   * @returns 是否成功放弃（false = 实例不存在 / 状态非 in_progress）
    */
   async function abandonQuest(questId: string): Promise<boolean> {
     const instance = questInstances.value.get(questId);
     if (!instance || instance.status !== 'in_progress') return false;
 
-    // 更新状态
     const updatedInstance: QuestInstance = {
       ...instance,
       status: 'abandoned'
@@ -434,7 +672,7 @@ export const useQuestStore = defineStore('quest', () => {
         timestamp: Date.now(),
         type: 'quest',
         message: `放弃了任务：${definition.title}`,
-        icon: '❌'
+        icon: 'game-icons:cancel'
       });
     }
 
@@ -444,46 +682,83 @@ export const useQuestStore = defineStore('quest', () => {
   // ==================== 私有：发放任务奖励 ====================
 
   /**
-   * 向角色发放任务奖励（经验、金币、物品）
-   * 直接调用 characterStore 和 inventoryStore 的 Action
+   * 向角色发放任务奖励
+   *
+   * 调用 calculateQuestRewards() 纯函数计算奖励，
+   * 然后分别调用 characterStore 和 inventoryStore 的 Action 发放。
+   *
+   * 注意：物品奖励通过 inventoryStore.addItem 同步调用（非 async），
+   * 这是 Pinia Store 内部 Action 调用的典型模式。
+   *
+   * P3 DB-12 审计决策（2026-07-31）：跨模块发奖未使用 db.transaction 保护，属有意设计权衡：
+   * - 跨 char_data（经验/金币）与 char_inventory（物品）的事务在 Dexie 中实现成本高
+   * - _handleQuestCompletion 已通过"先持久化任务状态再发奖"避免重复刷取（行 269-270）
+   * - 部分失败场景：经验/金币已发但物品背包满时，已通过 toast 提示玩家（行 673-678）
+   * - 若未来要求严格事务性，需将 char_data 与 char_inventory 写入包在 db.transaction 中，
+   *   但跨模块事务实现成本较高，建议保留现状但增强日志记录丢失的奖励
+   *
+   * @param definition - 任务定义（含奖励字段）
    */
   async function _grantQuestRewards(definition: QuestDefinition): Promise<void> {
     const rewards = calculateQuestRewards(definition);
 
-    // 发放经验奖励
+    // 经验奖励 → characterStore
     if (rewards.exp > 0) {
       await useCharacterStore().gainExp(rewards.exp);
     }
 
-    // 发放金币奖励
+    // 金币奖励 → characterStore
     if (rewards.gold > 0) {
       await useCharacterStore().gainGold(rewards.gold);
     }
 
-    // 发放物品奖励
+    // 物品奖励 → inventoryStore（ARCH-2 修复：通过回调注入替代 useInventoryStore() 直接调用）
     for (const item of rewards.items) {
-      useInventoryStore().addItem(item.itemId, item.count);
+      // P2-2：检查 addItem 返回值，背包满时提示玩家
+      // P4-013 修复：回调未注入时用 errorReporter 上报（P7-020：统一为 errorReporter 模式）
+      if (!addItemToInventoryCallback) {
+        errorReporter.report(new Error('addItemToInventoryCallback 未注入'), 'manual', {
+          context: '任务奖励物品无法发放，请检查 GameBootstrap 初始化流程',
+        });
+      }
+      const added = addItemToInventoryCallback ? addItemToInventoryCallback(item.itemId, item.count) : 0;
+      if (added < item.count) {
+        useToast().show({
+          message: `背包已满，任务奖励物品仅获得 ${added}/${item.count}`,
+          type: 'warning',
+          duration: 3000
+        });
+      }
     }
   }
 
   // ==================== Action：查询 ====================
 
   /**
-   * 获取任务定义
+   * 获取任务定义（同步查询，O(1)）
+   *
+   * @param questId - 任务ID
+   * @returns 任务定义，不存在时返回 null
    */
   function getQuestDefinition(questId: string): QuestDefinition | null {
     return questDefinitions.value.get(questId) || null;
   }
 
   /**
-   * 获取任务实例
+   * 获取任务实例（同步查询，O(1)）
+   *
+   * @param questId - 任务ID
+   * @returns 任务实例，不存在时返回 null
    */
   function getQuestInstance(questId: string): QuestInstance | null {
     return questInstances.value.get(questId) || null;
   }
 
   /**
-   * 检查任务是否可用（可接取）
+   * 检查任务是否可接取
+   *
+   * @param questId - 任务ID
+   * @returns 是否可接取（false = 定义不存在 / 等级不足 / 已有活跃实例）
    */
   function isQuestAvailable(questId: string): boolean {
     const definition = questDefinitions.value.get(questId);
@@ -494,14 +769,22 @@ export const useQuestStore = defineStore('quest', () => {
   }
 
   /**
-   * 获取指定任务板上的任务定义
+   * 获取指定任务板上的所有任务定义
+   *
+   * @param boardId - 任务板ID（如 "teldrassil"、"elwynn"）
+   * @returns 该任务板上的任务定义列表
    */
   function getQuestsFromBoard(boardId: string): QuestDefinition[] {
     return definitionList.value.filter(def => def.boardId === boardId);
   }
 
   /**
-   * 获取指定任务板上可提交的任务定义
+   * 获取指定任务板上可提交（已完成）的任务定义
+   *
+   * 遍历 questInstances，筛选 status='completed' 且 definition.boardId 匹配的任务。
+   *
+   * @param boardId - 任务板ID
+   * @returns 可提交的任务定义列表
    */
   function getQuestsToTurnIn(boardId: string): QuestDefinition[] {
     const result: QuestDefinition[] = [];
@@ -517,7 +800,11 @@ export const useQuestStore = defineStore('quest', () => {
   }
 
   /**
-   * 从任务板接受任务
+   * 从指定任务板接受任务（带 boardId 校验）
+   *
+   * @param boardId - 任务板ID
+   * @param questId - 任务ID
+   * @returns 是否成功接受
    */
   async function acceptQuestFromBoard(boardId: string, questId: string): Promise<boolean> {
     const definition = questDefinitions.value.get(questId);
@@ -526,7 +813,11 @@ export const useQuestStore = defineStore('quest', () => {
   }
 
   /**
-   * 在任务板提交任务（领取奖励）
+   * 在指定任务板提交任务（领取奖励）
+   *
+   * @param boardId - 任务板ID
+   * @param questId - 任务ID
+   * @returns 是否成功提交
    */
   async function turnInQuestToBoard(boardId: string, questId: string): Promise<boolean> {
     const definition = questDefinitions.value.get(questId);
@@ -534,74 +825,62 @@ export const useQuestStore = defineStore('quest', () => {
     return claimReward(questId);
   }
 
-  /**
-   * 提交任务（兼容旧接口，等同于 claimReward）
-   */
-  async function turnInQuest(questId: string): Promise<boolean> {
-    return claimReward(questId);
-  }
-
   // ==================== Action：重置 ====================
 
   /**
-   * 重置当前角色的任务数据（清空内存状态，不删除数据库）
+   * 重置任务数据
+   *
+   * 清空内存中的任务实例 + 清除数据库中所有 char_quests 行。
+   * 注意：任务定义（config_quests）不受影响。
    */
-  function reset(): void {
+  async function reset(): Promise<void> {
     questInstances.value = new Map();
-  }
-
-  /**
-   * 清理资源
-   */
-  function dispose(): void {
-    eventBus.clearGroup('questStore');
+    await questDbService.clearAllQuestInstances();
   }
 
   // ==================== 导出 ====================
 
   return {
-    // 状态
+    // —— 状态 ——
     questDefinitions,
     questInstances,
     currentCharacterId,
 
-    // 计算属性
+    // —— 计算属性 ——
     definitionList,
     instanceList,
     activeQuests,
     completedQuests,
+    activeCount,
     turnedInQuests,
     availableQuests,
     inProgressQuests,
 
-    // Action：初始化
+    // —— Action：初始化 ——
     initialize,
     init,
 
-    // Action：核心操作
+    // —— Action：核心操作 ——
     acceptQuest,
     onEnemyKilled,
     onItemCollected,
+    onCellExplored,
     completeQuest,
     claimReward,
     abandonQuest,
 
-    // Action：查询
+    // —— Action：查询 ——
     getQuestDefinition,
     getQuestInstance,
     isQuestAvailable,
     getQuestsFromBoard,
     getQuestsToTurnIn,
 
-    // Action：任务板操作
+    // —— Action：任务板操作 ——
     acceptQuestFromBoard,
     turnInQuestToBoard,
 
-    // Action：兼容旧接口
-    turnInQuest,
-    reset,
-
-    // 生命周期
-    dispose
+    // —— Action：重置 ——
+    reset
   };
 });

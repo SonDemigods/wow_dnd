@@ -1,7 +1,7 @@
 <template>
   <span class="skill-tags">
     <EffectTag :type="skill.type" />
-    <span class="skill-tag skill-tag-cost">{{ skill.mpCost }} MP</span>
+    <span class="skill-tag skill-tag-cost">{{ skill.mpCost ?? 0 }} MP</span>
     <span v-if="skill.cooldown && skill.cooldown > 0" class="skill-tag skill-tag-cooldown">
       冷却 {{ skill.cooldown }} 回合
     </span>
@@ -28,19 +28,15 @@ defineProps<{
 const { getTargetTypeName } = useSkillDisplay();
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .skill-tags {
   display: flex;
-  gap: 6px;
+  gap: @spacing-sm;
   flex-wrap: wrap;
 }
 
 .skill-tag {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: bold;
-  white-space: nowrap;
+  .tag-base();
 }
 
 /* MP 消耗标签 */

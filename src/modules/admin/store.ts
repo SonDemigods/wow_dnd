@@ -6,8 +6,9 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { adminService } from './service';
-import type { AdminView, ConfigTableName, FormConfig } from './types';
+import type { AdminView, ConfigTableName, FormConfig, ReferenceOption } from './types';
 import { CONFIG_TABLES } from './types';
+import { configCache } from '@/modules/config';
 
 /**
  * 后台管理状态存储
@@ -22,7 +23,7 @@ export const useAdminStore = defineStore('admin', () => {
   const selectedConfigTable = ref<ConfigTableName>('mobs');
 
   /** 表格数据缓存 */
-  const tableData = ref<any[]>([]);
+  const tableData = ref<Record<string, unknown>[]>([]);
 
   /** 是否正在加载 */
   const isLoading = ref(false);
@@ -40,21 +41,30 @@ export const useAdminStore = defineStore('admin', () => {
   });
 
   /** 当前编辑的记录 */
-  const editingRecord = ref<any>(null);
+  const editingRecord = ref<Record<string, unknown> | null>(null);
 
   /** 搜索关键词 */
   const searchKeyword = ref('');
 
+  /** 分页状态 */
+  const currentPage = ref(1);
+  const pageSize = ref(20);
+  const totalCount = ref(0);
+
+  /** 排序状态 */
+  const sortBy = ref<string>('');
+  const sortOrder = ref<'asc' | 'desc'>('asc');
+
   /** 参考数据：阵营下拉选项 */
-  const referenceFactions = ref<Array<{ value: string; label: string }>>([]);
+  const referenceFactions = ref<ReferenceOption[]>([]);
   /** 参考数据：种族下拉选项 */
-  const referenceRaces = ref<Array<{ value: string; label: string }>>([]);
+  const referenceRaces = ref<ReferenceOption[]>([]);
   /** 参考数据：职业下拉选项 */
-  const referenceClasses = ref<Array<{ value: string; label: string }>>([]);
+  const referenceClasses = ref<ReferenceOption[]>([]);
   /** 参考数据：地点下拉选项 */
-  const referenceLocations = ref<Array<{ value: string; label: string }>>([]);
+  const referenceLocations = ref<ReferenceOption[]>([]);
   /** 参考数据：大陆下拉选项（从 locations 中筛选 type='continent'） */
-  const referenceContinents = ref<Array<{ value: string; label: string }>>([]);
+  const referenceContinents = ref<ReferenceOption[]>([]);
 
   // ==================== 计算属性 ====================
 
@@ -76,11 +86,14 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   /**
-   * 选择配置表
+   * 选择配置表（重置分页和排序）
    */
   function selectConfigTable(table: ConfigTableName) {
     selectedConfigTable.value = table;
     searchKeyword.value = '';
+    currentPage.value = 1;
+    sortBy.value = '';
+    sortOrder.value = 'asc';
     loadTableData();
   }
 
@@ -97,7 +110,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   /**
-   * 加载当前选中表的数据
+   * 加载当前选中表的数据（分页 + 排序 + 搜索）
    */
   async function loadTableData() {
     const meta = currentTableMeta.value;
@@ -105,11 +118,18 @@ export const useAdminStore = defineStore('admin', () => {
 
     isLoading.value = true;
     try {
-      if (searchKeyword.value) {
-        tableData.value = await adminService.searchTable(meta.dbTable, searchKeyword.value);
-      } else {
-        tableData.value = await adminService.getAll(meta.dbTable);
-      }
+      const result = await adminService.getPagedData(
+        meta.dbTable,
+        currentPage.value,
+        pageSize.value,
+        {
+          sortBy: sortBy.value || undefined,
+          sortOrder: sortOrder.value,
+          keyword: searchKeyword.value,
+        },
+      );
+      tableData.value = result.data;
+      totalCount.value = result.total;
     } finally {
       isLoading.value = false;
     }
@@ -126,7 +146,7 @@ export const useAdminStore = defineStore('admin', () => {
   /**
    * 打开编辑表单
    */
-  function openEditForm(record: any, title: string) {
+  function openEditForm(record: Record<string, unknown>, title: string) {
     editingRecord.value = { ...record };
     formConfig.value = { mode: 'edit', visible: true, title };
   }
@@ -142,18 +162,30 @@ export const useAdminStore = defineStore('admin', () => {
   /**
    * 保存记录（创建或更新）
    */
-  async function saveRecord(tableName: string, data: any): Promise<boolean> {
+  async function saveRecord(tableName: string, data: Record<string, unknown>): Promise<boolean> {
     const isEdit = formConfig.value.mode === 'edit';
-    let result;
+    let result: { success: boolean; error?: string };
 
     if (isEdit) {
-      const id = editingRecord.value?.id;
+      // P7-023 修复：运行时校验 id 非空非空字符串，避免误写
+      const id = editingRecord.value?.id as string | undefined;
+      if (!id || (typeof id === 'string' && id.trim() === '')) {
+        return false;
+      }
       result = await adminService.update(tableName, id, data);
     } else {
       result = await adminService.add(tableName, data);
     }
 
     if (result.success) {
+      // P11-501 修复：按表名精准失效 ConfigCache 对应缓存
+      if (tableName === 'config_class_talents') {
+        configCache.invalidate('talents');
+      } else if (tableName === 'config_class_passives') {
+        configCache.invalidate('passives');
+      } else if (tableName === 'config_set_definitions') {
+        configCache.invalidate('sets');
+      }
       closeForm();
       await loadTableData();
       return true;
@@ -167,15 +199,91 @@ export const useAdminStore = defineStore('admin', () => {
   async function deleteRecord(tableName: string, id: string): Promise<boolean> {
     const result = await adminService.delete(tableName, id);
     if (result.success) {
+      // P11-501 修复：按表名精准失效 ConfigCache 对应缓存
+      if (tableName === 'config_class_talents') {
+        configCache.invalidate('talents');
+      } else if (tableName === 'config_class_passives') {
+        configCache.invalidate('passives');
+      } else if (tableName === 'config_set_definitions') {
+        configCache.invalidate('sets');
+      }
       await loadTableData();
       return true;
     }
     return false;
   }
 
-  /** 执行搜索并重新加载数据 */
+  /** 执行搜索并重新加载数据（重置到第1页） */
   async function doSearch(keyword: string) {
     searchKeyword.value = keyword;
+    currentPage.value = 1;
+    await loadTableData();
+  }
+
+  /** 按表名失效 ConfigCache 对应缓存 */
+  function invalidateConfigCache(tableName: string): void {
+    if (tableName === 'config_class_talents') {
+      configCache.invalidate('talents');
+    } else if (tableName === 'config_class_passives') {
+      configCache.invalidate('passives');
+    } else if (tableName === 'config_set_definitions') {
+      configCache.invalidate('sets');
+    }
+  }
+
+  /** 批量导入记录 */
+  async function importRecords(tableName: string, records: Record<string, unknown>[]): Promise<{ success: number; fail: number }> {
+    let success = 0;
+    let fail = 0;
+    for (const record of records) {
+      const result = await adminService.add(tableName, record, record.id as string | undefined);
+      if (result.success) {
+        success++;
+      } else {
+        fail++;
+      }
+    }
+    invalidateConfigCache(tableName);
+    await loadTableData();
+    return { success, fail };
+  }
+
+  /** 重置当前表为默认值 */
+  async function resetTable(): Promise<boolean> {
+    const meta = currentTableMeta.value;
+    if (!meta) return false;
+    const result = await adminService.resetToDefaults(meta.dbTable);
+    if (result.success) {
+      invalidateConfigCache(meta.dbTable);
+      currentPage.value = 1;
+      await loadTableData();
+      return true;
+    }
+    return false;
+  }
+
+  /** 切换排序字段（点击同一列切换方向，点击新列重置为 asc） */
+  async function toggleSort(columnKey: string) {
+    if (sortBy.value === columnKey) {
+      sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortBy.value = columnKey;
+      sortOrder.value = 'asc';
+    }
+    currentPage.value = 1;
+    await loadTableData();
+  }
+
+  /** 切换每页条数 */
+  async function changePageSize(size: number) {
+    pageSize.value = size;
+    currentPage.value = 1;
+    await loadTableData();
+  }
+
+  /** 跳转到指定页 */
+  async function changePage(page: number) {
+    currentPage.value = page;
     await loadTableData();
   }
 
@@ -185,18 +293,18 @@ export const useAdminStore = defineStore('admin', () => {
    */
   async function loadReferenceData(): Promise<void> {
     const [factions, races, classes, locations] = await Promise.all([
-      adminService.getAll<any>('config_factions'),
-      adminService.getAll<any>('config_races'),
-      adminService.getAll<any>('config_classes'),
-      adminService.getAll<any>('config_locations'),
+      adminService.getAll<Record<string, unknown>>('config_factions'),
+      adminService.getAll<Record<string, unknown>>('config_races'),
+      adminService.getAll<Record<string, unknown>>('config_classes'),
+      adminService.getAll<Record<string, unknown>>('config_locations'),
     ]);
-    referenceFactions.value = factions.map((f: any) => ({ value: f.id, label: f.name }));
-    referenceRaces.value = races.map((r: any) => ({ value: r.id, label: r.name }));
-    referenceClasses.value = classes.map((c: any) => ({ value: c.id, label: c.name }));
-    referenceLocations.value = locations.map((l: any) => ({ value: l.id, label: l.name }));
+    referenceFactions.value = factions.map((f) => ({ value: f.id as string, label: f.name as string }));
+    referenceRaces.value = races.map((r) => ({ value: r.id as string, label: r.name as string }));
+    referenceClasses.value = classes.map((c) => ({ value: c.id as string, label: c.name as string }));
+    referenceLocations.value = locations.map((l) => ({ value: l.id as string, label: l.name as string }));
     referenceContinents.value = locations
-      .filter((l: any) => l.type === 'continent')
-      .map((l: any) => ({ value: l.id, label: l.name }));
+      .filter((l) => l.type === 'continent')
+      .map((l) => ({ value: l.id as string, label: l.name as string }));
   }
 
   return {
@@ -209,6 +317,11 @@ export const useAdminStore = defineStore('admin', () => {
     formConfig,
     editingRecord,
     searchKeyword,
+    currentPage,
+    pageSize,
+    totalCount,
+    sortBy,
+    sortOrder,
     referenceFactions,
     referenceRaces,
     referenceClasses,
@@ -224,11 +337,16 @@ export const useAdminStore = defineStore('admin', () => {
     loadDashboardStats,
     loadTableData,
     doSearch,
+    toggleSort,
+    changePageSize,
+    changePage,
     openCreateForm,
     openEditForm,
     closeForm,
     saveRecord,
     deleteRecord,
+    importRecords,
+    resetTable,
     loadReferenceData,
   };
 });

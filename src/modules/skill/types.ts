@@ -1,18 +1,45 @@
 /**
  * @fileoverview 技能模块类型定义
- * @description 包含技能类型、技能数据、技能栏、技能服务等相关类型定义
+ * @description 包含技能类型、技能数据、技能栏、技能服务等相关类型定义。
+ *              本文件是 skill 模块的类型基石，所有接口和类型别名均在此集中定义。
+ * @module skill
  */
 
-import type { EffectType } from '../combat/effects';
+// P3-164：从独立文件导入 EffectType，消除 skill ↔ combat 模块间类型循环依赖
+import type { EffectType } from '@/modules/combat/effects/effect-type';
+import type { ResourceType } from '@/modules/combat/resources/types';
+
+/**
+ * 主属性键类型
+ *
+ * 用于 SkillEffect.statKey，指定技能伤害加成依赖的主属性。
+ * 与 Stats 接口（@/modules/character）的属性名保持一致。
+ * - `str`：力量（战士/亡灵骑士主属性）
+ * - `dex`：敏捷（猎人/潜行者/武僧/影刃猎手主属性）
+ * - `con`：体质
+ * - `int`：智力（法师/术士/龙脉术士主属性）
+ * - `wis`：智慧（牧师/萨满/德鲁伊主属性）
+ * - `cha`：魅力（圣骑士主属性）
+ */
+export type StatKey = 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
+
+// ============================================================================
+// 枚举类型
+// ============================================================================
 
 /**
  * 技能类型枚举
- * - physical_damage: 物理伤害技能
- * - magic_damage: 魔法伤害技能
- * - health_restore: 生命恢复技能
- * - mana_restore: 法力恢复技能
- * - buff: 增益技能（对自身/友方施加正面效果）
- * - debuff: 减益技能（对敌人施加负面效果）
+ *
+ * 决定技能的核心行为语义和伤害计算公式。
+ * - `physical_damage`：物理伤害技能（受力量 STR 加成，系数见 `getSkillCoefficient`）
+ * - `magic_damage`：魔法伤害技能（受智力 INT 加成，系数见 `getSkillCoefficient`）
+ * - `health_restore`：生命恢复技能（受智慧 WIS 加成，系数见 `getSkillCoefficient`）
+ * - `mana_restore`：法力恢复技能（受智力 INT 加成，系数见 `getSkillCoefficient`）
+ * - `buff`：增益技能（对自身/友方施加正面效果，效果通过 `buffs` 字段定义）
+ * - `debuff`：减益技能（对敌人施加负面效果，效果通过 `buffs` 字段定义）
+ *
+ * @see calculateSkillDamage 根据此类型选择不同的伤害计算公式
+ * @see Skill.buffs buff/debuff 类型的技能使用 `buffs` 字段而非 `effect.type`
  */
 export type SkillType =
   | 'physical_damage'
@@ -24,89 +51,150 @@ export type SkillType =
 
 /**
  * 技能槽位索引类型
- * 技能栏中4个槽位的索引范围（0-3）
+ *
+ * 技能栏中 4 个槽位的索引范围（0-3）。
+ * 使用字面量联合类型而非 `number`，提供编译时越界检查。
+ *
+ * @see SkillBar 技能栏固定 4 个槽位
+ * @see equipSkill 使用此类型校验槽位索引
  */
 export type SkillSlotIndex = 0 | 1 | 2 | 3;
 
+// ============================================================================
+// 核心数据接口
+// ============================================================================
+
 /**
  * 技能效果接口
- * 描述技能效果的详细参数
- * @property {SkillType} type - 技能类型
- * @property {number} value - 基础效果值
- * @property {number} [coefficient] - 系数（用于计算实际效果）
+ *
+ * 描述技能的直接效果参数（伤害/恢复），与 `buffs` 互补。
+ * 注意：对于 `buff`/`debuff` 类型技能，实际的 buff 效果存储在 `Skill.buffs` 字段中，
+ * `effect` 仅用于计算额外的数值型效果。
+ *
+ * @property {SkillType} type - 技能效果类型（实际使用中通常为数值型：damage/heal 系列）
+ * @property {number} value - 基础效果值（受属性加成前的原始数值）
+ * @property {number} [coefficient] - 自定义属性加成系数。如未提供，使用 `getSkillCoefficient` 按等级自动计算
+ * @property {StatKey} [statKey] - 伤害加成依赖的主属性。未指定时按 SkillType 默认（physical→str, magic→int, heal→wis）
+ *
+ * @see calculateSkillDamage 使用此接口计算实际伤害/恢复值
  */
 export interface SkillEffect {
   type: SkillType;
   value: number;
   coefficient?: number;
+  statKey?: StatKey;
 }
 
 /**
  * 技能 Buff/Debuff 效果配置
- * @property {EffectType} type - 效果类型（如 attack_up、poison、shield 等）
- * @property {number} value - 效果基础值
- * @property {number} turns - 持续回合数
+ *
+ * 定义单个 Buff/Debuff 的具体参数，每个技能可包含多个 Buff 效果。
+ * 效果类型引用自 `combat/effects` 模块的 `EffectType`，确保与战斗系统一致。
+ *
+ * @property {EffectType} type - 效果类型（attack_up / poison / shield / stun 等）
+ * @property {number} value - 效果基础值（含义因 type 不同而异：攻击/防御变化量、护盾量、DoT 伤害等）
+ * @property {number} turns - 持续回合数（控制效果何时自然消除，详见 combat 模块的回合系统）
+ *
+ * @see calculateBuffValue 根据 `stats.wis`（智慧）或 `stats.dex`（敏捷）对 value 进行属性加成
  */
 export interface SkillBuffEffect {
-  /** 效果类型（引用 combat/effects 中的 EffectType） */
   type: EffectType;
-  /** 效果基础值（攻击/防御变化点数、护盾量、DoT 伤害等） */
   value: number;
-  /** 持续回合数 */
   turns: number;
 }
 
 /**
  * 技能数据接口
- * 完整的技能信息，包含静态属性和运行时状态
- * @property {string} id - 技能ID
- * @property {string} name - 技能名称
- * @property {string} icon - 技能图标
- * @property {string} description - 技能描述
- * @property {number} mpCost - 法力消耗
- * @property {SkillType} type - 技能类型
- * @property {SkillEffect} effect - 技能效果
- * @property {number} unlockLevel - 解锁等级
+ *
+ * 完整的技能运行时对象，包含静态配置属性和动态运行时状态。
+ * 玩家已学技能列表 `skills` 中的每个元素均为此接口。
+ *
+ * 数据来源流程：
+ * 1. 技能模板（`SkillTemplateStorage`）存储在 `config_skills` 表中
+ * 2. `toSkill()` 将模板转换为 `Skill` 对象
+ * 3. 玩家学习技能后，`Skill` 对象加入 `useSkillStore().skills` 列表
+ * 4. 装备到技能栏后，通过 `skillBar.slots` 中的 ID 索引对应的 `Skill` 对象
+ *
+ * @property {string} id - 技能唯一标识（格式：`{classId}_skill_{序号}`）
+ * @property {string} name - 技能显示名称
+ * @property {string} icon - 技能图标（Iconify 格式，如 `game-icons:sword-brandish`）
+ * @property {string} description - 技能描述文本
+ * @property {number} [mpCost] - 法力消耗值（P2-76：改为可选，资源型技能可不配置；消费方使用 `?? 0` 处理）
+ * @property {SkillType} type - 技能类型（决定伤害计算公式和 UI 展示）
+ * @property {SkillEffect} effect - 技能直接效果（伤害/恢复）
+ * @property {number} unlockLevel - 解锁所需等级（角色等级 >= 此值才可使用）
+ * @property {number} [cooldown] - 冷却回合数（0 = 无冷却，每回合结束时 tickCooldowns 减 1）
+ * @property {'player'|'enemy'|'both'} [usableBy] - 可用角色类型限制（默认仅玩家）
+ * @property {'single'|'all_enemies'|'self'|'ally'} [targetType] - 目标选择策略
+ * @property {SkillBuffEffect[]} [buffs] - Buff/Debuff 效果列表（仅 buff/debuff 类型技能有意义）
+ * @property {string} [resourceType] - 资源系统类型（BIZ-11：'rage'/'energy'/'combo_point' 等，扩展 mpCost 之外的消耗）
+ * @property {number} [resourceCost] - 资源消耗量（与 resourceType 配合使用）
+ * @property {boolean} [requiresActivePet] - P3-156：是否需要激活宠物才能施放（如 hunter_kill_command）
+ * @property {'summon_pet'|'dismiss_pet'} [specialAction] - P3-156：特殊动作类型，触发宠物召唤/解散而非伤害/恢复
+ * @property {ResourceType} [scalingResource] - 终结技标记：消耗全部该副资源，效果按消耗数量线性缩放（rogue combo_point / monk chi）
+ * @property {number} [scalingMultiplier] - 每点副资源的缩放倍率（默认 1.0，即效果 = baseValue × consumedAmount）
+ * @property {object} [generatesResource] - 生成器标记：技能施放成功后生成指定副资源（paladin/warlock/evoker 的 MP 技能）
+ *
+ * @see SkillTemplateStorage 数据库模板对应的存储类型
+ * @see toSkill 模板 → 运行时对象的转换逻辑
  */
 export interface Skill {
   id: string;
   name: string;
   icon: string;
   description: string;
-  mpCost: number;
+  mpCost?: number;
   type: SkillType;
   effect: SkillEffect;
   unlockLevel: number;
-  /** 冷却回合数，0=无冷却 */
   cooldown?: number;
-  /** 可使用此技能的角色类型，默认仅玩家 */
   usableBy?: 'player' | 'enemy' | 'both';
-  /** 技能目标类型 */
   targetType?: 'single' | 'all_enemies' | 'self' | 'ally';
-  /** Buff/Debuff 效果列表（仅 buff/debuff 类型技能使用） */
   buffs?: SkillBuffEffect[];
+  resourceType?: string;
+  resourceCost?: number;
+  requiresActivePet?: boolean;
+  specialAction?: 'summon_pet' | 'dismiss_pet';
+  scalingResource?: ResourceType;
+  scalingMultiplier?: number;
+  generatesResource?: { type: ResourceType; amount: number };
 }
 
-/** 技能施放应用的效果记录 */
+// ============================================================================
+// 运行时结果接口
+// ============================================================================
+
+/**
+ * 技能施放应用的效果记录
+ *
+ * 在一次技能施放中实际应用到目标的单个效果快照，
+ * 携带经过属性加成计算后的最终数值。
+ *
+ * @property {EffectType} type - 效果类型
+ * @property {number} value - 经过属性加成后的最终效果数值
+ * @property {number} turns - 效果持续回合数
+ *
+ * @see castSkill buff/debuff 类型技能通过此接口将效果传回调用方（combatStore）
+ */
 export interface AppliedEffectInfo {
-  /** 效果类型 */
   type: EffectType;
-  /** 效果数值 */
   value: number;
-  /** 持续回合数 */
   turns: number;
 }
 
 /**
  * 技能使用结果接口
- * 技能使用后的返回结果
- * @property {boolean} success - 是否成功
- * @property {string} skillId - 技能ID
- * @property {SkillType} type - 技能类型
- * @property {number} [damage] - 造成的伤害
- * @property {number} [heal] - 生命恢复量
- * @property {string} message - 结果消息
- * @property {AppliedEffectInfo[]} [appliedEffects] - 施加的效果列表（buff/debuff 技能时返回）
+ *
+ * 一次技能施放操作的完整返回结果，由 `castSkill` 返回，
+ * 调用方（combatStore / enemy AI）根据此结果执行后续逻辑。
+ *
+ * @property {boolean} success - 是否施放成功（false 时仅 message 有效）
+ * @property {string} skillId - 施放的技能 ID
+ * @property {SkillType} type - 技能类型（用于 UI 决定展示样式）
+ * @property {number} [damage] - 造成的伤害值（仅在 physical/magic 类型时存在）
+ * @property {number} [heal] - 生命恢复量（仅在 health_restore 类型时存在）
+ * @property {string} message - 结果描述（成功时为技能名，失败时为错误原因）
+ * @property {AppliedEffectInfo[]} [appliedEffects] - 施加的 buff/debuff 效果列表
  */
 export interface SkillUseResult {
   success: boolean;
@@ -115,207 +203,59 @@ export interface SkillUseResult {
   damage?: number;
   heal?: number;
   message: string;
-  /** 施加的效果列表（buff/debuff 技能使用后返回） */
   appliedEffects?: AppliedEffectInfo[];
 }
 
+// ============================================================================
+// 技能栏接口
+// ============================================================================
+
 /**
  * 技能栏配置接口
- * 管理玩家当前装备的4个技能
- * @property {[string | null, string | null, string | null, string | null]} slots - 技能槽位（4个），存储技能ID或null
+ *
+ * 管理玩家当前装备的 4 个技能槽位。每个槽位存储一个技能 ID 或 null（空槽）。
+ * 固定长度为 4 的元组类型，确保不会越界访问。
+ *
+ * 数据持久化：技能栏数据随 `SkillsData` 一起存入 `char_skills` 表的 `skillBar` 字段。
+ *
+ * @property {[4]string|null} slots - 固定 4 槽位的技能 ID 数组，null 表示空槽
+ *
+ * @see equipSkill 装备技能到指定槽位
+ * @see unequipSkill 卸下指定技能（按 ID 查找槽位）
+ * @see swapSkills 交换两个槽位的技能
  */
 export interface SkillBar {
   slots: [string | null, string | null, string | null, string | null];
 }
 
+// ============================================================================
+// 存储/持久化接口
+// ============================================================================
+
 /**
  * 技能模块存储数据接口
- * @property {string} characterId - 角色ID
- * @property {Skill[]} skills - 技能列表
- * @property {SkillBar} skillBar - 技能栏配置
- * @property {string | null} currentClass - 当前职业
- * @property {number} updatedAt - 更新时间戳
+ *
+ * 角色技能数据的持久化格式，存入 IndexedDB 的 `char_skills` 表。
+ * skills 字段仅存储技能 ID 数组而非完整 Skill 对象，
+ * 完整技能数据从 `config_skills`（技能模板表）按 ID 索引获取。
+ *
+ * 设计原则（数据规范化）：
+ * - 避免数据冗余：同一技能的配置信息仅在 `config_skills` 表中存储一份
+ * - 兼容性：模板更新后，所有玩家的技能效果自动同步
+ * - 存储效率：减少 IndexedDB 存储空间
+ *
+ * @property {string} characterId - 角色 ID（主键）
+ * @property {string[]} skills - 已学技能 ID 列表（仅存 ID，完整数据从 config_skills 模板获取）
+ * @property {SkillBar} skillBar - 技能栏装备配置
+ * @property {string|null} currentClass - 当前职业 ID
+ * @property {number} updatedAt - 最后更新时间戳（毫秒）
+ *
+ * @see skillsDbService.saveSkillsData 写入数据库
+ * @see skillsDbService.getSkillsData 从数据库读取并恢复为运行时状态
  */
 export interface SkillsData {
   characterId: string;
-  skills: Skill[];
-  skillBar: SkillBar;
-  currentClass: string | null;
-  updatedAt: number;
-}
-
-/**
- * 技能施放事件数据接口
- * @property {Skill} skill - 技能数据
- * @property {boolean} success - 是否成功
- */
-export interface SkillCastEventData {
-  skill: Skill;
-  success: boolean;
-}
-
-/**
- * 技能装备事件数据接口
- * @property {string} skillId - 技能ID
- * @property {SkillSlotIndex} slotIndex - 槽位索引
- */
-export interface SkillEquippedEventData {
-  skillId: string;
-  slotIndex: SkillSlotIndex;
-}
-
-/**
- * 技能解锁事件数据接口
- * @property {Skill} skill - 技能数据
- */
-export interface SkillUnlockedEventData {
-  skill: Skill;
-}
-
-/**
- * 技能栏变更事件数据接口
- * @property {SkillBar['slots']} slots - 新的槽位配置
- */
-export interface SkillBarChangedEventData {
-  slots: SkillBar['slots'];
-}
-
-/**
- * 技能服务接口
- * 提供技能管理的核心功能
- */
-export interface ISkillsService {
-  /**
-   * 获取所有技能
-   * @returns {Skill[]} 技能列表
-   */
-  getSkills(): Skill[];
-
-  /**
-   * 根据ID获取技能
-   * @param {string} id - 技能ID
-   * @returns {Skill | null} 技能数据
-   */
-  getSkill(id: string): Skill | null;
-
-  /**
-   * 获取已装备的技能
-   * @returns {Skill[]} 已装备技能列表
-   */
-  getEquippedSkills(): Skill[];
-
-  /**
-   * 获取已解锁的技能
-   * @returns {Skill[]} 已解锁技能列表
-   */
-  getUnlockedSkills(): Skill[];
-
-  /**
-   * 获取未解锁的技能
-   * @returns {Skill[]} 未解锁技能列表
-   */
-  getLockedSkills(): Skill[];
-
-  /**
-   * 检查技能是否可以使用
-   * @param {string} skillId - 技能ID
-   * @returns {boolean} 是否可以使用
-   */
-  canUseSkill(skillId: string): boolean;
-
-  /**
-   * 使用技能
-   * @param {string} skillId - 技能ID
-   * @returns {SkillUseResult} 使用结果
-   */
-  useSkill(skillId: string): SkillUseResult;
-
-  /**
-   * 装备技能到指定槽位
-   * @param {string} skillId - 技能ID
-   * @param {SkillSlotIndex} slotIndex - 槽位索引
-   * @returns {boolean} 是否成功装备
-   */
-  equipSkill(skillId: string, slotIndex: SkillSlotIndex): boolean;
-
-  /**
-   * 卸下指定槽位的技能
-   * @param {SkillSlotIndex} slotIndex - 槽位索引
-   * @returns {boolean} 是否成功卸下
-   */
-  unequipSkill(slotIndex: SkillSlotIndex): boolean;
-
-  /**
-   * 交换两个槽位的技能
-   * @param {SkillSlotIndex} slotIndex1 - 第一个槽位
-   * @param {SkillSlotIndex} slotIndex2 - 第二个槽位
-   * @returns {boolean} 是否成功交换
-   */
-  swapSkills(slotIndex1: SkillSlotIndex, slotIndex2: SkillSlotIndex): boolean;
-
-  /**
-   * 根据类型获取技能
-   * @param {SkillType} type - 技能类型
-   * @returns {Skill[]} 技能列表
-   */
-  getSkillsByType(type: SkillType): Skill[];
-
-  /**
-   * 计算技能效果
-   * @param {string} skillId - 技能ID
-   * @returns {SkillEffect} 技能效果
-   */
-  calculateSkillEffect(skillId: string): SkillEffect;
-
-  /** 检查等级解锁 */
-  checkLevelUnlocks(shouldAutoEquip?: boolean): void;
-
-  /** 重置技能数据 */
-  reset(): void;
-}
-
-/**
- * 技能查询条件接口
- * 用于过滤技能的条件对象
- * @property {SkillType} [type] - 技能类型
- * @property {boolean} [isUnlocked] - 是否已解锁
- * @property {number} [minUnlockLevel] - 最小解锁等级
- * @property {number} [maxUnlockLevel] - 最大解锁等级
- */
-export interface SkillQuery {
-  type?: SkillType;
-  isUnlocked?: boolean;
-  minUnlockLevel?: number;
-  maxUnlockLevel?: number;
-}
-
-/**
- * 技能施放验证结果接口
- * 检查技能是否可以使用的验证结果
- * @property {boolean} canUse - 是否可以使用
- * @property {'not_in_combat' | 'not_equipped' | 'insufficient_mp' | 'not_unlocked'} [failureReason] - 失败原因
- * @property {number} [currentMp] - 当前法力值
- * @property {number} [requiredMp] - 所需法力值
- */
-export interface SkillValidationResult {
-  canUse: boolean;
-  failureReason?:
-    | 'not_in_combat'
-    | 'not_equipped'
-    | 'insufficient_mp'
-    | 'not_unlocked';
-  currentMp?: number;
-  requiredMp?: number;
-}
-
-/**
- * 技能数据存储接口（存储到 char_skills 表的结构）
- */
-export interface SkillDataStorage {
-  characterId: string;
-  /** 已学技能列表（原生数组，非 JSON 字符串） */
-  skills: Skill[];
-  /** 技能栏装备状态（原生对象，非 JSON 字符串） */
+  skills: string[];
   skillBar: SkillBar;
   currentClass: string | null;
   updatedAt: number;
@@ -323,49 +263,56 @@ export interface SkillDataStorage {
 
 /**
  * 技能模板存储接口
+ *
+ * 技能配置数据的持久化格式，存入 IndexedDB 的 `config_skills` 表。
+ * 与 `Skill` 接口的区别：
+ * - `SkillTemplateStorage`：数据库存储层，`targetType` 为 `string` 便于存储
+ * - `Skill`：运行时对象，`targetType` 为字面量联合类型，提供更好的智能提示
+ *
+ * 通过 `toSkill()` 方法将存储格式转换为运行时 `Skill` 对象。
+ *
+ * @property {string} id - 技能唯一标识
+ * @property {string} name - 技能名称
+ * @property {string} icon - 技能图标（Iconify 格式）
+ * @property {string} description - 技能描述文本
+ * @property {number} mpCost - 法力消耗值
+ * @property {SkillType} type - 技能类型
+ * @property {object} effect - 技能效果（type 语义上应为数值型，不含 buff/debuff）
+ * @property {number} unlockLevel - 解锁所需等级
+ * @property {string|null} classRestriction - 职业限制（null = 所有职业可用）
+ * @property {string} [targetType] - 目标类型（存储为 string，运行时通过 toSkill 收窄为字面量类型）
+ * @property {'player'|'enemy'|'both'} [usableBy] - 可用角色类型（默认仅玩家）
+ * @property {number} [cooldown] - 冷却回合数
+ * @property {SkillBuffEffect[]} [buffs] - Buff/Debuff 效果列表
+ * @property {string} [resourceType] - 资源系统类型（BIZ-11）
+ * @property {number} [resourceCost] - 资源消耗量（BIZ-11）
+ * @property {boolean} [requiresActivePet] - P3-156：是否需要激活宠物才能施放
+ * @property {'summon_pet'|'dismiss_pet'} [specialAction] - P3-156：特殊动作类型（召唤/解散宠物）
+ * @property {ResourceType} [scalingResource] - 终结技标记：消耗全部该副资源并按数量缩放
+ * @property {number} [scalingMultiplier] - 每点副资源的缩放倍率（默认 1.0）
+ * @property {object} [generatesResource] - 生成器标记：施放成功后生成指定副资源
+ *
+ * @see toSkill 存储类型 → 运行时类型的转换逻辑
  */
 export interface SkillTemplateStorage {
   id: string;
   name: string;
   icon: string;
   description: string;
-  mpCost: number;
-  type: string;
-  effect: { type: string; value: number; coefficient?: number };
+  mpCost?: number;
+  type: SkillType;
+  effect: { type: SkillType; value: number; coefficient?: number; statKey?: StatKey };
   unlockLevel: number;
   classRestriction: string | null;
   targetType?: string;
-  /** 可使用此技能的角色类型 */
   usableBy?: 'player' | 'enemy' | 'both';
-  /** 冷却回合数 */
   cooldown?: number;
-  /** Buff/Debuff 效果列表 */
   buffs?: SkillBuffEffect[];
-}
-
-/**
- * 技能模板存储格式
- */
-export interface SkillConfigStorage {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-  mpCost: number;
-  type: string;
-  effect: { type: string; value: number; coefficient?: number };
-  unlockLevel: number;
-  classRestriction?: string | null;
-  targetType?: string;
-}
-
-/**
- * 角色技能存储格式
- */
-export interface CharSkillsStorage {
-  characterId: string;
-  skills: Array<{ id: string; name: string; [key: string]: unknown }>;
-  skillBar: { slots: [string | null, string | null, string | null, string | null] };
-  currentClass: string | null;
-  updatedAt: number;
+  resourceType?: string;
+  resourceCost?: number;
+  requiresActivePet?: boolean;
+  specialAction?: 'summon_pet' | 'dismiss_pet';
+  scalingResource?: ResourceType;
+  scalingMultiplier?: number;
+  generatesResource?: { type: ResourceType; amount: number };
 }

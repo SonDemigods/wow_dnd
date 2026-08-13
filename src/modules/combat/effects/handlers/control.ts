@@ -3,6 +3,7 @@
  */
 
 import type { EffectHandler, ActionType } from '../handler';
+import { FREEZE_SPEED_MOD } from '@/config/combat';
 
 /**
  * stun — 眩晕：跳过回合，禁止所有行动
@@ -16,13 +17,17 @@ export const stunHandler: EffectHandler = {
 };
 
 /**
- * freeze — 冰冻：跳过回合，禁止所有行动
+ * freeze — 冰冻：跳过回合，禁止所有行动，并降低速度
  */
 export const freezeHandler: EffectHandler = {
   type: 'freeze',
 
   getDisabledActions(): ActionType[] {
     return ['attack', 'skill', 'flee'];
+  },
+
+  getSpeedMod(): number {
+    return FREEZE_SPEED_MOD;
   },
 };
 

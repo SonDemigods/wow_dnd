@@ -2,16 +2,20 @@
   <BasePopup :visible="visible" title="背包" @close="$emit('close')">
     <template #header-extra>
       <div class="header-info">
-        <div class="gold-display">💰 {{ gold }}</div>
-        <div class="inventory-count">{{ inventoryItems.length }} / {{ maxSlots }}</div>
+        <div class="gold-display">
+          <BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="16" /> {{ gold }}
+        </div>
+        <div class="inventory-count">
+          {{ inventoryItems.length }} / {{ maxSlots }}
+        </div>
       </div>
     </template>
 
     <template #default>
       <div class="inventory-content">
         <div class="category-tabs">
-          <button 
-            v-for="cat in categories" 
+          <button
+            v-for="cat in categories"
             :key="cat.id"
             :class="['tab-btn', { active: selectedCategory === cat.id }]"
             @click="selectCategory(cat.id)"
@@ -20,74 +24,101 @@
           </button>
         </div>
 
-        <div class="inventory-grid">
-          <div 
-            v-for="(entry, idx) in displayItems" 
-            :key="idx"
-            :data-item-id="entry.item.itemId"
-            :class="['item-slot', entry.info?.rarity, { equipped: isEquipped(entry.item.itemId), selected: selectedEntry?.item === entry.item }]"
-            @click="selectItem(entry)"
+        <div ref="gridContainerRef" class="inventory-grid">
+          <RecycleScroller
+            :items="gridData"
+            :item-size="itemSize"
+            :grid-items="gridItems"
+            :item-secondary-size="itemSize"
+            key-field="id"
+            class="inventory-scroller"
           >
-            <ItemIcon :icon="entry.info?.icon" :rarity="entry.info?.rarity" size="sm" />
-            <span v-if="entry.item.count > 1" class="item-count">{{ entry.item.count }}</span>
-          </div>
-          <div 
-            v-for="i in emptySlots" 
-            :key="'empty-' + i"
-            class="item-slot empty"
-          >
-          </div>
+            <template #default="{ item }">
+              <div
+                v-if="item.type === 'item'"
+                :data-item-id="item.entry.item.itemId"
+                :class="[
+                  'item-slot',
+                  item.entry.info?.rarity,
+                  {
+                    equipped: isEquipped(item.entry.item.itemId),
+                    selected: selectedEntry?.item === item.entry.item
+                  }
+                ]"
+                @click="selectItem(item.entry)"
+              >
+                <ItemIcon
+                  :icon="item.entry.info?.icon"
+                  :rarity="item.entry.info?.rarity"
+                  size="sm"
+                />
+                <span v-if="item.entry.item.count > 1" class="item-count">{{
+                  item.entry.item.count
+                }}</span>
+              </div>
+              <div v-else class="item-slot empty"></div>
+            </template>
+          </RecycleScroller>
         </div>
 
         <div class="item-detail">
           <template v-if="selectedEntry">
             <div class="detail-header">
-              <h3 :class="selectedEntry.info?.rarity">{{ selectedEntry.info?.name }}</h3>
-              <span class="quality-badge">{{ getRarityName(selectedEntry.info?.rarity || 'common') }}</span>
+              <h3 :class="selectedEntry.info?.rarity">
+                {{ selectedEntry.info?.name }}
+              </h3>
+              <span class="quality-badge">{{
+                getRarityName(selectedEntry.info?.rarity || 'common')
+              }}</span>
             </div>
             <p class="detail-desc">{{ selectedEntry.info?.description }}</p>
             <div class="detail-info">
-              <span>类型: {{ getTypeName(selectedEntry.info?.type || 'misc') }}</span>
+              <span>类型: {{ selectedEntry.info ? getItemDisplayName(selectedEntry.info) : '未知' }}</span>
               <span>数量: {{ selectedEntry.item.count }}</span>
-              <span v-if="selectedEntry.info?.levelRequirement">等级: {{ selectedEntry.info.levelRequirement }}</span>
+              <span v-if="selectedEntry.info?.levelRequirement"
+                >等级: {{ selectedEntry.info.levelRequirement }}</span
+              >
             </div>
-            <div v-if="selectedEntry.info?.bonus" class="bonus-info">
-              <div v-for="(value, stat) in selectedEntry.info?.bonus" :key="stat" class="bonus-item">
-                <span class="bonus-name">{{ getStatName(stat) }}</span>
-                <span class="bonus-value">+{{ value }}</span>
+            <div v-if="selectedBonus.length" class="bonus-info">
+              <div
+                v-for="item in selectedBonus"
+                :key="item.stat"
+                class="bonus-item"
+              >
+                <span class="bonus-name">{{ getStatName(item.stat) }}</span>
+                <span class="bonus-value">{{ item.value > 0 ? '+' : '' }}{{ item.value }}</span>
               </div>
             </div>
-            <div v-if="selectedEntry.info?.effect" class="effect-info">
-              <EffectTag :type="selectedEntry.info.effect.type" />
-              <span class="effect-value">{{ getEffectValueText(selectedEntry.info.effect) }}</span>
+            <div v-if="selectedEffects.length" class="effect-list">
+              <div v-for="(eff, i) in selectedEffects" :key="i" class="effect-info">
+                <EffectTag :type="eff.type" />
+                <span class="effect-value">{{ describeEffect(eff) }}</span>
+              </div>
             </div>
             <div class="detail-actions">
-              <button 
-                v-if="selectedEntry.info?.consumable"
+              <button
+                v-if="selectedEntry.info?.kind === 'consumable'"
                 class="action-btn use"
                 @click="useItem(selectedEntry.item.itemId)"
               >
-                💊 使用
+                使用
               </button>
-              <button 
-                v-if="isEquipment(selectedEntry.info?.type)"
+              <button
+                v-if="selectedEntry.info?.kind === 'equipment'"
                 class="action-btn equip"
                 @click="equipItem(selectedEntry.item.itemId)"
               >
-                🛡️ {{ isEquipped(selectedEntry.item.itemId) ? '卸下' : '装备' }}
+                {{ isEquipped(selectedEntry.item.itemId) ? '卸下' : '装备' }}
               </button>
-              <button 
+              <button
                 class="action-btn drop"
                 @click="dropItem(selectedEntry.item.itemId)"
               >
-                🗑️ 丢弃
+                丢弃
               </button>
             </div>
           </template>
-          <div v-else class="detail-placeholder">
-            <span class="placeholder-icon">📦</span>
-            <span class="placeholder-text">点击物品查看详情</span>
-          </div>
+          <EmptyState v-else icon="backpack" text="点击物品查看详情" />
         </div>
       </div>
     </template>
@@ -109,9 +140,16 @@
   />
 
   <!-- 装备槽位选择弹窗 -->
-  <BasePopup :visible="showSlotSelect" title="选择装备位置" max-width="360px" @close="cancelSlotSelect">
+  <BasePopup
+    :visible="showSlotSelect"
+    title="选择装备位置"
+    max-width="360px"
+    @close="cancelSlotSelect"
+  >
     <div class="slot-select-content">
-      <p class="slot-select-hint">为 {{ pendingEquipItem?.name }} 选择装备位置：</p>
+      <p class="slot-select-hint">
+        为 {{ pendingEquipItem?.name }} 选择装备位置：
+      </p>
       <div class="slot-options">
         <button
           v-for="slot in availableSlots"
@@ -119,8 +157,10 @@
           class="slot-option-btn"
           @click="selectEquipSlot(slot)"
         >
-          <span class="slot-icon">{{ slot.startsWith('weapon') ? '⚔️' : '🛡️' }}</span>
-          <span class="slot-name">{{ SLOT_NAMES[slot] }}</span>
+          <span class="slot-icon"
+            ><BaseIcon :name="getSlotIcon(slot)" gradient="metal" :size="18"
+          /></span>
+          <span class="slot-name">{{ SLOT_CONFIG[slot].name }}</span>
         </button>
       </div>
     </div>
@@ -133,39 +173,63 @@
  * @description 展示角色背包物品网格，支持按分类筛选、整理堆叠、使用消耗品、装备武器/护甲到槽位及丢弃物品操作
  */
 
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { RecycleScroller } from 'vue-virtual-scroller';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
 import ItemIcon from '../common/ItemIcon.vue';
 import EffectTag from '../common/EffectTag.vue';
+import EmptyState from '@/components/common/EmptyState.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS } from '@/config/icons';
 import { useInventoryStore } from '@/modules/inventory';
+// P7-032 修复：缓存 store 引用，避免 computed 内重复 useInventoryStore() 调用
+const inventoryStore = useInventoryStore();
 import { useCharacterStore } from '@/modules/character';
 import { useEquipmentStore } from '@/modules/equipment';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import { useToast } from '@/composables/useToast';
-import type { InventoryItem, Item, ItemType, ItemRarity, ItemEffect } from '@/modules/inventory';
-import type { EquipmentSlot, EquipmentItem } from '@/modules/equipment/types';
+import { errorHandler } from '@/services/ErrorHandler';
+import { useResponsiveGrid } from '@/composables/useResponsiveGrid';
+import type {
+  InventoryItem,
+  Item,
+  ItemEffect
+} from '@/modules/inventory';
+import type { Stats } from '@/modules/character';
+import { SLOT_CONFIG, type EquipmentSlot, type EquipmentItem } from '@/modules/equipment';
+import { getRarityName, describeEffect, getStatName } from '@/modules/item/descriptors';
+import {
+  getItemDisplayName,
+  getItemCategory,
+  CATEGORY_ORDER,
+  CATEGORY_NAMES,
+  type ItemCategory
+} from '@/modules/item/typeRegistry';
 
 interface ItemEntry {
   item: InventoryItem;
   info: Item | null;
 }
 
-// 槽位中文名称映射
-const SLOT_NAMES: Record<EquipmentSlot, string> = {
-  weapon1: '主手武器',
-  weapon2: '副手武器',
-  armor1: '护甲槽1',
-  armor2: '护甲槽2',
-  armor3: '护甲槽3',
-  armor4: '护甲槽4'
-};
+// P3.1：槽位中文名直接复用 SLOT_CONFIG，避免重复维护 7 槽映射
+// SLOT_CONFIG 定义于 slotRegistry.ts，包含 name/icon/group 三元数据
+
+// P2 BIZ-9 修复：跟踪待清理的 animationend 监听器，弹窗卸载时主动移除
+// 避免 { once: true } 在动画未触发时残留（如弹窗快速关闭）
+const pendingAnimCleanup: Array<{ el: HTMLElement; handler: EventListenerOrEventListenerObject }> = [];
+
+/** 注册一次性 animationend 监听器并加入清理队列 */
+function registerAnimCleanup(el: HTMLElement, handler: () => void): void {
+  pendingAnimCleanup.push({ el, handler });
+  el.addEventListener('animationend', handler, { once: true });
+}
 
 defineProps<{
   visible: boolean;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'close'): void;
 }>();
 
@@ -174,7 +238,7 @@ const equipmentStore = useEquipmentStore();
 const toast = useToast();
 const gold = computed(() => characterStore.gold);
 
-const selectedCategory = ref<'all' | ItemType>('all');
+const selectedCategory = ref<'all' | ItemCategory>('all');
 const selectedEntry = ref<ItemEntry | null>(null);
 
 // 丢弃确认弹窗状态
@@ -187,128 +251,120 @@ const availableSlots = ref<EquipmentSlot[]>([]);
 const pendingEquipItem = ref<EquipmentItem | null>(null);
 
 /** 直接从 Store 读取的响应式背包物品列表 */
-const inventoryItems = computed(() => useInventoryStore().inventory);
+const inventoryItems = computed(() => inventoryStore.inventory);
 
 /** 已装备物品ID集合，直接从装备 Store 响应式数据派生 */
 const equippedItemIds = computed(() => {
   const ids = new Set<string>();
-  Object.values(equipmentStore.equipment).forEach(e => {
+  Object.values(equipmentStore.equipment).forEach((e) => {
     if (e) ids.add(e.item.id);
   });
   return ids;
 });
 const maxSlots = 50;
 
+/** 虚拟网格容器 ref，供 useResponsiveGrid 测量宽度计算列数 */
+const gridContainerRef = ref<HTMLElement | null>(null);
+const { gridItems, itemSize } = useResponsiveGrid(gridContainerRef, 48, 6);
+
+// P3.3：分类标签从 typeRegistry 的 CATEGORY_ORDER 派生（消耗品/装备/材料/其他），
+// 替代旧版平铺 9 个 ItemType 的认知负担（plan.md U5）
 const categories = [
   { id: 'all' as const, name: '全部' },
-  { id: 'potion' as const, name: '药水' },
-  { id: 'scroll' as const, name: '卷轴' },
-  { id: 'food' as const, name: '食物' },
-  { id: 'material' as const, name: '材料' },
-  { id: 'weapon' as const, name: '武器' },
-  { id: 'armor' as const, name: '护甲' },
-  { id: 'misc' as const, name: '杂项' }
+  ...CATEGORY_ORDER.map(cat => ({ id: cat, name: CATEGORY_NAMES[cat] }))
 ];
 
-const rarityNames: Record<ItemRarity, string> = {
-  common: '普通',
-  uncommon: '优秀',
-  rare: '稀有',
-  epic: '史诗',
-  legendary: '传说'
-};
-
-const typeNames: Record<ItemType, string> = {
-  gold: '货币',
-  potion: '药水',
-  scroll: '卷轴',
-  food: '食物',
-  material: '材料',
-  quest: '任务物品',
-  weapon: '武器',
-  armor: '护甲',
-  misc: '杂项'
-};
-
-function getRarityName(rarity: ItemRarity) {
-  return rarityNames[rarity] || rarity;
-}
-
-function getTypeName(type: ItemType) {
-  return typeNames[type] || type;
-}
-
-function getStatName(stat: string) {
-  const statMap: Record<string, string> = {
-    str: '力量',
-    dex: '敏捷',
-    con: '体质',
-    int: '智力',
-    wis: '感知',
-    cha: '魅力'
-  };
-  return statMap[stat] || stat;
-}
-
-/** 获取效果数值文本（用于 EffectTag 标签旁显示） */
-function getEffectValueText(effect: ItemEffect): string {
-  const { type, value } = effect;
-  if (typeof value !== 'number') return '';
-  switch (type) {
-    case 'health_restore': return `恢复 ${value} 点`;
-    case 'mana_restore': return `恢复 ${value} 点`;
-    case 'physical_damage': return `伤害 ${value}`;
-    case 'magic_damage': return `伤害 ${value}`;
-    default: return `${value}`;
-  }
-}
-
+/** 使用物品时的 toast 文案（委托 describeEffect 统一效果描述） */
 function getEffectToast(info: Item): string {
-  if (!info.effect) return `使用了 ${info.name}`;
-  const { type, value } = info.effect;
-  switch (type) {
-    case 'health_restore': return `恢复了 ${value} 点生命值`;
-    case 'mana_restore': return `恢复了 ${value} 点法力值`;
-    case 'physical_damage':
-    case 'magic_damage': return `造成了 ${value} 点伤害`;
-    default: return `使用了 ${info.name}`;
+  // P3.3：消耗品用 effects[] 表达多效果，非消耗品无使用效果
+  if (info.kind === 'consumable' && info.effects.length > 0) {
+    return info.effects.map(describeEffect).join('，');
   }
-}
-
-function isEquipment(type?: ItemType) {
-  return type === 'weapon' || type === 'armor';
+  return `使用了 ${info.name}`;
 }
 
 function isEquipped(itemId: string): boolean {
   if (!equippedItemIds.value.has(itemId)) return false;
   // 如果背包中仍有该物品的副本，说明存在未被装备的实例，不应显示为"已装备"
   // （所有副本都已装备时，物品不会出现在背包网格中，equipped 样式不会误显示）
-  const stillInInventory = inventoryItems.value.some(i => i.itemId === itemId);
+  const stillInInventory = inventoryItems.value.some(
+    (i) => i.itemId === itemId
+  );
   return !stillInInventory;
+}
+
+/** 根据槽位返回对应的图标名称（P3.1：复用 SLOT_CONFIG，替代旧版 startsWith 硬编码） */
+function getSlotIcon(slot: EquipmentSlot): string {
+  return SLOT_CONFIG[slot].icon;
 }
 
 const filteredItems = computed(() => {
   if (selectedCategory.value === 'all') return inventoryItems.value;
-  return inventoryItems.value.filter(item => {
-    const info = useInventoryStore().getItemInfo(item.itemId);
-    return info?.type === selectedCategory.value;
+  // P3.3：用 getItemCategory（基于 kind+subtype）替代旧 info?.type 比较
+  return inventoryItems.value.filter((item) => {
+    const info = inventoryStore.getItemInfo(item.itemId);
+    return info !== null && getItemCategory(info) === selectedCategory.value;
   });
 });
 
 const displayItems = computed<ItemEntry[]>(() => {
-  return filteredItems.value.map(item => ({
+  return filteredItems.value.map((item) => ({
     item,
-    info: useInventoryStore().getItemInfo(item.itemId)
+    info: inventoryStore.getItemInfo(item.itemId)
   }));
+});
+
+/**
+ * 选中装备的属性加成列表（仅装备类物品有 bonus）
+ * P3.3：bonus 下沉为 EquipmentItem 专有字段，需 kind 收窄后访问。
+ * 按固定属性顺序输出非零项，支持负值显示。
+ */
+const selectedBonus = computed<Array<{ stat: keyof Stats; value: number }>>(() => {
+  const info = selectedEntry.value?.info;
+  if (!info || info.kind !== 'equipment') return [];
+  return (Object.keys(info.bonus) as (keyof Stats)[])
+    .filter(stat => {
+      const v = info.bonus[stat];
+      return v !== undefined && v !== 0;
+    })
+    .map(stat => ({ stat, value: info.bonus[stat] as number }));
+});
+
+/**
+ * 选中物品的使用效果列表
+ * P3.3：消耗品 effects 为必填数组，装备 effects 为可选（被动效果），其余类别无效果。
+ */
+const selectedEffects = computed<ItemEffect[]>(() => {
+  const info = selectedEntry.value?.info;
+  if (!info) return [];
+  if (info.kind === 'consumable') return info.effects;
+  if (info.kind === 'equipment') return info.effects ?? [];
+  return [];
 });
 
 const emptySlots = computed(() => {
   return Math.max(0, maxSlots - filteredItems.value.length);
 });
 
+/** RecycleScroller 渲染数据：合并物品槽位与空槽位，每个条目带唯一 id 供 keyField 使用 */
+const gridData = computed(() => {
+  const items = displayItems.value.map((entry, idx) => ({
+    id: `item-${entry.item.itemId}-${idx}`,
+    type: 'item' as const,
+    entry,
+  }));
+  const empties = Array.from({ length: emptySlots.value }, (_, i) => ({
+    id: `empty-${i}`,
+    type: 'empty' as const,
+  }));
+  return [...items, ...empties];
+});
+
 function selectCategory(catId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_category' });
-  selectedCategory.value = catId as 'all' | ItemType;
+  selectedCategory.value = catId as 'all' | ItemCategory;
+  // P12-022 修复：切换分类时清除已选中物品详情，避免操作不可见物品
+  selectedEntry.value = null;
 }
 
 /**
@@ -316,7 +372,8 @@ function selectCategory(catId: string) {
  */
 async function doOrganize() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'inventory_organize' });
-  useInventoryStore().organizeInventory();
+  // P11-601 修复：await organizeInventory 完成后再 loadInventory，避免竞态条件
+  await inventoryStore.organizeInventory();
   await loadInventory();
   selectedEntry.value = null;
   toast.show({ message: '背包已整理', type: 'success', icon: '📋' });
@@ -334,10 +391,15 @@ function selectItem(entry: ItemEntry) {
 function findSelectedOrFirstIndex(itemId: string): number {
   // 优先查找当前选中物品的位置
   if (selectedEntry.value && selectedEntry.value.item.itemId === itemId) {
-    const idx = inventoryItems.value.findIndex(i => i.itemId === itemId && selectedEntry.value && i === selectedEntry.value.item);
+    const idx = inventoryItems.value.findIndex(
+      (i) =>
+        i.itemId === itemId &&
+        selectedEntry.value &&
+        i === selectedEntry.value.item
+    );
     if (idx >= 0) return idx;
   }
-  return inventoryItems.value.findIndex(i => i.itemId === itemId);
+  return inventoryItems.value.findIndex((i) => i.itemId === itemId);
 }
 
 async function useItem(itemId: string) {
@@ -346,28 +408,31 @@ async function useItem(itemId: string) {
   const index = findSelectedOrFirstIndex(itemId);
   if (index === -1) return;
 
-  const invItem = inventoryItems.value[index];
-  const info = useInventoryStore().getItemInfo(itemId);
-  if (!info?.consumable) return;
+  const info = inventoryStore.getItemInfo(itemId);
+  // P3.3：consumable 下沉为判别字面量，用 kind 收窄替代旧 info.consumable 布尔
+  if (!info || info.kind !== 'consumable') return;
 
   // 使用物品（内部处理HP/MP恢复和堆叠数量递减）
-  const success = await useInventoryStore().useItemByIndex(index);
+  const success = await inventoryStore.useItemByIndex(index);
   if (!success) return;
 
   // 物品使用弹跳动画
-  const slotEl = document.querySelector(`[data-item-id="${itemId}"]`) as HTMLElement;
-  if (slotEl) {
-    slotEl.style.animation = 'item-bounce 0.4s ease';
-    slotEl.addEventListener('animationend', () => {
-      slotEl.style.animation = '';
-    }, { once: true });
+  // P3 TS-13 修复：使用 instanceof 守卫收窄 HTMLElement 类型，替代 as 断言
+  const slotElRaw = document.querySelector(`[data-item-id="${itemId}"]`);
+  if (slotElRaw instanceof HTMLElement) {
+    slotElRaw.style.animation = 'item-bounce 0.4s ease';
+    // P2 BIZ-9 修复：使用 registerAnimCleanup 跟踪监听器，弹窗卸载时主动清理
+    registerAnimCleanup(slotElRaw, () => {
+      slotElRaw.style.animation = '';
+    });
   }
 
   toast.show({ message: getEffectToast(info), type: 'success', icon: '💊' });
-  
-  loadInventory();
-  // 堆叠数归零时清除选中
-  if (invItem.count <= 1) {
+
+  await loadInventory();
+  // P10-028 修复：基于使用后的新数量判断是否清除选中，而非使用前旧的 invItem.count
+  const updatedItem = inventoryItems.value.find(i => i.itemId === itemId);
+  if (!updatedItem || updatedItem.count <= 0) {
     selectedEntry.value = null;
   }
 }
@@ -388,42 +453,57 @@ function equipItem(itemId: string) {
     return;
   }
 
+  // P3.2：过滤掉被双手武器锁定的槽位（weapon1 双手时 weapon2 不可选）
+  const usableSlots = slots.filter(slot => !equipmentStore.isSlotLocked(slot));
+  if (usableSlots.length === 0) {
+    toast.show({ message: '副手槽被双手武器占用，无法装备', type: 'warning' });
+    return;
+  }
+
   // 如果只有一个可用槽位，直接装备
-  if (slots.length === 1) {
-    doEquip(equipTemplate, slots[0]);
+  if (usableSlots.length === 1) {
+    doEquip(equipTemplate, usableSlots[0]);
     return;
   }
 
   // 多个可用槽位时，弹出选择框
   pendingEquipItem.value = equipTemplate;
-  availableSlots.value = slots;
+  availableSlots.value = usableSlots;
   showSlotSelect.value = true;
 }
 
 async function doEquip(item: EquipmentItem, slot: EquipmentSlot) {
-  const success = await equipmentStore.equipItem(slot, item);
-  if (success) {
-    // 装备槽填充动画（如果角色面板打开）
-    const slotEl = document.querySelector(`[data-equip-slot="${slot}"]`) as HTMLElement;
-    if (slotEl) {
-      slotEl.classList.add('equip-anim-fill');
-      slotEl.addEventListener('animationend', () => {
-        slotEl.classList.remove('equip-anim-fill');
-      }, { once: true });
+  // P11-602 修复：用 try/finally 确保弹窗状态始终被清理
+  try {
+    const success = await equipmentStore.equipItem(slot, item);
+    if (success) {
+      // 装备槽填充动画（如果角色面板打开）
+      // P3 TS-13 修复：使用 instanceof 守卫收窄 HTMLElement 类型，替代 as 断言
+      const slotElRaw = document.querySelector(`[data-equip-slot="${slot}"]`);
+      if (slotElRaw instanceof HTMLElement) {
+        slotElRaw.classList.add('equip-anim-fill');
+        // P2 BIZ-9 修复：使用 registerAnimCleanup 跟踪监听器，弹窗卸载时主动清理
+        registerAnimCleanup(slotElRaw, () => {
+          slotElRaw.classList.remove('equip-anim-fill');
+        });
+      }
+      toast.show({
+        message: `已装备 ${item.name} 到 ${SLOT_CONFIG[slot].name}`,
+        type: 'success',
+        icon: '🛡️'
+      });
+      await loadInventory();
+      selectedEntry.value = null;
+    } else {
+      toast.show({
+        message: '装备失败，可能等级不足或槽位不匹配',
+        type: 'warning'
+      });
     }
-    // 从背包中移除该物品（优先移除选中的那一组）
-    const index = findSelectedOrFirstIndex(item.id);
-    if (index !== -1) {
-      useInventoryStore().removeItemByIndex(index);
-    }
-    toast.show({ message: `已装备 ${item.name} 到 ${SLOT_NAMES[slot]}`, type: 'success', icon: '🛡️' });
-    loadInventory();
-    selectedEntry.value = null;
-  } else {
-    toast.show({ message: '装备失败，可能等级不足或槽位不匹配', type: 'warning' });
+  } finally {
+    showSlotSelect.value = false;
+    pendingEquipItem.value = null;
   }
-  showSlotSelect.value = false;
-  pendingEquipItem.value = null;
 }
 
 function selectEquipSlot(slot: EquipmentSlot) {
@@ -445,21 +525,26 @@ function dropItem(itemId: string) {
   showDropConfirm.value = true;
 }
 
-function confirmDrop() {
+async function confirmDrop() {
   const itemId = pendingDropItemId.value;
   if (!itemId) return;
-  
-  const info = useInventoryStore().getItemInfo(itemId);
+
+  const info = inventoryStore.getItemInfo(itemId);
   // 优先丢弃选中的那一组
   const index = findSelectedOrFirstIndex(itemId);
   if (index !== -1) {
-    useInventoryStore().removeItemByIndex(index);
+    // P11-601 修复：await removeItemByIndex 完成后再 loadInventory，避免竞态条件
+    await inventoryStore.removeItemByIndex(index);
     eventBus.emit(GameEvents.ITEM_DROPPED, { itemId });
-    toast.show({ message: `已丢弃 ${info?.name || '物品'}`, type: 'info', icon: '🗑️' });
-    loadInventory();
+    toast.show({
+      message: `已丢弃 ${info?.name || '物品'}`,
+      type: 'info',
+      icon: '🗑️'
+    });
+    await loadInventory();
     selectedEntry.value = null;
   }
-  
+
   showDropConfirm.value = false;
   pendingDropItemId.value = null;
 }
@@ -470,22 +555,36 @@ function cancelDrop() {
 }
 
 async function loadInventory() {
-  await useInventoryStore().initialize(characterStore.currentCharacterId!);
-  // 确保装备 Store 已初始化（装备模块需要从装备 Store 加载）
-  if (characterStore.currentCharacterId) {
-    await equipmentStore.initialize(characterStore.currentCharacterId);
+  // P8-029 修复：try/catch 包裹，catch 中 errorHandler.report + toast 提示
+  try {
+    const id = characterStore.currentCharacterId;
+    if (!id) return;
+    await inventoryStore.initialize(id);
+    // 确保装备 Store 已初始化（装备模块需要从装备 Store 加载）
+    await equipmentStore.initialize(id);
+  } catch (e) {
+    console.error('[InventoryPopup] loadInventory 失败:', e);
+    errorHandler.report(e);
+    toast.show({ message: '加载背包数据失败，请重试', type: 'danger' });
   }
 }
 
 onMounted(() => {
   loadInventory();
 });
+
+// P2 BIZ-9 修复：弹窗卸载时主动清理未触发的 animationend 监听器
+onUnmounted(() => {
+  pendingAnimCleanup.forEach(({ el, handler }) => {
+    el.removeEventListener('animationend', handler);
+  });
+  pendingAnimCleanup.length = 0;
+});
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .inventory-content {
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   height: 100%;
   gap: 14px;
 }
@@ -493,335 +592,302 @@ onMounted(() => {
 .header-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: @spacing-xl;
 }
 
 .gold-display {
-  padding: 4px 10px;
-  background: rgba(255, 215, 0, 0.15);
-  border: 1px solid rgba(255, 215, 0, 0.3);
-  border-radius: 4px;
-  color: #ffd700;
-  font-size: 13px;
-  font-weight: bold;
+  padding: @spacing-xs 10px;
+  background: @gold-bg-hover;
+  border: @border-gold;
+  border-radius: @radius-sm;
+  color: @accent-color;
+  font-size: @font-base;
+  font-weight: @font-weight-bold;
 }
 
 .inventory-count {
-  padding: 4px 10px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #888;
-  font-size: 12px;
-}
-
-.inventory-content {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  gap: 14px;
+  padding: @spacing-xs 10px;
+  background: @white-10;
+  border-radius: @radius-sm;
+  color: @color-dodge;
+  font-size: @font-sm;
 }
 
 .category-tabs {
   display: flex;
-  gap: 6px;
+  gap: @spacing-sm;
   flex-wrap: wrap;
   flex-shrink: 0;
 }
 
 .tab-btn {
-  padding: 6px 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid #4a4a4a;
-  border-radius: 4px;
-  color: #888;
-  font-size: 13px;
+  padding: @spacing-sm 14px;
+  background: @white-05;
+  border: @border-sm;
+  border-radius: @radius-sm;
+  color: @color-dodge;
+  font-size: @font-base;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
 }
 
 .tab-btn:hover {
-  border-color: #666;
+  border-color: @color-dim-gray;
 }
 
 .tab-btn.active {
   background: rgba(0, 153, 255, 0.2);
-  border-color: #0099ff;
-  color: #0099ff;
+  border-color: @skill-blue;
+  color: @skill-blue;
 }
 
 .inventory-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
-  gap: 6px;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 10px;
-  border-radius: 6px;
-  border: 2px solid #4a4a4a;
+  background: @overlay-mid;
+  padding: @spacing-lg;
+  border-radius: @radius-md;
+  border: @border-card;
   flex: 1;
   min-height: 0;
-  max-height: 300px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  align-content: start;
 }
 
-.inventory-grid::-webkit-scrollbar {
-  width: 6px;
+.inventory-scroller {
+  max-height: 280px;
+  .custom-scrollbar();
+  &::-webkit-scrollbar-thumb:hover {
+    background: @color-dim-gray;
+  }
 }
 
-.inventory-grid::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 3px;
-}
-
-.inventory-grid::-webkit-scrollbar-thumb {
-  background: #4a4a4a;
-  border-radius: 3px;
-}
-
-.inventory-grid::-webkit-scrollbar-thumb:hover {
-  background: #666;
+/* RecycleScroller gridItems 模式下，每个条目 wrapper 由组件设置宽高，
+   此处添加 padding 制造视觉间距（等效原 gap: @spacing-sm） */
+.inventory-scroller :deep(.vue-recycle-scroller__item-view) {
+  padding: 3px;
+  box-sizing: border-box;
 }
 
 .item-slot {
-  aspect-ratio: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: @white-05;
+  border-radius: @radius-sm;
+  .flex-center();
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
   position: relative;
+  box-sizing: border-box;
   /* 物品入场动画 */
   animation: scaleIn 0.25s ease;
 }
 
 .item-slot:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: @white-10;
   transform: translateY(-2px);
 }
 
 .item-slot.empty {
-  border: 2px dashed #4a4a4a;
+  border: @border-dashed;
   opacity: 0.3;
 }
 
 .item-slot.equipped {
-  outline: 2px solid #4CAF50;
+  outline: 2px solid @heal-hp;
   outline-offset: -2px;
   background: rgba(76, 175, 80, 0.2);
 }
 
 .item-slot.selected {
-  background: rgba(255, 215, 0, 0.25);
+  background: @gold-bg-strong;
 }
-
 
 .item-count {
   position: absolute;
   bottom: 2px;
   right: 3px;
-  font-size: 10px;
-  color: #fff;
-  font-weight: bold;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-size: @font-2xs;
+  color: @popup-text-color;
+  font-weight: @font-weight-bold;
+  text-shadow: 1px 1px 2px @overlay-heavy;
 }
 
 .item-detail {
-  background: rgba(0, 0, 0, 0.7);
-  border-radius: 6px;
+  background: @overlay-deep;
+  border-radius: @radius-md;
   padding: 14px;
-  border: 1px solid #4a4a4a;
+  border: @border-sm;
   flex-shrink: 0;
 }
 
 .detail-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+  .flex-between();
+  margin-bottom: @spacing-md;
 }
 
 .item-detail h3 {
-  font-size: 16px;
-  color: #fff;
-  font-weight: bold;
+  font-size: @font-lg;
+  color: @popup-text-color;
+  font-weight: @font-weight-bold;
   margin: 0;
 }
 
-.item-detail h3.common { color: #ffffff; }
-.item-detail h3.uncommon { color: #1eff00; }
-.item-detail h3.rare { color: #0070dd; }
-.item-detail h3.epic { color: #a335ee; }
-.item-detail h3.legendary { color: #ff8000; }
+.item-detail h3.common {
+  color: @popup-text-color;
+}
+.item-detail h3.uncommon {
+  color: #1eff00;
+}
+.item-detail h3.rare {
+  color: #0070dd;
+}
+.item-detail h3.epic {
+  color: #a335ee;
+}
+.item-detail h3.legendary {
+  color: #ff8000;
+}
 
 .quality-badge {
-  padding: 3px 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #888;
-  font-size: 12px;
+  padding: 3px @spacing-md;
+  background: @white-10;
+  border-radius: @radius-sm;
+  color: @color-dodge;
+  font-size: @font-sm;
 }
 
 .detail-desc {
   color: #aaa;
-  font-size: 13px;
-  margin: 8px 0;
-}
-
-.detail-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 20px;
-}
-
-.placeholder-icon {
-  font-size: 28px;
-  opacity: 0.5;
-}
-
-.placeholder-text {
-  color: #666;
-  font-size: 14px;
+  font-size: @font-base;
+  margin: @spacing-md 0;
 }
 
 .detail-info {
   display: flex;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: @spacing-xl;
+  margin-bottom: @spacing-md;
 }
 
 .detail-info span {
-  padding: 4px 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #888;
-  font-size: 13px;
+  padding: @spacing-xs @spacing-md;
+  background: @white-10;
+  border-radius: @radius-sm;
+  color: @color-dodge;
+  font-size: @font-base;
 }
 
 .bonus-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
+  .flex-col();
+  gap: @spacing-xs;
+  margin-bottom: @spacing-md;
 }
 
 .bonus-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 8px;
-  background: rgba(76, 175, 80, 0.1);
-  border-radius: 4px;
+  .flex-between();
+  padding: @spacing-xs @spacing-md;
+  background: @green-bg;
+  border-radius: @radius-sm;
 }
 
 .bonus-name {
-  color: #8b8b8b;
-  font-size: 13px;
+  color: @text-secondary;
+  font-size: @font-base;
 }
 
 .bonus-value {
-  color: #4CAF50;
-  font-size: 13px;
-  font-weight: bold;
+  color: @heal-hp;
+  font-size: @font-base;
+  font-weight: @font-weight-bold;
+}
+
+/* P3.3：多效果列表容器，每个效果一行 */
+.effect-list {
+  .flex-col();
+  gap: @spacing-xs;
+  margin-bottom: @spacing-md;
 }
 
 .effect-info {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: @spacing-md;
 }
 
 .effect-info .effect-value {
-  color: #ffd700;
-  font-size: 13px;
-  font-weight: bold;
+  color: @accent-color;
+  font-size: @font-base;
+  font-weight: @font-weight-bold;
 }
 
 .detail-actions {
   display: flex;
-  gap: 10px;
+  gap: @spacing-lg;
   margin-top: 14px;
 }
 
 .action-btn {
-  padding: 8px 14px;
+  .action-btn-base();
+  padding: @spacing-md 14px;
   border: none;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s;
+  border-radius: @radius-sm;
+  font-size: @font-base;
 }
 
 .action-btn.use {
-  background: linear-gradient(135deg, #4CAF50, #45a049);
-  color: #fff;
+  background: linear-gradient(135deg, @heal-hp, #45a049);
+  color: @popup-text-color;
 }
 
 .action-btn.equip {
-  background: linear-gradient(135deg, #0099ff, #0066cc);
-  color: #fff;
+  background: linear-gradient(135deg, @skill-blue, #0066cc);
+  color: @popup-text-color;
 }
 
 .action-btn.drop {
   background: linear-gradient(135deg, #ff4444, #cc0000);
-  color: #fff;
-}
-
-.action-btn:hover {
-  transform: translateY(-2px);
+  color: @popup-text-color;
 }
 
 .slot-select-content {
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   gap: 14px;
   align-items: center;
 }
 
 .slot-select-hint {
   color: #aaa;
-  font-size: 14px;
+  font-size: @font-md;
   margin: 0;
 }
 
 .slot-options {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  .flex-col();
+  gap: @spacing-md;
   width: 100%;
 }
 
 .slot-option-btn {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid #4a4a4a;
-  border-radius: 6px;
+  gap: @spacing-lg;
+  padding: @spacing-lg @spacing-3xl;
+  background: @white-05;
+  border: @border-sm;
+  border-radius: @radius-md;
   color: #ccc;
-  font-size: 14px;
+  font-size: @font-md;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all @transition-quick;
 }
 
 .slot-option-btn:hover {
   background: rgba(0, 153, 255, 0.15);
-  border-color: #0099ff;
-  color: #fff;
+  border-color: @skill-blue;
+  color: @popup-text-color;
 }
 
 .slot-icon {
-  font-size: 18px;
+  font-size: @font-xl;
 }
 
 .slot-name {
-  font-weight: bold;
+  font-weight: @font-weight-bold;
 }
 </style>

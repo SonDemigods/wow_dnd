@@ -4,14 +4,60 @@
  * @module character
  */
 
-/** 导出类型定义 */
-export * from './types';
+export type {
+  FactionType,
+  RaceType,
+  ClassType,
+  FactionData,
+  RaceData,
+  ClassData,
+  Stats,
+  Attributes,
+  Character,
+  CharacterListItem,
+  CreateCharacterParams,
+  ExpGainResult,
+  PassiveTrigger,
+  PassiveEffectType,
+  PassiveEffect,
+  PassiveSkill,
+  FactionStorage,
+  RaceStorage,
+  ClassStorage,
+  CharacterDataStorage,
+  StatSource
+} from './types';
 
-/** 导出数据层 */
-export * from './db';
+export { CharacterDbService, characterDbService } from './db';
 
-/** 导出纯逻辑函数（service 层） */
-export * from './service';
+export {
+  generateCharacterId,
+  computeInitialStats,
+  computeEffectiveStats,
+  computeAttributes,
+  isClassFactionCompatible,
+  createInitialCharacter,
+  applyHpChange,
+  applyMpChange,
+  isDead,
+  applyExpGain,
+  applyLevelUp,
+  applyGoldChange,
+  canAffordGold,
+  computeBonusChange,
+  recalculateHpMp,
+  computeResurrection,
+  // 四层属性：升级分配与药剂层纯函数
+  allocateStat,
+  resetAllocatedStats,
+  applyPotionBonus,
+  // 坐骑配置纯函数
+  computeMountBonus,
+  getUnlockedTiers,
+  isTierUnlocked
+} from './service';
 
-/** 导出 Pinia 状态管理 Store */
+/** 导出 Pinia 状态管理 Store（useCharacterStore）
+ * 注意：Store 使用命名导出而非通配符导出，因为 Pinia store 函数必须按名称导入
+ */
 export { useCharacterStore } from './store';

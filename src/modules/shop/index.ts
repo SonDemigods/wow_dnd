@@ -1,9 +1,10 @@
 /**
  * @fileoverview 商店模块统一导出入口
- * @description 导出商店模块的所有类型定义、数据层、服务层和状态管理
+ * @description 导出商店模块的类型定义和状态管理
  * @module shop
  */
-export * from './types';
-export * from './db';
-export * from './service';
+export type { ShopConfig, ShopItem, ShopDisplayItem, SoldItemEntry, ShopItemsStorage, ShopSoldItemsStorage } from './types';
+export { shopDbService } from './db';
 export { useShopStore } from './store';
+// P3.3：导出商店分类映射供 UI 层按商店类型动态生成分类标签与筛选
+export { SHOP_CATEGORIES, type ShopCategory } from './service';

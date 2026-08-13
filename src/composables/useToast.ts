@@ -20,15 +20,33 @@ export interface ToastOptions {
   duration?: number;
 }
 
+/**
+ * Toast 单例响应式状态（模块级）
+ *
+ * 设计约束：本模块采用单例 Toast 设计——同一时刻仅展示一个 Toast。
+ * visible / message / type / icon 与 timer 均为模块级共享变量，
+ * 由所有调用 useToast() 的组件共同引用，因此：
+ * - 新 Toast 调用 show() 时会覆盖正在展示的 Toast（先 clearTimeout 旧计时器）
+ * - 无法同时显示多个 Toast
+ *
+ * 这是项目中有意为之的单例模式（常见于全局轻提示场景），
+ * 若未来需要多 Toast 并列展示，需将 visible/message 等重构为 Toast 数组。
+ *（CODE-19 说明：单例约束为设计意图，非缺陷）
+ */
 const visible = ref(false);
 const message = ref('');
 const type = ref<'info' | 'success' | 'warning' | 'danger'>('info');
 const icon = ref('');
 
+/** 当前 Toast 的自动关闭计时器（单例，新 Toast 会先清除旧计时器） */
 let timer: ReturnType<typeof setTimeout> | null = null;
 
 /**
- * 使用 Toast 提示
+ * 使用 Toast 提示（单例）
+ *
+ * 多次调用返回的 ref 与方法均指向同一组模块级状态，
+ * 因此任意组件调用 show() 都会更新全局唯一的 Toast 视图。
+ *
  * @returns {{ visible, message, type, icon, show, close }} Toast 响应式状态与控制方法
  */
 export function useToast() {
@@ -44,8 +62,9 @@ export function useToast() {
       icon.value = '';
     } else {
       message.value = options.message;
-      type.value = options.type || 'info';
-      icon.value = options.icon || '';
+      // P2 TS-8 修复：使用 ?? 替代 ||，避免空字符串等 falsy 值被吞掉
+      type.value = options.type ?? 'info';
+      icon.value = options.icon ?? '';
     }
 
     visible.value = true;
@@ -73,4 +92,26 @@ export function useToast() {
     show,
     close
   };
+}
+
+/**
+ * 销毁 Toast 模块级状态
+ *
+ * P2 BIZ-12 修复：HMR 模块热替换时，旧模块的 timer 若未触发会残留，
+ * 回调可能访问旧模块的 visible / message 等 ref，导致 Vue 警告。
+ * 通过 dispose 显式清理 timer，避免 HMR 状态泄漏。
+ */
+export function disposeToast(): void {
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
+  visible.value = false;
+}
+
+// HMR 模块热替换时清理旧模块的 timer，避免回调访问旧 ref
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    disposeToast();
+  });
 }

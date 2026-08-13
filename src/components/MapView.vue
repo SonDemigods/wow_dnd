@@ -26,7 +26,7 @@
           :style="getMarkerStyle(zone.coordinates)"
           @click.stop="selectZone(zone)"
         >
-          <div class="marker-icon">{{ zone.icon }}</div>
+          <div class="marker-icon"><BaseIcon :name="zone.icon" gradient="metal" :size="20" /></div>
         </div>
       </div>
 
@@ -103,12 +103,15 @@
  */
 
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 import { useMapStore } from '@/modules/map';
 import { useCharacterStore } from '@/modules/character';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import type { MapZone, ZoneStatus } from '@/modules/map';
 import ConfirmPopup from './common/ConfirmPopup.vue';
 import worldBgImg from '@/images/worldBg.jpg';
+// P7-031 修复：魔法数字提取到 config/map.ts
+import { MAP_ASPECT_RATIO, MAP_ZOOM_STEP, MAP_ZOOM_MIN, MAP_ZOOM_MAX, PAN_BOUND_MARGIN } from '@/config/map';
 
 const emit = defineEmits<{
   (e: 'enter-zone'): void;
@@ -130,6 +133,7 @@ const mapContainerRef = ref<HTMLElement | null>(null);
 const mapWidth = ref(0);
 const mapHeight = ref(0);
 let resizeObserver: ResizeObserver | null = null;
+let fitMapRafId: number | null = null;
 
 // 缩放和平移
 const zoomLevel = ref(1);
@@ -154,7 +158,7 @@ const currentZoneId = computed(() => {
 
 const mapTransformStyle = computed(() => ({
   transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoomLevel.value})`,
-  transformOrigin: '0 0',
+  transformOrigin: 'center center',
   backgroundImage: `url(${worldBgImg})`,
   backgroundSize: 'cover',
   backgroundPosition: 'center'
@@ -170,7 +174,7 @@ function fitMapToContainer() {
   if (!mapContainerRef.value) return;
   const containerWidth = mapContainerRef.value.clientWidth;
   const containerHeight = mapContainerRef.value.clientHeight;
-  const aspectRatio = 1201 / 800;
+  const aspectRatio = MAP_ASPECT_RATIO;
 
   // 优先按高度适配
   let w = containerHeight * aspectRatio;
@@ -212,12 +216,16 @@ function selectZone(zone: MapZone) {
 // 缩放控制
 function zoomIn() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'map_zoom_in' });
-  zoomLevel.value = Math.min(3, zoomLevel.value + 0.2);
+  zoomLevel.value = Math.min(MAP_ZOOM_MAX, zoomLevel.value + MAP_ZOOM_STEP);
+  // P8-511 修复：缩放后重新钳制平移边界，防止地图越界
+  clampPan(panX.value, panY.value);
 }
 
 function zoomOut() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'map_zoom_out' });
-  zoomLevel.value = Math.max(0.5, zoomLevel.value - 0.2);
+  zoomLevel.value = Math.max(MAP_ZOOM_MIN, zoomLevel.value - MAP_ZOOM_STEP);
+  // P8-511 修复：缩放后重新钳制平移边界，防止地图越界
+  clampPan(panX.value, panY.value);
 }
 
 function onMapWheel(e: WheelEvent) {
@@ -241,12 +249,26 @@ function onMapMouseMove(e: MouseEvent) {
   if (!isDragging.value) return;
   const dx = e.clientX - dragStartX.value;
   const dy = e.clientY - dragStartY.value;
-  panX.value = dragStartPanX.value + dx;
-  panY.value = dragStartPanY.value + dy;
+  clampPan(dragStartPanX.value + dx, dragStartPanY.value + dy);
 }
 
 function onMapMouseUp() {
   isDragging.value = false;
+}
+
+// P5-030 修复：拖拽平移边界钳制，基于地图与容器尺寸动态计算
+// P7-031：PAN_BOUND_MARGIN 从 config/map.ts 导入
+// transformOrigin:center center → 缩放从中心扩散，平移范围对称
+function clampPan(targetX: number, targetY: number): void {
+  const containerW = mapContainerRef.value?.clientWidth ?? 0;
+  const containerH = mapContainerRef.value?.clientHeight ?? 0;
+  const scaledW = mapWidth.value * zoomLevel.value;
+  const scaledH = mapHeight.value * zoomLevel.value;
+  // 地图超出容器的半差值：正值表示地图比容器大，可拖动该距离
+  const halfX = Math.max(0, (scaledW - containerW) / 2) + PAN_BOUND_MARGIN;
+  const halfY = Math.max(0, (scaledH - containerH) / 2) + PAN_BOUND_MARGIN;
+  panX.value = Math.max(-halfX, Math.min(halfX, targetX));
+  panY.value = Math.max(-halfY, Math.min(halfY, targetY));
 }
 
 // 拖拽控制 - 触摸事件（移动端）
@@ -262,12 +284,14 @@ function onMapTouchStart(e: TouchEvent) {
 
 function onMapTouchMove(e: TouchEvent) {
   if (!isDragging.value || e.touches.length !== 1) return;
-  e.preventDefault(); // 拖动时阻止页面滚动
+  // P9-096 修复：调用 preventDefault 前判断 e.cancelable，避免控制台警告
+  if (e.cancelable) {
+    e.preventDefault(); // 拖动时阻止页面滚动
+  }
   const touch = e.touches[0];
   const dx = touch.clientX - dragStartX.value;
   const dy = touch.clientY - dragStartY.value;
-  panX.value = dragStartPanX.value + dx;
-  panY.value = dragStartPanY.value + dy;
+  clampPan(dragStartPanX.value + dx, dragStartPanY.value + dy);
 }
 
 function onMapTouchEnd() {
@@ -283,7 +307,8 @@ function onEnterZoneClick() {
 
 function onConfirmEnter() {
   if (!selectedZone.value) return;
-  const success = mapStore.enterZone(selectedZone.value.id);
+  // P12-031 修复：传入 playerLevel，使 enterZone 的等级校验生效
+  const success = mapStore.enterZone(selectedZone.value.id, characterStore.level);
   if (success) {
     showConfirm.value = false;
     emit('enter-zone');
@@ -299,7 +324,7 @@ onMounted(() => {
     });
     resizeObserver.observe(mapContainerRef.value);
     // 兜底：rAF 后再次确保尺寸正确（处理部分浏览器 ResizeObserver 回调合并的情况）
-    requestAnimationFrame(() => {
+    fitMapRafId = requestAnimationFrame(() => {
       fitMapToContainer();
     });
   }
@@ -310,19 +335,22 @@ onUnmounted(() => {
     resizeObserver.disconnect();
     resizeObserver = null;
   }
+  if (fitMapRafId !== null) {
+    cancelAnimationFrame(fitMapRafId);
+    fitMapRafId = null;
+  }
 });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .map-view {
   width: 100%;
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   min-height: 0;
-  border-radius: 12px;
-  border: 2px solid #4a4a4a;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-radius: @radius-xl;
+  border: @border-card;
+  box-shadow: @shadow-card;
   overflow: hidden;
 }
 
@@ -330,14 +358,12 @@ onUnmounted(() => {
   position: relative;
   flex: 1;
   min-height: 400px;
-  background: #1a1a2e;
+  background: @primary-bg;
   border: none;
   overflow: hidden;
   cursor: grab;
   user-select: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  .flex-center();
 }
 
 .map-container:active {
@@ -364,40 +390,38 @@ onUnmounted(() => {
 .marker-icon {
   width: 36px;
   height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
+  .flex-center();
+  font-size: @font-2xl;
   border-radius: 50%;
   border: 2px solid;
-  transition: transform 0.15s;
+  transition: transform @transition-fast;
 }
 
 /* 未解锁 - 灰色边框，半透明 */
 .zone-marker.locked .marker-icon {
-  border-color: #666;
-  background: rgba(0, 0, 0, 0.5);
-  opacity: 0.5;
+  border-color: @color-dim-gray;
+  background: @overlay-mid;
+  opacity: @opacity-dimmed;
 }
 
 /* 已解锁 - 绿色边框 */
 .zone-marker.unlocked .marker-icon {
-  border-color: #00d2d3;
-  background: rgba(0, 0, 0, 0.6);
+  border-color: @color-ally;
+  background: @overlay-dark;
   box-shadow: 0 0 8px rgba(0, 210, 211, 0.3);
 }
 
 /* 高风险 - 红色边框 */
 .zone-marker.high-risk .marker-icon {
-  border-color: #e94560;
-  background: rgba(0, 0, 0, 0.6);
+  border-color: @color-danger-accent;
+  background: @overlay-dark;
   box-shadow: 0 0 8px rgba(233, 69, 96, 0.3);
 }
 
 /* 当前位置 - 金色边框 */
 .zone-marker.is-current .marker-icon {
-  border-color: #ffd700;
-  background: rgba(0, 0, 0, 0.6);
+  border-color: @accent-color;
+  background: @overlay-dark;
   box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
 }
 
@@ -406,33 +430,29 @@ onUnmounted(() => {
   position: absolute;
   top: 16px;
   right: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 8px;
-  padding: 4px;
+  .flex-col-center();
+  gap: @spacing-2xs;
+  background: @overlay-dark;
+  border-radius: @radius-lg;
+  padding: @spacing-xs;
   z-index: 20;
 }
 
 .zoom-btn {
   width: 36px;
   height: 36px;
-  background: rgba(255, 255, 255, 0.08);
+  background: @white-08;
   border: none;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 20px;
+  border-radius: @radius-md;
+  color: @popup-text-color;
+  font-size: @font-2xl;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s;
+  .flex-center();
+  transition: background @transition-fast;
 }
 
 .zoom-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: @white-18;
 }
 
 .zoom-btn:active {
@@ -440,7 +460,7 @@ onUnmounted(() => {
 }
 
 .zoom-level {
-  font-size: 11px;
+  font-size: @font-xs;
   color: rgba(255, 255, 255, 0.5);
   padding: 2px 0;
 }
@@ -459,39 +479,38 @@ onUnmounted(() => {
 }
 
 .panel-header {
-  padding: 16px 20px 12px;
+  padding: @spacing-3xl 20px @spacing-xl;
 }
 
 .panel-name {
-  font-size: 18px;
-  font-weight: 700;
-  color: #fff;
+  font-size: @font-xl;
+  font-weight: @font-weight-bold;
+  color: @popup-text-color;
 }
 
 .panel-body {
-  padding: 0 20px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  padding: 0 20px @spacing-3xl;
+  .flex-col();
+  gap: @spacing-lg;
 }
 
 .panel-row {
   display: flex;
   align-items: baseline;
-  gap: 12px;
+  gap: @spacing-xl;
 }
 
 .panel-label {
-  font-size: 14px;
+  font-size: @font-md;
   color: rgba(255, 255, 255, 0.45);
   flex-shrink: 0;
   min-width: 36px;
 }
 
 .panel-value {
-  font-size: 15px;
-  color: #fff;
-  font-weight: 500;
+  font-size: @font-base;
+  color: @popup-text-color;
+  font-weight: @font-weight-normal;
 }
 
 .panel-value.status-locked {
@@ -507,36 +526,36 @@ onUnmounted(() => {
 }
 
 .panel-desc {
-  font-size: 14px;
+  font-size: @font-md;
   color: rgba(255, 255, 255, 0.55);
   line-height: 1.5;
 }
 
 .panel-empty {
-  font-size: 14px;
+  font-size: @font-md;
   color: rgba(255, 255, 255, 0.35);
   text-align: center;
-  padding: 16px 0;
+  padding: @spacing-3xl 0;
 }
 
 .panel-actions {
-  padding: 0 20px 16px;
+  padding: 0 20px @spacing-3xl;
 }
 
 .panel-btn {
   width: 100%;
-  padding: 12px 20px;
+  padding: @spacing-xl 20px;
   border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  border-radius: @radius-lg;
+  font-size: @font-base;
+  font-weight: @font-weight-semibold;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all @transition-fast ease;
 }
 
 .panel-btn.enter {
-  background: #ffd700;
-  color: #1a1a2e;
+  background: @accent-color;
+  color: @primary-bg;
 }
 
 .panel-btn.enter:hover {
@@ -548,8 +567,8 @@ onUnmounted(() => {
 }
 
 .panel-btn.locked {
-  background: rgba(255, 255, 255, 0.1);
-  color: #8b8b8b;
+  background: @white-10;
+  color: @text-secondary;
   cursor: not-allowed;
 }
 

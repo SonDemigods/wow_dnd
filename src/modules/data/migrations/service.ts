@@ -1,0 +1,122 @@
+/**
+ * @fileoverview 数据迁移服务
+ * @description
+ *   提供启动时手动迁移全量存档的能力。
+ *
+ *   迁移流程：
+ *   1. 读取 runtime_gameState.dataVersion（当前存档版本戳）
+ *   2. 若 dataVersion < CURRENT_DATA_VERSION，收集全量数据为 BackupData
+ *   3. 调用 runMigrations 运行迁移链
+ *   4. 清空所有表，写入迁移后的数据（复用 ImportService.importData）
+ *   5. 更新 runtime_gameState.dataVersion = CURRENT_DATA_VERSION
+ *
+ *   复用 BackupService.collectAllData 读取数据，复用 ImportService.importData 写回数据，
+ *   确保迁移路径与备份导入路径一致，避免两套写入逻辑分叉。
+ *
+ * @module data/migrations
+ */
+import { db } from '../core';
+import { runMigrations } from './index';
+import type { MigrationResult } from './types';
+import { CURRENT_DATA_VERSION, APP_VERSION } from '@/config/version';
+import { BackupService } from '../backup';
+import { ImportService } from '../importer';
+
+/**
+ * 数据迁移服务
+ *
+ * 提供启动时手动迁移全量存档的能力。单机游戏存档量小，全量读写无性能瓶颈，
+ * 且用户可控（迁移前可提示备份）。
+ */
+export class MigrationService {
+  /**
+   * 执行启动时全量迁移
+   *
+   * 流程：
+   * 1. 读取 runtime_gameState.dataVersion（当前存档版本戳）
+   * 2. 若 dataVersion < CURRENT_DATA_VERSION，收集全量数据并迁移
+   * 3. 清空并重写所有表（复用 ImportService.importData）
+   * 4. 更新版本戳
+   *
+   * @returns 迁移结果
+   */
+  async runStartupMigration(): Promise<MigrationResult> {
+    // 1. 读取当前版本戳
+    const gameState = await db.runtime_gameState.get('gameState');
+    const fromVersion = gameState?.dataVersion ?? 1;
+
+    // P11-500 修复：区分版本相等与版本降级
+    if (fromVersion === CURRENT_DATA_VERSION) {
+      return {
+        success: true,
+        fromVersion,
+        toVersion: CURRENT_DATA_VERSION,
+        migratedRecords: 0,
+        error: '当前存档已是最新版本，无需迁移'
+      };
+    }
+
+    if (fromVersion > CURRENT_DATA_VERSION) {
+      return {
+        success: false,
+        fromVersion,
+        toVersion: CURRENT_DATA_VERSION,
+        migratedRecords: 0,
+        error: '存档版本高于当前应用版本，请更新应用'
+      };
+    }
+
+    try {
+      // 2. 收集全量数据（复用 BackupService.collectAllData）
+      const backupService = new BackupService();
+      const data = await backupService.collectAllData();
+
+      // 3. 运行迁移链
+      const migratedData = runMigrations(data, fromVersion);
+
+      // 4. 写回迁移后的数据（复用 ImportService.importData）
+      //    P8-016 修复：importData 为覆盖式写入（bulkPut），不删除已有记录；迁移需删除场景需另行清理
+      const importService = new ImportService();
+      const importResult = await importService.importData(migratedData);
+
+      // P7-004 修复：校验 importData 返回值，失败时不更新版本戳
+      if (!importResult.success) {
+        return {
+          success: false,
+          fromVersion,
+          toVersion: fromVersion,
+          migratedRecords: 0,
+          error: `数据写入失败: ${importResult.error ?? '未知错误'}`
+        };
+      }
+
+      // 5. 更新版本戳
+      // P9-057 修复：检查 update 返回值，失败时 throw（update 返回更新行数，0 表示未找到记录）
+      const updatedCount = await db.runtime_gameState.update('gameState', {
+        dataVersion: CURRENT_DATA_VERSION,
+        appVersion: APP_VERSION
+      });
+      if (updatedCount === 0) {
+        throw new Error('更新版本戳失败：runtime_gameState 中不存在 gameState 记录');
+      }
+
+      return {
+        success: true,
+        fromVersion,
+        toVersion: CURRENT_DATA_VERSION,
+        migratedRecords: Object.keys(migratedData.characters).length
+      };
+    } catch (error) {
+      return {
+        success: false,
+        fromVersion,
+        toVersion: fromVersion,
+        migratedRecords: 0,
+        error: (error as Error).message
+      };
+    }
+  }
+}
+
+/** 迁移服务单例 */
+export const migrationService = new MigrationService();

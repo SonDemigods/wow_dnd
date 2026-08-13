@@ -1,0 +1,8 @@
+allowBuilds:
+  esbuild: true
+  vue-demi: true
+# pnpm 11+ 配置：原 package.json 的 pnpm.onlyBuiltDependencies 迁移至此
+# 仅允许以下依赖运行安装时构建脚本（如 esbuild 下载平台二进制）
+onlyBuiltDependencies:
+  - esbuild
+  - vue-demi

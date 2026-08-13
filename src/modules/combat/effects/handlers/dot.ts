@@ -3,6 +3,7 @@
  */
 
 import type { EffectHandler } from '../handler';
+import { BURN_DAMAGE_MULTIPLIER } from '@/config/combat';
 
 /**
  * poison — 中毒：每回合扣除固定生命值
@@ -12,18 +13,21 @@ export const poisonHandler: EffectHandler = {
   type: 'poison',
 
   onTick(effect) {
-    return { dotDamage: effect.value, regenAmount: 0 };
+    // P4-005 修复：Math.max(0, ...) 防止负值
+    return { dotDamage: Math.max(0, effect.value), regenAmount: 0 };
   },
 };
 
 /**
  * burn — 灼烧：每回合扣除生命值（比毒强 1.5 倍）
- * value 是基础伤害值，实际扣除 value × 1.5
+ * value 是基础伤害值，实际扣除 value × BURN_DAMAGE_MULTIPLIER
  */
 export const burnHandler: EffectHandler = {
   type: 'burn',
 
   onTick(effect) {
-    return { dotDamage: Math.round(effect.value * 1.5), regenAmount: 0 };
+    // P4-005 修复：Math.max(0, ...) 防止负值导致 DOT 变回血
+    // P11-006 修复：倍率从硬编码 1.5 提取为 BURN_DAMAGE_MULTIPLIER 配置常量
+    return { dotDamage: Math.max(0, Math.round(effect.value * BURN_DAMAGE_MULTIPLIER)), regenAmount: 0 };
   },
 };

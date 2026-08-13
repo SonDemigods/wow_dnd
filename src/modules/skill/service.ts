@@ -1,72 +1,194 @@
 /**
- * 技能模块服务层（纯函数）
- * 
- * 纯计算/校验函数，无状态、无副作用、无 DB 调用。
- * 所有状态管理由 Store 层负责。
+ * @fileoverview 技能模块服务层（纯函数集合）
+ * @description 所有函数均为纯函数——无状态、无副作用、无异步操作、无外部依赖（仅依赖类型定义）。
+ *              负责技能伤害计算、Buff 效果计算、施放条件校验等核心业务逻辑。
+ *              状态管理、持久化、异步编排全部交由 Store 层处理。
+ * @module skill
  */
-import type { Skill, SkillBar, SkillBuffEffect } from './types';
-import type { Stats } from '../character/types';
+
+import type { Skill, SkillBar, SkillBuffEffect, SkillType, StatKey } from './types';
+import type { Stats } from '@/modules/character/types';
+
+// ============================================================================
+// 类型守卫
+// ============================================================================
 
 /**
- * 计算技能伤害/效果值
- * @param skill - 技能数据
- * @param stats - 角色核心属性
- * @returns 计算后的效果值
+ * 合法的技能目标类型集合
+ *
+ * 用于 `isValidTargetType` 类型守卫的运行时校验，确保从 DB 读取的 string
+ * 在收窄为字面量联合类型前通过运行时验证。
  */
-export function calculateSkillDamage(skill: Skill, stats: Stats): number {
-  switch (skill.type) {
-    case 'physical_damage': {
-      const coef = skill.effect.coefficient ?? getSkillCoefficient(skill.unlockLevel, 'damage');
-      return Math.floor(skill.effect.value + stats.str * coef);
-    }
-    case 'magic_damage': {
-      const coef = skill.effect.coefficient ?? getSkillCoefficient(skill.unlockLevel, 'damage');
-      return Math.floor(skill.effect.value + stats.int * coef);
-    }
-    case 'health_restore': {
-      const coef = skill.effect.coefficient ?? getSkillCoefficient(skill.unlockLevel, 'heal');
-      return Math.floor(skill.effect.value + stats.wis * coef);
-    }
-    case 'mana_restore': {
-      const coef = skill.effect.coefficient ?? getSkillCoefficient(skill.unlockLevel, 'heal');
-      return Math.floor(skill.effect.value + stats.int * coef);
-    }
-    case 'buff':
-    case 'debuff':
-      return 0;
+const VALID_TARGET_TYPES: ReadonlySet<NonNullable<Skill['targetType']>> = new Set([
+  'single',
+  'all_enemies',
+  'self',
+  'ally',
+]);
+
+/**
+ * 技能目标类型类型守卫
+ *
+ * 运行时校验 `data.targetType`（DB 中存储为 string）是否为合法的目标类型字面量。
+ * 替代 `as Skill['targetType']` 不安全类型断言，确保类型收窄基于运行时数据。
+ *
+ * @param value - 待校验的字符串值（通常来自 DB 读取）
+ * @returns 为 true 时收窄为 `Skill['targetType']`，为 false 时调用方应使用 undefined
+ *
+ * @see toSkill 在 DB → 运行时转换中使用此守卫
+ */
+export function isValidTargetType(value: string | undefined | null): value is NonNullable<Skill['targetType']> {
+  return value != null && VALID_TARGET_TYPES.has(value as NonNullable<Skill['targetType']>);
+}
+
+// ============================================================================
+// 伤害/效果计算
+// ============================================================================
+
+/**
+ * 计算技能伤害/效果值（综合核心算法）
+ *
+ * 根据技能类型选择对应的属性加成公式，计算最终效果值。
+ * 公式通用结构：`基础值 + 属性 × 系数`，不同技能类型对应不同属性：
+ *
+ * | 技能类型         | 加成属性 | 系数来源                       |
+ * |------------------|----------|-------------------------------|
+ * | physical_damage  | STR(力量) | effect.coefficient 或等级系数  |
+ * | magic_damage     | INT(智力) | effect.coefficient 或等级系数  |
+ * | health_restore   | WIS(智慧) | effect.coefficient 或等级系数  |
+ * | mana_restore     | INT(智力) | effect.coefficient 或等级系数  |
+ * | buff / debuff    | —        | 固定返回 0（效果通过 buffs 字段计算） |
+ *
+ * 系数优先级：`skill.effect.coefficient`（手动指定）> `getSkillCoefficient(skill.unlockLevel, type)`（自动计算）
+ *
+ * @param skill - 技能数据（需要 effect.value、effect.coefficient、unlockLevel、type 字段）
+ * @param stats - 角色核心属性（STR/INT/WIS/DEX 四维）
+ * @returns 计算后的最终效果值（已 `Math.floor` 向下取整）
+ *
+ * @see getSkillCoefficient 自动系数计算逻辑
+ * @see calculateBuffValue buff/debuff 类型使用此函数计算单个效果值
+ *
+ * @example
+ * // 物理伤害技能：基础 50 + 力量 15 × 系数 0.5 = 57
+ * calculateSkillDamage({ type: 'physical_damage', effect: { value: 50 } }, { str: 15 })
+ */
+export function calculateSkillDamage(skill: Skill, stats: Stats, consumedAmount?: number): number {
+  // buff/debuff：不通过此函数计算伤害，返回 0 占位
+  if (skill.type === 'buff' || skill.type === 'debuff') return 0;
+
+  const statKey = skill.effect.statKey ?? defaultStatForType(skill.type);
+  const isHeal = skill.type === 'health_restore' || skill.type === 'mana_restore';
+  const coef = skill.effect.coefficient ?? getSkillCoefficient(skill.unlockLevel, isHeal ? 'heal' : 'damage');
+  const base = skill.effect.value + stats[statKey] * coef;
+
+  // 终结技缩放：消耗全部副资源，效果按数量线性缩放
+  if (skill.scalingResource && consumedAmount && consumedAmount > 0) {
+    const multiplier = skill.scalingMultiplier ?? 1.0;
+    return Math.floor(base * consumedAmount * multiplier);
+  }
+
+  return Math.floor(base);
+}
+
+/**
+ * 按 SkillType 返回默认的加成属性键
+ *
+ * 未配置 `effect.statKey` 时使用此映射，保持向后兼容。
+ */
+function defaultStatForType(type: SkillType): StatKey {
+  switch (type) {
+    case 'physical_damage':
+      return 'str';
+    case 'magic_damage':
+      return 'int';
+    case 'health_restore':
+      return 'wis';
+    case 'mana_restore':
+      return 'int';
     default:
-      return skill.effect.value;
+      return 'int';
   }
 }
 
 /**
- * 按解锁等级获取技能系数（分层缩放）
- * @param unlockLevel - 技能解锁等级
- * @param type - 技能类型
- * @returns 系数值
+ * 按解锁等级获取技能属性加成系数（分层缩放算法）
+ *
+ * 系数随技能解锁等级阶梯式提升，模拟"高级技能受属性影响更大"的 RPG 设计。
+ * 分层规则（按解锁等级 `unlockLevel`，覆盖 1-20 级）：
+ *
+ * | 等级区间  | Tier | damage 系数 | heal 系数 |
+ * |-----------|------|-------------|-----------|
+ * | 1-2       | 0    | 0.50        | 0.30      |
+ * | 3-5       | 1    | 0.55        | 0.34      |
+ * | 6-8       | 2    | 0.62        | 0.38      |
+ * | 9-12      | 3    | 0.72        | 0.43      |
+ * | 13-16     | 4    | 0.84        | 0.49      |
+ * | 17-20     | 5    | 0.98        | 0.56      |
+ *
+ * 递增型曲线：高等级技能系数接近 1.0，保证 Lv20 大招伤害与主属性成长同步，
+ * 避免高等级技能因系数停滞导致伤害不足。
+ *
+ * @param unlockLevel - 技能解锁等级（1-20）
+ * @param type - 计算类型（'damage' = 伤害/法力恢复，'heal' = 生命恢复，'buff' = 固定 0）
+ * @returns 属性加成系数
+ *
+ * @remarks 此函数为模块内部辅助函数，不应被外部直接调用。外部应通过 `calculateSkillDamage` 间接使用。
  */
 export function getSkillCoefficient(unlockLevel: number, type: 'damage' | 'heal' | 'buff'): number {
+  // buff 类型不受属性影响，固定返回 0
   if (type === 'buff') return 0;
 
-  const baseCoef = type === 'heal' ? 0.30 : 0.50;
-  const tierBonus = type === 'heal' ? 0.035 : 0.040;
+  // 各区间系数表（递增型曲线）
+  const damageCoefficients = [0.50, 0.55, 0.62, 0.72, 0.84, 0.98];
+  const healCoefficients = [0.30, 0.34, 0.38, 0.43, 0.49, 0.56];
 
-  // Lv 1-2: 基础系数 / Lv 3-5: +1 档 / Lv 6-8: +2 档 / Lv 9-10: +3 档
-  const tier = unlockLevel <= 2 ? 0 : unlockLevel <= 5 ? 1 : unlockLevel <= 8 ? 2 : 3;
-  return baseCoef + tier * tierBonus;
+  // 分层映射：Lv 1-2 / 3-5 / 6-8 / 9-12 / 13-16 / 17-20
+  const tier = unlockLevel <= 2 ? 0
+    : unlockLevel <= 5 ? 1
+    : unlockLevel <= 8 ? 2
+    : unlockLevel <= 12 ? 3
+    : unlockLevel <= 16 ? 4
+    : 5;
+
+  return type === 'heal' ? healCoefficients[tier] : damageCoefficients[tier];
 }
 
 /**
  * 计算 Buff/Debuff 技能的实际效果值（受属性加成）
- * @param buffEffect - Buff/Debuff 效果配置
+ *
+ * 每种效果类型有不同的属性加成规则，根据游戏平衡需求手动调校。
+ *
+ * 效果分类及加成规则：
+ *
+ * **百分比类（影响攻防数值的百分比变化）**
+ * - attack_up / attack_down：`value + WIS × 0.30`
+ * - defense_up / defense_down：`value + WIS × 0.25`
+ * - vulnerable（易伤）：`value + WIS × 0.20`
+ *
+ * **固定值类（HP 相关的持续效果，缩放匹配 HP 成长曲线）**
+ * - poison（中毒）：`value + WIS × 0.50`
+ * - burn（灼烧）：`value + WIS × 0.60`
+ * - regen（再生）：`value + WIS × 0.50`
+ * - shield（护盾）：`value + WIS × 0.80`
+ *
+ * **控制类（不随属性缩放，稳定控制收益）**
+ * - stun / freeze / silence：直接返回 `value`
+ *
+ * **速度类（敏捷 DEX 加成）**
+ * - speed_up / speed_down：`value + DEX × 0.30`
+ *
+ * @param buffEffect - Buff/Debuff 效果配置（type + value）
  * @param stats - 角色核心属性
- * @returns 计算后的效果值
+ * @returns 经过属性加成后的最终效果值
+ *
+ * @see SkillBuffEffect 效果配置类型定义
+ * @see calculateSkillDamage buff/debuff 技能的伤害计算返回 0，实际效果通过此函数计算
  */
 export function calculateBuffValue(buffEffect: SkillBuffEffect, stats: Stats): number {
   const { type, value } = buffEffect;
 
   switch (type) {
-    // ===== 百分比类：value 即百分比点数 =====
+    // ===== 百分比类：value 即百分比点数，受 WIS 适度加成 =====
     case 'attack_up':
     case 'attack_down':
       return Math.floor(value + stats.wis * 0.30);
@@ -78,7 +200,7 @@ export function calculateBuffValue(buffEffect: SkillBuffEffect, stats: Stats): n
     case 'vulnerable':
       return Math.floor(value + stats.wis * 0.20);
 
-    // ===== 固定值类：缩放匹配 HP 成长 =====
+    // ===== 固定值类：缩放匹配 HP 成长曲线，高额 WIS 加成使后期 buff 更有价值 =====
     case 'poison':
       return Math.floor(value + stats.wis * 0.50);
 
@@ -91,84 +213,163 @@ export function calculateBuffValue(buffEffect: SkillBuffEffect, stats: Stats): n
     case 'shield':
       return Math.floor(value + stats.wis * 0.80);
 
-    // ===== 倍率类：轻微缩放 =====
-    case 'thorn':
-      return Math.min(0.60, value + stats.wis * 0.005);
-
-    // ===== 控制类：不缩放 =====
+    // ===== 控制类：不缩放，保证控制效果的稳定性 =====
     case 'stun':
     case 'freeze':
     case 'silence':
       return value;
 
-    // ===== 速度类：平坦值缩放 =====
+    // ===== 速度类：DEX（敏捷）加成 =====
     case 'speed_up':
     case 'speed_down':
       return Math.floor(value + stats.dex * 0.30);
 
+    // 未知效果类型：安全兜底，返回原始值
     default:
       return value;
   }
 }
 
-/**
- * 检查法力值是否足够施放技能
- * @param skill - 技能数据
- * @param currentMana - 当前法力值
- * @returns 是否足够
- */
-export function checkManaCost(skill: Skill, currentMana: number): boolean {
-  return currentMana >= skill.mpCost;
-}
+// ============================================================================
+// 条件校验
+// ============================================================================
 
 /**
  * 判断角色是否可以学习某个技能模板
- * @param skillTemplate - 技能模板
- * @param characterLevel - 角色等级
- * @param currentSkills - 已学技能列表
- * @returns 是否可以学习
+ *
+ * 两个必要条件：
+ * 1. 角色等级 >= 技能解锁等级（`unlockLevel`）
+ * 2. 角色尚未学习该技能（防重复学习）
+ *
+ * @param skillTemplate - 要检查的技能模板
+ * @param characterLevel - 角色当前等级
+ * @param currentSkills - 角色已学技能列表
+ * @returns `true` = 可以学习，`false` = 不满足条件
+ *
+ * @see learnSkill Store 中调用此函数进行学习前校验
  */
 export function canLearnSkill(
   skillTemplate: Skill,
   characterLevel: number,
   currentSkills: Skill[]
 ): boolean {
+  // 等级不足 → 不可学习
   if (skillTemplate.unlockLevel > characterLevel) return false;
+  // 已学习 → 不可重复学习
   return !currentSkills.some(s => s.id === skillTemplate.id);
 }
 
 /**
  * 验证技能栏槽位索引是否有效
- * @param skillBar - 技能栏
- * @param slotIndex - 槽位索引
- * @returns 是否有效
+ *
+ * 技能栏固定 4 个槽位（0-3），此函数提供运行时边界检查。
+ *
+ * @param slotIndex - 待校验的槽位索引
+ * @returns `true` = 索引在 0-3 范围内
+ *
+ * @see SkillSlotIndex 编译时类型约束（字面量联合类型 0|1|2|3）
+ * @see equipSkill Store 中调用此函数校验槽位
  */
-export function validateSkillBarSlot(_skillBar: SkillBar, slotIndex: number): boolean {
+export function validateSkillBarSlot(slotIndex: number): boolean {
   return slotIndex >= 0 && slotIndex <= 3;
 }
 
 /**
  * 检查技能是否已装备在技能栏中
- * @param skillBar - 技能栏
- * @param skillId - 技能ID
- * @returns 是否已装备
+ *
+ * 遍历 4 个槽位检查是否存在目标技能 ID。用于 UI 层高亮已装备技能。
+ *
+ * @param skillBar - 当前技能栏状态
+ * @param skillId - 待检查的技能 ID
+ * @returns `true` = 已装备在某个槽位中
  */
 export function isSkillEquipped(skillBar: SkillBar, skillId: string): boolean {
   return skillBar.slots.includes(skillId);
 }
 
 /**
- * 校验技能是否可施放
+ * canCastSkill 的扩展选项接口（BIZ-11）
+ *
+ * 封装除技能本身和法力值之外的所有施放前校验输入。
+ * 通过对象形式提供，便于未来扩展（如施法材料、距离等）。
+ *
+ * @property {number} currentMana - 角色当前法力值（必填，对应旧签名第二个参数）
+ * @property {boolean} [isSilenced] - 是否处于沉默状态（true 时禁止施放任何技能）
+ * @property {number} [currentCooldown] - 当前剩余冷却回合数（>0 表示冷却中；未传入则跳过冷却校验）
+ * @property {(resourceType: string, cost: number) => boolean} [hasEnoughResource]
+ *           资源充足判定回调，由调用方根据角色实际资源状态实现。
+ *           仅当 skill 配置了 `resourceType` + `resourceCost` 且本回调被传入时才执行资源校验。
+ *
+ * @see canCastSkill 使用此接口进行扩展校验
+ */
+export interface CanCastSkillOptions {
+  currentMana: number;
+  isSilenced?: boolean;
+  currentCooldown?: number;
+  hasEnoughResource?: (resourceType: string, cost: number) => boolean;
+}
+
+/**
+ * 校验技能是否可施放（BIZ-11 四维校验）
+ *
+ * 校验顺序（短路求值，命中即返回失败原因）：
+ * 1. **沉默状态**：`isSilenced === true` → 禁止施放任何技能
+ * 2. **冷却时间**：`currentCooldown > 0` → 冷却中
+ * 3. **法力值**   ：`currentMana < skill.mpCost` → 法力不足
+ * 4. **资源系统** ：skill 配置了 `resourceType` + `resourceCost` 且 `hasEnoughResource` 回调
+ *                   返回 false → 资源不足
+ *
+ * 向后兼容：第二个参数为 `number` 时视为 `currentMana`，等价于 `{ currentMana }`。
+ *
  * @param skill - 技能数据
- * @param currentMana - 当前法力值
- * @returns 校验结果
+ * @param options - 校验选项对象（或旧签名的 currentMana 数字）
+ * @returns 包含校验结果的对象：
+ *   - `canCast: true`  → 可以施放（`reason` 为空字符串）
+ *   - `canCast: false` → 不可施放（`reason` 为失败原因描述）
+ *
+ * @see castSkill Store 中调用此函数进行施放前校验
  */
 export function canCastSkill(
   skill: Skill,
-  currentMana: number
+  options: CanCastSkillOptions | number
 ): { canCast: boolean; reason: string } {
-  if (currentMana < skill.mpCost) {
+  // 向后兼容：旧签名第二个参数为 number
+  const opts: CanCastSkillOptions = typeof options === 'number'
+    ? { currentMana: options }
+    : options;
+
+  // 1. 沉默校验
+  if (opts.isSilenced) {
+    return { canCast: false, reason: '被沉默，无法施放技能' };
+  }
+
+  // 2. 冷却校验（未传入 currentCooldown 时跳过）
+  if (opts.currentCooldown !== undefined && opts.currentCooldown > 0) {
+    return { canCast: false, reason: '技能冷却中' };
+  }
+
+  // 3. 法力值校验（P2-76：mpCost 可选，undefined 视为 0）
+  if (opts.currentMana < (skill.mpCost ?? 0)) {
     return { canCast: false, reason: '法力不足' };
   }
+
+  // 4. 资源系统校验（仅在 skill 配置了 resourceType + resourceCost 且传入回调时执行）
+  if (
+    skill.resourceType &&
+    skill.resourceCost !== undefined &&
+    opts.hasEnoughResource
+  ) {
+    if (!opts.hasEnoughResource(skill.resourceType, skill.resourceCost)) {
+      return { canCast: false, reason: '资源不足' };
+    }
+  }
+
+  // 5. 终结技校验（scalingResource 技能至少需要 1 点副资源才能施放）
+  if (skill.scalingResource && opts.hasEnoughResource) {
+    if (!opts.hasEnoughResource(skill.scalingResource, 1)) {
+      return { canCast: false, reason: '副资源不足' };
+    }
+  }
+
   return { canCast: true, reason: '' };
 }

@@ -3,7 +3,7 @@
     <!-- 校验/确认弹窗 -->
     <div v-if="showModal" class="modal-overlay" @click="cancelModal">
       <div v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1, transition: { duration: 200 } }" class="modal-box" @click.stop>
-        <div class="modal-icon">{{ modalIcon }}</div>
+        <div class="modal-icon"><BaseIcon :name="modalIcon.name" :gradient="modalIcon.gradient" :size="48" /></div>
         <h3>{{ modalTitle }}</h3>
         <p>{{ modalMessage }}</p>
         <div class="modal-buttons">
@@ -24,9 +24,7 @@
       <div v-if="currentStep === 1" class="step-grid">
         <div class="faction-grid">
           <button
-            v-for="faction in baseStore.factions.filter(
-              (f) => f.id !== 'neutral'
-            )"
+            v-for="faction in displayFactions"
             :key="faction.id"
             :class="[
               'faction-card',
@@ -36,7 +34,7 @@
             :style="{ '--faction-color': faction.color }"
             @click="selectFaction(faction.id)"
           >
-            <div class="faction-icon">{{ faction.icon }}</div>
+            <div class="faction-icon"><BaseIcon :name="faction.icon" :gradient="faction.id === 'alliance' ? 'alliance' : 'horde'" :size="32" /></div>
             <div class="faction-name">{{ faction.name }}</div>
             <div class="faction-desc">
               {{ getFactionRaceNames(faction.id) }}
@@ -54,7 +52,7 @@
             :style="{ '--faction-color': '#4CAF50' }"
             @click="selectFaction('neutral')"
           >
-            <div class="faction-icon">{{ neutralFaction.icon }}</div>
+            <div class="faction-icon"><BaseIcon :name="neutralFaction.icon" gradient="neutral" :size="32" /></div>
             <div class="faction-name">{{ neutralFaction.name }}</div>
             <div class="faction-desc">{{ getFactionRaceNames('neutral') }}</div>
           </button>
@@ -70,7 +68,7 @@
             :class="['race-card', { active: selectedRace === race.id }]"
             @click="selectRace(race.id)"
           >
-            <div class="race-icon">{{ race.icon }}</div>
+            <div class="race-icon"><BaseIcon :name="race.icon" :gradient="race.factionId === 'alliance' ? 'alliance' : race.factionId === 'horde' ? 'horde' : 'neutral'" :size="32" /></div>
             <div class="race-name">{{ race.name }}</div>
             <div class="race-bonus" v-if="race.bonus">
               <span v-for="(value, stat) in race.bonus" :key="stat"
@@ -91,7 +89,7 @@
             :style="{ '--class-color': cls.color }"
             @click="selectClass(cls.id)"
           >
-            <div class="class-icon">{{ cls.icon }}</div>
+            <div class="class-icon"><BaseIcon :name="cls.icon" :gradient="cls.id" :size="28" /></div>
             <div class="class-name">{{ cls.name }}</div>
             <div class="class-bonus" v-if="cls.bonus">
               <span
@@ -112,7 +110,7 @@
         <div class="character-preview">
           <div class="preview-row">
             <div class="preview-avatar">
-              {{ baseStore.getRaceIcon(selectedRace || '') }}
+              <BaseIcon :name="getRaceIcon(selectedRace || '')" :gradient="selectedFaction === 'alliance' ? 'alliance' : selectedFaction === 'horde' ? 'horde' : 'neutral'" :size="40" />
             </div>
             <div class="name-input-wrapper">
               <input
@@ -126,17 +124,17 @@
           <div class="preview-details">
             <Tag
               type="faction"
-              :text="baseStore.getFactionName(selectedFaction || '')"
-              :color="baseStore.getFactionColor(selectedFaction || '')"
+              :text="getFactionName(selectedFaction || '')"
+              :color="getFactionColor(selectedFaction || '')"
             />
             <Tag
               type="race"
-              :text="baseStore.getRaceName(selectedRace || '')"
+              :text="getRaceName(selectedRace || '')"
             />
             <Tag
               type="class"
-              :text="baseStore.getClassName(selectedClass || '')"
-              :color="baseStore.getClassColor(selectedClass || '')"
+              :text="getClassName(selectedClass || '')"
+              :color="getClassColor(selectedClass || '')"
             />
           </div>
         </div>
@@ -154,7 +152,7 @@
             :key="stat"
             class="attr-item"
           >
-            <span class="attr-icon">{{ getStatIcon(stat) }}</span>
+            <BaseIcon :name="getStatIcon(stat).name" :gradient="getStatIcon(stat).gradient" :size="16" />
             <span class="attr-name">{{ getStatName(stat) }}</span>
             <span class="attr-value">{{ value }}</span>
           </div>
@@ -170,7 +168,7 @@
             :key="stat"
             class="attr-box"
           >
-            <div class="attr-icon">{{ getStatIcon(stat) }}</div>
+            <BaseIcon :name="getStatIcon(stat).name" :gradient="getStatIcon(stat).gradient" :size="14" />
             <div class="attr-label">{{ getStatName(stat) }}</div>
             <div class="attr-value">{{ value }}</div>
           </div>
@@ -180,43 +178,43 @@
           <div class="secondary-title">次级属性</div>
           <div class="secondary-attrs">
             <div class="sec-attr">
-              <span class="sec-icon">⚔️</span>
-              <span>物理攻击</span>
+              <BaseIcon name="sword-clash" gradient="physical" :size="14" />
+              <span>物理强度</span>
               <strong>{{ derivedAttributes.physicalAttack }}</strong>
             </div>
             <div class="sec-attr">
-              <span class="sec-icon">🛡️</span>
-              <span>物理防御</span>
+              <BaseIcon name="shield" gradient="earth" :size="14" />
+              <span>物理韧性</span>
               <strong>{{ derivedAttributes.physicalDefense }}</strong>
             </div>
             <div class="sec-attr">
-              <span class="sec-icon">🌀</span>
-              <span>魔法攻击</span>
+              <BaseIcon name="magic-swirl" gradient="magic" :size="14" />
+              <span>魔法强度</span>
               <strong>{{ derivedAttributes.magicAttack }}</strong>
             </div>
             <div class="sec-attr">
-              <span class="sec-icon">🔮</span>
-              <span>魔法防御</span>
+              <BaseIcon name="magic-shield" gradient="magic" :size="14" />
+              <span>魔法韧性</span>
               <strong>{{ derivedAttributes.magicDefense }}</strong>
             </div>
             <div class="sec-attr">
-              <span class="sec-icon">💥</span>
+              <BaseIcon name="explosion-rays" gradient="crit" :size="14" />
               <span>暴击率</span>
               <strong>{{ derivedAttributes.critChance }}%</strong>
             </div>
             <div class="sec-attr">
-              <span class="sec-icon">💨</span>
+              <BaseIcon name="dodge" gradient="dodge" :size="14" />
               <span>闪避率</span>
               <strong>{{ derivedAttributes.dodgeChance }}%</strong>
             </div>
             <div class="sec-attr">
-              <span class="sec-icon">❤️</span>
-              <span>最大HP</span>
+              <BaseIcon name="health-normal" gradient="blood" :size="14" />
+              <span>最大生命</span>
               <strong>{{ derivedAttributes.maxHp }}</strong>
             </div>
             <div class="sec-attr">
-              <span class="sec-icon">💧</span>
-              <span>最大MP</span>
+              <BaseIcon name="magic-palm" gradient="mana" :size="14" />
+              <span>最大法力</span>
               <strong>{{ derivedAttributes.maxMana }}</strong>
             </div>
           </div>
@@ -256,303 +254,45 @@
  * @description 提供分步式的角色创建流程，依次选择阵营、种族、职业并输入角色名，实时预览属性加成和次级属性
  */
 
-import { ref, computed, onMounted } from 'vue';
-import { useCharacterStore } from '@/modules/character';
-import { useBaseStore } from '@/modules/base';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { onMounted } from 'vue';
 import Tag from './common/Tag.vue';
-import type {
-  FactionType,
-  RaceType,
-  ClassType
-} from '@/modules/character/types';
-import { STAT_NAMES } from '@/config/character';
-import {
-  calculatePhysicalAttack,
-  calculatePhysicalDefense,
-  calculateMagicAttack,
-  calculateMagicDefense,
-  calculateCritChance,
-  calculateDodgeChance,
-  calculateMaxHp,
-  calculateMaxMana
-} from '@/utils/calculations';
-
-const characterStore = useCharacterStore();
-const baseStore = useBaseStore();
+import BaseIcon from '@/components/common/BaseIcon.vue';
+import { useCharacterCreation } from '@/composables/useCharacterCreation';
+import { errorHandler } from '@/services/ErrorHandler';
 
 const emit = defineEmits<{
-  (e: 'created'): void;
+  created: [];
 }>();
 
-const currentStep = ref(1);
-const name = ref('');
-const selectedFaction = ref<string | null>(null);
-const selectedRace = ref<string | null>(null);
-const selectedClass = ref<string | null>(null);
-
-/** 弹窗状态 */
-const showModal = ref(false);
-const modalType = ref<'error' | 'confirm'>('error');
-const modalIcon = ref('');
-const modalTitle = ref('');
-const modalMessage = ref('');
-const modalConfirmText = ref('');
-
-const currentStepTitle = computed(() => {
-  switch (currentStep.value) {
-    case 1:
-      return '请选择阵营';
-    case 2:
-      return `请选择种族 (${baseStore.getFactionName(selectedFaction.value || '')})`;
-    case 3:
-      return '请选择职业';
-    case 4:
-      return '请输入角色名';
-    default:
-      return '';
-  }
-});
-
-const neutralFaction = computed(() => {
-  return baseStore.factions.find((f) => f.id === 'neutral');
-});
-
-const availableRaces = computed(() => {
-  if (!selectedFaction.value) return [];
-  return baseStore.races.filter(
-    (r) => r.factionId === selectedFaction.value
-  );
-});
-
-const availableClasses = computed(() => {
-  if (!selectedRace.value) return [];
-  return baseStore.classes.filter((c) =>
-    c.raceIds.includes(selectedRace.value as RaceType)
-  );
-});
-
-const currentAttributes = computed(() => {
-  const base = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
-
-  if (selectedRace.value) {
-    const raceData = baseStore.races.find(
-      (r) => r.id === selectedRace.value
-    );
-    if (raceData?.bonus) {
-      for (const [stat, value] of Object.entries(raceData.bonus)) {
-        if (stat in base) {
-          base[stat as keyof typeof base] += value;
-        }
-      }
-    }
-  }
-
-  if (selectedClass.value) {
-    const classData = baseStore.classes.find(
-      (c) => c.id === selectedClass.value
-    );
-    if (classData?.bonus) {
-      for (const [stat, value] of Object.entries(classData.bonus)) {
-        if (stat in base) {
-          base[stat as keyof typeof base] += value;
-        }
-      }
-    }
-  }
-
-  return base;
-});
-
-const derivedAttributes = computed(() => {
-  return {
-    physicalAttack: calculatePhysicalAttack(currentAttributes.value),
-    physicalDefense: calculatePhysicalDefense(currentAttributes.value),
-    magicAttack: calculateMagicAttack(currentAttributes.value),
-    magicDefense: calculateMagicDefense(currentAttributes.value),
-    critChance: calculateCritChance(currentAttributes.value),
-    dodgeChance: calculateDodgeChance(currentAttributes.value),
-    maxHp: calculateMaxHp(currentAttributes.value),
-    maxMana: calculateMaxMana(currentAttributes.value)
-  };
-});
-
-const canProceed = computed(() => {
-  switch (currentStep.value) {
-    case 1:
-      return selectedFaction.value !== null;
-    case 2:
-      return selectedRace.value !== null;
-    case 3:
-      return selectedClass.value !== null;
-    default:
-      return true;
-  }
-});
-
-const canCreate = computed(() => {
-  return (
-    name.value.trim().length > 0 &&
-    selectedFaction.value &&
-    selectedRace.value &&
-    selectedClass.value
-  );
-});
-
-async function loadData() {
-  await baseStore.loadAllData();
-}
-
-function selectFaction(id: string) {
-  selectedFaction.value = id;
-  selectedRace.value = null;
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'select_faction' });
-}
-
-function selectRace(id: string) {
-  selectedRace.value = id;
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'select_race' });
-}
-
-function selectClass(id: string) {
-  selectedClass.value = id;
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'select_class' });
-}
-
-function getFactionRaceNames(factionId: string) {
-  const factionRaces = baseStore.races.filter(
-    (r) => r.factionId === factionId
-  );
-  return factionRaces.map((r) => r.name).join(' · ');
-}
-
-function getStatName(stat: string) {
-  return STAT_NAMES[stat as keyof typeof STAT_NAMES] || stat;
-}
-
-function getStatIcon(stat: string): string {
-  const icons: Record<string, string> = {
-    str: '💪',
-    dex: '⚡',
-    con: '❤️',
-    int: '🧠',
-    wis: '👁️',
-    cha: '✨'
-  };
-  return icons[stat] || '📊';
-}
-
-function nextStep() {
-  if (currentStep.value < 4) {
-    currentStep.value++;
-    eventBus.emit(GameEvents.UI_CLICK, { source: 'create_next' });
-  }
-}
-
-function prevStep() {
-  if (currentStep.value > 1) {
-    currentStep.value--;
-    eventBus.emit(GameEvents.UI_CLICK, { source: 'create_prev' });
-  }
-}
-
-/** 计算名称的有效字符长度：中文计2，英文/数字计1 */
-function calcNameLength(str: string): number {
-  let len = 0;
-  for (const ch of str) {
-    len += /[\u4e00-\u9fff]/.test(ch) ? 2 : 1;
-  }
-  return len;
-}
-
-/** 校验角色名，返回错误信息，无错误返回 null */
-function validateName(input: string): string | null {
-  const trimmed = input.trim();
-  if (trimmed.length === 0) {
-    return '角色名不能为空';
-  }
-  if (!/^[\u4e00-\u9fffa-zA-Z0-9]+$/.test(trimmed)) {
-    return '角色名只能包含中文、英文和数字，不允许特殊符号';
-  }
-  const len = calcNameLength(trimmed);
-  if (len > 16) {
-    return '角色名过长，最多8个汉字或16个英文字母';
-  }
-  return null;
-}
-
-/** 显示错误弹窗 */
-function showErrorModal(msg: string) {
-  modalType.value = 'error';
-  modalIcon.value = '⚠️';
-  modalTitle.value = '角色名不符合要求';
-  modalMessage.value = msg;
-  modalConfirmText.value = '返回修改';
-  showModal.value = true;
-}
-
-/** 显示确认弹窗 */
-function showConfirmModal() {
-  modalType.value = 'confirm';
-  modalIcon.value = '✅';
-  modalTitle.value = '确认创建角色';
-  modalMessage.value = `确认创建角色「${name.value.trim()}」吗？`;
-  modalConfirmText.value = '确认创建';
-  showModal.value = true;
-}
-
-/** 关闭弹窗 */
-function cancelModal() {
-  showModal.value = false;
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'create_cancel_modal' });
-}
-
-/** 弹窗确认按钮回调 */
-function onModalConfirm() {
-  showModal.value = false;
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'create_confirm_modal' });
-  if (modalType.value === 'confirm') {
-    doCreate();
-  }
-}
-
-/** 执行实际创建逻辑 */
-async function doCreate() {
-  await characterStore.createCharacter(
-    name.value.trim(),
-    selectedFaction.value as FactionType,
-    selectedRace.value as RaceType,
-    selectedClass.value as ClassType
-  );
-
-  emit('created');
-}
-
-/** 点击创建角色：先校验，通过后弹出确认弹窗 */
-async function createCharacter() {
-  if (!canCreate.value) return;
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'create_btn' });
-
-  const error = validateName(name.value);
-  if (error) {
-    showErrorModal(error);
-    return;
-  }
-
-  showConfirmModal();
-}
+const {
+  currentStep, name, selectedFaction, selectedRace, selectedClass,
+  showModal, modalType, modalIcon, modalTitle, modalMessage, modalConfirmText,
+  currentStepTitle, displayFactions, neutralFaction,
+  availableRaces, availableClasses, currentAttributes, derivedAttributes,
+  canProceed, canCreate,
+  loadData, selectFaction, selectRace, selectClass,
+  getFactionRaceNames, getStatName, getStatIcon,
+  nextStep, prevStep, cancelModal, onModalConfirm, createCharacter,
+  getRaceIcon, getFactionName, getFactionColor, getRaceName, getClassName, getClassColor,
+} = useCharacterCreation(() => emit('created'));
 
 onMounted(async () => {
-  await loadData();
+  // P8-505 修复：try/catch 包裹数据加载，防止 unhandled rejection
+  try {
+    await loadData();
+  } catch (e) {
+    console.error('[CharacterCreate] 数据加载失败:', e);
+    errorHandler.report(e);
+  }
 });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .character-create {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 16px;
+  padding: @spacing-3xl;
   overflow: hidden;
 }
 
@@ -560,21 +300,21 @@ onMounted(async () => {
 .create-header {
   flex: 0 0 auto;
   text-align: center;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #4a4a4a;
-  margin-bottom: 16px;
+  padding-bottom: @spacing-3xl;
+  border-bottom: @border-sm;
+  margin-bottom: @spacing-3xl;
 }
 
 .create-header h2 {
-  font-size: 22px;
-  color: #ffd700;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  margin: 0 0 10px 0;
+  font-size: @font-3xl;
+  color: @accent-color;
+  text-shadow: 2px 2px 4px @overlay-mid;
+  margin: 0 0 @spacing-lg 0;
 }
 
 .step-title {
-  font-size: 18px;
-  color: #f0f0f0;
+  font-size: @font-xl;
+  color: @text-primary;
   margin: 0;
 }
 
@@ -584,7 +324,7 @@ onMounted(async () => {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px 0;
+  padding: @spacing-md 0;
 }
 
 .step-grid {
@@ -595,8 +335,8 @@ onMounted(async () => {
 .faction-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: @spacing-xl;
+  margin-bottom: @spacing-xl;
 }
 
 .neutral-faction-row {
@@ -605,12 +345,12 @@ onMounted(async () => {
 }
 
 .faction-card {
-  padding: 20px 12px;
+  padding: @spacing-4xl @spacing-xl;
   background: rgba(13, 17, 23, 0.95);
-  border: 2px solid #666666;
-  border-radius: 12px;
+  border: @border-hover;
+  border-radius: @radius-xl;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
   text-align: center;
 }
 
@@ -624,32 +364,32 @@ onMounted(async () => {
 }
 
 .faction-card:hover {
-  border-color: #888888;
-  background: rgba(255, 255, 255, 0.05);
+  border-color: @color-dodge;
+  background: @white-05;
   transform: translateY(-2px);
 }
 
 .faction-card.active {
   border-color: var(--faction-color);
-  background: rgba(255, 215, 0, 0.1);
+  background: @gold-bg;
   box-shadow: 0 0 15px var(--faction-color);
 }
 
 .faction-icon {
   font-size: 40px;
-  margin-bottom: 10px;
+  margin-bottom: @spacing-lg;
 }
 
 .faction-name {
-  font-size: 18px;
-  color: #f0f0f0;
-  font-weight: bold;
-  margin-bottom: 6px;
+  font-size: @font-xl;
+  color: @text-primary;
+  font-weight: @font-weight-bold;
+  margin-bottom: @spacing-sm;
 }
 
 .faction-desc {
-  font-size: 12px;
-  color: #8b8b8b;
+  font-size: @font-sm;
+  color: @text-secondary;
   line-height: 1.4;
 }
 
@@ -657,111 +397,109 @@ onMounted(async () => {
 .race-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 10px;
+  gap: @spacing-lg;
 }
 
 .race-card {
-  padding: 14px 8px;
+  padding: @spacing-2xl @spacing-md;
   background: rgba(13, 17, 23, 0.95);
-  border: 2px solid #666666;
-  border-radius: 8px;
+  border: @border-hover;
+  border-radius: @radius-lg;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
   text-align: center;
 }
 
 .race-card:hover {
   transform: translateY(-2px);
-  border-color: #888888;
+  border-color: @color-dodge;
 }
 
 .race-grid.alliance .race-card.active {
   border-color: #0078ff;
-  background: rgba(255, 215, 0, 0.1);
+  background: @gold-bg;
   box-shadow: 0 0 15px #0078ff;
 }
 
 .race-grid.horde .race-card.active {
   border-color: #ff4400;
-  background: rgba(255, 215, 0, 0.1);
+  background: @gold-bg;
   box-shadow: 0 0 15px #ff4400;
 }
 
 .race-grid.neutral .race-card.active {
   border-color: #4caf50;
-  background: rgba(255, 215, 0, 0.1);
+  background: @gold-bg;
   box-shadow: 0 0 15px #4caf50;
 }
 
 .race-icon {
   font-size: 32px;
-  margin-bottom: 6px;
+  margin-bottom: @spacing-sm;
 }
 
 .race-name {
-  font-size: 13px;
-  color: #f0f0f0;
-  font-weight: bold;
-  margin-bottom: 4px;
+  font-size: @font-base;
+  color: @text-primary;
+  font-weight: @font-weight-bold;
+  margin-bottom: @spacing-xs;
 }
 
 .race-bonus {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 12px;
-  color: #4caf50;
+  .flex-col();
+  gap: @spacing-2xs;
+  font-size: @font-sm;
+  color: @heal-hp;
 }
 
 /* 职业选择 */
 .class-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 10px;
+  gap: @spacing-lg;
 }
 
 .class-card {
-  padding: 14px 8px;
+  padding: @spacing-2xl @spacing-md;
   background: rgba(13, 17, 23, 0.95);
-  border: 2px solid #666666;
-  border-radius: 8px;
+  border: @border-hover;
+  border-radius: @radius-lg;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
   text-align: center;
 }
 
 .class-card:hover {
   transform: translateY(-2px);
-  border-color: #888888;
+  border-color: @color-dodge;
 }
 
 .class-card.active {
   border-color: var(--class-color);
-  background: rgba(255, 215, 0, 0.1);
+  background: @gold-bg;
   box-shadow: 0 0 15px var(--class-color);
 }
 
 .class-icon {
   font-size: 32px;
-  margin-bottom: 6px;
+  margin-bottom: @spacing-sm;
 }
 
 .class-name {
-  font-size: 13px;
-  color: #f0f0f0;
-  font-weight: bold;
-  margin-bottom: 4px;
+  font-size: @font-base;
+  color: @text-primary;
+  font-weight: @font-weight-bold;
+  margin-bottom: @spacing-xs;
 }
 
 .class-bonus {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 12px;
+  .flex-col();
+  gap: @spacing-2xs;
+  font-size: @font-sm;
 }
 
 .class-bonus span {
-  color: #4caf50;
+  color: @heal-hp;
 }
 
 .class-bonus span.negative {
@@ -771,15 +509,15 @@ onMounted(async () => {
 /* 角色预览（步骤4） */
 .character-preview {
   background: rgba(13, 17, 23, 0.95);
-  border-radius: 12px;
-  padding: 20px;
-  border: 2px solid #4a4a4a;
+  border-radius: @radius-xl;
+  padding: @spacing-4xl;
+  border: @border-card;
 }
 
 .preview-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: @spacing-xl;
 }
 
 .preview-avatar {
@@ -794,30 +532,30 @@ onMounted(async () => {
 
 .name-input {
   width: 100%;
-  padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid #4a4a4a;
-  border-radius: 8px;
-  color: #f0f0f0;
-  font-size: 16px;
-  font-weight: bold;
+  padding: @spacing-xl @spacing-2xl;
+  background: @white-10;
+  border: @border-card;
+  border-radius: @radius-lg;
+  color: @text-primary;
+  font-size: @font-lg;
+  font-weight: @font-weight-bold;
   outline: none;
-  transition: border-color 0.3s;
+  transition: border-color @transition-normal;
   box-sizing: border-box;
 }
 
 .name-input:focus {
-  border-color: #ffd700;
+  border-color: @accent-color;
 }
 
 .name-input::placeholder {
-  color: #666;
+  color: @color-dim-gray;
 }
 
 .preview-details {
   display: flex;
-  gap: 4px;
-  margin-top: 10px;
+  gap: @spacing-xs;
+  margin-top: @spacing-lg;
   flex-wrap: nowrap;
   justify-content: center;
 }
@@ -826,128 +564,118 @@ onMounted(async () => {
 .fixed-footer {
   flex: 0 0 auto;
   padding-top: 16px;
-  border-top: 1px solid #4a4a4a;
+  border-top: @border-sm;
   background: inherit;
 }
 
 /* 属性预览 */
 .attribute-preview {
-  background: linear-gradient(
-    135deg,
-    rgba(13, 17, 23, 0.98) 0%,
-    rgba(20, 25, 35, 0.98) 100%
-  );
-  border-radius: 8px;
-  padding: 8px;
+  background: @gradient-attr-panel;
+  border-radius: @radius-lg;
+  padding: @spacing-md;
   border: 1px solid rgba(255, 215, 0.15);
-  margin-bottom: 8px;
+  margin-bottom: @spacing-md;
 }
 
 .preview-title {
-  font-size: 12px;
-  color: #ffd700;
-  margin-bottom: 6px;
-  font-weight: bold;
+  font-size: @font-sm;
+  color: @accent-color;
+  margin-bottom: @spacing-sm;
+  font-weight: @font-weight-bold;
   text-align: center;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: @spacing-xs;
+  border-bottom: 1px solid @white-08;
 }
 
 .attr-list {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
+  gap: @spacing-xs;
 }
 
 .attr-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  gap: @spacing-sm;
+  padding: @spacing-xs @spacing-sm;
+  background: @white-03;
+  border-radius: @radius-sm;
+  border: 1px solid @white-05;
 }
 
 .attr-item .attr-icon {
-  font-size: 16px;
+  font-size: @font-lg;
   width: 22px;
   height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 215, 0, 0.1);
-  border-radius: 4px;
-  color: #ffd700;
+  .flex-center();
+  background: @gold-bg;
+  border-radius: @radius-sm;
+  color: @accent-color;
 }
 
 .attr-item .attr-name {
   flex: 1;
   color: #b0b0b0;
-  font-size: 12px;
+  font-size: @font-sm;
 }
 
 .attr-item .attr-value {
-  font-size: 14px;
-  font-weight: bold;
-  color: #f0f0f0;
+  font-size: @font-md;
+  font-weight: @font-weight-bold;
+  color: @text-primary;
   min-width: 28px;
   text-align: right;
 }
 
 /* 最终属性 */
 .final-attributes {
-  background: linear-gradient(
-    135deg,
-    rgba(13, 17, 23, 0.98) 0%,
-    rgba(20, 25, 35, 0.98) 100%
-  );
-  border-radius: 8px;
-  padding: 8px;
-  border: 1px solid rgba(255, 215, 0, 0.15);
-  margin-bottom: 8px;
+  background: @gradient-attr-panel;
+  border-radius: @radius-lg;
+  padding: @spacing-md;
+  border: 1px solid rgba(255, 215, 0.15);
+  margin-bottom: @spacing-md;
 }
 
 .final-title {
-  font-size: 12px;
-  color: #ffd700;
-  margin-bottom: 6px;
-  font-weight: bold;
+  font-size: @font-sm;
+  color: @accent-color;
+  margin-bottom: @spacing-sm;
+  font-weight: @font-weight-bold;
   text-align: center;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: @spacing-xs;
+  border-bottom: 1px solid @white-08;
 }
 
 .attr-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  margin-bottom: 6px;
+  gap: @spacing-xs;
+  margin-bottom: @spacing-sm;
 }
 
 .attr-box {
   padding: 4px 4px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 4px;
+  background: @white-03;
+  border-radius: @radius-sm;
   text-align: center;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid @white-05;
 }
 
 .attr-box .attr-icon {
-  font-size: 14px;
-  margin-bottom: 2px;
+  font-size: @font-md;
+  margin-bottom: @spacing-2xs;
 }
 
 .attr-box .attr-label {
-  font-size: 12px;
+  font-size: @font-sm;
   color: #a0a0a0;
-  margin-bottom: 2px;
+  margin-bottom: @spacing-2xs;
 }
 
 .attr-box .attr-value {
-  font-size: 14px;
-  color: #f0f0f0;
-  font-weight: bold;
+  font-size: @font-md;
+  color: @text-primary;
+  font-weight: @font-weight-bold;
 }
 
 .divider {
@@ -961,51 +689,49 @@ onMounted(async () => {
 }
 
 .secondary-title {
-  font-size: 12px;
-  color: #ffd700;
-  margin-bottom: 6px;
-  font-weight: bold;
+  font-size: @font-sm;
+  color: @accent-color;
+  margin-bottom: @spacing-sm;
+  font-weight: @font-weight-bold;
   text-align: center;
 }
 
 .secondary-attrs {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 4px;
+  gap: @spacing-xs;
 }
 
 .sec-attr {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  gap: @spacing-sm;
+  padding: @spacing-xs @spacing-sm;
+  background: @white-03;
+  border-radius: @radius-sm;
+  border: 1px solid @white-05;
 }
 
 .sec-attr .sec-icon {
-  font-size: 12px;
+  font-size: @font-sm;
   width: 18px;
   height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 215, 0, 0.1);
-  border-radius: 4px;
-  color: #ffd700;
+  .flex-center();
+  background: @gold-bg;
+  border-radius: @radius-sm;
+  color: @accent-color;
 }
 
 .sec-attr span {
   flex: 1;
   color: #b0b0b0;
-  font-size: 12px;
+  font-size: @font-sm;
 }
 
 .sec-attr strong {
-  color: #f0f0f0;
-  font-size: 13px;
-  font-weight: bold;
+  color: @text-primary;
+  font-size: @font-base;
+  font-weight: @font-weight-bold;
   min-width: 40px;
   text-align: right;
 }
@@ -1014,7 +740,7 @@ onMounted(async () => {
 .navigation-buttons {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: @spacing-xl;
 }
 
 .spacer {
@@ -1022,29 +748,29 @@ onMounted(async () => {
 }
 
 .nav-btn {
-  padding: 12px 24px;
+  padding: @spacing-xl 24px;
   border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: bold;
+  border-radius: @radius-lg;
+  font-size: @font-base;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
   flex-shrink: 0;
 }
 
 .nav-btn.prev {
-  background: #4a4a4a;
-  color: #f0f0f0;
+  background: @popup-border-color;
+  color: @text-primary;
 }
 
 .nav-btn.next {
   background: linear-gradient(135deg, #0078ff, #0056cc);
-  color: #fff;
+  color: @popup-text-color;
 }
 
 .nav-btn.create {
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
-  color: #000;
+  background: @gradient-gold-btn;
+  color: @color-text-dark;
 }
 
 .nav-btn:hover:not(:disabled) {
@@ -1052,7 +778,7 @@ onMounted(async () => {
 }
 
 .nav-btn.prev:hover:not(:disabled) {
-  background: #666;
+  background: @color-dim-gray;
 }
 
 .nav-btn.next:hover:not(:disabled) {
@@ -1064,28 +790,19 @@ onMounted(async () => {
 }
 
 .nav-btn:disabled {
-  opacity: 0.5;
+  opacity: @opacity-dimmed;
   cursor: not-allowed;
 }
 
 /* 校验/确认弹窗 */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  .overlay-mask(@overlay-deep);
 }
 
 .modal-box {
   background: rgba(20, 25, 35, 0.98);
-  border: 2px solid #ffd700;
-  border-radius: 12px;
+  border: 2px solid @accent-color;
+  border-radius: @radius-xl;
   padding: 24px;
   max-width: 360px;
   width: 90%;
@@ -1094,54 +811,54 @@ onMounted(async () => {
 
 .modal-icon {
   font-size: 48px;
-  margin-bottom: 16px;
+  margin-bottom: @spacing-3xl;
 }
 
 .modal-box h3 {
-  color: #ffd700;
-  font-size: 20px;
-  margin-bottom: 12px;
+  color: @accent-color;
+  font-size: @font-2xl;
+  margin-bottom: @spacing-xl;
 }
 
 .modal-box p {
   color: #b0b0b0;
-  font-size: 14px;
+  font-size: @font-md;
   margin-bottom: 20px;
   line-height: 1.5;
 }
 
 .modal-buttons {
   display: flex;
-  gap: 12px;
+  gap: @spacing-xl;
   justify-content: center;
 }
 
 .modal-btn-cancel {
-  padding: 10px 24px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid #666;
-  border-radius: 6px;
-  color: #f0f0f0;
-  font-size: 14px;
+  padding: @spacing-lg 24px;
+  background: @white-10;
+  border: 1px solid @color-dim-gray;
+  border-radius: @radius-md;
+  color: @text-primary;
+  font-size: @font-md;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
 }
 
 .modal-btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: #888;
+  background: @white-20;
+  border-color: @color-dodge;
 }
 
 .modal-btn-confirm {
-  padding: 10px 24px;
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  padding: @spacing-lg 24px;
+  background: @gradient-gold-btn;
   border: none;
-  border-radius: 6px;
-  color: #000;
-  font-size: 14px;
-  font-weight: bold;
+  border-radius: @radius-md;
+  color: @color-text-dark;
+  font-size: @font-md;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
 }
 
 .modal-btn-confirm:hover {

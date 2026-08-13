@@ -21,7 +21,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 5,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 1,
@@ -39,7 +39,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_gnoll',
         type: 'kill',
         target: 4,
-        enemyId: 'gnoll'
+        enemyId: 'mob_gnoll'
       }
     ],
     levelRequirement: 1,
@@ -57,7 +57,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 6,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 1,
@@ -75,7 +75,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_gnoll',
         type: 'kill',
         target: 3,
-        enemyId: 'gnoll'
+        enemyId: 'mob_gnoll'
       }
     ],
     levelRequirement: 1,
@@ -93,7 +93,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 5,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 5,
@@ -111,7 +111,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 4,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 5,
@@ -129,7 +129,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_gnoll',
         type: 'kill',
         target: 4,
-        enemyId: 'gnoll'
+        enemyId: 'mob_gnoll'
       }
     ],
     levelRequirement: 1,
@@ -147,7 +147,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_bandit',
         type: 'kill',
         target: 3,
-        enemyId: 'bandit'
+        enemyId: 'mob_shadow_bandit'
       }
     ],
     levelRequirement: 1,
@@ -165,7 +165,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_bandit',
         type: 'kill',
         target: 5,
-        enemyId: 'bandit'
+        enemyId: 'mob_shadow_bandit'
       }
     ],
     levelRequirement: 5,
@@ -183,7 +183,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_skeleton',
         type: 'kill',
         target: 3,
-        enemyId: 'skeleton'
+        enemyId: 'mob_skeleton'
       }
     ],
     levelRequirement: 5,
@@ -201,7 +201,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 4,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 8,
@@ -219,7 +219,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 3,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 8,
@@ -237,7 +237,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_skeleton',
         type: 'kill',
         target: 6,
-        enemyId: 'skeleton'
+        enemyId: 'mob_skeleton'
       }
     ],
     levelRequirement: 8,
@@ -255,7 +255,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 4,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 8,
@@ -273,7 +273,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_skeleton',
         type: 'kill',
         target: 5,
-        enemyId: 'skeleton'
+        enemyId: 'mob_skeleton'
       }
     ],
     levelRequirement: 8,
@@ -291,7 +291,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_wolf',
         type: 'kill',
         target: 4,
-        enemyId: 'wolf'
+        enemyId: 'mob_gray_wolf'
       }
     ],
     levelRequirement: 8,
@@ -309,7 +309,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_skeleton',
         type: 'kill',
         target: 4,
-        enemyId: 'skeleton'
+        enemyId: 'mob_skeleton'
       }
     ],
     levelRequirement: 1,
@@ -327,7 +327,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_ghoul',
         type: 'kill',
         target: 3,
-        enemyId: 'ghoul'
+        enemyId: 'mob_ghoul'
       }
     ],
     levelRequirement: 1,
@@ -345,7 +345,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_skeleton',
         type: 'kill',
         target: 5,
-        enemyId: 'skeleton'
+        enemyId: 'mob_skeleton'
       }
     ],
     levelRequirement: 15,
@@ -360,10 +360,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_undead',
+        key: 'kill_imp',
         type: 'kill',
         target: 3,
-        enemyId: 'undead'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 15,
@@ -381,7 +381,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 4,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 10,
@@ -399,7 +399,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 3,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 10,
@@ -417,7 +417,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 5,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 8,
@@ -435,7 +435,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 4,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 8,
@@ -453,7 +453,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 4,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 12,
@@ -471,7 +471,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_skeleton',
         type: 'kill',
         target: 5,
-        enemyId: 'skeleton'
+        enemyId: 'mob_skeleton'
       }
     ],
     levelRequirement: 12,
@@ -489,7 +489,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 5,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 14,
@@ -504,10 +504,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_troll',
+        key: 'kill_dragon',
         type: 'kill',
         target: 2,
-        enemyId: 'troll'
+        enemyId: 'mob_young_dragon'
       }
     ],
     levelRequirement: 14,
@@ -525,7 +525,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 5,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 12,
@@ -543,7 +543,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_nerubian',
         type: 'kill',
         target: 4,
-        enemyId: 'nerubian'
+        enemyId: 'mob_nerubian'
       }
     ],
     levelRequirement: 12,
@@ -561,7 +561,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_dwarf',
         type: 'kill',
         target: 5,
-        enemyId: 'iron_dwarf'
+        enemyId: 'mob_iron_dwarf'
       }
     ],
     levelRequirement: 20,
@@ -579,7 +579,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_elemental',
         type: 'kill',
         target: 4,
-        enemyId: 'elemental'
+        enemyId: 'mob_elemental'
       }
     ],
     levelRequirement: 20,
@@ -594,10 +594,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_undead',
+        key: 'kill_imp',
         type: 'kill',
         target: 6,
-        enemyId: 'undead'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 20,
@@ -615,7 +615,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_undead',
         type: 'kill',
         target: 5,
-        enemyId: 'undead'
+        enemyId: 'mob_undead'
       }
     ],
     levelRequirement: 20,
@@ -633,7 +633,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_murloc',
         type: 'kill',
         target: 6,
-        enemyId: 'murloc'
+        enemyId: 'mob_murloc'
       }
     ],
     levelRequirement: 5,
@@ -651,7 +651,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_bear',
         type: 'kill',
         target: 4,
-        enemyId: 'bear'
+        enemyId: 'mob_brown_bear'
       }
     ],
     levelRequirement: 5,
@@ -669,7 +669,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_gnoll',
         type: 'kill',
         target: 5,
-        enemyId: 'gnoll'
+        enemyId: 'mob_gnoll'
       }
     ],
     levelRequirement: 5,
@@ -687,7 +687,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_elemental',
         type: 'kill',
         target: 5,
-        enemyId: 'elemental'
+        enemyId: 'mob_elemental'
       }
     ],
     levelRequirement: 5,
@@ -702,10 +702,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_elemental',
+        key: 'kill_imp',
         type: 'kill',
         target: 2,
-        enemyId: 'elemental'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 5,
@@ -723,7 +723,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_elemental',
         type: 'kill',
         target: 5,
-        enemyId: 'elemental'
+        enemyId: 'mob_elemental'
       }
     ],
     levelRequirement: 14,
@@ -738,10 +738,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_elemental',
+        key: 'kill_imp',
         type: 'kill',
         target: 3,
-        enemyId: 'elemental'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 14,
@@ -756,10 +756,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_elemental',
+        key: 'kill_dragon',
         type: 'kill',
         target: 2,
-        enemyId: 'elemental'
+        enemyId: 'mob_young_dragon'
       }
     ],
     levelRequirement: 14,
@@ -774,10 +774,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_elemental',
+        key: 'kill_imp',
         type: 'kill',
         target: 4,
-        enemyId: 'elemental'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 17,
@@ -792,10 +792,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_elemental',
+        key: 'kill_dragon',
         type: 'kill',
         target: 3,
-        enemyId: 'elemental'
+        enemyId: 'mob_young_dragon'
       }
     ],
     levelRequirement: 17,
@@ -810,10 +810,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_troll',
+        key: 'kill_imp',
         type: 'kill',
         target: 4,
-        enemyId: 'troll'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 12,
@@ -831,7 +831,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 3,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 12,
@@ -849,7 +849,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_centaur',
         type: 'kill',
         target: 5,
-        enemyId: 'centaur'
+        enemyId: 'mob_centaur'
       }
     ],
     levelRequirement: 12,
@@ -867,7 +867,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_skeleton',
         type: 'kill',
         target: 6,
-        enemyId: 'skeleton'
+        enemyId: 'mob_skeleton'
       }
     ],
     levelRequirement: 12,
@@ -885,7 +885,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_boar',
         type: 'kill',
         target: 6,
-        enemyId: 'boar'
+        enemyId: 'mob_boar'
       }
     ],
     levelRequirement: 1,
@@ -903,7 +903,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_quilboar',
         type: 'kill',
         target: 4,
-        enemyId: 'quilboar'
+        enemyId: 'mob_quilboar'
       }
     ],
     levelRequirement: 1,
@@ -921,7 +921,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_wolf',
         type: 'kill',
         target: 5,
-        enemyId: 'wolf'
+        enemyId: 'mob_gray_wolf'
       }
     ],
     levelRequirement: 1,
@@ -939,7 +939,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_bear',
         type: 'kill',
         target: 4,
-        enemyId: 'bear'
+        enemyId: 'mob_brown_bear'
       }
     ],
     levelRequirement: 1,
@@ -957,7 +957,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_quilboar',
         type: 'kill',
         target: 5,
-        enemyId: 'quilboar'
+        enemyId: 'mob_quilboar'
       }
     ],
     levelRequirement: 5,
@@ -975,7 +975,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_centaur',
         type: 'kill',
         target: 4,
-        enemyId: 'centaur'
+        enemyId: 'mob_centaur'
       }
     ],
     levelRequirement: 5,
@@ -993,7 +993,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_centaur',
         type: 'kill',
         target: 5,
-        enemyId: 'centaur'
+        enemyId: 'mob_centaur'
       }
     ],
     levelRequirement: 10,
@@ -1011,7 +1011,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_harpy',
         type: 'kill',
         target: 4,
-        enemyId: 'harpy'
+        enemyId: 'mob_harpy'
       }
     ],
     levelRequirement: 10,
@@ -1029,7 +1029,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_silithid',
         type: 'kill',
         target: 4,
-        enemyId: 'silithid'
+        enemyId: 'mob_silithid'
       }
     ],
     levelRequirement: 18,
@@ -1044,10 +1044,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_silithid',
+        key: 'kill_imp',
         type: 'kill',
         target: 3,
-        enemyId: 'silithid'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 18,
@@ -1065,7 +1065,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_undead',
         type: 'kill',
         target: 6,
-        enemyId: 'undead'
+        enemyId: 'mob_undead'
       }
     ],
     levelRequirement: 13,
@@ -1083,7 +1083,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_ghoul',
         type: 'kill',
         target: 5,
-        enemyId: 'ghoul'
+        enemyId: 'mob_ghoul'
       }
     ],
     levelRequirement: 13,
@@ -1101,7 +1101,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_kobold',
         type: 'kill',
         target: 6,
-        enemyId: 'kobold'
+        enemyId: 'mob_kobold'
       }
     ],
     levelRequirement: 5,
@@ -1119,7 +1119,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 4,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 5,
@@ -1137,7 +1137,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_murloc',
         type: 'kill',
         target: 6,
-        enemyId: 'murloc'
+        enemyId: 'mob_murloc'
       }
     ],
     levelRequirement: 7,
@@ -1155,7 +1155,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 3,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 7,
@@ -1173,7 +1173,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 5,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 10,
@@ -1191,7 +1191,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 4,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 10,
@@ -1209,7 +1209,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 4,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 6,
@@ -1227,7 +1227,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_bandit',
         type: 'kill',
         target: 5,
-        enemyId: 'bandit'
+        enemyId: 'mob_shadow_bandit'
       }
     ],
     levelRequirement: 6,
@@ -1242,10 +1242,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_undead',
+        key: 'kill_imp',
         type: 'kill',
         target: 4,
-        enemyId: 'undead'
+        enemyId: 'mob_imp'
       }
     ],
     levelRequirement: 16,
@@ -1263,7 +1263,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_undead',
         type: 'kill',
         target: 5,
-        enemyId: 'undead'
+        enemyId: 'mob_undead'
       }
     ],
     levelRequirement: 16,
@@ -1281,7 +1281,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 5,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 15,
@@ -1296,10 +1296,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_orc',
+        key: 'kill_dragon',
         type: 'kill',
         target: 3,
-        enemyId: 'orc'
+        enemyId: 'mob_young_dragon'
       }
     ],
     levelRequirement: 15,
@@ -1317,7 +1317,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_elemental',
         type: 'kill',
         target: 5,
-        enemyId: 'elemental'
+        enemyId: 'mob_elemental'
       }
     ],
     levelRequirement: 12,
@@ -1335,7 +1335,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 4,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 12,
@@ -1353,7 +1353,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_elemental',
         type: 'kill',
         target: 5,
-        enemyId: 'elemental'
+        enemyId: 'mob_elemental'
       }
     ],
     levelRequirement: 11,
@@ -1371,7 +1371,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_ogre',
         type: 'kill',
         target: 3,
-        enemyId: 'ogre'
+        enemyId: 'mob_ogre'
       }
     ],
     levelRequirement: 11,
@@ -1389,7 +1389,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_murloc',
         type: 'kill',
         target: 6,
-        enemyId: 'murloc'
+        enemyId: 'mob_murloc'
       }
     ],
     levelRequirement: 8,
@@ -1407,7 +1407,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 4,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 8,
@@ -1425,7 +1425,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 4,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 18,
@@ -1440,10 +1440,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_orc',
+        key: 'kill_dragon',
         type: 'kill',
         target: 3,
-        enemyId: 'orc'
+        enemyId: 'mob_young_dragon'
       }
     ],
     levelRequirement: 18,
@@ -1461,7 +1461,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 5,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 12,
@@ -1479,7 +1479,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_wolf',
         type: 'kill',
         target: 6,
-        enemyId: 'wolf'
+        enemyId: 'mob_gray_wolf'
       }
     ],
     levelRequirement: 12,
@@ -1497,7 +1497,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_vrykul',
         type: 'kill',
         target: 5,
-        enemyId: 'vrykul'
+        enemyId: 'mob_vrykul'
       }
     ],
     levelRequirement: 18,
@@ -1515,7 +1515,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_undead',
         type: 'kill',
         target: 6,
-        enemyId: 'undead'
+        enemyId: 'mob_undead'
       }
     ],
     levelRequirement: 18,
@@ -1533,7 +1533,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_vrykul',
         type: 'kill',
         target: 5,
-        enemyId: 'vrykul'
+        enemyId: 'mob_vrykul'
       }
     ],
     levelRequirement: 16,
@@ -1551,7 +1551,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_troll',
         type: 'kill',
         target: 4,
-        enemyId: 'troll'
+        enemyId: 'mob_jungle_troll'
       }
     ],
     levelRequirement: 16,
@@ -1566,10 +1566,10 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_undead',
+        key: 'kill_dragon',
         type: 'kill',
         target: 3,
-        enemyId: 'undead'
+        enemyId: 'mob_young_dragon'
       }
     ],
     levelRequirement: 18,
@@ -1587,7 +1587,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_undead',
         type: 'kill',
         target: 6,
-        enemyId: 'undead'
+        enemyId: 'mob_undead'
       }
     ],
     levelRequirement: 18,
@@ -1605,7 +1605,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_bear',
         type: 'kill',
         target: 5,
-        enemyId: 'bear'
+        enemyId: 'mob_brown_bear'
       }
     ],
     levelRequirement: 16,
@@ -1623,7 +1623,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_orc',
         type: 'kill',
         target: 4,
-        enemyId: 'orc'
+        enemyId: 'mob_orc_grunt'
       }
     ],
     levelRequirement: 16,
@@ -1641,7 +1641,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_tiger',
         type: 'kill',
         target: 4,
-        enemyId: 'tiger'
+        enemyId: 'mob_tiger'
       }
     ],
     levelRequirement: 18,
@@ -1659,7 +1659,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_spider',
         type: 'kill',
         target: 5,
-        enemyId: 'spider'
+        enemyId: 'mob_poison_spider'
       }
     ],
     levelRequirement: 18,
@@ -1677,7 +1677,7 @@ export const QUESTS: QuestDefinition[] = [
         key: 'kill_elemental',
         type: 'kill',
         target: 5,
-        enemyId: 'elemental'
+        enemyId: 'mob_elemental'
       }
     ],
     levelRequirement: 20,
@@ -1692,15 +1692,281 @@ export const QUESTS: QuestDefinition[] = [
     type: 'kill',
     objectives: [
       {
-        key: 'kill_elemental',
+        key: 'kill_dragon',
         type: 'kill',
         target: 3,
-        enemyId: 'elemental'
+        enemyId: 'mob_young_dragon'
       }
     ],
     levelRequirement: 20,
     xpReward: 320,
     goldReward: 160,
     boardId: 'crystal_song'
+  },
+
+  // ==================== P3-136：collect / explore 任务 ====================
+
+  // ---- collect 任务（10 个）----
+  {
+    id: 'teldrassil_collect_dust',
+    title: '星尘采集',
+    description: '苍穹之冠的古树在夜间会洒落蕴含奥术能量的星尘，药剂师们视其为珍贵的炼金材料。趁暗影蜘蛛尚未完全占据密林，去收集这些散落的星尘吧。',
+    type: 'collect',
+    objectives: [
+      { key: 'collect_dust', type: 'collect', target: 5, itemId: 'magic_dust' }
+    ],
+    levelRequirement: 1,
+    xpReward: 90,
+    goldReward: 45,
+    boardId: 'teldrassil'
+  },
+  {
+    id: 'azuremyst_collect_potion',
+    title: '蓝晶岛的补给',
+    description: '蓝晶岛的驻军急需一批生命药水以应对变异蜘蛛的威胁。炼金术士愿意提供配方，但需要你先收集一些现成的药水作为样本。去搜寻散落在各处的药水吧。',
+    type: 'collect',
+    objectives: [
+      { key: 'collect_potion', type: 'collect', target: 3, itemId: 'small_health_potion' }
+    ],
+    levelRequirement: 1,
+    xpReward: 80,
+    goldReward: 50,
+    boardId: 'azuremyst'
+  },
+  {
+    id: 'elwynn_collect_bread',
+    title: '粮仓清点',
+    description: '艾尔文森林的粮仓遭到盗贼洗劫，散落的面包被丢得满地都是。帮农夫收回这些粮食，别让它们白白浪费在野外。',
+    type: 'collect',
+    objectives: [
+      { key: 'collect_bread', type: 'collect', target: 5, itemId: 'bread' }
+    ],
+    levelRequirement: 1,
+    xpReward: 80,
+    goldReward: 40,
+    boardId: 'elwynn'
+  },
+  {
+    id: 'westfall_collect_meat',
+    title: '野外炊事',
+    description: '西部荒野的民兵长期缺乏补给，指挥官希望你能从野外收集一些烤肉来补充军粮。那些散落在营地废墟中的食物应该还能食用。',
+    type: 'collect',
+    objectives: [
+      { key: 'collect_meat', type: 'collect', target: 5, itemId: 'roasted_meat' }
+    ],
+    levelRequirement: 3,
+    xpReward: 130,
+    goldReward: 70,
+    boardId: 'westfall'
+  },
+  {
+    id: 'darkshore_collect_potion',
+    title: '暮色海岸的药材',
+    description: '暮色海岸的暗夜精灵哨兵急需中效药水来维持巡逻。收集这些药水，帮助她们继续守护海岸线。',
+    type: 'collect',
+    objectives: [
+      { key: 'collect_mid_potion', type: 'collect', target: 5, itemId: 'medium_health_potion' }
+    ],
+    levelRequirement: 5,
+    xpReward: 170,
+    goldReward: 90,
+    boardId: 'darkshore'
+  },
+  {
+    id: 'ashenvale_collect_dust',
+    title: '森林精魄',
+    description: '灰谷的德鲁伊需要大量奥术粉尘来维持森林的结界。深入林间搜寻这些蕴含自然之力的粉尘，每一缕都弥足珍贵。',
+    type: 'collect',
+    objectives: [
+      { key: 'collect_ash_dust', type: 'collect', target: 8, itemId: 'magic_dust' }
+    ],
+    levelRequirement: 5,
+    xpReward: 180,
+    goldReward: 100,
+    boardId: 'ashenvale'
+  },
+  {
+    id: 'duskwood_collect_scale',
+    title: '暗夜龙鳞',
+    description: '暮色森林中潜伏着某种黑暗生物，它蜕落的龙鳞蕴含着诡异的力量。收集这些龙鳞，让附魔师研究其中的秘密——但要小心林中的亡灵。',
+    type: 'collect',
+    objectives: [
+      { key: 'collect_scale', type: 'collect', target: 5, itemId: 'dragon_scale' }
+    ],
+    levelRequirement: 7,
+    xpReward: 200,
+    goldReward: 110,
+    boardId: 'duskwood'
+  },
+  {
+    id: 'desolace_collect_earth',
+    title: '大地之灵',
+    description: '凄凉之地的荒原下埋藏着原始的大地精华，萨满祭司称之为"大地之灵"。挖掘并收集这些原始材料，它们是锻造元素武器的关键原料。',
+    type: 'collect',
+    objectives: [
+      { key: 'collect_earth', type: 'collect', target: 5, itemId: 'primal_earth' }
+    ],
+    levelRequirement: 10,
+    xpReward: 250,
+    goldReward: 130,
+    boardId: 'desolace'
+  },
+  {
+    id: 'winterspring_collect_water',
+    title: '寒泉精魄',
+    description: '冬泉谷的永冻泉眼中凝结着原始水元素精华，炼金师称之为"原始之水"。在严寒中采集这些珍贵的材料，报酬将十分丰厚。',
+    type: 'collect',
+    objectives: [
+      { key: 'collect_water', type: 'collect', target: 5, itemId: 'primal_water' }
+    ],
+    levelRequirement: 12,
+    xpReward: 280,
+    goldReward: 150,
+    boardId: 'winterspring'
+  },
+  {
+    id: 'icecrown_collect_crystal',
+    title: '虚空残响',
+    description: '冰冠冰川深处散落着罕见的虚空水晶碎片，每一块都蕴含着扭曲的奥术能量。天灾军团正在搜寻这些碎片以强化亡灵守卫——在它们得手之前抢先收集。',
+    type: 'collect',
+    objectives: [
+      { key: 'collect_crystal', type: 'collect', target: 3, itemId: 'void_crystal' }
+    ],
+    levelRequirement: 15,
+    xpReward: 320,
+    goldReward: 170,
+    boardId: 'icecrown'
+  },
+
+  // ---- explore 任务（10 个）----
+  {
+    id: 'teldrassil_explore_grove',
+    title: '密林勘测',
+    description: '苍穹之冠的暗影森林深处隐藏着一片古老的树灵圣殿，但通往圣殿的道路已被杂草和蛛网覆盖。探索这片密林，揭开树灵圣殿的秘密。',
+    type: 'explore',
+    objectives: [
+      { key: 'explore_grove', type: 'explore', target: 8 }
+    ],
+    levelRequirement: 1,
+    xpReward: 90,
+    goldReward: 40,
+    boardId: 'teldrassil'
+  },
+  {
+    id: 'elwynn_explore_plains',
+    title: '平原巡弋',
+    description: '艾尔文森林的平原上近来出现了可疑的踪迹，治安官希望你彻底搜索这片区域，找出盗贼的藏身之处。',
+    type: 'explore',
+    objectives: [
+      { key: 'explore_plains', type: 'explore', target: 10 }
+    ],
+    levelRequirement: 1,
+    xpReward: 90,
+    goldReward: 45,
+    boardId: 'elwynn'
+  },
+  {
+    id: 'westfall_explore_fields',
+    title: '荒野踏勘',
+    description: '西部荒野的田野早已荒芜，但据情报显示迪菲亚兄弟会在地下修建了秘密通道。全面搜索这片荒野，找到可能的入口。',
+    type: 'explore',
+    objectives: [
+      { key: 'explore_fields', type: 'explore', target: 10 }
+    ],
+    levelRequirement: 3,
+    xpReward: 140,
+    goldReward: 70,
+    boardId: 'westfall'
+  },
+  {
+    id: 'redridge_explore_canyon',
+    title: '红脊峡谷探险',
+    description: '赤脊山的峡谷中回荡着野兽的嚎叫，据说深处有一处被遗忘的矿洞。探索这片峡谷，确认矿洞的位置。',
+    type: 'explore',
+    objectives: [
+      { key: 'explore_canyon', type: 'explore', target: 8, locationId: 'redridge' }
+    ],
+    levelRequirement: 3,
+    xpReward: 140,
+    goldReward: 75,
+    boardId: 'redridge'
+  },
+  {
+    id: 'duskwood_explore_raven',
+    title: '渡鸦墓地',
+    description: '暮色森林的渡鸦墓地传说埋葬着一位古老的骑士，他的墓中藏有一把被诅咒的利刃。在亡灵完全占据墓地之前探索这片阴森的区域。',
+    type: 'explore',
+    objectives: [
+      { key: 'explore_raven', type: 'explore', target: 12, locationId: 'duskwood' }
+    ],
+    levelRequirement: 7,
+    xpReward: 210,
+    goldReward: 110,
+    boardId: 'duskwood'
+  },
+  {
+    id: 'stonetalon_explore_peaks',
+    title: '石爪峰攀登',
+    description: '石爪山脉的峭壁上据说有鹰身女妖的巢穴，从那里可以俯瞰整片大陆。攀登山峰，探索那些人迹罕至的高处。',
+    type: 'explore',
+    objectives: [
+      { key: 'explore_peaks', type: 'explore', target: 12 }
+    ],
+    levelRequirement: 7,
+    xpReward: 210,
+    goldReward: 115,
+    boardId: 'stonetalon'
+  },
+  {
+    id: 'felwood_explore_corruption',
+    title: '腐化之源',
+    description: '费伍德森林的每一寸土地都在被腐化侵蚀，德鲁伊怀疑源头隐藏在森林最深处。冒险深入这片被诅咒的土地，寻找腐化的根源。',
+    type: 'explore',
+    objectives: [
+      { key: 'explore_corruption', type: 'explore', target: 15, locationId: 'felwood' }
+    ],
+    levelRequirement: 12,
+    xpReward: 290,
+    goldReward: 155,
+    boardId: 'felwood'
+  },
+  {
+    id: 'storm_peaks_explore_titan',
+    title: '泰坦遗迹',
+    description: '风暴群巅的冰雪之下掩埋着泰坦时代的宏伟遗迹，探险者协会悬赏寻找通往遗迹核心的路径。在极寒中探索这片古老的土地。',
+    type: 'explore',
+    objectives: [
+      { key: 'explore_titan', type: 'explore', target: 15 }
+    ],
+    levelRequirement: 15,
+    xpReward: 320,
+    goldReward: 170,
+    boardId: 'storm_peaks'
+  },
+  {
+    id: 'icecrown_explore_citadel',
+    title: '冰冠堡垒侦察',
+    description: '冰冠冰川的中心矗立着巫妖王的堡垒，联盟和部落的斥候需要一份详尽的地形图。在亡灵天灾的眼皮底下探索冰川的每一个角落。',
+    type: 'explore',
+    objectives: [
+      { key: 'explore_citadel', type: 'explore', target: 20, locationId: 'icecrown' }
+    ],
+    levelRequirement: 15,
+    xpReward: 340,
+    goldReward: 180,
+    boardId: 'icecrown'
+  },
+  {
+    id: 'sholazar_explore_basin',
+    title: '盆地探秘',
+    description: '索拉查盆地是一个与世隔绝的生态奇观，泰坦留下的生命之泉隐藏在密林深处。探索这片充满生机的盆地，发现它的秘密。',
+    type: 'explore',
+    objectives: [
+      { key: 'explore_basin', type: 'explore', target: 15 }
+    ],
+    levelRequirement: 18,
+    xpReward: 360,
+    goldReward: 190,
+    boardId: 'sholazar'
   }
 ];

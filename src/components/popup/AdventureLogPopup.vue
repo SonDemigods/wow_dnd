@@ -13,13 +13,11 @@
           :class="`log-type-${log.type}`"
         >
           <span class="log-time">{{ formatTimestamp(log.timestamp) }}</span>
-          <span class="log-icon">{{ log.icon || getDefaultIcon(log.type) }}</span>
+          <span class="log-icon"><BaseIcon :name="(log.icon || getDefaultIcon(log.type).name)" :gradient="getDefaultIcon(log.type).gradient" :size="16" /></span>
           <span class="log-message">{{ log.message }}</span>
         </div>
 
-        <div v-if="logs.length === 0" class="empty-logs">
-          暂无冒险记录
-        </div>
+        <EmptyState v-if="logs.length === 0" icon="scroll-unfurled" text="暂无冒险记录" />
       </div>
     </template>
 
@@ -44,11 +42,14 @@
  * @description 展示冒险记录列表，支持按类型着色和清空日志操作
  */
 
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useLogStore } from '../../modules/log';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
+import { useToast } from '../../composables/useToast';
 import BasePopup from '../common/BasePopup.vue';
 import ConfirmPopup from '../common/ConfirmPopup.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
+import EmptyState from '@/components/common/EmptyState.vue';
 
 interface Props {
   visible: boolean;
@@ -60,9 +61,10 @@ interface Emits {
 }
 
 const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
+defineEmits<Emits>();
 
 const logStore = useLogStore();
+const toast = useToast();
 const logContainer = ref<HTMLDivElement | null>(null);
 const showClearConfirm = ref(false);
 
@@ -70,21 +72,21 @@ const showClearConfirm = ref(false);
 const logs = computed(() => logStore.logs);
 const currentArea = computed(() => props.currentArea || '未知区域');
 
-const getDefaultIcon = (type: string): string => {
-  const iconMap: Record<string, string> = {
-    'info': '📜',
-    'combat': '⚔️',
-    'quest': '📋',
-    'item': '📦',
-    'level': '⬆️',
-    'death': '💀',
-    'resurrect': '✨',
-    'shop': '🛒',
-    'skill': '✨',
-    'exploration': '🗺️',
-    'zone': '📍'
+const getDefaultIcon = (type: string): { name: string; gradient: string } => {
+  const iconMap: Record<string, { name: string; gradient: string }> = {
+    'info': { name: 'scroll-unfurled', gradient: 'earth' },
+    'combat': { name: 'crossed-swords', gradient: 'physical' },
+    'quest': { name: 'notebook', gradient: 'gold' },
+    'item': { name: 'chest', gradient: 'gold' },
+    'level': { name: 'level-up', gradient: 'gold' },
+    'death': { name: 'death-skull', gradient: 'debuff' },
+    'resurrect': { name: 'resurrection', gradient: 'gold' },
+    'shop': { name: 'shop', gradient: 'gold' },
+    'skill': { name: 'resurrection', gradient: 'gold' },
+    'exploration': { name: 'treasure-map', gradient: 'nature' },
+    'zone': { name: 'uncertainty', gradient: 'shadow' }
   };
-  return iconMap[type] || '📜';
+  return iconMap[type] || { name: 'scroll-unfurled', gradient: 'earth' };
 };
 
 const formatTimestamp = (timestamp: number): string => {
@@ -97,8 +99,14 @@ const formatTimestamp = (timestamp: number): string => {
   return `${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
-const confirmClear = () => {
-  logStore.clearLogs();
+const confirmClear = async () => {
+  try {
+    logStore.clearLogs();
+  } catch (e) {
+    // P10-030 修复：清空日志失败时记录错误并提示用户，避免静默失败
+    console.error('[AdventureLogPopup] 清空日志失败:', e);
+    toast.show({ message: '清空日志失败，请重试', type: 'danger' });
+  }
   showClearConfirm.value = false;
 };
 
@@ -113,16 +121,21 @@ const scrollToBottom = () => {
 onMounted(() => {
   scrollToBottom();
 });
+
+// P9-097 修复：新增日志时自动滚动到底部
+watch(logs, () => {
+  scrollToBottom();
+});
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .log-header {
   color: #a0a0c0;
-  font-size: 13px;
-  margin-bottom: 10px;
-  padding: 6px 10px;
+  font-size: @font-base;
+  margin-bottom: @spacing-lg;
+  padding: @spacing-sm @spacing-lg;
   background: #252540;
-  border-radius: 4px;
+  border-radius: @radius-sm;
 }
 
 .log-container {
@@ -130,44 +143,34 @@ onMounted(() => {
   overflow-y: auto;
   background: #0f0f1a;
   border: 1px solid #3a3a5a;
-  border-radius: 6px;
-  padding: 10px;
-}
-
-.log-container::-webkit-scrollbar {
-  width: 6px;
-}
-
-.log-container::-webkit-scrollbar-track {
-  background: #1a1a2e;
-}
-
-.log-container::-webkit-scrollbar-thumb {
-  background: #4a4a6a;
-  border-radius: 3px;
+  border-radius: @radius-md;
+  padding: @spacing-lg;
+  .custom-scrollbar();
 }
 
 .log-entry {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 8px;
+  gap: @spacing-sm;
+  padding: 5px @spacing-md;
   margin-bottom: 3px;
-  border-radius: 4px;
-  font-size: 13px;
+  border-radius: @radius-sm;
+  font-size: @font-base;
   line-height: 1.5;
 }
 
 .log-time {
   color: #8a8aaa;
   font-family: monospace;
-  font-size: 12px;
+  font-size: @font-sm;
   min-width: 110px;
   flex-shrink: 0;
 }
 
 .log-icon {
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  font-size: @font-md;
 }
 
 .log-message {
@@ -219,12 +222,7 @@ onMounted(() => {
   background: rgba(150, 100, 200, 0.1);
 }
 
-.empty-logs {
-  color: #6a6a8a;
-  text-align: center;
-  padding: 32px;
-  font-size: 13px;
-}
+
 
 
 

@@ -1,0 +1,568 @@
+/**
+ * 敌人行动 Composable
+ * 
+ * 从 combat store 提取的敌人 AI 策略、伤害施加、攻击和行动决策逻辑。
+ * 依赖 useCombatState() 和 useCombatLog() 返回的状态对象。
+ */
+import type { CombatActionResult } from '../types';
+import type { EnemyInstance } from '../../enemy/types';
+import type { BattleContext, IAiStrategy } from '../ai/types';
+import type { AiStrategyType } from '../../enemy/types';
+import type { ICombatContext } from '../combatContext';
+import { eventBus, GameEvents } from '../../bus';
+import { rollDodge } from '../service';
+import { AggressiveStrategy, DefensiveStrategy, BalancedStrategy, BossPhaseStrategy } from '../ai/strategies';
+import { ENEMY_AOE_DAMAGE_MULTIPLIER, DEFEND_DEFENSE_BONUS, DEFEND_DURATION_TURNS } from '@/config/combat';
+import type { Rng } from '@/utils/rng';
+import {
+  createEmptyContainer,
+  addEffectToContainer,
+  generateEffectId,
+  processDamagePipeline,
+  hasEffect,
+  isEffectType,
+  type Effect,
+  type DamageType,
+} from '../effects';
+import type { useCombatState } from './useCombatState';
+import type { useCombatLog } from './useCombatLog';
+import type { usePassiveSkills } from './usePassiveSkills';
+
+/**
+ * 根据敌人技能 type 字段映射到伤害类型
+ * @param skillType - 技能类型（physical_damage/magic_damage 等），未提供时默认物理
+ * @returns 伤害类型：魔法技能返回 'magical'，其他返回 'physical'
+ */
+function mapSkillTypeToDamageType(skillType?: string): DamageType {
+  if (skillType === 'magic_damage') return 'magical';
+  return 'physical';
+}
+
+// P3-85 修复：AI 策略实例无闭包依赖（不引用 state/log/ctx），提取为模块级常量共享，
+// 避免每次调用 useEnemyAction 都重新创建一份策略注册表。
+/** AI 策略注册表（模块级共享单例） */
+const strategyRegistry: Record<AiStrategyType, IAiStrategy> = {
+  aggressive: new AggressiveStrategy(),
+  defensive: new DefensiveStrategy(),
+  balanced: new BalancedStrategy(),
+  boss_phase: new BossPhaseStrategy(),
+};
+
+/**
+ * P9-107 修复：注入确定性 RNG 到 AI 策略注册表
+ *
+ * 替换模块级 strategyRegistry 中的策略实例为使用指定 rng 的实例。
+ * 供测试与回放使用，生产环境无需调用（默认使用 defaultRng）。
+ */
+export function injectAiRng(rng: Rng): void {
+  strategyRegistry.aggressive = new AggressiveStrategy(rng);
+  strategyRegistry.defensive = new DefensiveStrategy(rng);
+  strategyRegistry.balanced = new BalancedStrategy(rng);
+  strategyRegistry.boss_phase = new BossPhaseStrategy(rng);
+}
+
+export function useEnemyAction(
+  state: ReturnType<typeof useCombatState>,
+  log: ReturnType<typeof useCombatLog>,
+  // ARCH-6：需完整上下文（读 character.name/attributes/hp/maxHp、enemy.calculateDamage/getAvailableSkills/getEnemyById、skill.getSkill；写 character.takeDamage、enemy.takeDamage/useSkill）
+  ctx: ICombatContext,
+  passive?: ReturnType<typeof usePassiveSkills>
+) {
+  const { addCombatLog, createPlayerEffectContext, createEnemyEffectContext } = log;
+  const { playerEffects, enemyEffects, effectRegistry, resourceSystems } = state;
+
+  // ==================== AI 策略 ====================
+
+  /**
+   * 根据策略类型获取 AI 策略实例
+   */
+  function getStrategy(type: AiStrategyType): IAiStrategy {
+    return strategyRegistry[type] || strategyRegistry.balanced;
+  }
+
+  // ==================== 敌人行动 ====================
+
+  /**
+   * 敌人恢复生命值的统一处理（P4-008 修复：消除 heal/skill 分支的重复代码）
+   *
+   * @param e - 执行治疗的敌人
+   * @param result - enemyStore.useSkill 的返回值（result.damage 为治疗量）
+   * @param decisionSkillId - AI 决策选中的技能ID
+   * @returns CombatActionResult
+   */
+  function handleEnemyHeal(
+    e: EnemyInstance,
+    result: { success: boolean; damage: number; isHeal: boolean },
+    decisionSkillId: string,
+  ): CombatActionResult {
+    const updatedEnemy = ctx.enemy.getEnemyById(e.id);
+    if (!updatedEnemy) {
+      return { success: false, type: 'skill', message: '找不到敌人数据' };
+    }
+
+    const healSkillData = availableSkillsCache.find(s => s.id === decisionSkillId);
+    const healSkillName = healSkillData?.name || decisionSkillId;
+
+    // P9-042 修复：result.damage 为负值（enemy store 返回 -healAmount），clamp 为非负治疗量
+    const heal = Math.max(0, -result.damage);
+
+    addCombatLog({
+      actorType: 'enemy',
+      actorId: updatedEnemy.id,
+      actorName: updatedEnemy.name,
+      eventType: 'combat_heal',
+      skillId: decisionSkillId,
+      skillName: healSkillName,
+      heal,
+      isCrit: false,
+      isDodge: false,
+      message: `${updatedEnemy.name} 恢复生命值 (+${heal})！`
+    });
+
+    return {
+      success: true,
+      type: 'skill',
+      heal,
+      message: `${e.name} 恢复了生命值 (+${heal})！`
+    };
+  }
+
+  /**
+   * 敌人使用 buff/debuff 技能的统一处理（P4-008 修复：消除 buff 分支的重复代码）
+   *
+   * @param e - 执行 buff 的敌人
+   * @param result - enemyStore.useSkill 的返回值
+   * @param decisionSkillId - AI 决策选中的技能ID
+   * @returns CombatActionResult
+   */
+  function handleEnemyBuff(
+    e: EnemyInstance,
+    result: { success: boolean; isBuff?: boolean; buffs?: Array<{ type: string; value: number; turns: number }> },
+    decisionSkillId: string,
+  ): CombatActionResult {
+    const skillData = availableSkillsCache.find(s => s.id === decisionSkillId);
+    const skillName = skillData?.name || decisionSkillId;
+    const fullSkill = ctx.skill.getSkill(decisionSkillId);
+    const isDebuff = fullSkill?.type === 'debuff';
+
+    if (isDebuff) {
+      // 减益技能：效果施加到玩家身上
+      // P5-019 修复：自防御判空，避免未来新增调用点未先判断导致 TypeError
+      if (!result.buffs) {
+        return { success: false, type: 'skill', message: `${e.name} 的 ${skillName} 未产生效果！` };
+      }
+      const playerCtx = createPlayerEffectContext();
+      for (const b of result.buffs) {
+        const debuffEffect: Effect = {
+          id: generateEffectId(),
+          type: isEffectType(b.type) ? b.type : 'attack_down',
+          remainingTurns: b.turns,
+          value: b.value,
+          source: 'enemy',
+          sourceName: e.name
+        };
+        addEffectToContainer(playerEffects.value, debuffEffect, effectRegistry);
+        effectRegistry.get(debuffEffect.type)?.onApply?.(debuffEffect, playerCtx);
+      }
+
+      addCombatLog({
+        actorType: 'enemy', actorId: e.id, actorName: e.name,
+        eventType: 'combat_skill_cast', skillId: decisionSkillId, skillName,
+        isCrit: false, isDodge: false,
+        message: `${e.name} 使用了 ${skillName}，对 ${ctx.character.name} 施加了减益效果！`
+      });
+
+      return { success: true, type: 'skill', message: `${e.name} 使用了 ${skillName}！` };
+    }
+
+    // 增益技能：效果施加到敌人自身
+    // P5-019 修复：自防御判空
+    if (!result.buffs) {
+      return { success: false, type: 'skill', message: `${e.name} 的 ${skillName} 未产生效果！` };
+    }
+    if (!enemyEffects.value[e.id]) {
+      enemyEffects.value[e.id] = createEmptyContainer();
+    }
+    const container = enemyEffects.value[e.id]!;
+    const enemyCtx = createEnemyEffectContext(e);
+
+    for (const b of result.buffs) {
+      const effect: Effect = {
+        id: generateEffectId(),
+        type: isEffectType(b.type) ? b.type : 'attack_up',
+        remainingTurns: b.turns,
+        value: b.value,
+        source: 'enemy',
+        sourceName: e.name
+      };
+      addEffectToContainer(container, effect, effectRegistry);
+      effectRegistry.get(effect.type)?.onApply?.(effect, enemyCtx);
+    }
+
+    addCombatLog({
+      actorType: 'enemy', actorId: e.id, actorName: e.name,
+      eventType: 'combat_skill_cast', skillId: decisionSkillId, skillName,
+      isCrit: false, isDodge: false,
+      message: `${e.name} 使用了 ${skillName}，获得增益效果！`
+    });
+
+    return { success: true, type: 'skill', message: `${e.name} 使用了 ${skillName}！` };
+  }
+
+  /** 缓存 availableSkills 供 handleEnemyHeal/handleEnemyBuff 使用（在 enemyAction 内部赋值） */
+  let availableSkillsCache: Array<{ id: string; name: string; isHeal?: boolean; isBuff?: boolean }> = [];
+
+  /**
+   * 对玩家造成敌人伤害（公共逻辑：管线计算 → 扣血 → 事件 → 日志）
+   * 使用 processDamagePipeline 统一处理伤害和护盾。
+   * @param damageType - 伤害类型（默认 'physical'，魔法技能应传入 'magical'）
+   * @returns actualDamage 和 shieldAbsorbed，供调用方补充返回值
+   */
+  function applyEnemyDamageToPlayer(
+    e: EnemyInstance,
+    rawDamage: number,
+    skill?: { id: string; name: string },
+    damageType: DamageType = 'physical'
+  ): { actualDamage: number; shieldAbsorbed: number } {
+    const attackerCtx = createEnemyEffectContext(e);
+    const defenderCtx = createPlayerEffectContext();
+
+    const pipeResult = processDamagePipeline(
+      effectRegistry,
+      enemyEffects.value[e.id] || createEmptyContainer(),
+      playerEffects.value,
+      attackerCtx,
+      defenderCtx,
+      damageType,
+      rawDamage
+    );
+
+    const actualDamage = pipeResult.finalDamage;
+    const shieldAbsorbed = pipeResult.absorbed;
+
+    // BIZ-5：应用被动减伤效果（如战士钢铁意志：低血减伤 20%）
+    // 天赋 damage_reduction 由 combatContext.takeDamage 统一应用，此处仅处理被动
+    // P12-006 修复：形态 defenseMultiplier 减伤（德鲁伊变形）
+    const formDefMult = ctx.form.defenseMultiplier;
+    const formReducedDamage = formDefMult !== 1
+      ? Math.max(0, Math.floor(actualDamage / formDefMult))
+      : actualDamage;
+    const damageReduction = passive?.getDamageReduction() || 0;
+    const finalDamage = damageReduction > 0
+      ? Math.max(0, Math.floor(formReducedDamage * (1 - damageReduction)))
+      : formReducedDamage;
+
+    // 扣血
+    ctx.character.takeDamage(finalDamage);
+
+    // 玩家受伤时触发资源系统 onDamaged 钩子（如战士怒气获取）
+    // P5-022 修复：用 finalDamage（含被动减伤后）而非 actualDamage，避免伤害降为 0 仍触发受伤反馈
+    if (finalDamage > 0) {
+      resourceSystems.value.forEach(sys => sys.onDamaged?.(finalDamage));
+      // 触发被动技能 onDamaged 钩子（如影刃猎手复仇：受伤恢复生命）
+      passive?.onDamaged(finalDamage);
+    }
+
+    // 伤害事件
+    // P3-178：amount 统一为防御后实际伤害 finalDamage
+    eventBus.emit(GameEvents.COMBAT_DEAL_DAMAGE, {
+      amount: finalDamage,
+      damageType: damageType === 'magical' ? 'magic' : 'physical',
+      targetName: ctx.character.name,
+      actorType: 'enemy'
+    });
+
+    // 战斗日志
+    addCombatLog({
+      actorType: 'enemy',
+      actorId: e.id,
+      actorName: e.name,
+      eventType: skill ? 'combat_skill_cast' : 'combat_damage',
+      targetType: 'player',
+      targetId: 'player',
+      targetName: ctx.character.name,
+      ...(skill ? { skillId: skill.id, skillName: skill.name } : {}),
+      damage: finalDamage,
+      isCrit: false,
+      isDodge: false,
+      message: shieldAbsorbed > 0
+        ? `${e.name}${skill ? ' 使用 ' + skill.name : ''}对 ${ctx.character.name} 造成 ${finalDamage} 点伤害（护盾吸收 ${shieldAbsorbed}）！`
+        : `${e.name}${skill ? ' 使用 ' + skill.name : ''}对 ${ctx.character.name} 造成 ${finalDamage} 点伤害！`
+    });
+
+    return { actualDamage: finalDamage, shieldAbsorbed };
+  }
+
+  /**
+   * 敌人普通攻击（内部方法）
+   *
+   * P3-169 修复：calculateDamage 仅计算原始伤害，防御由 pipeline 统一处理。
+   * 根据 `e.attackType` 传入正确的 damageType 让 pipeline 选择对应防御属性。
+   * @param e - 执行攻击的敌人
+   */
+  function enemyBasicAttack(e: EnemyInstance): CombatActionResult {
+    // P3-169：calculateDamage 不再接受 defense 参数，防御由 pipeline 处理
+    const damage = ctx.enemy.calculateDamage(e);
+
+    // 检查玩家闪避
+    const dodgeChance = ctx.character.attributes.dodgeChance / 100;
+    const isDodge = rollDodge(dodgeChance);
+
+    if (isDodge) {
+      addCombatLog({
+        actorType: 'enemy',
+        actorId: e.id,
+        actorName: e.name,
+        eventType: 'combat_miss',
+        targetType: 'player',
+        targetId: 'player',
+        targetName: ctx.character.name,
+        isCrit: false,
+        isDodge: true,
+        message: `${e.name} 的攻击被 ${ctx.character.name} 闪避了！`
+      });
+
+      eventBus.emit(GameEvents.COMBAT_DODGE, {
+        attackerName: e.name,
+        dodgerName: ctx.character.name,
+        dodgerType: 'player'
+      });
+
+      return {
+        success: true,
+        type: 'attack',
+        isDodge: true,
+        message: '你闪避了敌人的攻击！'
+      };
+    }
+
+    // P3-169：根据敌人攻击类型传入正确的 damageType
+    const damageType: DamageType = e.attackType === 'magical' ? 'magical' : 'physical';
+    const { actualDamage } = applyEnemyDamageToPlayer(e, damage, undefined, damageType);
+
+    return {
+      success: true,
+      type: 'attack',
+      damage: actualDamage,
+      message: `${e.name} 对你造成 ${actualDamage} 点伤害！`
+    };
+  }
+
+  /**
+   * 敌人使用技能攻击（内部方法）
+   * @param damage - 技能伤害值
+   * @param skill - 技能信息（含可选 type 字段，用于决定伤害类型）
+   * @param e - 执行攻击的敌人
+   */
+  function enemyAttackWithSkill(damage: number, skill: { id: string; name: string; type?: string }, e: EnemyInstance): CombatActionResult {
+    // 检查玩家闪避
+    const dodgeChance = ctx.character.attributes.dodgeChance / 100;
+    const isDodge = rollDodge(dodgeChance);
+
+    if (isDodge) {
+      addCombatLog({
+        actorType: 'enemy',
+        actorId: e.id,
+        actorName: e.name,
+        eventType: 'combat_miss',
+        targetType: 'player',
+        targetId: 'player',
+        targetName: ctx.character.name,
+        skillId: skill.id,
+        skillName: skill.name,
+        isCrit: false,
+        isDodge: true,
+        message: `${e.name} 的 ${skill.name} 被 ${ctx.character.name} 闪避了！`
+      });
+
+      eventBus.emit(GameEvents.COMBAT_DODGE, {
+        attackerName: e.name,
+        dodgerName: ctx.character.name,
+        dodgerType: 'player'
+      });
+
+      return {
+        success: true,
+        type: 'skill',
+        isDodge: true,
+        message: '你闪避了敌人的技能！'
+      };
+    }
+
+    // 通过管线计算实际伤害（管线统一处理攻防修正、护盾）
+    // 根据技能类型动态决定伤害类型（魔法技能走魔法防御减免）
+    const damageType = mapSkillTypeToDamageType(skill.type);
+    const { actualDamage } = applyEnemyDamageToPlayer(e, damage, skill, damageType);
+
+    return {
+      success: true,
+      type: 'skill',
+      damage: actualDamage,
+      message: `${e.name} 使用 ${skill.name}，对你造成 ${actualDamage} 点伤害！`
+    };
+  }
+
+  /**
+   * 敌人行动（内部方法，使用 AI 策略模式决定行动）
+   * @param e - 执行行动的敌人
+   */
+  function enemyAction(e: EnemyInstance): CombatActionResult {
+    if (state.state.value !== 'fighting') {
+      return { success: false, type: 'attack', message: '战斗已结束' };
+    }
+
+    // 检查 Boss 多目标攻击标记（阶段三 3.5：从 bossInstances Map 获取 runtime 状态）
+    const bossInstance = state.bossInstances.get(e.id);
+    const isAoeAttack = bossInstance?.runtime.aoeNextAttack === true;
+    if (isAoeAttack && bossInstance) {
+      bossInstance.runtime.aoeNextAttack = false;
+      // P3-169：calculateDamage 不再接受 defense 参数，防御由 pipeline 处理
+      const rawDamage = ctx.enemy.calculateDamage(e);
+      // P3-147：敌方 AOE 倍率从 1.3（反向加强）改为 0.8（与玩家 0.7 对齐，略高保留 Boss 威胁感）
+      const aoeDamage = Math.round(rawDamage * ENEMY_AOE_DAMAGE_MULTIPLIER);
+
+      // 检查玩家闪避
+      const dodgeChance = ctx.character.attributes.dodgeChance / 100;
+      const isDodge = rollDodge(dodgeChance);
+
+      if (isDodge) {
+        addCombatLog({
+          actorType: 'enemy', actorId: e.id, actorName: e.name,
+          eventType: 'combat_miss', targetType: 'player', targetId: 'player',
+          targetName: ctx.character.name, isCrit: false, isDodge: true,
+          message: `${e.name} 的范围攻击被 ${ctx.character.name} 闪避了！`
+        });
+        eventBus.emit(GameEvents.COMBAT_DODGE, {
+          attackerName: e.name, dodgerName: ctx.character.name, dodgerType: 'player'
+        });
+        return { success: true, type: 'attack', isDodge: true, message: '你闪避了敌人的范围攻击！' };
+      }
+
+      // P3-169：根据敌人攻击类型传入正确的 damageType
+      const aoeDamageType: DamageType = e.attackType === 'magical' ? 'magical' : 'physical';
+      // 通过管线统一处理伤害（含护盾吸收 + 攻防修正 + 日志）
+      const { actualDamage: actualAoeDamage } = applyEnemyDamageToPlayer(e, aoeDamage, undefined, aoeDamageType);
+
+      // 补充 AOE 特殊日志
+      addCombatLog({
+        actorType: 'system', actorId: 'system', actorName: '系统',
+        eventType: 'combat_event', isCrit: false, isDodge: false,
+        message: `${e.name} 发动范围攻击，对 ${ctx.character.name} 造成 ${actualAoeDamage} 点伤害！`
+      });
+
+      return {
+        success: true, type: 'attack', damage: actualAoeDamage,
+        message: `${e.name} 发动了范围攻击！`
+      };
+    }
+
+    // 获取敌人可用技能
+    const availableSkills = ctx.enemy.getAvailableSkills(e.id);
+    availableSkillsCache = availableSkills;
+
+    // 构建战斗上下文
+    const enemyEffectContainer = enemyEffects.value[e.id] || createEmptyContainer();
+    const context: BattleContext = {
+      playerHp: ctx.character.hp,
+      playerMaxHp: ctx.character.maxHp,
+      enemyHp: e.hp,
+      enemyMaxHp: e.maxHp,
+      availableSkills,
+      turnCount: state.turnCount.value,
+      enemyHasBuff: hasEffect(enemyEffectContainer, 'attack_up')
+                  || hasEffect(enemyEffectContainer, 'defense_up')
+                  || hasEffect(enemyEffectContainer, 'shield'),
+      playerHasDebuff: hasEffect(playerEffects.value, 'attack_down')
+                    || hasEffect(playerEffects.value, 'vulnerable'),
+    };
+
+    // 根据敌人 AI 策略类型选择策略
+    const strategy = getStrategy(e.aiStrategy || 'balanced');
+    const decision = strategy.decideAction(e, context);
+
+    switch (decision.type) {
+      case 'skill': {
+        const result = ctx.enemy.useSkill(e.id, decision.skillId);
+        if (result.success) {
+          const cachedFullSkill = ctx.skill.getSkill(decision.skillId);
+          if (result.isHeal) {
+            // P4-008：统一调用 handleEnemyHeal
+            return handleEnemyHeal(e, result, decision.skillId);
+          } else if (result.isBuff && result.buffs) {
+            // P4-008：统一调用 handleEnemyBuff
+            return handleEnemyBuff(e, result, decision.skillId);
+          } else {
+            // 敌人使用攻击技能
+            const skillData = availableSkills.find(s => s.id === decision.skillId);
+            return enemyAttackWithSkill(
+              result.damage,
+              { id: decision.skillId, name: skillData?.name || decision.skillId, type: cachedFullSkill?.type },
+              e
+            );
+          }
+        }
+        break;
+      }
+      case 'heal': {
+        const result = ctx.enemy.useSkill(e.id, decision.skillId);
+        if (result.success) {
+          // P4-008：统一调用 handleEnemyHeal
+          return handleEnemyHeal(e, result, decision.skillId);
+        }
+        break;
+      }
+      case 'buff': {
+        // P3-162：主动施放 buff/debuff 技能
+        const result = ctx.enemy.useSkill(e.id, decision.skillId);
+        if (result.success && result.isBuff && result.buffs) {
+          // P4-008：统一调用 handleEnemyBuff
+          return handleEnemyBuff(e, result, decision.skillId);
+        }
+        break;
+      }
+      case 'defend': {
+        // P3-162：非技能防御行为，不消耗冷却
+        if (!enemyEffects.value[e.id]) {
+          enemyEffects.value[e.id] = createEmptyContainer();
+        }
+        const container = enemyEffects.value[e.id]!;
+        const enemyCtx = createEnemyEffectContext(e);
+        const effect: Effect = {
+          id: generateEffectId(),
+          type: 'defense_up',
+          remainingTurns: DEFEND_DURATION_TURNS,
+          value: DEFEND_DEFENSE_BONUS,
+          source: 'enemy',
+          sourceName: e.name,
+        };
+        addEffectToContainer(container, effect);
+        effectRegistry.get(effect.type)?.onApply?.(effect, enemyCtx);
+
+        addCombatLog({
+          actorType: 'enemy', actorId: e.id, actorName: e.name,
+          eventType: 'combat_defend', isCrit: false, isDodge: false,
+          message: `${e.name} 进入防御姿态，防御力提升！`,
+        });
+
+        return {
+          success: true, type: 'defend',
+          message: `${e.name} 进入防御姿态！`,
+        };
+      }
+      case 'basic_attack':
+      default:
+        return enemyBasicAttack(e);
+    }
+
+    // 所有分支失败时的兜底
+    return enemyBasicAttack(e);
+  }
+
+  return {
+    applyEnemyDamageToPlayer,
+    enemyBasicAttack,
+    enemyAttackWithSkill,
+    enemyAction,
+    getStrategy,
+  };
+}

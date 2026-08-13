@@ -15,7 +15,7 @@
  * @description 带确认/取消双按钮的二次确认弹窗，支持普通和危险两种类型样式
  */
 
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import BasePopup from '../common/BasePopup.vue';
 
 const props = withDefaults(defineProps<{
@@ -48,11 +48,8 @@ function onCancel() {
 }
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .confirm-message {
-  margin: 0;
-  color: #aaa;
-  font-size: 14px;
-  text-align: center;
+  .popup-message-text();
 }
 </style>

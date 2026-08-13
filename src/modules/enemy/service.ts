@@ -3,9 +3,11 @@
  *
  * 提供敌人属性推导、伤害计算、实例创建等纯函数，不含状态和副作用
  */
-import type { Enemy, EnemyInstance, EnemyDrop } from './types';
-import type { Stats } from '../character/types';
-import type { EnemyData } from './types';
+import type { EnemyInstance, EnemyDrop, EnemyData } from './types';
+import type { Stats } from '@/modules/character/types';
+import { generateId } from '@/utils/db-helpers';
+import { defaultRng, type Rng } from '@/utils/rng';
+import { DAMAGE_BASE_COEFFICIENT, ENEMY_LEVEL_SCALE_COEFFICIENT } from '@/config/combat';
 
 /**
  * 根据模板和等级推导敌人属性统计（含等级缩放）
@@ -28,23 +30,30 @@ export function generateEnemyStats(
   magicDefense: number;
   damage: [number, number];
 } {
-  // 等级缩放系数：每级 +10%，level=1 时为 1.0，level=50 时为 5.9
-  const levelScale = 1 + (level - 1) * 0.1;
+  // 等级缩放系数：每级 +6%，level=1 时为 1.0，level=20 时为 2.14
+  const levelScale = 1 + (level - 1) * ENEMY_LEVEL_SCALE_COEFFICIENT;
 
   // 战斗属性随等级缩放
-  const scaledPhysicalAttack = Math.floor((template.physicalAttack || 10) * levelScale);
-  const scaledPhysicalDefense = Math.floor((template.physicalDefense || 5) * levelScale);
-  const scaledMagicAttack = Math.floor((template.magicAttack || 5) * levelScale);
-  const scaledMagicDefense = Math.floor((template.magicDefense || 5) * levelScale);
+  const scaledPhysicalAttack = Math.floor((template.physicalAttack ?? 10) * levelScale);
+  const scaledPhysicalDefense = Math.floor((template.physicalDefense ?? 5) * levelScale);
+  const scaledMagicAttack = Math.floor((template.magicAttack ?? 5) * levelScale);
+  const scaledMagicDefense = Math.floor((template.magicDefense ?? 5) * levelScale);
   const scaledDamage: [number, number] = [
     Math.floor(template.damage[0] * levelScale),
     Math.floor(template.damage[1] * levelScale)
   ];
 
-  // 六维属性由缩放后的战斗属性推导
+  // 六维属性由缩放后的战斗属性推导：
+  // - str（力量）：物理攻击 × 0.8
+  // - dex（敏捷）：闪避率 × 等级缩放 × 1.5
+  // - con（体质）：最大生命 × 等级缩放 × 0.3
+  // - int（智力）：魔法攻击 × 0.8
+  // - wis（智慧）：魔法防御 × 1.2
+  // - cha（魅力）：固定为 5（敌人不使用魅力属性）
+  // P7-018 修复：dex 改为用 levelScale 缩放后的 dodgeChance，与其他属性口径一致
   const stats: Stats = {
     str: Math.floor(scaledPhysicalAttack * 0.8),
-    dex: Math.floor((template.dodgeChance || 5) * 1.5),
+    dex: Math.floor((template.dodgeChance ?? 5) * levelScale * 1.5),
     con: Math.floor(template.maxHp * levelScale * 0.3),
     int: Math.floor(scaledMagicAttack * 0.8),
     wis: Math.floor(scaledMagicDefense * 1.2),
@@ -71,45 +80,55 @@ export function generateEnemyStats(
 
 /**
  * 计算敌人对玩家造成的伤害
+ *
+ * 伤害公式：
+ *   rawDamage = (攻击力 + 伤害范围随机值) × 0.5
+ *   最终伤害 = floor(rawDamage)
+ *
+ * 即攻击力与伤害范围各占 50% 权重。
+ *
+ * P3-169 修复：移除函数内部的防御减免计算，防御统一由 processDamagePipeline
+ * 的 applyDefenseReduction 处理，避免双重减防。
+ *
+ * P3-95 修复：根据 `enemy.attackType` 选择使用物理攻击力或魔法攻击力。
+ * - `attackType === 'magical'`：使用 `magicAttack`（法系敌人普攻走魔法）
+ * - 其他情况（含未配置）：使用 `physicalAttack`（默认物理）
+ *
  * @param enemy - 敌人实例
- * @param playerDefense - 玩家防御值
- * @returns 计算后的伤害值
+ * @param rng - 随机数生成器，默认 `defaultRng`（基于 Math.random）。
+ *   传入 `createSeededRng(seed)` 或 `createRngFromFn(() => 0)` 可注入确定性随机源，
+ *   便于测试断言与战斗回放（避免 mock 全局 Math.random 的副作用）。
+ *   生产环境调用无需传参，使用默认值即可。
+ * @returns 计算后的伤害值（向下取整，最小为 1）
  */
-export function calculateEnemyDamage(enemy: Enemy, playerDefense: number): number {
-  const baseDamage = enemy.physicalAttack || enemy.stats.str;
+export function calculateEnemyDamage(
+  enemy: EnemyInstance,
+  rng: Rng = defaultRng
+): number {
+  const isMagical = enemy.attackType === 'magical';
+  const baseDamage = isMagical
+    ? (enemy.magicAttack ?? 5)
+    : (enemy.physicalAttack ?? 10);
   const damageRange = enemy.damage;
-  const randomFactor = damageRange[0] + Math.random() * (damageRange[1] - damageRange[0]);
-  const rawDamage = (baseDamage + randomFactor) * 0.5;
-  const mitigated = Math.max(1, rawDamage - playerDefense * 0.3);
-  return Math.floor(mitigated);
+  const randomFactor = damageRange[0] + rng.next() * (damageRange[1] - damageRange[0]);
+  // B-001 修复：原公式 (baseDamage + randomFactor) × 0.5 导致敌人普攻伤害过低，
+  // 被玩家防御完全压制。改用与玩家普攻对齐的公式：attackStat × 0.4 + damage 随机值。
+  const rawDamage = Math.floor(baseDamage * DAMAGE_BASE_COEFFICIENT) + randomFactor;
+  // P3-169：移除防御减免，防御由 processDamagePipeline 统一处理
+  // P5-021 修复：与注释一致，最小为 1
+  return Math.max(1, Math.floor(rawDamage));
 }
 
 /**
  * 创建完整的敌人实例（纯函数，不涉及 DB 和状态存储）
  * @param template - 敌人模板数据
  * @param level - 敌人等级
+ * @param rng - 随机数生成器，默认 `defaultRng`。传入确定性 RNG 可生成可复现的 ID
  * @returns 完整的敌人实例
  */
-export function createEnemyInstance(template: EnemyData, level: number): Enemy {
-  const id = `enemy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+export function createEnemyInstance(template: EnemyData, level: number, rng: Rng = defaultRng): EnemyInstance {
+  const id = generateId('enemy', rng);
   const derived = generateEnemyStats(template, level);
-
-  const drops: EnemyDrop[] = [];
-
-  // Boss 额外掉落物品
-  if (template.isBoss) {
-    const bossDrops: EnemyDrop[] = [
-      { itemId: 'large_health_potion', minAmount: 1, maxAmount: 2, dropRate: 0.6 },
-      { itemId: 'large_mana_potion', minAmount: 1, maxAmount: 1, dropRate: 0.4 },
-      { itemId: 'strength_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
-      { itemId: 'agility_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
-      { itemId: 'constitution_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
-      { itemId: 'intelligence_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
-      { itemId: 'wisdom_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
-      { itemId: 'charisma_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 }
-    ];
-    drops.push(...bossDrops);
-  }
 
   const enemy: EnemyInstance = {
     ...template,
@@ -118,7 +137,6 @@ export function createEnemyInstance(template: EnemyData, level: number): Enemy {
     level,
     hp: derived.hp,
     maxHp: derived.maxHp,
-    loot: [],
     stats: derived.stats,
     expReward: derived.expReward,
     goldReward: derived.goldReward,
@@ -128,8 +146,22 @@ export function createEnemyInstance(template: EnemyData, level: number): Enemy {
     magicAttack: derived.magicAttack,
     magicDefense: derived.magicDefense,
     damage: derived.damage,
-    drops
+    drops: template.drops,
   };
 
   return enemy;
 }
+
+/**
+ * Boss 通用掉落表（由 boss/service.ts 引用，避免硬编码重复）
+ */
+export const BOSS_DROP_TABLE: EnemyDrop[] = [
+  { itemId: 'large_health_potion', minAmount: 1, maxAmount: 2, dropRate: 0.6 },
+  { itemId: 'large_mana_potion', minAmount: 1, maxAmount: 1, dropRate: 0.4 },
+  { itemId: 'strength_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+  { itemId: 'agility_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+  { itemId: 'constitution_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+  { itemId: 'intelligence_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+  { itemId: 'wisdom_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 },
+  { itemId: 'charisma_potion', minAmount: 1, maxAmount: 1, dropRate: 0.15 }
+];

@@ -36,59 +36,15 @@ export interface LogEntry {
 }
 
 /**
- * 冒险日志服务接口
- * 提供冒险日志管理的核心功能
+ * 冒险日志存储数据结构
+ * @property {string} characterId - 角色ID（主键）
+ * @property {LogEntry[]} entries - 日志条目列表
+ * @property {number} updatedAt - 最后更新时间戳
  */
-export interface ILogService {
-  /**
-   * 添加日志条目
-   * @param {LogEntry} entry - 日志条目
-   */
-  addLog(entry: LogEntry): void;
-
-  /**
-   * 获取日志列表
-   * @returns {LogEntry[]} 日志列表
-   */
-  getLogs(): LogEntry[];
-
-  /**
-   * 根据类型筛选日志
-   * @param {LogType} type - 日志类型
-   * @returns {LogEntry[]} 筛选后的日志列表
-   */
-  getLogsByType(type: LogType): LogEntry[];
-
-  /** 清空日志 */
-  clearLogs(): void;
-
-  /**
-   * 获取日志数量
-   * @returns {number} 日志数量
-   */
-  getLogCount(): number;
-
-  /**
-   * 生成日志ID
-   * @returns {string} 日志ID
-   */
-  generateLogId(): string;
-}
-
 export interface AdventureLogData {
   characterId: string;
   entries: LogEntry[];
-  updatedAt?: number;
+  updatedAt: number;
 }
 
-/**
- * 冒险日志存储格式
- */
-export interface AdventureLogStorage {
-  characterId: string;
-  entries: Array<{ id: string; timestamp: number; type: string; message: string; icon?: string }>;
-  updatedAt?: number;
-}
 
-/** 日志变更回调类型 */
-export type LogChangeCallback = () => void;

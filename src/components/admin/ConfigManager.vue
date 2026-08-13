@@ -7,13 +7,70 @@
     <AdminTable
       :columns="currentColumns"
       :data="store.tableData"
-      :total-count="store.tableData.length"
+      :total-count="store.totalCount"
+      :current-page="store.currentPage"
+      :page-size="store.pageSize"
+      :sort-by="store.sortBy"
+      :sort-order="store.sortOrder"
+      :selectable="true"
+      :visible-column-keys="visibleColumnKeys"
       @create="handleCreate"
       @edit="handleEdit"
       @delete="handleDelete"
+      @clone="handleClone"
       @refresh="store.loadTableData"
       @search="store.doSearch($event)"
-    />
+      @sort="store.toggleSort($event)"
+      @page-change="store.changePage($event)"
+      @page-size-change="store.changePageSize($event)"
+      @selection-change="onSelectionChange"
+    >
+      <!-- 批量操作 -->
+      <template #batch-actions="{ selectedIds, clearSelection }">
+        <button
+          v-if="selectedIds.size > 0"
+          class="btn btn-batch-delete"
+          @click="handleBatchDelete([...selectedIds], clearSelection)"
+        >
+          批量删除 ({{ selectedIds.size }})
+        </button>
+      </template>
+
+      <!-- 列设置 + 导出 + 导入 -->
+      <template #column-settings>
+        <button class="btn btn-secondary btn-column-settings" @click="showColumnSettings = !showColumnSettings">
+          列设置
+        </button>
+        <button class="btn btn-secondary btn-export" @click="handleExport('json')">导出JSON</button>
+        <button class="btn btn-secondary btn-export" @click="handleExport('csv')">导出CSV</button>
+        <button class="btn btn-secondary btn-import" @click="showImportDialog = true">导入</button>
+        <button class="btn btn-secondary btn-reset" @click="showResetConfirm = true">重置默认</button>
+        <div v-if="showColumnSettings" class="column-settings-panel">
+          <label
+            v-for="col in currentColumns"
+            :key="col.key"
+            class="column-settings-item"
+          >
+            <input
+              type="checkbox"
+              :checked="visibleColumnKeys.includes(col.key)"
+              @change="toggleColumnVisibility(col.key)"
+            />
+            {{ col.label }}
+          </label>
+        </div>
+      </template>
+
+      <!-- 行详情 -->
+      <template #row-detail="{ row }">
+        <div class="detail-grid">
+          <div v-for="col in currentColumns" :key="col.key" class="detail-item">
+            <span class="detail-label">{{ col.label }}:</span>
+            <span class="detail-value">{{ formatDetailValue(row[col.key]) }}</span>
+          </div>
+        </div>
+      </template>
+    </AdminTable>
 
     <!-- 删除确认弹窗 -->
     <div v-if="showDeleteConfirm" class="confirm-overlay" @click.self="showDeleteConfirm = false">
@@ -23,6 +80,7 @@
         </div>
         <div class="confirm-body">
           <p>确定要删除此记录吗？此操作不可撤销。</p>
+          <p v-if="referenceWarning" class="reference-warning">{{ referenceWarning }}</p>
         </div>
         <div class="confirm-footer">
           <button class="btn btn-secondary" @click="showDeleteConfirm = false">取消</button>
@@ -31,7 +89,39 @@
       </div>
     </div>
 
-    <!-- 编辑/创建表单弹窗 -->
+    <!-- 批量删除确认弹窗 -->
+    <div v-if="showBatchDeleteConfirm" class="confirm-overlay" @click.self="showBatchDeleteConfirm = false">
+      <div class="confirm-dialog">
+        <div class="confirm-header">
+          <h3>确认批量删除</h3>
+        </div>
+        <div class="confirm-body">
+          <p>确定要删除选中的 {{ batchDeleteIds.length }} 条记录吗？此操作不可撤销。</p>
+        </div>
+        <div class="confirm-footer">
+          <button class="btn btn-secondary" @click="showBatchDeleteConfirm = false">取消</button>
+          <button class="btn btn-danger" @click="confirmBatchDelete">确认删除</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 重置默认确认弹窗 -->
+    <div v-if="showResetConfirm" class="confirm-overlay" @click.self="showResetConfirm = false">
+      <div class="confirm-dialog">
+        <div class="confirm-header">
+          <h3>确认重置默认值</h3>
+        </div>
+        <div class="confirm-body">
+          <p>确定要将 {{ store.currentTableMeta?.label }} 重置为默认值吗？当前表所有数据将被清空并恢复为初始配置，此操作不可撤销。</p>
+        </div>
+        <div class="confirm-footer">
+          <button class="btn btn-secondary" @click="showResetConfirm = false">取消</button>
+          <button class="btn btn-danger" @click="confirmReset">确认重置</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 编辑/创建/克隆表单弹窗 -->
     <AdminForm
       :visible="store.formConfig.visible"
       :title="store.formConfig.title"
@@ -39,6 +129,14 @@
       :initial-data="store.editingRecord"
       @submit="handleFormSubmit"
       @cancel="store.closeForm"
+    />
+
+    <!-- 导入弹窗 -->
+    <ImportDialog
+      :visible="showImportDialog"
+      :table-name="store.currentTableMeta?.label || ''"
+      @import="handleImport"
+      @cancel="showImportDialog = false"
     />
   </div>
 </template>
@@ -48,538 +146,210 @@
  * 配置表管理组件
  *
  * 根据当前选中的配置表动态切换表格列定义和表单字段，
- * 实现所有10个配置表（阵营/种族/职业/物品/装备/敌人/任务/技能/地点/商店）的统一管理
+ * 实现所有 15 张配置表的统一管理。
+ * 支持分页、排序、列显隐、批量删除、行克隆。
  */
-import { ref, computed, onMounted } from 'vue';
-import { storeToRefs } from 'pinia';
+import { onMounted, ref, watch } from 'vue';
 import { useAdminStore } from '@/modules/admin';
-import { CONFIG_TABLES, type ConfigTableName } from '@/modules/admin/types';
-import type { TableColumn } from './AdminTable.vue';
-import type { FormField } from './AdminForm.vue';
+import type { AdminRecord } from '@/modules/admin';
 import AdminTable from './AdminTable.vue';
 import AdminForm from './AdminForm.vue';
+import ImportDialog from './ImportDialog.vue';
+import { useConfigTableMeta } from './composables/useConfigTableMeta';
+import { useConfigCrud } from './composables/useConfigCrud';
+import { useToast } from '@/composables/useToast';
+import { exportJSON, exportCSV } from '@/utils/exportData';
 
 const store = useAdminStore();
 
-// ========== 字典值 → 中文翻译映射表 ==========
-
-const FACTION_NAMES: Record<string, string> = {
-  alliance: '光辉盟约', horde: '铁血盟约', neutral: '中立',
-};
-
-const STAT_NAMES: Record<string, string> = {
-  str: '力量', dex: '敏捷', con: '体质', int: '智力', wis: '感知', cha: '魅力',
-};
-
-const RARITY_NAMES: Record<string, string> = {
-  common: '普通', uncommon: '优秀', rare: '精良', epic: '史诗', legendary: '传说',
-};
-
-const ITEM_TYPE_NAMES: Record<string, string> = {
-  potion: '药水', scroll: '卷轴', food: '食物', material: '材料', quest: '任务物品', misc: '杂项',
-};
-
-const EQUIP_TYPE_NAMES: Record<string, string> = {
-  weapon: '武器', armor: '护甲',
-};
-
-const LOCATION_TYPE_NAMES: Record<string, string> = {
-  location: '地点', continent: '大陆',
-};
-
-const QUEST_TYPE_NAMES: Record<string, string> = {
-  kill: '击杀', collect: '收集',
-};
-
-const SKILL_TYPE_NAMES: Record<string, string> = {
-  physical_damage: '物理伤害', magic_damage: '魔法伤害', health_restore: '生命恢复', mana_restore: '法力恢复',
-  buff: '增益', debuff: '减益',
-};
-
-const SHOP_TYPE_NAMES: Record<string, string> = {
-  general: '杂货', potion: '药水', scroll: '卷轴', food: '食品', material: '材料',
-};
-
-/** 获取字典翻译，若未匹配则原样返回 */
-function t(map: Record<string, string>, val: any): string {
-  if (val === null || val === undefined) return '-';
-  return map[String(val)] ?? String(val);
-}
-
-/** 参考数据缓存 —— 供下拉选择使用 */
+const { currentColumns, currentFormFields, currentDbTable } = useConfigTableMeta();
 const {
-  referenceFactions: factionOptions,
-  referenceRaces: raceOptions,
-  referenceClasses: classOptions,
-  referenceLocations: locationOptions,
-  referenceContinents: continentOptions,
-} = storeToRefs(store);
+  showDeleteConfirm,
+  referenceWarning,
+  handleCreate,
+  handleEdit,
+  handleDelete,
+  confirmDelete,
+  handleFormSubmit,
+} = useConfigCrud({ currentDbTable });
 
-onMounted(() => {
-  store.loadReferenceData();
+// ==================== 列显隐 ====================
+
+const showColumnSettings = ref(false);
+const visibleColumnKeys = ref<string[]>([]);
+
+/** 从 localStorage 恢复列显隐配置 */
+function loadColumnConfig(tableName: string): string[] {
+  try {
+    const saved = localStorage.getItem(`admin_columns_${tableName}`);
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore */ }
+  // 默认显示前 5 列
+  return currentColumns.value.slice(0, 5).map(c => c.key);
+}
+
+/** 保存列显隐配置到 localStorage */
+function saveColumnConfig(tableName: string, keys: string[]): void {
+  try {
+    localStorage.setItem(`admin_columns_${tableName}`, JSON.stringify(keys));
+  } catch { /* ignore */ }
+}
+
+/** 切换列可见性 */
+function toggleColumnVisibility(key: string): void {
+  const idx = visibleColumnKeys.value.indexOf(key);
+  if (idx >= 0) {
+    visibleColumnKeys.value.splice(idx, 1);
+  } else {
+    visibleColumnKeys.value.push(key);
+  }
+  saveColumnConfig(store.selectedConfigTable, visibleColumnKeys.value);
+}
+
+// 切换表时重载列配置
+watch(() => store.selectedConfigTable, (tableName) => {
+  visibleColumnKeys.value = loadColumnConfig(tableName);
+  showColumnSettings.value = false;
+}, { immediate: true });
+
+// ==================== 行克隆 ====================
+
+function handleClone(row: AdminRecord): void {
+  const cloned = { ...row };
+  // 清空 ID 字段，提示用户输入新 ID
+  delete (cloned as Record<string, unknown>).id;
+  store.openEditForm(cloned, `克隆${store.currentTableMeta?.label || '记录'}`);
+  // 修正为 create 模式
+  store.formConfig.mode = 'create';
+}
+
+// ==================== 批量删除 ====================
+
+const showBatchDeleteConfirm = ref(false);
+const batchDeleteIds = ref<string[]>([]);
+
+function onSelectionChange(_ids: string[]): void {
+  // 由 AdminTable 内部管理选中状态，这里仅记录用于批量删除
+}
+
+function handleBatchDelete(ids: string[], clearSelection: () => void): void {
+  batchDeleteIds.value = ids;
+  batchClearSelection = clearSelection;
+  showBatchDeleteConfirm.value = true;
+}
+
+let batchClearSelection: () => void = () => {};
+
+async function confirmBatchDelete(): Promise<void> {
+  showBatchDeleteConfirm.value = false;
+  const ids = [...batchDeleteIds.value];
+  batchDeleteIds.value = [];
+
+  const results = await Promise.allSettled(
+    ids.map(id => store.deleteRecord(currentDbTable.value, id)),
+  );
+  const successCount = results.filter(r => r.status === 'fulfilled' && r.value).length;
+  const failCount = results.length - successCount;
+
+  if (failCount > 0) {
+    useToast().show({
+      message: `批量删除完成：成功 ${successCount} 条，失败 ${failCount} 条`,
+      type: 'danger',
+      duration: 4000,
+    });
+  } else {
+    useToast().show({
+      message: `成功删除 ${successCount} 条记录`,
+      type: 'success',
+      duration: 2000,
+    });
+  }
+  batchClearSelection();
+}
+
+// ==================== 行详情格式化 ====================
+
+function formatDetailValue(value: unknown): string {
+  if (value === null || value === undefined) return '-';
+  if (typeof value === 'boolean') return value ? '是' : '否';
+  if (typeof value === 'object') return JSON.stringify(value, null, 2);
+  return String(value);
+}
+
+// ==================== 导出/导入 ====================
+
+const showImportDialog = ref(false);
+const showResetConfirm = ref(false);
+
+/** 确认重置 */
+async function confirmReset(): Promise<void> {
+  showResetConfirm.value = false;
+  try {
+    const success = await store.resetTable();
+    if (success) {
+      useToast().show({ message: '已重置为默认值', type: 'success', duration: 2000 });
+    } else {
+      useToast().show({ message: '重置失败，请查看控制台', type: 'danger', duration: 3000 });
+    }
+  } catch (e) {
+    console.error('[ConfigManager] 重置失败:', e);
+    useToast().show({ message: '重置失败，请查看控制台', type: 'danger', duration: 3000 });
+  }
+}
+
+/** 导出当前表数据 */
+async function handleExport(format: 'json' | 'csv'): Promise<void> {
+  try {
+    // 获取全量数据（不分页，通过 adminService.getAll）
+    const { adminService } = await import('@/modules/admin');
+    const data = await adminService.getAll<Record<string, unknown>>(currentDbTable.value);
+    const tableName = store.selectedConfigTable;
+
+    if (format === 'json') {
+      exportJSON(data, tableName);
+    } else {
+      exportCSV(data, currentColumns.value, tableName);
+    }
+    useToast().show({ message: `已导出 ${data.length} 条记录`, type: 'success', duration: 2000 });
+  } catch (e) {
+    console.error('[ConfigManager] 导出失败:', e);
+    useToast().show({ message: '导出失败，请查看控制台', type: 'danger', duration: 3000 });
+  }
+}
+
+/** 处理导入 */
+async function handleImport(records: Record<string, unknown>[]): Promise<void> {
+  showImportDialog.value = false;
+  try {
+    const result = await store.importRecords(currentDbTable.value, records);
+    if (result.fail > 0) {
+      useToast().show({
+        message: `导入完成：成功 ${result.success} 条，失败 ${result.fail} 条`,
+        type: 'danger',
+        duration: 4000,
+      });
+    } else {
+      useToast().show({
+        message: `成功导入 ${result.success} 条记录`,
+        type: 'success',
+        duration: 2000,
+      });
+    }
+  } catch (e) {
+    console.error('[ConfigManager] 导入失败:', e);
+    useToast().show({ message: '导入失败，请查看控制台', type: 'danger', duration: 3000 });
+  }
+}
+
+// ==================== 初始化 ====================
+
+onMounted(async () => {
+  try {
+    await store.loadReferenceData();
+  } catch (err) {
+    console.error('[ConfigManager] loadReferenceData 失败:', err);
+  }
 });
-
-/** 是否显示删除确认 */
-const showDeleteConfirm = ref(false);
-/** 待删除的记录 */
-const pendingDeleteRecord = ref<any>(null);
-
-/** 各配置表的列定义 */
-const tableColumns: Record<ConfigTableName, TableColumn[]> = {
-  factions: [
-    { key: 'id', label: 'ID', width: '180px' },
-    { key: 'name', label: '名称' },
-    { key: 'icon', label: '图标' },
-    { key: 'color', label: '颜色', format: (v) => v },
-  ],
-  races: [
-    { key: 'id', label: 'ID', width: '180px' },
-    { key: 'name', label: '名称' },
-    { key: 'icon', label: '图标' },
-    { key: 'factionId', label: '阵营' },
-  ],
-  classes: [
-    { key: 'id', label: 'ID', width: '180px' },
-    { key: 'name', label: '名称' },
-    { key: 'icon', label: '图标' },
-    { key: 'primaryStat', label: '主属性' },
-    { key: 'color', label: '颜色' },
-  ],
-  items: [
-    { key: 'id', label: 'ID', width: '180px' },
-    { key: 'name', label: '名称' },
-    { key: 'type', label: '类型' },
-    { key: 'rarity', label: '稀有度' },
-    { key: 'value', label: '价值' },
-  ],
-  equipmentItems: [
-    { key: 'id', label: 'ID', width: '180px' },
-    { key: 'name', label: '名称' },
-    { key: 'type', label: '类型' },
-    { key: 'rarity', label: '稀有度' },
-    { key: 'value', label: '价值' },
-  ],
-  mobs: [
-    { key: 'id', label: 'ID', width: '180px' },
-    { key: 'name', label: '名称' },
-    { key: 'dangerLevel', label: '危险等级' },
-    { key: 'maxHp', label: '生命值' },
-    { key: 'damage', label: '伤害范围' },
-    { key: 'xp', label: '经验值' },
-  ],
-  bosses: [
-    { key: 'id', label: 'ID', width: '180px' },
-    { key: 'name', label: '名称' },
-    { key: 'dangerLevel', label: '危险等级' },
-    { key: 'maxHp', label: '生命值' },
-    { key: 'damage', label: '伤害范围' },
-    { key: 'xp', label: '经验值' },
-  ],
-  quests: [
-    { key: 'id', label: 'ID', width: '180px' },
-    { key: 'title', label: '标题' },
-    { key: 'type', label: '类型' },
-    { key: 'levelRequirement', label: '等级需求' },
-    { key: 'xpReward', label: '经验奖励' },
-  ],
-  skills: [
-    { key: 'id', label: 'ID', width: '180px' },
-    { key: 'name', label: '名称' },
-    { key: 'type', label: '类型' },
-    { key: 'mpCost', label: '法力消耗' },
-    { key: 'unlockLevel', label: '解锁等级' },
-    { key: 'classRestriction', label: '职业限制' },
-  ],
-  locations: [
-    { key: 'id', label: 'ID', width: '180px' },
-    { key: 'name', label: '名称' },
-    { key: 'type', label: '类型' },
-    { key: 'continent', label: '大陆' },
-    { key: 'levelRange', label: '等级范围' },
-  ],
-  shops: [
-    { key: 'id', label: 'ID', width: '180px' },
-    { key: 'name', label: '名称' },
-    { key: 'type', label: '类型' },
-    { key: 'refreshInterval', label: '刷新间隔' },
-    { key: 'priceVariation', label: '价格浮动' },
-  ],
-};
-
-/** 各配置表的表单字段定义 */
-const formFieldsMap: Record<ConfigTableName, FormField[]> = {
-  factions: [
-    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识，如 alliance' },
-    { key: 'name', label: '名称', type: 'text', placeholder: '阵营名称' },
-    { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标，如 🦁' },
-    { key: 'color', label: '颜色', type: 'color' },
-    { key: 'description', label: '描述', type: 'textarea', placeholder: '阵营描述' },
-  ],
-  races: [
-    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
-    { key: 'name', label: '名称', type: 'text', placeholder: '种族名称' },
-    { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标' },
-    { key: 'factionId', label: '阵营ID', type: 'text', placeholder: 'alliance / horde / neutral' },
-    { key: 'bonus', label: '属性加成', type: 'json', placeholder: '{"str": 2, "con": 1}' },
-    { key: 'description', label: '描述', type: 'textarea', placeholder: '种族描述' },
-  ],
-  classes: [
-    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
-    { key: 'name', label: '名称', type: 'text', placeholder: '职业名称' },
-    { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标' },
-    { key: 'primaryStat', label: '主属性', type: 'select', options: [
-      { value: 'str', label: '力量 (str)' },
-      { value: 'dex', label: '敏捷 (dex)' },
-      { value: 'con', label: '体质 (con)' },
-      { value: 'int', label: '智力 (int)' },
-      { value: 'wis', label: '感知 (wis)' },
-      { value: 'cha', label: '魅力 (cha)' },
-    ] },
-    { key: 'factionsIds', label: '可选阵营', type: 'multiselect' },
-    { key: 'raceIds', label: '可选种族', type: 'multiselect' },
-    { key: 'description', label: '描述', type: 'textarea', placeholder: '职业描述' },
-    { key: 'color', label: '颜色', type: 'color' },
-    { key: 'bonus', label: '属性加成', type: 'json', placeholder: '{"str": 1, "int": 2}' },
-  ],
-  items: [
-    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
-    { key: 'name', label: '名称', type: 'text', placeholder: '物品名称' },
-    { key: 'type', label: '类型', type: 'select', options: [
-      { value: 'potion', label: '药水 (potion)' },
-      { value: 'scroll', label: '卷轴 (scroll)' },
-      { value: 'food', label: '食物 (food)' },
-      { value: 'material', label: '材料 (material)' },
-      { value: 'quest', label: '任务物品 (quest)' },
-      { value: 'misc', label: '杂项 (misc)' },
-    ] },
-    { key: 'rarity', label: '稀有度', type: 'text', placeholder: 'common/uncommon/rare/epic/legendary' },
-    { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标' },
-    { key: 'description', label: '描述', type: 'textarea', placeholder: '物品描述' },
-    { key: 'bonus', label: '属性加成', type: 'json', placeholder: '{"hp": 50}' },
-    { key: 'effect', label: '效果', type: 'json', placeholder: '{"type": "heal", "value": 50}' },
-    { key: 'value', label: '价值', type: 'number' },
-    { key: 'stackable', label: '可堆叠', type: 'switch' },
-    { key: 'consumable', label: '消耗品', type: 'switch' },
-    { key: 'level', label: '物品等级', type: 'number' },
-    { key: 'template', label: '模板', type: 'text', placeholder: '物品模板标识' },
-  ],
-  equipmentItems: [
-    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
-    { key: 'name', label: '名称', type: 'text', placeholder: '装备名称' },
-    { key: 'type', label: '类型', type: 'select', options: [
-      { value: 'weapon', label: '武器 (weapon)' },
-      { value: 'armor', label: '护甲 (armor)' },
-    ] },
-    { key: 'rarity', label: '稀有度', type: 'text', placeholder: 'common/uncommon/rare/epic/legendary' },
-    { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标' },
-    { key: 'description', label: '描述', type: 'textarea', placeholder: '装备描述' },
-    { key: 'bonus', label: '属性加成', type: 'json', placeholder: '{"str": 3}' },
-    { key: 'value', label: '价值', type: 'number' },
-    { key: 'slots', label: '适用槽位', type: 'multiselect' },
-    { key: 'stackable', label: '可堆叠', type: 'switch' },
-    { key: 'levelRequirement', label: '等级需求', type: 'number' },
-    { key: 'template', label: '模板', type: 'text', placeholder: '装备模板标识' },
-  ],
-  mobs: [
-    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
-    { key: 'name', label: '名称', type: 'text', placeholder: '怪物名称' },
-    { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标' },
-    { key: 'maxHp', label: '最大生命值', type: 'number' },
-    { key: 'damage', label: '伤害范围', type: 'json', placeholder: '[5, 15]' },
-    { key: 'xp', label: '经验值', type: 'number' },
-    { key: 'gold', label: '金币', type: 'number' },
-    { key: 'dangerLevel', label: '危险等级', type: 'select', options: [
-      { value: '普通', label: '普通' },
-      { value: '困难', label: '困难' },
-      { value: '危险', label: '危险' },
-      { value: '极危险', label: '极危险' },
-      { value: '致命', label: '致命' },
-    ] },
-    { key: 'physicalAttack', label: '物理攻击力', type: 'number' },
-    { key: 'physicalDefense', label: '物理防御力', type: 'number' },
-    { key: 'magicAttack', label: '魔法攻击力', type: 'number' },
-    { key: 'magicDefense', label: '魔法防御力', type: 'number' },
-    { key: 'critChance', label: '暴击率', type: 'number' },
-    { key: 'dodgeChance', label: '闪避率', type: 'number' },
-  ],
-  bosses: [
-    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
-    { key: 'name', label: '名称', type: 'text', placeholder: 'Boss名称' },
-    { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标' },
-    { key: 'maxHp', label: '最大生命值', type: 'number' },
-    { key: 'damage', label: '伤害范围', type: 'json', placeholder: '[5, 15]' },
-    { key: 'xp', label: '经验值', type: 'number' },
-    { key: 'gold', label: '金币', type: 'number' },
-    { key: 'dangerLevel', label: '危险等级', type: 'select', options: [
-      { value: '普通', label: '普通' },
-      { value: '困难', label: '困难' },
-      { value: '危险', label: '危险' },
-      { value: '极危险', label: '极危险' },
-      { value: '致命', label: '致命' },
-    ] },
-    { key: 'physicalAttack', label: '物理攻击力', type: 'number' },
-    { key: 'physicalDefense', label: '物理防御力', type: 'number' },
-    { key: 'magicAttack', label: '魔法攻击力', type: 'number' },
-    { key: 'magicDefense', label: '魔法防御力', type: 'number' },
-    { key: 'critChance', label: '暴击率', type: 'number' },
-    { key: 'dodgeChance', label: '闪避率', type: 'number' },
-    { key: 'skillPool', label: '技能池', type: 'json', placeholder: '["skill_id_1", "skill_id_2"]' },
-    { key: 'aiStrategy', label: 'AI策略', type: 'select', options: [
-      { value: 'aggressive', label: '激进 (aggressive)' },
-      { value: 'defensive', label: '防御 (defensive)' },
-      { value: 'balanced', label: '均衡 (balanced)' },
-      { value: 'boss_phase', label: 'Boss阶段 (boss_phase)' },
-    ] },
-    { key: 'isBoss', label: 'Boss标记', type: 'switch' },
-    { key: 'phases', label: '阶段配置', type: 'json', placeholder: '[{"name":"阶段一","hpThreshold":0.5,"skills":["skill_id"]}]' },
-    { key: 'intro', label: '出场演出', type: 'json', placeholder: '{"text":"Boss出现了！","animation":"shake"}' },
-  ],
-  quests: [
-    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
-    { key: 'title', label: '标题', type: 'text', placeholder: '任务标题' },
-    { key: 'description', label: '描述', type: 'textarea', placeholder: '任务描述' },
-    { key: 'type', label: '类型', type: 'text', placeholder: 'kill/collect/explore' },
-    { key: 'objectives', label: '目标', type: 'json', placeholder: '[{"key":"enemy","type":"kill","description":"击杀","target":5}]' },
-    { key: 'levelRequirement', label: '等级需求', type: 'number' },
-    { key: 'xpReward', label: '经验奖励', type: 'number' },
-    { key: 'goldReward', label: '金币奖励', type: 'number' },
-    { key: 'boardId', label: '区域ID', type: 'select' },
-  ],
-  skills: [
-    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
-    { key: 'name', label: '名称', type: 'text', placeholder: '技能名称' },
-    { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标' },
-    { key: 'description', label: '描述', type: 'textarea', placeholder: '技能描述' },
-    { key: 'mpCost', label: '法力消耗', type: 'number' },
-    { key: 'type', label: '类型', type: 'select', options: [
-      { value: 'physical_damage', label: '物理伤害 (physical_damage)' },
-      { value: 'magic_damage', label: '魔法伤害 (magic_damage)' },
-      { value: 'health_restore', label: '生命恢复 (health_restore)' },
-      { value: 'mana_restore', label: '法力恢复 (mana_restore)' },
-      { value: 'buff', label: '增益 (buff)' },
-      { value: 'debuff', label: '减益 (debuff)' },
-    ] },
-    { key: 'effect', label: '效果', type: 'json', placeholder: '{"type":"damage","value":20}' },
-    { key: 'unlockLevel', label: '解锁等级', type: 'number' },
-    { key: 'classRestriction', label: '职业限制', type: 'text', placeholder: 'warrior/mage 等，空为无限制' },
-    { key: 'cooldown', label: '冷却回合', type: 'number', placeholder: '冷却回合数，0=无冷却' },
-    { key: 'targetType', label: '目标类型', type: 'select', options: [
-      { value: 'single', label: '单体 (single)' },
-      { value: 'all_enemies', label: '全体敌人 (all_enemies)' },
-      { value: 'self', label: '自身 (self)' },
-      { value: 'ally', label: '友方 (ally)' },
-    ] },
-    { key: 'usableBy', label: '可用角色', type: 'select', options: [
-      { value: 'player', label: '仅玩家 (player)' },
-      { value: 'enemy', label: '仅敌人 (enemy)' },
-      { value: 'both', label: '玩家和敌人 (both)' },
-    ] },
-    { key: 'buffs', label: '增益/减益', type: 'json', placeholder: '[{"stat":"str","value":5,"duration":3}]' },
-  ],
-  locations: [
-    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
-    { key: 'name', label: '名称', type: 'text', placeholder: '地点/大陆名称' },
-    { key: 'type', label: '类型', type: 'select', options: [
-      { value: 'location', label: '地点 (location)' },
-      { value: 'continent', label: '大陆 (continent)' },
-    ] },
-    { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标' },
-    { key: 'description', label: '描述', type: 'textarea', placeholder: '地点描述' },
-    { key: 'continent', label: '所属大陆', type: 'select' },
-    { key: 'levelRange', label: '等级范围', type: 'json', placeholder: '[1, 10]' },
-    { key: 'color', label: '颜色', type: 'color' },
-    { key: 'mapX', label: '地图坐标X', type: 'number' },
-    { key: 'mapY', label: '地图坐标Y', type: 'number' },
-    { key: 'position', label: '大陆方位', type: 'text', placeholder: 'north/south/east/west' },
-    { key: 'enemies', label: '怪物分布', type: 'json', placeholder: '[{"id":"wolf","weight":5}]' },
-    { key: 'bosses', label: 'Boss分布', type: 'json', placeholder: '[{"id":"dragon_boss","weight":1}]' },
-  ],
-  shops: [
-    { key: 'id', label: 'ID', type: 'text', placeholder: '唯一标识' },
-    { key: 'name', label: '名称', type: 'text', placeholder: '商店名称' },
-    { key: 'type', label: '类型', type: 'text', placeholder: 'general/potion/equipment 等' },
-    { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标' },
-    { key: 'refreshInterval', label: '刷新间隔', type: 'number', placeholder: '刷新间隔（秒）' },
-    { key: 'priceVariation', label: '价格浮动', type: 'json', placeholder: '{"min": 0.8, "max": 1.2}' },
-  ],
-};
-
-/** 当前表名 */
-const currentTable = computed<ConfigTableName>(() => store.selectedConfigTable);
-
-/** 当前表对应的 Dexie 表名 */
-const currentDbTable = computed(() => {
-  const meta = CONFIG_TABLES.find(t => t.key === currentTable.value);
-  return meta?.dbTable || '';
-});
-
-/** 当前列定义（注入字典翻译） */
-const currentColumns = computed<TableColumn[]>(() => {
-  return tableColumns[currentTable.value].map(col => {
-    // factionId → 中文阵营名
-    if (col.key === 'factionId' && factionOptions.value.length > 0) {
-      return { ...col, format: (v: any) => t(FACTION_NAMES, v) };
-    }
-    // 种族/职业 ID → 中文名（从数据库加载的映射）
-    if (col.key === 'raceId' && raceOptions.value.length > 0) {
-      const map = Object.fromEntries(raceOptions.value.map(o => [o.value, o.label]));
-      return { ...col, format: (v: any) => map[String(v)] ?? String(v ?? '-') };
-    }
-    if (col.key === 'classId' && classOptions.value.length > 0) {
-      const map = Object.fromEntries(classOptions.value.map(o => [o.value, o.label]));
-      return { ...col, format: (v: any) => map[String(v)] ?? String(v ?? '-') };
-    }
-    // 字典字段翻译
-    if (col.key === 'primaryStat') return { ...col, format: (v: any) => t(STAT_NAMES, v) };
-    if (col.key === 'rarity') return { ...col, format: (v: any) => t(RARITY_NAMES, v) };
-    if (col.key === 'dangerLevel') return { ...col, format: (v: any) => String(v ?? '-') };
-    if (col.key === 'damage') return { ...col, format: (v: any) => Array.isArray(v) ? `${v[0]} ~ ${v[1]}` : String(v ?? '-') };
-    if (col.key === 'levelRange') return { ...col, format: (v: any) => Array.isArray(v) ? `${v[0]} ~ ${v[1]}` : String(v ?? '-') };
-    if (col.key === 'priceVariation') return { ...col, format: (v: any) => v && typeof v === 'object' ? `${v.min}x ~ ${v.max}x` : String(v ?? '-') };
-    if (col.key === 'classRestriction') {
-      if (classOptions.value.length > 0) {
-        const map = Object.fromEntries(classOptions.value.map(o => [o.value, o.label]));
-        return { ...col, format: (v: any) => v ? (map[String(v)] ?? String(v)) : '无限制' };
-      }
-      return { ...col, format: (v: any) => v ? String(v) : '无限制' };
-    }
-    if (col.key === 'continent') {
-      if (continentOptions.value.length > 0) {
-        const map = Object.fromEntries(continentOptions.value.map(o => [o.value, o.label]));
-        return { ...col, format: (v: any) => map[String(v)] ?? String(v ?? '-') };
-      }
-      return { ...col, format: (v: any) => String(v ?? '-') };
-    }
-    // type 字段按表名区分翻译
-    if (col.key === 'type') {
-      const tn = currentTable.value;
-      if (tn === 'items') return { ...col, format: (v: any) => t(ITEM_TYPE_NAMES, v) };
-      if (tn === 'equipmentItems') return { ...col, format: (v: any) => t(EQUIP_TYPE_NAMES, v) };
-      if (tn === 'locations') return { ...col, format: (v: any) => t(LOCATION_TYPE_NAMES, v) };
-      if (tn === 'quests') return { ...col, format: (v: any) => t(QUEST_TYPE_NAMES, v) };
-      if (tn === 'skills') return { ...col, format: (v: any) => t(SKILL_TYPE_NAMES, v) };
-      if (tn === 'shops') return { ...col, format: (v: any) => t(SHOP_TYPE_NAMES, v) };
-    }
-    return col;
-  });
-});
-
-/** 当前表单字段（注入下拉选项的最终版本） */
-const currentFormFields = computed<FormField[]>(() => {
-  const baseFields = formFieldsMap[currentTable.value] || [];
-  return baseFields.map(field => {
-    // 为阵营、种族、职业等关联字段注入下拉选项
-    if (field.key === 'factionId' && factionOptions.value.length > 0) {
-      return { ...field, type: 'select' as const, options: factionOptions.value };
-    }
-    if (field.key === 'factionsIds' && factionOptions.value.length > 0) {
-      return { ...field, type: 'multiselect' as const, options: factionOptions.value };
-    }
-    if (field.key === 'raceId' && raceOptions.value.length > 0) {
-      return { ...field, type: 'select' as const, options: raceOptions.value };
-    }
-    if (field.key === 'raceIds' && raceOptions.value.length > 0) {
-      return { ...field, type: 'multiselect' as const, options: raceOptions.value };
-    }
-    if (field.key === 'classId' && classOptions.value.length > 0) {
-      return { ...field, type: 'select' as const, options: classOptions.value };
-    }
-    if (field.key === 'slots') {
-      return {
-        ...field,
-        type: 'multiselect' as const,
-        options: [
-          { value: 'weapon1', label: '主手 (weapon1)' },
-          { value: 'weapon2', label: '副手 (weapon2)' },
-          { value: 'armor1', label: '头部 (armor1)' },
-          { value: 'armor2', label: '胸部 (armor2)' },
-          { value: 'armor3', label: '腿部 (armor3)' },
-          { value: 'armor4', label: '鞋子 (armor4)' },
-        ],
-      };
-    }
-    if (field.key === 'classRestriction' && classOptions.value.length > 0) {
-      return {
-        ...field,
-        type: 'select' as const,
-        options: [{ value: '', label: '无限制' }, ...classOptions.value],
-      };
-    }
-    if (field.key === 'boardId' && locationOptions.value.length > 0) {
-      return {
-        ...field,
-        type: 'select' as const,
-        options: locationOptions.value,
-      };
-    }
-    if (field.key === 'continent' && continentOptions.value.length > 0) {
-      return {
-        ...field,
-        type: 'select' as const,
-        options: continentOptions.value,
-      };
-    }
-    // 稀有度下拉
-    if (field.key === 'rarity') {
-      return {
-        ...field,
-        type: 'select' as const,
-        options: [
-          { value: 'common', label: '普通 (common)' },
-          { value: 'uncommon', label: '优秀 (uncommon)' },
-          { value: 'rare', label: '稀有 (rare)' },
-          { value: 'epic', label: '史诗 (epic)' },
-          { value: 'legendary', label: '传说 (legendary)' },
-        ],
-      };
-    }
-    // 敌人危险等级下拉（对齐 DB 实际值）
-    if (field.key === 'dangerLevel') {
-      return {
-        ...field,
-        type: 'select' as const,
-        options: [
-          { value: '普通', label: '普通' },
-          { value: '困难', label: '困难' },
-          { value: '危险', label: '危险' },
-          { value: '极危险', label: '极危险' },
-          { value: '致命', label: '致命' },
-        ],
-      };
-    }
-    return field;
-  });
-});
-
-/** 打开创建表单 */
-function handleCreate() {
-  store.openCreateForm(`新增${store.currentTableMeta?.label || '记录'}`);
-}
-
-/** 打开编辑表单 */
-function handleEdit(row: any) {
-  store.openEditForm(row, `编辑${store.currentTableMeta?.label || '记录'}`);
-}
-
-/** 打开删除确认 */
-function handleDelete(row: any) {
-  pendingDeleteRecord.value = row;
-  showDeleteConfirm.value = true;
-}
-
-/** 确认删除 */
-async function confirmDelete() {
-  if (!pendingDeleteRecord.value) return;
-  const id = pendingDeleteRecord.value.id ?? pendingDeleteRecord.value.characterId;
-  await store.deleteRecord(currentDbTable.value, id);
-  showDeleteConfirm.value = false;
-  pendingDeleteRecord.value = null;
-}
-
-/** 提交表单 */
-async function handleFormSubmit(data: Record<string, any>) {
-  await store.saveRecord(currentDbTable.value, data);
-}
 </script>
 
 <style lang="less" scoped>
@@ -587,8 +357,7 @@ async function handleFormSubmit(data: Record<string, any>) {
 
 .config-manager {
   height: 100%;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
 }
 
 .page-title {
@@ -598,11 +367,7 @@ async function handleFormSubmit(data: Record<string, any>) {
 }
 
 .btn {
-  padding: 8px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  border: 1px solid @border-color;
+  .admin-btn-base(@spacing-4xl);
 
   &-secondary {
     background: transparent;
@@ -611,37 +376,48 @@ async function handleFormSubmit(data: Record<string, any>) {
 
   &-danger {
     background: @danger-color;
-    color: #fff;
+    color: @popup-text-color;
     border-color: @danger-color;
   }
 
-  &:hover {
-    opacity: 0.85;
+  &-batch-delete {
+    background: rgba(255, 68, 68, 0.15);
+    color: @danger-color;
+    border-color: @danger-color;
+  }
+
+  &-column-settings {
+    font-size: @font-sm;
+  }
+
+  &-export {
+    font-size: @font-sm;
+  }
+
+  &-import {
+    font-size: @font-sm;
+  }
+
+  &-reset {
+    font-size: @font-sm;
+    color: @warning-color;
+    border-color: @warning-color;
   }
 }
 
 .confirm-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
+  .overlay-mask(@overlay-deep; @z-combat-overlay);
 }
 
 .confirm-dialog {
   background: @secondary-bg;
   border: 2px solid @border-color;
-  border-radius: 12px;
+  border-radius: @radius-xl;
   width: 400px;
 }
 
 .confirm-header {
-  padding: 16px 20px;
+  padding: @spacing-3xl @spacing-4xl;
   border-bottom: 1px solid @border-color;
 
   h3 {
@@ -651,15 +427,82 @@ async function handleFormSubmit(data: Record<string, any>) {
 }
 
 .confirm-body {
-  padding: 20px;
+  padding: @spacing-4xl;
   color: @text-primary;
+}
+
+.reference-warning {
+  color: @warning-color;
+  font-size: @font-sm;
+  margin-top: @spacing-lg;
 }
 
 .confirm-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 16px 20px;
+  gap: @spacing-lg;
+  padding: @spacing-3xl @spacing-4xl;
   border-top: 1px solid @border-color;
+}
+
+// 列设置面板
+.column-settings-panel {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: @spacing-xs;
+  background: @secondary-bg;
+  border: 1px solid @border-color;
+  border-radius: @radius-md;
+  padding: @spacing-lg;
+  display: flex;
+  flex-direction: column;
+  gap: @spacing-sm;
+  z-index: @z-dropdown;
+  min-width: 160px;
+}
+
+.btn-column-settings {
+  position: relative;
+}
+
+.column-settings-item {
+  display: flex;
+  align-items: center;
+  gap: @spacing-sm;
+  color: @text-secondary;
+  font-size: @font-base;
+  cursor: pointer;
+
+  input[type='checkbox'] {
+    accent-color: @accent-color;
+    width: 14px;
+    height: 14px;
+  }
+}
+
+// 行详情
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: @spacing-lg @spacing-4xl;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-label {
+  color: @text-secondary;
+  font-size: @font-sm;
+}
+
+.detail-value {
+  color: @text-primary;
+  font-size: @font-base;
+  word-break: break-all;
+  white-space: pre-wrap;
 }
 </style>

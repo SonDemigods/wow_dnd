@@ -2,19 +2,20 @@
   <div class="game-main">
     <div class="game-header">
       <div class="player-info">
-        <div class="player-avatar">{{ characterStore.raceIcon || '🧙' }}</div>
+        <div class="player-avatar"><BaseIcon :name="raceIcon || undefined" :size="28" /></div>
         <div class="player-details">
           <div class="player-name">{{ character.name }}</div>
           <div class="player-meta">
             <span :class="['player-level', { 'level-up': levelUpTriggered }]">Lv.{{ character.level }}</span>
-            <span class="player-gold">💰 {{ gold }}</span>
+            <span class="player-gold"><BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> {{ gold }}</span>
           </div>
         </div>
       </div>
       <div class="player-resources">
-        <ResourceBar icon="❤️" name="HP" :current="currentHp" :max="maxHp" :percent="hpPercent" type="hp" />
-        <ResourceBar icon="💧" name="MP" :current="currentMp" :max="maxMp" :percent="mpPercent" type="mp" />
-        <ResourceBar icon="⭐" name="EXP" :current="exp" :max="expToNext" :percent="expPercent" type="exp" />
+        <ResourceBar icon="health-normal" iconGradient="blood" name="生命" :current="currentHp" :max="maxHp" :percent="hpPercent" type="hp" />
+        <ResourceBar v-if="showManaBar" icon="magic-palm" iconGradient="mana" name="法力" :current="currentMp" :max="maxMp" :percent="mpPercent" type="mp" />
+        <ClassResourceBar v-for="(sys, idx) in classResourceSystems" :key="'class-res-' + idx" :resource-system="sys" />
+        <ResourceBar icon="star-formation" iconGradient="gold" name="经验" :current="exp" :max="expToNext" :percent="expPercent" type="exp" />
       </div>
     </div>
 
@@ -24,13 +25,13 @@
           :class="['content-tab', { active: currentContentTab === 'map' }]"
           @click="handleMapTabClick"
         >
-          🗺 地图
+          <BaseIcon :name="COMMON_ICONS.treasure" gradient="nature" :size="16" /> 地图
         </button>
         <button 
           :class="['content-tab', { active: currentContentTab === 'explore', disabled: !hasCurrentLocation }]"
           @click="handleExploreTabClick"
         >
-          🏕 探索
+          <BaseIcon :name="COMMON_ICONS.campfire" gradient="heal" :size="16" /> 探索
         </button>
         <div class="area-info">
           区域: {{ currentArea }}
@@ -46,66 +47,68 @@
     </div>
 
     <div class="game-footer">
-      <button class="footer-btn" @click="showCharacterInfo = true; onClickPanel('character_info')" title="角色">
-        <span class="footer-icon">👤</span>
+      <button class="footer-btn" @click="popupMounted.characterInfo = true; showCharacterInfo = true; onClickPanel('character_info')" title="角色">
+        <BaseIcon :name="NAV_ICONS.character" gradient="gold" :size="16" />
         <span class="footer-text">角色</span>
+        <MenuBadge :count="characterBadge" variant="danger" />
       </button>
-      <button class="footer-btn" @click="showInventory = true; onClickPanel('inventory')" title="背包">
-        <span class="footer-icon">🎒</span>
+      <button class="footer-btn" @click="popupMounted.inventory = true; showInventory = true; onClickPanel('inventory')" title="背包">
+        <BaseIcon :name="NAV_ICONS.inventory" gradient="gold" :size="16" />
         <span class="footer-text">背包</span>
+        <MenuBadge :count="inventoryBadge" variant="warning" />
       </button>
-      <button class="footer-btn" @click="showSkills = true; onClickPanel('skills')" title="技能">
-        <span class="footer-icon">⚔️</span>
-        <span class="footer-text">技能</span>
+      <button class="footer-btn" @click="popupMounted.build = true; showBuild = true; onClickPanel('build')" title="构筑">
+        <BaseIcon :name="NAV_ICONS.build" gradient="gold" :size="16" />
+        <span class="footer-text">构筑</span>
+        <MenuBadge :count="buildBadge" variant="danger" />
       </button>
-      <button class="footer-btn" @click="showQuests = true; onClickPanel('quests')" title="任务">
-        <span class="footer-icon">📋</span>
-        <span class="footer-text">任务</span>
+      <button class="footer-btn" @click="popupMounted.progress = true; showProgress = true; onClickPanel('progress')" title="进度">
+        <BaseIcon :name="NAV_ICONS.progress" gradient="gold" :size="16" />
+        <span class="footer-text">进度</span>
+        <MenuBadge :count="progressBadge" variant="info" />
       </button>
-      <button class="footer-btn" @click="showAdventureLog = true; onClickPanel('adventure_log')" title="日志">
-        <span class="footer-icon">📜</span>
-        <span class="footer-text">日志</span>
-      </button>
-      <button class="footer-btn" @click="showSystem = true; onClickPanel('system')" title="系统">
-        <span class="footer-icon">⚙️</span>
+      <button class="footer-btn" @click="popupMounted.system = true; showSystem = true; onClickPanel('system')" title="系统">
+        <BaseIcon :name="NAV_ICONS.settings" gradient="gold" :size="16" />
         <span class="footer-text">系统</span>
       </button>
     </div>
 
-    <CharacterInfoPopup 
-      :visible="showCharacterInfo" 
-      @close="showCharacterInfo = false; onPanelClose('character_info')" 
+    <CharacterInfoPopup
+      v-if="popupMounted.characterInfo"
+      :visible="showCharacterInfo"
+      @close="showCharacterInfo = false; popupMounted.characterInfo = false; onPanelClose('character_info')"
+      @open-inventory="handleOpenInventoryFromCharacter"
     />
-    
-    <InventoryPopup 
-      :visible="showInventory" 
-      @close="showInventory = false; onPanelClose('inventory')" 
+
+    <InventoryPopup
+      v-if="popupMounted.inventory"
+      :visible="showInventory"
+      @close="showInventory = false; popupMounted.inventory = false; onPanelClose('inventory')"
     />
-    
-    <SkillsPopup 
-      :visible="showSkills" 
-      @close="showSkills = false; onPanelClose('skills')" 
+
+    <BuildPopup
+      v-if="popupMounted.build"
+      :visible="showBuild"
+      @close="showBuild = false; popupMounted.build = false; onPanelClose('build')"
     />
-    
-    <QuestPopup 
-      :visible="showQuests" 
-      @close="showQuests = false; onPanelClose('quests')" 
-    />
-    
-    <AdventureLogPopup 
-      :visible="showAdventureLog" 
+
+    <ProgressPopup
+      v-if="popupMounted.progress"
+      :visible="showProgress"
       :current-area="currentArea"
-      @close="showAdventureLog = false; onPanelClose('adventure_log')" 
+      @close="showProgress = false; popupMounted.progress = false; onPanelClose('progress')"
     />
-    
-    <ShopPopup 
-      :visible="showShop" 
-      @close="handleShopClose" 
+
+    <ShopPopup
+      v-if="popupMounted.shop"
+      :visible="showShop"
+      @close="handleShopClose"
     />
-    
-    <QuestBoardPopup 
-      :visible="showQuestBoard" 
-      @close="showQuestBoard = false; onPanelClose('quest_board')" 
+
+    <QuestBoardPopup
+      v-if="popupMounted.questBoard"
+      :visible="showQuestBoard"
+      @close="showQuestBoard = false; popupMounted.questBoard = false; onPanelClose('quest_board')"
     />
 
     <CombatPopup
@@ -114,15 +117,24 @@
     />
 
     <AudioSettingsPopup
+      v-if="popupMounted.audioSettings"
       :visible="showAudioSettings"
-      @close="showAudioSettings = false; onPanelClose('audio_settings')"
+      @close="showAudioSettings = false; popupMounted.audioSettings = false; onPanelClose('audio_settings')"
     />
 
     <SystemPopup
+      v-if="popupMounted.system"
       :visible="showSystem"
-      @close="showSystem = false; onPanelClose('system')"
+      @close="showSystem = false; popupMounted.system = false; onPanelClose('system')"
       @exit="handleExit"
       @open-audio="openAudioFromSystem"
+    />
+
+    <MultiOptionEventPopup
+      :visible="showMultiOptionEvent"
+      :event="currentMultiOptionEvent"
+      @close="handleMultiOptionEventClose"
+      @select="handleEventChoice"
     />
   </div>
 </template>
@@ -133,230 +145,157 @@
  * @description 游戏的核心枢纽页面，集成地图/探索两个标签页，以及底部导航栏的角色、背包、技能、任务、日志等弹出面板
  */
 
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useCharacterStore } from '@/modules/character';
-import { useMapStore } from '@/modules/map';
-import { useShopStore } from '@/modules/shop';
-import { useLogStore } from '@/modules/log';
-import { useExplorationStore, type ExplorationUICallbacks } from '@/modules/exploration';
-import { eventBus, GameEvents } from '@/modules/bus/core';
-import { useEnemiesStore } from '@/modules/enemy';
-import { useCombatStore } from '@/modules/combat/store';
-import { useToast } from '@/composables/useToast';
-import type { CombatResult } from '@/modules/combat/types';
-import MapView from './MapView.vue';
-import ExplorationView from './ExplorationView.vue';
-import InventoryPopup from './popup/InventoryPopup.vue';
-import SkillsPopup from './popup/SkillsPopup.vue';
-import QuestPopup from './popup/QuestPopup.vue';
-import ShopPopup from './popup/ShopPopup.vue';
-import QuestBoardPopup from './popup/QuestBoardPopup.vue';
-import CharacterInfoPopup from './popup/CharacterInfoPopup.vue';
-import AdventureLogPopup from './popup/AdventureLogPopup.vue';
-import CombatPopup from './popup/CombatPopup.vue';
-import AudioSettingsPopup from './popup/AudioSettingsPopup.vue';
-import SystemPopup from './popup/SystemPopup.vue';
+import { defineAsyncComponent, h, onMounted, onUnmounted } from 'vue';
+import { useGameActions } from '@/composables/useGameActions';
 import ResourceBar from './common/ResourceBar.vue';
+import ClassResourceBar from './common/ClassResourceBar.vue';
+import MenuBadge from './common/MenuBadge.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS, NAV_ICONS } from '@/config/icons';
+
+/**
+ * 弹窗与视图组件懒加载（B1/B2：首屏 bundle 优化）
+ *
+ * 10 个弹窗 + 2 个内容视图改为 defineAsyncComponent，首屏不包含弹窗代码，
+ * 用户点击底部导航栏时才动态加载对应弹窗 chunk。
+ * delay=200ms 避免快速加载时闪烁占位组件；timeout=10s 防止网络异常无限等待。
+ */
+const AsyncPopupLoading = () => h('div', { class: 'popup-async-loading' }, '加载中...');
+const AsyncPopupError = () => h('div', { class: 'popup-async-loading popup-async-error' }, '加载失败');
+// 战斗弹窗全屏遮罩加载占位（与 .combat-overlay 样式一致，避免加载期间主界面裸露）
+const AsyncCombatLoading = () => h('div', { class: 'combat-async-loading' }, '加载中...');
+const AsyncCombatError = () => h('div', { class: 'combat-async-loading popup-async-error' }, '加载失败');
+
+const MapView = defineAsyncComponent({
+  loader: () => import('./MapView.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const ExplorationView = defineAsyncComponent({
+  loader: () => import('./ExplorationView.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const InventoryPopup = defineAsyncComponent({
+  loader: () => import('./popup/InventoryPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const BuildPopup = defineAsyncComponent({
+  loader: () => import('./popup/BuildPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const ProgressPopup = defineAsyncComponent({
+  loader: () => import('./popup/ProgressPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const ShopPopup = defineAsyncComponent({
+  loader: () => import('./popup/ShopPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const QuestBoardPopup = defineAsyncComponent({
+  loader: () => import('./popup/QuestBoardPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const CharacterInfoPopup = defineAsyncComponent({
+  loader: () => import('./popup/CharacterInfoPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const CombatPopup = defineAsyncComponent({
+  loader: () => import('./popup/CombatPopup.vue'),
+  loadingComponent: AsyncCombatLoading,
+  errorComponent: AsyncCombatError,
+  delay: 0,
+  timeout: 10000,
+});
+const AudioSettingsPopup = defineAsyncComponent({
+  loader: () => import('./popup/AudioSettingsPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const SystemPopup = defineAsyncComponent({
+  loader: () => import('./popup/SystemPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
+const MultiOptionEventPopup = defineAsyncComponent({
+  loader: () => import('./popup/MultiOptionEventPopup.vue'),
+  loadingComponent: AsyncPopupLoading,
+  errorComponent: AsyncPopupError,
+  delay: 200,
+  timeout: 10000,
+});
 
 const emit = defineEmits<{
   (e: 'exit'): void;
 }>();
 
-const characterStore = useCharacterStore();
-const mapStore = useMapStore();
-const shopStore = useShopStore();
-const logStore = useLogStore();
-const toast = useToast();
+const {
+  currentContentTab, loading,
+  showCharacterInfo, showInventory, showBuild, showProgress,
+  showShop, showQuestBoard, showCombat, showAudioSettings, showSystem,
+  showMultiOptionEvent, currentMultiOptionEvent,
+  popupMounted, levelUpTriggered,
+  character, currentHp, maxHp, currentMp, maxMp, hpPercent, mpPercent,
+  showManaBar, classResourceSystems, exp, expToNext, expPercent, gold,
+  currentArea, hasCurrentLocation, raceIcon,
+  characterBadge, inventoryBadge, buildBadge, progressBadge,
+  showNotif, handleExit, onClickPanel, onPanelClose,
+  openAudioFromSystem, handleMapTabClick, handleExploreTabClick,
+  handleCombatClose, handleShopClose,
+  handleEventChoice, handleMultiOptionEventClose,
+  init, cleanup,
+} = useGameActions(() => emit('exit'));
 
-const currentContentTab = ref('map');
-/** 是否正在初始化，初始化完成前不渲染内容区域，避免页面闪烁 */
-const loading = ref(true);
-const showCharacterInfo = ref(false);
-const showInventory = ref(false);
-const showSkills = ref(false);
-const showQuests = ref(false);
-const showAdventureLog = ref(false);
-const showShop = ref(false);
-const showQuestBoard = ref(false);
-const showCombat = ref(false);
-const showAudioSettings = ref(false);
-const showSystem = ref(false);
-/** 是否触发升级动画 */
-const levelUpTriggered = ref(false);
-
-const character = computed(() => characterStore.character || { name: '...', level: 1 });
-const currentHp = computed(() => characterStore.hp);
-const maxHp = computed(() => characterStore.maxHp);
-const currentMp = computed(() => characterStore.mana);
-const maxMp = computed(() => characterStore.maxMana);
-const hpPercent = computed(() => characterStore.hpPercentage);
-const mpPercent = computed(() => characterStore.manaPercentage);
-const exp = computed(() => characterStore.exp);
-const expToNext = computed(() => characterStore.expToNextLevel);
-const expPercent = computed(() => characterStore.expPercentage);
-const gold = computed(() => characterStore.gold);
-const currentArea = computed(() => mapStore.getCurrentLocation?.name || '未知区域');
-const hasCurrentLocation = computed(() => !!mapStore.getCurrentLocation);
-
-function showNotif(message: string, type: 'info' | 'success' | 'warning' | 'danger' = 'info') {
-  toast.show({ message, type });
+/** 角色面板装备段"前往背包"跳转：关闭角色面板，打开背包 */
+function handleOpenInventoryFromCharacter() {
+  showCharacterInfo.value = false;
+  popupMounted.characterInfo = false;
+  popupMounted.inventory = true;
+  showInventory.value = true;
 }
 
-function handleExit() {
-  emit('exit');
-}
-
-/** 面板打开时发送总线事件和点击音效 */
-function onClickPanel(name: string) {
-  eventBus.emit(GameEvents.UI_CLICK, { source: `nav_${name}` });
-  onPanelOpen(name);
-}
-
-/** 面板打开时发送总线事件 */
-function onPanelOpen(name: string) {
-  eventBus.emit(GameEvents.UI_PANEL_OPENED, { panel: name });
-}
-
-/** 面板关闭时发送总线事件 */
-function onPanelClose(name: string) {
-  eventBus.emit(GameEvents.UI_PANEL_CLOSED, { panel: name });
-}
-
-/** 从系统菜单打开音量设置 */
-function openAudioFromSystem() {
-  showAudioSettings.value = true;
-  onPanelOpen('audio_settings');
-}
-
-function handleMapTabClick() {
-  currentContentTab.value = 'map';
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'tab_map' });
-  mapStore.saveCurrentTab('map');
-}
-
-function handleExploreTabClick() {
-  if (!hasCurrentLocation.value) {
-    showNotif('请先在地图上选择一个区域', 'info');
-    return;
-  }
-  currentContentTab.value = 'explore';
-  eventBus.emit(GameEvents.UI_CLICK, { source: 'tab_explore' });
-  mapStore.saveCurrentTab('explore');
-}
-
-// 监听探索格子翻开事件，处理交互
-async function handleCellExplored(data: { cellType?: string; interactionId?: string }) {
-  const cellType = data?.cellType;
-  if (cellType === 'shop') {
-    const shopId = data?.interactionId || '';
-    if (!shopId) {
-      console.warn('[GameMain] 商店交互ID为空，无法打开商店');
-      return;
-    }
-    await shopStore.selectShop(shopId);
-    showShop.value = true;
-    onPanelOpen('shop');
-  } else if (cellType === 'board') {
-    showQuestBoard.value = true;
-    onPanelOpen('quest_board');
-  }
-}
-
-// 监听探索战斗事件
-async function handleBattleTriggered(data: { eventData?: { monsterId?: string; areaLevel?: number } }) {
-  if (!data?.eventData?.monsterId) return;
-  
-  const monsterId = data.eventData.monsterId;
-  const areaLevel = data.eventData.areaLevel || 1;
-  
-  // 从数据库获取敌人模板数据，传入地图等级
-  const enemy = await useEnemiesStore().createEnemy(monsterId, areaLevel);
-  
-  if (enemy) {
-    useCombatStore().startCombat([enemy]);
-    showCombat.value = true;
-  }
-}
-
-// 监听物品发现事件
-function handleItemFound(data: { itemId?: string; count?: number; itemName?: string }) {
-  const itemName = data?.itemName || '未知物品';
-  const count = data?.count || 1;
-  showNotif(`发现物品: ${itemName} x${count}`, 'success');
-}
-
-// 监听陷阱触发事件
-function handleTrapTriggered(data: { damage?: number; trapType?: string }) {
-  const damage = data?.damage || 0;
-  const trapType = data?.trapType || '陷阱';
-  showNotif(`触发${trapType}，受到 ${damage} 点伤害`, 'danger');
-}
-
-// 监听随机事件
-function handleRandomEvent(data: { message?: string; icon?: string }) {
-  const message = data?.message || '触发了随机事件';
-  showNotif(message, 'info');
-}
-
-function handleCombatClose(_result?: CombatResult) {
-  showCombat.value = false;
-  onPanelClose('combat');
-}
-
-async function handleShopClose() {
-  showShop.value = false;
-  onPanelClose('shop');
-  await shopStore.closeShop();
-}
-
+// P9-104 修复：init() 包裹 try-catch，避免初始化异常导致未捕获 rejection
 onMounted(async () => {
-  const explorationStore = useExplorationStore();
-
-  // 注册探索 UI 回调（替代 EventBus 跨模块数据事件监听）
-  explorationStore.registerUICallbacks({
-    onCellExplored: handleCellExplored,
-    onBattleTriggered: handleBattleTriggered,
-    onItemFound: handleItemFound,
-    onTrapTriggered: handleTrapTriggered,
-    onRandomEvent: handleRandomEvent
-  } as ExplorationUICallbacks);
-  
-  // 初始化地图模块（按角色ID从数据库恢复当前区域等状态）
-  const cid = characterStore.currentCharacterId;
-  if (cid) {
-    await mapStore.initialize(cid);
-    await logStore.initialize(cid);
-    
-    // 从数据库恢复上次的标签页状态（按角色隔离，通过 mapStore action 获取）
-    const savedTab = await mapStore.getCurrentTab();
-    if (savedTab === 'explore' && hasCurrentLocation.value) {
-      currentContentTab.value = 'explore';
-    }
+  try {
+    await init();
+  } catch (err) {
+    console.error('[GameMain] init 失败:', err);
   }
-  // 初始化完成，解除加载状态
-  loading.value = false;
-
-  // 监听角色升级事件，触发升级动画
-  eventBus.on(GameEvents.CHARACTER_LEVEL_UP, () => {
-    levelUpTriggered.value = true;
-    showNotif('升级了！', 'success');
-    setTimeout(() => {
-      levelUpTriggered.value = false;
-    }, 1500);
-  });
 });
-
-onUnmounted(() => {
-  useExplorationStore().unregisterUICallbacks();
-});
-
+onUnmounted(() => cleanup());
 defineExpose({ showNotif });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .game-main {
   height: 100vh;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: linear-gradient(135deg, @primary-bg 0%, #16213e 50%, #0f3460 100%);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -366,60 +305,57 @@ defineExpose({ showNotif });
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 24px;
-  background: rgba(0, 0, 0, 0.5);
-  border-bottom: 2px solid #4a4a4a;
+  padding: @spacing-xl 24px;
+  background: @overlay-mid;
+  border-bottom: 2px solid @popup-border-color;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: @spacing-xl;
 }
 
 .player-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: @spacing-xl;
   cursor: pointer;
-  padding: 8px 12px;
+  padding: @spacing-md @spacing-xl;
   border-radius: 10px;
-  transition: background 0.2s;
+  transition: background @transition-quick;
 }
 
 .player-info:hover {
-  background: rgba(255, 215, 0, 0.1);
+  background: @gold-bg;
 }
 
 .player-avatar {
   font-size: 32px;
   width: 48px;
   height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 215, 0, 0.15);
+  .flex-center();
+  background: @gold-bg-hover;
   border: 2px solid rgba(255, 215, 0, 0.3);
   border-radius: 10px;
   flex-shrink: 0;
 }
 
 .player-details {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  .flex-col();
+  gap: @spacing-xs;
 }
 
 .player-name {
-  font-size: 18px;
-  color: #f0f0f0;
-  font-weight: bold;
+  font-size: @font-xl;
+  color: @text-primary;
+  font-weight: @font-weight-bold;
   line-height: 1.2;
 }
 
 .player-level {
-  font-size: 12px;
-  color: #ffd700;
-  font-weight: bold;
-  background: rgba(255, 215, 0, 0.1);
-  padding: 2px 8px;
-  border-radius: 4px;
+  font-size: @font-sm;
+  color: @accent-color;
+  font-weight: @font-weight-bold;
+  background: @gold-bg;
+  padding: @spacing-2xs @spacing-md;
+  border-radius: @radius-sm;
 }
 
 .player-level.level-up {
@@ -429,27 +365,25 @@ defineExpose({ showNotif });
 .player-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: @spacing-md;
 }
 
 .player-gold {
-  font-size: 12px;
-  font-weight: bold;
-  color: #ffd700;
+  font-size: @font-sm;
+  font-weight: @font-weight-bold;
+  color: @accent-color;
 }
 
 .player-resources {
   flex: 1;
   max-width: 400px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  .flex-col();
+  gap: @spacing-sm;
 }
 
 .game-content {
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   overflow: hidden;
 }
 
@@ -457,31 +391,34 @@ defineExpose({ showNotif });
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 12px 24px;
-  background: rgba(0, 0, 0, 0.3);
-  border-bottom: 1px solid #4a4a4a;
+  padding: @spacing-xl 24px;
+  background: @overlay-light;
+  border-bottom: @border-sm;
 }
 
 .content-tab {
-  padding: 8px 24px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid #4a4a4a;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: @spacing-md 24px;
+  background: @white-05;
+  border: @border-card;
+  border-radius: @radius-md;
+  color: @popup-text-color;
+  font-size: @font-md;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
 }
 
 .content-tab:hover {
-  border-color: #666;
-  background: rgba(255, 255, 255, 0.1);
+  border-color: @color-dim-gray;
+  background: @white-10;
 }
 
 .content-tab.active {
-  border-color: #ffd700;
-  background: rgba(255, 215, 0, 0.1);
-  color: #ffd700;
+  border-color: @accent-color;
+  background: @gold-bg;
+  color: @accent-color;
 }
 
 .content-tab.disabled {
@@ -492,24 +429,23 @@ defineExpose({ showNotif });
 
 .area-info {
   margin-left: auto;
-  color: #8b8b8b;
-  font-size: 14px;
+  color: @text-secondary;
+  font-size: @font-md;
 }
 
 .content-view {
   flex: 1;
-  padding: 16px;
+  padding: @spacing-3xl;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
 }
 
 .game-footer {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding: 10px 12px 14px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.7) 100%);
+  padding: @spacing-lg @spacing-xl @spacing-2xl;
+  background: linear-gradient(180deg, @overlay-light 0%, @overlay-deep 100%);
   border-top: 1px solid rgba(255, 215, 0, 0.2);
   position: relative;
 }
@@ -525,11 +461,9 @@ defineExpose({ showNotif });
 }
 
 .footer-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  .flex-col-center();
   gap: 5px;
-  padding: 8px 4px 6px;
+  padding: @spacing-md @spacing-xs @spacing-sm;
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.7);
@@ -548,14 +482,14 @@ defineExpose({ showNotif });
   transform: translateX(-50%);
   width: 0;
   height: 2px;
-  background: #ffd700;
+  background: @accent-color;
   border-radius: 1px;
   transition: width 0.3s ease;
   box-shadow: 0 0 6px rgba(255, 215, 0, 0.5);
 }
 
 .footer-btn:hover {
-  color: #ffd700;
+  color: @accent-color;
   background: rgba(255, 215, 0, 0.08);
   transform: translateY(-2px);
 }
@@ -569,14 +503,14 @@ defineExpose({ showNotif });
 }
 
 .footer-icon {
-  font-size: 24px;
+  font-size: @font-4xl;
   line-height: 1;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 1px 2px @overlay-light);
 }
 
 .footer-text {
-  font-size: 10px;
-  font-weight: 500;
+  font-size: @font-2xs;
+  font-weight: @font-weight-normal;
   letter-spacing: 0.5px;
 }
 
@@ -600,17 +534,13 @@ defineExpose({ showNotif });
   }
   
   .player-gold {
-    font-size: 11px;
+    font-size: 16px;
   }
   
   .player-resources {
     max-width: 100%;
     order: 3;
     width: 100%;
-  }
-  
-  .player-gold {
-    font-size: 16px;
   }
   
   .content-tabs {
@@ -658,5 +588,33 @@ defineExpose({ showNotif });
   .footer-text {
     font-size: 9px;
   }
+}
+
+/* ===== 异步组件加载占位（B1/B2） ===== */
+.popup-async-loading {
+  .flex-center();
+  min-height: 200px;
+  color: @accent-color;
+  font-size: @font-lg;
+  letter-spacing: 1px;
+}
+
+.popup-async-error {
+  color: #ff6b6b;
+}
+
+/* 战斗弹窗异步加载占位：全屏遮罩，与 .combat-overlay 保持一致 */
+.combat-async-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.92);
+  z-index: @z-combat-overlay;
+  .flex-center();
+  color: @accent-color;
+  font-size: @font-lg;
+  letter-spacing: 1px;
 }
 </style>

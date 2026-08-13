@@ -1,15 +1,12 @@
 /**
  * 地图模块纯逻辑函数
  *
- * 提供地点查询、解锁检查、区域状态判定等纯函数，不含状态和副作用
+ * 提供地点查询、解锁检查、区域状态判定、数据转换、工具函数等纯函数，不含状态和副作用
  */
-import type { LocationData, MapState, ZoneStatus } from './types';
+import type { LocationData, MapState, ZoneStatus, LocationStorage } from './types';
 
 /**
  * 根据 ID 从地点集合中查找地点
- * @param locations - 地点数据映射表
- * @param id - 地点 ID
- * @returns 地点数据，不存在返回 undefined
  */
 export function getLocationById(
   locations: Map<string, LocationData>,
@@ -19,64 +16,34 @@ export function getLocationById(
 }
 
 /**
- * 根据当前状态和地点集合获取当前选中地点
- * @param locations - 地点数据映射表
- * @param currentLocationId - 当前选中的地点 ID
- * @returns 地点数据，不存在返回 undefined
- */
-export function getCurrentLocation(
-  locations: Map<string, LocationData>,
-  currentLocationId: string | null
-): LocationData | undefined {
-  if (!currentLocationId) return undefined;
-  return locations.get(currentLocationId);
-}
-
-/**
  * 检查地点是否对指定等级角色可访问
- * @param location - 地点数据
- * @param characterLevel - 角色等级
- * @returns 是否可访问（等级 >= 最低要求等级）
  */
 export function isLocationAccessible(location: LocationData, characterLevel: number): boolean {
-  const [minLevel] = location.levelRange;
-  return characterLevel >= minLevel;
-}
-
-/**
- * 检查指定区域是否已被探索
- * @param state - 地图状态
- * @param zoneId - 区域 ID
- * @returns 是否已探索（暂基于 unlockedZones 字段）
- */
-export function isZoneExplored(state: MapState & { unlockedZones?: string[] }, zoneId: string): boolean {
-  return state.unlockedZones?.includes(zoneId) ?? false;
+  return characterLevel >= location.levelRange[0];
 }
 
 /**
  * 获取区域状态
- * @param state - 地图状态（含探索完成记录）
- * @param zoneId - 区域 ID
- * @param location - 区域对应的地点数据
- * @param characterLevel - 角色等级
- * @returns 区域状态：locked | unlocked | completed
+ * 优先级：已完成 > 已手动解锁 > 等级满足自动解锁 > 锁定
+ *
+ * P4-020 说明：unlockedZones/completedZones 当前为预留字段（无 Action 写入），
+ * 实际区域解锁完全由 isLocationAccessible（等级检查）决定。
+ * 保留字段供未来实现"手动解锁/区域完成追踪"功能。
  */
 export function getZoneStatus(
-  state: MapState & { unlockedZones?: string[]; completedZones?: string[] },
+  state: MapState,
   zoneId: string,
-  location: LocationData | undefined,
+  location: LocationData,
   characterLevel: number
 ): ZoneStatus {
   if (state.completedZones?.includes(zoneId)) return 'completed';
-  if (location && isLocationAccessible(location, characterLevel)) return 'unlocked';
+  if (state.unlockedZones?.includes(zoneId)) return 'unlocked';
+  if (isLocationAccessible(location, characterLevel)) return 'unlocked';
   return 'locked';
 }
 
 /**
  * 获取指定大陆下的所有地点
- * @param locations - 地点数据映射表
- * @param continentId - 大陆 ID
- * @returns 该大陆下的地点列表
  */
 export function getLocationsByContinent(
   locations: Map<string, LocationData>,
@@ -89,4 +56,37 @@ export function getLocationsByContinent(
     }
   });
   return result;
+}
+
+/**
+ * 根据角色ID生成地图状态存储键
+ */
+export function getMapStateKey(characterId: string): string {
+  return `map_${characterId}`;
+}
+
+/**
+ * 将存储格式转换为 LocationData 业务类型
+ */
+export function mapToLocationData(storage: LocationStorage): LocationData {
+  return {
+    id: storage.id,
+    name: storage.name,
+    icon: storage.icon,
+    description: storage.description,
+    continent: storage.continent ?? '',
+    enemies: storage.enemies,
+    bosses: storage.bosses,
+    quests: storage.quests,
+    levelRange: storage.levelRange ?? [1, 1],
+    color: storage.color ?? '#000000',
+    mapX: storage.mapX ?? 0,
+    mapY: storage.mapY ?? 0,
+    type: 'location' as const
+  };
+}
+
+/** 数值钳制到 [min, max] 区间 */
+export function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }

@@ -7,7 +7,7 @@
       </div>
 
       <nav class="sidebar-nav">
-        <!-- 仪表盘 -->
+        <!-- 仪表盘（一级菜单） -->
         <a
           class="nav-item"
           :class="{ active: store.currentView === 'dashboard' }"
@@ -16,10 +16,19 @@
           <span class="nav-label">仪表盘</span>
         </a>
 
-        <!-- 配置管理分组 -->
-        <div class="nav-group-title">配置管理</div>
+        <!-- 配置管理（一级菜单） -->
+        <a
+          class="nav-item"
+          :class="{ active: store.currentView === 'config' }"
+          @click="navigateToConfigManager"
+        >
+          <span class="nav-label">配置管理</span>
+        </a>
+
+        <!-- 二级菜单：各配置表 -->
         <a
           v-for="table in configTables"
+          v-show="store.currentView === 'config'"
           :key="table.key"
           class="nav-item nav-sub-item"
           :class="{
@@ -28,7 +37,6 @@
           @click="navigateToConfig(table.key)"
         >
           <span class="nav-label">{{ table.label }}</span>
-          <span class="nav-desc">{{ table.description }}</span>
         </a>
       </nav>
 
@@ -41,22 +49,10 @@
     <!-- 主内容区 -->
     <main class="admin-main">
       <!-- 仪表盘 -->
-      <div v-if="store.currentView === 'dashboard'" class="dashboard-view">
-        <h2 class="page-title">仪表盘</h2>
-        <div class="stats-grid">
-          <div
-            v-for="table in configTables"
-            :key="table.key"
-            class="stat-card stat-card-small"
-            @click="navigateToConfig(table.key)"
-          >
-            <div class="stat-value">
-              {{ store.dashboardStats.tableCounts[table.dbTable] || 0 }}
-            </div>
-            <div class="stat-label">{{ table.label }}</div>
-          </div>
-        </div>
-      </div>
+      <DashboardPanel
+        v-if="store.currentView === 'dashboard'"
+        @navigate="navigateToConfig"
+      />
 
       <!-- 配置管理 -->
       <div v-if="store.currentView === 'config'" class="config-view">
@@ -71,13 +67,15 @@
  * 后台管理布局组件
  *
  * 左侧导航 + 右侧内容区的经典后台布局，
- * 支持仪表盘和10个配置表的管理视图切换
+ * 支持仪表盘和 15 张配置表的管理视图切换。
+ * Phase 5：仪表盘内容提取到 DashboardPanel.vue。
  */
 import { onMounted } from 'vue';
 import { useAdminStore } from '@/modules/admin';
-import { CONFIG_TABLES } from '@/modules/admin/types';
-import type { ConfigTableName } from '@/modules/admin/types';
+import { CONFIG_TABLES } from '@/modules/admin';
+import type { ConfigTableName } from '@/modules/admin';
 import ConfigManager from './ConfigManager.vue';
+import DashboardPanel from './DashboardPanel.vue';
 
 const store = useAdminStore();
 const configTables = CONFIG_TABLES;
@@ -86,14 +84,25 @@ defineEmits<{
   exit: [];
 }>();
 
-onMounted(() => {
-  store.loadDashboardStats();
+onMounted(async () => {
+  try {
+    await store.loadDashboardStats();
+  } catch (err) {
+    console.error('[AdminLayout] loadDashboardStats 失败:', err);
+  }
 });
 
 /** 导航到指定配置表 */
 function navigateToConfig(tableName: ConfigTableName) {
   store.switchView('config');
   store.selectConfigTable(tableName);
+}
+
+/** 点击"配置管理"一级菜单：进入配置视图，保持当前选中的表 */
+function navigateToConfigManager() {
+  if (store.currentView !== 'config') {
+    store.switchView('config');
+  }
 }
 </script>
 
@@ -113,85 +122,99 @@ function navigateToConfig(tableName: ConfigTableName) {
   min-width: 260px;
   background: @secondary-bg;
   border-right: 1px solid @border-color;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
+  .flex-col();
+  overflow: hidden; // 头尾不动，中间滚动
 }
 
 .sidebar-header {
-  padding: 20px;
+  padding: @spacing-4xl;
   border-bottom: 1px solid @border-color;
 
   h2 {
     color: @accent-color;
-    font-size: 20px;
+    font-size: @font-2xl;
     margin: 0;
   }
 }
 
 .sidebar-nav {
   flex: 1;
-  padding: 10px 0;
+  padding: @spacing-lg 0;
+  overflow-y: auto; // 仅导航区域滚动，头部和底部固定
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  padding: 10px 20px;
+  padding: @spacing-lg @spacing-4xl;
   cursor: pointer;
   color: @text-secondary;
-  transition: all 0.2s;
+  transition: all @transition-quick;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: @white-05;
     color: @text-primary;
   }
 
   &.active {
-    background: rgba(255, 215, 0, 0.1);
+    background: @gold-bg;
     color: @accent-color;
     border-right: 3px solid @accent-color;
   }
 }
 
 .nav-sub-item {
-  padding-left: 36px;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+  padding-left: 40px;
+  font-size: @font-base;
+  color: @text-secondary;
+  position: relative;
 
-  .nav-desc {
-    font-size: 11px;
-    color: @text-secondary;
-    opacity: 0.7;
+  // 二级菜单项左侧圆点指示层级
+  &::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: @border-color;
+    transition: background @transition-quick;
+  }
+
+  &:hover::before {
+    background: @text-secondary;
+  }
+
+  &.active::before {
+    background: @accent-color;
+  }
+
+  &.active {
+    background: @gold-bg;
+    color: @accent-color;
+    border-right: 3px solid @accent-color;
   }
 }
 
-.nav-group-title {
-  padding: 16px 20px 6px;
-  font-size: 11px;
-  color: @text-secondary;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
 .sidebar-footer {
-  padding: 16px 20px;
+  padding: @spacing-3xl @spacing-4xl;
   border-top: 1px solid @border-color;
 }
 
 .exit-btn {
   width: 100%;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.08);
+  padding: @spacing-lg;
+  background: @white-08;
   border: 1px solid @border-color;
-  border-radius: 6px;
+  border-radius: @radius-md;
   color: @text-primary;
-  font-size: 14px;
+  font-size: @font-md;
   cursor: pointer;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: @white-15;
   }
 }
 
@@ -199,67 +222,13 @@ function navigateToConfig(tableName: ConfigTableName) {
 .admin-main {
   flex: 1;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
   padding: 24px;
 }
 
-.page-title {
-  color: @accent-color;
-  font-size: 24px;
-  margin: 0 0 24px;
-}
-
-// ==================== 仪表盘 ====================
-.dashboard-view {
-  flex: 1;
-  overflow-y: auto;
-}
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
-}
-
-.stat-card {
-  background: @secondary-bg;
-  border: 1px solid @border-color;
-  border-radius: 8px;
-  padding: 20px;
-  text-align: center;
-  cursor: default;
-
-  .stat-value {
-    font-size: 32px;
-    font-weight: 700;
-    color: @accent-color;
-  }
-
-  .stat-label {
-    font-size: 13px;
-    color: @text-secondary;
-    margin-top: 6px;
-  }
-
-  &-small {
-    cursor: pointer;
-    transition: border-color 0.2s;
-
-    .stat-value {
-      font-size: 24px;
-    }
-
-    &:hover {
-      border-color: @accent-color;
-    }
-  }
-}
-
-// ==================== 管理视图 ====================
 .config-view {
   flex: 1;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
 }
 </style>

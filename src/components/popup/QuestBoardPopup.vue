@@ -17,79 +17,87 @@
       </div>
 
       <div v-if="currentTab === 'available'" class="quest-list">
-        <div 
-          v-for="quest in availableQuests" 
-          :key="quest.id"
-          class="quest-card available"
+        <DynamicScroller
+          v-if="availableQuests.length"
+          :items="availableQuests"
+          :min-item-size="120"
+          key-field="id"
+          class="quest-scroller"
         >
-          <div class="quest-icon">{{ getQuestIcon(quest.type) }}</div>
-          <div class="quest-content">
-            <div class="quest-header-row">
-              <h3>{{ quest.title }}</h3>
-              <span class="quest-level">Lv.{{ quest.levelRequirement }}</span>
-            </div>
-            <p class="quest-desc">{{ quest.description }}</p>
-            <div class="quest-objectives">
-              <div 
-                v-for="obj in quest.objectives" 
-                :key="obj.key"
-                class="objective"
-              >
-                <span class="objective-text">{{ getObjectiveText(obj) }}</span>
-                <span class="objective-target">{{ obj.target }}</span>
+          <template #default="{ item: quest, index, active }">
+            <DynamicScrollerItem :item="quest" :active="active" :data-index="index">
+              <div class="quest-card available">
+                <div class="quest-icon"><BaseIcon :name="getQuestIcon(quest.type)" gradient="gold" :size="34" /></div>
+                <div class="quest-content">
+                  <div class="quest-header-row">
+                    <h3>{{ quest.title }}</h3>
+                    <span class="quest-level">Lv.{{ quest.levelRequirement }}</span>
+                  </div>
+                  <p class="quest-desc">{{ quest.description }}</p>
+                  <div class="quest-objectives">
+                    <div
+                      v-for="obj in quest.objectives"
+                      :key="obj.key"
+                      class="objective"
+                    >
+                      <span class="objective-text">{{ getObjectiveText(obj) }}</span>
+                      <span class="objective-target">{{ obj.target }}</span>
+                    </div>
+                  </div>
+                  <div class="quest-rewards">
+                    <span v-if="quest.goldReward"><BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
+                    <span v-if="quest.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.xpReward }}</span>
+                    <span v-if="quest.itemRewards?.length"><BaseIcon :name="COMMON_ICONS.chest" gradient="gold" :size="14" /> {{ quest.itemRewards.length }}</span>
+                  </div>
+                  <button
+                    class="accept-btn"
+                    :disabled="characterLevel < quest.levelRequirement"
+                    @click="acceptQuest(quest.id)"
+                  >
+                    接取
+                  </button>
+                </div>
               </div>
-            </div>
-            <div class="quest-rewards">
-              <span v-if="quest.goldReward">💰 {{ quest.goldReward }}</span>
-              <span v-if="quest.xpReward">✨ {{ quest.xpReward }}</span>
-              <span v-if="quest.itemRewards?.length">📦 {{ quest.itemRewards.length }}</span>
-            </div>
-            <button 
-              class="accept-btn"
-              :disabled="characterLevel < quest.levelRequirement"
-              @click="acceptQuest(quest.id)"
-            >
-              接取任务
-            </button>
-          </div>
-        </div>
-
-        <div v-if="!availableQuests.length" class="empty-state">
-          <div class="empty-icon">📋</div>
-          <p>暂无可接取的任务</p>
-        </div>
+            </DynamicScrollerItem>
+          </template>
+        </DynamicScroller>
+        <EmptyState v-else icon="notebook" text="暂无可接取的任务" />
       </div>
 
       <div v-else class="quest-list">
-        <div 
-          v-for="quest in turnInQuests" 
-          :key="quest.id"
-          class="quest-card turnin"
+        <DynamicScroller
+          v-if="turnInQuests.length"
+          :items="turnInQuests"
+          :min-item-size="100"
+          key-field="id"
+          class="quest-scroller"
         >
-          <div class="quest-icon">🏆</div>
-          <div class="quest-content">
-            <div class="quest-header-row">
-              <h3>{{ quest.title }}</h3>
-              <span class="quest-status">可交付</span>
-            </div>
-            <p class="quest-desc">{{ quest.description }}</p>
-            <div class="quest-rewards">
-              <span v-if="quest.goldReward">💰 {{ quest.goldReward }}</span>
-              <span v-if="quest.xpReward">✨ {{ quest.xpReward }}</span>
-            </div>
-            <button 
-              class="claim-btn"
-              @click="turnInQuest(quest.id)"
-            >
-              交付任务
-            </button>
-          </div>
-        </div>
-
-        <div v-if="!turnInQuests.length" class="empty-state">
-          <div class="empty-icon">🏆</div>
-          <p>暂无可交付的任务</p>
-        </div>
+          <template #default="{ item: quest, index, active }">
+            <DynamicScrollerItem :item="quest" :active="active" :data-index="index">
+              <div class="quest-card turnin">
+                <div class="quest-icon"><BaseIcon name="laurel-crown" gradient="gold" :size="34" /></div>
+                <div class="quest-content">
+                  <div class="quest-header-row">
+                    <h3>{{ quest.title }}</h3>
+                    <span class="quest-status">可交付</span>
+                  </div>
+                  <p class="quest-desc">{{ quest.description }}</p>
+                  <div class="quest-rewards">
+                    <span v-if="quest.goldReward"><BaseIcon :name="COMMON_ICONS.gold" gradient="gold" :size="14" /> {{ quest.goldReward }}</span>
+                    <span v-if="quest.xpReward"><BaseIcon name="star-formation" gradient="gold" :size="14" /> {{ quest.xpReward }}</span>
+                  </div>
+                  <button
+                    class="claim-btn"
+                    @click="turnInQuest(quest.id)"
+                  >
+                    交付
+                  </button>
+                </div>
+              </div>
+            </DynamicScrollerItem>
+          </template>
+        </DynamicScroller>
+        <EmptyState v-else icon="laurel-crown" text="暂无可交付的任务" />
       </div>
     </template>
   </BasePopup>
@@ -102,20 +110,25 @@
  */
 
 import { ref, computed, onMounted, watch } from 'vue';
+import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import { useQuestStore } from '@/modules/quest';
 import { useCharacterStore } from '@/modules/character';
-import { useExplorationStore } from '@/modules/exploration/store';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { useExplorationStore } from '@/modules/exploration';
+import { eventBus, GameEvents } from '@/modules/bus';
 import { useToast } from '@/composables/useToast';
+import { errorHandler } from '@/services/ErrorHandler';
 import { getObjectiveText } from '@/modules/quest';
 import BasePopup from '../common/BasePopup.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
+import { COMMON_ICONS, QUEST_ICONS, QUEST_ICON_FALLBACK } from '@/config/icons';
+import EmptyState from '@/components/common/EmptyState.vue';
 
 const props = defineProps<{
   visible: boolean;
   boardId?: string;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'close'): void;
 }>();
 
@@ -125,6 +138,9 @@ const questStore = useQuestStore();
 const toast = useToast();
 
 const currentTab = ref<'available' | 'turnin'>('available');
+
+/** P8-507 修复：防重入标志，accept/turnIn 操作进行中时阻止重复触发 */
+const busy = ref(false);
 
 function switchTab(tab: 'available' | 'turnin') {
   currentTab.value = tab;
@@ -145,13 +161,8 @@ const turnInQuests = computed(() => {
 
 const characterLevel = computed(() => characterStore.level);
 
-const questIcons: Record<string, string> = {
-  kill: '⚔️',
-  collect: '📦'
-};
-
-function getQuestIcon(type: string) {
-  return questIcons[type] || '📋';
+function getQuestIcon(type: string): string {
+  return QUEST_ICONS[type]?.name || QUEST_ICON_FALLBACK.name;
 }
 
 // 获取当前区域的任务板ID
@@ -162,32 +173,61 @@ function getBoardId(): string {
 
 async function acceptQuest(questId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'quest_board_accept' });
-  const boardId = getBoardId();
-  const success = await questStore.acceptQuestFromBoard(boardId, questId);
-  if (success) {
-    const quest = questStore.getQuestDefinition(questId);
-    toast.show({ message: `已接受任务: ${quest?.title || questId}`, type: 'success', icon: '✅' });
-    loadQuests();
-  } else {
-    toast.show({ message: '无法接受此任务', type: 'danger', icon: '❌' });
+  // P8-507 修复：防重入 + try/catch
+  if (busy.value) return;
+  busy.value = true;
+  try {
+    const boardId = getBoardId();
+    const success = await questStore.acceptQuestFromBoard(boardId, questId);
+    if (success) {
+      const quest = questStore.getQuestDefinition(questId);
+      toast.show({ message: `已接受任务: ${quest?.title || questId}`, type: 'success', icon: '✅' });
+      loadQuests();
+    } else {
+      toast.show({ message: '无法接受此任务', type: 'danger', icon: '❌' });
+    }
+  } catch (e) {
+    console.error('[QuestBoardPopup] acceptQuest 失败:', e);
+    errorHandler.report(e);
+    toast.show({ message: '接受任务失败，请重试', type: 'danger', icon: '❌' });
+  } finally {
+    busy.value = false;
   }
 }
 
 async function turnInQuest(questId: string) {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'quest_board_turnin' });
-  const boardId = getBoardId();
-  const success = await questStore.turnInQuestToBoard(boardId, questId);
-  if (success) {
-    const quest = questStore.getQuestDefinition(questId);
-    toast.show({ message: `已领取奖励: ${quest?.title || questId}`, type: 'success', icon: '🏆' });
-    loadQuests();
-  } else {
-    toast.show({ message: '无法领取奖励', type: 'danger', icon: '❌' });
+  // P8-507 修复：防重入 + try/catch
+  if (busy.value) return;
+  busy.value = true;
+  try {
+    const boardId = getBoardId();
+    const success = await questStore.turnInQuestToBoard(boardId, questId);
+    if (success) {
+      const quest = questStore.getQuestDefinition(questId);
+      toast.show({ message: `已领取奖励: ${quest?.title || questId}`, type: 'success', icon: '🏆' });
+      loadQuests();
+    } else {
+      toast.show({ message: '无法领取奖励', type: 'danger', icon: '❌' });
+    }
+  } catch (e) {
+    console.error('[QuestBoardPopup] turnInQuest 失败:', e);
+    errorHandler.report(e);
+    toast.show({ message: '交付任务失败，请重试', type: 'danger', icon: '❌' });
+  } finally {
+    busy.value = false;
   }
 }
 
 async function loadQuests() {
-  await questStore.init();
+  // P8-507 修复：try/catch 包裹
+  try {
+    await questStore.init();
+  } catch (e) {
+    console.error('[QuestBoardPopup] loadQuests 失败:', e);
+    errorHandler.report(e);
+    toast.show({ message: '加载任务列表失败，请重试', type: 'danger' });
+  }
 }
 
 watch(() => props.visible, (val) => {
@@ -199,64 +239,72 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .quest-tabs {
   display: flex;
-  gap: 10px;
+  gap: @spacing-lg;
   margin-bottom: 14px;
   flex-wrap: wrap;
 }
 
 .tab-btn {
-  padding: 8px 18px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid #4a4a4a;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 14px;
+  padding: @spacing-md 18px;
+  background: @white-10;
+  border: @border-card;
+  border-radius: @radius-md;
+  color: @popup-text-color;
+  font-size: @font-md;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
 }
 
 .tab-btn:hover {
-  border-color: #666;
+  border-color: @color-dim-gray;
 }
 
 .tab-btn.active {
-  background: rgba(255, 215, 0, 0.2);
-  border-color: #ffd700;
-  color: #ffd700;
+  background: @gold-bg-active;
+  border-color: @accent-color;
+  color: @accent-color;
 }
 
 .quest-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  .flex-col();
+  gap: @spacing-lg;
+}
+
+.quest-scroller {
   max-height: 400px;
-  overflow-y: auto;
+}
+
+/* DynamicScroller 测量 item-view 的直接子元素（DynamicScrollerItem 的 <div>）的 offsetHeight
+   来定位，padding 必须加在子元素上才会被计入尺寸，加在 item-view 上会导致条目重叠、间距消失 */
+.quest-scroller :deep(.vue-recycle-scroller__item-view > div) {
+  padding-bottom: @spacing-lg;
+  box-sizing: border-box;
 }
 
 .quest-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid #4a4a4a;
-  border-radius: 6px;
+  background: @white-05;
+  border: @border-card;
+  border-radius: @radius-md;
   padding: 14px;
   display: flex;
-  gap: 10px;
+  gap: @spacing-lg;
   /* 任务卡片入场动画 */
   animation: card-slide-in 0.35s ease;
 }
 
 .quest-card.available {
-  border-color: #0099ff;
+  border-color: @skill-blue;
 }
 
 .quest-card.turnin {
-  border-color: #4CAF50;
+  border-color: @heal-hp;
 }
 
 .quest-icon {
-  font-size: 28px;
+  font-size: @font-5xl;
   flex-shrink: 0;
 }
 
@@ -265,99 +313,96 @@ onMounted(() => {
 }
 
 .quest-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
+  .flex-between();
+  margin-bottom: @spacing-sm;
 }
 
 .quest-content h3 {
-  font-size: 16px;
-  color: #fff;
-  font-weight: bold;
+  font-size: @font-lg;
+  color: @popup-text-color;
+  font-weight: @font-weight-bold;
   margin: 0;
 }
 
 .quest-level {
-  padding: 3px 8px;
-  background: rgba(255, 215, 0, 0.2);
-  border-radius: 4px;
-  color: #ffd700;
-  font-size: 12px;
+  padding: 3px @spacing-md;
+  background: @gold-bg-active;
+  border-radius: @radius-sm;
+  color: @accent-color;
+  font-size: @font-sm;
 }
 
 .quest-status {
-  padding: 3px 8px;
+  padding: 3px @spacing-md;
   background: rgba(76, 175, 80, 0.2);
-  border-radius: 4px;
-  color: #4CAF50;
-  font-size: 12px;
+  border-radius: @radius-sm;
+  color: @heal-hp;
+  font-size: @font-sm;
 }
 
 .quest-desc {
   color: #aaa;
-  font-size: 13px;
+  font-size: @font-base;
   margin: 6px 0;
 }
 
 .quest-objectives {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
+  .flex-col();
+  gap: @spacing-xs;
+  margin-bottom: @spacing-md;
 }
 
 .objective {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
+  gap: @spacing-md;
+  padding: @spacing-xs @spacing-md;
+  background: @white-05;
+  border-radius: @radius-sm;
 }
 
 .objective-text {
   flex: 1;
   color: #ccc;
-  font-size: 13px;
+  font-size: @font-base;
 }
 
 .objective-target {
-  color: #ffd700;
-  font-size: 13px;
+  color: @accent-color;
+  font-size: @font-base;
 }
 
 .quest-rewards {
   display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: @spacing-lg;
+  margin-bottom: @spacing-lg;
 }
 
 .quest-rewards span {
-  padding: 3px 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  font-size: 13px;
+  padding: 3px @spacing-md;
+  background: @white-10;
+  border-radius: @radius-sm;
+  font-size: @font-base;
 }
 
 .accept-btn, .claim-btn {
-  padding: 6px 14px;
+  padding: @spacing-sm 14px;
   border: none;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: bold;
+  border-radius: @radius-sm;
+  font-size: @font-base;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all @transition-normal;
 }
 
 .accept-btn {
-  background: linear-gradient(135deg, #4CAF50, #45a049);
-  color: #fff;
+  background: linear-gradient(135deg, @heal-hp, #45a049);
+  color: @popup-text-color;
 }
 
 .claim-btn {
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
-  color: #000;
+  background: linear-gradient(135deg, @accent-color, #ff8c00);
+  color: @color-text-dark;
 }
 
 .accept-btn:hover:not(:disabled), .claim-btn:hover {
@@ -369,21 +414,5 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 32px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 6px;
-  border: 2px dashed #4a4a4a;
-}
 
-.empty-icon {
-  font-size: 40px;
-  margin-bottom: 12px;
-}
-
-.empty-state p {
-  color: #888;
-  font-size: 14px;
-}
 </style>

@@ -5,10 +5,100 @@
  *   直接调 DB → 更新 Store 状态 → emit 事件通知其他模块
  */
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
-import type { FactionData, RaceData, ClassData, RaceType, FactionType } from '../character/types';
+import { ref, computed, type Ref } from 'vue';
+import type { FactionData, RaceData, ClassData, RaceType, FactionType } from '@/modules/character/types';
+import type { FactionCreateUpdateData, RaceCreateUpdateData, ClassCreateUpdateData } from './types';
 import { baseDbService } from './db';
-import { eventBus, GameEvents } from '../bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
+import { errorHandler } from '@/services/ErrorHandler';
+import { errorReporter } from '@/utils/errorReport';
+
+// ==================== 通用工厂函数 ====================
+
+/** 实体类型标识 */
+type EntityType = 'faction' | 'race' | 'class';
+
+/** 实体类型中文名称映射（用于错误提示文案） */
+const ENTITY_LABEL: Record<EntityType, string> = {
+  faction: '阵营',
+  race: '种族',
+  class: '职业'
+};
+
+/**
+ * 创建通用快捷取值计算属性
+ * 根据列表和字段名生成 `(id) => fieldValue` 形式的 getter
+ */
+function createQuickGetter<T extends Record<string, unknown>>(
+  list: Ref<T[]>,
+  field: keyof T,
+  fallback: string
+) {
+  return computed(() => (id: string) => {
+    const item = list.value.find(i => i.id === id);
+    return (item?.[field] as string) ?? fallback;
+  });
+}
+
+/**
+ * 创建通用 CRUD 操作函数（create / update / delete）
+ * 消除阵营、种族、职业的重复 CRUD 模式
+ */
+function createCrudActions<T extends { id: string }, TCreateData = Omit<T, 'id'>>(
+  entityType: EntityType,
+  createFn: (data: TCreateData) => Promise<string>,
+  updateFn: (id: string, data: TCreateData) => Promise<void>,
+  deleteFn: (id: string) => Promise<void>,
+  loadFn: () => Promise<void>,
+  selectedIdRef: Ref<string | null>
+) {
+  async function create(data: TCreateData): Promise<boolean> {
+    try {
+      const id = await createFn(data);
+      // P2-65 修复：先 loadFn 刷新本 store 状态，再 emit 事件通知其他模块，
+      // 确保其他模块的监听器回调中查询 base store 时能看到最新数据
+      await loadFn();
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: entityType, action: 'create', id });
+      return true;
+    } catch (error) {
+      errorHandler.report(error, `创建${ENTITY_LABEL[entityType]}失败`);
+      return false;
+    }
+  }
+
+  async function update(id: string, data: TCreateData): Promise<boolean> {
+    try {
+      await updateFn(id, data);
+      // P2-65 修复：先 loadFn 再 emit，避免其他模块读到过期状态
+      await loadFn();
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: entityType, action: 'update', id });
+      return true;
+    } catch (error) {
+      errorHandler.report(error, `更新${ENTITY_LABEL[entityType]}失败`);
+      return false;
+    }
+  }
+
+  async function remove(id: string): Promise<boolean> {
+    try {
+      await deleteFn(id);
+      // P2-65 修复：先 loadFn 再 emit，避免其他模块读到过期状态
+      await loadFn();
+      if (selectedIdRef.value === id) {
+        selectedIdRef.value = null;
+      }
+      eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: entityType, action: 'delete', id });
+      return true;
+    } catch (error) {
+      errorHandler.report(error, `删除${ENTITY_LABEL[entityType]}失败`);
+      return false;
+    }
+  }
+
+  return { create, update, remove };
+}
+
+// ==================== Store 定义 ====================
 
 /**
  * 基础数据状态存储
@@ -55,18 +145,18 @@ export const useBaseStore = defineStore('base', () => {
   });
 
   /** 根据阵营获取种族 */
-  const getRacesByFaction = computed(() => (factionId: string) => {
+  const getRacesByFaction = computed(() => (factionId: FactionType) => {
     return races.value.filter(r => r.factionId === factionId);
   });
 
   /** 根据种族获取职业 */
-  const getClassesByRace = computed(() => (raceId: string) => {
-    return classes.value.filter(c => c.raceIds.includes(raceId as RaceType));
+  const getClassesByRace = computed(() => (raceId: RaceType) => {
+    return classes.value.filter(c => c.raceIds.includes(raceId));
   });
 
   /** 根据阵营获取职业 */
-  const getClassesByFaction = computed(() => (factionId: string) => {
-    return classes.value.filter(c => c.factionsIds.includes(factionId as FactionType));
+  const getClassesByFaction = computed(() => (factionId: FactionType) => {
+    return classes.value.filter(c => c.factionsIds.includes(factionId));
   });
 
   /** 当前选中的阵营 */
@@ -87,32 +177,16 @@ export const useBaseStore = defineStore('base', () => {
     return classes.value.find(c => c.id === selectedClassId.value) || null;
   });
 
-  // ==================== 快捷取值方法 ====================
+  // ==================== 快捷取值方法（工厂生成） ====================
 
-  const getRaceIcon = computed(() => (id: string) => {
-    return races.value.find(r => r.id === id)?.icon || '👤';
-  });
-  const getRaceName = computed(() => (id: string) => {
-    return races.value.find(r => r.id === id)?.name || '';
-  });
-  const getFactionIcon = computed(() => (id: string) => {
-    return factions.value.find(f => f.id === id)?.icon || '🏳️';
-  });
-  const getFactionName = computed(() => (id: string) => {
-    return factions.value.find(f => f.id === id)?.name || '';
-  });
-  const getFactionColor = computed(() => (id: string) => {
-    return factions.value.find(f => f.id === id)?.color || '#9d9d9d';
-  });
-  const getClassIcon = computed(() => (id: string) => {
-    return classes.value.find(c => c.id === id)?.icon || '⚔️';
-  });
-  const getClassName = computed(() => (id: string) => {
-    return classes.value.find(c => c.id === id)?.name || '';
-  });
-  const getClassColor = computed(() => (id: string) => {
-    return classes.value.find(c => c.id === id)?.color || '#9d9d9d';
-  });
+  const getRaceIcon = createQuickGetter(races, 'icon', '👤');
+  const getRaceName = createQuickGetter(races, 'name', '');
+  const getFactionIcon = createQuickGetter(factions, 'icon', 'game-icons:checked-shield');
+  const getFactionName = createQuickGetter(factions, 'name', '');
+  const getFactionColor = createQuickGetter(factions, 'color', '#9d9d9d');
+  const getClassIcon = createQuickGetter(classes, 'icon', 'game-icons:broadsword');
+  const getClassName = createQuickGetter(classes, 'name', '');
+  const getClassColor = createQuickGetter(classes, 'color', '#9d9d9d');
 
   // ==================== 方法 ====================
 
@@ -131,6 +205,12 @@ export const useBaseStore = defineStore('base', () => {
       factions.value = factionsData;
       races.value = racesData;
       classes.value = classesData;
+    } catch (error) {
+      // P8-403 修复：Promise.all 失败时上报错误并返回空数组，不阻塞 bootstrap
+      errorHandler.report(error, '加载基础数据失败');
+      factions.value = [];
+      races.value = [];
+      classes.value = [];
     } finally {
       isLoading.value = false;
     }
@@ -140,202 +220,78 @@ export const useBaseStore = defineStore('base', () => {
    * 加载阵营数据
    */
   async function loadFactions(): Promise<void> {
-    factions.value = await baseDbService.getAllFactions();
+    try {
+      factions.value = await baseDbService.getAllFactions();
+    } catch (error) {
+      errorHandler.report(error, '加载阵营数据失败');
+      factions.value = [];
+    }
   }
 
   /**
    * 加载种族数据
    */
   async function loadRaces(): Promise<void> {
-    races.value = await baseDbService.getAllRaces();
+    try {
+      races.value = await baseDbService.getAllRaces();
+    } catch (error) {
+      errorHandler.report(error, '加载种族数据失败');
+      races.value = [];
+    }
   }
 
   /**
    * 加载职业数据
    */
   async function loadClasses(): Promise<void> {
-    classes.value = await baseDbService.getAllClasses();
-  }
-
-  /**
-   * 创建阵营
-   */
-  async function createFaction(data: Omit<FactionData, 'id'>): Promise<boolean> {
     try {
-      const id = await baseDbService.createFaction(data);
-      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
-        type: 'faction',
-        action: 'create',
-        id
-      });
-      await loadFactions();
-      return true;
+      classes.value = await baseDbService.getAllClasses();
     } catch (error) {
-      console.error('[BaseStore] 创建阵营失败:', error);
-      return false;
+      errorHandler.report(error, '加载职业数据失败');
+      classes.value = [];
     }
   }
 
-  /**
-   * 更新阵营
-   */
-  async function updateFaction(id: string, data: Omit<FactionData, 'id'>): Promise<boolean> {
-    try {
-      await baseDbService.updateFaction(id, data);
-      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
-        type: 'faction',
-        action: 'update',
-        id
-      });
-      await loadFactions();
-      return true;
-    } catch (error) {
-      console.error('[BaseStore] 更新阵营失败:', error);
-      return false;
-    }
-  }
+  // ==================== CRUD 操作（工厂生成） ====================
 
-  /**
-   * 删除阵营
-   */
-  async function deleteFaction(id: string): Promise<boolean> {
-    try {
-      await baseDbService.deleteFaction(id);
-      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
-        type: 'faction',
-        action: 'delete',
-        id
-      });
-      await loadFactions();
-      if (selectedFactionId.value === id) {
-        selectedFactionId.value = null;
-      }
-      return true;
-    } catch (error) {
-      console.error('[BaseStore] 删除阵营失败:', error);
-      return false;
-    }
-  }
+  const {
+    create: createFaction,
+    update: updateFaction,
+    remove: deleteFaction
+  } = createCrudActions<FactionData, FactionCreateUpdateData>(
+    'faction',
+    (data) => baseDbService.createFaction(data),
+    (id, data) => baseDbService.updateFaction(id, data),
+    (id) => baseDbService.deleteFaction(id),
+    loadFactions,
+    selectedFactionId
+  );
 
-  /**
-   * 创建种族
-   */
-  async function createRace(data: Omit<RaceData, 'id'>): Promise<boolean> {
-    try {
-      const id = await baseDbService.createRace(data);
-      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
-        type: 'race',
-        action: 'create',
-        id
-      });
-      await loadRaces();
-      return true;
-    } catch (error) {
-      console.error('[BaseStore] 创建种族失败:', error);
-      return false;
-    }
-  }
+  const {
+    create: createRace,
+    update: updateRace,
+    remove: deleteRace
+  } = createCrudActions<RaceData, RaceCreateUpdateData>(
+    'race',
+    (data) => baseDbService.createRace(data),
+    (id, data) => baseDbService.updateRace(id, data),
+    (id) => baseDbService.deleteRace(id),
+    loadRaces,
+    selectedRaceId
+  );
 
-  /**
-   * 更新种族
-   */
-  async function updateRace(id: string, data: Omit<RaceData, 'id'>): Promise<boolean> {
-    try {
-      await baseDbService.updateRace(id, data);
-      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
-        type: 'race',
-        action: 'update',
-        id
-      });
-      await loadRaces();
-      return true;
-    } catch (error) {
-      console.error('[BaseStore] 更新种族失败:', error);
-      return false;
-    }
-  }
-
-  /**
-   * 删除种族
-   */
-  async function deleteRace(id: string): Promise<boolean> {
-    try {
-      await baseDbService.deleteRace(id);
-      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
-        type: 'race',
-        action: 'delete',
-        id
-      });
-      await loadRaces();
-      if (selectedRaceId.value === id) {
-        selectedRaceId.value = null;
-      }
-      return true;
-    } catch (error) {
-      console.error('[BaseStore] 删除种族失败:', error);
-      return false;
-    }
-  }
-
-  /**
-   * 创建职业
-   */
-  async function createClass(data: Omit<ClassData, 'id'>): Promise<boolean> {
-    try {
-      const id = await baseDbService.createClass(data);
-      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
-        type: 'class',
-        action: 'create',
-        id
-      });
-      await loadClasses();
-      return true;
-    } catch (error) {
-      console.error('[BaseStore] 创建职业失败:', error);
-      return false;
-    }
-  }
-
-  /**
-   * 更新职业
-   */
-  async function updateClass(id: string, data: Omit<ClassData, 'id'>): Promise<boolean> {
-    try {
-      await baseDbService.updateClass(id, data);
-      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
-        type: 'class',
-        action: 'update',
-        id
-      });
-      await loadClasses();
-      return true;
-    } catch (error) {
-      console.error('[BaseStore] 更新职业失败:', error);
-      return false;
-    }
-  }
-
-  /**
-   * 删除职业
-   */
-  async function deleteClass(id: string): Promise<boolean> {
-    try {
-      await baseDbService.deleteClass(id);
-      eventBus.emit(GameEvents.GAME_DATA_UPDATED, {
-        type: 'class',
-        action: 'delete',
-        id
-      });
-      await loadClasses();
-      if (selectedClassId.value === id) {
-        selectedClassId.value = null;
-      }
-      return true;
-    } catch (error) {
-      console.error('[BaseStore] 删除职业失败:', error);
-      return false;
-    }
-  }
+  const {
+    create: createClass,
+    update: updateClass,
+    remove: deleteClass
+  } = createCrudActions<ClassData, ClassCreateUpdateData>(
+    'class',
+    (data) => baseDbService.createClass(data),
+    (id, data) => baseDbService.updateClass(id, data),
+    (id) => baseDbService.deleteClass(id),
+    loadClasses,
+    selectedClassId
+  );
 
   /**
    * 选择阵营
@@ -375,21 +331,60 @@ export const useBaseStore = defineStore('base', () => {
   }
 
   /**
+   * GAME_DATA_UPDATED 事件监听器引用（dispose 时注销）
+   *
+   * P2-64 修复：base store 需监听外部模块（data/admin）触发的 GAME_DATA_UPDATED
+   * 事件，在配置数据变更后自动刷新本地缓存，避免读到过期数据。
+   */
+  let dataUpdatedHandler: ((payload: { type: string; action: string; id: string }) => void) | null = null;
+
+  /**
    * 初始化
-   * 直接调用 loadAllData 加载基础数据，并通过 EventBus 通知其他模块已完成初始化。
-   * 注意：不再自监听 GAME_DATA_UPDATED，CRUD 操作后直接调用对应 load 方法刷新
+   *
+   * 执行流程：
+   * 1. 重置选中状态（P2-62 修复：防止角色切换时选中状态泄漏）
+   * 2. 加载基础数据
+   * 3. 注册 GAME_DATA_UPDATED 监听器（P2-64 修复：响应外部模块的数据变更）
+   * 4. 通知其他模块基础数据已就绪
    */
   async function initialize(): Promise<void> {
+    // P2-62 修复：初始化时重置选中状态，防止角色切换时 faction/race/class 选中泄漏
+    resetSelection();
     await loadAllData();
+    // P2-64 修复：监听外部模块（data/admin）的 GAME_DATA_UPDATED 事件，
+    // 过滤出 base 相关类型后重新加载本地缓存
+    if (dataUpdatedHandler === null) {
+      dataUpdatedHandler = (payload) => {
+        // 仅响应 base 类型或通配符的更新通知
+        // 忽略 'bulk' action：这是 initialize 自身 emit 的，避免循环刷新
+        if (
+          (payload.type === 'base' || payload.type === '*' || payload.id === '*') &&
+          payload.action !== 'bulk'
+        ) {
+          loadAllData().catch(err => {
+            // P2 DB-8 修复：上报 errorReporter 便于运维监测
+            console.error('[BaseStore] 响应 GAME_DATA_UPDATED 刷新失败:', err);
+            errorReporter.report(err, 'manual', { context: 'BaseStore 响应 GAME_DATA_UPDATED 刷新失败' });
+          });
+        }
+      };
+      eventBus.on(GameEvents.GAME_DATA_UPDATED, dataUpdatedHandler);
+    }
     // 通知其他模块基础数据已就绪
-    eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: 'init', action: 'bulk', id: '*' });
+    eventBus.emit(GameEvents.GAME_DATA_UPDATED, { type: 'base', action: 'bulk', id: '*' });
   }
 
   /**
-   * 清理事件监听
+   * 释放 Store 持有的资源
+   *
+   * P2-64 修复：注销 GAME_DATA_UPDATED 监听器，避免内存泄漏。
+   * 角色切换或应用卸载时由 GameBootstrap.dispose 调用。
    */
   function dispose(): void {
-    eventBus.clearGroup('baseStore');
+    if (dataUpdatedHandler !== null) {
+      eventBus.off(GameEvents.GAME_DATA_UPDATED, dataUpdatedHandler);
+      dataUpdatedHandler = null;
+    }
   }
 
   return {
@@ -442,6 +437,7 @@ export const useBaseStore = defineStore('base', () => {
     selectClass,
     resetSelection,
     initialize,
+    // P2-64：暴露 dispose 方法供 GameBootstrap 调用
     dispose
   };
 });

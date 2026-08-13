@@ -4,7 +4,12 @@
  * @module base
  */
 
-export * from './types';
+export type {
+  FactionCreateUpdateData,
+  RaceCreateUpdateData,
+  ClassCreateUpdateData
+} from './types';
+
 export { baseDbService } from './db';
-export { generateBaseId, factionsArrayToRecord, racesArrayToRecord, classesArrayToRecord } from './service';
+export { arrayToRecord } from './service';
 export { useBaseStore } from './store';

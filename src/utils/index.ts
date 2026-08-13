@@ -4,5 +4,39 @@
  * @module utils/index
  */
 
-export * from './calculations';
-export * from './db-helpers';
+export {
+  calculateMaxHp,
+  calculateMaxMana,
+  calculatePhysicalAttack,
+  calculatePhysicalDefense,
+  calculateMagicAttack,
+  calculateMagicDefense,
+  calculateCritChance,
+  calculateDodgeChance,
+  calculateHealBonus,
+  calculateAllAttributes,
+  getExpForLevel,
+} from './calculations';
+
+export {
+  toRawData,
+  generateId,
+  BaseDbService,
+} from './db-helpers';
+
+export { downloadBlob } from './fileDownload';
+
+export {
+  errorReporter,
+  type ErrorRecord,
+  type ErrorSource,
+  type ErrorReportAdapter,
+  type ErrorReporterConfig,
+} from './errorReport';
+
+export {
+  type Rng,
+  defaultRng,
+  createRngFromFn,
+  createSeededRng,
+} from './rng';

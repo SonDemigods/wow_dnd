@@ -10,7 +10,7 @@
       <!-- 主音量 -->
       <div class="slider-group">
         <div class="slider-label">
-          <span class="slider-icon">🔈</span>
+          <BaseIcon name="musical-notes" gradient="gold" :size="20" />
           <span>主音量</span>
           <span class="slider-value">{{ Math.round(store.settings.masterVolume * 100) }}%</span>
         </div>
@@ -28,7 +28,7 @@
       <!-- 音效音量 -->
       <div class="slider-group">
         <div class="slider-label">
-          <span class="slider-icon">🔔</span>
+          <BaseIcon name="musical-notes" gradient="gold" :size="20" />
           <span>音效音量</span>
           <span class="slider-value">{{ Math.round(store.settings.sfxVolume * 100) }}%</span>
         </div>
@@ -54,7 +54,7 @@
       <!-- 背景音乐音量 -->
       <div class="slider-group">
         <div class="slider-label">
-          <span class="slider-icon">🎵</span>
+          <BaseIcon name="musical-notes" gradient="gold" :size="20" />
           <span>背景音乐</span>
           <span class="slider-value">{{ Math.round(store.settings.bgmVolume * 100) }}%</span>
         </div>
@@ -80,7 +80,7 @@
       <!-- 全局静音 -->
       <div class="mute-row">
         <button :class="['mute-btn', { muted: store.settings.muted }]" @click="onMuteClick">
-          <span class="mute-icon">{{ store.settings.muted ? '🔇' : '🔊' }}</span>
+          <BaseIcon :name="store.settings.muted ? 'sound-off' : 'sound-on'" gradient="gold" :size="20" />
           <span>{{ store.settings.muted ? '已静音' : '正常' }}</span>
         </button>
       </div>
@@ -99,8 +99,9 @@
  */
 
 import { useAudioStore } from '@/modules/audio';
-import { eventBus, GameEvents } from '@/modules/bus/core';
+import { eventBus, GameEvents } from '@/modules/bus';
 import BasePopup from '../common/BasePopup.vue';
+import BaseIcon from '@/components/common/BaseIcon.vue';
 
 defineProps<{
   visible: boolean;
@@ -117,69 +118,85 @@ function emitClose() {
 
 const store = useAudioStore();
 
+/** P3 TS-14 修复：使用 instanceof 守卫替代 as 断言，安全提取 input value */
+function getInputValue(e: Event): number {
+  return e.target instanceof HTMLInputElement ? Number(e.target.value) : 0;
+}
+
 function onMasterVolumeChange(e: Event) {
-  const value = Number((e.target as HTMLInputElement).value) / 100;
-  store.setMasterVolume(value);
+  const value = getInputValue(e) / 100;
+  // P3-116：setMasterVolume 改为 async（委托 GameStore 持久化），UI 事件中以 fire-and-forget 方式调用
+  store.setMasterVolume(value).catch(err => {
+    console.error('[AudioSettingsPopup] setMasterVolume 失败:', err);
+  });
 }
 
 function onSfxVolumeChange(e: Event) {
-  const value = Number((e.target as HTMLInputElement).value) / 100;
-  store.updateSettings({ sfxVolume: value });
+  const value = getInputValue(e) / 100;
+  store.updateSettings({ sfxVolume: value }).catch(err => {
+    console.error('[AudioSettingsPopup] updateSettings sfxVolume 失败:', err);
+  });
 }
 
 function onBgmVolumeChange(e: Event) {
-  const value = Number((e.target as HTMLInputElement).value) / 100;
-  store.updateSettings({ bgmVolume: value });
+  const value = getInputValue(e) / 100;
+  store.updateSettings({ bgmVolume: value }).catch(err => {
+    console.error('[AudioSettingsPopup] updateSettings bgmVolume 失败:', err);
+  });
 }
 
 function onMuteClick() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'audio_mute' });
-  store.toggleMute();
+  store.toggleMute().catch(err => {
+    console.error('[AudioSettingsPopup] toggleMute 失败:', err);
+  });
 }
 
 function toggleSfx() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'audio_toggle_sfx' });
-  store.updateSettings({ sfxEnabled: !store.settings.sfxEnabled });
+  store.updateSettings({ sfxEnabled: !store.settings.sfxEnabled }).catch(err => {
+    console.error('[AudioSettingsPopup] toggleSfx 失败:', err);
+  });
 }
 
 function toggleBgm() {
   eventBus.emit(GameEvents.UI_CLICK, { source: 'audio_toggle_bgm' });
-  store.updateSettings({ bgmEnabled: !store.settings.bgmEnabled });
+  store.updateSettings({ bgmEnabled: !store.settings.bgmEnabled }).catch(err => {
+    console.error('[AudioSettingsPopup] toggleBgm 失败:', err);
+  });
 }
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .audio-body {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 8px 0;
+  .flex-col();
+  gap: @spacing-4xl;
+  padding: @spacing-md 0;
 }
 
 .slider-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  .flex-col();
+  gap: @spacing-md;
 }
 
 .slider-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: @spacing-md;
   color: #ccc;
-  font-size: 14px;
+  font-size: @font-md;
 }
 
 .slider-icon {
-  font-size: 16px;
+  font-size: @font-lg;
   width: 24px;
 }
 
 .slider-value {
   margin-left: auto;
-  color: #ffd700;
-  font-size: 13px;
-  font-weight: bold;
+  color: @accent-color;
+  font-size: @font-base;
+  font-weight: @font-weight-bold;
   min-width: 36px;
   text-align: right;
 }
@@ -187,7 +204,7 @@ function toggleBgm() {
 .slider-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: @spacing-lg;
 }
 
 .audio-slider {
@@ -195,8 +212,8 @@ function toggleBgm() {
   -webkit-appearance: none;
   appearance: none;
   height: 6px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
+  background: @white-15;
+  border-radius: @radius-xs;
   outline: none;
   cursor: pointer;
 }
@@ -212,7 +229,7 @@ function toggleBgm() {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #ffd700;
+  background: @accent-color;
   cursor: pointer;
   border: 2px solid #b8960f;
   transition: transform 0.15s;
@@ -223,71 +240,71 @@ function toggleBgm() {
 }
 
 .audio-slider:disabled::-webkit-slider-thumb {
-  background: #666;
+  background: @color-dim-gray;
   border-color: #444;
   cursor: not-allowed;
 }
 
 .toggle-btn {
-  padding: 4px 14px;
+  padding: @spacing-xs 14px;
   min-width: 48px;
-  border: 1px solid #4a4a4a;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #888;
-  font-size: 12px;
-  font-weight: bold;
+  border: @border-sm;
+  border-radius: @radius-sm;
+  background: @white-05;
+  color: @color-dodge;
+  font-size: @font-sm;
+  font-weight: @font-weight-bold;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all @transition-quick;
 }
 
 .toggle-btn.active {
-  border-color: #ffd700;
-  background: rgba(255, 215, 0, 0.1);
-  color: #ffd700;
+  border-color: @accent-color;
+  background: @gold-bg;
+  color: @accent-color;
 }
 
 .toggle-btn:hover {
-  border-color: #888;
+  border-color: @color-dodge;
 }
 
 .toggle-btn.active:hover {
-  border-color: #ffd700;
+  border-color: @accent-color;
 }
 
 .mute-row {
   display: flex;
   justify-content: center;
-  padding-top: 4px;
+  padding-top: @spacing-xs;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .mute-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 24px;
-  border: 2px solid #4a4a4a;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  gap: @spacing-md;
+  padding: @spacing-md 24px;
+  border: @border-card;
+  border-radius: @radius-lg;
+  background: @white-05;
   color: #ccc;
-  font-size: 14px;
+  font-size: @font-md;
   cursor: pointer;
   transition: all 0.25s;
 }
 
 .mute-btn:hover {
-  border-color: #888;
-  background: rgba(255, 255, 255, 0.1);
+  border-color: @color-dodge;
+  background: @white-10;
 }
 
 .mute-btn.muted {
-  border-color: #ff4444;
+  border-color: @danger-color;
   background: rgba(255, 68, 68, 0.1);
   color: #ff6b6b;
 }
 
 .mute-icon {
-  font-size: 18px;
+  font-size: @font-xl;
 }
 </style>

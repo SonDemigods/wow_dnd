@@ -3,9 +3,10 @@
  * @description 封装冒险日志数据的 IndexedDB 操作，提供数据持久化能力
  * @module log
  */
-import { db as gameDb, dbService } from '../data/core';
+import { db as gameDb, dbService } from '@/modules/data';
 import type { LogEntry, AdventureLogData } from './types';
 import { toRawData } from '../../utils';
+import { MAX_LOG_ENTRIES } from '@/config/log';
 
 export class AdventureLogDbService {
   /**
@@ -14,11 +15,16 @@ export class AdventureLogDbService {
    * @param logs - 日志记录列表
    */
   async saveAdventureLog(characterId: string, logs: LogEntry[]): Promise<void> {
+    // P9-012 修复：最新日志在数组头部（index 0），slice(0, MAX_LOG_ENTRIES) 保留最新条目
+    const trimmedLogs = logs.length > MAX_LOG_ENTRIES
+      ? logs.slice(0, MAX_LOG_ENTRIES)
+      : logs;
+
     await dbService.withRetry(async () => {
       // JSON 序列化去除 Vue/Proxy 包装，避免 IndexedDB DataCloneError
       const cleanData = toRawData({
         characterId,
-        entries: logs,
+        entries: trimmedLogs,
         updatedAt: Date.now()
       });
       await gameDb.runtime_adventureLogs.put(cleanData);

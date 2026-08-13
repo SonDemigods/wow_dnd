@@ -27,11 +27,8 @@ defineEmits<{
 }>();
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .alert-message {
-  margin: 0;
-  color: #aaa;
-  font-size: 14px;
-  text-align: center;
+  .popup-message-text();
 }
 </style>

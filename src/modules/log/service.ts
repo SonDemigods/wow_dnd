@@ -4,28 +4,29 @@
  * @module log
  */
 import type { LogEntry, LogType } from './types';
+import { generateId } from '@/utils/db-helpers';
 
 /** 日志类型默认图标映射 */
-const LOG_TYPE_ICONS: Record<LogType, string> = {
-  info: '📜',
-  combat: '⚔️',
-  quest: '📋',
-  item: '📦',
-  level: '⬆️',
-  death: '💀',
-  resurrect: '✨',
-  shop: '🛒',
-  skill: '✨',
-  exploration: '🗺️',
-  zone: '📍'
+export const LOG_TYPE_ICONS: Record<LogType, string> = {
+  info: 'game-icons:info',
+  combat: 'game-icons:crossed-swords',
+  quest: 'game-icons:notebook',
+  item: 'game-icons:chest',
+  level: 'game-icons:upgrade',
+  death: 'game-icons:death-skull',
+  resurrect: 'game-icons:regeneration',
+  shop: 'game-icons:shopping-cart',
+  skill: 'game-icons:sparkles',
+  exploration: 'game-icons:treasure-map',
+  zone: 'game-icons:entry-door'
 };
 
 /**
  * 生成唯一的日志ID
- * @returns 基于时间戳和随机字符串的唯一ID
+ * @returns 格式为 log_时间戳_随机串 的唯一ID
  */
 export function generateLogId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return generateId('log');
 }
 
 /**

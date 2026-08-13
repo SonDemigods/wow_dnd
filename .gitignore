@@ -127,4 +127,11 @@ __pycache__/
 *.pyc
 .next/
 coverage/
+.playwright/
+.playwright-report/
+.playwright-browsers/
+benchmarks/
+test-results/
+.codely/
+.codely-cli/
 .vite/

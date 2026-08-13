@@ -4,7 +4,33 @@
  * @module data/mobs
  */
 
-import type { EnemyData } from '../modules/enemy/types';
+import type { EnemyData, EnemyDrop } from '../modules/enemy/types';
+
+/** 普通危险度怪物掉落（5% 药水） */
+const DROPS_NORMAL: EnemyDrop[] = [
+  { itemId: 'small_health_potion', minAmount: 1, maxAmount: 1, dropRate: 0.05 },
+  { itemId: 'small_mana_potion', minAmount: 1, maxAmount: 1, dropRate: 0.03 },
+];
+/** 困难危险度怪物掉落（8% 药水 + 2% 材料） */
+const DROPS_HARD: EnemyDrop[] = [
+  { itemId: 'medium_health_potion', minAmount: 1, maxAmount: 1, dropRate: 0.08 },
+  { itemId: 'medium_mana_potion', minAmount: 1, maxAmount: 1, dropRate: 0.05 },
+  { itemId: 'magic_dust', minAmount: 1, maxAmount: 1, dropRate: 0.02 },
+];
+/** 危险危险度怪物掉落（10% 药水 + 3% 材料 + 1% 装备） */
+const DROPS_DANGEROUS: EnemyDrop[] = [
+  { itemId: 'large_health_potion', minAmount: 1, maxAmount: 1, dropRate: 0.10 },
+  { itemId: 'large_mana_potion', minAmount: 1, maxAmount: 1, dropRate: 0.06 },
+  { itemId: 'magic_dust', minAmount: 1, maxAmount: 2, dropRate: 0.03 },
+  { itemId: 'iron_sword', minAmount: 1, maxAmount: 1, dropRate: 0.01 },
+];
+/** 高阶危险度怪物掉落（12% 大药水 + 4% 原始材料 + 2% 装备） */
+const DROPS_DEADLY: EnemyDrop[] = [
+  { itemId: 'super_health_potion', minAmount: 1, maxAmount: 1, dropRate: 0.12 },
+  { itemId: 'super_mana_potion', minAmount: 1, maxAmount: 1, dropRate: 0.08 },
+  { itemId: 'primal_fire', minAmount: 1, maxAmount: 2, dropRate: 0.04 },
+  { itemId: 'mithril_sword', minAmount: 1, maxAmount: 1, dropRate: 0.02 },
+];
 
 /**
  * 普通怪物数据集
@@ -12,9 +38,9 @@ import type { EnemyData } from '../modules/enemy/types';
  */
 export const MOBS: EnemyData[] = [
   {
-    id: 'gnoll',
+    id: 'mob_gnoll',
     name: '豺狼人',
-    icon: '👺',
+    icon: 'game-icons:hyena-head',
     maxHp: 25,
     damage: [4, 8],
     xp: 15,
@@ -25,12 +51,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 2,
     magicDefense: 2,
     critChance: 5,
-    dodgeChance: 3
+    dodgeChance: 3,
+    drops: DROPS_NORMAL
   },
   {
-    id: 'kobold',
+    id: 'mob_kobold',
     name: '狗头人',
-    icon: '🐀',
+    icon: 'game-icons:candle-holder',
     maxHp: 20,
     damage: [3, 6],
     xp: 12,
@@ -41,12 +68,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 3,
     magicDefense: 3,
     critChance: 4,
-    dodgeChance: 5
+    dodgeChance: 5,
+    drops: DROPS_NORMAL
   },
   {
-    id: 'murloc',
+    id: 'mob_murloc',
     name: '蛙人',
-    icon: '🐟',
+    icon: 'game-icons:fish-monster',
     maxHp: 22,
     damage: [4, 7],
     xp: 14,
@@ -57,12 +85,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 2,
     magicDefense: 2,
     critChance: 3,
-    dodgeChance: 4
+    dodgeChance: 4,
+    drops: DROPS_NORMAL
   },
   {
-    id: 'skeleton',
+    id: 'mob_skeleton',
     name: '骷髅',
-    icon: '💀',
+    icon: 'game-icons:death-skull',
     maxHp: 30,
     damage: [5, 10],
     xp: 20,
@@ -73,12 +102,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 4,
     magicDefense: 4,
     critChance: 6,
-    dodgeChance: 2
+    dodgeChance: 2,
+    drops: DROPS_NORMAL
   },
   {
-    id: 'orc',
+    id: 'mob_orc_grunt',
     name: '兽人战士',
-    icon: '👹',
+    icon: 'game-icons:orc-head',
     maxHp: 45,
     damage: [8, 15],
     xp: 35,
@@ -89,12 +119,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 5,
     magicDefense: 4,
     critChance: 8,
-    dodgeChance: 4
+    dodgeChance: 4,
+    drops: DROPS_HARD
   },
   {
-    id: 'spider',
+    id: 'mob_poison_spider',
     name: '剧毒蜘蛛',
-    icon: '🕷️',
+    icon: 'game-icons:spider-face',
     maxHp: 35,
     damage: [6, 12],
     xp: 25,
@@ -105,12 +136,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 6,
     magicDefense: 3,
     critChance: 12,
-    dodgeChance: 8
+    dodgeChance: 8,
+    drops: DROPS_NORMAL
   },
   {
-    id: 'bandit',
+    id: 'mob_shadow_bandit',
     name: '暗影强盗',
-    icon: '🗡️',
+    icon: 'game-icons:robber',
     maxHp: 40,
     damage: [7, 14],
     xp: 30,
@@ -121,12 +153,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 4,
     magicDefense: 4,
     critChance: 10,
-    dodgeChance: 8
+    dodgeChance: 8,
+    drops: DROPS_HARD
   },
   {
-    id: 'troll',
+    id: 'mob_jungle_troll',
     name: '丛林巨魔',
-    icon: '🧌',
+    icon: 'game-icons:troll',
     maxHp: 80,
     damage: [12, 20],
     xp: 60,
@@ -137,12 +170,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 8,
     magicDefense: 8,
     critChance: 8,
-    dodgeChance: 5
+    dodgeChance: 5,
+    drops: DROPS_DANGEROUS
   },
   {
-    id: 'wolf',
+    id: 'mob_gray_wolf',
     name: '灰狼',
-    icon: '🐺',
+    icon: 'game-icons:wolf-head',
     maxHp: 28,
     damage: [5, 9],
     xp: 18,
@@ -153,12 +187,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 2,
     magicDefense: 2,
     critChance: 8,
-    dodgeChance: 10
+    dodgeChance: 10,
+    drops: DROPS_NORMAL
   },
   {
-    id: 'ghoul',
+    id: 'mob_ghoul',
     name: '食尸鬼',
-    icon: '🧟',
+    icon: 'game-icons:shambling-zombie',
     maxHp: 32,
     damage: [6, 11],
     xp: 22,
@@ -169,12 +204,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 3,
     magicDefense: 3,
     critChance: 6,
-    dodgeChance: 4
+    dodgeChance: 4,
+    drops: DROPS_NORMAL
   },
   {
-    id: 'iron_dwarf',
+    id: 'mob_iron_dwarf',
     name: '铁矮人',
-    icon: '⚒️',
+    icon: 'game-icons:dwarf-face',
     maxHp: 70,
     damage: [10, 18],
     xp: 55,
@@ -185,12 +221,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 6,
     magicDefense: 8,
     critChance: 7,
-    dodgeChance: 3
+    dodgeChance: 3,
+    drops: DROPS_DANGEROUS
   },
   {
-    id: 'elemental',
+    id: 'mob_elemental',
     name: '元素生物',
-    icon: '🔮',
+    icon: 'game-icons:spark-spirit',
     maxHp: 65,
     damage: [9, 16],
     xp: 50,
@@ -201,12 +238,14 @@ export const MOBS: EnemyData[] = [
     magicAttack: 25,
     magicDefense: 15,
     critChance: 10,
-    dodgeChance: 5
+    dodgeChance: 5,
+    attackType: 'magical',
+    drops: DROPS_DANGEROUS
   },
   {
-    id: 'nerubian',
+    id: 'mob_nerubian',
     name: '虫族战士',
-    icon: '🕸️',
+    icon: 'game-icons:spider-web',
     maxHp: 75,
     damage: [11, 19],
     xp: 58,
@@ -217,12 +256,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 12,
     magicDefense: 8,
     critChance: 12,
-    dodgeChance: 8
+    dodgeChance: 8,
+    drops: DROPS_DANGEROUS
   },
   {
-    id: 'vrykul',
+    id: 'mob_vrykul',
     name: '北境蛮族',
-    icon: '⚔️',
+    icon: 'game-icons:viking-head',
     maxHp: 78,
     damage: [11, 18],
     xp: 56,
@@ -233,12 +273,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 8,
     magicDefense: 10,
     critChance: 9,
-    dodgeChance: 4
+    dodgeChance: 4,
+    drops: DROPS_DANGEROUS
   },
   {
-    id: 'undead',
+    id: 'mob_undead',
     name: '亡灵',
-    icon: '💀',
+    icon: 'game-icons:death-zone',
     maxHp: 35,
     damage: [7, 13],
     xp: 28,
@@ -249,12 +290,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 6,
     magicDefense: 5,
     critChance: 5,
-    dodgeChance: 3
+    dodgeChance: 3,
+    drops: DROPS_NORMAL
   },
   {
-    id: 'bear',
+    id: 'mob_brown_bear',
     name: '棕熊',
-    icon: '🐻',
+    icon: 'game-icons:bear-head',
     maxHp: 50,
     damage: [8, 14],
     xp: 32,
@@ -265,12 +307,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 2,
     magicDefense: 3,
     critChance: 7,
-    dodgeChance: 4
+    dodgeChance: 4,
+    drops: DROPS_HARD
   },
   {
-    id: 'boar',
+    id: 'mob_boar',
     name: '野猪',
-    icon: '🐗',
+    icon: 'game-icons:boar-tusks',
     maxHp: 38,
     damage: [6, 12],
     xp: 26,
@@ -281,12 +324,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 2,
     magicDefense: 2,
     critChance: 5,
-    dodgeChance: 3
+    dodgeChance: 3,
+    drops: DROPS_NORMAL
   },
   {
-    id: 'centaur',
+    id: 'mob_centaur',
     name: '半人马',
-    icon: '🏇',
+    icon: 'game-icons:centaur',
     maxHp: 60,
     damage: [9, 16],
     xp: 45,
@@ -297,12 +341,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 6,
     magicDefense: 6,
     critChance: 8,
-    dodgeChance: 6
+    dodgeChance: 6,
+    drops: DROPS_HARD
   },
   {
-    id: 'harpy',
+    id: 'mob_harpy',
     name: '鹰身人',
-    icon: '🦅',
+    icon: 'game-icons:harpy',
     maxHp: 42,
     damage: [7, 13],
     xp: 33,
@@ -313,12 +358,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 12,
     magicDefense: 8,
     critChance: 10,
-    dodgeChance: 12
+    dodgeChance: 12,
+    drops: DROPS_HARD
   },
   {
-    id: 'naga',
+    id: 'mob_naga',
     name: '蛇身海妖',
-    icon: '🐍',
+    icon: 'game-icons:mermaid',
     maxHp: 85,
     damage: [11, 19],
     xp: 65,
@@ -329,12 +375,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 20,
     magicDefense: 14,
     critChance: 10,
-    dodgeChance: 8
+    dodgeChance: 8,
+    drops: DROPS_DANGEROUS
   },
   {
-    id: 'ogre',
+    id: 'mob_ogre',
     name: '食人魔',
-    icon: '👹',
+    icon: 'game-icons:giant',
     maxHp: 90,
     damage: [13, 22],
     xp: 70,
@@ -345,12 +392,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 6,
     magicDefense: 6,
     critChance: 7,
-    dodgeChance: 3
+    dodgeChance: 3,
+    drops: DROPS_DANGEROUS
   },
   {
-    id: 'quilboar',
+    id: 'mob_quilboar',
     name: '猪面人',
-    icon: '🐗',
+    icon: 'game-icons:pig-face',
     maxHp: 48,
     damage: [8, 15],
     xp: 38,
@@ -361,12 +409,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 4,
     magicDefense: 4,
     critChance: 8,
-    dodgeChance: 5
+    dodgeChance: 5,
+    drops: DROPS_HARD
   },
   {
-    id: 'scorpid',
+    id: 'mob_scorpid',
     name: '蝎子',
-    icon: '🦂',
+    icon: 'game-icons:scorpion',
     maxHp: 36,
     damage: [7, 12],
     xp: 27,
@@ -377,12 +426,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 4,
     magicDefense: 3,
     critChance: 10,
-    dodgeChance: 6
+    dodgeChance: 6,
+    drops: DROPS_NORMAL
   },
   {
-    id: 'silithid',
+    id: 'mob_silithid',
     name: '异种虫',
-    icon: '🦗',
+    icon: 'game-icons:insect-jaws',
     maxHp: 95,
     damage: [14, 24],
     xp: 75,
@@ -393,28 +443,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 10,
     magicDefense: 8,
     critChance: 15,
-    dodgeChance: 10
+    dodgeChance: 10,
+    drops: DROPS_DANGEROUS
   },
   {
-    id: 'gnoll_raider',
-    name: '豺狼人劫掠者',
-    icon: '🐺',
-    maxHp: 33,
-    damage: [6, 11],
-    xp: 24,
-    gold: 10,
-    dangerLevel: '普通',
-    physicalAttack: 11,
-    physicalDefense: 4,
-    magicAttack: 3,
-    magicDefense: 3,
-    critChance: 6,
-    dodgeChance: 5
-  },
-  {
-    id: 'tiger',
+    id: 'mob_tiger',
     name: '猛虎',
-    icon: '🐅',
+    icon: 'game-icons:tiger-head',
     maxHp: 75,
     damage: [12, 22],
     xp: 55,
@@ -425,12 +460,13 @@ export const MOBS: EnemyData[] = [
     magicAttack: 4,
     magicDefense: 4,
     critChance: 15,
-    dodgeChance: 12
+    dodgeChance: 12,
+    drops: DROPS_DANGEROUS
   },
   {
-    id: 'dwarf',
+    id: 'mob_dark_iron_dwarf',
     name: '暗炉矮人',
-    icon: '⚒️',
+    icon: 'game-icons:dwarf-face',
     maxHp: 65,
     damage: [10, 18],
     xp: 48,
@@ -441,6 +477,391 @@ export const MOBS: EnemyData[] = [
     magicAttack: 6,
     magicDefense: 8,
     critChance: 7,
-    dodgeChance: 4
+    dodgeChance: 4,
+    drops: DROPS_HARD
+  },
+  {
+    id: 'mob_young_dragon',
+    name: '幼龙',
+    icon: 'game-icons:dragon-head',
+    maxHp: 80,
+    damage: [12, 20],
+    xp: 60,
+    gold: 30,
+    dangerLevel: '困难',
+    physicalAttack: 22,
+    physicalDefense: 10,
+    magicAttack: 15,
+    magicDefense: 10,
+    critChance: 8,
+    dodgeChance: 5,
+    drops: DROPS_HARD
+  },
+  {
+    id: 'mob_imp',
+    name: '小恶魔',
+    icon: 'game-icons:imp',
+    maxHp: 45,
+    damage: [8, 14],
+    xp: 40,
+    gold: 18,
+    dangerLevel: '普通',
+    physicalAttack: 10,
+    physicalDefense: 5,
+    magicAttack: 18,
+    magicDefense: 8,
+    critChance: 10,
+    dodgeChance: 8,
+    attackType: 'magical',
+    drops: DROPS_NORMAL
+  },
+  // ========== P3-167 新增：Lv1-5 区间（普通） ==========
+  {
+    id: 'mob_strider',
+    name: '陆行鸟',
+    icon: 'game-icons:shoebill-stork',
+    maxHp: 18,
+    damage: [2, 5],
+    xp: 10,
+    gold: 2,
+    dangerLevel: '普通',
+    physicalAttack: 5,
+    physicalDefense: 2,
+    magicAttack: 2,
+    magicDefense: 2,
+    critChance: 6,
+    dodgeChance: 12,
+    drops: DROPS_NORMAL
+  },
+  {
+    id: 'mob_defias',
+    name: '迪菲亚贼',
+    icon: 'game-icons:robber',
+    maxHp: 24,
+    damage: [4, 8],
+    xp: 16,
+    gold: 8,
+    dangerLevel: '普通',
+    physicalAttack: 9,
+    physicalDefense: 3,
+    magicAttack: 3,
+    magicDefense: 3,
+    critChance: 8,
+    dodgeChance: 6,
+    drops: DROPS_NORMAL
+  },
+  // ========== P3-167 新增：Lv6-10 区间（困难） ==========
+  {
+    id: 'mob_raptor',
+    name: '迅猛龙',
+    icon: 'game-icons:velociraptor',
+    maxHp: 42,
+    damage: [7, 13],
+    xp: 32,
+    gold: 14,
+    dangerLevel: '困难',
+    physicalAttack: 16,
+    physicalDefense: 5,
+    magicAttack: 4,
+    magicDefense: 4,
+    critChance: 14,
+    dodgeChance: 10,
+    drops: DROPS_HARD
+  },
+  {
+    id: 'mob_worgen',
+    name: '狼人',
+    icon: 'game-icons:werewolf',
+    maxHp: 48,
+    damage: [8, 14],
+    xp: 38,
+    gold: 16,
+    dangerLevel: '困难',
+    physicalAttack: 18,
+    physicalDefense: 7,
+    magicAttack: 5,
+    magicDefense: 5,
+    critChance: 10,
+    dodgeChance: 8,
+    drops: DROPS_HARD
+  },
+  {
+    id: 'mob_makrura',
+    name: '巨钳龙虾人',
+    icon: 'game-icons:crab',
+    maxHp: 55,
+    damage: [7, 12],
+    xp: 35,
+    gold: 14,
+    dangerLevel: '困难',
+    physicalAttack: 14,
+    physicalDefense: 12,
+    magicAttack: 4,
+    magicDefense: 6,
+    critChance: 5,
+    dodgeChance: 3,
+    drops: DROPS_HARD
+  },
+  {
+    id: 'mob_wraith',
+    name: '怨灵',
+    icon: 'game-icons:ghost',
+    maxHp: 38,
+    damage: [8, 15],
+    xp: 36,
+    gold: 15,
+    dangerLevel: '困难',
+    physicalAttack: 8,
+    physicalDefense: 4,
+    magicAttack: 16,
+    magicDefense: 10,
+    critChance: 10,
+    dodgeChance: 12,
+    attackType: 'magical',
+    drops: DROPS_HARD
+  },
+  // ========== P3-167 新增：Lv11-15 区间（危险） ==========
+  {
+    id: 'mob_faceless',
+    name: '无面者',
+    icon: 'game-icons:floating-tentacles',
+    maxHp: 70,
+    damage: [10, 18],
+    xp: 55,
+    gold: 28,
+    dangerLevel: '危险',
+    physicalAttack: 20,
+    physicalDefense: 10,
+    magicAttack: 22,
+    magicDefense: 14,
+    critChance: 10,
+    dodgeChance: 6,
+    drops: DROPS_DANGEROUS
+  },
+  {
+    id: 'mob_dire_bear',
+    name: '怒爪灰熊',
+    icon: 'game-icons:bear-head',
+    maxHp: 85,
+    damage: [12, 20],
+    xp: 58,
+    gold: 22,
+    dangerLevel: '危险',
+    physicalAttack: 28,
+    physicalDefense: 14,
+    magicAttack: 4,
+    magicDefense: 6,
+    critChance: 8,
+    dodgeChance: 4,
+    drops: DROPS_DANGEROUS
+  },
+  {
+    id: 'mob_satyr',
+    name: '萨特恶魔',
+    icon: 'game-icons:imp-laugh',
+    maxHp: 65,
+    damage: [10, 17],
+    xp: 52,
+    gold: 26,
+    dangerLevel: '危险',
+    physicalAttack: 18,
+    physicalDefense: 8,
+    magicAttack: 20,
+    magicDefense: 12,
+    critChance: 12,
+    dodgeChance: 8,
+    drops: DROPS_DANGEROUS
+  },
+  {
+    id: 'mob_wyrmkin',
+    name: '龙人',
+    icon: 'game-icons:dragon-head',
+    maxHp: 78,
+    damage: [11, 19],
+    xp: 56,
+    gold: 28,
+    dangerLevel: '危险',
+    physicalAttack: 24,
+    physicalDefense: 12,
+    magicAttack: 16,
+    magicDefense: 12,
+    critChance: 8,
+    dodgeChance: 5,
+    drops: DROPS_DANGEROUS
+  },
+  {
+    id: 'mob_basilisk',
+    name: '石化蜥蜴',
+    icon: 'game-icons:lizardman',
+    maxHp: 72,
+    damage: [9, 16],
+    xp: 50,
+    gold: 24,
+    dangerLevel: '危险',
+    physicalAttack: 22,
+    physicalDefense: 16,
+    magicAttack: 10,
+    magicDefense: 8,
+    critChance: 6,
+    dodgeChance: 4,
+    drops: DROPS_DANGEROUS
+  },
+  {
+    id: 'mob_void_walker',
+    name: '虚空行者',
+    icon: 'game-icons:shadow-follower',
+    maxHp: 68,
+    damage: [10, 18],
+    xp: 54,
+    gold: 27,
+    dangerLevel: '危险',
+    physicalAttack: 14,
+    physicalDefense: 10,
+    magicAttack: 24,
+    magicDefense: 16,
+    critChance: 8,
+    dodgeChance: 8,
+    attackType: 'magical',
+    drops: DROPS_DANGEROUS
+  },
+  // ========== P3-167 新增：Lv16-20 区间（危险·高阶） ==========
+  {
+    id: 'mob_demon_guard',
+    name: '恶魔守卫',
+    icon: 'game-icons:daemon-skull',
+    maxHp: 100,
+    damage: [14, 24],
+    xp: 72,
+    gold: 38,
+    dangerLevel: '危险',
+    physicalAttack: 32,
+    physicalDefense: 18,
+    magicAttack: 12,
+    magicDefense: 10,
+    critChance: 8,
+    dodgeChance: 4,
+    drops: DROPS_DEADLY
+  },
+  {
+    id: 'mob_ice_troll',
+    name: '冰霜巨魔',
+    icon: 'game-icons:troll',
+    maxHp: 105,
+    damage: [13, 22],
+    xp: 68,
+    gold: 35,
+    dangerLevel: '危险',
+    physicalAttack: 30,
+    physicalDefense: 16,
+    magicAttack: 14,
+    magicDefense: 12,
+    critChance: 7,
+    dodgeChance: 5,
+    drops: DROPS_DEADLY
+  },
+  {
+    id: 'mob_plaguebearer',
+    name: '瘟疫使者',
+    icon: 'game-icons:death-zone',
+    maxHp: 95,
+    damage: [12, 20],
+    xp: 70,
+    gold: 36,
+    dangerLevel: '危险',
+    physicalAttack: 16,
+    physicalDefense: 12,
+    magicAttack: 28,
+    magicDefense: 18,
+    critChance: 8,
+    dodgeChance: 6,
+    attackType: 'magical',
+    drops: DROPS_DEADLY
+  },
+  {
+    id: 'mob_dark_caster',
+    name: '黑暗法师',
+    icon: 'game-icons:wizard-face',
+    maxHp: 88,
+    damage: [14, 26],
+    xp: 75,
+    gold: 42,
+    dangerLevel: '危险',
+    physicalAttack: 12,
+    physicalDefense: 8,
+    magicAttack: 32,
+    magicDefense: 20,
+    critChance: 12,
+    dodgeChance: 8,
+    attackType: 'magical',
+    drops: DROPS_DEADLY
+  },
+  {
+    id: 'mob_frost_serpent',
+    name: '冰霜蛇蜥',
+    icon: 'game-icons:snake',
+    maxHp: 92,
+    damage: [13, 22],
+    xp: 68,
+    gold: 34,
+    dangerLevel: '危险',
+    physicalAttack: 26,
+    physicalDefense: 14,
+    magicAttack: 22,
+    magicDefense: 16,
+    critChance: 10,
+    dodgeChance: 7,
+    attackType: 'magical',
+    drops: DROPS_DEADLY
+  },
+  {
+    id: 'mob_infernal',
+    name: '地狱火',
+    icon: 'game-icons:fire',
+    maxHp: 110,
+    damage: [15, 25],
+    xp: 78,
+    gold: 40,
+    dangerLevel: '危险',
+    physicalAttack: 28,
+    physicalDefense: 20,
+    magicAttack: 20,
+    magicDefense: 14,
+    critChance: 6,
+    dodgeChance: 3,
+    drops: DROPS_DEADLY
+  },
+  {
+    id: 'mob_death_knight_mob',
+    name: '死亡骑士',
+    icon: 'game-icons:hooded-assassin',
+    maxHp: 102,
+    damage: [14, 24],
+    xp: 74,
+    gold: 38,
+    dangerLevel: '危险',
+    physicalAttack: 34,
+    physicalDefense: 18,
+    magicAttack: 16,
+    magicDefense: 12,
+    critChance: 10,
+    dodgeChance: 5,
+    drops: DROPS_DEADLY
+  },
+  {
+    id: 'mob_ancient_protector',
+    name: '远古守护者',
+    icon: 'game-icons:oak',
+    maxHp: 115,
+    damage: [12, 22],
+    xp: 76,
+    gold: 38,
+    dangerLevel: '危险',
+    physicalAttack: 24,
+    physicalDefense: 22,
+    magicAttack: 18,
+    magicDefense: 18,
+    critChance: 6,
+    dodgeChance: 4,
+    drops: DROPS_DEADLY
   }
 ];

@@ -6,17 +6,46 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { MapState, LocationData, MapZone } from './types';
-import { getLocationById, isLocationAccessible, getLocationsByContinent, getZoneStatus } from './service';
+import type { MapState, MapView, LocationData, MapZone } from './types';
+import { getLocationById, isLocationAccessible, getLocationsByContinent, getZoneStatus, clamp } from './service';
 import { mapDbService } from './db';
-import { eventBus, GameEvents } from '../bus/core';
+import { errorReporter } from '@/utils/errorReport';
+import { useGameStore } from '@/modules/game';
+
+/** 缩放边界常量 */
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 5;
+
+/** 平移边界常量 */
+const PAN_MIN = -50;
+const PAN_MAX = 50;
 
 /** 默认地图视图 */
-const DEFAULT_MAP_VIEW = {
+const DEFAULT_MAP_VIEW: MapView = {
   zoomLevel: 1,
   panX: 0,
-  panY: 0
+  panY: 0,
 };
+
+/**
+ * 深冻结对象，递归冻结所有嵌套对象和数组，防止外部 mutate
+ *
+ * P9-087 修复：Object.freeze 仅冻结顶层，嵌套对象（如 view、unlockedZones 数组）仍可被修改。
+ * 使用 deepFreeze 确保返回的状态对象在所有层级上不可变。
+ */
+function deepFreeze<T>(obj: T): T {
+  if (obj === null || typeof obj !== 'object') return obj;
+  Object.freeze(obj);
+  const keys = Object.keys(obj as Record<string, unknown>);
+  for (const key of keys) {
+    const val = (obj as Record<string, unknown>)[key];
+    if (val !== null && typeof val === 'object' && !Object.isFrozen(val)) {
+      deepFreeze(val);
+    }
+  }
+  return obj;
+}
+
 
 /**
  * 地图状态存储
@@ -31,8 +60,9 @@ export const useMapStore = defineStore('map', () => {
   /** 地点数据缓存（全局共享，所有角色共用） */
   const locations = ref<Map<string, LocationData>>(new Map());
 
-  /** 当前角色 ID */
-  const currentCharacterId = ref<string | null>(null);
+  /** 当前角色 ID（P3-153 扩展：收敛到 GameStore 只读 computed 代理） */
+  const gameStore = useGameStore();
+  const currentCharacterId = computed<string | null>(() => gameStore.currentCharacterId);
 
   /** 当前选中的地点 */
   const currentLocation = ref<LocationData | null>(null);
@@ -45,10 +75,18 @@ export const useMapStore = defineStore('map', () => {
   const getCurrentLocation = computed(() => currentLocation.value);
 
   // ==================== 持久化 ====================
-  /** 保存地图状态（按角色隔离） */
-  async function saveState(): Promise<void> {
-    if (currentCharacterId.value) {
+  /** 安全保存地图状态，捕获并记录错误，避免影响到调用方 */
+  async function safeSaveState(): Promise<void> {
+    if (!currentCharacterId.value) return;
+    try {
       await mapDbService.saveMapState(currentCharacterId.value, state.value);
+    } catch (err) {
+      // P2 DB-5 修复：上报 errorReporter 便于运维监测，与 inventory/store.ts 的 persistInventory 模式一致
+      console.error('[map] 保存地图状态失败:', err);
+      errorReporter.report(err, 'manual', {
+        context: '地图状态持久化失败，UI 与 DB 状态可能不一致',
+        characterId: currentCharacterId.value,
+      });
     }
   }
 
@@ -60,6 +98,8 @@ export const useMapStore = defineStore('map', () => {
     locationList.forEach(location => {
       if (location.mapX != null && location.mapY != null) {
         map.set(location.id, location);
+      } else {
+        console.warn(`[map] 地点 "${location.name}" (${location.id}) 缺少坐标数据，已跳过`);
       }
     });
     locations.value = map;
@@ -69,15 +109,21 @@ export const useMapStore = defineStore('map', () => {
 
   /**
    * 初始化地图模块 —— 加载地图状态和地点数据
-   * @param characterId - 角色 ID
    */
   async function initialize(characterId: string): Promise<void> {
-    currentCharacterId.value = characterId;
+    // P3-153 扩展：currentCharacterId 为只读 computed，由 GameStore 代理，无需在此赋值
+
+    // 先重置 currentLocation，避免上一个角色的数据残留（新角色无保存的 locationId 时不会进入下面的恢复分支）
+    currentLocation.value = null;
 
     // 加载地图状态
     const savedState = await mapDbService.getMapState(characterId);
     if (savedState?.view) {
-      state.value = { view: savedState.view };
+      state.value = {
+        view: savedState.view,
+        unlockedZones: savedState.unlockedZones ?? [],
+        completedZones: savedState.completedZones ?? []
+      };
     } else {
       state.value = { view: { ...DEFAULT_MAP_VIEW } };
     }
@@ -97,36 +143,29 @@ export const useMapStore = defineStore('map', () => {
     initialized.value = true;
   }
 
-  /** 获取地图状态 */
+  /** 获取地图状态（深拷贝，防止外部修改污染 Store） */
   function getState(): MapState {
-    return { ...state.value };
+    // P9-087 修复：使用深冻结替代 Object.freeze，确保嵌套对象（view 及数组）也不可变
+    return deepFreeze({
+      view: { ...state.value.view },
+      unlockedZones: state.value.unlockedZones ? [...state.value.unlockedZones] : undefined,
+      completedZones: state.value.completedZones ? [...state.value.completedZones] : undefined
+    });
   }
 
-  /**
-   * 获取地点数据
-   */
-  function getLocationData(locationId: string): LocationData | null {
-    return getLocationById(locations.value, locationId) || null;
-  }
-
-  /**
-   * 获取大陆下的地点
-   */
-  function getLocationsByContinentAction(continentId: string): LocationData[] {
-    return getLocationsByContinent(locations.value, continentId);
+  /** 获取地点数据 */
+  function getLocationData(locationId: string): LocationData | undefined {
+    return getLocationById(locations.value, locationId);
   }
 
   /**
    * 获取所有区域（转换为 MapZone 格式，用于大地图 UI 展示）
-   * @param playerLevel - 玩家等级，用于计算区域解锁状态
-   * @returns 区域列表
    */
   function getZones(playerLevel: number): MapZone[] {
     const result: MapZone[] = [];
-    const stateData = state.value as MapState & { unlockedZones?: string[]; completedZones?: string[] };
 
     locations.value.forEach(location => {
-      const status = getZoneStatus(stateData, location.id, location, playerLevel);
+      const status = getZoneStatus(state.value, location.id, location, playerLevel);
       result.push({
         id: location.id,
         name: location.name,
@@ -134,18 +173,14 @@ export const useMapStore = defineStore('map', () => {
         description: location.description,
         coordinates: { x: location.mapX, y: location.mapY },
         requiredLevel: location.levelRange[0],
-        requiredGold: 0,
-        status,
-        rewards: { gold: 0, exp: 0 }
+        status
       });
     });
 
     return result;
   }
 
-  /**
-   * 检查地点是否解锁
-   */
+  /** 检查地点是否解锁 */
   function isLocationUnlocked(locationId: string, playerLevel: number): boolean {
     const location = getLocationById(locations.value, locationId);
     if (!location) return false;
@@ -154,65 +189,72 @@ export const useMapStore = defineStore('map', () => {
 
   /**
    * 进入区域
-   * @param zoneId - 区域/地点 ID
-   * @returns 是否成功进入
+   * P5-012 修复：增加角色等级校验，低等级角色不能进入高等级区域
    */
-  function enterZone(zoneId: string): boolean {
+  function enterZone(zoneId: string, playerLevel?: number): boolean {
     const location = getLocationById(locations.value, zoneId);
     if (!location) return false;
 
-    currentLocation.value = location;
-
-    // 持久化当前区域 ID
-    if (currentCharacterId.value) {
-      mapDbService.saveCurrentLocationId(currentCharacterId.value, zoneId);
+    // P5-012：等级校验（playerLevel 由调用方传入，避免 Store 直接依赖 characterStore）
+    if (playerLevel !== undefined && playerLevel < location.levelRange[0]) {
+      return false;
     }
 
-    // emit 事件通知其他模块
-    eventBus.emit(GameEvents.ZONE_ENTERED, { locationId: zoneId, location });
+    currentLocation.value = location;
 
+    // 持久化当前区域 ID（fire and forget，捕获错误避免影响调用方）
+    if (currentCharacterId.value) {
+      mapDbService.saveCurrentLocationId(currentCharacterId.value, zoneId)
+        .catch(err => {
+          // P2 DB-5 修复：上报 errorReporter 便于运维监测
+          console.error('[map] 保存当前区域失败:', err);
+          errorReporter.report(err, 'manual', {
+            context: '当前区域持久化失败，UI 与 DB 状态可能不一致',
+            characterId: currentCharacterId.value,
+            zoneId,
+          });
+        });
+    }
+
+    // P9-091 修复：ZONE_ENTERED 由 exploration/store.ts enterArea 统一发射，
+    // enterZone 不再重复发射（两者在进入探索时形成双重触发）
+    // eventBus.emit(GameEvents.ZONE_ENTERED, { locationId: zoneId, location });
     return true;
   }
 
   /** 缩放到指定级别 */
   function zoomTo(level: number): void {
-    state.value.view.zoomLevel = Math.max(1, Math.min(5, level));
-    saveState();
+    state.value.view.zoomLevel = clamp(level, ZOOM_MIN, ZOOM_MAX);
+    safeSaveState();
   }
 
   /** 平移到指定位置 */
   function panTo(x: number, y: number): void {
-    state.value.view.panX = Math.max(-50, Math.min(50, x));
-    state.value.view.panY = Math.max(-50, Math.min(50, y));
-    saveState();
+    state.value.view.panX = clamp(x, PAN_MIN, PAN_MAX);
+    state.value.view.panY = clamp(y, PAN_MIN, PAN_MAX);
+    safeSaveState();
   }
 
   /** 重置视图 */
   function resetView(): void {
     state.value.view = { ...DEFAULT_MAP_VIEW };
-    saveState();
+    safeSaveState();
   }
 
   /** 设置当前大陆 */
   function setCurrentContinent(continentId: string): void {
     state.value.view.currentContinentId = continentId;
-    saveState();
+    safeSaveState();
   }
 
-  /**
-   * 保存当前标签页（按角色隔离持久化）
-   * @param tab - 标签名（'map' | 'explore'）
-   */
+  /** 保存当前标签页（按角色隔离持久化） */
   async function saveCurrentTab(tab: string): Promise<void> {
     if (currentCharacterId.value) {
       await mapDbService.saveCurrentTab(currentCharacterId.value, tab);
     }
   }
 
-  /**
-   * 获取当前标签页（按角色隔离读取）
-   * @returns 标签名，无记录时返回 null
-   */
+  /** 获取当前标签页（按角色隔离读取） */
   async function getCurrentTab(): Promise<string | null> {
     if (currentCharacterId.value) {
       return mapDbService.getCurrentTab(currentCharacterId.value);
@@ -220,10 +262,17 @@ export const useMapStore = defineStore('map', () => {
     return null;
   }
 
+  /** 获取指定大陆下的所有地点 */
+  function getContinentLocations(continentId: string): LocationData[] {
+    return getLocationsByContinent(locations.value, continentId);
+  }
+
   /** 清除 UI 状态（不删除数据库数据） */
   function clearUIState(): void {
     state.value = { view: { ...DEFAULT_MAP_VIEW } };
     currentLocation.value = null;
+    locations.value = new Map();
+    initialized.value = false;
   }
 
   return {
@@ -240,7 +289,7 @@ export const useMapStore = defineStore('map', () => {
     initialize,
     getState,
     getLocationData,
-    getLocationsByContinent: getLocationsByContinentAction,
+    getLocationsByContinent: getContinentLocations,
     getZones,
     isLocationUnlocked,
     enterZone,

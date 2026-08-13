@@ -4,15 +4,9 @@
  * 封装地图数据的 IndexedDB 操作，提供数据持久化能力。
  * 地图状态按角色ID隔离存储，切换角色后各角色数据独立保留。
  */
-import { db as gameDb, dbService } from '../data/core';
-import type { LocationDataStorage, MapState, LocationData, MapStateStorage } from './types';
-
-/**
- * 根据角色ID生成地图状态存储键
- */
-function getMapStateKey(characterId: string): string {
-  return `map_${characterId}`;
-}
+import { db as gameDb, dbService } from '@/modules/data';
+import type { LocationStorage, MapState, LocationData, MapStateStorage } from './types';
+import { getMapStateKey, mapToLocationData } from './service';
 
 /**
  * 地图数据层服务
@@ -31,9 +25,12 @@ export class MapDbService {
       await gameDb.transaction('rw', gameDb.runtime_mapState, async () => {
         const existing = await gameDb.runtime_mapState.get(key);
         await gameDb.runtime_mapState.put({
-          ...existing,
+          ...(existing || {}),
           id: key,
-          view: state.view
+          view: state.view,
+          // P9-086 修复：对可选字段做 undefined 兜底，避免写入 undefined 值
+          unlockedZones: state.unlockedZones ?? [],
+          completedZones: state.completedZones ?? []
         });
       });
     });
@@ -54,53 +51,15 @@ export class MapDbService {
   }
 
   /**
-   * 保存地点数据
-   * @param location - 地点数据
-   */
-  async saveLocationData(location: LocationData): Promise<void> {
-    await dbService.withRetry(async () => {
-      await gameDb.config_locations.put({
-        id: location.id,
-        name: location.name,
-        icon: location.icon,
-        description: location.description,
-        continent: location.continent,
-        enemies: location.enemies,
-        bosses: location.bosses,
-        quests: location.quests,
-        levelRange: location.levelRange,
-        color: location.color,
-        mapX: location.mapX,
-        mapY: location.mapY,
-        type: 'location'
-      });
-    });
-  }
-
-  /**
    * 获取地点数据
    * @param locationId - 地点ID
    * @returns 地点数据
    */
   async getLocationData(locationId: string): Promise<LocationData | null> {
     return dbService.withRetry(async () => {
-      const result = await gameDb.config_locations.get(locationId) as unknown as LocationDataStorage | undefined;
+      const result = await gameDb.config_locations.get(locationId) as unknown as LocationStorage | undefined;
       if (!result) return null;
-      return {
-        id: result.id,
-        name: result.name,
-        icon: result.icon,
-        description: result.description,
-        continent: result.continent,
-        enemies: result.enemies,
-        bosses: result.bosses,
-        quests: result.quests,
-        levelRange: result.levelRange,
-        color: result.color,
-        mapX: result.mapX,
-        mapY: result.mapY,
-        type: 'location' as const
-      };
+      return mapToLocationData(result);
     });
   }
 
@@ -110,69 +69,8 @@ export class MapDbService {
    */
   async getAllLocationData(): Promise<LocationData[]> {
     return dbService.withRetry(async () => {
-      const results = await gameDb.config_locations.where('type').equals('location').toArray() as unknown as LocationDataStorage[];
-      return results.map(result => ({
-        id: result.id,
-        name: result.name,
-        icon: result.icon,
-        description: result.description,
-        continent: result.continent,
-        enemies: result.enemies,
-        bosses: result.bosses,
-        quests: result.quests,
-        levelRange: result.levelRange,
-        color: result.color,
-        mapX: result.mapX,
-        mapY: result.mapY,
-        type: 'location' as const
-      }));
-    });
-  }
-
-  /**
-   * 获取指定大陆的地点数据（仅 type='location' 类型）
-   * @param continentId - 大陆ID
-   * @returns 地点数据列表
-   */
-  async getLocationDataByContinent(continentId: string): Promise<LocationData[]> {
-    return dbService.withRetry(async () => {
-      const results = await gameDb.config_locations.where('type').equals('location').toArray() as unknown as LocationDataStorage[];
-      return results
-        .filter(result => result.continent === continentId)
-        .map(result => ({
-        id: result.id,
-        name: result.name,
-        icon: result.icon,
-        description: result.description,
-        continent: result.continent,
-        enemies: result.enemies,
-        bosses: result.bosses,
-        quests: result.quests,
-        levelRange: result.levelRange,
-        color: result.color,
-        mapX: result.mapX,
-        mapY: result.mapY,
-        type: 'location' as const
-      }));
-    });
-  }
-
-  /**
-   * 删除地点数据
-   * @param locationId - 地点ID
-   */
-  async deleteLocationData(locationId: string): Promise<void> {
-    await dbService.withRetry(async () => {
-      await gameDb.config_locations.delete(locationId);
-    });
-  }
-
-  /**
-   * 清空所有地点数据
-   */
-  async clearAllLocationData(): Promise<void> {
-    await dbService.withRetry(async () => {
-      await gameDb.config_locations.clear();
+      const results = await gameDb.config_locations.where('type').equals('location').toArray() as unknown as LocationStorage[];
+      return results.map(mapToLocationData);
     });
   }
 
@@ -195,11 +93,13 @@ export class MapDbService {
   async saveCurrentLocationId(characterId: string, locationId: string): Promise<void> {
     await dbService.withRetry(async () => {
       const key = getMapStateKey(characterId);
-      const existing = await gameDb.runtime_mapState.get(key);
-      await gameDb.runtime_mapState.put({
-        ...(existing || {}),
-        id: key,
-        currentLocationId: locationId
+      await gameDb.transaction('rw', gameDb.runtime_mapState, async () => {
+        const existing = await gameDb.runtime_mapState.get(key);
+        await gameDb.runtime_mapState.put({
+          ...(existing || {}),
+          id: key,
+          currentLocationId: locationId
+        });
       });
     });
   }
@@ -226,11 +126,13 @@ export class MapDbService {
   async saveCurrentTab(characterId: string, tab: string): Promise<void> {
     await dbService.withRetry(async () => {
       const key = getMapStateKey(characterId);
-      const existing = await gameDb.runtime_mapState.get(key);
-      await gameDb.runtime_mapState.put({
-        ...(existing || {}),
-        id: key,
-        currentTab: tab
+      await gameDb.transaction('rw', gameDb.runtime_mapState, async () => {
+        const existing = await gameDb.runtime_mapState.get(key);
+        await gameDb.runtime_mapState.put({
+          ...(existing || {}),
+          id: key,
+          currentTab: tab
+        });
       });
     });
   }

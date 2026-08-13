@@ -3,9 +3,8 @@
  * @description 封装探索数据的 IndexedDB 操作，提供数据持久化能力
  * @module exploration
  */
-import { db as gameDb, dbService } from '../data/core';
-import type { ExplorationStorage } from './types';
-import type { ExplorationState } from './types';
+import { db as gameDb, dbService } from '@/modules/data/core';
+import type { ExplorationStorage, ExplorationState } from './types';
 import { toRawData } from '../../utils';
 
 export class ExplorationDbService {
@@ -16,7 +15,7 @@ export class ExplorationDbService {
    */
   async saveExplorationData(characterId: string, state: ExplorationState, assignedShopId: string = ''): Promise<void> {
     await dbService.withRetry(async () => {
-      // JSON 序列化去除 Vue/Proxy 包装，避免 IndexedDB DataCloneError
+      // toRawData 剥离 Vue/Proxy 响应式包装，避免 IndexedDB 序列化时抛出 DataCloneError
       const cleanData = toRawData({
         characterId,
         currentAreaId: state.currentAreaId,
@@ -25,7 +24,6 @@ export class ExplorationDbService {
         campUsed: state.campUsed,
         playerPosition: state.playerPosition,
         visitedCells: state.visitedCells,
-        remainingMoves: state.remainingMoves,
         bossDefeated: state.bossDefeated,
         explorationComplete: state.explorationComplete,
         updatedAt: Date.now()
@@ -35,8 +33,14 @@ export class ExplorationDbService {
   }
 
   /**
-   * 从数据库获取指定角色的探索数据
-   * 兼容旧版本数据，缺失字段使用默认值
+   * 从数据库获取指定角色的探索数据。
+   *
+   * 版本基线重构后存档字段完整，无需读时补默认值，直接返回原始数据。
+   * 旧版 currentShopId / discovered / sealed / hint 等字段兼容逻辑已移除。
+   *
+   * P7-017 修复：恢复 playerPosition 越界校验——存档被外部工具改动或
+   * 版本迁移产生越界时，grid[y]?.[x] 返回 null 会导致 movePlayer 静默失败。
+   *
    * @param characterId - 角色ID
    * @returns 探索存储数据，不存在时返回null
    */
@@ -44,19 +48,18 @@ export class ExplorationDbService {
     return dbService.withRetry(async () => {
       const result = await gameDb.char_exploration.get(characterId);
       if (!result) return null;
-      // 兼容旧数据：缺失字段使用默认值，旧版 currentShopId 兼容到 assignedShopId
-      return {
-        ...result,
-        assignedShopId: (result.assignedShopId || (result as unknown as Record<string, unknown>).currentShopId as string) || '',
-        grid: result.grid || [],
-        playerPosition: result.playerPosition || { x: 0, y: 0 },
-        visitedCells: result.visitedCells || 0,
-        remainingMoves: result.remainingMoves ?? 20,
-        bossDefeated: result.bossDefeated || false,
-        explorationComplete: result.explorationComplete || false,
-        campUsed: result.campUsed || false,
-        updatedAt: result.updatedAt || Date.now()
-      };
+
+      // P7-017：防御性校验 playerPosition 越界
+      if (result.playerPosition && result.grid) {
+        const { x, y } = result.playerPosition;
+        const gridH = result.grid.length;
+        const gridW = gridH > 0 ? result.grid[0].length : 0;
+        if (x < 0 || x >= gridW || y < 0 || y >= gridH) {
+          result.playerPosition = { x: 0, y: 0 };
+        }
+      }
+
+      return result;
     });
   }
 

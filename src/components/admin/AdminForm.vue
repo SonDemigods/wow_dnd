@@ -1,147 +1,28 @@
 <template>
   <div v-if="visible" class="form-overlay" @click.self="$emit('cancel')">
-    <div class="form-dialog">
+    <div class="form-dialog" @keydown="onKeydown">
       <div class="form-header">
         <h3>{{ title }}</h3>
         <button class="close-btn" @click="$emit('cancel')">×</button>
       </div>
       <div class="form-body">
-        <div v-for="field in fields" :key="field.key" class="form-group">
-          <!-- JSON 字段自身带标签，其他字段用外部 label -->
-          <label v-if="field.type !== 'json'" :for="'field-' + field.key">{{ field.label }}</label>
-
-          <!-- 普通文本输入 -->
-          <input
-            v-if="field.type === 'text' || field.type === 'number'"
-            :id="'field-' + field.key"
+        <div v-for="field in fields" :key="field.key" class="form-field-wrapper">
+          <component
+            :is="fieldComponentMap[field.type]"
+            :field="field"
             v-model="formData[field.key]"
-            :type="field.type"
-            :placeholder="field.placeholder"
-            :disabled="field.disabled"
-            class="form-input"
+            v-bind="field.type === 'json' ? { submitError: !!jsonSubmitErrors[field.key] } : {}"
+            @blur="handleFieldBlur(field.key)"
           />
-
-          <!-- 多行文本 -->
-          <textarea
-            v-else-if="field.type === 'textarea'"
-            :id="'field-' + field.key"
-            v-model="formData[field.key]"
-            :placeholder="field.placeholder"
-            :disabled="field.disabled"
-            class="form-textarea"
-            rows="3"
-          />
-
-          <!-- 下拉选择 -->
-          <select
-            v-else-if="field.type === 'select'"
-            :id="'field-' + field.key"
-            v-model="formData[field.key]"
-            :disabled="field.disabled"
-            class="form-select"
-          >
-            <option value="">-- 请选择 --</option>
-            <option
-              v-for="opt in field.options"
-              :key="opt.value"
-              :value="opt.value"
-            >
-              {{ opt.label }}
-            </option>
-          </select>
-
-          <!-- 开关 -->
-          <div v-else-if="field.type === 'switch'" class="switch-container">
-            <label class="switch">
-              <input
-                type="checkbox"
-                :checked="!!formData[field.key]"
-                :disabled="field.disabled"
-                @change="formData[field.key] = ($event.target as HTMLInputElement).checked"
-              />
-              <span class="switch-slider" />
-            </label>
-            <span class="switch-label-text">{{ formData[field.key] ? '是' : '否' }}</span>
-          </div>
-
-          <!-- 多选 -->
-          <div v-else-if="field.type === 'multiselect'" class="multiselect-group">
-            <label
-              v-for="opt in field.options"
-              :key="opt.value"
-              class="multiselect-item"
-              :class="{ checked: isSelected(field.key, opt.value) }"
-            >
-              <input
-                type="checkbox"
-                :value="opt.value"
-                :checked="isSelected(field.key, opt.value)"
-                :disabled="field.disabled"
-                @change="toggleMultiSelect(field.key, opt.value)"
-              />
-              {{ opt.label }}
-            </label>
-          </div>
-
-          <!-- 颜色选择 -->
-          <input
-            v-else-if="field.type === 'color'"
-            :id="'field-' + field.key"
-            v-model="formData[field.key]"
-            type="color"
-            :disabled="field.disabled"
-            class="form-color"
-          />
-
-          <!-- JSON 键值对编辑器 -->
-          <div v-else-if="field.type === 'json'" class="json-editor">
-            <div class="json-toolbar">
-              <span class="json-label">{{ field.label }}</span>
-              <button type="button" class="btn-json-mode" @click="toggleJsonMode(field.key)">
-                {{ jsonModes[field.key] ? '键值对' : '文本' }}
-              </button>
-            </div>
-
-            <!-- 文本模式 -->
-            <textarea
-              v-if="!jsonModes[field.key]"
-              :id="'field-' + field.key"
-              v-model="formData[field.key]"
-              :placeholder="field.placeholder"
-              :disabled="field.disabled"
-              class="form-textarea form-json"
-              rows="5"
-            />
-
-            <!-- 键值对模式 -->
-            <div v-else class="json-kv-editor">
-              <div v-for="(item, idx) in getJsonEntries(field.key)" :key="idx" class="json-kv-row">
-                <input
-                  v-model="item.key"
-                  type="text"
-                  class="form-input json-kv-key"
-                  placeholder="键"
-                  @input="syncJsonKv(field.key)"
-                />
-                <input
-                  v-model="item.value"
-                  type="text"
-                  class="form-input json-kv-value"
-                  placeholder="值"
-                  @input="syncJsonKv(field.key)"
-                />
-                <button type="button" class="btn-kv-remove" @click="removeJsonEntry(field.key, idx)">×</button>
-              </div>
-              <button type="button" class="btn-kv-add" @click="addJsonEntry(field.key)">+ 添加属性</button>
-              <p v-if="jsonParseError[field.key]" class="json-error">JSON 解析失败，请检查格式</p>
-            </div>
-          </div>
+          <!-- 校验错误提示 -->
+          <p v-if="errors[field.key]" class="field-error">{{ errors[field.key] }}</p>
         </div>
 
         <!-- 自定义内容插槽 -->
         <slot name="custom-fields" :formData="formData" />
       </div>
       <div class="form-footer">
+        <span class="shortcut-hint">Esc 取消 · Ctrl+S 保存</span>
         <button class="btn btn-secondary" @click="$emit('cancel')">取消</button>
         <button class="btn btn-primary" @click="handleSubmit">保存</button>
       </div>
@@ -153,20 +34,40 @@
 /**
  * 通用表单弹窗组件
  *
- * 根据字段配置动态渲染表单，支持 text/number/textarea/select/color/json 等类型
+ * 根据字段配置动态渲染表单，通过 fieldComponentMap 将各字段类型的渲染
+ * 委托给独立的字段子组件（fields/ 目录下）。
+ * 支持字段类型：text/number/textarea/select/multiselect/switch/color/json
+ *
+ * Phase 3 新增：字段校验（required/pattern/min-max/minLength-maxLength/json）
+ * + 键盘快捷键（Esc 取消 / Ctrl+S 保存）
  */
-import { reactive, watch } from 'vue';
+import { reactive, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import type { Component } from 'vue';
+import type { AdminRecord } from '@/modules/admin';
+import type { FormField, FormFieldValue, FormFieldType } from './fields/types';
+import { useFormValidation } from './composables/useFormValidation';
+import TextField from './fields/TextField.vue';
+import TextareaField from './fields/TextareaField.vue';
+import SelectField from './fields/SelectField.vue';
+import MultiselectField from './fields/MultiselectField.vue';
+import SwitchField from './fields/SwitchField.vue';
+import ColorField from './fields/ColorField.vue';
+import JsonField from './fields/JsonField.vue';
 
-/** 表单字段定义 */
-export interface FormField {
-  key: string;
-  label: string;
-  type: 'text' | 'number' | 'textarea' | 'select' | 'multiselect' | 'switch' | 'color' | 'json';
-  placeholder?: string;
-  options?: Array<{ value: string; label: string }>;
-  /** 是否禁用（只读展示） */
-  disabled?: boolean;
-}
+// Re-export FormField for backward compatibility
+export type { FormField } from './fields/types';
+
+/** 字段类型 → 组件映射 */
+const fieldComponentMap: Record<FormFieldType, Component> = {
+  text: TextField,
+  number: TextField,
+  textarea: TextareaField,
+  select: SelectField,
+  multiselect: MultiselectField,
+  switch: SwitchField,
+  color: ColorField,
+  json: JsonField,
+};
 
 const props = defineProps<{
   /** 是否显示 */
@@ -176,112 +77,37 @@ const props = defineProps<{
   /** 字段定义 */
   fields: FormField[];
   /** 初始数据（编辑模式时传入） */
-  initialData?: Record<string, any> | null;
+  initialData?: AdminRecord | null;
 }>();
 
 const emit = defineEmits<{
-  submit: [data: Record<string, any>];
+  submit: [data: AdminRecord];
   cancel: [];
 }>();
 
 /** 表单数据 */
-const formData = reactive<Record<string, any>>({});
+const formData = reactive<Record<string, FormFieldValue>>({});
 
-/** JSON 编辑器模式（true=键值对, false=文本） */
-const jsonModes = reactive<Record<string, boolean>>({});
-/** JSON 解析错误标记 */
-const jsonParseError = reactive<Record<string, boolean>>({});
-/** JSON 键值对缓存 */
-const jsonEntriesCache = reactive<Record<string, Array<{ key: string; value: string }>>>({});
+/** JSON 提交时解析错误标记 */
+const jsonSubmitErrors = reactive<Record<string, boolean>>({});
 
-/** 切换 JSON 编辑模式 */
-function toggleJsonMode(fieldKey: string) {
-  const current = jsonModes[fieldKey];
-  if (current) {
-    jsonModes[fieldKey] = false;
-    const entries = jsonEntriesCache[fieldKey];
-    if (entries) {
-      const obj: Record<string, string> = {};
-      entries.forEach(e => { if (e.key) obj[e.key] = e.value; });
-      formData[fieldKey] = JSON.stringify(obj, null, 2);
-    }
-  } else {
-    try {
-      if (formData[fieldKey] && typeof formData[fieldKey] === 'string' && formData[fieldKey].trim()) {
-        const obj = JSON.parse(formData[fieldKey]);
-        if (typeof obj === 'object' && !Array.isArray(obj)) {
-          jsonEntriesCache[fieldKey] = Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) }));
-          jsonParseError[fieldKey] = false;
-          jsonModes[fieldKey] = true;
-          return;
-        }
-      }
-      jsonParseError[fieldKey] = true;
-    } catch {
-      jsonParseError[fieldKey] = true;
-    }
-  }
-}
+/** 校验引擎 */
+const { errors, validate, validateField, clearErrors } = useFormValidation(props.fields, formData);
 
-/** 获取 JSON 键值对条目 */
-function getJsonEntries(fieldKey: string): Array<{ key: string; value: string }> {
-  if (!jsonEntriesCache[fieldKey]) {
-    jsonEntriesCache[fieldKey] = [{ key: '', value: '' }];
-  }
-  return jsonEntriesCache[fieldKey];
-}
+/** 表单对话框 ref（用于自动 focus） */
+let formDialogEl: HTMLElement | null = null;
 
-/** 同步键值对到 formData */
-function syncJsonKv(fieldKey: string) {
-  const entries = jsonEntriesCache[fieldKey];
-  if (!entries) return;
-  const obj: Record<string, string> = {};
-  entries.forEach(e => { if (e.key) obj[e.key] = e.value; });
-  formData[fieldKey] = JSON.stringify(obj, null, 2);
-  jsonParseError[fieldKey] = false;
-}
-
-/** 添加键值对条目 */
-function addJsonEntry(fieldKey: string) {
-  if (!jsonEntriesCache[fieldKey]) jsonEntriesCache[fieldKey] = [];
-  jsonEntriesCache[fieldKey].push({ key: '', value: '' });
-}
-
-/** 删除键值对条目 */
-function removeJsonEntry(fieldKey: string, index: number) {
-  jsonEntriesCache[fieldKey]?.splice(index, 1);
-  syncJsonKv(fieldKey);
-}
-
-/** 多选：判断是否选中 */
-function isSelected(fieldKey: string, value: string): boolean {
-  const arr = formData[fieldKey];
-  return Array.isArray(arr) && arr.includes(value);
-}
-
-/** 多选：切换选中状态 */
-function toggleMultiSelect(fieldKey: string, value: string) {
-  if (!Array.isArray(formData[fieldKey])) {
-    formData[fieldKey] = [];
-  }
-  const idx = formData[fieldKey].indexOf(value);
-  if (idx >= 0) {
-    formData[fieldKey].splice(idx, 1);
-  } else {
-    formData[fieldKey].push(value);
-  }
-}
-
-// 监听 initialData 变化，初始化表单数据
+// 监听 initialData / visible 变化，初始化表单数据
 watch(
-  () => props.initialData,
-  (data) => {
+  [() => props.initialData, () => props.visible],
+  ([data, visible]) => {
+    if (!visible) return;
     // 先清空
     Object.keys(formData).forEach(key => delete formData[key]);
-    // 重置 JSON 编辑器状态，防止切换记录时残留旧数据
-    Object.keys(jsonModes).forEach(key => delete jsonModes[key]);
-    Object.keys(jsonEntriesCache).forEach(key => delete jsonEntriesCache[key]);
-    Object.keys(jsonParseError).forEach(key => delete jsonParseError[key]);
+    // 重置 JSON 提交错误状态
+    Object.keys(jsonSubmitErrors).forEach(key => delete jsonSubmitErrors[key]);
+    // 清空校验错误
+    clearErrors();
     if (data) {
       Object.assign(formData, data);
     }
@@ -301,357 +127,158 @@ watch(
         formData[field.key] = JSON.stringify(formData[field.key], null, 2);
       }
     });
+    // 自动 focus 第一个输入框
+    nextTick(() => {
+      (formDialogEl?.querySelector('input, textarea, select') as HTMLElement | null)?.focus();
+    });
   },
   { immediate: true }
 );
 
+/** 字段 blur 时触发单字段校验 */
+function handleFieldBlur(fieldKey: string): void {
+  validateField(fieldKey);
+}
+
+/** 键盘快捷键 */
+function onKeydown(e: KeyboardEvent): void {
+  // Esc → 取消
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    emit('cancel');
+    return;
+  }
+  // Ctrl+S / Cmd+S → 保存
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    handleSubmit();
+  }
+}
+
 /** 提交表单 */
 function handleSubmit() {
-  // 将 number 类型字段的值转为数字
-  const data: Record<string, any> = {};
+  // 全量校验
+  if (!validate()) return;
+
+  // 将 number 类型字段的值转为数字，收集为 AdminRecord
+  const data: AdminRecord = {};
+  let hasParseError = false;
   props.fields.forEach(field => {
-    let value = formData[field.key];
+    let value: unknown = formData[field.key];
     if (field.type === 'number' && typeof value === 'string') {
       value = Number(value);
     }
     if (field.type === 'json' && typeof value === 'string' && value.trim()) {
       try {
         value = JSON.parse(value);
-      } catch {
-        // 解析失败则保持字符串
+        jsonSubmitErrors[field.key] = false;
+      } catch (e) {
+        console.error(e);
+        jsonSubmitErrors[field.key] = true;
+        hasParseError = true;
       }
     }
     data[field.key] = value;
   });
+  if (hasParseError) return;
   emit('submit', data);
 }
+
+onMounted(() => {
+  formDialogEl = document.querySelector('.form-dialog');
+});
+onUnmounted(() => {
+  formDialogEl = null;
+});
 </script>
 
 <style lang="less" scoped>
 @import '@/styles/variables.less';
 
 .form-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
+  .overlay-mask(@overlay-heavy; @z-combat-overlay);
 }
 
 .form-dialog {
   background: #0d1117;
   border: 2px solid @border-color;
-  border-radius: 12px;
+  border-radius: @radius-xl;
   width: 500px;
   max-height: 80vh;
-  display: flex;
-  flex-direction: column;
+  .flex-col();
 }
 
 .form-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
+  .flex-between();
+  padding: @spacing-3xl @spacing-4xl;
   border-bottom: 1px solid @border-color;
 
   h3 {
     color: @accent-color;
     margin: 0;
-    font-size: 18px;
+    font-size: @font-xl;
   }
 
   .close-btn {
     width: 28px;
     height: 28px;
-    background: rgba(255, 255, 255, 0.1);
+    background: @white-10;
     border: none;
     border-radius: 50%;
     color: @text-primary;
-    font-size: 18px;
+    font-size: @font-xl;
     cursor: pointer;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.2);
+      background: @white-20;
     }
   }
 }
 
 .form-body {
-  padding: 20px;
+  padding: @spacing-4xl;
   overflow-y: auto;
   flex: 1;
 }
 
-.form-group {
-  margin-bottom: 16px;
-
-  label {
-    display: block;
-    color: @text-secondary;
-    font-size: 13px;
-    margin-bottom: 5px;
-  }
+.form-field-wrapper {
+  margin-bottom: 0;
 }
 
-.form-input,
-.form-textarea,
-.form-select {
-  width: 100%;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid @border-color;
-  border-radius: 6px;
-  color: @text-primary;
-  font-size: 14px;
-  outline: none;
-  box-sizing: border-box;
-
-  &:focus {
-    border-color: @accent-color;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background: rgba(255, 255, 255, 0.02);
-  }
-}
-
-.form-select {
-  option {
-    background: #0d1117;
-    color: @text-primary;
-  }
-}
-
-.form-color {
-  width: 50px;
-  height: 36px;
-  border: 1px solid @border-color;
-  border-radius: 6px;
-  cursor: pointer;
-  background: transparent;
-}
-
-// ==================== 开关 ====================
-.switch-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-  flex-shrink: 0;
-
-  input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-}
-
-.switch-slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
-  transition: 0.2s;
-  border: 1px solid @border-color;
-
-  &::before {
-    content: '';
-    position: absolute;
-    height: 18px;
-    width: 18px;
-    left: 2px;
-    bottom: 2px;
-    background: @text-secondary;
-    border-radius: 50%;
-    transition: 0.2s;
-  }
-}
-
-.switch input:checked + .switch-slider {
-  background: @accent-color;
-  border-color: @accent-color;
-
-  &::before {
-    background: #fff;
-    transform: translateX(20px);
-  }
-}
-
-.switch input:disabled + .switch-slider {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.switch-label-text {
-  font-size: 13px;
-  color: @text-secondary;
-}
-
-.form-json {
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-}
-
-// ==================== 多选 ====================
-.multiselect-group {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
-  max-height: 240px;
-  overflow-y: auto;
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid @border-color;
-  border-radius: 6px;
-}
-
-.multiselect-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: @text-secondary;
-  font-size: 13px;
-  cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 4px;
-  transition: background 0.15s;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  &.checked {
-    color: @accent-color;
-    background: rgba(0, 200, 150, 0.08);
-  }
-
-  input[type='checkbox'] {
-    accent-color: @accent-color;
-    width: 14px;
-    height: 14px;
-    margin: 0;
-    cursor: pointer;
-  }
-}
-
-.json-editor {
-  .json-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-    .json-label { color: @text-secondary; font-size: 13px; }
-  }
-  .btn-json-mode {
-    font-size: 11px;
-    padding: 2px 8px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid @border-color;
-    border-radius: 4px;
-    color: @text-secondary;
-    cursor: pointer;
-    &:hover { background: rgba(255, 255, 255, 0.15); }
-  }
-}
-
-.json-kv-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.json-kv-row {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.json-kv-key {
-  flex: 1;
-  width: 40% !important;
-}
-
-.json-kv-value {
-  flex: 1;
-  width: 40% !important;
-}
-
-.btn-kv-remove {
-  width: 24px;
-  height: 24px;
-  background: rgba(255, 68, 68, 0.2);
-  border: none;
-  border-radius: 4px;
+.field-error {
   color: @danger-color;
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-  &:hover { background: rgba(255, 68, 68, 0.4); }
-}
-
-.btn-kv-add {
-  font-size: 12px;
-  padding: 4px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px dashed @border-color;
-  border-radius: 4px;
-  color: @text-secondary;
-  cursor: pointer;
-  &:hover { background: rgba(255, 255, 255, 0.1); }
-}
-
-.json-error {
-  color: @danger-color;
-  font-size: 12px;
-  margin: 4px 0 0;
+  font-size: @font-sm;
+  margin: 2px 0 12px;
+  padding-left: 2px;
 }
 
 .form-footer {
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 16px 20px;
+  align-items: center;
+  gap: @spacing-lg;
+  padding: @spacing-3xl @spacing-4xl;
   border-top: 1px solid @border-color;
 }
 
+.shortcut-hint {
+  font-size: @font-xs;
+  color: @text-secondary;
+  opacity: 0.6;
+  margin-right: auto;
+}
+
 .btn {
-  padding: 8px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  border: 1px solid @border-color;
+  .admin-btn-base(@spacing-4xl);
 
   &-primary {
     background: @accent-color;
-    color: #1a1a2e;
+    color: @primary-bg;
     border-color: @accent-color;
   }
 
   &-secondary {
     background: transparent;
     color: @text-primary;
-  }
-
-  &:hover {
-    opacity: 0.85;
   }
 }
 </style>
