@@ -38,7 +38,7 @@ export const tableColumns: Record<ConfigTableName, TableColumn[]> = {
   items: [
     { key: 'id', label: 'ID', width: '180px' },
     { key: 'name', label: '名称' },
-    { key: 'type', label: '类型' },
+    { key: 'subtype', label: '子类型' },
     { key: 'rarity', label: '稀有度' },
     { key: 'value', label: '价值' },
   ],

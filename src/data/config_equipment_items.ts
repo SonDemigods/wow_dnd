@@ -1829,6 +1829,10 @@ export const EQUIPMENT_ITEMS: EquipmentItem[] = [
   ...GLOVES.map(a => ({ ...a, subtype: 'gloves' as const }))
 ].map(item => ({
   ...item,
+  // 根据 subtype 推导 type 字段（weapon / armor）
+  type: (['sword', 'axe', 'hammer', 'dagger', 'staff', 'greatsword', 'greataxe', 'polearm', 'greatbow', 'shield'].includes(item.subtype))
+    ? 'weapon' as const
+    : 'armor' as const,
   // P3.3：补全判别联合字面量（草稿 Omit 了 kind/stackable/consumable）
   kind: 'equipment' as const,
   stackable: false as const,

@@ -106,10 +106,13 @@ export function useConfigTableMeta(): UseConfigTableMetaReturn {
         }
         return { ...col, format: (v: CellValue) => String(v ?? '-') };
       }
+      // subtype 字段翻译（items 表用 subtype 而非 type）
+      if (col.key === 'subtype') {
+        return { ...col, format: (v: CellValue) => t(ITEM_TYPE_NAMES, v) };
+      }
       // type 字段按表名区分翻译
       if (col.key === 'type') {
         const tn = currentTable.value;
-        if (tn === 'items') return { ...col, format: (v: CellValue) => t(ITEM_TYPE_NAMES, v) };
         if (tn === 'equipmentItems') return { ...col, format: (v: CellValue) => t(EQUIP_TYPE_NAMES, v) };
         if (tn === 'locations') return { ...col, format: (v: CellValue) => t(LOCATION_TYPE_NAMES, v) };
         if (tn === 'quests') return { ...col, format: (v: CellValue) => t(QUEST_TYPE_NAMES, v) };

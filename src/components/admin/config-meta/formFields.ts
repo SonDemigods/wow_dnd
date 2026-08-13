@@ -44,7 +44,7 @@ export const formFieldsMap: Record<ConfigTableName, FormField[]> = {
   items: [
     { key: 'id', label: 'ID', type: 'text', required: true, placeholder: '唯一标识' },
     { key: 'name', label: '名称', type: 'text', required: true, placeholder: '物品名称' },
-    { key: 'type', label: '类型', type: 'select', options: [
+    { key: 'subtype', label: '子类型', type: 'select', options: [
       { value: 'potion', label: '药水 (potion)' },
       { value: 'scroll', label: '卷轴 (scroll)' },
       { value: 'food', label: '食物 (food)' },
@@ -55,11 +55,8 @@ export const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'rarity', label: '稀有度', type: 'text', placeholder: 'common/uncommon/rare/epic/legendary' },
     { key: 'icon', label: '图标', type: 'text', placeholder: 'emoji 图标' },
     { key: 'description', label: '描述', type: 'textarea', placeholder: '物品描述' },
-    { key: 'bonus', label: '属性加成', type: 'json', placeholder: '{"hp": 50}' },
-    { key: 'effect', label: '效果', type: 'json', placeholder: '{"type": "heal", "value": 50}' },
+    { key: 'effects', label: '效果列表', type: 'json', placeholder: '[{"type":"heal","value":50}]' },
     { key: 'value', label: '价值', type: 'number', min: 0 },
-    { key: 'stackable', label: '可堆叠', type: 'switch' },
-    { key: 'consumable', label: '消耗品', type: 'switch' },
     { key: 'level', label: '物品等级', type: 'number' },
     { key: 'template', label: '模板', type: 'text', placeholder: '物品模板标识' },
   ],
@@ -76,7 +73,6 @@ export const formFieldsMap: Record<ConfigTableName, FormField[]> = {
     { key: 'bonus', label: '属性加成', type: 'json', placeholder: '{"str": 3}' },
     { key: 'value', label: '价值', type: 'number', min: 0 },
     { key: 'slots', label: '适用槽位', type: 'multiselect' },
-    { key: 'stackable', label: '可堆叠', type: 'switch' },
     { key: 'levelRequirement', label: '等级需求', type: 'number' },
     { key: 'template', label: '模板', type: 'text', placeholder: '装备模板标识' },
   ],

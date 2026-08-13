@@ -125,14 +125,14 @@ describe('useConfigTableMeta 配置表元信息 composable', () => {
       expect(damageCol!.format!(null as never, {} as never)).toBe('-');
     });
 
-    it('type 列按表名区分翻译：items → ITEM_TYPE_NAMES', () => {
+    it('subtype 列翻译：items → ITEM_TYPE_NAMES', () => {
       const store = useAdminStore();
       store.selectedConfigTable = 'items';
       const { currentColumns } = useConfigTableMeta();
 
-      const typeCol = currentColumns.value.find(c => c.key === 'type');
-      expect(typeCol?.format).toBeDefined();
-      expect(typeCol!.format!('potion' as never, {} as never)).toBe('药水');
+      const subtypeCol = currentColumns.value.find(c => c.key === 'subtype');
+      expect(subtypeCol?.format).toBeDefined();
+      expect(subtypeCol!.format!('potion' as never, {} as never)).toBe('药水');
     });
 
     it('type 列按表名区分翻译：equipmentItems → EQUIP_TYPE_NAMES', () => {
